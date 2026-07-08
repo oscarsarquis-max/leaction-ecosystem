@@ -1,0 +1,60 @@
+<%
+
+    const ctx = typeof coachContext !== 'undefined' ? coachContext : '';
+
+    if (!ctx) return;
+
+    const coachJson = typeof coachData !== 'undefined' ? JSON.stringify(coachData) : '{}';
+
+%>
+
+<link rel="stylesheet" href="/css/coach-avatars.css?v=3">
+
+<script type="application/json" id="coach-guide-data"><%- coachJson %></script>
+
+<aside
+
+    id="coach-guide-root"
+
+    class="coach-guide"
+
+    aria-label="Consultor LeAction — guia de jornada PanelDX"
+
+    data-context="<%= ctx %>"
+
+>
+
+    <div id="coach-guide-bubble" class="coach-guide__bubble">
+
+        <div class="coach-guide__bubble-head">
+
+            <span id="coach-guide-speaker" class="coach-guide__speaker">Consultor LeAction</span>
+
+            <button type="button" id="coach-guide-close" class="coach-guide__close" aria-label="Fechar dica">&times;</button>
+
+        </div>
+
+        <p id="coach-guide-text" class="coach-guide__text">Carregando orientação...</p>
+
+        <button type="button" id="coach-guide-cta" class="coach-guide__cta">Ver outra dica →</button>
+
+    </div>
+
+
+
+    <div class="coach-guide__dock">
+
+        <button type="button" id="coach-avatar-consultor" class="coach-guide__avatar-btn is-active" title="Consultor LeAction">
+
+            <img src="/images/consultor-leaction-avatar.png?v=2" alt="Consultor LeAction" class="coach-guide__avatar coach-guide__avatar--consultor" width="40" height="40">
+
+        </button>
+
+        <span class="coach-guide__role">Consultor<br>LeAction</span>
+
+    </div>
+
+</aside>
+
+<script src="/js/coach-guide.js?v=3"></script>
+

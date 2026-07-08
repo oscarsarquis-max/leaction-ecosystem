@@ -1,0 +1,400 @@
+<style>
+    /* Estilos originais preservados */
+    .dashboard-container { padding: 10px; }
+    .dashboard-grid { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
+    .dash-card {
+        background: #fff; padding: 25px; border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex: 1; min-width: 280px;
+        border-left: 5px solid #2c3e50; transition: transform 0.2s ease;
+    }
+    .dash-card:hover { transform: translateY(-5px); }
+    .dash-card h3 { margin-top: 0; font-size: 0.9em; text-transform: uppercase; color: #7f8c8d; font-weight: bold; }
+    .dash-card .big-number { font-size: 3em; font-weight: bold; color: #2c3e50; margin: 10px 0; }
+
+    .border-blue { border-left-color: #3498db; }
+    .border-green { border-left-color: #27ae60; }
+    .border-orange { border-left-color: #f39c12; }
+    .border-gold { border-left-color: #d4af37; }
+
+    .btn-dash {
+        display: inline-block; padding: 10px 20px; background-color: #3498db; color: white;
+        text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 0.9em;
+        transition: background-color 0.3s; border: none; cursor: pointer; text-align: center;
+    }
+    .btn-gold {
+        background: linear-gradient(45deg, #d4af37, #f1c40f); color: white;
+        box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+    }
+
+    /* Estilos do Novo Modal de Bloqueio */
+    .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); backdrop-filter: blur(5px); }
+    .modal-content { background-color: white; margin: 5% auto; padding: 30px; border-radius: 15px; max-width: 800px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+
+    /* Spinner para Processamento */
+    .loader { border: 4px solid #f3f3f3; border-top: 4px solid #d4af37; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; margin: 20px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Overlay que trava a tela */
+    #progress-overlay {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(255, 255, 255, 0.95);
+        text-align: center;
+        padding-top: 15%;
+    }
+
+    .progress-container {
+        width: 80%;
+        max-width: 500px;
+        background-color: #f3f3f3;
+        border-radius: 20px;
+        margin: 20px auto;
+        overflow: hidden;
+        border: 1px solid #ddd;
+    }
+
+    .progress-bar {
+        width: 0%;
+        height: 30px;
+        background: linear-gradient(45deg, #d4af37, #f1c40f);
+        transition: width 0.5s linear;
+    }
+
+    .status-text {
+        font-family: sans-serif;
+        color: #2c3e50;
+        font-weight: bold;
+    }
+</style>
+
+<div id="progress-overlay" style="display: none;">
+    <div style="margin-bottom: 20px;">
+        <h2 class="status-text" id="status-ia-text">IA Master Gerando seu Plano...</h2>
+        <p style="color: #666;">Isso leva cerca de 1 minuto. Estamos preparing seu Roadmap e as Sprints no Kanban.</p>
+    </div>
+    <div class="progress-container">
+        <div id="myBar" class="progress-bar"></div>
+    </div>
+    <div id="percent-text" style="font-weight: bold; color: #d4af37; font-size: 1.2em;">0%</div>
+</div>
+
+<div id="dados-index-ponte"
+     data-status-ia="<%= (locals.lead && lead.status_ia) ? lead.status_ia : '' %>"
+     data-id-matu="<%= (locals.lead && lead.id_matu) ? lead.id_matu : '' %>"
+     style="display: none;"></div>
+
+<script>
+    (function() {
+        const ponte = document.getElementById('dados-index-ponte');
+        const s = ponte ? ponte.getAttribute('data-status-ia') : '';
+        console.group("--- VERIFICAÇÃO DE DADOS (INDEX) ---");
+        console.log("STATUS RECEBIDO:", "[" + s + "]");
+        console.groupEnd();
+    })();
+</script>
+
+<%
+    // --- Lógica de Negócio e Proteção de Dados ---
+    const safeLead = locals.lead || locals.user || {};
+    const statusIA = (safeLead.status_ia || "").toString().trim().toUpperCase();
+
+    // --- MÁQUINA DE ESTADOS RECALIBRADA COM O STATUS INICIAL REAL ---
+    const isAguardandoContexto = (statusIA === 'AGUARDANDO CONTEXTO' || statusIA === 'PENDENTE');
+    const isPreSurveyConcluido = (statusIA === 'PRESURVEY OK');
+    const isProjetoOk = (statusIA === 'PROJETO OK');
+    const isContextoOk = (statusIA === 'CONTEXTO OK');
+    const isAvaliacaoCompletaOk = (statusIA === 'AVALIACAO OK');
+    const isEmProcessamento = (statusIA === 'PENDENTE'); // Se houver uso de background posterior
+
+    // O fluxo inicial só é considerado "avaliado" após a Pre-Survey ser batida de fato
+    const isAvaliado = isPreSurveyConcluido || isContextoOk || isAvaliacaoCompletaOk;
+
+    const isGenesisOk = (statusIA.includes('CONCLU') || !!safeLead.data_geracao_plano);
+    const mostrarKanban = isGenesisOk;
+%>
+
+<% if (!locals.isLoggedIn || locals.isAdmin) { %>
+    <div class="main-content" id="home-page" style="text-align: center; margin-top: 10px;">
+        <h1 style="color: #2c3e50; margin-bottom: 10px;">LeAction System</h1>
+        <iframe src="https://www.leactionf.com.br/index.html"
+                style="width: 100%; height: 85vh; border: none; margin-top: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+        </iframe>
+    </div>
+
+<% } else if (mostrarKanban) { %>
+    <div class="dashboard-container">
+        <div class="dashboard-grid">
+            <div class="dash-card border-green" style="flex: 2;">
+                Menu e Acesso Rápido
+                <p style="margin-bottom: 20px; color: #555; font-size: 0.95em;">Seu plano de aceleração está ativo. Acesse as tarefas para evoluir sua maturidade digital.</p>
+                <a href="/projeto/sprint-atual" class="btn-dash btn-gold" style="padding: 12px 30px;">ACESSAR KANBAN &rarr;</a>
+            </div>
+            <div class="dash-card border-blue">
+                <h3>Seu Progresso</h3>
+                <p style="margin-bottom: 15px; color: #666; font-size: 0.85em;">Visualize o Roadmap estratégico completo.</p>
+                <a href="/meu-plano" class="btn-dash" style="background-color: transparent; border: 1px solid #3498db; color: #3498db;">VER MAPA COMPLETO</a>
+            </div>
+        </div>
+    </div>
+
+<% } else { %>
+    <div class="dashboard-container">
+        <h1>Análise Inicial do Contexto do Cliente</h1>
+        <p>Realize a Avaliação Inicial e Gere a Análise de Contexto.</p>
+
+        <div class="dashboard-grid">
+            <div class="dash-card border-orange">
+                <h3>Avaliação Inicial</h3>
+                <p style="margin: 15px 0; color: #555; font-size: 0.9em; line-height: 1.4;">
+                    Conjunto completo de questões que avaliam o contexto inicial da organização...
+                </p>
+                <% if (isAvaliacaoCompletaOk) { %>
+                    <a href="/avaliacoes/<%= safeLead.id_matu %>" class="btn-dash" style="background-color: #27ae60;">REVISAR QUESTÕES COMPLETAS</a>
+                <% } else if (isContextoOk) { %>
+                    <a href="/avaliacoes/<%= safeLead.id_matu %>" class="btn-dash btn-gold" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">PREENCHER DIAGNÓSTICO COMPLETO</a>
+                <% } else if (isAvaliado) { %>
+                    <a href="/avaliacoes/<%= safeLead.id_matu %>" class="btn-dash" style="background-color: #27ae60;">REVISAR AVALIAÇÃO PRELIMINAR</a>
+                <% } else { %>
+                    <a href="/avaliacoes/<%= safeLead.id_matu %>" class="btn-dash">INICIAR AVALIAÇÃO PRELIMINAR</a>
+                <% } %>
+            </div>
+
+            <% if ((isPreSurveyConcluido || isContextoOk || isAvaliacaoCompletaOk) && !safeLead.hasActiveProject) { %>
+                <div class="dash-card border-gold" style="background-color: #fffdf5;">
+                    <h3>Diagnóstico Prévio</h3>
+                    <p style="margin: 15px 0; color: #555; font-size: 0.9em; line-height: 1.4;">
+                        Relatório simplificado baseado na amostra essencial de 20 indicadores.
+                    </p>
+                    <a href="/diagnostico-inicial/<%= safeLead.id_matu %>" class="btn-dash btn-gold" style="width: 100%;">VISUALIZAR DIAGNÓSTICO</a>
+                </div>
+            <% } %>
+
+            <div class="dash-card border-gold" style="background-color: #fcfcfc;">
+                <h3>Análise de Contexto</h3>
+                <p style="margin: 15px 0; color: #555; font-size: 0.9em; line-height: 1.4;">
+                    Relatório da avaliação inicial contendo insights...
+                </p>
+                <% if (isAvaliacaoCompletaOk) { %>
+                    <a href="/diagnostico/<%= safeLead.id_matu %>" class="btn-dash btn-gold" style="width: 100%;">BAIXAR ANÁLISE COMPLETA (PDF)</a>
+                <% } else { %>
+                    <button disabled class="btn-dash" style="width: 100%; background: #ccc; cursor: not-allowed;">AGUARDANDO CONTEXTO / QUESTÕES COMPLETAS</button>
+                <% } %>
+            </div>
+        </div>
+
+        <% if ((isPreSurveyConcluido || isProjetoOk || isContextoOk || isAvaliacaoCompletaOk) && !isGenesisOk) { %>
+            <div style="margin-top: 40px; padding: 30px; background: #fff8e1; border: 2px dashed #f1c40f; border-radius: 12px; text-align: center;">
+
+                <% if (isEmProcessamento) { %>
+                    <div class="loader"></div>
+                    <h2 style="color: #2980b9;">IA Master Processando...</h2>
+                    <p style="margin: 15px 0; color: #555;">Estamos estruturando seu Plano de Transformação Digital. Aguarde.</p>
+                    <script>
+                        setInterval(async () => {
+                            try {
+                                const ponte = document.getElementById('dados-index-ponte');
+                                const idMatu = ponte ? ponte.getAttribute('data-id-matu') : '';
+                                const res = await fetch('/api/admin/ia-status-detalhado/' + idMatu);
+                                const data = await res.json();
+                                if (data.status_ia && data.status_ia.toUpperCase().includes('CONCLU')) {
+                                    window.location.href = '/meu-plano';
+                                }
+                            } catch(e) {}
+                        }, 4000);
+                    </script>
+
+                <% } else if (isPreSurveyConcluido) { %>
+                    <div style="text-align: center;">
+                        <h2 style="color: #b8860b;"><i class="fas fa-lock"></i> Ativação do Plano de Ação Estratégico</h2>
+                        <p style="margin: 15px 0; color: #555; font-size: 1.05em;">Sua avaliação preliminar foi registrada. Para liberar o preenchimento do questionário completo, confirme sua subscrição abaixo.</p>
+                        <a href="https://ACTIONHUB.COM.BR?id_matu=<%= safeLead.id_matu %>" target="_blank" class="btn-dash btn-gold" style="padding: 15px 40px;">
+                            ATIVAR PROJETO NO ACTIONHUB
+                        </a>
+                    </div>
+
+                <% } else if (isContextoOk) { %>
+                    <div style="text-align: center; padding: 15px 0;">
+                        <h2 style="color: #3498db;"><i class="fas fa-tasks"></i> Perfil de Contexto Validado!</h2>
+                        <p style="margin: 15px 0; color: #555; font-size: 1.1em;">As abas avançadas foram destravadas. Por favor, clique em <b>PREENCHER DIAGNÓSTICO COMPLETO</b> no card superior para responder as questões restantes.</p>
+                    </div>
+
+                <% } else if (isAvaliacaoCompletaOk) { %>
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0;">
+                        <h2 style="color: #27ae60; margin-bottom: 10px;"><i class="fas fa-magic"></i> Avaliação Completa Registrada!</h2>
+                        <p style="margin-bottom: 25px; color: #555; font-size: 1.1em; text-align: center;">Clique abaixo para iniciar a <b>IA Master</b> e gerar seu plano estratégico definitivo.</p>
+
+                        <button onclick="executarGeneseEstrategica()" class="btn-dash btn-gold"
+                                style="padding: 25px 80px; font-size: 1.4em; border-radius: 50px; transform: scale(1); transition: all 0.3s ease; box-shadow: 0 10px 25px rgba(212, 175, 55, 0.4);"
+                                onmouseover="this.style.transform='scale(1.05)'"
+                                onmouseout="this.style.transform='scale(1)'">
+                            GERAR PLANO DE TRANSFORMAÇÃO DIGITAL <i class="fas fa-rocket" style="margin-left: 10px;"></i>
+                        </button>
+                    </div>
+
+                <% } else if (safeLead.hasActiveProject || isProjetoOk) { %>
+                    <div style="text-align: center;">
+                        <h2 style="color: #27ae60;"><i class="fas fa-rocket"></i> Projeto Ativado pelo Seletor!</h2>
+                        <p style="margin: 15px 0; color: #555;">O projeto foi liberado institutionalmente. Por favor, preencha o formulário de contexto institucional abaixo para liberar a avaliação total.</p>
+                        <button onclick="abrirModalContexto()" class="btn-dash btn-gold" style="padding: 15px 40px;">
+                            PREENCHER CONTEXTO <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                <% } %>
+                <p style="margin-top: 20px; font-size: 0.8em; color: #888;">Status Atual: <%= statusIA %></p>
+            </div>
+        <% } %>
+    </div>
+<% } %>
+
+<!-- ==================================================================
+     🔮 INCLUSÃO DO MÓDULO UNIFICADO COMPONENTIZADO (FLAT UX) - PROTEÇÃO ATIVA
+     ================================================================== -->
+<% if (!locals.clientesModalCarregado) {
+    locals.clientesModalCarregado = true; %>
+    <%- include('clientes_modal') %>
+<% } %>
+
+<input type="hidden" id="id_cliente_hidden" value="<%= safeLead.id_clie %>">
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+        const ponte = document.getElementById('dados-index-ponte');
+        const statusIA = ponte ? ponte.getAttribute('data-status-ia') : '';
+
+        // 🎯 1. CARGA AUTOMÁTICA NO LOGIN
+        if (statusIA === "PROJETO OK") {
+            setTimeout(() => {
+                const inicialPayload = {
+                    id_clie: '<%= safeLead.id_clie || "" %>',
+                    empresa_clie: '<%= safeLead.empresa_clie || safeLead.empresa || "" %>',
+                    docu_clie: '<%= safeLead.docu_clie || safeLead.docu || "" %>',
+                    nome_clie: '<%= safeLead.nome_clie || safeLead.nome || "" %>',
+                    mail_clie: '<%= safeLead.mail_clie || safeLead.mail || safeLead.email || "" %>',
+                    fone_clie: '<%= safeLead.fone_clie || safeLead.fone || "" %>',
+                    adre_clie: '<%= safeLead.adre_clie || "" %>',
+                    zipn_clie: '<%= safeLead.zipn_clie || "" %>',
+                    tipo_ensino: '<%= safeLead.tipo_ensino || "" %>',
+                    qtd_alunos: '<%= safeLead.qtd_alunos || "" %>',
+                    qtd_colaboradores: '<%= safeLead.qtd_colaboradores || "" %>',
+                    qtd_unidades: '<%= safeLead.qtd_unidades || "" %>',
+                    localizacao_sede: '<%= safeLead.localizacao_sede || "" %>',
+                    clima_organizacional: `<%- (safeLead.clima_organizacional || '').trim().replace(/`/g, '\\`').replace(/\n/g, '\\n') %>`,
+                    rede_ensino: '<%= (safeLead.rede_ensino === true || safeLead.rede_ensino === 1 || safeLead.rede_ensino === "true") ? true : false %>' === 'true'
+                };
+
+                abrirModalContextoLeadGeral(inicialPayload, false, false);
+            }, 500);
+        }
+
+        // 🎯 2. INTERCEPTADOR DO BOTÃO SALVAR (O ELO QUE FALTAVA NO CLIENTE)
+        const formCentral = document.getElementById('form-contexto-central');
+        if (formCentral) {
+            formCentral.onsubmit = salvarContextoCliente;
+        }
+    });
+
+    // --- REPLICAÇÃO DIRETA DA ROTINA DE SALVAMENTO PARA O FLUXO DO CLIENTE ---
+    async function salvarContextoCliente(e) {
+        e.preventDefault();
+        console.log("🚀 [CLIENTE GATEWAY] Iniciando persistência de contexto...");
+
+        const redeEnsinoField = document.getElementById('rede_ensino');
+
+        // Captura os dados exatamente como estruturados no modal
+        const payload = {
+            id_clie: document.getElementById('id_clie').value || null,
+            empresa_clie: document.getElementById('empresa_clie').value,
+            docu_clie: document.getElementById('docu_clie').value,
+            adre_clie: document.getElementById('adre_clie').value,
+            zipn_clie: document.getElementById('zipn_clie').value,
+            nome_clie: document.getElementById('nome_clie').value,
+            mail_clie: document.getElementById('mail_clie').value,
+            fone_clie: document.getElementById('fone_clie').value,
+            tipo_ensino: document.getElementById('tipo_ensino').value,
+            qtd_alunos: document.getElementById('qtd_alunos').value ? parseInt(document.getElementById('qtd_alunos').value) : null,
+            qtd_colaboradores: document.getElementById('qtd_colaboradores').value ? parseInt(document.getElementById('qtd_colaboradores').value) : null,
+            qtd_unidades: document.getElementById('qtd_unidades').value ? parseInt(document.getElementById('qtd_unidades').value) : null,
+            localizacao_sede: document.getElementById('localizacao_sede').value,
+            rede_ensino: redeEnsinoField ? redeEnsinoField.checked : false,
+            clima_organizacional: document.getElementById('clima_organizacional').value
+        };
+
+        try {
+            // Dispara para a rota de contexto do cliente no seu server.js
+            const res = await fetch('/api/client/update-context', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                console.log("✅ Contexto salvo! Atualizando estado para CONTEXTO OK.");
+                // Força o reload da página. O Node já vai ler a sessão como CONTEXTO OK e o modal sumirá!
+                window.location.reload();
+            } else {
+                const erro = await res.json();
+                alert("Erro ao salvar: " + (erro.error || "Falha operacional."));
+            }
+        } catch (error) {
+            console.error("Erro na gravação:", error);
+            alert("Erro de conexão com o servidor.");
+        }
+    }
+
+    // Função manual do card caso o cliente reabra o modal
+    function abrirModalContexto() {
+        const inicialPayload = {
+            id_clie: '<%= safeLead.id_clie || "" %>',
+            empresa_clie: '<%= safeLead.empresa_clie || safeLead.empresa || "" %>',
+            docu_clie: '<%= safeLead.docu_clie || safeLead.docu || "" %>',
+            nome_clie: '<%= safeLead.nome_clie || safeLead.nome || "" %>',
+            mail_clie: '<%= safeLead.mail_clie || safeLead.mail || safeLead.email || "" %>',
+            fone_clie: '<%= safeLead.fone_clie || safeLead.fone || "" %>',
+            adre_clie: '<%= safeLead.adre_clie || "" %>',
+            zipn_clie: '<%= safeLead.zipn_clie || "" %>',
+            tipo_ensino: '<%= safeLead.tipo_ensino || "" %>',
+            qtd_alunos: '<%= safeLead.qtd_alunos || "" %>',
+            qtd_colaboradores: '<%= safeLead.qtd_colaboradores || "" %>',
+            qtd_unidades: '<%= safeLead.qtd_unidades || "" %>',
+            localizacao_sede: '<%= safeLead.localizacao_sede || "" %>',
+            clima_organizacional: `<%- (safeLead.clima_organizacional || '').trim().replace(/`/g, '\\`').replace(/\n/g, '\\n') %>`,
+            rede_ensino: '<%= (safeLead.rede_ensino === true || safeLead.rede_ensino === 1 || safeLead.rede_ensino === "true") ? true : false %>' === 'true'
+        };
+        abrirModalContextoLeadGeral(inicialPayload, false, false);
+    }
+
+    async function executarGeneseEstrategica() {
+        if(!confirm("Deseja iniciar a Gênese IA?")) return;
+        const overlay = document.getElementById('progress-overlay');
+        const bar = document.getElementById('myBar');
+        const percentText = document.getElementById('percent-text');
+        if (overlay) overlay.style.display = 'block';
+
+        const ponte = document.getElementById('dados-index-ponte');
+        const idMatu = ponte ? ponte.getAttribute('data-id-matu') : '';
+
+        const tempoTotal = 130000;
+        const start = Date.now();
+        try {
+            fetch('/client/generate-ai-plan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_matu: idMatu })
+            }).catch(e => console.error(e));
+            const timer = setInterval(() => {
+                const timePassed = Date.now() - start;
+                let progresso = (timePassed / tempoTotal) * 100;
+                if (progresso >= 100) {
+                    progresso = 100;
+                    clearInterval(timer);
+                    window.location.href = '/meu-plano';
+                }
+                if (bar) bar.style.width = progresso + "%";
+                if (percentText) percentText.innerText = Math.round(progresso) + "%";
+            }, 200);
+        } catch (error) { overlay.style.display = 'none'; }
+    }
+</script>

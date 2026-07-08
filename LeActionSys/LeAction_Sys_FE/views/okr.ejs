@@ -1,0 +1,485 @@
+<%
+    // --- DESEMPACOTAMENTO SEGURO CONTRA ERROS DE RESOLUÇÃO (FALLBACKS) ---
+    const listaDirecionadores = locals.direcionadores || [];
+    const idClienteMestre = locals.id_clie || (locals.lead && lead.id_clie) || (locals.user && user.id_clie) || '';
+
+    // Identifica se o usuário é um Administrador ou se a rota forçou o modo leitura
+    const eReadOnly = locals.readOnly || (locals.user && user.role === 'ADMIN') || false;
+%>
+
+<div class="main-content" id="okr-strategic-page">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <div>
+            <h1 style="color: #1e293b; margin: 0; font-size: 2rem; font-weight: 800;">Direcionadores & OKR Organizacional</h1>
+            <p style="color: #64748b; margin: 5px 0 0 0;">Alinhamento e calibração das metas de Transformação Digital da Instituição.</p>
+        </div>
+
+        <% if (!eReadOnly) { %>
+            <button class="btn-dash btn-gold" onclick="abrirModalDirecionador()" style="padding: 12px 24px; border-radius: 8px; font-weight: bold;">
+                <i class="fas fa-plus"></i> NOVO DIRECIONADOR
+            </button>
+        <% } %>
+    </div>
+
+    <% if (listaDirecionadores.length === 0) { %>
+        <div style="text-align: center; padding: 60px; background: #ffffff; border-radius: 16px; border: 1px dashed #cbd5e1;">
+            <i class="fas fa-bullseye" style="font-size: 3rem; color: #94a3b8; margin-bottom: 15px;"></i>
+            <p style="color: #64748b; font-size: 1.1rem; margin: 0;">Nenhum direcionador estratégico cadastrado para esta unidade.</p>
+        </div>
+    <% } %>
+
+    <% listaDirecionadores.forEach(direc => { %>
+        <div class="report-card" style="margin-bottom: 25px; border-top: 6px solid #1e293b; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <span class="dimension-badge" style="background: #f1f5f9; color: #1e293b; margin-bottom: 10px; display: inline-block;">Nível 1: Direcionador</span>
+
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                        <h2 style="margin: 0; color: #1e293b; font-size: 1.4rem;"><%= direc.nome_direc %></h2>
+
+                        <% if (!eReadOnly) { %>
+                            <button onclick="prepararEdicaoDirecionador(this)"
+                                    data-id="<%= direc.id_direc %>"
+                                    data-nome="<%= direc.nome_direc %>"
+                                    data-desc="<%= direc.desc_direc %>"
+                                    data-kpi="<%= direc.kpi_descricao %>"
+                                    data-receita="<%= direc.meta_receita_alvo %>"
+                                    data-custo="<%= direc.meta_custo_alvo %>"
+                                    style="background:none; border:none; color:#3b82f6; cursor:pointer; font-size: 0.95rem; padding: 4px;" title="Editar Direcionador">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+
+                            <button onclick="deletarEntidade('direcionadores', '<%= direc.id_direc %>')" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size: 0.95rem; padding: 4px;" title="Deletar Direcionador e dependências em cascata">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        <% } %>
+                    </div>
+
+                    <p style="color: #475569; margin: 8px 0;"><%= direc.desc_direc %></p>
+                    <small style="color: #64748b; display: block; margin-top: 5px;"><strong>KPI Global:</strong> <%= direc.kpi_descricao %></small>
+                </div>
+                <div style="text-align: right; min-width: 220px;">
+                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.85rem;">
+                        <div style="color: #10b981; font-weight: bold;">Meta Rec: +R$ <%= direc.meta_receita_alvo.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                        <div style="color: #ef4444; font-weight: bold; margin-top: 4px;">Meta Custo: -R$ <%= direc.meta_custo_alvo.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                    </div>
+
+                    <% if (!eReadOnly) { %>
+                        <button class="btn-dash" onclick="abrirModalObjetivo('<%= direc.id_direc %>')" style="margin-top: 12px; font-size: 0.8rem; background: #eef2ff; color: #4c51bf; border: 1px solid #c7d2fe; font-weight: bold; padding: 6px 12px; border-radius: 6px;">
+                            <i class="fas fa-plus"></i> ADICIONAR OBJETIVO DT
+                        </button>
+                    <% } %>
+                </div>
+            </div>
+
+            <div style="margin-top: 25px; padding-left: 30px; border-left: 3px solid #e2e8f0;">
+                <% direc.objetivos.forEach(obj => { %>
+                    <div style="background: #fafafa; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <span class="dimension-badge" style="background: #e0f2fe; color: #0369a1; margin-bottom: 8px; display: inline-block;">Nível 2: Objetivo de TD</span>
+
+                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                    <h3 style="margin: 0; color: #0f172a; font-size: 1.15rem;"><%= obj.nome_obj %></h3>
+
+                                    <% if (!eReadOnly) { %>
+                                        <button onclick="prepararEdicaoObjetivo(this)"
+                                                data-id="<%= obj.id_obj_dt %>"
+                                                data-id-direc="<%= direc.id_direc %>"
+                                                data-nome="<%= obj.nome_obj %>"
+                                                data-desc="<%= obj.desc_obj %>"
+                                                data-kpi="<%= obj.kpi_descricao %>"
+                                                style="background:none; border:none; color:#3b82f6; cursor:pointer; font-size: 0.85rem; padding: 2px;" title="Editar Objetivo de TD">
+                                            <i class="fas fa-pencil-alt"></i>
+                                        </button>
+
+                                        <button onclick="deletarEntidade('objetivos', '<%= obj.id_obj_dt %>')" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size: 0.85rem; padding: 2px;" title="Deletar Objetivo e KRs vinculados">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    <% } %>
+                                </div>
+
+                                <p style="color: #475569; margin: 6px 0; font-size: 0.95rem;"><%= obj.desc_obj %></p>
+                                <small style="color: #64748b;"><strong>KPI Digital:</strong> <%= obj.kpi_descricao %></small>
+                            </div>
+
+                            <% if (!eReadOnly) { %>
+                                <button class="btn-dash" onclick="abrirModalKR('<%= obj.id_obj_dt %>')" style="font-size: 0.75rem; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; font-weight: bold; padding: 5px 10px; border-radius: 6px;">
+                                    <i class="fas fa-plus"></i> VINCULAR KR
+                                </button>
+                            <% } %>
+                        </div>
+
+                        <div style="margin-top: 15px; padding-left: 20px; display: grid; grid-template-columns: 1fr; gap: 10px;">
+                            <% obj.krs.forEach(kr => {
+                                const totalMeta = Math.abs(kr.valor_alvo - kr.valor_inicial);
+                                const atualProg = Math.abs(kr.valor_atual - kr.valor_inicial);
+                                let percentual = totalMeta > 0 ? (atualProg / totalMeta) * 100 : 0;
+                                if(percentual > 100) percentual = 100;
+                            %>
+                                <div style="background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #f1f5f9; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="flex-grow: 1; padding-right: 20px;">
+
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-size: 0.7rem; font-weight: 900; color: #b45309; background: #fef3c7; padding: 2px 6px; border-radius: 4px;">KR</span>
+                                            <strong style="color: #334155; font-size: 0.95rem;"><%= kr.nome_kr %></strong>
+
+                                            <% if (!eReadOnly) { %>
+                                                <button onclick="prepararEdicaoKR(this)"
+                                                        data-id="<%= kr.id_kr %>"
+                                                        data-id-obj="<%= obj.id_obj_dt %>"
+                                                        data-nome="<%= kr.nome_kr %>"
+                                                        data-kpi="<%= kr.kpi_nome %>"
+                                                        data-inicial="<%= kr.valor_inicial %>"
+                                                        data-alvo="<%= kr.valor_alvo %>"
+                                                        data-atual="<%= kr.valor_atual %>"
+                                                        style="background:none; border:none; color:#3b82f6; cursor:pointer; font-size: 0.8rem; padding: 0 2px;" title="Editar Key Result">
+                                                    <i class="fas fa-pencil-alt"></i>
+                                                </button>
+
+                                                <button onclick="deletarEntidade('krs', '<%= kr.id_kr %>')" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size: 0.8rem; padding: 0 2px;" title="Deletar Key Result">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            <% } %>
+                                        </div>
+
+                                        <div style="font-size: 0.8rem; color: #64748b; margin-top: 4px;">Métrica: <%= kr.kpi_nome %></div>
+
+                                        <div style="width: 100%; background: #e2e8f0; height: 6px; border-radius: 10px; margin-top: 10px; overflow: hidden;">
+                                            <div style="width: <%= percentual %>%; background: linear-gradient(90deg, #f1c40f, #d4af37); height: 100%; transition: width 0.5s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right; min-width: 160px; font-size: 0.85rem; border-left: 1px solid #f1f5f9; padding-left: 15px;">
+                                        <div style="color: #64748b;">Inicial: <strong><%= kr.valor_inicial.toLocaleString('pt-BR') %></strong></div>
+                                        <div style="color: #4c51bf; font-weight: bold;">Atual: <%= kr.valor_atual.toLocaleString('pt-BR') %></div>
+                                        <div style="color: #10b981;">Alvo: <strong><%= kr.valor_alvo.toLocaleString('pt-BR') %></strong></div>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        </div>
+    <% }) %>
+</div>
+
+<% if (!eReadOnly) { %>
+    <div id="modalDirecionador" class="modal">
+        <div class="modal-content" style="border-top: 5px solid #1e293b;">
+            <h2 id="tituloModalDirecionador" style="color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-top: 0;">
+                <i class="fas fa-bullseye"></i> Novo Direcionador Estratégico (Nível 1)
+            </h2>
+            <form id="formDirecionador" onsubmit="salvarDirecionador(event)">
+                <input type="hidden" id="dir_id_clie" value="<%= idClienteMestre %>">
+                <input type="hidden" id="dir_id_edit" value="">
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">Título do Direcionador *</label>
+                    <input type="text" id="dir_nome" required style="width:100%; box-sizing: border-box; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="Ex: Eficiência e Otimização Operacional 2026">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">Descrição Descritiva</label>
+                    <textarea id="dir_desc" style="width:100%; box-sizing: border-box; height:120px; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit; resize:vertical;" placeholder="Detalhamento amplo das metas do Planejamento Estratégico corporativo..."></textarea>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">Descrição do KPI Global *</label>
+                    <input type="text" id="dir_kpi" required style="width:100%; box-sizing: border-box; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="Ex: Margem EBITDA, Redução de Desperdício de Insumos">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom: 20px;">
+                    <div>
+                        <label style="display:block; font-weight:bold; margin-bottom:5px;">Meta de Ganho em Receita (R$)</label>
+                        <input type="text" id="dir_receita" value="R$ 0,00" oninput="mascararMoeda(this)" style="width:100%; box-sizing: border-box; padding:8px; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#10b981;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:bold; margin-bottom:5px;">Meta de Otimização de Custo (R$)</label>
+                        <input type="text" id="dir_custo" value="R$ 0,00" oninput="mascararMoeda(this)" style="width:100%; box-sizing: border-box; padding:8px; border:1px solid #ccc; border-radius:4px; font-weight:bold; color:#ef4444;">
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; justify-content: flex-end; border-top:1px solid #eee; padding-top:15px;">
+                    <button type="submit" id="btnSalvarDirecionador" class="btn-dash btn-gold" style="padding:10px 25px;">SALVAR</button>
+                    <button type="button" class="btn-dash" onclick="fecharModalDirecionador()" style="padding:10px 15px; background:#95a5a6;">CANCELAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalObjetivo" class="modal">
+        <div class="modal-content" style="border-top: 5px solid #0369a1;">
+            <h2 id="tituloModalObjetivo" style="color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-top: 0;">
+                <i class="fas fa-laptop-code"></i> Vincular Objetivo de Transformação Digital (Nível 2)
+            </h2>
+            <form id="formObjetivo" onsubmit="salvarObjetivo(event)">
+                <input type="hidden" id="obj_id_direc">
+                <input type="hidden" id="obj_id_edit" value="">
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">Objetivo Digital *</label>
+                    <input type="text" id="obj_nome" required style="width:100%; box-sizing: border-box; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="Ex: Digitalização End-to-End da Secretaria Acadêmica">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">Detalhamento Técnico</label>
+                    <textarea id="obj_desc" style="width:100%; box-sizing: border-box; height:100px; padding:8px; border:1px solid #ccc; border-radius:4px; font-family:inherit;" placeholder="Descreva o impacto de tecnologia e inovação esperado..."></textarea>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">Métrica / KPI de Sucesso Digital *</label>
+                    <input type="text" id="obj_kpi" required style="width:100%; box-sizing: border-box; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="Ex: Índice de Eliminação de Papel Físico (%)">
+                </div>
+                <div style="display:flex; gap:10px; justify-content: flex-end; border-top:1px solid #eee; padding-top:15px;">
+                    <button type="submit" id="btnSalvarObjetivo" class="btn-dash btn-gold" style="padding:10px 25px;">VINCULAR</button>
+                    <button type="button" class="btn-dash" onclick="fecharModalObjetivo()" style="padding:10px 15px; background:#95a5a6;">CANCELAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalKR" class="modal">
+        <div class="modal-content" style="border-top: 5px solid #d97706;">
+            <h2 id="tituloModalKR" style="color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-top: 0;">
+                <i class="fas fa-chart-line"></i> Estabelecer Key Result (Nível 3)
+            </h2>
+            <form id="formKR" onsubmit="salvarKR(event)">
+                <input type="hidden" id="kr_id_obj_dt">
+                <input type="hidden" id="kr_id_edit" value="">
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">Descrição do Resultado-Chave *</label>
+                    <input type="text" id="kr_nome" required style="width:100%; box-sizing: border-box; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="Ex: Reduzir tempo de espera na expedição de diplomas">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">Nome Próprio da Métrica *</label>
+                    <input type="text" id="kr_kpi_nome" required style="width:100%; box-sizing: border-box; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="Ex: Alunos Matriculados, Faturamento R$, Horas">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px; margin-bottom: 20px;">
+                    <div>
+                        <label style="display:block; font-weight:bold; margin-bottom:5px;">Valor Inicial *</label>
+                        <input type="text" id="kr_v_inicial" required oninput="mascararMoeda(this)" value="R$ 0,00" style="width:100%; box-sizing: border-box; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:bold; margin-bottom:5px;">Valor Alvo (Meta) *</label>
+                        <input type="text" id="kr_v_alvo" required oninput="mascararMoeda(this)" value="R$ 0,00" style="width:100%; box-sizing: border-box; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:bold; margin-bottom:5px;">Valor Atual Inicial</label>
+                        <input type="text" id="kr_v_atual" oninput="mascararMoeda(this)" value="R$ 0,00" style="width:100%; box-sizing: border-box; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; justify-content: flex-end; border-top:1px solid #eee; padding-top:15px;">
+                    <button type="submit" id="btnSalvarKR" class="btn-dash btn-gold" style="padding:10px 25px;">ESTABELECER</button>
+                    <button type="button" class="btn-dash" onclick="fecharModalKR()" style="padding:10px 15px; background:#95a5a6;">CANCELAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+<% } %>
+
+<script>
+    function mascararMoeda(input) {
+        let valor = input.value.replace(/\D/g, "");
+        valor = (valor / 100).toFixed(2) + "";
+        valor = valor.replace(".", ",");
+        valor = valor.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+        input.value = "R$ " + valor;
+    }
+
+    function converterParaFloat(valorStr) {
+        if (!valorStr) return 0;
+        let limpo = valorStr.replace("R$ ", "").replace(/\./g, "").replace(",", ".");
+        return parseFloat(limpo) || 0;
+    }
+
+    function formatarMoedaDeFloat(valor) {
+        return "R$ " + parseFloat(valor || 0).toFixed(2).replace(".", ",").replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+    }
+
+    // --- BLOCO INJETADO CASO NÃO SEJA READONLY ---
+    <% if (!eReadOnly) { %>
+        function abrirModalDirecionador() {
+            document.getElementById('tituloModalDirecionador').innerHTML = '<i class="fas fa-bullseye"></i> Novo Direcionador Estratégico (Nível 1)';
+            document.getElementById('btnSalvarDirecionador').innerText = 'SALVAR';
+            document.getElementById('dir_id_edit').value = '';
+            document.getElementById('modalDirecionador').style.display = 'block';
+        }
+        function prepararEdicaoDirecionador(btn) {
+            document.getElementById('tituloModalDirecionador').innerHTML = '<i class="fas fa-pencil-alt"></i> Editar Direcionador Estratégico';
+            document.getElementById('btnSalvarDirecionador').innerText = 'ATUALIZAR';
+
+            document.getElementById('dir_id_edit').value = btn.dataset.id;
+            document.getElementById('dir_nome').value = btn.dataset.nome;
+            document.getElementById('dir_desc').value = btn.dataset.desc;
+            document.getElementById('dir_kpi').value = btn.dataset.kpi;
+            document.getElementById('dir_receita').value = formatarMoedaDeFloat(btn.dataset.receita);
+            document.getElementById('dir_custo').value = formatarMoedaDeFloat(btn.dataset.custo);
+
+            document.getElementById('modalDirecionador').style.display = 'block';
+        }
+        function fecharModalDirecionador() {
+            document.getElementById('modalDirecionador').style.display = 'none';
+            document.getElementById('formDirecionador').reset();
+        }
+
+        function abrirModalObjetivo(idDirec) {
+            document.getElementById('obj_id_direc').value = idDirec;
+            document.getElementById('tituloModalObjetivo').innerHTML = '<i class="fas fa-laptop-code"></i> Vincular Objetivo de Transformação Digital';
+            document.getElementById('btnSalvarObjetivo').innerText = 'VINCULAR';
+            document.getElementById('obj_id_edit').value = '';
+            document.getElementById('modalObjetivo').style.display = 'block';
+        }
+        function prepararEdicaoObjetivo(btn) {
+            document.getElementById('tituloModalObjetivo').innerHTML = '<i class="fas fa-pencil-alt"></i> Editar Objetivo de Transformação Digital';
+            document.getElementById('btnSalvarObjetivo').innerText = 'ATUALIZAR';
+
+            document.getElementById('obj_id_edit').value = btn.dataset.id;
+            document.getElementById('obj_id_direc').value = btn.dataset.idIdDirec || btn.dataset.iddirec || btn.getAttribute('data-id-direc');
+            document.getElementById('obj_nome').value = btn.dataset.nome;
+            document.getElementById('obj_desc').value = btn.dataset.desc;
+            document.getElementById('obj_kpi').value = btn.dataset.kpi;
+
+            document.getElementById('modalObjetivo').style.display = 'block';
+        }
+        function fecharModalObjetivo() {
+            document.getElementById('modalObjetivo').style.display = 'none';
+            document.getElementById('formObjetivo').reset();
+        }
+
+        function abrirModalKR(idObjDt) {
+            document.getElementById('kr_id_obj_dt').value = idObjDt;
+            document.getElementById('tituloModalKR').innerHTML = '<i class="fas fa-chart-line"></i> Estabelecer Key Result (Nível 3)';
+            document.getElementById('btnSalvarKR').innerText = 'ESTABELECER';
+            document.getElementById('kr_id_edit').value = '';
+            document.getElementById('modalKR').style.display = 'block';
+        }
+        function prepararEdicaoKR(btn) {
+            document.getElementById('tituloModalKR').innerHTML = '<i class="fas fa-pencil-alt"></i> Editar Key Result (KR)';
+            document.getElementById('btnSalvarKR').innerText = 'ATUALIZAR';
+
+            document.getElementById('kr_id_edit').value = btn.dataset.id;
+            document.getElementById('kr_id_obj_dt').value = btn.dataset.idObj || btn.dataset.idobj || btn.getAttribute('data-id-obj');
+            document.getElementById('kr_nome').value = btn.dataset.nome;
+            document.getElementById('kr_kpi_nome').value = btn.dataset.kpi;
+            document.getElementById('kr_v_inicial').value = formatarMoedaDeFloat(btn.dataset.inicial);
+            document.getElementById('kr_v_alvo').value = formatarMoedaDeFloat(btn.dataset.alvo);
+            document.getElementById('kr_v_atual').value = formatarMoedaDeFloat(btn.dataset.atual);
+
+            document.getElementById('modalKR').style.display = 'block';
+        }
+        function fecharModalKR() {
+            document.getElementById('modalKR').style.display = 'none';
+            document.getElementById('formKR').reset();
+        }
+
+        async function salvarDirecionador(e) {
+            e.preventDefault();
+            const idEdit = document.getElementById('dir_id_edit').value;
+            const idClieParsed = parseInt(document.getElementById('dir_id_clie').value, 10);
+
+            if (!idClieParsed || isNaN(idClieParsed)) {
+                alert("Erro de Human-Interface: ID do cliente inválido ou ausente na sessão.");
+                return;
+            }
+
+            const payload = {
+                id_clie: idClieParsed,
+                nome_direc: document.getElementById('dir_nome').value.trim(),
+                desc_direc: document.getElementById('dir_desc').value.trim(),
+                kpi_descricao: document.getElementById('dir_kpi').value.trim(),
+                meta_receita_alvo: converterParaFloat(document.getElementById('dir_receita').value),
+                meta_custo_alvo: converterParaFloat(document.getElementById('dir_custo').value)
+            };
+
+            const url = idEdit ? `/api/okr/direcionadores/${idEdit}` : '/api/okr/direcionadores';
+            const metodo = idEdit ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: metodo,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    fecharModalDirecionador();
+                    window.location.reload();
+                } else { alert("Erro ao criar o direcionador no servidor."); }
+            } catch (err) { console.error(err); }
+        }
+
+        async function salvarObjetivo(e) {
+            e.preventDefault();
+            const idEdit = document.getElementById('obj_id_edit').value;
+            const idDirecParsed = parseInt(document.getElementById('obj_id_direc').value, 10);
+
+            const payload = {
+                id_direc: idDirecParsed,
+                nome_obj: document.getElementById('obj_nome').value.trim(),
+                desc_obj: document.getElementById('obj_desc').value.trim(),
+                kpi_descricao: document.getElementById('obj_kpi').value.trim()
+            };
+
+            console.log("--- [DEBUG FRONTEND] Despachando Payload do Nível 2 ---", payload);
+
+            if (!payload.id_direc || isNaN(payload.id_direc)) {
+                alert("Erro: O ID do direcionador pai está inválido ou zerado.");
+                return;
+            }
+
+            const url = idEdit ? `/api/okr/objetivos/${idEdit}` : '/api/okr/objetivos';
+            const metodo = idEdit ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: metodo,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    fecharModalObjetivo();
+                    window.location.reload();
+                } else { alert("Erro ao registrar o objetivo no banco."); }
+            } catch (err) { console.error(err); }
+        }
+
+        async function salvarKR(e) {
+            e.preventDefault();
+            const idEdit = document.getElementById('kr_id_edit').value;
+            const payload = {
+                id_obj_dt: parseInt(document.getElementById('kr_id_obj_dt').value, 10),
+                nome_kr: document.getElementById('kr_nome').value.trim(),
+                kpi_nome: document.getElementById('kr_kpi_nome').value.trim(),
+                valor_inicial: converterParaFloat(document.getElementById('kr_v_inicial').value),
+                valor_alvo: converterParaFloat(document.getElementById('kr_v_alvo').value),
+                valor_atual: converterParaFloat(document.getElementById('kr_v_atual').value)
+            };
+
+            const url = idEdit ? `/api/okr/krs/${idEdit}` : '/api/okr/krs';
+            const metodo = idEdit ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: metodo,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    fecharModalKR();
+                    window.location.reload();
+                } else { alert("Erro ao estabelecer o Key Result."); }
+            } catch (err) { console.error(err); }
+        }
+
+        async function deletarEntidade(tipo, id) {
+            const mensagens = {
+                'direcionadores': "ATENÇÃO CRÍTICA: Deletar este direcionador estratégico removerá TODOS os objetivos de TD e Key Results (KRs) vinculados a ele em cascata de forma definitiva! Deseja continuar?",
+                'objetivos': "Deseja remover este objetivo de Transformação Digital? Os Key Results (KRs) associados serão apagados do sistema.",
+                'krs': "Tem certeza de que deseja remover este Key Result (KR) da árvore estratégica?"
+            };
+
+            if (!confirm(mensagens[tipo] || "Deseja remover este item estratégico?")) return;
+
+            try {
+                const res = await fetch(`/api/okr/${tipo}/${id}`, { method: 'DELETE' });
+                if (res.ok) { window.location.reload(); }
+                else { alert("Não foi possível processar a remoção do item."); }
+            } catch (err) { console.error("Erro na exclusão:", err); }
+        }
+    <% } %>
+</script>

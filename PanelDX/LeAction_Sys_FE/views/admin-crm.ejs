@@ -1,0 +1,407 @@
+<div class="mesa-org admin-crm" id="admin-crm-root">
+    <header class="mesa-org__hero">
+        <div>
+            <h1><i class="fas fa-handshake" style="color: #34d399;"></i> CRM &amp; Gestão de Contratos</h1>
+            <p>
+                Painel financeiro de <strong>MRR</strong>, catálogo de planos e vigência comercial dos clientes PanelDX.
+                Alterações de status refletem imediatamente no acesso do cliente.
+            </p>
+        </div>
+        <div class="mesa-org__meta">
+            <div><strong>Área Administrativa</strong></div>
+            <div>Receita · Planos · Contratos</div>
+        </div>
+    </header>
+
+    <!-- SEÇÃO A — Dash Financeiro -->
+    <section class="admin-crm__section" id="secao-dashboard">
+        <h2 class="admin-crm__section-title"><i class="fas fa-chart-line"></i> Painel de Indicadores</h2>
+
+        <div class="admin-crm__metrics">
+            <div class="admin-crm__metric-card admin-crm__metric-card--mrr">
+                <span class="admin-crm__metric-label">Receita Total (MRR)</span>
+                <strong class="admin-crm__metric-value" id="metric-mrr">—</strong>
+                <span class="admin-crm__metric-hint">Contratos com status <em>ativo</em></span>
+            </div>
+            <div class="admin-crm__metric-card admin-crm__metric-card--count">
+                <span class="admin-crm__metric-label">Contratos Ativos</span>
+                <strong class="admin-crm__metric-value" id="metric-contratos-ativos">—</strong>
+                <span class="admin-crm__metric-hint">Base para cálculo do MRR</span>
+            </div>
+        </div>
+
+        <div class="mesa-card admin-crm__chart-card">
+            <h3 class="mesa-card__title"><i class="fas fa-chart-bar"></i> Faturamento por Plano</h3>
+            <p class="admin-esim__field-hint" style="margin: 0 0 12px;">MRR agregado por plano comercial (contratos ativos).</p>
+            <div id="chart-mrr-plano" class="admin-crm__chart" role="img" aria-label="Gráfico de faturamento por plano"></div>
+            <p class="admin-crm__chart-empty" id="chart-mrr-empty" hidden>Nenhum contrato ativo para exibir no gráfico.</p>
+        </div>
+    </section>
+
+    <!-- SEÇÃO B — Planos -->
+    <section class="admin-crm__section" id="secao-planos">
+        <div class="mesa-card">
+            <div class="admin-esim__toolbar">
+                <div>
+                    <h2 class="mesa-card__title" style="margin-bottom: 4px;">
+                        <i class="fas fa-tags"></i> Catálogo de Planos
+                    </h2>
+                    <p class="admin-esim__field-hint" style="margin: 0;">
+                        Edite os planos e publique o catálogo completo no ActionHub em uma única ação.
+                    </p>
+                    <p class="admin-crm__publish-status" id="vitrine-publish-status" aria-live="polite"></p>
+                </div>
+                <div class="admin-crm__toolbar-actions">
+                    <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-novo-plano">
+                        <i class="fas fa-plus"></i> Novo Plano
+                    </button>
+                    <button type="button" class="mesa-btn mesa-btn--gold" id="btn-publicar-vitrine" disabled>
+                        <i class="fas fa-cloud-upload-alt"></i> Salvar e publicar vitrine
+                    </button>
+                </div>
+            </div>
+
+            <div class="admin-esim__table-wrap">
+                <table class="admin-esim__table admin-crm__table">
+                    <thead>
+                        <tr>
+                            <th>Nome do Plano</th>
+                            <th>Tipo</th>
+                            <th>Valor Mensal</th>
+                            <th>Usuários</th>
+                            <th>Periodicidade</th>
+                            <th style="width: 120px;">Status</th>
+                            <th style="width: 100px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="planos-table-body">
+                        <tr><td colspan="7" class="admin-esim__empty">Carregando planos…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- SEÇÃO C — Contratos -->
+    <section class="admin-crm__section" id="secao-contratos">
+        <div class="mesa-card">
+            <div class="admin-esim__toolbar">
+                <div>
+                    <h2 class="mesa-card__title" style="margin-bottom: 4px;">
+                        <i class="fas fa-file-contract"></i> Contratos de Clientes
+                    </h2>
+                    <p class="admin-esim__field-hint" style="margin: 0;">Vigência, valor negociado e saúde comercial (<code>dx_contratos</code>).</p>
+                </div>
+            </div>
+
+            <div class="admin-esim__table-wrap">
+                <table class="admin-esim__table admin-crm__table admin-crm__table--contratos">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Plano</th>
+                            <th>Valor Negociado</th>
+                            <th>Status</th>
+                            <th>Vigência</th>
+                            <th style="min-width: 200px;">Tempo de Contrato</th>
+                            <th style="width: 120px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contratos-table-body">
+                        <tr><td colspan="7" class="admin-esim__empty">Carregando contratos…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- SEÇÃO D — Gestão de Parceiros (Consultores) -->
+    <section class="admin-crm__section" id="secao-consultores">
+        <div class="mesa-card">
+            <div class="admin-esim__toolbar">
+                <div>
+                    <h2 class="mesa-card__title" style="margin-bottom: 4px;">
+                        <i class="fas fa-user-tie"></i> Gestão de Parceiros (Consultores)
+                    </h2>
+                    <p class="admin-esim__field-hint" style="margin: 0;">
+                        Cadastro de perfis no Portal do Parceiro — tipo, agência e comissões (<code>dx_consultores</code>).
+                    </p>
+                </div>
+                <button type="button" class="mesa-btn mesa-btn--gold" id="btn-novo-consultor">
+                    <i class="fas fa-plus"></i> Novo Consultor
+                </button>
+            </div>
+
+            <div class="admin-esim__table-wrap">
+                <table class="admin-esim__table admin-crm__table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Tipo</th>
+                            <th>Agência Pai</th>
+                            <th>Comissão Venda</th>
+                            <th>Comissão Técnica</th>
+                            <th>Status</th>
+                            <th style="width: 100px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="consultores-table-body">
+                        <tr><td colspan="8" class="admin-esim__empty">Carregando consultores…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Modal Plano -->
+<div class="mesa-modal" id="modal-plano" aria-hidden="true">
+    <div class="mesa-modal__card admin-crm__modal-card admin-crm__modal-card--plano">
+        <h3 id="modal-plano-title">Novo Plano</h3>
+
+        <nav class="admin-crm__modal-tabs" role="tablist" aria-label="Seções do plano">
+            <button type="button" class="admin-crm__modal-tab is-active" data-plano-tab="basico" role="tab" aria-selected="true">
+                <i class="fas fa-tag"></i> Dados básicos
+            </button>
+            <button type="button" class="admin-crm__modal-tab" data-plano-tab="vitrine" role="tab" aria-selected="false">
+                <i class="fas fa-store"></i> Vitrine
+            </button>
+        </nav>
+
+        <form id="form-plano" class="admin-crm__modal-form">
+            <input type="hidden" id="plano-id">
+
+            <div class="admin-crm__modal-panel is-active" id="plano-panel-basico" role="tabpanel">
+                <div class="admin-esim__field">
+                    <label for="plano-nome">Nome do plano *</label>
+                    <input type="text" id="plano-nome" class="mesa-input" required placeholder="Ex: Conta Premium">
+                </div>
+
+                <div class="admin-esim__field">
+                    <label for="plano-tipo">Tipo de plano *</label>
+                    <select id="plano-tipo" class="mesa-select" required>
+                        <option value="base">Plano Base</option>
+                        <option value="addon">Add-on (pacote extra)</option>
+                    </select>
+                    <p class="admin-esim__field-hint">Add-ons não entram na vitrine de planos — são vendidos na tela Meu Time.</p>
+                </div>
+
+                <div class="admin-crm__modal-grid">
+                    <div class="admin-esim__field">
+                        <label for="plano-valor">Valor mensal (R$) *</label>
+                        <input type="number" id="plano-valor" class="mesa-input" required min="0" step="0.01" placeholder="2999.00">
+                    </div>
+                    <div class="admin-esim__field">
+                        <label for="plano-periodicidade">Periodicidade *</label>
+                        <select id="plano-periodicidade" class="mesa-select" required>
+                            <option value="Mensal">Mensal</option>
+                            <option value="Semestral">Semestral</option>
+                            <option value="Anual">Anual</option>
+                        </select>
+                    </div>
+                    <div class="admin-esim__field">
+                        <label for="plano-max-usuarios">Limite máximo de usuários *</label>
+                        <input type="number" id="plano-max-usuarios" class="mesa-input" required min="1" step="1" placeholder="5">
+                        <p class="admin-esim__field-hint">Use 999 para exibir «Usuários Ilimitados» na vitrine.</p>
+                    </div>
+                </div>
+
+                <div class="admin-esim__field" id="field-plano-ativo" hidden>
+                    <label for="plano-ativo">Status no catálogo</label>
+                    <select id="plano-ativo" class="mesa-select">
+                        <option value="true">Ativo</option>
+                        <option value="false">Inativo</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="admin-crm__modal-panel" id="plano-panel-vitrine" role="tabpanel" hidden>
+                <p class="admin-esim__field-hint admin-crm__modal-panel-intro">
+                    Conteúdo exibido nos pricing cards do ActionHub (fonte: CRM PanelDX).
+                </p>
+                <div class="admin-esim__field admin-crm__modal-field--flush">
+                    <label for="plano-beneficios">Descrição e benefícios</label>
+                    <textarea id="plano-beneficios" class="mesa-input admin-crm__textarea" rows="4"
+                        placeholder="Um benefício por linha ou separados por ;&#10;Ex: Gestão de squads e OKRs"></textarea>
+                    <p class="admin-esim__field-hint">Use quebras de linha ou <code>;</code> entre itens.</p>
+                </div>
+            </div>
+
+            <div class="admin-esim__modal-actions admin-crm__modal-actions">
+                <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-plano">Cancelar</button>
+                <button type="submit" class="mesa-btn mesa-btn--gold" id="btn-submit-plano">
+                    <i class="fas fa-check"></i> Salvar plano
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Contrato -->
+<div class="mesa-modal" id="modal-contrato" aria-hidden="true">
+    <div class="mesa-modal__card admin-crm__modal-card admin-crm__modal-card--contrato">
+        <header class="admin-crm__modal-head">
+            <h3 id="modal-contrato-title">Editar Contrato</h3>
+            <p class="admin-esim__field-hint" id="modal-contrato-cliente" style="margin: 0;"></p>
+        </header>
+
+        <div class="admin-crm__modal-scroll" id="modal-contrato-scroll">
+            <form id="form-contrato">
+                <input type="hidden" id="contrato-id">
+
+                <div class="admin-esim__field">
+                    <label for="contrato-plano">Plano</label>
+                    <select id="contrato-plano" class="mesa-select" required></select>
+                </div>
+
+                <div class="admin-esim__field">
+                    <label for="contrato-valor">Valor negociado (R$)</label>
+                    <input type="number" id="contrato-valor" class="mesa-input" min="0" step="0.01" required>
+                </div>
+
+                <div class="admin-esim__field">
+                    <label for="contrato-status">Status comercial</label>
+                    <select id="contrato-status" class="mesa-select" required>
+                        <option value="ativo">Ativo</option>
+                        <option value="trial">Trial</option>
+                        <option value="inadimplente">Inadimplente</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                    <p class="admin-esim__field-hint">Inadimplente ou cancelado bloqueia o acesso do cliente imediatamente.</p>
+                </div>
+
+                <div class="admin-esim__field">
+                    <label for="contrato-inicio">Data de início</label>
+                    <input type="date" id="contrato-inicio" class="mesa-input" required>
+                </div>
+
+                <div class="admin-esim__field">
+                    <label for="contrato-vencimento">Data de vencimento</label>
+                    <input type="date" id="contrato-vencimento" class="mesa-input" required>
+                </div>
+
+                <div class="admin-esim__field">
+                    <label for="contrato-consultor-origem">Consultor Comercial (Origem)</label>
+                    <select id="contrato-consultor-origem" class="mesa-select">
+                        <option value="">— Nenhum —</option>
+                    </select>
+                    <p class="admin-esim__field-hint">Parceiro que originou a venda deste contrato.</p>
+                </div>
+
+                <div class="admin-esim__field">
+                    <label for="contrato-consultor-tecnico">Consultor Técnico</label>
+                    <select id="contrato-consultor-tecnico" class="mesa-select">
+                        <option value="">— Nenhum —</option>
+                    </select>
+                    <p class="admin-esim__field-hint">Responsável pela atuação técnica (comissão em planos Premium).</p>
+                </div>
+
+                <section class="admin-crm__addons-section" id="contrato-addons-section">
+                    <h4 class="admin-crm__addons-title"><i class="fas fa-puzzle-piece"></i> Pacotes Adicionais</h4>
+                    <p class="admin-esim__field-hint admin-crm__addons-intro">
+                        Licenças extras vinculadas a este contrato (somam ao limite do plano base).
+                    </p>
+                    <div class="admin-esim__table-wrap admin-crm__addons-table-wrap">
+                        <table class="admin-esim__table admin-crm__table admin-crm__addons-table">
+                            <thead>
+                                <tr>
+                                    <th>Pacote</th>
+                                    <th>Qtd</th>
+                                    <th>Usuários extra</th>
+                                    <th>MRR</th>
+                                    <th>Status</th>
+                                    <th style="width: 72px;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contrato-addons-body">
+                                <tr><td colspan="6" class="admin-esim__empty">Carregando pacotes…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="admin-crm__addons-form">
+                        <div class="admin-esim__field">
+                            <label for="contrato-addon-plano">Adicionar pacote manualmente</label>
+                            <select id="contrato-addon-plano" class="mesa-select"></select>
+                        </div>
+                        <div class="admin-esim__field admin-crm__addons-qty">
+                            <label for="contrato-addon-qty">Quantidade</label>
+                            <input type="number" id="contrato-addon-qty" class="mesa-input" min="1" step="1" value="1">
+                        </div>
+                        <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-contrato-addon-add">
+                            <i class="fas fa-plus"></i> Incluir pacote
+                        </button>
+                    </div>
+                </section>
+            </form>
+        </div>
+
+        <footer class="admin-crm__modal-foot admin-esim__modal-actions">
+            <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-contrato">Cancelar</button>
+            <button type="submit" class="mesa-btn mesa-btn--gold" id="btn-submit-contrato" form="form-contrato">
+                <i class="fas fa-save"></i> Salvar contrato
+            </button>
+        </footer>
+    </div>
+</div>
+
+<!-- Modal Consultor -->
+<div class="mesa-modal" id="modal-consultor" aria-hidden="true">
+    <div class="mesa-modal__card admin-crm__modal-card">
+        <h3 id="modal-consultor-title">Novo Consultor</h3>
+        <form id="form-consultor" class="admin-crm__modal-form">
+            <input type="hidden" id="consultor-id">
+
+            <div class="admin-esim__field" id="field-consultor-usuario">
+                <label for="consultor-user-id">Usuário vinculado *</label>
+                <select id="consultor-user-id" class="mesa-select" required>
+                    <option value="">— Selecione —</option>
+                </select>
+                <p class="admin-esim__field-hint">Somente usuários com role <code>consultor</code> sem perfil cadastrado.</p>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="consultor-tipo">Tipo *</label>
+                <select id="consultor-tipo" class="mesa-select" required>
+                    <option value="individual">Individual</option>
+                    <option value="agencia">Agência</option>
+                </select>
+            </div>
+
+            <div class="admin-esim__field" id="field-consultor-agencia-pai">
+                <label for="consultor-agencia-pai">Agência pai</label>
+                <select id="consultor-agencia-pai" class="mesa-select">
+                    <option value="">— Nenhuma —</option>
+                </select>
+            </div>
+
+            <div class="admin-crm__modal-grid">
+                <div class="admin-esim__field">
+                    <label for="consultor-taxa-venda">Comissão venda (%)</label>
+                    <input type="number" id="consultor-taxa-venda" class="mesa-input" min="0" max="100" step="0.01" value="10">
+                </div>
+                <div class="admin-esim__field">
+                    <label for="consultor-taxa-tecnica">Comissão técnica (%)</label>
+                    <input type="number" id="consultor-taxa-tecnica" class="mesa-input" min="0" max="100" step="0.01" value="15">
+                </div>
+            </div>
+
+            <div class="admin-esim__field" id="field-consultor-ativo" hidden>
+                <label for="consultor-ativo">Status</label>
+                <select id="consultor-ativo" class="mesa-select">
+                    <option value="true">Ativo</option>
+                    <option value="false">Inativo</option>
+                </select>
+            </div>
+
+            <div class="admin-esim__modal-actions admin-crm__modal-actions">
+                <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-consultor">Cancelar</button>
+                <button type="submit" class="mesa-btn mesa-btn--gold" id="btn-submit-consultor">
+                    <i class="fas fa-check"></i> Salvar consultor
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="admin-crm__toast" id="admin-crm-toast" role="status"></div>

@@ -1,0 +1,1260 @@
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+
+<style>
+    #admin-cms-page {
+        --cms-bg: #f6f8fb;
+        --cms-border: #e3e8ef;
+        --cms-text: #0a2540;
+        --cms-muted: #475569;
+        --cms-accent: #635bff;
+        --cms-accent-hover: #4f46e5;
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 24px;
+        background: var(--cms-bg);
+        border-radius: 12px;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        color: var(--cms-text);
+    }
+
+    /* Sobrescreve .content h1 global (style.css) que conflita com o banner */
+    .content #admin-cms-page .cms-top h1 {
+        margin: 0 !important;
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+        color: #ffffff !important;
+        letter-spacing: -0.02em;
+        border: none !important;
+        padding: 0 !important;
+    }
+
+    #admin-cms-page .cms-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin: -24px -24px 24px;
+        padding: 22px 28px;
+        background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%);
+        border-radius: 12px 12px 0 0;
+        border-bottom: none;
+    }
+    #admin-cms-page .cms-top h1 i {
+        color: #93c5fd !important;
+        margin-right: 8px;
+    }
+    #admin-cms-page .cms-top p {
+        margin: 6px 0 0;
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 0.88rem;
+    }
+    #admin-cms-page .cms-meta {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.78);
+        text-align: right;
+    }
+    #admin-cms-page .cms-meta span {
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    #admin-cms-page .cms-tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--cms-border);
+        margin-bottom: 24px;
+    }
+    #admin-cms-page .cms-tab {
+        padding: 10px 18px;
+        border: none;
+        background: transparent;
+        color: var(--cms-muted);
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        transition: color 0.15s, border-color 0.15s;
+    }
+    #admin-cms-page .cms-tab:hover { color: var(--cms-text); }
+    #admin-cms-page .cms-tab.is-active {
+        color: var(--cms-accent);
+        border-bottom-color: var(--cms-accent);
+    }
+
+    #admin-cms-page .cms-panel { display: none; }
+    #admin-cms-page .cms-panel.is-active { display: block; }
+
+    #admin-cms-page .cms-card {
+        background: #fff;
+        border: 1px solid var(--cms-border);
+        border-radius: 10px;
+        padding: 22px 24px;
+        margin-bottom: 18px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+    #admin-cms-page .cms-card__title {
+        margin: 0 0 4px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--cms-text);
+    }
+    #admin-cms-page .cms-card__hint {
+        margin: 0 0 16px;
+        font-size: 0.8rem;
+        color: var(--cms-muted);
+    }
+
+    #admin-cms-page .cms-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    @media (max-width: 900px) {
+        #admin-cms-page .cms-grid-3 { grid-template-columns: 1fr; }
+    }
+
+    #admin-cms-page .cms-field { margin-bottom: 14px; }
+    #admin-cms-page .cms-field label {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--cms-muted);
+        margin-bottom: 6px;
+    }
+    #admin-cms-page .cms-field input,
+    #admin-cms-page .cms-field textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        border: 1px solid var(--cms-border);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        color: var(--cms-text);
+        background: #fff;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    #admin-cms-page .cms-field input:focus,
+    #admin-cms-page .cms-field textarea:focus {
+        outline: none;
+        border-color: var(--cms-accent);
+        box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.12);
+    }
+    #admin-cms-page .cms-field textarea { min-height: 88px; resize: vertical; }
+    #admin-cms-page .cms-field input[type="color"] {
+        height: 42px;
+        padding: 4px 8px;
+        cursor: pointer;
+    }
+    #admin-cms-page .cms-field select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.92rem;
+        background: #fff;
+        color: #1e293b;
+    }
+    #admin-cms-page .cms-field select:focus {
+        outline: none;
+        border-color: var(--cms-accent);
+        box-shadow: 0 0 0 3px rgba(74, 46, 128, 0.12);
+    }
+    #admin-cms-page .cms-visibility-hint {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-top: 4px;
+    }
+    #admin-cms-page .cms-upload-row {
+        display: flex;
+        gap: 8px;
+        align-items: stretch;
+    }
+    #admin-cms-page .cms-upload-row input[type="text"] {
+        flex: 1;
+        min-width: 0;
+    }
+    #admin-cms-page .btn-cms-upload {
+        flex-shrink: 0;
+        padding: 10px 14px;
+        border: 1px solid var(--cms-border);
+        border-radius: 8px;
+        background: #f8fafc;
+        color: var(--cms-text);
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.15s, border-color 0.15s;
+    }
+    #admin-cms-page .btn-cms-upload:hover:not(:disabled) {
+        background: #eef2ff;
+        border-color: #c4b5fd;
+    }
+    #admin-cms-page .btn-cms-upload:disabled {
+        opacity: 0.6;
+        cursor: wait;
+    }
+    #admin-cms-page .cms-upload-input {
+        display: none;
+    }
+    #admin-cms-page .cms-toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 9999;
+        padding: 12px 18px;
+        border-radius: 10px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #fff;
+        background: #059669;
+        box-shadow: 0 8px 24px rgba(5, 150, 105, 0.35);
+        opacity: 0;
+        transform: translateY(12px);
+        pointer-events: none;
+        transition: opacity 0.25s, transform 0.25s;
+    }
+    #admin-cms-page .cms-toast.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    #admin-cms-page .cms-toast.is-error {
+        background: #dc2626;
+        box-shadow: 0 8px 24px rgba(220, 38, 38, 0.35);
+    }
+
+    #admin-cms-page .cms-reserved {
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 14px;
+        font-size: 0.82rem;
+        color: #475569;
+        line-height: 1.5;
+    }
+    #admin-cms-page .cms-reserved strong { color: #334155; }
+
+    #admin-cms-page .cms-image-notice {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        border-left: 4px solid #f59e0b;
+        border-radius: 10px;
+        padding: 16px 18px;
+        margin-bottom: 18px;
+        font-size: 0.84rem;
+        color: #78350f;
+        line-height: 1.55;
+    }
+    #admin-cms-page .cms-image-notice > i {
+        color: #d97706;
+        font-size: 1.15rem;
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+    #admin-cms-page .cms-image-notice strong { color: #92400e; }
+    #admin-cms-page .cms-image-notice ul {
+        margin: 8px 0 0;
+        padding-left: 18px;
+    }
+    #admin-cms-page .cms-image-notice li { margin-bottom: 4px; }
+    #admin-cms-page .cms-video-preview {
+        margin-top: 10px;
+        aspect-ratio: 16 / 9;
+        max-height: 220px;
+        background: #0f172a;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--cms-border);
+    }
+    #admin-cms-page .cms-video-preview iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        display: block;
+    }
+    #admin-cms-page .cms-video-hint {
+        font-size: 0.8rem;
+        color: var(--cms-muted);
+        margin-top: 6px;
+        line-height: 1.45;
+    }
+    #admin-cms-page .cms-image-notice code {
+        font-size: 0.8rem;
+        background: rgba(255, 255, 255, 0.65);
+        padding: 1px 5px;
+        border-radius: 4px;
+    }
+
+    #admin-cms-page #quill-instrucoes {
+        min-height: 360px;
+        background: #fff;
+        font-size: 0.95rem;
+    }
+    #admin-cms-page #quill-instrucoes .ql-editor { min-height: 320px; }
+
+    #admin-cms-page #quill-versao-detalhes {
+        min-height: 280px;
+        background: #fff;
+        font-size: 0.95rem;
+    }
+    #admin-cms-page #quill-versao-detalhes .ql-editor { min-height: 240px; }
+
+    #admin-cms-page .cms-version-card {
+        border: 1px solid #bfdbfe;
+        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+    }
+    #admin-cms-page .cms-version-card .cms-card__title { color: #1e40af; }
+
+    #admin-cms-page .cms-blog-preview {
+        font-size: 0.84rem;
+        color: #475569;
+        line-height: 1.55;
+    }
+    #admin-cms-page .cms-blog-preview strong {
+        display: block;
+        color: #1e293b;
+        margin-bottom: 6px;
+        font-size: 0.92rem;
+    }
+    #admin-cms-page .cms-blog-preview img {
+        width: 100%;
+        max-height: 120px;
+        object-fit: contain;
+        background: #f1f5f9;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+
+    #admin-cms-page .cms-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid var(--cms-border);
+    }
+    #admin-cms-page .btn-cms-primary {
+        padding: 11px 22px;
+        border: none;
+        border-radius: 8px;
+        background: var(--cms-accent);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.88rem;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    #admin-cms-page .btn-cms-primary:hover { background: var(--cms-accent-hover); }
+    #admin-cms-page .btn-cms-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    #admin-cms-page .cms-status {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--cms-muted);
+    }
+    #admin-cms-page .cms-status.is-ok { color: #059669; }
+    #admin-cms-page .cms-status.is-err { color: #dc2626; }
+</style>
+
+<div id="admin-cms-page">
+    <header class="cms-top">
+        <div>
+            <h1><i class="fas fa-pen-nib"></i> Gestão de Conteúdo (CMS)</h1>
+            <p>Micro-CMS interno — Landing Page e Instruções de Uso</p>
+        </div>
+        <div class="cms-meta">
+            Última atualização:<br>
+            <span id="cms-updated-at">—</span>
+        </div>
+    </header>
+
+    <nav class="cms-tabs" role="tablist">
+        <button type="button" class="cms-tab is-active" data-tab="landing" role="tab">Página Inicial (Grid Hero)</button>
+        <button type="button" class="cms-tab" data-tab="instrucoes" role="tab">Página de Instruções</button>
+    </nav>
+
+    <!-- ABA 1: LANDING -->
+    <section id="panel-landing" class="cms-panel is-active" role="tabpanel">
+        <div class="cms-image-notice" role="note">
+            <i class="fas fa-camera" aria-hidden="true"></i>
+            <div>
+                <strong>Aviso — fotos e imagens das colunas</strong>
+                <p style="margin: 6px 0 0;">
+                    Na home, cada imagem das demais colunas é exibida <strong>por inteiro</strong> dentro da faixa superior do card
+                    (proporção <strong>16:9</strong>). A <strong>Coluna 2</strong> usa <strong>vídeo do YouTube</strong> nessa mesma faixa.
+                </p>
+                <ul>
+                    <li><strong>Tamanho recomendado:</strong> <code>1280 × 720 px</code> ou <code>1600 × 900 px</code> (mínimo sugerido: <code>960 × 540 px</code>).</li>
+                    <li><strong>Proporção ideal:</strong> horizontal (16:9) — preenche toda a faixa, sem barras laterais ou superiores.</li>
+                    <li><strong>Outras proporções:</strong> também são aceitas; podem aparecer faixas cinza-claras nas laterais ou em cima/embaixo até a foto caber por completo.</li>
+                    <li><strong>Enquadramento:</strong> centralize logos, textos e elementos importantes na imagem.</li>
+                    <li><strong>Formato e peso:</strong> JPG ou WebP, boa nitidez, preferencialmente até <strong>500 KB</strong> por arquivo.</li>
+                    <li><strong>URL:</strong> caminho público acessível pelo navegador (ex.: <code>/images/nome-da-foto.jpg</code>) ou use <strong>Fazer Upload</strong>.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="cms-grid-3">
+            <!-- Banner Hero CTA 3D — Consultor IA -->
+            <div class="cms-card" style="grid-column: 1 / -1; border-color: #312e81; background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 8%, #ffffff 8%);">
+                <h2 class="cms-card__title" style="color: #fff; margin-bottom: 4px;">
+                    <i class="fas fa-bolt"></i> Configuração do Banner Hero CTA — Consultor IA
+                </h2>
+                <p class="cms-card__hint" style="color: rgba(255,255,255,0.75); margin-bottom: 16px;">
+                    Banner 3D do Consultor IA — primeiro destaque na home (topo).
+                </p>
+                <div class="cms-grid-3" style="grid-template-columns: 1fr 1fr;">
+                    <div class="cms-field">
+                        <label for="hero-cta-visible">Exibição na landing</label>
+                        <select id="hero-cta-visible">
+                            <option value="true">Visível</option>
+                            <option value="false">Oculto</option>
+                        </select>
+                    </div>
+                    <div class="cms-field">
+                        <label for="hero-cta-badge">Tag / Pill (ex: Novo Agent IA)</label>
+                        <input type="text" id="hero-cta-badge" placeholder="Novo Agent IA">
+                    </div>
+                    <div class="cms-field" style="grid-column: 1 / -1;">
+                        <label for="hero-cta-title">Título do Banner</label>
+                        <input type="text" id="hero-cta-title" placeholder="Descubra como resolver seu maior desafio...">
+                    </div>
+                    <div class="cms-field" style="grid-column: 1 / -1;">
+                        <label for="hero-cta-subtitle">Subtítulo / Texto de apoio</label>
+                        <textarea id="hero-cta-subtitle" rows="2" placeholder="Consultor IA 100% Gratuito — ..."></textarea>
+                        <p class="cms-visibility-hint">A palavra &quot;Gratuito&quot; será destacada em laranja automaticamente.</p>
+                    </div>
+                    <div class="cms-field">
+                        <label for="hero-cta-button">Texto do Botão</label>
+                        <input type="text" id="hero-cta-button" placeholder="Falar com Consultor IA">
+                    </div>
+                    <div class="cms-field">
+                        <label for="hero-cta-url">URL do Botão</label>
+                        <input type="text" id="hero-cta-url" placeholder="/consultor-leaction">
+                    </div>
+                    <div class="cms-field" style="grid-column: 1 / -1;">
+                        <label for="hero-cta-image">Imagem Tech/Edu (lado direito do banner)</label>
+                        <div class="cms-upload-row">
+                            <input type="text" id="hero-cta-image" placeholder="/images/sua-ilustracao-3d.png">
+                            <button type="button" class="btn-cms-upload" data-upload-target="hero-cta-image" data-upload-input="file-hero-cta-image">📤 Fazer Upload</button>
+                            <input type="file" id="file-hero-cta-image" class="cms-upload-input" accept="image/*">
+                        </div>
+                        <p class="cms-visibility-hint">Upload via Multer (<code>/node/admin/cms/upload</code>). Recomendado: PNG/WebP isométrico.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuração da Coluna 1 - Banner Mesa de Inovação -->
+            <div id="cms-col1-banner-section" class="cms-card" style="grid-column: 1 / -1; border-color: #312e81; background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 8%, #ffffff 8%);">
+                <h2 class="cms-card__title" style="color: #fff; margin-bottom: 4px;">
+                    <i class="fas fa-lightbulb"></i> Configuração da Coluna 1 - Banner Mesa de Inovação
+                </h2>
+                <p class="cms-card__hint" style="color: rgba(255,255,255,0.75); margin-bottom: 16px;">
+                    Mesmo layout 3D do Consultor IA — exibido na <strong>primeira célula do grid</strong> da home (ao lado da Coluna 2).
+                </p>
+                <div class="cms-grid-3" style="grid-template-columns: 1fr 1fr;">
+                    <div class="cms-field">
+                        <label for="col1-visible">Visibilidade (exibir na landing)</label>
+                        <select id="col1-visible" aria-label="Toggle de visibilidade da Coluna 1">
+                            <option value="true">Visível</option>
+                            <option value="false">Oculto</option>
+                        </select>
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-pill">Pill Text (tag laranja)</label>
+                        <input type="text" id="col1-pill" placeholder="✨ Mesa de Inovação">
+                    </div>
+                    <div class="cms-field" style="grid-column: 1 / -1;">
+                        <label for="col1-title">Título</label>
+                        <input type="text" id="col1-title" placeholder="Leve sua escola ao próximo nível">
+                    </div>
+                    <div class="cms-field" style="grid-column: 1 / -1;">
+                        <label for="col1-subtitle">Subtítulo</label>
+                        <textarea id="col1-subtitle" rows="2" placeholder="Transforme o plano gratuito em um Roadmap executável"></textarea>
+                        <p class="cms-visibility-hint">Palavras como &quot;Gratuito&quot; ou &quot;Gratuita&quot; são destacadas em laranja na home.</p>
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-cta-text">Texto do Botão (CTA)</label>
+                        <input type="text" id="col1-cta-text" placeholder="Agendar Mesa Gratuita">
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-cta-url">URL do Botão (CTA)</label>
+                        <input type="text" id="col1-cta-url" placeholder="https://leaction.com.br/contato">
+                    </div>
+                    <div class="cms-field" style="grid-column: 1 / -1;">
+                        <label for="col1-image">Imagem Tech/Edu (lado direito do banner)</label>
+                        <div class="cms-upload-row">
+                            <input type="text" id="col1-image" placeholder="/images/sua-ilustracao-mesa.png" aria-describedby="col1-image-hint">
+                            <button type="button" class="btn-cms-upload" data-upload-target="col1-image" data-upload-input="file-col1-image">📤 Fazer Upload</button>
+                            <input type="file" id="file-col1-image" class="cms-upload-input" accept="image/*">
+                        </div>
+                        <p id="col1-image-hint" class="cms-visibility-hint">
+                            Mesmo upload Multer do Consultor IA (<code>/node/admin/cms/upload</code>).
+                            A imagem ocupa toda a altura do banner ao lado da Coluna 2.
+                        </p>
+                    </div>
+                    <div class="cms-field" style="grid-column: 1 / -1; margin-top: 8px;">
+                        <label class="cms-card__title" style="font-size: 0.9rem; margin-bottom: 10px;">Cores do banner</label>
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-bg-start">Fundo — gradiente início</label>
+                        <input type="color" id="col1-bg-start" value="#0b0c10">
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-bg-end">Fundo — gradiente fim</label>
+                        <input type="color" id="col1-bg-end" value="#1a0b2e">
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-border-color">Borda (hex ou rgba)</label>
+                        <input type="text" id="col1-border-color" placeholder="rgba(0, 191, 255, 0.2)">
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-title-color">Cor do título</label>
+                        <input type="color" id="col1-title-color" value="#ffffff">
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-subtitle-color">Cor do subtítulo (hex ou rgba)</label>
+                        <input type="text" id="col1-subtitle-color" placeholder="rgba(255, 255, 255, 0.82)">
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-pill-bg">Fundo da pill</label>
+                        <input type="color" id="col1-pill-bg" value="#FF6B00">
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-pill-text">Texto da pill</label>
+                        <input type="color" id="col1-pill-text" value="#ffffff">
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-accent-color">Destaque (ex: &quot;Gratuito&quot;)</label>
+                        <input type="color" id="col1-accent-color" value="#FF6B00">
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-btn-bg">Fundo do botão CTA</label>
+                        <input type="color" id="col1-btn-bg" value="#FF6B00">
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-btn-text">Texto do botão CTA</label>
+                        <input type="color" id="col1-btn-text" value="#ffffff">
+                    </div>
+                    <div class="cms-field">
+                        <label for="col1-btn-shadow">Sombra 3D do botão</label>
+                        <input type="color" id="col1-btn-shadow" value="#b34700">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coluna 2 — Vídeo YouTube -->
+            <div class="cms-card">
+                <h2 class="cms-card__title">Coluna 2 — Vídeo</h2>
+                <div class="cms-field">
+                    <label for="col2-visible">Exibição na landing</label>
+                    <select id="col2-visible">
+                        <option value="true">Visível</option>
+                        <option value="false">Oculto</option>
+                    </select>
+                    <p class="cms-visibility-hint">Segunda coluna do grid principal — player de vídeo do YouTube.</p>
+                </div>
+                <div class="cms-field">
+                    <label for="col2-video-url">URL do vídeo (YouTube)</label>
+                    <input type="url" id="col2-video-url" placeholder="https://www.youtube.com/watch?v=XXXXXXXXXXX">
+                    <p class="cms-video-hint">
+                        Aceita links <code>youtube.com/watch?v=...</code>, <code>youtu.be/...</code>, <code>youtube.com/shorts/...</code> ou o ID de 11 caracteres.
+                        Proporção exibida na home: <strong>16:9</strong> (faixa superior do card).
+                    </p>
+                    <div id="col2-video-preview" class="cms-video-preview" hidden></div>
+                </div>
+                <div class="cms-field">
+                    <label for="col2-title">Título</label>
+                    <input type="text" id="col2-title" placeholder="Metodologia CTDI">
+                </div>
+                <div class="cms-field">
+                    <label for="col2-desc">Breve Descrição</label>
+                    <textarea id="col2-desc" rows="4"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="cms-card" style="margin-top: 8px;">
+            <h2 class="cms-card__title">Segunda linha do Grid — Blog LeAction</h2>
+            <p class="cms-card__hint">
+                As <strong>Colunas 4 e 5</strong> são preenchidas automaticamente com os
+                <strong>2 posts mais recentes</strong> de
+                <a href="https://leaction.com.br/blog" target="_blank" rel="noopener">leaction.com.br/blog</a>
+                (sincronização dinâmica, cache ~30 min).
+            </p>
+            <p id="blog-sync-meta" class="cms-card__hint" style="margin-top: 0;"></p>
+        </div>
+        <div class="cms-grid-3" style="grid-template-columns: 1fr 1fr;">
+            <div class="cms-card cms-reserved">
+                <h2 class="cms-card__title">Coluna 4 — Blog (automático)</h2>
+                <div id="blog-preview-1" class="cms-blog-preview">Carregando posts do blog...</div>
+            </div>
+            <div class="cms-card cms-reserved">
+                <h2 class="cms-card__title">Coluna 5 — Blog (automático)</h2>
+                <div id="blog-preview-2" class="cms-blog-preview">Carregando posts do blog...</div>
+            </div>
+        </div>
+
+        <div class="cms-card cms-version-card">
+            <h2 class="cms-card__title"><i class="fas fa-code-branch"></i> Coluna 6 — Versão da Aplicação</h2>
+            <p class="cms-card__hint">
+                Exibida na home (segunda linha, coluna 3) com destaque azul. O link abre a página
+                <code>/versao-aplicacao</code> com o histórico completo abaixo.
+            </p>
+            <div class="cms-grid-3" style="grid-template-columns: 1fr 1fr;">
+                <div class="cms-field">
+                    <label for="versao-label">Rótulo da versão</label>
+                    <input type="text" id="versao-label" placeholder="v1.3.0">
+                </div>
+                <div class="cms-field">
+                    <label for="versao-image">URL da Imagem (faixa superior do card)</label>
+                    <div class="cms-upload-row">
+                        <input type="text" id="versao-image" placeholder="/images/cms-version-default.png">
+                        <button type="button" class="btn-cms-upload" data-upload-target="versao-image" data-upload-input="file-versao-image">📤 Fazer Upload</button>
+                        <input type="file" id="file-versao-image" class="cms-upload-input" accept="image/*">
+                    </div>
+                </div>
+                <div class="cms-field" style="grid-column: 1 / -1;">
+                    <label for="versao-title">Título do card (home)</label>
+                    <input type="text" id="versao-title" placeholder="Versão atual do PanelDX">
+                </div>
+                <div class="cms-field" style="grid-column: 1 / -1;">
+                    <label for="versao-summary">Resumo (home)</label>
+                    <textarea id="versao-summary" rows="3" placeholder="Breve descrição das últimas modificações..."></textarea>
+                </div>
+                <div class="cms-field" style="grid-column: 1 / -1;">
+                    <label for="versao-link-text">Texto do link</label>
+                    <input type="text" id="versao-link-text" placeholder="Ver histórico de modificações">
+                </div>
+            </div>
+            <div class="cms-field" style="margin-top: 8px;">
+                <label>Histórico completo (página /versao-aplicacao)</label>
+                <div id="quill-versao-detalhes"></div>
+            </div>
+        </div>
+
+        <div class="cms-card cms-card--legacy">
+            <h2 class="cms-card__title">Faixa de Título (Hero) — legado</h2>
+            <p class="cms-card__hint">Campos mantidos no JSON do CMS; não são mais exibidos na home.</p>
+            <div class="cms-grid-3" style="grid-template-columns: 1fr 1fr;">
+                <div class="cms-field">
+                    <label for="hero-leaction">LeAction System</label>
+                    <input type="text" id="hero-leaction">
+                </div>
+                <div class="cms-field">
+                    <label for="hero-paneldx">PanelDX</label>
+                    <input type="text" id="hero-paneldx">
+                </div>
+                <div class="cms-field" style="grid-column: 1 / -1;">
+                    <label for="hero-subtitle">Subtítulo</label>
+                    <input type="text" id="hero-subtitle">
+                </div>
+                <div class="cms-field" style="grid-column: 1 / -1;">
+                    <label for="hero-desc">Descritivo</label>
+                    <textarea id="hero-desc" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="cms-card" style="border-color: #c4b5fd; background: linear-gradient(180deg, #faf5ff 0%, #ffffff 100%);">
+            <h2 class="cms-card__title"><i class="fas fa-lightbulb"></i> Insights e Casos de Uso</h2>
+            <p class="cms-card__hint">
+                Segunda linha de conteúdo na landing — exibida <strong>abaixo da Mandala/Framework 3D</strong>.
+                Cadastre até 3 cards com título, resumo e link de leitura.
+            </p>
+            <div class="cms-grid-3" style="grid-template-columns: 1fr 1fr; margin-bottom: 16px;">
+                <div class="cms-field">
+                    <label for="insights-title">Título da seção</label>
+                    <input type="text" id="insights-title" placeholder="Insights e Casos de Uso">
+                </div>
+                <div class="cms-field">
+                    <label for="insights-subtitle">Subtítulo da seção</label>
+                    <input type="text" id="insights-subtitle" placeholder="Conteúdo estratégico para gestores...">
+                </div>
+            </div>
+            <div class="cms-grid-3">
+                <div class="cms-card" style="margin-bottom: 0; box-shadow: none;">
+                    <h3 class="cms-card__title">Insight 1</h3>
+                    <div class="cms-field">
+                        <label for="insight1-title">Título do Insight</label>
+                        <input type="text" id="insight1-title">
+                    </div>
+                    <div class="cms-field">
+                        <label for="insight1-summary">Resumo</label>
+                        <textarea id="insight1-summary" rows="3"></textarea>
+                    </div>
+                    <div class="cms-field">
+                        <label for="insight1-link">Link de Leitura</label>
+                        <input type="text" id="insight1-link" placeholder="/cadastro ou https://...">
+                    </div>
+                    <div class="cms-field">
+                        <label for="insight1-link-text">Texto do link</label>
+                        <input type="text" id="insight1-link-text" placeholder="Leia mais →">
+                    </div>
+                </div>
+                <div class="cms-card" style="margin-bottom: 0; box-shadow: none;">
+                    <h3 class="cms-card__title">Insight 2</h3>
+                    <div class="cms-field">
+                        <label for="insight2-title">Título do Insight</label>
+                        <input type="text" id="insight2-title">
+                    </div>
+                    <div class="cms-field">
+                        <label for="insight2-summary">Resumo</label>
+                        <textarea id="insight2-summary" rows="3"></textarea>
+                    </div>
+                    <div class="cms-field">
+                        <label for="insight2-link">Link de Leitura</label>
+                        <input type="text" id="insight2-link" placeholder="https://...">
+                    </div>
+                    <div class="cms-field">
+                        <label for="insight2-link-text">Texto do link</label>
+                        <input type="text" id="insight2-link-text" placeholder="Leia mais →">
+                    </div>
+                </div>
+                <div class="cms-card" style="margin-bottom: 0; box-shadow: none;">
+                    <h3 class="cms-card__title">Insight 3</h3>
+                    <div class="cms-field">
+                        <label for="insight3-title">Título do Insight</label>
+                        <input type="text" id="insight3-title">
+                    </div>
+                    <div class="cms-field">
+                        <label for="insight3-summary">Resumo</label>
+                        <textarea id="insight3-summary" rows="3"></textarea>
+                    </div>
+                    <div class="cms-field">
+                        <label for="insight3-link">Link de Leitura</label>
+                        <input type="text" id="insight3-link" placeholder="https://...">
+                    </div>
+                    <div class="cms-field">
+                        <label for="insight3-link-text">Texto do link</label>
+                        <input type="text" id="insight3-link-text" placeholder="Leia mais →">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ABA 2: INSTRUÇÕES -->
+    <section id="panel-instrucoes" class="cms-panel" role="tabpanel">
+        <div class="cms-card">
+            <h2 class="cms-card__title">Instruções de Uso</h2>
+            <p class="cms-card__hint">Editor rich text (Quill). O HTML será renderizado em <code>/instrucoes-de-uso</code>.</p>
+            <div id="quill-instrucoes"></div>
+        </div>
+    </section>
+
+    <div class="cms-actions">
+        <button type="button" id="btn-salvar-cms" class="btn-cms-primary">
+            <i class="fas fa-save"></i> Salvar alterações
+        </button>
+        <span id="cms-save-status" class="cms-status"></span>
+    </div>
+
+    <div id="cms-upload-toast" class="cms-toast" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+(function () {
+    let cmsState = { landing_page_data: {}, instructions_data: '' };
+    let quillInstrucoes = null;
+    let quillVersao = null;
+    let cmsToastTimer = null;
+
+    function showCmsToast(message, isError) {
+        var el = document.getElementById('cms-upload-toast');
+        if (!el) return;
+        el.textContent = message;
+        el.classList.toggle('is-error', !!isError);
+        el.classList.add('is-visible');
+        clearTimeout(cmsToastTimer);
+        cmsToastTimer = setTimeout(function () {
+            el.classList.remove('is-visible');
+        }, 2800);
+    }
+
+    var CMS_UPLOAD_ENDPOINTS = ['/node/admin/cms/upload', '/admin/cms/upload'];
+
+    async function uploadCmsImage(formData) {
+        var lastError = null;
+        for (var i = 0; i < CMS_UPLOAD_ENDPOINTS.length; i++) {
+            var url = CMS_UPLOAD_ENDPOINTS[i];
+            var res = await fetch(url, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+            if (res.status === 404) {
+                lastError = new Error('Rota de upload não encontrada (' + url + '). Reinicie o servidor Node.');
+                continue;
+            }
+            var json = {};
+            try {
+                json = await res.json();
+            } catch (parseErr) {
+                throw new Error('Resposta inválida do servidor (HTTP ' + res.status + ').');
+            }
+            if (!res.ok || !json.success) {
+                throw new Error(json.error || ('Falha no upload (HTTP ' + res.status + ').'));
+            }
+            return json;
+        }
+        throw lastError || new Error('Upload indisponível.');
+    }
+
+    function initCmsImageUploads() {
+        document.querySelectorAll('#admin-cms-page .btn-cms-upload').forEach(function (btn) {
+            var targetId = btn.getAttribute('data-upload-target');
+            var inputId = btn.getAttribute('data-upload-input');
+            var fileInput = document.getElementById(inputId);
+            var textInput = document.getElementById(targetId);
+            if (!fileInput || !textInput) return;
+
+            btn.addEventListener('click', function () {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', async function () {
+                var file = fileInput.files && fileInput.files[0];
+                fileInput.value = '';
+                if (!file) return;
+
+                var formData = new FormData();
+                formData.append('imagem', file);
+                var originalLabel = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Enviando...';
+
+                try {
+                    var json = await uploadCmsImage(formData);
+                    textInput.value = json.url;
+                    showCmsToast('Imagem enviada!');
+                } catch (err) {
+                    showCmsToast(err.message || 'Erro no upload.', true);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalLabel;
+                }
+            });
+        });
+    }
+
+    initCmsImageUploads();
+
+    function youtubeVideoIdFromUrl(url) {
+        if (!url || typeof url !== 'string') return '';
+        var raw = url.trim();
+        var m = raw.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([\w-]{11})/i);
+        if (m) return m[1];
+        if (/^[\w-]{11}$/.test(raw)) return raw;
+        return '';
+    }
+
+    function refreshCol2VideoPreview() {
+        var input = document.getElementById('col2-video-url');
+        var preview = document.getElementById('col2-video-preview');
+        if (!input || !preview) return;
+        var videoId = youtubeVideoIdFromUrl(input.value);
+        if (!videoId) {
+            preview.hidden = true;
+            preview.innerHTML = '';
+            return;
+        }
+        preview.hidden = false;
+        preview.innerHTML =
+            '<iframe src="https://www.youtube.com/embed/' + videoId + '?rel=0&modestbranding=1" ' +
+            'title="Pré-visualização do vídeo da Coluna 2" loading="lazy" ' +
+            'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ' +
+            'allowfullscreen></iframe>';
+    }
+
+    var col2VideoInput = document.getElementById('col2-video-url');
+    if (col2VideoInput) {
+        col2VideoInput.addEventListener('input', refreshCol2VideoPreview);
+        col2VideoInput.addEventListener('change', refreshCol2VideoPreview);
+    }
+
+    document.querySelectorAll('#admin-cms-page .cms-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            document.querySelectorAll('#admin-cms-page .cms-tab').forEach(function (t) {
+                t.classList.remove('is-active');
+            });
+            document.querySelectorAll('#admin-cms-page .cms-panel').forEach(function (p) {
+                p.classList.remove('is-active');
+            });
+            tab.classList.add('is-active');
+            document.getElementById('panel-' + tab.dataset.tab).classList.add('is-active');
+            if (tab.dataset.tab === 'instrucoes' && !quillInstrucoes) {
+                initQuill();
+            }
+        });
+    });
+
+    function initQuillVersao() {
+        if (quillVersao || typeof Quill === 'undefined') return;
+        quillVersao = new Quill('#quill-versao-detalhes', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    [{ align: [] }],
+                    ['link', 'blockquote'],
+                    ['clean']
+                ]
+            }
+        });
+        const landing = cmsState.landing_page_data || {};
+        const versao = landing.app_version || {};
+        if (versao.details_html) {
+            quillVersao.clipboard.dangerouslyPasteHTML(versao.details_html);
+        }
+    }
+
+    function initQuill() {
+        if (quillInstrucoes || typeof Quill === 'undefined') return;
+        quillInstrucoes = new Quill('#quill-instrucoes', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    [{ align: [] }],
+                    ['link', 'blockquote'],
+                    ['clean']
+                ]
+            }
+        });
+        if (cmsState.instructions_data) {
+            quillInstrucoes.clipboard.dangerouslyPasteHTML(cmsState.instructions_data);
+        }
+    }
+
+    function setUpdatedAt(val) {
+        const el = document.getElementById('cms-updated-at');
+        if (!val) { el.textContent = '—'; return; }
+        try {
+            el.textContent = new Date(val).toLocaleString('pt-BR');
+        } catch (e) {
+            el.textContent = val;
+        }
+    }
+
+    function renderBlogPreview(landing) {
+        const cols = (landing && landing.columns) || [];
+        const sync = landing && landing.blog_sync;
+        const meta = document.getElementById('blog-sync-meta');
+        if (meta) {
+            if (sync && sync.synced_at) {
+                try {
+                    meta.textContent = 'Última sincronização: ' + new Date(sync.synced_at).toLocaleString('pt-BR');
+                } catch (e) {
+                    meta.textContent = 'Sincronizado com o blog LeAction.';
+                }
+            } else {
+                meta.textContent = 'Aguardando sincronização com o blog LeAction.';
+            }
+        }
+
+        function htmlPreview(col, fallback) {
+            if (!col || !col.title) {
+                return '<em>' + fallback + '</em>';
+            }
+            var img = col.image_url
+                ? '<img src="' + col.image_url.replace(/"/g, '&quot;') + '" alt="">'
+                : '';
+            var link = col.link_url
+                ? '<br><a href="' + col.link_url.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">' +
+                  (col.link_text || 'Leia mais →') + '</a>'
+                : '';
+            return img + '<strong>' + col.title + '</strong><p style="margin:6px 0 0">' +
+                (col.description || '') + '</p>' + link;
+        }
+
+        var p1 = document.getElementById('blog-preview-1');
+        var p2 = document.getElementById('blog-preview-2');
+        if (p1) p1.innerHTML = htmlPreview(cols[2], 'Nenhum post disponível.');
+        if (p2) p2.innerHTML = htmlPreview(cols[3], 'Nenhum post disponível.');
+    }
+
+    function populateForm(data) {
+        const landing = data.landing_page_data || {};
+        const hero = landing.hero || {};
+        const cols = landing.columns || [];
+        const c1 = landing.coluna1 || cols[0] || {};
+        const c2 = cols[1] || {};
+        const versao = landing.app_version || {};
+        const heroCta = landing.hero_cta || landing.cta_consultor || {};
+
+        document.getElementById('hero-leaction').value = hero.leaction_title || '';
+        document.getElementById('hero-paneldx').value = hero.paneldx_title || '';
+        document.getElementById('hero-subtitle').value = hero.subtitle || '';
+        document.getElementById('hero-desc').value = hero.description || '';
+
+        document.getElementById('col1-visible').value =
+            (c1.visibility !== false && c1.visible !== false) ? 'true' : 'false';
+        document.getElementById('col1-pill').value = c1.pill_text || c1.badge_text || '✨ Mesa de Inovação';
+        document.getElementById('col1-title').value = c1.title || '';
+        document.getElementById('col1-subtitle').value = c1.subtitle || c1.description || '';
+        document.getElementById('col1-cta-text').value = c1.cta_text || c1.button_text || '';
+        document.getElementById('col1-cta-url').value = c1.cta_url || c1.button_url || '';
+        document.getElementById('col1-image').value = c1.image_path || c1.image_url || '';
+        setCol1ColorField('col1-bg-start', c1.bg_color_start, '#0b0c10');
+        setCol1ColorField('col1-bg-end', c1.bg_color_end, '#1a0b2e');
+        document.getElementById('col1-border-color').value = c1.border_color || 'rgba(0, 191, 255, 0.2)';
+        setCol1ColorField('col1-title-color', c1.title_color, '#ffffff');
+        document.getElementById('col1-subtitle-color').value = c1.subtitle_color || 'rgba(255, 255, 255, 0.82)';
+        setCol1ColorField('col1-pill-bg', c1.pill_bg_color, '#FF6B00');
+        setCol1ColorField('col1-pill-text', c1.pill_text_color, '#ffffff');
+        setCol1ColorField('col1-accent-color', c1.accent_color, '#FF6B00');
+        setCol1ColorField('col1-btn-bg', c1.button_bg_color, '#FF6B00');
+        setCol1ColorField('col1-btn-text', c1.button_text_color, '#ffffff');
+        setCol1ColorField('col1-btn-shadow', c1.button_shadow_color, '#b34700');
+
+        document.getElementById('col2-video-url').value = c2.video_url || c2.image_url || '';
+        document.getElementById('col2-title').value = c2.title || '';
+        document.getElementById('col2-desc').value = c2.description || '';
+        document.getElementById('col2-visible').value = c2.visible === false ? 'false' : 'true';
+        refreshCol2VideoPreview();
+
+        renderBlogPreview(landing);
+
+        document.getElementById('versao-label').value = versao.version_label || '';
+        document.getElementById('versao-image').value = versao.image_url || '';
+        document.getElementById('versao-title').value = versao.title || '';
+        document.getElementById('versao-summary').value = versao.summary || '';
+        document.getElementById('versao-link-text').value = versao.link_text || '';
+
+        document.getElementById('hero-cta-visible').value = heroCta.visible === false ? 'false' : 'true';
+        document.getElementById('hero-cta-badge').value = heroCta.badge_text || 'Novo Agent IA';
+        document.getElementById('hero-cta-title').value = heroCta.title || '';
+        document.getElementById('hero-cta-subtitle').value = heroCta.subtitle || '';
+        document.getElementById('hero-cta-button').value = heroCta.button_text || '';
+        document.getElementById('hero-cta-url').value = heroCta.button_url || '/consultor-leaction';
+        document.getElementById('hero-cta-image').value = heroCta.image_url || '';
+
+        var insightsSection = landing.insights_section || {};
+        document.getElementById('insights-title').value = insightsSection.title || '';
+        document.getElementById('insights-subtitle').value = insightsSection.subtitle || '';
+        var insights = landing.insights || [];
+        [1, 2, 3].forEach(function (n) {
+            var item = insights[n - 1] || {};
+            document.getElementById('insight' + n + '-title').value = item.title || '';
+            document.getElementById('insight' + n + '-summary').value = item.summary || '';
+            document.getElementById('insight' + n + '-link').value = item.link_url || '';
+            document.getElementById('insight' + n + '-link-text').value = item.link_text || '';
+        });
+
+        cmsState.instructions_data = data.instructions_data || '';
+        if (quillInstrucoes) {
+            quillInstrucoes.clipboard.dangerouslyPasteHTML(cmsState.instructions_data);
+        }
+        initQuillVersao();
+        if (quillVersao) {
+            quillVersao.clipboard.dangerouslyPasteHTML(versao.details_html || '');
+        }
+        setUpdatedAt(data.updated_at);
+    }
+
+    function setCol1ColorField(id, value, fallback) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var v = (value || fallback || '').trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(v) || /^#[0-9a-fA-F]{3}$/.test(v)) {
+            el.value = v.length === 4
+                ? '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3]
+                : v;
+        } else {
+            el.value = fallback;
+        }
+    }
+
+    function readCol1ThemePayload() {
+        return {
+            bg_color_start: document.getElementById('col1-bg-start').value,
+            bg_color_end: document.getElementById('col1-bg-end').value,
+            border_color: document.getElementById('col1-border-color').value.trim(),
+            title_color: document.getElementById('col1-title-color').value,
+            subtitle_color: document.getElementById('col1-subtitle-color').value.trim(),
+            pill_bg_color: document.getElementById('col1-pill-bg').value,
+            pill_text_color: document.getElementById('col1-pill-text').value,
+            accent_color: document.getElementById('col1-accent-color').value,
+            button_bg_color: document.getElementById('col1-btn-bg').value,
+            button_text_color: document.getElementById('col1-btn-text').value,
+            button_shadow_color: document.getElementById('col1-btn-shadow').value
+        };
+    }
+
+    function collectPayload() {
+        const col1Visible = document.getElementById('col1-visible').value === 'true';
+        const col1Image = document.getElementById('col1-image').value.trim();
+        const col1Title = document.getElementById('col1-title').value.trim();
+        const col1Subtitle = document.getElementById('col1-subtitle').value.trim();
+        const col1Pill = document.getElementById('col1-pill').value.trim() || '✨ Mesa de Inovação';
+        const col1CtaText = document.getElementById('col1-cta-text').value.trim();
+        const col1CtaUrl = document.getElementById('col1-cta-url').value.trim();
+        const col1Theme = readCol1ThemePayload();
+        const landing = {
+            hero: {
+                leaction_title: document.getElementById('hero-leaction').value.trim(),
+                paneldx_title: document.getElementById('hero-paneldx').value.trim(),
+                subtitle: document.getElementById('hero-subtitle').value.trim(),
+                description: document.getElementById('hero-desc').value.trim()
+            },
+            coluna1: {
+                visibility: col1Visible,
+                pill_text: col1Pill,
+                title: col1Title,
+                subtitle: col1Subtitle,
+                cta_text: col1CtaText,
+                cta_url: col1CtaUrl,
+                image_path: col1Image,
+                bg_color_start: col1Theme.bg_color_start,
+                bg_color_end: col1Theme.bg_color_end,
+                border_color: col1Theme.border_color,
+                title_color: col1Theme.title_color,
+                subtitle_color: col1Theme.subtitle_color,
+                pill_bg_color: col1Theme.pill_bg_color,
+                pill_text_color: col1Theme.pill_text_color,
+                accent_color: col1Theme.accent_color,
+                button_bg_color: col1Theme.button_bg_color,
+                button_text_color: col1Theme.button_text_color,
+                button_shadow_color: col1Theme.button_shadow_color
+            },
+            columns: [
+                {
+                    visible: col1Visible,
+                    visibility: col1Visible,
+                    image_url: col1Image,
+                    image_path: col1Image,
+                    title: col1Title,
+                    description: col1Subtitle,
+                    subtitle: col1Subtitle,
+                    pill_text: col1Pill,
+                    cta_text: col1CtaText,
+                    cta_url: col1CtaUrl,
+                    button_text: col1CtaText,
+                    button_url: col1CtaUrl,
+                    layout: 'premium_banner',
+                    bg_color_start: col1Theme.bg_color_start,
+                    bg_color_end: col1Theme.bg_color_end,
+                    border_color: col1Theme.border_color,
+                    title_color: col1Theme.title_color,
+                    subtitle_color: col1Theme.subtitle_color,
+                    pill_bg_color: col1Theme.pill_bg_color,
+                    pill_text_color: col1Theme.pill_text_color,
+                    accent_color: col1Theme.accent_color,
+                    button_bg_color: col1Theme.button_bg_color,
+                    button_text_color: col1Theme.button_text_color,
+                    button_shadow_color: col1Theme.button_shadow_color
+                },
+                {
+                    video_url: document.getElementById('col2-video-url').value.trim(),
+                    image_url: '',
+                    title: document.getElementById('col2-title').value.trim(),
+                    description: document.getElementById('col2-desc').value.trim(),
+                    visible: document.getElementById('col2-visible').value === 'true'
+                }
+            ],
+            app_version: {
+                version_label: document.getElementById('versao-label').value.trim(),
+                image_url: document.getElementById('versao-image').value.trim(),
+                title: document.getElementById('versao-title').value.trim(),
+                summary: document.getElementById('versao-summary').value.trim(),
+                link_text: document.getElementById('versao-link-text').value.trim(),
+                details_html: quillVersao
+                    ? quillVersao.root.innerHTML
+                    : ((cmsState.landing_page_data || {}).app_version || {}).details_html || ''
+            },
+            hero_cta: {
+                visible: document.getElementById('hero-cta-visible').value === 'true',
+                badge_text: document.getElementById('hero-cta-badge').value.trim() || 'Novo Agent IA',
+                title: document.getElementById('hero-cta-title').value.trim(),
+                subtitle: document.getElementById('hero-cta-subtitle').value.trim(),
+                button_text: document.getElementById('hero-cta-button').value.trim(),
+                button_url: document.getElementById('hero-cta-url').value.trim() || '/consultor-leaction',
+                image_url: document.getElementById('hero-cta-image').value.trim()
+            },
+            cta_consultor: {
+                title: document.getElementById('hero-cta-title').value.trim(),
+                button_text: document.getElementById('hero-cta-button').value.trim(),
+                visible: document.getElementById('hero-cta-visible').value === 'true'
+            },
+            insights_section: {
+                title: document.getElementById('insights-title').value.trim(),
+                subtitle: document.getElementById('insights-subtitle').value.trim()
+            },
+            insights: [1, 2, 3].map(function (n) {
+                return {
+                    title: document.getElementById('insight' + n + '-title').value.trim(),
+                    summary: document.getElementById('insight' + n + '-summary').value.trim(),
+                    link_url: document.getElementById('insight' + n + '-link').value.trim(),
+                    link_text: document.getElementById('insight' + n + '-link-text').value.trim() || 'Leia mais →'
+                };
+            })
+        };
+        const instructions = quillInstrucoes
+            ? quillInstrucoes.root.innerHTML
+            : cmsState.instructions_data;
+        return { landing_page_data: landing, instructions_data: instructions };
+    }
+
+    async function carregarCms() {
+        const status = document.getElementById('cms-save-status');
+        status.textContent = 'Carregando...';
+        status.className = 'cms-status';
+        try {
+            const res = await fetch('/api/admin/cms');
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.error || 'Falha ao carregar');
+            cmsState = json;
+            populateForm(json);
+            status.textContent = '';
+        } catch (err) {
+            status.textContent = 'Erro ao carregar: ' + err.message;
+            status.className = 'cms-status is-err';
+        }
+    }
+
+    document.getElementById('btn-salvar-cms').addEventListener('click', async function () {
+        const btn = this;
+        const status = document.getElementById('cms-save-status');
+        btn.disabled = true;
+        status.textContent = 'Salvando...';
+        status.className = 'cms-status';
+        try {
+            const payload = collectPayload();
+            const res = await fetch('/api/admin/cms', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const json = await res.json();
+            if (!res.ok || !json.success) throw new Error(json.error || 'Falha ao salvar');
+            cmsState = json;
+            setUpdatedAt(json.updated_at);
+            status.textContent = 'Salvo com sucesso.';
+            status.className = 'cms-status is-ok';
+        } catch (err) {
+            status.textContent = 'Erro: ' + err.message;
+            status.className = 'cms-status is-err';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    carregarCms();
+})();
+</script>

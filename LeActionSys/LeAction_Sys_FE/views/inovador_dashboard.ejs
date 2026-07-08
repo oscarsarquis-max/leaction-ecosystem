@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PanelDX - QG do Inovador</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); min-height: 100vh; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .pulse-mic { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        [contenteditable][data-placeholder]:empty:before {
+            content: attr(data-placeholder);
+            color: #475569;
+        }
+    </style>
+
+</head>
+<body class="text-slate-100 font-sans">
+
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-8 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-600 rounded-lg text-xl font-bold text-white">DX</div>
+            <div>
+                <h1 class="text-lg font-bold bg-gradient-to-r from-cyan-400 to-fuchsia-500 bg-clip-text text-transparent">Oficina do Inovador</h1>
+                <p class="text-xs text-slate-400">Sandbox de Captura e Operação Pedagógica</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="text-xs px-3 py-1 rounded bg-slate-800 border border-slate-700 text-slate-300">
+                Cliente Ativo ID: <strong id="lbl-cliente-id">{{ id_clie }}</strong>
+            </div>
+            <button onclick="executarLogout()" class="text-rose-400 hover:text-rose-300 transition-colors text-lg p-2 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-rose-500/30 shadow-md" title="Sair da Oficina e voltar ao PanelDX">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            <div class="glass-panel rounded-2xl p-5 shadow-xl space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-semibold tracking-wide text-slate-400 uppercase"><i class="fa-solid fa-calendar-day text-cyan-400 mr-2"></i>1. Rotina Contextual</h2>
+                    <div class="flex gap-1">
+                        <button onclick="editarRotinaAtiva()" class="text-slate-400 hover:text-cyan-400 text-xs p-1"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deletarRotinaAtiva()" class="text-slate-400 hover:text-rose-400 text-xs p-1"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                <select id="select-rotina" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                    <option value="">Carregando suas aulas...</option>
+                </select>
+                <div class="flex gap-2 border-t border-slate-800 pt-3">
+                    <input type="text" id="txt-nova-rotina" class="flex-1 bg-slate-900/60 border border-slate-700 rounded-xl p-2 text-xs text-slate-200 focus:outline-none placeholder-slate-600" placeholder="Nova Aula (Ex: 3º Ano - Física)">
+                    <button id="btn-add-rotina" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold px-3 rounded-xl text-xs"><i class="fa-solid fa-plus"></i></button>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 shadow-xl">
+                <h2 class="text-sm font-semibold tracking-wide text-slate-400 uppercase mb-4"><i class="fa-solid fa-microphone-lines text-cyan-400 mr-2"></i>2. Desabafo de Campo</h2>
+                <div class="flex flex-col items-center justify-center p-3 bg-slate-900/40 rounded-xl border border-slate-800 mb-3">
+                    <button id="btn-mic" class="w-14 h-14 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-white text-xl shadow-lg transition-all hover:scale-105">
+                        <i class="fa-solid fa-microphone" id="mic-icon"></i>
+                    </button>
+                    <p id="mic-status" class="text-[10px] text-slate-500 mt-2 text-center">Clique para ditar insights ou gargalos</p>
+                </div>
+                <div class="space-y-2">
+                    <textarea id="txt-nota" rows="3" class="w-full bg-slate-900/60 border border-slate-700/60 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500" placeholder="Escreva ou dite the problem ocorrido na aula..."></textarea>
+                    <button id="btn-salvar-nota" class="w-full bg-cyan-600 hover:bg-cyan-500 text-slate-950 py-2.5 rounded-xl text-xs font-bold tracking-wide">Registrar no Diário de Bordo</button>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 shadow-xl flex-1 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-semibold tracking-wide text-slate-400 uppercase"><i class="fa-solid fa-palette text-indigo-400 mr-2"></i>Mural de Afinidades</h2>
+                    <span id="contador-notas" class="text-xs bg-slate-800 px-2.5 py-0.5 rounded-full text-slate-300 font-bold">0</span>
+                </div>
+                <div id="container-notas" class="grid grid-cols-2 gap-3 max-h-[350px] overflow-y-auto p-1 flex-1"></div>
+            </div>
+        </section>
+
+        <section class="lg:col-span-7 glass-panel rounded-2xl p-6 shadow-xl flex flex-col">
+            <h2 class="text-sm font-semibold tracking-wide text-slate-400 uppercase mb-4"><i class="fa-solid fa-flask-vial text-fuchsia-400 mr-2"></i>Mesa de Lapidação Inteligente</h2>
+
+            <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 mb-4 relative">
+                <span class="text-[10px] uppercase text-cyan-400 font-bold block mb-1.5"><i class="fa-solid fa-graduation-cap mr-1"></i> Classificação Científica CMU (Referencial Teórico)</span>
+                <div class="relative">
+                    <input type="text" id="txt-busca-cmu" oninput="executarBuscaCMU(this.value)" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 pl-9 text-xs text-slate-200 focus:outline-none focus:border-cyan-500" placeholder="Digite um termo para classificar o problema (Ex: falta, tecnologia, nota)...">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-500 text-xs"></i>
+                </div>
+                <div id="dropdown-resultados-cmu" class="hidden absolute left-4 right-4 top-[68px] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 max-h-[220px] overflow-y-auto"></div>
+
+                <div id="bloco-exibicao-cmu" class="hidden mt-3 p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-2 text-xs">
+                    <div><strong class="text-cyan-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Descrição do Problema:</strong> <p id="lbl-cmu-desc" class="text-slate-200 mt-0.5 leading-relaxed"></p></div>
+                    <div><strong class="text-cyan-400"><i class="fa-solid fa-code-fork mr-1"></i> Razões Causa-Raiz:</strong> <p id="lbl-cmu-razoes" class="text-slate-300 mt-0.5 leading-relaxed"></p></div>
+                    <div><strong class="text-cyan-400"><i class="fa-solid fa-lightbulb mr-1"></i> Soluções Mapeadas:</strong> <p id="lbl-cmu-solucoes" class="text-slate-300 mt-0.5 leading-relaxed"></p></div>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-4 mb-6">
+                <select id="select-bloco" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none">
+                    <option value="Aprendizagem_Experiencial">Aprendizagem Experiencial (Framework de Programa Baseado em Experiência)</option>
+                    <option value="Aprendizagem_Digital">Aprendizagem Digital (Plano LXD - Design de Experiência do Aprendiz)</option>
+                    <option value="Testes_Exames">Testes e Exames (Sistema de Avaliação Digital Formativa/Somativa)</option>
+                </select>
+            </div>
+
+            <div class="flex-1 flex flex-col border border-dashed border-slate-700/60 rounded-xl p-4 bg-slate-900/20 relative min-h-[300px]">
+                <div id="ia-empty-state" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                    <div class="w-12 h-12 rounded-full bg-fuchsia-500/10 flex items-center justify-center text-fuchsia-400 mb-2 text-xl"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <p class="text-xs text-slate-400">Clique em um post-it já <strong>Incubado</strong> para leitura ou selecione os <strong>Pendentes</strong> para lapidar com a IA.</p>
+                </div>
+
+                <div id="ia-result-panel" class="hidden space-y-4 text-sm flex-1 overflow-y-auto max-h-[420px] pr-1">
+                    <input type="hidden" id="hdn-id-acao" value="">
+
+                    <div id="card-cmu-selecionado" class="hidden p-3 bg-cyan-950/20 border border-cyan-500/20 rounded-xl space-y-1.5">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[9px] uppercase bg-cyan-900/50 px-2 py-0.5 rounded text-cyan-300 font-bold" id="lbl-cmu-grupo-cat"></span>
+                            <button onclick="removerClassificacaoCMU()" class="text-slate-500 hover:text-rose-400 text-[10px]"><i class="fa-solid fa-xmark"></i> Remover</button>
+                        </div>
+                        <p class="text-xs text-slate-200 font-semibold" id="lbl-cmu-sintoma"></p>
+                        <div class="text-[11px] text-slate-400 border-t border-cyan-500/10 pt-1" id="lbl-cmu-remedio"></div>
+                    </div>
+
+                    <div class="p-3 bg-gradient-to-r from-fuchsia-950/40 to-indigo-950/40 border border-fuchsia-500/30 rounded-xl">
+                        <span class="text-[9px] uppercase tracking-wider font-bold text-fuchsia-400 block mb-1">Título do Projeto (Clique para editar)</span>
+                        <h4 id="res-titulo" contenteditable="true" class="font-bold text-slate-200 text-base focus:outline-none"></h4>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                            <span class="text-[9px] uppercase text-slate-400 block font-medium mb-1">Justificativa Pedagógica</span>
+                            <p id="res-justificativa" contenteditable="true" class="text-xs text-slate-300 focus:outline-none p-1"></p>
+                        </div>
+                        <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                            <span class="text-[9px] uppercase text-slate-400 block font-medium mb-1">Impacto no Negócio (ROI/ESG)</span>
+                            <p id="res-impacto" contenteditable="true" class="text-xs text-slate-300 focus:outline-none p-1"></p>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-slate-900/80 rounded-xl border border-slate-800 space-y-3">
+                        <span class="text-xs font-semibold text-indigo-400 block uppercase tracking-wider">Composição do Artefato Metodológico</span>
+                        <div id="res-composicao" class="space-y-2 text-xs text-slate-400"></div>
+                    </div>
+
+                    <div id="panel-experimentacao" class="hidden border-t border-slate-800 pt-4 space-y-4">
+                        <span class="text-xs font-semibold text-fuchsia-400 block uppercase tracking-wider">
+                            <i class="fa-solid fa-vial-circle-check mr-1"></i> Laboratório de Experimentação Ativa
+                        </span>
+
+                        <div id="form-novo-experimento" class="p-3 bg-slate-900/80 border border-slate-800 rounded-xl space-y-3 relative">
+                            <span class="text-[10px] uppercase text-fuchsia-400 font-bold block"><i class="fa-solid fa-magnifying-glass-chart mr-1"></i> Ancorar Metodologia Ativa de Referência</span>
+
+                            <div class="relative">
+                                <input type="text" id="txt-busca-metodo" oninput="executarBuscaMetodologia(this.value)" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none placeholder-slate-600" placeholder="Pesquisar Metodologia (Ex: Ágeis, Imersivas, Analíticas)...">
+                                <div id="dropdown-resultados-metodo" class="hidden absolute left-0 right-0 top-9 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 max-h-[180px] overflow-y-auto"></div>
+                            </div>
+
+                            <div id="wrapper-select-pratica" class="hidden space-y-1">
+                                <label class="text-[9px] text-slate-400 uppercase font-bold block">Prática Pedagógica Co-Autora Alvo</label>
+                                <select id="select-pratica-ativa" onchange="configurarPlaceholdersPraticaAtiva()" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none"></select>
+                            </div>
+
+                            <span class="text-[10px] uppercase text-slate-400 font-bold block pt-2 border-t border-slate-800/60">Registrar Evidência de Campo</span>
+
+                            <div class="space-y-2">
+                                <input type="hidden" id="hdn-id-espex" value="">
+
+                                <div id="txt-hipo-espex" contenteditable="true" data-placeholder="Hipótese Empírica (O que você acreditava que iria acontecer?)" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none min-h-[40px]"></div>
+                                <div id="txt-desc-espex" contenteditable="true" data-placeholder="Descrição da Experimentação Ativa (O que foi executado na prática?)" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none min-h-[60px]"></div>
+                                <div id="txt-result-espex" contenteditable="true" data-placeholder="Resultados Alcançados (Qual foi o impacto observado?)" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none min-h-[60px]"></div>
+
+                                <!-- O CAMPO ANTIGO DE SUBTASK FOI TOTALMENTE REMOVIDO DAQUI -->
+
+                                <button type="button" id="btn-salvar-experimento" onclick="adicionarExperimentoDescritivo()" class="w-full bg-fuchsia-700 hover:bg-fuchsia-600 text-white font-bold py-1.5 rounded-lg text-[11px] uppercase tracking-wide transition-all">Adicionar Experimento</button>
+                            </div>
+                        </div>
+
+                        <div id="container-experimentos-lista" class="space-y-2 max-h-[220px] overflow-y-auto pr-1"></div>
+
+                        <!-- 🎯 NOVO GERENCIADOR MÚLTIPLO DE SUBTASKS (ISOLADO DOS EXPERIMENTOS) -->
+                        <div class="p-4 bg-slate-900/60 rounded-xl border border-amber-500/30 mt-4 space-y-3">
+                            <span class="text-[10px] uppercase text-amber-400 font-bold block mb-2"><i class="fa-solid fa-list-check mr-1"></i> Planejamento de Subtasks (Máx 4)</span>
+
+                            <div class="flex flex-col gap-2 bg-slate-900/40 p-2 rounded-lg border border-amber-700/30">
+                                <div id="txt-nova-subtask" contenteditable="true" data-placeholder="Descreva a subtask (Ex: Configurar ambiente...)" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-amber-100 focus:outline-none min-h-[40px]"></div>
+
+                                <div class="flex justify-between items-center border-t border-slate-800/60 pt-2">
+                                    <div class="flex gap-3">
+                                        <label class="flex items-center gap-1 text-[9px] text-slate-300 uppercase cursor-pointer hover:text-amber-400">
+                                            <input type="radio" name="rd_pilar_subtask" value="item_1" class="accent-amber-500"> Pilar 1
+                                        </label>
+                                        <label class="flex items-center gap-1 text-[9px] text-slate-300 uppercase cursor-pointer hover:text-amber-400">
+                                            <input type="radio" name="rd_pilar_subtask" value="item_2" class="accent-amber-500" checked> Pilar 2
+                                        </label>
+                                        <label class="flex items-center gap-1 text-[9px] text-slate-300 uppercase cursor-pointer hover:text-amber-400">
+                                            <input type="radio" name="rd_pilar_subtask" value="item_3" class="accent-amber-500"> Pilar 3
+                                        </label>
+                                        <label class="flex items-center gap-1 text-[9px] text-slate-300 uppercase cursor-pointer hover:text-amber-400">
+                                            <input type="radio" name="rd_pilar_subtask" value="item_4" class="accent-amber-500"> Pilar 4
+                                        </label>
+                                    </div>
+                                    <button type="button" onclick="adicionarSubtaskNaLista()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-2 py-1 rounded text-[9px] uppercase transition-colors">Vincular</button>
+                                </div>
+                            </div>
+                            <div id="lista-subtasks-adicionadas" class="space-y-1 mt-2"></div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 mt-4">
+                        <span class="text-[10px] uppercase text-indigo-400 block font-bold mb-1">
+                            <i class="fa-solid fa-network-wired mr-1"></i> Integração Projeto Escola (cód. ref.)
+                        </span>
+                        <input type="text" id="txt-escolas-ref" class="bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 w-full" placeholder="Ex: 71, 85, 104 (separe por vírgula para espalhar em mais de uma)">
+                        <span class="text-[9px] text-slate-500 block mt-1">Esta inovação será distribuída de forma assíncrona para o Kanban de todas as escolas listadas.</span>
+                    </div>
+
+                    <div class="p-4 bg-slate-900/80 rounded-xl border border-slate-700/50 mt-4 space-y-3">
+                        <span class="text-[10px] uppercase text-amber-400 block font-bold">
+                            <i class="fa-solid fa-file-export mr-1"></i> Exportação Híbrida de Sprint (Agile Delivery)
+                        </span>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-1">Nome do Arquivo JSON</label>
+                                <input type="text" id="txt-nome-arquivo-export" class="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500 w-full" placeholder="sprint_backlog_pedagogico">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 block mb-1">Formato / Destino Alvo</label>
+                                <select id="combo-formato-destino" class="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500 w-full">
+                                    <option value="Universal">Universal (Agnóstico / Envelope Puro)</option>
+                                    <option value="Jira">Jira Cloud (Scrum Native / Issue Stories)</option>
+                                    <option value="Trello">Trello Workspace (Kanban Pure / Board Lists)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="button" id="btn-exportar-json" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold py-2 rounded-xl text-xs uppercase tracking-wide transition-all shadow-md">
+                            <i class="fa-solid fa-download mr-1"></i> Compilar e Baixar Arquivo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-800/80 flex gap-4">
+                <button id="btn-incubar" class="flex-1 bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white text-xs font-bold uppercase tracking-wider py-3 rounded-xl shadow-lg shadow-fuchsia-600/20">Lapidar com IA Co-Autora</button>
+                <button id="btn-sprint" disabled class="bg-amber-600/20 border border-amber-500/30 text-amber-500/40 text-xs font-bold uppercase tracking-wider px-6 rounded-xl transition-all cursor-not-allowed">Lançar Sprint</button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+
+        const idClieReal = parseInt("{{ id_clie }}") || 999;
+        let notasLocais = [];
+        let cmuSelecionadoLocal = null;
+        let cacheResultadosCMU = [];
+
+        let cacheMetodologiasAtivas = [];
+        let cachePraticasAtivas = [];
+        let rotasMetodologicasSalvas = [];
+        let cacheExperimentosLocais = [];
+
+        // 🎯 NOVO VETOR GLOBAL PARA GERENCIAR AS SUBTASKS ANTES DE SALVAR/EXPORTAR
+        let listaSubtasksLocais = [];
+
+        const selectRotina = document.getElementById('select-rotina');
+        const txtNovaRotina = document.getElementById('txt-nova-rotina');
+        const containerNotas = document.getElementById('container-notas');
+        const txtNota = document.getElementById('txt-nota');
+        const btnMic = document.getElementById('btn-mic');
+        const micIcon = document.getElementById('mic-icon');
+        const micStatus = document.getElementById('mic-status');
+        const btnIncubar = document.getElementById('btn-incubar');
+        const btnSprint = document.getElementById('btn-sprint');
+
+        async function inicializarDashboard() {
+            try {
+                const lblId = document.getElementById('lbl-cliente-id');
+                if (lblId) lblId.innerText = idClieReal;
+
+                const resRotinas = await fetch(`/inovador/api/rotinas?id_clie=${idClieReal}`);
+                const dataRotinas = await resRotinas.json();
+                if (dataRotinas.status === 'success' && dataRotinas.data.length > 0) {
+                    selectRotina.innerHTML = dataRotinas.data.map(r => `<option value="${r.id_rotina}">${r.titulo_atividade}</option>`).join('');
+                } else {
+                    selectRotina.innerHTML = `<option value="">Crie uma aula abaixo para começar</option>`;
+                }
+
+                const resNotas = await fetch(`/inovador/api/notas?id_clie=${idClieReal}`);
+                const dataNotas = await resNotas.json();
+                notasLocais = dataNotas.status === 'success' ? dataNotas.data : [];
+                renderizarNotas();
+
+                const resCmuSessao = await fetch('/inovador/api/cmu/sessao');
+                const dataCmuSessao = await resCmuSessao.json();
+                if (dataCmuSessao.status === 'success' && dataCmuSessao.data) {
+                    cmuSelecionadoLocal = dataCmuSessao.data;
+                    document.getElementById('txt-busca-cmu').value = cmuSelecionadoLocal.categoria_prob;
+                    mostrarCmuNoPainelBusca(cmuSelecionadoLocal);
+                }
+            } catch (err) { console.error("Erro no carregamento do painel:", err); }
+        }
+
+        function mostrarCmuNoPainelBusca(item) {
+            const bloco = document.getElementById('bloco-exibicao-cmu');
+            if (!item) { bloco.classList.add('hidden'); return; }
+            bloco.classList.remove('hidden');
+            document.getElementById('lbl-cmu-desc').innerText = item.desc_prob || '';
+            document.getElementById('lbl-cmu-razoes').innerText = item.razoes_prob || '';
+            document.getElementById('lbl-cmu-solucoes').innerText = item.solucoes_prob || '';
+        }
+
+        async function executarBuscaCMU(termo) {
+            const dropdown = document.getElementById('dropdown-resultados-cmu');
+            if (termo.trim().length < 2) { dropdown.classList.add('hidden'); cacheResultadosCMU = []; return; }
+            try {
+                const res = await fetch(`/inovador/api/cmu/buscar?q=${encodeURIComponent(termo)}`);
+                const resData = await res.json();
+                if (resData.status === 'success' && resData.data.length > 0) {
+                    cacheResultadosCMU = resData.data; dropdown.classList.remove('hidden');
+                    dropdown.innerHTML = resData.data.map(item => `
+                        <div onclick="selecionarProblemaCMUPorId(${item.id_prob})" class="p-3 border-b border-slate-800 hover:bg-slate-800 cursor-pointer transition-all text-left">
+                            <div class="text-[9px] text-cyan-400 font-bold uppercase tracking-wider mb-1">${item.grupo_prob} › ${item.categoria_prob}</div>
+                            <div class="text-xs text-slate-200 font-bold leading-tight"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i>${item.desc_prob}</div>
+                            <div class="text-[11px] text-slate-400 font-medium mt-1 pl-4 border-l border-slate-700 bg-slate-950/20 py-0.5"><strong>Causa:</strong> ${item.razoes_prob}</div>
+                        </div>
+                    `).join('');
+                } else { dropdown.classList.remove('hidden'); dropdown.innerHTML = '<div class="p-3 text-xs text-slate-500 italic">Sem correspondência diagnóstica.</div>'; }
+            } catch(e) { console.error(e); }
+        }
+
+        function selecionarProblemaCMUPorId(idProb) {
+            const itemEncontrado = cacheResultadosCMU.find(item => item.id_prob === idProb);
+            if (!itemEncontrado) return;
+            cmuSelecionadoLocal = itemEncontrado;
+            document.getElementById('dropdown-resultados-cmu').classList.add('hidden');
+            document.getElementById('txt-busca-cmu').value = itemEncontrado.categoria_prob;
+
+            mostrarCmuNoPainelBusca(itemEncontrado);
+            if (!document.getElementById('ia-result-panel').classList.contains('hidden')) {
+                exibirCardCMUAcoplado();
+            }
+
+            try {
+                fetch('/inovador/api/cmu/sessao', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cmu: itemEncontrado })
+                });
+            } catch(err) { console.error(err); }
+        }
+
+        function exibirCardCMUAcoplado() {
+            if (!cmuSelecionadoLocal) return;
+            const card = document.getElementById('card-cmu-selecionado');
+            card.classList.remove('hidden');
+            document.getElementById('lbl-cmu-grupo-cat').innerText = `${cmuSelecionadoLocal.grupo_prob} / ${cmuSelecionadoLocal.categoria_prob}`;
+            document.getElementById('lbl-cmu-sintoma').innerText = `Sintoma: ${cmuSelecionadoLocal.desc_prob}`;
+            document.getElementById('lbl-cmu-remedio').innerHTML = `<strong>Estratégia CMU:</strong> ${cmuSelecionadoLocal.solucoes_prob}`;
+        }
+
+        function removerClassificacaoCMU() {
+            cmuSelecionadoLocal = null;
+            document.getElementById('card-cmu-selecionado').classList.add('hidden');
+            document.getElementById('txt-busca-cmu').value = '';
+            mostrarCmuNoPainelBusca(null);
+
+            try {
+                fetch('/inovador/api/cmu/sessao', { method: 'DELETE' });
+            } catch(e) { console.error(e); }
+        }
+
+        async function executarBuscaMetodologia(termo) {
+            const dropdown = document.getElementById('dropdown-resultados-metodo');
+            if (termo.trim().length < 2) { dropdown.classList.add('hidden'); cacheMetodologiasAtivas = []; return; }
+            try {
+                const res = await fetch(`/inovador/api/metodologias/buscar?q=${encodeURIComponent(termo)}`);
+                const resData = await res.json();
+                if (resData.status === 'success' && resData.data.length > 0) {
+                    cacheMetodologiasAtivas = resData.data;
+                    dropdown.classList.remove('hidden');
+                    dropdown.innerHTML = resData.data.map(item => `
+                        <div onclick="selecionarMetodologiaAtivaPorId(${item.id_meta})" class="p-2 border-b border-slate-800 hover:bg-slate-800 cursor-pointer text-left transition-all">
+                            <div class="text-[10px] text-fuchsia-400 font-bold uppercase"><i class="fa-solid fa-graduation-cap mr-1"></i>${item.cate_metodo}</div>
+                            <div class="text-xs text-slate-200 mt-0.5 font-semibold">${item.prop_pratico}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    dropdown.classList.remove('hidden');
+                    dropdown.innerHTML = '<div class="p-2 text-xs text-slate-500 italic">Nenhum catálogo encontrado.</div>';
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function selecionarMetodologiaAtivaPorId(idMeta) {
+            const meta = cacheMetodologiasAtivas.find(m => m.id_meta === idMeta);
+            if (!meta) return;
+
+            document.getElementById('dropdown-resultados-metodo').classList.add('hidden');
+            document.getElementById('txt-busca-metodo').value = meta.cate_metodo;
+
+            try {
+                const res = await fetch(`/inovador/api/metodologias/praticas?id_meta=${idMeta}`);
+                const resData = await res.json();
+                if (resData.status === 'success' && resData.data.length > 0) {
+                    cachePraticasAtivas = resData.data;
+                    const selectPratica = document.getElementById('select-pratica-ativa');
+
+                    selectPratica.innerHTML = '<option value="">-- Escolha uma Prática Ativa --</option>' +
+                        resData.data.map(p => `<option value="${p.id_prat}">${p.estra_pratica}</option>`).join('');
+
+                    document.getElementById('wrapper-select-pratica').classList.remove('hidden');
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        function configurarPlaceholdersPraticaAtiva() {
+            const idPrat = parseInt(document.getElementById('select-pratica-ativa').value);
+            if (!idPrat) return;
+            const pratica = cachePraticasAtivas.find(p => p.id_prat === idPrat);
+            if (!pratica) return;
+
+            document.getElementById('txt-hipo-espex').innerText = `Hipótese: O impacto de aplicar a estratégia "${pratica.estra_pratica}" no aprendizado...`;
+            document.getElementById('txt-desc-espex').innerText = `Passos de Implementação da Prática: ${pratica.meca_func}`;
+            document.getElementById('txt-result-espex').innerText = `Resultados e Recursos Alvo: ${pratica.recursos_impacto}`;
+
+            document.getElementById('txt-hipo-espex').setAttribute('data-placeholder', `Hipótese: O impacto de aplicar a estratégia "${pratica.estra_pratica}" no aprendizado...`);
+            document.getElementById('txt-desc-espex').setAttribute('data-placeholder', `Passos de Implementação da Prática: ${pratica.meca_func}`);
+            document.getElementById('txt-result-espex').setAttribute('data-placeholder', `Resultados e Recursos Alvo: ${pratica.recursos_impacto}`);
+
+            const jaExiste = rotasMetodologicasSalvas.some(r => r.id_prat === idPrat);
+            if (!jaExiste) rotasMetodologicasSalvas.push({ "id_meta": pratica.id_meta, "id_prat": idPrat });
+        }
+
+        // 🎯 FUNÇÕES DE GERENCIAMENTO DA LISTA DE SUBTASKS
+        function renderizarSubtasksLocais() {
+            const container = document.getElementById('lista-subtasks-adicionadas');
+            if (!container) return;
+            if (listaSubtasksLocais.length === 0) {
+                container.innerHTML = '<div class="text-[9px] text-slate-500 italic mt-1">Nenhuma subtask vinculada no momento.</div>';
+                return;
+            }
+            container.innerHTML = listaSubtasksLocais.map((st, idx) => `
+                <div class="flex justify-between items-center p-2 bg-slate-950 border border-amber-900/30 rounded shadow-sm">
+                    <div class="text-[10px] text-slate-300 leading-tight pr-2"><strong class="text-amber-500 uppercase">[${st.pilar_subtask.replace('item_','P')}]</strong> ${st.desc_subtask}</div>
+                    <button type="button" onclick="removerSubtaskLocal(${idx})" class="text-rose-500 hover:text-rose-400 px-2 flex-shrink-0 transition-colors" title="Excluir subtask"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function adicionarSubtaskNaLista() {
+            if (listaSubtasksLocais.length >= 4) return alert("O limite máximo de planejamento é de 4 subtasks.");
+            const txtEl = document.getElementById('txt-nova-subtask');
+            const texto = txtEl.innerText.trim();
+            if (!texto) return alert("Por favor, descreva a subtask antes de tentar vinculá-la.");
+
+            const radioPilar = document.querySelector('input[name="rd_pilar_subtask"]:checked');
+            const pilarVal = radioPilar ? radioPilar.value : 'item_1';
+
+            listaSubtasksLocais.push({ pilar_subtask: pilarVal, desc_subtask: texto });
+            txtEl.innerText = ''; // Limpa a caixa após adicionar
+            renderizarSubtasksLocais();
+        }
+
+        function removerSubtaskLocal(idx) {
+            listaSubtasksLocais.splice(idx, 1);
+            renderizarSubtasksLocais();
+        }
+
+
+        async function carregarHistoricoExperimentos(idAcao) {
+            const container = document.getElementById('container-experimentos-lista');
+            if(!container) return; container.innerHTML = '<div class="text-[11px] text-slate-500 italic">Atualizando laboratório...</div>';
+            try {
+                const res = await fetch(`/inovador/api/experimentos?id_acao=${idAcao}`);
+                const resData = await res.json();
+                if (resData.status === 'success' && resData.data && resData.data.length > 0) {
+                    cacheExperimentosLocais = resData.data;
+                    container.innerHTML = resData.data.map(exp => `
+                        <div onclick="carregarExperimentoParaEdicao(${exp.id_espex})" class="p-2 bg-slate-950/40 border border-slate-800 rounded-md flex justify-between items-center cursor-pointer hover:bg-slate-800 transition-all" title="Clique para editar">
+                            <span class="text-xs text-slate-300 truncate"><i class="fa-solid fa-flask text-fuchsia-400 mr-2"></i>Exp: ${exp.hipo_espex.substring(0, 50)}...</span>
+                            <span class="text-[10px] text-cyan-400"><i class="fa-solid fa-pen"></i></span>
+                        </div>
+                    `).join('');
+                } else {
+                    cacheExperimentosLocais = [];
+                    container.innerHTML = '<div class="text-[11px] text-slate-500 italic">Nenhum experimento registrado.</div>';
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        function carregarExperimentoParaEdicao(idEspex) {
+            const exp = cacheExperimentosLocais.find(e => e.id_espex === idEspex);
+            if(!exp) return;
+            document.getElementById('hdn-id-espex').value = exp.id_espex;
+            document.getElementById('txt-hipo-espex').innerText = exp.hipo_espex;
+            document.getElementById('txt-desc-espex').innerText = exp.desc_espex;
+            document.getElementById('txt-result-espex').innerText = exp.result_espex;
+            document.getElementById('btn-salvar-experimento').innerText = "Atualizar Experimento";
+        }
+
+        async function adicionarExperimentoDescritivo() {
+            const idAcao = document.getElementById('hdn-id-acao').value;
+            if(!idAcao) return alert("Lance a Sprint ou selecione uma ação incubada antes!");
+
+            const idEspexEdicao = document.getElementById('hdn-id-espex').value;
+            const hipo = document.getElementById('txt-hipo-espex').innerText.trim();
+            const desc = document.getElementById('txt-desc-espex').innerText.trim();
+            const result = document.getElementById('txt-result-espex').innerText.trim();
+
+            if(!hipo || !desc || !result) return alert("Preencha todos os campos do experimento!");
+
+            try {
+                const metodo = idEspexEdicao ? 'PUT' : 'POST';
+                const payload = { id_acao: parseInt(idAcao), hipo_espex: hipo, desc_espex: desc, result_espex: result };
+                if(idEspexEdicao) payload.id_espex = parseInt(idEspexEdicao);
+
+                const response = await fetch('/inovador/api/experimentos', {
+                    method: metodo, headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if((await response.json()).status === 'success') {
+                    document.getElementById('hdn-id-espex').value = '';
+                    document.getElementById('txt-hipo-espex').innerText = '';
+                    document.getElementById('txt-desc-espex').innerText = '';
+                    document.getElementById('txt-result-espex').innerText = '';
+                    document.getElementById('btn-salvar-experimento').innerText = "Adicionar Experimento";
+                    carregarHistoricoExperimentos(parseInt(idAcao));
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function dispararLançamentoOuAtualizacao(idAcaoOpcional = null, blocoForcado = null) {
+            const bloco = blocoForcado || document.getElementById('select-bloco').value;
+            let pilaresFinais = {};
+            document.querySelectorAll('.pilar-editavel').forEach(el => { pilaresFinais[el.getAttribute('data-key')] = el.innerText.trim(); });
+            const selecionadas = Array.from(document.querySelectorAll('.chk-nota:checked')).map(cb => parseInt(cb.value));
+            const schoolsInput = document.getElementById('txt-escolas-ref');
+            const codigosEsf = schoolsInput ? schoolsInput.value.trim() : "";
+
+            try {
+                const response = await fetch('/inovador/api/acoes/salvar', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id_acao: idAcaoOpcional,
+                        id_clie: idClieReal,
+                        bloco_leaction: bloco,
+                        ids_notas: selecionadas,
+                        nome_acao: document.getElementById('res-titulo').innerText.trim(),
+                        justificativa_pedagogica: document.getElementById('res-justificativa').innerText.trim(),
+                        impacto_negocio: document.getElementById('res-impacto').innerText.trim(),
+                        composicao_estruturada: pilaresFinais,
+                        codigos_escolas_ref: codigosEsf,
+                        id_prob: cmuSelecionadoLocal ? cmuSelecionadoLocal.id_prob : null,
+                        rotas_metodologicas: rotasMetodologicasSalvas,
+                        subtasks_list: listaSubtasksLocais // Apenas o vetor da nova tabela é enviado
+                    })
+                });
+                if((await response.json()).status === 'success') {
+                    alert("Operação realizada com sucesso!");
+                    window.location.reload();
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function editarRotinaAtiva() {
+            const id = selectRotina.value; if(!id) return alert("Selecione uma aula ativa.");
+            const textoAtual = selectRotina.options[selectRotina.selectedIndex].text;
+            const novoTitulo = prompt("Refine o título:", textoAtual); if(!novoTitulo) return;
+            try {
+                const res = await fetch('/inovador/api/rotinas', {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_rotina: parseInt(id), titulo_atividade: novoTitulo })
+                });
+                if((await res.json()).status === 'success') inicializarDashboard();
+            } catch(e) { console.error(e); }
+        }
+
+        async function deletarRotinaAtiva() {
+            const id = selectRotina.value; if(!id) return alert("Selecione uma aula.");
+            if(!confirm("Deseja apagar?")) return;
+            try {
+                const res = await fetch(`/inovador/api/rotinas?id_rotina=${id}`, { method: 'DELETE' });
+                if((await res.json()).status === 'success') inicializarDashboard();
+            } catch(e) { console.error(e); }
+        }
+
+        async function editarNotaNoMural(idNota, event) {
+            event.stopPropagation(); const notaObj = notasLocais.find(n => n.id_nota === idNota);
+            const novoTexto = prompt("Refine:", notaObj.conteudo_bruto); if(!novoTexto) return;
+            try {
+                const res = await fetch('/inovador/api/notas', {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_nota: idNota, conteudo_bruto: novoTexto })
+                });
+                if((await res.json()).status === 'success') inicializarDashboard();
+            } catch(e) { console.error(e); }
+        }
+
+        async function deletarNotaNoMural(idNota, event) {
+            event.stopPropagation(); if(!confirm("Remover?")) return;
+            try {
+                const res = await fetch(`/inovador/api/notas?id_nota=${idNota}`, { method: 'DELETE' });
+                if((await res.json()).status === 'success') inicializarDashboard();
+            } catch(e) { console.error(e); }
+        }
+
+        function renderizarNotas() {
+            document.getElementById('contador-notas').innerText = notasLocais.length;
+            if(notasLocais.length === 0) { containerNotas.innerHTML = `<div class="col-span-2 text-center text-slate-500 text-xs py-8">Nenhum post-it.</div>`; return; }
+            containerNotas.innerHTML = notasLocais.map((n, index) => {
+                let postItColor = "bg-amber-500/10 border-amber-500/30 text-amber-200";
+                if (n.tipo_observacao === 'Comportamento_Aluno') postItColor = "bg-rose-500/10 border-rose-500/30 text-rose-200";
+                if (n.status_nota === 'Incubada') postItColor = "bg-emerald-500/10 border-emerald-500/30 text-emerald-200";
+                const rotation = index % 2 === 0 ? "rotate-1" : "-rotate-1";
+                return `
+                    <div onclick="gerenciarCliquePostIt(${n.id_nota}, '${n.status_nota}', event)" class="group relative aspect-square p-4 rounded-xl border ${postItColor} ${rotation} shadow-md flex flex-col justify-between cursor-pointer transition-all duration-200 hover:scale-105 hover:rotate-0">
+                        <div class="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                            ${n.status_nota === 'Pendente' ? `<button onclick="editarNotaNoMural(${n.id_nota}, event)" class="text-[10px] text-slate-400 hover:text-cyan-400"><i class="fa-solid fa-pen"></i></button><button onclick="deletarNotaNoMural(${n.id_nota}, event)" class="text-[10px] text-slate-400 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>` : ''}
+                            <input type="checkbox" value="${n.id_nota}" ${n.status_nota !== 'Pendente' ? 'disabled' : ''} class="chk-nota accent-indigo-500 w-3.5 h-3.5 rounded">
+                        </div>
+                        <div class="flex-1 overflow-hidden mt-2">
+                            <span class="text-[8px] bg-slate-900/80 px-1.5 py-0.5 rounded text-slate-400 block w-max mb-1 truncate">${n.aula_contexto || 'Sem contexto'}</span>
+                            <p class="text-[11px] font-medium leading-relaxed line-clamp-4">${n.conteudo_bruto}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function resetMesaDeLapidacao(mensagem = "Processando alquimia...") {
+            document.getElementById('ia-empty-state').classList.add('hidden');
+            document.getElementById('ia-result-panel').classList.remove('hidden');
+            document.getElementById('res-titulo').innerText = mensagem;
+            document.getElementById('res-justificativa').innerText = "";
+            document.getElementById('res-impacto').innerText = "";
+            document.getElementById('res-composicao').innerHTML = "";
+
+            listaSubtasksLocais = []; // Limpa cache de subtasks
+            renderizarSubtasksLocais();
+        }
+
+        async function gerenciarCliquePostIt(idNota, statusNota, event) {
+            if (event.target.type === 'checkbox' || event.target.closest('button')) return;
+            if (statusNota === 'Incubada') {
+                document.querySelectorAll('.chk-nota').forEach(cb => cb.checked = false);
+                resetMesaDeLapidacao("Buscando projeto estocado na base...");
+                try {
+                    const response = await fetch(`/inovador/api/acoes?id_nota=${idNota}`);
+                    const resData = await response.json();
+                    if (resData.status === 'success' && resData.data) {
+                        const acao = resData.data;
+                        document.getElementById('hdn-id-acao').value = acao.id_acao;
+                        document.getElementById('select-bloco').value = acao.bloco_leaction;
+                        document.getElementById('res-titulo').innerText = acao.nome_acao;
+                        document.getElementById('res-justificativa').innerText = acao.justificativa_pedagogica;
+                        document.getElementById('res-impacto').innerText = acao.impacto_negocio;
+                        const schoolsInput = document.getElementById('txt-escolas-ref');
+                        if (schoolsInput) schoolsInput.value = acao.codigos_escolas_ref || '';
+
+                        if (acao.id_prob) {
+                            cmuSelecionadoLocal = {
+                                id_prob: acao.id_prob, grupo_prob: acao.grupo_prob,
+                                categoria_prob: acao.categoria_prob, desc_prob: acao.desc_prob,
+                                razoes_prob: acao.razoes_prob, solucoes_prob: acao.solucoes_prob
+                            };
+                            document.getElementById('txt-busca-cmu').value = acao.categoria_prob;
+                            mostrarCmuNoPainelBusca(cmuSelecionadoLocal);
+                            exibirCardCMUAcoplado();
+                        } else { removerClassificacaoCMU(); }
+
+                        rotasMetodologicasSalvas = acao.rotas_metodologicas || [];
+
+                        // 🎯 CARREGA O VETOR DE SUBTASKS E RENDERIZA NA TELA
+                        listaSubtasksLocais = acao.subtasks_list || [];
+                        renderizarSubtasksLocais();
+
+                        let htmlPilares = ''; const comp = acao.composicao_estruturada || {};
+                        Object.keys(comp).forEach(key => {
+                            htmlPilares += `<div class="p-2 bg-slate-900/40 rounded border-l-2 border-emerald-400"><strong>${key.replace('_', ' ').toUpperCase()}:</strong> <span contenteditable="true" data-key="${key}" class="pilar-editavel focus:outline-none px-1">${comp[key]}</span></div>`;
+                        });
+                        document.getElementById('res-composicao').innerHTML = htmlPilares;
+                        document.getElementById('panel-experimentacao').classList.remove('hidden');
+                        carregarHistoricoExperimentos(acao.id_acao);
+
+                        btnSprint.disabled = false; btnSprint.innerText = "Atualizar Projeto / Vínculos";
+                        btnSprint.className = "bg-gradient-to-r from-teal-600 to-indigo-600 text-white text-xs font-bold uppercase tracking-wider px-6 rounded-xl shadow-lg cursor-pointer transition-all";
+                        btnSprint.onclick = () => dispararLançamentoOuAtualizacao(acao.id_acao, acao.bloco_leaction);
+                    }
+                } catch (err) { console.error(err); }
+            } else {
+                const chk = event.currentTarget.querySelector('.chk-nota'); if (chk) chk.checked = !chk.checked;
+            }
+        }
+
+        document.getElementById('btn-salvar-nota').addEventListener('click', async () => {
+            const idRotina = selectRotina.value; const conteudo = txtNota.value.trim();
+            if(!idRotina) return alert('Selecione ou crie uma aula antes de registrar no diário!');
+            if(!conteudo) return alert('O desabafo está vazio!');
+            try {
+                const response = await fetch('/inovador/api/notas', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_clie: idClieReal, id_rotina: parseInt(idRotina), conteudo_bruto: conteudo })
+                });
+                if((await response.json()).status === 'success') { txtNota.value = ''; inicializarDashboard(); }
+            } catch(err) { console.error(err); }
+        });
+
+        document.getElementById('btn-add-rotina').addEventListener('click', async () => {
+            const titulo = txtNovaRotina.value.trim(); if(!titulo) return alert("Digite o nome da aula!");
+            try {
+                const response = await fetch('/inovador/api/rotinas', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_clie: idClieReal, titulo_atividade: titulo })
+                });
+                if((await response.json()).status === 'success') { txtNovaRotina.value = ''; inicializarDashboard(); }
+            } catch(e) { console.error(e); }
+        });
+
+        btnIncubar.addEventListener('click', async () => {
+            const selecionadas = Array.from(document.querySelectorAll('.chk-nota:checked')).map(cb => parseInt(cb.value));
+            if(selecionadas.length === 0) return alert('Selecione post-its pendentes no mural para lapidar!');
+            const bloco = document.getElementById('select-bloco').value;
+            btnIncubar.disabled = true; resetMesaDeLapidacao("A IA Co-Autora está desenhando a solução... Aguarde.");
+            try {
+                const response = await fetch('/inovador/api/acoes/gerar-preview', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bloco_leaction: bloco, ids_notas: selecionadas, id_prob_cmu: cmuSelecionadoLocal ? cmuSelecionadoLocal.id_prob : null })
+                });
+                const resData = await response.json();
+                if (resData.status === 'success') {
+                    const rascunho = resData.rascunho;
+                    document.getElementById('res-titulo').innerText = rascunho.nome_acao;
+                    document.getElementById('res-justificativa').innerText = rascunho.justificativa_pedagogica;
+                    document.getElementById('res-impacto').innerText = rascunho.impacto_negocio;
+
+                    let htmlPilares = ''; let label1 = 'Pilar 1', label2 = 'Pilar 2', label3 = 'Pilar 3', label4 = 'Pilar 4'; let border = 'border-cyan-400';
+                    if (bloco === 'Aprendizagem_Digital') { label1 = 'Análise do Público'; label2 = 'Learner Journey'; label3 = 'Engajamento'; label4 = ''; border = 'border-fuchsia-400'; }
+                    else if (bloco === 'Testes_Exames') { label1 = 'Criação/Regras'; label2 = 'Automação'; label3 = 'Análise Preditiva'; label4 = ''; border = 'border-amber-400'; }
+                    else { label1 = 'Experiência Concreta'; label2 = 'Reflexão Observacional'; label3 = 'Conceituação'; label4 = 'Experimentação Ativa'; }
+
+                    if (rascunho.pilares.item_1) htmlPilares += `<div class="p-2 bg-slate-900/40 rounded border-l-2 ${border}"><strong>${label1}:</strong> <span contenteditable="true" data-key="item_1" class="pilar-editavel focus:outline-none px-1">${rascunho.pilares.item_1}</span></div>`;
+                    if (rascunho.pilares.item_2) htmlPilares += `<div class="p-2 bg-slate-900/40 rounded border-l-2 ${border}"><strong>${label2}:</strong> <span contenteditable="true" data-key="item_2" class="pilar-editavel focus:outline-none px-1">${rascunho.pilares.item_2}</span></div>`;
+                    if (rascunho.pilares.item_3) htmlPilares += `<div class="p-2 bg-slate-900/40 rounded border-l-2 ${border}"><strong>${label3}:</strong> <span contenteditable="true" data-key="item_3" class="pilar-editavel focus:outline-none px-1">${rascunho.pilares.item_3}</span></div>`;
+                    if (rascunho.pilares.item_4) htmlPilares += `<div class="p-2 bg-slate-900/40 rounded border-l-2 ${border}"><strong>${label4}:</strong> <span contenteditable="true" data-key="item_4" class="pilar-editavel focus:outline-none px-1">${rascunho.pilares.item_4}</span></div>`;
+                    document.getElementById('res-composicao').innerHTML = htmlPilares; exibirCardCMUAcoplado();
+
+                    btnSprint.disabled = false; btnSprint.innerText = "Lançar Sprint";
+                    btnSprint.className = "bg-gradient-to-r from-amber-500 to-orange-500 text-slate-900 text-xs font-bold uppercase tracking-wider px-6 rounded-xl shadow-lg cursor-pointer transition-all";
+                    btnSprint.onclick = () => dispararLançamentoOuAtualizacao(null, bloco);
+                }
+            } catch (e) { console.error(e); } finally { btnIncubar.disabled = false; btnIncubar.innerText = "Lapidar com IA Co-Autora"; }
+        });
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; const rec = new SpeechRecognition(); rec.lang = 'pt-BR';
+            btnMic.addEventListener('click', () => { btnMic.classList.contains('pulse-mic') ? rec.stop() : rec.start(); });
+            rec.onstart = () => { btnMic.classList.add('pulse-mic', 'from-red-500', 'to-rose-600'); micIcon.className = 'fa-solid fa-stop'; };
+            rec.onend = () => { btnMic.classList.remove('pulse-mic', 'from-red-500', 'to-rose-600'); micIcon.className = 'fa-solid fa-microphone'; };
+            rec.onresult = (e) => { txtNota.value = e.results[0][0].transcript; };
+        }
+
+        window.onload = inicializarDashboard;
+
+        function executarLogout() {
+            if (confirm("Deseja encerrar a sessão na Oficina do Inovador?")) {
+                window.location.href = '/inovador/logout';
+            }
+        }
+
+        document.getElementById('btn-exportar-json').addEventListener('click', () => {
+            const nomeSprint = document.getElementById('res-titulo').innerText.trim() || "Sprint de Inovacao";
+            const justificativa = document.getElementById('res-justificativa').innerText.trim() || "";
+            const impacto = document.getElementById('res-impacto').innerText.trim() || "";
+            const idMesa = document.getElementById('hdn-id-acao').value || "mesa_preview_" + Math.floor(Math.random() * 10000);
+            const formato = document.getElementById('combo-formato-destino').value;
+            let nomeArquivo = document.getElementById('txt-nome-arquivo-export').value.trim() || "sprint_exportada";
+            if (!nomeArquivo.toLowerCase().endsWith('.json')) nomeArquivo += '.json';
+
+            const bloco = document.getElementById('select-bloco').value;
+
+            const labelsMap = { 'item_1': 'Pilar 1', 'item_2': 'Pilar 2', 'item_3': 'Pilar 3', 'item_4': 'Pilar 4' };
+            const prioridadesMap = { 'item_1': 'Critica', 'item_2': 'Alta', 'item_3': 'Media', 'item_4': 'Baixa' };
+            const esforceMap = { 'item_1': 5, 'item_2': 8, 'item_3': 3, 'item_4': 2 };
+
+            let payload = {};
+
+            if (formato === 'Universal') {
+                let backlogItens = [];
+                document.querySelectorAll('.pilar-editavel').forEach(el => {
+                    const key = el.getAttribute('data-key');
+                    if (el.innerText.trim()) {
+
+                        // 🎯 FILTRA DO VETOR LOCAL SÓ AS SUBTASKS PERTENCENTES A ESSE PILAR ESPECÍFICO
+                        let subtasksDestePilar = listaSubtasksLocais
+                            .filter(st => st.pilar_subtask === key)
+                            .map(st => ({ "subtask_title": st.desc_subtask }));
+
+                        backlogItens.push({
+                            "id_item": `st_${idMesa}_${key.replace('item_', '')}`,
+                            "pilar_original": key,
+                            "titulo": `Fase: ${labelsMap[key] || key}`,
+                            "descricao": el.innerText.trim(),
+                            "pontos_esforco_scrum": esforceMap[key] || 5,
+                            "prioridade": prioridadesMap[key] || "Media",
+                            "status_inicial": "To Do",
+                            "subtasks": subtasksDestePilar // 🎯 ARRAY INJETADO DIRETAMENTE NO BACKLOG ITEM
+                        });
+                    }
+                });
+
+                payload = {
+                    "metadados": { "origem": "Mesa de Inovação - PanelDX", "schema_versao": "1.0.0", "gerado_em": new Date().toISOString() },
+                    "sprint_exportada": { "id_origem_mesa": idMesa, "nome_sprint": nomeSprint, "meta_da_sprint": `Justificativa Pedagógica: ${justificativa} | Impacto no Negócio: ${impacto}`, "duracao_sugerida_semanas": 2, "backlog_itens": backlogItens }
+                };
+            } else if (formato === 'Jira') {
+                let issues = [];
+                document.querySelectorAll('.pilar-editavel').forEach(el => {
+                    const key = el.getAttribute('data-key');
+                    if (el.innerText.trim()) {
+
+                        // 🎯 FILTRA DO VETOR PARA O JIRA
+                        let subtasksDestePilar = listaSubtasksLocais
+                            .filter(st => st.pilar_subtask === key)
+                            .map(st => ({ "subtask_title": st.desc_subtask }));
+
+                        issues.push({
+                            "projectKey": "PROJ", "issueType": "Story", "summary": `[Mesa Inovação] ${labelsMap[key] || key}: ${nomeSprint}`,
+                            "description": el.innerText.trim(), "storyPoints": esforceMap[key] || 5,
+                            "priority": prioridadesMap[key] === 'Critica' ? 'Highest' : (prioridadesMap[key] === 'Alta' ? 'High' : 'Medium'),
+                            "labels": ["mesa-inovacao", bloco],
+                            "subtasks": subtasksDestePilar
+                        });
+                    }
+                });
+                payload = { "sprint": { "name": nomeSprint, "goal": `Justificativa: ${justificativa} | Impacto: ${impacto}`, "id_origem_mesa": idMesa }, "issues": issues };
+            } else if (formato === 'Trello') {
+                let cards = [];
+                document.querySelectorAll('.pilar-editavel').forEach(el => {
+                    const key = el.getAttribute('data-key');
+                    if (el.innerText.trim()) {
+
+                        // 🎯 FILTRA DO VETOR PARA O TRELLO
+                        let subtasksDestePilar = listaSubtasksLocais
+                            .filter(st => st.pilar_subtask === key)
+                            .map(st => ({ "subtask_title": st.desc_subtask }));
+
+                        cards.push({
+                            "name": `${labelsMap[key] || key} - ${nomeSprint}`,
+                            "desc": `Descrição do Backlog:\n${el.innerText.trim()}\n\nPontos de Esforço Scrum: ${esforceMap[key] || 5}`,
+                            "labels": [prioridadesMap[key] || "Media"], "pos": "top",
+                            "subtasks": subtasksDestePilar
+                        });
+                    }
+                });
+                payload = { "list": { "name": nomeSprint }, "cards": cards };
+            }
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", nomeArquivo);
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        });
+
+    </script>
+</body>
+</html>

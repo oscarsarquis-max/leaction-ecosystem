@@ -1,0 +1,218 @@
+.portal-consultor__hero h1 i {
+    margin-right: 8px;
+}
+
+.portal-consultor__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 20px;
+}
+
+.portal-consultor__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: #fff;
+    color: #334155;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.portal-consultor__tab.is-active {
+    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+    border-color: transparent;
+    color: #fff;
+}
+
+.portal-consultor__panel[hidden] {
+    display: none !important;
+}
+
+.portal-consultor__agency-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e3a8a;
+    font-weight: 600;
+}
+
+.portal-consultor__metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.portal-consultor__metrics--stats {
+    margin-bottom: 20px;
+}
+
+.portal-consultor__metric {
+    background: #fff;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+
+.portal-consultor__metric--gold {
+    border-color: #fbbf24;
+    background: linear-gradient(180deg, #fffbeb, #fff);
+}
+
+.portal-consultor__metric-label {
+    display: block;
+    font-size: 0.82rem;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.portal-consultor__metric-value {
+    font-size: 1.35rem;
+    color: #0f172a;
+}
+
+.portal-consultor.is-finance-hidden .portal-col-finance,
+.portal-consultor.is-finance-hidden #portal-finance-metrics {
+    display: none !important;
+}
+
+.portal-consultor__demandas-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.portal-consultor__board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+@media (max-width: 960px) {
+    .portal-consultor__board {
+        grid-template-columns: 1fr;
+    }
+}
+
+.portal-consultor__board-col {
+    background: #f8fafc;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 220px;
+}
+
+.portal-consultor__board-col h3 {
+    margin: 0 0 10px;
+    font-size: 0.95rem;
+    color: #475569;
+}
+
+.portal-consultor__board-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.portal-consultor__card {
+    background: #fff;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.portal-consultor__card-title {
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 4px;
+}
+
+.portal-consultor__card-meta {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.portal-consultor__card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.portal-consultor__card-actions button {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    cursor: pointer;
+}
+
+.portal-consultor__badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.portal-consultor__badge--origem { background: #dcfce7; color: #166534; }
+.portal-consultor__badge--tecnico { background: #e0f2fe; color: #075985; }
+.portal-consultor__badge--origem_tecnico { background: #ede9fe; color: #5b21b6; }
+.portal-consultor__badge--responsavel {
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.68rem;
+    white-space: nowrap;
+}
+
+.portal-consultor__team-card {
+    margin-bottom: 16px;
+}
+
+.portal-consultor__card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.portal-consultor__card-head .portal-consultor__card-title {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#modal-demanda.mesa-modal.is-open {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+#modal-demanda .admin-crm__modal-dialog {
+    width: min(520px, 100%);
+    max-height: min(90vh, 640px);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+}

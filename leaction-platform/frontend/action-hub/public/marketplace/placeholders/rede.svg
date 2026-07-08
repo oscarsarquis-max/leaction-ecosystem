@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" fill="none">
+  <rect width="240" height="240" fill="#f1f5f9"/>
+  <rect x="24" y="24" width="192" height="192" rx="16" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <circle cx="120" cy="96" r="12" fill="#cbd5e1" stroke="#475569" stroke-width="2"/>
+  <circle cx="88" cy="136" r="10" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+  <circle cx="152" cy="136" r="10" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+  <path d="M120 108v16M108 130l-12 8M132 130l12 8" stroke="#64748b" stroke-width="2"/>
+  <text x="120" y="188" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#334155">Rede</text>
+</svg>

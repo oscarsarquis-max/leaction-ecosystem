@@ -1,0 +1,41 @@
+# =====================================================================
+# PanelDX — .gitignore
+# =====================================================================
+
+# --- Segredos / variáveis de ambiente (NUNCA versionar) ---
+.env
+.env.*
+!.env.example
+
+# --- Node.js ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# --- Ambientes virtuais Python ---
+venv/
+venv_action/
+.venv/
+env/
+
+# --- IDE ---
+.idea/
+.vscode/
+
+# --- Artefatos gerados ---
+*.log
+diagnostico_*.pdf
+LeAction_Sys_FE/public/images/*
+!LeAction_Sys_FE/public/images/.gitkeep
+
+# --- SO ---
+.DS_Store
+Thumbs.db

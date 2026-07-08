@@ -1,0 +1,198 @@
+<div class="main-content" id="acesso-page">
+    <div class="form-container" style="max-width: 400px; margin: 50px auto; min-height: 350px;">
+
+        <h1 id="titulo-login">Bem-vindo</h1>
+        <p id="subtitulo-login">Digite seu e-mail corporativo ou pessoal para entrar.</p>
+
+        <form id="loginForm" onsubmit="return false;">
+
+            <div id="step-1">
+                <div class="form-group">
+                    <label for="email">Seu E-mail:</label>
+                    <input type="email" id="email" name="email" placeholder="nome@empresa.com" required>
+                </div>
+
+                <button type="button" onclick="verificarEmail()" id="btn-check" class="btn blue-btn" style="width: 100%; margin-top: 20px;">
+                    Continuar <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <div id="step-2" style="display:none; animation: fadeIn 0.5s;">
+
+                <div style="background: #f0f4f8; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 0.9em; display: flex; justify-content: space-between; align-items: center;">
+                    <span id="user-email-display" style="font-weight: bold; color: #333;"></span>
+                    <a href="#" onclick="voltarPasso1()" style="font-size: 0.8em; color: #666;">Alterar</a>
+                </div>
+
+                <div class="form-group">
+                    <label id="label-credential" for="credential">Senha:</label>
+                    <input type="password" id="credential" name="credential" required>
+
+                    <small id="hint-code" style="display:none; color: #666; font-size: 0.85em; margin-top: 5px;">
+                        <i class="fas fa-envelope"></i> Verifique sua caixa de entrada.
+                    </small>
+                </div>
+
+                <button type="button" onclick="realizarLogin()" id="btn-login" class="btn blue-btn" style="width: 100%; margin-top: 20px;">
+                    Entrar
+                </button>
+
+            </div>
+
+            <p id="loginStatusMessage" style="margin-top: 15px; text-align: center; font-weight: bold; min-height: 24px;"></p>
+
+        </form>
+    </div>
+</div>
+
+<style>
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .loading {
+        opacity: 0.7;
+        pointer-events: none;
+        cursor: wait;
+    }
+</style>
+
+<script>
+    let userType = null;
+
+    // 1. VERIFICAR E-MAIL (Chama o Node)
+    async function verificarEmail() {
+        const email = document.getElementById('email').value.trim();
+        const btn = document.getElementById('btn-check');
+        const status = document.getElementById('loginStatusMessage');
+
+        if (!email) {
+            status.innerText = "Por favor, digite um e-mail.";
+            status.style.color = "red";
+            return;
+        }
+
+        // UX
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+        btn.classList.add('loading');
+        status.innerText = "";
+
+        try {
+            // AQUI: Chama o Node (/verificar-email), não o Python direto
+            const res = await fetch('/verificar-email', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                userType = data.type; // 'TEAM' ou 'LEAD'
+                prepararPasso2(email, data.message, userType);
+            } else {
+                status.innerText = data.error || "E-mail não encontrado.";
+                status.style.color = "red";
+            }
+        } catch (e) {
+            console.error(e);
+            status.innerText = "Erro de conexão.";
+            status.style.color = "red";
+        } finally {
+            btn.innerHTML = 'Continuar <i class="fas fa-arrow-right"></i>';
+            btn.classList.remove('loading');
+        }
+    }
+
+    // 2. CONFIGURAR TELA PASSO 2
+    function prepararPasso2(email, message, type) {
+        document.getElementById('step-1').style.display = 'none';
+        document.getElementById('step-2').style.display = 'block';
+        document.getElementById('user-email-display').innerText = email;
+
+        const inputCred = document.getElementById('credential');
+        const labelCred = document.getElementById('label-credential');
+        const hintCode = document.getElementById('hint-code');
+
+        if (type === 'TEAM') {
+            labelCred.innerText = "Senha de Administrador:";
+            inputCred.type = "password";
+            inputCred.placeholder = "••••••••";
+            hintCode.style.display = 'none';
+        } else {
+            labelCred.innerText = "Código de Acesso:";
+            inputCred.type = "text";
+            inputCred.placeholder = "Ex: 123456";
+            hintCode.style.display = 'block';
+        }
+
+        setTimeout(() => inputCred.focus(), 100);
+    }
+
+    function voltarPasso1() {
+        document.getElementById('step-1').style.display = 'block';
+        document.getElementById('step-2').style.display = 'none';
+        document.getElementById('credential').value = "";
+        document.getElementById('loginStatusMessage').innerText = "";
+    }
+
+    // 3. REALIZAR LOGIN (CORREÇÃO CRUCIAL)
+    async function realizarLogin() {
+        const email = document.getElementById('user-email-display').innerText;
+        const credential = document.getElementById('credential').value.trim();
+        const btn = document.getElementById('btn-login');
+        const status = document.getElementById('loginStatusMessage');
+
+        if(!credential) {
+            status.innerText = "Digite a senha ou código.";
+            status.style.color = "red";
+            return;
+        }
+
+        // UX
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
+        btn.classList.add('loading');
+
+        try {
+            // AQUI ESTAVA O ERRO NO SEU CÓDIGO ANTIGO:
+            // Você estava chamando http://localhost:5000/api/login (Python)
+            // Agora chamamos /login (Node), para que o Node crie a sessão.
+            const res = await fetch('/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    email: email,
+                    codigo: credential
+                })
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                status.innerText = "Sucesso! Redirecionando...";
+                status.style.color = "green";
+
+                // O Node já diz para onde ir (/admin ou /projeto)
+                window.location.href = data.redirect;
+            } else {
+                status.innerText = data.message || "Credenciais inválidas.";
+                status.style.color = "red";
+            }
+        } catch (e) {
+            console.error("Erro Login:", e);
+            status.innerText = "Erro de conexão.";
+            status.style.color = "red";
+        } finally {
+            btn.innerHTML = 'Entrar';
+            btn.classList.remove('loading');
+        }
+    }
+
+    // Enter nos inputs
+    document.getElementById('credential').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') realizarLogin();
+    });
+    document.getElementById('email').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') verificarEmail();
+    });
+</script>

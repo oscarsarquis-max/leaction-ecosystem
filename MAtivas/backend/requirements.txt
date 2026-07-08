@@ -1,0 +1,8 @@
+flask
+flask-cors
+psycopg2-binary
+sqlalchemy
+PyJWT
+python-dotenv
+boto3
+langchain-aws

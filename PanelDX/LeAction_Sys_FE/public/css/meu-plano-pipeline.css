@@ -1,0 +1,152 @@
+/* Meu Plano — seção de blocos do Relatório no pipeline */
+.plano-pipeline-panel {
+    border-radius: 16px;
+    padding: 22px 24px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+}
+
+.plano-pipeline-panel--loading {
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.9rem;
+    padding: 28px;
+}
+
+.plano-pipeline-panel--empty {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.plano-pipeline-panel--active {
+    background: linear-gradient(180deg, #fff7ed 0%, #ffffff 55%);
+    border: 2px solid #fdba74;
+    box-shadow: 0 8px 24px rgba(234, 88, 12, 0.08);
+}
+
+.plano-pipeline-panel__icon {
+    font-size: 1.6rem;
+    color: #2563eb;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.plano-pipeline-panel__head {
+    margin-bottom: 18px;
+}
+
+.plano-pipeline-panel__title {
+    margin: 0 0 6px 0;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #9a3412;
+}
+
+.plano-pipeline-panel__lead {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #4b5563;
+    line-height: 1.55;
+}
+
+.plano-pipeline-panel__steps {
+    margin: 12px 0 0 0;
+    font-size: 0.82rem;
+    color: #6b7280;
+}
+
+.plano-pipeline-panel__highlight {
+    color: #b91c1c;
+    font-weight: 800;
+}
+
+.plano-pipeline-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.plano-pipeline-card {
+    background: #fff;
+    border: 1px solid #fed7aa;
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.plano-pipeline-card__badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.plano-pipeline-card__badge {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.plano-pipeline-card__badge--dx {
+    background: #4f46e5;
+    color: #fff;
+}
+
+.plano-pipeline-card__badge--status {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
+.plano-pipeline-card__mesa {
+    margin: 0;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ea580c;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.plano-pipeline-card__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.35;
+}
+
+.plano-pipeline-card__desc {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #6b7280;
+    line-height: 1.45;
+    flex: 1;
+}
+
+.plano-pipeline-card__devolver {
+    margin-top: 8px;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 2px dashed #f87171;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.plano-pipeline-card__devolver:hover {
+    background: #fee2e2;
+}
+
+.plano-pipeline-card__devolver:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}

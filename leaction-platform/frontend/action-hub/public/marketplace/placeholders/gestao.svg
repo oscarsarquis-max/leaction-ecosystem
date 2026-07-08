@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" fill="none">
+  <rect width="240" height="240" fill="#fff7ed"/>
+  <rect x="24" y="24" width="192" height="192" rx="16" fill="#ffffff" stroke="#ea580c" stroke-width="2"/>
+  <rect x="72" y="80" width="96" height="64" rx="8" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+  <path d="M88 112h64M88 128h48" stroke="#fb923c" stroke-width="3" stroke-linecap="round"/>
+  <text x="120" y="188" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#c2410c">Gest�o</text>
+</svg>

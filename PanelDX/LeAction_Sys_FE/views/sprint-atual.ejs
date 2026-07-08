@@ -1,0 +1,2528 @@
+<!-- ✍️ QUILL.JS — Editor Rich Text (tema Snow) para a Evidência do Modulador -->
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<link rel="stylesheet" href="/css/estrategia-okr.css?v=1">
+<script src="/js/estrategia-okr.js?v=1"></script>
+
+<style>
+    /* ==================================================================
+       🎨 MANUAL DE IDENTIDADE VISUAL: BLACK, WHITE & LILAC (STRICT)
+       ================================================================== */
+    :root {
+        --pure-white: #ffffff;
+        --pure-black: #000000;
+        --dark-lilac: #4A2E80;
+        --light-lilac: #F4F2FF;
+        --border-lilac: #E2D9FF;
+        --text-dark: #1A1A1A;
+        --text-gray: #666666;
+    }
+
+    /* Layout Geral do Kanban */
+    .kanban-header {
+        background: var(--pure-white); padding: 25px; border-radius: 12px;
+        border-left: 6px solid var(--dark-lilac); box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
+        border: 1px solid #eee;
+    }
+    .kanban-title h2 { margin: 0; color: var(--pure-black); font-size: 1.6em; font-weight: 900; letter-spacing: -0.5px; }
+    .kanban-title p { margin: 4px 0 0 0; color: var(--text-gray); font-size: 0.9em; }
+
+    .kanban-board { display: flex; gap: 20px; align-items: flex-start; padding-bottom: 20px; overflow-x: auto; }
+
+    /* Colunas do Quadro */
+    .kanban-column {
+        flex: 1; background: #fafafa; border-radius: 14px; min-width: 330px;
+        min-height: 75vh; padding: 18px; display: flex; flex-direction: column; border: 1px solid #eee;
+    }
+    .kanban-column h3 {
+        font-size: 0.85em; text-transform: uppercase; color: var(--text-dark);
+        margin-bottom: 18px; display: flex; align-items: center; gap: 10px; padding: 0 5px; font-weight: 800;
+    }
+
+    /* Cards Dinâmicos */
+    .task-card {
+        background: var(--pure-white); border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        margin-bottom: 15px; transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #f0f0f0;
+        border-left: 6px solid var(--text-gray); overflow: hidden;
+    }
+    .task-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.08); }
+
+    /* 🎯 AUTOCOMPLETE DE BLOCOS (Planejamento DX) — identidade escura/lilás */
+    .dx-autocomplete-dropdown {
+        position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px;
+        background: #111827; border: 1px solid #4A2E80; border-radius: 10px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.4); z-index: 60;
+        max-height: 230px; overflow-y: auto;
+    }
+    .dx-autocomplete-dropdown.hidden { display: none; }
+    .dx-bloco-item {
+        padding: 10px 14px; border-bottom: 1px solid #1f2937; cursor: pointer; transition: 0.15s;
+    }
+    .dx-bloco-item:last-child { border-bottom: none; }
+    .dx-bloco-item:hover { background: #4A2E80; }
+    .dx-bloco-item .dx-bloco-nome { font-size: 0.85em; font-weight: 700; color: #F4F2FF; }
+    .dx-bloco-item .dx-bloco-desc { font-size: 0.72em; color: #9ca3af; margin-top: 3px; line-height: 1.3; }
+    .dx-autocomplete-empty { padding: 12px 14px; font-size: 0.78em; color: #9ca3af; font-style: italic; }
+
+    /* Modal Planejar Sprint DX — centralizado (evita conflito com .modal-content do Kanban) */
+    #modal-planejamento-dx {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+    #modal-planejamento-dx.is-open {
+        display: flex !important;
+    }
+    #modal-planejamento-dx .modal-content {
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        transform: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 620px !important;
+        max-height: min(90vh, 760px) !important;
+        overflow-y: auto;
+    }
+
+    /* Modal Atividade Operacional — centralizado, abas e cascata OKR */
+    #subModalAtividade {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+        z-index: 3000;
+    }
+    #subModalAtividade.is-open {
+        display: flex !important;
+    }
+    #subModalAtividade .ativ-modal-panel {
+        position: relative;
+        width: 100%;
+        max-width: 920px;
+        max-height: min(92vh, 900px);
+        overflow-y: auto;
+        background: var(--pure-white);
+        border-radius: 16px;
+        padding: 0;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+        border-top: 5px solid var(--dark-lilac);
+    }
+    #subModalAtividade .ativ-modal-hero {
+        padding: 22px 28px 18px;
+        background: linear-gradient(135deg, #4A2E80 0%, #6c5ce7 100%);
+        color: #fff;
+        border-radius: 12px 12px 0 0;
+    }
+    #subModalAtividade .ativ-modal-hero h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 900;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    #subModalAtividade .ativ-modal-hero p {
+        margin: 8px 0 0;
+        font-size: 0.85rem;
+        opacity: 0.92;
+        line-height: 1.45;
+    }
+    #subModalAtividade .ativ-modal-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+    }
+    #subModalAtividade .ativ-modal-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: none;
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+    #subModalAtividade .ativ-modal-tab.active {
+        background: #fff;
+        color: #4A2E80;
+    }
+    #subModalAtividade .ativ-modal-body {
+        padding: 24px 28px 28px;
+    }
+    #subModalAtividade .ativ-modal-pane { display: none; }
+    #subModalAtividade .ativ-modal-pane.active { display: block; }
+    #subModalAtividade .ativ-modal-close {
+        position: absolute;
+        top: 14px;
+        right: 18px;
+        z-index: 2;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+        font-size: 1.4rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+    #subModalAtividade .ativ-modal-close:hover { background: rgba(255, 255, 255, 0.35); }
+    #subModalAtividade .ativ-squad-alert {
+        display: none;
+        margin-top: 8px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+        font-size: 0.8rem;
+        font-weight: 600;
+        line-height: 1.4;
+    }
+    #subModalAtividade .ativ-squad-alert.is-visible { display: block; }
+    #subModalAtividade .ativ-modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        border-top: 1px solid #eee;
+        padding-top: 18px;
+        margin-top: 8px;
+    }
+    #subModalAtividade .ativ-cascata-hint {
+        font-size: 0.78rem;
+        color: #64748b;
+        margin: 0 0 14px;
+        line-height: 1.45;
+    }
+    @media (max-width: 640px) {
+        #subModalAtividade .ativ-modal-body { padding: 18px 16px 22px; }
+        #subModalAtividade .ativ-modal-hero { padding: 18px 16px 14px; }
+    }
+
+    /* 🎯 ESTILOS DO CARD DA MESA DE INOVAÇÃO (DX) */
+    .card-inovacao { border-left-color: #f97316 !important; background: #fffdfa; }
+    .badge-dx { background: #4f46e5; color: white; padding: 3px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 900; letter-spacing: 1px; margin-right: 5px; }
+
+    .card-backlog { border-left-color: #e74c3c; }
+    .card-andamento { border-left-color: var(--dark-lilac); }
+    .card-concluido { border-left-color: #27ae60; }
+
+    .task-header { padding: 18px; border-bottom: 1px solid #fcfcfc; }
+    .task-title { font-weight: 800; font-size: 1.05em; color: var(--pure-black); line-height: 1.3; }
+
+    .dod-list { padding: 12px 18px; background: #fafafa; border-top: 1px solid #f5f5f5; }
+    .dod-text { font-size: 0.85em; color: var(--text-gray); line-height: 1.4; display: block; }
+    .task-actions { padding: 12px 18px; background: var(--pure-white); border-top: 1px solid #eee; text-align: center; }
+
+    /* Botões Customizados */
+    .btn-action {
+        width: 100%; padding: 10px; border-radius: 6px; border: none;
+        font-weight: 700; cursor: pointer; display: flex; align-items: center;
+        justify-content: center; gap: 8px; font-size: 0.85em; transition: 0.2s;
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .btn-purple-dark { background: var(--pure-black); color: var(--pure-white); }
+    .btn-purple-dark:hover { background: var(--dark-lilac); }
+    .btn-purple-light { background: var(--light-lilac); color: var(--dark-lilac); border: 1px solid var(--border-lilac); }
+    .btn-purple-light:hover { background: var(--border-lilac); }
+
+    /* Toast de feedback (evolução de atividades) */
+    #toast-evolucao-atividade {
+        position: fixed; bottom: 28px; right: 28px; z-index: 9999;
+        min-width: 260px; max-width: 380px; padding: 14px 18px;
+        border-radius: 10px; font-weight: 700; font-size: 0.9rem;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.18); display: none;
+        align-items: center; gap: 10px; color: #fff;
+        animation: toastSlideIn 0.25s ease-out;
+    }
+    #toast-evolucao-atividade.toast-success { background: #27ae60; }
+    #toast-evolucao-atividade.toast-error { background: #c0392b; }
+    @keyframes toastSlideIn {
+        from { transform: translateY(12px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* ✍️ MODULADOR IA — Editor Premium e Veredito */
+    .modulador-wrap {
+        margin-top: 18px; background: var(--pure-white);
+        border: 1px solid var(--border-lilac); border-radius: 12px; overflow: hidden;
+    }
+    .modulador-head {
+        background: linear-gradient(100deg, #1a1330 0%, var(--dark-lilac) 100%);
+        color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 10px;
+    }
+    .modulador-head i { color: #f4c542; font-size: 1.2em; }
+    .modulador-head h4 { margin: 0; font-size: 0.95em; font-weight: 800; letter-spacing: 0.3px; }
+    .modulador-head small { display: block; color: #c9bfe8; font-weight: 500; font-size: 0.78em; margin-top: 2px; }
+    .modulador-body { padding: 16px 18px; }
+    #quill-evidencia { min-height: 160px; background: #fff; font-size: 0.95em; }
+    #quill-evidencia .ql-editor { min-height: 160px; }
+    .ql-toolbar.ql-snow, .ql-container.ql-snow { border-color: var(--border-lilac); }
+    .ql-toolbar.ql-snow { border-top-left-radius: 8px; border-top-right-radius: 8px; }
+    .ql-container.ql-snow { border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+
+    .btn-modulador {
+        margin-top: 16px; width: 100%; padding: 14px; border: none; border-radius: 10px;
+        cursor: pointer; font-weight: 800; font-size: 0.95em; text-transform: uppercase;
+        letter-spacing: 0.6px; display: flex; align-items: center; justify-content: center; gap: 10px;
+        color: #2b2200; background: linear-gradient(95deg, #f7d774 0%, #e0a93f 100%);
+        box-shadow: 0 6px 18px rgba(224,169,63,0.35); transition: 0.2s;
+    }
+    .btn-modulador:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(224,169,63,0.45); }
+    .btn-modulador:disabled { opacity: 0.7; cursor: not-allowed; filter: grayscale(0.2); }
+    .btn-modulador i { font-size: 1.1em; }
+
+    .modulador-help {
+        margin: 10px 2px 0 2px; font-size: 0.8em; color: #b45309; line-height: 1.4;
+        display: flex; align-items: flex-start; gap: 7px;
+    }
+    .modulador-help i { color: #d97706; margin-top: 2px; }
+    .modulador-help strong { color: #92400e; }
+
+    .modulador-resultado {
+        display: none; margin-top: 18px; border-radius: 12px; overflow: hidden;
+        border: 1px solid #eee; animation: toastSlideIn 0.3s ease-out;
+    }
+    .modulador-resultado .res-head {
+        padding: 14px 18px; display: flex; align-items: center; gap: 12px; color: #fff; font-weight: 800;
+    }
+    .modulador-resultado.res-aprovado .res-head { background: #1e9e57; }
+    .modulador-resultado.res-revisao .res-head { background: #d97706; }
+    .modulador-resultado .res-head .res-badge {
+        margin-left: auto; background: rgba(255,255,255,0.22); padding: 4px 12px; border-radius: 20px;
+        font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .modulador-resultado .res-body { padding: 18px; background: #fff; }
+    .modulador-resultado .res-feedback { color: var(--text-dark); line-height: 1.5; font-size: 0.92em; margin-bottom: 16px; }
+    .modulador-resultado .res-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .modulador-resultado .res-col h5 {
+        margin: 0 0 8px 0; font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800;
+    }
+    .modulador-resultado .res-col.fortes h5 { color: #1e9e57; }
+    .modulador-resultado .res-col.pend h5 { color: #d97706; }
+    .modulador-resultado .res-col ul { margin: 0; padding-left: 18px; }
+    .modulador-resultado .res-col li { font-size: 0.86em; color: var(--text-gray); margin-bottom: 5px; line-height: 1.4; }
+    @media (max-width: 640px) { .modulador-resultado .res-cols { grid-template-columns: 1fr; } }
+
+    /* Layout do Modal (Dashboard Assimétrico Grid) */
+    .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); }
+    .modal-content {
+        background: var(--pure-white); margin: 2vh auto; padding: 30px; border-radius: 16px;
+        width: 96%; max-width: 1550px; max-height: 96vh; overflow-y: auto; box-shadow: 0 15px 40px rgba(0,0,0,0.25);
+    }
+    .close { float: right; font-size: 32px; cursor: pointer; color: #bbb; transition: 0.2s; font-weight: 300; }
+    .close:hover { color: var(--pure-black); }
+
+    .sprint-governance-grid {
+        display: grid; grid-template-columns: 1.62fr 0.88fr; gap: 30px; align-items: start; width: 100%;
+    }
+
+    /* Bloco Estacionário da IA e Metas (Coluna Direita) */
+    .modulador-sticky-sidebar {
+        position: sticky; top: 10px; background: var(--light-lilac); border: 1px solid var(--border-lilac);
+        border-radius: 14px; padding: 25px; display: flex; flex-direction: column; gap: 20px;
+        max-height: 86vh; overflow-y: auto; box-shadow: inset 0 0 10px rgba(74,46,128,0.02);
+    }
+
+    /* Widget de Progresso da Meta */
+    .meta-progress-widget {
+        background: var(--pure-black); color: var(--pure-white); padding: 22px; border-radius: 10px; text-align: center;
+    }
+    .meta-progress-value { font-size: 2.6em; font-weight: 900; color: var(--pure-white); line-height: 1; }
+
+    /* Console de Comunicação Permanente */
+    .modulador-live-console {
+        background: var(--pure-white); border: 1px solid var(--border-lilac); border-radius: 8px;
+        padding: 15px; font-size: 0.9em; line-height: 1.5; color: var(--text-dark); max-height: 320px; overflow-y: auto;
+    }
+
+    /* Vetores da Operação (Coluna Esquerda) */
+    fieldset.vector-fieldset {
+        border: 1px solid #e2e8f0; padding: 22px; border-radius: 12px; margin-bottom: 20px; background: var(--pure-white);
+    }
+    fieldset.vector-fieldset legend {
+        padding: 0 15px; font-weight: 900; color: var(--dark-lilac); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 700; font-size: 0.85em; color: var(--text-dark); }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #dddddd; border-radius: 6px; font-size: 0.9em; color: var(--text-dark); background: var(--pure-white); }
+    input:focus, select:focus, textarea:focus { border-color: var(--dark-lilac); outline: none; }
+
+    .framework-guide { background: #fdfdfd; border-radius: 10px; padding: 15px; margin-bottom: 25px; border: 1px solid #eee; border-left: 5px solid var(--dark-lilac); }
+    .metric-range-box { background: #fafafa; border: 1px solid #f0f0f0; border-radius: 8px; padding: 15px; }
+
+    /* Sliders */
+    .metric-range { -webkit-appearance: none; width: 100%; height: 8px; border-radius: 4px; background: #e0e0e0; outline: none; }
+    .metric-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--dark-lilac); cursor: pointer; transition: 0.1s; }
+    .metric-range::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+    /* Animação de Pulso para o Microfone Ativo */
+    @keyframes mic-pulse {
+        0% { color: var(--dark-lilac); transform: scale(1); }
+        50% { color: #e74c3c; transform: scale(1.15); opacity: 0.8; }
+        100% { color: var(--dark-lilac); transform: scale(1); }
+    }
+    .mic-ativo {
+        animation: mic-pulse 1.3s infinite ease-in-out;
+    }
+</style>
+
+<%
+    // --- CONSOLIDAÇÃO DE ESTRUTURA HORIZONTAL ---
+    let todasAsSprints = [];
+    if (locals.journey && journey.length > 0) {
+        journey.forEach(onda => {
+            if (onda.sprints) {
+                onda.sprints.forEach(s => {
+                    s.nome_onda = onda.nome;
+                    todasAsSprints.push(s);
+                });
+            }
+        });
+    }
+
+    function blocoOrigemRelatorioKey(sprint) {
+        let ms = sprint.metrics_scores;
+        if (!ms) return null;
+        if (typeof ms === 'string') {
+            try { ms = JSON.parse(ms); } catch (e) { return null; }
+        }
+        const bo = ms.bloco_origem;
+        if (!bo || typeof bo !== 'object') return null;
+        const key = String(bo.id_bloc || bo.nome || '').trim();
+        return key || null;
+    }
+
+    function normStatKanban(s) {
+        return String(s || '').toLowerCase().trim().replace(/\s+/g, '_');
+    }
+    function isStatEmAnalise(s) {
+        const n = normStatKanban(s);
+        return n === 'em_analise' || n === 'em analise'.replace(' ', '_');
+    }
+    function isStatBacklog(s) {
+        const n = normStatKanban(s);
+        return ['planejada_backlog', 'planejada', 'planejado', 'pendente', 'agendada', 'agendado', ''].indexOf(n) >= 0;
+    }
+    function isStatAndamento(s) {
+        const n = normStatKanban(s);
+        return ['em_andamento', 'ativa', 'em_progresso', 'executando'].indexOf(n) >= 0;
+    }
+    function isStatConcluida(s) {
+        const n = normStatKanban(s);
+        return ['concluida', 'concluido', 'finalizada'].indexOf(n) >= 0;
+    }
+
+    function isSprintDxDoRelatorio(sprint) {
+        if (sprint.url_kanban === 'IMPORTACAO_JSON_DX') return true;
+        let ms = sprint.metrics_scores;
+        if (!ms) return false;
+        if (typeof ms === 'string') {
+            try { ms = JSON.parse(ms); } catch (e) { return false; }
+        }
+        if (ms.bloco_origem) return true;
+        const origem = String(ms.origem || '').toLowerCase();
+        return origem.includes('mesa') && origem.includes('panel');
+    }
+%>
+
+<input type="hidden" id="id_cliente_hidden" value="<%= lead.id_clie || '' %>" />
+<input type="hidden" id="id_matu_hidden" value="<%= lead.id_matu || '' %>" />
+
+<div class="kanban-header">
+    <div class="kanban-title">
+        <h2>Quadro de Controle das Sprints (Kanban)</h2>
+        <p>Cliente: <strong><%= lead.nome %></strong></p>
+    </div>
+    <div style="font-size: 0.85em; font-weight: bold; color: var(--dark-lilac);">
+        ID MATURIDADE: #<%= lead.id_matu %>
+    </div>
+</div>
+
+<div class="kanban-board">
+
+    <!-- 🎯 NOVA COLUNA: INOVAÇÃO (EM ANÁLISE) -->
+    <div class="kanban-column" style="background: #fffaf5; border-color: #fdba74;">
+        <h3 style="color: #ea580c;"><i class="fas fa-lightbulb" style="color: #f97316;"></i> Inovação (Em Análise)</h3>
+
+        <button onclick="iniciarImportacaoDX()" class="btn-action" style="background: white; color: #ea580c; border: 2px dashed #fdba74; margin-bottom: 15px; padding: 12px; border-radius: 8px; font-weight: bold; width: 100%; transition: all 0.2s;" onmouseover="this.style.background='#ffedd5'" onmouseout="this.style.background='white'">
+            <i class="fas fa-file-import"></i> Importar Sprint (JSON)
+        </button>
+
+        <%
+           const inovacao = todasAsSprints.filter(s => isStatEmAnalise(s.stat_sprn || s.status));
+           if (inovacao.length === 0) { %>
+               <p style="text-align:center; color:#ea580c; font-size:0.8em; margin-top:20px; font-style: italic; opacity: 0.7;">
+                   <i class="fas fa-box-open" style="font-size: 2em; margin-bottom: 10px; display: block;"></i>
+                   Aguardando importação da Mesa DX.
+               </p>
+           <% } else {
+               inovacao.forEach((s) => { renderCardInovacao(s); });
+           }
+        %>
+    </div>
+
+    <div class="kanban-column">
+        <h3><i class="fas fa-pause-circle" style="color: #64748b;"></i> Planejada (Backlog)</h3>
+        <p style="font-size: 0.72em; color: #b91c1c; margin: -8px 0 12px 0; font-weight: 600; text-align: center;">
+            <i class="fas fa-undo"></i> Cards da Mesa DX: use <strong>Devolver ao backlog</strong> no rodapé do card
+        </p>
+        <% const backlog = todasAsSprints.filter(s => isStatBacklog(s.stat_sprn || s.status)); %>
+        <div class="kanban-dropzone" data-status-alvo="planejada_backlog" style="min-height: 100px;">
+            <% if (backlog.length === 0) { %>
+               <p class="kanban-empty-hint" style="text-align:center; color:#999; font-size:0.8em; margin-top:20px;">Nenhuma sprint no backlog.</p>
+            <% } else { backlog.forEach((s) => { renderCard(s, 'card-backlog', false); }); } %>
+        </div>
+    </div>
+
+    <div class="kanban-column" style="background: var(--light-lilac); border-color: var(--border-lilac);">
+        <h3><i class="fas fa-play-circle" style="color: var(--dark-lilac);"></i> Em Andamento</h3>
+        <% const andamento = todasAsSprints.filter(s => isStatAndamento(s.stat_sprn || s.status)); %>
+        <div class="kanban-dropzone" data-status-alvo="em_andamento" style="min-height: 100px;">
+            <% if (andamento.length === 0) { %>
+               <p class="kanban-empty-hint" style="text-align:center; color:#94a3b8; font-size:0.8em; margin-top:20px;">Arraste sprints para cá ao iniciá-las.</p>
+            <% } else { andamento.forEach((s) => { renderCard(s, 'card-andamento', true); }); } %>
+        </div>
+    </div>
+
+    <div class="kanban-column">
+        <h3><i class="fas fa-check-circle" style="color: #27ae60;"></i> Concluído</h3>
+        <% const concluido = todasAsSprints.filter(s => isStatConcluida(s.stat_sprn || s.status)); %>
+        <div class="kanban-dropzone" data-status-alvo="concluida" style="min-height: 100px;">
+            <% if (concluido.length === 0) { %>
+               <p class="kanban-empty-hint" style="text-align:center; color:#999; font-size:0.8em; margin-top:20px;">Nenhuma sprint concluída.</p>
+            <% } else { concluido.forEach((s) => { renderCard(s, 'card-concluido', true); }); } %>
+        </div>
+    </div>
+</div>
+
+<%
+// 🎯 FUNÇÃO DE RENDERIZAÇÃO EXCLUSIVA PARA OS CARDS DX
+function renderCardInovacao(sprint) {
+    const sprintId = sprint.id_sprn || sprint.id || '';
+%>
+    <div class="task-card card-inovacao" data-sprn-id="<%= sprintId %>">
+        <div class="task-header">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <small style="color: #ea580c; font-weight:800; font-size:0.7em; text-transform: uppercase; display: flex; align-items: center;">
+                    <span class="badge-dx">DX</span> MESA DE INOVAÇÃO
+                </small>
+                <span style="font-size: 0.65em; color: #ea580c; font-weight: bold; background: #ffedd5; padding: 3px 6px; border-radius: 4px;">EM ANÁLISE</span>
+            </div>
+            <div class="task-title" style="margin-top: 10px;"><%= sprint.name_sprn || sprint.nome %></div>
+            <div style="font-size: 0.75em; color: #ea580c; margin-top: 8px; font-weight: 600;">
+                <i class="fas fa-tools"></i> Planejamento Pendente
+            </div>
+        </div>
+        <div class="dod-list" style="background: #fffaf5; border-top-color: #ffedd5;">
+            <span class="dod-text" style="color: #9a3412;"><%= sprint.desc_sprn || sprint.objetivo || 'Aguardando detalhamento e acoplamento estratégico.' %></span>
+        </div>
+        <div class="task-actions" style="border-top-color: #ffedd5; background: #fffaf5; display: flex; flex-direction: column; gap: 8px;">
+            <button class="btn-action" style="background: var(--pure-white); border: 1px solid #fdba74; color: #ea580c;" onclick="abrirPlanejamentoInovacao('<%= sprintId %>')">
+                <i class="fas fa-calendar-plus"></i> Planejar Sprint
+            </button>
+            <button class="btn-action" style="background: #fff7ed; border: 1px dashed #fdba74; color: #9a3412; font-size: 0.85em;" onclick="devolverSprintRelatorio('<%= sprintId %>', this)">
+                <i class="fas fa-undo"></i> Devolver ao backlog
+            </button>
+        </div>
+    </div>
+<% } %>
+
+<%
+function renderCard(sprint, colorClass, showButton) {
+    const sprintId = sprint.id_sprn || sprint.id || '';
+    const statusLimpo = (sprint.stat_sprn || sprint.status || '').toLowerCase().trim();
+    const isConcluida = isStatConcluida(sprint.stat_sprn || sprint.status);
+    const blocoKey = blocoOrigemRelatorioKey(sprint);
+    const podeDevolver = isSprintDxDoRelatorio(sprint) && !isConcluida && !showButton;
+%>
+    <div class="task-card <%= colorClass %>" data-sprn-id="<%= sprintId %>">
+        <div class="task-header">
+            <small style="color: var(--dark-lilac); font-weight:800; font-size:0.7em; text-transform: uppercase;"><%= sprint.nome_onda %></small>
+            <div class="task-title" style="margin-top: 2px;"><%= sprint.name_sprn || sprint.nome %></div>
+            <div style="font-size: 0.75em; color: var(--text-gray); margin-top: 6px;">
+                <i class="far fa-calendar-alt"></i> <%= isConcluida ? 'Finalizada em' : 'Início' %>: <%= sprint.dtini_sprn || sprint.dt_inic_sprn || 'A definir' %>
+            </div>
+        </div>
+        <div class="dod-list">
+            <span class="dod-text"><%= sprint.desc_sprn || sprint.objetivo || 'Foco em evolução de maturidade.' %></span>
+        </div>
+        <% if (showButton) { %>
+            <div class="task-actions">
+                <button class="btn-action <%= isConcluida ? 'btn-purple-light' : 'btn-purple-dark' %>" onclick="abrirPainelSprint('<%= sprintId %>')">
+                    <i class="fas <%= isConcluida ? 'fa-eye' : 'fa-rocket' %>"></i> <%= isConcluida ? 'Detalhes da Execução' : 'Gerenciar Execução' %>
+                </button>
+            </div>
+        <% } else if (podeDevolver) { %>
+            <div class="task-actions">
+                <button class="btn-action" style="background: #fef2f2; border: 1px dashed #fca5a5; color: #b91c1c; font-size: 0.85em;" onclick="devolverSprintRelatorio('<%= sprintId %>', this)">
+                    <i class="fas fa-undo"></i> Devolver ao backlog
+                </button>
+            </div>
+        <% } %>
+    </div>
+<% } %>
+
+<div id="modal-sprint-exec" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="fecharModalSprint()">&times;</span>
+
+        <div style="margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+            <h2 style="color: var(--pure-black); font-weight: 900; margin: 0; font-size: 1.6em;"><i class="fas fa-cubes" style="color: var(--dark-lilac);"></i> Painel de Execução Unificada</h2>
+            <p id="sprint-subtitle" style="color: var(--dark-lilac); font-weight: 700; margin: 4px 0 0 0; font-size: 0.95em;"></p>
+        </div>
+
+        <div class="sprint-governance-grid">
+
+            <div class="left-execution-engine">
+
+                <div class="framework-guide">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <div><small style="font-weight: 900; color: var(--pure-black); font-size: 0.7em; text-transform: uppercase;">Definição do Entregável</small><div id="guide-defi" style="font-size: 0.9em; color: var(--text-dark); margin-top: 4px;"></div></div>
+                        <div><small style="font-weight: 900; color: var(--pure-black); font-size: 0.7em; text-transform: uppercase;">Composição Metodológica Exigida</small><div id="guide-comp" style="font-size: 0.9em; white-space: pre-wrap; color: var(--text-dark); margin-top: 4px;"></div></div>
+                    </div>
+                </div>
+                <div id="sprint-estrategia-okr" hidden></div>
+
+                <fieldset class="vector-fieldset">
+                    <legend><i class="fas fa-file-signature"></i> Vetor 1: Comprovação Documental / Relato Verbal</legend>
+                    <div style="display: flex; align-items: flex-end; gap: 15px; background: var(--light-lilac); padding: 15px; border-radius: 8px; border: 1px solid var(--border-lilac); margin-bottom: 15px;">
+                        <div style="flex: 1.5;">
+                            <label style="font-weight: bold; color: var(--dark-lilac); font-size: 0.85em;"><i class="fas fa-link"></i> Link da Evidência (Drive/Sharepoint)</label>
+                            <input type="url" id="evid_url" placeholder="https://..." style="margin-top: 5px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-weight: bold; color: var(--dark-lilac); font-size: 0.85em;"><i class="fas fa-puzzle-piece"></i> Componente Vinculado</label>
+                            <select id="evid_componente" style="margin-top: 5px;"></select>
+                        </div>
+                        <button type="button" class="btn-action btn-purple-dark" style="width: 140px; height: 40px;" onclick="adicionarEvidencia()">
+                            <i class="fas fa-plus"></i> Vincular
+                        </button>
+                    </div>
+                    <div style="width: 100%; background: var(--pure-white); border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+                            <thead style="background: var(--light-lilac); color: var(--dark-lilac);">
+                                <tr>
+                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border-lilac);">Componente</th>
+                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border-lilac);">Link</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--border-lilac);">Status Modulador</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--border-lilac);">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-evidencias-corpo"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- ✍️ MODULADOR IA — Editor Premium de Evidência + Veredito -->
+                    <div class="modulador-wrap">
+                        <div class="modulador-head">
+                            <i class="fas fa-robot"></i>
+                            <div>
+                                <h4>Submissão ao Modulador Consultor LeAction</h4>
+                                <small>Descreva ou cole a evidência do trabalho. O Modulador comparará com os Critérios de Aceite (DoD).</small>
+                            </div>
+                        </div>
+                        <div class="modulador-body">
+                            <div id="quill-evidencia"></div>
+                            <p class="modulador-help">
+                                <i class="fas fa-shield-halved"></i>
+                                <strong>Atenção:</strong> O Modulador Consultor LeAction é rigoroso. Se o critério exige link ou e-mail, cole-os acima ou sua Sprint será reprovada.
+                            </p>
+                            <button type="button" id="btn-submeter-modulador" class="btn-modulador" onclick="submeterParaModulador()">
+                                <i class="fas fa-gavel"></i> Submeter para Análise do Modulador
+                            </button>
+
+                            <div id="modulador-resultado" class="modulador-resultado">
+                                <div class="res-head">
+                                    <i id="res-icone" class="fas fa-circle-check"></i>
+                                    <span id="res-titulo">Resultado da Avaliação</span>
+                                    <span id="res-badge" class="res-badge">—</span>
+                                </div>
+                                <div class="res-body">
+                                    <p id="res-feedback" class="res-feedback"></p>
+                                    <div class="res-cols">
+                                        <div class="res-col fortes">
+                                            <h5><i class="fas fa-thumbs-up"></i> Pontos Fortes</h5>
+                                            <ul id="res-pontos-fortes"></ul>
+                                        </div>
+                                        <div class="res-col pend">
+                                            <h5><i class="fas fa-triangle-exclamation"></i> Pendências</h5>
+                                            <ul id="res-pendencias"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="vector-fieldset">
+                    <legend><i class="fas fa-tasks"></i> Vetor 2: Atividades Táticas da Sprint</legend>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <small style="color: var(--text-gray);">Ações operacionais atreladas aos KRs estratégicos para execução do bloco.</small>
+                        <button type="button" class="btn-action btn-purple-dark" onclick="abrirSubModalAtividade()" style="width: auto; padding: 6px 15px; font-size: 0.8rem;">
+                            <i class="fas fa-plus"></i> Nova Atividade
+                        </button>
+                    </div>
+                    <div id="lista-atividades-sprint" style="display: grid; grid-template-columns: 1fr; gap: 8px; max-height: 220px; overflow-y: auto; padding: 2px;"></div>
+                </fieldset>
+
+                <fieldset class="vector-fieldset">
+                    <legend><i class="fas fa-comments"></i> Vetor 3: Ritos, Cerimônias e Alinhamentos Coletivos</legend>
+                    <div style="display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 25px; width: 100%;">
+                        <div>
+                            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                                <div style="flex: 1;">
+                                    <label>Tipo de Rito</label>
+                                    <select id="cerm_tipo" style="padding: 9px;">
+                                        <option value="Daily">Daily (Diária)</option>
+                                        <option value="Planning">Planning (Planejamento)</option>
+                                        <option value="Review">Review (Revisão)</option>
+                                        <option value="Retrospectiva">Retrospectiva</option>
+                                    </select>
+                                </div>
+                                <div style="flex: 0.8;">
+                                    <label>Data</label>
+                                    <input type="date" id="cerm_data" value="<%= new Date().toISOString().split('T')[0] %>" style="padding: 9px;">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 15px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <label style="margin: 0; font-weight: 700; font-size: 0.85em; color: var(--text-dark);">
+                                        Notas e Deliberações do Rito (Input Verbal/Ata)
+                                    </label>
+                                    <button type="button" id="btn-voice-cerm" onclick="alternarVozRito()" style="background: none; border: none; color: var(--dark-lilac); cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 20px; background: #fff; border: 1px solid var(--border-lilac);">
+                                        <i class="fas fa-microphone" id="mic-icon-cerm"></i>
+                                        <small id="mic-status-cerm" style="font-weight: 800; text-transform: uppercase; font-size: 0.7em; color: var(--text-gray);">Ditado Desligado</small>
+                                    </button>
+                                </div>
+                                <textarea id="cerm_note" rows="4" placeholder="Clique no microfone para ditar ou digite as notas do rito..." style="border-radius: 6px; padding: 12px; line-height: 1.4; transition: 0.3s;"></textarea>
+                            </div>
+
+                            <div style="display: flex; gap: 15px;">
+                                <button type="button" id="btn-cerm-save" class="btn-action btn-purple-dark" style="flex: 2; height: 42px;" onclick="salvarApenasCerimonia()">
+                                    <i class="fas fa-save"></i> Registrar Este Rito
+                                </button>
+                                <button type="button" id="btn-cerm-cancel" class="btn-action" style="background: #94a3b8; color: white; flex: 1; display: none; height: 42px;" onclick="limparFormCerimonia()">
+                                    <i class="fas fa-undo"></i> Desistir
+                                </button>
+                            </div>
+                            <input type="hidden" id="edit_id_cermls">
+                        </div>
+                        <div style="background: #fafafa; border-radius: 8px; padding: 15px; border: 1px solid #eee; display: flex; flex-direction: column;">
+                            <small style="font-weight: 900; color: var(--dark-lilac); font-size: 0.75em; text-transform: uppercase; display: block; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                                <i class="fas fa-history"></i> Linha do Tempo
+                            </small>
+                            <div id="timeline-cerimonias" style="max-height: 240px; overflow-y: auto; flex-grow: 1;"></div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="vector-fieldset">
+                    <legend><i class="fas fa-sliders-h"></i> Métricas de Qualidade Associadas à Execução</legend>
+                    <div id="container-metrics-dynamic" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" class="metric-range-box"></div>
+                </fieldset>
+            </div>
+
+            <div class="modulador-sticky-sidebar">
+
+                <div class="meta-progress-widget">
+                    <small style="text-transform: uppercase; font-size: 0.72em; font-weight: 800; letter-spacing: 0.5px; color: var(--border-lilac); display: block; margin-bottom: 6px;">Progresso Qualitativo do Bloco</small>
+                    <div id="progress-label" class="meta-progress-value">0%</div>
+                    <div style="background: #222; height: 10px; border-radius: 5px; margin-top: 15px; border: 1px solid #333; overflow: hidden;">
+                        <div id="progress-bar-exec" style="background: var(--pure-white); width: 0%; height: 100%; border-radius: 5px; transition: 0.4s;"></div>
+                    </div>
+                    <small style="font-size: 0.75em; color: #aaa; display: block; margin-top: 8px;">Mínimo para Homologação: <strong>80%</strong></small>
+                </div>
+
+                <div style="background: var(--pure-white); border: 1px solid var(--border-lilac); padding: 18px; border-radius: 10px;">
+                    <h4 style="margin: 0 0 12px 0; font-size: 0.8em; color: var(--dark-lilac); font-weight: 900; text-transform: uppercase;"><i class="fas fa-clipboard-check"></i> Critérios de Aceite (DoD)</h4>
+                    <div id="dod-checklist-container">
+                        <div id="dod-items-gerais" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                        <div id="dod-items-educacional" style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; flex-grow: 1;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 0.8em; color: var(--dark-lilac); font-weight: 900; text-transform: uppercase;"><i class="fas fa-robot"></i> Console Modulador Autônomo</h4>
+                    <div id="modulador-status-global" style="background: var(--pure-white); border: 1px solid var(--border-lilac); border-radius: 10px; padding: 18px; flex-grow: 1; display: flex; flex-direction: column; gap: 10px;">
+                        <div id="modulador-message-global" class="modulador-live-console">
+                            Aguardando mapeamento dos vetores operacionais para disparar auditoria cruzada...
+                        </div>
+                    </div>
+                </div>
+
+                <form id="form-sprint-exec" onsubmit="salvarExecucaoSprint(event)" style="margin: 0; width: 100%;">
+                    <input type="hidden" id="exec_id_sprn">
+                    <input type="hidden" id="exec_swot_type" value="Fraqueza">
+                    <input type="hidden" id="exec_swot_justification" value="Atualização unificada via console do modulador.">
+                    <input type="hidden" id="exec_evidence_url" value="">
+                    <input type="hidden" id="exec_notes" value="Processamento via esteira de inteligência.">
+
+                    <button type="submit" id="btn-save-strategic" class="btn-action btn-purple-dark" style="height: 48px; font-size: 1.05em; border-radius: 8px;">
+                        <i class="fas fa-cloud-upload-alt"></i> Salvar Evolução Estratégica
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="subModalAtividade" class="modal" role="dialog" aria-modal="true" aria-labelledby="ativ-modal-titulo">
+    <div class="ativ-modal-panel">
+        <button type="button" class="ativ-modal-close" onclick="fecharSubModalAtividade()" aria-label="Fechar">&times;</button>
+        <div class="ativ-modal-hero">
+            <h3 id="ativ-modal-titulo">
+                <i class="fas fa-tasks" aria-hidden="true"></i>
+                <span id="ativ-modal-titulo-texto">Vincular Nova Atividade Operacional</span>
+            </h3>
+            <p id="ativ-modal-subtitulo">Detalhes operacionais e alinhamento estratégico com a matriz OKR da sprint.</p>
+            <div class="ativ-modal-tabs" role="tablist" aria-label="Seções do formulário de atividade">
+                <button type="button" class="ativ-modal-tab active" id="ativ-tab-btn-detalhes" role="tab" aria-selected="true" aria-controls="ativ-pane-detalhes" onclick="ativarAbaAtividade('detalhes')">
+                    <i class="fas fa-clipboard-list"></i> Detalhes da Atividade
+                </button>
+                <button type="button" class="ativ-modal-tab" id="ativ-tab-btn-estrategico" role="tab" aria-selected="false" aria-controls="ativ-pane-estrategico" onclick="ativarAbaAtividade('estrategico')">
+                    <i class="fas fa-bullseye"></i> Alinhamento Estratégico
+                </button>
+            </div>
+        </div>
+
+        <div class="ativ-modal-body">
+            <form id="formAtividade" onsubmit="salvarAtividadeSprint(event)">
+                <input type="hidden" id="ativ_id_ativ" value="">
+
+                <div class="ativ-modal-pane active" id="ativ-pane-detalhes" role="tabpanel" aria-labelledby="ativ-tab-btn-detalhes">
+                    <div class="form-group">
+                        <label for="ativ_nome">Nome da Atividade / Tarefa *</label>
+                        <input type="text" id="ativ_nome" required placeholder="Ex: Mapear fluxo de valor da captação">
+                    </div>
+                    <div class="form-group">
+                        <label for="ativ_desc">Descrição e Escopo de Execução</label>
+                        <textarea id="ativ_desc" rows="3" placeholder="Descreva os entregáveis esperados pelo time..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="ativ_id_team">Responsável Alocado (Integrantes da Squad desta Sprint) *</label>
+                        <select id="ativ_id_team" required>
+                            <option value="">Carregando integrantes homologados...</option>
+                        </select>
+                        <div id="ativ-squad-vazia-alert" class="ativ-squad-alert" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Nenhum profissional alocado nesta Squad. Aloque membros na squad antes de vincular tarefas operacionais.
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label for="ativ_dt_plan">Data de Planejamento *</label>
+                            <input type="date" id="ativ_dt_plan" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ativ_dt_concl">Data de Conclusão Real</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="datetime-local" id="ativ_dt_concl" style="flex: 1;">
+                                <button type="button" onclick="definirConclusaoAgora()" class="btn-action btn-purple-light" style="width: auto; padding: 0 12px;" title="Marcar como Concluído Agora">
+                                    <i class="fas fa-clock"></i> AGORA
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label for="ativ_status">Status da Atividade</label>
+                            <select id="ativ_status" onchange="aoMudarStatusNovaAtividade()">
+                                <option value="A Fazer">A Fazer</option>
+                                <option value="Em Execução">Em Execução</option>
+                                <option value="Entregue">Feito (Entregue)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ativ-modal-pane" id="ativ-pane-estrategico" role="tabpanel" aria-labelledby="ativ-tab-btn-estrategico">
+                    <p class="ativ-cascata-hint">
+                        Selecione o direcionador, o objetivo e o Key Result alvo. Apenas o KR final será vinculado à atividade.
+                    </p>
+                    <div class="form-group">
+                        <label for="ativ_sel_direc">Direcionador Estratégico *</label>
+                        <select id="ativ_sel_direc" onchange="aoMudarDirecionadorAtividade()">
+                            <option value="">Selecione o direcionador…</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ativ_sel_objetivo">Objetivo *</label>
+                        <select id="ativ_sel_objetivo" disabled onchange="aoMudarObjetivoAtividade()">
+                            <option value="">Selecione o direcionador primeiro…</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ativ_sel_kr">Key Result (KR) Alvo *</label>
+                        <select id="ativ_sel_kr" name="ativ_sel_kr" required disabled>
+                            <option value="">Selecione o objetivo primeiro…</option>
+                        </select>
+                        <small style="color:#64748b;display:block;margin-top:6px;">
+                            Obrigatório — cada atividade deve contribuir para um KR da matriz estratégica.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="ativ-modal-footer">
+                    <button type="button" class="btn-action" onclick="fecharSubModalAtividade()" style="width: auto; padding:10px 15px; background:#95a5a6; color:white;">CANCELAR</button>
+                    <button type="submit" id="ativ-btn-submit" class="btn-action btn-purple-dark" style="width: auto; padding: 10px 25px;">
+                        <span id="ativ-btn-submit-texto">VINCULAR TAREFA</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="toast-evolucao-atividade" role="alert" aria-live="polite"></div>
+
+<!-- 🎯 MODAL DE PLANEJAMENTO DX (Acoplamento Metodológico) -->
+<div id="modal-planejamento-dx" class="modal">
+    <div class="modal-content" style="max-width: 620px; padding: 28px;">
+        <span class="close" onclick="fecharModalPlanejamentoDX()">&times;</span>
+
+        <div style="margin-bottom: 22px; border-bottom: 2px solid #fdba74; padding-bottom: 14px;">
+            <h2 style="color: #ea580c; font-weight: 900; margin: 0; font-size: 1.35em;">
+                <i class="fas fa-calendar-plus" style="color: #f97316;"></i> Planejar Sprint DX
+            </h2>
+            <p id="dx-plan-subtitle" style="color: #9a3412; font-size: 0.88em; margin: 6px 0 0 0; font-weight: 600;">
+                Acople o bloco metodológico, a squad e o KR estratégico para promover esta sprint ao backlog.
+            </p>
+        </div>
+
+        <input type="hidden" id="dx-plan-id-sprn" value="" />
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label style="color: #c2410c; font-weight: 800;">Data de Início da Sprint *</label>
+            <input type="date" id="dx-plan-dtini" required style="border-color: #fdba74;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px; position: relative;">
+            <label style="color: #c2410c; font-weight: 800;">Bloco Metodológico (leaf_bloc) *</label>
+            <input type="text" id="txt-busca-bloco" autocomplete="off"
+                   oninput="buscarBlocosDX(this.value)"
+                   placeholder="Digite ao menos 3 letras para buscar nos 105 blocos..."
+                   style="border-color: #fdba74;">
+            <input type="hidden" id="planejamento_id_bloc" value="">
+            <div id="dropdown-resultados-bloco" class="dx-autocomplete-dropdown hidden"></div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label style="color: #c2410c; font-weight: 800;">Squad Responsável *</label>
+            <select id="dx-plan-id-squad" required style="border-color: #fdba74;">
+                <option value="NEW" selected>✨ Criar Squad Específica</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 22px;">
+            <label style="color: #c2410c; font-weight: 800;">KR Alvo (Resultado-Chave Estratégico) *</label>
+            <select id="dx-plan-id-kr" required style="border-color: #fdba74;">
+                <option value="">Carregando KRs do cliente...</option>
+            </select>
+        </div>
+
+        <div style="background: #fffaf5; border: 1px dashed #fdba74; border-radius: 8px; padding: 12px 14px; margin-bottom: 20px;">
+            <small style="color: #9a3412; font-size: 0.8em; line-height: 1.5;">
+                <i class="fas fa-info-circle"></i>
+                Ao confirmar, o backlog importado da Mesa será convertido em <strong>atividades táticas</strong>
+                vinculadas ao KR selecionado, e a sprint migrará para a coluna <strong>Planejada (Backlog)</strong>.
+            </small>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="btn-action" onclick="fecharModalPlanejamentoDX()"
+                    style="width: auto; padding: 10px 18px; background: #e5e7eb; color: #374151;">
+                CANCELAR
+            </button>
+            <button type="button" id="btn-confirmar-planejamento-dx" class="btn-action"
+                    onclick="submeterPlanejamentoDX()"
+                    style="width: auto; padding: 10px 22px; background: linear-gradient(135deg, #f97316, #ea580c); color: white; border: none;">
+                <i class="fas fa-check"></i> CONFIRMAR ACOPLAMENTO
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function normStatKanbanClient(s) {
+    return String(s || '').toLowerCase().trim().replace(/\s+/g, '_');
+}
+function isStatConcluidaClient(s) {
+    const n = normStatKanbanClient(s);
+    return ['concluida', 'concluido', 'finalizada'].indexOf(n) >= 0;
+}
+
+// 🎯 GATILHOS DA MESA DE INOVAÇÃO (MÓDULO DE GESTÃO)
+
+/** Consome sprint pendente da Mesa de Inovação Organizacional (sessionStorage). */
+async function consumirSprintMesaOrganizacional() {
+    let raw;
+    try {
+        raw = sessionStorage.getItem('paneldx_mesa_org_sprint');
+    } catch (e) {
+        return;
+    }
+    if (!raw) return;
+
+    try {
+        const body = JSON.parse(raw);
+        const idClieAtual = document.getElementById('id_cliente_hidden')?.value
+            || document.getElementById('id_matu_hidden')?.value
+            || '<%= lead.id_clie || "" %>';
+
+        const response = await fetch('/api/sprints/importar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_clie: parseInt(body.id_clie, 10) || parseInt(idClieAtual, 10) || 0,
+                payload_sprint: body.payload_sprint || body
+            })
+        });
+        const result = await response.json();
+        sessionStorage.removeItem('paneldx_mesa_org_sprint');
+
+        if (response.ok && (result.success || result.status === 'success')) {
+            window.location.reload();
+        } else {
+            console.warn('Falha ao materializar sprint da mesa org:', result);
+        }
+    } catch (err) {
+        console.error('Erro ao consumir sprint da mesa org:', err);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('origem') === 'mesa-org' && params.get('criada') === '1') {
+        return; // Sprint já criada via POST direto da mesa
+    }
+    consumirSprintMesaOrganizacional();
+});
+
+function iniciarImportacaoDX() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const jsonCarregado = JSON.parse(event.target.result);
+
+                const idClieAtual = document.getElementById('id_cliente_hidden') ?
+                                    document.getElementById('id_cliente_hidden').value : '999';
+
+                const response = await fetch('/api/sprints/importar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id_clie: parseInt(idClieAtual),
+                        payload_sprint: jsonCarregado
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && (result.success || result.status === 'success')) {
+                    alert("✅ Sprint de Inovação importada com sucesso!");
+                    window.location.reload();
+                } else {
+                    alert("Erro ao importar a Sprint: " + (result.error || result.message));
+                }
+            } catch (err) {
+                alert("Erro crítico: O arquivo não é um JSON válido da Mesa de Inovação.");
+                console.error(err);
+            }
+        };
+
+        reader.readAsText(file);
+    };
+
+    input.click();
+}
+
+async function devolverSprintRelatorio(idSprn, btn) {
+    if (window.PanelRelatorioBlocos && typeof window.PanelRelatorioBlocos.devolverAoBacklog === 'function') {
+        return window.PanelRelatorioBlocos.devolverAoBacklog(idSprn, btn);
+    }
+    if (!idSprn) return;
+    const el = btn || null;
+    if (el) {
+        el.disabled = true;
+        el.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Devolvendo…';
+    }
+    try {
+        const response = await fetch('/api/sprints/devolver-relatorio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_sprn: parseInt(idSprn, 10) })
+        });
+        const result = await response.json();
+        if (response.ok && result.success) {
+            window.location.reload();
+        } else {
+            if (el) el.disabled = false;
+            alert(result.error || 'Não foi possível devolver ao backlog.');
+        }
+    } catch (err) {
+        if (el) el.disabled = false;
+        alert('Erro de conexão ao devolver ao backlog.');
+    }
+}
+
+function fecharModalPlanejamentoDX() {
+    const modal = document.getElementById('modal-planejamento-dx');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('is-open');
+    }
+}
+
+let cacheResultadosBlocoDX = [];
+let buscaBlocoTimerDX = null;
+
+async function fetchOkrConsolidadoRows(idClie) {
+    const urls = [
+        `/api/okr/consolidado?id_clie=${encodeURIComponent(idClie)}`,
+        `/api/okr/consolidado/${encodeURIComponent(idClie)}`
+    ];
+    let ultimoErro = null;
+    for (let i = 0; i < urls.length; i++) {
+        try {
+            const res = await fetch(urls[i], { credentials: 'same-origin' });
+            const data = await res.json();
+            if (!res.ok) {
+                ultimoErro = new Error(data.error || ('HTTP ' + res.status));
+                continue;
+            }
+            if (!Array.isArray(data)) {
+                ultimoErro = new Error(data.error || 'Resposta OKR inválida');
+                continue;
+            }
+            return data;
+        } catch (err) {
+            ultimoErro = err;
+        }
+    }
+    throw ultimoErro || new Error('Não foi possível carregar os KRs estratégicos.');
+}
+
+async function carregarOpcoesPlanejamentoDX() {
+    const idClie = document.getElementById('id_cliente_hidden')?.value || '<%= lead.id_clie %>';
+    const selectSquad = document.getElementById('dx-plan-id-squad');
+    const selectKr = document.getElementById('dx-plan-id-kr');
+
+    selectSquad.innerHTML = '<option value="NEW" selected>✨ Criar Squad Específica</option>';
+    selectKr.innerHTML = '<option value="">Carregando KRs...</option>';
+
+    try {
+        const [resSquad, rowsOkr] = await Promise.all([
+            fetch(`/api/squads/cliente?id_clie=${encodeURIComponent(idClie)}`, { credentials: 'same-origin' }),
+            fetchOkrConsolidadoRows(idClie)
+        ]);
+
+        const squadPayload = await resSquad.json();
+
+        const squads = squadPayload.data || squadPayload || [];
+        if (Array.isArray(squads) && squads.length > 0) {
+            squads.forEach(s => {
+                selectSquad.innerHTML += `<option value="${s.id_squad}">${s.nome_squad}</option>`;
+            });
+        }
+
+        const vistos = new Set();
+        let htmlKr = '<option value="">Selecione o KR Estratégico...</option>';
+        rowsOkr.forEach(row => {
+            if (row.id_kr && !vistos.has(row.id_kr)) {
+                vistos.add(row.id_kr);
+                const direc = row.nome_direc ? row.nome_direc.substring(0, 24) : 'Direcionador';
+                const obj = row.nome_obj ? row.nome_obj.substring(0, 28) : 'Objetivo';
+                htmlKr += `<option value="${row.id_kr}">[${direc} › ${obj}] ${row.nome_kr}</option>`;
+            }
+        });
+        if (vistos.size === 0) {
+            htmlKr = '<option value="">Nenhum KR cadastrado — acesse Planejamento Estratégico (OKR)</option>';
+        }
+        selectKr.innerHTML = htmlKr;
+
+    } catch (err) {
+        console.error('Erro ao carregar opções do planejamento DX:', err);
+        selectKr.innerHTML = '<option value="">Erro ao carregar KRs — tente recarregar a página</option>';
+    }
+}
+
+async function buscarBlocosDX(termo) {
+    const dropdown = document.getElementById('dropdown-resultados-bloco');
+    // Toda nova digitação invalida a seleção anterior até o usuário clicar de novo
+    document.getElementById('planejamento_id_bloc').value = '';
+
+    if (!termo || termo.trim().length < 3) {
+        dropdown.classList.add('hidden');
+        cacheResultadosBlocoDX = [];
+        return;
+    }
+
+    clearTimeout(buscaBlocoTimerDX);
+    buscaBlocoTimerDX = setTimeout(async () => {
+        try {
+            const res = await fetch(`/api/blocos/buscar?q=${encodeURIComponent(termo.trim())}`);
+            const resData = await res.json();
+            const lista = resData.data || [];
+            cacheResultadosBlocoDX = lista;
+
+            dropdown.classList.remove('hidden');
+            if (lista.length === 0) {
+                dropdown.innerHTML = '<div class="dx-autocomplete-empty">Nenhum bloco encontrado para este termo.</div>';
+                return;
+            }
+            dropdown.innerHTML = lista.map(b => `
+                <div class="dx-bloco-item" onclick="selecionarBlocoDX(${b.id_bloc})">
+                    <div class="dx-bloco-nome"><i class="fas fa-cube" style="color:#a78bfa; margin-right:6px;"></i>${b.name_bloc}</div>
+                    ${b.desc_bloc ? `<div class="dx-bloco-desc">${b.desc_bloc}</div>` : ''}
+                </div>
+            `).join('');
+        } catch (e) {
+            console.error('Erro na busca de blocos DX:', e);
+            dropdown.classList.remove('hidden');
+            dropdown.innerHTML = '<div class="dx-autocomplete-empty">Erro ao buscar blocos.</div>';
+        }
+    }, 250);
+}
+
+function selecionarBlocoDX(idBloc) {
+    const bloco = cacheResultadosBlocoDX.find(b => b.id_bloc === idBloc);
+    if (!bloco) return;
+    document.getElementById('planejamento_id_bloc').value = bloco.id_bloc;
+    document.getElementById('txt-busca-bloco').value = bloco.name_bloc;
+    document.getElementById('dropdown-resultados-bloco').classList.add('hidden');
+}
+
+async function abrirPlanejamentoInovacao(id) {
+    if (!id) return alert('ID da sprint não identificado.');
+
+    document.getElementById('dx-plan-id-sprn').value = id;
+    document.getElementById('dx-plan-dtini').value = new Date().toISOString().split('T')[0];
+
+    // Reset do autocomplete de bloco a cada abertura
+    document.getElementById('txt-busca-bloco').value = '';
+    document.getElementById('planejamento_id_bloc').value = '';
+    document.getElementById('dropdown-resultados-bloco').classList.add('hidden');
+    cacheResultadosBlocoDX = [];
+
+    const modal = document.getElementById('modal-planejamento-dx');
+    modal.classList.add('is-open');
+    modal.style.display = 'flex';
+
+    await carregarOpcoesPlanejamentoDX();
+}
+
+async function submeterPlanejamentoDX() {
+    const id_sprn = document.getElementById('dx-plan-id-sprn').value;
+    const id_bloc = document.getElementById('planejamento_id_bloc').value;
+    const id_squad = document.getElementById('dx-plan-id-squad').value;
+    const id_kr = document.getElementById('dx-plan-id-kr').value;
+    const dtini_sprn = document.getElementById('dx-plan-dtini').value;
+    const id_matu = document.getElementById('id_matu_hidden')?.value || '<%= lead.id_matu %>';
+    const id_clie = document.getElementById('id_cliente_hidden')?.value || '<%= lead.id_clie %>';
+
+    if (!id_sprn || !id_bloc || !id_squad || !id_kr || !dtini_sprn) {
+        return alert('Preencha todos os campos. Lembre de selecionar um Bloco Metodológico na lista de busca.');
+    }
+
+    const btn = document.getElementById('btn-confirmar-planejamento-dx');
+    const textoOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ACOPLANDO...';
+
+    try {
+        const response = await fetch('/api/sprints/planejar-dx', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_sprn: parseInt(id_sprn),
+                id_bloc: parseInt(id_bloc),
+                id_squad: id_squad,
+                id_kr: parseInt(id_kr),
+                dtini_sprn,
+                id_matu: id_matu ? parseInt(id_matu) : null,
+                id_clie: id_clie ? parseInt(id_clie) : null
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && (result.success || result.status === 'success')) {
+            alert(`✅ Sprint planejada com sucesso! ${result.atividades_criadas || 0} atividade(s) tática(s) criada(s).`);
+            window.location.reload();
+        } else {
+            alert('Erro ao planejar a Sprint: ' + (result.error || result.message || 'Falha desconhecida'));
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Erro de comunicação ao planejar a Sprint DX.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = textoOriginal;
+    }
+}
+
+let idSprintAtivaGlobal = null;
+let idSquadAtivaGlobal = null;
+let cascataOkrAtividadeCache = [];
+let atividadesSprintCache = [];
+let squadAtividadeVazia = false;
+let moduladorTimer = null;
+
+// --- SISTEMA DE CAPTURA VOCAL NATIVO (WEB SPEECH API NATIVA) ---
+let motorReconhecimentoVoz = null;
+let estáGravandoVozRito = false;
+
+function alternarVozRito() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        return alert("⚠️ O seu navegador atual não suporta a API de ditado por voz. Recomendamos usar o Google Chrome ou Microsoft Edge.");
+    }
+
+    const micIcon = document.getElementById('mic-icon-cerm');
+    const micStatus = document.getElementById('mic-status-cerm');
+    const campoTexto = document.getElementById('cerm_note');
+
+    if (!motorReconhecimentoVoz) {
+        motorReconhecimentoVoz = new SpeechRecognition();
+        motorReconhecimentoVoz.lang = 'pt-BR';
+        motorReconhecimentoVoz.continuous = true;
+        motorReconhecimentoVoz.interimResults = false;
+
+        motorReconhecimentoVoz.onstart = () => {
+            estáGravandoVozRito = true;
+            if (micIcon) micIcon.classList.add('mic-ativo');
+            if (micStatus) { micStatus.innerText = "Ouvindo... Fale agora"; micStatus.style.color = "#e74c3c"; }
+            if (campoTexto) { campoTexto.style.borderColor = "var(--dark-lilac)"; campoTexto.placeholder = "Escutando a sua voz... Fale de forma clara."; }
+        };
+
+        motorReconhecimentoVoz.onresult = (event) => {
+            let textoCapturado = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) { textoCapturado += event.results[i][0].transcript; }
+            }
+            if (textoCapturado && campoTexto) {
+                const espaco = campoTexto.value.length > 0 ? ' ' : '';
+                campoTexto.value += espaco + textoCapturado.trim();
+                campoTexto.scrollTop = campoTexto.scrollHeight;
+            }
+        };
+
+        motorReconhecimentoVoz.onerror = (err) => {
+            console.error(err.error);
+            desativarInterfaceMicrofone(micIcon, micStatus, campoTexto);
+        };
+
+        motorReconhecimentoVoz.onend = () => {
+            desativarInterfaceMicrofone(micIcon, micStatus, campoTexto);
+        };
+    }
+
+    if (!estáGravandoVozRito) { motorReconhecimentoVoz.start(); }
+    else { motorReconhecimentoVoz.stop(); }
+}
+
+function desativarInterfaceMicrofone(icon, status, textarea) {
+    estáGravandoVozRito = false;
+    if (icon) icon.classList.remove('mic-ativo');
+    if (status) { status.innerText = "Ditado Desligado"; status.style.color = "var(--text-gray)"; }
+    if (textarea) { textarea.style.borderColor = "#dddddd"; textarea.placeholder = "Clique no microfone para ditar ou digite as notas do rito..."; }
+}
+
+function definirConclusaoAgora() {
+    const campo = document.getElementById('ativ_dt_concl');
+    if (!campo) return;
+    campo.value = dataHojeParaInputDatetimeLocal();
+    const statusEl = document.getElementById('ativ_status');
+    if (statusEl) statusEl.value = 'Entregue';
+}
+
+function dataHojeParaInputDatetimeLocal() {
+    const agora = new Date();
+    const tzOffset = agora.getTimezoneOffset() * 60000;
+    return (new Date(agora - tzOffset)).toISOString().slice(0, 16);
+}
+
+function isStatusConcluido(status) {
+    const s = (status || '').toLowerCase().trim();
+    return ['entregue', 'feito', 'concluído', 'concluido', 'concluída', 'concluida'].includes(s);
+}
+
+function normalizarStatusAtiv(status) {
+    return isStatusConcluido(status) ? 'Entregue' : (status || 'A Fazer');
+}
+
+function formatarDataParaInputLocal(dbDate) {
+    if (!dbDate) return '';
+    const d = new Date(dbDate);
+    if (Number.isNaN(d.getTime())) return '';
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return (new Date(d - tzOffset)).toISOString().slice(0, 16);
+}
+
+let toastEvolucaoTimer = null;
+function mostrarToastEvolucao(mensagem, tipo) {
+    const toast = document.getElementById('toast-evolucao-atividade');
+    if (!toast) return;
+    toast.className = tipo === 'error' ? 'toast-error' : 'toast-success';
+    toast.innerHTML = `<i class="fas fa-${tipo === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${mensagem}`;
+    toast.style.display = 'flex';
+    if (toastEvolucaoTimer) clearTimeout(toastEvolucaoTimer);
+    toastEvolucaoTimer = setTimeout(() => { toast.style.display = 'none'; }, 3500);
+}
+
+function aoMudarStatusNovaAtividade() {
+    const statusEl = document.getElementById('ativ_status');
+    const dtEl = document.getElementById('ativ_dt_concl');
+    if (statusEl && dtEl && isStatusConcluido(statusEl.value) && !dtEl.value) {
+        dtEl.value = dataHojeParaInputDatetimeLocal();
+    }
+}
+
+function aoMudarStatusAtiv(idAtiv) {
+    const select = document.getElementById(`ativ-st-${idAtiv}`);
+    const dtInput = document.getElementById(`ativ-dt-${idAtiv}`);
+    if (select && dtInput && isStatusConcluido(select.value) && !dtInput.value) {
+        dtInput.value = dataHojeParaInputDatetimeLocal();
+    }
+}
+
+async function carregarAtividadesDaSprint(idSprn) {
+    idSprintAtivaGlobal = idSprn;
+    const container = document.getElementById('lista-atividades-sprint');
+    if (!container) return;
+
+    container.innerHTML = '<p style="color:#999; font-size:0.85rem; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Buscando tarefas operacionais...</p>';
+
+    try {
+        const res = await fetch(`/api/okr/atividades?id_sprn=${idSprn}`);
+        const atividades = await res.json();
+
+        atividadesSprintCache = Array.isArray(atividades) ? atividades : [];
+
+        if (!atividadesSprintCache.length) {
+            container.innerHTML = '<p style="color: #94a3b8; font-size: 0.85rem; text-align:center; margin: 15px 0;">Nenhuma atividade metodológica atrelada a esta sprint.</p>';
+            return;
+        }
+
+        container.innerHTML = atividadesSprintCache.map(ativ => {
+            const dtLocal = formatarDataParaInputLocal(ativ.data_conclusao);
+            const statusAtual = ativ.status_ativ || 'A Fazer';
+            const nomeSafe = String(ativ.nome_ativ || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const descSafe = ativ.desc_ativ ? String(ativ.desc_ativ).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+            return `
+            <div style="background: #fdfdfd; padding: 12px; border-radius: 6px; border: 1px solid #eee; display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:5px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:180px;">
+                    <div style="font-size:0.9rem; font-weight:700; color:var(--pure-black);">${nomeSafe}</div>
+                    ${descSafe ? `<small style="color:var(--text-gray); display:block; margin-top:2px;">${descSafe}</small>` : ''}
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <button type="button" onclick="abrirSubModalAtividadeEditar(${ativ.id_ativ})" class="btn-action btn-purple-light" style="width:auto; padding:5px 12px; font-size:0.7rem; height:auto;">
+                        <i class="fas fa-pen"></i> Editar
+                    </button>
+                    <input type="datetime-local" id="ativ-dt-${ativ.id_ativ}" value="${dtLocal}" title="Data de Término" style="font-size:0.75rem; padding:4px; border-radius:4px; border:1px solid #cbd5e1;">
+                    <select id="ativ-st-${ativ.id_ativ}" onchange="aoMudarStatusAtiv(${ativ.id_ativ})" style="font-size:0.75rem; padding:4px; border-radius:4px; border:1px solid #cbd5e1; background:#fff; width:auto;">
+                        <option value="A Fazer" ${statusAtual === 'A Fazer' ? 'selected' : ''}>A Fazer</option>
+                        <option value="Em Execução" ${statusAtual === 'Em Execução' ? 'selected' : ''}>Em Execução</option>
+                        <option value="Entregue" ${statusAtual === 'Entregue' ? 'selected' : ''}>Feito (Entregue)</option>
+                    </select>
+                    <button type="button" onclick="salvarEvolucaoAtividade(${ativ.id_ativ}, this)" class="btn-action btn-purple-dark" style="width:auto; padding:5px 12px; font-size:0.7rem; height:auto;">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                </div>
+            </div>
+        `;
+        }).join('');
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = '<p style="color:red; font-size:0.85rem;">Erro ao listar cronograma tático.</p>';
+    }
+}
+
+function ativarAbaAtividade(aba) {
+    const abas = ['detalhes', 'estrategico'];
+    abas.forEach(function (nome) {
+        const pane = document.getElementById('ativ-pane-' + nome);
+        const btn = document.getElementById('ativ-tab-btn-' + nome);
+        const ativo = nome === aba;
+        if (pane) pane.classList.toggle('active', ativo);
+        if (btn) {
+            btn.classList.toggle('active', ativo);
+            btn.setAttribute('aria-selected', ativo ? 'true' : 'false');
+        }
+    });
+}
+
+function resetarSelectsCascataOkr() {
+    const selObj = document.getElementById('ativ_sel_objetivo');
+    const selKr = document.getElementById('ativ_sel_kr');
+    if (selObj) {
+        selObj.innerHTML = '<option value="">Selecione o direcionador primeiro…</option>';
+        selObj.disabled = true;
+        selObj.value = '';
+    }
+    if (selKr) {
+        selKr.innerHTML = '<option value="">Selecione o objetivo primeiro…</option>';
+        selKr.disabled = true;
+        selKr.value = '';
+    }
+}
+
+function aoMudarDirecionadorAtividade() {
+    const selDirec = document.getElementById('ativ_sel_direc');
+    const selObj = document.getElementById('ativ_sel_objetivo');
+    const selKr = document.getElementById('ativ_sel_kr');
+    if (!selDirec || !selObj || !selKr) return;
+
+    resetarSelectsCascataOkr();
+    const idDirec = parseInt(selDirec.value, 10);
+    if (!idDirec) return;
+
+    const direc = cascataOkrAtividadeCache.find(function (d) { return d.id_direc === idDirec; });
+    const objetivos = (direc && direc.objetivos) ? direc.objetivos : [];
+
+    if (!objetivos.length) {
+        selObj.innerHTML = '<option value="">Nenhum objetivo disponível para este direcionador</option>';
+        selObj.disabled = true;
+        return;
+    }
+
+    let html = '<option value="">Selecione o objetivo…</option>';
+    objetivos.forEach(function (o) {
+        html += '<option value="' + o.id_obj_dt + '">' + (o.titulo || ('Objetivo ' + o.id_obj_dt)) + '</option>';
+    });
+    selObj.innerHTML = html;
+    selObj.disabled = false;
+}
+
+function aoMudarObjetivoAtividade() {
+    const selDirec = document.getElementById('ativ_sel_direc');
+    const selObj = document.getElementById('ativ_sel_objetivo');
+    const selKr = document.getElementById('ativ_sel_kr');
+    if (!selDirec || !selObj || !selKr) return;
+
+    selKr.innerHTML = '<option value="">Selecione o objetivo primeiro…</option>';
+    selKr.disabled = true;
+    selKr.value = '';
+
+    const idDirec = parseInt(selDirec.value, 10);
+    const idObj = selObj.value;
+    if (!idDirec || !idObj) return;
+
+    const direc = cascataOkrAtividadeCache.find(function (d) { return d.id_direc === idDirec; });
+    const objetivo = direc && direc.objetivos
+        ? direc.objetivos.find(function (o) { return String(o.id_obj_dt) === String(idObj); })
+        : null;
+    const krs = (objetivo && objetivo.krs) ? objetivo.krs : [];
+
+    if (!krs.length) {
+        selKr.innerHTML = '<option value="">Nenhum KR disponível para este objetivo</option>';
+        return;
+    }
+
+    let html = '<option value="">Selecione o Key Result…</option>';
+    krs.forEach(function (kr) {
+        html += '<option value="' + kr.id_kr + '">' + (kr.titulo || ('KR ' + kr.id_kr)) + '</option>';
+    });
+    selKr.innerHTML = html;
+    selKr.disabled = false;
+}
+
+function preencherCascataPorKr(idKr) {
+    if (!idKr) return;
+    const krId = parseInt(idKr, 10);
+    for (let i = 0; i < cascataOkrAtividadeCache.length; i++) {
+        const d = cascataOkrAtividadeCache[i];
+        for (let j = 0; j < (d.objetivos || []).length; j++) {
+            const o = d.objetivos[j];
+            const kr = (o.krs || []).find(function (k) { return k.id_kr === krId; });
+            if (kr) {
+                const selDirec = document.getElementById('ativ_sel_direc');
+                const selObj = document.getElementById('ativ_sel_objetivo');
+                const selKr = document.getElementById('ativ_sel_kr');
+                if (selDirec) selDirec.value = String(d.id_direc);
+                aoMudarDirecionadorAtividade();
+                if (selObj) selObj.value = String(o.id_obj_dt);
+                aoMudarObjetivoAtividade();
+                if (selKr) selKr.value = String(kr.id_kr);
+                return;
+            }
+        }
+    }
+}
+
+function atualizarEstadoSubmitAtividade() {
+    const btn = document.getElementById('ativ-btn-submit');
+    const alerta = document.getElementById('ativ-squad-vazia-alert');
+    const selTeam = document.getElementById('ativ_id_team');
+    if (alerta) alerta.classList.toggle('is-visible', squadAtividadeVazia);
+    if (selTeam) {
+        selTeam.disabled = squadAtividadeVazia;
+        if (squadAtividadeVazia) selTeam.removeAttribute('required');
+        else selTeam.setAttribute('required', 'required');
+    }
+    if (btn) btn.disabled = squadAtividadeVazia;
+}
+
+function montarCascataDeKrsFlat(listaKrs) {
+    const mapaDirec = new Map();
+    (listaKrs || []).forEach(function (kr) {
+        const nomeDirec = kr.direcionador_nome || 'Direcionador';
+        const tituloObj = kr.objetivo_titulo || 'Objetivo';
+        const chaveObj = (kr.dx_objetivo_id || '') + '::' + tituloObj;
+        if (!mapaDirec.has(nomeDirec)) {
+            mapaDirec.set(nomeDirec, { nome: nomeDirec, objetivos: new Map() });
+        }
+        const direc = mapaDirec.get(nomeDirec);
+        if (!direc.objetivos.has(chaveObj)) {
+            direc.objetivos.set(chaveObj, {
+                id_obj_dt: kr.dx_objetivo_id || chaveObj,
+                titulo: tituloObj,
+                dx_objetivo_id: kr.dx_objetivo_id,
+                krs: []
+            });
+        }
+        direc.objetivos.get(chaveObj).krs.push({
+            id_kr: kr.id_kr,
+            titulo: kr.descricao || kr.nome_kr || ('KR ' + kr.id_kr)
+        });
+    });
+    let idx = 1;
+    return Array.from(mapaDirec.values()).map(function (d) {
+        return {
+            id_direc: idx++,
+            nome: d.nome,
+            objetivos: Array.from(d.objetivos.values())
+        };
+    });
+}
+
+async function carregarCascataOkrAtividade() {
+    const selDirec = document.getElementById('ativ_sel_direc');
+    if (!selDirec) return;
+    selDirec.innerHTML = '<option value="">Carregando direcionadores…</option>';
+    resetarSelectsCascataOkr();
+
+    try {
+        const idClie = document.getElementById('id_cliente_hidden')?.value || '<%= lead.id_clie %>';
+        if (!idClie) {
+            selDirec.innerHTML = '<option value="">Cliente não identificado — recarregue a página</option>';
+            return;
+        }
+
+        const urlCascata = '/api/estrategia/cascata-okr-atividade?id_sprn=' + encodeURIComponent(idSprintAtivaGlobal) + '&id_clie=' + encodeURIComponent(idClie);
+        const res = await fetch(urlCascata);
+        const data = await res.json().catch(function () { return {}; });
+
+        if (res.ok && data.direcionadores && data.direcionadores.length) {
+            cascataOkrAtividadeCache = data.direcionadores;
+        } else {
+            const resKrs = await fetch('/api/estrategia/krs-por-sprint?id_sprn=' + encodeURIComponent(idSprintAtivaGlobal) + '&id_clie=' + encodeURIComponent(idClie));
+            const dataKrs = await resKrs.json().catch(function () { return {}; });
+            if (!resKrs.ok) {
+                selDirec.innerHTML = '<option value="">' + (dataKrs.error || data.error || 'Erro ao carregar matriz OKR') + '</option>';
+                return;
+            }
+            cascataOkrAtividadeCache = montarCascataDeKrsFlat(dataKrs.krs || []);
+        }
+
+        if (!cascataOkrAtividadeCache.length) {
+            selDirec.innerHTML = '<option value="">Nenhum direcionador disponível para esta sprint</option>';
+            return;
+        }
+
+        let html = '<option value="">Selecione o direcionador…</option>';
+        cascataOkrAtividadeCache.forEach(function (d) {
+            html += '<option value="' + d.id_direc + '">' + (d.nome || ('Direcionador ' + d.id_direc)) + '</option>';
+        });
+        selDirec.innerHTML = html;
+    } catch (err) {
+        console.error(err);
+        selDirec.innerHTML = '<option value="">Erro ao carregar direcionadores</option>';
+    }
+}
+
+async function carregarSquadAtividadeModal() {
+    const selectTeam = document.getElementById('ativ_id_team');
+    if (!selectTeam) return;
+    selectTeam.innerHTML = '<option value="">Filtrando integrantes da Squad...</option>';
+    squadAtividadeVazia = false;
+
+    try {
+        const resTeam = await fetch('/api/ctdi_team?id_squad=' + idSquadAtivaGlobal);
+        const membrosDaSquad = await resTeam.json();
+
+        if (!Array.isArray(membrosDaSquad) || membrosDaSquad.length === 0) {
+            squadAtividadeVazia = true;
+            selectTeam.innerHTML = '<option value="">Nenhum profissional alocado nesta Squad...</option>';
+        } else {
+            let htmlTeam = '<option value="">Selecione o Responsável...</option>';
+            membrosDaSquad.forEach(function (m) {
+                htmlTeam += '<option value="' + m.id_member + '">' + m.nome + ' (' + (m.position || 'Consultor') + ')</option>';
+            });
+            selectTeam.innerHTML = htmlTeam;
+        }
+    } catch (err) {
+        console.error(err);
+        selectTeam.innerHTML = '<option value="">Erro ao carregar integrantes</option>';
+    }
+    atualizarEstadoSubmitAtividade();
+}
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('subModalAtividade');
+        if (modal && modal.classList.contains('is-open')) fecharSubModalAtividade();
+    }
+});
+
+async function abrirSubModalAtividadeEditar(idAtiv) {
+    const ativ = atividadesSprintCache.find(function (a) { return a.id_ativ === idAtiv; });
+    if (!ativ) return;
+    abrirSubModalAtividade(ativ);
+}
+
+async function abrirSubModalAtividade(atividadeEdicao) {
+    if (!idSprintAtivaGlobal || !idSquadAtivaGlobal) {
+        return alert('Contexto ou Squad da Sprint não mapeados corretamente.');
+    }
+
+    const modal = document.getElementById('subModalAtividade');
+    const form = document.getElementById('formAtividade');
+    const titulo = document.getElementById('ativ-modal-titulo-texto');
+    const btnTexto = document.getElementById('ativ-btn-submit-texto');
+    const hiddenId = document.getElementById('ativ_id_ativ');
+    const isEdicao = !!(atividadeEdicao && atividadeEdicao.id_ativ);
+
+    if (form) form.reset();
+    if (hiddenId) hiddenId.value = isEdicao ? String(atividadeEdicao.id_ativ) : '';
+    if (titulo) titulo.textContent = isEdicao ? 'Editar Atividade Operacional' : 'Vincular Nova Atividade Operacional';
+    if (btnTexto) btnTexto.textContent = isEdicao ? 'SALVAR ALTERAÇÕES' : 'VINCULAR TAREFA';
+
+    ativarAbaAtividade('detalhes');
+    document.getElementById('ativ_dt_plan').value = new Date().toISOString().split('T')[0];
+
+    await Promise.all([carregarCascataOkrAtividade(), carregarSquadAtividadeModal()]);
+
+    if (isEdicao) {
+        document.getElementById('ativ_nome').value = atividadeEdicao.nome_ativ || '';
+        document.getElementById('ativ_desc').value = atividadeEdicao.desc_ativ || '';
+        if (atividadeEdicao.data_planejamento) {
+            const dp = String(atividadeEdicao.data_planejamento).slice(0, 10);
+            document.getElementById('ativ_dt_plan').value = dp;
+        }
+        document.getElementById('ativ_dt_concl').value = formatarDataParaInputLocal(atividadeEdicao.data_conclusao);
+        document.getElementById('ativ_status').value = normalizarStatusAtiv(atividadeEdicao.status_ativ);
+        const executorId = atividadeEdicao.executor_id || atividadeEdicao.id_team;
+        if (executorId) document.getElementById('ativ_id_team').value = String(executorId);
+        if (atividadeEdicao.id_kr) preencherCascataPorKr(atividadeEdicao.id_kr);
+    }
+
+    if (modal) modal.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+}
+
+function fecharSubModalAtividade() {
+    const modal = document.getElementById('subModalAtividade');
+    if (modal) modal.classList.remove('is-open');
+    document.body.style.overflow = '';
+    const form = document.getElementById('formAtividade');
+    if (form) form.reset();
+    document.getElementById('ativ_id_ativ').value = '';
+    ativarAbaAtividade('detalhes');
+    resetarSelectsCascataOkr();
+    squadAtividadeVazia = false;
+    atualizarEstadoSubmitAtividade();
+}
+
+async function salvarAtividadeSprint(e) {
+    e.preventDefault();
+    if (squadAtividadeVazia) {
+        mostrarToastEvolucao('Aloque membros na squad antes de vincular atividades.', 'error');
+        ativarAbaAtividade('detalhes');
+        return;
+    }
+
+    const idAtivEdicao = parseInt(document.getElementById('ativ_id_ativ').value, 10);
+    const isEdicao = !Number.isNaN(idAtivEdicao) && idAtivEdicao > 0;
+    const idKr = parseInt(document.getElementById('ativ_sel_kr').value, 10);
+    if (!idKr) {
+        mostrarToastEvolucao('Selecione o Key Result alvo na aba Alinhamento Estratégico.', 'error');
+        ativarAbaAtividade('estrategico');
+        return;
+    }
+
+    const statusEl = document.getElementById('ativ_status');
+    let status = normalizarStatusAtiv(statusEl ? statusEl.value : 'A Fazer');
+    let dtConclValue = document.getElementById('ativ_dt_concl').value;
+
+    if (isStatusConcluido(status) && !dtConclValue) {
+        dtConclValue = dataHojeParaInputDatetimeLocal();
+        document.getElementById('ativ_dt_concl').value = dtConclValue;
+    }
+
+    const payload = {
+        id_kr: idKr,
+        id_sprn: idSprintAtivaGlobal,
+        id_team: parseInt(document.getElementById('ativ_id_team').value, 10),
+        nome_ativ: document.getElementById('ativ_nome').value.trim(),
+        desc_ativ: document.getElementById('ativ_desc').value.trim(),
+        data_planejamento: document.getElementById('ativ_dt_plan').value,
+        data_conclusao: dtConclValue ? dtConclValue.replace('T', ' ') + ':00' : null,
+        status_ativ: status
+    };
+
+    const btn = document.getElementById('ativ-btn-submit');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+
+    try {
+        const url = isEdicao ? ('/api/okr/atividades/' + idAtivEdicao) : '/api/okr/atividades';
+        const res = await fetch(url, {
+            method: isEdicao ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(function () { return {}; });
+        if (res.ok) {
+            mostrarToastEvolucao(isEdicao ? 'Atividade atualizada!' : 'Evolução salva!', 'success');
+            fecharSubModalAtividade();
+            carregarAtividadesDaSprint(idSprintAtivaGlobal);
+        } else {
+            mostrarToastEvolucao(data.error || 'Falha ao persistir atividade operacional.', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        mostrarToastEvolucao('Erro de comunicação com o servidor.', 'error');
+    } finally {
+        if (btn) { btn.disabled = squadAtividadeVazia; btn.style.opacity = '1'; }
+    }
+}
+
+async function salvarEvolucaoAtividade(idAtiv, btn) {
+    const select = document.getElementById(`ativ-st-${idAtiv}`);
+    const dtInput = document.getElementById(`ativ-dt-${idAtiv}`);
+    if (!select) return;
+
+    let status = normalizarStatusAtiv(select.value);
+    let dataConclusao = dtInput ? dtInput.value : '';
+
+    if (isStatusConcluido(status) && !dataConclusao) {
+        dataConclusao = dataHojeParaInputDatetimeLocal();
+        if (dtInput) dtInput.value = dataConclusao;
+    }
+
+    const payload = { status_ativ: status };
+    if (dataConclusao) {
+        payload.data_conclusao = dataConclusao.replace('T', ' ') + ':00';
+    }
+
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+
+    try {
+        const res = await fetch(`/api/okr/atividades/${idAtiv}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.success !== false) {
+            mostrarToastEvolucao(data.message || 'Evolução salva!', 'success');
+            if (select.value !== status) select.value = status;
+            if (data.kr_atualizado) {
+                console.info('KR atualizado — valor_atual:', data.valor_atual_kr);
+            }
+        } else {
+            mostrarToastEvolucao(data.error || 'Não foi possível salvar a evolução.', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        mostrarToastEvolucao('Erro de comunicação com o servidor.', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    }
+}
+
+async function carregarHistoricoCerimonias(id_sprn) {
+    const timeline = document.getElementById('timeline-cerimonias');
+    timeline.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i></div>';
+
+    try {
+        const res = await fetch(`/api/cerimonias/${id_sprn}`);
+        const dados = await res.json();
+
+        if (!dados || dados.length === 0) {
+            timeline.innerHTML = '<p style="text-align:center; color:#999; font-size:0.8em; margin-top:20px;">Nenhum rito registrado.</p>';
+            return;
+        }
+
+        timeline.innerHTML = dados.map(c => {
+            const notaEscapada = c.note_cermls.replace(/'/g, "\\'").replace(/\n/g, "\\n");
+            return `
+                <div onclick="recuperarRito('${c.id_cermls}', '${c.tp_cermls}', '${c.dt_cermls}', '${notaEscapada}')"
+                     title="Clique para carregar esta nota"
+                     style="background:#fff; border:1px solid #eee; border-left:3px solid var(--dark-lilac);
+                            padding:8px 10px; margin-bottom:5px; border-radius:4px; cursor:pointer;
+                            display:flex; justify-content:space-between; align-items:center; transition:0.2s;"
+                     onmouseover="this.style.borderColor='var(--dark-lilac)'; this.style.background='var(--light-lilac)';"
+                     onmouseout="this.style.borderColor='#eee'; this.style.background='#fff';">
+                    <span style="font-size:0.78em; font-weight:800; color:var(--pure-black);">${c.tp_cermls}</span>
+                    <span style="font-size:0.75em; color:var(--dark-lilac); font-family:monospace;">
+                        ${new Date(c.dt_cermls).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})}
+                    </span>
+                </div>
+            `;
+        }).join('');
+    } catch (e) { timeline.innerHTML = '<p style="color:red; font-size:0.8em;">Erro ao carregar ritos.</p>'; }
+}
+
+function recuperarRito(id, tipo, data, nota) {
+    if (document.getElementById('edit_id_cermls')) document.getElementById('edit_id_cermls').value = id;
+    if (document.getElementById('cerm_tipo')) document.getElementById('cerm_tipo').value = tipo;
+
+    try {
+        let dataFormatada = "";
+        if (data) {
+            const d = new Date(data);
+            if (!isNaN(d.getTime())) { dataFormatada = d.toISOString().split('T')[0]; }
+            else { dataFormatada = data.substring(0, 10); }
+        }
+        document.getElementById('cerm_data').value = dataFormatada;
+    } catch (e) { console.error(e); }
+
+    const noteField = document.getElementById('cerm_note');
+    if (noteField) {
+        noteField.value = nota;
+        noteField.style.backgroundColor = "var(--light-lilac)";
+        noteField.focus();
+    }
+
+    const btnSave = document.getElementById('btn-cerm-save');
+    if (btnSave) { btnSave.innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Rito'; btnSave.style.background = "#d97706"; }
+    if (document.getElementById('btn-cerm-cancel')) document.getElementById('btn-cerm-cancel').style.display = "inline-flex";
+}
+
+function limparFormCerimonia() {
+    if (document.getElementById('edit_id_cermls')) document.getElementById('edit_id_cermls').value = "";
+    const noteField = document.getElementById('cerm_note');
+    if (noteField) { noteField.value = ""; noteField.style.backgroundColor = "var(--pure-white)"; }
+    const btnSave = document.getElementById('btn-cerm-save');
+    if (btnSave) { btnSave.innerHTML = '<i class="fas fa-save"></i> Registrar Rito'; btnSave.style.background = "var(--pure-black)"; }
+    if (document.getElementById('btn-cerm-cancel')) document.getElementById('btn-cerm-cancel').style.display = "none";
+}
+
+async function salvarApenasCerimonia() {
+    const id_sprn = document.getElementById('exec_id_sprn')?.value;
+    const edit_id = document.getElementById('edit_id_cermls')?.value || "";
+    const tp = document.getElementById('cerm_tipo')?.value;
+    const dt = document.getElementById('cerm_data')?.value;
+    const note = document.getElementById('cerm_note')?.value;
+
+    if (!note || !note.trim()) { return alert("Por favor, preencha as notas do rito."); }
+    const payload = { id_sprn, tp_cermls: tp, dt_cermls: dt, note_cermls: note };
+    if (edit_id) payload.id_cermls = edit_id;
+
+    try {
+        const res = await fetch('/api/cerimonias/registrar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) { limparFormCerimonia(); carregarHistoricoCerimonias(id_sprn); }
+        else { alert("Erro ao salvar rito no servidor."); }
+    } catch (err) { console.error(err); }
+}
+
+async function abrirPainelSprint(id_sprn) {
+    if (!id_sprn) return;
+    const cleanId = id_sprn.toString().replace(/[^0-9]/g, '');
+
+    try {
+        const res = await fetch(`/api/sprint_details/${cleanId}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        idSquadAtivaGlobal = data.id_squad;
+        const statusLimpo = (data.stat_sprn || data.status || '').toLowerCase().trim();
+        const isConcluida = isStatConcluidaClient(data.stat_sprn || data.status);
+
+        if (document.getElementById('btn-save-strategic')) document.getElementById('btn-save-strategic').style.display = isConcluida ? 'none' : 'inline-flex';
+        if (document.getElementById('sprint-subtitle')) document.getElementById('sprint-subtitle').innerText = isConcluida ? `[AUDITORIA] Entregável: ${data.name_derv || 'N/A'}` : `Entregável: ${data.name_derv || 'N/A'}`;
+
+        document.getElementById('guide-defi').innerText = data.derv_defi || 'N/A';
+        document.getElementById('guide-comp').innerText = data.derv_comp || 'N/A';
+
+        const okrBox = document.getElementById('sprint-estrategia-okr');
+        if (okrBox && window.PanelDxEstrategiaOkr) {
+            window.PanelDxEstrategiaOkr.renderEstrategiaOkrHierarchy(okrBox, data.estrategia_okr, { showKrs: false });
+        }
+
+        const dodContainer = document.getElementById('dod-checklist-container');
+        const listaGerais = document.getElementById('dod-items-gerais');
+        const listaEducacional = document.getElementById('dod-items-educacional');
+
+        if (listaGerais && listaEducacional) {
+            listaGerais.innerHTML = ""; listaEducacional.innerHTML = "";
+            if (data.criteria_dod) {
+                let parsedDod = typeof data.criteria_dod === 'string' ? JSON.parse(data.criteria_dod) : data.criteria_dod;
+                dodContainer.style.display = 'block';
+
+                const gerarItemHTML = (item, cor) => `
+                    <label style="display: flex; align-items:center; gap:8px; background:#fff; padding:6px; border-radius:4px; border:1px solid var(--border-lilac); cursor: pointer; margin-bottom: 2px;">
+                        <input type="checkbox" class="dod-checkbox" ${isConcluida ? 'checked disabled' : ''} style="width:auto;">
+                        <span style="font-size:0.85em; color:${cor}; font-weight:600;">${item}</span>
+                    </label>
+                `;
+                if (parsedDod.required && Array.isArray(parsedDod.required)) {
+                    listaGerais.innerHTML = parsedDod.required.map(item => gerarItemHTML(item, 'var(--text-dark)')).join('');
+                }
+                if (parsedDod.context_education && Array.isArray(parsedDod.context_education)) {
+                    listaEducacional.innerHTML = parsedDod.context_education.map(item => gerarItemHTML(item, 'var(--dark-lilac)')).join('');
+                }
+                if (Array.isArray(parsedDod)) {
+                    listaGerais.innerHTML = parsedDod.map(item => gerarItemHTML(item, 'var(--text-dark)')).join('');
+                }
+            }
+        }
+
+        const metricsContainer = document.getElementById('container-metrics-dynamic');
+        if (metricsContainer) {
+            metricsContainer.innerHTML = "";
+            const metricas = (data.derv_metr || "").split(/[;,\n]/).map(m => m.trim()).filter(m => m !== "");
+            const scores = data.metrics_scores || {};
+
+            metricsContainer.innerHTML += metricas.map(m => {
+                const val = scores[m] || 0;
+                return `
+                    <div style="margin-bottom: 5px; opacity: ${isConcluida ? '0.6' : '1'}">
+                        <label style="font-size: 0.82em; font-weight: 800; color: var(--text-dark); display:block; margin-bottom:3px;">${m}</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" class="metric-range" data-metrica="${m}"
+                                   value="${val}" min="0" max="100" style="flex: 1;"
+                                   ${isConcluida ? 'disabled' : ''}
+                                   oninput="this.nextElementSibling.innerText = this.value + '%'; atualizarProgresso();">
+                            <span style="font-size: 0.85em; font-weight: bold; color: var(--dark-lilac); width:40px; text-align:right;">${val}%</span>
+                        </div>
+                    </div>`;
+            }).join('');
+            atualizarProgresso();
+        }
+
+        document.getElementById('exec_swot_type').value = data.swot_type || "Fraqueza";
+        document.getElementById('exec_swot_justification').value = data.swot_justification || "Atualização integrada via painel do modulador.";
+
+        const comboEvid = document.getElementById('evid_componente');
+        if (comboEvid && data.derv_comp) {
+            comboEvid.innerHTML = '<option value="">Selecione o componente...</option>';
+            const componentes = data.derv_comp.split(/[;\n\r]/).map(c => c.trim()).filter(c => c !== "");
+            componentes.forEach(comp => {
+                const option = document.createElement('option');
+                option.value = comp; option.text = comp; comboEvid.appendChild(option);
+            });
+        }
+
+        carregarListaEvidencias(cleanId);
+        if (typeof carregarAtividadesDaSprint === "function") { carregarAtividadesDaSprint(cleanId); }
+
+        const idMatu = data.id_matu || '0';
+        document.getElementById('exec_evidence_url').value = `https://paneldx.com.br/projetos/${idMatu}/${cleanId}`;
+        document.getElementById('exec_id_sprn').value = cleanId;
+
+        if (typeof carregarHistoricoCerimonias === "function") { carregarHistoricoCerimonias(cleanId); }
+        document.getElementById('modal-sprint-exec').style.display = 'block';
+
+        inicializarQuillModulador();
+        restaurarEstadoModulador(data);
+
+    } catch (e) { console.error("Erro ao abrir painel:", e); }
+}
+
+function restaurarEstadoModulador(data) {
+    const box = document.getElementById('modulador-resultado');
+    if (box) box.style.display = 'none';
+
+    if (quillEvidencia) {
+        if (data && data.evidencia_texto) {
+            quillEvidencia.clipboard.dangerouslyPasteHTML(data.evidencia_texto);
+        } else {
+            quillEvidencia.setText('');
+        }
+    }
+
+    if (data && data.modulador_feedback) {
+        try {
+            const veredito = typeof data.modulador_feedback === 'string'
+                ? JSON.parse(data.modulador_feedback) : data.modulador_feedback;
+            if (veredito && veredito.status) renderizarVeredito(veredito);
+        } catch (_) { /* feedback legado em texto puro — ignora render estruturado */ }
+    }
+}
+
+// ==================================================================
+// 🔮 RENDERIZAÇÃO INTELIGENTE DO CONSOLE COGNITIVO DO MODULADOR
+// ==================================================================
+async function carregarListaEvidencias(id_sprn) {
+    const corpoTabela = document.getElementById('lista-evidencias-corpo');
+    const msgGlobal = document.getElementById('modulador-message-global');
+    const statusBox = document.getElementById('modulador-status-global');
+
+    if (!corpoTabela) return;
+
+    try {
+        const response = await fetch(`/api/evidencias/${id_sprn}`);
+        if (!response.ok) throw new Error(`Erro: ${response.status}`);
+        const evidencias = await response.json();
+
+        // Armazena no barramento global para o clique do olho ler instantaneamente
+        window.evidenciasCarregadasGlobal = evidencias;
+
+        corpoTabela.innerHTML = '';
+        if (evidencias.length === 0) {
+            corpoTabela.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #999; padding: 20px;">Nenhum documento comprobatório anexado.</td></tr>';
+            if (msgGlobal) msgGlobal.innerHTML = "Aguardando consolidação dos vetores operacionais para disparar auditoria cruzada...";
+            if (moduladorTimer) { clearTimeout(moduladorTimer); moduladorTimer = null; }
+            return;
+        }
+
+        let ultimaAnaliseValida = null;
+        let precisarAcompanharBackground = false;
+
+        evidencias.forEach(ev => {
+            let analise = null;
+            if (ev.analise_ia) {
+                analise = typeof ev.analise_ia === 'string' ? JSON.parse(ev.analise_ia) : ev.analise_ia;
+                if (analise && analise.status_validacao) { ultimaAnaliseValida = analise; }
+            }
+
+            let badgeHTML = '';
+            let botaoOlhoHTML = '';
+            const statusAtual = (ev.status_modulador || 'Pendente').trim();
+
+            // 🚨 SOLUÇÃO: Se estiver Pendente OU Processando, mantém o cronômetro ativo dibrando o delay local
+            if (statusAtual === 'Pendente' || statusAtual === 'Processando') {
+                precisarAcompanharBackground = true;
+            }
+
+            if (statusAtual === 'Pendente') {
+                badgeHTML = `<span style="background: #f1f5f9; color: #64748b; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold;"><i class="fas fa-clock"></i> Pendente</span>`;
+            } else if (statusAtual === 'Processando') {
+                badgeHTML = `<span style="background: var(--light-lilac); color: var(--dark-lilac); padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold;"><i class="fas fa-sync fa-spin"></i> Analisando...</span>`;
+            } else if (statusAtual === 'Avaliado') {
+                const corSelo = analise?.status_validacao === 'APROVADO' ? '#27ae60' : '#e67e22';
+                const bgSelo = analise?.status_validacao === 'APROVADO' ? '#e8f5e9' : '#fdf5e6';
+                badgeHTML = `<span style="background: ${bgSelo}; color: ${corSelo}; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold;"><i class="fas fa-robot"></i> ${analise?.status_validacao || 'AVALIADO'}</span>`;
+
+                // Botão do olho amarrando o ID limpo
+                botaoOlhoHTML = `<button type="button" class="btn-action" style="background: var(--light-lilac); color: var(--dark-lilac); width: auto; display: inline-flex; padding: 5px 10px; margin-right: 4px;" onclick="visualizarAnaliseEspecifica(${ev.id_evid})" title="Ver diagnóstico desta entrega"><i class="fas fa-eye"></i></button>`;
+            } else {
+                badgeHTML = `<span style="background: #fdedec; color: #e74c3c; padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold;"><i class="fas fa-exclamation-circle"></i> Erro</span>`;
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${ev.componente_vinculado}</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="${ev.url_evid}" target="_blank" style="color: var(--dark-lilac); font-weight:bold; text-decoration:none;"><i class="fas fa-external-link-alt"></i> Ver Link</a></td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${badgeHTML}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center; display:flex; justify-content:center;">
+                    ${botaoOlhoHTML}
+                    <button type="button" class="btn-action" style="background: #fdedec; color: #e74c3c; width: auto; display: inline-flex; padding: 5px 10px;" onclick="excluirEvidencia(event, ${ev.id_evid})">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>`;
+            corpoTabela.appendChild(tr);
+        });
+
+        // Atualização do Console do Modulador
+        if (msgGlobal && statusBox) {
+            if (precisarAcompanharBackground) {
+                statusBox.style.background = "var(--light-lilac)"; statusBox.style.borderColor = "var(--dark-lilac)";
+                msgGlobal.innerHTML = `<span style="color: var(--dark-lilac); font-weight: 700;"><i class="fas fa-spinner fa-spin"></i> O Modulador identificou novas entradas operacionais. Sincronizando com os agentes assíncronos...</span>`;
+            } else if (ultimaAnaliseValida) {
+                renderizarPainelCognitivo(ultimaAnaliseValida, msgGlobal, statusBox);
+            }
+        }
+
+        // Loop Reativo de Polling
+        if (precisarAcompanharBackground) {
+            if (!moduladorTimer) {
+                moduladorTimer = setTimeout(() => {
+                    moduladorTimer = null;
+                    carregarListaEvidencias(id_sprn);
+                }, 3000);
+            }
+        } else if (moduladorTimer) {
+            clearTimeout(moduladorTimer);
+            moduladorTimer = null;
+        }
+
+    } catch (error) { console.error(error); }
+}
+
+async function excluirEvidencia(event, id_evid) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    if (!confirm("Tem certeza que deseja remover este vínculo?")) return;
+
+    try {
+        const response = await fetch(`/api/evidencias/${id_evid}`, { method: 'DELETE' });
+        if (response.ok) {
+            alert("Vínculo removido com sucesso!");
+            const hiddenId = document.getElementById('exec_id_sprn').value;
+            carregarListaEvidencias(hiddenId);
+        } else { alert("Erro ao excluir."); }
+    } catch (error) { alert("Erro de conexão."); }
+}
+
+function atualizarProgresso() {
+    const ranges = document.querySelectorAll('.metric-range');
+    let total = 0;
+    ranges.forEach(r => total += parseInt(r.value));
+    const media = ranges.length > 0 ? Math.round(total / ranges.length) : 0;
+    document.getElementById('progress-bar-exec').style.width = media + "%";
+    document.getElementById('progress-label').innerText = media + "%";
+}
+
+async function adicionarEvidencia() {
+    const url = document.getElementById('evid_url').value;
+    const comp = document.getElementById('evid_componente').value;
+
+    if (!url || !comp) return alert("Selecione o componente e cole o link do arquivo.");
+    if (!url.includes("drive.google.com") && !url.includes("sharepoint.com")) {
+        if (!confirm("O link não parece ser do Drive ou SharePoint. Deseja vincular mesmo assim?")) return;
+    }
+    salvarVinculoNoBanco(url, comp);
+}
+
+async function salvarVinculoNoBanco(url, comp) {
+    const id_sprn = document.getElementById('exec_id_sprn').value;
+    try {
+        const response = await fetch('/api/evidencias/vincular', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_sprn: id_sprn, url_evidencia: url, componente: comp })
+        });
+        const result = await response.json();
+        if (response.ok) {
+            alert("✅ Evidência vinculada com sucesso!");
+            document.getElementById('evid_url').value = "";
+            carregarListaEvidencias(id_sprn);
+        } else { throw new Error(result.error); }
+    } catch (err) { alert("Erro ao salvar vínculo: " + err.message); }
+}
+
+
+// --- FUNÇÃO DO OLHO: CARREGA O PAYLOAD DO DOCUMENTO SELECIONADO NO CARD LATERAL ---
+function visualizarAnaliseEspecifica(idEvid) {
+    console.log("🔍 [OLHO] Evento de clique disparado para a Evidência ID:", idEvid);
+
+    const msgGlobal = document.getElementById('modulador-message-global');
+    const statusBox = document.getElementById('modulador-status-global');
+
+    if (!window.evidenciasCarregadasGlobal) {
+        console.error("❌ [OLHO] Erro: A memória global window.evidenciasCarregadasGlobal está vazia.");
+        return alert("Erro: O barramento de memória global das evidências não foi inicializado.");
+    }
+
+    // Busca flexível (==) para dibrar divergências latentes de String vs Number
+    const ev = window.evidenciasCarregadasGlobal.find(item => item.id_evid == idEvid);
+
+    if (!ev) {
+        console.error("❌ [OLHO] Erro: Evidência não localizada na lista em memória para o ID:", idEvid);
+        return alert("Inconsistência: O registro clicado não foi encontrado na memória ativa da página.");
+    }
+
+    console.log("📄 [OLHO] Registro localizado com sucesso no front-end:", ev);
+
+    if (!ev.analise_ia) {
+        console.warn("⚠️ [OLHO] Aviso: O campo analise_ia está nulo ou vazio no banco para este ID.");
+        return alert("Este documento ainda não possui um parecer técnico consolidado pelo Agente Modulador.");
+    }
+
+    try {
+        console.log("🔮 [OLHO] Tentando decodificar o payload de analise_ia...");
+        // Se já for um objeto por conta do serializer do Flask, usa direto; senão, faz o parse do JSON string
+        const analise = typeof ev.analise_ia === 'string' ? JSON.parse(ev.analise_ia) : ev.analise_ia;
+
+        console.log("✅ [OLHO] JSON parseado com sucesso! Chamando renderizador...", analise);
+        renderizarPainelCognitivo(analise, msgGlobal, statusBox);
+
+    } catch (jsonErr) {
+        console.error("❌ [OLHO CRÍTICO] Erro de parser no JSON enviado pelo Claude:", jsonErr);
+        console.error("📦 Conteúdo problemático bruto encontrado:", ev.analise_ia);
+        alert("Erro de Formatação: O parecer gerado pelo Consultor LeAction contém quebras de linha ou caracteres que corromperam o JSON. Verifique o console F12.");
+    }
+}
+
+// --- RENDERIZADOR DO CONSOLE COGNITIVO LATERAL ---
+function renderizarPainelCognitivo(analise, msgGlobal, statusBox) {
+    if (!analise || !msgGlobal || !statusBox) {
+        console.error("❌ [RENDERIZADOR] Elementos visuais da árvore DOM não encontrados.");
+        return;
+    }
+
+    console.log("🧠 [MODULADOR UI] Injetando dados de auditoria na interface do Console.");
+
+    const statusValidado = analise.status_validacao || "REVISÃO_NECESSÁRIA";
+    const isAprovado = statusValidado === 'APROVADO';
+
+    // Altera dinamicamente as cores com base no pilar de conformidade
+    statusBox.style.background = isAprovado ? "#e8f5e9" : "#fdf5e6";
+    statusBox.style.borderColor = isAprovado ? "#27ae60" : "#e67e22";
+
+    const feedback = analise.feedback_conversacional || "Documentação avaliada com sucesso.";
+    const valorFinanceiro = analise.impacto_financeiro_estimado?.retorno_financeiro_mensal || 0;
+    const paybackEstimado = analise.impacto_financeiro_estimado?.roi_presumido_projeto || "Em apuração.";
+
+    msgGlobal.innerHTML = `
+        <div style="margin-top: 2px;">
+            <span style="font-size: 1.05em; color: var(--text-dark); display: block; line-height: 1.4; font-weight: 500; margin-bottom: 15px; font-style: italic;">
+                "${feedback}"
+            </span>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 12px;">
+                <div style="background: var(--pure-white); padding: 12px; border-radius: 6px; border:1px solid var(--border-lilac);">
+                    <small style="font-weight: 900; color: #27ae60; font-size: 0.7em; text-transform: uppercase; display: block;"><i class="fas fa-money-bill-wave"></i> Eficiência Mapeada</small>
+                    <strong style="font-size: 1.3em; color: #27ae60; display:block; margin-top:2px;">
+                        + R$ ${valorFinanceiro.toLocaleString('pt-BR', {minimumFractionDigits: 2})} <span style="font-size:0.6em; color:var(--text-gray);">/mês</span>
+                    </strong>
+                </div>
+                <div style="background: var(--pure-white); padding: 10px; border-radius: 6px; border:1px solid #eee;">
+                    <small style="font-weight: 900; color: var(--text-dark); font-size: 0.7em; text-transform: uppercase; display: block;"><i class="fas fa-chart-line"></i> ROI / Payback</small>
+                    <span style="font-size: 0.88em; color: var(--text-dark); font-weight: 700; display: block; margin-top: 2px;">
+                        ${paybackEstimado}
+                    </span>
+                </div>
+            </div>
+        </div>`;
+}
+
+function fecharModalSprint() {
+    if (moduladorTimer) {
+        clearTimeout(moduladorTimer);
+        moduladorTimer = null;
+    }
+    document.getElementById('modal-sprint-exec').style.display = 'none';
+}
+
+async function salvarExecucaoSprint(e) {
+    if (e) e.preventDefault();
+    const id = document.getElementById('exec_id_sprn')?.value;
+    if (!id) return alert("Erro: ID da sprint não encontrado.");
+
+    const checkboxes = document.querySelectorAll('.dod-checkbox');
+    const temCheckboxes = checkboxes.length > 0;
+    const todosMarcados = temCheckboxes && Array.from(checkboxes).every(cb => cb.checked);
+
+    const notaAtual = parseInt(document.getElementById('progress-label').innerText.replace('%', ''), 10);
+
+    let novoStatus = 'em_andamento';
+    if (temCheckboxes && todosMarcados) {
+        if (notaAtual < 80) {
+            alert(`⚠️ Bloqueio do Modulador: O progresso qualitativo atual é de ${notaAtual}%. As métricas do entregável exigem um cumprimento mínimo de 80% para homologar o fechamento deste bloco.`);
+            return;
+        }
+        if (confirm("Todos os critérios DoD foram assinados e o Modulador validou a nota mínima. Concluir este Bloco Estratégico?")) {
+            novoStatus = 'concluida';
+        } else { return; }
+    }
+
+    const scores = {};
+    document.querySelectorAll('.metric-range').forEach(r => { scores[r.dataset.metrica] = parseInt(r.value); });
+
+    const payload = {
+        id_sprn: id,
+        swot_type: document.getElementById('exec_swot_type')?.value || "Fraqueza",
+        swot_justification: document.getElementById('exec_swot_justification')?.value || "Atualização unificada via painel do modulador.",
+        evidence_url: document.getElementById('exec_evidence_url')?.value || "",
+        exec_notes: document.getElementById('exec_notes')?.value || "Processamento via esteira de inteligência.",
+        metrics_scores: scores,
+        realv_sprn: notaAtual.toString(),
+        status: novoStatus
+    };
+
+    try {
+        const res = await fetch('/api/ctdi_sprn/update-strategic', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            alert(novoStatus === 'concluido' ? "Bloco Estratégico Homologado e Concluído com Sucesso!" : "Evolução Salva com Sucesso!");
+            location.reload();
+        } else {
+            const errData = await res.json();
+            alert("Erro ao salvar: " + (errData.error || "Erro desconhecido"));
+        }
+    } catch (err) { alert("Erro de comunicação com o servidor."); }
+}
+
+// ==================================================================
+// 🧑‍⚖️ MODULADOR IA (O Juiz) — Editor Quill + Submissão para Avaliação
+// ==================================================================
+let quillEvidencia = null;
+
+function inicializarQuillModulador() {
+    const alvo = document.getElementById('quill-evidencia');
+    if (!alvo || typeof Quill === 'undefined' || alvo.__quillReady) return;
+    quillEvidencia = new Quill('#quill-evidencia', {
+        theme: 'snow',
+        placeholder: 'Cole aqui as evidências fáticas: URLs dos documentos publicados, links de pastas, ou a cópia/transcrição dos e-mails de aprovação...',
+        modules: {
+            toolbar: [
+                [{ header: [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline'],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                ['link', 'blockquote', 'code-block'],
+                ['clean']
+            ]
+        }
+    });
+    alvo.__quillReady = true;
+}
+
+async function submeterParaModulador() {
+    const idSprn = document.getElementById('exec_id_sprn')?.value;
+    if (!idSprn) { return mostrarToastEvolucao('ID da sprint não encontrado.', 'error'); }
+    if (!quillEvidencia) { inicializarQuillModulador(); }
+
+    const evidenciaHtml = quillEvidencia ? quillEvidencia.root.innerHTML : '';
+    const evidenciaTexto = quillEvidencia ? quillEvidencia.getText().trim() : '';
+
+    if (evidenciaTexto.length < 10) {
+        return mostrarToastEvolucao('Descreva a evidência com mais detalhes antes de submeter.', 'error');
+    }
+
+    const btn = document.getElementById('btn-submeter-modulador');
+    const htmlOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> O Modulador está analisando...';
+
+    try {
+        const res = await fetch('/api/modulador/avaliar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_sprn: parseInt(idSprn, 10), evidencia: evidenciaHtml })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.success) {
+            renderizarVeredito(data);
+            mostrarToastEvolucao('Avaliação do Modulador concluída!', 'success');
+            if (data.sprint_concluida) {
+                setTimeout(() => window.location.reload(), 2600);
+            }
+        } else {
+            mostrarToastEvolucao(data.error || 'Falha na avaliação do Modulador.', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        mostrarToastEvolucao('Erro de comunicação com o Modulador Consultor LeAction.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = htmlOriginal;
+    }
+}
+
+function renderizarVeredito(data) {
+    const box = document.getElementById('modulador-resultado');
+    const aprovado = data.status === 'Aprovado';
+
+    box.className = 'modulador-resultado ' + (aprovado ? 'res-aprovado' : 'res-revisao');
+    document.getElementById('res-icone').className = 'fas ' + (aprovado ? 'fa-circle-check' : 'fa-circle-exclamation');
+    const notaTxt = (data.nota !== undefined && data.nota !== null) ? ` — Nota ${data.nota}/100` : '';
+    document.getElementById('res-titulo').innerText = (aprovado ? 'Entrega Aprovada' : 'Revisão Necessária') + notaTxt;
+    document.getElementById('res-badge').innerText = data.status || '—';
+    document.getElementById('res-feedback').innerText = data.feedback || 'Sem parecer textual.';
+
+    const fortes = document.getElementById('res-pontos-fortes');
+    const pend = document.getElementById('res-pendencias');
+    const renderLista = (el, itens, vazio) => {
+        if (Array.isArray(itens) && itens.length) {
+            el.innerHTML = itens.map(i => `<li>${i}</li>`).join('');
+        } else {
+            el.innerHTML = `<li style="list-style:none; margin-left:-18px; font-style:italic;">${vazio}</li>`;
+        }
+    };
+    renderLista(fortes, data.pontos_fortes, 'Nenhum ponto forte destacado.');
+    renderLista(pend, data.pendencias, 'Nenhuma pendência apontada.');
+
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+
+<!-- 🎯 DRAG & DROP DO KANBAN (SortableJS) -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof Sortable === 'undefined') {
+        console.warn('SortableJS não carregou — Drag & Drop desabilitado.');
+        return;
+    }
+
+    const dropzones = document.querySelectorAll('.kanban-dropzone');
+    dropzones.forEach(zone => {
+        new Sortable(zone, {
+            group: 'sprints-kanban',
+            animation: 150,
+            ghostClass: 'bg-gray-100',
+            // Só elementos com data-sprn-id podem ser arrastados (ignora dicas de coluna vazia)
+            draggable: '.task-card',
+            onEnd: async function (evt) {
+                const itemEl = evt.item;
+                const toZone = evt.to;
+
+                if (evt.from === evt.to) return;
+
+                const sprintId = itemEl.getAttribute('data-sprn-id');
+                const novoStatus = toZone.getAttribute('data-status-alvo');
+
+                if (!sprintId || !novoStatus) return;
+
+                try {
+                    const res = await fetch('/api/sprints/status-dnd', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id_sprn: sprintId, status: novoStatus })
+                    });
+                    const result = await res.json().catch(() => ({}));
+                    if (!res.ok || !(result.success || result.status === 'success')) {
+                        throw new Error("Falha na API");
+                    }
+
+                    // Recarrega para o EJS re-renderizar a nova coluna com os botoes
+                    // e datas condicionais corretos do banco (ex.: 'Gerenciar Execucao').
+                    window.location.reload();
+
+                } catch (err) {
+                    console.error(err);
+                    alert("Erro ao mover card. A página será recarregada.");
+                    window.location.reload();
+                }
+            }
+        });
+    });
+});
+</script>

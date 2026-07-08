@@ -1,0 +1,187 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <div>
+                <h1><i class="fas fa-cube"></i> Dimensões (Engine)</h1>
+                <p style="color: #666; margin-top: 5px;">Estrutura macro do modelo LeAction.</p>
+            </div>
+            <button class="btn blue-btn" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Nova Dimensão
+            </button>
+        </div>
+    </div>
+
+    <div class="engine-crud-table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th style="width: 250px;">Perspectiva</th>
+                    <th>Nome da Dimensão</th>
+                    <th style="text-align: center; width: 80px;">Ação</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-form" class="engine-modal" aria-hidden="true">
+    <div class="engine-modal__dialog engine-modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <button type="button" class="engine-modal__close" onclick="fecharModal()" aria-label="Fechar">&times;</button>
+        <h2 id="modal-title" class="engine-modal__title">Nova Dimensão</h2>
+
+        <form id="form-dime" class="engine-modal__form" onsubmit="salvarRegistro(event)">
+            <input type="hidden" id="id_dime">
+
+            <div class="engine-modal__form-row">
+                <div class="engine-form-group" style="flex: 3;">
+                    <label for="name_dime">Nome da Dimensão (Core)</label>
+                    <input type="text" id="name_dime" readonly style="background-color: #f9f9f9; cursor: not-allowed;">
+                </div>
+                <div class="engine-form-group" style="flex: 1; min-width: 120px;">
+                    <label for="code_dime">Sigla (Código)</label>
+                    <input type="text" id="code_dime" placeholder="Ex: SV" maxlength="5" style="text-transform: uppercase;">
+                </div>
+            </div>
+
+            <div class="engine-form-group">
+                <label for="perspective_dime">Perspectiva Uniformizadora</label>
+                <input type="text" id="perspective_dime" placeholder="Ex: Perspectiva Estratégica">
+            </div>
+
+            <div class="engine-form-group">
+                <label for="desc_dime">Descrição Curta (Resumo)</label>
+                <input type="text" id="desc_dime" placeholder="Breve explicação para a tabela...">
+            </div>
+
+            <div class="engine-form-group engine-form-group--accent">
+                <label for="long_description"><i class="fas fa-book-open"></i> Conceituação Completa (padrões de mercado & LeAction)</label>
+                <textarea id="long_description" rows="6"
+                          placeholder="Descreva aqui o pilar fundamental, os aspectos motivacionais e a visão segundo padrões de mercado..."></textarea>
+            </div>
+
+            <div class="engine-modal__buttons">
+                <button type="button" class="btn cancel-btn" onclick="fecharModal()">Cancelar</button>
+                <button type="submit" class="btn blue-btn"><i class="fas fa-save"></i> Salvar Estratégia</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const API_URL = "<%= API_BASE_URL %>/leaf_dime";
+    const modalEl = document.getElementById('modal-form');
+
+    async function carregarDados() {
+        try {
+            const res = await fetch(API_URL);
+            const dados = await res.json();
+            renderizarTabela(dados);
+        } catch (error) { console.error(error); }
+    }
+
+    function renderizarTabela(dados) {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+
+        dados.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = 'row-dime';
+            tr.title = `RESUMO: ${item.desc_dime || ''}\n\nDETALHAMENTO (padrões de mercado): ${item.long_description || ''}`;
+
+            tr.innerHTML = `
+                <td style="color:#888;">#${item.id_dime}</td>
+                <td class="col-perspective">
+                    <i class="fas fa-layer-group" style="font-size: 0.8em; margin-right: 8px;"></i>
+                    ${item.perspective_dime || 'Não definida'}
+                </td>
+                <td>
+                    <span class="dime-name-main">${item.name_dime}</span>
+                    <small style="color: #999; font-size: 0.8em;">Código: ${item.code_dime || '---'}</small>
+                </td>
+                <td style="text-align: center;">
+                    <button class="action-btn btn-edit" onclick='editar(${JSON.stringify(item)})' title="Editar Estratégia">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function abrirModal(limpar = true) {
+        if (limpar) {
+            document.getElementById('form-dime').reset();
+            document.getElementById('id_dime').value = '';
+            document.getElementById('modal-title').innerText = "Nova Dimensão";
+        }
+        modalEl.classList.add('is-open');
+        modalEl.setAttribute('aria-hidden', 'false');
+    }
+
+    function fecharModal() {
+        modalEl.classList.remove('is-open');
+        modalEl.setAttribute('aria-hidden', 'true');
+    }
+
+    async function salvarRegistro(e) {
+        e.preventDefault();
+        const id = document.getElementById('id_dime').value;
+
+        const payload = {
+            name_dime: document.getElementById('name_dime').value,
+            code_dime: document.getElementById('code_dime').value.toUpperCase(),
+            perspective_dime: document.getElementById('perspective_dime').value,
+            desc_dime: document.getElementById('desc_dime').value,
+            long_description: document.getElementById('long_description').value
+        };
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/${id}` : API_URL;
+
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                fecharModal();
+                carregarDados();
+                alert("Estratégia atualizada com sucesso!");
+            }
+        } catch(e) { console.error("Erro ao salvar dimensão:", e); }
+    }
+
+    function editar(item) {
+        abrirModal(false);
+        document.getElementById('modal-title').innerText = "Explorar Dimensão Estratégica";
+        document.getElementById('id_dime').value = item.id_dime;
+
+        const nameField = document.getElementById('name_dime');
+        nameField.value = item.name_dime;
+        nameField.readOnly = true;
+        nameField.style.backgroundColor = "#f4f4f4";
+        nameField.style.cursor = "not-allowed";
+
+        document.getElementById('code_dime').value = item.code_dime || '';
+        document.getElementById('perspective_dime').value = item.perspective_dime || '';
+        document.getElementById('desc_dime').value = item.desc_dime || '';
+        document.getElementById('long_description').value = item.long_description || '';
+    }
+
+    async function deletar(id) {
+        if (confirm("Confirma exclusão?")) {
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            carregarDados();
+        }
+    }
+
+    modalEl.addEventListener('click', function (e) {
+        if (e.target === modalEl) fecharModal();
+    });
+
+    carregarDados();
+</script>

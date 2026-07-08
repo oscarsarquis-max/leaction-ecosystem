@@ -1,0 +1,14 @@
+metodologiasinovativas.com.br, www.metodologiasinovativas.com.br {
+	encode gzip
+
+	# API Flask e health check -> backend
+	@api path /api/* /health
+	handle @api {
+		reverse_proxy backend:5000
+	}
+
+	# Demais rotas -> frontend (SPA React/Nginx)
+	handle {
+		reverse_proxy frontend:80
+	}
+}

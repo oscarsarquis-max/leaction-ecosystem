@@ -1,0 +1,56 @@
+<div id="movimentos-page">
+    <h1>Gerenciar Movimentos TD</h1>
+
+    <h2>Adicionar Novo Movimento <i>(Fase TD)</i></h2>
+    <form id="movimentos-form">
+        <div class="form-group">
+            <label for="name_movi">Nome do Movimento:</label>
+            <input type="text" id="name_movi" name="name_movi" required>
+        </div>
+        <div class="form-group">
+            <label for="desc_movi">Descrição do Movimento:</label>
+            <textarea id="desc_movi" name="desc_movi"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="diag_movi">Diagnóstico Prévio:</label>
+            <textarea id="diag_movi" name="diag_movi"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="crtr_movi">Característica Identificada:</label>
+            <textarea id="crtr_movi" name="crtr_movi"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="intv_movi">Intervalo da PGen (<i>Nota de Maturidade Geral</i>):</label>
+            <input type="text" id="intv_movi" name="intv_movi" required>
+        </div>
+
+        <button type="submit" id="saveOrAddButton">Adicionar</button>
+
+    </form>
+
+    <h2>Buscar Movimentos</h2>
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="Digite 5+ caracteres para buscar...">
+        <button id="search-btn">Buscar</button>
+    </div>
+
+    <h2>Lista de Movimentos</h2>
+    <table id="movimentos-table">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Descrição</th>
+            <th>Diagnóstico</th>
+            <th>Característica</th>
+            <th>PGen</th>
+            <th>Ações</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td colspan="5">Use a busca acima para encontrar Movimentos (<i>Fase TD</i>).</td>
+        </tr>
+        </tbody>
+    </table>
+</div>

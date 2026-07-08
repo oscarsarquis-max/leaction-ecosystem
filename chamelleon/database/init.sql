@@ -1,0 +1,2 @@
+-- Chamelleon — schema inicial PostgreSQL
+-- Bootstrap: executar após criar o banco de dados.

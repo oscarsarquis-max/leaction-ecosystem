@@ -1,0 +1,101 @@
+<style>
+    #versao-cms-page {
+        max-width: 960px;
+        margin: 0 auto;
+        padding-bottom: 40px;
+    }
+    #versao-cms-page .versao-cms-header {
+        margin-bottom: 28px;
+        padding: 22px 26px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #bfdbfe;
+    }
+    #versao-cms-page .versao-cms-header h1 {
+        margin: 0 0 8px;
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #1e40af;
+        border: none;
+        padding: 0;
+    }
+    #versao-cms-page .versao-cms-badge {
+        display: inline-block;
+        margin-bottom: 10px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: #1e40af;
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+    }
+    #versao-cms-page .versao-cms-header p {
+        margin: 0;
+        color: #475569;
+        font-size: 0.95rem;
+        line-height: 1.55;
+    }
+    #versao-cms-page .versao-cms-body {
+        background: #fff;
+        border-radius: 12px;
+        padding: 32px 36px;
+        box-shadow: 0 2px 12px rgba(17, 24, 39, 0.06);
+        border-top: 4px solid #3b82f6;
+        line-height: 1.65;
+        color: #334155;
+    }
+    #versao-cms-page .versao-cms-body h1,
+    #versao-cms-page .versao-cms-body h2,
+    #versao-cms-page .versao-cms-body h3 {
+        color: #1e293b;
+        margin-top: 1.4em;
+        margin-bottom: 0.6em;
+        font-weight: 800;
+    }
+    #versao-cms-page .versao-cms-body h2:first-child,
+    #versao-cms-page .versao-cms-body h3:first-child {
+        margin-top: 0;
+    }
+    #versao-cms-page .versao-cms-body ul,
+    #versao-cms-page .versao-cms-body ol {
+        padding-left: 1.4em;
+    }
+    #versao-cms-page .versao-cms-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 24px;
+        color: #2563eb;
+        font-weight: 700;
+        text-decoration: none;
+    }
+    #versao-cms-page .versao-cms-back:hover { text-decoration: underline; }
+</style>
+
+<%
+    const cmsLanding = (locals.cms && locals.cms.landing_page_data) ? locals.cms.landing_page_data : {};
+    const versao = cmsLanding.app_version || {};
+%>
+
+<div id="versao-cms-page">
+    <header class="versao-cms-header">
+        <% if (versao.version_label) { %>
+            <span class="versao-cms-badge"><%= versao.version_label %></span>
+        <% } %>
+        <h1><%= versao.title || 'Versão da aplicação' %></h1>
+        <% if (versao.summary) { %>
+            <p><%= versao.summary %></p>
+        <% } %>
+    </header>
+
+    <div id="versao-cms-body" class="versao-cms-body">
+        <% if (versao.details_html) { %>
+            <%- versao.details_html %>
+        <% } else { %>
+            <p>Nenhuma informação de versão cadastrada no CMS.</p>
+        <% } %>
+    </div>
+
+    <a href="/" class="versao-cms-back"><i class="fas fa-arrow-left"></i> Voltar à página inicial</a>
+</div>

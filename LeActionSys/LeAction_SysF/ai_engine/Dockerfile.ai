@@ -1,0 +1,28 @@
+FROM python:3.13-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Diretório base dentro do container
+WORKDIR /usr/src/app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+
+# 1. Copia os requisitos (Caminho relativo à raiz do projeto, onde você roda o build)
+COPY ai_engine/requirements_ai.txt .
+RUN pip install --no-cache-dir -r requirements_ai.txt
+
+# 2. Copia TUDO da raiz do projeto para o WORKDIR (/usr/src/app)
+# Isso manterá a estrutura:
+# /usr/src/app/app.py
+# /usr/src/app/database.py
+# /usr/src/app/ai_engine/worker.py
+COPY . .
+
+# 3. Define o PYTHONPATH para a raiz onde estão app.py e o pacote ai_engine
+ENV PYTHONPATH=/usr/src/app
+
+# 4. O comando de execução como MÓDULO
+# Agora que 'ai_engine' é uma pasta dentro de '/usr/src/app', o Python o encontrará
+CMD ["python", "-m", "ai_engine.worker"]

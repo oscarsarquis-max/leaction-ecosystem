@@ -1,0 +1,22 @@
+# Ambiente local / produção (nunca commitar segredos)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# PM2
+logs/
+.pm2/
+
+# Node
+node_modules/
+frontend/action-hub/.next/
+services/gateway-api/node_modules/
+
+# Chaves SSH / PEM
+chaves/
+*.pem
+
+# OAuth Mercado Livre (Marketplace plugin)
+backend/.ml_tokens.json
+backend/.env.ml.secrets

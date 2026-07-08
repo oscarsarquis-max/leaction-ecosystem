@@ -1,0 +1,253 @@
+<div class="mesa-org" id="mesa-org-root"
+     data-id-matu="<%= id_matu %>"
+     data-id-clie="<%= id_clie || '' %>"
+     data-bloco-prefill="<%= blocoPrefill || '' %>">
+<%
+    const listaDirecionadores = (typeof locals !== 'undefined' && locals.direcionadores)
+        ? locals.direcionadores
+        : (typeof direcionadores !== 'undefined' ? direcionadores : []);
+%>
+
+    <header class="mesa-org__hero">
+        <div>
+            <h1><i class="fas fa-lightbulb" style="color: #fbbf24;"></i> Mesa de Inovação Organizacional</h1>
+            <p>
+                Ambiente executivo para transformar <strong>lacunas de maturidade</strong> em iniciativas de sprint —
+                com post-its, hipóteses estratégicas e envio direto ao Kanban.
+            </p>
+        </div>
+        <div class="mesa-org__meta">
+            <div><strong><%= clienteNome %></strong></div>
+            <div>Maturidade #<%= id_matu %></div>
+            <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-ajuda-consultor" style="margin-top: 10px;">
+                <i class="fas fa-wand-magic-sparkles"></i> Ajuda do Consultor LeAction
+            </button>
+        </div>
+    </header>
+
+    <div class="mesa-org__grid">
+        <!-- Coluna esquerda: Gaps + Post-its -->
+        <div class="mesa-org__left">
+            <section class="mesa-card" style="margin-bottom: 16px;">
+                <h2 class="mesa-card__title"><i class="fas fa-chart-line"></i> Consulta de Problemas (Top 5 Gaps)</h2>
+                <p style="font-size: 0.78rem; color: var(--wb-muted); margin: -6px 0 12px;">
+                    Lacunas prioritárias do Relatório de Maturidade. Clique para gerar um post-it de ideação.
+                </p>
+                <div class="mesa-gap-list" id="mesa-gap-list">
+                    <% if (!topGaps || topGaps.length === 0) { %>
+                        <p class="mesa-empty-hint">Nenhum gap disponível. Conclua o Relatório de Maturidade primeiro.</p>
+                    <% } else {
+                        topGaps.forEach(function (gap, index) {
+                            const gapClass = gap.gap >= 0.5 ? 'mesa-tag--gap-high' : '';
+                    %>
+                        <article class="mesa-gap-item"
+                                 data-gap-index="<%= index %>"
+                                 data-bloco-nome="<%= gap.nome %>"
+                                 data-id-bloc="<%= gap.id_bloc || '' %>"
+                                 data-gap="<%= gap.gap.toFixed(2) %>"
+                                 data-dominio="<%= gap.dominio %>"
+                                 data-desc="<%= (gap.desc || '').replace(/"/g, '&quot;') %>">
+                            <div class="mesa-gap-item__head">
+                                <span class="mesa-gap-item__rank">#<%= index + 1 %> · Lacuna <%= gap.gap.toFixed(2) %></span>
+                            </div>
+                            <h3 class="mesa-gap-item__nome"><%= gap.nome %></h3>
+                            <div class="mesa-gap-item__tags">
+                                <span class="mesa-tag <%= gapClass %>">Δ <%= gap.gap.toFixed(2) %></span>
+                                <span class="mesa-tag"><%= gap.dominio %></span>
+                                <span class="mesa-tag"><%= gap.dimensao %></span>
+                            </div>
+                            <p class="mesa-gap-item__desc"><%= gap.desc %></p>
+                        </article>
+                    <% }); } %>
+                </div>
+            </section>
+
+            <section class="mesa-card" style="margin-bottom: 16px;">
+                <h2 class="mesa-card__title"><i class="fas fa-sticky-note"></i> Ideação por Eventos</h2>
+                <textarea id="mesa-txt-nota" class="mesa-textarea" rows="3"
+                          placeholder="Registre uma percepção, risco ou oportunidade organizacional…"></textarea>
+                <button type="button" id="mesa-btn-add-nota" class="mesa-btn mesa-btn--gold" style="width: 100%; margin-top: 10px;">
+                    Adicionar Post-it
+                </button>
+            </section>
+
+            <section class="mesa-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h2 class="mesa-card__title" style="margin: 0;"><i class="fas fa-th-large"></i> Mural de Ideias</h2>
+                    <span id="mesa-contador-notas" class="mesa-tag">0</span>
+                </div>
+                <div id="mesa-mural" class="mesa-mural">
+                    <p class="mesa-empty-hint" id="mesa-mural-empty" style="grid-column: 1 / -1;">
+                        Selecione um gap ou adicione notas manualmente.
+                    </p>
+                </div>
+
+                <%#
+                  Templates de post-it — o mural é preenchido via JS (mesa-inovacao.js).
+                  Branching: origem === 'telemetria' → card de alerta; caso contrário → post-it manual.
+                %>
+                <template id="mesa-tpl-postit-manual">
+                    <div class="mesa-postit" data-nota-id="">
+                        <div class="mesa-postit__actions"></div>
+                        <span class="mesa-postit__ctx"></span>
+                        <p class="mesa-postit__text"></p>
+                    </div>
+                </template>
+
+                <template id="mesa-tpl-postit-telemetria">
+                    <article class="mesa-postit post-it-telemetria" data-nota-id="" data-origem="telemetria">
+                        <div class="mesa-postit__actions"></div>
+                        <header class="post-it-telemetria__titulo"></header>
+                        <p class="post-it-telemetria__hipotese"></p>
+                        <footer class="post-it-telemetria__footer">
+                            <button type="button" class="mesa-btn mesa-btn--sprint post-it-telemetria__cta" data-action="sprint-telemetria">
+                                <i class="fas fa-rocket"></i> Transformar em Sprint
+                            </button>
+                        </footer>
+                    </article>
+                </template>
+            </section>
+        </div>
+
+        <!-- Painel lateral: Backlog preditivo eSIM -->
+        <aside class="mesa-card mesa-org__esim mesa-esim-panel" id="mesa-esim-panel" aria-label="Backlog Preditivo eSIM">
+            <div class="mesa-esim-panel__head">
+                <h2 class="mesa-card__title" style="margin: 0;">
+                    <i class="fas fa-satellite-dish"></i> Backlog Preditivo (eSIM)
+                </h2>
+                <button type="button" class="mesa-btn mesa-btn--ghost mesa-esim-panel__refresh" id="mesa-esim-refresh" title="Atualizar backlog">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <p class="mesa-esim-panel__hint">
+                Alertas de telemetria Base Mobile aguardando lapidação ou sprint. Itens somem ao incubar ou transformar em sprint.
+            </p>
+            <div class="mesa-esim-panel__meta">
+                <span class="mesa-tag" id="mesa-esim-contador">0 pendentes</span>
+            </div>
+            <div id="mesa-esim-list" class="mesa-esim-list">
+                <p class="mesa-empty-hint" id="mesa-esim-empty">Carregando backlog eSIM…</p>
+            </div>
+        </aside>
+
+        <!-- Coluna direita: Mesa de lapidação -->
+        <section class="mesa-card mesa-org__right">
+            <h2 class="mesa-card__title"><i class="fas fa-flask"></i> Mesa de Lapidação Estratégica</h2>
+
+            <div class="mesa-card" style="background: #f8fafc; margin-bottom: 14px; padding: 14px;">
+                <label class="mesa-result__label" for="mesa-select-direcionador">Direcionador Estratégico</label>
+                <p style="font-size: 0.72rem; color: var(--wb-muted); margin: 0 0 8px;">
+                    Ancore a inovação nas diretrizes da organização. O <strong>bloco CTDI</strong> será acoplado depois, ao planejar a sprint no Kanban.
+                </p>
+                <select id="mesa-select-direcionador" class="mesa-select" required>
+                    <% if (!listaDirecionadores || listaDirecionadores.length === 0) { %>
+                        <option value="">Nenhum direcionador cadastrado</option>
+                    <% } else {
+                        listaDirecionadores.forEach(function (dir) { %>
+                        <option value="<%= dir.id_direc %>"
+                                data-nome="<%= dir.nome %>"
+                                data-desc="<%= (dir.desc || '').replace(/"/g, '&quot;') %>"
+                                data-slug="<%= dir.slug || '' %>">
+                            <%= dir.nome %><% if (dir.meta_label) { %> — <%= dir.meta_label %><% } %>
+                        </option>
+                    <% }); } %>
+                </select>
+            </div>
+
+            <div class="mesa-mesa-panel" id="mesa-lapidacao-panel">
+                <div class="mesa-mesa-empty" id="mesa-consultor-empty">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    <p>Selecione post-its <strong>pendentes</strong> no mural e clique em <strong>Lapidar com Consultor LeAction</strong> para consolidar a ideia.</p>
+                </div>
+
+                <div class="mesa-result" id="mesa-consultor-result">
+                    <input type="hidden" id="mesa-hdn-id-ideia" value="">
+
+                    <div class="mesa-result__title" id="mesa-res-titulo" contenteditable="true">Iniciativa organizacional</div>
+
+                    <div class="mesa-result__box" style="margin-bottom: 4px;">
+                        <span class="mesa-result__label">Hipótese Estratégica (testável)</span>
+                        <div id="mesa-res-hipotese" contenteditable="true" class="mesa-input" style="min-height: 48px;"
+                             data-placeholder="Se aplicarmos X, então Y melhorará em Z semanas…"></div>
+                    </div>
+
+                    <div class="mesa-result__grid">
+                        <div class="mesa-result__box">
+                            <span class="mesa-result__label">Justificativa (Framework de Maturidade)</span>
+                            <div id="mesa-res-justificativa" contenteditable="true" style="font-size: 0.78rem; min-height: 72px;"></div>
+                        </div>
+                        <div class="mesa-result__box">
+                            <span class="mesa-result__label">Impacto no Negócio (ROI / ESG)</span>
+                            <div id="mesa-res-impacto" contenteditable="true" style="font-size: 0.78rem; min-height: 72px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="mesa-result__box">
+                        <span class="mesa-result__label">Os 4 Pilares de Execução</span>
+                        <div id="mesa-res-composicao"></div>
+                    </div>
+
+                    <div class="mesa-subtasks">
+                        <span class="mesa-result__label"><i class="fas fa-list-check"></i> Subtasks por Pilar (máx. 4)</span>
+                        <div id="mesa-txt-nova-subtask" contenteditable="true" class="mesa-input" style="min-height: 40px;"
+                             data-placeholder="Descreva a subtask (ex.: mapear stakeholders-chave)…"></div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; font-size: 0.68rem;">
+                            <label><input type="radio" name="mesa-rd-pilar" value="contencao" checked> Contenção</label>
+                            <label><input type="radio" name="mesa-rd-pilar" value="implementacao"> Implementação</label>
+                            <label><input type="radio" name="mesa-rd-pilar" value="prevencao"> Prevenção</label>
+                            <label><input type="radio" name="mesa-rd-pilar" value="sustentacao"> Sustentação</label>
+                            <button type="button" id="mesa-btn-add-subtask" class="mesa-btn mesa-btn--ghost" style="margin-left: auto;">Vincular</button>
+                        </div>
+                        <div id="mesa-lista-subtasks"></div>
+                    </div>
+
+                    <div class="mesa-result__box" style="margin-top: 8px;">
+                        <span class="mesa-result__label"><i class="fas fa-file-export"></i> Exportação JSON (Universal 1.0.0)</span>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <input type="text" id="mesa-txt-nome-arquivo" class="mesa-input" placeholder="sprint_organizacional">
+                            <select id="mesa-combo-formato" class="mesa-select">
+                                <option value="Universal">Universal (PanelDX)</option>
+                                <option value="Jira">Jira Cloud</option>
+                                <option value="Trello">Trello</option>
+                            </select>
+                        </div>
+                        <button type="button" id="mesa-btn-exportar-json" class="mesa-btn mesa-btn--gold" style="width: 100%;">
+                            <i class="fas fa-download"></i> Compilar e Baixar JSON
+                        </button>
+                    </div>
+
+                    <button type="button" id="mesa-btn-transformar-sprint" class="mesa-btn mesa-btn--sprint" disabled>
+                        <i class="fas fa-rocket"></i> Transformar em Sprint
+                    </button>
+                </div>
+            </div>
+
+            <div class="mesa-footer-actions">
+                <button type="button" id="mesa-btn-incubar" class="mesa-btn mesa-btn--lilac">
+                    <i class="fas fa-wand-magic-sparkles"></i> Lapidar com Consultor LeAction
+                </button>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Modal Ajuda do Consultor LeAction -->
+<div class="mesa-modal" id="mesa-modal-ajuda" aria-hidden="true">
+    <div class="mesa-modal__card">
+        <h3><i class="fas fa-wand-magic-sparkles"></i> Consultor LeAction — Mesa Organizacional</h3>
+        <p>O <strong>Consultor LeAction</strong> usa o <strong>Framework de Maturidade CTDI</strong>, os <strong>gaps</strong> da organização e o <strong>direcionador estratégico</strong> escolhido — sem contexto pedagógico de sala de aula.</p>
+        <ul>
+            <li>Escolha o <strong>direcionador estratégico</strong> que deve guiar esta inovação.</li>
+            <li>Clique em um gap prioritário para criar um post-it de ideação.</li>
+            <li>Selecione post-its pendentes e use <strong>Lapidar com Consultor LeAction</strong>.</li>
+            <li>Formule a <strong>hipótese estratégica</strong> e vincule subtasks aos 4 pilares.</li>
+            <li>Use <strong>Transformar em Sprint</strong> — o bloco CTDI será definido no Kanban, em <em>Planejar Sprint</em>.</li>
+        </ul>
+        <button type="button" class="mesa-btn mesa-btn--lilac" id="mesa-btn-fechar-ajuda" style="width: 100%;">Entendi</button>
+    </div>
+</div>
+
+<div class="mesa-toast" id="mesa-toast" role="status"></div>
+
+<script type="application/json" id="mesa-top-gaps-json"><%- JSON.stringify(topGaps || []) %></script>
+<script type="application/json" id="mesa-direcionadores-json"><%- JSON.stringify(listaDirecionadores || []) %></script>

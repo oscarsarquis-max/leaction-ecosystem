@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:15
+    container_name: leaction_db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: leaction_hub
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Isso faz o Docker ler seu SQL de criação automaticamente:
+      - ./shared/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  postgres_data:

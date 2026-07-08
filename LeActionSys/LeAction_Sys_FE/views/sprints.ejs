@@ -1,0 +1,1125 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <div>
+                <h1><i class="fas fa-running"></i> Gestão de Sprints e Roadmap</h1>
+                <p style="color: #666; margin-top: 5px;">Configuração da Trilha de Aceleração (Metodologia LeAction).</p>
+            </div>
+            <button class="btn blue-btn" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Nova Sprint Manual
+            </button>
+        </div>
+
+        <div style="margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #eee; display: flex; gap: 20px; align-items: flex-end;">
+            <div style="flex: 2;">
+                <label style="font-weight: bold; display: block; margin-bottom: 8px; color: #34495e;">1. Selecione o Projeto / Diagnóstico:</label>
+                <select id="projeto_selector" onchange="selecionarProjeto(this.value)" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc;">
+                    <option value="">-- Aguarde, carregando projetos... --</option>
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <label style="font-weight: bold; display: block; margin-bottom: 8px; color: #34495e;">2. Busca Rápida na Trilha:</label>
+                <input type="text" id="inputBusca" onkeyup="filtrarTabelaLocal()" placeholder="🔎 Filtrar por nome ou ID..." style="padding: 10px; border-radius: 6px; border: 1px solid #ccc; width: 100%;">
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 60px; text-align: center;">Onda</th>
+                    <th>Sprint / Bloco Associado</th>
+                    <th style="text-align: center;">Ordem</th>
+                    <th style="text-align: center;">Duração</th>
+                    <th style="text-align: center;">Meta Velocidade</th>
+                    <th style="text-align: center;">Status</th>
+                    <th style="text-align: center; width: 100px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <tr><td colspan="7" style="text-align:center; padding:30px; color:#999;">Selecione um projeto acima para carregar o Roadmap.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<<%//Este é o modal das sprints........%>
+<div id="modal-sprint-exec" class="modal">
+    <div class="modal-content" style="border-top: 5px solid #6c5ce7; width: 95%; max-width: 1400px; margin: 5vh auto; padding: 30px; position: relative;">
+        <span class="close" onclick="fecharModalSprint()">&times;</span>
+
+        <div style="text-align: center; margin-bottom: 25px;">
+            <h2 style="color: #2c3e50; margin: 0;"><i class="fas fa-tasks" style="color: #6c5ce7;"></i> Painel de Execução Inteligente</h2>
+            <p id="sprint-subtitle" style="color: #6c5ce7; font-weight: bold; margin-top: 5px;"></p>
+        </div>
+
+        <div id="dod-checklist-container" style="display:none; background: #f3f0ff; border: 1px solid #dcd3ff; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+            <div style="text-align: center; margin-bottom: 15px;">
+                <small style="font-weight: 800; color: #6c5ce7; font-size: 0.75em; text-transform: uppercase;">Critérios de Qualidade e Conformidade (DoD)</small>
+            </div>
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1; background: rgba(255,255,255,0.4); padding: 12px; border-radius: 6px;">
+                    <h5 style="margin: 0 0 10px 0; font-size: 0.8em; color: #6c5ce7; border-bottom: 1px solid #dcd3ff;"><i class="fas fa-check-double"></i> REQUISITOS GERAIS</h5>
+                    <div id="dod-items-gerais" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+                <div style="flex: 1; background: rgba(255,255,255,0.4); padding: 12px; border-radius: 6px;">
+                    <h5 style="margin: 0 0 10px 0; font-size: 0.8em; color: #6c5ce7; border-bottom: 1px solid #dcd3ff;"><i class="fas fa-graduation-cap"></i> CONTEXTO EDUCACIONAL</h5>
+                    <div id="dod-items-educacional" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="framework-guide" style="border-left: 5px solid #6c5ce7; padding: 15px; background: #fafafa; margin-bottom: 25px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <div><small style="font-weight: 800; color: #6c5ce7; font-size: 0.7em;">DEFINIÇÃO</small><div id="guide-defi" style="font-size: 0.95em; color: #34495e;"></div></div>
+                <div><small style="font-weight: 800; color: #6c5ce7; font-size: 0.7em;">COMPOSIÇÃO</small><div id="guide-comp" style="font-size: 0.95em; white-space: pre-wrap; color: #34495e;"></div></div>
+            </div>
+        </div>
+
+        <form id="form-sprint-exec" onsubmit="salvarExecucaoSprint(event)" style="width: 100%;">
+            <input type="hidden" id="exec_id_sprn">
+
+            <div style="display: flex; flex-direction: column; gap: 30px; width: 100%;">
+
+                <div style="display: flex; gap: 30px; width: 100%;">
+                    <div style="flex: 1.2;">
+                        <fieldset style="border-color: #dcd3ff; height: 100%;">
+                            <legend style="color: #6c5ce7; font-weight: bold; padding: 0 10px;">Qualificação Estratégica</legend>
+                            <div class="form-group" style="margin-bottom: 15px;">
+                                <label style="font-weight: bold; color: #444;">Racional (SWOT)</label>
+                                <select id="exec_swot_type" required style="width: 100%; padding: 10px; border: 1px solid #dcd3ff; border-radius: 4px;">
+                                    <option value="">Selecione...</option>
+                                    <option value="Fraqueza">Tratar Fraqueza</option>
+                                    <option value="Oportunidade">Alavancar Oportunidade</option>
+                                    <option value="Ameaça">Mitigar Ameaça</option>
+                                    <option value="Força">Potencializar Força</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: bold; color: #444;">Justificativa do Movimento</label>
+                                <textarea id="exec_swot_justification" rows="4" placeholder="Explique a decisão estratégica..." style="width: 100%; border: 1px solid #dcd3ff; padding: 10px; border-radius: 4px;"></textarea>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <div style="flex: 0.8; background: #fdfcff; padding: 20px; border-radius: 8px; border: 1px solid #dcd3ff; display: flex; flex-direction: column; justify-content: center;">
+                        <h4 style="margin: 0 0 20px 0; color: #6c5ce7; text-align: center;"><i class="fas fa-chart-line"></i> KPIs de Entrega</h4>
+                        <div id="container-metrics-dynamic" style="flex-grow: 1;"></div>
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #dcd3ff;">
+                            <label style="font-weight: bold; font-size: 0.9em; color: #6c5ce7;">Progresso Consolidado</label>
+                            <div style="background: #eee; height: 14px; border-radius: 7px; margin-top: 8px;">
+                                <div id="progress-bar-exec" style="background: #6c5ce7; width: 0%; height: 100%; border-radius: 7px; transition: 0.5s;"></div>
+                            </div>
+                            <div id="progress-label" style="text-align: right; font-weight: bold; color: #6c5ce7; font-size: 1em; margin-top: 5px;">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <fieldset style="border-color: #6c5ce7; padding: 20px;">
+                    <legend style="color: #6c5ce7; font-weight: bold; padding: 0 10px;">Ritos e Cerimônias (Registro Autônomo)</legend>
+                    <div style="display: flex; gap: 30px; width: 100%;">
+                        <div style="flex: 2;">
+                            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                                <div style="flex: 1;">
+                                    <label style="font-weight: bold; color: #444;">Tipo de Rito</label>
+                                    <select id="cerm_tipo" style="width: 100%; padding: 10px; border: 1px solid #dcd3ff;">
+                                        <option value="Daily">Daily (Diária)</option>
+                                        <option value="Planning">Planning (Planejamento)</option>
+                                        <option value="Review">Review (Revisão)</option>
+                                        <option value="Retrospectiva">Retrospectiva</option>
+                                    </select>
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="font-weight: bold; color: #444;">Data</label>
+                                    <input type="date" id="cerm_data" value="<%= new Date().toISOString().split('T')[0] %>" style="width: 100%; padding: 10px; border: 1px solid #dcd3ff;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 20px;">
+                                <label style="font-weight: bold; color: #444;">Notas e Encaminhamentos</label>
+                                <textarea id="cerm_note" rows="6" placeholder="O que foi deliberado?" style="border: 1px solid #6c5ce7; width: 100%; padding: 12px; border-radius: 4px;"></textarea>
+                            </div>
+                            <div style="display: flex; gap: 15px;">
+                                <button type="button" id="btn-cerm-save" class="btn-action" style="background: #6c5ce7; color: white; flex: 2; height: 45px;" onclick="salvarApenasCerimonia()">
+                                    <i class="fas fa-save"></i> REGISTRAR ESTE RITO
+                                </button>
+                                <button type="button" id="btn-cerm-cancel" class="btn-action" style="background: #94a3b8; color: white; flex: 1; display: none; height: 45px;" onclick="limparFormCerimonia()">
+                                    <i class="fas fa-undo"></i> DESISTIR
+                                </button>
+                            </div>
+                            <input type="hidden" id="edit_id_cermls" value="">
+                        </div>
+
+                        <div style="flex: 0.7; background: #f8f9fa; border-radius: 8px; padding: 15px; border: 1px solid #eee;">
+                            <small style="font-weight: 800; color: #6c5ce7; font-size: 0.7em; text-transform: uppercase; display: block; margin-bottom: 10px;">
+                                <i class="fas fa-list-ul"></i> REGISTROS
+                            </small>
+                            <div id="timeline-cerimonias" style="max-height: 350px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset style="border-color: #6c5ce7; padding: 20px;">
+                    <legend style="color: #6c5ce7; font-weight: bold; padding: 0 10px;">Auditoria de Evidências (Agente Modulador)</legend>
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+
+                        <div style="display: flex; align-items: flex-end; gap: 15px; background: #fdfcff; padding: 15px; border-radius: 8px; border: 1px solid #dcd3ff;">
+                            <div style="flex: 1.5;">
+                                <label style="font-weight: bold; color: #6c5ce7; font-size: 0.85em;"><i class="fas fa-link"></i> Link da Evidência (Drive/Sharepoint)</label>
+                                <input type="url" id="evid_url" placeholder="https://..." style="width: 100%; padding: 10px; border: 1px solid #dcd3ff; border-radius: 4px; margin-top: 5px;">
+                            </div>
+
+                            <div style="flex: 1;">
+                                <label style="font-weight: bold; color: #6c5ce7; font-size: 0.85em;"><i class="fas fa-puzzle-piece"></i> Componente Relacionado</label>
+                                <select id="evid_componente" style="width: 100%; padding: 10px; border: 1px solid #dcd3ff; border-radius: 4px; margin-top: 5px;">
+                                    <option value="">Selecione o componente...</option>
+                                    </select>
+                            </div>
+
+                            <button type="button" class="btn-action" style="background: #6c5ce7; color: white; width: 150px; height: 42px;" onclick="adicionarEvidencia()">
+                                <i class="fas fa-plus"></i> VINCULAR
+                            </button>
+                        </div>
+
+                        <div style="width: 100%; background: #fff; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+                                <thead style="background: #f3f0ff; color: #6c5ce7;">
+                                    <tr>
+                                        <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dcd3ff;">Componente</th>
+                                        <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dcd3ff;">Link</th>
+                                        <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dcd3ff;">Status Modulador</th>
+                                        <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dcd3ff;">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-evidencias-corpo">
+                                    </tbody>
+                            </table>
+                        </div>
+
+                        <div id="modulador-status-global" style="background: #f3f0ff; padding: 15px; border-radius: 8px; border: 1px solid #dcd3ff; display: flex; align-items: center; gap: 15px;">
+                            <i class="fas fa-robot" style="color: #6c5ce7; font-size: 1.5em;"></i>
+                            <div>
+                                <strong style="font-size: 0.8em; color: #6c5ce7; display: block; text-transform: uppercase;">Análise de Conformidade do Modulador</strong>
+                                <span id="modulador-message-global" style="font-size: 0.95em; color: #5d6d7e;">Aguardando vinculação de arquivos para iniciar auditoria cruzada...</span>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+            </div>
+
+            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                <button type="button" class="btn-action" style="background:#f1f5f9; color: #475569; width: 180px; margin-right: 15px;" onclick="fecharModalSprint()">Fechar Painel</button>
+                <button type="submit" id="btn-save-strategic" class="btn-action" style="background: #6c5ce7; color: white; width: 300px; height: 50px; font-size: 1.1em;">
+                    <i class="fas fa-save"></i> SALVAR TODA EVOLUÇÃO
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<% //Fim do modal das sprints%>
+
+
+<style>
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #f8f9fa; color: #7f8c8d; font-weight: bold; text-transform: uppercase; padding: 15px; border-bottom: 2px solid #eee; text-align: left; font-size: 0.85em; }
+    td { padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50; font-size: 0.95em; }
+    tr:hover { background-color: #f9f9f9; }
+
+    .action-btn { border: none; background: none; cursor: pointer; font-size: 1.1em; padding: 5px; transition: transform 0.2s; }
+    .action-btn:hover { transform: scale(1.2); }
+    .btn-edit { color: #f39c12; }
+    .btn-delete { color: #e74c3c; }
+
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+    .modal-content { background-color: white; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow-y: auto; }
+
+        .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; overflow: hidden; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #f8f9fa; color: #7f8c8d; font-weight: bold; text-transform: uppercase; padding: 15px; border-bottom: 2px solid #eee; text-align: left; font-size: 0.85em; }
+    td { padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50; font-size: 0.95em; }
+    tr:hover { background-color: #f9f9f9; }
+
+    .action-btn { border: none; background: none; cursor: pointer; font-size: 1.1em; padding: 5px; transition: transform 0.2s; }
+
+    .action-btn:hover { transform: scale(1.2); }
+
+    .btn-edit { color: #f39c12; }
+
+    .btn-delete { color: #e74c3c; }
+
+    .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(3px); }
+
+    .modal-content { background: white; margin: 2% auto; padding: 25px; border-radius: 12px; width: 90%; max-width: 1000px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border-top: 6px solid #3498db; }
+    .close { float: right; font-size: 28px; cursor: pointer; color: #aaa; }
+    fieldset { border: 1px solid #e1e8ed; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    legend { padding: 0 10px; font-weight: bold; color: #3498db; font-size: 0.85em; text-transform: uppercase; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.85em; color: #34495e; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9em; }
+
+    .framework-guide { background: #f0f4f8; border-radius: 10px; padding: 15px; margin-bottom: 20px; border-left: 5px solid #6c5ce7; }
+
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+    .bg-run { background: #d1ecf1; color: #0c5460; }
+    .bg-done { background: #d4edda; color: #155724; }
+    .bg-plan { background: #fff3cd; color: #856404; }
+
+
+    /* Padrão visual unificado */
+    .btn-action {
+        width: 100%;
+        padding: 10px;
+        border-radius: 6px;
+        border: none;
+        font-weight: bold;
+        cursor: pointer;
+        display: inline-flex; /* Ajustado para flexibilidade */
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.85em;
+        transition: 0.3s;
+    }
+
+</style>
+
+<script>
+    const API_URL = "<%= API_BASE_URL %>/ctdi_sprn";
+    const API_BLOC = "<%= API_BASE_URL %>/leaf_bloc";
+    const USER_ROLE = "<%= locals.isAdmin ? 'ADMIN' : 'LEAD' %>";
+    const USER_ID_CLIE = "<%= locals.lead ? lead.id_clie : '' %>";
+    let idMatuSelecionado = null;
+    let inicializado = false;
+
+async function init() {
+    if (inicializado) return; // Se já rodou, não roda de novo
+    inicializado = true;
+
+    console.log("Iniciando carga de dados...");
+    await carregarProjetos();
+    await carregarBlocos();
+}
+
+    async function carregarInfoMetodologica(id_bloc) {
+        if (!id_bloc) return;
+        try {
+            const res = await fetch(`<%= API_BASE_URL %>/leaf_derv?id_bloc=${id_bloc}`);
+            const data = await res.json();
+            const derv = Array.isArray(data) ? data[0] : data;
+            if (derv) {
+                document.getElementById('sprint-subtitle').innerText = `Entregável: ${derv.name_derv || '-'}`;
+                document.getElementById('framework-guide').style.display = 'block';
+                document.getElementById('guide-defi').innerText = derv.derv_defi || '-';
+                document.getElementById('guide-comp').innerText = derv.derv_comp || '-';
+                const dodBox = document.getElementById('dod-checklist-container');
+                const dodList = document.getElementById('dod-items-list');
+                dodList.innerHTML = "";
+                if (derv.criteria_dod) {
+                    const dod = typeof derv.criteria_dod === 'string' ? JSON.parse(derv.criteria_dod) : derv.criteria_dod;
+                    const items = [...(dod.required || []), ...(dod.context_education || [])];
+                    if (items.length > 0) {
+                        dodBox.style.display = 'block';
+                        dodList.innerHTML = items.map(i => `<label style="font-size:0.85em; display:flex; align-items:center; gap:8px; color:#475569;"><input type="checkbox" style="width:auto; margin:0;"> ${i}</label>`).join('');
+                    } else { dodBox.style.display = 'none'; }
+                }
+                const container = document.getElementById('container-metrics-dynamic');
+                container.innerHTML = "";
+                const metrics = derv.derv_metr ? derv.derv_metr.split(/[;,\n]/).map(m => m.trim()).filter(m => m !== "") : [];
+                if (metrics.length > 0) {
+                    metrics.forEach(m => {
+                        const div = document.createElement('div');
+                        div.style.padding = "8px"; div.style.background = "#fff"; div.style.borderRadius = "6px"; div.style.border = "1px solid #edf2f7";
+                        div.innerHTML = `<label style="font-size: 0.75em; display: block; font-weight: 700; color: #1e293b; margin-bottom:5px; text-transform:uppercase;">${m}</label><div style="display: flex; align-items: center; gap: 10px;"><input type="range" class="metric-range" value="0" min="0" max="100" style="flex: 1; accent-color: #27ae60;" oninput="this.nextElementSibling.innerText = this.value + '%'; atualizarProgresso();"><span style="font-size: 0.85em; font-weight: 800; min-width: 40px; color:#27ae60;">0%</span></div>`;
+                        container.appendChild(div);
+                    });
+                } else { container.innerHTML = "<p style='grid-column: span 2; text-align:center; color:#94a3b8;'>KPIs não definidos.</p>"; }
+                atualizarProgresso();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function atualizarProgresso() {
+        const ranges = document.querySelectorAll('.metric-range');
+        const bar = document.getElementById('progress-bar-exec');
+        const label = document.getElementById('progress-label');
+        if (ranges.length === 0) { if(bar) bar.style.width="0%"; if(label) label.innerText="0%"; return; }
+        let total = 0; ranges.forEach(r => total += parseInt(r.value));
+        const media = Math.round(total / ranges.length);
+        if (bar) bar.style.width = media + "%";
+        if (label) label.innerText = media + "%";
+    }
+
+    async function carregarProjetos() {
+        try {
+            // Chamando o novo endpoint exclusivo
+            const res = await fetch(`/api/seletor-projetos-ativos?role=${USER_ROLE}&id_clie=${USER_ID_CLIE}`);
+            const projetos = await res.json();
+
+            const selector = document.getElementById('projeto_selector');
+            if (!selector) return;
+
+            selector.innerHTML = '<option value="">-- Escolha um Diagnóstico --</option>';
+
+            projetos.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id_matu;
+                // Texto limpo e direto para o usuário
+                opt.textContent = `[Ciclo ${p.id_ctdi}] ${p.cliente} - ${p.nome}`;
+                selector.appendChild(opt);
+            });
+        } catch(e) {
+            console.error("Erro na carga do seletor:", e);
+        }
+    }
+
+    async function carregarBlocos() {
+        try {
+            const select = document.getElementById('id_bloc');
+
+            // Se o elemento não existe, não faz sentido continuar
+            if (!select) {
+                console.warn("Aviso: O elemento 'id_bloc' não existe nesta página. Pulando carga de blocos.");
+                return;
+            }
+
+            const res = await fetch(API_BLOC);
+            const blocos = await res.json();
+
+            select.innerHTML = '<option value="">-- Selecione o Bloco --</option>';
+            blocos.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id_bloc;
+                opt.textContent = b.name_bloc;
+                select.appendChild(opt);
+            });
+        } catch(e) {
+            console.error("Erro em carregarBlocos:", e);
+        }
+    }
+
+    async function selecionarProjeto(id) { idMatuSelecionado = id; if (id) carregarDados(); }
+
+    async function carregarDados() {
+        try {
+            const res = await fetch(`${API_URL}?id_matu=${idMatuSelecionado}`);
+            const dados = await res.json();
+            renderizarTabela(dados);
+        } catch (error) { console.error(error); }
+    }
+
+    function renderizarTabela(dados) {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+        dados.forEach(item => {
+            let statusClass = item.stat_sprn === 'em_andamento' ? 'bg-run' : item.stat_sprn === 'concluida' ? 'bg-done' : 'bg-plan';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="text-align:center; font-weight:bold;">${item.id_itera || '-'}</td>
+                <td>
+                    <div style="font-weight:bold;">${item.name_sprn || '-'}</div>
+                    <div style="font-size:0.85em; color:#666;">${item.name_bloc_text || '-'}</div>
+                </td>
+                <td style="text-align:center;">${item.ordr_sprn || '-'}</td>
+                <td style="text-align:center;">${item.week_sprn || 0} sem</td>
+                <td style="text-align:center;">${item.targv_sprn || 0} pts</td>
+                <td style="text-align:center;"><span class="badge ${statusClass}">${item.stat_sprn || '-'}</span></td>
+                <td style="text-align: center;">
+                    <!-- MUDANÇA AQUI: Admin agora abre o Painel de Execução do Usuário -->
+                    <button class="action-btn" style="color: #6c5ce7;" onclick="abrirPainelSprint('${item.id_sprn}')">
+                        <i class="fas fa-rocket"></i>
+                    </button>
+                    <button class="action-btn btn-delete" onclick="deletar(${item.id_sprn})">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function salvarRegistro(e) {
+        e.preventDefault();
+        const id = document.getElementById('id_sprn').value;
+        const payload = {
+            id_matu: idMatuSelecionado, id_bloc: document.getElementById('id_bloc').value,
+            name_sprn: document.getElementById('name_sprn').value, desc_sprn: document.getElementById('desc_sprn').value,
+            ordr_sprn: document.getElementById('ordr_sprn').value, week_sprn: document.getElementById('week_sprn').value,
+            stat_sprn: document.getElementById('stat_sprn').value, dtini_sprn: document.getElementById('dtini_sprn').value,
+            dtend_sprn: document.getElementById('dtend_sprn').value, targv_sprn: document.getElementById('targv_sprn').value,
+            realv_sprn: document.getElementById('progress-label').innerText.replace('%','')
+        };
+        try {
+            const res = await fetch(id ? `${API_URL}/${id}` : API_URL, { method: id ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+            if(res.ok) { fecharModal(); carregarDados(); }
+        } catch(e) { console.error(e); }
+    }
+
+    function editar(item) {
+        abrirModal(false);
+        document.getElementById('id_sprn').value = item.id_sprn;
+        document.getElementById('id_bloc').value = item.id_bloc;
+        carregarInfoMetodologica(item.id_bloc);
+        document.getElementById('name_sprn').value = item.name_sprn;
+        document.getElementById('desc_sprn').value = item.desc_sprn || '';
+        document.getElementById('ordr_sprn').value = item.ordr_sprn;
+        document.getElementById('week_sprn').value = item.week_sprn;
+        document.getElementById('stat_sprn').value = item.stat_sprn;
+        document.getElementById('targv_sprn').value = item.targv_sprn;
+        if(item.dtini_sprn) document.getElementById('dtini_sprn').value = item.dtini_sprn.split('T')[0];
+        if(item.dtend_sprn) document.getElementById('dtend_sprn').value = item.dtend_sprn.split('T')[0];
+    }
+
+    function abrirModal(limpar = true) {
+        // 1. Localiza os containers principais conforme seu HTML
+        const modal = document.getElementById('modal-sprint-exec');
+        const form = document.getElementById('form-sprint-exec');
+        const dodContainer = document.getElementById('dod-checklist-container');
+        const listaGerais = document.getElementById('dod-items-gerais');
+        const listaEducacional = document.getElementById('dod-items-educacional');
+
+        if (limpar) {
+            // Reset do formulário principal (SWOT, Justificativa, etc)
+            if (form) form.reset();
+
+            // 2. Limpeza manual de elementos e definição de identidade visual
+            const elementosSensiveis = [
+                { id: 'exec_id_sprn', prop: 'value', val: '' },
+                {
+                    id: 'sprint-subtitle',
+                    prop: 'innerText',
+                    val: USER_ROLE === 'ADMIN' ? 'Nova Sprint Manual (Modo Administrador)' : 'Nova Sprint Manual'
+                },
+                { id: 'container-metrics-dynamic', prop: 'innerHTML', val: '' },
+                { id: 'timeline-cerimonias', prop: 'innerHTML', val: '' },
+                {
+                    id: 'lista-evidencias-corpo',
+                    prop: 'innerHTML',
+                    val: '<tr><td colspan="4" style="text-align:center; color:#999; padding:20px;">Nenhuma evidência vinculada.</td></tr>'
+                },
+                { id: 'progress-label', prop: 'innerText', val: '0%' },
+                { id: 'edit_id_cermls', prop: 'value', val: '' },
+                { id: 'cerm_note', prop: 'value', val: '' }
+            ];
+
+            elementosSensiveis.forEach(item => {
+                const el = document.getElementById(item.id);
+                if (el) el[item.prop] = item.val;
+            });
+
+            // 3. Reseta a barra de progresso
+            const progressBar = document.getElementById('progress-bar-exec');
+            if (progressBar) progressBar.style.width = '0%';
+
+            // 4. TRATAMENTO CRÍTICO: Exibição da sessão DoD (Critérios de Qualidade)
+            // Se for ADMIN criando manualmente, forçamos a exibição do container
+            if (dodContainer) {
+                if (USER_ROLE === 'ADMIN') {
+                    dodContainer.style.setProperty('display', 'block', 'important');
+
+                    // Injeta um conteúdo inicial ou aviso, já que não há dados vindo do banco
+                    if (listaGerais) {
+                        listaGerais.innerHTML = `
+                            <div style="padding: 10px; border: 1px dashed #6c5ce7; border-radius: 4px; background: #fff;">
+                                <span style="font-size:0.8em; color:#6c5ce7;"><i class="fas fa-info-circle"></i> Defina os critérios de qualidade para esta nova sprint.</span>
+                            </div>`;
+                    }
+                    if (listaEducacional) {
+                        listaEducacional.innerHTML = `<span style="font-size:0.8em; color:#999;">Aguardando definições estratégicas...</span>`;
+                    }
+                } else {
+                    dodContainer.style.display = 'none';
+                }
+            }
+
+            // Esconde o Guia do Framework (Geralmente só aparece quando há um bloco associado)
+            const frameworkGuide = document.getElementById('framework-guide');
+            if (frameworkGuide) frameworkGuide.style.display = 'none';
+
+            // 5. AJUSTE DO BOTÃO PRINCIPAL (Estilo Admin vs Lead)
+            const btnSave = document.getElementById('btn-save-strategic');
+            if (btnSave) {
+                if (USER_ROLE === 'ADMIN') {
+                    btnSave.style.background = "#0984e3"; // Azul Administrador
+                    btnSave.innerHTML = '<i class="fas fa-save"></i> CRIAR E ATIVAR SPRINT';
+                } else {
+                    btnSave.style.background = "#6c5ce7"; // Roxo Lead
+                    btnSave.innerHTML = '<i class="fas fa-save"></i> SALVAR TODA EVOLUÇÃO';
+                }
+                btnSave.style.display = 'inline-flex'; // Garante que o botão esteja visível
+            }
+
+            // 6. Reseta o botão de cerimônias para o estado inicial
+            const btnCerm = document.getElementById('btn-cerm-save');
+            if (btnCerm) {
+                btnCerm.innerHTML = '<i class="fas fa-save"></i> REGISTRAR ESTE RITO';
+                btnCerm.style.background = "#6c5ce7";
+            }
+        }
+
+        // 7. Exibição do Modal
+        if (modal) {
+            modal.style.display = 'block';
+        } else {
+            console.error("Erro Crítico: O container 'modal-sprint-exec' não foi encontrado no DOM.");
+        }
+    }
+
+    function fecharModal() { document.getElementById('modal-form').style.display = 'none'; }
+    function filtrarTabelaLocal() { /* preservado */ }
+    async function deletar(id) { if(confirm("Confirmar exclusão?")) { await fetch(`${API_URL}/${id}`, { method: 'DELETE' }); carregarDados(); } }
+
+    // Funções da Modal do Cliente*************************************************************************************
+    //*****************************************************************************************************************
+    //*****************************************************************************************************************
+
+        // 1. Função para carregar o histórico (Chamar dentro de abrirPainelSprint)
+    async function carregarHistoricoCerimonias(id_sprn) {
+        const timeline = document.getElementById('timeline-cerimonias');
+        timeline.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i></div>';
+
+        try {
+            const res = await fetch(`/api/cerimonias/${id_sprn}`);
+            const dados = await res.json();
+
+            if (!dados || dados.length === 0) {
+                timeline.innerHTML = '<p style="text-align:center; color:#999; font-size:0.8em; margin-top:20px;">Nenhum rito registrado.</p>';
+                return;
+            }
+
+            timeline.innerHTML = dados.map(c => {
+                // Mantemos a nota escapada apenas para o parâmetro da função recuperarRito
+                const notaEscapada = c.note_cermls.replace(/'/g, "\\'").replace(/\n/g, "\\n");
+
+                return `
+                    <div onclick="recuperarRito('${c.id_cermls}', '${c.tp_cermls}', '${c.dt_cermls}', '${notaEscapada}')"
+                         title="Clique para carregar esta nota"
+                         style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #6c5ce7;
+                                padding:6px 10px; margin-bottom:5px; border-radius:4px; cursor:pointer;
+                                display:flex; justify-content:space-between; align-items:center; transition:0.2s;"
+                         onmouseover="this.style.borderColor='#6c5ce7'; this.style.background='#f8faff';"
+                         onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#fff';">
+
+                        <span style="font-size:0.75em; font-weight:700; color:#475569;">${c.tp_cermls}</span>
+                        <span style="font-size:0.7em; color:#6c5ce7; font-family:monospace;">
+                            ${new Date(c.dt_cermls).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+
+        } catch (e) {
+            timeline.innerHTML = '<p style="color:red; font-size:0.8em;">Erro ao carregar ritos.</p>';
+        }
+    }
+
+    function recuperarRito(id, tipo, data, nota) {
+        // 1. Identifica o ID de edição
+        const inputId = document.getElementById('edit_id_cermls');
+        if (inputId) inputId.value = id;
+
+        // 2. Preenche o Tipo
+        const typeField = document.getElementById('cerm_tipo');
+        if (typeField) typeField.value = tipo;
+
+        // 3. TRATAMENTO DA DATA (O Pulo do Gato)
+        // Garantimos que pegamos apenas os primeiros 10 caracteres (YYYY-MM-DD)
+        // Mesmo que a data venha como "2023-10-25T14:30:00.000Z" ou "Wed Oct 25 2023..."
+        try {
+            let dataFormatada = "";
+            if (data) {
+                // Se for uma string de data completa ou ISO, extrai apenas a parte da data
+                const d = new Date(data);
+                if (!isNaN(d.getTime())) {
+                    dataFormatada = d.toISOString().split('T')[0];
+                } else {
+                    // Caso falhe o parse, tenta pegar os primeiros 10 caracteres da string
+                    dataFormatada = data.substring(0, 10);
+                }
+            }
+            document.getElementById('cerm_data').value = dataFormatada;
+        } catch (e) {
+            console.error("Erro ao formatar data para edição:", e);
+        }
+
+        // 4. Preenche a Nota
+        const noteField = document.getElementById('cerm_note');
+        if (noteField) {
+            noteField.value = nota;
+            noteField.style.backgroundColor = "#fffbe6"; // Alerta visual de edição
+            noteField.focus();
+        }
+
+        // 5. Gerenciamento dos Botões
+        const btnSave = document.getElementById('btn-cerm-save');
+        if (btnSave) {
+            btnSave.innerHTML = '<i class="fas fa-sync-alt"></i> ATUALIZAR ESTE RITO';
+            btnSave.style.background = "#d97706";
+        }
+
+        const btnCancel = document.getElementById('btn-cerm-cancel');
+        if (btnCancel) {
+            btnCancel.style.display = "inline-flex";
+        }
+    }
+
+    function limparFormCerimonia() {
+        console.log("Limpando formulário de ritos...");
+
+        // 1. Zera o ID de edição (se o elemento existir)
+        const inputEdit = document.getElementById('edit_id_cermls');
+        if (inputEdit) inputEdit.value = "";
+
+        // 2. Limpa o texto
+        const noteField = document.getElementById('cerm_note');
+        if (noteField) {
+            noteField.value = "";
+            noteField.style.backgroundColor = "#fdfcff";
+        }
+
+        // 3. Reseta botões para o padrão Roxo
+        const btnSave = document.getElementById('btn-cerm-save');
+        if (btnSave) {
+            btnSave.innerHTML = '<i class="fas fa-save"></i> REGISTRAR ESTE RITO';
+            btnSave.style.background = "#6c5ce7";
+        }
+
+        const btnCancel = document.getElementById('btn-cerm-cancel');
+        if (btnCancel) {
+            btnCancel.style.display = "none";
+        }
+    }
+
+
+    // 2. Função de Salva Autônoma
+    async function salvarApenasCerimonia() {
+        // Usamos o querySelector ou getElementById com fallback para evitar erros de 'null'
+        const id_sprn = document.getElementById('exec_id_sprn')?.value;
+        const edit_id = document.getElementById('edit_id_cermls')?.value || ""; // Se não existir, fica vazio
+        const tp = document.getElementById('cerm_tipo')?.value;
+        const dt = document.getElementById('cerm_data')?.value;
+        const note = document.getElementById('cerm_note')?.value;
+
+        if (!note || !note.trim()) {
+            alert("Por favor, preencha as notas do rito.");
+            return;
+        }
+
+        const payload = { id_sprn, tp_cermls: tp, dt_cermls: dt, note_cermls: note };
+        if (edit_id) payload.id_cermls = edit_id;
+
+        try {
+            const res = await fetch('/api/cerimonias/registrar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                limparFormCerimonia(); // Reseta tudo
+                carregarHistoricoCerimonias(id_sprn);
+            } else {
+                alert("Erro ao salvar rito no servidor.");
+            }
+        } catch (err) {
+            console.error("Erro na salva:", err);
+        }
+    }
+
+
+
+    // Incorporados os novos campos de cerimonias 28/04/2026
+    async function abrirPainelSprint(id_sprn) {
+        if (!id_sprn) return;
+        const cleanId = id_sprn.toString().replace(/[^0-9]/g, '');
+
+        try {
+            const res = await fetch(`/api/sprint_details/${cleanId}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            // --- 1. CONFIGURAÇÃO DE STATUS E AUDITORIA ---
+            const statusLimpo = (data.stat_sprn || data.status || '').toLowerCase().trim();
+            const isConcluida = ['concluida', 'concluido', 'finalizada'].includes(statusLimpo);
+
+            const btnSalvar = document.getElementById('btn-save-strategic');
+            if (btnSalvar) btnSalvar.style.display = isConcluida ? 'none' : 'inline-flex';
+
+            // --- 2. TEXTOS BÁSICOS ---
+            const subTitle = document.getElementById('sprint-subtitle');
+            if (subTitle) subTitle.innerText = isConcluida
+                ? `[AUDITORIA] Entregável: ${data.name_derv || 'N/A'}`
+                : `Entregável: ${data.name_derv || 'N/A'}`;
+
+            const gDefi = document.getElementById('guide-defi');
+            if (gDefi) gDefi.innerText = data.derv_defi || 'N/A';
+
+            const gComp = document.getElementById('guide-comp');
+            if (gComp) gComp.innerText = data.derv_comp || 'N/A';
+
+            // --- 3. LÓGICA DO DOD (CHECKLIST ORGANIZADO) ---
+            const dodContainer = document.getElementById('dod-checklist-container');
+            const listaGerais = document.getElementById('dod-items-gerais');
+            const listaEducacional = document.getElementById('dod-items-educacional');
+
+            if (listaGerais && listaEducacional) {
+                listaGerais.innerHTML = "";
+                listaEducacional.innerHTML = "";
+
+                if (data.criteria_dod) {
+                    let parsedDod = typeof data.criteria_dod === 'string' ? JSON.parse(data.criteria_dod) : data.criteria_dod;
+                    dodContainer.style.display = 'block';
+
+                    const gerarItemHTML = (item, cor) => `
+                        <label style="display: flex; align-items:center; gap:8px; background:${isConcluida ? '#f9f9f9' : '#fff'}; padding:6px; border-radius:4px; border:1px solid #dcd3ff; cursor: ${isConcluida ? 'default' : 'pointer'}; margin-bottom: 5px;">
+                            <input type="checkbox" class="dod-checkbox" ${isConcluida ? 'checked disabled' : ''} style="width:auto;">
+                            <span style="font-size:0.85em; color:${cor};">${item}</span>
+                        </label>
+                    `;
+
+                    // Distribui os itens nos containers corretos
+                    if (parsedDod.required && Array.isArray(parsedDod.required)) {
+                        listaGerais.innerHTML = parsedDod.required.map(item => gerarItemHTML(item, '#475569')).join('');
+                    }
+                    if (parsedDod.context_education && Array.isArray(parsedDod.context_education)) {
+                        listaEducacional.innerHTML = parsedDod.context_education.map(item => gerarItemHTML(item, '#6c5ce7')).join('');
+                    }
+                    // Fallback caso venha um array simples
+                    if (Array.isArray(parsedDod)) {
+                        listaGerais.innerHTML = parsedDod.map(item => gerarItemHTML(item, '#475569')).join('');
+                    }
+                } else {
+                    dodContainer.style.display = 'none';
+                }
+            }
+
+            // --- 4. MÉTRICAS (KPIs) ---
+            const metricsContainer = document.getElementById('container-metrics-dynamic');
+            if (metricsContainer) {
+                metricsContainer.innerHTML = "";
+                const metricas = (data.derv_metr || "").split(/[;,\n]/).map(m => m.trim()).filter(m => m !== "");
+                const scores = data.metrics_scores || {};
+
+                metricas.forEach(m => {
+                    const val = scores[m] || 0;
+                    metricsContainer.innerHTML += `
+                        <div style="margin-bottom: 12px; opacity: ${isConcluida ? '0.7' : '1'}">
+                            <label style="font-size: 0.8em; font-weight: bold; color: #444;">${m}</label>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <input type="range" class="metric-range" data-metrica="${m}"
+                                       value="${val}" min="0" max="100" style="flex: 1;"
+                                       ${isConcluida ? 'disabled' : ''}
+                                       oninput="this.nextElementSibling.innerText = this.value + '%'; atualizarProgresso();">
+                                <span style="font-size: 0.85em; font-weight: bold; color: #6c5ce7;">${val}%</span>
+                            </div>
+                        </div>`;
+                });
+                atualizarProgresso();
+            }
+
+            // --- 5. CAMPOS DO FORMULÁRIO ---
+            const swotType = document.getElementById('exec_swot_type');
+            if (swotType) {
+                swotType.value = data.swot_type || "";
+                swotType.disabled = isConcluida;
+            }
+
+            const swotJust = document.getElementById('exec_swot_justification');
+            if (swotJust) {
+                swotJust.value = data.swot_justification || "";
+                swotJust.readOnly = isConcluida;
+            }
+
+            // Carga de evidências
+            // 1. Popular a Combo de Componentes
+            const comboEvid = document.getElementById('evid_componente');
+
+            if (comboEvid && data.derv_comp) {
+                comboEvid.innerHTML = '<option value="">Selecione o componente...</option>';
+
+                // O pulo do gato: Quebra por ponto e vírgula OU por quebra de linha
+                // O filter remove itens vazios e o map limpa os espaços em branco
+                const componentes = data.derv_comp
+                    .split(/[;\n\r]/)
+                    .map(c => c.trim())
+                    .filter(c => c !== "");
+
+                componentes.forEach(comp => {
+                    const option = document.createElement('option');
+                    option.value = comp;
+                    option.text = comp;
+                    comboEvid.appendChild(option);
+                });
+
+                console.log(">>> [MODULADOR] Componentes carregados na combo:", componentes);
+            }
+
+            // 2. Chamar a função que carrega a lista de evidências já salvas no banco
+            carregarListaEvidencias(cleanId);
+            const idMatu = data.id_matu || '0';
+            const urlFixa = `https://paneldx.com.br/projetos/${idMatu}/${cleanId}`;
+            const inputUrl = document.getElementById('exec_evidence_url');
+            if (inputUrl) {
+                inputUrl.value = urlFixa;
+                inputUrl.readOnly = true;
+            }
+
+            const hiddenId = document.getElementById('exec_id_sprn');
+            if (hiddenId) hiddenId.value = cleanId;
+
+            // Histórico de Cerimônias
+            if (typeof carregarHistoricoCerimonias === "function") {
+                carregarHistoricoCerimonias(cleanId);
+            }
+
+            document.getElementById('modal-sprint-exec').style.display = 'block';
+
+        } catch (e) {
+            console.error("Erro ao carregar modal:", e);
+        }
+    }
+
+    async function carregarListaEvidencias(id_sprn) {
+        console.log(">>> [MODULADOR]: Buscando evidências para a Sprint:", id_sprn);
+        const corpoTabela = document.getElementById('lista-evidencias-corpo');
+
+        if (!corpoTabela) {
+            console.error("❌ Erro: Elemento 'lista-evidencias-corpo' não encontrado.");
+            return;
+        }
+
+        // Estado visual inicial
+        corpoTabela.innerHTML = '<tr><td colspan="4" style="text-align:center;">Carregando evidências...</td></tr>';
+
+        try {
+            // 1. Faz a chamada para a rota GET que criamos no Node
+            const response = await fetch(`/api/evidencias/${id_sprn}`);
+
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.status}`);
+            }
+
+            const evidencias = await response.json();
+            console.log(">>> [MODULADOR]: Dados recebidos:", evidencias);
+
+            // 2. Limpa o "Carregando..."
+            corpoTabela.innerHTML = '';
+
+            // 3. Verifica se vieram dados
+            if (evidencias.length === 0) {
+                corpoTabela.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #999; padding: 20px;">Nenhuma evidência vinculada a esta sprint.</td></tr>';
+                return;
+            }
+
+            // 4. Mapeia os dados para as linhas da tabela (usando o estilo do seu HTML)
+            // Dentro do seu loop de preenchimento da tabela
+            evidencias.forEach(ev => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${ev.componente_vinculado}</td>
+                    <td><a href="${ev.url_evid}" target="_blank" class="btn btn-sm btn-link">Ver Link</a></td>
+                    <td class="text-center">${ev.status_modulador}</td>
+                    <td class="text-center">
+                        <button type="button"
+                                class="btn btn-sm btn-danger"
+                                onclick="excluirEvidencia(event, ${ev.id_evid})">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                corpoTabela.appendChild(tr);
+            });
+
+        } catch (error) {
+            console.error("❌ Erro ao preencher tabela lilás:", error);
+            corpoTabela.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #e74c3c; padding: 20px;">Erro ao carregar evidências. Verifique o console.</td></tr>';
+        }
+    }
+
+    async function excluirEvidencia(event, id_evid) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        if (!confirm("Tem certeza que deseja remover este vínculo?")) return;
+
+        try {
+            console.log(">>> [MODULADOR] Solicitando exclusão do ID:", id_evid);
+
+            const response = await fetch(`/api/evidencias/${id_evid}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert("Vínculo removido com sucesso!");
+
+                // Remove a linha da tabela manualmente (Garante o refresh visual imediato)
+                const botao = event.currentTarget || event.target;
+                const linha = botao.closest('tr');
+                if (linha) {
+                    linha.remove();
+                    console.log(">>> [MODULADOR] Linha removida da interface.");
+                }
+
+                // Verifica se a tabela ficou vazia para mostrar a mensagem de "Nenhuma evidência"
+                const corpo = document.getElementById('lista-evidencias-corpo');
+                if (corpo && corpo.rows.length === 0) {
+                    corpo.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #999; padding: 20px;">Nenhuma evidência vinculada a esta sprint.</td></tr>';
+                }
+            } else {
+                alert("Erro ao excluir o registro do banco.");
+            }
+        } catch (error) {
+            console.error("❌ Erro na comunicação:", error);
+            alert("Erro de conexão ao tentar excluir.");
+        }
+    }
+
+    function atualizarProgresso() {
+        const ranges = document.querySelectorAll('.metric-range');
+        let total = 0;
+        ranges.forEach(r => total += parseInt(r.value));
+        const media = ranges.length > 0 ? Math.round(total / ranges.length) : 0;
+        document.getElementById('progress-bar-exec').style.width = media + "%";
+        document.getElementById('progress-label').innerText = media + "%";
+    }
+
+    async function adicionarEvidencia() {
+        const url = document.getElementById('evid_url').value;
+        const comp = document.getElementById('evid_componente').value;
+
+        if (!url || !comp) {
+            return alert("Selecione o componente e cole o link do arquivo.");
+        }
+
+        // --- TESTE DE ACESSO NA HORA ---
+        try {
+            console.log(">>> [MODULADOR] Testando acessibilidade do link...");
+
+            // Usamos o modo 'no-cors' apenas para checar se a URL é válida/responde
+            // Nota: O Google Drive bloqueia fetch direto, mas podemos checar o formato
+            if (!url.includes("drive.google.com") && !url.includes("sharepoint.com")) {
+                if (!confirm("O link não parece ser do Drive ou SharePoint. Deseja vincular mesmo assim?")) return;
+            }
+
+            // Simulação de validação de link do Drive
+            if (url.includes("/view") || url.includes("/edit")) {
+                 console.log("✅ Formato de link do Drive reconhecido.");
+            } else {
+                 alert("⚠️ Atenção: Verifique se você copiou o link de COMPARTILHAMENTO do Drive.");
+            }
+
+            // Se passar nos testes básicos, envia para o servidor
+            salvarVinculoNoBanco(url, comp);
+
+        } catch (err) {
+            alert("Erro ao validar o link. Verifique se a URL está correta.");
+        }
+    }
+
+    async function salvarVinculoNoBanco(url, comp) {
+        const id_sprn = document.getElementById('exec_id_sprn').value; // ID que já está no hidden input
+
+        try {
+            console.log(">>> [MODULADOR] Enviando vínculo para o servidor...");
+
+            const response = await fetch('/api/evidencias/vincular', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_sprn: id_sprn,
+                    url_evidencia: url,
+                    componente: comp
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert("✅ Evidência vinculada com sucesso!");
+                document.getElementById('evid_url').value = ""; // Limpa o input de link
+
+                // Recarrega a tabela lilás para mostrar o novo item
+                if (typeof carregarListaEvidencias === 'function') {
+                    carregarListaEvidencias(id_sprn);
+                }
+            } else {
+                throw new Error(result.error || "Erro ao salvar");
+            }
+        } catch (err) {
+            console.error("❌ Erro no Modulador:", err);
+            alert("Erro ao salvar vínculo: " + err.message);
+        }
+    }
+
+    function fecharModalSprint() { document.getElementById('modal-sprint-exec').style.display = 'none'; }
+
+    async function salvarExecucaoSprint(e) {
+        if (e) e.preventDefault();
+
+        // 1. Captura o ID da Sprint
+        const id = document.getElementById('exec_id_sprn')?.value;
+        if (!id) {
+            alert("Erro: ID da sprint não encontrado.");
+            return;
+        }
+
+        // 2. Lógica de Verificação do DoD (Checklist)
+        const checkboxes = document.querySelectorAll('.dod-checkbox');
+        const temCheckboxes = checkboxes.length > 0;
+        const todosMarcados = temCheckboxes && Array.from(checkboxes).every(cb => cb.checked);
+
+        let novoStatus = 'ativa';
+        if (temCheckboxes && todosMarcados) {
+            if (confirm("Todos os critérios de qualidade (DoD) foram atendidos. Concluir esta Sprint?")) {
+                novoStatus = 'concluido';
+            } else {
+                return; // Cancela se o usuário não quiser concluir agora
+            }
+        }
+
+        // 3. Captura das Métricas (KPIs)
+        const scores = {};
+        document.querySelectorAll('.metric-range').forEach(r => {
+            scores[r.dataset.metrica] = parseInt(r.value);
+        });
+
+        // 4. Montagem do Payload (Blindagem contra campos nulos)
+        const payload = {
+            id_sprn: id,
+            swot_type: document.getElementById('exec_swot_type')?.value || "",
+            swot_justification: document.getElementById('exec_swot_justification')?.value || "",
+            evidence_url: document.getElementById('exec_evidence_url')?.value || "",
+            // O exec_notes aqui pegará o valor se o campo existir, senão manda vazio
+            // Já que agora as cerimônias são salvas em tabela à parte.
+            exec_notes: document.getElementById('exec_notes')?.value || "",
+            metrics_scores: scores,
+            realv_sprn: document.getElementById('progress-label')?.innerText.replace('%','') || "0",
+            status: novoStatus
+        };
+
+        try {
+            const res = await fetch('/api/ctdi_sprn/update-strategic', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert(novoStatus === 'concluido' ? "Sprint Concluída com Sucesso!" : "Evolução Salva!");
+                location.reload();
+            } else {
+                const errData = await res.json();
+                alert("Erro ao salvar: " + (errData.error || "Erro desconhecido"));
+            }
+        } catch (err) {
+            console.error("Erro na requisição:", err);
+            alert("Erro de comunicação com o servidor.");
+        }
+    }
+
+
+    init();
+</script>

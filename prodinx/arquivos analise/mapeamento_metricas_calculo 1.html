@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapeamento de Métricas — RTC 1427726</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+    .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; padding: 20px 32px 0; }
+    .header h1 { font-size: 1.35rem; font-weight: 700; }
+    .header .sub { font-size: 0.82rem; color: #aab; margin-top: 2px; padding-bottom: 14px; }
+    .tabs { display: flex; gap: 0; border-top: 1px solid rgba(255,255,255,.12); }
+    .tab { padding: 12px 28px; font-size: 0.88rem; font-weight: 600; color: #aab;
+           cursor: pointer; border-bottom: 3px solid transparent; transition: all .2s; }
+    .tab:hover { color: #fff; }
+    .tab.active { color: #fff; border-bottom-color: #4f8ef7; }
+    .page { display: none; }
+    #p1 { display: block; }
+
+    /* ═══ Gráficos de progresso ═══ */
+    .charts-row { display: grid; grid-template-columns: minmax(280px, 480px); gap: 12px; margin-bottom: 16px; }
+    .chart-card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+                  padding: 14px 18px 16px; }
+    .chart-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+                   letter-spacing: .06em; color: #888; margin-bottom: 12px; }
+    .chart-rows { display: flex; flex-direction: column; gap: 7px; }
+    .crow { display: grid; grid-template-columns: 80px 1fr 38px; align-items: center; gap: 8px; }
+    .crow-label { font-size: 0.73rem; font-weight: 600; color: #444; white-space: nowrap;
+                  overflow: hidden; text-overflow: ellipsis; }
+    .crow-bar-wrap { position: relative; height: 14px; background: #f0f2f5;
+                     border-radius: 7px; overflow: hidden; }
+    .crow-bar { height: 100%; border-radius: 7px; transition: width .4s ease; }
+    .crow-bar.sub { position: absolute; top: 0; left: 0; height: 100%;
+                    border-radius: 7px; opacity: 0.28; }
+    .crow-pct { font-size: 0.71rem; font-weight: 700; color: #555; text-align: right; }
+    .crow-legend { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+    .cleg { display: flex; align-items: center; gap: 4px; font-size: 0.67rem; color: #666; }
+    .cleg-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* ═══ PAGE 1 — Tabela ═══ */
+    .container { max-width: 1280px; margin: 0 auto; padding: 20px 24px; }
+    .stats-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .stat-chip { background: #fff; border-radius: 8px; padding: 8px 16px;
+                 box-shadow: 0 1px 3px rgba(0,0,0,.07); font-size: 0.8rem;
+                 display: flex; align-items: center; gap: 10px; }
+    .stat-n { font-size: 1.4rem; font-weight: 800; line-height: 1; }
+    .stat-l { color: #666; font-size: 0.74rem; }
+    .stat-chip.green .stat-n { color: #16a34a; }
+    .stat-chip.blue  .stat-n { color: #2563eb; }
+    .stat-chip.amber .stat-n { color: #d97706; }
+    .stat-chip.red   .stat-n { color: #dc2626; }
+    .stat-chip.gray  .stat-n { color: #64748b; }
+
+    .filter-bar { background: #fff; border-radius: 10px; padding: 12px 18px;
+                  margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+                  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .fg { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+    .fl { font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+          letter-spacing: .06em; color: #888; white-space: nowrap; margin-right: 2px; }
+    .fsep { width: 1px; height: 22px; background: #e5e7eb; margin: 0 2px; }
+    .fb { border: 1.5px solid #e2e8f0; cursor: pointer; border-radius: 14px;
+          padding: 3px 11px; font-size: 0.76rem; font-weight: 600;
+          background: #fff; color: #555; transition: all .15s; }
+    .fb:hover { border-color: #94a3b8; color: #1a1a2e; }
+    .fb.on { color: #fff; border-color: transparent; background: #1a1a2e; }
+    .fb.on.ado{background:#0078d4}.fb.on.git{background:#6e40c9}
+    .fb.on.ext{background:#e85d04}.fb.on.mix{background:#059669}.fb.on.form{background:#0891b2}
+    .fb.on.done{background:#16a34a}.fb.on.wip{background:#2563eb}
+    .fb.on.pend{background:#d97706}.fb.on.block{background:#dc2626}
+    .fb.on.dev{background:#1d4ed8}.fb.on.po{background:#9d174d}
+    .fb.on.sm{background:#14532d}.fb.on.gg{background:#713f12}.fb.on.gt{background:#9f1239}
+    .fb.on.snap{background:#0f766e}.fb.on.hist{background:#7c3aed}
+    .fb.on.pipe{background:#b45309}.fb.on.solo{background:#475569}
+    .fb.on.duv{background:#b45309}.fb.on.ind{background:#6366f1}.fb.on.equip{background:#0891b2}
+
+    .table-wrap { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    thead th { background: #f7f8fa; padding: 9px 12px; text-align: left; font-weight: 700;
+               font-size: 0.68rem; text-transform: uppercase; letter-spacing: .05em;
+               color: #666; border-bottom: 2px solid #e8eaf0; white-space: nowrap; }
+    tbody tr.main-row { border-bottom: 1px solid #f0f2f5; transition: background .1s; cursor: pointer; }
+    tbody tr.main-row:hover { background: #f8f9ff; }
+    tbody tr.main-row.hr { display: none; }
+    tbody tr.detail-row { display: none; border-bottom: 1px solid #e8eaf0; }
+    tbody tr.detail-row.open { display: table-row; }
+    tbody tr.detail-row.hr { display: none !important; }
+    td { padding: 9px 12px; vertical-align: middle; }
+    tbody tr.main-row.row-blocked { background: #f8f9fb; }
+    tbody tr.main-row.row-blocked td { color: #94a3b8; }
+    tbody tr.main-row.row-blocked .mname { color: #94a3b8; }
+    tbody tr.main-row.row-blocked .mfml  { color: #cbd5e1; }
+
+    .cbadge { font-size: 0.73rem; font-weight: 800; border-radius: 5px; padding: 2px 7px; white-space: nowrap; }
+    .src-ado{background:#dbeafe;color:#1e40af}.src-git{background:#ede9fe;color:#5b21b6}
+    .src-ext{background:#ffedd5;color:#9a3412}.src-mix{background:#d1fae5;color:#065f46}
+    .src-form{background:#cffafe;color:#0e7490}
+    .sdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; }
+    .dot-ado{background:#0078d4}.dot-git{background:#6e40c9}.dot-ext{background:#e85d04}
+    .dot-mix{background:#059669}.dot-form{background:#0891b2}
+    .mname { font-weight: 600; }
+    .mfml  { font-size: 0.71rem; color: #888; margin-top: 1px; font-family: monospace; }
+    .roles { display: flex; gap: 3px; flex-wrap: wrap; }
+    .rc { font-size: 0.66rem; font-weight: 700; border-radius: 9px; padding: 2px 6px; white-space: nowrap; }
+    .rc-dev{background:#dbeafe;color:#1e40af}.rc-po{background:#fce7f3;color:#9d174d}
+    .rc-sm{background:#dcfce7;color:#14532d}.rc-gg{background:#fef9c3;color:#713f12}
+    .rc-gt{background:#ffe4e6;color:#9f1239}
+    .stb { font-size: 0.69rem; font-weight: 700; border-radius: 9px; padding: 2px 8px; white-space: nowrap; }
+    .st-done{background:#dcfce7;color:#15803d}.st-wip{background:#dbeafe;color:#1d4ed8}
+    .st-pend{background:#fef9c3;color:#92400e}.st-block{background:#fee2e2;color:#b91c1c}
+    .cjb { font-size: 0.69rem; font-weight: 600; border-radius: 5px; padding: 2px 7px; white-space: nowrap; }
+    .cj-snap{background:#ccfbf1;color:#0f766e}.cj-hist{background:#ede9fe;color:#6d28d9}
+    .cj-pipe{background:#fef3c7;color:#92400e}.cj-solo{background:#f1f5f9;color:#475569}
+    .ddot { display: inline-flex; align-items: center; justify-content: center;
+            width: 16px; height: 16px; border-radius: 50%;
+            background: #fef9c3; color: #92400e; font-size: 0.62rem; font-weight: 800; }
+    .chevron { font-size: 0.7rem; color: #94a3b8; transition: transform .2s; display: inline-block; margin-right: 4px; }
+    .main-row.expanded .chevron { transform: rotate(90deg); }
+
+    .detail-cell { background: #f8faff; padding: 0 !important; }
+    .detail-inner { padding: 14px 20px 16px 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; }
+    @media (max-width: 900px) { .detail-inner { grid-template-columns: 1fr; } }
+    .det-block {}
+    .det-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+                 letter-spacing: .07em; color: #94a3b8; margin-bottom: 4px; }
+    .det-val { font-size: 0.8rem; color: #1a1a2e; line-height: 1.5; }
+    .det-val code { font-family: monospace; font-size: 0.75rem; background: #eef0f8;
+                    padding: 1px 5px; border-radius: 3px; color: #3730a3; }
+    .det-val .ep { display: block; font-family: monospace; font-size: 0.72rem;
+                   background: #1a1a2e; color: #7dd3fc; padding: 6px 10px;
+                   border-radius: 5px; margin-top: 4px; word-break: break-all; }
+    .det-val .ep-pend { background: #292524; color: #fcd34d; }
+    .duv-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+    .duv-item { font-size: 0.78rem; background: #fffbeb; border: 1px solid #fde68a;
+                border-radius: 6px; padding: 6px 10px; color: #78350f;
+                display: flex; gap: 6px; align-items: flex-start; }
+    .duv-item::before { content: "⚠️"; flex-shrink: 0; font-size: 0.75rem; }
+    .det-cols { grid-column: 1 / -1; }
+    .tipo-badge { font-size: 0.65rem; font-weight: 700; border-radius: 8px; padding: 2px 7px; white-space: nowrap; }
+    .tb-ind   { background: #e0e7ff; color: #3730a3; }
+    .tb-equip { background: #cffafe; color: #0e7490; }
+
+    /* ═══ SHARED — cards usados em P2 e P3 ═══ */
+    .pgrid-wrap { max-width: 1280px; margin: 0 auto; padding: 20px 24px; }
+    .pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .pgrid.cols2 { grid-template-columns: repeat(2, 1fr); }
+    @media (max-width: 900px) { .pgrid, .pgrid.cols2 { grid-template-columns: 1fr; } }
+
+    .rcard { background: #fff; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.09); overflow: hidden; }
+    .rchead { padding: 14px 18px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+    .rchead-left h2 { font-size: 1.05rem; font-weight: 800; }
+    .rchead-left .rsub { font-size: 0.78rem; opacity: .8; margin-top: 2px; }
+    .rchead-right { display: flex; align-items: center; gap: 10px; }
+    .rc-pct { font-size: 0.82rem; font-weight: 800; opacity: .9; }
+    .pct-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .pct-disp  { font-size: 0.82rem; font-weight: 800; color: #fff; }
+    .pct-total { font-size: 0.68rem; font-weight: 500; color: rgba(255,255,255,.65); }
+    .rc-chev { font-size: 0.75rem; opacity: .7; transition: transform .25s; }
+    .rcard.open .rc-chev { transform: rotate(180deg); }
+    .rcbody-wrap { display: none; }
+    .rcard.open .rcbody-wrap { display: block; }
+    .rcbody { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+    .rcseclabel { font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+                  letter-spacing: .08em; color: #aaa; padding: 4px 0 0; }
+    .mrow { display: flex; align-items: center; gap: 7px; padding: 7px 9px;
+            border-radius: 7px; background: #f8f9fb; border: 1px solid #edf0f4; }
+    .mrow:hover { background: #f0f4ff; border-color: #c7d7f8; }
+    .mcode { font-size: 0.69rem; font-weight: 800; border-radius: 4px;
+             padding: 2px 6px; white-space: nowrap; flex-shrink: 0; }
+    .minfo { flex: 1; min-width: 0; }
+    .mname2 { font-size: 0.81rem; font-weight: 600; color: #1a1a2e;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msrc { font-size: 0.68rem; color: #888; margin-top: 1px; }
+    .pwrap { padding: 10px 14px 14px; border-top: 1px solid #f0f0f0; }
+    .plabel { display: flex; justify-content: space-between; font-size: 0.72rem; color: #666; margin-bottom: 5px; }
+    .pbar { height: 5px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+    .pfill { height: 100%; border-radius: 3px; }
+
+    /* cores de cabeçalho dos subpapéis — geradas dinamicamente em JS via pctDisp */
+    /* classes de fill da barra de progresso (tom suave fixo por papel) */
+    .pf-dev{background:#6b8cba}.pf-arq{background:#5c7ea8}.pf-test{background:#5b96a8}
+    .pf-po{background:#9a6f8e}.pf-sm{background:#5c8a6e}.pf-gt{background:#9a6b6b}
+    .pf-sup{background:#9a8258}.pf-adm{background:#7a6ba0}.pf-exec{background:#5b8a79}
+
+    .role-group-header { grid-column: 1 / -1; padding: 6px 0 2px;
+                         border-bottom: 2px solid #e8eaf0; margin-bottom: 2px; }
+    .role-group-header h3 { font-size: 1rem; font-weight: 800; color: #1a1a2e; }
+    .role-group-header span { font-size: 0.74rem; color: #888; margin-top: 2px; display: block; }
+    .subpapel-grid { grid-column: 1 / -1; display: grid;
+                     grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 10px; }
+    @media (max-width: 900px) { .subpapel-grid { grid-template-columns: 1fr; } }
+    .tipo-section-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .08em; padding: 8px 9px 4px; border-radius: 6px 6px 0 0; margin-top: 6px; }
+    .tsi-ind   { background: #e0e7ff; color: #3730a3; }
+    .tsi-equip { background: #cffafe; color: #0e7490; }
+
+    /* dropdown de detalhe dentro do card de papel */
+    .mrow-wrap { display: flex; flex-direction: column; }
+    .mrow-clickable { cursor: pointer; }
+    .mrow-clickable:hover { background: #e8f0fe !important; border-color: #c7d7f8 !important; opacity: 1 !important; }
+    .mrow-chev { font-size: 0.6rem; color: #94a3b8; transition: transform .15s;
+                 display: inline-block; margin-right: 3px; flex-shrink: 0; }
+    .mrow-detail-wrap { background: #f8faff; border: 1px solid #e2e8f0;
+                        border-top: none; border-radius: 0 0 7px 7px; overflow: hidden; }
+    .mrow-detail { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; }
+    .mdet-label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+                  letter-spacing: .07em; color: #94a3b8; margin-bottom: 3px; }
+    .mdet-val { font-size: 0.77rem; color: #1a1a2e; line-height: 1.5; }
+
+    /* cores de bases */
+    .rh-snap{background:linear-gradient(135deg,#0f766e,#2dd4bf)}
+    .rh-hist{background:linear-gradient(135deg,#6d28d9,#a78bfa)}
+    .rh-pipe{background:linear-gradient(135deg,#b45309,#fbbf24)}
+    .rh-solo{background:linear-gradient(135deg,#64748b,#94a3b8)}
+    .rh-form{background:linear-gradient(135deg,#64748b,#94a3b8)}
+    .rh-ext {background:linear-gradient(135deg,#64748b,#94a3b8)}
+    .pf-snap{background:#2dd4bf}.pf-hist{background:#a78bfa}.pf-pipe{background:#fbbf24}
+    .pf-solo{background:#94a3b8}.pf-form{background:#94a3b8}.pf-ext{background:#94a3b8}
+
+    .base-status { font-size: 0.68rem; font-weight: 700; border-radius: 8px; padding: 2px 8px; }
+    .bs-ativo  { background: rgba(255,255,255,.25); color: #fff; }
+    .bs-futuro { background: rgba(0,0,0,.15); color: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.25); }
+    .bs-ext    { background: rgba(0,0,0,.15); color: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.25); }
+    .rcard.bc-future { border: 2px dashed #cbd5e1; }
+    .rcard.bc-future .rchead { opacity: 0.75; }
+
+    /* ═══ PAGE 4 — CÁLCULO ═══ */
+    .calc-legend { display:flex; gap:14px; flex-wrap:wrap; background:#fff; border-radius:10px;
+                   box-shadow:0 1px 4px rgba(0,0,0,.08); padding:12px 16px; margin-bottom:16px; align-items:center; }
+    .calc-legend .cl-t { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#888; }
+    .calc-sec-h { font-size:1.05rem; font-weight:800; color:#1a1a2e; margin:6px 0 12px;
+                  padding-bottom:6px; border-bottom:2px solid #e8eaf0; }
+    .calc-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media (max-width:900px){ .calc-grid{ grid-template-columns:1fr; } }
+    .ccard { background:#fff; border-radius:12px; box-shadow:0 1px 6px rgba(0,0,0,.09); overflow:hidden; }
+    .cchead { display:flex; align-items:baseline; gap:8px; padding:11px 16px; background:#f7f8fa;
+              border-bottom:1px solid transparent; flex-wrap:wrap; cursor:pointer; user-select:none; transition:background .12s; }
+    .cchead:hover { background:#eef2fb; }
+    .ccard.open .cchead { border-bottom-color:#e8eaf0; }
+    .cccode { font-family:monospace; font-weight:800; font-size:.8rem; color:#1e40af;
+              background:#dbeafe; border-radius:5px; padding:2px 7px; }
+    .ccname { font-weight:700; font-size:.92rem; }
+    .ccpapel { margin-left:auto; font-size:.67rem; color:#888; }
+    .cc-chev { font-size:.7rem; color:#94a3b8; margin-left:8px; transition:transform .2s; }
+    .ccard.open .cc-chev { transform:rotate(180deg); }
+    .ccbody { padding:12px 16px; display:none; }
+    .ccard.open .ccbody { display:block; }
+    .ccform { font-family:monospace; font-size:.82rem; background:#0f172a; color:#7be3b0;
+              border-radius:6px; padding:7px 11px; margin-bottom:10px; }
+    .cctable { width:100%; border-collapse:collapse; font-size:.75rem; margin-bottom:8px; }
+    .cctable th { background:#f1f5f9; color:#555; font-size:.62rem; text-transform:uppercase;
+                  letter-spacing:.04em; padding:5px 8px; text-align:left; }
+    .cctable td { padding:5px 8px; border-bottom:1px solid #f0f2f5; vertical-align:top; }
+    .cccol { font-family:monospace; font-size:.72rem; color:#3730a3; background:#eef0f8;
+             border-radius:3px; padding:1px 5px; }
+    .tt { font-size:.58rem; font-weight:800; border-radius:4px; padding:1px 5px; white-space:nowrap; }
+    .tt-base{background:#cffafe;color:#0e7490}.tt-param{background:#dbeafe;color:#1e40af}
+    .tt-apoio{background:#ede9fe;color:#6d28d9}.tt-agg{background:#fef9c3;color:#92400e}
+    .ccalc { font-family:monospace; font-size:.72rem; background:#0c1220; color:#cfe3ff;
+             border-radius:6px; padding:8px 11px; white-space:pre-wrap; line-height:1.5; }
+    .ccnote { margin-top:8px; font-size:.73rem; padding:6px 10px; border-radius:6px; }
+    .ccnote.warn { background:#fffbeb; border:1px solid #fde68a; color:#78350f; }
+    .ccnote.info { background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; }
+    .ccextr { margin-top:10px; background:#f6f8fc; border:1px solid #e2e8f0; border-left:3px solid #6366f1; border-radius:6px; padding:8px 11px; }
+    .ccextr-h { font-size:.64rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#6366f1; margin-bottom:4px; }
+    .ccextr-b { font-size:.75rem; color:#334155; line-height:1.6; }
+    .ccextr-b code { font-family:monospace; font-size:.7rem; background:#eef0f8; color:#3730a3; padding:1px 4px; border-radius:3px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Mapeamento de Métricas — RTC 1427726</h1>
+  <div class="sub">Torre CCR · Banco do Nordeste · 54 métricas · Atualizado em 02/07/2026 · nova aba Cálculo BASE 1/2</div>
+  <div class="tabs">
+    <div class="tab active" onclick="showPage(0,this)">📋 Todas as Métricas (54)</div>
+    <div class="tab" onclick="showPage(1,this)">👥 Papéis</div>
+    <div class="tab" onclick="showPage(2,this)">🗄️ Bases de Dados</div>
+    <div class="tab" onclick="showPage(3,this)">🧮 Cálculo BASE 1/2</div>
+  </div>
+</div>
+
+<!-- PAGE 1 -->
+<div id="p1" class="page">
+<div class="container">
+  <div class="stats-bar">
+    <div class="stat-chip green"><div class="stat-n" id="s-done">0</div><div class="stat-l">Desenvolvidas</div></div>
+    <div class="stat-chip blue"> <div class="stat-n" id="s-wip">0</div> <div class="stat-l">Em andamento</div></div>
+    <div class="stat-chip amber"><div class="stat-n" id="s-pend">0</div><div class="stat-l">Aguardando</div></div>
+    <div class="stat-chip red">  <div class="stat-n" id="s-block">0</div><div class="stat-l">Bloqueadas</div></div>
+    <div class="stat-chip gray"> <div class="stat-n" id="s-total">54</div><div class="stat-l">Total</div></div>
+  </div>
+
+  <div class="charts-row" id="chartsRow"></div>
+
+  <div class="filter-bar">
+    <div class="fg">
+      <span class="fl">Fonte</span>
+      <button class="fb on" data-f="fonte" data-v="all"  onclick="af(this)">Todas</button>
+      <button class="fb" data-f="fonte" data-v="ado"   onclick="af(this)"><span class="sdot dot-ado"></span>ADO</button>
+      <button class="fb" data-f="fonte" data-v="git"   onclick="af(this)"><span class="sdot dot-git"></span>Git/PR</button>
+      <button class="fb" data-f="fonte" data-v="ext"   onclick="af(this)"><span class="sdot dot-ext"></span>Externo</button>
+      <button class="fb" data-f="fonte" data-v="mix"   onclick="af(this)"><span class="sdot dot-mix"></span>Misto</button>
+      <button class="fb" data-f="fonte" data-v="form"  onclick="af(this)"><span class="sdot dot-form"></span>Formulário</button>
+    </div>
+    <div class="fsep"></div>
+    <div class="fg">
+      <span class="fl">Status</span>
+      <button class="fb on" data-f="status" data-v="all"   onclick="af(this)">Todos</button>
+      <button class="fb" data-f="status" data-v="done"  onclick="af(this)">✅ Desenvolvida</button>
+      <button class="fb" data-f="status" data-v="wip"   onclick="af(this)">🔧 Em andamento</button>
+      <button class="fb" data-f="status" data-v="pend"  onclick="af(this)">⏳ Aguardando</button>
+      <button class="fb" data-f="status" data-v="block" onclick="af(this)">❌ Bloqueada</button>
+    </div>
+    <div class="fsep"></div>
+    <div class="fg">
+      <span class="fl">Papel</span>
+      <button class="fb on" data-f="role" data-v="all" onclick="af(this)">Todos</button>
+      <button class="fb" data-f="role" data-v="dev" onclick="af(this)">Dev</button>
+      <button class="fb" data-f="role" data-v="po"  onclick="af(this)">PO</button>
+      <button class="fb" data-f="role" data-v="sm"  onclick="af(this)">SM</button>
+      <button class="fb" data-f="role" data-v="gg"  onclick="af(this)">GG</button>
+      <button class="fb" data-f="role" data-v="gt"  onclick="af(this)">GT</button>
+    </div>
+    <div class="fsep"></div>
+    <div class="fg">
+      <span class="fl">Conjunto</span>
+      <button class="fb on" data-f="cj" data-v="all"  onclick="af(this)">Todos</button>
+      <button class="fb" data-f="cj" data-v="snap" onclick="af(this)">Snapshot</button>
+      <button class="fb" data-f="cj" data-v="hist" onclick="af(this)">History</button>
+      <button class="fb" data-f="cj" data-v="pipe" onclick="af(this)">Pipelines</button>
+      <button class="fb" data-f="cj" data-v="solo" onclick="af(this)">Git</button>
+    </div>
+    <div class="fsep"></div>
+    <div class="fg">
+      <span class="fl">Tipo</span>
+      <button class="fb on" data-f="tipo" data-v="all"   onclick="af(this)">Todos</button>
+      <button class="fb" data-f="tipo" data-v="ind"   onclick="af(this)">👤 Individual</button>
+      <button class="fb" data-f="tipo" data-v="equip" onclick="af(this)">👥 Equipe</button>
+    </div>
+    <div class="fsep"></div>
+    <div class="fg">
+      <span class="fl">Dúvidas</span>
+      <button class="fb on" data-f="duv" data-v="all" onclick="af(this)">Todas</button>
+      <button class="fb" data-f="duv" data-v="sim" onclick="af(this)">⚠️ Com dúvida</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th style="width:90px">Código</th>
+        <th>Métrica / Fórmula</th>
+        <th style="width:95px">Fonte</th>
+        <th>Papéis</th>
+        <th style="width:105px">Tipo</th>
+        <th style="width:125px">Status</th>
+        <th style="width:155px">Conjunto</th>
+        <th style="width:28px">⚠️</th>
+      </tr></thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- PAGE 2 — PAPÉIS -->
+<div id="p2" class="page">
+<div class="pgrid-wrap">
+  <div class="pgrid" id="rolesGrid"></div>
+</div>
+</div>
+
+<!-- PAGE 3 — BASES -->
+<div id="p3" class="page">
+<div class="pgrid-wrap">
+  <div class="pgrid cols2" id="basesGrid"></div>
+</div>
+</div>
+
+<!-- PAGE 4 — CÁLCULO -->
+<div id="p4" class="page">
+<div class="pgrid-wrap">
+  <div id="calcGrid"></div>
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// DADOS
+// ══════════════════════════════════════════════════════
+const M = [
+  { code:"S001", name:"Carga Cognitiva Individual",       formula:"(Likert - 1) / 4",
+    fonte:"form", roles:["dev","po","sm","gg","gt"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"Escala Likert 1–5 → score (resposta−1)/4. Média por papel.", colunas:["respondente","papel","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Formulário não definido. Ferramenta a escolher (Forms, Typeform, etc.)."]}},
+  { code:"S002", name:"eNPS do Processo",                 formula:"Promotores / (Prom+Detr)",
+    fonte:"form", roles:["dev","po","sm","gg","gt"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"Promotores (9–10) / (Promotores + Detratores 0–6). Pesquisa mensal.", colunas:["respondente","nota_0_10","categoria"], endpoint:null, endpointStatus:"blocked", duvidas:["Formulário não definido."]}},
+  { code:"P007", name:"Taxa de Retrabalho",               formula:"1 − (IR / IE)",
+    fonte:"ado", roles:["dev","gt"], status:"done", duvida:true, cj:"hist",
+    tipo:"ind", details:{ calculo:"IE=itens que chegaram a Completed. IR=reabertos após Completed. Score=1−(IR/IE).", colunas:["ie","ir","p007_num_reabertas","p007_reabertas"], endpoint:"GET {org}/{project}/_apis/wit/workitems/{id}/revisions?api-version=7.1", endpointStatus:"confirmed", duvidas:["D001–D003 (Respondidas, 01/06): estados entregues, tipos no escopo e critério de data confirmados por Oscar.","DADOS-D001 (Aberta, 30/06): 91% dos itens (1.144 de 1.261) foram migrados de outra ferramenta ('Card Original: XXXX' no título); o histórico de revisões pode misturar eventos da migração com o retrabalho real. Confirmar a data de corte da migração e se devo considerar só itens criados nativamente no ADO."]}},
+  { code:"P008", name:"Change Failure Rate",              formula:"1 − (DF / DR)",
+    fonte:"mix", roles:["dev","gt"], status:"block", duvida:true, cj:"pipe",
+    tipo:"equip", details:{ calculo:"DF=deploys que causaram incidente/rollback. DR=total releases.", colunas:["release_id","falhou","motivo"], endpoint:"GET {org}/{project}/_apis/release/releases?api-version=7.1", endpointStatus:"estimated", duvidas:["D-P008-01 (Aberta, 25/06): Sem fonte de deploys/releases no ADO (diagnóstico: 0 releases, 0 pipelines, 0 builds). Depende de localizar onde os deploys são registrados — mesma pendência de A008.","D-P008-02: Localizada a fonte, confirmar como uma release/deploy é marcada como falha (campo, tag ou incidente vinculado)."]}},
+  { code:"P009", name:"Aderência Arquitetural",           formula:"1 − (CARC / PR)",
+    fonte:"git", roles:["dev","gt"], status:"pend", duvida:false, cj:"solo",
+    tipo:"ind", details:{ calculo:"CARC=PRs com comentário de violação arquitetural. PR=total de PRs aprovados.", colunas:["pr_id","titulo","tem_violacao_arq"], endpoint:"GET {org}/{project}/_apis/git/repositories/{repo}/pullrequests?api-version=7.1&searchCriteria.status=completed", endpointStatus:"estimated", duvidas:[]}},
+  { code:"P010", name:"Stability Index",                  formula:"(MTBF × IP) / TT",
+    fonte:"ext", roles:["dev","gt"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"MTBF=tempo médio entre falhas. Requer ferramenta de monitoração de infra.", colunas:["incidente_id","inicio","fim","mtbf_horas"], endpoint:null, endpointStatus:"blocked", duvidas:["Depende de Dynatrace, Zabbix ou similar."]}},
+  { code:"P001", name:"Business Value per Sprint",        formula:"(IR×4+RS×3+EO×2+RC×1) / 50",
+    fonte:"ado", roles:["po","gg"], status:"wip", duvida:true, cj:"snap",
+    tipo:"ind", details:{ calculo:"Campos custom: ImpactoReceita(×4), Retenção(×3), EficiênciaOp(×2), Risco(×1). Score 0–1.", colunas:["bv_ir","bv_rs","bv_eo","bv_rc","p001_score","p001_campos_ok"], endpoint:"GET {org}/{project}/_apis/wit/wiql + fields=Custom.ImpactoReceita,...", endpointStatus:"estimated", duvidas:["D001 (Aberta, 24/06): Os 4 campos custom de Business Value (Custom.ImpactoReceita, Custom.Retencao, Custom.EficienciaOperacional, Custom.RiscoCompliance) NÃO existem no ADO — verificados os 199 campos Custom.* do processo e nenhum bate. Precisam ser criados (escala 0–5 em Iniciativa/Hipótese) ou informar os reference names corretos; enquanto isso, p001_score = null.","D002 (Respondida, 24/06): Normalização confirmada — denominador 50 (escala 0–5 × pesos 4/3/2/1). NORM=50 correto."]}},
+  { code:"P002", name:"Product Market Fit",               formula:"AC / UA",
+    fonte:"ext", roles:["po","gg"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"AC=usuários que consideram produto muito bom. Pesquisa de satisfação.", colunas:["pesquisa_id","ac_count","ua_count","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Pesquisa de produto externa. Fora do escopo ADO."]}},
+  { code:"P003", name:"Velocidade de Desbloqueio",        formula:"TR / TB",
+    fonte:"ado", roles:["sm","gt"], status:"done", duvida:true, cj:"hist",
+    tipo:"ind", details:{ calculo:"TB=episódios de bloqueio. TR=resolvidos em <4h. Calculado por revisão de histórico.", colunas:["p003_num_bloqueios","p003_horas_bloqueado","p003_resolvido_rapido","p003_ainda_bloqueado","p003_episodios"], endpoint:"GET {org}/{project}/_apis/wit/workitems/{id}/revisions?api-version=7.1", endpointStatus:"confirmed", duvidas:["D001 (Aberta, 30/06): Como o time marca um item como bloqueado e, sobretudo, como marca o DESBLOQUEIO? Descoberta: dos 170 itens com bloqueio, 121 (71%) seguem 'ainda bloqueados' e a mediana de duração é 784h (~33 dias) — indica que a tag de bloqueio raramente é removida. Sem um evento claro de desbloqueio, a métrica não mede a velocidade de resolução."]}},
+  { code:"P004", name:"Predictability",                   formula:"PE / PP",
+    fonte:"ado", roles:["sm","po"], status:"done", duvida:true, cj:"snap",
+    tipo:"equip", details:{ calculo:"PP=SP comprometidos. PE=SP entregues (Done). Score=PE/PP por sprint.", colunas:["p004_entregue","story_points"], endpoint:"GET {org}/{project}/_apis/wit/wiql + fields=StoryPoints,IterationPath", endpointStatus:"confirmed", duvidas:["D001 (Aberta, 30/06): Onde fica registrado o comprometido (PP)? Descoberta: das 567 HUs, só 94 têm Story Points e todas as 94 já estão 'Concluído' — PE/PP dá 100% sempre. O SP parece ser preenchido só ao concluir, não no commit da sprint. Preciso de um snapshot/baseline de sprint (capacity, forecast ou pontos no commit) como denominador."]}},
+  { code:"P005", name:"SLA Compliance",                   formula:"CEMP / TCMP",
+    fonte:"ado", roles:["po","gt"], status:"done", duvida:true, cj:"snap",
+    tipo:"ind", details:{ calculo:"TCMP=itens com FinishDate definida. CEMP=entregues até prazo (ClosedDate≤FinishDate).", colunas:["cmpp","finish_date","data_fechamento"], endpoint:"GET {org}/{project}/_apis/wit/wiql + fields=FinishDate,ClosedDate", endpointStatus:"confirmed", duvidas:["D001 (Aberta): Confirmar qual tipo de WI representa os comprometimentos formais do Gerente TI e se o FinishDate é sempre preenchido. Descoberta (30/06): das 40 Iniciativas/Hipóteses do Q1, nenhuma tem FinishDate e ClosedDate preenchidos ao mesmo tempo — P005 (e C001, mesma lógica) retorna score null."]}},
+  { code:"P006", name:"Business Impact ROI",              formula:"BVE / COE",
+    fonte:"mix", roles:["gg","gt"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"BVE=soma scores P001. COE=custo operacional. Requer dado financeiro externo.", colunas:["bve_total","coe_reais","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Depende de P001 + dados financeiros externos."]}},
+  { code:"P011", name:"ROI por Iniciativa",               formula:"(Receita − Custo) / Custo",
+    fonte:"mix", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"Receita e custo por iniciativa de sistemas financeiros.", colunas:["iniciativa_id","receita","custo","roi"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer dados financeiros externos."]}},
+  { code:"P012", name:"Cost per Story Point",             formula:"1 − (Custo/SP) / Meta",
+    fonte:"mix", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"SP via ADO. Custo via sistema financeiro. Score normalizado vs meta.", colunas:["sp_total","custo_total","custo_por_sp","score"], endpoint:"GET {org}/{project}/_apis/wit/wiql + StoryPoints", endpointStatus:"estimated", duvidas:["Custo de equipe não disponível no ADO."]}},
+  { code:"P013", name:"Budget Adherence",                 formula:"1 − |Real−Plan| / Plan",
+    fonte:"ext", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"Orçamento planejado vs realizado. Dado financeiro externo.", colunas:["orcamento_plan","orcamento_real","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Integração com sistema financeiro BNB."]}},
+  { code:"P014", name:"Resource Utilization",             formula:"ProjEst / (ProjEst+ManSus)",
+    fonte:"ext", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"Horas em projetos estratégicos vs total. Requer timesheet externo.", colunas:["colaborador","horas_proj","horas_manut","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer sistema de apontamento de horas."]}},
+  { code:"A007", name:"Throughput de PRs",                formula:"PRA / MVT",
+    fonte:"git", roles:["dev","sm"], status:"pend", duvida:false, cj:"solo",
+    tipo:"ind", details:{ calculo:"PRA=PRs merged no período. MVT=membros ativos. Score=taxa de PRs por membro.", colunas:["pr_id","autor","aprovadores","data_merge"], endpoint:"GET {org}/{project}/_apis/git/repositories/{repo}/pullrequests?api-version=7.1&searchCriteria.status=completed", endpointStatus:"estimated", duvidas:[]}},
+  { code:"A008", name:"Deployment Frequency",             formula:"DPROD / DUP",
+    fonte:"ado", roles:["dev","sm","gt"], status:"block", duvida:true, cj:"pipe",
+    tipo:"equip", details:{ calculo:"DPROD=releases para produção. DUP=dias úteis. Score=deploys/dia vs meta.", colunas:["release_id","ambiente","data_release"], endpoint:"GET {org}/{project}/_apis/release/releases?api-version=7.1&environmentName=Producao", endpointStatus:"estimated", duvidas:["D-A008-01 (Aberta, 25/06): Diagnóstico no Torre CCR não encontrou NADA — 0 release definitions, 0 deployments, 0 build pipelines, 0 builds. Onde o time registra os deploys em produção? (outra org/projeto ADO, Jenkins/GitHub Actions/GitLab CI, registro manual, ou sem registro formal ainda?)","D-A008-02: Localizada a fonte, confirmar o nome do ambiente de produção."]}},
+  { code:"A009", name:"Test Coverage",                    formula:"STA / SDP",
+    fonte:"ado", roles:["dev","gt"], status:"done", duvida:true, cj:"snap",
+    tipo:"ind", details:{ calculo:"SDP=HUs entregues. STA=HUs com evidência de teste (tag ou link TestedBy).", colunas:["sta"], endpoint:"GET {org}/{project}/_apis/wit/wiql + fields=System.Tags", endpointStatus:"confirmed", duvidas:["D001 (Aberta): Confirmar o método de rastreio de testes (tags, links TestedBy ou campo custom). Descoberta (30/06): 488 das 567 HUs têm tags, mas nenhuma bate com o set procurado (testado/tested/com-teste/com_teste/automated-test) — score deu 0%. Preciso da lista real de tags/palavras que o time usa para marcar teste."]}},
+  { code:"A010", name:"Defect Detection Efficiency",      formula:"BTE / (BTE+BProd)",
+    fonte:"ado", roles:["dev","gt"], status:"done", duvida:true, cj:"snap",
+    tipo:"equip", details:{ calculo:"Bugs ADO. BTE=detectados em teste. BProd=detectados em produção. Score=BTE/(BTE+BProd).", colunas:["a010_em_teste"], endpoint:"GET {org}/{project}/_apis/wit/wiql WHERE [WorkItemType]='Bug'", endpointStatus:"confirmed", duvidas:["D001 (Aberta, 30/06): Como o time registra o ambiente de detecção do bug (teste vs produção)? Descoberta: dos 158 bugs, só 65 têm alguma tag — os outros 93 caem no default 'teste' (True), inflando o score para 100%. Preciso do marcador real: campo (Found in Environment/Origem), tag de ambiente (quais valores?), ou tipo/área."]}},
+  { code:"A001", name:"Backlog Health",                   formula:"CA / I3S",
+    fonte:"ado", roles:["po","sm"], status:"done", duvida:true, cj:"snap",
+    tipo:"ind", details:{ calculo:"I3S=HUs ativas. CA=HUs com Critério de Aceite preenchido.", colunas:["ca"], endpoint:"GET {org}/{project}/_apis/wit/wiql + fields=AcceptanceCriteria", endpointStatus:"confirmed", duvidas:["D001: Campo AcceptanceCriteria existe e é usado no BNB?"]}},
+  { code:"A002", name:"Feature Delivery Rate",            formula:"FD / FP",
+    fonte:"ado", roles:["po","gg"], status:"done", duvida:false, cj:"snap",
+    tipo:"equip", details:{ calculo:"FP=HUs no período. FD=HUs não-emergenciais entregues (Done).", colunas:["fd","a002_emergencial"], endpoint:"GET {org}/{project}/_apis/wit/wiql WHERE [WorkItemType]='História de Usuário'", endpointStatus:"confirmed", duvidas:[]}},
+  { code:"A003", name:"Ceremonies Attendance",            formula:"PC / TC",
+    fonte:"form", roles:["sm"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"TC=cerimônias. PC=participantes confirmados. Score por cerimônia.", colunas:["cerimonia","data","presentes","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer registro de presença. Ferramenta não definida."]}},
+  { code:"A004", name:"Cycle Time Variance",              formula:"CV = DP / Média",
+    fonte:"ado", roles:["sm"], status:"done", duvida:true, cj:"hist",
+    tipo:"equip", details:{ calculo:"CT=horas InProgress→Completed. CV=DP/Média, calculado no Power BI sobre a004_cycle_time_horas.", colunas:["a004_cycle_time_horas","a004_em_ciclo"], endpoint:"GET {org}/{project}/_apis/wit/workitems/{id}/revisions?api-version=7.1", endpointStatus:"confirmed", duvidas:["DADOS-D001 (Aberta, 30/06): Cycle time distorcido por migração — 91% dos itens vêm de outra ferramenta ('Card Original') e 14% têm ciclo < 6 min, provavelmente transições em massa da própria migração e não trabalho real. Confirmar a data de corte da migração e se as métricas de tempo devem usar só itens criados nativamente no ADO."]}},
+  { code:"A005", name:"Resource Allocation Balance",      formula:"1 − |SP_Biz − SP_Arq|",
+    fonte:"ado", roles:["gt","sm"], status:"done", duvida:false, cj:"snap",
+    tipo:"ind", details:{ calculo:"SP_Biz=HU/Hipótese/Iniciativa/AE. SP_Arq=ItemTécnico/Kaizen. Score=1−|Biz−Arq|/(Biz+Arq).", colunas:["a005_sp_tipo","a005_sp_valor"], endpoint:"GET {org}/{project}/_apis/wit/wiql + fields=WorkItemType,StoryPoints", endpointStatus:"confirmed", duvidas:[]}},
+  { code:"A006", name:"Strategic Milestone Progress",     formula:"MD / MP",
+    fonte:"ado", roles:["gt","gg"], status:"done", duvida:false, cj:"snap",
+    tipo:"equip", details:{ calculo:"Tipos: Iniciativa, Objetivo Estratégico, Hipótese. MP=total. MD=em Done.", colunas:["md"], endpoint:"GET {org}/{project}/_apis/wit/wiql WHERE [WorkItemType] IN ('Iniciativa','Objetivo Estratégico','Hipótese de Solução')", endpointStatus:"confirmed", duvidas:[]}},
+  { code:"A011", name:"Strategic Milestones",             formula:"Epics_Concluídos / Epics_Plan",
+    fonte:"ado", roles:["gg"], status:"done", duvida:false, cj:"snap",
+    tipo:"ind", details:{ calculo:"Tipo 'Objetivo Estratégico'. Concluídos/Planejados.", colunas:["econ"], endpoint:"GET {org}/{project}/_apis/wit/wiql WHERE [WorkItemType]='Objetivo Estratégico'", endpointStatus:"confirmed", duvidas:[]}},
+  { code:"A012", name:"Output Volume",                    formula:"Entregas_Real / Média_Hist",
+    fonte:"ado", roles:["gg"], status:"done", duvida:false, cj:"snap",
+    tipo:"equip", details:{ calculo:"Todos os tipos em Done no período. Comparação histórica no Power BI.", colunas:["fsreal"], endpoint:"GET {org}/{project}/_apis/wit/wiql WHERE [State] IN ('Done','Concluído')", endpointStatus:"confirmed", duvidas:[]}},
+  { code:"A013", name:"Hiring Velocity",                  formula:"Dias_Vaga / Prazo_Limite",
+    fonte:"ext", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"Dias para preencher vaga vs prazo. Sistema RH.", colunas:["vaga_id","abertura","fechamento","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer sistema de RH do BNB."]}},
+  { code:"A014", name:"Attrition Rate",                   formula:"1 − (Saídas / Headcount)",
+    fonte:"ext", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"Saídas voluntárias / headcount total.", colunas:["periodo","saidas","headcount","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer sistema de RH do BNB."]}},
+  { code:"C006", name:"Review Response Time",             formula:"T_Rev / Meta",
+    fonte:"git", roles:["dev","sm"], status:"pend", duvida:false, cj:"solo",
+    tipo:"ind", details:{ calculo:"T_Rev=tempo entre criação PR e 1º review. Meta configurável (ex:24h).", colunas:["pr_id","criado_em","primeiro_review_em","t_rev_horas","score"], endpoint:"GET {org}/{project}/_apis/git/repositories/{repo}/pullrequests/{id}/threads?api-version=7.1", endpointStatus:"estimated", duvidas:[]}},
+  { code:"C007", name:"Knowledge Spread (Bus Factor)",    formula:"Módulos_2auth / Total",
+    fonte:"git", roles:["dev","gt","sm"], status:"pend", duvida:false, cj:"solo",
+    tipo:"equip", details:{ calculo:"Por módulo/pasta: contar autores únicos de commits. Módulos_2auth=módulos com ≥2 autores.", colunas:["modulo","autores","tem_2plus"], endpoint:"GET {org}/{project}/_apis/git/repositories/{repo}/commits?searchCriteria.fromDate={start}&api-version=7.1", endpointStatus:"estimated", duvidas:[]}},
+  { code:"C008", name:"Documentação Técnica",             formula:"WDR / ICS",
+    fonte:"ado", roles:["dev","gt"], status:"done", duvida:true, cj:"snap",
+    tipo:"ind", details:{ calculo:"WDR=itens com tag 'doc/wiki/readme/manual' ou tipo Kaizen. ICS=itens Done.", colunas:["wdr"], endpoint:"GET {org}/{project}/_apis/wit/wiql + fields=WorkItemType,Tags", endpointStatus:"confirmed", duvidas:["D-C008-01 (Aberta, 30/06): Confirmar o marcador oficial de documentação técnica — tipo de WI, tag padrão, campo, ou parte do fluxo de outro tipo (ex: toda HU gera doc)? Descoberta: heurística atual (tipo Kaizen + tags doc/wiki/readme/manual) deu só 0,2% — provavelmente subestimado."]}},
+  { code:"C001", name:"SLA Compliance (Prazos Técnicos)", formula:"T0 / TQ",
+    fonte:"ado", roles:["po","gt"], status:"done", duvida:true, cj:"snap",
+    tipo:"ind", details:{ calculo:"TQ=Iniciativa/Hipótese com FinishDate. T0=entregues até prazo. Lógica idêntica P005.", colunas:["t0"], endpoint:"GET {org}/{project}/_apis/wit/wiql WHERE [WorkItemType] IN ('Iniciativa','Hipótese de Solução') + FinishDate,ClosedDate", endpointStatus:"confirmed", duvidas:["Compartilha a lógica e o bloqueio de P005-D001: nenhuma das 40 Iniciativas/Hipóteses do Q1 tem FinishDate e ClosedDate preenchidos ao mesmo tempo, então o score retorna null. Depende da mesma resposta (tipo de WI dos comprometimentos e preenchimento do FinishDate)."]}},
+  { code:"C002", name:"Cross-team Alignment",             formula:"DR / I3US",
+    fonte:"ado", roles:["sm","gt"], status:"done", duvida:false, cj:"snap",
+    tipo:"equip", details:{ calculo:"DR=itens com link de dependência para item de AreaPath raiz diferente. Paralelo ThreadPoolExecutor.", colunas:["dr"], endpoint:"GET {org}/{project}/_apis/wit/workitems/{id}?$expand=relations&api-version=7.1", endpointStatus:"confirmed", duvidas:[]}},
+  { code:"C003", name:"Team Health Check",                formula:"(Média - 1) / 4",
+    fonte:"form", roles:["sm","gt"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"Health Check Squad/Spotify. Escala 1–5.", colunas:["respondente","dimensao","nota","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Formulário periódico. Ferramenta não definida."]}},
+  { code:"C004", name:"Stakeholder Satisfaction",         formula:"(Média - 1) / 4",
+    fonte:"form", roles:["sm","gt"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"Pesquisa de satisfação com stakeholders. Escala Likert 1–5.", colunas:["respondente","nota","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Ferramenta não definida."]}},
+  { code:"C005", name:"Strategic Stakeholder Trust Score",formula:"(Média - 1) / 4",
+    fonte:"form", roles:["gt","gg"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"Pesquisa de confiança estratégica. Escala 1–5.", colunas:["respondente","nota","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Ferramenta não definida."]}},
+  { code:"C009", name:"Vision Clarity",                   formula:"(Likert - 1) / 4",
+    fonte:"form", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"Pergunta Likert sobre clareza de visão estratégica.", colunas:["respondente","nota","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Formulário não definido."]}},
+  { code:"C010", name:"Organizational Alignment",         formula:"FS_OKR / IT_Total",
+    fonte:"ado", roles:["gg"], status:"wip", duvida:true, cj:"snap",
+    tipo:"equip", details:{ calculo:"IT_Total=todos os itens (exceto Bug/Incidente). FS_OKR=itens com tag OKR ou tipo Objetivo Estratégico. Score=FS_OKR/IT_Total por sprint.", colunas:["fsokr"], endpoint:"GET {org}/{project}/_apis/wit/wiql + fields=System.Tags,System.WorkItemType", endpointStatus:"confirmed", duvidas:["C010-D001 (Aberta, 30/06): Como um item é vinculado a um OKR/Objetivo Estratégico — link hierárquico, tag ou campo? Descoberta: modo 'tags' deu 0,18% (só os 2 Objetivos Estratégicos) — nenhum item usa as tags procuradas. Se for por link, ativo o modo 'links'; se por tag, preciso da lista real."]}},
+  { code:"C011", name:"Reporting Accuracy",               formula:"1 − |%Rep − %Evo|",
+    fonte:"form", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"% reportado vs % real ADO. Depende de registro manual.", colunas:["reuniao","pct_reportado","pct_real","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer registro manual de % reportados."]}},
+  { code:"C012", name:"Transparency Score",               formula:"(Likert - 1) / 4",
+    fonte:"form", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"Pesquisa de percepção de transparência. Escala 1–5.", colunas:["respondente","nota","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Formulário não definido."]}},
+  { code:"E005", name:"Focus Time (Deep Work)",           formula:"BFL / BET",
+    fonte:"ext", roles:["dev"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"BFL=blocos de trabalho focado ≥2h. BET=blocos esperados. Requer time-tracking.", colunas:["colaborador","blocos_focados","blocos_esperados","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer RescueTime, Clockwise ou similar."]}},
+  { code:"E006", name:"Flow Efficiency",                  formula:"T_Ativo / Cycle_Time",
+    fonte:"ado", roles:["dev","sm"], status:"done", duvida:true, cj:"hist",
+    tipo:"equip", details:{ calculo:"T_ativo=horas em InProgress. T_espera=horas em Proposed/Resolved. FE=T_ativo/(T_ativo+T_espera).", colunas:["e006_t_ativo_horas","e006_t_espera_horas","e006_flow_efficiency"], endpoint:"GET {org}/{project}/_apis/wit/workitems/{id}/revisions?api-version=7.1", endpointStatus:"confirmed", duvidas:["DADOS-D001 (Aberta, 30/06): 91% dos itens (1.144 de 1.261) foram migrados de outra ferramenta ('Card Original: XXXX' no título); o histórico de revisões pode misturar eventos da migração com o trabalho real. Confirmar a data de corte da migração e se as métricas de tempo devem considerar só itens criados nativamente no ADO."]}},
+  { code:"E007", name:"Time to Sandbox",                  formula:"1 − (T_Rebuild / 8h)",
+    fonte:"form", roles:["dev","gt"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"T_Rebuild=tempo para recriar ambiente de dev. Meta=8h.", colunas:["data","t_rebuild_horas","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer apontamento manual ou CI que meça setup."]}},
+  { code:"E008", name:"Cycle Time",                       formula:"1 − (DP_CT / Média_CT)",
+    fonte:"ado", roles:["dev","sm"], status:"done", duvida:true, cj:"hist",
+    tipo:"equip", details:{ calculo:"Mesmos dados A004. Score=1−(DP/Média), calculado no Power BI. Papel Dev.", colunas:["e008_cycle_time_horas","e008_em_ciclo"], endpoint:"GET {org}/{project}/_apis/wit/workitems/{id}/revisions?api-version=7.1", endpointStatus:"confirmed", duvidas:["DADOS-D001 (Aberta, 30/06): Cycle time distorcido por migração — 91% dos itens vêm de outra ferramenta ('Card Original') e 14% têm ciclo < 6 min, provavelmente transições em massa da própria migração e não trabalho real. Confirmar a data de corte da migração e se as métricas de tempo devem usar só itens criados nativamente no ADO."]}},
+  { code:"E001", name:"Requirement Lead Time",            formula:"1 − (T_WI / Meta_WI)",
+    fonte:"ado", roles:["po","gt"], status:"done", duvida:true, cj:"snap",
+    tipo:"ind", details:{ calculo:"T_WI=dias CreatedDate→ClosedDate para HU/Iniciativa/Hipótese. Meta configurável.", colunas:["e001_lead_time_dias"], endpoint:"GET {org}/{project}/_apis/wit/wiql + fields=CreatedDate,ClosedDate", endpointStatus:"confirmed", duvidas:["DADOS-D001 (Aberta, 30/06): Lead time distorcido por migração — 91% dos itens (1.144 de 1.261) vêm de outra ferramenta ('Card Original: XXXX' no título) e 100% das HUs com lead time >365d são migradas (média 192d, máx 843d). O CreatedDate provavelmente reflete o sistema antigo. Confirmar a data de corte da migração e se devo considerar só itens criados nativamente no ADO (ou usar um campo com a data original)."]}},
+  { code:"E002", name:"Value Stream Efficiency",          formula:"T_Ativo / Lead_Time",
+    fonte:"ado", roles:["po","sm"], status:"done", duvida:true, cj:"hist",
+    tipo:"equip", details:{ calculo:"Lead Time=horas CreatedDate→ClosedDate. T_Ativo=e006_t_ativo_horas. VSE=T_Ativo/Lead_Time.", colunas:["e002_lead_time_horas","e002_flow_efficiency"], endpoint:"GET {org}/{project}/_apis/wit/workitems/{id}/revisions?api-version=7.1 + ClosedDate no batch", endpointStatus:"confirmed", duvidas:["DADOS-D001 (Aberta, 30/06): 91% dos itens (1.144 de 1.261) foram migrados de outra ferramenta ('Card Original: XXXX' no título); tanto o lead time (CreatedDate) quanto o histórico de revisões podem carregar eventos da migração, não o trabalho real. Confirmar a data de corte da migração e se devo considerar só itens criados nativamente no ADO."]}},
+  { code:"E003", name:"Meeting Load",                     formula:"1 − (Hrs_Reunião / FTE)",
+    fonte:"ext", roles:["sm"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"Hrs_Reunião=horas em reuniões por membro. FTE=horas totais. Requer calendário.", colunas:["colaborador","hrs_reuniao","fte_horas","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer Google Calendar/Outlook conectado."]}},
+  { code:"E004", name:"Time to Recover (MTTR)",           formula:"IR_2h / IT_Total",
+    fonte:"ext", roles:["sm","gt"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"IT_Total=incidentes. IR_2h=resolvidos em <2h.", colunas:["incidente_id","inicio","fim","resolvido_2h","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer ServiceNow, Jira Service ou similar."]}},
+  { code:"E009", name:"Time to Market",                   formula:"1 − (T_Deploy − Meta) / Meta",
+    fonte:"mix", roles:["gg","gt"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"T_Deploy=dias aprovação→deploy. Meta configurável. ADO+pipelines.", colunas:["iniciativa_id","aprovado_em","deploy_em","t_deploy_dias","score"], endpoint:"GET {org}/{project}/_apis/release/releases?api-version=7.1", endpointStatus:"estimated", duvidas:["Depende de A008 e estrutura de pipelines do BNB."]}},
+  { code:"E010", name:"Capital Efficiency",               formula:"(Custo/SP) / Custo_Ant",
+    fonte:"mix", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"Evolução do custo/SP vs período anterior.", colunas:["periodo","sp_total","custo_total","custo_por_sp","indice"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer dados financeiros externos."]}},
+  { code:"E011", name:"Operational Overhead",             formula:"Hrs_Admin / Hrs_Total",
+    fonte:"ext", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"ind", details:{ calculo:"Hrs_Admin=atividades admin. Hrs_Total=horas trabalhadas. Requer apontamento.", colunas:["colaborador","hrs_admin","hrs_total","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer sistema de apontamento de horas."]}},
+  { code:"E012", name:"Decision Latency",                 formula:"T_Resp / T_Esperado",
+    fonte:"ext", roles:["gg"], status:"block", duvida:false, cj:null,
+    tipo:"equip", details:{ calculo:"Tempo de resposta a solicitações de decisão vs acordado.", colunas:["solicitacao_id","criado_em","respondido_em","t_resp_horas","score"], endpoint:null, endpointStatus:"blocked", duvidas:["Requer processo de registro de solicitações."]}},
+];
+
+// Forçar form → block
+M.forEach(m => { if (m.fonte === "form") m.status = "block"; });
+
+const FONTE_ORD  = {ado:0, git:1, mix:2, form:3, ext:4};
+const STATUS_ORD = {done:0, wip:1, pend:2, block:3};
+M.sort((a,b) => {
+  const fd = FONTE_ORD[a.fonte] - FONTE_ORD[b.fonte];
+  return fd !== 0 ? fd : STATUS_ORD[a.status] - STATUS_ORD[b.status];
+});
+
+const FONTE_CFG = {
+  ado:{cls:"src-ado",dot:"dot-ado",label:"ADO"},
+  git:{cls:"src-git",dot:"dot-git",label:"Git/PR"},
+  ext:{cls:"src-ext",dot:"dot-ext",label:"Externo"},
+  mix:{cls:"src-mix",dot:"dot-mix",label:"Misto"},
+  form:{cls:"src-form",dot:"dot-form",label:"Formulário"},
+};
+const STATUS_CFG = {
+  done:{cls:"st-done",label:"✅ Desenvolvida"},
+  wip:{cls:"st-wip",label:"🔧 Em andamento"},
+  pend:{cls:"st-pend",label:"⏳ Aguardando"},
+  block:{cls:"st-block",label:"❌ Bloqueada"},
+};
+const ROLE_CFG = {
+  dev:{cls:"rc-dev",label:"Dev"},po:{cls:"rc-po",label:"PO"},
+  sm:{cls:"rc-sm",label:"SM"},gg:{cls:"rc-gg",label:"GG"},gt:{cls:"rc-gt",label:"GT"},
+};
+const CJ_CFG = {
+  snap:{cls:"cj-snap",label:"WorkItems_Snapshot"},
+  hist:{cls:"cj-hist",label:"WorkItems_History"},
+  pipe:{cls:"cj-pipe",label:"Releases_Pipelines"},
+  solo:{cls:"cj-solo",label:"Script próprio"},
+};
+
+const filters = {fonte:"all", status:"all", role:"all", cj:"all", duv:"all", tipo:"all"};
+
+function af(btn) {
+  const f = btn.dataset.f, v = btn.dataset.v;
+  filters[f] = v;
+  document.querySelectorAll(`[data-f="${f}"]`).forEach(b => {
+    b.className = "fb";
+    if (b === btn) { b.classList.add("on"); if (v!=="all") b.classList.add(v); }
+  });
+  renderTable();
+}
+
+function visible(m) {
+  if (filters.fonte  !== "all" && m.fonte  !== filters.fonte)  return false;
+  if (filters.status !== "all" && m.status !== filters.status) return false;
+  if (filters.role   !== "all" && !m.roles.includes(filters.role)) return false;
+  if (filters.cj     !== "all" && (m.cj||"none") !== filters.cj) return false;
+  if (filters.duv === "sim" && !m.duvida) return false;
+  if (filters.tipo !== "all" && m.tipo !== filters.tipo) return false;
+  return true;
+}
+
+function buildDetailHtml(m) {
+  const d = m.details || {};
+  const colunas = (d.colunas||[]).map(c=>`<code>${c}</code>`).join(" ");
+  const epLabel = d.endpointStatus === "confirmed" ? "✅ Endpoint confirmado" :
+                  d.endpointStatus === "estimated"  ? "⚠️ Endpoint estimado (a validar)" :
+                  "🚫 Dado externo / sem API ADO";
+  const epClass = d.endpointStatus === "confirmed" ? "ep" :
+                  d.endpointStatus === "estimated"  ? "ep ep-pend" : "";
+  const epHtml = d.endpoint
+    ? `<span class="${epClass}">${d.endpoint}</span>`
+    : `<span style="color:#94a3b8;font-style:italic;font-size:.76rem">— ${d.endpointStatus === "blocked" ? "Dado externo / sem API ADO" : "A confirmar"}</span>`;
+  const duvHtml = (d.duvidas||[]).length
+    ? `<ul class="duv-list">${d.duvidas.map(dv=>`<li class="duv-item">${dv}</li>`).join("")}</ul>`
+    : `<span style="color:#86efac;font-size:.78rem">✅ Sem dúvidas abertas</span>`;
+  const tipoLabel = m.tipo === "ind"   ? "👤 Individual — medido por colaborador" :
+                    m.tipo === "equip" ? "👥 Equipe — medido sobre o coletivo" : "—";
+  return `<div class="detail-inner">
+    <div class="det-block"><div class="det-label">📐 Forma de cálculo</div><div class="det-val">${d.calculo||"—"}</div></div>
+    <div class="det-block"><div class="det-label">📊 Tipo de medição</div><div class="det-val">${tipoLabel}</div></div>
+    <div class="det-block"><div class="det-label">🗄️ Colunas geradas</div><div class="det-val">${colunas||"<span style='color:#94a3b8'>—</span>"}</div></div>
+    <div class="det-block det-cols"><div class="det-label">🔌 Endpoint / Fonte — <span style="font-weight:400;text-transform:none;letter-spacing:0">${epLabel}</span></div><div class="det-val">${epHtml}</div></div>
+    <div class="det-block det-cols"><div class="det-label">⚠️ Dúvidas em aberto</div><div class="det-val">${duvHtml}</div></div>
+    ${calcRecipeHtml(m.code)}
+  </div>`;
+}
+
+// ── Gráficos ──────────────────────────────────────────────────────────────────
+function renderCharts() {
+  const container = document.getElementById("chartsRow");
+  if (!container) return;
+
+  const FONTE_ROWS = [
+    { key:"ado",  label:"ADO",        color:"#3b82f6" },
+    { key:"mix",  label:"Misto",      color:"#10b981" },
+    { key:"git",  label:"Git / PR",   color:"#8b5cf6" },
+    { key:"form", label:"Formulário", color:"#06b6d4" },
+    { key:"ext",  label:"Externo",    color:"#f97316" },
+  ];
+  const fonteRows = FONTE_ROWS.map(r => {
+    const mets  = M.filter(m => m.fonte === r.key);
+    const done  = mets.filter(m => m.status === "done").length;
+    const total = mets.length;
+    const pct   = total ? Math.round(done / total * 100) : 0;
+    return { ...r, done, total, pct };
+  }).filter(r => r.total > 0);
+
+  const chart1 = `<div class="chart-card">
+    <div class="chart-title">📡 Progresso por Fonte</div>
+    <div class="chart-rows">
+      ${fonteRows.map(r => `
+      <div class="crow">
+        <div class="crow-label">${r.label}</div>
+        <div class="crow-bar-wrap">
+          <div class="crow-bar" style="width:${r.pct}%;background:${r.color}"></div>
+        </div>
+        <div class="crow-pct" style="color:${r.color}">${r.done}/${r.total}</div>
+      </div>`).join("")}
+    </div>
+    <div class="crow-legend">
+      <div class="cleg"><div class="cleg-dot" style="background:#16a34a"></div>Barra = métricas desenvolvidas</div>
+    </div>
+  </div>`;
+
+  container.innerHTML = chart1;
+}
+
+function renderTable() {
+  const tb = document.getElementById("tb");
+  tb.innerHTML = "";
+  let cnt = {done:0, wip:0, pend:0, block:0, total:0};
+  M.forEach((m, idx) => {
+    const vis = visible(m);
+    if (vis) { cnt[m.status]++; cnt.total++; }
+    const fc = FONTE_CFG[m.fonte], sc = STATUS_CFG[m.status];
+    const cj = m.cj ? CJ_CFG[m.cj] : null;
+    const roles = m.roles.map(r=>`<span class="rc ${ROLE_CFG[r]?ROLE_CFG[r].cls:''}">${ROLE_CFG[r]?ROLE_CFG[r].label:r}</span>`).join("");
+    const cjHtml = cj ? `<span class="cjb ${cj.cls}">${cj.label}</span>` : `<span style="color:#ccc;font-size:.72rem">—</span>`;
+    const dHtml  = m.duvida ? `<span class="ddot" title="Dúvida em aberto">!</span>` : "";
+    const tipoHtml = m.tipo === "ind"   ? `<span class="tipo-badge tb-ind">👤 Individual</span>` :
+                     m.tipo === "equip" ? `<span class="tipo-badge tb-equip">👥 Equipe</span>` : "";
+    const isLimited = (m.fonte === "form" || m.fonte === "ext" || m.cj === "solo");
+    const hrCls     = vis ? "" : " hr";
+    const blockedCls = isLimited ? " row-blocked" : "";
+    const tr = document.createElement("tr");
+    tr.className = "main-row" + hrCls + blockedCls;
+    tr.dataset.idx = idx;
+    tr.innerHTML = `
+      <td><span class="chevron">▶</span><span class="cbadge ${fc.cls}">${m.code}</span></td>
+      <td><div class="mname">${m.name}</div><div class="mfml">${m.formula}</div></td>
+      <td><span class="sdot ${fc.dot}"></span><span style="font-size:.76rem;color:#555">${fc.label}</span></td>
+      <td><div class="roles">${roles}</div></td>
+      <td>${tipoHtml}</td>
+      <td><span class="stb ${sc.cls}">${sc.label}</span></td>
+      <td>${cjHtml}</td>
+      <td>${dHtml}</td>`;
+    tr.onclick = () => toggleDetail(idx);
+    tb.appendChild(tr);
+    const td2 = document.createElement("tr");
+    td2.className = "detail-row" + hrCls;
+    td2.id = "det-" + idx;
+    td2.innerHTML = `<td class="detail-cell" colspan="8">${buildDetailHtml(m)}</td>`;
+    tb.appendChild(td2);
+  });
+  document.getElementById("s-done").textContent  = cnt.done;
+  document.getElementById("s-wip").textContent   = cnt.wip;
+  document.getElementById("s-pend").textContent  = cnt.pend;
+  document.getElementById("s-block").textContent = cnt.block;
+  document.getElementById("s-total").textContent = cnt.total;
+}
+
+function toggleDetail(idx) {
+  const mainRow = document.querySelector(`.main-row[data-idx="${idx}"]`);
+  const detRow  = document.getElementById("det-" + idx);
+  if (!detRow) return;
+  const isOpen  = detRow.classList.contains("open");
+  detRow.classList.toggle("open", !isOpen);
+  if (mainRow) mainRow.classList.toggle("expanded", !isOpen);
+}
+
+// ═══ PAGE 2 — PAPÉIS ═══
+const ROLE_GROUPS = [
+  {
+    groupKey:"tec", groupTitle:"🔧 Técnica", groupSub:"Aba Técnica da Matriz de Performance",
+    papeis:[
+      { key:"dev",  icon:"💻", title:"Dev",       sub:"Desenvolvedor de software" },
+      { key:"arq",  icon:"🏗️", title:"Arquiteto", sub:"Arquitetura e qualidade técnica" },
+      { key:"test", icon:"🧪", title:"Testador",  sub:"Qualidade e cobertura de testes" },
+    ]
+  },
+  {
+    groupKey:"gt", groupTitle:"🎯 Gestão Técnica", groupSub:"Aba Gestão Técnica da Matriz de Performance",
+    papeis:[
+      { key:"po",  icon:"📦", title:"PO",         sub:"Product Owner — valor e backlog" },
+      { key:"sm",  icon:"🔁", title:"SM",         sub:"Scrum Master — fluxo e impedimentos" },
+      { key:"gti", icon:"⚙️", title:"Gerente TI", sub:"Gestão técnica, SLA e alocação" },
+    ]
+  },
+  {
+    groupKey:"gg", groupTitle:"🏛️ Gestão Geral", groupSub:"Aba Gestão Geral da Matriz de Performance",
+    papeis:[
+      { key:"sup",  icon:"🧭", title:"Superior",  sub:"ROI estratégico e eficiência de capital" },
+      { key:"adm",  icon:"📊", title:"Adm",       sub:"Administrativo — orçamento e headcount" },
+      { key:"exec", icon:"👁️", title:"Executivo", sub:"Visão, milestones estratégicos e volume" },
+    ]
+  },
+];
+
+const PAPEL_METRICS = {
+  dev:  { ind:  ["S001","P007","A007","C006","C008","E005","E007"],
+          equip:["S002","P008","A008","C007","E006","E008"] },
+  arq:  { ind:  ["S001","P009","C006","C008","E007"],
+          equip:["S002","P010","C007","E008"] },
+  test: { ind:  ["S001","P007","A009","C008","E007"],
+          equip:["S002","P008","A010","E008"] },
+  po:   { ind:  ["S001","P001","A001","E001"],
+          equip:["S002","P002","A002","E002"] },
+  sm:   { ind:  ["S001","P003","A003","C003","E003"],
+          equip:["S002","P004","A004","C004","E004"] },
+  gti:  { ind:  ["S001","P005","A005","C005"],
+          equip:["S002","P006","A006","C002"] },
+  sup:  { ind:  ["S001","C011","P011","E009"],
+          equip:["S002","C012","P012","E010"] },
+  adm:  { ind:  ["S001","C011","P013","A013","E011"],
+          equip:["S002","C012","P014","A014","E012"] },
+  exec: { ind:  ["S001","C011","A011","C009"],
+          equip:["S002","C012","A012","C010"] },
+};
+
+const SUBPAPEL_STYLE = {
+  dev: {fill:"pf-dev"},  arq: {fill:"pf-arq"},
+  test:{fill:"pf-test"}, po:  {fill:"pf-po"},
+  sm:  {fill:"pf-sm"},   gti: {fill:"pf-gt"},
+  sup: {fill:"pf-sup"},  adm: {fill:"pf-adm"},
+  exec:{fill:"pf-exec"},
+};
+
+// Interpola entre dois tons acinzentados conforme pctDisp (0–100)
+// 0%  → cinza-azulado frio  (#6b7d8f → #8fa0b0)
+// Cabeçalho tipo barra: verde (parte feita) → cinza (parte restante)
+// A divisão é horizontal, exata no pctDisp
+function papelHeadGradient(pct) {
+  const green = "#2d7d52";
+  const gray  = "#6b7280";
+  if (pct <= 0)   return gray;
+  if (pct >= 100) return green;
+  const p = pct.toFixed(1);
+  // corte nítido: verde até p%, cinza a partir daí
+  return `linear-gradient(to right, ${green} 0%, ${green} ${p}%, ${gray} ${p}%, ${gray} 100%)`;
+}
+
+function isDisponivel(m) {
+  if (m.fonte === "form" || m.fonte === "ext") return false;
+  if (m.cj === "solo") return false;
+  return true;
+}
+
+function buildMrowDetail(m) {
+  const d = m.details || {};
+  const sc = STATUS_CFG[m.status];
+  let bloqueioHtml = "";
+  if (m.status !== "done") {
+    const motivo = m.status === "block"
+      ? (m.fonte === "form" ? "Depende de ferramenta de formulários ainda não definida."
+        : m.fonte === "ext"  ? "Depende de integração com sistema externo ao ADO."
+        : m.cj === "solo"    ? "Depende da base Git/PR, ainda não implementada."
+        : (d.duvidas||[]).length ? "Dúvidas em aberto impedem o desenvolvimento."
+        : "Bloqueada — ver dúvidas ou dependências.")
+      : m.status === "wip"
+      ? "Em desenvolvimento — estrutura criada, aguardando confirmação de campos ou validação."
+      : "Aguardando priorização ou resolução de dependência.";
+    bloqueioHtml = `<div>
+      <div class="mdet-label">⏸ Situação atual</div>
+      <div class="mdet-val"><span class="stb ${sc.cls}">${sc.label}</span><span style="margin-left:8px;font-size:.77rem;color:#555">${motivo}</span></div>
+    </div>`;
+  }
+  const duvHtml = (d.duvidas||[]).length
+    ? `<ul class="duv-list" style="margin-top:4px">${d.duvidas.map(dv=>`<li class="duv-item">${dv}</li>`).join("")}</ul>`
+    : `<span style="color:#86efac;font-size:.75rem">✅ Sem dúvidas abertas</span>`;
+  const epLabel = d.endpointStatus === "confirmed" ? "✅ confirmado"
+                : d.endpointStatus === "estimated"  ? "⚠️ estimado" : "🚫 externo";
+  const epVal = d.endpoint
+    ? `<span style="font-family:monospace;font-size:.71rem;background:#1a1a2e;color:#7dd3fc;padding:3px 7px;border-radius:4px;display:inline-block;margin-top:3px;word-break:break-all">${d.endpoint}</span>`
+    : `<span style="color:#94a3b8;font-size:.73rem;font-style:italic">Sem endpoint ADO</span>`;
+  return `<div class="mrow-detail">
+    <div><div class="mdet-label">📐 Cálculo</div><div class="mdet-val">${d.calculo||"—"}</div></div>
+    ${bloqueioHtml}
+    <div><div class="mdet-label">🔌 Endpoint — ${epLabel}</div><div class="mdet-val">${epVal}</div></div>
+    <div><div class="mdet-label">⚠️ Dúvidas</div><div class="mdet-val">${duvHtml}</div></div>
+  </div>`;
+}
+
+function mrowHtml(m) {
+  const fc = FONTE_CFG[m.fonte];
+  const cj = m.cj ? CJ_CFG[m.cj] : null;
+  const dv = m.duvida ? `<span class="ddot" title="Dúvida em aberto">!</span>` : "";
+  const isLimited = (m.fonte === "form" || m.fonte === "ext" || m.cj === "solo");
+  const rowStyle = isLimited ? ' style="background:#f1f5f9;border-color:#e2e8f0;opacity:0.75"' : '';
+  const nameStyle = isLimited ? ' style="color:#94a3b8"' : '';
+  const uid = `mrd-${m.code}`;
+  return `<div class="mrow-wrap">
+    <div class="mrow mrow-clickable"${rowStyle} onclick="toggleMrow('${uid}')">
+      <span class="mrow-chev">▶</span>
+      <span class="mcode cbadge ${fc.cls}">${m.code}</span>
+      <div class="minfo">
+        <div class="mname2"${nameStyle}>${m.name}</div>
+        <div class="msrc"><span class="sdot ${fc.dot}"></span>${fc.label}${cj?` · ${cj.label}`:""}</div>
+      </div>${dv}
+    </div>
+    <div id="${uid}" class="mrow-detail-wrap" style="display:none">
+      ${buildMrowDetail(m)}
+    </div>
+  </div>`;
+}
+
+function toggleMrow(uid) {
+  const el = document.getElementById(uid);
+  const row = el ? el.previousElementSibling : null;
+  const chev = row ? row.querySelector(".mrow-chev") : null;
+  if (!el) return;
+  const open = el.style.display !== "none";
+  el.style.display = open ? "none" : "block";
+  if (chev) chev.textContent = open ? "▶" : "▼";
+}
+
+function buildPapelCard(sp) {
+  const pm  = PAPEL_METRICS[sp.key] || {ind:[],equip:[]};
+  const sty = SUBPAPEL_STYLE[sp.key] || {};
+  const statuses = [
+    {key:"done",label:"✅ Desenvolvidas"},{key:"wip",label:"🔧 Em andamento"},
+    {key:"pend",label:"⏳ Aguardando"},{key:"block",label:"❌ Bloqueadas"},
+  ];
+  function sectionHtml(codes, tipoLabel, tipoClass) {
+    const mets = M.filter(m => codes.includes(m.code));
+    if (!mets.length) return "";
+    let html = `<div class="tipo-section-label ${tipoClass}">${tipoLabel}</div>`;
+    statuses.forEach(g => {
+      const gm = mets.filter(m => m.status===g.key);
+      if (!gm.length) return;
+      html += `<div class="rcseclabel" style="padding-left:8px">${g.label}</div>`;
+      gm.forEach(m => { html += mrowHtml(m); });
+    });
+    return html;
+  }
+  const body = sectionHtml(pm.ind,"👤 Individual","tsi-ind") + sectionHtml(pm.equip,"👥 Equipe","tsi-equip");
+
+  const totalMets = M.filter(m => [...pm.ind,...pm.equip].includes(m.code));
+  const dispMets  = totalMets.filter(isDisponivel);
+  const doneTotal = totalMets.filter(m => m.status==="done").length;
+  const doneDisp  = dispMets.filter(m => m.status==="done").length;
+  const pctTotal  = totalMets.length ? Math.round(doneTotal/totalMets.length*100) : 0;
+  const pctDisp   = dispMets.length  ? Math.round(doneDisp/dispMets.length*100)   : 0;
+
+  const id = "rc-" + sp.key;
+  const headGrad = papelHeadGradient(pctDisp);
+  return `<div class="rcard" id="${id}">
+    <div class="rchead" style="background:${headGrad}" onclick="toggleCard('${id}')">
+      <div class="rchead-left"><h2>${sp.icon} ${sp.title}</h2><div class="rsub">${sp.sub}</div></div>
+      <div class="rchead-right">
+        <div class="pct-stack">
+          <span class="pct-disp" title="Do que é possível buscar hoje (ADO)">🟢 ${doneDisp}/${dispMets.length} ADO (${pctDisp}%)</span>
+          <span class="pct-total" title="Total incluindo form/ext/git">📊 ${doneTotal}/${totalMets.length} total (${pctTotal}%)</span>
+        </div>
+        <span class="rc-chev">▼</span>
+      </div>
+    </div>
+    <div class="rcbody-wrap">
+      <div class="rcbody">${body}</div>
+      <div class="pwrap">
+        <div class="plabel"><span>ADO (disponível agora)</span><span>${pctDisp}%</span></div>
+        <div class="pbar"><div class="pfill ${sty.fill}" style="width:${pctDisp}%"></div></div>
+        <div class="plabel" style="margin-top:6px;opacity:.6;font-size:0.68rem">
+          <span>Total (incluindo form/ext/git)</span><span>${pctTotal}%</span>
+        </div>
+        <div class="pbar" style="opacity:.35"><div class="pfill ${sty.fill}" style="width:${pctTotal}%"></div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderRoles() {
+  const container = document.getElementById("rolesGrid");
+  container.innerHTML = "";
+  ROLE_GROUPS.forEach(grp => {
+    const h = document.createElement("div");
+    h.className = "role-group-header";
+    h.innerHTML = `<h3>${grp.groupTitle}</h3><span>${grp.groupSub}</span>`;
+    container.appendChild(h);
+    const g = document.createElement("div");
+    g.className = "subpapel-grid";
+    g.innerHTML = grp.papeis.map(buildPapelCard).join("");
+    container.appendChild(g);
+  });
+}
+
+// ═══ PAGE 3 — BASES ═══
+const BASES_DEF = [
+  { key:"snap", headCls:"rh-snap", fillCls:"pf-snap", icon:"📸", title:"WorkItems_Snapshot",
+    sub:"extract_BASE1.py · Ativo", statusBadge:"bs-ativo", statusLabel:"Ativo",
+    desc:"Snapshot do estado atual de cada work item. Uma linha por item, sem histórico de revisões. Alimenta métricas de qualidade, entrega e conformidade.",
+    arquivo:"Dev/BASE 1 - WorkItems_Snapshot/extract_BASE1.py", cj:"snap" },
+  { key:"hist", headCls:"rh-hist", fillCls:"pf-hist", icon:"📖", title:"WorkItems_History",
+    sub:"extract_BASE2.py · Ativo", statusBadge:"bs-ativo", statusLabel:"Ativo",
+    desc:"Análise revisão a revisão de cada work item. Detecta bloqueios, retrabalho, cycle time e flow efficiency. Cada item vira uma linha com colunas calculadas.",
+    arquivo:"Dev/BASE2 - Work Items History/extract_BASE2.py", cj:"hist" },
+  { key:"pipe", headCls:"rh-pipe", fillCls:"pf-pipe", icon:"🚀", title:"Releases_Pipelines",
+    sub:"extract_BASE3.py · Em desenvolvimento", statusBadge:"bs-ativo", statusLabel:"Em desenv.",
+    desc:"Dados de releases e pipelines de deploy do ADO. Necessário para métricas de frequência de deploy, change failure rate e time to market.",
+    arquivo:"Dev/BASE 3 - Releases_Pipelines/extract_BASE3.py", cj:"pipe" },
+  { key:"solo", headCls:"rh-solo", fillCls:"pf-solo", icon:"🔀", title:"Git / Pull Requests",
+    sub:"extract_git.py · Futuro", statusBadge:"bs-futuro", statusLabel:"Futuro",
+    desc:"Dados de PRs e commits via API Git do ADO. Necessário para métricas de throughput, review time, aderência arquitetural e bus factor.",
+    arquivo:null, cj:"solo" },
+  { key:"form", headCls:"rh-form", fillCls:"pf-form", icon:"📋", title:"Formulários / Pesquisas",
+    sub:"Ferramenta a definir · Bloqueado", statusBadge:"bs-ext", statusLabel:"Bloqueado",
+    desc:"Dados de pesquisas de satisfação, eNPS, team health check e carga cognitiva. Depende de ferramenta de formulários (Forms, Typeform, etc.) a ser escolhida.",
+    arquivo:null, cj:"form" },
+  { key:"ext", headCls:"rh-ext", fillCls:"pf-ext", icon:"🌐", title:"Fontes Externas",
+    sub:"Sistemas BNB · Bloqueado", statusBadge:"bs-ext", statusLabel:"Bloqueado",
+    desc:"Dados de RH, financeiro, monitoração de infra e calendário. Requerem integração com sistemas externos do BNB (SAP, ServiceNow, Dynatrace, etc.).",
+    arquivo:null, cj:"ext" },
+];
+
+function buildBaseCard(def) {
+  const isFonte = (def.key === "form" || def.key === "ext");
+  const mets = isFonte ? M.filter(m => m.fonte === def.key) : M.filter(m => m.cj === def.key);
+  const done  = mets.filter(m => m.status==="done").length;
+  const pct   = mets.length ? Math.round(done/mets.length*100) : 0;
+  const groups = [
+    {key:"done",label:"✅ Desenvolvidas"},{key:"wip",label:"🔧 Em andamento"},
+    {key:"pend",label:"⏳ Aguardando"},{key:"block",label:"❌ Bloqueadas"},
+  ];
+  let bodyHtml = "";
+  groups.forEach(g => {
+    const gm = mets.filter(m => m.status===g.key);
+    if (!gm.length) return;
+    bodyHtml += `<div class="rcseclabel">${g.label}</div>`;
+    gm.forEach(m => {
+      const fc = FONTE_CFG[m.fonte];
+      const dv = m.duvida ? `<span class="ddot" title="Dúvida em aberto">!</span>` : "";
+      bodyHtml += `<div class="mrow">
+        <span class="mcode cbadge ${fc.cls}">${m.code}</span>
+        <div class="minfo">
+          <div class="mname2">${m.name}</div>
+          <div class="msrc">${m.roles.map(r=>`<span class="rc ${ROLE_CFG[r]?ROLE_CFG[r].cls:''}" style="font-size:0.6rem;padding:1px 4px">${ROLE_CFG[r]?ROLE_CFG[r].label:r}</span>`).join(" ")}</div>
+        </div>${dv}</div>`;
+    });
+  });
+  const cardId = "bc-" + def.key;
+  const futureCls = (def.statusBadge === "bs-futuro" || def.statusBadge === "bs-ext") ? " bc-future" : "";
+  return `<div class="rcard${futureCls}" id="${cardId}">
+    <div class="rchead ${def.headCls}" onclick="toggleCard('${cardId}')">
+      <div class="rchead-left"><h2>${def.icon} ${def.title}</h2><div class="rsub">${def.sub}</div></div>
+      <div class="rchead-right">
+        <span class="base-status ${def.statusBadge}">${def.statusLabel}</span>
+        <span class="rc-pct">${done}/${mets.length}</span>
+        <span class="rc-chev">▼</span>
+      </div>
+    </div>
+    <div class="rcbody-wrap">
+      <div class="rcbody">
+        <div style="background:#f8fafc;border-radius:8px;padding:10px 12px;margin-bottom:8px">
+          <div class="det-label">📄 Descrição</div>
+          <div class="det-val">${def.desc}</div>
+        </div>
+        ${def.arquivo ? `<div style="background:#f8fafc;border-radius:8px;padding:8px 12px;margin-bottom:8px"><div class="det-label">📁 Arquivo</div><div class="det-val" style="font-family:monospace;font-size:0.78rem">${def.arquivo}</div></div>` : ""}
+        <div class="rcseclabel">Métricas desta base</div>
+        ${bodyHtml}
+      </div>
+      <div class="pwrap">
+        <div class="plabel"><span>Progresso</span><span>${pct}%</span></div>
+        <div class="pbar"><div class="pfill ${def.fillCls}" style="width:${pct}%"></div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderBases() {
+  const container = document.getElementById("basesGrid");
+  container.innerHTML = "";
+  BASES_DEF.forEach(def => {
+    const div = document.createElement("div");
+    div.innerHTML = buildBaseCard(def);
+    container.appendChild(div);
+  });
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+const PAGES = ["p1","p2","p3","p4"];
+function showPage(n, btn) {
+  PAGES.forEach((id,i) => {
+    document.getElementById(id).style.display = i===n ? "block" : "none";
+  });
+  document.querySelectorAll(".tab").forEach((t,i) => t.classList.toggle("active", i===n));
+}
+
+// ─── CARD TOGGLE ──────────────────────────────────────────────────────────────
+function toggleCard(id) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  const wrap = card.querySelector(".rcbody-wrap");
+  const chev = card.querySelector(".rc-chev");
+  const isOpen = card.classList.contains("open");
+  card.classList.toggle("open", !isOpen);
+  if (wrap) wrap.style.display = isOpen ? "none" : "block";
+  if (chev) chev.textContent = isOpen ? "▼" : "▲";
+}
+
+
+// ══════════════════════════════════════════════════════
+// CÁLCULO POR INDICADOR (BASE 1 / BASE 2) — fórmulas da Matriz de Performance
+// ══════════════════════════════════════════════════════
+const CALC = {
+  // ── BASE 1 ──────────────────────────────────────────────────────────────
+  "A001": { base:"1", papel:"Planilha GT · Atividade · Individual (PO)", formula:"Score = ca / i3s",
+    params:[
+      {p:"ca — #itens c/ Critério de Aceite", col:"ca", tipo:"param", agg:"COUNT onde ca = true e tipo='História de Usuário'"},
+      {p:"i3s — total de itens no escopo", col:"ca", tipo:"agg", agg:"COUNT onde tipo='História de Usuário' (= ca não nulo)"},
+    ], calc:"score = COUNT(ca = true) / COUNT(*)   -- tipo = 'História de Usuário'" },
+  "A002": { base:"1", papel:"Planilha GT · Atividade · Equipe (PO)", formula:"Score = fd / fp",
+    params:[
+      {p:"fd — #Features entregues (Done)", col:"fd", tipo:"param", agg:"COUNT onde fd = true e a002_emergencial = false"},
+      {p:"fp — #Features planejadas", col:"a002_emergencial", tipo:"agg", agg:"COUNT onde a002_emergencial = false"},
+    ], calc:"score = COUNT(fd = true AND a002_emergencial = false)\n        / COUNT(a002_emergencial = false)",
+    notes:[{k:"info", t:"Emergenciais (criadas após o início da sprint) saem do denominador (D001)."}] },
+  "A005": { base:"1", papel:"Planilha GT · Atividade · Individual (GT)", formula:"Score = 1 − |spb − spa|",
+    params:[
+      {p:"spb — % SP de Business", col:"a005_sp_valor", tipo:"param", agg:"SUM(a005_sp_valor) onde a005_sp_tipo='biz'"},
+      {p:"spa — % SP de Architectural", col:"a005_sp_valor", tipo:"param", agg:"SUM(a005_sp_valor) onde a005_sp_tipo='arq'"},
+    ], calc:"sp_biz = SUM(a005_sp_valor | a005_sp_tipo='biz')\nsp_arq = SUM(a005_sp_valor | a005_sp_tipo='arq')\nspb = sp_biz/(sp_biz+sp_arq) ; spa = sp_arq/(sp_biz+sp_arq)\nscore = 1 - ABS(spb - spa)",
+    notes:[{k:"warn", t:"Planilha usa % de SP (0–1); a base traz SP bruto. Definir normalização com o Oscar."}] },
+  "A006": { base:"1", papel:"Planilha GT · Atividade · Equipe (GT)", formula:"Score = md / mp",
+    params:[
+      {p:"md — #marcos fechados", col:"md", tipo:"param", agg:"COUNT onde md = true"},
+      {p:"mp — #marcos planejados", col:"md", tipo:"agg", agg:"COUNT onde md não nulo (tipos estratégicos)"},
+    ], calc:"score = COUNT(md = true) / COUNT(md não nulo)\n-- tipo IN ('Iniciativa','Objetivo Estratégico','Hipótese de Solução')" },
+  "A009": { base:"1", papel:"Planilha Técnica · Atividade · Individual (Testador)", formula:"Score = sta / sdp",
+    params:[
+      {p:"sta — #Stories c/ testes automatizados", col:"sta", tipo:"param", agg:"COUNT onde sta = true"},
+      {p:"sdp — #Stories desenvolvidas", col:"sta", tipo:"agg", agg:"COUNT onde tipo='História de Usuário'"},
+    ], calc:"score = COUNT(sta = true) / COUNT(*)   -- tipo = 'História de Usuário'",
+    notes:[{k:"warn", t:"A009-D001: sta hoje vem de tags (proxy). Confirmar rastreio real (TestedBy)."}] },
+  "A010": { base:"1", papel:"Planilha Técnica · Atividade · Equipe (Testador)", formula:"Score = btes / (btes + bprod)",
+    params:[
+      {p:"btes — #Bugs em Teste", col:"a010_em_teste", tipo:"agg", agg:"COUNT onde a010_em_teste = true"},
+      {p:"bprod — #Bugs em Produção", col:"a010_em_teste", tipo:"agg", agg:"COUNT onde a010_em_teste = false"},
+    ], calc:"score = COUNT(a010_em_teste = true) / COUNT(a010_em_teste não nulo)\n-- denominador = todos os Bugs (tipo = 'Bug')" },
+  "A011": { base:"1", papel:"Planilha Gestão Geral · Atividade · Individual", formula:"Score = econ / eplan",
+    params:[
+      {p:"econ — #Epics concluídos", col:"econ", tipo:"param", agg:"COUNT onde econ = true"},
+      {p:"eplan — #Epics planejados", col:"econ", tipo:"agg", agg:"COUNT onde econ não nulo"},
+    ], calc:"score = COUNT(econ = true) / COUNT(econ não nulo)\n-- tipo = 'Objetivo Estratégico'" },
+  "A012": { base:"1", papel:"Planilha Gestão Geral · Atividade · Equipe", formula:"Score = fsreal / fsmedium",
+    params:[
+      {p:"fsreal — #entregas no período", col:"fsreal", tipo:"param", agg:"COUNT onde fsreal = true"},
+      {p:"fsmedium — média histórica", col:"fsreal (períodos anteriores)", tipo:"agg", agg:"AVG de fsreal por período (trimestres anteriores)"},
+    ], calc:"fsreal   = COUNT(fsreal = true)          -- trimestre atual\nfsmedium = AVG(fsreal_por_trimestre)     -- N trimestres anteriores\nscore    = fsreal / fsmedium",
+    notes:[{k:"info", t:"Precisa de múltiplas extrações (série histórica) — não sai de uma corrida única."}] },
+  "C001": { base:"1", papel:"Planilha GT · Comunicação · Individual", formula:"Score = t0 / tq",
+    params:[
+      {p:"t0 — #itens fechados no prazo", col:"t0", tipo:"param", agg:"COUNT onde t0 = true"},
+      {p:"tq — #total de itens c/ prazo", col:"t0", tipo:"agg", agg:"COUNT onde t0 não nulo"},
+    ], calc:"score = COUNT(t0 = true) / COUNT(t0 não nulo)\n-- t0 = (data_fechamento &lt;= finish_date); tipo IN ('Iniciativa','Hipótese de Solução')",
+    notes:[{k:"warn", t:"Planilha fala em 'tarefas'; a base usa Iniciativa/Hipótese (mesma lógica de P005)."}] },
+  "C002": { base:"1", papel:"Planilha GT · Comunicação · Equipe", formula:"Score = dr / i3us",
+    params:[
+      {p:"dr — #dependências cross-team", col:"dr", tipo:"param", agg:"COUNT onde dr = true"},
+      {p:"i3us — #total de itens (3 sprints)", col:"dr", tipo:"agg", agg:"COUNT onde dr não nulo"},
+    ], calc:"score = COUNT(dr = true) / COUNT(dr não nulo)\n-- tipo IN ('História de Usuário','Iniciativa','Hipótese de Solução')" },
+  "C008": { base:"1", papel:"Planilha Técnica · Comunicação · Individual", formula:"Score = wdr / ics",
+    params:[
+      {p:"wdr — #Features c/ doc atualizada", col:"wdr", tipo:"param", agg:"COUNT onde wdr = true e fsreal = true"},
+      {p:"ics — #Features entregues", col:"fsreal", tipo:"agg", agg:"COUNT onde fsreal = true"},
+    ], calc:"score = COUNT(wdr = true AND fsreal = true) / COUNT(fsreal = true)",
+    notes:[{k:"warn", t:"C008-D001: wdr é heurística por tag/tipo. Confirmar marcador oficial."}] },
+  "C010": { base:"1", papel:"Planilha Gestão Geral · Comunicação · Equipe", formula:"Score = fsokr / ittotal",
+    params:[
+      {p:"fsokr — #itens vinculados a KR", col:"fsokr", tipo:"param", agg:"COUNT onde fsokr = true"},
+      {p:"ittotal — #total de itens", col:"fsokr", tipo:"agg", agg:"COUNT onde fsokr não nulo"},
+    ], calc:"score = COUNT(fsokr = true) / COUNT(fsokr não nulo)\n-- ittotal exclui tipo IN ('Bug','Incidente')",
+    notes:[{k:"warn", t:"C010-D001: fsokr vem de tags/links OKR (modo 'tags'). Confirmar convenção do BNB."}] },
+  "E001": { base:"1", papel:"Planilha GT · Eficiência · Individual", formula:"Score = 1 − (mwi / mwie)",
+    params:[
+      {p:"mwi — média de dias", col:"e001_lead_time_dias", tipo:"param", agg:"AVG(e001_lead_time_dias) onde não nulo"},
+      {p:"mwie — meta de dias", col:"— (constante)", tipo:"agg", agg:"parâmetro de configuração (meta) no BI"},
+    ], calc:"mwi   = AVG(e001_lead_time_dias)   -- itens com lead time\nscore = 1 - (mwi / mwie)           -- mwie = meta em dias (ex.: 15)",
+    notes:[{k:"warn", t:"Planilha mede dias em estados iniciais (New→Approved); a base traz lead time completo (data_criacao→data_fechamento)."}] },
+  "P001": { base:"1", papel:"Planilha GT · Performance · Individual (PO)", formula:"Score = (ir·4 + rs·3 + eo·2 + rc·1) / 50",
+    params:[
+      {p:"ir (peso 4) — Impacto Receita", col:"bv_ir", tipo:"param", agg:"valor por item (0–5)"},
+      {p:"rs (peso 3) — Retenção/Satisfação", col:"bv_rs", tipo:"param", agg:"valor por item (0–5)"},
+      {p:"eo (peso 2) — Eficiência Operacional", col:"bv_eo", tipo:"param", agg:"valor por item (0–5)"},
+      {p:"rc (peso 1) — Risco/Compliance", col:"bv_rc", tipo:"param", agg:"valor por item (0–5)"},
+      {p:"score por item", col:"p001_score", tipo:"param", agg:"AVG(p001_score) p/ o valor da sprint/equipe"},
+    ], calc:"p001_score = (bv_ir*4 + bv_rs*3 + bv_eo*2 + bv_rc*1) / 50   -- por item\nscore_sprint = AVG(p001_score | p001_campos_ok = true)",
+    notes:[{k:"warn", t:"P001-D001: campos custom bv_* não confirmados. bv_ir mantém prefixo p/ não colidir com ir do P007."}] },
+  "P004": { base:"1", papel:"Planilha GT · Performance · Equipe", formula:"Score = pe / pp",
+    params:[
+      {p:"pe — pontos entregues", col:"story_points", tipo:"base", agg:"SUM(story_points) onde p004_entregue = true"},
+      {p:"pp — pontos planejados", col:"story_points", tipo:"base", agg:"SUM(story_points) onde tipo='História de Usuário' e SP &gt; 0"},
+    ], calc:"pe = SUM(story_points | p004_entregue = true)\npp = SUM(story_points | tipo='História de Usuário' AND story_points &gt; 0)\nscore = pe / pp",
+    notes:[{k:"warn", t:"Código hoje conta itens; a planilha soma story points. Usar a soma de SP (acima)."}] },
+  "P005": { base:"1", papel:"Planilha GT · Performance · Individual (GT)", formula:"Score = cmpp / cmpt",
+    params:[
+      {p:"cmpp — #compromissos no prazo", col:"cmpp", tipo:"param", agg:"COUNT onde cmpp = true"},
+      {p:"cmpt — #total de compromissos", col:"cmpp", tipo:"agg", agg:"COUNT onde cmpp não nulo"},
+    ], calc:"score = COUNT(cmpp = true) / COUNT(cmpp não nulo)\n-- cmpp = (data_fechamento &lt;= finish_date); tipo IN ('Iniciativa','Hipótese de Solução')",
+    notes:[{k:"warn", t:"Planilha mede Epics; a base usa Iniciativa/Hipótese. P005-D001 aberta."}] },
+  // ── BASE 2 ──────────────────────────────────────────────────────────────
+  "P003": { base:"2", papel:"Planilha GT · Performance · Individual (SM)", formula:"Score = tr / tb",
+    params:[
+      {p:"tr — #bloqueios resolvidos &lt; 4h", col:"p003_resolvido_rapido", tipo:"agg", agg:"COUNT onde p003_resolvido_rapido = true"},
+      {p:"tb — #total de bloqueios", col:"p003_num_bloqueios", tipo:"agg", agg:"COUNT onde p003_num_bloqueios &gt; 0 (item)  |  SUM(p003_num_bloqueios) (bloqueio)"},
+    ], calc:"tr = COUNT(p003_resolvido_rapido = true)\ntb = COUNT(p003_num_bloqueios &gt; 0)      -- nível item (padrão do código)\nscore = tr / tb",
+    notes:[{k:"warn", t:"Granularidade: planilha conta bloqueios; base marca por item. Nível-bloqueio: SUM(p003_num_bloqueios) + p003_episodios."}] },
+  "P007": { base:"2", papel:"Planilha Técnica · Performance · Individual (Dev)", formula:"Score = 1 − (ir / ie)",
+    params:[
+      {p:"ir — #itens reabertos", col:"ir", tipo:"param", agg:"COUNT onde ir = true"},
+      {p:"ie — #itens entregues", col:"ie", tipo:"param", agg:"COUNT onde ie = true"},
+    ], calc:"score = 1 - ( COUNT(ir = true) / COUNT(ie = true) )" },
+  "A004": { base:"2", papel:"Planilha GT · Atividade · Equipe (SM)", formula:"CV = dv / mi",
+    params:[
+      {p:"mi — média do cycle time", col:"a004_cycle_time_horas", tipo:"param", agg:"AVG onde a004_em_ciclo = true"},
+      {p:"dv — desvio padrão do cycle time", col:"a004_cycle_time_horas", tipo:"param", agg:"STDDEV onde a004_em_ciclo = true"},
+    ], calc:"mi = AVG(a004_cycle_time_horas | a004_em_ciclo = true)\ndv = STDDEV(a004_cycle_time_horas | a004_em_ciclo = true)\nCV = dv / mi           -- menor = mais estável (score 0–1: usar 1 - CV)" },
+  "E008": { base:"2", papel:"Planilha Técnica · Eficiência · Equipe (Dev)", formula:"Score = 1 − (dpcy / mcy)",
+    params:[
+      {p:"mcy — média do cycle time", col:"e008_cycle_time_horas", tipo:"param", agg:"AVG onde e008_em_ciclo = true"},
+      {p:"dpcy — desvio padrão do cycle time", col:"e008_cycle_time_horas", tipo:"param", agg:"STDDEV onde e008_em_ciclo = true"},
+    ], calc:"mcy  = AVG(e008_cycle_time_horas | e008_em_ciclo = true)\ndpcy = STDDEV(e008_cycle_time_horas | e008_em_ciclo = true)\nscore = 1 - (dpcy / mcy)",
+    notes:[{k:"info", t:"Mesmo dado do A004 (e008_cycle_time_horas ≡ a004_cycle_time_horas) — muda só o papel e a normalização."}] },
+  "E006": { base:"2", papel:"Planilha Técnica · Eficiência · Equipe (Dev)", formula:"Score = tec / ctt",
+    params:[
+      {p:"tec — tempo em execução (ativo)", col:"e006_t_ativo_horas", tipo:"param", agg:"SUM(e006_t_ativo_horas)"},
+      {p:"ctt — cycle time total (ativo + espera)", col:"e006_t_ativo_horas + e006_t_espera_horas", tipo:"agg", agg:"SUM(t_ativo) + SUM(t_espera)"},
+    ], calc:"tec = SUM(e006_t_ativo_horas)\nctt = SUM(e006_t_ativo_horas) + SUM(e006_t_espera_horas)\nscore = tec / ctt",
+    notes:[{k:"info", t:"Nível equipe: some as horas e divida. Não faça média de e006_flow_efficiency (razão por item)."}] },
+  "E002": { base:"2", papel:"Planilha GT · Eficiência · Equipe (PO)", formula:"Score = ta / ltt",
+    params:[
+      {p:"ta — tempo total em ação (ativo)", col:"e006_t_ativo_horas", tipo:"param", agg:"SUM(e006_t_ativo_horas)"},
+      {p:"ltt — lead time total", col:"e002_lead_time_horas", tipo:"param", agg:"SUM(e002_lead_time_horas) onde não nulo"},
+    ], calc:"ta  = SUM(e006_t_ativo_horas | e002_lead_time_horas não nulo)\nltt = SUM(e002_lead_time_horas)\nscore = ta / ltt        -- cap em 1.0. Por item já existe e002_flow_efficiency.",
+    notes:[{k:"info", t:"Elegível: tipo IN ('História de Usuário','Iniciativa','Hipótese de Solução') e item fechado. ta reusa o tempo ativo do E006 (ta = tec)."}] },
+};
+const CALC_NAME = {}; M.forEach(m => CALC_NAME[m.code] = m.name);
+const EXTRACAO = {
+  "A001": "<b>Escopo:</b> apenas 'História de Usuário'. <b>Campo ADO:</b> <code>Microsoft.VSTS.Common.AcceptanceCriteria</code>. <b>Regra:</b> <code>ca=true</code> quando o campo está preenchido (texto não vazio após trim); outros tipos ⇒ <code>null</code> (ficam fora do cálculo).",
+  "A002": "<b>Escopo:</b> apenas 'História de Usuário'. <b>Campos ADO:</b> <code>System.State</code>, <code>System.CreatedDate</code> e o startDate da sprint (via <code>teamsettings/iterations</code>). <b>Regras:</b> <code>fd=true</code> se estado ∈ {Concluído, Done, Closed, Resolved}; <code>a002_emergencial=true</code> se a HU foi criada depois do início da sprint. Se a API de iterations falhar, emergencial fica <code>null</code>.",
+  "A005": "<b>Escopo:</b> qualquer tipo com Story Points. <b>Campos ADO:</b> <code>System.WorkItemType</code>, <code>StoryPoints</code>. <b>Regra:</b> <code>a005_sp_tipo='biz'</code> para HU/Hipótese/Iniciativa/Atendimento Expresso; <code>'arq'</code> para Item Técnico/Kaizen; demais ⇒ <code>null</code>. <code>a005_sp_valor</code> = Story Points do item.",
+  "A006": "<b>Escopo:</b> tipos estratégicos (Iniciativa, Objetivo Estratégico, Hipótese de Solução). <b>Campo ADO:</b> <code>System.State</code>. <b>Regra:</b> <code>md=true</code> se estado ∈ {Concluído, Done, Closed, Resolved}; outros tipos ⇒ <code>null</code>.",
+  "A009": "<b>Escopo:</b> apenas 'História de Usuário'. <b>Campo ADO:</b> <code>System.Tags</code> (modo 'tags'). <b>Regra:</b> <code>sta=true</code> se alguma tag ∈ {testado, tested, com-teste, com_teste, automated-test}. ⚠️ É um proxy (A009-D001) — o modo alternativo verificaria links <code>TestedBy</code>.",
+  "A010": "<b>Escopo:</b> apenas 'Bug' (outros ⇒ <code>null</code>). <b>Campo ADO:</b> <code>System.Tags</code>. <b>Regra em cascata:</b> tag de produção {producao, produção, production, prod} ⇒ <code>false</code>; senão tag de teste {uat, teste, test, homologação, homologacao, qa} ⇒ <code>true</code>; sem tag definitiva ⇒ <code>true</code> (assume teste, conservador).",
+  "A011": "<b>Escopo:</b> apenas 'Objetivo Estratégico'. <b>Campo ADO:</b> <code>System.State</code>. <b>Regra:</b> <code>econ=true</code> se estado ∈ {Concluído, Done, Closed, Resolved}; outros tipos ⇒ <code>null</code>.",
+  "A012": "<b>Escopo:</b> todos os tipos. <b>Campo ADO:</b> <code>System.State</code>. <b>Regra:</b> <code>fsreal=true</code> se estado ∈ {Concluído, Done, Closed, Resolved} (item entregue no período).",
+  "C001": "<b>Escopo:</b> Iniciativa e Hipótese de Solução. <b>Campos ADO:</b> <code>FinishDate</code>, <code>ClosedDate</code>. <b>Regra:</b> se faltar qualquer data ⇒ <code>null</code>; senão <code>t0=true</code> quando <code>ClosedDate ≤ FinishDate</code>. Lógica idêntica ao P005.",
+  "C002": "<b>Escopo:</b> HU, Iniciativa e Hipótese. <b>Fonte:</b> chamada extra <code>$expand=relations</code> por item. <b>Regra:</b> para cada link de dependência (Dependency-Forward/Reverse, Affects-Forward/Reverse, Related) busca o <code>AreaPath</code> do item ligado; <code>dr=true</code> se a raiz do AreaPath do relacionado difere da do próprio item (dependência entre áreas). 1 requisição extra por item (paralelizado com ThreadPool).",
+  "C008": "<b>Escopo:</b> tipos concluíveis. <b>Campos ADO:</b> <code>System.WorkItemType</code>, <code>System.Tags</code>. <b>Regra:</b> <code>wdr=true</code> se o tipo é Kaizen OU alguma tag ∈ {documentacao, documentação, doc, wiki, readme, manual}. Heurística até definir o marcador oficial (C008-D001).",
+  "C010": "<b>Escopo:</b> exclui Bug e Incidente (⇒ <code>null</code>). <b>Campos ADO:</b> <code>System.Tags</code>, <code>System.WorkItemType</code> (modo 'tags'). <b>Regra:</b> <code>fsokr=true</code> se tag ∈ {okr, objetivo-estrategico, objetivo_estrategico, alinhamento, estrategico, strategic} ou o próprio tipo é 'Objetivo Estratégico'. O modo 'links' (alternativo) checa vínculo hierárquico/Related a um Objetivo Estratégico.",
+  "E001": "<b>Escopo:</b> HU, Iniciativa e Hipótese. <b>Campos ADO:</b> <code>CreatedDate</code>, <code>ClosedDate</code>. <b>Regra:</b> se faltar data ⇒ <code>null</code>; senão <code>e001_lead_time_dias = (ClosedDate − CreatedDate)</code> em dias (descarta negativos). ⚠️ mede o lead time completo, não só New→Approved (divergência com a planilha).",
+  "P001": "<b>Escopo:</b> Iniciativa e Hipótese. <b>Campos custom ADO:</b> <code>Custom.ImpactoReceita→bv_ir</code>, <code>Custom.Retencao→bv_rs</code>, <code>Custom.EficienciaOperacional→bv_eo</code>, <code>Custom.RiscoCompliance→bv_rc</code>. <b>Regra:</b> se nenhum estiver preenchido ⇒ score <code>null</code>; senão <code>p001_score = Σ(valor×peso)/50</code> (pesos 4/3/2/1). ⚠️ P001-D001: os campos custom ainda não existem no ADO.",
+  "P004": "<b>Escopo:</b> apenas 'História de Usuário'. <b>Campos ADO:</b> <code>StoryPoints</code>, <code>System.State</code>. <b>Regra:</b> <code>p004_entregue=true</code> se tem Story Points maior que 0 E estado ∈ Done. Os parâmetros <code>pe/pp</code> somam <code>story_points</code> (entregues / planejados).",
+  "P005": "<b>Escopo:</b> Iniciativa e Hipótese de Solução. <b>Campos ADO:</b> <code>FinishDate</code>, <code>ClosedDate</code>. <b>Regra:</b> se faltar data ⇒ <code>null</code>; senão <code>cmpp=true</code> quando <code>ClosedDate ≤ FinishDate</code>. ⚠️ a planilha mede Epics; o código usa Iniciativa/Hipótese (P005-D001).",
+  "P003": "<b>Fonte:</b> histórico de revisões (<code>/revisions</code>). <b>Bloqueio</b> quando <code>System.State</code> ∈ {blocked, bloqueado, impedido} ou há tag de bloqueio. <b>Regra:</b> detecta episódios (entrada→saída do bloqueio) clampados ao período; <code>p003_num_bloqueios</code>=nº de episódios e <code>p003_resolvido_rapido=true</code> se todos fecharam em menos de 4h (threshold) e nenhum ficou aberto.",
+  "P007": "<b>Fonte:</b> histórico de revisões + mapa de <code>stateCategory</code> por tipo. <b>Regras:</b> <code>ie(ever_completed)=true</code> se em algum momento a categoria do estado foi <code>Completed</code> (varre todo o histórico, sem filtro de período); <code>ir(retrabalho)=true</code> se houve transição Completed→InProgress/Proposed com data DENTRO do período (reabertura). Lookback de 365 dias na WIQL capta itens antigos reabertos.",
+  "A004": "<b>Fonte:</b> histórico de revisões + <code>stateCategory</code>. <b>Regra:</b> início do ciclo = 1ª entrada em <code>InProgress</code> no período; fim = 1ª entrada em <code>Completed</code> após o início; <code>a004_cycle_time_horas</code> = diferença em horas e <code>a004_em_ciclo=true</code> se completou o ciclo dentro do período.",
+  "E008": "<b>Fonte:</b> mesmo cálculo do A004 (histórico de revisões). <b>Regra:</b> <code>e008_cycle_time_horas</code> reusa exatamente o valor do cycle time do A004 — a diferença é só o papel (Dev × SM) e a fórmula de normalização.",
+  "E006": "<b>Fonte:</b> histórico de revisões. <b>Regra:</b> soma o tempo de cada segmento entre revisões, clampado ao período: categoria <code>InProgress</code> ⇒ <code>e006_t_ativo_horas</code>; <code>Proposed/Resolved</code> ⇒ <code>e006_t_espera_horas</code>. <code>e006_flow_efficiency = ativo/(ativo+espera)</code> por item.",
+  "E002": "<b>Escopo:</b> HU, Iniciativa e Hipótese fechadas. <b>Campos ADO:</b> <code>CreatedDate</code>, <code>ClosedDate</code> + o tempo ativo do E006. <b>Regra:</b> <code>e002_lead_time_horas = (ClosedDate − CreatedDate)</code> em horas; <code>e002_flow_efficiency = t_ativo / lead_time</code> (limitado a 1.0). ⚠️ itens migrados ('Card Original') inflam o CreatedDate (DADOS-D001).",
+};
+function extrBlock(code){
+  const e=EXTRACAO[code]; if(!e) return "";
+  return `<div class="ccextr"><div class="ccextr-h">🔍 Como foi extraído no código</div><div class="ccextr-b">${e}</div></div>`;
+}
+
+function ttBadge(t){
+  const map={base:["tt-base","base"],param:["tt-param","param"],apoio:["tt-apoio","apoio"],agg:["tt-agg","agg"]};
+  const x=map[t]||map.param; return `<span class="tt ${x[0]}">${x[1]}</span>`;
+}
+function calcParamRows(c){
+  return c.params.map(r=>`<tr><td>${r.p}</td><td><span class="cccol">${r.col}</span></td><td>${ttBadge(r.tipo)}</td><td>${r.agg}</td></tr>`).join("");
+}
+function calcCardHtml(code){
+  const c=CALC[code]; if(!c) return "";
+  const notes=(c.notes||[]).map(n=>`<div class="ccnote ${n.k}">${n.t}</div>`).join("");
+  const cid="cc-"+code;
+  return `<div class="ccard" id="${cid}">
+    <div class="cchead" onclick="toggleCalcCard('${cid}')"><span class="cccode">${code}</span><span class="ccname">${CALC_NAME[code]||""}</span><span class="ccpapel">${c.papel}</span><span class="cc-chev">▼</span></div>
+    <div class="ccbody">
+      <div class="ccform">${c.formula}</div>
+      <table class="cctable"><tr><th>Parâmetro</th><th>Coluna</th><th>Tipo</th><th>Agregador + filtro</th></tr>${calcParamRows(c)}</table>
+      <div class="ccalc">${c.calc}</div>${notes}${extrBlock(code)}
+    </div></div>`;
+}
+function toggleCalcCard(id){
+  const card=document.getElementById(id);
+  if(card) card.classList.toggle("open");
+}
+function calcRecipeHtml(code){
+  const c=CALC[code]; if(!c) return "";
+  const notes=(c.notes||[]).map(n=>`<div class="ccnote ${n.k}">${n.t}</div>`).join("");
+  return `<div class="det-block det-cols"><div class="det-label">🧮 Cálculo sobre a base (fórmula da planilha)</div>
+    <div class="ccform" style="margin-top:4px">${c.formula}</div>
+    <table class="cctable" style="margin-top:6px"><tr><th>Parâmetro</th><th>Coluna</th><th>Tipo</th><th>Agregador + filtro</th></tr>${calcParamRows(c)}</table>
+    <div class="ccalc" style="margin-top:6px">${c.calc}</div>${notes}${extrBlock(code)}</div>`;
+}
+function renderCalc(){
+  const el=document.getElementById("calcGrid"); if(!el) return;
+  const codes=Object.keys(CALC);
+  const b1=codes.filter(k=>CALC[k].base==="1");
+  const b2=codes.filter(k=>CALC[k].base==="2");
+  const legend=`<div class="calc-legend">
+    <span class="cl-t">Tipos de coluna:</span>
+    ${ttBadge("base")} campo cru do ADO &nbsp; ${ttBadge("param")} coluna-parâmetro (token da planilha)
+    &nbsp; ${ttBadge("apoio")} flag/valor auxiliar &nbsp; ${ttBadge("agg")} agregação (COUNT/SUM/AVG/STDDEV)
+  </div>`;
+  el.innerHTML = legend +
+    `<div class="calc-sec-h">📸 BASE 1 — WorkItems_Snapshot <span style="font-weight:500;font-size:.8rem;color:#888">· ${b1.length} indicadores</span></div>
+     <div class="calc-grid">${b1.map(calcCardHtml).join("")}</div>
+     <div class="calc-sec-h" style="margin-top:22px">📖 BASE 2 — WorkItems_History <span style="font-weight:500;font-size:.8rem;color:#888">· ${b2.length} indicadores</span></div>
+     <div class="calc-grid">${b2.map(calcCardHtml).join("")}</div>`;
+}
+
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+M.forEach(m => { if (m.fonte === "form") m.status = "block"; });
+renderCharts();
+renderTable();
+renderRoles();
+renderBases();
+renderCalc();
+showPage(0, document.querySelector(".tab.active"));
+
+</script>
+</body>
+</html>

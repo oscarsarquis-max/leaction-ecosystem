@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" fill="none">
+  <rect width="240" height="240" fill="#f1f5f9"/>
+  <rect x="24" y="24" width="192" height="192" rx="16" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <rect x="76" y="88" width="88" height="56" rx="6" fill="#e2e8f0" stroke="#475569" stroke-width="2"/>
+  <circle cx="120" cy="116" r="8" fill="#94a3b8"/>
+  <text x="120" y="188" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#334155">Equipamento</text>
+</svg>

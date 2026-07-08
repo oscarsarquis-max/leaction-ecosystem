@@ -1,0 +1,640 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <div>
+                <h1><i class="fas fa-running"></i> Gestão de Sprints e Roadmap</h1>
+                <p style="color: #666; margin-top: 5px;">Configuração da Trilha de Aceleração (Metodologia LeAction).</p>
+            </div>
+            <button class="btn blue-btn" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Nova Sprint Manual
+            </button>
+        </div>
+
+        <div style="margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #eee; display: flex; gap: 20px; align-items: flex-end;">
+            <div style="flex: 2;">
+                <label style="font-weight: bold; display: block; margin-bottom: 8px; color: #34495e;">1. Selecione o Projeto / Diagnóstico:</label>
+                <select id="projeto_selector" onchange="selecionarProjeto(this.value)" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc;">
+                    <option value="">-- Aguarde, carregando projetos... --</option>
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <label style="font-weight: bold; display: block; margin-bottom: 8px; color: #34495e;">2. Busca Rápida na Trilha:</label>
+                <input type="text" id="inputBusca" onkeyup="filtrarTabelaLocal()" placeholder="🔎 Filtrar por nome ou ID..." style="padding: 10px; border-radius: 6px; border: 1px solid #ccc; width: 100%;">
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 60px; text-align: center;">Onda</th>
+                    <th>Sprint / Bloco Associado</th>
+                    <th style="text-align: center;">Ordem</th>
+                    <th style="text-align: center;">Duração</th>
+                    <th style="text-align: center;">Meta Velocidade</th>
+                    <th style="text-align: center;">Status</th>
+                    <th style="text-align: center; width: 100px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <tr><td colspan="7" style="text-align:center; padding:30px; color:#999;">Selecione um projeto acima para carregar o Roadmap.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-sprint-exec" class="modal">
+    <div class="modal-content" style="width: 950px; max-height: 90vh; padding: 30px; margin: 2% auto;">
+        <span class="close" onclick="fecharModal()">&times;</span>
+        <h2 id="modal-title" style="color: #2c3e50;"><i class="fas fa-microchip"></i> Configuração da Sprint</h2>
+        <p id="sprint-subtitle" style="color: #6c5ce7; font-weight: bold; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;"></p>
+
+        <div id="framework-guide" style="display: none; background: #f0f4f8; border-radius: 10px; padding: 15px; margin-bottom: 20px; border-left: 5px solid #6c5ce7;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <span style="color: #2980b9; text-transform: uppercase; font-size: 0.7em; font-weight: 800; display: block; margin-bottom: 5px;">Definição do Entregável</span>
+                    <div id="guide-defi" style="font-size: 0.85em; color: #475569; line-height: 1.5;"></div>
+                </div>
+                <div>
+                    <span style="color: #2980b9; text-transform: uppercase; font-size: 0.7em; font-weight: 800; display: block; margin-bottom: 5px;">Composição Esperada</span>
+                    <div id="guide-comp" style="font-size: 0.85em; color: #475569; line-height: 1.5; white-space: pre-wrap;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="dod-checklist-container" style="background: #fffbe6; border: 1px solid #ffe58f; padding: 15px; border-radius: 8px; margin-bottom: 20px; display:none;">
+            <span style="color: #856404; text-transform: uppercase; font-size: 0.7em; font-weight: 800; display: block; margin-bottom: 10px;"><i class="fas fa-tasks"></i> Checklist de Qualidade (DoD)</span>
+            <div id="dod-items-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
+        </div>
+
+        <form id="form-sprints" onsubmit="salvarRegistro(event)">
+            <input type="hidden" id="id_sprn">
+
+            <fieldset style="border: 1px solid #e1e8ed; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <legend style="padding: 0 10px; font-weight: bold; color: #3498db; font-size: 0.8em; text-transform: uppercase;">Dados da Sprint</legend>
+                <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-weight: bold; font-size: 0.85em; margin-bottom: 5px;">Bloco Associado *</label>
+                        <select id="id_bloc" required onchange="carregarInfoMetodologica(this.value)" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div style="flex: 2;">
+                        <label style="display: block; font-weight: bold; font-size: 0.85em; margin-bottom: 5px;">Nome da Sprint *</label>
+                        <input type="text" id="name_sprn" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                </div>
+                <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <div style="flex: 1;"><label style="display: block; font-size: 0.8em; font-weight: bold;">Ordem</label><input type="number" id="ordr_sprn" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></div>
+                    <div style="flex: 1;"><label style="display: block; font-size: 0.8em; font-weight: bold;">Semanas</label><input type="number" id="week_sprn" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></div>
+                    <div style="flex: 1;"><label style="display: block; font-size: 0.8em; font-weight: bold;">Meta Pontos</label><input type="number" id="targv_sprn" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.8em; font-weight: bold;">Status</label>
+                        <select id="stat_sprn" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="planejada">Planejada</option>
+                            <option value="em_andamento">Em Andamento</option>
+                            <option value="concluida">Concluída</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <div style="flex: 1;"><label style="display: block; font-size: 0.8em; font-weight: bold;">Início Ref.</label><input type="date" id="dtini_sprn" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></div>
+                    <div style="flex: 1;"><label style="display: block; font-size: 0.8em; font-weight: bold;">Fim Ref.</label><input type="date" id="dtend_sprn" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></div>
+                </div>
+                <div class="form-group">
+                    <label style="display: block; font-size: 0.8em; font-weight: bold; margin-bottom: 5px;">Objetivos</label>
+                    <textarea id="desc_sprn" rows="2" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                </div>
+            </fieldset>
+
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #eee; margin-top: 10px;">
+                <h4 style="margin: 0 0 15px 0; color: #27ae60; font-size: 0.9em;"><i class="fas fa-chart-line"></i> Performance DoD (KPIs Reais do Framework)</h4>
+                <div id="container-metrics-dynamic" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <p style="color:#999; font-size:0.85em; grid-column: span 2; text-align: center;">KPIs da base aparecerão aqui.</p>
+                </div>
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #ddd; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="flex: 1;">
+                        <label style="font-weight: bold; font-size: 0.8em;">Progresso Médio (RealV)</label>
+                        <div style="background: #ddd; height: 10px; border-radius: 5px; margin-top: 5px; width: 90%;">
+                            <div id="progress-bar-exec" style="background: #27ae60; width: 0%; height: 100%; border-radius: 5px; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                    <div id="progress-label" style="font-weight: bold; color: #27ae60; font-size: 1.5em; width: 80px; text-align: right;">0%</div>
+                </div>
+            </div>
+
+            <div style="text-align: right; margin-top: 25px;">
+                <button type="button" class="btn" style="background:#eee; padding:10px 20px; border:none; border-radius:4px; margin-right:10px; cursor:pointer;" onclick="fecharModal()">Cancelar</button>
+                <button type="submit" class="btn" style="background:#3498db; color:white; padding:10px 30px; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">SALVAR ESTRATÉGIA</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #f8f9fa; color: #7f8c8d; font-weight: bold; text-transform: uppercase; padding: 15px; border-bottom: 2px solid #eee; text-align: left; font-size: 0.85em; }
+    td { padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50; font-size: 0.95em; }
+    tr:hover { background-color: #f9f9f9; }
+
+    .action-btn { border: none; background: none; cursor: pointer; font-size: 1.1em; padding: 5px; transition: transform 0.2s; }
+    .action-btn:hover { transform: scale(1.2); }
+    .btn-edit { color: #f39c12; }
+    .btn-delete { color: #e74c3c; }
+
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+    .modal-content { background-color: white; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow-y: auto; }
+
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+    .bg-run { background: #d1ecf1; color: #0c5460; }
+    .bg-done { background: #d4edda; color: #155724; }
+    .bg-plan { background: #fff3cd; color: #856404; }
+</style>
+
+<script>
+    const API_URL = "<%= API_BASE_URL %>/ctdi_sprn";
+    const API_BLOC = "<%= API_BASE_URL %>/leaf_bloc";
+    const USER_ROLE = "<%= locals.isAdmin ? 'ADMIN' : 'LEAD' %>";
+    const USER_ID_CLIE = "<%= locals.lead ? lead.id_clie : '' %>";
+    let idMatuSelecionado = null;
+
+    async function init() { await carregarProjetos(); await carregarBlocos(); }
+
+    async function carregarInfoMetodologica(id_bloc) {
+        if (!id_bloc) return;
+        try {
+            const res = await fetch(`<%= API_BASE_URL %>/leaf_derv?id_bloc=${id_bloc}`);
+            const data = await res.json();
+            const derv = Array.isArray(data) ? data[0] : data;
+            if (derv) {
+                document.getElementById('sprint-subtitle').innerText = `Entregável: ${derv.name_derv || '-'}`;
+                document.getElementById('framework-guide').style.display = 'block';
+                document.getElementById('guide-defi').innerText = derv.derv_defi || '-';
+                document.getElementById('guide-comp').innerText = derv.derv_comp || '-';
+                const dodBox = document.getElementById('dod-checklist-container');
+                const dodList = document.getElementById('dod-items-list');
+                dodList.innerHTML = "";
+                if (derv.criteria_dod) {
+                    const dod = typeof derv.criteria_dod === 'string' ? JSON.parse(derv.criteria_dod) : derv.criteria_dod;
+                    const items = [...(dod.required || []), ...(dod.context_education || [])];
+                    if (items.length > 0) {
+                        dodBox.style.display = 'block';
+                        dodList.innerHTML = items.map(i => `<label style="font-size:0.85em; display:flex; align-items:center; gap:8px; color:#475569;"><input type="checkbox" style="width:auto; margin:0;"> ${i}</label>`).join('');
+                    } else { dodBox.style.display = 'none'; }
+                }
+                const container = document.getElementById('container-metrics-dynamic');
+                container.innerHTML = "";
+                const metrics = derv.derv_metr ? derv.derv_metr.split(/[;,\n]/).map(m => m.trim()).filter(m => m !== "") : [];
+                if (metrics.length > 0) {
+                    metrics.forEach(m => {
+                        const div = document.createElement('div');
+                        div.style.padding = "8px"; div.style.background = "#fff"; div.style.borderRadius = "6px"; div.style.border = "1px solid #edf2f7";
+                        div.innerHTML = `<label style="font-size: 0.75em; display: block; font-weight: 700; color: #1e293b; margin-bottom:5px; text-transform:uppercase;">${m}</label><div style="display: flex; align-items: center; gap: 10px;"><input type="range" class="metric-range" value="0" min="0" max="100" style="flex: 1; accent-color: #27ae60;" oninput="this.nextElementSibling.innerText = this.value + '%'; atualizarProgresso();"><span style="font-size: 0.85em; font-weight: 800; min-width: 40px; color:#27ae60;">0%</span></div>`;
+                        container.appendChild(div);
+                    });
+                } else { container.innerHTML = "<p style='grid-column: span 2; text-align:center; color:#94a3b8;'>KPIs não definidos.</p>"; }
+                atualizarProgresso();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function atualizarProgresso() {
+        const ranges = document.querySelectorAll('.metric-range');
+        const bar = document.getElementById('progress-bar-exec');
+        const label = document.getElementById('progress-label');
+        if (ranges.length === 0) { if(bar) bar.style.width="0%"; if(label) label.innerText="0%"; return; }
+        let total = 0; ranges.forEach(r => total += parseInt(r.value));
+        const media = Math.round(total / ranges.length);
+        if (bar) bar.style.width = media + "%";
+        if (label) label.innerText = media + "%";
+    }
+
+    async function carregarProjetos() {
+        try {
+            const res = await fetch(`/api/meus-projetos?role=${USER_ROLE}&id_clie=${USER_ID_CLIE}`);
+            const projetos = await res.json();
+            const selector = document.getElementById('projeto_selector');
+            selector.innerHTML = '<option value="">-- Escolha um Diagnóstico --</option>';
+            projetos.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id_matu; opt.textContent = `[Ciclo ${p.id_ctdi} | Matu ${p.id_matu}] ${p.nome_clie || '-'}`;
+                selector.appendChild(opt);
+            });
+        } catch(e) { console.error(e); }
+    }
+
+    async function carregarBlocos() {
+        try {
+            const res = await fetch(API_BLOC);
+            const blocos = await res.json();
+            const select = document.getElementById('id_bloc');
+            select.innerHTML = '<option value="">-- Selecione o Bloco --</option>';
+            blocos.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id_bloc; opt.textContent = b.name_bloc;
+                select.appendChild(opt);
+            });
+        } catch(e) { console.error(e); }
+    }
+
+    async function selecionarProjeto(id) { idMatuSelecionado = id; if (id) carregarDados(); }
+
+    async function carregarDados() {
+        try {
+            const res = await fetch(`${API_URL}?id_matu=${idMatuSelecionado}`);
+            const dados = await res.json();
+            renderizarTabela(dados);
+        } catch (error) { console.error(error); }
+    }
+
+    function renderizarTabela(dados) {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+        dados.forEach(item => {
+            let statusClass = item.stat_sprn === 'em_andamento' ? 'bg-run' : item.stat_sprn === 'concluida' ? 'bg-done' : 'bg-plan';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="text-align:center; font-weight:bold;">${item.id_itera || '-'}</td>
+                <td><div style="font-weight:bold;">${item.name_sprn || '-'}</div><div style="font-size:0.85em; color:#666;">${item.name_bloc_text || '-'}</div></td>
+                <td style="text-align:center;">${item.ordr_sprn || '-'}</td>
+                <td style="text-align:center;">${item.week_sprn || 0} sem</td>
+                <td style="text-align:center;">${item.targv_sprn || 0} pts</td>
+                <td style="text-align:center;"><span class="badge ${statusClass}">${item.stat_sprn || '-'}</span></td>
+                <td style="text-align: center;">
+                    <button class="action-btn" style="color: #6c5ce7;" onclick="abrirPainelSprint(${item.id_sprn})">
+                        <i class="fas fa-rocket"></i>
+                    </button>
+                    <button class="action-btn btn-delete" onclick="deletar(${item.id_sprn})">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function salvarRegistro(e) {
+        e.preventDefault();
+        const id = document.getElementById('id_sprn').value;
+        const payload = {
+            id_matu: idMatuSelecionado, id_bloc: document.getElementById('id_bloc').value,
+            name_sprn: document.getElementById('name_sprn').value, desc_sprn: document.getElementById('desc_sprn').value,
+            ordr_sprn: document.getElementById('ordr_sprn').value, week_sprn: document.getElementById('week_sprn').value,
+            stat_sprn: document.getElementById('stat_sprn').value, dtini_sprn: document.getElementById('dtini_sprn').value,
+            dtend_sprn: document.getElementById('dtend_sprn').value, targv_sprn: document.getElementById('targv_sprn').value,
+            realv_sprn: document.getElementById('progress-label').innerText.replace('%','')
+        };
+        try {
+            const res = await fetch(id ? `${API_URL}/${id}` : API_URL, { method: id ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+            if(res.ok) { fecharModal(); carregarDados(); }
+        } catch(e) { console.error(e); }
+    }
+
+    function editar(item) {
+        abrirModal(false);
+        document.getElementById('id_sprn').value = item.id_sprn;
+        document.getElementById('id_bloc').value = item.id_bloc;
+        carregarInfoMetodologica(item.id_bloc);
+        document.getElementById('name_sprn').value = item.name_sprn;
+        document.getElementById('desc_sprn').value = item.desc_sprn || '';
+        document.getElementById('ordr_sprn').value = item.ordr_sprn;
+        document.getElementById('week_sprn').value = item.week_sprn;
+        document.getElementById('stat_sprn').value = item.stat_sprn;
+        document.getElementById('targv_sprn').value = item.targv_sprn;
+        if(item.dtini_sprn) document.getElementById('dtini_sprn').value = item.dtini_sprn.split('T')[0];
+        if(item.dtend_sprn) document.getElementById('dtend_sprn').value = item.dtend_sprn.split('T')[0];
+    }
+
+    function abrirModal(limpar = true) {
+        if(limpar) {
+            document.getElementById('form-sprints').reset();
+            document.getElementById('id_sprn').value = '';
+            document.getElementById('sprint-subtitle').innerText = "";
+            document.getElementById('framework-guide').style.display = 'none';
+            document.getElementById('dod-checklist-container').style.display = 'none';
+            document.getElementById('container-metrics-dynamic').innerHTML = "";
+            document.getElementById('progress-bar-exec').style.width = "0%";
+            document.getElementById('progress-label').innerText = "0%";
+        }
+        document.getElementById('modal-form').style.display = 'block';
+    }
+
+    function fecharModal() { document.getElementById('modal-form').style.display = 'none'; }
+    function filtrarTabelaLocal() { /* preservado */ }
+    async function deletar(id) { if(confirm("Confirmar exclusão?")) { await fetch(`${API_URL}/${id}`, { method: 'DELETE' }); carregarDados(); } }
+
+    // Incorporados os novos campos de cerimonias 28/04/2026
+    async function abrirPainelSprint(id_sprn) {
+        if (!id_sprn) return;
+        const cleanId = id_sprn.toString().replace(/[^0-9]/g, '');
+
+        try {
+            const res = await fetch(`/api/sprint_details/${cleanId}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            // --- 1. CONFIGURAÇÃO DE STATUS E AUDITORIA ---
+            const statusLimpo = (data.stat_sprn || data.status || '').toLowerCase().trim();
+            const isConcluida = ['concluida', 'concluido', 'finalizada'].includes(statusLimpo);
+
+            const btnSalvar = document.getElementById('btn-save-strategic');
+            if (btnSalvar) btnSalvar.style.display = isConcluida ? 'none' : 'inline-flex';
+
+            // --- 2. TEXTOS BÁSICOS ---
+            const subTitle = document.getElementById('sprint-subtitle');
+            if (subTitle) subTitle.innerText = isConcluida
+                ? `[AUDITORIA] Entregável: ${data.name_derv || 'N/A'}`
+                : `Entregável: ${data.name_derv || 'N/A'}`;
+
+            const gDefi = document.getElementById('guide-defi');
+            if (gDefi) gDefi.innerText = data.derv_defi || 'N/A';
+
+            const gComp = document.getElementById('guide-comp');
+            if (gComp) gComp.innerText = data.derv_comp || 'N/A';
+
+            // --- 3. LÓGICA DO DOD (CHECKLIST ORGANIZADO) ---
+            const dodContainer = document.getElementById('dod-checklist-container');
+            const listaGerais = document.getElementById('dod-items-gerais');
+            const listaEducacional = document.getElementById('dod-items-educacional');
+
+            if (listaGerais && listaEducacional) {
+                listaGerais.innerHTML = "";
+                listaEducacional.innerHTML = "";
+
+                if (data.criteria_dod) {
+                    let parsedDod = typeof data.criteria_dod === 'string' ? JSON.parse(data.criteria_dod) : data.criteria_dod;
+                    dodContainer.style.display = 'block';
+
+                    const gerarItemHTML = (item, cor) => `
+                        <label style="display: flex; align-items:center; gap:8px; background:${isConcluida ? '#f9f9f9' : '#fff'}; padding:6px; border-radius:4px; border:1px solid #dcd3ff; cursor: ${isConcluida ? 'default' : 'pointer'}; margin-bottom: 5px;">
+                            <input type="checkbox" class="dod-checkbox" ${isConcluida ? 'checked disabled' : ''} style="width:auto;">
+                            <span style="font-size:0.85em; color:${cor};">${item}</span>
+                        </label>
+                    `;
+
+                    // Distribui os itens nos containers corretos
+                    if (parsedDod.required && Array.isArray(parsedDod.required)) {
+                        listaGerais.innerHTML = parsedDod.required.map(item => gerarItemHTML(item, '#475569')).join('');
+                    }
+                    if (parsedDod.context_education && Array.isArray(parsedDod.context_education)) {
+                        listaEducacional.innerHTML = parsedDod.context_education.map(item => gerarItemHTML(item, '#6c5ce7')).join('');
+                    }
+                    // Fallback caso venha um array simples
+                    if (Array.isArray(parsedDod)) {
+                        listaGerais.innerHTML = parsedDod.map(item => gerarItemHTML(item, '#475569')).join('');
+                    }
+                } else {
+                    dodContainer.style.display = 'none';
+                }
+            }
+
+            // --- 4. MÉTRICAS (KPIs) ---
+            const metricsContainer = document.getElementById('container-metrics-dynamic');
+            if (metricsContainer) {
+                metricsContainer.innerHTML = "";
+                const metricas = (data.derv_metr || "").split(/[;,\n]/).map(m => m.trim()).filter(m => m !== "");
+                const scores = data.metrics_scores || {};
+
+                metricas.forEach(m => {
+                    const val = scores[m] || 0;
+                    metricsContainer.innerHTML += `
+                        <div style="margin-bottom: 12px; opacity: ${isConcluida ? '0.7' : '1'}">
+                            <label style="font-size: 0.8em; font-weight: bold; color: #444;">${m}</label>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <input type="range" class="metric-range" data-metrica="${m}"
+                                       value="${val}" min="0" max="100" style="flex: 1;"
+                                       ${isConcluida ? 'disabled' : ''}
+                                       oninput="this.nextElementSibling.innerText = this.value + '%'; atualizarProgresso();">
+                                <span style="font-size: 0.85em; font-weight: bold; color: #6c5ce7;">${val}%</span>
+                            </div>
+                        </div>`;
+                });
+                atualizarProgresso();
+            }
+
+            // --- 5. CAMPOS DO FORMULÁRIO ---
+            const swotType = document.getElementById('exec_swot_type');
+            if (swotType) {
+                swotType.value = data.swot_type || "";
+                swotType.disabled = isConcluida;
+            }
+
+            const swotJust = document.getElementById('exec_swot_justification');
+            if (swotJust) {
+                swotJust.value = data.swot_justification || "";
+                swotJust.readOnly = isConcluida;
+            }
+
+            // Carga de evidências
+            // 1. Popular a Combo de Componentes
+            const comboEvid = document.getElementById('evid_componente');
+
+            if (comboEvid && data.derv_comp) {
+                comboEvid.innerHTML = '<option value="">Selecione o componente...</option>';
+
+                // O pulo do gato: Quebra por ponto e vírgula OU por quebra de linha
+                // O filter remove itens vazios e o map limpa os espaços em branco
+                const componentes = data.derv_comp
+                    .split(/[;\n\r]/)
+                    .map(c => c.trim())
+                    .filter(c => c !== "");
+
+                componentes.forEach(comp => {
+                    const option = document.createElement('option');
+                    option.value = comp;
+                    option.text = comp;
+                    comboEvid.appendChild(option);
+                });
+
+                console.log(">>> [MODULADOR] Componentes carregados na combo:", componentes);
+            }
+
+            // 2. Chamar a função que carrega a lista de evidências já salvas no banco
+            carregarListaEvidencias(cleanId);
+            const idMatu = data.id_matu || '0';
+            const urlFixa = `https://paneldx.com.br/projetos/${idMatu}/${cleanId}`;
+            const inputUrl = document.getElementById('exec_evidence_url');
+            if (inputUrl) {
+                inputUrl.value = urlFixa;
+                inputUrl.readOnly = true;
+            }
+
+            const hiddenId = document.getElementById('exec_id_sprn');
+            if (hiddenId) hiddenId.value = cleanId;
+
+            // Histórico de Cerimônias
+            if (typeof carregarHistoricoCerimonias === "function") {
+                carregarHistoricoCerimonias(cleanId);
+            }
+
+            document.getElementById('modal-sprint-exec').style.display = 'block';
+
+        } catch (e) {
+            console.error("Erro ao carregar modal:", e);
+        }
+    }
+
+    // 1. Função para carregar o histórico (Chamar dentro de abrirPainelSprint)
+    async function carregarHistoricoCerimonias(id_sprn) {
+        const timeline = document.getElementById('timeline-cerimonias');
+        timeline.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i></div>';
+
+        try {
+            const res = await fetch(`/api/cerimonias/${id_sprn}`);
+            const dados = await res.json();
+
+            if (!dados || dados.length === 0) {
+                timeline.innerHTML = '<p style="text-align:center; color:#999; font-size:0.8em; margin-top:20px;">Nenhum rito registrado.</p>';
+                return;
+            }
+
+            timeline.innerHTML = dados.map(c => {
+                // Mantemos a nota escapada apenas para o parâmetro da função recuperarRito
+                const notaEscapada = c.note_cermls.replace(/'/g, "\\'").replace(/\n/g, "\\n");
+
+                return `
+                    <div onclick="recuperarRito('${c.id_cermls}', '${c.tp_cermls}', '${c.dt_cermls}', '${notaEscapada}')"
+                         title="Clique para carregar esta nota"
+                         style="background:#fff; border:1px solid #e2e8f0; border-left:3px solid #6c5ce7;
+                                padding:6px 10px; margin-bottom:5px; border-radius:4px; cursor:pointer;
+                                display:flex; justify-content:space-between; align-items:center; transition:0.2s;"
+                         onmouseover="this.style.borderColor='#6c5ce7'; this.style.background='#f8faff';"
+                         onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#fff';">
+
+                        <span style="font-size:0.75em; font-weight:700; color:#475569;">${c.tp_cermls}</span>
+                        <span style="font-size:0.7em; color:#6c5ce7; font-family:monospace;">
+                            ${new Date(c.dt_cermls).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+
+        } catch (e) {
+            timeline.innerHTML = '<p style="color:red; font-size:0.8em;">Erro ao carregar ritos.</p>';
+        }
+    }
+
+    async function carregarListaEvidencias(id_sprn) {
+        console.log(">>> [MODULADOR]: Buscando evidências para a Sprint:", id_sprn);
+        const corpoTabela = document.getElementById('lista-evidencias-corpo');
+
+        if (!corpoTabela) {
+            console.error("❌ Erro: Elemento 'lista-evidencias-corpo' não encontrado.");
+            return;
+        }
+
+        // Estado visual inicial
+        corpoTabela.innerHTML = '<tr><td colspan="4" style="text-align:center;">Carregando evidências...</td></tr>';
+
+        try {
+            // 1. Faz a chamada para a rota GET que criamos no Node
+            const response = await fetch(`/api/evidencias/${id_sprn}`);
+
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.status}`);
+            }
+
+            const evidencias = await response.json();
+            console.log(">>> [MODULADOR]: Dados recebidos:", evidencias);
+
+            // 2. Limpa o "Carregando..."
+            corpoTabela.innerHTML = '';
+
+            // 3. Verifica se vieram dados
+            if (evidencias.length === 0) {
+                corpoTabela.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #999; padding: 20px;">Nenhuma evidência vinculada a esta sprint.</td></tr>';
+                return;
+            }
+
+            // 4. Mapeia os dados para as linhas da tabela (usando o estilo do seu HTML)
+            // Dentro do seu loop de preenchimento da tabela
+            evidencias.forEach(ev => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${ev.componente_vinculado}</td>
+                    <td><a href="${ev.url_evid}" target="_blank" class="btn btn-sm btn-link">Ver Link</a></td>
+                    <td class="text-center">${ev.status_modulador}</td>
+                    <td class="text-center">
+                        <button type="button"
+                                class="btn btn-sm btn-danger"
+                                onclick="excluirEvidencia(event, ${ev.id_evid})">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                corpoTabela.appendChild(tr);
+            });
+
+        } catch (error) {
+            console.error("❌ Erro ao preencher tabela lilás:", error);
+            corpoTabela.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #e74c3c; padding: 20px;">Erro ao carregar evidências. Verifique o console.</td></tr>';
+        }
+    }
+
+    async function salvarExecucaoSprint(e) {
+        if (e) e.preventDefault();
+
+        // 1. Captura o ID da Sprint
+        const id = document.getElementById('exec_id_sprn')?.value;
+        if (!id) {
+            alert("Erro: ID da sprint não encontrado.");
+            return;
+        }
+
+        // 2. Lógica de Verificação do DoD (Checklist)
+        const checkboxes = document.querySelectorAll('.dod-checkbox');
+        const temCheckboxes = checkboxes.length > 0;
+        const todosMarcados = temCheckboxes && Array.from(checkboxes).every(cb => cb.checked);
+
+        let novoStatus = 'ativa';
+        if (temCheckboxes && todosMarcados) {
+            if (confirm("Todos os critérios de qualidade (DoD) foram atendidos. Concluir esta Sprint?")) {
+                novoStatus = 'concluido';
+            } else {
+                return; // Cancela se o usuário não quiser concluir agora
+            }
+        }
+
+        // 3. Captura das Métricas (KPIs)
+        const scores = {};
+        document.querySelectorAll('.metric-range').forEach(r => {
+            scores[r.dataset.metrica] = parseInt(r.value);
+        });
+
+        // 4. Montagem do Payload (Blindagem contra campos nulos)
+        const payload = {
+            id_sprn: id,
+            swot_type: document.getElementById('exec_swot_type')?.value || "",
+            swot_justification: document.getElementById('exec_swot_justification')?.value || "",
+            evidence_url: document.getElementById('exec_evidence_url')?.value || "",
+            // O exec_notes aqui pegará o valor se o campo existir, senão manda vazio
+            // Já que agora as cerimônias são salvas em tabela à parte.
+            exec_notes: document.getElementById('exec_notes')?.value || "",
+            metrics_scores: scores,
+            realv_sprn: document.getElementById('progress-label')?.innerText.replace('%','') || "0",
+            status: novoStatus
+        };
+
+        try {
+            const res = await fetch('/api/ctdi_sprn/update-strategic', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert(novoStatus === 'concluido' ? "Sprint Concluída com Sucesso!" : "Evolução Salva!");
+                location.reload();
+            } else {
+                const errData = await res.json();
+                alert("Erro ao salvar: " + (errData.error || "Erro desconhecido"));
+            }
+        } catch (err) {
+            console.error("Erro na requisição:", err);
+            alert("Erro de comunicação com o servidor.");
+        }
+    }
+
+    init();
+</script>

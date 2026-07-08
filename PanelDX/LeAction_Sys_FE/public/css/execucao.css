@@ -1,0 +1,124 @@
+@import url('/css/mesa-inovacao.css');
+
+.execucao {
+    max-width: 960px;
+}
+
+.execucao__topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.execucao__bell {
+    position: relative;
+    border: 1px solid var(--wb-border);
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    color: var(--dark-lilac);
+    font-size: 1.1rem;
+}
+
+.execucao__bell-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+}
+
+.execucao__notif-panel {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 320px;
+    max-height: 360px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+    z-index: 50;
+}
+
+.execucao__notif-panel.is-open {
+    display: block;
+}
+
+.execucao__notif-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.8rem;
+}
+
+.execucao__notif-item--nova {
+    background: #fef3c7;
+}
+
+.execucao__fila {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.execucao__card {
+    border: 1px solid var(--wb-border);
+    border-left: 4px solid var(--lilac);
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: #fff;
+    cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.execucao__card:hover {
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+    transform: translateY(-1px);
+}
+
+.execucao__card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.execucao__badge {
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.execucao__badge--ti {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.execucao__badge--executor {
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
+.execucao__modal-card {
+    max-width: 640px;
+    width: 100%;
+}

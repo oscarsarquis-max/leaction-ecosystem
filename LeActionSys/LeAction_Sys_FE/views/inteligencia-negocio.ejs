@@ -1,0 +1,143 @@
+<div class="main-content" id="inteligencia-negocio-page">
+
+<%
+// FUNÇÃO COM DEBUG - VAI IMPRIMIR NO TERMINAL DO SEU SERVIDOR
+function extrairSecaoIA(texto, titulo) {
+    // 1. Marcação no terminal para sabermos que a função foi chamada
+    console.log("-----------------------------------------");
+    console.log("DEBUG IA: Tentando extrair seção -> " + titulo);
+
+    if (!texto) {
+        console.log("DEBUG IA: O texto do banco está VAZIO ou INDEFINIDO.");
+        return "ERRO: Texto não encontrado no banco.";
+    }
+
+    // 2. Tenta a Regex (ajustada para ser ainda mais flexível com espaços)
+    const regex = new RegExp(`## ${titulo}\\s*([\\s\\S]*?)(?=\\s*##|$)`, 'i');
+    const match = texto.match(regex);
+
+    if (match && match[1]) {
+        console.log("DEBUG IA: Seção encontrada com sucesso!");
+        return match[1].trim();
+    }
+
+    // 3. Se falhar, avisa no terminal e mostra o início do texto para conferência
+    console.log("DEBUG IA: FALHA ao encontrar a seção: " + titulo);
+    console.log("DEBUG IA: Começo do texto recebido: " + texto.substring(0, 100));
+
+    return "";
+}
+%>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 15px;">
+        <h2><i class="fas fa-microchip" style="color: #6c5ce7;"></i> Torre de Controle de IA (SysAdmin)</h2>
+        <div style="text-align: right;">
+            <span class="badge" style="background: #e8f5e9; color: #2e7d32; padding: 8px 15px; border-radius: 5px; font-weight: bold;">
+                <i class="fas fa-signal"></i> Agentes Operacionais Ativos
+            </span>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 40px;">
+        <div class="agent-card" style="background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%); color: white; padding: 25px; border-radius: 12px; position: relative; box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);">
+            <i class="fas fa-brain" style="position: absolute; right: 10px; bottom: 10px; font-size: 3rem; opacity: 0.2;"></i>
+            <h3 style="margin-bottom: 5px;">Agente MASTER</h3>
+            <p style="font-size: 0.85rem; opacity: 0.9;">Relatórios e Planos Estratégicos</p>
+            <div style="margin-top: 15px; font-size: 1.5rem; font-weight: bold;">
+                <%= projetos.filter(p => p.status_ia === 'CONCLUIDO').length %> <small style="font-size: 0.8rem;">Projetos Processados</small>
+            </div>
+        </div>
+
+        <div class="agent-card" style="background: linear-gradient(135deg, #27ae60 0%, #55efc4 100%); color: white; padding: 25px; border-radius: 12px; position: relative; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);">
+            <i class="fas fa-tasks" style="position: absolute; right: 10px; bottom: 10px; font-size: 3rem; opacity: 0.2;"></i>
+            <h3 style="margin-bottom: 5px;">Agente MODULADOR</h3>
+            <p style="font-size: 0.85rem; opacity: 0.9;">Acompanhamento de Sprints</p>
+            <div style="margin-top: 15px; font-size: 1.5rem; font-weight: bold;">
+                <%= projetos.filter(p => p.progresso_modulador > 0).length %> <small style="font-size: 0.8rem;">Projetos em Execução</small>
+            </div>
+        </div>
+
+        <div class="agent-card" style="background: linear-gradient(135deg, #e67e22 0%, #fab1a0 100%); color: white; padding: 25px; border-radius: 12px; position: relative; box-shadow: 0 4px 15px rgba(230, 126, 34, 0.3);">
+            <i class="fas fa-robot" style="position: absolute; right: 10px; bottom: 10px; font-size: 3rem; opacity: 0.2;"></i>
+            <h3 style="margin-bottom: 5px;">Agente MENTOR</h3>
+            <p style="font-size: 0.85rem; opacity: 0.9;">Chatbot e Mentoria em Tempo Real</p>
+            <div style="margin-top: 15px; font-size: 1.5rem; font-weight: bold;">-- <small style="font-size: 0.8rem;">Fase de Ativação</small></div>
+        </div>
+    </div>
+
+    <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);">
+        <h3 style="margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Monitoramento de Projetos Ativos</h3>
+
+        <table class="data-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; background: #f8f9fa;">
+                    <th style="padding: 12px;">ID</th>
+                    <th style="padding: 12px;">Cliente</th>
+                    <th style="padding: 12px;">Liberação Master</th>
+                    <th style="padding: 12px;">Progresso Projeto</th>
+                    <th style="padding: 12px; text-align: center;">Status IA</th>
+                    <th style="padding: 12px; text-align: center;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% projetos.forEach(p => { %>
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 12px; color: #999;">#<%= p.id_matu %></td>
+                        <td style="padding: 12px;">
+                            <strong><%= p.nome_clie %></strong><br>
+                            <small style="color: #6c5ce7;">Gap Geral: <%= p.pgen_gap %></small>
+                        </td>
+                        <td style="padding: 12px;">
+                            <%= p.dt_fim_ia ? new Date(p.dt_fim_ia).toLocaleDateString('pt-BR') : 'Aguardando' %>
+                        </td>
+                        <td style="padding: 12px; width: 200px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="flex: 1; background: #f0f0f0; height: 10px; border-radius: 5px; overflow: hidden;">
+                                    <div style="width: <%= p.progresso_modulador %>%; background: #27ae60; height: 100%;"></div>
+                                </div>
+                                <span style="font-size: 0.8rem; font-weight: bold; min-width: 35px;"><%= (p.progresso_modulador || 0).toFixed(0) %>%</span>
+                            </div>
+                        </td>
+                        <td style="padding: 12px; text-align: center;">
+                            <span style="padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; background: <%= p.status_ia === 'CONCLUIDO' ? '#e8f5e9' : '#fff3e0' %>; color: <%= p.status_ia === 'CONCLUIDO' ? '#2e7d32' : '#ef6c00' %>;">
+                                <%= p.status_ia || 'PENDENTE' %>
+                            </span>
+                        </td>
+                        <td style="padding: 12px; text-align: center;">
+                            <div style="display: flex; gap: 15px; justify-content: center;">
+                                <% if (p.url_pdf_ia) { %>
+                                    <a href="<%= p.url_pdf_ia %>" target="_blank" title="Download PDF" style="color: #e74c3c; font-size: 1.1rem;">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </a>
+                                <% } %>
+                                <a href="/insights-ia/<%= p.id_matu %>" title="Ver Insights IA" style="color: #6c5ce7; font-size: 1.1rem;">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    </div>
+
+    <% if (typeof projeto !== 'undefined' && projeto.txt_diagnostico_ia) { %>
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #eee;">
+
+            <div class="aba-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px;">
+                <h4 style="color: #6c5ce7;"><i class="fas fa-globe-americas"></i> Análise Geográfica & Regional</h4>
+                <div class="markdown-content">
+                    <%- markdownParser(extrairSecaoIA(projeto.txt_diagnostico_ia, "Análise Geográfica & Regional")) %>
+                </div>
+            </div>
+
+            <div class="aba-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <h4 style="color: #e67e22;"><i class="fas fa-calendar-check"></i> Próximos Passos (90 Dias)</h4>
+                <div class="markdown-content">
+                    <%- markdownParser(extrairSecaoIA(projeto.txt_diagnostico_ia, "Próximos Passos")) %>
+                </div>
+            </div>
+
+        </div>
+    <% } %>
+</div>

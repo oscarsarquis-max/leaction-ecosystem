@@ -1,0 +1,166 @@
+# =============================================================================
+# LeAction Ecosystem — Monorepo (.gitignore raiz)
+# Projetos: PanelDX, ActionHub (leaction-platform), Chamelleon, apps, prodinx, etc.
+# REGRA: nunca versionar credenciais, dependências ou artefatos de build locais.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# SEGREDOS E CREDENCIAIS (CRÍTICO — Go-Live)
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.production.example
+!.env.development.example
+
+# Sobrescreve exceções em subprojetos — nunca versionar env real
+**/.env.production
+**/.env.local
+**/.env.development
+
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.ppk
+
+# Pastas de chaves (nunca subir)
+Chaves/
+chaves/
+**/secrets/
+**/.secrets/
+
+# Tokens OAuth / integrações
+**/.ml_tokens.json
+**/.env.ml.secrets
+**/credentials.json
+**/service-account*.json
+
+# -----------------------------------------------------------------------------
+# IDE / Cursor / SO
+# -----------------------------------------------------------------------------
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -----------------------------------------------------------------------------
+# Node.js (PanelDX FE, ActionHub, Chamelleon FE, Diário de Obra, Prodinx FE…)
+# -----------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnp
+.pnp.js
+
+# Build / cache frontend
+dist/
+build/
+.next/
+out/
+.nuxt/
+.parcel-cache/
+.vite/
+.cache/
+.turbo/
+coverage/
+.nyc_output/
+
+# -----------------------------------------------------------------------------
+# Python (Flask backends, scripts, analysis-engine…)
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Ambientes virtuais
+venv/
+venv_action/
+.venv/
+env/
+ENV/
+
+# -----------------------------------------------------------------------------
+# Docker / banco local (dados de volume — não código)
+# -----------------------------------------------------------------------------
+**/pgdata/
+**/postgres-data/
+banco_de_dados/pgdata/
+
+# Dumps e snapshots de banco (podem conter PII/senhas)
+**/*_dump.sql
+**/*_rds_dump.sql
+**/prodinx_local_dump.sql
+**/prodinx_rds_dump.sql
+
+# -----------------------------------------------------------------------------
+# Logs e PM2 (ActionHub / deploy)
+# -----------------------------------------------------------------------------
+*.log
+logs/
+.pm2/
+
+# -----------------------------------------------------------------------------
+# Artefatos gerados / uploads locais
+# -----------------------------------------------------------------------------
+diagnostico_*.pdf
+**/uploads/**
+!**/uploads/.gitkeep
+
+# PanelDX — imagens CMS geradas localmente
+PanelDX/LeAction_Sys_FE/public/images/*
+!PanelDX/LeAction_Sys_FE/public/images/.gitkeep
+
+# Prodinx — JSON de processamento (manter estrutura, não dados)
+prodinx/jsonfiles/*.json
+prodinx/jsonfiles/processados/*
+!prodinx/jsonfiles/processados/.gitkeep
+prodinx/jsonfiles/falhas/*
+!prodinx/jsonfiles/falhas/.gitkeep
+prodinx/jsonfiles/transitions/
+
+# -----------------------------------------------------------------------------
+# Playwright / testes E2E (artefatos)
+# -----------------------------------------------------------------------------
+test-results/
+playwright-report/
+playwright/.cache/
+blob-report/
+
+# -----------------------------------------------------------------------------
+# Backups e temporários
+# -----------------------------------------------------------------------------
+*.bak
+*.tmp
+*.zip
+!docs/**/*.zip
+
+# -----------------------------------------------------------------------------
+# Repositórios Git aninhados (evitar submodule acidental no monorepo)
+# Remova o .git interno antes do primeiro commit, se aplicável.
+# -----------------------------------------------------------------------------
+# prodinx/.git/

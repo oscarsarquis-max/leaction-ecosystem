@@ -1,0 +1,281 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <div>
+                <h1><i class="fas fa-cubes"></i> Domínios</h1>
+                <p style="color: #666; margin-top: 5px;">Áreas fundamentais da transformação (Ex: Pessoas, Processos).</p>
+            </div>
+            <button class="btn blue-btn" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Novo Domínio
+            </button>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th>Nome do Domínio</th>
+                    <th>Descrição</th>
+                    <th style="text-align: center; width: 100px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-form" class="modal">
+    <div class="modal-content" style="width: 600px; border-top: 5px solid #3498db;">
+        <span class="close" onclick="fecharModal()">&times;</span>
+        <h2 id="modal-title" style="color: #3498db; margin-bottom: 20px;">Configuração de Domínio</h2>
+
+        <form id="form-doma" onsubmit="salvarRegistro(event)">
+            <input type="hidden" id="id_doma">
+
+            <div class="form-group">
+                <label>Nome do Domínio *</label>
+                <input type="text" id="name_doma" required placeholder="Ex: Tecnologia e Dados">
+            </div>
+
+            <div class="form-group">
+                <label style="color: #8e44ad;"><i class="fas fa-compass"></i> Vetor Estratégico (Master)</label>
+                <select id="vetor_estrategico" style="width: 100%; padding: 10px; border: 1px solid #8e44ad; border-radius: 4px;">
+                    <option value="">Selecione o direcionamento...</option>
+                    <option value="Visão e Ambição Digital">Visão e Ambição Digital</option>
+                    <option value="Sustentabilidade e Diferenciação">Sustentabilidade e Diferenciação</option>
+                    <option value="Agilidade e Tolerância ao Erro">Agilidade e Tolerância ao Erro</option>
+                    <option value="Inteligência Decisória">Inteligência Decisória</option>
+                    <option value="Sinergia e Capital Social">Sinergia e Capital Social</option>
+                    <option value="Fluidez Operacional">Fluidez Operacional</option>
+                    <option value="Ecossistema de Experiência">Ecossistema de Experiência</option>
+                    <option value="Alfabetização e Fluência Digital">Alfabetização e Fluência Digital</option>
+                    <option value="Monitoramento de Performance">Monitoramento de Performance</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Descrição</label>
+                <textarea id="desc_doma" rows="3" placeholder="Descrição detalhada do domínio..."></textarea>
+            </div>
+
+            <div class="modal-buttons">
+                <button type="button" class="btn cancel-btn" onclick="fecharModal()">Cancelar</button>
+                <button type="submit" class="btn blue-btn"><i class="fas fa-save"></i> Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* CSS PADRÃO UNIFICADO */
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eee; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #f8f9fa; color: #7f8c8d; font-weight: bold; text-transform: uppercase; padding: 15px; border-bottom: 2px solid #eee; text-align: left; font-size: 0.85em; }
+    td { padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50; font-size: 0.95em; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background-color: #f9f9f9; }
+
+    .action-btn { border: none; background: none; cursor: pointer; font-size: 1.1em; padding: 5px; transition: transform 0.2s; }
+    .action-btn:hover { transform: scale(1.1); }
+    .btn-edit { color: #f39c12; }
+    .btn-delete { color: #e74c3c; }
+
+    /* Modal - CENTRALIZAÇÃO TOTAL COM FLEXBOX */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        backdrop-filter: blur(2px);
+        /* Alinhamento central */
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background-color: white;
+        padding: 30px;
+        border-radius: 12px;
+        width: 600px; /* Aumentei um pouco para acomodar o Vetor Estratégico */
+        max-width: 90%;
+        max-height: 90vh; /* Scroll caso o conteúdo cresça */
+        overflow-y: auto;
+        animation: slideDown 0.3s ease;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        border-top: 5px solid #3498db;
+    }
+
+    @keyframes slideDown {
+        from { transform: translateY(-30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .close { float: right; font-size: 24px; cursor: pointer; color: #999; }
+    .close:hover { color: #333; }
+
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #2c3e50; font-size: 0.9em; }
+    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; box-sizing: border-box; }
+    input:focus, textarea:focus, select:focus { border-color: #3498db; outline: none; box-shadow: 0 0 5px rgba(52,152,219,0.2); }
+
+    .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .blue-btn { background-color: #3498db; color: white; }
+    .blue-btn:hover { background-color: #2980b9; transform: translateY(-1px); }
+    .cancel-btn { background-color: #ecf0f1; color: #7f8c8d; }
+    .cancel-btn:hover { background-color: #bdc3c7; }
+</style>
+
+<script>
+    const API_URL = "<%= API_BASE_URL %>/leaf_doma";
+
+    // --- 1. CARREGAR DADOS ---
+    async function carregarDados() {
+        try {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Carregando...</td></tr>';
+
+            const res = await fetch(API_URL);
+            const dados = await res.json();
+            renderizarTabela(dados);
+        } catch (error) {
+            console.error("Erro:", error);
+            document.getElementById('table-body').innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Erro ao carregar dados.</td></tr>';
+        }
+    }
+
+    // --- 2. RENDERIZAR TABELA ---
+    function renderizarTabela(dados) {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+
+        if (!dados || dados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:#777;">Nenhum domínio cadastrado.</td></tr>';
+            return;
+        }
+
+        // --- ORDENAÇÃO POR ID (Crescente) ---
+        // Criamos uma cópia [...dados] para não afetar o array original caso seja usado em outro lugar
+        const dadosOrdenados = [...dados].sort((a, b) => a.id_doma - b.id_doma);
+
+        dadosOrdenados.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="color: #7f8c8d; font-size: 0.85em;">#${item.id_doma}</td>
+                <td><strong>${item.name_doma}</strong></td>
+                <td>${item.desc_doma || '-'}</td>
+                <td style="text-align: center;">
+                    <button class="action-btn btn-edit" title="Editar" onclick='editar(${JSON.stringify(item)})'>
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="action-btn btn-delete" title="Excluir" onclick="deletar(${item.id_doma})">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- 3. MODAL ---
+    function abrirModal(limpar = true) {
+        if(limpar) {
+            document.getElementById('form-doma').reset();
+            document.getElementById('id_doma').value = '';
+            document.getElementById('vetor_estrategico').value = '';
+            document.getElementById('modal-title').innerText = "Novo Domínio";
+        }
+        // Mude de 'block' para 'flex' para ativar a centralização do CSS acima
+        document.getElementById('modal-form').style.display = 'flex';
+    }
+
+    function fecharModal() {
+        document.getElementById('modal-form').style.display = 'none';
+    }
+
+    // --- 4. SALVAR ---
+    async function salvarRegistro(e) {
+        e.preventDefault();
+
+        const id = document.getElementById('id_doma').value;
+
+        // Payload com os nomes exatos das colunas do seu banco (minúsculo)
+        const payload = {
+            name_doma: document.getElementById('name_doma').value.trim(),
+            desc_doma: document.getElementById('desc_doma').value.trim(),
+            vetor_estrategico: document.getElementById('vetor_estrategico').value // Novo dado
+        };
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/${id}` : API_URL;
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                fecharModal();
+                carregarDados();
+                alert("Domínio salvo com sucesso!");
+            } else {
+                const errorText = await res.text();
+                console.error("Erro no servidor:", errorText);
+                alert("Erro ao salvar. Verifique se o servidor Python aceita o método " + method);
+            }
+        } catch (error) {
+            console.error("Erro na requisição:", error);
+            alert("Falha de comunicação. Verifique se o CORS está ativo no Python.");
+        }
+    }
+
+    // --- 5. EDITAR ---
+    function editar(item) {
+        abrirModal(false);
+        document.getElementById('modal-title').innerText = "Editar Domínio";
+
+        // Preenche os campos de texto
+        document.getElementById('id_doma').value = item.id_doma;
+        document.getElementById('name_doma').value = item.name_doma;
+        document.getElementById('desc_doma').value = item.desc_doma || '';
+
+        // RECUPERAÇÃO DO SELECT
+        const selectVetor = document.getElementById('vetor_estrategico');
+        if (item.vetor_estrategico) {
+            // Atribui o valor da base ao select
+            selectVetor.value = item.vetor_estrategico;
+        } else {
+            // Se estiver nulo na base, volta para a opção padrão
+            selectVetor.selectedIndex = 0;
+        }
+    }
+
+    // --- 6. DELETAR ---
+    async function deletar(id) {
+        if (!confirm("Tem certeza que deseja remover este domínio?")) return;
+
+        try {
+            const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (res.ok) carregarDados();
+            else alert("Erro ao excluir.");
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // Inicia
+    carregarDados();
+</script>

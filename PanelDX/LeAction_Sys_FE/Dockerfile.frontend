@@ -1,0 +1,22 @@
+# Usa a imagem oficial Node.js
+FROM node:18-slim
+
+# Define o diretório de trabalho dentro do container
+WORKDIR /usr/src/app
+# ENV PYTHONPATH=/usr/src/app:/usr/src/app/leaction_calc
+
+# Copia e instala as dependências
+COPY package*.json ./
+RUN npm config set strict-ssl false && \
+    npm ci --omit=dev --ignore-scripts --no-audit --no-fund && \
+    test -f node_modules/axios/package.json
+
+# Copia todo o código da aplicação (server.js, views, public)
+# O '.' representa a pasta LeAction_Sys_FE
+COPY . .
+
+# Expõe a porta que o servidor Express usa
+EXPOSE 3001
+
+# Comando para iniciar o servidor Express
+CMD [ "npm", "start" ]

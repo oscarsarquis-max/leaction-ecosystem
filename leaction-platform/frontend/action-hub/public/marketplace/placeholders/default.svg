@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" fill="none">
+  <rect width="240" height="240" fill="#fef2f2"/>
+  <rect x="24" y="24" width="192" height="192" rx="16" fill="#ffffff" stroke="#dc2626" stroke-width="2"/>
+  <path d="M96 96h48v48H96z" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="120" y="188" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#991b1b">Oferta</text>
+</svg>

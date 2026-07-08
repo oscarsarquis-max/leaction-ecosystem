@@ -1,0 +1,331 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <h1><i class="fas fa-users-cog"></i> Gestão de Squads</h1>
+            <button class="btn blue-btn" id="btnNovoMembro" onclick="abrirModal()" style="display: none;">
+                <i class="fas fa-plus"></i> Novo Membro
+            </button>
+        </div>
+
+        <div style="margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+            <label style="font-weight: bold; display: block; margin-bottom: 8px; color: #34495e;">Selecione o Projeto / Diagnóstico:</label>
+            <select id="projeto_selector" onchange="selecionarSquad(this.value)" style="width: 100%; max-width: 500px; padding: 10px; border-radius: 6px; border: 1px solid #ccc;">
+                <option value="">-- Aguarde, carregando projetos... --</option>
+            </select>
+            <p id="squad-info" style="margin-top: 10px; color: #666; font-size: 0.9em; display: none;">
+                Gerenciando Squad do Time ID: <strong id="display-squad-id">#0</strong>
+            </p>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th>Nome / Especialidade</th>
+                    <th>E-mail</th>
+                    <th>Persona</th>
+                    <th style="text-align: center;">Status</th>
+                    <th style="text-align: center; width: 100px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <tr><td colspan="6" style="text-align:center; padding:30px; color:#999;">Selecione um projeto acima para visualizar os membros.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-form" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="fecharModal()">&times;</span>
+        <h2 id="modal-title" style="color: #3498db; margin-bottom: 20px;">Membro da Squad</h2>
+
+        <form id="form-team" onsubmit="salvarRegistro(event)">
+            <input type="hidden" id="id_member">
+            <input type="hidden" id="id_team_vinc">
+
+            <div class="form-group">
+                <label>Nome Completo *</label>
+                <input type="text" id="nome" required placeholder="Ex: João Silva">
+            </div>
+
+            <div class="form-group">
+                <label>E-mail (Login) *</label>
+                <input type="email" id="email" required placeholder="joao@leaction.com.br">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label>Persona (Acesso) *</label>
+                    <select id="role" required>
+                        <option value="ADMIN">Administrador</option>
+                        <option value="CONSULTOR">Consultor</option>
+                        <option value="LEAD">Lead (Empresa)</option>
+                        <option value="CLIENTE" selected>Membro Squad</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Especialidade *</label>
+                    <select id="position" required>
+                        <option value="Gerente de Projeto">Gerente de Projeto</option>
+                        <option value="Especialista Educação">Especialista Educação</option>
+                        <option value="Analista TI">Analista TI</option>
+                        <option value="Analista Executor">Analista Executor</option>
+                        <option value="Consultor Estratégico">Consultor Estratégico</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label>Status</label>
+                    <select id="ativo">
+                        <option value="true">Ativo</option>
+                        <option value="false">Inativo</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Senha</label>
+                    <input type="password" id="password_hash" placeholder="••••••••">
+                </div>
+            </div>
+
+            <div class="modal-buttons" style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 10px;">
+                <button type="button" class="btn cancel-btn" onclick="fecharModal()">Cancelar</button>
+                <button type="submit" class="btn blue-btn"><i class="fas fa-save"></i> Salvar na Squad</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .header-section h1 { color: #2c3e50; margin: 0; }
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eee; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #f8f9fa; color: #7f8c8d; font-size: 0.85em; padding: 15px; border-bottom: 2px solid #eee; text-align: left; }
+    td { padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50; font-size: 0.95em; }
+
+    .badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75em; font-weight: bold; text-transform: uppercase; }
+    .badge-admin { background: #fee2e2; color: #991b1b; }
+    .badge-consultor { background: #e0f2fe; color: #075985; }
+    .badge-lead { background: #fef3c7; color: #92400e; }
+    .badge-cliente { background: #f3f4f6; color: #374151; }
+
+    .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .status-active { background-color: #2ecc71; }
+    .status-inactive { background-color: #95a5a6; }
+
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); }
+    .modal-content { background: white; margin: 5% auto; padding: 25px; border-radius: 8px; width: 550px; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-weight: bold; font-size: 0.85em; margin-bottom: 5px; }
+    .form-row { display: flex; gap: 15px; }
+    input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
+    .btn { padding: 10px 18px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    .blue-btn { background: #3498db; color: white; }
+    .cancel-btn { background: #ecf0f1; color: #7f8c8d; }
+</style>
+
+<script>
+    // Configurações Globais (Ajustado para o seu authMiddleware)
+    const API_URL = "<%= API_BASE_URL %>/ctdi_team";
+
+    // Tentamos pegar as variáveis injetadas no res.locals
+    const USER_ROLE = "<%= (locals.isAdmin) ? 'ADMIN' : 'LEAD' %>";
+    const USER_ID_CLIE = "<%= (locals.lead && lead.id_clie) ? lead.id_clie : '' %>";
+
+    let squadIdSelecionada = null;
+
+    // --- 1. CARGA INICIAL DE PROJETOS ---
+    async function inicializarTeams() {
+        const selector = document.getElementById('projeto_selector');
+        try {
+            // Chamada ao Python
+            const response = await fetch(`http://127.0.0.1:5000/api/meus-projetos?role=${USER_ROLE}&id_clie=${USER_ID_CLIE}`);
+
+            // AQUI: Certifique-se que o nome da variável é o mesmo que você usa no loop abaixo
+            const dadosRecebidos = await response.json();
+
+            if (!dadosRecebidos || dadosRecebidos.length === 0) {
+                selector.innerHTML = '<option value="">Nenhuma Squad encontrada.</option>';
+                return;
+            }
+
+            selector.innerHTML = '<option value="">-- Escolha uma Squad para gerenciar --</option>';
+
+            dadosRecebidos.forEach(s => {
+                const opt = document.createElement('option');
+                // 'id_squad' e 'nome_squad' vêm do novo SQL que fizemos no Python
+                opt.value = s.id_squad;
+                opt.innerText = `[Plano: ${s.id_ctdi}] ${s.nome_clie} - ${s.nome_squad}`;
+                selector.appendChild(opt);
+            });
+
+        } catch (error) {
+            console.error("Erro ao carregar seletor:", error);
+            selector.innerHTML = '<option value="">Erro ao conectar com o servidor.</option>';
+        }
+    }
+
+    // --- 2. SELEÇÃO DE PROJETO (Squad) ---
+    function selecionarSquad(id) {
+        if (!id) {
+            squadIdSelecionada = null;
+            document.getElementById('btnNovoMembro').style.display = 'none';
+            document.getElementById('squad-info').style.display = 'none';
+            document.getElementById('table-body').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:#999;">Selecione uma Squad acima.</td></tr>';
+            return;
+        }
+        squadIdSelecionada = id;
+        document.getElementById('display-squad-id').innerText = '#' + id;
+        // IMPORTANTE: id_team_vinc no seu HTML agora representa o id_squad
+        document.getElementById('id_team_vinc').value = id;
+        document.getElementById('btnNovoMembro').style.display = 'block';
+        document.getElementById('squad-info').style.display = 'block';
+        carregarMembros();
+    }
+
+    // --- 3. CARREGAR MEMBROS DA SQUAD ---
+    async function carregarMembros() {
+        if (!squadIdSelecionada) return;
+        try {
+            // Mudamos o parâmetro para id_squad para alinhar com o novo padrão
+            const res = await fetch(`${API_URL}?id_squad=${squadIdSelecionada}`);
+            const dados = await res.json();
+            renderizarTabela(dados);
+        } catch (error) {
+            console.error("Erro ao carregar membros:", error);
+        }
+    }
+
+    function renderizarTabela(dados) {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+
+        if (!dados || dados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#777;">Nenhum membro nesta squad ainda.</td></tr>';
+            return;
+        }
+
+        const roleStyles = { 'ADMIN': 'badge-admin', 'CONSULTOR': 'badge-consultor', 'LEAD': 'badge-lead', 'CLIENTE': 'badge-cliente' };
+
+        dados.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="color: #95a5a6;">#${item.id_member}</td>
+                <td>
+                    <div style="font-weight: 600;">${item.nome}</div>
+                    <div style="font-size: 0.8em; color: #7f8c8d;"><i class="fas fa-tag"></i> ${item.position || 'Geral'}</div>
+                </td>
+                <td>${item.email}</td>
+                <td><span class="badge ${roleStyles[item.role]}">${item.role}</span></td>
+                <td style="text-align: center;">
+                    <span class="status-dot ${item.ativo ? 'status-active' : 'status-inactive'}"></span>
+                    <small>${item.ativo ? 'Ativo' : 'Inativo'}</small>
+                </td>
+                <td style="text-align: center;">
+                    <button title="Editar" style="color: #f39c12; background:none; border:none; cursor:pointer; margin-right:10px;" onclick='editar(${JSON.stringify(item)})'><i class="fas fa-edit"></i></button>
+                    <button title="Excluir" style="color: #e74c3c; background:none; border:none; cursor:pointer;" onclick="deletar(${item.id_member})"><i class="fas fa-trash-alt"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- 4. SALVAR / EDITAR ---
+    async function salvarRegistro(e) {
+        e.preventDefault();
+        const id_m = document.getElementById('id_member').value;
+
+        const payload = {
+            nome: document.getElementById('nome').value,
+            email: document.getElementById('email').value,
+            role: document.getElementById('role').value,
+            position: document.getElementById('position').value,
+            ativo: document.getElementById('ativo').value === 'true',
+            password_hash: document.getElementById('password_hash').value || "123456",
+            // AQUI ESTÁ O PULO DO GATO:
+            // Enviamos 'id_squad' para o Python não reclamar de valor nulo
+            id_squad: parseInt(squadIdSelecionada)
+        };
+
+        if (id_m) {
+            payload.id_member = parseInt(id_m);
+        }
+
+        const method = id_m ? 'PUT' : 'POST';
+        const url = id_m ? `${API_URL}/${id_m}` : API_URL;
+
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const resultado = await res.json();
+
+            if (res.ok) {
+                fecharModal();
+                carregarMembros();
+            } else {
+                alert("Erro: " + (resultado.error || "Falha no banco"));
+            }
+        } catch (err) {
+            console.error("Erro:", err);
+        }
+    }
+
+    function editar(item) {
+        abrirModal(false);
+        document.getElementById('modal-title').innerText = "Editar Membro";
+        document.getElementById('id_member').value = item.id_member;
+        document.getElementById('nome').value = item.nome;
+        document.getElementById('email').value = item.email;
+        document.getElementById('role').value = item.role;
+        document.getElementById('position').value = item.position || '';
+        document.getElementById('ativo').value = item.ativo ? 'true' : 'false';
+
+        // Usamos id_squad (preferencial) ou id_team (legado)
+        const squadId = item.id_squad || item.id_team;
+        document.getElementById('id_team_vinc').value = squadId;
+
+        // Atualizamos a variável global para o caso de salvamento imediato
+        squadIdSelecionada = squadId;
+    }
+    async function deletar(id) {
+        if (!confirm("Tem certeza que deseja remover este membro da Squad?")) return;
+        try {
+            // API_URL já deve conter o caminho /api/ctdi_team
+            const res = await fetch(`${API_URL}/${id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (res.ok) {
+                carregarMembros(); // Recarrega a tabela após excluir
+            } else {
+                const err = await res.json();
+                alert("Erro ao excluir: " + (err.error || "Erro desconhecido"));
+            }
+        } catch (err) {
+            console.error("Erro na exclusão:", err);
+        }
+    }
+
+    function abrirModal(limpar = true) {
+        if (limpar) {
+            document.getElementById('form-team').reset();
+            document.getElementById('id_member').value = '';
+            // Garante que o novo membro seja "pendurado" na squad correta
+            document.getElementById('id_team_vinc').value = squadIdSelecionada;
+        }
+        document.getElementById('modal-form').style.display = 'block';
+    }
+    function fecharModal() { document.getElementById('modal-form').style.display = 'none'; }
+
+    // Executa a inicialização ao carregar a página
+    inicializarTeams();
+</script>

@@ -1,0 +1,352 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <div>
+                <h1><i class="fas fa-th-large"></i> Gerenciar Blocos</h1>
+                <p style="color: #666; margin-top: 5px;">Unidades de agrupamento das questões (Ex: Governança de Dados).</p>
+            </div>
+            <button class="btn blue-btn" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Novo Bloco
+            </button>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th style="width: 200px;">Nome do Bloco</th>
+                    <th style="width: 180px;">Dimensão / Domínio</th>
+                    <th>Aplicável (Contexto)</th>
+                    <th style="text-align: center; width: 80px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-form" class="modal">
+    <div class="modal-content" style="width: 600px; max-width: 95%;">
+        <span class="close" onclick="fecharModal()">&times;</span>
+        <h2 id="modal-title" style="color: #3498db; margin-bottom: 20px;">Novo Bloco</h2>
+
+        <form id="form-bloc" onsubmit="salvarRegistro(event)" style="display: flex; flex-direction: column; gap: 15px;">
+            <input type="hidden" id="id_bloc">
+
+            <!-- 1. NOME DO BLOCO -->
+            <div class="form-group">
+                <label>Nome do Bloco *</label>
+                <input type="text" id="name_bloc" required placeholder="Ex: Gestão de Acessos">
+            </div>
+
+            <!-- 2. LINHA DE SELEÇÃO (DIMENSÃO E DOMÍNIO) -->
+            <div class="form-row" style="display: flex; gap: 20px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Dimensão *</label>
+                    <select id="id_dime" required style="width: 100%;">
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Domínio *</label>
+                    <select id="id_doma" required style="width: 100%;">
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- CONTAINER DE EMPILHAMENTO (FORÇA TUDO ABAIXO A FICAR EM LINHAS SEPARADAS) -->
+            <div style="display: flex; flex-direction: column; gap: 15px; width: 100%;">
+
+                <!-- 3. DESCRIÇÃO -->
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <textarea id="desc_bloc" rows="4" style="width: 100%;" placeholder="Descrição técnica do bloco..."></textarea>
+                </div>
+
+                <!-- 4. QUALIFICADORES (LAYOUT REFINADO) -->
+                <div class="form-group" style="display: block; width: 100%; margin-top: 25px;">
+                    <label style="color: #34495e; font-weight: 700; font-size: 0.95em; display: block; margin-bottom: 12px; border-left: 4px solid #3498db; padding-left: 10px;">
+                        <i class="fas fa-university"></i> <b>Tipo de Ensino</b> (Aderência)
+                    </label>
+
+                    <div class="quali-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; background: #ffffff; padding: 20px; border-radius: 8px; border: 1px solid #e0e6ed; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+
+                        <!-- Opção K-12 -->
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" name="quali_item" value="K12" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="font-size: 0.9em; color: #444;">K-12 (Educação Básica)</span>
+                        </label>
+
+                        <!-- Opção Superior -->
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" name="quali_item" value="SUPERIOR" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="font-size: 0.9em; color: #444;">Ensino Superior</span>
+                        </label>
+
+                        <!-- Opção Técnico -->
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" name="quali_item" value="TECNICO" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="font-size: 0.9em; color: #444;">Ensino Técnico</span>
+                        </label>
+
+                        <!-- Opção Idiomas -->
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" name="quali_item" value="IDIOMAS" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="font-size: 0.9em; color: #444;">Idiomas / Cursos Livres</span>
+                        </label>
+
+                        <!-- Opção Corporativa -->
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" name="quali_item" value="CORPORATIVO" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="font-size: 0.9em; color: #444;">Educação Corporativa</span>
+                        </label>
+
+                    </div>
+                    <small style="color: #7f8c8d; font-style: italic; display: block; margin-top: 8px; font-size: 0.85em;">
+                        * Se nenhuma opção for selecionada, o sistema aplicará o bloco como <strong>GERAL</strong>.
+                    </small>
+                </div>
+            </div>
+
+            <!-- 5. BOTÕES -->
+            <div class="modal-buttons" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; border-top: 1px solid #eee; padding-top: 20px;">
+                <button type="button" class="btn cancel-btn" onclick="fecharModal()">Cancelar</button>
+                <button type="submit" class="btn blue-btn"><i class="fas fa-save"></i> Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* CSS PADRÃO UNIFICADO */
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eee; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #f8f9fa; color: #7f8c8d; font-weight: bold; text-transform: uppercase; padding: 15px; border-bottom: 2px solid #eee; text-align: left; font-size: 0.85em; }
+    td { padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50; font-size: 0.95em; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background-color: #f9f9f9; }
+
+    .action-btn { border: none; background: none; cursor: pointer; font-size: 1.1em; padding: 5px; transition: transform 0.2s; }
+    .action-btn:hover { transform: scale(1.1); }
+    .btn-edit { color: #f39c12; }
+    .btn-delete { color: #e74c3c; }
+
+    /* Modal */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+    .modal-content { background-color: white; margin: 5% auto; padding: 30px; border-radius: 8px; animation: slideDown 0.3s ease; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .close { float: right; font-size: 24px; cursor: pointer; color: #999; }
+
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #2c3e50; font-size: 0.9em; }
+    .form-row { display: flex; gap: 20px; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; }
+    input:focus, select:focus, textarea:focus { border-color: #3498db; outline: none; }
+
+    .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .blue-btn { background-color: #3498db; color: white; }
+    .cancel-btn { background-color: #ecf0f1; color: #7f8c8d; }
+</style>
+
+<script>
+    const API_URL = "<%= API_BASE_URL %>/leaf_bloc";
+    const API_DIME = "<%= API_BASE_URL %>/leaf_dime";
+    const API_DOMA = "<%= API_BASE_URL %>/leaf_doma";
+
+    // --- 1. INICIALIZAÇÃO ---
+    async function init() {
+        // Carrega dropdowns em paralelo
+        await Promise.all([carregarDimensoes(), carregarDominios()]);
+        await carregarDados();
+    }
+
+    // Carregar Dropdown Dimensões
+    async function carregarDimensoes() {
+        try {
+            const res = await fetch(API_DIME);
+            const dados = await res.json();
+            const select = document.getElementById('id_dime');
+            select.innerHTML = '<option value="">-- Selecione --</option>';
+            dados.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id_dime;
+                opt.textContent = d.name_dime;
+                select.appendChild(opt);
+            });
+        } catch(e) { console.error(e); }
+    }
+
+    // Carregar Dropdown Domínios
+    async function carregarDominios() {
+        try {
+            const res = await fetch(API_DOMA);
+            const dados = await res.json();
+            const select = document.getElementById('id_doma');
+            select.innerHTML = '<option value="">-- Selecione --</option>';
+            dados.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id_doma;
+                opt.textContent = d.name_doma;
+                select.appendChild(opt);
+            });
+        } catch(e) { console.error(e); }
+    }
+
+    // --- 2. CARREGAR LISTA DE BLOCOS ---
+    async function carregarDados() {
+        try {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Carregando...</td></tr>';
+
+            const res = await fetch(API_URL);
+            const dados = await res.json();
+            renderizarTabela(dados);
+        } catch (error) {
+            console.error("Erro:", error);
+            document.getElementById('table-body').innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Erro ao carregar dados.</td></tr>';
+        }
+    }
+
+    // Captura os checkboxes marcados e gera a string "K12;TECNICO"
+    function obterQualificadoresSelecionados() {
+        const checkboxes = document.querySelectorAll('input[name="quali_item"]:checked');
+        return Array.from(checkboxes).map(cb => cb.value).join(';');
+    }
+
+    // Recebe a string do banco e marca os checkboxes correspondentes
+    function marcarCheckboxesQualificadores(stringQuali) {
+        const selecionados = stringQuali ? stringQuali.split(';') : [];
+        const checkboxes = document.querySelectorAll('input[name="quali_item"]');
+
+        checkboxes.forEach(cb => {
+            cb.checked = selecionados.includes(cb.value);
+        });
+    }
+
+
+// --- 3. RENDERIZAR TABELA ---
+function renderizarTabela(dados) {
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '';
+
+    if (!dados || dados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#777;">Nenhum bloco cadastrado.</td></tr>';
+        return;
+    }
+
+    // --- ADICIONE ESTA LINHA PARA ORDENAR POR ID ---
+    // (a - b) garante ordem crescente: 1, 2, 3...
+    dados.sort((a, b) => a.id_bloc - b.id_bloc);
+
+    dados.forEach(item => {
+        const tr = document.createElement('tr');
+
+        // Simplificação: Transforma a string da base (ex: "K12;SUPERIOR") diretamente em badges
+        const textoAplicabilidade = item.quali_bloc
+            ? item.quali_bloc.split(';').join(' - ')
+            : 'GERAL';
+
+        tr.innerHTML = `
+            <td style="color: #7f8c8d; font-size: 0.85em;">#${item.id_bloc}</td>
+            <td><strong>${item.name_bloc}</strong></td>
+            <td>
+                <div style="font-size: 0.8em; color: #2980b9;">D: ${item.name_dime_text || '---'}</div>
+                <div style="font-size: 0.8em; color: #27ae60;">M: ${item.name_doma_text || '---'}</div>
+            </td>
+            <td style="font-size: 0.9em; color: #444;">${textoAplicabilidade}</td>
+            <td style="text-align: center;">
+                <button class="action-btn btn-edit" onclick='editar(${JSON.stringify(item)})'>
+                    <i class="fas fa-edit"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+    // --- 4. MODAL ---
+    function abrirModal(limpar = true) {
+        if(limpar) {
+            document.getElementById('form-bloc').reset();
+            document.getElementById('id_bloc').value = '';
+            // --- Garante que os checkboxes iniciem desmarcados no "Novo Bloco" ---
+            marcarCheckboxesQualificadores("");
+            document.getElementById('modal-title').innerText = "Novo Bloco";
+        }
+        document.getElementById('modal-form').style.display = 'block';
+    }
+
+    function fecharModal() {
+        document.getElementById('modal-form').style.display = 'none';
+    }
+
+    // --- 5. SALVAR ---
+    async function salvarRegistro(e) {
+        e.preventDefault();
+
+        const id = document.getElementById('id_bloc').value;
+        const payload = {
+            name_bloc: document.getElementById('name_bloc').value,
+            desc_bloc: document.getElementById('desc_bloc').value,
+            id_dime: document.getElementById('id_dime').value,
+            id_doma: document.getElementById('id_doma').value,
+            quali_bloc: obterQualificadoresSelecionados()
+        };
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/${id}` : API_URL;
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                fecharModal();
+                carregarDados();
+            } else {
+                alert("Erro ao salvar.");
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // --- 6. EDITAR ---
+    function editar(item) {
+        abrirModal(false);
+        document.getElementById('modal-title').innerText = "Editar Bloco";
+        document.getElementById('id_bloc').value = item.id_bloc;
+        document.getElementById('name_bloc').value = item.name_bloc;
+        document.getElementById('desc_bloc').value = item.desc_bloc || '';
+        document.getElementById('id_dime').value = item.id_dime;
+        document.getElementById('id_doma').value = item.id_doma;
+
+        // --- Sincroniza os checkboxes com os dados do banco ---
+        marcarCheckboxesQualificadores(item.quali_bloc);
+    }
+
+    // --- 7. DELETAR ---
+    async function deletar(id) {
+        if (!confirm("Tem certeza que deseja remover este bloco?")) return;
+        try {
+            const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (res.ok) carregarDados();
+            else alert("Erro ao excluir.");
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // Iniciar
+    init();
+</script>

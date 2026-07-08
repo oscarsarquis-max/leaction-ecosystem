@@ -1,0 +1,300 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <div>
+                <h1><i class="fas fa-user-tie"></i> Gestão de Clientes</h1>
+                <p style="color: #666; margin-top: 5px;">Empresas e Representantes (Leads) cadastrados.</p>
+            </div>
+            <button class="btn blue-btn" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Novo Cliente
+            </button>
+        </div>
+
+        <div class="search-box" style="margin-bottom: 20px; display: flex; gap: 10px;">
+            <input type="text" id="search-input" placeholder="Buscar por Empresa, Nome ou Email..." style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1;">
+            <button class="btn blue-btn" onclick="buscarClientes()">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th>Empresa</th>
+                    <th>Representante</th>
+                    <th>Contato</th>
+                    <th style="text-align: center;">Projeto Ativo?</th>
+                    <th style="text-align: center; width: 120px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================================================================
+     🔮 INCLUSÃO DO COMPONENTE DE FORMULÁRIO COMPONENTIZADO UNIVERSAL
+     ================================================================== -->
+<%- include('clientes_modal') %>
+
+<style>
+    /* Reaproveitando estilos do Teams.ejs para manter padrão */
+    .header-section h1 { color: #2c3e50; margin: 0; }
+    .table-container { background: white; padding: 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eee; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #f8f9fa; color: #7f8c8d; font-weight: bold; text-transform: uppercase; font-size: 0.85em; padding: 15px; border-bottom: 2px solid #eee; }
+    td { padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50; font-size: 0.95em; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background-color: #f9f9f9; }
+
+    .action-btn { border: none; background: none; cursor: pointer; font-size: 1.1em; padding: 5px 8px; transition: transform 0.2s; border-radius: 4px; }
+    .action-btn:hover { transform: scale(1.1); background-color: #f0f0f0; }
+    .btn-edit { color: #f39c12; }
+    .btn-delete { color: #e74c3c; }
+
+    /* Modal Styles */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+    .modal-content { background-color: white; margin: 2% auto; padding: 30px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: slideDown 0.3s ease; }
+    @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .close { float: right; font-size: 24px; cursor: pointer; color: #999; }
+    .close:hover { color: #333; }
+
+    .form-section-title { font-size: 0.85em; text-transform: uppercase; color: #3498db; margin-bottom: 15px; border-bottom: 1px dashed #eee; padding-bottom: 5px; font-weight: bold; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #2c3e50; font-size: 0.9em; }
+    .form-row { display: flex; gap: 20px; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+    input:focus { border-color: #3498db; outline: none; }
+
+    .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .blue-btn { background-color: #3498db; color: white; }
+    .blue-btn:hover { background-color: #2980b9; }
+    .cancel-btn { background-color: #ecf0f1; color: #7f8c8d; }
+
+    /* Switch Project */
+    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: #27ae60; }
+    input:checked + .slider:before { transform: translateX(20px); }
+</style>
+
+<script>
+    const API_URL = "<%= API_BASE_URL %>/ctdi_clie";
+    const SEARCH_URL = "<%= API_BASE_URL %>/admin/clientes-search";
+    const TOGGLE_URL = "/api/admin/toggle-project";
+
+    // Acopla o barramento de envio ao formulário dinâmico injetado
+    document.addEventListener('DOMContentLoaded', function() {
+        const formCentral = document.getElementById('form-contexto-central');
+        if (formCentral) {
+            formCentral.onsubmit = salvarRegistro;
+        }
+    });
+
+    // --- 1. CARREGAR DADOS ---
+    async function carregarDados() {
+        buscarClientes();
+    }
+
+async function buscarClientes() {
+    const termo = document.getElementById('search-input').value;
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Carregando...</td></tr>';
+
+    try {
+        const url = `/api/admin/clientes-search?term=${encodeURIComponent(termo)}`;
+        const res = await fetch(url);
+        const dados = await res.json();
+
+        // DEBUG: Veja no F12 o que está chegando
+        console.log("Dados recebidos da API:", dados);
+
+        // CHECAGEM CRÍTICA: Se 'dados' for um erro ou não for lista, tratamos aqui
+        if (dados.error) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Erro no Servidor: ${dados.error}</td></tr>`;
+            return;
+        }
+
+        if (!Array.isArray(dados)) {
+            console.error("A API não retornou uma lista!", dados);
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Erro: Resposta inválida do servidor.</td></tr>';
+            return;
+        }
+
+        renderizarTabela(dados);
+    } catch (error) {
+        console.error("Erro na requisição:", error);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Erro de conexão com o servidor.</td></tr>';
+    }
+}
+
+function renderizarTabela(dados) {
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '';
+
+    if (!dados || dados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#777;">Nenhum cliente encontrado.</td></tr>';
+        return;
+    }
+
+    dados.forEach(item => {
+        // Mapeamos 'hasActiveProject' que vem do Python
+        const checked = item.hasActiveProject ? 'checked' : '';
+        const statusLabel = item.hasActiveProject ? 'ATIVO' : 'OFF';
+        const statusColor = item.hasActiveProject ? '#27ae60' : '#ccc';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="color: #7f8c8d; font-size: 0.85em;">#${item.id_clie}</td>
+            <td style="font-weight: bold;">${item.empresa_clie || '-'}</td>
+            <td>
+                <div>${item.nome_clie}</div>
+                <div style="font-size: 0.8em; color: #7f8c8d;">${item.mail_clie}</div>
+            </td>
+            <td>${item.fone_clie || '-'}</td>
+            <td style="text-align: center;">
+                <label class="switch" title="Ativar/Desativar Projeto">
+                    <input type="checkbox" ${checked} onchange="toggleProject(${item.id_clie}, this)">
+                    <span class="slider round"></span>
+                </label>
+                <div style="font-size: 10px; margin-top: 4px; color: ${statusColor}; font-weight: bold;">${statusLabel}</div>
+            </td>
+            <td style="text-align: center;">
+                <div style="display: flex; justify-content: center; gap: 10px;">
+                    <button class="action-btn btn-edit" title="Editar Cliente" onclick='editar(${JSON.stringify(item)})'>
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="action-btn btn-delete" title="Excluir Cliente" onclick="deletar(${item.id_clie})">
+                        <i class="fas fa-trash-alt" style="color: #e74c3c;"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+    // --- 3. MODAL ---
+    function abrirModal(limpar = true) {
+        if (limpar) {
+            // Invoca a abertura limpa em Modo Admin do clientes_modal
+            abrirModalContextoLeadGeral(null, false, true);
+            const titulo = document.getElementById('modal-title-central');
+            if (titulo) titulo.innerText = "Novo Cliente";
+        }
+    }
+
+    function fecharModal() {
+        fecharModalContextoLead();
+    }
+
+    // --- 4. SALVAR UNIFICADO (DENTRO DO CLIENTES.EJS) ---
+    async function salvarRegistro(e) {
+        e.preventDefault();
+
+        const id = document.getElementById('id_clie').value;
+        const redeEnsinoField = document.getElementById('rede_ensino');
+
+        // Estrutura o payload mapeando rigorosamente em minúsculas para match com a tabela public.ctdi_clie
+        const payload = {
+            id_clie: id || null,
+            empresa_clie: document.getElementById('empresa_clie').value,
+            docu_clie: document.getElementById('docu_clie').value,
+            adre_clie: document.getElementById('adre_clie').value,
+            zipn_clie: document.getElementById('zipn_clie').value,
+            nome_clie: document.getElementById('nome_clie').value,
+            mail_clie: document.getElementById('mail_clie').value,
+            fone_clie: document.getElementById('fone_clie').value,
+            tipo_ensino: document.getElementById('tipo_ensino').value,
+            qtd_alunos: document.getElementById('qtd_alunos').value ? parseInt(document.getElementById('qtd_alunos').value) : null,
+            qtd_colaboradores: document.getElementById('qtd_colaboradores').value ? parseInt(document.getElementById('qtd_colaboradores').value) : null,
+            qtd_unidades: document.getElementById('qtd_unidades').value ? parseInt(document.getElementById('qtd_unidades').value) : null,
+            localizacao_sede: document.getElementById('localizacao_sede').value,
+            rede_ensino: redeEnsinoField ? redeEnsinoField.checked : false,
+            clima_organizacional: document.getElementById('clima_organizacional').value
+        };
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/${id}` : API_URL;
+
+        console.log(`🚀 [ADMIN GATEWAY] Enviando manutenção cadastral (${method}):`, payload);
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                fecharModal();
+                buscarClientes();
+            } else {
+                const erro = await res.json();
+                alert("Erro Operacional: " + (erro.error || "Falha ao processar persistência."));
+            }
+        } catch (error) {
+            console.error("Erro na ponte:", error);
+            alert("Erro de conexão com o barramento.");
+        }
+    }
+
+    // --- 5. EDITAR ---
+    function editar(item) {
+        // Abre o modal universal injetando o objeto recuperado, desativando o bloqueio de edição e forçando o Modo Admin (true)
+        abrirModalContextoLeadGeral(item, false, true);
+        const titulo = document.getElementById('modal-title-central');
+        if (titulo) titulo.innerText = "Editar Cliente";
+    }
+
+    // --- 6. DELETAR ---
+    async function deletar(id) {
+        if (!confirm("Tem certeza? Isso apagará também os históricos e maturidade do cliente.")) return;
+
+        try {
+            const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (res.ok) buscarClientes();
+            else alert("Erro ao excluir.");
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // --- 7. TOGGLE PROJETO (Na sua clientes.ejs) ---
+    async function toggleProject(id, checkbox) {
+        try {
+            const res = await fetch('/api/admin/toggle-project', { // Verifique se a URL bate com seu app.py
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_clie: id,
+                    status: checkbox.checked // true ou false
+                })
+            });
+            if (!res.ok) {
+                checkbox.checked = !checkbox.checked;
+                alert("Erro ao alterar status no servidor.");
+            } else {
+                console.log("Status updated no DB para o cliente:", id);
+            }
+        } catch (e) {
+            checkbox.checked = !checkbox.checked;
+            console.error("Erro na requisição de Toggle:", e);
+        }
+    }
+
+    document.getElementById('search-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') buscarClientes();
+    });
+
+    carregarDados();
+</script>

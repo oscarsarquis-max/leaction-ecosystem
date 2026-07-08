@@ -1,0 +1,1366 @@
+<% if (!locals.bootstrapModalLoaded) { locals.bootstrapModalLoaded = true; %>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<% } %>
+
+<style>
+    #modalContextoCliente .modal-content {
+        border: none;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 24px 64px rgba(17, 24, 39, 0.28);
+    }
+    #modalContextoCliente .modal-hero {
+        background: linear-gradient(135deg, #4A2E80 0%, #6d28d9 55%, #7c3aed 100%);
+        color: #fff;
+        padding: 1.75rem 2rem 1.5rem;
+        text-align: left;
+    }
+    #modalContextoCliente .modal-hero h2,
+    #modalContextoCliente .modal-hero h2 span,
+    #modalContextoCliente .modal-hero p {
+        color: #fff !important;
+        text-align: left;
+        border-bottom: none !important;
+        padding-bottom: 0;
+        margin-top: 0;
+    }
+    #modalContextoCliente .modal-hero h2 {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.6rem;
+        width: 100%;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        margin: 0;
+        font-size: 1.45rem;
+        line-height: 1.3;
+    }
+    #modalContextoCliente .modal-hero h2 i {
+        color: #fff !important;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    #modalContextoCliente .modal-hero p {
+        margin: 0.5rem 0 0;
+        opacity: 0.95;
+        font-size: 0.95rem;
+        line-height: 1.55;
+        max-width: 52rem;
+    }
+    #modalContextoCliente .ctx-steps {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+        flex-wrap: wrap;
+    }
+    #modalContextoCliente .ctx-step-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.45rem 0.9rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.14);
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    #modalContextoCliente .ctx-step-pill.active {
+        background: #fff;
+        color: #4A2E80;
+    }
+    #modalContextoCliente .ctx-card {
+        background: #faf9ff;
+        border: 1px solid #ebe6ff;
+        border-radius: 16px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+    }
+    #modalContextoCliente .ctx-card h3 {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #312e81;
+        margin: 0 0 0.35rem;
+    }
+    #modalContextoCliente .ctx-card .ctx-sub {
+        color: #6b7280;
+        font-size: 0.88rem;
+        margin-bottom: 1rem;
+        line-height: 1.5;
+    }
+    #modalContextoCliente .form-floating > .form-control,
+    #modalContextoCliente .form-floating > .form-select {
+        border-radius: 12px;
+        border-color: #e5e7eb;
+        min-height: 3.25rem;
+    }
+    #modalContextoCliente .form-floating > textarea.form-control {
+        min-height: 7rem;
+    }
+    #modalContextoCliente .form-floating > label {
+        color: #6b7280;
+    }
+    #modalContextoCliente .form-control:focus,
+    #modalContextoCliente .form-select:focus {
+        border-color: #7c3aed;
+        box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.15);
+    }
+    #modalContextoCliente .form-control[readonly] {
+        background: #f3f4f6;
+        color: #4b5563;
+    }
+    #modalContextoCliente .ctx-ident-box {
+        background: linear-gradient(180deg, #fdfcff 0%, #f5f3ff 100%);
+        border: 1px solid #e9e0ff;
+        border-radius: 14px;
+        padding: 1rem 1.1rem;
+        margin-bottom: 1rem;
+    }
+    #modalContextoCliente .ctx-ident-box small {
+        color: #7c3aed;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-size: 0.72rem;
+    }
+    #modalContextoCliente .btn-primary-ctx {
+        background: linear-gradient(135deg, #4A2E80, #6d28d9);
+        border: none;
+        border-radius: 12px;
+        font-weight: 800;
+        padding: 0.85rem 1.5rem;
+        box-shadow: 0 10px 24px rgba(109, 40, 217, 0.25);
+    }
+    #modalContextoCliente .btn-primary-ctx:hover {
+        filter: brightness(1.05);
+    }
+    #modalContextoCliente .btn-outline-ctx {
+        border-radius: 12px;
+        font-weight: 700;
+        padding: 0.85rem 1.25rem;
+    }
+    #modalContextoCliente .cep-spinner {
+        display: none;
+        align-items: center;
+        gap: 0.5rem;
+        color: #6d28d9;
+        font-size: 0.85rem;
+        margin-top: 0.35rem;
+    }
+    #modalContextoCliente .cep-spinner.show { display: flex; }
+    #modalContextoCliente .ctx-success-overlay {
+        display: none;
+        position: absolute;
+        inset: 0;
+        background: rgba(255,255,255,0.96);
+        z-index: 20;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2rem;
+        border-radius: 20px;
+    }
+    #modalContextoCliente .ctx-success-overlay.show { display: flex; }
+    #modalContextoCliente .ctx-success-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: #ecfdf5;
+        color: #059669;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto 1rem;
+    }
+    #modalContextoCliente .btn-mic-contexto {
+        background: #f5f3ff;
+        border: 1px solid #ddd6fe;
+        color: #5b21b6;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        position: relative;
+        z-index: 2;
+        pointer-events: auto;
+    }
+    #modalContextoCliente .btn-mic-contexto.mic-ctx-ouvindo {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #b91c1c;
+    }
+    #modalContextoCliente .btn-mic-contexto.mic-ctx-ouvindo .mic-label {
+        font-weight: 800;
+    }
+    #modalContextoCliente textarea.ctx-ditado-ativo {
+        border-color: #7c3aed !important;
+        box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.12);
+    }
+    #modalContextoCliente textarea.ctx-ditado-recebeu {
+        border-color: #059669 !important;
+        box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.18);
+    }
+    #modalContextoCliente .ctx-pane { display: none; }
+    #modalContextoCliente .ctx-pane.active { display: block; }
+    #modalContextoCliente .admin-only { display: none; }
+    #modalContextoCliente.modo-admin .admin-only { display: block; }
+    #modalContextoCliente .btn-moderator-ia {
+        border-radius: 12px;
+        font-weight: 700;
+        border-color: #7c3aed;
+        color: #5b21b6;
+        padding: 0.55rem 1rem;
+    }
+    #modalContextoCliente .btn-moderator-ia:hover {
+        background: #f5f3ff;
+        color: #4c1d95;
+        border-color: #6d28d9;
+    }
+    #modalContextoCliente .ctx-moderator-feedback {
+        display: none;
+        margin-top: 1rem;
+        padding: 1rem 1.15rem;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+        border: 1px solid #e9d5ff;
+        opacity: 0;
+        transform: translateY(6px);
+        transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+    #modalContextoCliente .ctx-moderator-feedback.show {
+        display: block;
+        opacity: 1;
+        transform: translateY(0);
+    }
+    #modalContextoCliente .ctx-moderator-feedback .ctx-moderator-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 800;
+        color: #5b21b6;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+    #modalContextoCliente .ctx-moderator-feedback p {
+        margin: 0;
+        color: #374151;
+        line-height: 1.6;
+        font-size: 0.92rem;
+    }
+    #modalContextoCliente .ctx-campo-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    #modalContextoCliente .ctx-campo-toolbar .ctx-campo-label {
+        font-weight: 700;
+        color: #6b7280;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        margin: 0;
+    }
+    #modalContextoCliente .ctx-campo-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
+
+<div class="modal fade" id="modalContextoCliente" tabindex="-1" aria-labelledby="modalContextoClienteLabel" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false" data-bs-focus="false">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content position-relative">
+            <div class="ctx-success-overlay" id="ctx-success-overlay" role="status" aria-live="polite">
+                <div>
+                    <div class="ctx-success-icon"><i class="fas fa-check"></i></div>
+                    <h3 class="fw-bold text-dark mb-2">Contexto registrado com sucesso!</h3>
+                    <p class="text-muted mb-0">Nossa IA já pode entender melhor a realidade da sua escola.</p>
+                </div>
+            </div>
+
+            <div class="modal-hero">
+                <h2 id="modalContextoClienteLabel">
+                    <i class="fas fa-magic" aria-hidden="true"></i>
+                    <span id="modal-title-central">Boas-vindas à sua Jornada Digital</span>
+                </h2>
+                <p id="modal-subtitle-central">
+                    Para que nossa IA gere estratégias precisas, conte-nos um pouco sobre a região e o público da sua escola.
+                    Este passo é essencial — reserve alguns minutos com calma.
+                </p>
+                <div class="ctx-steps" id="ctx-steps-nav">
+                    <span class="ctx-step-pill active" data-step-indicator="1"><i class="fas fa-school"></i> A Casa da Sua Escola</span>
+                    <span class="ctx-step-pill" data-step-indicator="2"><i class="fas fa-users"></i> Seu Ecossistema</span>
+                </div>
+            </div>
+
+            <div class="modal-body p-4 p-md-5">
+                <form id="form-contexto-central" novalidate>
+                    <input type="hidden" id="ctx_id_clie" name="ctx_id_clie">
+
+                    <div class="ctx-ident-box" id="box-identificacao-estatica-cliente">
+                        <small>Identificação do estabelecimento</small>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6"><div class="text-muted small text-uppercase fw-bold">Escola</div><strong id="lbl_ctx_empresa">—</strong></div>
+                            <div class="col-md-6"><div class="text-muted small text-uppercase fw-bold">Documento</div><strong id="lbl_ctx_cnpj">—</strong></div>
+                            <div class="col-md-6"><div class="text-muted small text-uppercase fw-bold">Gestor</div><strong id="lbl_ctx_representante">—</strong></div>
+                            <div class="col-md-6"><div class="text-muted small text-uppercase fw-bold">E-mail</div><strong id="lbl_ctx_email">—</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- Admin: campos cadastrais completos -->
+                    <div class="admin-only">
+                        <div class="ctx-card">
+                            <h3><i class="fas fa-building me-2"></i>Dados cadastrais (admin)</h3>
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="empresa_clie" placeholder="Razão Social">
+                                        <label for="empresa_clie">Razão Social / Fantasia</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="docu_clie" placeholder="CNPJ">
+                                        <label for="docu_clie">CNPJ</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="nome_clie" placeholder="Nome">
+                                        <label for="nome_clie">Representante</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="fone_clie" placeholder="Telefone">
+                                        <label for="fone_clie">WhatsApp / Telefone</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-floating">
+                                        <input type="email" class="form-control" id="mail_clie" placeholder="E-mail">
+                                        <label for="mail_clie">E-mail de acesso</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PASSO 1 -->
+                    <div class="ctx-pane active" id="ctx-pane-1">
+                        <div class="ctx-card">
+                            <h3><i class="fas fa-map-marker-alt me-2"></i>A Casa da Sua Escola</h3>
+                            <p class="ctx-sub">Informe onde sua escola está instalada. Usamos o CEP para preencher o endereço automaticamente.</p>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="zipn_clie" placeholder="CEP" maxlength="9" required>
+                                        <label for="zipn_clie">CEP *</label>
+                                    </div>
+                                    <div class="cep-spinner" id="cep-spinner"><span class="spinner-border spinner-border-sm"></span> Buscando endereço...</div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="adre_clie" placeholder="Endereço" required>
+                                        <label for="adre_clie">Logradouro e número *</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="bairro_clie" placeholder="Bairro" readonly>
+                                        <label for="bairro_clie">Bairro</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="cidade_clie" placeholder="Cidade" readonly>
+                                        <label for="cidade_clie">Cidade</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="estado_clie" placeholder="UF" maxlength="2" readonly>
+                                        <label for="estado_clie">UF</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="localizacao_sede" placeholder="Localização" required>
+                                        <label for="localizacao_sede">Localização da sede (cidade/região) *</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PASSO 2 -->
+                    <div class="ctx-pane" id="ctx-pane-2">
+                        <div id="ctx-ditado-status" class="small text-muted mb-3" role="status" aria-live="polite" style="min-height: 1.25rem;"></div>
+                        <div class="ctx-card">
+                            <h3><i class="fas fa-seedling me-2"></i>Seu Ecossistema</h3>
+                            <p class="ctx-sub">Compartilhe o perfil da sua comunidade escolar e o contexto de mercado em que vocês atuam.</p>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="form-floating">
+                                        <select class="form-select" id="tipo_ensino" required>
+                                            <option value="">Selecione...</option>
+                                            <option value="K-12">K-12 (Educação Básica)</option>
+                                            <option value="Superior">Ensino Superior</option>
+                                            <option value="Tecnico">Ensino Técnico</option>
+                                            <option value="Idiomas">Idiomas / Cursos Livres</option>
+                                            <option value="Corporativo">Educação Corporativa</option>
+                                        </select>
+                                        <label for="tipo_ensino">Tipo de ensino *</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-floating">
+                                        <input type="number" class="form-control" id="qtd_alunos" min="1" placeholder="Alunos" required>
+                                        <label for="qtd_alunos">Número de alunos *</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-floating">
+                                        <input type="number" class="form-control" id="qtd_colaboradores" min="0" placeholder="Colaboradores">
+                                        <label for="qtd_colaboradores">Colaboradores</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-floating">
+                                        <input type="number" class="form-control" id="qtd_unidades" min="1" placeholder="Unidades">
+                                        <label for="qtd_unidades">Unidades</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-8 d-flex align-items-center">
+                                    <div class="form-check form-switch ps-0">
+                                        <input class="form-check-input ms-0 me-2" type="checkbox" id="rede_ensino" style="width: 2.5em; height: 1.25em;">
+                                        <label class="form-check-label fw-semibold" for="rede_ensino">Faz parte de rede ou holding de ensino</label>
+                                    </div>
+                                </div>
+                                <div class="col-12 ctx-campo-longo" data-campo="dados_mercado">
+                                    <div class="ctx-campo-toolbar">
+                                        <label class="ctx-campo-label" for="dados_mercado">Contexto de mercado *</label>
+                                        <div class="ctx-campo-actions">
+                                            <button type="button" class="btn-mic-contexto btn-voz-campo" data-voz-target="dados_mercado" aria-label="Ditado mercado">
+                                                <i class="fas fa-microphone"></i>
+                                                <span class="mic-label">Ditado</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-floating">
+                                        <textarea class="form-control" id="dados_mercado" placeholder="Mercado" required style="min-height: 110px;"></textarea>
+                                        <label for="dados_mercado">Concorrência, posicionamento, desafios locais...</label>
+                                    </div>
+                                    <div class="mt-2 d-flex flex-wrap align-items-center gap-2">
+                                        <button type="button" class="btn btn-outline-primary btn-moderator-ia btn-mod-campo" data-mod-campo="dados_mercado">
+                                            <i class="fas fa-magic me-1"></i> Análise da IA
+                                        </button>
+                                        <small class="text-muted">Complemento do Agente Moderador após preencher este campo.</small>
+                                    </div>
+                                    <div id="ctx-mod-feedback-dados_mercado" class="ctx-moderator-feedback" role="status" aria-live="polite">
+                                        <div class="ctx-moderator-title"><i class="fas fa-robot"></i> Agente Moderador</div>
+                                        <p class="ctx-mod-text"></p>
+                                    </div>
+                                    <input type="hidden" id="moderacao_dados_mercado" value="">
+                                </div>
+                                <div class="col-12 ctx-campo-longo" data-campo="dados_etnograficos">
+                                    <div class="ctx-campo-toolbar">
+                                        <label class="ctx-campo-label" for="dados_etnograficos">Perfil da comunidade escolar *</label>
+                                        <div class="ctx-campo-actions">
+                                            <button type="button" class="btn-mic-contexto btn-voz-campo" data-voz-target="dados_etnograficos" aria-label="Ditado comunidade">
+                                                <i class="fas fa-microphone"></i>
+                                                <span class="mic-label">Ditado</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-floating">
+                                        <textarea class="form-control" id="dados_etnograficos" placeholder="Etnográfico" required style="min-height: 110px;"></textarea>
+                                        <label for="dados_etnograficos">Perfil socioeconômico, cultura, famílias, território...</label>
+                                    </div>
+                                    <div class="mt-2 d-flex flex-wrap align-items-center gap-2">
+                                        <button type="button" class="btn btn-outline-primary btn-moderator-ia btn-mod-campo" data-mod-campo="dados_etnograficos">
+                                            <i class="fas fa-magic me-1"></i> Análise da IA
+                                        </button>
+                                        <small class="text-muted">Sugestões sobre perfil das famílias e território.</small>
+                                    </div>
+                                    <div id="ctx-mod-feedback-dados_etnograficos" class="ctx-moderator-feedback" role="status" aria-live="polite">
+                                        <div class="ctx-moderator-title"><i class="fas fa-robot"></i> Agente Moderador</div>
+                                        <p class="ctx-mod-text"></p>
+                                    </div>
+                                    <input type="hidden" id="moderacao_dados_etnograficos" value="">
+                                </div>
+                                <div class="col-12 ctx-campo-longo" data-campo="clima_organizacional">
+                                    <div class="ctx-campo-toolbar">
+                                        <label class="ctx-campo-label" for="clima_organizacional">Clima organizacional e expectativas para a IA *</label>
+                                        <div class="ctx-campo-actions">
+                                            <button type="button" class="btn-mic-contexto btn-voz-campo" data-voz-target="clima_organizacional" aria-label="Ditado clima">
+                                                <i class="fas fa-microphone"></i>
+                                                <span class="mic-label">Ditado</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-floating">
+                                        <textarea class="form-control" id="clima_organizacional" placeholder="Clima" required style="min-height: 120px;"></textarea>
+                                        <label for="clima_organizacional">Clima, liderança, prontidão da equipe e expectativas sobre IA...</label>
+                                    </div>
+                                    <div class="mt-2 d-flex flex-wrap align-items-center gap-2">
+                                        <button type="button" class="btn btn-outline-primary btn-moderator-ia btn-mod-campo" data-mod-campo="clima_organizacional">
+                                            <i class="fas fa-magic me-1"></i> Análise da IA
+                                        </button>
+                                        <small class="text-muted">Sugestões sobre cultura interna e adoção de IA.</small>
+                                    </div>
+                                    <div id="ctx-mod-feedback-clima_organizacional" class="ctx-moderator-feedback" role="status" aria-live="polite">
+                                        <div class="ctx-moderator-title"><i class="fas fa-robot"></i> Agente Moderador</div>
+                                        <p class="ctx-mod-text"></p>
+                                    </div>
+                                    <input type="hidden" id="moderacao_clima_organizacional" value="">
+                                    <p class="text-muted small mt-2 mb-0">
+                                        <i class="fas fa-lightbulb text-warning me-1"></i>
+                                        Quanto mais rico o relato, mais personalizada será a estratégia gerada para sua escola.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="ctx-form-error" class="alert alert-danger d-none" role="alert"></div>
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-3 border-top">
+                        <button type="button" class="btn btn-outline-secondary btn-outline-ctx d-none" id="btn-ctx-prev">
+                            <i class="fas fa-arrow-left me-1"></i> Voltar
+                        </button>
+                        <div class="ms-auto d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-outline-secondary btn-outline-ctx d-none" id="btn-cancel-ctx">Cancelar</button>
+                            <button type="button" class="btn btn-outline-secondary btn-outline-ctx d-none" id="btn-close-ctx-only">Fechar visualização</button>
+                            <button type="button" class="btn btn-primary btn-primary-ctx" id="btn-ctx-next">
+                                Continuar <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-primary-ctx d-none" id="btn-save-ctx">
+                                <i class="fas fa-rocket me-1"></i> Salvar e Iniciar Jornada
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var ctxMotorVoz = null;
+    var ctxGravandoVoz = false;
+    var ctxCampoAlvoEl = null;
+    var ctxCampoAlvoId = null;
+    var ctxBtnAtivo = null;
+    var ctxWatchdogVoz = null;
+    var ctxRecebeuTranscricao = false;
+    var modalModoAdmin = window.modalModoAdmin || false;
+    var modalObrigatorio = window.modalObrigatorio || false;
+    var ctxPassoAtual = 1;
+    var bsModalInstance = null;
+    var ctxVozInicializado = window.ctxVozInicializado || false;
+    var ctxModInicializado = window.ctxModInicializado || false;
+
+    var CTX_CAMPOS_LONGOS = {
+        dados_mercado: { label: 'contexto de mercado', minSalvar: 40 },
+        dados_etnograficos: { label: 'perfil da comunidade escolar', minSalvar: 40 },
+        clima_organizacional: { label: 'clima organizacional', minSalvar: 40 },
+    };
+
+    function getModalEl() { return document.getElementById('modalContextoCliente'); }
+
+    function getBsModal() {
+        var el = getModalEl();
+        if (!el || !window.bootstrap) return null;
+        if (!bsModalInstance) {
+            bsModalInstance = bootstrap.Modal.getOrCreateInstance(el, {
+                backdrop: modalObrigatorio ? 'static' : true,
+                keyboard: !modalObrigatorio,
+            });
+        }
+        return bsModalInstance;
+    }
+
+    function atualizarConfigModalLock() {
+        var el = getModalEl();
+        if (!el) return;
+        el.setAttribute('data-bs-backdrop', modalObrigatorio ? 'static' : 'true');
+        el.setAttribute('data-bs-keyboard', modalObrigatorio ? 'false' : 'true');
+        if (bsModalInstance) {
+            bsModalInstance._config.backdrop = modalObrigatorio ? 'static' : true;
+            bsModalInstance._config.keyboard = !modalObrigatorio;
+        }
+    }
+
+    function mostrarErroCtx(msg) {
+        var box = document.getElementById('ctx-form-error');
+        if (!box) return;
+        box.textContent = msg;
+        box.classList.remove('d-none');
+    }
+
+    function limparErroCtx() {
+        var box = document.getElementById('ctx-form-error');
+        if (box) box.classList.add('d-none');
+    }
+
+    function irParaPasso(passo) {
+        if (passo !== 2 && ctxGravandoVoz) pararDitadoContexto(true);
+        ctxPassoAtual = passo;
+        document.querySelectorAll('#modalContextoCliente .ctx-pane').forEach(function (pane) {
+            pane.classList.toggle('active', pane.id === 'ctx-pane-' + passo);
+        });
+        document.querySelectorAll('#modalContextoCliente [data-step-indicator]').forEach(function (pill) {
+            pill.classList.toggle('active', pill.getAttribute('data-step-indicator') === String(passo));
+        });
+        document.getElementById('btn-ctx-prev').classList.toggle('d-none', passo === 1);
+        document.getElementById('btn-ctx-next').classList.toggle('d-none', passo !== 1);
+        document.getElementById('btn-save-ctx').classList.toggle('d-none', passo !== 2 || document.getElementById('btn-save-ctx').disabled === true);
+    }
+
+    function validarPasso1() {
+        var cep = (document.getElementById('zipn_clie').value || '').replace(/\D/g, '');
+        var endereco = (document.getElementById('adre_clie').value || '').trim();
+        var loc = (document.getElementById('localizacao_sede').value || '').trim();
+        if (cep.length !== 8) return 'Informe um CEP válido com 8 dígitos.';
+        if (!endereco) return 'Informe o logradouro e número da escola.';
+        if (!loc) return 'Informe a localização da sede.';
+        return null;
+    }
+
+    function resolverIdClieContexto() {
+        var campo = document.getElementById('ctx_id_clie');
+        var valor = campo ? String(campo.value || '').trim() : '';
+        if (valor) return valor;
+
+        if (window._leadData) {
+            var doLead = window._leadData.id_clie || window._leadData.id;
+            if (doLead) return String(doLead);
+        }
+
+        var hiddenPagina = document.getElementById('id_cliente_hidden');
+        if (hiddenPagina && hiddenPagina.value) return String(hiddenPagina.value).trim();
+
+        return null;
+    }
+
+    function aplicarIdClieNoFormulario(idClie) {
+        if (!idClie) return;
+        var campo = document.getElementById('ctx_id_clie');
+        if (campo) campo.value = String(idClie);
+    }
+
+    function obterModeracaoSalva(campo) {
+        var modKey = CTX_MODERACAO_MAP[campo];
+        var hidden = modKey ? document.getElementById(modKey) : null;
+        var valor = hidden ? String(hidden.value || '').trim() : '';
+        if (valor) return valor;
+        var feedback = document.getElementById('ctx-mod-feedback-' + campo);
+        if (!feedback) return '';
+        var feedbackText = feedback.querySelector('.ctx-mod-text');
+        return feedbackText ? String(feedbackText.textContent || '').trim() : '';
+    }
+
+    function montarPayloadContexto() {
+        var rede = document.getElementById('rede_ensino');
+        return {
+            id_clie: resolverIdClieContexto(),
+            empresa_clie: document.getElementById('empresa_clie').value,
+            docu_clie: document.getElementById('docu_clie').value,
+            adre_clie: document.getElementById('adre_clie').value,
+            zipn_clie: document.getElementById('zipn_clie').value,
+            bairro_clie: document.getElementById('bairro_clie').value,
+            cidade_clie: document.getElementById('cidade_clie').value,
+            estado_clie: document.getElementById('estado_clie').value,
+            nome_clie: document.getElementById('nome_clie').value,
+            mail_clie: document.getElementById('mail_clie').value,
+            fone_clie: document.getElementById('fone_clie').value,
+            tipo_ensino: document.getElementById('tipo_ensino').value,
+            qtd_alunos: document.getElementById('qtd_alunos').value ? parseInt(document.getElementById('qtd_alunos').value, 10) : null,
+            qtd_colaboradores: document.getElementById('qtd_colaboradores').value ? parseInt(document.getElementById('qtd_colaboradores').value, 10) : null,
+            qtd_unidades: document.getElementById('qtd_unidades').value ? parseInt(document.getElementById('qtd_unidades').value, 10) : null,
+            localizacao_sede: document.getElementById('localizacao_sede').value,
+            rede_ensino: rede ? rede.checked : false,
+            dados_mercado: document.getElementById('dados_mercado').value,
+            dados_etnograficos: document.getElementById('dados_etnograficos').value,
+            clima_organizacional: document.getElementById('clima_organizacional').value,
+            moderacao_dados_mercado: obterModeracaoSalva('dados_mercado'),
+            moderacao_dados_etnograficos: obterModeracaoSalva('dados_etnograficos'),
+            moderacao_clima_organizacional: obterModeracaoSalva('clima_organizacional'),
+        };
+    }
+
+    function preencherLocalizacaoSede() {
+        var cidade = (document.getElementById('cidade_clie').value || '').trim();
+        var estado = (document.getElementById('estado_clie').value || '').trim();
+        var campo = document.getElementById('localizacao_sede');
+        if (cidade && estado) campo.value = cidade + ' - ' + estado;
+    }
+
+    async function buscarCep() {
+        var cepInput = document.getElementById('zipn_clie');
+        var spinner = document.getElementById('cep-spinner');
+        if (!cepInput) return;
+        var cep = cepInput.value.replace(/\D/g, '');
+        if (cep.length !== 8) return;
+
+        if (spinner) spinner.classList.add('show');
+        try {
+            var res = await fetch('https://viacep.com.br/ws/' + cep + '/json/');
+            var data = await res.json();
+            if (data.erro) {
+                mostrarErroCtx('CEP não encontrado. Verifique o número informado.');
+                return;
+            }
+            limparErroCtx();
+            document.getElementById('adre_clie').value = data.logradouro || '';
+            document.getElementById('bairro_clie').value = data.bairro || '';
+            document.getElementById('cidade_clie').value = data.localidade || '';
+            document.getElementById('estado_clie').value = data.uf || '';
+            preencherLocalizacaoSede();
+            document.getElementById('adre_clie').focus();
+        } catch (err) {
+            mostrarErroCtx('Não foi possível consultar o CEP agora. Preencha o endereço manualmente.');
+        } finally {
+            if (spinner) spinner.classList.remove('show');
+        }
+    }
+
+    function mascaraCep(value) {
+        var digits = value.replace(/\D/g, '').slice(0, 8);
+        if (digits.length > 5) return digits.slice(0, 5) + '-' + digits.slice(5);
+        return digits;
+    }
+
+    function limparFeedbackModerador(campo) {
+        if (campo) {
+            var box = document.getElementById('ctx-mod-feedback-' + campo);
+            if (box) {
+                var p = box.querySelector('.ctx-mod-text');
+                if (p) p.textContent = '';
+                box.classList.remove('show');
+            }
+            return;
+        }
+        Object.keys(CTX_CAMPOS_LONGOS).forEach(function (c) { limparFeedbackModerador(c); });
+    }
+
+    var CTX_MODERACAO_MAP = {
+        dados_mercado: 'moderacao_dados_mercado',
+        dados_etnograficos: 'moderacao_dados_etnograficos',
+        clima_organizacional: 'moderacao_clima_organizacional',
+    };
+
+    function sincronizarModeracaoLeadData(campo, texto) {
+        var modKey = CTX_MODERACAO_MAP[campo];
+        if (!modKey || !window._leadData) return;
+        window._leadData[modKey] = texto || '';
+    }
+
+    function exibirFeedbackModerador(campo, texto) {
+        var feedback = document.getElementById('ctx-mod-feedback-' + campo);
+        if (!feedback) return;
+        var feedbackText = feedback.querySelector('.ctx-mod-text');
+        if (feedbackText) feedbackText.textContent = texto || '';
+        var modKey = CTX_MODERACAO_MAP[campo];
+        var hidden = modKey ? document.getElementById(modKey) : null;
+        if (hidden) hidden.value = texto || '';
+        sincronizarModeracaoLeadData(campo, texto);
+        feedback.classList.remove('show');
+        void feedback.offsetWidth;
+        feedback.classList.add('show');
+    }
+
+    function restaurarModeracoesSalvas(dados) {
+        if (!dados) return;
+        Object.keys(CTX_MODERACAO_MAP).forEach(function (campo) {
+            var modKey = CTX_MODERACAO_MAP[campo];
+            var texto = (dados[modKey] || '').trim();
+            var hidden = document.getElementById(modKey);
+            if (hidden) hidden.value = texto;
+            if (texto) exibirFeedbackModerador(campo, texto);
+        });
+    }
+
+    function preencherFormularioContexto(dados) {
+        if (!dados) return;
+        aplicarIdClieNoFormulario(dados.id_clie || dados.id || resolverIdClieContexto());
+        document.getElementById('empresa_clie').value = dados.empresa_clie || dados.empresa || '';
+        document.getElementById('docu_clie').value = dados.docu_clie || dados.docu || '';
+        document.getElementById('adre_clie').value = dados.adre_clie || '';
+        document.getElementById('zipn_clie').value = dados.zipn_clie || '';
+        document.getElementById('bairro_clie').value = dados.bairro_clie || '';
+        document.getElementById('cidade_clie').value = dados.cidade_clie || '';
+        document.getElementById('estado_clie').value = dados.estado_clie || '';
+        document.getElementById('nome_clie').value = dados.nome_clie || dados.nome || '';
+        document.getElementById('fone_clie').value = dados.fone_clie || dados.fone || '';
+        document.getElementById('mail_clie').value = dados.mail_clie || dados.mail || dados.email || '';
+        document.getElementById('tipo_ensino').value = dados.tipo_ensino || '';
+        document.getElementById('qtd_alunos').value = dados.qtd_alunos || '';
+        document.getElementById('qtd_colaboradores').value = dados.qtd_colaboradores || '';
+        document.getElementById('qtd_unidades').value = dados.qtd_unidades || '';
+        document.getElementById('localizacao_sede').value = dados.localizacao_sede || '';
+        document.getElementById('dados_mercado').value = dados.dados_mercado || '';
+        document.getElementById('dados_etnograficos').value = dados.dados_etnograficos || '';
+        document.getElementById('clima_organizacional').value = (dados.clima_organizacional || dados.clima_original || '').trim();
+        document.getElementById('rede_ensino').checked = (dados.rede_ensino === true || dados.rede_ensino === 'true' || dados.rede_ensino === 1);
+
+        document.getElementById('lbl_ctx_empresa').textContent = dados.empresa_clie || dados.empresa || '—';
+        document.getElementById('lbl_ctx_cnpj').textContent = dados.docu_clie || dados.docu || '—';
+        document.getElementById('lbl_ctx_representante').textContent = dados.nome_clie || dados.nome || '—';
+        document.getElementById('lbl_ctx_email').textContent = dados.mail_clie || dados.mail || dados.email || '—';
+    }
+
+    async function solicitarAnaliseModerador(campo) {
+        limparErroCtx();
+        var meta = CTX_CAMPOS_LONGOS[campo];
+        if (!meta) return;
+
+        var textarea = document.getElementById(campo);
+        var texto = (textarea && textarea.value || '').trim();
+        if (texto.length < 15) {
+            mostrarErroCtx('Escreva um pouco sobre o ' + meta.label + ' antes de pedir a análise da IA.');
+            if (textarea) textarea.focus();
+            return;
+        }
+
+        var btn = document.querySelector('.btn-mod-campo[data-mod-campo="' + campo + '"]');
+        var labelOriginal = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Analisando...';
+        }
+
+        try {
+            var payload = {
+                campo: campo,
+                texto: texto,
+                id_clie: resolverIdClieContexto(),
+                cidade: (document.getElementById('cidade_clie').value || '').trim(),
+                bairro: (document.getElementById('bairro_clie').value || '').trim(),
+                tipo_ensino: (document.getElementById('tipo_ensino').value || '').trim(),
+            };
+            payload[campo] = texto;
+
+            var controller = new AbortController();
+            var timeoutId = setTimeout(function () { controller.abort(); }, 35000);
+
+            var res = await fetch('/api/ai/moderator/contexto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                throw new Error(data.error || 'Não foi possível obter a análise da IA.');
+            }
+            if (!data.suggestion) {
+                throw new Error('A IA não retornou texto. Tente novamente em instantes.');
+            }
+            exibirFeedbackModerador(campo, data.suggestion);
+        } catch (err) {
+            if (err && err.name === 'AbortError') {
+                mostrarErroCtx('A análise demorou demais. Verifique a conexão ou tente de novo — usaremos orientação local se a IA estiver indisponível.');
+            } else {
+                mostrarErroCtx(err.message || 'Erro ao consultar o Agente Moderador.');
+            }
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = labelOriginal;
+            }
+        }
+    }
+
+    function validarCamposLongos() {
+        for (var campo in CTX_CAMPOS_LONGOS) {
+            if (!CTX_CAMPOS_LONGOS.hasOwnProperty(campo)) continue;
+            var meta = CTX_CAMPOS_LONGOS[campo];
+            var val = (document.getElementById(campo).value || '').trim();
+            if (val.length < meta.minSalvar) {
+                return {
+                    campo: campo,
+                    msg: 'Descreva o ' + meta.label + ' com mais detalhe (mínimo ' + meta.minSalvar + ' caracteres). Use "Análise da IA" se precisar de orientação.',
+                };
+            }
+        }
+        return null;
+    }
+
+    async function salvarContextoLead(e) {
+        if (e) e.preventDefault();
+        limparErroCtx();
+        var err1 = validarPasso1();
+        if (err1) { mostrarErroCtx(err1); irParaPasso(1); return; }
+
+        var errLongos = validarCamposLongos();
+        if (errLongos) {
+            mostrarErroCtx(errLongos.msg);
+            irParaPasso(2);
+            document.getElementById(errLongos.campo).focus();
+            return;
+        }
+
+        var form = document.getElementById('form-contexto-central');
+        if (form && !form.checkValidity()) {
+            form.reportValidity();
+            irParaPasso(2);
+            return;
+        }
+
+        var btn = document.getElementById('btn-save-ctx');
+        var labelOriginal = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Salvando...';
+
+        var payload = montarPayloadContexto();
+        if (!payload.id_clie) {
+            mostrarErroCtx('Não foi possível identificar sua escola. Atualize a página (F5) e tente novamente.');
+            btn.disabled = false;
+            btn.innerHTML = labelOriginal;
+            return;
+        }
+
+        try {
+            var res = await fetch('/api/client/update-context', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                throw new Error(data.error || 'Falha ao salvar o contexto.');
+            }
+            var overlay = document.getElementById('ctx-success-overlay');
+            if (overlay) overlay.classList.add('show');
+            modalObrigatorio = false;
+            window.modalObrigatorio = false;
+            atualizarConfigModalLock();
+            setTimeout(function () {
+                window.fecharModalContextoLead(true);
+                window.location.reload();
+            }, 1600);
+        } catch (err) {
+            mostrarErroCtx(err.message || 'Erro ao salvar. Tente novamente.');
+            btn.disabled = false;
+            btn.innerHTML = labelOriginal;
+        }
+    }
+
+    function atualizarStatusDitado(msg) {
+        var el = document.getElementById('ctx-ditado-status');
+        if (el) el.textContent = msg || '';
+        if (msg) console.log('[ditado contexto]', msg);
+    }
+
+    function obterCampoTextoContexto(campoId) {
+        if (!campoId) return null;
+        return document.querySelector('#modalContextoCliente #' + campoId);
+    }
+
+    function resetarVisualMic(btn) {
+        if (!btn) return;
+        btn.classList.remove('mic-ctx-ouvindo');
+        var label = btn.querySelector('.mic-label');
+        if (label) label.textContent = 'Ditado';
+    }
+
+    function resetarTodosMics() {
+        document.querySelectorAll('#modalContextoCliente .btn-voz-campo').forEach(resetarVisualMic);
+        document.querySelectorAll('#modalContextoCliente textarea.ctx-ditado-ativo').forEach(function (ta) {
+            ta.classList.remove('ctx-ditado-ativo');
+        });
+    }
+
+    function marcarMicOuvindo(btnAtivo, campoId) {
+        ctxCampoAlvoId = campoId;
+        ctxBtnAtivo = btnAtivo;
+        document.querySelectorAll('#modalContextoCliente .btn-voz-campo').forEach(function (b) {
+            if (b === btnAtivo) {
+                b.classList.add('mic-ctx-ouvindo');
+                var lbl = b.querySelector('.mic-label');
+                if (lbl) lbl.textContent = 'Ouvindo...';
+            } else {
+                resetarVisualMic(b);
+            }
+        });
+        document.querySelectorAll('#modalContextoCliente textarea.ctx-ditado-ativo').forEach(function (ta) {
+            ta.classList.remove('ctx-ditado-ativo');
+        });
+        var campo = obterCampoTextoContexto(campoId);
+        if (campo) campo.classList.add('ctx-ditado-ativo');
+    }
+
+    function anexarTextoNoCampo(campoEl, texto) {
+        if (!campoEl || !texto) return false;
+        var pedaco = String(texto).trim();
+        if (!pedaco) return false;
+        campoEl.value += (campoEl.value ? ' ' : '') + pedaco;
+        campoEl.dispatchEvent(new Event('input', { bubbles: true }));
+        campoEl.scrollTop = campoEl.scrollHeight;
+        campoEl.classList.add('ctx-ditado-recebeu');
+        window.setTimeout(function () { campoEl.classList.remove('ctx-ditado-recebeu'); }, 450);
+        return true;
+    }
+
+    function cancelarWatchdogDitado() {
+        if (ctxWatchdogVoz) {
+            window.clearTimeout(ctxWatchdogVoz);
+            ctxWatchdogVoz = null;
+        }
+    }
+
+    function desativarDitadoVisual() {
+        cancelarWatchdogDitado();
+        ctxGravandoVoz = false;
+        resetarTodosMics();
+    }
+
+    function pararDitadoContexto(silencioso) {
+        cancelarWatchdogDitado();
+        ctxGravandoVoz = false;
+        ctxRecebeuTranscricao = false;
+        ctxCampoAlvoEl = null;
+        ctxCampoAlvoId = null;
+        ctxBtnAtivo = null;
+        if (ctxMotorVoz) {
+            ctxMotorVoz.onstart = null;
+            ctxMotorVoz.onresult = null;
+            ctxMotorVoz.onerror = null;
+            ctxMotorVoz.onend = null;
+            try { ctxMotorVoz.abort(); } catch (_) {}
+            try { ctxMotorVoz.stop(); } catch (_) {}
+            ctxMotorVoz = null;
+        }
+        resetarTodosMics();
+        if (!silencioso) atualizarStatusDitado('');
+    }
+
+    function extrairTranscricaoEvento(event) {
+        if (!event || !event.results || !event.results.length) return '';
+        var texto = '';
+        for (var i = event.resultIndex; i < event.results.length; i++) {
+            var chunk = (event.results[i][0] && event.results[i][0].transcript) || '';
+            if (event.results[i].isFinal) texto += chunk;
+        }
+        if (!texto.trim()) {
+            var ultimo = event.results[event.results.length - 1];
+            texto = (ultimo && ultimo[0] && ultimo[0].transcript) || '';
+        }
+        return String(texto).trim();
+    }
+
+    function garantirMotorVozContexto() {
+        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return null;
+
+        if (ctxMotorVoz) return ctxMotorVoz;
+
+        var rec = new SpeechRecognition();
+        rec.lang = 'pt-BR';
+        rec.continuous = true;
+        rec.interimResults = false;
+
+        rec.onstart = function () {
+            ctxGravandoVoz = true;
+            ctxRecebeuTranscricao = false;
+            marcarMicOuvindo(ctxBtnAtivo, ctxCampoAlvoId);
+            atualizarStatusDitado('Microfone ativo — fale com clareza e faça uma pausa ao terminar a frase.');
+            cancelarWatchdogDitado();
+            ctxWatchdogVoz = window.setTimeout(function () {
+                if (ctxGravandoVoz && !ctxRecebeuTranscricao) {
+                    atualizarStatusDitado('Áudio detectado, mas a transcrição não chegou (serviço Google). Verifique internet/firewall ou digite manualmente.');
+                    mostrarErroCtx('O microfone funciona, mas a transcrição do Chrome não respondeu. Tente outra rede ou digite o texto.');
+                }
+            }, 10000);
+        };
+
+        rec.onresult = function (event) {
+            var texto = extrairTranscricaoEvento(event);
+            if (!texto || !ctxCampoAlvoEl) return;
+            if (anexarTextoNoCampo(ctxCampoAlvoEl, texto)) {
+                ctxRecebeuTranscricao = true;
+                atualizarStatusDitado('Texto inserido. Clique em Ditado de novo para gravar outro trecho.');
+            }
+        };
+
+        rec.onerror = function (event) {
+            var err = event && event.error ? event.error : 'desconhecido';
+            console.warn('[ditado contexto] erro:', err);
+            if (err === 'not-allowed' || err === 'service-not-allowed') {
+                mostrarErroCtx('Permita o microfone no navegador e clique em Ditado novamente.');
+            } else if (err === 'network') {
+                mostrarErroCtx('Sem acesso ao serviço de transcrição do Chrome (Google). Verifique internet ou firewall.');
+            } else if (err !== 'aborted' && err !== 'no-speech') {
+                mostrarErroCtx('Erro no ditado (' + err + '). Clique em Ditado para tentar de novo.');
+            }
+            desativarDitadoVisual();
+        };
+
+        rec.onend = function () {
+            ctxMotorVoz = null;
+            desativarDitadoVisual();
+            if (ctxRecebeuTranscricao) {
+                atualizarStatusDitado('Trecho gravado. Clique em Ditado para continuar ditando.');
+            } else {
+                atualizarStatusDitado('Gravação encerrada. Clique em Ditado e fale outra vez.');
+            }
+        };
+
+        ctxMotorVoz = rec;
+        return rec;
+    }
+
+    function alternarVozCampoContexto(campoId, btn) {
+        if (!btn) {
+            btn = document.querySelector('#modalContextoCliente .btn-voz-campo[data-voz-target="' + campoId + '"]');
+        }
+        if (!btn || btn.style.display === 'none') return;
+
+        var campo = obterCampoTextoContexto(campoId);
+        if (!campo || campo.disabled || campo.readOnly) {
+            mostrarErroCtx('Este campo está bloqueado para edição.');
+            return;
+        }
+
+        if (ctxGravandoVoz && ctxCampoAlvoId === campoId) {
+            pararDitadoContexto(true);
+            atualizarStatusDitado('Ditado pausado.');
+            return;
+        }
+
+        if (ctxGravandoVoz) pararDitadoContexto(true);
+
+        limparErroCtx();
+        ctxCampoAlvoEl = campo;
+        ctxCampoAlvoId = campoId;
+        ctxBtnAtivo = btn;
+        ctxMotorVoz = null;
+
+        var motor = garantirMotorVozContexto();
+        if (!motor) {
+            alert('Ditado por voz não suportado neste navegador. Use Chrome ou Edge.');
+            return;
+        }
+
+        try {
+            campo.focus();
+            motor.start();
+            atualizarStatusDitado('Iniciando ditado...');
+        } catch (err) {
+            console.warn('[ditado contexto] start:', err);
+            ctxMotorVoz = null;
+            motor = garantirMotorVozContexto();
+            if (!motor) return;
+            try {
+                motor.start();
+                atualizarStatusDitado('Iniciando ditado...');
+            } catch (err2) {
+                mostrarErroCtx('Não foi possível iniciar o ditado. Clique novamente no microfone.');
+                pararDitadoContexto(true);
+            }
+        }
+    }
+
+    function inicializarVozCamposContexto() {
+        if (ctxVozInicializado) return;
+        var root = getModalEl();
+        if (!root) return;
+        ctxVozInicializado = true;
+        window.ctxVozInicializado = true;
+
+        root.querySelectorAll('.btn-voz-campo').forEach(function (btn) {
+            btn.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                var target = btn.getAttribute('data-voz-target');
+                if (target) alternarVozCampoContexto(target, btn);
+            });
+        });
+
+        root.addEventListener('hidden.bs.modal', function () {
+            pararDitadoContexto(true);
+        });
+    }
+
+    function inicializarModeradorCampos() {
+        if (ctxModInicializado) return;
+        ctxModInicializado = true;
+        window.ctxModInicializado = true;
+        document.querySelectorAll('#modalContextoCliente .btn-mod-campo').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var campo = btn.getAttribute('data-mod-campo');
+                if (campo) solicitarAnaliseModerador(campo);
+            });
+        });
+    }
+
+    window.abrirModalContextoLeadGeral = async function (dados, bloquearEdicao, modoAdmin, obrigatorio) {
+        dados = dados || null;
+        bloquearEdicao = !!bloquearEdicao;
+        modoAdmin = !!modoAdmin;
+        obrigatorio = !!obrigatorio && !modoAdmin && !bloquearEdicao;
+
+        modalModoAdmin = modoAdmin;
+        modalObrigatorio = obrigatorio;
+        window.modalModoAdmin = modoAdmin;
+        window.modalObrigatorio = obrigatorio;
+
+        var root = getModalEl();
+        if (root) root.classList.toggle('modo-admin', modoAdmin);
+
+        var form = document.getElementById('form-contexto-central');
+        pararDitadoContexto(true);
+        limparFeedbackModerador();
+        if (form) form.reset();
+
+        document.getElementById('box-identificacao-estatica-cliente').style.display = modoAdmin ? 'none' : 'block';
+        document.getElementById('modal-subtitle-central').textContent = modoAdmin
+            ? 'Edição cadastral do cliente no painel administrativo.'
+            : 'Para que nossa IA gere estratégias precisas, conte-nos um pouco sobre a região e o público da sua escola. Este passo é obrigatório para continuar.';
+
+        document.getElementById('btn-save-ctx').style.display = bloquearEdicao ? 'none' : '';
+        document.getElementById('btn-save-ctx').disabled = bloquearEdicao;
+        document.getElementById('btn-cancel-ctx').classList.toggle('d-none', obrigatorio || bloquearEdicao);
+        document.getElementById('btn-close-ctx-only').classList.toggle('d-none', !bloquearEdicao);
+        document.querySelectorAll('#modalContextoCliente .btn-voz-campo, #modalContextoCliente .btn-mod-campo').forEach(function (el) {
+            el.style.display = bloquearEdicao ? 'none' : '';
+        });
+
+        var idClie = dados && (dados.id_clie || dados.id);
+        if (!idClie) {
+            idClie = resolverIdClieContexto();
+            if (idClie && dados) dados.id_clie = idClie;
+        }
+        if (idClie) {
+            try {
+                var resCtx = await fetch('/api/client/context/' + idClie);
+                if (resCtx.ok) {
+                    var fresh = await resCtx.json();
+                    if (fresh && !fresh.error) {
+                        dados = Object.assign({}, dados, fresh);
+                        if (window._leadData && String(window._leadData.id_clie) === String(idClie)) {
+                            Object.assign(window._leadData, fresh);
+                        }
+                    }
+                }
+            } catch (fetchErr) {
+                console.warn('[contexto] Não foi possível recarregar dados do banco:', fetchErr);
+            }
+        }
+
+        if (dados) {
+            preencherFormularioContexto(dados);
+            restaurarModeracoesSalvas(dados);
+        } else {
+            aplicarIdClieNoFormulario(resolverIdClieContexto());
+        }
+
+        var fields = ['empresa_clie','docu_clie','adre_clie','zipn_clie','bairro_clie','cidade_clie','estado_clie','nome_clie','fone_clie','mail_clie','tipo_ensino','qtd_alunos','qtd_colaboradores','qtd_unidades','localizacao_sede','rede_ensino','dados_mercado','dados_etnograficos','clima_organizacional','moderacao_dados_mercado','moderacao_dados_etnograficos','moderacao_clima_organizacional'];
+        fields.forEach(function (id) {
+            var campo = document.getElementById(id);
+            if (campo) campo.disabled = modoAdmin ? false : bloquearEdicao;
+        });
+
+        limparErroCtx();
+        document.getElementById('ctx-success-overlay').classList.remove('show');
+        irParaPasso(1);
+        atualizarConfigModalLock();
+
+        var modal = getBsModal();
+        if (modal) modal.show();
+        else if (root) root.style.display = 'block';
+
+        inicializarVozCamposContexto();
+        inicializarModeradorCampos();
+    };
+
+    window.fecharModalContextoLead = function (forcar) {
+        if (modalObrigatorio && !forcar) return;
+        pararDitadoContexto(true);
+        var modal = getBsModal();
+        if (modal) modal.hide();
+        else {
+            var root = getModalEl();
+            if (root) root.style.display = 'none';
+        }
+    };
+
+    window.montarPayloadContextoCliente = montarPayloadContexto;
+    window.salvarContextoLeadModal = salvarContextoLead;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        inicializarVozCamposContexto();
+        inicializarModeradorCampos();
+
+        var cepInput = document.getElementById('zipn_clie');
+        if (cepInput) {
+            cepInput.addEventListener('input', function () {
+                cepInput.value = mascaraCep(cepInput.value);
+            });
+            cepInput.addEventListener('blur', buscarCep);
+        }
+
+        var btnNext = document.getElementById('btn-ctx-next');
+        if (btnNext) {
+            btnNext.addEventListener('click', function () {
+                limparErroCtx();
+                var err = validarPasso1();
+                if (err) { mostrarErroCtx(err); return; }
+                irParaPasso(2);
+            });
+        }
+        var btnPrev = document.getElementById('btn-ctx-prev');
+        if (btnPrev) btnPrev.addEventListener('click', function () { irParaPasso(1); });
+
+        var btnCancel = document.getElementById('btn-cancel-ctx');
+        if (btnCancel) {
+            btnCancel.addEventListener('click', function () {
+                window.fecharModalContextoLead(false);
+            });
+        }
+        var btnCloseOnly = document.getElementById('btn-close-ctx-only');
+        if (btnCloseOnly) {
+            btnCloseOnly.addEventListener('click', function () {
+                window.fecharModalContextoLead(true);
+            });
+        }
+
+        var form = document.getElementById('form-contexto-central');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (modalModoAdmin && typeof window._ctxSubmitAdmin === 'function') {
+                    window._ctxSubmitAdmin(e);
+                    return;
+                }
+                salvarContextoLead(e);
+            });
+        }
+
+        var modalEl = getModalEl();
+        if (modalEl) {
+            modalEl.addEventListener('hide.bs.modal', function (ev) {
+                if (modalObrigatorio) ev.preventDefault();
+            });
+        }
+    });
+})();
+</script>

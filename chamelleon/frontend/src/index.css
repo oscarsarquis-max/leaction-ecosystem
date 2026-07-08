@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-50 text-slate-800;
+}
+
+.markdown-body h1 {
+  @apply mb-3 mt-6 text-xl font-bold text-chameleon-dark;
+}
+
+.markdown-body h2 {
+  @apply mb-2 mt-5 text-lg font-semibold text-slate-800;
+}
+
+.markdown-body h3 {
+  @apply mb-2 mt-4 text-base font-semibold text-slate-800;
+}
+
+.markdown-body p {
+  @apply mb-3 leading-relaxed text-slate-700;
+}
+
+.markdown-body ul {
+  @apply mb-3 list-disc space-y-1 pl-5 text-slate-700;
+}
+
+.markdown-body ol {
+  @apply mb-3 list-decimal space-y-1 pl-5 text-slate-700;
+}
+
+.markdown-body strong {
+  @apply font-semibold text-slate-900;
+}

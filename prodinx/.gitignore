@@ -1,0 +1,65 @@
+# Dependências
+node_modules/
+.pnp
+.pnp.js
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Variáveis de ambiente e secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build frontend
+frontend/dist/
+
+# Logs e caches
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.cache/
+.parcel-cache/
+.vite/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Testes / cobertura
+coverage/
+.nyc_output/
+.pytest_cache/
+htmlcov/
+
+# Docker (dados locais do contentor)
+banco_de_dados/pgdata/
+
+# Pasta quente JSON — só estrutura e README no Git
+jsonfiles/*.json
+jsonfiles/processados/*
+!jsonfiles/processados/.gitkeep
+jsonfiles/falhas/*
+!jsonfiles/falhas/.gitkeep
+jsonfiles/transitions/
+
+# Backups e temporários
+*.bak
+*.tmp
+*~

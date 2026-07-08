@@ -1,0 +1,117 @@
+<%
+    const idCliente = locals.id_clie
+        || (typeof user_id !== 'undefined' ? user_id : '')
+        || (locals.lead && lead.id_clie)
+        || (locals.user && user.id_clie)
+        || '';
+    const eReadOnly = locals.readOnly || false;
+    const nomeGestor = (locals.user && (user.nome || user.name)) || (locals.lead && lead.nome) || 'Gestor';
+    const qsClie = idCliente ? ('?id_clie=' + idCliente) : '';
+    const urlMatriz = '/planejamento-estrategico' + qsClie;
+    const urlCockpit = '/planejamento-estrategico/cockpit' + qsClie;
+%>
+
+<%- include('partials/eo-view-tabs', { urlMatriz: urlMatriz, urlCockpit: urlCockpit, activeView: 'matriz' }) %>
+
+<div class="main-content" id="estrategia-okrs-page"
+     data-id-clie="<%= idCliente %>"
+     data-read-only="<%= eReadOnly ? '1' : '0' %>"
+     data-autor="<%= nomeGestor %>">
+
+    <section class="eo-hero" aria-label="Matriz estratégica OKR">
+        <div class="eo-hero__top">
+            <div>
+                <h1>Matriz de Estratégia — OKRs</h1>
+                <p>Pilares estratégicos, objetivos de transformação digital e metas reais — visão dinâmica por direcionador.</p>
+            </div>
+            <% if (!eReadOnly) { %>
+            <div class="eo-hero__actions">
+                <button type="button" class="eo-btn eo-btn--gold" id="eo-btn-novo-direc">
+                    <i class="fas fa-plus"></i> Novo direcionador
+                </button>
+            </div>
+            <% } %>
+        </div>
+        <div class="eo-kpis" id="eo-kpis" aria-live="polite">
+            <div class="eo-kpi"><strong id="eo-stat-direc">—</strong><span>Direcionadores</span></div>
+            <div class="eo-kpi"><strong id="eo-stat-obj">—</strong><span>Objetivos TD</span></div>
+            <div class="eo-kpi"><strong id="eo-stat-fixos">—</strong><span>Pilares PanelDX</span></div>
+            <div class="eo-kpi"><strong id="eo-stat-progresso">—</strong><span>Evolução média</span></div>
+        </div>
+    </section>
+
+    <div id="eo-accordion" class="eo-accordion">
+        <div class="eo-empty">Carregando matriz estratégica…</div>
+    </div>
+</div>
+
+<!-- Modal detalhe objetivo / KRs -->
+<div class="eo-modal" id="eo-detalhe-modal" role="dialog" aria-modal="true" aria-labelledby="eo-modal-title" hidden>
+    <div class="eo-modal__panel">
+        <div class="eo-modal__head">
+            <div>
+                <div class="eo-modal__path" id="eo-modal-path"></div>
+                <h2 class="eo-modal__title" id="eo-modal-title"></h2>
+            </div>
+            <button type="button" class="eo-modal__close" data-close-modal aria-label="Fechar">&times;</button>
+        </div>
+        <div class="eo-modal__nivel eo-modal__nivel--readonly">
+            <div class="eo-modal__nivel-label">Nível de implementação</div>
+            <div id="eo-modal-progress-summary" class="eo-modal__progress-summary" aria-live="polite"></div>
+            <p class="eo-modal__hint">Calculado automaticamente pelas atividades concluídas nas sprints vinculadas aos KRs.</p>
+        </div>
+        <div id="eo-krs-container"></div>
+        <div class="eo-modal__footer">
+            <button type="button" class="eo-btn eo-btn--ghost" data-close-modal>Cancelar</button>
+            <button type="button" class="eo-btn eo-btn--primary" id="eo-modal-save">Salvar alterações</button>
+        </div>
+    </div>
+</div>
+
+<% if (!eReadOnly) { %>
+<!-- Modal direcionador -->
+<div class="eo-modal" id="eo-modal-direc" hidden>
+    <div class="eo-modal__panel eo-modal__panel--form">
+        <div class="eo-modal__head">
+            <h2 class="eo-modal__title" id="eo-direc-titulo"><i class="fas fa-bullseye"></i> Novo direcionador</h2>
+            <button type="button" class="eo-modal__close" data-close-direc aria-label="Fechar">&times;</button>
+        </div>
+        <form id="eo-form-direc">
+            <input type="hidden" id="eo-direc-id-edit" value="">
+            <label class="eo-field">Título *<input type="text" id="eo-direc-nome" required></label>
+            <label class="eo-field">Descrição<textarea id="eo-direc-desc" rows="3"></textarea></label>
+            <label class="eo-field">KPI global *<input type="text" id="eo-direc-kpi" required placeholder="Ex.: Taxa de digitalização de processos"></label>
+            <div class="eo-field-row">
+                <label class="eo-field">Meta receita (R$)<input type="text" id="eo-direc-receita" value="R$ 0,00" data-moeda></label>
+                <label class="eo-field">Meta custo (R$)<input type="text" id="eo-direc-custo" value="R$ 0,00" data-moeda></label>
+            </div>
+            <div class="eo-modal__footer">
+                <button type="button" class="eo-btn eo-btn--ghost" data-close-direc>Cancelar</button>
+                <button type="submit" class="eo-btn eo-btn--primary" id="eo-direc-submit">Salvar direcionador</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal objetivo -->
+<div class="eo-modal" id="eo-modal-obj" hidden>
+    <div class="eo-modal__panel eo-modal__panel--form">
+        <div class="eo-modal__head">
+            <h2 class="eo-modal__title"><i class="fas fa-laptop-code"></i> Novo objetivo de TD</h2>
+            <button type="button" class="eo-modal__close" data-close-obj aria-label="Fechar">&times;</button>
+        </div>
+        <form id="eo-form-obj">
+            <input type="hidden" id="eo-obj-id-direc" value="">
+            <label class="eo-field">Objetivo *<input type="text" id="eo-obj-nome" required></label>
+            <label class="eo-field">Detalhamento<textarea id="eo-obj-desc" rows="3"></textarea></label>
+            <label class="eo-field">KPI digital *<input type="text" id="eo-obj-kpi" required></label>
+            <div class="eo-modal__footer">
+                <button type="button" class="eo-btn eo-btn--ghost" data-close-obj>Cancelar</button>
+                <button type="submit" class="eo-btn eo-btn--primary">Vincular objetivo</button>
+            </div>
+        </form>
+    </div>
+</div>
+<% } %>
+
+<div class="eo-toast" id="eo-toast" role="status" aria-live="polite"></div>

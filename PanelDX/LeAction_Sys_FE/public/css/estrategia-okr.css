@@ -1,0 +1,69 @@
+/* Hierarquia OKR — Direcionador → Objetivo → KRs */
+.estrategia-okr-hierarchy {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #4A2E80;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+}
+
+.estrategia-okr-hierarchy__label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.estrategia-okr-hierarchy__path {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.92rem;
+    line-height: 1.4;
+}
+
+.estrategia-okr-hierarchy__direc {
+    font-weight: 700;
+    color: #4A2E80;
+}
+
+.estrategia-okr-hierarchy__sep {
+    font-size: 0.65rem;
+    color: #94a3b8;
+}
+
+.estrategia-okr-hierarchy__obj {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.estrategia-okr-hierarchy__krs {
+    margin: 10px 0 0;
+    padding-left: 18px;
+    font-size: 0.82rem;
+    color: #475569;
+}
+
+.estrategia-okr-hierarchy__kr-meta {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #7c3aed;
+    margin-right: 4px;
+}
+
+.action-card__okr {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #e2e8f0;
+    font-size: 0.8rem;
+    color: #475569;
+}
+
+.action-card__okr strong {
+    color: #4A2E80;
+}

@@ -1,0 +1,110 @@
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-black text-gray-900">Dashboard de Resultados</h1>
+                    <p class="text-gray-500 mt-2">Evolução da Maturidade Digital - Projeto <%= lead.nome %></p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <span class="bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-bold">
+                        ID MATURIDADE: #<%= lead.id_matu %>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                    <i class="fas fa-chart-pie mr-2 text-blue-500"></i> Comparativo de Dimensões
+                </h3>
+                <div class="relative" style="height: 400px;">
+                    <canvas id="radarMaturidade"></canvas>
+                </div>
+                <p class="text-xs text-gray-400 mt-4 italic text-center">
+                    * O gráfico compara o Estado Atual (Diagnóstico) com o Estado Desejado (Ambição).
+                </p>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-center">
+                    <div class="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center text-green-600 mr-6">
+                        <i class="fas fa-check-double text-2xl"></i>
+                    </div>
+                    <div>
+                        <span class="text-sm text-gray-400 font-bold uppercase">Progresso do Plano</span>
+                        <div class="text-3xl font-black text-gray-800">20%</div>
+                        <div class="w-full bg-gray-100 h-2 rounded-full mt-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: 20%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-center">
+                    <div class="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 mr-6">
+                        <i class="fas fa-bolt text-2xl"></i>
+                    </div>
+                    <div>
+                        <span class="text-sm text-gray-400 font-bold uppercase">Gaps em Resolução</span>
+                        <div class="text-3xl font-black text-gray-800">05 / 12</div>
+                        <p class="text-xs text-gray-500 mt-1">Baseado nas Sprints da Onda 1 e 2.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                    <h4 class="font-bold text-gray-800 mb-4 text-sm uppercase">Próximo Marco (Milestone)</h4>
+                    <div class="border-l-4 border-blue-500 pl-4">
+                        <p class="text-gray-900 font-bold">Conclusão da Onda 1</p>
+                        <p class="text-sm text-gray-500">Fundação de Estratégia e Visão Compartilhada concluída.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('radarMaturidade').getContext('2d');
+
+        // Simulando dados vindo do id_matu (Estado Atual vs Estado Futuro)
+        new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['Visão', 'Coração', 'Estrutura', 'Aprendizagem', 'Arquitetura'],
+                datasets: [{
+                    label: 'Estado Atual',
+                    data: [2.5, 1.8, 3.0, 2.2, 1.5],
+                    fill: true,
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgb(54, 162, 235)',
+                    pointBackgroundColor: 'rgb(54, 162, 235)',
+                    pointBorderColor: '#fff'
+                }, {
+                    label: 'Estado Desejado',
+                    data: [4.5, 4.0, 4.2, 4.5, 4.8],
+                    fill: true,
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgb(255, 99, 132)',
+                    pointBackgroundColor: 'rgb(255, 99, 132)',
+                    pointBorderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { display: true },
+                        suggestedMin: 0,
+                        suggestedMax: 5
+                    }
+                }
+            }
+        });
+    });
+</script>

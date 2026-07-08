@@ -1,0 +1,10 @@
+﻿{
+  "instance_id": "i-0ad6acb46bfcceb90",
+  "allocation_id": "eipalloc-0a55e7db3efde1c1e",
+  "public_ip": "18.227.125.118",
+  "domain": "chamelleon.com.br",
+  "www_domain": "www.chamelleon.com.br",
+  "region": "us-east-2",
+  "key_name": "paneldx-bastion-key",
+  "created_at": "2026-07-06T22:09:00.0000000-03:00"
+}

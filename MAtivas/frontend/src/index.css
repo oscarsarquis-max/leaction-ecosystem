@@ -1,0 +1,1290 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Paleta oficial — Metodologias INOV-ativas */
+  --color-primary: #4f46e5;        /* Roxo/Índigo — botões, ícones, títulos */
+  --color-primary-dark: #3b28cc;   /* Roxo escuro — hover / botões de ação */
+  --color-primary-soft: #f3f0ff;   /* Lavanda suave — fundos de cards/destaques */
+  --color-secondary: #e11d48;      /* Vermelho/Magenta — destaque da marca "INOV" */
+
+  --color-bg: #ffffff;             /* Fundo branco limpo da tela */
+  --color-surface: #ffffff;        /* Superfície de cards */
+  --color-surface-alt: #f8f9fa;    /* Cinza muito suave para cards alternativos */
+
+  --color-text: #333333;           /* Cinza escuro para leitura */
+  --color-muted: #6b7280;          /* Texto secundário */
+  --color-border: #e9e7f5;         /* Bordas sutis com leve tom lavanda */
+
+  --radius: 12px;
+  --radius-lg: 16px;
+  --shadow: 0 4px 16px rgba(79, 70, 229, 0.08);
+  --shadow-soft: 0 2px 8px rgba(51, 51, 51, 0.05);
+  --max-width: 480px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  line-height: 1.55;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ---------- Layout mobile-first ---------- */
+.app-shell {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  min-height: 100%;
+  background: var(--color-bg);
+  padding: 20px 18px 48px;
+  display: flex;
+  flex-direction: column;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fade-in 0.25s ease;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Logo / marca ---------- */
+.brand-wrap {
+  display: inline-flex;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.brand-logo {
+  display: block;
+  height: 52px;
+  width: auto;
+  max-width: min(220px, 58vw);
+  object-fit: contain;
+  object-position: left center;
+}
+
+.brand-text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+  gap: 2px;
+}
+
+.brand-top {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  letter-spacing: 0.01em;
+}
+
+.brand-mid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.brand-pill {
+  background: var(--color-secondary);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-weight: 800;
+}
+
+.brand-ativas {
+  color: var(--color-primary);
+}
+
+.brand-bottom {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--color-primary);
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+/* Login administrativo visível no cabeçalho */
+.admin-login {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.admin-login-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+
+.admin-login-input {
+  width: 100%;
+  min-width: 7.5rem;
+  max-width: 9rem;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-login-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.admin-login-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.admin-login-btn:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.admin-login-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.admin-login--erro .admin-login-input {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.admin-login--shake {
+  animation: admin-gate-shake 0.4s ease;
+}
+
+.admin-login-erro {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #dc2626;
+  text-align: right;
+  max-width: 9rem;
+  line-height: 1.3;
+}
+
+@keyframes admin-gate-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+/* ---------- Painel admin (fallback + layout full-width) ---------- */
+.admin-root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.admin-panel {
+  min-height: 100vh;
+  background: #f8fafc;
+  color: #1e293b;
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+}
+
+.admin-panel header {
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.admin-panel .admin-header-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.admin-panel .admin-header-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  line-height: 1.2;
+}
+
+.admin-panel .admin-header-subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
+.admin-panel .admin-inner {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem;
+}
+
+.admin-panel .admin-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.admin-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.admin-panel th,
+.admin-panel td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.admin-panel th {
+  background: #f8fafc;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.admin-panel input,
+.admin-panel select,
+.admin-panel button[type='submit'] {
+  font-family: inherit;
+  font-size: 0.875rem;
+}
+
+.admin-panel input,
+.admin-panel select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.admin-panel .admin-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.admin-panel .admin-tab {
+  flex: 1;
+  padding: 0.625rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-panel .admin-tab.active {
+  background: #4f46e5;
+  color: #fff;
+}
+
+/* botão voltar */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 6px 4px;
+}
+
+/* ---------- Tipografia ---------- */
+.page-title {
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--color-primary-dark);
+}
+
+.page-subtitle {
+  font-size: 0.98rem;
+  color: var(--color-muted);
+}
+
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-primary);
+}
+
+/* ---------- Cartões ---------- */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card-soft {
+  background: var(--color-primary-soft);
+  border: none;
+}
+
+.card-alt {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+/* ---------- Botões ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 18px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  transition: transform 0.05s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+.btn:active {
+  transform: scale(0.99);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-primary-dark);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary);
+}
+
+.btn-outline {
+  background: #fff;
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary);
+}
+
+.link-subtle {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.92rem;
+  font-weight: 600;
+  width: auto;
+  align-self: center;
+  padding: 6px;
+}
+
+/* caixa roxa clara com lâmpada (link p/ exemplo) */
+.hint-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 14px;
+  color: var(--color-primary-dark);
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.hint-box .icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+/* ---------- Botão de áudio (microfone grande) ---------- */
+.audio-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  border: 1.5px dashed var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-weight: 700;
+  text-align: center;
+}
+
+.audio-btn.recording {
+  border-style: solid;
+  background: #fdecef;
+  border-color: var(--color-secondary);
+  color: var(--color-secondary);
+}
+
+.audio-error {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--color-secondary);
+  text-align: center;
+}
+
+/* ---------- Racional / justificativa da metodologia ---------- */
+.contexto-lista {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.contexto-lista li + li {
+  margin-top: 4px;
+}
+
+.contexto-roteiro {
+  margin-bottom: 12px;
+}
+
+.rationale {
+  margin: 14px 0 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-border);
+}
+
+.rationale-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--color-primary-dark);
+  margin-bottom: 6px;
+}
+
+.rationale-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.audio-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--color-primary);
+  box-shadow: var(--shadow);
+}
+
+.audio-btn.recording .audio-circle {
+  color: var(--color-secondary);
+}
+
+/* ---------- Formulários ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: #fff;
+  color: var(--color-text);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
+.textarea-wrap {
+  position: relative;
+}
+
+.char-count {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  background: #fff;
+  padding: 0 4px;
+}
+
+/* ---------- Chips de seleção rápida (cards lado a lado) ---------- */
+.chip-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.chip-grid--duo {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.chip-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.chip-card .icon {
+  color: var(--color-primary);
+}
+
+.chip-card.selected {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+}
+
+.chip-ico {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip-ico.purple {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.chip-ico.pink {
+  background: #fde7ee;
+  color: var(--color-secondary);
+}
+
+.chip-ico.blue {
+  background: #e6effd;
+  color: #3b82f6;
+}
+
+/* título de card com ícone (ex.: "Conte seu desafio") */
+.challenge-card .section-label {
+  margin-bottom: 2px;
+}
+
+/* faixa do livro de referência na Home */
+.book-strip {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+}
+
+.book-strip-cover {
+  width: 60px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.book-strip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.book-strip-title {
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+/* ---------- Divisor ---------- */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* ---------- Opções rádio / checkbox ---------- */
+.option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 0.95rem;
+}
+
+.option.checked {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.option input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+/* ---------- Perguntas numeradas (Resultado) ---------- */
+.numbered {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.num-badge {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.numbered .field {
+  flex: 1;
+}
+
+/* ---------- Cabeçalho do card de roteiro ---------- */
+.roteiro-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.roteiro-head-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.roteiro-head-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  line-height: 1.2;
+}
+
+.roteiro-head-sub {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+}
+
+/* ---------- Passos do roteiro ---------- */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.step-index {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.step-icon {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-icon.purple {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.step-icon.pink {
+  background: #fde7ee;
+  color: var(--color-secondary);
+}
+
+.step-icon.blue {
+  background: #e6effd;
+  color: #3b82f6;
+}
+
+.step-icon.green {
+  background: #e3f5ea;
+  color: #16a34a;
+}
+
+.step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.steps-heading {
+  margin: 20px 0 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.step-title {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.step-desc {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+}
+
+/* ---------- Banners / avisos ---------- */
+.notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.86rem;
+  color: var(--color-muted);
+}
+
+.notice .icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.email-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-primary-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.9rem;
+  color: var(--color-primary-dark);
+}
+
+.email-banner .icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+/* ---------- CTA do livro ---------- */
+.book-cta {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  background: linear-gradient(135deg, #4f46e5, #3b28cc);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: left;
+  width: 100%;
+}
+
+.book-cover {
+  flex-shrink: 0;
+  width: 52px;
+  height: 70px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.book-cta-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.book-cta-title {
+  font-weight: 700;
+}
+
+.book-cta-sub {
+  font-size: 0.85rem;
+  opacity: 0.92;
+}
+
+/* ---------- Metodologia ---------- */
+.methodology {
+  border-left: 4px solid var(--color-primary);
+}
+
+.methodology-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.methodology-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+}
+
+.muted {
+  color: var(--color-muted);
+  font-size: 0.92rem;
+}
+
+/* ---------- Estados de carregamento / erro ---------- */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+.error-notice {
+  background: #fdecef;
+  border-color: #f6c2cd;
+  color: #b33;
+}
+
+.error-notice .icon {
+  color: var(--color-secondary);
+}
+
+.feedback-ok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #e3f5ea;
+  color: #16a34a;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.feedback-erro {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* ---------- Roteiro: layout em colunas ---------- */
+.roteiro-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+.roteiro-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.roteiro-intro p {
+  color: var(--color-muted);
+}
+
+.capa-livro {
+  width: 100%;
+  max-width: 220px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  align-self: flex-start;
+}
+
+/* Em telas largas, duas colunas lado a lado */
+@media (min-width: 720px) {
+  .app-shell {
+    max-width: 860px;
+  }
+
+  .roteiro-grid {
+    grid-template-columns: 1fr 1.2fr;
+    align-items: start;
+  }
+}
+
+/* ---------- Banner "Conheça o livro" ---------- */
+.book-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: #fdf1ec;
+  border: 1px solid #f6d9cd;
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+
+.book-banner-icon {
+  flex-shrink: 0;
+  color: var(--color-secondary);
+}
+
+.book-banner p {
+  flex: 1;
+  min-width: 180px;
+  font-size: 0.95rem;
+  color: #6b4a3f;
+}
+
+.book-banner .book-title {
+  color: var(--color-secondary);
+  font-weight: 800;
+}
+
+.btn-secondary {
+  background: var(--color-secondary);
+  color: #fff;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #be123c;
+}
+
+.btn-inline {
+  width: auto;
+  flex-shrink: 0;
+}
+
+/* ---------- Seção de feedback ---------- */
+.feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+
+.feedback-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.feedback-circle {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-primary-dark);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feedback-title {
+  font-weight: 800;
+  color: var(--color-primary-dark);
+}
+
+.feedback-sub {
+  font-size: 0.88rem;
+  color: var(--color-muted);
+}
+
+.feedback-form {
+  display: flex;
+  gap: 8px;
+}
+
+.feedback-form .input {
+  flex: 1;
+}
+
+.icon-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-primary-dark);
+  color: #fff;
+  transition: background 0.2s ease;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--color-primary);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Rodapé da autora ---------- */
+.author {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 0 4px;
+  border-top: 1px solid var(--color-border);
+  margin-top: 4px;
+}
+
+.author-photo {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--color-primary-soft);
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
+}
+
+.author-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+}
+
+.author-thanks {
+  font-size: 0.95rem;
+  color: var(--color-muted);
+}
+
+.author-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+}
+
+.author-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---------- Livro: capa ao lado da pergunta ---------- */
+.livro-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.livro-capa {
+  width: 96px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.livro-head .page-title {
+  font-size: 1.25rem;
+}
+
+/* fallback caso a imagem não carregue */
+.img-fallback {
+  background: var(--color-primary-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}

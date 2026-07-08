@@ -1,0 +1,274 @@
+@import url('/css/mesa-inovacao.css?v=6');
+
+.admin-usuarios {
+    max-width: 1100px;
+}
+
+.admin-usuarios__toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.admin-usuarios__filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.admin-usuarios__search-wrap {
+    position: relative;
+    flex: 1 1 240px;
+    min-width: 200px;
+    max-width: 420px;
+}
+
+.admin-usuarios__search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--wb-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.admin-usuarios__search-input {
+    width: 100%;
+    padding-left: 36px !important;
+    padding-right: 36px !important;
+}
+
+.admin-usuarios__search-clear {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: var(--wb-muted);
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    line-height: 1;
+}
+
+.admin-usuarios__search-clear:hover {
+    background: #e2e8f0;
+    color: var(--dark-lilac);
+}
+
+.admin-usuarios__filter-role,
+.admin-usuarios__filter-empresa {
+    flex: 0 1 200px;
+    min-width: 160px;
+}
+
+.admin-usuarios__empresa-cell {
+    font-size: 0.8rem;
+    color: #475569;
+    max-width: 220px;
+}
+
+.admin-usuarios__empresa-cell--empty {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.admin-usuarios__empresa-tag {
+    display: inline-block;
+    margin-top: 2px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.admin-usuarios__filter-inativos {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--wb-muted);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.admin-usuarios__filter-inativos input {
+    accent-color: var(--dark-lilac);
+}
+
+.admin-usuarios__result-count {
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--wb-muted);
+    white-space: nowrap;
+}
+
+.admin-usuarios__highlight {
+    background: #fef08a;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+.admin-usuarios__table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.admin-usuarios__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+}
+
+.admin-usuarios__table th {
+    text-align: left;
+    padding: 12px 14px;
+    background: #f8fafc;
+    color: var(--dark-lilac);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--wb-border);
+}
+
+.admin-usuarios__table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.admin-usuarios__table tr:hover td {
+    background: #fafafa;
+}
+
+.admin-usuarios__empty {
+    text-align: center;
+    color: var(--wb-muted);
+    padding: 28px !important;
+}
+
+.admin-usuarios__badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.admin-usuarios__badge--sysadmin { background: #fee2e2; color: #991b1b; }
+.admin-usuarios__badge--led { background: #fef3c7; color: #92400e; }
+.admin-usuarios__badge--consultor { background: #e0f2fe; color: #075985; }
+.admin-usuarios__badge--executor { background: #ede9fe; color: #5b21b6; }
+
+.admin-usuarios__status--ativo { color: #15803d; font-weight: 700; }
+.admin-usuarios__status--inativo { color: #94a3b8; font-weight: 700; }
+
+.admin-usuarios__row-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.admin-usuarios__icon-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: background 0.12s;
+}
+
+.admin-usuarios__icon-btn:hover {
+    background: #f1f5f9;
+}
+
+.admin-usuarios__icon-btn--edit { color: #d97706; }
+.admin-usuarios__icon-btn--off { color: #dc2626; }
+
+.admin-usuarios__modal-card {
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.admin-usuarios .admin-esim__field {
+    margin-bottom: 14px;
+}
+
+.admin-usuarios .admin-esim__field .pwd-field {
+    width: 100%;
+}
+
+.admin-usuarios .admin-esim__field .pwd-field .mesa-input,
+.admin-usuarios .admin-esim__field .pwd-field .pwd-field__input {
+    width: 100%;
+}
+
+.admin-usuarios .admin-esim__field label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--dark-lilac);
+    margin-bottom: 6px;
+}
+
+.admin-usuarios .admin-esim__modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+}
+
+.admin-usuarios__toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    padding: 12px 18px;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    max-width: min(420px, 90vw);
+}
+
+.admin-usuarios__toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.admin-usuarios__toast.is-error {
+    background: #dc2626;
+}
+
+.admin-usuarios__toast.is-success {
+    background: #4A2E80;
+}

@@ -1,0 +1,458 @@
+<div class="main-content" id="evaluation-page">
+    <div class="form-container">
+        <%
+           // 1. CAPTURA O STATUS BUSCANDO EM MÚLTIPLOS ESCOPOS PARA GARANTIR SEGURANÇA
+           let statusIA_Raw = "";
+           if (typeof maturityData !== 'undefined' && maturityData && maturityData.status_ia) {
+               statusIA_Raw = maturityData.status_ia;
+           } else if (locals.lead && lead.status_ia) {
+               statusIA_Raw = lead.status_ia;
+           } else if (locals.status_ia) {
+               statusIA_Raw = locals.status_ia;
+           }
+
+           const statusIA = statusIA_Raw.toString().trim().toUpperCase();
+
+           // 2. REGRA DE DESTRAVAMENTO SEQUENCIAL NATIVO
+           // Se o status for 'AGUARDANDO CONTEXTO' ou 'PENDENTE', o modoRestrito é TRUE (trava tudo).
+           // O modo restrito cai (vira false) se o status for CONTEXTO OK, AVALIACAO OK, etc.
+           const modoRestrito = statusIA === 'AGUARDANDO CONTEXTO' || statusIA === 'PENDENTE' || (!statusIA.includes('CONTEXTO') && !statusIA.includes('AVALIACAO') && !statusIA.includes('CONCLU'));
+        %>
+
+        <style>
+
+            #evaluation-page {
+                padding-top: 30px !important; /* Espaço entre a barra de progresso e o título */
+            }
+
+            /* Espaçador de segurança no topo do formulário */
+            #evaluationForm {
+                margin-top: 20px;
+            }
+
+            /* 1. WIZARD (ABAS SUPERIORES) */
+            /* Fixa as Abas (Como estou agora, 1. Educação...) logo abaixo da barra de progresso */
+            .wizard-progress {
+                position: sticky;
+                top: 114px; /* 108px (Headers) + 6px (Barra de Progresso) */
+                z-index: 1001; /* Alterado de 1000 para 1001 para criar uma barreira opaca protetora acima do questionário (1) e abaixo da barra de progresso (1002) */
+                background: #ffffff; /* Alterado de #f8fafc para #ffffff 100% opaco para impedir que as questões apareçam por trás ao rolar */
+                padding: 15px;
+                border-bottom: 2px solid #e2e8f0; /* Ajustado levemente para dar melhor acabamento volumétrico */
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); /* Injetado sutilmente para destacar a flutuação fixa durante o scroll */
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+            }
+            .step-indicator {
+                flex: 1;
+                text-align: center;
+                padding: 8px;
+                font-size: 0.85rem;
+                color: #94a3b8;
+                font-weight: 600;
+                border-bottom: 3px solid #e2e8f0;
+                transition: all 0.3s;
+                cursor: pointer;
+            }
+            .step-indicator.active {
+                color: #4c51bf;
+                border-bottom-color: #4c51bf;
+                font-weight: bold;
+            }
+
+            /* Trava visual para abas bloqueadas */
+            .step-indicator.locked {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            .step-indicator.locked::after {
+                content: " \f023";
+                font-family: "Font Awesome 5 Free";
+                font-weight: 900;
+                font-size: 0.7rem;
+            }
+
+            /* 2. ESTRUTURA DAS QUESTÕES */
+            .question-item {
+                position: relative; /* Define um contexto de camada */
+                z-index: 1;         /* Garante que fique abaixo do z-index 1000 e 1001 */
+                border-bottom: 2px solid #cbd5e1;
+                padding: 25px 15px;
+                margin-bottom: 0;
+                transition: all 0.3s ease;
+                background: #fff; /* Fundo sólido para não ser transparente ao rolar */
+            }
+
+
+
+            /* Efeito visual ao focar na pergunta */
+            .question-item:focus-within {
+                border-left: 6px solid #4c51bf;
+                background-color: #fcfdff;
+            }
+
+            /* Efeito de Destaque: Quando o usuário clica em uma opção, a borda esquerda muda */
+            .question-item:focus-within {
+                border-left: 6px solid #4c51bf;
+                background-color: #f8fafc;
+                box-shadow: inset 0 0 10px rgba(0,0,0,0.02);
+            }
+
+            .question-item:last-of-type {
+                border-bottom: none;
+            }
+
+            .question-item h4 {
+                color: #1e293b;
+                font-size: 1.1rem;  /* Levemente maior para destaque */
+                margin-bottom: 15px;
+                line-height: 1.5;
+                font-weight: 600;
+            }
+
+            /* 3. GRADE DE RESPOSTAS COMPACTA */
+            .rubricas-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px 20px;
+                margin-top: 10px;
+            }
+
+            .rubrica-option {
+                display: flex;
+                align-items: center;
+                cursor: pointer;
+                position: relative;
+                padding: 4px 0;
+            }
+
+            .rubrica-option input {
+                margin-right: 8px;
+                width: 16px;
+                height: 16px;
+                cursor: pointer;
+                flex-shrink: 0;
+            }
+
+            .label-text {
+                font-size: 0.88rem;
+                color: #475569;
+                line-height: 1.2;
+            }
+
+            /* Campo Qualitativo */
+            .qualitative-box {
+                margin-top: 15px;
+                padding: 12px;
+                background: #f1f5f9;
+                border-radius: 8px;
+                border: 1px dashed #cbd5e1;
+            }
+            .quali-textarea {
+                width: 100%;
+                min-height: 80px;
+                padding: 10px;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                font-family: inherit;
+                font-size: 0.9rem;
+                resize: vertical;
+            }
+
+            /* 4. TOOLTIP */
+            .rubrica-tooltip {
+                visibility: hidden;
+                width: 320px;
+                background-color: #1e293b;
+                color: #ffffff;
+                text-align: left;
+                border-radius: 6px;
+                padding: 12px;
+                position: absolute;
+                z-index: 100;
+                bottom: 125%;
+                left: 0;
+                opacity: 0;
+                        transition: opacity 0.2s;
+                font-size: 0.8rem;
+                line-height: 1.4;
+                pointer-events: none;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+            }
+
+            .rubrica-option:hover .rubrica-tooltip {
+                visibility: visible;
+                opacity: 1;
+            }
+
+            /* Botões */
+            .submit-btn {
+                padding: 10px 20px;
+                border-radius: 6px;
+                border: none;
+                cursor: pointer;
+                font-weight: bold;
+                background-color: #4c51bf;
+                color: white;
+                transition: all 0.3s;
+            }
+            .submit-btn:disabled {
+                background-color: #cbd5e1;
+                cursor: not-allowed;
+            }
+
+            /* Botão de Conversão Estilo Gênese */
+            .btn-conversion {
+                background: linear-gradient(135deg, #d4af37 0%, #f1c40f 100%);
+                color: #000 !important;
+                padding: 12px 30px;
+                font-size: 1.1rem;
+                box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+            }
+            .btn-conversion:hover {
+                transform: scale(1.03);
+            }
+
+            /* MODAL FIX */
+            #modalContexto {
+                display: none;
+                position: fixed;
+                z-index: 9999;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.6);
+                overflow-y: auto;
+            }
+            .modal-content-wrap {
+                background-color: white;
+                margin: 5% auto;
+                padding: 25px;
+                width: 50%;
+                border-radius: 12px;
+            }
+
+            .step-indicator.locked {
+                opacity: 0.5;
+                cursor: not-allowed;
+                pointer-events: none; /* Trava o clique */
+            }
+        </style>
+
+        <h2><%= modoRestrito ? 'Diagnóstico Inicial de Maturidade' : 'Questionário de Avaliação de Maturidade' %></h2>
+
+        <div class="wizard-progress">
+            <div class="step-indicator active" data-step="0">Como Estou Agora?</div>
+            <div class="step-indicator <%= modoRestrito ? 'locked' : '' %>" data-step="1">1. Educação</div>
+            <div class="step-indicator <%= modoRestrito ? 'locked' : '' %>" data-step="2">2. Estratégia/Pessoas</div>
+            <div class="step-indicator <%= modoRestrito ? 'locked' : '' %>" data-step="3">3. Estrutura/Tecnologia</div>
+            <div class="step-indicator <%= modoRestrito ? 'locked' : '' %>" data-step="4">4. Visão Geral</div>
+        </div>
+
+        <form id="evaluationForm" data-maturity-id="<%= maturityData.id_matu %>" data-restricted="<%= modoRestrito %>">
+            <% if (questions && questions.length > 0) { %>
+                <%
+                   let visualNumber = 1;
+                   const renderQuestion = (question) => {
+                       const rawPrefu = (question.prefu_ques || '').toString().trim().toUpperCase();
+                       const tipoText = (rawPrefu === 'P') ? 'Pres' : 'Fut';
+
+                       const saved = savedAnswers[question.id_ques] || { grad: null, text: '' };
+
+                       const temRubricas = question.rubricas && question.rubricas.length > 0;
+                       const isPreSurvey = question.presurvey_ques === true || question.presurvey_ques === 'true';
+                       const instrucaoQuali = question.quali_ques && question.quali_ques.trim() !== '';
+                %>
+                    <div class="question-item"
+                         data-question-id="<%= question.id_ques %>"
+                         data-dim-id="<%= question.id_dime %>"
+                         data-doma-id="<%= question.id_doma %>"
+                         data-prefu="<%= rawPrefu %>">
+
+                        <h4><%= visualNumber++ %>. <%= question.desc_ques %>
+                            <span style="font-weight: normal; color: #64748b; font-size: 0.75rem;">[<%= tipoText %>]</span>
+                        </h4>
+
+                        <% if (temRubricas) { %>
+                        <div class="rubricas-grid">
+                            <% question.rubricas.forEach(rubrica => { %>
+                                <label class="rubrica-option">
+                                    <input type="radio"
+                                           name="question-<%= question.id_ques %>"
+                                           value="<%= rubrica.grad_rubr %>"
+                                           <%= (saved.grad == rubrica.grad_rubr) ? 'checked' : '' %>
+                                           required>
+                                    <span class="label-text"><%= rubrica.label_rubr %></span>
+                                    <div class="rubrica-tooltip">
+                                        <strong><%= rubrica.label_rubr %>:</strong><br>
+                                        <%= rubrica.desc_rubr %>
+                                    </div>
+                                </label>
+                            <% }); %>
+
+                            <label class="rubrica-option">
+                                <input type="radio" name="question-<%= question.id_ques %>" value="na" <%= (saved.grad === null && saved.hasAnswer) ? 'checked' : '' %>>
+                                <span class="label-text" style="color: #94a3b8; font-style: italic;">N/A (Não se aplica)</span>
+                                <div class="rubrica-tooltip">Informação indisponível ou processo inexistente.</div>
+                            </label>
+                        </div>
+                        <% } %>
+
+                        <%
+                           if (!isPreSurvey && (!temRubricas || instrucaoQuali)) {
+                        %>
+                            <div class="qualitative-box">
+                                <label style="font-size: 0.85rem; font-weight: bold; color: #4c51bf; display: block; margin-bottom: 5px;">
+                                    <i class="fas fa-edit"></i> Evidências e Contexto:
+                                    <span style="font-weight: normal; color: #64748b; font-style: italic;">
+                                        (Palavras-chave: <%= question.insight_chave || 'Geral' %>)
+                                    </span>
+                                </label>
+                                <% if (instrucaoQuali) { %>
+                                    <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 8px;"><%= question.quali_ques %></p>
+                                <% } %>
+                                <textarea
+                                    name="quali_ques-<%= question.id_ques %>"
+                                    class="quali-textarea"
+                                    placeholder="Descreva aqui os detalhes práticos para análise da IA..."><%= saved.text %></textarea>
+                            </div>
+                        <% } %>
+                    </div>
+                <% } %>
+
+                <div class="wizard-step active" id="step-0">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem; color: #4c51bf;">Diagnóstico Inicial (Pre-Survey)</h3>
+                    <% questions.filter(q => q.presurvey_ques === true || q.presurvey_ques === 'true').forEach(renderQuestion); %>
+
+                    <div style="text-align:right; margin-top: 25px;">
+                        <% if (modoRestrito) { %>
+                            <button type="button" class="submit-btn btn-conversion"
+                                    onclick="finalizarEGerarDiagnosticoInicial('<%= maturityData.id_matu %>')">
+                                <i class="fas fa-magic"></i> FINALIZAR E GERAR DIAGNÓSTICO PRELIMINAR &rarr;
+                            </button>
+                        <% } else { %>
+                            <button type="button" class="next-btn submit-btn">Próximo Passo</button>
+                        <% } %>
+                    </div>
+                </div>
+
+                <div class="wizard-step" id="step-1" style="display:none;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem;">1. Aprendizagem em Ação</h3>
+                    <% questions.filter(q => {
+                        const isPS = q.presurvey_ques === true || q.presurvey_ques === 'true';
+                        return !isPS && Number(q.id_dime) === 4;
+                    }).forEach(renderQuestion); %>
+                    <div style="display:flex; justify-content:space-between; margin-top: 25px;">
+                        <button type="button" class="prev-btn submit-btn" style="background:#64748b;">Anterior</button>
+                        <button type="button" class="next-btn submit-btn">Próximo Passo</button>
+                    </div>
+                </div>
+
+                <div class="wizard-step" id="step-2" style="display:none;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem;">2. Estratégia e Pessoas</h3>
+                    <% questions.filter(q => {
+                        const isPS = q.presurvey_ques === true || q.presurvey_ques === 'true';
+                        const setor = (q.setor_ques || '').toString().trim().toUpperCase();
+                        const dim = Number(q.id_dime);
+                        return !isPS && setor === 'EDUCACAO' && (dim === 1 || dim === 2) && dim !== 4;
+                    }).forEach(renderQuestion); %>
+                    <div style="display:flex; justify-content:space-between; margin-top: 25px;">
+                        <button type="button" class="prev-btn submit-btn" style="background:#64748b;">Anterior</button>
+                        <button type="button" class="next-btn submit-btn">Próximo Passo</button>
+                    </div>
+                </div>
+
+                <div class="wizard-step" id="step-3" style="display:none;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem;">3. Estrutura e Tecnologia</h3>
+                    <% questions.filter(q => {
+                        const isPS = q.presurvey_ques === true || q.presurvey_ques === 'true';
+                        const setor = (q.setor_ques || '').toString().trim().toUpperCase();
+                        const dim = Number(q.id_dime);
+                        return !isPS && setor === 'EDUCACAO' && (dim === 3 || dim === 5) && dim !== 4;
+                    }).forEach(renderQuestion); %>
+                    <div style="display:flex; justify-content:space-between; margin-top: 25px;">
+                        <button type="button" class="prev-btn submit-btn" style="background:#64748b;">Anterior</button>
+                        <button type="button" class="next-btn submit-btn">Próximo Passo</button>
+                    </div>
+                </div>
+
+                <div class="wizard-step" id="step-4" style="display:none;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem;">4. Visão Geral e Fundamentos</h3>
+                    <% questions.filter(q => {
+                        const isPS = q.presurvey_ques === true || q.presurvey_ques === 'true';
+                        const dim = Number(q.id_dime);
+                        const setor = (q.setor_ques || '').toString().trim().toUpperCase();
+                        return !isPS && setor !== 'EDUCACAO' && dim !== 4;
+                    }).forEach(renderQuestion); %>
+
+                    <div id="statusFuture" style="margin-bottom: 10px; font-weight: bold;"></div>
+
+                    <div style="display:flex; justify-content:space-between; margin-top: 25px;">
+                        <button type="button" class="prev-btn submit-btn" style="background:#64748b;">Anterior</button>
+                        <button type="button" class="submit-btn future-submit-btn">Finalizar e Gerar Diagnóstico</button>
+                    </div>
+                </div>
+            <% } %>
+        </form>
+    </div>
+</div>
+
+<div id="modalContexto">
+    <div class="modal-content-wrap">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="margin:0;">Meus Dados - Análise de Contexto</h3>
+            <button type="button" onclick="document.getElementById('modalContexto').style.display='none'" style="background:none; border:none; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        <hr>
+        <form id="formContexto" onsubmit="submeterContexto(event)">
+             <p class="text-sm text-gray-600 mb-4">Confirme as informações básicas da instituição para análise da IA.</p>
+             <div style="text-align:right; margin-top: 20px;">
+                 <button type="submit" class="submit-btn">Salvar Alterações</button>
+             </div>
+        </form>
+    </div>
+</div>
+
+<script>
+async function submeterContexto(event) {
+    event.preventDefault();
+    const form = document.getElementById('formContexto');
+    const formData = new FormData(form);
+    const payload = Object.fromEntries(formData.entries());
+
+    try {
+        const res = await fetch('/api/client/update-context', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("Falha ao salvar dados de contexto.");
+
+        alert("Dados salvos com sucesso!");
+        document.getElementById('modalContexto').style.display = 'none';
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao salvar. Verifique sua conexão.");
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('evaluationForm');
+    const isRestricted = form.getAttribute('data-restricted') === 'true';
+
+    if (isRestricted) {
+        const nextButtons = document.querySelectorAll('.next-btn');
+        nextButtons.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const currentStep = this.closest('.wizard-step').id;
+                if (currentStep === 'step-0') {
+                    e.stopImmediatePropagation();
+                }
+            }, true);
+        });
+    }
+});
+</script>

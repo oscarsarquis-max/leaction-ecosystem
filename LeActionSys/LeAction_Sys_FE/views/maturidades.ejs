@@ -1,0 +1,54 @@
+<div id="maturidades-page">
+    <h1>Gerenciar Maturidade TD</h1>
+
+    <h2>Adicionar Nova Maturidade</h2>
+    <form id="maturidades-form">
+        <div class="form-group">
+            <label for="client-name-search">Nome do Cliente:</label>
+            <input type="text" id="client-name-search" placeholder="Comece a digitar o nome do cliente..."
+                   autocomplete="off">
+            <div id="search-results" class="search-results"></div>
+            <input type="hidden" name="id_clie" id="id_clie">
+        </div>
+        <div class="form-group">
+            <label for="pdim_matu">Pontuação da Dimensão:</label>
+            <input type="text" id="pdim_matu" name="pdim_matu" required>
+        </div>
+        <div class="form-group">
+            <label for="pdom_matu">Pontuação do Domínio:</label>
+            <input type="text" id="pdom_matu" name="pdom_matu" required>
+        </div>
+        <div class="form-group">
+            <label for="pgen_matu">Pontuação Geral:</label>
+            <input type="text" id="pgen_matu" name="pgen_matu" required>
+        </div>
+
+        <button type="submit" id="saveOrAddButton">Adicionar Maturidade</button>
+
+    </form>
+
+    <h2>Buscar Maturidades (<i>Graus</i>)</h2>
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="Digite 5+ caracteres para buscar...">
+        <button id="search-btn">Buscar</button>
+    </div>
+
+    <h2>Lista de Maturidade</h2>
+    <table id="maturidades-table">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Cliente</th>
+            <th>P-Dimensão</th>
+            <th>P-Domínio</th>
+            <th>P-Geral</th>
+            <th>Ações</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td colspan="5">Use a busca acima para encontrar maturidades.</td>
+        </tr>
+        </tbody>
+    </table>
+</div>

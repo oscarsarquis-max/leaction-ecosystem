@@ -1,0 +1,308 @@
+<!-- ==================================================================
+     🎨 ESTILO PREMIUM UNIFICADO: STRICT BLACK, WHITE & LILAC
+     ================================================================== -->
+<style>
+    .modal-contexto-premium {
+        display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.8); backdrop-filter: blur(6px);
+    }
+    .modal-contexto-content {
+        background: #ffffff; padding: 35px; border-radius: 16px; width: 850px; max-width: 95%;
+        max-height: 90vh; overflow-y: auto; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        border-top: 6px solid #4A2E80; box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    }
+
+    .form-contexto-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; margin-bottom: 15px; }
+    .form-group-full { grid-column: span 2; }
+    .form-group-three { grid-column: span 3; }
+    .form-contexto-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+
+    /* Títulos de Seção: Lilás Nobre e Sóbrio */
+    .form-section-title-premium {
+        font-size: 0.82em; text-transform: uppercase; color: #4A2E80; margin: 25px 0 12px 0;
+        border-bottom: 1px solid #E2D9FF; padding-bottom: 6px; font-weight: 800; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px;
+    }
+
+    .form-group-premium { display: flex; flex-direction: column; margin-bottom: 5px; }
+    .form-group-premium label { font-size: 0.8em; font-weight: 700; color: #1A1A1A; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .form-group-premium input, .form-group-premium select {
+        width: 100%; padding: 11px; border: 1px solid #dddddd; border-radius: 6px; font-size: 0.9em; box-sizing: border-box; background: #fff; color: #1A1A1A; transition: all 0.2s;
+    }
+    .form-group-premium input:focus, .form-group-premium select:focus {
+        border-color: #4A2E80; outline: none; box-shadow: 0 0 0 3px rgba(74,46,128,0.08);
+    }
+
+    /* 🧠 Caixa Cognitiva de IA: Fundo Lavanda Sutil com Foco em Roxo */
+    .form-group-premium textarea {
+        width: 100%; padding: 15px; border: 2px solid #E2D9FF; border-radius: 8px; font-size: 0.95em;
+        box-sizing: border-box; background: #FDFCFF; color: #1A1A1A; line-height: 1.6; font-family: inherit;
+        resize: vertical; min-height: 160px; transition: all 0.2s ease;
+    }
+    .form-group-premium textarea:focus {
+        border-color: #4A2E80; background: #ffffff; box-shadow: 0 0 0 4px rgba(74,46,128,0.06); outline: none;
+    }
+
+    .form-group-premium input:disabled, .form-group-premium select:disabled, .form-group-premium textarea:disabled {
+        background: #f8f9fa; color: #777; cursor: not-allowed; border-color: #e5e5e5; box-shadow: none;
+    }
+
+    /* Botão do Microfone Reativo */
+    .btn-mic-contexto {
+        background: none; border: 1px solid #E2D9FF; color: #4A2E80; cursor: pointer;
+        display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px;
+        background: #F4F2FF; font-weight: bold; transition: all 0.2s;
+    }
+    .btn-mic-contexto:hover { background: #E2D9FF; }
+
+    @keyframes mic-pulse-ctx {
+        0% { color: #4A2E80; transform: scale(1); }
+        50% { color: #e74c3c; transform: scale(1.05); background: #fdedec; border-color: #f5b7b1; }
+        100% { color: #4A2E80; transform: scale(1); }
+    }
+    .mic-ctx-ativo { animation: mic-pulse-ctx 1.3s infinite ease-in-out; }
+</style>
+
+<!-- ==================================================================
+     🧱 MARCAÇÃO ESTRUTURAL UNIFICADA DO FORMULÁRIO DE CLIENTES
+     ================================================================== -->
+<div id="modalContextoCliente" class="modal-contexto-premium">
+    <div class="modal-contexto-content">
+        <span style="float: right; font-size: 24px; cursor: pointer; color: #bbb; transition: 0.2s;" onmouseover="this.style.color='#000'" onmouseout="this.style.color='#bbb'" onclick="fecharModalContextoLead()">&times;</span>
+        <h2 id="modal-title-central" style="color: #000; font-weight: 900; margin-top: 0; font-size: 1.4em; margin-bottom: 25px; letter-spacing: -0.5px;">
+            <i class="fas fa-id-card" style="color: #4A2E80;"></i> Perfil e Contexto Institucional
+        </h2>
+
+        <form id="form-contexto-central">
+            <input type="hidden" id="id_clie">
+
+            <!-- BOX DE IDENTIFICAÇÃO ESTÁTICA (MODO CONSULTOR / LEAD) -->
+            <div class="meta-static-box" id="box-identificacao-estatica-cliente" style="background: #FDFCFF; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border: 1px solid #E2D9FF;">
+                <div style="grid-column: span 2; margin-bottom: -5px;"><small style="color: #4A2E80; font-weight: 800; text-transform: uppercase; font-size: 0.75em; letter-spacing: 0.8px;">Identificação do Estabelecimento</small></div>
+                <div><small style="color:#666; font-size: 0.75em; text-transform: uppercase; font-weight: bold; letter-spacing: 0.3px; display:block; margin-bottom: 2px;">Razão Social / Escola</small><strong id="lbl_ctx_empresa" style="color: #000;"></strong></div>
+                <div><small style="color:#666; font-size: 0.75em; text-transform: uppercase; font-weight: bold; letter-spacing: 0.3px; display:block; margin-bottom: 2px;">Documento / CNPJ</small><strong id="lbl_ctx_cnpj" style="color: #000;"></strong></div>
+                <div><small style="color:#666; font-size: 0.75em; text-transform: uppercase; font-weight: bold; letter-spacing: 0.3px; display:block; margin-bottom: 2px;">Gestor Alocado</small><strong id="lbl_ctx_representante" style="color: #000;"></strong></div>
+                <div><small style="color:#666; font-size: 0.75em; text-transform: uppercase; font-weight: bold; letter-spacing: 0.3px; display:block; margin-bottom: 2px;">Canal de E-mail</small><strong id="lbl_ctx_email" style="color: #000;"></strong></div>
+            </div>
+
+            <!-- SEÇÃO 1: CORPORATIVO (MODO ADMIN) -->
+            <div class="form-section-title-premium" id="title-estruturais-admin"><i class="fas fa-building"></i> Dados Estruturais da Empresa</div>
+            <div class="form-contexto-grid" id="row-estruturais-admin">
+                <div class="form-group-premium">
+                    <label>Razão Social / Fantasia *</label>
+                    <input type="text" id="empresa_clie" placeholder="Ex: Tech Solutions Ltda">
+                </div>
+                <div class="form-group-premium">
+                    <label>CNPJ *</label>
+                    <input type="text" id="docu_clie" placeholder="00.000.000/0001-00">
+                </div>
+            </div>
+            <div class="form-contexto-grid" id="row-endereco-admin">
+                <div class="form-group-premium">
+                    <label>Endereço da Sede</label>
+                    <input type="text" id="adre_clie" placeholder="Rua, Número, Bairro">
+                </div>
+                <div class="form-group-premium">
+                    <label>CEP</label>
+                    <input type="text" id="zipn_clie" placeholder="00000-000">
+                </div>
+            </div>
+
+            <!-- SEÇÃO 2: LIDERANÇA / LEAD (MODO ADMIN) -->
+            <div class="form-section-title-premium" id="title-representante-admin"><i class="fas fa-user"></i> Representante Legal (Lead de Acesso)</div>
+            <div class="form-contexto-grid-3" id="row-representante-admin">
+                <div class="form-group-premium">
+                    <label>Nome Completo *</label>
+                    <input type="text" id="nome_clie" placeholder="Nome do contato principal">
+                </div>
+                <div class="form-group-premium">
+                    <label>WhatsApp / Canal Fone</label>
+                    <input type="text" id="fone_clie" placeholder="(00) 00000-0000">
+                </div>
+                <div class="form-group-premium">
+                    <label>E-mail de Acesso (Login) *</label>
+                    <input type="email" id="mail_clie" placeholder="email@empresa.com">
+                </div>
+            </div>
+
+            <!-- SEÇÃO 3: METODOLOGIA IA -->
+            <div class="form-section-title-premium" id="title-representante-admin"><i class="fas fa-chart-line"></i> Parâmetros de Segmentação Metodológica</div>
+            <div class="form-contexto-grid-3">
+                <div class="form-group-premium">
+                    <label>Tipo de Ensino *</label>
+                    <select id="tipo_ensino" required>
+                        <option value="">Selecione...</option>
+                        <option value="K-12">K-12 (Educação Básica)</option>
+                        <option value="Superior">Ensino Superior</option>
+                        <option value="Tecnico">Ensino Técnico</option>
+                        <option value="Idiomas">Idiomas / Cursos Livres</option>
+                        <option value="Corporativo">Educação Corporativa</option>
+                    </select>
+                </div>
+                <div class="form-group-premium">
+                    <label>Volumetria Alunos *</label>
+                    <input type="number" id="qtd_alunos" required placeholder="Ex: 1000">
+                </div>
+                <div class="form-group-premium">
+                    <label>Localização (Sede) *</label>
+                    <input type="text" id="localizacao_sede" required placeholder="Ex: Fortaleza - CE">
+                </div>
+            </div>
+
+            <div class="form-contexto-grid-3">
+                <div class="form-group-premium">
+                    <label>Qtd. Colaboradores</label>
+                    <input type="number" id="qtd_colaboradores" placeholder="Ex: 150">
+                </div>
+                <div class="form-group-premium">
+                    <label>Qtd. Unidades</label>
+                    <input type="number" id="qtd_unidades" placeholder="Ex: 2">
+                </div>
+                <div class="form-group-premium" style="flex-direction: row; align-items: center; padding-top: 25px;">
+                    <input type="checkbox" id="rede_ensino" style="width: 20px; height: 20px; margin-right: 10px; cursor: pointer;">
+                    <label style="margin: 0; cursor: pointer; font-weight: bold; color: #1A1A1A;">Faz parte de Rede/Holding?</label>
+                </div>
+            </div>
+
+            <!-- SEÇÃO 4: CONTEXTO COGNITIVO -->
+            <div class="form-section-title-premium"><i class="fas fa-brain"></i> Detalhamento Etnográfico para IA</div>
+            <div class="form-group-premium">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label style="margin: 0;">Clima Organizacional / Expectativas para o Agente Master *</label>
+                    <button type="button" id="btn-voice-ctx" class="btn-mic-contexto" onclick="alternarVozCampoContexto()">
+                        <i class="fas fa-microphone" id="mic-icon-ctx"></i>
+                        <small id="mic-status-ctx" style="text-transform: uppercase; font-size: 0.72em; letter-spacing: 0.5px;">Ditado Desligado</small>
+                    </button>
+                </div>
+                <textarea id="clima_organizacional" name="clima_organizacional" required placeholder="Utilize o microfone para descrever as limitações, cultura interna da instituição e o que esperam alcançar com a jornada de transformação digital..."></textarea>
+            </div>
+
+            <!-- BOTÕES DE CONTROLE COMPACTOS E SÓBRIOS -->
+            <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" id="btn-close-ctx-only" class="btn" style="background: #111827; color: white; display: none; padding: 12px 25px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9em;" onclick="fecharModalContextoLead()">Fechar Visualização</button>
+                <button type="button" id="btn-cancel-ctx" class="btn" style="background: #f3f4f6; color: #4b5563; padding: 12px 25px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9em;" onclick="fecharModalContextoLead()">Cancelar</button>
+                <button type="submit" id="btn-save-ctx" class="btn" style="background: #4A2E80; color: white; padding: 12px 35px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9em; box-shadow: 0 4px 12px rgba(74,46,128,0.15);"><i class="fas fa-save" style="margin-right: 5px;"></i> Salvar Dados</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// ✨ TRAVA DE ESCOPO AUTO-PRESERVATIVA: Substituído 'let' por 'var' condicional para permitir que o arquivo
+// seja interpretado na Index e no Layout concorrentemente sem estourar SyntaxError e mantendo o estado da gravação ativo.
+var motorVozContexto = typeof motorVozContexto !== 'undefined' ? motorVozContexto : null;
+var estaGravandoVozContexto = typeof estaGravandoVozContexto !== 'undefined' ? estaGravandoVozContexto : false;
+var modalModoAdmin = typeof modalModoAdmin !== 'undefined' ? modalModoAdmin : false;
+
+function alternarVozCampoContexto() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!navigator.mediaDevices || !SpeechRecognition) return alert("⚠️ Engine de voz indisponível ou permissão negada. Use Chrome/Edge.");
+
+    const icon = document.getElementById('mic-icon-ctx');
+    const status = document.getElementById('mic-status-ctx');
+    const campo = document.getElementById('clima_organizacional');
+
+    if (!motorVozContexto) {
+        motorVozContexto = new SpeechRecognition();
+        motorVozContexto.lang = 'pt-BR';
+        motorVozContexto.continuous = true;
+        motorVozContexto.interimResults = false;
+
+        motorVozContexto.onstart = () => {
+            estaGravandoVozContexto = true;
+            if (icon) icon.classList.add('mic-ctx-ativo');
+            if (status) { status.innerText = "Gravando Relato..."; status.style.color = "#e74c3c"; }
+        };
+        motorVozContexto.onresult = (event) => {
+            let blocoTexto = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) blocoTexto += event.results[i][0].transcript;
+            }
+            if (blocoTexto && campo) {
+                const quebra = campo.value.length > 0 ? ' \n' : '';
+                campo.value += quebra + blocoTexto.trim();
+                campo.scrollTop = campo.scrollHeight;
+            }
+        };
+        motorVozContexto.onend = () => { resetarVisualMicContexto(icon, status); };
+        motorVozContexto.onerror = () => { resetarVisualMicContexto(icon, status); };
+    }
+
+    if (!estaGravandoVozContexto) motorVozContexto.start(); else motorVozContexto.stop();
+}
+
+function resetarVisualMicContexto(icon, status) {
+    estaGravandoVozContexto = false;
+    if (icon) icon.classList.remove('mic-ctx-ativo');
+    if (status) { status.innerText = "Ditado Desligado"; status.style.color = "inherit"; }
+}
+
+function abrirModalContextoLeadGeral(dados = null, bloquearEdicao = false, modoAdmin = false) {
+    const form = document.getElementById('form-contexto-central');
+    if (form) form.reset();
+
+    modalModoAdmin = modoAdmin;
+
+    // Alternância estrutural pura (Sem vazamento de layouts herdados)
+    document.getElementById('box-identificacao-estatica-cliente').style.display = modoAdmin ? 'none' : 'grid';
+    document.getElementById('title-estruturais-admin').style.display = modoAdmin ? 'flex' : 'none';
+    document.getElementById('row-estruturais-admin').style.display = modoAdmin ? 'grid' : 'none';
+    document.getElementById('row-endereco-admin').style.display = modoAdmin ? 'grid' : 'none';
+    document.getElementById('title-representante-admin').style.display = modoAdmin ? 'flex' : 'none';
+    document.getElementById('row-representante-admin').style.display = modoAdmin ? 'grid' : 'none';
+
+    document.getElementById('btn-save-ctx').style.display = bloquearEdicao ? 'none' : 'inline-block';
+    document.getElementById('btn-cancel-ctx').style.display = bloquearEdicao ? 'none' : 'inline-block';
+    document.getElementById('btn-close-ctx-only').style.display = bloquearEdicao ? 'inline-block' : 'none';
+    document.getElementById('btn-voice-ctx').style.display = bloquearEdicao ? 'none' : 'flex';
+
+    // Botão de Confirmação fica sempre Lilás Nobre (#4A2E80) se for Admin ou Consultor, variando apenas o peso
+    const btnSalvar = document.getElementById('btn-save-ctx');
+    if(btnSalvar) {
+        btnSalvar.style.backgroundColor = '#4A2E80';
+        btnSalvar.style.color = '#ffffff';
+    }
+
+    if (dados) {
+        const nEmpresa = dados.empresa_clie || dados.empresa || "";
+        const nCNPJ = dados.docu_clie || dados.docu || "";
+        const nRepresentante = dados.nome_clie || dados.nome || "";
+        const nMail = dados.mail_clie || dados.mail || dados.email || "";
+        const nClima = dados.clima_organizacional || dados.clima_original || dados.clima_organiza || "";
+
+        document.getElementById('id_clie').value = dados.id_clie || "";
+        document.getElementById('empresa_clie').value = nEmpresa;
+        document.getElementById('docu_clie').value = nCNPJ;
+        document.getElementById('adre_clie').value = dados.adre_clie || "";
+        document.getElementById('zipn_clie').value = dados.zipn_clie || "";
+        document.getElementById('nome_clie').value = nRepresentante;
+        document.getElementById('fone_clie').value = dados.fone_clie || dados.fone || "";
+        document.getElementById('mail_clie').value = nMail;
+        document.getElementById('tipo_ensino').value = dados.tipo_ensino || "";
+        document.getElementById('qtd_alunos').value = dados.qtd_alunos || "";
+        document.getElementById('qtd_colaboradores').value = dados.qtd_colaboradores || "";
+        document.getElementById('qtd_unidades').value = dados.qtd_unidades || "";
+        document.getElementById('localizacao_sede').value = dados.localizacao_sede || "";
+        document.getElementById('clima_organizacional').value = nClima.trim();
+        document.getElementById('rede_ensino').checked = (dados.rede_ensino === true || dados.rede_ensino === 'true' || dados.rede_ensino === 1);
+
+        document.getElementById('lbl_ctx_empresa').innerText = nEmpresa || "-";
+        document.getElementById('lbl_ctx_cnpj').innerText = nCNPJ || "-";
+        document.getElementById('lbl_ctx_representante').innerText = nRepresentante || "-";
+        document.getElementById('lbl_ctx_email').innerText = nMail || "-";
+    }
+
+    const fields = ['empresa_clie', 'docu_clie', 'adre_clie', 'zipn_clie', 'nome_clie', 'fone_clie', 'mail_clie', 'tipo_ensino', 'qtd_alunos', 'qtd_colaboradores', 'qtd_unidades', 'localizacao_sede', 'rede_ensino', 'clima_organizacional'];
+    fields.forEach(id => {
+        const campo = document.getElementById(id);
+        if(campo) campo.disabled = modoAdmin ? false : bloquearEdicao;
+    });
+
+    document.getElementById('modalContextoCliente').style.display = 'block';
+}
+
+function fecharModalContextoLead() {
+    if (estaGravandoVozContexto && motorVozContexto) motorVozContexto.stop();
+    document.getElementById('modalContextoCliente').style.display = 'none';
+}
+</script>

@@ -1,0 +1,299 @@
+<div class="main-content" id="diagnostico-page">
+    <h1>Relatório de Diagnóstico de Maturidade</h1>
+
+    <div class="client-info">
+        <p><strong>Cliente:</strong> <%= report.cliente %></p>
+        <p><strong>ID da Avaliação:</strong> <%= report.id_matu %></p>
+
+        <p><strong>Score Geral Presente (Realidade):</strong>
+            <span class="score-final-pres"><%= report.score_geral_presente ? parseFloat(report.score_geral_presente).toFixed(2) : '0.00' %></span>
+        </p>
+        <p><strong>Score Geral Futuro (Ambição):</strong>
+            <span class="score-final-fut"><%= report.score_geral_futuro ? parseFloat(report.score_geral_futuro).toFixed(2) : '0.00' %></span>
+        </p>
+        <p><strong>Gap de Transformação (Urgência):</strong>
+            <span class="score-final-gap"><%= report.score_geral_gap ? parseFloat(report.score_geral_gap).toFixed(2) : '0.00' %></span>
+        </p>
+    </div>
+
+    <div class="report-section principal-status">
+        <h3>Movimento: <%= report.movimento_principal.nome %></h3>
+        <p class="estagio-desc">Estágio de Transformação: <%= report.movimento_principal.estagio_descricao %></p>
+
+        <h3>Características Identificadas</h3>
+        <p><%= report.movimento_principal.caracteristicas %></p>
+
+        <h3>Implicações para o Diagnóstico</h3>
+        <p><%= report.movimento_principal.implicacoes_diagnostico %></p>
+    </div>
+
+    <hr>
+
+    <div class="report-section detailed-analysis">
+        <h2>Análise Detalhada e Gap de Transformação</h2>
+
+        <div class="chart-container">
+            <canvas id="dimensaoChart"></canvas>
+            <p class="chart-caption"><b>Comparativo de Scores por Dimensão: Presente vs. Futuro</b></p>
+        </div>
+
+        <hr>
+
+        <h2>Comparativo de Scores por Domínio</h2>
+        <div class="domain-charts-grid" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+            <%
+                const domListCharts = [
+                    {id: 1, name: 'Estratégia Digital (ds)'}, {id: 2, name: 'Modelo de Negócio Digital (bm)'},
+                    {id: 3, name: 'Cultura de Inovação (ic)'}, {id: 4, name: 'Cultura de Dados (dc)'},
+                    {id: 5, name: 'Cultura de Colaboração (cc)'}, {id: 6, name: 'Governança Digital (dg)'},
+                    {id: 7, name: 'Plataformas Digitais (dp)'}, {id: 8, name: 'Capacidades Digitais (dc)'},
+                    {id: 9, name: 'Métricas Digitais (dm)'}
+                ];
+
+                domListCharts.forEach(dom => {
+            %>
+                <div class="domain-chart-item" style="width: 300px; height: 300px;">
+                    <canvas id="domainChart_<%= dom.id %>"></canvas>
+                    <p class="chart-caption" style="font-weight: bold; text-align: center;"><%= dom.name %></p>
+                </div>
+            <% }); %>
+        </div>
+        <hr>
+
+
+        <div class="score-tables">
+            <h4>Detalhamento e Comparativo de Scores</h4>
+            <table class="detail-table">
+                <thead>
+                    <tr>
+                        <th>Maturidade</th>
+                        <th>Score Presente</th>
+                        <th>Score Futuro</th> <th>Gap (F-P)</th> <th>Estágio Cliente</th>
+                        <th>Benchmark Setor</th>
+                        <th>Estágio Setor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <%
+                        // FUNÇÕES E HELPERS (MANTIDOS E ADAPTADOS)
+                        const scoresDimPres = report.scores_detalhe_presente.pdim_scores || {};
+                        const scoresDomPres = report.scores_detalhe_presente.pdom_scores || {};
+
+                        const scoresDimFut = report.scores_detalhe_futuro.pdim_scores || {};
+                        const scoresDomFut = report.scores_detalhe_futuro.pdom_scores || {};
+
+                        const scoresDimGap = report.scores_detalhe_gap.pdim_scores || {};
+                        const scoresDomGap = report.scores_detalhe_gap.pdom_scores || {};
+
+                        const getScore = (scores, id) => {
+                            const stringId = id.toString();
+                            const value = scores[stringId];
+                            const numValue = parseFloat(value);
+                            if (isNaN(numValue) || numValue === 0) return '0.00';
+                            return numValue.toFixed(2);
+                        };
+
+                        const getBenchmark = (key) => report.benchmark_setorial.find(b => `DIME_${b.id_dime}` === key || `DOMA_${b.id_doma}` === key) || {};
+
+                        const getClientStage = (score) => {
+                            const numScore = parseFloat(score);
+                            if (isNaN(numScore)) return 'N/A';
+                            if (numScore <= 2.0) return 'Iniciação';
+                            if (numScore <= 3.5) return 'Escalabilidade';
+                            return 'Evolução';
+                        };
+                    %>
+
+                    <tr class="header-row">
+                        <td style="font-weight: bold;">Nota Geral de Maturidade</td>
+                        <td style="font-weight: bold;">
+                            <%= report.score_geral_presente ? parseFloat(report.score_geral_presente).toFixed(2) : '0.00' %>
+                        </td>
+                        <td style="font-weight: bold;">
+                            <%= report.score_geral_futuro ? parseFloat(report.score_geral_futuro).toFixed(2) : '0.00' %>
+                        </td>
+                        <td style="font-weight: bold; color: <%= parseFloat(report.score_geral_gap) > 0 ? 'darkred' : 'darkgreen' %>;">
+                            <%= report.score_geral_gap ? parseFloat(report.score_geral_gap).toFixed(2) : '0.00' %>
+                        </td>
+                        <td style="font-weight: bold;"><%= getClientStage(report.score_geral_presente) %></td>
+                        <td colspan="2"></td>
+                    </tr>
+
+                    <tr class="subheader-row"><td colspan="7" style="font-weight: bold; background-color: #f0f0f0;">Dimensão</td></tr>
+
+                    <%
+                        const dimList = [
+                            {id: 1, name: 'Visão Compartilhada (SV)'}, {id: 2, name: 'Coração e Conexão (HC)'},
+                            {id: 3, name: 'Estrutura Fluida (FS)'}, {id: 4, name: 'Aprendizagem em Ação (LA)'},
+                            {id: 5, name: 'Arquitetura Digital (DA)'}
+                        ];
+
+                        dimList.forEach(dim => {
+                            const scorePres = getScore(scoresDimPres, dim.id);
+                            const scoreFut = getScore(scoresDimFut, dim.id);
+                            const scoreGap = getScore(scoresDimGap, dim.id);
+                            const benchmark = getBenchmark(`DIME_${dim.id}`);
+                            const clientStage = getClientStage(scorePres);
+                    %>
+                        <tr>
+                            <td><%= dim.name %></td>
+                            <td><%= scorePres %></td>
+                            <td><%= scoreFut %></td>
+                            <td style="color: <%= parseFloat(scoreGap) > 0 ? 'darkred' : 'darkgreen' %>;">
+                                <%= scoreGap %>
+                            </td>
+                            <td><%= clientStage %></td>
+                            <td><%= benchmark.grad_refb || 'N/A' %></td>
+                            <td><%= benchmark.estagio_refb || 'N/A' %></td>
+                        </tr>
+                    <% }); %>
+
+
+                    <tr class="subheader-row"><td colspan="7" style="font-weight: bold; background-color: #f0f0f0;">Domínio</td></tr>
+
+                    <%
+                        const domList = [
+                            {id: 1, name: 'Estratégia Digital (ds)'}, {id: 2, name: 'Modelo de Negócio Digital (bm)'},
+                            {id: 3, name: 'Cultura de Inovação (ic)'}, {id: 4, name: 'Cultura de Dados (dc)'},
+                            {id: 5, name: 'Cultura de Colaboração (cc)'}, {id: 6, name: 'Governança Digital (dg)'},
+                            {id: 7, name: 'Plataformas Digitais (dp)'}, {id: 8, name: 'Capacidades Digitais (dc)'},
+                            {id: 9, name: 'Métricas Digitais (dm)'}
+                        ];
+
+                        domList.forEach(dom => {
+                            const scorePres = getScore(scoresDomPres, dom.id);
+                            const scoreFut = getScore(scoresDomFut, dom.id);
+                            const scoreGap = getScore(scoresDomGap, dom.id);
+                            const benchmark = getBenchmark(`DOMA_${dom.id}`);
+                            const clientStage = getClientStage(scorePres);
+                    %>
+                        <tr>
+                            <td><%= dom.name %></td>
+                            <td><%= scorePres %></td>
+                            <td><%= scoreFut %></td>
+                            <td style="color: <%= parseFloat(scoreGap) > 0 ? 'darkred' : 'darkgreen' %>;">
+                                <%= scoreGap %>
+                            </td>
+                            <td><%= clientStage %></td>
+                            <td><%= benchmark.grad_refb || 'N/A' %></td>
+                            <td><%= benchmark.estagio_refb || 'N/A' %></td>
+                        </tr>
+                    <% }); %>
+
+                </tbody>
+            </table>
+        </div>
+
+        <hr>
+        <div class="report-section prioritization-matrix">
+            <h2>Matriz de Desempenho (Score Futuro vs. Score Presente)</h2>
+            <p>A Matriz de Desempenho é determinada pelo cruzamento da **Ambição de Futuro (Score F)** (eixo X) com o **Score Presente (Score P)** (eixo Y). Este mapeamento identifica a posição atual do domínio e o
+                nível de esforço necessário para atingir a meta ambicionada. Identifique o quadrante de ação para cada Domínio. <b>O Vale da Morte</b> mostra um caso em que o nível atual de maturidade da empresa é baixo e
+                e ela não apresenta ambição nenhuma de melhoria. No <b>Pico da Inércia</b> a situação complica mais, porque a empresa apresenta niveis satisfatorios de maturidade e não quer evoluir. Na <b>Escalada do Everest</b>,
+                a empresa apresenta baixa maturidade e tem muita ambição, ou seja vai ser um desafio e tanto. Por fim o <b>Rumo à Vitória</b> apresenta uma situação em que a despeito da maturidade elevada da empresa,
+                ela apresenta grandes ambições.</p>
+
+            <div class="matrix-container" style="position: relative; height: 500px; width: 100%;">
+
+                <canvas id="prioritizationMatrix"></canvas>
+
+                <span class="matrix-label" style="top: 8%; right: 3%; background: rgba(255,255,255,0.8);"><b>Rumo à Vitória</b></span>
+                <span class="matrix-label" style="bottom: 11%; right: 3%; background: rgba(255,255,255,0.8);"><b>Escalada do Everest</b></span>
+                <span class="matrix-label" style="top: 8%; left: 8%; background: rgba(255,255,255,0.8);"><b>Pico da Inércia</b></span>
+                <span class="matrix-label" style="bottom: 11%; left: 8%; background: rgba(255,255,255,0.8);"><b>Vale da Morte</b></span>
+            </div>
+        </div>
+
+        <div id="subdiagnostico-alerta" class="report-section">
+            <h3>Sugestões de Implementação Prioritária (Ações)</h3>
+
+            <% if (report.suggestions && report.suggestions.length > 0) {
+                // Lógica de agrupamento (inalterada)
+                const suggestionsByDim = report.suggestions.reduce((acc, suggestion) => {
+                    const dimName = suggestion.dimensao_nome;
+                    if (!acc[dimName]) {
+                        acc[dimName] = [];
+                    }
+                    acc[dimName].push(suggestion);
+                    return acc;
+                }, {});
+
+                const dimensionsInOrder = Object.keys(suggestionsByDim);
+            %>
+                <p>A tabela abaixo lista os **Blocos/Capacidades Prioritárias** para investimento, ordenados do maior *gap* para o menor, indicando o maior esforço de transformação.</p>
+
+                <% dimensionsInOrder.forEach(dimensao => {
+                    const domainSuggestions = suggestionsByDim[dimensao];
+                %>
+                    <h4 style="margin-top: 20px; border-bottom: 2px solid #ddd; padding-bottom: 5px;">
+                        Dimensão: <%= dimensao %>
+                    </h4>
+
+                    <table class="detail-table suggestions-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">Domínio</th>
+                                <th style="width: 8%;">Score Presente</th>
+                                <th style="width: 8%;">Score Futuro</th>
+                                <th style="width: 10%;">Gap F-P</th>
+                                <th style="width: 10%;">Prioridade (Gap)</th>
+                                <th style="width: 25%;">Nome Bloco</th>
+                                <th style="width: 22%;">Descrição do Bloco</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% domainSuggestions.forEach(sug => {
+                                const blocks = sug.blocos_sugeridos;
+                                const blockCount = blocks.length;
+
+                                blocks.forEach((block, index) => {
+                            %>
+                                    <tr>
+                                        <%
+                                            if (index === 0) {
+                                        %>
+                                            <td rowspan="<%= blockCount %>"><%= sug.dominio_nome %></td>
+                                            <td rowspan="<%= blockCount %>"><%= sug.score_dom_pres.toFixed(2) %></td>
+                                            <td rowspan="<%= blockCount %>"><%= sug.score_dom_fut.toFixed(2) %></td>
+                                            <td rowspan="<%= blockCount %>" style="color: <%= sug.gap_dom > 0 ? 'darkred' : 'darkgreen' %>;"><%= sug.gap_dom.toFixed(2) %></td>
+                                            <td rowspan="<%= blockCount %>" style="font-weight: bold;"><%= sug.score_prioridade.toFixed(2) %></td>
+                                        <% } %>
+
+                                        <td><%= block.nome || 'N/A' %></td>
+
+                                        <td title="<%= block.desc || 'N/A' %>">
+                                            <%
+                                                const desc = block.desc || '';
+                                                if (desc.length > 50) {
+                                                    %><%= desc.substring(0, 50) + '...' %><%
+                                                } else {
+                                                    %><%= desc %><%
+                                                }
+                                            %>
+                                        </td>
+                                    </tr>
+                            <% }); %>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                <% }); %>
+
+                <p style="margin-top: 15px;">**Passe o mouse sobre a descrição do Bloco na coluna para ver o texto completo.**</p>
+
+            <% } else { %>
+                <p>Nenhuma necessidade de transformação crítica identificada. A Ambição de Futuro está alinhada com o Presente.</p>
+            <% } %>
+        </div>
+
+        <div class="report-section print-actions" style="text-align: center; margin-top: 40px;">
+                <button id="exportPdfBtn" class="btn blue-btn">Exportar Relatório para PDF</button>
+        </div>
+
+        <script>
+            var diagnosticReport = <%- JSON.stringify(report) %>;
+            // O código JavaScript (Chart.js, etc.) para criar os gráficos de radar e barras
+            // deve ser adicionado aqui, utilizando 'diagnosticReport'.
+        </script>
+    </div>
+
+</div>

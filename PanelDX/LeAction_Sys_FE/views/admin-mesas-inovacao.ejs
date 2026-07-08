@@ -1,0 +1,52 @@
+<div class="mesa-org admin-mesas" id="admin-mesas-root">
+    <header class="mesa-org__hero">
+        <div>
+            <h1><i class="fas fa-lightbulb" style="color: #fbbf24;"></i> Mesas de Inovação</h1>
+            <p>
+                Visão administrativa de todas as <strong>mesas organizacionais ativas</strong>, uma por cliente.
+                Abra o mural de ideação, alertas eSIM e fluxo de incubação no contexto correto.
+            </p>
+        </div>
+        <div class="mesa-org__meta">
+            <div><strong>Área Administrativa</strong></div>
+            <div>Mesa Org · Clientes · Telemetria</div>
+        </div>
+    </header>
+
+    <div class="mesa-card">
+        <div class="admin-mesas__toolbar">
+            <div>
+                <h2 class="mesa-card__title" style="margin-bottom: 4px;">
+                    <i class="fas fa-table"></i> Mesas ativas por cliente
+                </h2>
+                <p class="admin-esim__field-hint" style="margin: 0;">
+                    Clientes com maturidade em andamento, projeto ativo ou itens pendentes na mesa.
+                </p>
+            </div>
+            <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-recarregar-mesas">
+                <i class="fas fa-sync-alt"></i> Atualizar
+            </button>
+        </div>
+
+        <div class="admin-mesas__table-wrap">
+            <table class="admin-mesas__table">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Matu</th>
+                        <th>Status IA</th>
+                        <th>Post-its</th>
+                        <th>Alertas eSIM</th>
+                        <th>Estado</th>
+                        <th style="width: 150px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="mesas-table-body">
+                    <tr><td colspan="7" class="admin-mesas__empty">Carregando mesas…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="admin-mesas__toast" id="admin-mesas-toast" role="status"></div>

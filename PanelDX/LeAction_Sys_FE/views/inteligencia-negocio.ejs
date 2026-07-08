@@ -1,0 +1,432 @@
+<style>
+    /* ==================================================================
+       🛰️ NOC MULTI-AGENTES — Centro de Comando (tema dark/tech)
+       Escopo isolado em #noc-page para não vazar no restante do layout.
+       ================================================================== */
+    #noc-page {
+        background: #0b1020;
+        color: #e6edf3;
+        margin: -20px;
+        padding: 28px 32px 40px;
+        min-height: calc(100vh - 0px);
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background-image:
+            radial-gradient(circle at 12% 10%, rgba(108, 92, 231, 0.12), transparent 40%),
+            radial-gradient(circle at 88% 0%, rgba(13, 148, 136, 0.10), transparent 35%);
+    }
+
+    #noc-page .noc-header {
+        display: flex; justify-content: space-between; align-items: center;
+        flex-wrap: wrap; gap: 16px; margin-bottom: 28px;
+        border-bottom: 1px solid #1e2740; padding-bottom: 18px;
+    }
+    #noc-page .noc-title h2 {
+        margin: 0; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.4px; color: #fff;
+        display: flex; align-items: center; gap: 12px;
+    }
+    #noc-page .noc-title h2 i { color: #8b7bf0; }
+    #noc-page .noc-title p { margin: 6px 0 0; color: #8b96b0; font-size: 0.86rem; }
+
+    #noc-page .noc-live {
+        display: inline-flex; align-items: center; gap: 9px; background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399;
+        padding: 9px 16px; border-radius: 30px; font-weight: 700; font-size: 0.8rem;
+        text-transform: uppercase; letter-spacing: 0.6px;
+    }
+    #noc-page .noc-live .dot {
+        width: 9px; height: 9px; border-radius: 50%; background: #10b981;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); animation: nocPulse 1.6s infinite;
+    }
+    @keyframes nocPulse {
+        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+        70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    #noc-page .noc-section-label {
+        font-size: 0.74rem; text-transform: uppercase; letter-spacing: 1.4px;
+        color: #6b7796; font-weight: 800; margin: 0 0 14px; display: flex; align-items: center; gap: 8px;
+    }
+    #noc-page .noc-section-label::after { content: ''; flex: 1; height: 1px; background: #1a2238; }
+
+    /* Grid de cards da frota */
+    #noc-page .noc-fleet {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+        gap: 18px; margin-bottom: 34px;
+    }
+    #noc-page .panel-card {
+        position: relative; background: linear-gradient(160deg, #131a2e 0%, #0e1424 100%);
+        border: 1px solid #1f2942; border-radius: 14px; padding: 22px;
+        overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+    }
+    #noc-page .panel-card:hover {
+        transform: translateY(-4px); box-shadow: 0 14px 30px rgba(0,0,0,0.45);
+        border-color: var(--accent, #6c5ce7);
+    }
+    #noc-page .panel-card::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        background: var(--accent, #6c5ce7);
+    }
+    #noc-page .pc-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+    #noc-page .pc-icon {
+        width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; color: #fff; background: var(--accent, #6c5ce7);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+    }
+    #noc-page .pc-status {
+        display: inline-flex; align-items: center; gap: 6px; font-size: 0.68rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.5px; color: #34d399;
+        background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.35);
+        padding: 5px 10px; border-radius: 20px;
+    }
+    #noc-page .pc-status .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; }
+    #noc-page .pc-status.alert { color: #f59e0b; background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.4); }
+    #noc-page .pc-status.alert .s-dot { background: #f59e0b; }
+
+    #noc-page .pc-name { font-size: 1.02rem; font-weight: 800; color: #fff; margin: 0 0 3px; }
+    #noc-page .pc-role { font-size: 0.78rem; color: #8b96b0; margin: 0 0 18px; line-height: 1.4; }
+
+    #noc-page .pc-metric { display: flex; align-items: baseline; gap: 8px; }
+    #noc-page .pc-metric .big { font-size: 2.3rem; font-weight: 900; color: #fff; line-height: 1; }
+    #noc-page .pc-metric .unit { font-size: 0.8rem; color: #8b96b0; font-weight: 600; }
+    #noc-page .pc-foot {
+        margin-top: 16px; padding-top: 14px; border-top: 1px solid #1c253c;
+        display: flex; justify-content: space-between; font-size: 0.76rem; color: #9aa5bf;
+    }
+    #noc-page .pc-foot strong { color: #cdd6e8; }
+    #noc-page .pc-foot .ok { color: #34d399; }
+    #noc-page .pc-foot .bad { color: #f87171; }
+
+    #noc-page .pc-alert-banner {
+        margin-top: 14px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245,158,11,0.4);
+        color: #fbbf24; border-radius: 8px; padding: 8px 12px; font-size: 0.74rem; font-weight: 700;
+        display: none; align-items: center; gap: 8px;
+    }
+    #noc-page .pc-alert-banner.show { display: flex; }
+
+    /* Gráficos */
+    #noc-page .noc-charts { display: grid; grid-template-columns: 1.7fr 1fr; gap: 18px; margin-bottom: 34px; }
+    @media (max-width: 980px) { #noc-page .noc-charts { grid-template-columns: 1fr; } }
+    #noc-page .noc-chart-card {
+        background: linear-gradient(160deg, #131a2e 0%, #0e1424 100%);
+        border: 1px solid #1f2942; border-radius: 14px; padding: 20px 22px;
+    }
+    #noc-page .noc-chart-card h4 {
+        margin: 0 0 4px; font-size: 0.92rem; font-weight: 800; color: #fff;
+        display: flex; align-items: center; gap: 9px;
+    }
+    #noc-page .noc-chart-card h4 i { color: #8b7bf0; }
+    #noc-page .noc-chart-card .sub { margin: 0 0 16px; font-size: 0.76rem; color: #8b96b0; }
+    #noc-page .noc-canvas-wrap { position: relative; height: 280px; }
+
+    /* Tabela do Master */
+    #noc-page .noc-table-card {
+        background: linear-gradient(160deg, #131a2e 0%, #0e1424 100%);
+        border: 1px solid #1f2942; border-radius: 14px; padding: 22px; overflow: hidden;
+    }
+    #noc-page .noc-table-card .tc-head {
+        display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;
+    }
+    #noc-page .noc-table-card h4 {
+        margin: 0; font-size: 0.98rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 9px;
+    }
+    #noc-page .noc-table-card h4 i { color: #8b7bf0; }
+    #noc-page .noc-table-wrap { overflow-x: auto; }
+    #noc-page table.noc-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+    #noc-page table.noc-table thead th {
+        text-align: left; padding: 11px 14px; color: #7b86a3; font-size: 0.72rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.7px; border-bottom: 1px solid #232d49; background: #0f1626;
+    }
+    #noc-page table.noc-table tbody td { padding: 13px 14px; border-bottom: 1px solid #182039; color: #c5cee0; }
+    #noc-page table.noc-table tbody tr { transition: background 0.15s; }
+    #noc-page table.noc-table tbody tr:hover { background: rgba(108, 92, 231, 0.07); }
+    #noc-page table.noc-table tbody tr:last-child td { border-bottom: none; }
+    #noc-page .noc-client strong { color: #fff; }
+    #noc-page .noc-client small { color: #7f8 baa; }
+    #noc-page .noc-gap { color: #8b7bf0; font-size: 0.74rem; }
+
+    #noc-page .noc-progress { display: flex; align-items: center; gap: 10px; min-width: 150px; }
+    #noc-page .noc-progress .bar { flex: 1; background: #1c2540; height: 8px; border-radius: 5px; overflow: hidden; }
+    #noc-page .noc-progress .fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #6c5ce7, #34d399); }
+    #noc-page .noc-progress .pct { font-size: 0.78rem; font-weight: 800; color: #cdd6e8; min-width: 36px; }
+
+    #noc-page .noc-badge {
+        padding: 4px 11px; border-radius: 20px; font-size: 0.7rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    #noc-page .noc-badge.ok { background: rgba(16,185,129,0.13); color: #34d399; border: 1px solid rgba(16,185,129,0.35); }
+    #noc-page .noc-badge.pend { background: rgba(245,158,11,0.13); color: #fbbf24; border: 1px solid rgba(245,158,11,0.35); }
+    #noc-page .noc-action-ico { color: #8b96b0; font-size: 1rem; margin: 0 6px; transition: color 0.15s; }
+    #noc-page .noc-action-ico:hover { color: #8b7bf0; }
+    #noc-page .noc-action-ico.pdf:hover { color: #f87171; }
+    #noc-page .noc-empty { text-align: center; color: #6b7796; padding: 30px; font-size: 0.88rem; }
+</style>
+
+<div class="main-content" id="noc-page">
+
+    <div class="noc-header">
+        <div class="noc-title">
+            <h2><i class="fas fa-satellite-dish"></i> NOC — Centro de Comando Multi-Agentes</h2>
+            <p>Monitoramento operacional em tempo real da frota de IAs do ecossistema PanelDX (visão SysAdmin).</p>
+        </div>
+        <span class="noc-live"><span class="dot"></span> Frota Operacional</span>
+    </div>
+
+    <!-- SEÇÃO 1: STATUS DA FROTA -->
+    <p class="noc-section-label">Status da Frota</p>
+    <div class="noc-fleet">
+
+        <!-- Agente Master -->
+        <div class="panel-card" style="--accent:#6c5ce7;">
+            <div class="pc-top">
+                <div class="pc-icon" style="background:#6c5ce7;"><i class="fas fa-brain"></i></div>
+                <span class="pc-status"><span class="s-dot"></span> Online</span>
+            </div>
+            <p class="pc-name">Agente Master</p>
+            <p class="pc-role">Planejamento Estratégico &amp; Relatórios de Inteligência</p>
+            <div class="pc-metric"><span class="big" id="m-master-valor">--</span><span class="unit" id="m-master-label">relatórios concluídos</span></div>
+            <div class="pc-foot">
+                <span>Atuações: <strong id="m-master-atuacoes">--</strong></span>
+                <span>PDFs: <strong class="ok" id="m-master-pdf">--</strong></span>
+            </div>
+        </div>
+
+        <!-- Agente Modulador -->
+        <div class="panel-card" style="--accent:#10b981;">
+            <div class="pc-top">
+                <div class="pc-icon" style="background:#10b981;"><i class="fas fa-gavel"></i></div>
+                <span class="pc-status"><span class="s-dot"></span> Online</span>
+            </div>
+            <p class="pc-name">Agente Modulador</p>
+            <p class="pc-role">Auditoria de Qualidade &amp; Veredito de Sprints</p>
+            <div class="pc-metric"><span class="big" id="m-mod-valor">--</span><span class="unit">% de aprovação</span></div>
+            <div class="pc-foot">
+                <span>Avaliadas: <strong id="m-mod-atuacoes">--</strong></span>
+                <span><strong class="ok" id="m-mod-aprov">--</strong> aprov. / <strong class="bad" id="m-mod-reprov">--</strong> rev.</span>
+            </div>
+        </div>
+
+        <!-- Consultor LeAction -->
+        <div class="panel-card" style="--accent:#e67e22;">
+            <div class="pc-top">
+                <div class="pc-icon" style="background:#e67e22;"><i class="fas fa-comments"></i></div>
+                <span class="pc-status"><span class="s-dot"></span> Online</span>
+            </div>
+            <p class="pc-name">Consultor LeAction</p>
+            <p class="pc-role">Apoio Tático &amp; Geração de Sprints Fast Track</p>
+            <div class="pc-metric"><span class="big" id="m-cons-valor">--</span><span class="unit">sessões de apoio</span></div>
+            <div class="pc-foot">
+                <span>Sprints geradas: <strong id="m-cons-atuacoes">--</strong></span>
+                <span class="ok">Fast Track</span>
+            </div>
+        </div>
+
+        <!-- Agente Inovador -->
+        <div class="panel-card" style="--accent:#eab308;">
+            <div class="pc-top">
+                <div class="pc-icon" style="background:#eab308;"><i class="fas fa-lightbulb"></i></div>
+                <span class="pc-status" id="m-inov-status"><span class="s-dot"></span> Online</span>
+            </div>
+            <p class="pc-name">Agente Inovador</p>
+            <p class="pc-role">Lapidação de Inovação &amp; Mesa de Ideias</p>
+            <div class="pc-metric"><span class="big" id="m-inov-valor">--</span><span class="unit">inovações lapidadas</span></div>
+            <div class="pc-foot">
+                <span>Total: <strong id="m-inov-atuacoes">--</strong></span>
+                <span>Fallbacks: <strong class="bad" id="m-inov-fallbacks">--</strong></span>
+            </div>
+            <div class="pc-alert-banner" id="m-inov-alert">
+                <i class="fas fa-triangle-exclamation"></i> Taxa de fallback alta (<span id="m-inov-taxa">--</span>%) — revisar lapidação.
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SEÇÃO 2: MONITORAMENTO DE RECURSOS -->
+    <p class="noc-section-label">Monitoramento de Recursos</p>
+    <div class="noc-charts">
+        <div class="noc-chart-card">
+            <h4><i class="fas fa-wave-square"></i> Volume de Chamadas por Agente</h4>
+            <p class="sub">Distribuição geral de atuações na frota — volume global estimado: <strong id="m-global" style="color:#cdd6e8;">--</strong></p>
+            <div class="noc-canvas-wrap"><canvas id="nocChartVolume"></canvas></div>
+        </div>
+        <div class="noc-chart-card">
+            <h4><i class="fas fa-circle-nodes"></i> Distribuição de Carga</h4>
+            <p class="sub">Participação de cada IA no total de operações.</p>
+            <div class="noc-canvas-wrap"><canvas id="nocChartCarga"></canvas></div>
+        </div>
+    </div>
+
+    <!-- SEÇÃO 3: HISTÓRICO DO MASTER -->
+    <p class="noc-section-label">Histórico do Agente Master — Relatórios de Inteligência</p>
+    <div class="noc-table-card">
+        <div class="tc-head">
+            <h4><i class="fas fa-brain"></i> Relatórios Estratégicos por Cliente</h4>
+            <span class="noc-live" style="background:rgba(108,92,231,0.12); border-color:rgba(108,92,231,0.4); color:#a89bf5;">
+                <i class="fas fa-database"></i> <%= (typeof projetos !== 'undefined' ? projetos.length : 0) %> registros
+            </span>
+        </div>
+        <div class="noc-table-wrap">
+            <table class="noc-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Liberação Master</th>
+                        <th>Progresso (Modulador)</th>
+                        <th style="text-align:center;">Status IA</th>
+                        <th style="text-align:center;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (typeof projetos !== 'undefined' && projetos.length > 0) { %>
+                        <% projetos.forEach(p => {
+                            const prog = Number(p.progresso_modulador || 0);
+                            const concluido = (p.status_ia || '').toUpperCase() === 'CONCLUIDO';
+                        %>
+                            <tr>
+                                <td style="color:#6b7796;">#<%= p.id_matu %></td>
+                                <td class="noc-client">
+                                    <strong><%= p.nome_clie %></strong><br>
+                                    <span class="noc-gap">Gap Geral: <%= p.pgen_gap != null ? p.pgen_gap : '—' %></span>
+                                </td>
+                                <td><%= p.dt_fim_ia ? new Date(p.dt_fim_ia).toLocaleDateString('pt-BR') : 'Aguardando' %></td>
+                                <td>
+                                    <div class="noc-progress">
+                                        <div class="bar"><div class="fill" style="width: <%= prog %>%;"></div></div>
+                                        <span class="pct"><%= prog.toFixed(0) %>%</span>
+                                    </div>
+                                </td>
+                                <td style="text-align:center;">
+                                    <span class="noc-badge <%= concluido ? 'ok' : 'pend' %>"><%= p.status_ia || 'PENDENTE' %></span>
+                                </td>
+                                <td style="text-align:center; white-space:nowrap;">
+                                    <% if (p.url_pdf_ia) { %>
+                                        <a href="<%= p.url_pdf_ia %>" target="_blank" title="Download PDF" class="noc-action-ico pdf"><i class="fas fa-file-pdf"></i></a>
+                                    <% } %>
+                                    <a href="/insights-ia/<%= p.id_matu %>" title="Ver Insights IA" class="noc-action-ico"><i class="fas fa-eye"></i></a>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr><td colspan="6" class="noc-empty"><i class="fas fa-inbox"></i> Nenhum relatório do Master registrado ainda.</td></tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const palette = {
+        master: '#6c5ce7',
+        modulador: '#10b981',
+        consultor: '#e67e22',
+        inovador: '#eab308',
+    };
+
+    function setText(id, val) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    }
+
+    function renderCards(d) {
+        const a = d.agentes || {};
+        const m = a.master || {}, md = a.modulador || {}, cs = a.consultor || {}, inv = a.inovador || {};
+
+        setText('m-master-valor', m.metrica_valor ?? 0);
+        setText('m-master-atuacoes', m.atuacoes ?? 0);
+        setText('m-master-pdf', m.com_pdf ?? 0);
+
+        setText('m-mod-valor', (md.taxa_aprovacao ?? 0) + '%');
+        setText('m-mod-atuacoes', md.atuacoes ?? 0);
+        setText('m-mod-aprov', md.aprovadas ?? 0);
+        setText('m-mod-reprov', md.reprovadas ?? 0);
+
+        setText('m-cons-valor', cs.metrica_valor ?? 0);
+        setText('m-cons-atuacoes', cs.atuacoes ?? 0);
+
+        setText('m-inov-valor', inv.lapidadas ?? 0);
+        setText('m-inov-atuacoes', inv.atuacoes ?? 0);
+        setText('m-inov-fallbacks', inv.fallbacks ?? 0);
+        setText('m-inov-taxa', inv.taxa_fallback ?? 0);
+
+        if (inv.alerta_fallback) {
+            const banner = document.getElementById('m-inov-alert');
+            const status = document.getElementById('m-inov-status');
+            if (banner) banner.classList.add('show');
+            if (status) { status.classList.add('alert'); status.innerHTML = '<span class="s-dot"></span> Atenção'; }
+        }
+
+        const tot = d.totais || {};
+        setText('m-global', (tot.chamadas_globais ?? 0) + ' operações');
+    }
+
+    function renderCharts(d) {
+        if (typeof Chart === 'undefined') { console.warn('[NOC] Chart.js indisponível.'); return; }
+        const g = d.grafico || { labels: ['Master', 'Modulador', 'Consultor', 'Inovador'], volume: [0, 0, 0, 0] };
+        const cores = [palette.master, palette.modulador, palette.consultor, palette.inovador];
+        Chart.defaults.color = '#8b96b0';
+        Chart.defaults.font.family = "'Segoe UI', Tahoma, sans-serif";
+
+        const ctxVol = document.getElementById('nocChartVolume');
+        if (ctxVol) {
+            new Chart(ctxVol, {
+                type: 'line',
+                data: {
+                    labels: g.labels,
+                    datasets: [{
+                        label: 'Atuações',
+                        data: g.volume,
+                        borderColor: '#8b7bf0',
+                        backgroundColor: 'rgba(139, 123, 240, 0.18)',
+                        fill: true, tension: 0.4, borderWidth: 3,
+                        pointBackgroundColor: cores, pointBorderColor: '#0b1020',
+                        pointRadius: 6, pointHoverRadius: 8,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { precision: 0 } }
+                    }
+                }
+            });
+        }
+
+        const ctxCarga = document.getElementById('nocChartCarga');
+        if (ctxCarga) {
+            new Chart(ctxCarga, {
+                type: 'doughnut',
+                data: {
+                    labels: g.labels,
+                    datasets: [{ data: g.volume, backgroundColor: cores, borderColor: '#0e1424', borderWidth: 3, hoverOffset: 8 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '62%',
+                    plugins: { legend: { position: 'bottom', labels: { padding: 14, usePointStyle: true, font: { size: 11 } } } }
+                }
+            });
+        }
+    }
+
+    async function carregarNOC() {
+        try {
+            const res = await fetch('/api/admin/agentes/metricas');
+            const data = await res.json();
+            renderCards(data);
+            renderCharts(data);
+        } catch (err) {
+            console.error('[NOC] Falha ao carregar métricas dos agentes:', err);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', carregarNOC);
+    } else {
+        carregarNOC();
+    }
+})();
+</script>

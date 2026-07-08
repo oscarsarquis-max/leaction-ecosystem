@@ -1,0 +1,237 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <div>
+                <h1><i class="fas fa-cube"></i> Dimensões (Engine)</h1>
+                <p style="color: #666; margin-top: 5px;">Estrutura macro do modelo LeAction.</p>
+            </div>
+            <button class="btn blue-btn" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Nova Dimensão
+            </button>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th style="width: 250px;">Perspectiva</th> <!-- Aumentada para caber tudo -->
+                    <th>Nome da Dimensão</th> <!-- Ocupará o espaço restante -->
+                    <th style="text-align: center; width: 80px;">Ação</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-form" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="fecharModal()">&times;</span>
+        <h2 id="modal-title" style="color: #3498db; margin-bottom: 20px;">Nova Dimensão</h2>
+
+        <form id="form-dime" onsubmit="salvarRegistro(event)">
+            <input type="hidden" id="id_dime">
+
+            <div class="form-row">
+                <!-- Nome e ID são o Core, não mudam -->
+                <div class="form-group" style="flex: 3;">
+                    <label>Nome da Dimensão (Core)</label>
+                    <input type="text" id="name_dime" readonly style="background-color: #f9f9f9; cursor: not-allowed;">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Sigla (Código)</label>
+                    <input type="text" id="code_dime" placeholder="Ex: SV" maxlength="5" style="text-transform: uppercase;">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Perspectiva Uniformizadora</label>
+                <input type="text" id="perspective_dime" placeholder="Ex: Perspectiva Estratégica">
+            </div>
+
+            <!-- Campo Original para compatibilidade -->
+            <div class="form-group">
+                <label>Descrição Curta (Resumo)</label>
+                <input type="text" id="desc_dime" placeholder="Breve explicação para a tabela...">
+            </div>
+
+            <!-- O NOVO CAMPO: O Cerne do Framework -->
+            <div class="form-group">
+                <label style="color: #6c5ce7;"><i class="fas fa-book-open"></i> Conceituação Completa (Filatro & LeAction)</label>
+                <textarea id="long_description" rows="6"
+                          style="width: 100%; padding: 10px; border: 1px solid #6c5ce7; border-radius: 4px;"
+                          placeholder="Descreva aqui o pilar fundamental, os aspectos motivacionais e a visão da Profa. Filatro..."></textarea>
+            </div>
+
+            <div class="modal-buttons">
+                <button type="button" class="btn cancel-btn" onclick="fecharModal()">Cancelar</button>
+                <button type="submit" class="btn blue-btn"><i class="fas fa-save"></i> Salvar Estratégia</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+/* Atualização para Modal Responsivo e com Scroll */
+.modal-content {
+    background-color: white;
+    margin: 2% auto; /* Diminuímos a margem superior para subir o modal */
+    padding: 25px;
+    border-radius: 8px;
+    width: 650px; /* Aumentamos a largura para o texto da Filatro ficar melhor */
+    max-width: 95%;
+    max-height: 90vh; /* Limita a altura a 90% da visão da tela */
+    overflow-y: auto; /* Adiciona scroll interno se o conteúdo for grande */
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s ease;
+}
+
+/* Ajuste para o formulário não espremer os botões */
+#form-dime {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.modal-buttons {
+    position: sticky; /* Faz os botões ficarem sempre visíveis ao rolar */
+    bottom: -25px;
+    background: white;
+    padding: 15px 0;
+    margin-top: 10px;
+    border-top: 1px solid #eee;
+    z-index: 10;
+}
+
+/* Sombreado leve para a coluna de perspectiva */
+td.col-perspective {
+    background-color: #fcfcfc; /* Sombreamento bem sutil */
+    color: #3498db;
+    font-weight: 500;
+    border-right: 1px solid #f0f0f0;
+}
+
+/* Efeito visual na linha ao passar o mouse */
+tr.row-dime:hover {
+    background-color: #f8f9ff !important;
+    cursor: help; /* Muda o mouse para indicar que há informação extra */
+}
+
+/* Estilização para o nome da dimensão */
+.dime-name-main {
+    font-weight: bold;
+    color: #2c3e50;
+}
+</style>
+
+<script>
+    const API_URL = "<%= API_BASE_URL %>/leaf_dime";
+
+    async function carregarDados() {
+        try {
+            const res = await fetch(API_URL);
+            const dados = await res.json();
+            renderizarTabela(dados);
+        } catch (error) { console.error(error); }
+    }
+
+function renderizarTabela(dados) {
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '';
+
+    dados.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'row-dime';
+
+        // Tooltip rica com a fundamentação de Filatro e LeAction
+        tr.title = `RESUMO: ${item.desc_dime || ''}\n\nDETALHAMENTO (Filatro): ${item.long_description || ''}`;
+
+        tr.innerHTML = `
+            <td style="color:#888;">#${item.id_dime}</td>
+            <td class="col-perspective">
+                <i class="fas fa-layer-group" style="font-size: 0.8em; margin-right: 8px;"></i>
+                ${item.perspective_dime || 'Não definida'}
+            </td>
+            <td>
+                <span class="dime-name-main">${item.name_dime}</span>
+                <small style="color: #999; font-size: 0.8em;">Código: ${item.code_dime || '---'}</small>
+            </td>
+            <td style="text-align: center;">
+                <button class="action-btn btn-edit" onclick='editar(${JSON.stringify(item)})' title="Editar Estratégia">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+    function abrirModal(limpar = true) {
+        if(limpar) {
+            document.getElementById('form-dime').reset();
+            document.getElementById('id_dime').value = '';
+            document.getElementById('modal-title').innerText = "Nova Dimensão";
+        }
+        document.getElementById('modal-form').style.display = 'block';
+    }
+    function fecharModal() { document.getElementById('modal-form').style.display = 'none'; }
+
+async function salvarRegistro(e) {
+    e.preventDefault();
+    const id = document.getElementById('id_dime').value;
+
+    // Montamos o payload com as novas colunas
+    const payload = {
+        name_dime: document.getElementById('name_dime').value, // Mantido
+        code_dime: document.getElementById('code_dime').value.toUpperCase(),
+        perspective_dime: document.getElementById('perspective_dime').value,
+        desc_dime: document.getElementById('desc_dime').value,
+        long_description: document.getElementById('long_description').value // A novidade
+    };
+
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `${API_URL}/${id}` : API_URL;
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+        });
+        if(res.ok) {
+            fecharModal();
+            carregarDados();
+            alert("Estratégia atualizada com sucesso!");
+        }
+    } catch(e) { console.error("Erro ao salvar dimensão:", e); }
+}
+
+function editar(item) {
+    abrirModal(false);
+    document.getElementById('modal-title').innerText = "Explorar Dimensão Estratégica";
+    document.getElementById('id_dime').value = item.id_dime;
+
+    // Bloqueio absoluto do Nome
+    const nameField = document.getElementById('name_dime');
+    nameField.value = item.name_dime;
+    nameField.readOnly = true; // Impede a digitação
+    nameField.style.backgroundColor = "#f4f4f4"; // Sinaliza visualmente que é intocável
+    nameField.style.cursor = "not-allowed";
+
+    // Campos liberados para a manutenção estratégica
+    document.getElementById('code_dime').value = item.code_dime || '';
+    document.getElementById('perspective_dime').value = item.perspective_dime || '';
+    document.getElementById('desc_dime').value = item.desc_dime || '';
+    document.getElementById('long_description').value = item.long_description || '';
+}
+    async function deletar(id) {
+        if(confirm("Confirma exclusão?")) {
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            carregarDados();
+        }
+    }
+
+    carregarDados();
+</script>

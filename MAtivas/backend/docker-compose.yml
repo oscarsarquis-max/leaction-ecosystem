@@ -1,0 +1,84 @@
+services:
+  # --- 0. REVERSE PROXY + TLS (Caddy / Let's Encrypt) ---
+  caddy:
+    image: caddy:2-alpine
+    container_name: mativas_prod_caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /home/ubuntu/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+  # --- 1. INTERFACE VISUAL (React / Vite) ---
+  frontend:
+    image: 253137917703.dkr.ecr.us-east-2.amazonaws.com/mativas-frontend:latest
+    container_name: mativas_prod_frontend
+    restart: always
+    expose:
+      - "80"
+
+  # --- 2. API FLASK (Serviço de Endpoints) ---
+  backend:
+    image: 253137917703.dkr.ecr.us-east-2.amazonaws.com/mativas-backend:latest
+    container_name: mativas_prod_backend
+    restart: always
+    expose:
+      - "5000"
+    environment:
+      # Dados extraídos diretamente da sua instância RDS AWS
+      - DB_HOST=paneldx-database.czqyam2auctn.us-east-2.rds.amazonaws.com
+      - DB_PORT=5432
+      - DB_NAME=MAtivas
+      - DB_USER=postgres
+      - DB_PASSWORD=Cmgv6190!#$ # <-- Substitua pela senha real do seu RDS
+      - DB_SSLMODE=require
+
+      # Origem permitida para CORS (frontend de produção)
+      - CORS_ORIGINS=https://metodologiasinovativas.com.br,https://www.metodologiasinovativas.com.br,http://metodologiasinovativas.com.br,http://www.metodologiasinovativas.com.br
+
+      # Trava de segurança para não duplicar o worker em produção
+      - SPAWN_INTERNAL_WORKERS=0
+      - FLASK_DEBUG=0
+      - PORT=5000
+      - SITE_URL=https://metodologiasinovativas.com.br
+
+      # Área administrativa (painel /admin)
+      - "ADMIN_PASSWORD=admin123"
+      - JWT_SECRET=mativas-prod-jwt-ec2-2026-xK9mP2
+      - JWT_EXPIRES_HOURS=24
+    volumes:
+      # Credenciais AWS do host (somente leitura) para o Amazon Bedrock
+      - /home/ubuntu/.aws:/root/.aws:ro
+
+  # --- 3. WORKER DE IA ASSÍNCRONO (Cérebro Claude / Bedrock) ---
+  worker:
+    image: 253137917703.dkr.ecr.us-east-2.amazonaws.com/mativas-backend:latest
+    container_name: mativas_prod_worker
+    restart: always
+    command: python /app/services/ai_worker.py
+    environment:
+      # Repete exatamente as mesmas credenciais do RDS para o processador de background
+      - DB_HOST=paneldx-database.czqyam2auctn.us-east-2.rds.amazonaws.com
+      - DB_PORT=5432
+      - DB_NAME=MAtivas
+      - DB_USER=postgres
+      - DB_PASSWORD=Cmgv6190!#$ # <-- Substitua pela mesma senha aqui
+      - DB_SSLMODE=require
+
+      # Região do Amazon Bedrock (Claude)
+      - AWS_DEFAULT_REGION=us-east-1
+      - SITE_URL=https://metodologiasinovativas.com.br
+    volumes:
+      # Credenciais AWS do host (somente leitura) para o Amazon Bedrock
+      - /home/ubuntu/.aws:/root/.aws:ro
+
+# Volumes persistentes do Caddy (certificados TLS e estado do ACME)
+volumes:
+  caddy_data:
+  caddy_config:

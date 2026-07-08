@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= typeof title !== 'undefined' ? title : 'LeAction Panel' %></title>
+
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+        const API_BASE_URL = '<%= typeof API_BASE_URL !== "undefined" ? API_BASE_URL : "" %>';
+    </script>
+
+    <style>
+        :root {
+            --sidebar-bg: #111827;
+            --header-bg: #1f2937;
+            --accent-violet: #6c5ce7;
+            --accent-blue: #60a5fa;
+            --accent-gold: #d97706;
+            --text-muted: #9ca3af;
+        }
+
+        /* GERAL */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #f3f4f6; }
+        main { display: flex; min-height: 100vh; padding-top: 60px; }
+
+        /* HEADER */
+        .main-header {
+            position: fixed; top: 0; left: 0; width: 100%; height: 60px;
+            background: var(--header-bg); color: white; z-index: 1000;
+            display: flex; align-items: center; padding: 0 20px; box-sizing: border-box;
+        }
+
+        /* LOGIN COMPACTO HEADER */
+        .login-header-form { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 50px; }
+        .login-header-form input { background: white; border: none; border-radius: 20px; padding: 6px 12px; font-size: 0.85em; width: 160px; }
+        .btn-violet-dark { background: var(--accent-violet); color: white; border: none; border-radius: 20px; padding: 6px 15px; cursor: pointer; font-weight: bold; font-size: 0.85em; transition: 0.3s; }
+        .btn-violet-dark:hover { background: #5a4bcf; }
+
+        /* SIDEBAR MODERNA - ESTRUTURA PRESERVADA */
+        .sidebar-menu {
+            width: 260px; background: var(--sidebar-bg); position: fixed; top: 60px;
+            height: calc(100vh - 60px); overflow-y: auto; z-index: 50; display: flex; flex-direction: column;
+        }
+        .sidebar-menu ul { list-style: none; padding: 0; margin: 0; }
+
+        /* UNIFORMIZAÇÃO DOS LINKS (AQUI ESTÁ A MÁGICA) */
+        .sidebar-menu a {
+            display: flex !important;
+            align-items: center !important;
+            padding: 10px 20px !important;
+            text-decoration: none !important;
+            font-size: 0.9rem !important;
+            transition: 0.2s !important;
+            /* FORÇA O CINZA EM TODOS OS TEXTOS, IGNORANDO O STYLE INLINE */
+            color: var(--text-muted) !important;
+            font-weight: 500 !important;
+        }
+
+        .sidebar-menu a:hover {
+            background: #1f2937 !important;
+            color: white !important;
+        }
+
+        /* PRESERVAÇÃO DOS SUBMENUS (INDENTAÇÃO) */
+        .sidebar-menu .submenu {
+            padding-left: 20px !important;
+            background: rgba(0,0,0,0.2);
+        }
+        .sidebar-menu .submenu a {
+            font-size: 0.85rem !important;
+        }
+
+        /* CORES APENAS NOS ÍCONES */
+        .sidebar-menu i {
+            width: 25px !important;
+            font-size: 1.1rem !important;
+            margin-right: 10px !important;
+            /* Cor padrão dos ícones */
+            color: var(--accent-blue);
+        }
+
+        /* CORES ESPECÍFICAS PARA CADA ÍCONE (SINALIZAÇÃO SUTIL) */
+        .fa-brain { color: #a29bfe !important; }      /* Violeta IA */
+        .fa-id-card { color: #27ae60 !important; }    /* Verde Dados */
+        .fa-sign-out-alt { color: #ef4444 !important; } /* Vermelho Sair */
+        .fa-rocket, .fa-map-marked-alt { color: var(--accent-blue) !important; }
+
+        /* BOTÃO GÊNESE (MANTÉM O ESTILO DOURADO) */
+        #btnDouradoLayout {
+            background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%) !important;
+            color: #000 !important;
+            border: 1px solid #DAA520 !important;
+            border-radius: 6px !important;
+            padding: 10px !important;
+            font-weight: bold !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* MODAL E CONTEÚDO */
+        .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 800px; max-width: 90%; max-height: 90vh; overflow-y: auto; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .content { flex-grow: 1; margin-left: 260px; padding: 30px; box-sizing: border-box; }
+
+        /* Isso vai forçar TODOS os ícones dentro da sidebar a terem a mesma cor azul */
+        .sidebar-menu i,
+        .sidebar-menu [class^="fa-"],
+        .sidebar-menu [class*=" fa-"] {
+            color: var(--accent-blue) !important;
+        }
+
+        /* Isso remove qualquer cor específica que tenha sobrado nos links */
+        .sidebar-menu a {
+            color: var(--text-muted) !important;
+        }
+
+        /* Remove o espaçamento excessivo quando a barra de contexto está ativa */
+        .context-bar + main .content {
+            padding-top: 10px !important;
+        }
+
+        /* Garante que o main não empurre o conteúdo para baixo se a barra já estiver lá */
+        main.with-context {
+            padding-top: 0 !important;
+        }
+
+    </style>
+</head>
+<body>
+
+
+<header class="main-header">
+    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+
+        <a href="/" title="Home / Dashboard" style="color: white; text-decoration: none; padding: 5px; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-home" style="font-size: 1.2rem;"></i>
+            <h2 style="margin: 0; font-size: 1.1rem; white-space: nowrap;">Panel DX (<i>LeActionSys</i>)</h2>
+        </a>
+
+        <div class="header-right">
+
+            <% if (!locals.isLoggedIn) { %>
+                <div class="login-header-form" id="header-login-container">
+
+                    <i class="fas fa-sign-in-alt" style="color: rgba(255,255,255,0.7); margin-right: 5px;"></i>
+
+                    <div id="h-step-1" style="display: flex; gap: 8px;">
+                        <input type="email" id="h-email" placeholder="Seu e-mail corporativo">
+                        <button type="button" onclick="h_verificarEmail()" class="btn-login-header btn-violet-dark">Próximo</button>
+                    </div>
+
+                    <div id="h-step-2" style="display: none; gap: 8px; align-items: center;">
+                        <span id="h-email-display" style="color: white; font-size: 0.8em; font-weight: bold; margin-right: 5px;"></span>
+                        <input type="password" id="h-credential" placeholder="Senha ou Código">
+                        <button type="button" onclick="h_realizarLogin()" class="btn-login-header btn-violet-dark">Entrar</button>
+                        <button type="button" onclick="h_voltar()" style="background:none; border:none; color:#ccc; cursor:pointer; padding: 0 5px;"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+            <% } %>
+
+            <img src="/images/logo1.jpg" alt="Logo Panel DX" class="header-logo">
+        </div>
+    </div>
+</header>
+
+<%
+    // Proteção contra variables inexistentes
+    const nomeExibicao = (locals.lead && lead.nome) ? lead.nome.split(' ')[0] : (locals.user && user.nome ? user.nome.split(' ')[0] : null);
+    const empresaExibicao = (locals.lead && lead.empresa_clie) ? lead.empresa_clie : null;
+%>
+
+<% if (locals.isLoggedIn && nomeExibicao) { %>
+<nav class="context-bar" style="
+    background: #f0f9ff;
+    border-bottom: 1px solid #bae6fd;
+    padding: 8px 25px;
+    margin-top: 60px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    z-index: 10;
+    position: relative;
+">
+    <div style="display: flex; align-items: center; gap: 12px; margin-left: 260px;">
+
+        <div class="user-avatar" style="
+            width: 28px;
+            height: 28px;
+            background: #0369a1;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.7rem;
+            box-shadow: 0 1px 3px rgba(3, 105, 161, 0.2);
+        ">
+            <%= nomeExibicao.charAt(0).toUpperCase() %>
+        </div>
+
+        <div style="text-align: left; line-height: 1.2;">
+            <span style="display: block; font-size: 0.85rem; color: #0c4a6e; font-weight: bold;">
+                Olá, <%= nomeExibicao %>! 👋
+            </span>
+            <% if (empresaExibicao) { %>
+                <small style="font-size: 0.65rem; color: #0369a1; text-transform: uppercase; font-weight: 600; letter-spacing: 0.3px;">
+                    <%= empresaExibicao %>
+                </small>
+            <% } %>
+        </div>
+    </div>
+</nav>
+<% } %>
+    <main>
+        <nav class="sidebar-menu">
+            <ul>
+                <li class="menu-item"> </li>
+
+                <li class="menu-item" style="margin-top: 5px;">
+                    <a href="/instrucoes-de-uso" style="font-weight: bold;">
+                        <i class="fas fa-book"></i> Instruções de Uso
+                    </a>
+                </li>
+
+                <hr style="border-top: 1px solid rgba(255,255,255,0.2); margin: 10px 0;">
+
+                <% if (!locals.isLoggedIn) { %>
+                    <li class="menu-item">
+                        <ul class="submenu">
+                            <li><a href="/cadastro">Iniciar Diagnóstico</a></li>
+                        </ul>
+                    </li>
+                <% } else if (locals.isAdmin) { %>
+                    <li class="menu-item">
+                        <a href="#"><i class="fas fa-user-shield"></i> Administrador</a>
+                        <ul class="submenu">
+                            <li><a href="/logout" style="color: #ffcccc;">Sair</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="#">LeAction (Engine)</a>
+                        <ul class="submenu">
+                            <li><a href="/dimensoes">Dimensões</a></li>
+                            <li><a href="/dominios">Domínios</a></li>
+                            <li><a href="/blocos">Blocos</a></li>
+                            <li><a href="/entregaveis">Entregáveis</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="#">Método CTDI</a>
+                        <ul class="submenu">
+                            <li><a href="/teams" style="color: #a3bffa; font-weight: bold;">Gestão de Time</a></li>
+                            <li><a href="/clientes">Clientes</a></li>
+                            <li><a href="/sprints">Sprints</a></li>
+                            <li><a href="/questoes">Questões</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="#"><i class="fas fa-chart-pie"></i> Análise Estratégica</a>
+                        <ul class="submenu">
+                            <li><a href="/avaliacoes"><i class="fas fa-clipboard-check"></i> Avaliações Iniciais</a></li>
+                            <li><a href="/inteligencia-negocio"><i class="fas fa-brain"></i> Inteligência de Negócio</a></li>
+                            <li><a href="/admin/governanca-estrategica"><i class="fas fa-gavel"></i> Governança OKR</a></li>
+                            <li><a href="/financas"><i class="fas fa-hand-holding-usd"></i> Finanças</a></li>
+                        </ul>
+                    </li>
+                <% } else { %>
+                    <li class="menu-item">
+                        <a href="javascript:void(0)" class="has-submenu">
+                            <i class="fas fa-user"></i>
+                            Olá, <%= locals.lead && lead.nome ? lead.nome.split(' ')[0] : 'Consultor' %>
+                        </a>
+                        <ul class="submenu">
+                            <li><a href="/avaliacoes/<%= lead.id_matu %>"><i class="fas fa-edit"></i> Avaliação Inicial</a></li>
+
+                            <%
+                                // Lógica para alternar o link da Análise de Contexto baseada no status
+                                const statusIA = (locals.lead && lead.status_ia) ? lead.status_ia.toUpperCase() : "";
+                                const linkContexto = (statusIA === 'PRESURVEY OK') ? `/diagnostico-inicial/${lead.id_matu}` : `/diagnostico/${lead.id_matu}`;
+                            %>
+                            <li><a href="<%= linkContexto %>"><i class="fas fa-file-pdf"></i> Análise de Contexto</a></li>
+
+                            <% if (locals.lead && lead.hasActiveProject) { %>
+                                <li style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px;">
+                                    <a href="/insights-ia/<%= lead.id_matu %>" style="color: #f1c40f; font-weight: bold !important;">
+                                        <i class="fas fa-brain"></i> Inteligência de Negócio
+                                    </a>
+                                </li>
+
+                                <li style="margin-top: 5px;">
+                                    <a href="/planejamento-estrategico" style="font-weight: bold !important;">
+                                        <i class="fas fa-chess"></i> Estratégia Empresarial
+                                    </a>
+                                </li>
+
+                                <li style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px;">
+                                    <a href="javascript:void(0)" onclick="abrirModalContextoLead(); event.stopPropagation();" style="font-weight: bold;">
+                                        <i class="fas fa-id-card"></i> Meus Dados
+                                    </a>
+                                </li>
+
+                                <li style="margin-top: 5px;">
+                                    <a href="/teams" style="color: #a3bffa; font-weight: bold !important;">
+                                        <i class="fas fa-users-cog"></i> Gestão de Time
+                                    </a>
+                                </li>
+
+                                <li style="margin: 15px 0 5px 0; border-top: 1px solid rgba(255,255,255,0.1);"></li>
+
+
+
+                                <% if (!lead.data_geracao_plano) { %>
+                                    <li style="padding: 0 15px; margin-bottom: 10px;">
+                                        <button type="button" onclick="dispararGeneseLayout(event)" id="btnDouradoLayout" style="width: 100%; background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%); border: 1px solid #DAA520; color: #000; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;">
+                                            <i class="fas fa-magic" id="iconeMagiaLayout" style="margin-right: 8px;"></i>
+                                            <span id="textoBotaoLayout">Gerar Estratégia</span>
+                                        </button>
+                                    </li>
+                                <% } else { %>
+                                    <li><a href="/meu-plano" style="color: #4facfe; font-weight: bold;"><i class="fas fa-map-marked-alt"></i> Plano Geral</a></li>
+                                    <li><a href="/projeto/sprint-atual"><i class="fas fa-rocket"></i> Quadro Kanban</a></li>
+                                <% } %>
+                            <% } %>
+
+                            <li style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                                <a href="/logout" style="color: #ffcccc;"><i class="fas fa-sign-out-alt"></i> Sair</a>
+                            </li>
+                        </ul>
+                    </li>
+                <% } %>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <%- body %>
+        </div>
+    </main>
+
+    <!-- ==================================================================
+         🔮 CENTRALIZAÇÃO FLAT: INCLUSÃO DO MODAL DE CONTEXTO EMITIDO PELA UI - PROTEÇÃO ATIVA
+         ================================================================== -->
+    <% if (!locals.clientesModalCarregado) {
+        locals.clientesModalCarregado = true; %>
+        <%- include('clientes_modal') %>
+    <% } %>
+
+    <footer class="main-footer">
+        <p>&copy; 2025 LeAction. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="/js/scripts.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <script>
+        var _leadData = {};
+        try {
+            _leadData = JSON.parse('<%- JSON.stringify(locals.lead || locals.user || {}).replace(/\\/g, "\\\\").replace(/\'/g, "\\\'") %>');
+        } catch (e) { console.error("Erro JSON:", e); }
+
+        // Mapeia e redireciona os gatilhos de layout para o novo parcial inteligente unificado
+        function abrirModalContextoLead() {
+            if (!_leadData) return;
+
+            const statusMacro = (_leadData.status_ia || "").toUpperCase();
+            const jaBloqueadoPeloPlano = (statusMacro.includes('CONCLU') || !!_leadData.data_geracao_plano);
+
+            // Delega o carregamento e abertura para a árvore de funções do clientes_modal
+            abrirModalContextoLeadGeral(_leadData, jaBloqueadoPeloPlano);
+        }
+
+        function fecharModalContextoLead() {
+            const m = document.getElementById('modalContextoCliente');
+            if(m) m.style.display = 'none';
+        }
+
+        async function dispararGeneseLayout(event) {
+            if(event) event.preventDefault();
+            if(!confirm("Deseja iniciar o processamento da Gênese IA?")) return;
+            try {
+                await fetch('/client/generate-ai-plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_matu: _leadData.id_matu })
+                });
+                window.location.reload();
+            } catch (err) { window.location.reload(); }
+        }
+
+        async function h_verificarEmail() {
+            const email = document.getElementById('h-email').value.trim();
+            if (!email) return alert("Digite seu e-mail");
+
+            try {
+                const res = await fetch('/verificar-email', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    document.getElementById('h-step-1').style.display = 'none';
+                    document.getElementById('h-step-2').style.display = 'flex';
+                    document.getElementById('h-email-display').innerText = email.split('@')[0];
+
+                    const inputCred = document.getElementById('h-credential');
+                    inputCred.placeholder = (data.type === 'TEAM') ? "Senha Admin" : "Código";
+                    inputCred.focus();
+                } else {
+                    alert(data.error || "E-mail não encontrado.");
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function h_realizarLogin() {
+            const email = document.getElementById('h-email').value;
+            const credential = document.getElementById('h-credential').value.trim();
+
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email: email, codigo: credential })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    alert(data.message || "Credenciais inválidas.");
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function h_voltar() {
+            document.getElementById('h-step-1').style.display = 'flex';
+            document.getElementById('h-step-2').style.display = 'none';
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface font-sans text-brand-cinza antialiased;
+  }
+}
+
+@layer components {
+  .section-title {
+    @apply text-lg font-semibold text-brand-cinza;
+  }
+
+  .section-subtitle {
+    @apply mt-1 text-sm text-brand-cinza/80;
+  }
+
+  .card-panel {
+    @apply rounded-xl border border-gray-200 bg-white p-5 shadow-card;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-lg bg-brand-verde px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-verde/90 focus:outline-none focus:ring-2 focus:ring-brand-laranja focus:ring-offset-2;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center gap-2 rounded-lg border border-brand-verde bg-white px-4 py-2 text-sm font-semibold text-brand-verde transition hover:bg-brand-verde/5 focus:outline-none focus:ring-2 focus:ring-brand-laranja focus:ring-offset-2;
+  }
+
+  .formula-editor-shell {
+    @apply overflow-hidden rounded-xl border border-brand-verde/40 shadow-lg ring-1 ring-brand-verde/10;
+  }
+
+  .formula-editor-toolbar {
+    @apply flex flex-wrap items-center justify-between gap-2 border-b border-brand-verde/30 bg-[#0F2A1E] px-4 py-2.5;
+  }
+
+  .formula-editor-body {
+    @apply grid grid-cols-[auto_1fr] bg-[#071912];
+  }
+
+  .formula-editor-gutter {
+    @apply select-none border-r border-brand-verde/20 bg-[#0A1F15] px-3 py-3 text-right font-mono text-xs leading-relaxed text-emerald-100/35;
+  }
+
+  .formula-editor-input {
+    @apply min-h-[168px] w-full resize-y border-0 bg-transparent px-4 py-3 font-mono text-sm leading-relaxed text-emerald-100 placeholder:text-emerald-100/25 focus:outline-none focus:ring-0;
+  }
+
+  .formula-editor-status {
+    @apply flex flex-wrap items-center justify-between gap-2 border-t border-brand-verde/25 bg-[#0F2A1E] px-4 py-2 text-xs text-emerald-100/60;
+  }
+
+  .login-header-zone {
+    perspective: 1400px;
+    perspective-origin: 50% 0%;
+  }
+
+  .login-panel-3d {
+    transform-style: preserve-3d;
+    transform: rotateX(8deg) rotateY(-6deg);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -2px 6px rgba(0, 75, 44, 0.08),
+      0 4px 0 rgba(0, 59, 35, 0.45),
+      0 18px 36px -10px rgba(0, 75, 44, 0.45),
+      0 32px 64px -16px rgba(0, 0, 0, 0.22);
+    transition: transform 0.35s ease, box-shadow 0.35s ease;
+  }
+
+  .login-panel-3d:hover {
+    transform: rotateX(5deg) rotateY(-3deg) translateZ(8px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -2px 6px rgba(0, 75, 44, 0.08),
+      0 6px 0 rgba(0, 59, 35, 0.5),
+      0 24px 48px -12px rgba(0, 75, 44, 0.5),
+      0 40px 80px -20px rgba(0, 0, 0, 0.25);
+  }
+
+  .login-input-inset {
+    box-shadow:
+      inset 0 2px 5px rgba(0, 75, 44, 0.14),
+      inset 0 1px 2px rgba(0, 0, 0, 0.06),
+      0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .login-input-inset:focus {
+    box-shadow:
+      inset 0 2px 4px rgba(0, 75, 44, 0.1),
+      0 0 0 3px rgba(0, 75, 44, 0.15),
+      0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .login-btn-extrude {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.25),
+      0 4px 0 #003320,
+      0 8px 20px rgba(0, 75, 44, 0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .login-btn-extrude:hover {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 5px 0 #003320,
+      0 12px 28px rgba(0, 75, 44, 0.45);
+  }
+
+  .login-btn-extrude:active {
+    transform: translateY(3px);
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.2),
+      0 1px 0 #003320,
+      0 4px 12px rgba(0, 75, 44, 0.3);
+  }
+
+  .login-scene-3d {
+    transform-style: preserve-3d;
+    transform: rotateX(12deg) rotateY(18deg);
+  }
+
+  .login-slab {
+    position: absolute;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    transform-style: preserve-3d;
+  }
+
+  .login-slab-1 {
+    left: 0;
+    top: 1.5rem;
+    width: 5.5rem;
+    height: 3.5rem;
+    background: linear-gradient(145deg, #006b3f 0%, #004b2c 100%);
+    transform: translateZ(0px) rotateY(-8deg);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      8px 12px 24px rgba(0, 75, 44, 0.35);
+  }
+
+  .login-slab-2 {
+    left: 3.5rem;
+    top: 0.5rem;
+    width: 5rem;
+    height: 3rem;
+    background: linear-gradient(145deg, #ff9a2e 0%, #f68b1f 100%);
+    transform: translateZ(28px) rotateY(12deg) rotateX(-6deg);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      10px 16px 28px rgba(246, 139, 31, 0.35);
+  }
+
+  .login-slab-3 {
+    left: 6.5rem;
+    top: 2rem;
+    width: 4.5rem;
+    height: 2.75rem;
+    background: linear-gradient(145deg, #8a8a8a 0%, #646464 100%);
+    transform: translateZ(52px) rotateY(-14deg) rotateX(8deg);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.25),
+      12px 20px 32px rgba(0, 0, 0, 0.2);
+  }
+
+  .login-panel-lip {
+    position: absolute;
+    bottom: -6px;
+    left: 8%;
+    right: 8%;
+    height: 6px;
+    border-radius: 0 0 0.75rem 0.75rem;
+    background: linear-gradient(180deg, rgba(0, 59, 35, 0.5) 0%, rgba(0, 59, 35, 0.15) 100%);
+    transform: rotateX(75deg) translateZ(-4px);
+    transform-origin: top center;
+    filter: blur(1px);
+  }
+}

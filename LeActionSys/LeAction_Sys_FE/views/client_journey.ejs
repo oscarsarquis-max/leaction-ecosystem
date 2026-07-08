@@ -1,0 +1,263 @@
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+
+        <div class="text-center mb-12">
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight sm:text-4xl">
+                Sua Jornada de Transformação
+            </h1>
+            <p class="mt-3 max-w-2xl mx-auto text-xl text-gray-500 sm:mt-4">
+                Acompanhe o progresso das Ondas e Sprints do seu projeto LeAction.
+            </p>
+        </div>
+
+        <% if (!journey || journey.length === 0) { %>
+            <div class="bg-white shadow rounded-lg p-10 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                    <i class="fas fa-magic text-yellow-600"></i>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Plano em Elaboração</h3>
+                <p class="mt-2 text-sm text-gray-500">
+                    Seu plano estratégico está sendo processado pela nossa Inteligência Artificial ou aguardando o acionamento da Gênese.
+                </p>
+                <div class="mt-6">
+                    <a href="/projeto" class="text-blue-600 hover:text-blue-500 font-medium">Voltar ao Dashboard <span aria-hidden="true">&rarr;</span></a>
+                </div>
+            </div>
+        <% } else { %>
+
+            <!-- ===================================================================== -->
+            <!-- 🎯 NOVA SEÇÃO: TRILHA DE INOVAÇÃO DX (ANTES DAS ONDAS PLANEJADAS)   -->
+            <!-- ===================================================================== -->
+            <div class="mb-16 p-6 bg-orange-50 border border-orange-200 rounded-2xl shadow-sm relative overflow-hidden">
+                <!-- Efeito visual de fundo -->
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-orange-200 rounded-full opacity-40 blur-2xl"></div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; position: relative; z-index: 10;">
+                    <div style="display: flex; align-items: center;">
+                        <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 10px 25px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(234, 88, 12, 0.2); display: flex; align-items: center;">
+                            <i class="fas fa-lightbulb text-yellow-200 mr-3"></i>
+                            Trilha de Inovação (Em Análise)
+                        </div>
+                        <div style="flex-grow: 1; height: 2px; background-color: #fdba74; margin-left: -5px; min-width: 50px;"></div>
+                    </div>
+
+                    <!-- 🎯 BOTÃO DE IMPORTAÇÃO DA MESA (Gatilho para o novo módulo) -->
+                    <button onclick="iniciarImportacaoDX()" class="bg-white border-2 border-dashed border-orange-400 text-orange-600 hover:bg-orange-100 hover:border-orange-500 font-bold py-2 px-5 rounded-xl text-xs uppercase tracking-wide transition-all shadow-sm flex items-center">
+                        <i class="fas fa-file-import mr-2"></i> Importar Sprint (JSON)
+                    </button>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: flex-start; position: relative; z-index: 10;">
+
+                    <% if (typeof sprintsInovacao !== 'undefined' && sprintsInovacao.length > 0) { %>
+                        <% sprintsInovacao.forEach((sprintDx) => { %>
+                            <!-- 🎯 CARD DX LARANJA -->
+                            <div style="flex: 1 1 300px; max-width: 380px; background-color: white; border-radius: 12px; border-top: 5px solid #f97316; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; transition: transform 0.2s ease-in-out;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+
+                                <div style="padding: 20px; flex-grow: 1;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                                        <div style="display: flex; gap: 8px; align-items: center;">
+                                            <!-- Badge DX -->
+                                            <span style="font-size: 11px; font-weight: 900; background: #4f46e5; color: white; padding: 4px 8px; border-radius: 6px; letter-spacing: 1px;">DX</span>
+                                            <!-- Status -->
+                                            <span style="font-size: 10px; font-weight: bold; text-transform: uppercase; padding: 4px 8px; border-radius: 6px; background-color: #ffedd5; color: #c2410c;">
+                                                EM ANÁLISE
+                                            </span>
+                                        </div>
+                                        <span style="font-size: 10px; color: #9ca3af; font-family: monospace;">#<%= sprintDx.id || 'NOVO' %></span>
+                                    </div>
+
+                                    <h3 style="font-size: 1.125rem; font-weight: 700; color: #111827; margin-bottom: 10px; line-height: 1.3;">
+                                        <%= sprintDx.nome %>
+                                    </h3>
+
+                                    <p style="font-size: 0.875rem; color: #4b5563; line-height: 1.5; margin-bottom: 15px;">
+                                        <%= sprintDx.objetivo || 'Sprint gerada pela Mesa de Inovação aguardando acoplamento e agendamento.' %>
+                                    </p>
+                                </div>
+
+                                <div style="padding: 15px 20px; background-color: #fffaf5; border-top: 1px solid #ffedd5; border-radius: 0 0 12px 12px; text-align: center;">
+                                    <span style="font-size: 11px; color: #ea580c; font-weight: 600; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-tools mr-1.5"></i> AGUARDANDO PLANEJAMENTO
+                                    </span>
+                                </div>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <div style="width: 100%; text-align: center; padding: 30px; color: #ea580c; font-style: italic; border: 1px dashed #fdba74; border-radius: 12px; background: rgba(255,255,255,0.6);">
+                            <i class="fas fa-box-open text-3xl mb-2 opacity-50"></i><br>
+                            Nenhuma Sprint DX em análise. Use o botão acima para importar arquivos da Mesa de Inovação.
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+            <!-- ===================================================================== -->
+
+            <% journey.forEach((onda, indexOnda) => { %>
+
+                <div class="mb-16">
+                    <div style="display: flex; align-items: center; margin-bottom: 25px;">
+                        <div style="background-color: #2563eb; color: white; padding: 10px 25px; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; align-items: center; z-index: 10;">
+                            <i class="fas fa-water mr-3"></i>
+                            <%= onda.nome %>
+                        </div>
+                        <div style="flex-grow: 1; height: 2px; background-color: #d1d5db; margin-left: -5px;"></div>
+                    </div>
+
+                    <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: flex-start;">
+
+                        <% if (onda.sprints && onda.sprints.length > 0) { %>
+                            <% onda.sprints.forEach((sprint, indexSprint) => { %>
+
+                                <%
+                                    let borderCol = "#d1d5db";
+                                    let badgeBg = "#f3f4f6";
+                                    let badgeText = "#374151";
+                                    let isAtiva = (sprint.status === 'ativa' || sprint.status === 'EM_PROGRESSO');
+                                    let isConcluida = (sprint.status === 'concluida' || sprint.status === 'CONCLUIDA');
+
+                                    if (isAtiva) {
+                                        borderCol = "#3b82f6";
+                                        badgeBg = "#dbeafe";
+                                        badgeText = "#1e40af";
+                                    } else if (isConcluida) {
+                                        borderCol = "#10b981";
+                                        badgeBg = "#dcfce7";
+                                        badgeText = "#166534";
+                                    }
+                                %>
+
+                                <div style="flex: 1 1 300px; max-width: 380px; background-color: white; border-radius: 12px; border-top: 5px solid <%= borderCol %>; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; transition: transform 0.2s ease-in-out;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+
+                                    <div style="padding: 20px; flex-grow: 1;">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                                            <span style="font-size: 10px; font-weight: bold; text-transform: uppercase; padding: 4px 8px; border-radius: 6px; background-color: <%= badgeBg %>; color: <%= badgeText %>;">
+                                                <%= sprint.status.replace('_', ' ') %>
+                                            </span>
+                                            <span style="font-size: 10px; color: #9ca3af; font-family: monospace;">#<%= sprint.id %></span>
+                                        </div>
+
+                                        <h3 style="font-size: 1.125rem; font-weight: 700; color: #111827; margin-bottom: 10px; line-height: 1.3;">
+                                            <%= sprint.nome %>
+                                        </h3>
+
+                                        <p style="font-size: 0.875rem; color: #4b5563; line-height: 1.5; margin-bottom: 15px;">
+                                            <%= sprint.objetivo || 'Objetivo estratégico definido para mitigação de gaps e aceleração digital.' %>
+                                        </p>
+                                    </div>
+
+                                    <div style="padding: 15px 20px; background-color: #f9fafb; border-top: 1px solid #f3f4f6; border-radius: 0 0 12px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+
+                                            <button onclick="prepararAgendamento('<%= sprint.id %>', '<%= sprint.nome %>')"
+                                                    style="background: none; border: 1px solid #d1d5db; padding: 6px 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; font-size: 11px; color: #4b5563; transition: all 0.2s;"
+                                                    onmouseover="this.style.borderColor='#3b82f6'; this.style.color='#3b82f6'"
+                                                    onmouseout="this.style.borderColor='#d1d5db'; this.style.color='#4b5563'">
+                                                <i class="far fa-calendar-alt mr-1.5" style="color: <%= borderCol %>"></i>
+                                                <%= (sprint.data_inicio && sprint.data_inicio !== 'null') ? new Date(sprint.data_inicio).toLocaleDateString('pt-BR') : 'A DEFINIR' %>
+                                            </button>
+
+                                            <% if (isAtiva) { %>
+                                                <a href="/projeto/sprint-atual" style="color: #2563eb; font-weight: 800; text-decoration: none; font-size: 11px; display: flex; align-items: center;">
+                                                    VER KANBAN <i class="fas fa-external-link-alt ml-1.5"></i>
+                                                </a>
+                                            <% } else { %>
+                                                <span style="color: #9ca3af; font-weight: 600; font-size: 11px; display: flex; align-items: center; cursor: not-allowed;" title="Esta sprint precisa ser iniciada para liberar o Kanban">
+                                                    <i class="fas fa-lock mr-1.5" style="font-size: 9px;"></i> KANBAN
+                                                </span>
+                                            <% } %>
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                            <% }) %>
+                        <% } else { %>
+                            <div style="width: 100%; text-align: center; padding: 20px; color: #9ca3af; font-style: italic; border: 1px dashed #d1d5db; border-radius: 8px;">
+                                Nenhuma sprint definida para esta onda.
+                            </div>
+                        <% } %>
+
+                    </div>
+                </div>
+
+            <% }) %>
+
+            <div style="position: relative; padding-top: 40px; margin-top: 40px; text-align: center;">
+                <div style="position: absolute; top: 50%; left: 0; right: 0; border-top: 2px dashed #d1d5db; z-index: 1;"></div>
+                <div style="position: relative; display: inline-block; background-color: #f9fafb; padding: 0 30px; z-index: 2;">
+                    <span style="font-size: 0.75rem; font-weight: 800; color: #6b7280; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center;">
+                        <i class="fas fa-flag text-blue-600 mr-2" style="font-size: 1.2rem;"></i>
+                        Objetivo Final Alcançado
+                    </span>
+                </div>
+            </div>
+
+        <% } %>
+    </div>
+</div>
+
+<div id="modalAgendamento" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+    <div style="background: white; padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); border: 1px solid #e5e7eb;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="background: #eff6ff; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                <i class="fas fa-calendar-check text-blue-600" style="font-size: 20px;"></i>
+            </div>
+            <h3 style="font-weight: 800; color: #111827; margin: 0;" id="modalTitulo">Agendar Sprint</h3>
+            <p style="font-size: 13px; color: #6b7280; margin-top: 5px;">Escolha a data de início para esta sprint.</p>
+        </div>
+
+        <input type="hidden" id="modalIdSprn">
+        <label style="display: block; font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 8px; text-transform: uppercase;">Início da Sprint</label>
+        <input type="date" id="modalDataInput" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 14px; outline: none; margin-bottom: 25px;">
+
+        <div style="display: flex; gap: 12px;">
+            <button onclick="fecharModal()" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb; background: white; color: #4b5563; font-weight: 600; cursor: pointer;">Cancelar</button>
+            <button onclick="salvarDataSprint()" style="flex: 2; padding: 12px; border-radius: 8px; border: none; background: #2563eb; color: white; font-weight: 700; cursor: pointer;">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// 🎯 Gatilho Temporário para Iniciar a Importação (Novo Módulo DX)
+function iniciarImportacaoDX() {
+    console.log("Iniciando fluxo de importação...");
+    // Isso abrirá o explorador de arquivos ou redirecionará para a nova tela.
+    // Vamos detalhar isso na próxima etapa do novo módulo "gestao_inovacao".
+    alert("Módulo de Gestão da Inovação será acionado para ler o JSON.");
+}
+
+function prepararAgendamento(id, nome) {
+    document.getElementById('modalIdSprn').value = id;
+    document.getElementById('modalTitulo').innerText = nome;
+    document.getElementById('modalAgendamento').style.display = 'flex';
+}
+
+function fecharModal() {
+    document.getElementById('modalAgendamento').style.display = 'none';
+}
+
+async function salvarDataSprint() {
+    const id_sprn = document.getElementById('modalIdSprn').value;
+    const data_inicio = document.getElementById('modalDataInput').value;
+
+    if(!data_inicio) return alert("Por favor, selecione uma data!");
+
+    try {
+        const response = await fetch('/client/update-sprint-date', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_sprn, data_inicio })
+        });
+
+        const result = await response.json();
+        if(result.success) {
+            window.location.reload();
+        } else {
+            alert("Erro ao salvar data.");
+        }
+    } catch (err) {
+        alert("Erro de conexão.");
+    }
+}
+</script>

@@ -1,0 +1,147 @@
+<aside class="w-64 bg-gray-900 text-white hidden md:flex flex-col shadow-xl h-full fixed left-0 top-0 overflow-y-auto z-50">
+
+    <div class="h-16 flex items-center justify-center border-b border-gray-800 bg-gray-900">
+        <span class="text-2xl font-bold tracking-wider text-blue-400">LeAction</span>
+    </div>
+
+    <nav class="flex-1 px-4 py-6 space-y-2">
+
+        <a href="/avaliacoes/<%= user.id_matu %>" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i class="fas fa-edit w-6 text-center text-blue-400"></i>
+            <span class="ml-3 font-medium">Avaliação Inicial</span>
+        </a>
+
+        <%
+            const isPreSurvey = (user.status_ia && user.status_ia.toUpperCase() === 'PRESURVEY OK');
+            const linkDiagnostico = isPreSurvey ? `/diagnostico-inicial/${user.id_matu}` : `/diagnostico/${user.id_matu}`;
+        %>
+
+        <a href="<%= linkDiagnostico %>" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i class="fas fa-chart-pie w-6 text-center text-blue-400"></i>
+            <span class="ml-3 font-medium">Análise de Contexto</span>
+        </a>
+
+        <a href="/insights-ia/<%= user.id_matu %>" class="flex items-center px-4 py-3 text-purple-300 hover:bg-purple-900/30 hover:text-purple-100 rounded-lg transition-all group border border-purple-500/20">
+            <i class="fas fa-brain w-6 text-center text-purple-400 group-hover:scale-110 transition-transform"></i>
+            <span class="ml-3 font-medium">Inteligência de Negócio</span>
+        </a>
+
+        <a href="/planejamento-estrategico" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i class="fas fa-chess w-6 text-center text-blue-400"></i>
+            <span class="ml-3 font-medium">Estratégia Empresarial</span>
+        </a>
+
+        <hr class="border-gray-800 my-4">
+
+        <%
+            // DEFINIÇÃO DAS TRAVAS DE SEGURANÇA
+            const projetoAtivado = (user.hasActiveProject === true || user.hasActiveProject === 1 || user.hasActiveProject === "true");
+            const climaPreenchido = (user.clima_organizacional && user.clima_organizacional.trim().length > 5);
+        %>
+
+        <% if (!user.data_geracao_plano) { %>
+            <div class="my-4 p-4 bg-gray-800 rounded-xl border border-yellow-600/30">
+                <p class="text-xs text-gray-400 mb-2 uppercase tracking-wide font-bold text-center">Aceleração Digital</p>
+                <div id="containerAcaoIA">
+
+                    <% if (projetoAtivado && climaPreenchido) { %>
+                        <button type="button"
+                                onclick="executarGeneseEstrategica()"
+                                id="btnDourado"
+                                class="w-full group relative flex items-center justify-center px-4 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 text-white rounded-lg shadow-lg hover:from-yellow-500 hover:to-yellow-400 transform hover:scale-[1.02] transition-all duration-200">
+                            <i class="fas fa-magic mr-2 animate-pulse" id="iconeMagia"></i>
+                            <span class="font-bold text-sm" id="textoBotao">Gerar Estratégia</span>
+                        </button>
+                        <p class="text-[10px] text-center text-gray-500 mt-2" id="labelStatus">Pronto para iniciar a Gênese IA</p>
+
+                    <% } else if (projetoAtivado && !climaPreenchido) { %>
+                        <button type="button"
+                                onclick="document.getElementById('modalContextoCliente').style.display='block'"
+                                class="w-full flex items-center justify-center px-4 py-3 bg-gray-700 text-yellow-500 rounded-lg border border-yellow-600/50 hover:bg-gray-600 transition-all">
+                            <i class="fas fa-comment-alt mr-2"></i>
+                            <span class="font-bold text-xs">Definir Contexto</span>
+                        </button>
+                        <p class="text-[10px] text-center text-yellow-600/70 mt-2">Clique para liberar a IA</p>
+
+                    <% } else { %>
+                        <div class="w-full flex items-center justify-center px-4 py-3 bg-gray-900/50 text-gray-600 rounded-lg border border-gray-800">
+                            <i class="fas fa-lock mr-2"></i>
+                            <span class="font-bold text-xs">Projeto em Análise</span>
+                        </div>
+                        <p class="text-[10px] text-center text-gray-600 mt-2">Aguardando ativação Master</p>
+                    <% } %>
+
+                </div>
+            </div>
+        <% } else { %>
+            <div class="pt-4 pb-2">
+                <p class="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Plano de Ação</p>
+            </div>
+            <a href="/meu-plano" class="flex items-center px-4 py-3 bg-blue-900/40 text-blue-100 border border-blue-800/50 rounded-lg shadow-inner mb-1 transition-all hover:bg-blue-900">
+                <i class="fas fa-map-marked-alt w-6 text-center text-blue-400"></i>
+                <span class="ml-3 font-medium">Meu Plano</span>
+            </a>
+            <a href="/sprint" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+                <i class="fas fa-tasks w-6 text-center"></i>
+                <span class="ml-3 font-medium">Sprint Atual</span>
+            </a>
+        <% } %>
+
+        <a href="/resultados" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i class="fas fa-chart-line w-6 text-center"></i>
+            <span class="ml-3 font-medium">Resultados</span>
+        </a>
+
+        <div class="pt-6 pb-2 border-t border-gray-800 mt-4">
+            <p class="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Administração</p>
+        </div>
+        <a href="/teams" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-blue-400 rounded-lg transition-all group">
+            <i class="fas fa-users-cog w-6 text-center text-blue-400 group-hover:scale-110 transition-transform"></i>
+            <span class="ml-3 font-medium">Gestão de Time</span>
+        </a>
+
+    </nav>
+
+    <div class="p-4 border-t border-gray-800 bg-gray-900">
+        <a href="/logout" class="flex items-center text-gray-400 hover:text-red-400 transition-colors">
+            <i class="fas fa-sign-out-alt w-6 text-center"></i>
+            <span class="ml-3 text-sm">Sair do Sistema</span>
+        </a>
+    </div>
+
+    <script>
+    async function ejecutarGeneseEstrategica() {
+        const btn = document.getElementById('btnDourado');
+        const icone = document.getElementById('iconeMagia');
+        const status = document.getElementById('labelStatus');
+
+        if(!confirm("Deseja iniciar a Gênese IA do seu Plano de Ação?")) return;
+
+        btn.disabled = true;
+        btn.style.cursor = 'wait';
+        btn.classList.add('opacity-75');
+        if(document.getElementById('textoBotao')) document.getElementById('textoBotao').innerText = "Processando...";
+
+        icone.classList.replace('fa-magic', 'fa-spinner');
+        icone.classList.add('fa-spin');
+        status.innerText = "IA gerando Roadmap e Sprints...";
+
+        try {
+            const response = await fetch('/client/generate-ai-plan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (data.success && data.redirectUrl) {
+                window.location.href = data.redirectUrl;
+            } else {
+                throw new Error(data.error || "Falha na resposta.");
+            }
+        } catch (error) {
+            console.error("Erro:", error);
+            alert("Erro: " + error.message);
+            window.location.reload();
+        }
+    }
+    </script>
+</aside>

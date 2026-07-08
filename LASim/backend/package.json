@@ -1,0 +1,22 @@
+{
+  "name": "lasim-backend",
+  "version": "0.1.0",
+  "description": "API Gateway e regras de negócio do LeAction Simulator (LASim).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "lasim",
+    "leaction",
+    "simulator",
+    "api",
+    "backend"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

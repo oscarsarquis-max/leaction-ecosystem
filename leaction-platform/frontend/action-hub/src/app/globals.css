@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@keyframes cart-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.animate-cart-pulse {
+  animation: cart-pulse 0.55s ease-in-out 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-cart-pulse {
+    animation: none;
+  }
+}
+
+/** Container do Mercado Pago Brick — sem transform/filter/iframe hacks (quebram alinhamento dos campos). */
+.mp-brick-root {
+  width: 100%;
+  min-height: 420px;
+}

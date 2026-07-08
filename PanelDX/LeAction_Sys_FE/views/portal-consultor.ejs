@@ -1,0 +1,217 @@
+<div class="mesa-org portal-consultor" id="portal-consultor-root">
+    <header class="mesa-org__hero portal-consultor__hero">
+        <div>
+            <h1><i class="fas fa-briefcase" style="color: #38bdf8;"></i> Portal do Parceiro</h1>
+            <p>
+                Conciliação financeira, carteira de clientes, acompanhamento de sprints e fila de demandas estratégicas.
+            </p>
+        </div>
+        <div class="mesa-org__meta">
+            <div><strong id="portal-consultor-nome">Consultor</strong></div>
+            <div id="portal-consultor-tipo">—</div>
+        </div>
+    </header>
+
+    <div class="portal-consultor__agency-banner" id="portal-agency-banner" hidden>
+        <i class="fas fa-building"></i>
+        <span>Sua conciliação financeira é gerenciada centralmente pela sua Agência.</span>
+    </div>
+
+    <nav class="portal-consultor__tabs" role="tablist">
+        <button type="button" class="portal-consultor__tab is-active" data-tab="dashboard" role="tab" aria-selected="true">
+            <i class="fas fa-chart-pie"></i> Dashboard
+        </button>
+        <button type="button" class="portal-consultor__tab" data-tab="clientes" role="tab" aria-selected="false">
+            <i class="fas fa-users"></i> Meus Clientes
+        </button>
+        <button type="button" class="portal-consultor__tab" data-tab="sprints" role="tab" aria-selected="false">
+            <i class="fas fa-running"></i> Sprints
+        </button>
+        <button type="button" class="portal-consultor__tab" data-tab="demandas" role="tab" aria-selected="false">
+            <i class="fas fa-inbox"></i> Demandas
+        </button>
+    </nav>
+
+    <!-- Módulo 1 — Dashboard -->
+    <section class="portal-consultor__panel is-active" id="panel-dashboard" role="tabpanel">
+        <div class="portal-consultor__metrics" id="portal-finance-metrics">
+            <div class="portal-consultor__metric portal-consultor__metric--gold">
+                <span class="portal-consultor__metric-label">Comissão Total</span>
+                <strong class="portal-consultor__metric-value" id="metric-comissao-total">—</strong>
+            </div>
+            <div class="portal-consultor__metric">
+                <span class="portal-consultor__metric-label">Comissão Venda</span>
+                <strong class="portal-consultor__metric-value" id="metric-comissao-venda">—</strong>
+            </div>
+            <div class="portal-consultor__metric">
+                <span class="portal-consultor__metric-label">Comissão Técnica</span>
+                <strong class="portal-consultor__metric-value" id="metric-comissao-tecnica">—</strong>
+            </div>
+        </div>
+
+        <div class="portal-consultor__metrics portal-consultor__metrics--stats">
+            <div class="portal-consultor__metric">
+                <span class="portal-consultor__metric-label">Clientes na Carteira</span>
+                <strong class="portal-consultor__metric-value" id="metric-clientes">—</strong>
+            </div>
+            <div class="portal-consultor__metric">
+                <span class="portal-consultor__metric-label">Contratos Ativos</span>
+                <strong class="portal-consultor__metric-value" id="metric-contratos">—</strong>
+            </div>
+            <div class="portal-consultor__metric">
+                <span class="portal-consultor__metric-label">Sprints Ativas</span>
+                <strong class="portal-consultor__metric-value" id="metric-sprints">—</strong>
+            </div>
+            <div class="portal-consultor__metric">
+                <span class="portal-consultor__metric-label">Demandas Abertas</span>
+                <strong class="portal-consultor__metric-value" id="metric-demandas">—</strong>
+            </div>
+        </div>
+
+        <div class="mesa-card portal-consultor__team-card" id="portal-equipe-card" hidden>
+            <h2 class="mesa-card__title"><i class="fas fa-users"></i> Minha Equipe (Consultores Associados)</h2>
+            <p class="admin-esim__field-hint">Consultores vinculados à sua agência e respectivas taxas de comissão.</p>
+            <div class="admin-esim__table-wrap">
+                <table class="admin-esim__table portal-consultor__table portal-consultor__table--equipe">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Comissão Venda</th>
+                            <th>Comissão Técnica</th>
+                        </tr>
+                    </thead>
+                    <tbody id="equipe-table-body">
+                        <tr><td colspan="4" class="admin-esim__empty">Nenhum consultor associado.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mesa-card">
+            <h2 class="mesa-card__title"><i class="fas fa-receipt"></i> Linhas de Conciliação</h2>
+            <div class="admin-esim__table-wrap">
+                <table class="admin-esim__table portal-consultor__table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Plano</th>
+                            <th>Valor</th>
+                            <th>Papéis</th>
+                            <th class="portal-col-finance">Venda</th>
+                            <th class="portal-col-finance">Técnica</th>
+                            <th class="portal-col-finance">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="conciliacao-table-body">
+                        <tr><td colspan="7" class="admin-esim__empty">Carregando conciliação…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Módulo 2 — Clientes -->
+    <section class="portal-consultor__panel" id="panel-clientes" role="tabpanel" hidden>
+        <div class="mesa-card">
+            <h2 class="mesa-card__title"><i class="fas fa-address-book"></i> Carteira de Clientes</h2>
+            <div class="admin-esim__table-wrap">
+                <table class="admin-esim__table portal-consultor__table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Plano</th>
+                            <th>Status</th>
+                            <th>Valor</th>
+                            <th>Papel</th>
+                            <th>Origem / Técnico</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientes-table-body">
+                        <tr><td colspan="6" class="admin-esim__empty">Carregando clientes…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Módulo 3 — Sprints -->
+    <section class="portal-consultor__panel" id="panel-sprints" role="tabpanel" hidden>
+        <div class="mesa-card">
+            <h2 class="mesa-card__title"><i class="fas fa-flag-checkered"></i> Sprints Acompanhadas</h2>
+            <p class="admin-esim__field-hint">Visão somente leitura das sprints ativas dos clientes da sua carteira.</p>
+            <div class="admin-esim__table-wrap">
+                <table class="admin-esim__table portal-consultor__table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Sprint</th>
+                            <th>Status</th>
+                            <th>Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sprints-table-body">
+                        <tr><td colspan="4" class="admin-esim__empty">Carregando sprints…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Módulo 4 — Demandas -->
+    <section class="portal-consultor__panel" id="panel-demandas" role="tabpanel" hidden>
+        <div class="mesa-card portal-consultor__demandas-toolbar">
+            <div>
+                <h2 class="mesa-card__title"><i class="fas fa-headset"></i> Fila de Demandas</h2>
+                <p class="admin-esim__field-hint">Helpdesk estratégico — registre e acompanhe solicitações dos clientes.</p>
+            </div>
+            <button type="button" class="mesa-btn mesa-btn--lilac" id="btn-nova-demanda">
+                <i class="fas fa-plus"></i> Nova demanda
+            </button>
+        </div>
+
+        <div class="portal-consultor__board" id="demandas-board">
+            <div class="portal-consultor__board-col" data-status="aberta">
+                <h3>Abertas</h3>
+                <div class="portal-consultor__board-list" id="board-aberta"></div>
+            </div>
+            <div class="portal-consultor__board-col" data-status="em_andamento">
+                <h3>Em andamento</h3>
+                <div class="portal-consultor__board-list" id="board-em_andamento"></div>
+            </div>
+            <div class="portal-consultor__board-col" data-status="resolvida">
+                <h3>Resolvidas</h3>
+                <div class="portal-consultor__board-list" id="board-resolvida"></div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Modal nova demanda -->
+<div class="mesa-modal" id="modal-demanda" aria-hidden="true">
+    <div class="mesa-modal__dialog admin-crm__modal-dialog">
+        <header class="admin-crm__modal-head">
+            <h3>Nova Demanda</h3>
+        </header>
+        <form id="form-demanda" class="admin-crm__modal-scroll">
+            <div class="admin-esim__field">
+                <label for="demanda-cliente">Cliente</label>
+                <select id="demanda-cliente" class="mesa-select" required></select>
+            </div>
+            <div class="admin-esim__field">
+                <label for="demanda-titulo">Título</label>
+                <input type="text" id="demanda-titulo" class="mesa-input" maxlength="200" required>
+            </div>
+            <div class="admin-esim__field">
+                <label for="demanda-descricao">Descrição</label>
+                <textarea id="demanda-descricao" class="mesa-input" rows="4"></textarea>
+            </div>
+        </form>
+        <footer class="admin-crm__modal-foot admin-esim__modal-actions">
+            <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-demanda">Cancelar</button>
+            <button type="submit" class="mesa-btn mesa-btn--gold" form="form-demanda">Registrar</button>
+        </footer>
+    </div>
+</div>
+
+<div class="admin-crm__toast" id="portal-consultor-toast" role="status"></div>

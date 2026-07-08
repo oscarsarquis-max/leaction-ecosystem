@@ -1,0 +1,458 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <div>
+                <h1><i class="fas fa-user-tie"></i> Gestão de Clientes</h1>
+                <p style="color: #666; margin-top: 5px;">Empresas e Representantes (Leads) cadastrados.</p>
+            </div>
+            <button class="btn blue-btn" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Novo Cliente
+            </button>
+        </div>
+
+        <div class="search-box" style="margin-bottom: 20px; display: flex; gap: 10px;">
+            <input type="text" id="search-input" placeholder="Buscar por Empresa, Nome ou Email..." style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1;">
+            <button class="btn blue-btn" onclick="buscarClientes()">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th>Empresa</th>
+                    <th>Representante</th>
+                    <th>Contato</th>
+                    <th>Rede</th>
+                    <th style="text-align: center;">Perfil</th>
+                    <th style="text-align: center;">Uso de Licenças</th>
+                    <th style="text-align: center;">Projeto Ativo?</th>
+                    <th style="text-align: center; width: 160px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Configurar Rede (Holding) -->
+<div id="modal-rede" class="modal" role="dialog" aria-labelledby="modal-rede-title">
+    <div class="modal-content" style="max-width: 520px; margin: 8% auto;">
+        <span class="close" onclick="fecharModalRede()" aria-label="Fechar">&times;</span>
+        <h2 id="modal-rede-title" style="margin: 0 0 8px; color: #4A2E80; font-size: 1.25rem;">
+            <i class="fas fa-network-wired"></i> Configurar Rede
+        </h2>
+        <p id="modal-rede-subtitle" style="color: #666; font-size: 0.9em; margin-bottom: 20px;"></p>
+
+        <input type="hidden" id="rede-id-clie">
+
+        <div class="form-group">
+            <label for="rede-id-input">Nome da Rede (ID)</label>
+            <input type="text" id="rede-id-input" placeholder="Ex: REDE_OBJETIVO" maxlength="100"
+                   style="text-transform: uppercase;">
+            <small style="color: #888; font-size: 0.8em;">Deixe em branco se for escola avulsa (sem rede).</small>
+        </div>
+
+        <div class="form-group" style="background: #f8f5ff; border: 1px solid #e9e0f5; border-radius: 6px; padding: 14px;">
+            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-weight: normal;">
+                <input type="checkbox" id="rede-is-holding" style="width: auto; margin-top: 3px;">
+                <span>
+                    <strong style="color: #4A2E80;">Gestor Master da Rede</strong><br>
+                    <small style="color: #666;">Este usuário terá acesso ao Cockpit Consolidado (<code>/cockpit-rede</code>).</small>
+                </span>
+            </label>
+        </div>
+
+        <div class="modal-buttons">
+            <button type="button" class="btn cancel-btn" onclick="fecharModalRede()">Cancelar</button>
+            <button type="button" class="btn blue-btn" id="btn-salvar-rede" onclick="salvarConfigRede()">
+                <i class="fas fa-save"></i> Salvar Configuração
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="toast-rede" style="display:none; position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+    background:#059669; color:#fff; padding:14px 22px; border-radius:10px; font-weight:600; z-index:2000;
+    box-shadow:0 8px 24px rgba(0,0,0,0.18);"></div>
+
+<!-- ==================================================================
+     🔮 INCLUSÃO DO COMPONENTE DE FORMULÁRIO COMPONENTIZADO UNIVERSAL
+     ================================================================== -->
+<% if (!locals.clientesModalCarregado) {
+    locals.clientesModalCarregado = true; %>
+<%- include('clientes_modal') %>
+<% } %>
+
+<style>
+    /* Reaproveitando estilos do Teams.ejs para manter padrão */
+    .header-section h1 { color: #2c3e50; margin: 0; }
+    .table-container { background: white; padding: 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eee; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #f8f9fa; color: #7f8c8d; font-weight: bold; text-transform: uppercase; font-size: 0.85em; padding: 15px; border-bottom: 2px solid #eee; }
+    td { padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50; font-size: 0.95em; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background-color: #f9f9f9; }
+
+    .action-btn { border: none !important; background: transparent !important; box-shadow: none !important; outline: none !important; cursor: pointer; font-size: 1.1em; padding: 4px; transition: transform 0.15s ease; border-radius: 0; }
+    .action-btn:hover { transform: scale(1.08); background: transparent !important; }
+    .btn-edit { color: #f39c12; }
+    .btn-delete { color: #e74c3c; }
+    .btn-rede { color: #6d28d9; }
+
+    .tag-rede {
+        display: inline-block; font-size: 0.75em; font-weight: 700; padding: 4px 10px;
+        border-radius: 999px; background: #ede9fe; color: #5b21b6; letter-spacing: 0.3px;
+    }
+    .tag-avulsa { background: #f1f5f9; color: #64748b; }
+    .tag-gestor {
+        display: inline-block; font-size: 0.72em; font-weight: 800; padding: 4px 10px;
+        border-radius: 999px; background: linear-gradient(135deg, #4A2E80, #6d28d9); color: #fde68a;
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .tag-unidade {
+        display: inline-block; font-size: 0.72em; font-weight: 700; padding: 4px 10px;
+        border-radius: 999px; background: #e2e8f0; color: #475569;
+    }
+    .tag-licenca {
+        display: inline-block; font-size: 0.78em; font-weight: 800; padding: 4px 10px;
+        border-radius: 999px; background: #ecfdf5; color: #047857;
+    }
+    .tag-licenca.licenca-warning { background: #fffbeb; color: #b45309; }
+    .tag-licenca.licenca-danger { background: #fef2f2; color: #b91c1c; }
+
+    /* Modal Styles */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+    .modal-content { background-color: white; margin: 2% auto; padding: 30px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: slideDown 0.3s ease; }
+    @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .close { float: right; font-size: 24px; cursor: pointer; color: #999; }
+    .close:hover { color: #333; }
+
+    .form-section-title { font-size: 0.85em; text-transform: uppercase; color: #3498db; margin-bottom: 15px; border-bottom: 1px dashed #eee; padding-bottom: 5px; font-weight: bold; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #2c3e50; font-size: 0.9em; }
+    .form-row { display: flex; gap: 20px; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+    input:focus { border-color: #3498db; outline: none; }
+
+    .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .blue-btn { background-color: #3498db; color: white; }
+    .blue-btn:hover { background-color: #2980b9; }
+    .cancel-btn { background-color: #ecf0f1; color: #7f8c8d; }
+
+    /* Switch Project */
+    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: #27ae60; }
+    input:checked + .slider:before { transform: translateX(20px); }
+</style>
+
+<script>
+    const API_URL = "<%= API_BASE_URL %>/ctdi_clie";
+    const SEARCH_URL = "<%= API_BASE_URL %>/admin/clientes-search";
+    const TOGGLE_URL = "/api/admin/toggle-project";
+
+    // Acopla o barramento de envio ao formulário dinâmico injetado
+    document.addEventListener('DOMContentLoaded', function() {
+        window._ctxSubmitAdmin = salvarRegistro;
+    });
+
+    // --- 1. CARREGAR DADOS ---
+    async function carregarDados() {
+        buscarClientes();
+    }
+
+async function buscarClientes() {
+    const termo = document.getElementById('search-input').value;
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px;">Carregando...</td></tr>';
+
+    try {
+        const url = `/api/admin/clientes-search?term=${encodeURIComponent(termo)}`;
+        const res = await fetch(url);
+        const dados = await res.json();
+
+        // DEBUG: Veja no F12 o que está chegando
+        console.log("Dados recebidos da API:", dados);
+
+        // CHECAGEM CRÍTICA: Se 'dados' for um erro ou não for lista, tratamos aqui
+        if (dados.error) {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:red;">Erro no Servidor: ${dados.error}</td></tr>`;
+            return;
+        }
+
+        if (!Array.isArray(dados)) {
+            console.error("A API não retornou uma lista!", dados);
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:red;">Erro: Resposta inválida do servidor.</td></tr>';
+            return;
+        }
+
+        renderizarTabela(dados);
+    } catch (error) {
+        console.error("Erro na requisição:", error);
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:red;">Erro de conexão com o servidor.</td></tr>';
+    }
+}
+
+function renderizarTabela(dados) {
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '';
+
+    if (!dados || dados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#777;">Nenhum cliente encontrado.</td></tr>';
+        return;
+    }
+
+    dados.forEach(item => {
+        const checked = item.hasActiveProject ? 'checked' : '';
+        const statusLabel = item.hasActiveProject ? 'ATIVO' : 'OFF';
+        const statusColor = item.hasActiveProject ? '#27ae60' : '#ccc';
+        const idRede = (item.id_rede || '').trim();
+        const isHolding = !!item.is_holding;
+        const redeHtml = idRede
+            ? `<span class="tag-rede">${idRede}</span>`
+            : `<span class="tag-rede tag-avulsa">Avulsa</span>`;
+        const perfilHtml = isHolding
+            ? `<span class="tag-gestor">Gestor</span>`
+            : (idRede ? `<span class="tag-unidade">Unidade</span>` : `<span class="tag-unidade">—</span>`);
+        const usado = Number(item.usado_licencas) || 0;
+        const maxLic = Number(item.max_usuarios) || 5;
+        const ilimitado = maxLic >= 999;
+        const ratio = ilimitado ? 0 : (maxLic > 0 ? usado / maxLic : 0);
+        let licClass = 'licenca-ok';
+        if (!ilimitado && ratio >= 1) licClass = 'licenca-danger';
+        else if (!ilimitado && ratio >= 0.8) licClass = 'licenca-warning';
+        const licencaHtml = ilimitado
+            ? `<span class="tag-licenca ${licClass}">${usado} / ∞</span>`
+            : `<span class="tag-licenca ${licClass}">${usado} / ${maxLic}</span>`;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="color: #7f8c8d; font-size: 0.85em;">#${item.id_clie}</td>
+            <td style="font-weight: bold;">${item.empresa_clie || '-'}</td>
+            <td>
+                <div>${item.nome_clie}</div>
+                <div style="font-size: 0.8em; color: #7f8c8d;">${item.mail_clie}</div>
+            </td>
+            <td>${item.fone_clie || '-'}</td>
+            <td>${redeHtml}</td>
+            <td style="text-align: center;">${perfilHtml}</td>
+            <td style="text-align: center;">${licencaHtml}</td>
+            <td style="text-align: center;">
+                <label class="switch" title="Ativar/Desativar Projeto">
+                    <input type="checkbox" ${checked} onchange="toggleProject(${item.id_clie}, this)">
+                    <span class="slider round"></span>
+                </label>
+                <div style="font-size: 10px; margin-top: 4px; color: ${statusColor}; font-weight: bold;">${statusLabel}</div>
+            </td>
+            <td style="text-align: center;">
+                <div style="display: flex; justify-content: center; gap: 6px; flex-wrap: wrap;">
+                    <button class="action-btn btn-rede" title="Configurar Rede"
+                        onclick='abrirModalRede(${JSON.stringify(item)})'>
+                        <i class="fas fa-link"></i>
+                    </button>
+                    <button class="action-btn btn-edit" title="Editar Cliente" onclick='editar(${JSON.stringify(item)})'>
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="action-btn btn-delete" title="Excluir Cliente" onclick="deletar(${item.id_clie})">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+    // --- 3. MODAL ---
+    function abrirModal(limpar = true) {
+        if (limpar) {
+            abrirModalContextoLeadGeral(null, false, true, false);
+            const titulo = document.getElementById('modal-title-central');
+            if (titulo) titulo.innerText = "Novo Cliente";
+        }
+    }
+
+    function fecharModal() {
+        fecharModalContextoLead();
+    }
+
+    // --- 4. SALVAR UNIFICADO (DENTRO DO CLIENTES.EJS) ---
+    async function salvarRegistro(e) {
+        e.preventDefault();
+
+        const id = document.getElementById('id_clie').value;
+        const redeEnsinoField = document.getElementById('rede_ensino');
+
+        // Estrutura o payload mapeando rigorosamente em minúsculas para match com a tabela public.ctdi_clie
+        const payload = {
+            id_clie: id || null,
+            empresa_clie: document.getElementById('empresa_clie').value,
+            docu_clie: document.getElementById('docu_clie').value,
+            adre_clie: document.getElementById('adre_clie').value,
+            zipn_clie: document.getElementById('zipn_clie').value,
+            bairro_clie: document.getElementById('bairro_clie').value,
+            cidade_clie: document.getElementById('cidade_clie').value,
+            estado_clie: document.getElementById('estado_clie').value,
+            nome_clie: document.getElementById('nome_clie').value,
+            mail_clie: document.getElementById('mail_clie').value,
+            fone_clie: document.getElementById('fone_clie').value,
+            tipo_ensino: document.getElementById('tipo_ensino').value,
+            qtd_alunos: document.getElementById('qtd_alunos').value ? parseInt(document.getElementById('qtd_alunos').value) : null,
+            qtd_colaboradores: document.getElementById('qtd_colaboradores').value ? parseInt(document.getElementById('qtd_colaboradores').value) : null,
+            qtd_unidades: document.getElementById('qtd_unidades').value ? parseInt(document.getElementById('qtd_unidades').value) : null,
+            localizacao_sede: document.getElementById('localizacao_sede').value,
+            rede_ensino: redeEnsinoField ? redeEnsinoField.checked : false,
+            dados_mercado: document.getElementById('dados_mercado').value,
+            dados_etnograficos: document.getElementById('dados_etnograficos').value,
+            clima_organizacional: document.getElementById('clima_organizacional').value,
+            moderacao_dados_mercado: document.getElementById('moderacao_dados_mercado').value,
+            moderacao_dados_etnograficos: document.getElementById('moderacao_dados_etnograficos').value,
+            moderacao_clima_organizacional: document.getElementById('moderacao_clima_organizacional').value,
+        };
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/${id}` : API_URL;
+
+        console.log(`🚀 [ADMIN GATEWAY] Enviando manutenção cadastral (${method}):`, payload);
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                fecharModalContextoLead(true);
+                buscarClientes();
+            } else {
+                const erro = await res.json();
+                alert("Erro Operacional: " + (erro.error || "Falha ao processar persistência."));
+            }
+        } catch (error) {
+            console.error("Erro na ponte:", error);
+            alert("Erro de conexão com o barramento.");
+        }
+    }
+
+    // --- 5. EDITAR ---
+    function editar(item) {
+        // Abre o modal universal injetando o objeto recuperado, desativando o bloqueio de edição e forçando o Modo Admin (true)
+        abrirModalContextoLeadGeral(item, false, true, false);
+        const titulo = document.getElementById('modal-title-central');
+        if (titulo) titulo.innerText = "Editar Cliente";
+    }
+
+    // --- 6. DELETAR ---
+    async function deletar(id) {
+        if (!confirm("Tem certeza? Isso apagará também os históricos e maturidade do cliente.")) return;
+
+        try {
+            const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (res.ok) buscarClientes();
+            else alert("Erro ao excluir.");
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // --- 7. TOGGLE PROJETO (Na sua clientes.ejs) ---
+    async function toggleProject(id, checkbox) {
+        try {
+            const res = await fetch('/api/admin/toggle-project', { // Verifique se a URL bate com seu app.py
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_clie: id,
+                    status: checkbox.checked // true ou false
+                })
+            });
+            if (!res.ok) {
+                checkbox.checked = !checkbox.checked;
+                alert("Erro ao alterar status no servidor.");
+            } else {
+                console.log("Status updated no DB para o cliente:", id);
+            }
+        } catch (e) {
+            checkbox.checked = !checkbox.checked;
+            console.error("Erro na requisição de Toggle:", e);
+        }
+    }
+
+    document.getElementById('search-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') buscarClientes();
+    });
+
+    // --- 8. MODAL CONFIGURAR REDE (Holding) ---
+    function abrirModalRede(cliente) {
+        document.getElementById('rede-id-clie').value = cliente.id_clie;
+        document.getElementById('rede-id-input').value = (cliente.id_rede || '').trim();
+        document.getElementById('rede-is-holding').checked = !!cliente.is_holding;
+        document.getElementById('modal-rede-subtitle').textContent =
+            `${cliente.empresa_clie || cliente.nome_clie} · #${cliente.id_clie}`;
+        document.getElementById('modal-rede').style.display = 'block';
+    }
+
+    function fecharModalRede() {
+        document.getElementById('modal-rede').style.display = 'none';
+    }
+
+    function mostrarToastRede(msg, cor = '#059669') {
+        const toast = document.getElementById('toast-rede');
+        toast.style.background = cor;
+        toast.textContent = msg;
+        toast.style.display = 'block';
+        clearTimeout(window._toastRedeTimer);
+        window._toastRedeTimer = setTimeout(() => { toast.style.display = 'none'; }, 3200);
+    }
+
+    async function salvarConfigRede() {
+        const idClie = document.getElementById('rede-id-clie').value;
+        const idRede = document.getElementById('rede-id-input').value.trim().toUpperCase() || null;
+        const isHolding = document.getElementById('rede-is-holding').checked;
+        const btn = document.getElementById('btn-salvar-rede');
+
+        if (isHolding && !idRede) {
+            alert('Para marcar como Gestor Master, informe o ID da Rede.');
+            return;
+        }
+
+        btn.disabled = true;
+        try {
+            const res = await fetch(`/api/admin/clientes/${idClie}/rede`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_rede: idRede, is_holding: isHolding })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Falha ao salvar configuração.');
+            }
+            fecharModalRede();
+            mostrarToastRede('Configuração de rede salva com sucesso!');
+            buscarClientes();
+        } catch (e) {
+            console.error(e);
+            mostrarToastRede(e.message || 'Erro ao salvar.', '#dc2626');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    window.addEventListener('click', (e) => {
+        const modal = document.getElementById('modal-rede');
+        if (e.target === modal) fecharModalRede();
+    });
+
+    carregarDados();
+</script>

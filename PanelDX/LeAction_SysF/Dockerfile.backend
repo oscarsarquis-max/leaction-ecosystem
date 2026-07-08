@@ -1,0 +1,35 @@
+# Usa a imagem oficial Python 3.9 slim
+FROM python:3.10-slim
+
+# Define variáveis de ambiente
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Define o diretório de trabalho
+WORKDIR /usr/src/app
+ENV PYTHONPATH=/usr/src/app
+
+# Instala TODAS as dependências de compilação do sistema e bibliotecas
+RUN apt-get update && \
+    apt-get install -y build-essential python3-dev libpq-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copia os arquivos de requisitos e instala as dependências Python (Linhas 17-19)
+COPY requirements.txt .
+RUN pip install --no-cache-dir \
+    --trusted-host pypi.org \
+    --trusted-host files.pythonhosted.org \
+    -r requirements.txt
+
+# Copia o restante do código
+COPY . .
+
+# Expõe as duas portas
+EXPOSE 5000
+EXPOSE 5001
+
+# Comando Padrão para o backend principal
+# CMD ["python", "app.py"]
+
+# Comando Padrão para o backend principal
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]

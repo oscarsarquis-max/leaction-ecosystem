@@ -1,0 +1,714 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <div>
+                <h1><i class="fas fa-question-circle"></i> Questões TD (Engine)</h1>
+                <p style="color: #666; margin-top: 5px;">Configuração das perguntas do Diagnóstico.</p>
+            </div>
+            <button class="btn blue-btn surface-violet-dark" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Nova Questão
+            </button>
+        </div>
+    </div>
+
+    <div class="search-box-container" style="margin-bottom: 20px;">
+        <div style="position: relative; max-width: 500px;">
+            <i class="fas fa-search" style="position: absolute; left: 15px; top: 12px; color: #bdc3c7;"></i>
+            <input type="text" id="global-search-questoes" onkeyup="filtrarQuestoes()"
+                   placeholder="Buscar em enunciados, dimensões ou domínios..."
+                   style="width: 100%; padding: 10px 10px 10px 40px; border: 1px solid #ddd; border-radius: 25px; outline: none; transition: border 0.3s;">
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th>Texto da Questão</th>
+                    <th style="width: 180px;">Dimensão/Domínio</th>
+                    <th style="width: 180px;">Aplicável (Contexto)</th>
+                    <th style="text-align: center; width: 100px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="table-body-questoes">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-form-questoes" class="questoes-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="questoes-modal-panel">
+        <header class="questoes-modal-header surface-violet-dark">
+            <h2 id="modal-title">
+                <i class="fas fa-microchip"></i> Configuração da Questão
+            </h2>
+            <button type="button" class="questoes-modal-close" onclick="fecharModal()" aria-label="Fechar">&times;</button>
+        </header>
+
+        <form id="form-ques" class="questoes-modal-body" onsubmit="salvarRegistro(event)">
+            <input type="hidden" id="id_ques">
+
+            <section class="questoes-card questoes-card--highlight">
+                <div class="questoes-card__row">
+                    <div class="questoes-card__icon surface-violet-dark"><i class="fas fa-rocket"></i></div>
+                    <div>
+                        <label class="questoes-label" for="presurvey_ques">Pré-Avaliação (compõe a amostra)</label>
+                        <p class="questoes-hint">Questão integrante da amostragem representativa de pré-venda (28 indicadores).</p>
+                    </div>
+                    <input type="checkbox" id="presurvey_ques" class="questoes-checkbox">
+                </div>
+            </section>
+
+            <section class="questoes-grid questoes-grid--2">
+                <div class="questoes-field">
+                    <label class="questoes-label" for="prefu_ques"><i class="fas fa-clock"></i> Momento (P/F) *</label>
+                    <select id="prefu_ques" required class="questoes-input">
+                        <option value="P">Presente (Maturidade Atual)</option>
+                        <option value="F">Futuro (Horizonte de Adoção)</option>
+                    </select>
+                </div>
+                <div class="questoes-field">
+                    <label class="questoes-label" for="setor_ques"><i class="fas fa-industry"></i> Setor *</label>
+                    <select id="setor_ques" required class="questoes-input">
+                        <option value="GERAL">Mercado Geral (Empresas/Indústria)</option>
+                        <option value="EDUCACAO">Instituições de Ensino (Acadêmico)</option>
+                    </select>
+                </div>
+            </section>
+
+            <section class="questoes-grid questoes-grid--2">
+                <div class="questoes-field">
+                    <label class="questoes-label" for="id_dime_select">Dimensão Acadêmica *</label>
+                    <select id="id_dime_select" required class="questoes-input"></select>
+                </div>
+                <div class="questoes-field">
+                    <label class="questoes-label" for="id_doma_select">Domínio Estratégico *</label>
+                    <select id="id_doma_select" required class="questoes-input"></select>
+                </div>
+            </section>
+
+            <section class="questoes-field">
+                <label class="questoes-label" for="desc_ques">Enunciado da Pergunta *</label>
+                <textarea id="desc_ques" rows="3" required class="questoes-input questoes-textarea"
+                    placeholder="Ex: Como a instituição governa seus ativos digitais?"></textarea>
+            </section>
+
+            <section class="questoes-card">
+                <h3 class="questoes-section-title"><i class="fas fa-tasks"></i> Respostas Objetivas (Rubricas 0–5)</h3>
+                <div id="container-rubricas" class="questoes-rubricas">
+                    <% [0,1,2,3,4,5].forEach(grad => { %>
+                        <div class="questoes-rubrica-row">
+                            <span class="questoes-rubrica-badge surface-violet-dark"><%= grad %></span>
+                            <input type="text" class="questoes-input" placeholder="Rótulo da opção" id="label_<%= grad %>">
+                            <textarea class="questoes-input questoes-textarea questoes-textarea--sm"
+                                      placeholder="Descrição da rubrica" id="desc_<%= grad %>" rows="2"></textarea>
+                        </div>
+                    <% }) %>
+                </div>
+            </section>
+
+            <section class="questoes-card questoes-card--quali">
+                <div class="questoes-card__row questoes-card__row--compact">
+                    <div>
+                        <h3 class="questoes-section-title"><i class="fas fa-comment-dots"></i> Qualificador da Questão</h3>
+                        <p class="questoes-hint">Orientação exibida abaixo das opções objetivas no assessment.</p>
+                    </div>
+                    <label class="questoes-toggle">
+                        <input type="checkbox" id="permite_aberta">
+                        <span>Habilitar campo qualitativo</span>
+                    </label>
+                </div>
+                <textarea id="quali_ques_def" class="questoes-input questoes-textarea"
+                          placeholder="Orientações de preenchimento para o gestor (evidências, contexto, exemplos)..."></textarea>
+            </section>
+
+            <section class="questoes-card">
+                <label class="questoes-label questoes-label--center"><i class="fas fa-bullseye"></i> Contexto Alvo (Segmentos)</label>
+                <div class="questoes-segments">
+                    <% ['K12', 'SUPERIOR', 'TECNICO', 'IDIOMAS', 'CORPORATIVO', 'GERAL'].forEach(segmento => { %>
+                        <label class="questoes-segment">
+                            <input type="checkbox" name="target_item" value="<%= segmento %>"> <%= segmento %>
+                        </label>
+                    <% }) %>
+                </div>
+            </section>
+
+            <section class="questoes-card questoes-card--bussola">
+                <h3 class="questoes-section-title questoes-label--center"><i class="fas fa-compass"></i> Bússola de Orientação</h3>
+
+                <div class="questoes-field" style="position: relative;">
+                    <label class="questoes-label" for="bussola_categoria">Categoria (escopo MASTER)</label>
+                    <input type="text" id="bussola_categoria"
+                           oninput="filtrarSugestoesCategoria(this.value)"
+                           autocomplete="off" class="questoes-input"
+                           placeholder="Comece a digitar para filtrar categorias...">
+                    <div id="lista_suspensa_categorias" class="questoes-suggestions"></div>
+                </div>
+
+                <div class="questoes-field">
+                    <label class="questoes-label" for="bussola_diagnostico">Diagnóstico (o que a IA deve buscar)</label>
+                    <textarea id="bussola_diagnostico" rows="2" class="questoes-input questoes-textarea"
+                              placeholder="Ex: [Gestão de Mudança]; [Patrocínio Executivo]"></textarea>
+                </div>
+
+                <div class="questoes-field">
+                    <label class="questoes-label" for="bussola_ancoras">Âncoras (Incipiente vs Sistêmico)</label>
+                    <textarea id="bussola_ancoras" rows="2" class="questoes-input questoes-textarea"
+                              placeholder="Ex: [Incipiente: Ações isoladas]; [Sistêmico: Cultura consolidada]"></textarea>
+                </div>
+
+                <input type="hidden" id="insight_chave">
+            </section>
+
+            <footer class="questoes-modal-footer">
+                <button type="button" class="questoes-btn questoes-btn--ghost" onclick="fecharModal()">Cancelar</button>
+                <button type="submit" class="questoes-btn questoes-btn--primary surface-violet-dark">
+                    <i class="fas fa-save"></i> Salvar Questão
+                </button>
+            </footer>
+        </form>
+    </div>
+</div>
+
+<style>
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eee; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #f8f9fa; color: #7f8c8d; font-weight: bold; text-transform: uppercase; padding: 15px; border-bottom: 2px solid #eee; text-align: left; }
+    td { padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50; }
+
+    #global-search-questoes:focus { border-color: #6c5ce7; box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15); }
+
+    .action-btn { border: none; background: none; cursor: pointer; font-size: 1.1em; padding: 5px; transition: transform 0.2s; }
+    .action-btn:hover { transform: scale(1.1); }
+    .btn-edit { color: #f39c12; }
+    .btn-delete { color: #e74c3c; }
+    .blue-btn { background: linear-gradient(135deg, #4A2E80 0%, #6c5ce7 100%); color: #fff !important; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+    .blue-btn i, .blue-btn [class*="fa-"] { color: #fff !important; }
+
+    /* Modal — escopo isolado (não herda .modal global do layout) */
+    .questoes-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 10050;
+        background: rgba(26, 13, 51, 0.72);
+        backdrop-filter: blur(6px);
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .questoes-modal-overlay.is-open { display: flex; }
+
+    .questoes-modal-panel {
+        width: min(920px, 100%);
+        max-height: 92vh;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 24px 60px rgba(45, 21, 85, 0.35);
+        border: 1px solid rgba(108, 92, 231, 0.2);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: questoesModalIn 0.28s ease;
+    }
+    @keyframes questoesModalIn {
+        from { opacity: 0; transform: translateY(-16px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .questoes-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 24px;
+        background: linear-gradient(135deg, #2d1555 0%, #4A2E80 45%, #6c5ce7 100%);
+        color: #fff !important;
+    }
+    .questoes-modal-header h2,
+    .questoes-modal-header h2 i,
+    .questoes-modal-header [class*="fa-"] {
+        color: #fff !important;
+        -webkit-text-fill-color: #fff;
+    }
+    .questoes-modal-header h2 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #fff !important;
+    }
+    .questoes-modal-close {
+        background: rgba(255,255,255,0.15);
+        border: none;
+        color: #fff !important;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        font-size: 1.4rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .questoes-modal-close:hover { background: rgba(255,255,255,0.28); }
+
+    .questoes-modal-body {
+        padding: 20px 24px 8px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .questoes-card {
+        background: #faf9ff;
+        border: 1px solid #e8e4f8;
+        border-radius: 12px;
+        padding: 16px;
+    }
+    .questoes-card--highlight { background: linear-gradient(180deg, #f8f6ff 0%, #fff 100%); }
+    .questoes-card--quali { background: #fff; border-color: #d8b4fe; }
+    .questoes-card--bussola { border-color: #c4b5fd; background: #fcfaff; }
+
+    .questoes-card__row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .questoes-card__row--compact { justify-content: space-between; flex-wrap: wrap; }
+    .questoes-card__icon {
+        width: 42px; height: 42px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #6c5ce7, #9d8df2);
+        color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem;
+    }
+
+    .questoes-grid { display: grid; gap: 14px; }
+    .questoes-grid--2 { grid-template-columns: repeat(2, 1fr); }
+    @media (max-width: 700px) { .questoes-grid--2 { grid-template-columns: 1fr; } }
+
+    .questoes-field { display: flex; flex-direction: column; gap: 6px; }
+    .questoes-label { font-weight: 700; color: #2d1555; font-size: 0.88rem; }
+    .questoes-label--center { text-align: center; display: block; margin-bottom: 10px; }
+    .questoes-hint { font-size: 0.8rem; color: #64748b; margin: 0; }
+    .questoes-section-title { margin: 0 0 12px; font-size: 0.95rem; color: #4A2E80; font-weight: 700; }
+
+    .questoes-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.92rem;
+        background: #fff;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .questoes-input:focus {
+        outline: none;
+        border-color: #6c5ce7;
+        box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.12);
+    }
+    .questoes-textarea { resize: vertical; min-height: 72px; }
+    .questoes-textarea--sm { min-height: 52px; }
+
+    .questoes-checkbox { width: 22px; height: 22px; accent-color: #6c5ce7; cursor: pointer; margin-left: auto; }
+    .questoes-toggle { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #475569; cursor: pointer; }
+    .questoes-toggle input { accent-color: #6c5ce7; }
+
+    .questoes-rubricas { display: flex; flex-direction: column; gap: 10px; }
+    .questoes-rubrica-row {
+        display: grid;
+        grid-template-columns: 44px 1fr 1.4fr;
+        gap: 10px;
+        align-items: start;
+    }
+    @media (max-width: 640px) {
+        .questoes-rubrica-row { grid-template-columns: 1fr; }
+    }
+    .questoes-rubrica-badge {
+        display: flex; align-items: center; justify-content: center;
+        height: 38px;
+        background: linear-gradient(135deg, #4A2E80, #6c5ce7);
+        color: #fff;
+        font-weight: 800;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+
+    .questoes-segments {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 10px;
+    }
+    .questoes-segment {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 0.85rem; color: #334155; cursor: pointer;
+        padding: 8px 10px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0;
+    }
+    .questoes-segment input { accent-color: #6c5ce7; }
+
+    .questoes-suggestions {
+        display: none;
+        position: absolute;
+        z-index: 10;
+        width: 100%;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        margin-top: 4px;
+    }
+
+    .questoes-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 16px 24px 20px;
+        border-top: 1px solid #eee;
+        background: #fafafa;
+    }
+    .questoes-btn {
+        padding: 12px 28px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 0.92rem;
+    }
+    .questoes-btn--ghost { background: #e2e8f0; color: #475569; }
+    .questoes-btn--ghost:hover { background: #cbd5e1; }
+    .questoes-btn--primary {
+        background: linear-gradient(135deg, #4A2E80 0%, #6c5ce7 100%);
+        color: #fff !important;
+        box-shadow: 0 4px 14px rgba(74, 46, 128, 0.3);
+    }
+    .questoes-btn--primary i,
+    .questoes-btn--primary [class*="fa-"] {
+        color: #fff !important;
+    }
+    .questoes-btn--primary:hover { filter: brightness(1.06); }
+</style>
+
+<script>
+    const API_QUES = "<%= API_BASE_URL %>/ctdi_quest";
+    const API_DIME = "<%= API_BASE_URL %>/leaf_dime";
+    const API_DOMA = "<%= API_BASE_URL %>/leaf_doma";
+
+    let localQuestoes = []; // Nosso cache para busca instantânea
+
+    async function carregarTudo() {
+        try {
+            const [resDime, resDoma, resQues] = await Promise.all([
+                fetch(API_DIME), fetch(API_DOMA), fetch(API_QUES)
+            ]);
+
+            const dimes = await resDime.json();
+            const domas = await resDoma.json();
+            localQuestoes = await resQues.json();
+
+            document.getElementById('id_dime_select').innerHTML = dimes.map(d => `<option value="${d.id_dime}">${d.name_dime}</option>`).join('');
+            document.getElementById('id_doma_select').innerHTML = domas.map(d => `<option value="${d.id_doma}">${d.name_doma}</option>`).join('');
+
+            renderQuestTable(localQuestoes);
+        } catch (error) { console.error("Erro ao carregar dados:", error); }
+    }
+
+function renderQuestTable(dados) {
+    const tbody = document.getElementById('table-body-questoes');
+    tbody.innerHTML = '';
+
+    // Ordenação garantida pelo ID (Crescente)
+    const dadosOrdenados = [...dados].sort((a, b) => a.id_ques - b.id_ques);
+
+    dadosOrdenados.forEach(item => {
+        const tr = document.createElement('tr');
+
+        // Formatação dos qualificadores (Target Context)
+        const aplicabilidade = item.target_context
+            ? item.target_context.split(';').join(', ')
+            : 'GERAL';
+
+        // Badge para identificar o Freemium (Pre-survey)
+        const badgePreSurvey = item.presurvey_ques
+            ? `<span style="margin-left: 8px; color: #8e44ad; font-size: 0.8em;" title="Incluso no Freemium"><i class="fas fa-rocket"></i></span>`
+            : '';
+
+        tr.innerHTML = `
+            <td style="color: #7f8c8d; font-size: 0.85em; text-align: center;">#${item.id_ques}</td>
+            <td style="font-size: 0.95em;">
+                <div style="display: flex; align-items: center;">
+                    <strong>${item.desc_ques}</strong>
+                    ${badgePreSurvey}
+                </div>
+            </td>
+            <td>
+                <div style="font-size: 0.75em; color: #2980b9; font-weight: bold;">D: ${item.name_dime_text || '---'}</div>
+                <div style="font-size: 0.75em; color: #8e44ad; font-weight: bold;">M: ${item.name_doma_text || '---'}</div>
+            </td>
+            <td style="font-size: 0.85em; color: #666;">
+                <i class="fas fa-bullseye" style="font-size: 0.8em; color: #bdc3c7;"></i> ${aplicabilidade}
+            </td>
+            <td style="text-align: center;">
+                <button class="action-btn btn-edit" onclick="editarQuestao(${item.id_ques})" title="Editar Questão e Bússola">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn btn-delete" onclick="deletarQuestao(${item.id_ques})" title="Excluir">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+    // FUNÇÃO DE BUSCA GLOBAL (IGUAL AOS ENTREGÁVEIS)
+    function filtrarQuestoes() {
+        const termo = document.getElementById('global-search-questoes').value.toLowerCase();
+        const filtrados = localQuestoes.filter(item => {
+            const enunciado = item.desc_ques ? item.desc_ques.toLowerCase() : "";
+            const dimensão = item.name_dime_text ? item.name_dime_text.toLowerCase() : "";
+            const dominio = item.name_doma_text ? item.name_doma_text.toLowerCase() : "";
+
+            return enunciado.includes(termo) || dimensão.includes(termo) || dominio.includes(termo);
+        });
+        renderQuestTable(filtrados);
+    }
+
+    function abrirModal(limpar = true) {
+        if (limpar) {
+            document.getElementById('form-ques').reset();
+            document.getElementById('id_ques').value = '';
+            document.getElementById('presurvey_ques').checked = false;
+            document.getElementById('insight_chave').value = '';
+            document.querySelectorAll('input[name="target_item"]').forEach(cb => cb.checked = false);
+            document.getElementById('modal-title').innerText = "Nova Questão";
+        }
+        document.getElementById('modal-form-questoes').classList.add('is-open');
+    }
+
+    function fecharModal() {
+        document.getElementById('modal-form-questoes').classList.remove('is-open');
+    }
+
+    function editarQuestao(id) {
+        // Procura no cache local alimentado pelo JOIN do Python
+        const item = localQuestoes.find(q => q.id_ques === id);
+        if (!item) return;
+
+        abrirModal(false);
+        document.getElementById('modal-title').innerHTML = '<i class="fas fa-edit"></i> Edição da Questão #' + id;
+
+        // 1. Campos Básicos e Novos Campos (P/F e Setor) - PRESERVADOS
+        document.getElementById('id_ques').value = item.id_ques;
+        document.getElementById('desc_ques').value = item.desc_ques;
+        document.getElementById('id_dime_select').value = item.id_dime;
+        document.getElementById('id_doma_select').value = item.id_doma;
+        document.getElementById('presurvey_ques').checked = item.presurvey_ques || false;
+
+        // Recuperando os campos de cálculo
+        document.getElementById('prefu_ques').value = item.prefu_ques || 'P';
+        document.getElementById('setor_ques').value = item.setor_ques || 'GERAL';
+
+        // 2. Campo Qualitativo - PRESERVADO
+        document.getElementById('quali_ques_def').value = item.quali_ques || '';
+        document.getElementById('permite_aberta').checked = !!item.quali_ques;
+
+        // 3. LÓGICA DA BÚSSOLA (INSIGHT CHAVE) - MODIFICADA PARA OS 3 CAMPOS
+        const rawInsight = item.insight_chave || '';
+
+        // Reset preventivo dos campos da bússola
+        document.getElementById('bussola_categoria').value = '';
+        document.getElementById('bussola_diagnostico').value = '';
+        document.getElementById('bussola_ancoras').value = '';
+
+        // Seta o hidden principal (para consistência)
+        if(document.getElementById('insight_chave')) {
+            document.getElementById('insight_chave').value = rawInsight;
+        }
+
+        if (rawInsight.includes('|')) {
+            const partes = rawInsight.split('|');
+
+            // Atribuição baseada na posição e limpeza dos rótulos
+            partes.forEach(parte => {
+                const p = parte.trim();
+                if (p.startsWith('CATEGORIA:')) {
+                    document.getElementById('bussola_categoria').value = p.replace('CATEGORIA:', '').trim();
+                } else if (p.startsWith('DIAGNÓSTICO:')) {
+                    document.getElementById('bussola_diagnostico').value = p.replace('DIAGNÓSTICO:', '').trim();
+                } else if (p.startsWith('ÂNCORAS:')) {
+                    document.getElementById('bussola_ancoras').value = p.replace('ÂNCORAS:', '').trim();
+                }
+            });
+        } else {
+            // Fallback para questões antigas: joga tudo no diagnóstico
+            document.getElementById('bussola_diagnostico').value = rawInsight;
+        }
+
+        // 4. Target Context - PRESERVADO
+        const targets = item.target_context ? item.target_context.split(';') : [];
+        document.querySelectorAll('input[name="target_item"]').forEach(cb => {
+            cb.checked = targets.includes(cb.value);
+        });
+
+        // 5. Rubricas - PRESERVADO
+        for(let i=0; i<=5; i++) {
+            document.getElementById(`label_${i}`).value = '';
+            document.getElementById(`desc_${i}`).value = '';
+        }
+
+        if (item.rubricas && Array.isArray(item.rubricas)) {
+            item.rubricas.forEach(r => {
+                if (document.getElementById(`label_${r.grad_rubr}`)) {
+                    document.getElementById(`label_${r.grad_rubr}`).value = r.label_rubr;
+                    document.getElementById(`desc_${r.grad_rubr}`).value = r.desc_rubr;
+                }
+            });
+        }
+    }
+    async function salvarRegistro(event) {
+        event.preventDefault();
+
+        const cat = document.getElementById('bussola_categoria').value.trim();
+        const diag = document.getElementById('bussola_diagnostico').value.trim();
+        const anc = document.getElementById('bussola_ancoras').value.trim();
+        document.getElementById('insight_chave').value =
+            `CATEGORIA: ${cat} | DIAGNÓSTICO: ${diag} | ÂNCORAS: ${anc}`;
+
+        try {
+            const id_field = document.getElementById('id_ques');
+            const id = id_field ? id_field.value : null;
+
+            const getVal = (elId) => {
+                const el = document.getElementById(elId);
+                return el ? el.value : '';
+            };
+
+            const rubricas = [];
+            for (let i = 0; i <= 5; i++) {
+                const lb = getVal(`label_${i}`);
+                const ds = getVal(`desc_${i}`);
+                if (lb.trim() || ds.trim()) {
+                    rubricas.push({ grad_rubr: i, label_rubr: lb, desc_rubr: ds });
+                }
+            }
+
+            const targets = Array.from(document.querySelectorAll('input[name="target_item"]:checked'))
+                .map(cb => cb.value)
+                .join(';');
+
+            const payload = {
+                desc_ques: getVal('desc_ques'),
+                id_dime: parseInt(getVal('id_dime_select'), 10) || 0,
+                id_doma: parseInt(getVal('id_doma_select'), 10) || 0,
+                presurvey_ques: document.getElementById('presurvey_ques')?.checked || false,
+                quali_ques: getVal('quali_ques_def'),
+                insight_chave: getVal('insight_chave'),
+                target_context: targets,
+                rubricas,
+                prefu_ques: getVal('prefu_ques'),
+                setor_ques: getVal('setor_ques'),
+            };
+
+            const url = id ? `/api/ctdi_quest/${id}` : '/api/ctdi_quest';
+            const response = await fetch(url, {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erro ${response.status}: falha ao salvar questão.`);
+            }
+
+            alert('Configuração Master salva com sucesso!');
+            location.reload();
+        } catch (error) {
+            console.error('Erro ao salvar questão:', error);
+            alert(error.message);
+        }
+    }
+
+    async function deletarQuestao(id) {
+        if (!confirm('Confirma exclusão desta Questão MASTER e todos os seus vínculos?')) {
+            return;
+        }
+        try {
+            const response = await fetch(`${API_QUES}/${id}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (response.ok) {
+                alert(result.message);
+                carregarTudo();
+            } else {
+                alert('Erro ao excluir: ' + (result.error || 'Falha desconhecida'));
+            }
+        } catch (error) {
+            console.error('Erro na comunicação de deleção:', error);
+            alert('Erro de conexão com o servidor.');
+        }
+    }
+
+    // 1. Extrai as categorias únicas do cache localQuestoes
+    function obterCategoriasUnicas() {
+        if (!localQuestoes) return [];
+        return [...new Set(localQuestoes.map(q => {
+            const match = (q.insight_chave || '').match(/CATEGORIA:\s*(.*?)\s*\|/);
+            return match ? match[1].trim() : null;
+        }))].filter(c => c !== null).sort();
+    }
+
+    // 2. Filtra e exibe a lista conforme o usuário digita
+    function filtrarSugestoesCategoria(valor) {
+        const lista = document.getElementById('lista_suspensa_categorias');
+        const categorias = obterCategoriasUnicas();
+        const termo = valor.toLowerCase();
+
+        // Se o campo estiver vazio, esconde a lista
+        if (!termo) {
+            lista.style.display = 'none';
+            return;
+        }
+
+        // Filtra as categorias que contêm o termo digitado
+        const filtradas = categorias.filter(cat => cat.toLowerCase().includes(termo));
+
+        if (filtradas.length > 0) {
+            lista.innerHTML = filtradas.map(cat => `
+                <div style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee;"
+                     onclick="selecionarCategoria('${cat}')"
+                     onmouseover="this.style.background='#f4f4fb'"
+                     onmouseout="this.style.background='white'">
+                    ${cat}
+                </div>
+            `).join('');
+            lista.style.display = 'block';
+        } else {
+            // Se não houver coincidência, permite que o usuário continue digitando para criar uma nova
+            lista.innerHTML = `<div style="padding: 10px; color: #8e44ad; font-size: 0.8em;"><i>Pressione TAB para manter como nova categoria</i></div>`;
+            lista.style.display = 'block';
+        }
+    }
+
+    // 3. Função para quando o usuário clica em uma opção da lista
+    function selecionarCategoria(valor) {
+        document.getElementById('bussola_categoria').value = valor;
+        document.getElementById('lista_suspensa_categorias').style.display = 'none';
+    }
+
+    // Fechar a lista se clicar fora dela
+    document.addEventListener('click', function(e) {
+        if (e.target.id !== 'bussola_categoria') {
+            document.getElementById('lista_suspensa_categorias').style.display = 'none';
+        }
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') fecharModal();
+    });
+    carregarTudo();
+
+</script>

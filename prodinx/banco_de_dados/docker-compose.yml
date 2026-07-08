@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: prodinx-postgres
+    restart: unless-stopped
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "Cmgv6190!@"
+      POSTGRES_DB: prodinx
+    volumes:
+      - prodinx_pgdata:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - ./schema.sql:/schema.sql:ro
+
+volumes:
+  prodinx_pgdata:

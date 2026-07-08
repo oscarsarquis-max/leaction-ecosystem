@@ -1,0 +1,22 @@
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/node_modules/
+npm-debug.log*
+
+# Python / backend
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
+
+# Database
+*.db
+database/inove4us.db
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/

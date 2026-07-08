@@ -1,0 +1,434 @@
+<div class="main-content" id="presurvey-report">
+    <%
+        /* TRAVA DE SEGURANÇA E MAPEAMENTO SEGURO
+           Buscamos os dados diretamente de dentro de preData onde o seu log provou
+           que as informações de hover (desc_b e desc_d) e blocos residem.
+        */
+        var ia = (typeof insights_ia !== 'undefined' && insights_ia && insights_ia.ambicao) ? insights_ia : ((preData && preData.json_insights && preData.json_insights.recomendas) ? preData.json_insights.recomendas : {});
+        var setor = (typeof refSetor !== 'undefined') ? refSetor : (locals.refSetor || {});
+        var scores_domas = (preData && preData.json_insights && preData.json_insights.scores_dominios) ? preData.json_insights.scores_dominios : {};
+    %>
+
+    <style>
+        .report-card {
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            padding: 40px;
+            margin-bottom: 30px;
+            border-top: 6px solid #d4af37;
+        }
+        .dimension-badge {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 50px;
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+        .insight-box {
+            padding: 20px;
+            border-radius: 12px;
+            height: 100%;
+            transition: transform 0.3s;
+        }
+        .insight-box:hover { transform: translateY(-5px); }
+        .bg-gap { background: #fff8e1; border-left: 5px solid #f1c40f; }
+        .bg-strength { background: #f0fdf4; border-left: 5px solid #22c55e; }
+        .bg-urgent { background: #fef2f2; border-left: 5px solid #ef4444; }
+
+        /* Estilos para Recomendações Dinâmicas */
+        .bg-ambicao { background: #eff6ff; border-left: 5px solid #3b82f6; }
+        .bg-mercado { background: #fff1f2; border-left: 5px solid #e11d48; }
+        .tech-info { cursor: help; border-bottom: 1px dashed #94a3b8; }
+
+        @media print {
+            .sidebar-menu, .main-header, .context-bar, .btn-print { display: none !important; }
+            .report-card { box-shadow: none; border: 1px solid #ddd; }
+        }
+    </style>
+
+    <div id="dados-dominios-ponte" data-scores="<%- JSON.stringify(scores_domas).replace(/"/g, '&quot;') %>" style="display: none;"></div>
+
+    <div class="report-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 1px solid #f1f5f9; padding-bottom: 20px;">
+            <div>
+                <h1 style="color: #1e293b; margin: 0; font-size: 2rem;">Diagnóstico de Maturidade Digital</h1>
+                <p style="color: #64748b; font-size: 1.1rem; margin: 8px 0;">
+                    <i class="fas fa-university"></i> <%= lead.empresa_clie %>
+                </p>
+            </div>
+            <div style="text-align: right;">
+                <div style="text-align: center; margin: 30px 0;">
+                    <button id="exportPdfBtn"
+                            style="
+                                padding: 15px 40px;
+                                font-size: 1.1rem;
+                                font-weight: 800;
+                                cursor: pointer;
+                                background: linear-gradient(135deg, #f1c40f 0%, #d4af37 100%);
+                                color: #000000;
+                                border-radius: 50px;
+                                border: none;
+                                box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 10px;
+                                transition: all 0.3s ease;
+                            "
+                            onmouseover="this.style.transform='scale(1.03)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.2)';"
+                            onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.15)';"
+                    >
+                        <i class="fas fa-file-pdf"></i> EXPORTAR RELATÓRIO PARA PDF
+                    </button>
+                </div>
+                <div class="dimension-badge" style="display: block;">Análise de Base</div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 40px; margin-bottom: 40px;">
+
+            <div style="background: #f8fafc; padding: 30px; border-radius: 20px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 30px;">
+                <div>
+                    <h3 style="text-align: center; color: #334155; margin-bottom: 20px;">Equilíbrio Competitivo (P vs F vs Mercado)</h3>
+                    <canvas id="radarChartPresurvey" style="max-height: 320px;"></canvas>
+                </div>
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                    <h3 style="text-align: center; color: #334155; margin-bottom: 20px;">Visão Detalhada por Domínios de Transformação</h3>
+                    <canvas id="radarChartDominios" style="max-height: 350px;"></canvas>
+
+                    <div id="legenda-dimensoes-radar" style="margin-top: 20px; background: #f3e8ff; padding: 15px; border-radius: 12px; border: 1px solid #d8b4fe; font-size: 0.8rem; line-height: 1.5; color: #5b21b6;">
+                        <span style="font-weight: 800; color: #7c3aed; display: block; margin-bottom: 8px; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;">
+                            <i class="fas fa-th-large"></i> Guia de Referência das Dimensões:
+                        </span>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 10px;">
+                            <div><b>Estratégica:</b> Alinhamento Institucional</div>
+                            <div><b>Humana:</b> Pessoas e Competências</div>
+                            <div><b>Organizacional:</b> Estrutura e Processos</div>
+                            <div><b>Pedagógica:</b> Práticas Educacionais</div>
+                            <div><b>Tecnológica:</b> Infraestrutura e Ferramentas</div>
+                        </div>
+                    </div>
+
+                    <div id="legenda-dominios-radar" style="margin-top: 12px; background: #ffffff; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; font-size: 0.8rem; line-height: 1.5; color: #475569;">
+                        <span style="font-weight: 800; color: #1e293b; display: block; margin-bottom: 8px; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;">
+                            <i class="fas fa-map-signs"></i> Guia de Referência dos Domínios:
+                        </span>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px;">
+                            <div><b>Dom 1:</b> Estratégia Digital</div>
+                            <div><b>Dom 2:</b> Modelo de Negócio Digital</div>
+                            <div><b>Dom 3:</b> Cultura de Inovação</div>
+                            <div><b>Dom 4:</b> Cultura de Dados</div>
+                            <div><b>Dom 5:</b> Cultura de Colaboração</div>
+                            <div><b>Dom 6:</b> Governança Digital</div>
+                            <div><b>Dom 7:</b> Plataformas Digitais</div>
+                            <div><b>Dom 8:</b> Capacidades Digitais</div>
+                            <div><b>Dom 9:</b> Métricas Digitais</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="insight-box bg-strength">
+                    <h4 style="margin: 0; color: #166534;"><i class="fas fa-shield-alt"></i> Maior Fortaleza</h4>
+                    <p style="font-size: 1.2rem; font-weight: bold; margin: 10px 0; color: #064e3b;" id="strPilarForte">--</p>
+                    <small style="color: #166534;">Este é o pilar que sustenta sua operação atual. Essa análise se baseia no comportamento da organização em relação às 5 dimensões de TD.</small>
+                </div>
+
+                <div class="insight-box bg-ambicao">
+                    <h4 style="margin: 0; color: #1e40af; font-size: 0.85rem; text-transform: uppercase;">
+                        <i class="fas fa-rocket"></i> Prioridade de Ambição
+                    </h4>
+                    <p style="font-size: 0.95rem; color: #1e3a8a; margin: 10px 0;">
+                        Bloco: <strong class="tech-info" title="<%= ia?.ambicao?.desc_b || 'Ação prioritária baseada na ambição digital' %>">
+                            <%= ia?.ambicao?.bloco || 'Definição Estratégica' %>
+                        </strong>
+                    </p>
+                    <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px dashed #3b82f6;">
+                        <span style="font-size: 0.65rem; color: #3b82f6; font-weight: 900; display: block;">AÇÃO SUGERIDA:</span>
+                        <span class="tech-info" style="font-size: 0.95rem; font-weight: 800; color: #1e3a8a;" title="<%= ia?.ambicao?.desc_d || 'Detalhes do plano de ação' %>">
+                            <%= ia?.ambicao?.derv || 'Plano de Ação Digital' %> <i class="fas fa-info-circle" style="font-size: 0.7rem;"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="insight-box bg-mercado">
+                    <h4 style="margin: 0; color: #9f1239; font-size: 0.85rem; text-transform: uppercase;">
+                        <i class="fas fa-chart-line"></i> Resposta ao Mercado
+                    </h4>
+                    <p style="font-size: 0.95rem; color: #881337; margin: 10px 0;">
+                        Bloco: <strong class="tech-info" title="<%= ia?.mercado?.desc_b || 'Foco em competitividade setorial' %>">
+                            <%= ia?.mercado?.bloco || 'Adequação Competitiva' %>
+                        </strong>
+                    </p>
+                    <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px dashed #e11d48;">
+                        <span style="font-size: 0.65rem; color: #e11d48; font-weight: 900; display: block;">AÇÃO RECOMENDADA:</span>
+                        <span class="tech-info" style="font-size: 0.95rem; font-weight: 800; color: #881337;" title="<%= ia?.mercado?.desc_d || 'Detalhes da ação sugerida' %>">
+                            <%= ia?.mercado?.derv || 'Sprint de Ajuste' %> <i class="fas fa-info-circle" style="font-size: 0.7rem;"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="border-top: 1px solid #f1f5f9; padding-top: 30px; margin-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: #1e293b; margin: 0; font-weight: 800;">Análise Comparativa por Dimensão</h3>
+                <span style="font-size: 0.8rem; color: #4c51bf; background: #eef2ff; padding: 6px 14px; border-radius: 20px; font-weight: 700; border: 1px solid #e0e7ff;">
+                    <i class="fas fa-chart-line"></i> Benchmark: Setor Educação 2026
+                </span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px;">
+                <%
+                    const dimKeys = ['estrat', 'organiz', 'humana', 'pedag', 'tecno'];
+                    const dimNames = ['Estratégica', 'Organizacional', 'Humana', 'Pedagógica', 'Tecnológica'];
+
+                    dimNames.forEach((name, i) => {
+                        const key = dimKeys[i];
+                        const idDime = (i + 1).toString();
+
+                        const valP = parseFloat(preData['score_' + key + '_p']) || 0;
+                        const valF = parseFloat(preData['score_' + key + '_f']) || 0;
+                        const clienteMedia = (valP + valF) / 2;
+
+                        const mercadoMedia = parseFloat(setor[idDime]) || 0;
+                        const gapMercado = clienteMedia - mercadoMedia;
+                %>
+                    <div style="text-align: center; padding: 20px 10px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+
+                        <span style="font-size: 0.7rem; color: #64748b; font-weight: 800; display: block; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <%= name %>
+                        </span>
+
+                        <div style="font-size: 1.8rem; font-weight: 900; color: #4c51bf; line-height: 1;">
+                            <%= clienteMedia.toFixed(1) %>
+                        </div>
+
+                        <div style="margin: 12px 0; height: 1px; background: #f1f5f9; width: 60%; margin-left: 20%;"></div>
+
+                        <div style="font-size: 0.8rem; color: #475569; font-weight: 600;">
+                            Mercado: <span style="color: #1e293b;"><%= mercadoMedia.toFixed(1) %></span>
+                        </div>
+
+                        <div style="margin-top: 5px; font-size: 0.75rem; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; color: <%= gapMercado >= 0 ? '#10b981' : '#ef4444' %>;">
+                            <i class="fas <%= gapMercado >= 0 ? 'fa-caret-up' : 'fa-caret-down' %>"></i>
+                            <%= (gapMercado >= 0 ? '+' : '') + gapMercado.toFixed(1) %>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+
+            <p style="margin-top: 20px; font-size: 0.8rem; color: #94a3b8; font-style: italic; text-align: right;">
+                * O benchmark utiliza dados médios agregados de instituições do setor educacional no Brasil (2025/2026).
+            </p>
+        </div>
+
+        <div style="margin-top: 50px; background: linear-gradient(135deg, #2c3e50 0%, #4c51bf 100%); padding: 45px; border-radius: 24px; text-align: center; color: #ffffff; box-shadow: 0 10px 25px rgba(76, 81, 191, 0.2);">
+
+            <h2 style="margin: 0; font-size: 2rem; color: #ffffff; font-weight: 800; letter-spacing: -0.025em;">
+                Desbloqueie o Roadmap Completo
+            </h2>
+
+            <p style="color: #e0e7ff; margin: 20px auto; max-width: 650px; font-size: 1.1rem; line-height: 1.6;">
+                Este diagnóstico inicial é baseado em <b>20 indicators essenciais</b>.
+                Ative seu plano para liberar os 162 indicators detalhados, o Radar IA Master e as Sprints de Transformação Digital.
+            </p>
+
+            <div style="margin-top: 30px;">
+                <a href="https://ACTIONHUB.COM.BR?id_matu=<%= lead.id_matu %>" target="_blank" class="btn-dash btn-gold"
+                   style="padding: 18px 60px; font-size: 1.25rem; border-radius: 50px; text-decoration: none; display: inline-flex; align-items: center; gap: 12px; transition: transform 0.2s ease; font-weight: bold; background: linear-gradient(135deg, #d4af37 0%, #f1c40f 100%); color: #1a202c; border: none; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);">
+                    <i class="fas fa-rocket"></i> ATIVAR PLANO COMPLETO
+                </a>
+            </div>
+
+            <p style="margin-top: 20px; font-size: 0.85rem; color: rgba(255,255,255,0.6);">
+                ID de Maturidade: <%= lead.id_matu %> | Status: <%= lead.status_ia %>
+            </p>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const labels = ['Estratégica', 'Organizacional', 'Humana', 'Pedagógica', 'Tecnológica'];
+    const pData = [<%= preData.score_estrat_p %>, <%= preData.score_organiz_p %>, <%= preData.score_humana_p %>, <%= preData.score_pedag_p %>, <%= preData.score_tecno_p %>];
+    const fData = [<%= preData.score_estrat_f %>, <%= preData.score_organiz_f %>, <%= preData.score_humana_f %>, <%= preData.score_pedag_f %>, <%= preData.score_tecno_f %>];
+
+    const mData = [
+        <%= setor['1'] || 0 %>, <%= setor['2'] || 0 %>, <%= setor['3'] || 0 %>,
+        <%= setor['4'] || 0 %>, <%= setor['5'] || 0 %>
+    ];
+
+    const gaps = fData.map((f, i) => f - pData[i]);
+    const maxGapIdx = gaps.indexOf(Math.max(...gaps));
+    const maxPIdx = pData.indexOf(Math.max(...pData));
+
+    document.getElementById('strPilarForte').innerText = labels[maxPIdx];
+
+    const ctx = document.getElementById('radarChartPresurvey').getContext('2d');
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Presente (Realidade)',
+                    data: pData,
+                    backgroundColor: 'rgba(76, 81, 191, 0.2)',
+                    borderColor: '#4c51bf',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#4c51bf'
+                },
+                {
+                    label: 'Futuro (Ambição)',
+                    data: fData,
+                    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+                    borderColor: '#d4af37',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#d4af37'
+                },
+                {
+                    label: 'Benchmark Mercado',
+                    data: mData,
+                    backgroundColor: 'transparent',
+                    borderColor: '#94a3b8',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            scales: {
+                r: {
+                    angleLines: { display: true },
+                    suggestedMin: 0,
+                    suggestedMax: 5,
+                    ticks: { stepSize: 1, backdropColor: 'transparent', display: false }
+                }
+            },
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { weight: 'bold' } } }
+            }
+        }
+    });
+
+    // LEITURA DO NOVO RADAR DE DOMÍNIOS VIA ATRIBUTO DATA (LIMPO PARA O PYCHARM)
+    const ponteElemento = document.getElementById('dados-dominios-ponte');
+    const rawDomasScores = JSON.parse(ponteElemento.getAttribute('data-scores') || '{}');
+
+    const domaLabels = [];
+    const domaPData = [];
+    const domaFData = [];
+    const domaMData = [];
+
+    // ESTRUTURA DOS 9 DOMÍNIOS NATIVOS DO SISTEMA
+    const mapaNoveDominios = {
+        "Dom 1": "Dom 1: Estratégia Digital",
+        "Dom 2": "Dom 2: Modelo de Negócio Digital",
+        "Dom 3": "Dom 3: Cultura de Inovação",
+        "Dom 4": "Dom 4: Cultura de Dados",
+        "Dom 5": "Dom 5: Cultura de Colaboração",
+        "Dom 6": "Dom 6: Governança Digital",
+        "Dom 7": "Dom 7: Plataformas Digitais",
+        "Dom 8": "Dom 8: Capacidades Digitais",
+        "Dom 9": "Dom 9: Métricas Digitais"
+    };
+
+    // Inicializa os acumuladores para garantir as 9 verticais exatas no gráfico
+    const acumuladorDominios = {};
+    Object.keys(mapaNoveDominios).forEach(slug => {
+        acumuladorDominios[slug] = { label: mapaNoveDominios[slug], P: [], F: [], M: [] };
+    });
+
+    // Varre o payload do backend agrupando as verticais estritamente dentro dos 9 domínios macro
+    Object.keys(rawDomasScores).forEach(key => {
+        let escopoEncontrado = false;
+        Object.keys(mapaNoveDominios).forEach(slug => {
+            if (key.includes(slug) || key.includes(mapaNoveDominios[slug].split(":")[1].trim())) {
+                if (rawDomasScores[key].P !== undefined) acumuladorDominios[slug].P.push(parseFloat(rawDomasScores[key].P) || 0);
+                if (rawDomasScores[key].F !== undefined) acumuladorDominios[slug].F.push(parseFloat(rawDomasScores[key].F) || 0);
+                if (rawDomasScores[key].M !== undefined) acumuladorDominios[slug].M.push(parseFloat(rawDomasScores[key].M) || 0);
+                escopoEncontrado = true;
+            }
+        });
+
+        // Fallback dinâmico caso o backend traga IDs numéricos diretos (Ex: "1", "2", ou "Domínio 1")
+        if (!escopoEncontrado) {
+            const extracaoNumerica = key.replace(/\D/g, "");
+            if (extracaoNumerica && acumuladorDominios["Dom " + extracaoNumerica]) {
+                const targetSlug = "Dom " + extracaoNumerica;
+                if (rawDomasScores[key].P !== undefined) acumuladorDominios[targetSlug].P.push(parseFloat(rawDomasScores[key].P) || 0);
+                if (rawDomasScores[key].F !== undefined) acumuladorDominios[targetSlug].F.push(parseFloat(rawDomasScores[key].F) || 0);
+                if (rawDomasScores[key].M !== undefined) acumuladorDominios[targetSlug].M.push(parseFloat(rawDomasScores[key].M) || 0);
+            }
+        }
+    });
+
+    // Calcula a média consolidada de cada vertical para plotar os pontos sobre as 9 linhas exatas
+    Object.keys(acumuladorDominios).forEach(slug => {
+        const item = acumuladorDominios[slug];
+        const calcMedia = (lista) => lista.length > 0 ? lista.reduce((a, b) => a + b, 0) / lista.length : 0;
+
+        domaLabels.push(item.label);
+        domaPData.push(calcMedia(item.P));
+        domaFData.push(calcMedia(item.F));
+        domaMData.push(calcMedia(item.M));
+    });
+
+    if(domaLabels.length > 0) {
+        const ctxDoma = document.getElementById('radarChartDominios').getContext('2d');
+        new Chart(ctxDoma, {
+            type: 'radar',
+            data: {
+                labels: domaLabels,
+                datasets: [
+                    { label: 'Domínio Presente (P)', data: domaPData, backgroundColor: 'rgba(59, 130, 246, 0.15)', borderColor: '#3b82f6', borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 },
+                    { label: 'Domínio Futuro (F)', data: domaFData, backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: '#f59e0b', borderWidth: 2, pointRadius: 4, pointHoverRadius: 6 },
+                    { label: 'Domínio Mercado (M)', data: domaMData, backgroundColor: 'transparent', borderColor: '#10b981', borderWidth: 1.5, borderDash: [4, 4], pointRadius: 4, pointHoverRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                scales: {
+                    r: {
+                        suggestedMin: 0,
+                        suggestedMax: 5,
+                        ticks: { display: false },
+                        pointLabels: {
+                            font: { size: 10, weight: 'bold' },
+                            color: '#475569'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            title: function(context) {
+                                return context[0].label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('radarChartDominios').parentElement.innerHTML = "<p style='text-align:center; color:#94a3b8; font-style:italic; padding:20px;'>Dados de granularidade por Domínio indisponíveis para esta conta institucional.</p>";
+    }
+</script>

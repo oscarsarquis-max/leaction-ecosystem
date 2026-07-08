@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" fill="none">
+  <rect width="240" height="240" fill="#fff7ed"/>
+  <rect x="24" y="24" width="192" height="192" rx="16" fill="#ffffff" stroke="#ea580c" stroke-width="2"/>
+  <path d="M88 72h64a8 8 0 0 1 8 8v80a8 8 0 0 1-8 8H88a8 8 0 0 1-8-8V80a8 8 0 0 1 8-8z" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+  <path d="M96 88h48M96 104h40M96 120h32" stroke="#fb923c" stroke-width="3" stroke-linecap="round"/>
+  <text x="120" y="188" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#c2410c">Livro</text>
+</svg>

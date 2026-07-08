@@ -1,0 +1,16 @@
+[Unit]
+Description=Diario de Obra API (Flask/Gunicorn)
+After=network.target postgresql.service
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/chamelleon/hotpages/diario-obra-api
+Environment=PYTHONPATH=/opt/chamelleon/hotpages/diario-obra-api
+EnvironmentFile=/opt/chamelleon/hotpages/diario-obra-api/.env
+ExecStart=/opt/chamelleon/hotpages/diario-obra-api/.venv/bin/gunicorn --bind 127.0.0.1:6010 --workers 2 --timeout 120 "run:app"
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
