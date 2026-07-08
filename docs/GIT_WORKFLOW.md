@@ -1,6 +1,6 @@
 # Workflow Git — LeAction Ecosystem (Monorepo)
 
-Este documento define como sincronizar o código entre **dois computadores** via GitHub (`oscarsarquiis`) e como manter um **log de auditoria** adequado ao Go-Live.
+Este documento define como sincronizar o código entre **dois computadores** via GitHub (`oscarsarquis`) e como manter um **log de auditoria** adequado ao Go-Live.
 
 ## Estrutura do monorepo
 
@@ -15,14 +15,14 @@ Raiz: `C:\Projetos`
 | `prodinx/` | Prodinx (legado — tinha `.git` próprio) |
 | Outras (`MAtivas`, `LASim`, …) | Projetos no mesmo workspace |
 
-**Remoto sugerido:** `https://github.com/oscarsarquiis/leaction-ecosystem.git`
+**Remoto sugerido:** `https://github.com/oscarsarquis/leaction-ecosystem.git`
 
 ---
 
 ## Pré-requisitos (uma vez por máquina)
 
 1. [Git for Windows](https://git-scm.com/download/win) instalado.
-2. Conta GitHub `oscarsarquiis` com repositório vazio criado (sem README, se for o primeiro push).
+2. Conta GitHub `oscarsarquis` com repositório vazio criado (sem README, se for o primeiro push).
 3. Autenticação: Personal Access Token (HTTPS) ou SSH configurado no GitHub.
 
 ### Atenção: repositório aninhado em `prodinx/`
