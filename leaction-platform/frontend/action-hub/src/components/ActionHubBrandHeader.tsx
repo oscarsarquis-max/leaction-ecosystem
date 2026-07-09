@@ -14,10 +14,25 @@ const LOGO_FRAME_STYLE = {
 
 type ActionHubBrandHeaderProps = {
   left?: ReactNode;
+  /**
+   * `classic` — barra vermelha + logo pendurada (páginas internas).
+   * `light` — barra clara sem logo (home: logo vai no hero).
+   */
+  variant?: 'classic' | 'light';
 };
 
-/** Barra 60px + logo pendurada à direita (mesmo visual da home / PanelDX). */
-export function ActionHubBrandHeader({ left }: ActionHubBrandHeaderProps) {
+/** Barra sticky do ActionHub. */
+export function ActionHubBrandHeader({ left, variant = 'classic' }: ActionHubBrandHeaderProps) {
+  if (variant === 'light') {
+    return (
+      <header className="sticky top-0 z-[60] h-[56px] w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+        <div className="mx-auto flex h-[56px] max-w-6xl items-center justify-between gap-3 px-4 md:px-6">
+          {left}
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="relative sticky top-0 z-[60] h-[60px] w-full overflow-visible border-b border-black/20 bg-red-950 shadow-md">
       <div className="mx-auto flex h-[60px] max-w-6xl items-center px-4 md:px-6">{left}</div>

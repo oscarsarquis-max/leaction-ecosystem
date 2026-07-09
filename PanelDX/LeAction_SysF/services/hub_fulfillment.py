@@ -89,7 +89,7 @@ def fulfill_hub_subscription(
     """
     Cria/atualiza contrato CRM e libera assessment completo após pagamento de plano.
     """
-    cur.execute("SELECT id FROM public.ctdi_clie WHERE id_clie = %s LIMIT 1;", (id_clie,))
+    cur.execute("SELECT id_clie FROM public.ctdi_clie WHERE id_clie = %s LIMIT 1;", (id_clie,))
     if not cur.fetchone():
         raise HubFulfillmentError(f"id_clie {id_clie} não encontrado")
 
@@ -157,6 +157,49 @@ def fulfill_hub_subscription(
     activation = None
     if matu_id:
         activation = _activate_matu_and_projeto(cur, matu_id, id_clie)
+
+    # Funil: marca oportunidade como ganho e espelha consultor de origem no contrato
+    try:
+        cur.execute(
+            """
+            SELECT id, id_consultor_origem
+            FROM public.dx_oportunidades
+            WHERE id_clie = %s OR id_matu = %s
+            ORDER BY
+                CASE WHEN id_matu = %s THEN 0 ELSE 1 END,
+                id DESC
+            LIMIT 1;
+            """,
+            (id_clie, matu_id, matu_id),
+        )
+        opp = cur.fetchone()
+        if opp:
+            opp_id = opp[0] if not isinstance(opp, dict) else opp["id"]
+            opp_consultor = opp[1] if not isinstance(opp, dict) else opp.get("id_consultor_origem")
+            cur.execute(
+                """
+                UPDATE public.dx_oportunidades
+                SET status_funil = 'ganho',
+                    id_clie = COALESCE(id_clie, %s),
+                    id_matu = COALESCE(id_matu, %s),
+                    atualizado_em = NOW()
+                WHERE id = %s;
+                """,
+                (id_clie, matu_id, opp_id),
+            )
+            if opp_consultor:
+                cur.execute(
+                    """
+                    UPDATE public.dx_contratos
+                    SET id_consultor_origem = COALESCE(id_consultor_origem, %s),
+                        atualizado_em = NOW()
+                    WHERE id = %s;
+                    """,
+                    (opp_consultor, contrato_id),
+                )
+    except Exception:
+        # Tabela pode não existir ainda em ambientes sem migration 025
+        pass
 
     return {
         "status": "subscription_fulfilled",

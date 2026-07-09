@@ -694,6 +694,14 @@ app.post(`${BFF_ADMIN_CRM}/consultores`, (req, res) => proxyAdminCrm(req, res, '
 app.put(`${BFF_ADMIN_CRM}/consultores/:id`, (req, res) => proxyAdminCrm(req, res, 'PUT', `/api/admin/crm/consultores/${req.params.id}`));
 app.delete(`${BFF_ADMIN_CRM}/consultores/:id`, (req, res) => proxyAdminCrm(req, res, 'DELETE', `/api/admin/crm/consultores/${req.params.id}`));
 app.get('/bff/admin/consultores', (req, res) => proxyAdminCrm(req, res, 'GET', '/api/admin/crm/consultores'));
+app.get(`${BFF_ADMIN_CRM}/funil`, (req, res) => {
+    const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return proxyAdminCrm(req, res, 'GET', `/api/admin/crm/funil${qs}`);
+});
+app.post(`${BFF_ADMIN_CRM}/funil/:id/atribuir`, (req, res) =>
+    proxyAdminCrm(req, res, 'POST', `/api/admin/crm/funil/${req.params.id}/atribuir`));
+app.put(`${BFF_ADMIN_CRM}/funil/:id/atribuir`, (req, res) =>
+    proxyAdminCrm(req, res, 'PUT', `/api/admin/crm/funil/${req.params.id}/atribuir`));
 
 // BFF — Portal do Parceiro (Consultor)
 const BFF_CONSULTOR = '/bff/consultor';
@@ -710,6 +718,9 @@ app.get(`${BFF_CONSULTOR}/sprints`, (req, res) => proxyConsultor(req, res, 'GET'
 app.get(`${BFF_CONSULTOR}/demandas`, (req, res) => proxyConsultor(req, res, 'GET', '/api/bff/consultor/demandas'));
 app.post(`${BFF_CONSULTOR}/demandas`, (req, res) => proxyConsultor(req, res, 'POST', '/api/bff/consultor/demandas'));
 app.put(`${BFF_CONSULTOR}/demandas/:id`, (req, res) => proxyConsultor(req, res, 'PUT', `/api/bff/consultor/demandas/${req.params.id}`));
+app.post(`${BFF_CONSULTOR}/vincular-lead`, (req, res) => proxyConsultor(req, res, 'POST', '/api/bff/consultor/vincular-lead'));
+app.get(`${BFF_CONSULTOR}/prospectos`, (req, res) => proxyConsultor(req, res, 'GET', '/api/bff/consultor/prospectos'));
+app.post(`${BFF_CONSULTOR}/prospectos`, (req, res) => proxyConsultor(req, res, 'POST', '/api/bff/consultor/prospectos'));
 
 app.get('/bff/public/vitrine/planos', async (req, res) => {
     try {

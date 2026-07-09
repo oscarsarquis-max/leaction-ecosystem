@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:15
+    image: postgres:18
     container_name: leaction_db
     restart: always
     environment:
@@ -10,9 +10,9 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      # Isso faz o Docker ler seu SQL de criação automaticamente:
-      - ./shared/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ecosystem_postgres_data:/var/lib/postgresql
+      - ./shared/database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ../infra/ecosystem-databases.sql:/docker-entrypoint-initdb.d/02-ecosystem-databases.sql
 
 volumes:
-  postgres_data:
+  ecosystem_postgres_data:

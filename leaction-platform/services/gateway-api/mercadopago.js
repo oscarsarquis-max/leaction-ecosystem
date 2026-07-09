@@ -61,6 +61,24 @@ function isMercadoPagoConfigured() {
   return getMercadoPagoAccessToken().length > 0;
 }
 
+function isSandboxAccessToken() {
+  return getMercadoPagoAccessToken().startsWith('TEST-');
+}
+
+/** E-mail do comprador de teste (Contas de teste no painel MP). */
+function getSandboxPayerEmail() {
+  const fromEnv = (process.env.MP_SANDBOX_PAYER_EMAIL || '').trim();
+  if (!fromEnv.includes('@')) return '';
+  return fromEnv;
+}
+
+/** No sandbox, o MP exige e-mail de conta de teste comprador — não o e-mail real do cliente. */
+function resolveSandboxPayerEmail(payerEmail) {
+  const sandbox = getSandboxPayerEmail();
+  if (sandbox && isSandboxAccessToken()) return sandbox;
+  return String(payerEmail || '').trim();
+}
+
 function getSubscriptionConfig() {
   return {
     reason: process.env.MP_SUBSCRIPTION_REASON || 'Assinatura Mensal - Leaction Hub',
@@ -78,18 +96,27 @@ function getCheckoutMode() {
 }
 
 function getPanelDxPaymentAmount() {
-  const fromEnv = Number(process.env.MP_PANELDX_PAYMENT_AMOUNT || process.env.MP_PAYMENT_AMOUNT || '1');
-  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : 1;
+  // Somente informativo / legado assessment. Checkout de plano/addon NÃO usa este valor.
+  const fromEnv = Number(process.env.MP_PANELDX_PAYMENT_AMOUNT || process.env.MP_PAYMENT_AMOUNT || '0');
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : 0;
 }
 
-/** Valor do pedido: prioriza valor_negociado (assinatura) e cai no sandbox em assessment. */
+/**
+ * Valor cobrado no checkout.
+ * Planos/add-ons: estritamente valor_negociado do pedido (vitrine/DB) — sem fallback .env.
+ * Assessment legado: permite MP_PANELDX_PAYMENT_AMOUNT apenas se não houver valor no pedido.
+ */
 function resolveOrderPaymentAmount(orderRow) {
-  const fallback = getPanelDxPaymentAmount();
-  if (!orderRow || orderRow.external_resource_id == null) return fallback;
+  if (!orderRow || orderRow.external_resource_id == null) {
+    const err = new Error('Pedido sem valor de cobrança (external_resource_id ausente).');
+    err.statusCode = 422;
+    throw err;
+  }
   const raw = orderRow.external_resource_id;
-  if (typeof raw === 'string') {
-    const trimmed = raw.trim();
-    if (!trimmed.startsWith('{')) return fallback;
+  const trimmed = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+  const productType = String(orderRow.product_type || '').trim().toUpperCase();
+
+  if (trimmed.startsWith('{')) {
     try {
       const parsed = JSON.parse(trimmed);
       const v = Number(parsed?.valor_negociado);
@@ -97,10 +124,20 @@ function resolveOrderPaymentAmount(orderRow) {
         return Math.round(v * 100) / 100;
       }
     } catch {
-      return fallback;
+      /* fall through */
     }
   }
-  return fallback;
+
+  if (productType === 'PANELDX_ASSESSMENT') {
+    const fallback = getPanelDxPaymentAmount();
+    if (fallback > 0) return fallback;
+  }
+
+  const err = new Error(
+    'valor_negociado inválido ou ausente no pedido. Use o preço do plano/add-on da vitrine (não o .env).'
+  );
+  err.statusCode = 422;
+  throw err;
 }
 
 /** Dica amigável para rejeições comuns no sandbox Mercado Pago. */
@@ -136,10 +173,19 @@ function extractMpErrorMessage(err) {
 
   if (typeof data.message === 'string' && data.message.trim()) {
     const msg = data.message.trim();
-    if (msg.toLowerCase().includes('card token service not found')) {
+    const lower = msg.toLowerCase();
+    if (lower.includes('card token service not found')) {
       return (
         'Token de cartão não aceito para assinatura no sandbox MP. ' +
         'Use MP_CHECKOUT_MODE=card no .env (pagamento único) ou contas de teste vendedor/comprador do MP.'
+      );
+    }
+    if (lower.includes('card token not found') || String(data?.cause?.[0]?.code) === '2006') {
+      return (
+        'Card Token not found (MP 2006): a Public Key do Brick e o Access Token do gateway ' +
+        'não são do mesmo par de Credenciais de teste. No painel MP → Sua integração → ' +
+        'Credenciais de teste, copie PUBLIC_KEY e ACCESS_TOKEN juntos, atualize .env + ' +
+        '.env.local (NEXT_PUBLIC_MP_PUBLIC_KEY) e reinicie gateway (:4001) e Next (:4000).'
       );
     }
     return msg;
@@ -159,7 +205,13 @@ function extractMpErrorMessage(err) {
  * Cria assinatura recorrente via POST /preapproval (Checkout Transparente).
  * @see https://www.mercadopago.com.br/developers/pt/reference/subscriptions/_preapproval/post
  */
-async function createPreapprovalSubscription({ payerEmail, cardTokenId, externalReference }) {
+async function createPreapprovalSubscription({
+  payerEmail,
+  cardTokenId,
+  externalReference,
+  amount,
+  reason,
+}) {
   const accessToken = getMercadoPagoAccessToken();
   if (!accessToken) {
     const err = new Error('MP_ACCESS_TOKEN não configurado no .env do gateway');
@@ -167,7 +219,7 @@ async function createPreapprovalSubscription({ payerEmail, cardTokenId, external
     throw err;
   }
 
-  const email = String(payerEmail || '').trim();
+  const email = resolveSandboxPayerEmail(payerEmail);
   const token = String(cardTokenId || '').trim();
 
   if (!email.includes('@')) {
@@ -183,15 +235,23 @@ async function createPreapprovalSubscription({ payerEmail, cardTokenId, external
   }
 
   const cfg = getSubscriptionConfig();
+  const transactionAmount = Math.round(Number(amount) * 100) / 100;
+  if (!Number.isFinite(transactionAmount) || transactionAmount <= 0) {
+    const err = new Error(
+      'transaction_amount inválido: informe o valor dinâmico do plano/add-on (não use fallback do .env).'
+    );
+    err.statusCode = 400;
+    throw err;
+  }
 
   const payload = {
-    reason: cfg.reason,
+    reason: String(reason || cfg.reason || 'Assinatura PanelDX').trim(),
     payer_email: email,
     card_token_id: token,
     auto_recurring: {
       frequency: cfg.frequency,
       frequency_type: cfg.frequency_type,
-      transaction_amount: cfg.amount,
+      transaction_amount: transactionAmount,
       currency_id: cfg.currency_id,
     },
     status: 'authorized',
@@ -201,7 +261,7 @@ async function createPreapprovalSubscription({ payerEmail, cardTokenId, external
     payload.external_reference = String(externalReference);
   }
 
-  console.log(`💳 [Mercado Pago] Criando preapproval para ${email} (R$ ${cfg.amount}/mês)`);
+  console.log(`💳 [Mercado Pago] Criando preapproval para ${email} (R$ ${transactionAmount}/mês)`);
 
   try {
     const { data } = await axios.post(
@@ -249,7 +309,7 @@ async function createCardPayment({
     throw err;
   }
 
-  const email = String(payerEmail || '').trim();
+  const email = resolveSandboxPayerEmail(payerEmail);
   const token = String(cardTokenId || '').trim();
   const methodId = String(paymentMethodId || '').trim();
 
@@ -332,9 +392,223 @@ function isCardPaymentSuccess(mpResponse) {
   return MP_PAYMENT_OK_STATUSES.has(status);
 }
 
+function isMpCardTokenNotFoundError(err) {
+  if (!err) return false;
+  const msg = String(err.message || '').toLowerCase();
+  const code = err.mpResponse?.cause?.[0]?.code;
+  return code === 2006 || code === '2006' || msg.includes('card token not found');
+}
+
+function isServerTokenizeFallbackEnabled() {
+  if (!isSandboxAccessToken()) return false;
+  const flag = String(process.env.MP_SERVER_TOKENIZE_FALLBACK || '1').trim().toLowerCase();
+  return flag !== '0' && flag !== 'false' && flag !== 'off';
+}
+
+/** Tokenização server-side (sandbox) — compatível com Access Token TEST quando a Public Key do Brick está desatualizada. */
+async function createSandboxCardTokenServerSide() {
+  const accessToken = getMercadoPagoAccessToken();
+  if (!accessToken) {
+    const err = new Error('MP_ACCESS_TOKEN não configurado');
+    err.statusCode = 503;
+    throw err;
+  }
+
+  const sandboxCpf = (process.env.MP_SANDBOX_PAYER_CPF || '12345678909').replace(/\D/g, '');
+
+  const { data } = await axios.post(
+    'https://api.mercadopago.com/v1/card_tokens',
+    {
+      card_number: '5031433215406351',
+      security_code: '123',
+      expiration_month: 11,
+      expiration_year: 2030,
+      cardholder: {
+        name: 'APRO',
+        identification: {
+          type: 'CPF',
+          number: sandboxCpf || '12345678909',
+        },
+      },
+    },
+    buildMpAxiosConfig({
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+  );
+
+  return data;
+}
+
+let brickPairCache = null;
+let brickPairCacheAt = 0;
+
+/** Valida se Public Key + Access Token formam par utilizável no Brick (sandbox). */
+async function validateBrickCredentialPair() {
+  const now = Date.now();
+  if (brickPairCache && now - brickPairCacheAt < 60_000) {
+    return brickPairCache;
+  }
+
+  const publicKey = getMercadoPagoPublicKey();
+  const accessToken = getMercadoPagoAccessToken();
+  if (!publicKey || !accessToken) {
+    brickPairCache = { valid: false, reason: 'missing_credentials' };
+    brickPairCacheAt = now;
+    return brickPairCache;
+  }
+
+  if (!accessToken.startsWith('TEST-')) {
+    brickPairCache = { valid: true, reason: 'production_mode' };
+    brickPairCacheAt = now;
+    return brickPairCache;
+  }
+
+  try {
+    await axios.get('https://api.mercadopago.com/v1/payment_methods', buildMpAxiosConfig({
+      headers: { Authorization: `Bearer ${accessToken}` },
+      timeout: 15000,
+    }));
+  } catch (err) {
+    const msg = extractMpErrorMessage(err).toLowerCase();
+    brickPairCache = {
+      valid: false,
+      reason: 'invalid_access_token',
+      hint:
+        'Access Token inválido ou revogado. Copie Public Key e Access Token juntos em Credenciais de teste e atualize o .env.',
+      error: msg,
+    };
+    brickPairCacheAt = now;
+    return brickPairCache;
+  }
+
+  try {
+    const email = getSandboxPayerEmail() || 'hubaction@testuser.com.br';
+    const { data: card } = await axios.post(
+      `https://api.mercadopago.com/v1/card_tokens?public_key=${encodeURIComponent(publicKey)}`,
+      {
+        card_number: '5031433215406351',
+        security_code: '123',
+        expiration_month: 11,
+        expiration_year: 2030,
+        cardholder: {
+          name: 'APRO',
+          email,
+          identification: { type: 'CPF', number: '12345678909' },
+        },
+      },
+      buildMpAxiosConfig({ timeout: 20000 })
+    );
+
+    if (!card?.id) {
+      brickPairCache = { valid: false, reason: 'brick_token_failed', hint: 'Public Key não gerou card_token.' };
+      brickPairCacheAt = now;
+      return brickPairCache;
+    }
+
+    try {
+      const { data: payProbe, status: payStatus } = await axios.post(
+        MP_PAYMENTS_URL,
+        {
+          transaction_amount: 1,
+          token: card.id,
+          description: 'brick-pair-validation',
+          installments: 1,
+          payment_method_id: 'master',
+          payer: { email },
+        },
+        buildMpAxiosConfig({
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'X-Idempotency-Key': `brick-pair-check-${Date.now()}`,
+          },
+          timeout: 20000,
+          validateStatus: () => true,
+        })
+      );
+
+      if (payStatus < 400 && isCardPaymentSuccess(payProbe)) {
+        brickPairCache = { valid: true, reason: 'ok', live_mode: card.live_mode };
+        brickPairCacheAt = now;
+        return brickPairCache;
+      }
+
+      const causeCode = payProbe?.cause?.[0]?.code;
+      if (payStatus === 400 && (causeCode === 2006 || causeCode === '2006')) {
+        brickPairCache = {
+          valid: false,
+          reason: 'brick_token_incompatible',
+          live_mode: card.live_mode,
+          hint:
+            'Access Token válido, mas o token do Brick não é aceito (erro 2006). Use "Pagar sandbox (MP real, sem Brick)".',
+        };
+        brickPairCacheAt = now;
+        return brickPairCache;
+      }
+
+      throw new Error(extractMpErrorMessage({ response: { data: payProbe, status: payStatus } }));
+    } catch (payErr) {
+      if (isMpCardTokenNotFoundError(payErr)) {
+        brickPairCache = {
+          valid: false,
+          reason: 'brick_token_incompatible',
+          live_mode: card.live_mode,
+          hint:
+            'Access Token válido, mas o token do Brick não é aceito (erro 2006). Use "Pagar sandbox (MP real, sem Brick)".',
+        };
+        brickPairCacheAt = now;
+        return brickPairCache;
+      }
+      throw payErr;
+    }
+  } catch (err) {
+    brickPairCache = {
+      valid: false,
+      reason: 'brick_token_failed',
+      error: extractMpErrorMessage(err),
+      hint: 'Falha ao validar Public Key. Confira Credenciais de teste no painel MP.',
+    };
+    brickPairCacheAt = now;
+    return brickPairCache;
+  }
+}
+
+/**
+ * Tenta pagamento com token do Brick; em sandbox, se MP retornar 2006, tokeniza no servidor (cartão APRO).
+ */
+async function createCardPaymentWithSandboxFallback(params) {
+  try {
+    const payment = await createCardPayment(params);
+    return { payment, usedServerTokenize: false };
+  } catch (err) {
+    if (!isMpCardTokenNotFoundError(err) || !isServerTokenizeFallbackEnabled()) {
+      throw err;
+    }
+
+    console.warn(
+      '⚠️ [Mercado Pago] Token do Brick incompatível (2006). Usando tokenização server-side sandbox (cartão APRO).'
+    );
+
+    const card = await createSandboxCardTokenServerSide();
+    const payment = await createCardPayment({
+      ...params,
+      cardTokenId: card.id,
+      paymentMethodId: card.payment_method_id || 'master',
+    });
+
+    return { payment, usedServerTokenize: true };
+  }
+}
+
 module.exports = {
   createPreapprovalSubscription,
   createCardPayment,
+  createCardPaymentWithSandboxFallback,
+  createSandboxCardTokenServerSide,
+  validateBrickCredentialPair,
   getMercadoPagoAccessToken,
   getSubscriptionConfig,
   getCheckoutMode,
@@ -342,8 +616,13 @@ module.exports = {
   resolveOrderPaymentAmount,
   getMercadoPagoPublicKey,
   isMercadoPagoConfigured,
+  isSandboxAccessToken,
+  getSandboxPayerEmail,
+  resolveSandboxPayerEmail,
   isPreapprovalSuccess,
   isCardPaymentSuccess,
+  isMpCardTokenNotFoundError,
+  isServerTokenizeFallbackEnabled,
   mapMpStatusDetailHint,
   MP_OK_STATUSES,
   MP_PAYMENT_OK_STATUSES,

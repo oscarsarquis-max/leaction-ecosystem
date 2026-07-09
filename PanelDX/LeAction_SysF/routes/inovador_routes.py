@@ -1672,20 +1672,44 @@ def listar_blocos_pipeline_relatorio():
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     try:
-        cursor.execute(
-            """
-            SELECT id_sprn, name_sprn, desc_sprn, metrics_scores, stat_sprn, url_kanban
-            FROM public.ctdi_sprn
-            WHERE (metrics_scores ->> 'id_clie')::int = %s
-              AND (
-                    metrics_scores ? 'bloco_origem'
-                    OR url_kanban = 'IMPORTACAO_JSON_DX'
-                  )
-              AND LOWER(TRIM(COALESCE(stat_sprn, ''))) NOT IN ('cancelada', 'concluida', 'concluido')
-            ORDER BY id_sprn DESC;
-            """,
-            (id_clie,)
-        )
+        try:
+            cursor.execute(
+                """
+                SELECT id_sprn, name_sprn, desc_sprn, metrics_scores, stat_sprn, url_kanban, tags
+                FROM public.ctdi_sprn
+                WHERE (metrics_scores ->> 'id_clie')::int = %s
+                  AND (
+                        metrics_scores ? 'bloco_origem'
+                        OR url_kanban = 'IMPORTACAO_JSON_DX'
+                      )
+                  AND LOWER(TRIM(COALESCE(stat_sprn, ''))) NOT IN ('cancelada', 'concluida', 'concluido')
+                ORDER BY id_sprn DESC;
+                """,
+                (id_clie,)
+            )
+        except Exception:
+            conn.rollback()
+            cursor.execute(
+                """
+                ALTER TABLE public.ctdi_sprn
+                    ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}';
+                """
+            )
+            conn.commit()
+            cursor.execute(
+                """
+                SELECT id_sprn, name_sprn, desc_sprn, metrics_scores, stat_sprn, url_kanban, tags
+                FROM public.ctdi_sprn
+                WHERE (metrics_scores ->> 'id_clie')::int = %s
+                  AND (
+                        metrics_scores ? 'bloco_origem'
+                        OR url_kanban = 'IMPORTACAO_JSON_DX'
+                      )
+                  AND LOWER(TRIM(COALESCE(stat_sprn, ''))) NOT IN ('cancelada', 'concluida', 'concluido')
+                ORDER BY id_sprn DESC;
+                """,
+                (id_clie,)
+            )
         rows = cursor.fetchall()
         keys = []
         items = []
@@ -1704,6 +1728,13 @@ def listar_blocos_pipeline_relatorio():
                 key = str(row.get('name_sprn') or '').strip() or None
             if key:
                 keys.append(key)
+                raw_tags = row.get('tags') or []
+                if isinstance(raw_tags, str):
+                    try:
+                        raw_tags = json.loads(raw_tags)
+                    except Exception:
+                        raw_tags = []
+                tags = [str(t).strip() for t in (raw_tags or []) if str(t).strip()]
                 items.append({
                     "block_key": key,
                     "id_sprn": row.get('id_sprn'),
@@ -1711,7 +1742,8 @@ def listar_blocos_pipeline_relatorio():
                     "nome": row.get('name_sprn'),
                     "desc": row.get('desc_sprn'),
                     "tipo_mesa": metrics.get('tipo_mesa'),
-                    "bloco_nome": (metrics.get('bloco_origem') or {}).get('nome')
+                    "bloco_nome": (metrics.get('bloco_origem') or {}).get('nome'),
+                    "tags": tags,
                 })
         dedup = {}
         for item in items:

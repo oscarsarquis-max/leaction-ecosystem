@@ -488,3 +488,98 @@ body.mesa-modal-open {
         grid-template-columns: 1fr;
     }
 }
+
+/* Funil de Vendas */
+.admin-crm__funil-totais {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+.admin-crm__funil-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.admin-crm__funil-board {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(180px, 1fr));
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+.admin-crm__funil-col {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+}
+.admin-crm__funil-col h3 {
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    color: #0f172a;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.admin-crm__funil-count {
+    background: #e2e8f0;
+    color: #475569;
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 0.75rem;
+}
+.admin-crm__funil-list {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+.admin-crm__funil-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.admin-crm__funil-card strong {
+    display: block;
+    font-size: 0.9rem;
+    color: #0f172a;
+    margin-bottom: 2px;
+}
+.admin-crm__funil-card .meta {
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.35;
+}
+.admin-crm__funil-card .actions {
+    margin-top: 8px;
+}
+.admin-crm__funil-col[data-status="novo_lead"] {
+    border-color: #fbbf24;
+    background: #fffbeb;
+}
+@media (max-width: 1200px) {
+    .admin-crm__funil-board {
+        grid-template-columns: repeat(3, minmax(200px, 1fr));
+    }
+}
+@media (max-width: 720px) {
+    .admin-crm__funil-board {
+        grid-template-columns: minmax(240px, 1fr);
+    }
+}
+

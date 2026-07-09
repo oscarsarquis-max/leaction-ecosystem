@@ -288,6 +288,7 @@
             if (tab === 'clientes') void carregarClientes();
             if (tab === 'sprints') void carregarSprints();
             if (tab === 'demandas') void carregarDemandas();
+            if (tab === 'prospeccao') void carregarProspectos();
         });
     });
 
@@ -330,8 +331,197 @@
         });
     });
 
+    // --- Prospecção ---
+    var STATUS_FUNIL_LABEL = {
+        novo_lead: 'Novo lead',
+        distribuido: 'Distribuído',
+        em_negociacao: 'Em negociação',
+        convite_enviado: 'Convite enviado',
+        ganho: 'Ganho',
+        perdido: 'Perdido'
+    };
+    var prospectosCache = [];
+    var modalVincular = document.getElementById('modal-vincular-matu');
+    var formVincular = document.getElementById('form-vincular-matu');
+    var modalProspecto = document.getElementById('modal-prospecto');
+    var formProspecto = document.getElementById('form-prospecto');
+
+    function inviteUrlFromItem(item) {
+        if (item.invite_url) return item.invite_url;
+        if (!item.invite_token) return '';
+        var ref = item.consultor_ref || '';
+        var base = window.location.origin;
+        return base + '/cadastro?ref=' + encodeURIComponent(ref)
+            + '&invite=' + encodeURIComponent(item.invite_token);
+    }
+
+    function renderProspectos(itens) {
+        prospectosCache = itens || [];
+        var tbody = document.getElementById('prospectos-table-body');
+        if (!tbody) return;
+        if (!prospectosCache.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="admin-esim__empty">Nenhuma oportunidade ainda.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = prospectosCache.map(function (item) {
+            var link = inviteUrlFromItem(item);
+            var copyBtn = link
+                ? '<button type="button" class="mesa-btn mesa-btn--ghost" data-copy-invite="'
+                  + escapeHtml(link) + '"><i class="fas fa-copy"></i> Copiar Link</button>'
+                : '—';
+            return (
+                '<tr>'
+                + '<td>' + escapeHtml(item.nome || '—') + '</td>'
+                + '<td>' + escapeHtml(item.email || '—') + '</td>'
+                + '<td>' + escapeHtml(item.empresa || '—') + '</td>'
+                + '<td><span class="portal-consultor__status-pill">'
+                + escapeHtml(STATUS_FUNIL_LABEL[item.status_funil] || item.status_funil || '—')
+                + '</span></td>'
+                + '<td>' + (item.id_matu != null ? item.id_matu : '—') + '</td>'
+                + '<td>' + copyBtn + '</td>'
+                + '</tr>'
+            );
+        }).join('');
+    }
+
+    async function carregarProspectos() {
+        var res = await apiFetch(BFF + '/prospectos');
+        var data = (res.data || {}).oportunidades || [];
+        renderProspectos(data);
+    }
+
+    function abrirModal(modal) {
+        if (!modal) return;
+        if (modal.parentElement !== document.body) document.body.appendChild(modal);
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+    function fecharModal(modal) {
+        if (!modal) return;
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    var btnVincular = document.getElementById('btn-vincular-matu');
+    var btnNovoProspecto = document.getElementById('btn-novo-prospecto');
+    if (btnVincular) {
+        btnVincular.addEventListener('click', function () {
+            document.getElementById('vincular-id-matu').value = '';
+            abrirModal(modalVincular);
+        });
+    }
+    if (btnNovoProspecto) {
+        btnNovoProspecto.addEventListener('click', function () {
+            formProspecto.reset();
+            abrirModal(modalProspecto);
+        });
+    }
+    if (document.getElementById('btn-cancelar-vincular')) {
+        document.getElementById('btn-cancelar-vincular').addEventListener('click', function () {
+            fecharModal(modalVincular);
+        });
+    }
+    if (document.getElementById('btn-cancelar-prospecto')) {
+        document.getElementById('btn-cancelar-prospecto').addEventListener('click', function () {
+            fecharModal(modalProspecto);
+        });
+    }
+    if (modalVincular) {
+        modalVincular.addEventListener('click', function (e) {
+            if (e.target === modalVincular) fecharModal(modalVincular);
+        });
+    }
+    if (modalProspecto) {
+        modalProspecto.addEventListener('click', function (e) {
+            if (e.target === modalProspecto) fecharModal(modalProspecto);
+        });
+    }
+
+    if (formVincular) {
+        formVincular.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var btn = document.getElementById('btn-submit-vincular');
+            var idMatu = parseInt(document.getElementById('vincular-id-matu').value, 10);
+            if (!idMatu) {
+                toast('Informe um ID Matu válido.', 'error');
+                return;
+            }
+            if (btn) { btn.disabled = true; btn.textContent = 'Vinculando…'; }
+            try {
+                await apiFetch(BFF + '/vincular-lead', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_matu: idMatu })
+                });
+                toast('Lead vinculado com sucesso.', 'success');
+                fecharModal(modalVincular);
+                await Promise.all([carregarProspectos(), carregarClientes(), carregarDashboard()]);
+            } catch (err) {
+                toast(err.message || 'Falha ao vincular lead.', 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Vincular'; }
+            }
+        });
+    }
+
+    if (formProspecto) {
+        formProspecto.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var btn = document.getElementById('btn-submit-prospecto');
+            if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+            try {
+                var res = await apiFetch(BFF + '/prospectos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nome: document.getElementById('prospecto-nome').value.trim(),
+                        email: document.getElementById('prospecto-email').value.trim(),
+                        telefone: document.getElementById('prospecto-telefone').value.trim(),
+                        empresa: document.getElementById('prospecto-empresa').value.trim(),
+                        public_base_url: window.location.origin
+                    })
+                });
+                var created = res.data || {};
+                toast('Prospecto cadastrado.', 'success');
+                fecharModal(modalProspecto);
+                await carregarProspectos();
+                if (created.invite_url && navigator.clipboard) {
+                    try {
+                        await navigator.clipboard.writeText(created.invite_url);
+                        toast('Link de convite copiado.', 'success');
+                    } catch (_) { /* ignore */ }
+                }
+            } catch (err) {
+                toast(err.message || 'Falha ao cadastrar prospecto.', 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Salvar e gerar link'; }
+            }
+        });
+    }
+
+    var prospectosTable = document.getElementById('prospectos-table-body');
+    if (prospectosTable) {
+        prospectosTable.addEventListener('click', async function (e) {
+            var btn = e.target.closest('[data-copy-invite]');
+            if (!btn) return;
+            var url = btn.getAttribute('data-copy-invite');
+            try {
+                await navigator.clipboard.writeText(url);
+                toast('Link copiado.', 'success');
+            } catch (_) {
+                window.prompt('Copie o link de convite:', url);
+            }
+        });
+    }
+
     if (modalDemanda && modalDemanda.parentElement !== document.body) {
         document.body.appendChild(modalDemanda);
+    }
+    if (modalVincular && modalVincular.parentElement !== document.body) {
+        document.body.appendChild(modalVincular);
+    }
+    if (modalProspecto && modalProspecto.parentElement !== document.body) {
+        document.body.appendChild(modalProspecto);
     }
 
     void (async function init() {

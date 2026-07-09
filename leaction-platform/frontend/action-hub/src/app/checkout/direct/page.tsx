@@ -30,7 +30,7 @@ function CheckoutDirectContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const startedRef = useRef(false);
-  const { checkoutMode, paymentAmount: sandboxCardAmount, mpEnabled } = useHubPaymentConfig();
+  const { checkoutMode, mpEnabled, publicKey: mpPublicKey } = useHubPaymentConfig();
 
   const clientId = useMemo(() => parseClientIdParam(searchParams.get('client_id')), [searchParams]);
   const addonId = useMemo(() => parseAddonIdParam(searchParams.get('addon_id')), [searchParams]);
@@ -249,8 +249,9 @@ function CheckoutDirectContent() {
               <MercadoPagoSubscriptionBrick
                 payerEmail={payerEmail}
                 orderId={checkoutFromUrl}
-                amount={checkoutMode === 'card' ? sandboxCardAmount : paymentAmount}
+                amount={paymentAmount}
                 checkoutMode={checkoutMode}
+                publicKey={mpPublicKey}
                 onSuccess={() => {
                   if (clientReturnUrl) window.location.assign(clientReturnUrl);
                 }}

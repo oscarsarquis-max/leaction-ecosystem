@@ -12,7 +12,7 @@ from app.api.curation_routes import curation_bp
 from app.api.ml_auth_routes import ml_auth_bp
 from app.api.marketplace_routes import marketplace_bp
 from app.database import init_db
-from app.database.seed import seed_curation_if_empty
+from app.database.seed import seed_catalog_products_if_empty, seed_curation_if_empty
 from app.env_loader import load_marketplace_env
 
 logger = logging.getLogger(__name__)
@@ -33,12 +33,13 @@ def create_app() -> Flask:
 
     if init_db(app):
         from app.database import db
-        from app.database.models import MarketplaceCuration  # noqa: F401
+        from app.database.models import MarketplaceCuration, MarketplaceProduct  # noqa: F401
 
         with app.app_context():
             try:
                 db.create_all()
                 seed_curation_if_empty()
+                seed_catalog_products_if_empty()
             except Exception:
                 logger.exception(
                     "Banco indisponível — vitrine/OAuth ML seguem em modo degradado"

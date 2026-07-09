@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Headphones, Sparkles } from 'lucide-react';
-import { ActionHubBrandHeader } from '@/components/ActionHubBrandHeader';
-import { MarketplaceShelf } from '@/components/Marketplace/MarketplaceShelf';
+import { ArrowRight } from 'lucide-react';
+import { ContextualVitrineSection } from '@/components/Marketplace/ContextualVitrineSection';
+import { HeroCurationShortcut } from '@/components/Marketplace/HeroCurationShortcut';
 import { MultivendorSearchBox } from '@/components/Marketplace/MultivendorSearchBox';
 
 export default function ActionHubPage() {
@@ -12,130 +12,67 @@ export default function ActionHubPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
-      <ActionHubBrandHeader
-        left={
-          <Link
-            href="/dashboard"
-            className="inline-flex shrink-0 items-center rounded-xl border-2 border-orange-500 bg-white/95 px-5 py-2 text-sm font-bold text-orange-500 transition hover:bg-orange-500 hover:text-white md:px-6 md:py-2.5 md:text-base"
-          >
-            Entrar no Hub
-          </Link>
-        }
-      />
-
-      {/* Hero corporativo */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-red-950 px-4 py-20 text-white md:px-6 md:py-28">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-25"
-          aria-hidden
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 15% 25%, rgba(249,115,22,0.4) 0%, transparent 50%), radial-gradient(circle at 85% 70%, rgba(148,163,184,0.2) 0%, transparent 45%)',
-          }}
-        />
-        <div className="relative mx-auto max-w-5xl text-center">
-          <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm font-semibold text-orange-300">
-            <Sparkles className="size-4" aria-hidden />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 text-slate-800">
+      {/* Hero leve — logo no centro (estilo Chamelleon, branding ActionHub) */}
+      <section className="px-4 pb-10 pt-8 md:px-6 md:pb-14 md:pt-12">
+        <div className="mx-auto max-w-2xl text-center">
+          <img
+            src="/logo.png"
+            alt="ActionHub"
+            className="mx-auto mb-5 h-20 w-20 rounded-2xl object-cover shadow-sm ring-1 ring-slate-200/80 md:h-24 md:w-24"
+          />
+          <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-orange-600">
             LeAction · Action Hub
           </p>
-          <h1 className="text-4xl font-extrabold leading-tight tracking-tight md:text-5xl lg:text-6xl">
-            Soluções de Transformação Digital{' '}
-            <span className="bg-gradient-to-r from-orange-400 to-amber-200 bg-clip-text text-transparent">
-              para sua Empresa
-            </span>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            Soluções para a transformação digital da sua empresa
           </h1>
-          <p className="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-slate-300 md:text-xl">
-            Vitrine curada por categoria de necessidade — formação executiva, infraestrutura de TI e
-            software corporativo — com ofertas selecionadas para acelerar a maturidade digital da sua
-            organização.
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-500 md:text-base">
+            Formação, infraestrutura e software — curados para acelerar a maturidade digital.
+            Navegue sem login; identifique-se só no checkout ou no histórico.
           </p>
-          <button
-            type="button"
-            onClick={() => scrollToSection('vitrine-prateleiras')}
-            className="mt-10 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-400"
-          >
-            Explorar prateleiras
-            <ArrowRight className="size-5" aria-hidden />
-          </button>
+          <div className="mt-7 flex flex-col items-center gap-3">
+            <button
+              type="button"
+              onClick={() => scrollToSection('vitrine-prateleiras')}
+              className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400"
+            >
+              Explorar soluções
+              <ArrowRight className="size-4" aria-hidden />
+            </button>
+            <HeroCurationShortcut />
+          </div>
         </div>
       </section>
 
-      {/* Prateleiras temáticas B2B */}
       <section
         id="vitrine-prateleiras"
-        className="scroll-mt-6 px-4 py-16 md:px-6 md:py-24"
+        className="scroll-mt-6 px-4 pb-12 md:px-6 md:pb-16"
         aria-labelledby="vitrine-prateleiras-titulo"
       >
-        <div className="mx-auto max-w-6xl space-y-12 md:space-y-16">
-          <div className="max-w-3xl">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-orange-600">
-              Curadoria B2B
-            </p>
-            <h2
-              id="vitrine-prateleiras-titulo"
-              className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl"
-            >
-              Prateleiras temáticas
-            </h2>
-            <p className="mt-4 text-lg leading-relaxed text-slate-600">
-              Conteúdo organizado pela dor do cliente, com filtros de relevância corporativa aplicados
-              pelo motor de curadoria do Action Hub.
-            </p>
-          </div>
-
-          <div
-            id="buscador-solucoes"
-            className="scroll-mt-6 rounded-3xl border border-rose-100 bg-gradient-to-b from-rose-50 via-rose-50/90 to-rose-50/60 px-4 py-10 md:px-8 md:py-12"
-            aria-labelledby="buscador-solucoes-titulo"
-          >
-            <h2 id="buscador-solucoes-titulo" className="sr-only">
-              Buscador de soluções por categoria
-            </h2>
-            <MultivendorSearchBox />
-          </div>
-
-          <MarketplaceShelf
-            title="Biblioteca da Transformação"
-            description="Conteúdo executivo e metodologias"
-            category="formacao"
-            limit={4}
-          />
-
-          <MarketplaceShelf
-            title="Infraestrutura Inteligente"
-            description="Equipamentos corporativos de rede e automação"
-            category="equipamentos"
-            limit={4}
-          />
-
-          <MarketplaceShelf
-            title="Sistemas Core"
-            description="Licenças e softwares de gestão e segurança"
-            category="software"
-            limit={4}
-          />
+        <div className="mx-auto mb-10 max-w-5xl">
+          <MultivendorSearchBox />
         </div>
+        <ContextualVitrineSection />
       </section>
 
-      {/* CTA Hub */}
-      <section className="border-t border-slate-200 bg-white px-4 py-16 md:px-6 md:py-20" aria-labelledby="hub-cta">
-        <div className="mx-auto max-w-3xl text-center">
-          <div className="mb-4 inline-flex items-center justify-center rounded-full bg-orange-50 p-3">
-            <Headphones className="size-6 text-orange-500" aria-hidden />
-          </div>
-          <h2 id="hub-cta" className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">
-            Pronto para ir além da vitrine?
+      <section
+        className="border-t border-slate-200/80 bg-white/70 px-4 py-12 md:px-6 md:py-14"
+        aria-labelledby="hub-cta"
+      >
+        <div className="mx-auto max-w-lg text-center">
+          <h2 id="hub-cta" className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">
+            Precisa do histórico ou do checkout?
           </h2>
-          <p className="mt-4 text-lg leading-relaxed text-slate-600">
-            Acesse o Hub para diagnósticos, serviços LeAction e gestão da sua jornada digital.
+          <p className="mt-2 text-sm leading-relaxed text-slate-500">
+            Entre com e-mail e senha no topo da página para ver pedidos e concluir compras.
           </p>
           <Link
             href="/dashboard"
-            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-8 py-3.5 text-base font-bold text-white transition hover:bg-orange-400"
+            className="mt-6 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-orange-300 hover:text-orange-700"
           >
-            Acessar Dashboard
-            <ArrowRight className="size-5" aria-hidden />
+            Ir para meus pedidos
+            <ArrowRight className="size-4" aria-hidden />
           </Link>
         </div>
       </section>

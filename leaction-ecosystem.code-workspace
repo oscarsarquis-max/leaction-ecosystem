@@ -1,0 +1,69 @@
+{
+  "folders": [
+    {
+      "name": "🏠 LeAction Ecosystem (raiz)",
+      "path": "."
+    },
+    {
+      "name": "PanelDX",
+      "path": "PanelDX"
+    },
+    {
+      "name": "Action Hub",
+      "path": "leaction-platform"
+    },
+    {
+      "name": "MAtivas",
+      "path": "MAtivas"
+    },
+    {
+      "name": "LASim",
+      "path": "LASim"
+    },
+    {
+      "name": "Chamelleon",
+      "path": "chamelleon"
+    },
+    {
+      "name": "Inove4us",
+      "path": "inove4us"
+    },
+    {
+      "name": "Prodinx",
+      "path": "prodinx"
+    },
+    {
+      "name": "Apps (Diário de Obra + infra)",
+      "path": "apps"
+    },
+    {
+      "name": "LeActionSys",
+      "path": "LeActionSys"
+    },
+    {
+      "name": "BK Sistemas",
+      "path": "bksistemas"
+    },
+    {
+      "name": "Docs",
+      "path": "docs"
+    }
+  ],
+  "settings": {
+    "git.repositoryScanMaxDepth": 2,
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/__pycache__": true,
+      "**/.venv": true,
+      "**/venv_action": true
+    },
+    "files.watcherExclude": {
+      "**/node_modules/**": true,
+      "**/.next/**": true,
+      "**/dist/**": true
+    }
+  }
+}

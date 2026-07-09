@@ -670,6 +670,11 @@
                 carregarUltimaPublicacao(),
                 carregarConsultores()
             ]);
+            try {
+                await carregarFunil();
+            } catch (funilErr) {
+                console.warn('[CRM Funil]', funilErr);
+            }
         } catch (e) {
             toast(e.message || 'Falha ao carregar CRM.', 'error');
         }
@@ -1050,6 +1055,142 @@
                 await carregarConsultores();
             } catch (err) {
                 toast(err.message || 'Falha ao salvar consultor.', 'error');
+            }
+        });
+    }
+
+    // --- Funil de Vendas ---
+    var FUNIL_LABELS = {
+        novo_lead: 'Novos Leads',
+        distribuido: 'Distribuídos',
+        em_negociacao: 'Em Negociação',
+        convite_enviado: 'Convite Enviado',
+        ganho: 'Ganhos',
+        perdido: 'Perdidos'
+    };
+    var modalAtribuir = document.getElementById('modal-atribuir-lead');
+    var formAtribuir = document.getElementById('form-atribuir-lead');
+    var selectAtribuirConsultor = document.getElementById('atribuir-consultor');
+
+    function renderFunilCard(item) {
+        var nome = escapeHtml(item.nome || 'Sem nome');
+        var email = escapeHtml(item.email || '—');
+        var empresa = escapeHtml(item.empresa || '—');
+        var matu = item.id_matu != null ? String(item.id_matu) : '—';
+        var consultor = escapeHtml(item.consultor_nome || 'Sem consultor');
+        var podeAtribuir = !item.id_consultor_origem || item.status_funil === 'novo_lead';
+        var btn = podeAtribuir
+            ? '<button type="button" class="mesa-btn mesa-btn--ghost" data-atribuir-lead="' + item.id + '"'
+              + ' data-lead-nome="' + nome + '" data-lead-email="' + email + '">'
+              + '<i class="fas fa-user-check"></i> Atribuir</button>'
+            : '';
+        return (
+            '<article class="admin-crm__funil-card">'
+            + '<strong>' + nome + '</strong>'
+            + '<div class="meta">' + email + '<br>' + empresa + '<br>ID Matu: ' + matu
+            + '<br>' + consultor + '</div>'
+            + (btn ? '<div class="actions">' + btn + '</div>' : '')
+            + '</article>'
+        );
+    }
+
+    async function carregarFunil() {
+        var data = await apiFetch(BFF + '/funil');
+        var funil = data.funil || {};
+        var colunas = funil.colunas || {};
+        var totais = funil.totais || {};
+        var elTotais = document.getElementById('funil-totais');
+        if (elTotais) {
+            elTotais.innerHTML = Object.keys(FUNIL_LABELS).map(function (k) {
+                return '<span class="admin-crm__funil-pill">' + FUNIL_LABELS[k] + ': <strong>'
+                    + (totais[k] || 0) + '</strong></span>';
+            }).join('');
+        }
+        Object.keys(FUNIL_LABELS).forEach(function (status) {
+            var list = document.getElementById('funil-col-' + status);
+            var countEl = document.querySelector('[data-count-for="' + status + '"]');
+            var itens = colunas[status] || [];
+            if (countEl) countEl.textContent = String(itens.length);
+            if (!list) return;
+            if (!itens.length) {
+                list.innerHTML = '<p class="admin-esim__empty" style="margin:0;font-size:0.8rem;">Vazio</p>';
+                return;
+            }
+            list.innerHTML = itens.map(renderFunilCard).join('');
+        });
+    }
+
+    function popularSelectAtribuir() {
+        if (!selectAtribuirConsultor) return;
+        var ativos = (consultores || []).filter(function (c) { return c.ativo !== false; });
+        selectAtribuirConsultor.innerHTML = '<option value="">Selecione…</option>' + ativos.map(function (c) {
+            var label = (c.nome || c.email || ('#' + c.id))
+                + (c.tipo === 'agencia' ? ' (Agência)' : '');
+            return '<option value="' + c.id + '">' + escapeHtml(label) + '</option>';
+        }).join('');
+    }
+
+    function abrirModalAtribuir(oportunidadeId, nome, email) {
+        document.getElementById('atribuir-oportunidade-id').value = String(oportunidadeId);
+        document.getElementById('atribuir-lead-resumo').textContent =
+            (nome || 'Lead') + (email ? ' · ' + email : '');
+        popularSelectAtribuir();
+        abrirModalOverlay(modalAtribuir);
+    }
+
+    function fecharModalAtribuir() {
+        fecharModalOverlay(modalAtribuir);
+    }
+
+    if (document.getElementById('btn-refresh-funil')) {
+        document.getElementById('btn-refresh-funil').addEventListener('click', function () {
+            carregarFunil().catch(function (err) {
+                toast(err.message || 'Falha ao carregar funil.', 'error');
+            });
+        });
+    }
+
+    var funilBoard = document.getElementById('funil-board');
+    if (funilBoard) {
+        funilBoard.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-atribuir-lead]');
+            if (!btn) return;
+            abrirModalAtribuir(
+                parseInt(btn.getAttribute('data-atribuir-lead'), 10),
+                btn.getAttribute('data-lead-nome'),
+                btn.getAttribute('data-lead-email')
+            );
+        });
+    }
+
+    if (document.getElementById('btn-cancelar-atribuir')) {
+        document.getElementById('btn-cancelar-atribuir').addEventListener('click', fecharModalAtribuir);
+    }
+    if (modalAtribuir) {
+        modalAtribuir.addEventListener('click', function (e) {
+            if (e.target === modalAtribuir) fecharModalAtribuir();
+        });
+    }
+    if (formAtribuir) {
+        formAtribuir.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var id = parseInt(document.getElementById('atribuir-oportunidade-id').value, 10);
+            var idConsultor = parseInt(selectAtribuirConsultor.value, 10);
+            if (!id || !idConsultor) {
+                toast('Selecione o consultor.', 'error');
+                return;
+            }
+            try {
+                await apiFetch(BFF + '/funil/' + id + '/atribuir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_consultor: idConsultor })
+                });
+                toast('Lead atribuído com sucesso.', 'success');
+                fecharModalAtribuir();
+                await carregarFunil();
+            } catch (err) {
+                toast(err.message || 'Falha ao atribuir lead.', 'error');
             }
         });
     }

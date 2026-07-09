@@ -44,25 +44,21 @@ export function MultivendorSearchBox({ className = '' }) {
 
   return (
     <div className={className}>
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xl shadow-slate-200/50 md:p-8">
-        <div className="mb-6 text-center md:mb-8">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-orange-500">
-            Buscador de Soluções
-          </p>
-          <h2 className="text-2xl font-extrabold tracking-tight text-red-950 md:text-3xl">
-            Encontre recursos para sua transformação digital
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <div className="mb-4 text-center">
+          <h2 className="text-lg font-bold tracking-tight text-slate-900 md:text-xl">
+            Buscar soluções
           </h2>
-          <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600 md:text-base">
-            Filtre por categoria de necessidade e refine com palavras-chave. Resultados curados de
-            múltiplas fontes, organizados para decisores e gestores.
+          <p className="mx-auto mt-1 max-w-xl text-sm text-slate-500">
+            Filtre por categoria e refine com palavras-chave.
           </p>
         </div>
 
         <form
           onSubmit={handleSearch}
-          className="flex flex-col gap-3 md:flex-row md:items-stretch md:gap-4"
+          className="flex flex-col gap-2.5 md:flex-row md:items-stretch md:gap-3"
         >
-          <div className="md:w-72">
+          <div className="md:w-56">
             <label htmlFor="marketplace-category" className="sr-only">
               Categoria
             </label>
@@ -70,7 +66,7 @@ export function MultivendorSearchBox({ className = '' }) {
               id="marketplace-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="h-full w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm font-medium text-slate-800 shadow-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20"
+              className="h-full w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
             >
               {SEARCH_CATEGORIES.map((opt) => (
                 <option key={opt.value || 'all'} value={opt.value}>
@@ -89,18 +85,18 @@ export function MultivendorSearchBox({ className = '' }) {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ex.: liderança digital, switch gerenciável, LMS corporativo…"
-              className="h-full w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20"
+              placeholder="Ex.: liderança digital, switch, LMS…"
+              className="h-full w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-70 md:min-w-[180px]"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-70 md:min-w-[140px]"
           >
             <Search className="size-4" aria-hidden />
-            {loading ? 'Buscando…' : 'Buscar Soluções'}
+            {loading ? 'Buscando…' : 'Buscar'}
           </button>
         </form>
       </div>

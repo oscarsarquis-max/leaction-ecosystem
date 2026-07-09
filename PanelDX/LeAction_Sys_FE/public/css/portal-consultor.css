@@ -216,3 +216,43 @@
     border-radius: 14px;
     overflow: hidden;
 }
+
+.portal-consultor__prospeccao-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+#modal-vincular-matu.mesa-modal.is-open,
+#modal-prospecto.mesa-modal.is-open {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+#modal-vincular-matu .admin-crm__modal-dialog,
+#modal-prospecto .admin-crm__modal-dialog {
+    width: min(520px, 100%);
+    max-height: min(90vh, 640px);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.portal-consultor__status-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #334155;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+

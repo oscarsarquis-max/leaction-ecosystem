@@ -449,6 +449,10 @@
         }
 
         // O pacote strict completo que vai trafegar na rede
+        const urlParams = new URLSearchParams(window.location.search);
+        const refParam = (urlParams.get('ref') || '').trim();
+        const inviteParam = (urlParams.get('invite') || '').trim();
+
         const formData = {
             nome_clie: document.getElementById('nome_clie').value,
             mail_clie: document.getElementById('mail_clie').value,
@@ -460,6 +464,8 @@
             init_role: initRoleValue, // 🌟 AQUI ESTÁ ELE
             justificativa_solo: justificativaValue
         };
+        if (refParam) formData.ref = refParam;
+        if (inviteParam) formData.invite = inviteParam;
 
         // 🔍 INSPEÇÃO DE AVANÇO: Abre um painel visual no console do Chrome
         console.group("🔬 [DEBUG FRONT-END] DADOS DISPARADOS PELO FORMULÁRIO");

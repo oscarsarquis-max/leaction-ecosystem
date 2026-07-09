@@ -11,6 +11,8 @@ type MercadoPagoSubscriptionBrickProps = {
   orderId: string;
   amount?: number;
   checkoutMode?: 'card' | 'subscription';
+  /** Preferir a public_key do gateway (/config/payments) — evita mismatch com NEXT_PUBLIC. */
+  publicKey?: string;
   onSuccess: () => void;
   onError: (message: string) => void;
 };
@@ -62,6 +64,7 @@ export function MercadoPagoSubscriptionBrick({
   orderId,
   amount = 1,
   checkoutMode = 'card',
+  publicKey: publicKeyProp,
   onSuccess,
   onError,
 }: MercadoPagoSubscriptionBrickProps) {
@@ -73,7 +76,7 @@ export function MercadoPagoSubscriptionBrick({
   const onErrorRef = useRef(onError);
   const onSuccessRef = useRef(onSuccess);
 
-  const publicKey = MP_PUBLIC_KEY;
+  const publicKey = (publicKeyProp || MP_PUBLIC_KEY || '').trim();
   const stableEmail = payerEmail.trim();
   const emailReady = stableEmail.includes('@');
   const isCardMode = checkoutMode !== 'subscription';
@@ -222,7 +225,9 @@ export function MercadoPagoSubscriptionBrick({
         return;
       }
       const msg =
-        message || 'Erro ao carregar o formulário Mercado Pago. Recarregue a página e tente novamente.';
+        message.includes('Secure Fields') || message.includes('secure_fields')
+          ? 'O Brick do Mercado Pago não carregou (Public Key desatualizada). Use o botão "Pagar sandbox (sem Brick)" abaixo.'
+          : message || 'Erro ao carregar o formulário Mercado Pago. Recarregue a página e tente novamente.';
       setBrickIssue(msg);
       onErrorRef.current(msg);
     },

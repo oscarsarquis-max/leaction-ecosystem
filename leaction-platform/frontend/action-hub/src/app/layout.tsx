@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CartProvider } from "@/context/CartContext";
+import { HubSessionProvider } from "@/context/HubSessionContext";
 import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
 
@@ -30,10 +31,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full overflow-x-hidden overflow-y-auto">
-        <CartProvider>
-          <SiteHeader />
-          {children}
-        </CartProvider>
+        <HubSessionProvider>
+          <CartProvider>
+            <SiteHeader />
+            {children}
+          </CartProvider>
+        </HubSessionProvider>
       </body>
     </html>
   );

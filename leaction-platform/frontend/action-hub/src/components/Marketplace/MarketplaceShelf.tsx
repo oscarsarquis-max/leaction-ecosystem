@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState, type MouseEvent } from 'react';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink, Loader2, ShoppingCart } from 'lucide-react';
 import { MarketplaceProductImage } from '@/components/Marketplace/MarketplaceProductImage';
 import { openExternalUrl } from '@/utils/openExternalUrl';
+import { useCart } from '@/context/CartContext';
 import { buildOffersUrl } from './marketplaceApi';
 
 export type MarketplaceOffer = {
@@ -38,6 +39,7 @@ export function MarketplaceShelf({
   limit = 4,
   className = '',
 }: MarketplaceShelfProps) {
+  const { addToCart, cartItems } = useCart();
   const [offers, setOffers] = useState<MarketplaceOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -87,14 +89,14 @@ export function MarketplaceShelf({
 
   return (
     <section
-      className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8 ${className}`}
+      className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6 ${className}`}
       aria-labelledby={sectionId}
     >
-      <div className="mb-8 max-w-3xl">
-        <h2 id={sectionId} className="text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">
+      <div className="mb-5 max-w-2xl">
+        <h2 id={sectionId} className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">
           {title}
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600 md:text-base">{description}</p>
+        <p className="mt-1 text-sm leading-relaxed text-slate-500">{description}</p>
       </div>
 
       {loading ? (
@@ -138,15 +140,44 @@ export function MarketplaceShelf({
                   <p className="text-lg font-bold text-red-700">
                     {offer.price_label || 'Consulte'}
                   </p>
-                  <button
-                    type="button"
-                    aria-label={`Ver no Mercado Livre: ${offer.title}`}
-                    onClick={(event) => openOfferLink(event, offer.link)}
-                    className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
-                  >
-                    Ver no Mercado Livre
-                    <ExternalLink className="size-3.5 shrink-0" aria-hidden />
-                  </button>
+                  <div className="mt-auto flex flex-col gap-2">
+                    <button
+                      type="button"
+                      aria-label={
+                        cartItems.some((i) => String(i.id) === String(offer.id))
+                          ? `Já no carrinho: ${offer.title}`
+                          : `Adicionar ao carrinho: ${offer.title}`
+                      }
+                      disabled={cartItems.some((i) => String(i.id) === String(offer.id))}
+                      onClick={() =>
+                        addToCart({
+                          id: offer.id,
+                          sku: offer.id,
+                          nome: offer.title,
+                          price: offer.price,
+                          price_label: offer.price_label,
+                          image: offer.image,
+                          link: offer.link,
+                          vendor: offer.vendor,
+                        })
+                      }
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-default disabled:opacity-70"
+                    >
+                      <ShoppingCart className="size-3.5 shrink-0" aria-hidden />
+                      {cartItems.some((i) => String(i.id) === String(offer.id))
+                        ? 'No carrinho'
+                        : 'Adicionar ao carrinho'}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Ver oferta: ${offer.title}`}
+                      onClick={(event) => openOfferLink(event, offer.link)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+                    >
+                      Ver oferta
+                      <ExternalLink className="size-3.5 shrink-0" aria-hidden />
+                    </button>
+                  </div>
                 </div>
               </article>
             </li>

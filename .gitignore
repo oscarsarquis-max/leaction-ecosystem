@@ -36,6 +36,10 @@ chaves/
 **/secrets/
 **/.secrets/
 
+# Pacote de .env para transferência máquina → máquina (segredos reais)
+env-pack/
+**/env-pack/
+
 # Tokens OAuth / integrações
 **/.ml_tokens.json
 **/.env.ml.secrets

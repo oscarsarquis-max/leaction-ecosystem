@@ -500,5 +500,96 @@ def consultor_atualizar_demanda(demanda_id: int):
         conn.close()
 
 
+@consultor_bp.route("/api/bff/consultor/vincular-lead", methods=["POST"])
+@require_role(ROLE_CONSULTOR, ROLE_SYSADMIN)
+def consultor_vincular_lead():
+    """Prospecção reativa: captura lead órfão pelo ID Matu."""
+    from services.funil_engine import FunilError, vincular_lead_por_matu
+
+    body = request.get_json(silent=True) or {}
+    raw_matu = body.get("id_matu")
+    try:
+        id_matu = int(str(raw_matu).strip())
+    except (TypeError, ValueError, AttributeError):
+        return jsonify({"status": "error", "error": "id_matu inválido."}), 400
+    if id_matu <= 0:
+        return jsonify({"status": "error", "error": "id_matu inválido."}), 400
+
+    conn = _get_conn()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        consultor, err = _resolver_consultor_sessao(cur)
+        if err:
+            return jsonify({"status": "error", "error": err}), 404
+        oportunidade = vincular_lead_por_matu(
+            cur,
+            id_matu=id_matu,
+            id_consultor=int(consultor["id"]),
+        )
+        conn.commit()
+        return jsonify({"status": "success", "data": oportunidade}), 200
+    except FunilError as exc:
+        conn.rollback()
+        msg = str(exc)
+        code = 403 if "outro consultor" in msg.lower() else 400
+        return jsonify({"status": "error", "error": msg}), code
+    except Exception as exc:
+        conn.rollback()
+        return jsonify({"status": "error", "error": str(exc)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@consultor_bp.route("/api/bff/consultor/prospectos", methods=["GET", "POST"])
+@require_role(ROLE_CONSULTOR, ROLE_SYSADMIN)
+def consultor_prospectos():
+    """Prospecção ativa: lista ou cadastra prospecto + link de convite."""
+    from services.funil_engine import (
+        FunilError,
+        criar_prospecto,
+        listar_oportunidades_consultor,
+    )
+    import os
+
+    conn = _get_conn()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        consultor, membros, ids_carteira, err = _resolver_escopo_carteira(cur)
+        if err:
+            return jsonify({"status": "error", "error": err}), 404
+
+        if request.method == "GET":
+            itens = listar_oportunidades_consultor(cur, ids_carteira)
+            return jsonify({"status": "success", "data": {"oportunidades": itens}}), 200
+
+        body = request.get_json(silent=True) or {}
+        public_base = (
+            (body.get("public_base_url") or "").strip()
+            or os.environ.get("PANELDX_PUBLIC_URL")
+            or "http://localhost:3000"
+        )
+        oportunidade = criar_prospecto(
+            cur,
+            id_consultor=int(consultor["id"]),
+            nome=body.get("nome") or "",
+            email=body.get("email") or "",
+            telefone=body.get("telefone"),
+            empresa=body.get("empresa"),
+            public_base_url=public_base,
+        )
+        conn.commit()
+        return jsonify({"status": "success", "data": oportunidade}), 201
+    except FunilError as exc:
+        conn.rollback()
+        return jsonify({"status": "error", "error": str(exc)}), 400
+    except Exception as exc:
+        conn.rollback()
+        return jsonify({"status": "error", "error": str(exc)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
 def register_consultor_routes(flask_app) -> None:
     flask_app.register_blueprint(consultor_bp)

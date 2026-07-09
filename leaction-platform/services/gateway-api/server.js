@@ -9,6 +9,9 @@ require('dotenv').config({ path: '../../.env', override: true }); // Busca o .en
 const {
   createPreapprovalSubscription,
   createCardPayment,
+  createCardPaymentWithSandboxFallback,
+  createSandboxCardTokenServerSide,
+  validateBrickCredentialPair,
   getSubscriptionConfig,
   getCheckoutMode,
   getPanelDxPaymentAmount,
@@ -17,9 +20,14 @@ const {
   isPreapprovalSuccess,
   isCardPaymentSuccess,
   getMercadoPagoPublicKey,
+  getMercadoPagoAccessToken,
+  getSandboxPayerEmail,
+  resolveSandboxPayerEmail,
+  isServerTokenizeFallbackEnabled,
   mapMpStatusDetailHint,
 } = require('./mercadopago');
 const { fulfillOrderPayment, parsePanelDxIdMatu } = require('./payment-fulfillment');
+const { loginOrRegister, ensurePasswordColumn } = require('./hub-auth');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-hub-key-2026';
 const ACTION_HUB_PUBLIC_URL = (process.env.ACTION_HUB_PUBLIC_URL || 'http://localhost:4000').replace(/\/$/, '');
@@ -402,6 +410,20 @@ app.post('/v1/payments', async (req, res) => {
     const user = userResult.rows[0];
 
     let externalResourceId = paneldxIdMatu;
+    const amountNum = amount != null ? Number(amount) : NaN;
+    const valorNegociado =
+      Number.isFinite(amountNum) && amountNum > 0 ? Math.round(amountNum * 100) / 100 : null;
+
+    if (
+      (item.type === 'PANELDX_SUBSCRIPTION' || item.type === 'PANELDX_ADDON') &&
+      (valorNegociado == null || valorNegociado <= 0)
+    ) {
+      return res.status(400).json({
+        error:
+          'amount (valor do plano/add-on) é obrigatório e deve ser > 0. Não use valor fixo do .env.',
+      });
+    }
+
     if (item.type === 'PANELDX_SUBSCRIPTION') {
       externalResourceId = JSON.stringify({
         id_clie: Number(paneldxIdClie),
@@ -409,7 +431,7 @@ app.post('/v1/payments', async (req, res) => {
         id_matu: paneldxIdMatu ? Number(paneldxIdMatu) : null,
         plano_nome: String(plano_nome || '').trim(),
         periodicidade: String(periodicidade || '').trim(),
-        valor_negociado: amount != null ? Number(amount) : null,
+        valor_negociado: valorNegociado,
       });
     } else if (item.type === 'PANELDX_ADDON') {
       externalResourceId = JSON.stringify({
@@ -417,6 +439,7 @@ app.post('/v1/payments', async (req, res) => {
         id_plano_addon: Number(paneldxIdPlano),
         quantidade: Number(req.body.quantidade || 1),
         plano_nome: String(plano_nome || '').trim(),
+        valor_negociado: valorNegociado,
       });
     }
 
@@ -601,14 +624,29 @@ app.post('/simular-pagamento', async (req, res) => {
 });
 
 /** Configuração pública de pagamentos (Brick + assinatura) para o front-end. */
-app.get('/config/payments', (_req, res) => {
+app.get('/config/payments', async (_req, res) => {
   const sub = getSubscriptionConfig();
   const checkoutMode = getCheckoutMode();
+  const publicKey = getMercadoPagoPublicKey();
+  const accessToken = getMercadoPagoAccessToken();
+  const brickPair = await validateBrickCredentialPair();
+  const pairHint =
+    publicKey.startsWith('TEST-') && accessToken.startsWith('TEST-')
+      ? 'ok_test_pair_prefix'
+      : publicKey.startsWith('APP_USR-') && accessToken.startsWith('APP_USR-')
+        ? 'ok_prod_pair_prefix'
+        : 'check_pair';
   return res.status(200).json({
     mercadopago_enabled: isMercadoPagoConfigured(),
     checkout_mode: checkoutMode,
-    public_key: getMercadoPagoPublicKey(),
+    public_key: publicKey,
     paneldx_payment_amount: getPanelDxPaymentAmount(),
+    credentials_pair_hint: pairHint,
+    brick_pair_valid: brickPair.valid,
+    brick_pair_hint: brickPair.hint || brickPair.reason || null,
+    server_tokenize_fallback: isServerTokenizeFallbackEnabled(),
+    sandbox_mode: accessToken.startsWith('TEST-'),
+    sandbox_payer_email: accessToken.startsWith('TEST-') ? getSandboxPayerEmail() : '',
     subscription: {
       reason: sub.reason,
       amount: sub.amount,
@@ -632,7 +670,7 @@ app.post('/payments/card', async (req, res) => {
     });
   }
 
-  const email = String(payer_email).trim();
+  const email = resolveSandboxPayerEmail(payer_email);
   const orderId = String(order_id).trim();
 
   if (!email.includes('@')) {
@@ -644,7 +682,11 @@ app.post('/payments/card', async (req, res) => {
 
   try {
     const orderResult = await pool.query(
-      `SELECT o.id, o.status, o.user_id, o.external_resource_id AS id_matu, p.type AS product_type, p.name AS product_name
+      `SELECT o.id, o.status, o.user_id,
+              o.external_resource_id AS id_matu,
+              o.external_resource_id,
+              p.type AS product_type,
+              p.name AS product_name
        FROM orders o
        JOIN products p ON p.id = o.product_id
        WHERE o.id = $1`,
@@ -671,7 +713,7 @@ app.post('/payments/card', async (req, res) => {
       return res.status(422).json({ error: 'Pedido PanelDX sem id_matu vinculado' });
     }
 
-    const mpPayment = await createCardPayment({
+    const { payment: mpPayment, usedServerTokenize } = await createCardPaymentWithSandboxFallback({
       payerEmail: email,
       cardTokenId: card_token_id,
       paymentMethodId: payment_method_id,
@@ -680,6 +722,10 @@ app.post('/payments/card', async (req, res) => {
       description: orderRow.product_name || 'PanelDX',
       installments: installments || 1,
     });
+
+    if (usedServerTokenize) {
+      console.log('✅ [Mercado Pago] Pagamento sandbox via fallback server-side (MP real aprovado).');
+    }
 
     if (!isCardPaymentSuccess(mpPayment)) {
       const hint = mapMpStatusDetailHint(mpPayment.status_detail);
@@ -703,7 +749,10 @@ app.post('/payments/card', async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Pagamento aprovado',
+      message: usedServerTokenize
+        ? 'Pagamento aprovado (sandbox server-side — atualize a Public Key no painel MP)'
+        : 'Pagamento aprovado',
+      server_tokenize_fallback: usedServerTokenize,
       mercadopago: {
         id: mpPayment.id,
         status: mpPayment.status,
@@ -729,6 +778,115 @@ app.post('/payments/card', async (req, res) => {
 });
 
 /**
+ * Sandbox sem Brick — tokeniza no servidor (cartão APRO) quando Secure Fields / Public Key falham.
+ * Body: { payer_email, order_id }
+ */
+app.post('/payments/sandbox-card', async (req, res) => {
+  if (!isSandboxAccessToken() || !isServerTokenizeFallbackEnabled()) {
+    return res.status(403).json({
+      error: 'Pagamento sandbox sem Brick disponível apenas com MP_ACCESS_TOKEN TEST e MP_SERVER_TOKENIZE_FALLBACK=1',
+    });
+  }
+
+  const { payer_email, order_id } = req.body || {};
+  if (!payer_email || !order_id) {
+    return res.status(400).json({ error: 'Campos obrigatórios: payer_email, order_id' });
+  }
+
+  const email = resolveSandboxPayerEmail(payer_email);
+  const orderId = String(order_id).trim();
+
+  if (!email.includes('@')) {
+    return res.status(400).json({ error: 'payer_email inválido' });
+  }
+  if (!isUuid(orderId)) {
+    return res.status(400).json({ error: 'order_id inválido' });
+  }
+
+  try {
+    const orderResult = await pool.query(
+      `SELECT o.id, o.status, o.user_id,
+              o.external_resource_id AS id_matu,
+              o.external_resource_id,
+              p.type AS product_type,
+              p.name AS product_name
+       FROM orders o
+       JOIN products p ON p.id = o.product_id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Pedido não encontrado' });
+    }
+
+    const orderRow = orderResult.rows[0];
+
+    if (orderRow.status === 'PAID') {
+      return res.status(200).json({
+        success: true,
+        already_paid: true,
+        message: 'Pedido já estava pago',
+        order: { id: orderRow.id, status: orderRow.status },
+      });
+    }
+
+    const idMatu = orderRow.id_matu != null ? String(orderRow.id_matu).trim() : '';
+    if (orderRow.product_type === 'PANELDX_ASSESSMENT' && !parsePanelDxIdMatu(idMatu)) {
+      return res.status(422).json({ error: 'Pedido PanelDX sem id_matu vinculado' });
+    }
+
+    const card = await createSandboxCardTokenServerSide();
+    const mpPayment = await createCardPayment({
+      payerEmail: email,
+      cardTokenId: card.id,
+      paymentMethodId: card.payment_method_id || 'master',
+      amount: resolveOrderPaymentAmount(orderRow),
+      externalReference: orderId,
+      description: orderRow.product_name || 'PanelDX',
+      installments: 1,
+    });
+
+    if (!isCardPaymentSuccess(mpPayment)) {
+      const hint = mapMpStatusDetailHint(mpPayment.status_detail);
+      return res.status(402).json({
+        error: 'Pagamento não aprovado pelo Mercado Pago',
+        mp_status: mpPayment.status,
+        mp_status_detail: mpPayment.status_detail,
+        hint,
+      });
+    }
+
+    console.log('✅ [Mercado Pago] Pagamento sandbox sem Brick (tokenização server-side).');
+
+    const fulfillment = await fulfillOrderPayment(pool, orderId, JWT_SECRET, {
+      gatewayReference: mpPayment.id != null ? String(mpPayment.id) : null,
+      paymentProvider: 'mercadopago',
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Pagamento sandbox aprovado (sem Brick)',
+      server_tokenize_fallback: true,
+      mercadopago: {
+        id: mpPayment.id,
+        status: mpPayment.status,
+        status_detail: mpPayment.status_detail,
+      },
+      order: fulfillment.order,
+      webhook_delivered: fulfillment.webhookDelivered,
+    });
+  } catch (err) {
+    const status = err.statusCode || 500;
+    console.error('❌ Erro em POST /payments/sandbox-card:', err.message);
+    if (status !== 500) {
+      return res.status(status).json({ error: err.message, mp_response: err.mpResponse || undefined });
+    }
+    return res.status(500).json({ error: 'Erro interno no servidor' });
+  }
+});
+
+/**
  * Checkout Transparente — assinatura recorrente Mercado Pago (preapproval).
  * Body: { card_token_id, payer_email, order_id? }
  */
@@ -741,7 +899,7 @@ app.post('/subscriptions/preapproval', async (req, res) => {
     });
   }
 
-  const email = String(payer_email).trim();
+  const email = resolveSandboxPayerEmail(payer_email);
   const orderId = order_id ? String(order_id).trim() : '';
 
   if (!email.includes('@')) {
@@ -758,7 +916,8 @@ app.post('/subscriptions/preapproval', async (req, res) => {
 
     if (orderId) {
       const orderResult = await pool.query(
-        `SELECT o.id, o.status, o.user_id, o.external_resource_id AS id_matu, p.type AS product_type
+        `SELECT o.id, o.status, o.user_id, o.external_resource_id AS id_matu,
+                o.external_resource_id, p.type AS product_type, p.name AS product_name
          FROM orders o
          JOIN products p ON p.id = o.product_id
          WHERE o.id = $1`,
@@ -788,20 +947,18 @@ app.post('/subscriptions/preapproval', async (req, res) => {
         });
       }
     } else {
-      const userResult = await pool.query(
-        `INSERT INTO users (email, full_name)
-         VALUES ($1, 'LeActioner')
-         ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
-         RETURNING id`,
-        [email]
-      );
-      userId = userResult.rows[0].id;
+      return res.status(400).json({
+        error: 'order_id obrigatório: a cobrança usa o valor dinâmico do pedido (plano/add-on).',
+      });
     }
 
+    const orderPaymentAmount = resolveOrderPaymentAmount(orderRow);
     const mpResponse = await createPreapprovalSubscription({
       payerEmail: email,
       cardTokenId: card_token_id,
       externalReference: orderId || undefined,
+      amount: orderPaymentAmount,
+      reason: orderRow?.product_name || undefined,
     });
 
     if (!isPreapprovalSuccess(mpResponse)) {
@@ -832,11 +989,11 @@ app.post('/subscriptions/preapproval', async (req, res) => {
         orderId || null,
         mpId,
         mpResponse.status,
-        subCfg.amount,
+        orderPaymentAmount,
         subCfg.currency_id,
         subCfg.frequency,
         subCfg.frequency_type,
-        subCfg.reason,
+        orderRow?.product_name || subCfg.reason,
         email,
         JSON.stringify(mpResponse),
       ]
@@ -922,6 +1079,41 @@ app.get('/orders/:orderId/checkout', async (req, res) => {
   } catch (err) {
     console.error('❌ Erro em GET /orders/:orderId/checkout:', err.message);
     return res.status(500).json({ error: 'Erro interno no servidor' });
+  }
+});
+
+/**
+ * Login / primeiro acesso do LeActioner (e-mail + senha).
+ * Body: { email, password, name? }
+ */
+app.post('/auth/login', async (req, res) => {
+  try {
+    const result = await loginOrRegister(pool, {
+      email: req.body?.email,
+      password: req.body?.password,
+      name: req.body?.name,
+    });
+    const token = jwt.sign(
+      { sub: result.user.id, email: result.user.email },
+      JWT_SECRET,
+      { expiresIn: '12h' }
+    );
+    return res.status(200).json({
+      authenticated: true,
+      created: Boolean(result.created),
+      password_set: Boolean(result.passwordSet),
+      user: result.user,
+      token,
+    });
+  } catch (err) {
+    const status = err.status || 500;
+    if (status >= 500) {
+      console.error('❌ Erro em POST /auth/login:', err.message);
+    }
+    return res.status(status).json({
+      authenticated: false,
+      error: status >= 500 ? 'Erro interno no servidor' : err.message,
+    });
   }
 });
 

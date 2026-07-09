@@ -12,6 +12,7 @@ export type HubPaymentConfig = {
   mpEnabled: boolean;
   checkoutMode: 'card' | 'subscription';
   paymentAmount: number;
+  publicKey: string;
   loading: boolean;
 };
 
@@ -20,6 +21,7 @@ export function useHubPaymentConfig(): HubPaymentConfig {
   const [mpEnabled, setMpEnabled] = useState(Boolean(MP_PUBLIC_KEY));
   const [checkoutMode, setCheckoutMode] = useState<'card' | 'subscription'>('card');
   const [paymentAmount, setPaymentAmount] = useState(1);
+  const [publicKey, setPublicKey] = useState(MP_PUBLIC_KEY);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,7 +32,10 @@ export function useHubPaymentConfig(): HubPaymentConfig {
           { timeout: 8000 }
         );
         if (cancelled) return;
-        setMpEnabled(Boolean(data.mercadopago_enabled && MP_PUBLIC_KEY));
+        const gatewayKey = String(data.public_key || '').trim();
+        if (gatewayKey) setPublicKey(gatewayKey);
+        const effectiveKey = gatewayKey || MP_PUBLIC_KEY;
+        setMpEnabled(Boolean(data.mercadopago_enabled && effectiveKey));
         setCheckoutMode(data.checkout_mode === 'subscription' ? 'subscription' : 'card');
         if (typeof data.paneldx_payment_amount === 'number' && data.paneldx_payment_amount > 0) {
           setPaymentAmount(data.paneldx_payment_amount);
@@ -54,6 +59,7 @@ export function useHubPaymentConfig(): HubPaymentConfig {
     mpEnabled,
     checkoutMode,
     paymentAmount,
+    publicKey,
     loading,
   };
 }

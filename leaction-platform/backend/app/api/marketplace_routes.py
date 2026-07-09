@@ -56,6 +56,52 @@ def list_marketplace_offers():
         )
 
 
+@marketplace_bp.get("/vitrine")
+def marketplace_vitrine_contextual():
+    """
+    GET /api/marketplace/vitrine
+    Query: id_matu | id_clie | id_projeto (opcionais) → modo contextual vs genérico.
+    """
+    from app.services.contextual_vitrine import build_contextual_vitrine
+
+    def _positive_int(raw) -> int | None:
+        try:
+            value = int(str(raw).strip())
+        except (TypeError, ValueError, AttributeError):
+            return None
+        return value if value > 0 else None
+
+    id_matu = _positive_int(request.args.get("id_matu"))
+    id_clie = _positive_int(request.args.get("id_clie"))
+    id_projeto = _positive_int(request.args.get("id_projeto"))
+    limit = request.args.get("limit", type=int) or DEFAULT_LIMIT
+    limit = max(1, min(limit, MAX_LIMIT))
+
+    try:
+        payload = build_contextual_vitrine(
+            id_matu=id_matu,
+            id_clie=id_clie,
+            id_projeto=id_projeto,
+            limit_per_category=limit,
+            recommended_limit=max(limit * 2, 8),
+        )
+        return jsonify(payload), 200
+    except Exception:
+        logger.exception("Falha na vitrine contextual")
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "error": "Erro ao montar vitrine contextual",
+                    "mode": "generic",
+                    "recommended": [],
+                    "shelves": [],
+                }
+            ),
+            500,
+        )
+
+
 @marketplace_bp.get("/categories")
 def list_marketplace_categories():
     """Catálogo de categorias de Transformação Digital suportadas pelo agregador."""

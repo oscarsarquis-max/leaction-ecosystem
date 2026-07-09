@@ -20,6 +20,7 @@ type CartContextType = {
   /** True after the initial read from localStorage (avoids false cart transitions on hydrate). */
   cartHydrated: boolean;
   addToCart: (product: CartItem) => void;
+  removeFromCart: (id: string | number) => void;
   setCartItems: Dispatch<SetStateAction<CartItem[]>>;
 };
 
@@ -73,8 +74,14 @@ export function CartProvider({ children }: CartProviderProps) {
     });
   };
 
+  const removeFromCart = (id: string | number) => {
+    setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
+  };
+
   return (
-    <CartContext.Provider value={{ cartItems, cartHydrated, addToCart, setCartItems }}>
+    <CartContext.Provider
+      value={{ cartItems, cartHydrated, addToCart, removeFromCart, setCartItems }}
+    >
       {children}
     </CartContext.Provider>
   );

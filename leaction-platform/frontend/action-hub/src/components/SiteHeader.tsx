@@ -12,10 +12,7 @@ function SiteHeaderInner() {
   const checkoutId = parseCheckoutOrderId(searchParams.get('checkout'));
   const clientId = parseClientId(searchParams.get('client'));
 
-  if (pathname === '/') {
-    return null;
-  }
-
+  // Home também usa o header (login + carrinho); só oculta em checkout white-label.
   if (pathname === '/dashboard' && (checkoutId.length > 0 || clientId.length > 0)) {
     return null;
   }

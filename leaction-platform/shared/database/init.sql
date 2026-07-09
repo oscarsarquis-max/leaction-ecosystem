@@ -6,6 +6,7 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email TEXT UNIQUE NOT NULL,
     full_name TEXT NOT NULL,
+    password_hash TEXT, -- scrypt$salt$hash — login ActionHub
     document_id TEXT,
     phone TEXT,
     company TEXT,

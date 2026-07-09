@@ -30,6 +30,11 @@ export type PaymentConfigResponse = {
   checkout_mode?: 'card' | 'subscription';
   public_key: string;
   paneldx_payment_amount?: number;
+  sandbox_mode?: boolean;
+  sandbox_payer_email?: string;
+  brick_pair_valid?: boolean;
+  brick_pair_hint?: string | null;
+  server_tokenize_fallback?: boolean;
   subscription: {
     reason: string;
     amount: number;

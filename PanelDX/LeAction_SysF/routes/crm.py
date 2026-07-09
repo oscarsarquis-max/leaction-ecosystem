@@ -1093,5 +1093,63 @@ def crm_cancelar_addon_contrato(contrato_id: int, addon_id: int):
         conn.close()
 
 
+# ---------------------------------------------------------------------------
+# Funil de Vendas — leads órfãos e distribuição
+# ---------------------------------------------------------------------------
+
+@crm_bp.route("/api/admin/crm/funil", methods=["GET"])
+@require_role(ROLE_SYSADMIN)
+def crm_funil_listar():
+    from services.funil_engine import FunilError, listar_oportunidades, montar_kanban
+
+    status = (request.args.get("status_funil") or "").strip() or None
+    modo = (request.args.get("modo") or "kanban").strip().lower()
+    conn = _get_conn()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        if modo == "lista":
+            itens = listar_oportunidades(cur, status_funil=status)
+            return jsonify({"status": "success", "oportunidades": itens}), 200
+        payload = montar_kanban(cur)
+        return jsonify({"status": "success", "funil": payload}), 200
+    except FunilError as exc:
+        return jsonify({"status": "error", "error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"status": "error", "error": str(exc)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
+@crm_bp.route("/api/admin/crm/funil/<int:oportunidade_id>/atribuir", methods=["POST", "PUT"])
+@require_role(ROLE_SYSADMIN)
+def crm_funil_atribuir(oportunidade_id: int):
+    from services.funil_engine import FunilError, atribuir_lead_admin
+
+    body = request.get_json(silent=True) or {}
+    try:
+        id_consultor = int(body.get("id_consultor") or body.get("id_consultor_origem") or 0)
+    except (TypeError, ValueError):
+        id_consultor = 0
+    if id_consultor <= 0:
+        return jsonify({"status": "error", "error": "id_consultor é obrigatório."}), 400
+
+    conn = _get_conn()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        oportunidade = atribuir_lead_admin(cur, oportunidade_id, id_consultor)
+        conn.commit()
+        return jsonify({"status": "success", "oportunidade": oportunidade}), 200
+    except FunilError as exc:
+        conn.rollback()
+        return jsonify({"status": "error", "error": str(exc)}), 400
+    except Exception as exc:
+        conn.rollback()
+        return jsonify({"status": "error", "error": str(exc)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
 def register_crm_routes(flask_app) -> None:
     flask_app.register_blueprint(crm_bp)

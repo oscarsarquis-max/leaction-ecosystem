@@ -12,9 +12,11 @@ import {
   Link2,
   Loader2,
   Mail,
+  Lock,
   UserRound
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useHubSession } from '@/context/HubSessionContext';
 import { MercadoPagoSubscriptionBrick } from '@/components/MercadoPagoSubscriptionBrick';
 import { CheckoutChrome } from '@/components/CheckoutChrome';
 import { parseClientId, resolveClientBrand, type ClientBrandTheme } from '@/lib/client-branding';
@@ -148,13 +150,22 @@ function DashboardContent() {
   const apiBase = useMemo(() => getHubApiBase(), []);
 
   const { cartItems, setCartItems } = useCart();
+  const { user: sessionUser, login: hubLogin, adoptEmail } = useHubSession();
   const [emailLogin, setEmailLogin] = useState('');
+  const [passwordLogin, setPasswordLogin] = useState('');
   const [loginStatus, setLoginStatus] = useState<'idle' | 'syncing' | 'paying'>('idle');
+  const viewParam = useMemo(() => searchParams.get('view')?.trim() || '', [searchParams]);
+  const wantsCartOnly = viewParam === 'cart';
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [mpEnabled, setMpEnabled] = useState(Boolean(MP_PUBLIC_KEY));
   const [mpCheckoutMode, setMpCheckoutMode] = useState<'card' | 'subscription'>('card');
   const [mpPaymentAmount, setMpPaymentAmount] = useState(1);
+  const [mpPublicKey, setMpPublicKey] = useState(MP_PUBLIC_KEY);
+  const [mpSandboxPayerEmail, setMpSandboxPayerEmail] = useState('');
+  const [mpBrickPairValid, setMpBrickPairValid] = useState(true);
+  const [mpBrickPairHint, setMpBrickPairHint] = useState('');
+  const [mpServerTokenizeFallback, setMpServerTokenizeFallback] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -205,16 +216,28 @@ function DashboardContent() {
         mercadopago_enabled: boolean;
         checkout_mode?: 'card' | 'subscription';
         paneldx_payment_amount?: number;
+        public_key?: string;
+        sandbox_payer_email?: string;
+        brick_pair_valid?: boolean;
+        brick_pair_hint?: string | null;
+        server_tokenize_fallback?: boolean;
       }>(`${apiBase}/config/payments`, { timeout: 8000 })
       .then((res) => {
-        setMpEnabled(Boolean(res.data.mercadopago_enabled && MP_PUBLIC_KEY));
+        const gatewayKey = String(res.data.public_key || '').trim();
+        if (gatewayKey) setMpPublicKey(gatewayKey);
+        const effectiveKey = gatewayKey || MP_PUBLIC_KEY;
+        setMpEnabled(Boolean(res.data.mercadopago_enabled && effectiveKey));
         setMpCheckoutMode(res.data.checkout_mode === 'subscription' ? 'subscription' : 'card');
+        setMpSandboxPayerEmail(String(res.data.sandbox_payer_email || '').trim());
+        setMpBrickPairValid(res.data.brick_pair_valid !== false);
+        setMpBrickPairHint(String(res.data.brick_pair_hint || '').trim());
+        setMpServerTokenizeFallback(Boolean(res.data.server_tokenize_fallback));
         if (typeof res.data.paneldx_payment_amount === 'number' && res.data.paneldx_payment_amount > 0) {
           setMpPaymentAmount(res.data.paneldx_payment_amount);
         }
       })
       .catch(() => setMpEnabled(Boolean(MP_PUBLIC_KEY)));
-  }, [isCheckoutFlow]);
+  }, [isCheckoutFlow, apiBase]);
 
   useEffect(() => {
     const emailFromCheckout = searchParams.get('email')?.trim() || '';
@@ -352,9 +375,9 @@ function DashboardContent() {
     const fromOrder = parseOrderPaymentAmount(checkoutOrder);
     if (fromOrder != null) return fromOrder;
     if (checkoutDetailAmount != null && checkoutDetailAmount > 0) return checkoutDetailAmount;
-    if (mpCheckoutMode === 'card') return mpPaymentAmount;
-    return MP_SUBSCRIPTION_AMOUNT;
-  }, [checkoutOrder, checkoutDetailAmount, mpCheckoutMode, mpPaymentAmount]);
+    // Sem valor dinâmico do pedido: não cobrar fallback do .env
+    return 0;
+  }, [checkoutOrder, checkoutDetailAmount]);
 
   const checkoutBrickReady =
     Boolean(email) &&
@@ -362,6 +385,8 @@ function DashboardContent() {
     !checkoutDetailLoading &&
     checkoutPaymentAmount > 0 &&
     checkoutOrder?.status !== 'PAID';
+
+  const mpPayerEmail = mpSandboxPayerEmail || email;
 
   const checkoutPlanLabel = useMemo(
     () => parseOrderPlanLabel(checkoutOrder),
@@ -534,6 +559,58 @@ function DashboardContent() {
     }
   };
 
+  const handleSandboxCardPayment = async () => {
+    setCheckoutError('');
+
+    if (!checkoutParam) {
+      alert('Pedido de checkout invalido ou ausente na URL.');
+      return;
+    }
+
+    setLoginStatus('paying');
+    try {
+      const { data } = await axios.post<{
+        success: boolean;
+        already_paid?: boolean;
+        order: { id: string; status: string };
+      }>(`${apiBase}/payments/sandbox-card`, {
+        order_id: checkoutParam,
+        payer_email: mpPayerEmail || emailLogin.trim() || email,
+      });
+
+      if (data.already_paid || data.order?.status === 'PAID') {
+        setCheckoutSuccess(true);
+        return;
+      }
+
+      setCheckoutSuccess(true);
+    } catch (err: unknown) {
+      const msg =
+        axios.isAxiosError(err) &&
+        err.response?.data &&
+        typeof (err.response.data as { error?: string }).error === 'string'
+          ? (err.response.data as { error: string }).error
+          : 'Nao foi possivel confirmar o pagamento sandbox. Tente novamente.';
+      setCheckoutError(msg);
+    } finally {
+      setLoginStatus('idle');
+    }
+  };
+
+  // Sessão do header → URL do dashboard (histórico / checkout)
+  useEffect(() => {
+    if (email) {
+      adoptEmail(email);
+      return;
+    }
+    if (!sessionUser?.email || isCheckoutFlow) return;
+    const params = new URLSearchParams(searchParams.toString());
+    if (params.get('email') === sessionUser.email) return;
+    params.set('email', sessionUser.email);
+    router.replace(`/dashboard?${params.toString()}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só reage a sessão/email
+  }, [email, sessionUser?.email, isCheckoutFlow, adoptEmail, router]);
+
   const handleLogin = async (event?: React.FormEvent | React.MouseEvent) => {
     event?.preventDefault();
 
@@ -542,36 +619,49 @@ function DashboardContent() {
       alert('Por favor, insira um e-mail valido.');
       return;
     }
-
-    if (isCheckoutFlow || clientParam) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('email', emailTyped);
-      router.push(`/dashboard?${params.toString()}`);
+    if (passwordLogin.length < 4) {
+      alert('Informe a senha (minimo 4 caracteres). No primeiro acesso, ela sera criada.');
       return;
     }
 
-    const skus = cartItemsToSkus(cartItems);
+    setLoginStatus('syncing');
+    try {
+      await hubLogin(emailTyped, passwordLogin);
 
-    if (skus.length > 0) {
-      setLoginStatus('syncing');
-      try {
-        await axios.post(`${apiBase}/sync-cart`, {
-          email: emailTyped,
-          items: skus,
-        });
-        setCartItems([]);
-      } catch (err) {
-        console.error(err);
-        alert(
-          'Nao foi possivel sincronizar o carrinho. Verifique se o servidor esta em execucao (porta 4001).'
-        );
-        setLoginStatus('idle');
+      if (isCheckoutFlow || clientParam) {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('email', emailTyped);
+        router.push(`/dashboard?${params.toString()}`);
         return;
       }
+
+      const skus = cartItemsToSkus(cartItems);
+      if (skus.length > 0) {
+        try {
+          await axios.post(`${apiBase}/sync-cart`, {
+            email: emailTyped,
+            items: skus,
+          });
+          setCartItems([]);
+        } catch (err) {
+          console.error(err);
+          alert(
+            'Login ok, mas nao foi possivel sincronizar o carrinho. Verifique o gateway (porta 4001).'
+          );
+        }
+      }
+
+      router.push('/dashboard?email=' + encodeURIComponent(emailTyped));
+    } catch (err) {
+      const msg = axios.isAxiosError(err)
+        ? String((err.response?.data as { error?: string } | undefined)?.error || err.message)
+        : err instanceof Error
+          ? err.message
+          : 'Falha no login';
+      alert(msg);
+    } finally {
       setLoginStatus('idle');
     }
-
-    router.push('/dashboard?email=' + encodeURIComponent(emailTyped));
   };
 
   if (checkoutSuccess) {
@@ -645,14 +735,20 @@ function DashboardContent() {
                 {isCheckoutFlow ? <CreditCard className="size-7" /> : <LayoutDashboard className="size-7" />}
               </div>
               <h1 className="text-2xl font-black tracking-tight text-slate-900">
-                {isPartnerCheckout ? 'Identifique-se para pagar' : 'Identifique-se'}
+                {isPartnerCheckout
+                  ? 'Identifique-se para pagar'
+                  : wantsCartOnly
+                    ? 'Finalize seu carrinho'
+                    : 'Identifique-se'}
               </h1>
               <p className="mt-2 text-sm text-slate-500">
                 {isPartnerCheckout
                   ? checkoutBrand
-                    ? `Confirme o mesmo e-mail usado no ${checkoutBrand.displayName} para concluir o pagamento.`
-                    : 'Confirme o mesmo e-mail usado no aplicativo de origem para concluir o pagamento.'
-                  : 'Informe seu e-mail para carregar seus pedidos neste painel.'}
+                    ? `Confirme o mesmo e-mail e senha usados no ${checkoutBrand.displayName} para concluir o pagamento.`
+                    : 'Confirme o mesmo e-mail e senha do aplicativo de origem para concluir o pagamento.'
+                  : wantsCartOnly
+                    ? 'Você pode montar o carrinho sem login. Para comprar ou ver o histórico, entre com e-mail e senha.'
+                    : 'Informe e-mail e senha para ver seu histórico. No primeiro acesso, a senha será criada.'}
               </p>
             </div>
 
@@ -703,15 +799,28 @@ function DashboardContent() {
               }}
             >
             <label className="mb-2 block text-sm font-semibold text-slate-700">E-mail</label>
-            <div className="relative mb-6">
+            <div className="relative mb-4">
               <Mail className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
               <input
                 type="email"
-                autoComplete="email"
+                autoComplete="username"
                 placeholder="voce@empresa.com"
                 className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-3 pl-11 pr-4 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-600 focus:bg-white focus:ring-2 focus:ring-red-600/20"
                 value={emailLogin}
                 onChange={(e) => setEmailLogin(e.target.value)}
+              />
+            </div>
+
+            <label className="mb-2 block text-sm font-semibold text-slate-700">Senha</label>
+            <div className="relative mb-6">
+              <Lock className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-3 pl-11 pr-4 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-600 focus:bg-white focus:ring-2 focus:ring-red-600/20"
+                value={passwordLogin}
+                onChange={(e) => setPasswordLogin(e.target.value)}
               />
             </div>
 
@@ -726,10 +835,12 @@ function DashboardContent() {
               {loginStatus === 'syncing' ? (
                 <>
                   <Loader2 className="size-5 animate-spin" />
-                  Sincronizando carrinho...
+                  Entrando...
                 </>
               ) : isPartnerCheckout ? (
-                'Continuar para meus pedidos'
+                'Continuar para pagar'
+              ) : wantsCartOnly ? (
+                'Entrar e sincronizar carrinho'
               ) : (
                 'Acessar Meu Painel'
               )}
@@ -840,6 +951,12 @@ function DashboardContent() {
                       <strong>123</strong>, validade futura, titular <strong>APRO</strong> e CPF{' '}
                       <strong>123.456.789-09</strong>. Valor cobrado: R${' '}
                       {checkoutPaymentAmount.toFixed(2).replace('.', ',')}.
+                      {mpSandboxPayerEmail ? (
+                        <>
+                          {' '}
+                          Comprador sandbox: <strong>{mpSandboxPayerEmail}</strong>.
+                        </>
+                      ) : null}
                     </p>
                     {!checkoutBrickReady ? (
                       <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
@@ -849,15 +966,83 @@ function DashboardContent() {
                           : 'Aguardando e-mail e valor do pedido para liberar o pagamento...'}
                       </div>
                     ) : (
-                      <MercadoPagoSubscriptionBrick
-                        payerEmail={email}
-                        orderId={checkoutParam}
-                        amount={checkoutPaymentAmount}
-                        checkoutMode={mpCheckoutMode}
-                        onSuccess={() => setCheckoutSuccess(true)}
-                        onError={(msg) => setCheckoutError(msg)}
-                      />
+                      <>
+                        {!mpBrickPairValid && mpServerTokenizeFallback ? (
+                          <div className="mb-4 space-y-3">
+                            <p
+                              className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                              role="alert"
+                            >
+                              Credenciais MP atualizadas (app <strong>3963970511919598</strong>), Access Token
+                              válido — mas o Brick ainda retorna erro <strong>2006</strong> (token do cartão não
+                              aceito pelo backend).
+                              {mpBrickPairHint ? <> {mpBrickPairHint}</> : null}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => void handleSandboxCardPayment()}
+                              disabled={loginStatus === 'paying'}
+                              className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-70"
+                            >
+                              {loginStatus === 'paying' ? (
+                                <>
+                                  <Loader2 className="size-4 animate-spin" />
+                                  Processando pagamento sandbox...
+                                </>
+                              ) : (
+                                <>
+                                  <CreditCard size={16} />
+                                  Pagar sandbox (MP real, sem Brick) — recomendado
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        ) : null}
+                        <MercadoPagoSubscriptionBrick
+                          payerEmail={mpPayerEmail}
+                          orderId={checkoutParam}
+                          amount={checkoutPaymentAmount}
+                          checkoutMode={mpCheckoutMode}
+                          publicKey={mpPublicKey}
+                          onSuccess={() => setCheckoutSuccess(true)}
+                          onError={(msg) => setCheckoutError(msg)}
+                        />
+                      </>
                     )}
+                    {/* Fallback local: par TEST do MP pode gerar token live_mode incompatível (erro 2006). */}
+                    <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3">
+                      <p className="mb-2 text-xs text-slate-600">
+                        {mpBrickPairValid ? (
+                          <>
+                            Se o Brick falhar com <strong>Card Token not found (2006)</strong>, o par de
+                            credenciais TEST do painel MP está inconsistente.
+                          </>
+                        ) : (
+                          <>
+                            O Brick pode falhar com <strong>2006</strong> no sandbox MP. Use{' '}
+                            <strong>Pagar sandbox (sem Brick)</strong> acima ou a simulação local abaixo.
+                          </>
+                        )}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void handleCheckoutPayment()}
+                        disabled={loginStatus === 'paying'}
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-orange-300 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {loginStatus === 'paying' ? (
+                          <>
+                            <Loader2 className="size-3.5 animate-spin" />
+                            Processando...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard size={14} />
+                            Simular pagamento (dev)
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <div className="space-y-3">

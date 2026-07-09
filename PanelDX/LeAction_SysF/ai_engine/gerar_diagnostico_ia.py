@@ -20,6 +20,10 @@ from sprint_squad import (
     criar_squad_vazia_para_sprint,
     resolver_ou_criar_projeto_ctdi,
 )
+try:
+    from ai_engine.vitrine_tags import classify_vitrine_tags
+except ImportError:
+    from vitrine_tags import classify_vitrine_tags
 
 logger = logging.getLogger(__name__)
 
@@ -376,6 +380,7 @@ FORMATO DE SAÍDA — APENAS JSON VÁLIDO (sem markdown, sem texto extra)
       "id_bloco": 123,
       "id_objetivo": 1,
       "nome_sprint": "Nome executivo da sprint",
+      "tags": ["formacao"],
       "justificativa_baseada_no_relatorio": "OBRIGATÓRIO: cite id_objetivo + domínio + gap % + insight Bússola + impacto no objetivo canônico + trecho do relatório."
     }}
   ],
@@ -386,6 +391,7 @@ FORMATO DE SAÍDA — APENAS JSON VÁLIDO (sem markdown, sem texto extra)
         "id_bloco": 456,
         "id_objetivo": 2,
         "nome_sprint": "Nome da sprint tática",
+        "tags": ["software"],
         "como_resolve_o_problema_declarado": "OBRIGATÓRIO: cruze id_objetivo + dor + gap + insight Bússola + encadeamento causa → solução."
       }}
     ]
@@ -395,6 +401,7 @@ FORMATO DE SAÍDA — APENAS JSON VÁLIDO (sem markdown, sem texto extra)
 REGRAS FINAIS:
 - roadmap_estrategico: array com NO MÁXIMO 10 itens — cada um com id_objetivo válido da matriz canônica.
 - sprints_resolucao: array com EXATAMENTE 3 itens — cada um com id_objetivo válido.
+- tags: array com 1–2 valores em {{formacao, equipamentos, software}} — classifica a necessidade da sprint para a vitrine ActionHub (IA só na criação; sem reclassificar depois).
 - justificativa_baseada_no_relatorio e como_resolve_o_problema_declarado são OBRIGATÓRIAS e não podem ser genéricas.
 - Evite repetir o mesmo id_bloco entre roadmap_estrategico e sprints_resolucao.
 - Retorne SOMENTE o JSON.
@@ -479,6 +486,7 @@ Relatório Gerado em {timestamp_geracao}
     def _inserir_sprint_kanban(
         self, cur, id_ctdi, id_itera, id_bloc, bloco_info, nome_sprn, desc_sprn, ordr, status, tatico=False,
         objetivo_id=None,
+        ai_tags=None,
     ):
         id_dim = bloco_info.get("dime_num", 1) if bloco_info else 1
         nome_bloc = (bloco_info or {}).get("name_bloc", nome_sprn)
@@ -490,13 +498,33 @@ Relatório Gerado em {timestamp_geracao}
             cur, id_proj=id_proj, nome_sprint=nome_final
         )
 
+        tags = classify_vitrine_tags(
+            nome_sprint=nome_sprn or nome_bloc,
+            desc_sprint=desc_sprn,
+            name_bloc=(bloco_info or {}).get("name_bloc"),
+            name_doma=(bloco_info or {}).get("name_doma"),
+            dime_num=id_dim,
+            ai_tags=ai_tags,
+            tatico=tatico,
+        )
+
+        # Garante coluna tags (idempotente) antes do INSERT — bases pré-026
+        try:
+            cur.execute(
+                "ALTER TABLE public.ctdi_sprn ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}'"
+            )
+        except Exception:
+            pass
+
         cur.execute(
             """
-            INSERT INTO ctdi_sprn (id_itera, id_bloc, name_sprn, desc_sprn, stat_sprn, ordr_sprn, id_squad, objetivo_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO ctdi_sprn (
+                id_itera, id_bloc, name_sprn, desc_sprn, stat_sprn, ordr_sprn, id_squad, objetivo_id, tags
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id_sprn
             """,
-            (id_itera, id_bloc, nome_final, desc_sprn, status, ordr, id_squad_novo, objetivo_id),
+            (id_itera, id_bloc, nome_final, desc_sprn, status, ordr, id_squad_novo, objetivo_id, tags),
         )
         id_sprn = cur.fetchone()[0]
         if isinstance(id_sprn, dict):
@@ -685,6 +713,7 @@ Relatório Gerado em {timestamp_geracao}
                     status_kanban,
                     tatico=True,
                     objetivo_id=objetivo_id,
+                    ai_tags=item.get("tags") or item.get("vitrine_categories"),
                 )
             else:
                 if id_itera_estrategico is None or contador_estrategico_na_onda >= 3:
@@ -714,6 +743,7 @@ Relatório Gerado em {timestamp_geracao}
                     status_kanban,
                     tatico=False,
                     objetivo_id=objetivo_id,
+                    ai_tags=item.get("tags") or item.get("vitrine_categories"),
                 )
                 contador_estrategico_na_onda += 1
 

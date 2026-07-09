@@ -30,6 +30,9 @@
         <button type="button" class="portal-consultor__tab" data-tab="demandas" role="tab" aria-selected="false">
             <i class="fas fa-inbox"></i> Demandas
         </button>
+        <button type="button" class="portal-consultor__tab" data-tab="prospeccao" role="tab" aria-selected="false">
+            <i class="fas fa-bullseye"></i> Prospecção
+        </button>
     </nav>
 
     <!-- Módulo 1 — Dashboard -->
@@ -185,6 +188,47 @@
             </div>
         </div>
     </section>
+
+    <!-- Módulo 5 — Prospecção -->
+    <section class="portal-consultor__panel" id="panel-prospeccao" role="tabpanel" hidden>
+        <div class="mesa-card portal-consultor__demandas-toolbar">
+            <div>
+                <h2 class="mesa-card__title"><i class="fas fa-bullseye"></i> Prospecção</h2>
+                <p class="admin-esim__field-hint">
+                    Capture leads reativos pelo ID Matu ou cadastre prospectos outbound com link de convite.
+                </p>
+            </div>
+            <div class="portal-consultor__prospeccao-actions">
+                <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-vincular-matu">
+                    <i class="fas fa-link"></i> Vincular Cliente (ID Matu)
+                </button>
+                <button type="button" class="mesa-btn mesa-btn--lilac" id="btn-novo-prospecto">
+                    <i class="fas fa-user-plus"></i> Cadastrar Novo Prospecto
+                </button>
+            </div>
+        </div>
+
+        <div class="mesa-card">
+            <h3 class="mesa-card__title"><i class="fas fa-stream"></i> Minhas Oportunidades</h3>
+            <div class="admin-esim__table-wrap">
+                <table class="admin-esim__table portal-consultor__table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Empresa</th>
+                            <th>Status</th>
+                            <th>ID Matu</th>
+                            <th style="width: 160px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="prospectos-table-body">
+                        <tr><td colspan="6" class="admin-esim__empty">Carregando oportunidades…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 </div>
 
 <!-- Modal nova demanda -->
@@ -210,6 +254,61 @@
         <footer class="admin-crm__modal-foot admin-esim__modal-actions">
             <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-demanda">Cancelar</button>
             <button type="submit" class="mesa-btn mesa-btn--gold" form="form-demanda">Registrar</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Modal vincular por ID Matu -->
+<div class="mesa-modal" id="modal-vincular-matu" aria-hidden="true">
+    <div class="mesa-modal__dialog admin-crm__modal-dialog">
+        <header class="admin-crm__modal-head">
+            <h3>Vincular Cliente (ID Matu)</h3>
+            <p class="admin-esim__field-hint">Informe o código de maturidade do lead órfão para capturá-lo na sua carteira.</p>
+        </header>
+        <form id="form-vincular-matu" class="admin-crm__modal-scroll">
+            <div class="admin-esim__field">
+                <label for="vincular-id-matu">ID Matu</label>
+                <input type="number" id="vincular-id-matu" class="mesa-input" min="1" step="1" required placeholder="Ex: 42">
+            </div>
+        </form>
+        <footer class="admin-crm__modal-foot admin-esim__modal-actions">
+            <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-vincular">Cancelar</button>
+            <button type="submit" class="mesa-btn mesa-btn--gold" form="form-vincular-matu" id="btn-submit-vincular">
+                Vincular
+            </button>
+        </footer>
+    </div>
+</div>
+
+<!-- Modal novo prospecto -->
+<div class="mesa-modal" id="modal-prospecto" aria-hidden="true">
+    <div class="mesa-modal__dialog admin-crm__modal-dialog">
+        <header class="admin-crm__modal-head">
+            <h3>Cadastrar Novo Prospecto</h3>
+        </header>
+        <form id="form-prospecto" class="admin-crm__modal-scroll">
+            <div class="admin-esim__field">
+                <label for="prospecto-nome">Nome *</label>
+                <input type="text" id="prospecto-nome" class="mesa-input" required maxlength="255">
+            </div>
+            <div class="admin-esim__field">
+                <label for="prospecto-email">E-mail *</label>
+                <input type="email" id="prospecto-email" class="mesa-input" required maxlength="255">
+            </div>
+            <div class="admin-esim__field">
+                <label for="prospecto-telefone">Telefone</label>
+                <input type="text" id="prospecto-telefone" class="mesa-input" maxlength="64">
+            </div>
+            <div class="admin-esim__field">
+                <label for="prospecto-empresa">Empresa</label>
+                <input type="text" id="prospecto-empresa" class="mesa-input" maxlength="255">
+            </div>
+        </form>
+        <footer class="admin-crm__modal-foot admin-esim__modal-actions">
+            <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-prospecto">Cancelar</button>
+            <button type="submit" class="mesa-btn mesa-btn--gold" form="form-prospecto" id="btn-submit-prospecto">
+                Salvar e gerar link
+            </button>
         </footer>
     </div>
 </div>

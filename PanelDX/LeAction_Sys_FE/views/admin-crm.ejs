@@ -153,6 +153,54 @@
             </div>
         </div>
     </section>
+
+    <!-- SEÇÃO E — Funil de Vendas -->
+    <section class="admin-crm__section" id="secao-funil">
+        <div class="mesa-card">
+            <div class="admin-esim__toolbar">
+                <div>
+                    <h2 class="mesa-card__title" style="margin-bottom: 4px;">
+                        <i class="fas fa-filter"></i> Funil de Vendas
+                    </h2>
+                    <p class="admin-esim__field-hint" style="margin: 0;">
+                        Distribua leads órfãos (sem consultor) e acompanhe oportunidades até o ganho.
+                    </p>
+                </div>
+                <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-refresh-funil">
+                    <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+            </div>
+
+            <div class="admin-crm__funil-totais" id="funil-totais" aria-live="polite"></div>
+
+            <div class="admin-crm__funil-board" id="funil-board">
+                <div class="admin-crm__funil-col" data-status="novo_lead">
+                    <h3>Novos Leads (Órfãos) <span class="admin-crm__funil-count" data-count-for="novo_lead">0</span></h3>
+                    <div class="admin-crm__funil-list" id="funil-col-novo_lead"></div>
+                </div>
+                <div class="admin-crm__funil-col" data-status="distribuido">
+                    <h3>Distribuídos <span class="admin-crm__funil-count" data-count-for="distribuido">0</span></h3>
+                    <div class="admin-crm__funil-list" id="funil-col-distribuido"></div>
+                </div>
+                <div class="admin-crm__funil-col" data-status="em_negociacao">
+                    <h3>Em Negociação <span class="admin-crm__funil-count" data-count-for="em_negociacao">0</span></h3>
+                    <div class="admin-crm__funil-list" id="funil-col-em_negociacao"></div>
+                </div>
+                <div class="admin-crm__funil-col" data-status="convite_enviado">
+                    <h3>Convite Enviado <span class="admin-crm__funil-count" data-count-for="convite_enviado">0</span></h3>
+                    <div class="admin-crm__funil-list" id="funil-col-convite_enviado"></div>
+                </div>
+                <div class="admin-crm__funil-col" data-status="ganho">
+                    <h3>Ganhos <span class="admin-crm__funil-count" data-count-for="ganho">0</span></h3>
+                    <div class="admin-crm__funil-list" id="funil-col-ganho"></div>
+                </div>
+                <div class="admin-crm__funil-col" data-status="perdido">
+                    <h3>Perdidos <span class="admin-crm__funil-count" data-count-for="perdido">0</span></h3>
+                    <div class="admin-crm__funil-list" id="funil-col-perdido"></div>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 
 <!-- Modal Plano -->
@@ -398,6 +446,29 @@
                 <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-consultor">Cancelar</button>
                 <button type="submit" class="mesa-btn mesa-btn--gold" id="btn-submit-consultor">
                     <i class="fas fa-check"></i> Salvar consultor
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Atribuir Lead -->
+<div class="mesa-modal" id="modal-atribuir-lead" aria-hidden="true">
+    <div class="mesa-modal__card admin-crm__modal-card">
+        <header class="admin-crm__modal-head">
+            <h3>Atribuir Lead</h3>
+            <p class="admin-esim__field-hint" id="atribuir-lead-resumo" style="margin: 0;"></p>
+        </header>
+        <form id="form-atribuir-lead" class="admin-crm__modal-form">
+            <input type="hidden" id="atribuir-oportunidade-id">
+            <div class="admin-esim__field">
+                <label for="atribuir-consultor">Consultor / Agência *</label>
+                <select id="atribuir-consultor" class="mesa-select" required></select>
+            </div>
+            <div class="admin-esim__modal-actions admin-crm__modal-actions">
+                <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-atribuir">Cancelar</button>
+                <button type="submit" class="mesa-btn mesa-btn--gold" id="btn-submit-atribuir">
+                    <i class="fas fa-user-check"></i> Atribuir
                 </button>
             </div>
         </form>

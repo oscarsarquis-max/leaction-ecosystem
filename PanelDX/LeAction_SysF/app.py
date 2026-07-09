@@ -714,6 +714,47 @@ def handle_clientes():
                 new_id_matu = db_manager.create_record(conn, 'ctdi_matu', matu_payload)
                 print(f"🎲 [DB SETUP LOG] Slot inicial de maturidade gerado com sucesso! ID_MATU: {new_id_matu}", file=sys.stderr)
 
+                # Funil de vendas: tracking ?ref= / ?invite= OU lead órfão automático
+                try:
+                    from services.funil_engine import (
+                        associar_cadastro_com_ref,
+                        garantir_oportunidade_orfao,
+                    )
+                    from psycopg2.extras import RealDictCursor as _RDC
+                    _funil_cur = conn.cursor(cursor_factory=_RDC)
+                    ref_code = (data.get('ref') or data.get('ref_code') or '').strip() or None
+                    invite_token = (data.get('invite') or data.get('invite_token') or '').strip() or None
+                    associado = None
+                    if current_role != 'SOLO' and (ref_code or invite_token):
+                        associado = associar_cadastro_com_ref(
+                            _funil_cur,
+                            id_clie=int(new_id),
+                            id_matu=int(new_id_matu),
+                            ref_code=ref_code,
+                            invite_token=invite_token,
+                            nome=clie_payload.get('nome_clie'),
+                            email=clie_payload.get('mail_clie'),
+                            telefone=clie_payload.get('fone_clie'),
+                            empresa=clie_payload.get('empresa_clie'),
+                        )
+                    if current_role != 'SOLO' and not associado:
+                        garantir_oportunidade_orfao(
+                            _funil_cur,
+                            id_clie=int(new_id),
+                            id_matu=int(new_id_matu),
+                            nome=clie_payload.get('nome_clie'),
+                            email=clie_payload.get('mail_clie'),
+                            telefone=clie_payload.get('fone_clie'),
+                            empresa=clie_payload.get('empresa_clie'),
+                        )
+                    _funil_cur.close()
+                except Exception as funil_err:
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+                    print(f"⚠️ [FUNIL] Falha ao registrar oportunidade no cadastro: {funil_err}", file=sys.stderr)
+
                 # 🎲 5. GERAÇÃO DO CÓDIGO DE ACESSO COGNITIVO
                 import random
                 import string
@@ -4174,7 +4215,7 @@ _modulador_cols_ensured = False
 
 
 def _ensure_modulador_columns(conn):
-    """Garante (idempotente) as colunas do Modulador em ctdi_sprn."""
+    """Garante (idempotente) as colunas do Modulador e tags da vitrine em ctdi_sprn."""
     global _modulador_cols_ensured
     if _modulador_cols_ensured:
         return
@@ -4185,7 +4226,14 @@ def _ensure_modulador_columns(conn):
             ALTER TABLE public.ctdi_sprn
                 ADD COLUMN IF NOT EXISTS evidencia_texto    TEXT,
                 ADD COLUMN IF NOT EXISTS modulador_status   VARCHAR(50),
-                ADD COLUMN IF NOT EXISTS modulador_feedback TEXT;
+                ADD COLUMN IF NOT EXISTS modulador_feedback TEXT,
+                ADD COLUMN IF NOT EXISTS tags               TEXT[] NOT NULL DEFAULT '{}';
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_ctdi_sprn_tags_gin
+                ON public.ctdi_sprn USING GIN (tags);
             """
         )
         conn.commit()
@@ -8272,6 +8320,38 @@ def calculate_presurvey():
 
         cur.execute(insert_query, valores)
         cur.execute("UPDATE public.ctdi_matu SET status_ia = 'PRESURVEY OK' WHERE id_matu = %s", (id_matu,))
+
+        # Funil: assessment inicial concluído sem consultor → novo_lead (órfão)
+        try:
+            from services.funil_engine import garantir_oportunidade_orfao
+            from psycopg2.extras import RealDictCursor as _RDC
+            cur_funil = conn.cursor(cursor_factory=_RDC)
+            cur_funil.execute(
+                """
+                SELECT m.id_clie, c.nome_clie, c.mail_clie, c.fone_clie, c.empresa_clie, c.init_role
+                FROM public.ctdi_matu m
+                INNER JOIN public.ctdi_clie c ON c.id_clie = m.id_clie
+                WHERE m.id_matu = %s
+                LIMIT 1;
+                """,
+                (id_matu,),
+            )
+            row_funil = cur_funil.fetchone()
+            if row_funil:
+                row_funil = dict(row_funil)
+                if (row_funil.get("init_role") or "GENERAL").strip().upper() != "SOLO":
+                    garantir_oportunidade_orfao(
+                        cur_funil,
+                        id_clie=int(row_funil["id_clie"]),
+                        id_matu=int(id_matu),
+                        nome=row_funil.get("nome_clie"),
+                        email=row_funil.get("mail_clie"),
+                        telefone=row_funil.get("fone_clie"),
+                        empresa=row_funil.get("empresa_clie"),
+                    )
+            cur_funil.close()
+        except Exception as funil_err:
+            print(f"⚠️ [FUNIL] Falha ao garantir lead órfão pós-presurvey: {funil_err}", file=sys.stderr)
 
         conn.commit()
         cur.close()
