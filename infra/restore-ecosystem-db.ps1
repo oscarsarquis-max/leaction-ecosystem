@@ -85,8 +85,11 @@ foreach ($entry in $entries) {
     Invoke-TargetPsql "DROP DATABASE IF EXISTS $quoted;"
     Invoke-TargetPsql "CREATE DATABASE $quoted;"
 
-    Get-Content -LiteralPath $file.FullName -Raw -Encoding utf8 `
-        | docker exec -i $Container psql -U $DbUser -d $db -v ON_ERROR_STOP=0 -q | Out-Null
+    # Nunca Get-Content -> psql: corrompe UTF-8 no Windows.
+    $containerDump = "/tmp/restore-$($rel -replace '[^a-zA-Z0-9._-]', '_')"
+    docker cp $file "${Container}:${containerDump}"
+    docker exec $Container psql -U $DbUser -d $db -v ON_ERROR_STOP=0 -q -f $containerDump | Out-Null
+    docker exec $Container rm -f $containerDump
 }
 
 if (-not $DryRun) {

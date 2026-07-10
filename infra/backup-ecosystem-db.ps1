@@ -15,6 +15,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$PgImage = 'postgres:18'
+
 $MonorepoRoot = Split-Path $PSScriptRoot -Parent
 if (-not $OutputRoot) {
     $OutputRoot = Join-Path $MonorepoRoot 'db-pack'
@@ -66,8 +68,13 @@ foreach ($db in $Databases) {
   $outFile = Join-Path $DumpsDir "$safeName.sql"
   Write-Host "    -> $db" -ForegroundColor Gray
 
-  docker exec $Container pg_dump -U $DbUser -d $db --no-owner --no-acl --clean --if-exists `
-    | Set-Content -Path $outFile -Encoding utf8
+  # Grava via volume Docker - Set-Content no pipe corrompe acentos (??).
+  docker run --rm `
+    -v "${DumpsDir}:/backup" `
+    --network container:$Container `
+    $PgImage `
+    pg_dump -h 127.0.0.1 -p 5432 -U $DbUser -d $db --no-owner --no-acl --clean --if-exists `
+    -f "/backup/$safeName.sql"
 
   $sizeKb = [math]::Round((Get-Item $outFile).Length / 1KB, 1)
   $manifest.databases += [ordered]@{

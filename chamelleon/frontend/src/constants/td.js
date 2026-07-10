@@ -55,6 +55,34 @@ export function emptyTdKanbanBoard() {
  * Extrai gaps priorizados do survey_snapshot do plano.
  * Aceita formatos flexíveis para integração futura com IA/PanelDX.
  */
+export function backlogFromSnapshot(snapshot) {
+  const items = snapshot?.backlog_geral_relatorio;
+  if (!Array.isArray(items) || items.length === 0) return [];
+  return items.map((item, idx) => ({
+    id: item.id || `snapshot-backlog-${idx}`,
+    title: item.title || item.name_bloc || 'Sprint',
+    kanban_stage: TD_STAGE.BACKLOG,
+    paneldx_domain: item.domain_name,
+    goals_payload: {
+      dimension_name: item.dimension_name,
+      domain_name: item.domain_name,
+      name_bloc: item.name_bloc,
+      name_derv: item.name_derv,
+      gap_fp: item.gap_fp,
+    },
+    gap_fp: item.gap_fp,
+    origin_type: 'baseline',
+    _snapshotOnly: true,
+  }));
+}
+
+export function resolvePlanBacklog(planSprints, backlogRes, snapshot) {
+  const fromPlan = (planSprints || []).filter((s) => s.kanban_stage === TD_STAGE.BACKLOG);
+  if (fromPlan.length > 0) return fromPlan;
+  if (backlogRes?.sprints?.length) return backlogRes.sprints;
+  return backlogFromSnapshot(snapshot);
+}
+
 export function extractTopGaps(snapshot, limit = 5) {
   if (!snapshot || typeof snapshot !== 'object') return [];
 

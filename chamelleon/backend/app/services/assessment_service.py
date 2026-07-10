@@ -144,7 +144,7 @@ class AssessmentService:
                 framework_id=framework_id,
                 status="in_progress",
             )
-            .order_by(AssessmentSubmission.updated_at.desc())
+            .order_by(AssessmentSubmission.created_at.desc())
             .first()
         )
         if not submission:
@@ -802,7 +802,7 @@ class AssessmentService:
                 user_id=user_uuid,
                 status="in_progress",
             )
-            .order_by(AssessmentSubmission.updated_at.desc())
+            .order_by(AssessmentSubmission.created_at.desc())
             .first()
         )
 

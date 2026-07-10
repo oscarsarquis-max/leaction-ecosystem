@@ -6,6 +6,7 @@ import {
   extractTopGaps,
   formatSprintBlockLabel,
   groupSprintsByDimensionDomain,
+  resolvePlanBacklog,
   TD_STAGE,
 } from '../constants/td';
 import { useAuth } from '../context/AuthContext';
@@ -57,9 +58,7 @@ export default function TdPlanManager() {
       const planSprints = activePlan?.sprints || [];
       setAllSprints(planSprints);
       setBacklog(
-        planSprints.length > 0
-          ? planSprints.filter((s) => s.kanban_stage === TD_STAGE.BACKLOG)
-          : backlogRes.sprints || [],
+        resolvePlanBacklog(planSprints, backlogRes, activePlan?.survey_snapshot),
       );
     } catch (err) {
       setError(err.message || 'Erro ao carregar o Plano Diretor de TD.');
@@ -270,7 +269,16 @@ export default function TdPlanManager() {
           <p className="text-sm text-slate-500">Carregando backlog…</p>
         ) : grouped.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-            Nenhuma sprint em Backlog. Execute a Gênese para materializar o plano e o Kanban.
+            {allSprints.length > 0 ? (
+              <>
+                Nenhuma sprint em Backlog — {kanbanCount} sprint(s) já estão no Kanban.
+                {' '}
+                Use <span className="font-medium">Gerar/Atualizar Plano de TD com IA</span> para
+                materializar o backlog completo por par dimensão×domínio.
+              </>
+            ) : (
+              <>Nenhuma sprint em Backlog. Execute a Gênese para materializar o plano e o Kanban.</>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
