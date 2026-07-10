@@ -135,6 +135,8 @@ class RdoService:
         db.session.flush()
         self._apply_payload_to_log(daily_log, payload)
         db.session.commit()
+        if bool(payload.get("finalize")) and daily_log.is_signed:
+            self._emit_hub_webhook(daily_log)
         return daily_log
 
     def update_log(self, log_id: uuid.UUID | str, payload: dict[str, Any]) -> DailyLog:
@@ -165,19 +167,51 @@ class RdoService:
     def is_log_editable(self, log: DailyLog | None, log_date: date) -> bool:
         if not log:
             return log_date == date.today()
-        if log_date != date.today():
-            return False
         if log.status in FINALIZED_STATUSES or log.is_signed:
             return False
-        return log.status == DailyLogStatus.RASCUNHO
+        if log.status != DailyLogStatus.RASCUNHO:
+            return False
+        if log_date == date.today():
+            return True
+        return log.reopened_at is not None
 
     def _assert_editable(self, log: DailyLog) -> None:
         if log.status in FINALIZED_STATUSES or log.is_signed:
             raise ValueError("RDO finalizado não pode ser alterado.")
-        if log.log_date != date.today():
-            raise ValueError("RDO de dias anteriores é somente leitura.")
         if log.status != DailyLogStatus.RASCUNHO:
             raise ValueError("Somente RDOs em Rascunho podem ser editados.")
+        if log.log_date != date.today() and not log.reopened_at:
+            raise ValueError("RDO de dias anteriores é somente leitura. Peça reabertura ao gestor.")
+
+    def reopen_log(
+        self,
+        *,
+        project_id: uuid.UUID | str,
+        log_date: date,
+        reopened_by: str,
+    ) -> DailyLog:
+        project_uuid = self._as_uuid(project_id, "project_id")
+        if not db.session.get(ProjectSite, project_uuid):
+            raise ValueError("Canteiro (project_id) não encontrado.")
+
+        daily_log = DailyLog.query.filter_by(project_id=project_uuid, log_date=log_date).first()
+        if not daily_log:
+            raise ValueError(f"Nenhum RDO encontrado para {log_date.isoformat()}.")
+
+        if daily_log.status == DailyLogStatus.RASCUNHO and not daily_log.is_signed:
+            daily_log.reopened_at = datetime.now(timezone.utc)
+            daily_log.reopened_by = reopened_by.strip() or "Gestor"
+            db.session.commit()
+            return daily_log
+
+        daily_log.status = DailyLogStatus.RASCUNHO
+        daily_log.is_signed = False
+        daily_log.signed_by = None
+        daily_log.signed_at = None
+        daily_log.reopened_at = datetime.now(timezone.utc)
+        daily_log.reopened_by = reopened_by.strip() or "Gestor"
+        db.session.commit()
+        return daily_log
 
     def serialize_log(self, log: DailyLog) -> dict[str, Any]:
         return {
@@ -202,6 +236,8 @@ class RdoService:
             "impediment_details": log.impediment_details,
             "mitigation_action": log.mitigation_action,
             "preventive_action": log.preventive_action,
+            "reopened_at": log.reopened_at.isoformat() if log.reopened_at else None,
+            "reopened_by": log.reopened_by,
             "supplies": log.supplies_data or [],
             "is_signed": log.is_signed,
             "signed_by": log.signed_by,

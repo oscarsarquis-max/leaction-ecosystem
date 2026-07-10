@@ -69,6 +69,7 @@ class AssessmentService:
 
     def get_draft(self, user_id: uuid.UUID | str) -> dict[str, Any] | None:
         """Rascunho em andamento ou último diagnóstico concluído do framework ativo."""
+        self.ensure_assessment_started(user_id)
         submission = self._find_draft_submission(user_id)
         if not submission:
             submission = self._find_latest_completed_submission(user_id)
@@ -95,6 +96,71 @@ class AssessmentService:
             "completed_at": completed_at,
             "has_diagnostic_report": bool(submission.report_data),
         }
+
+    def ensure_assessment_started(self, user_id: uuid.UUID | str) -> dict[str, Any]:
+        """Garante submission em andamento para o utilizador (auto-início do questionário)."""
+        if self._find_latest_completed_submission(user_id):
+            return {"started": False, "status": "completed"}
+        if self._find_draft_submission(user_id):
+            return {"started": False, "status": "in_progress"}
+
+        tenant_id = g.tenant_id
+        framework_id = g.framework_id
+        user_uuid = self._as_uuid(user_id, "user_id")
+        submission = self._get_or_create_draft_submission(user_uuid, tenant_id, framework_id)
+        db.session.commit()
+        return {"started": True, "status": submission.status, "submission_id": str(submission.id)}
+
+    def get_tenant_survey_progress_pct(self, tenant_id: uuid.UUID | str) -> float:
+        """Percentual de respostas do questionário no tenant (framework ativo)."""
+        from app.services.diagnostic_completeness import completeness_summary
+
+        tenant_uuid = self._as_uuid(tenant_id, "tenant_id")
+        framework_id = getattr(g, "framework_id", None)
+        if not framework_id:
+            fw_row = (
+                AssessmentSubmission.query.filter_by(tenant_id=tenant_uuid)
+                .order_by(AssessmentSubmission.created_at.desc())
+                .first()
+            )
+            framework_id = fw_row.framework_id if fw_row else None
+        if not framework_id:
+            return 0.0
+
+        completed = (
+            AssessmentSubmission.query.filter_by(
+                tenant_id=tenant_uuid,
+                framework_id=framework_id,
+                status="completed",
+            )
+            .first()
+        )
+        if completed:
+            return 100.0
+
+        submission = (
+            AssessmentSubmission.query.filter_by(
+                tenant_id=tenant_uuid,
+                framework_id=framework_id,
+                status="in_progress",
+            )
+            .order_by(AssessmentSubmission.updated_at.desc())
+            .first()
+        )
+        if not submission:
+            return 0.0
+
+        catalog_items = AssessmentItem.query.filter_by(framework_id=framework_id).all()
+        if not catalog_items:
+            return 0.0
+        items_by_id = {item.id: item for item in catalog_items}
+        responses = AssessmentResponse.query.filter_by(submission_id=submission.id).all()
+        summary = completeness_summary(catalog_items, responses, items_by_id)
+        total_expected = summary.get("total_expected") or 0
+        total_answered = summary.get("total_answered") or 0
+        if total_expected <= 0:
+            return 0.0
+        return min(100.0, (total_answered / total_expected) * 100.0)
 
     def reset_draft(self, user_id: uuid.UUID | str) -> None:
         """Remove rascunho em andamento (ex.: refazer diagnóstico)."""
@@ -175,14 +241,20 @@ class AssessmentService:
             raise ValueError("A lista de respostas não pode estar vazia.")
 
         if self._find_latest_completed_submission(user_id):
-            raise ValueError(
-                "Diagnóstico já concluído. Revise o questionário e atualize a Realidade (Presente)."
-            )
-
-        submission = self._find_draft_submission(user_id)
-        if submission:
-            pass
+            existing = self._find_latest_completed_submission(user_id)
+            if existing and existing.report_data and existing.score_global is not None:
+                raise ValueError(
+                    "Diagnóstico já concluído. Revise o questionário e atualize a Realidade (Presente)."
+                )
+            if existing:
+                submission = existing
+                submission.status = "in_progress"
+            else:
+                submission = self._find_draft_submission(user_id)
         else:
+            submission = self._find_draft_submission(user_id)
+
+        if not submission:
             submission = AssessmentSubmission(
                 tenant_id=tenant_id,
                 user_id=user_uuid,
@@ -269,14 +341,20 @@ class AssessmentService:
         action_plan_id = submission.action_plan_id
         db.session.commit()
 
+        full_result = self.get_my_latest_submission()
+        if full_result:
+            return full_result
+
         return {
             "submission_id": str(submission.id),
+            "framework_id": framework_id,
             "score_global": score_global,
             "nivel_maturidade": maturity_level.name,
             "maturity_level_description": maturity_level.description,
             "scores_por_eixo": scores_por_eixo,
             "action_plan_id": str(action_plan_id) if action_plan_id else None,
             "action_plan_md": report.get("action_plan_md"),
+            "has_diagnostic_report": bool(submission.report_data),
             "report_summary": {
                 "score_geral_gap": report.get("score_geral_gap"),
                 "top_actions_count": len(report.get("top_actions") or []),
@@ -710,23 +788,46 @@ class AssessmentService:
 
     def _find_draft_submission(self, user_id: uuid.UUID | str) -> AssessmentSubmission | None:
         user_uuid = self._as_uuid(user_id, "user_id")
-        return AssessmentSubmission.query.filter_by(
+        submission = AssessmentSubmission.query.filter_by(
             tenant_id=g.tenant_id,
             user_id=user_uuid,
             framework_id=g.framework_id,
             status="in_progress",
         ).first()
+        if submission:
+            return submission
+        return (
+            AssessmentSubmission.query.filter_by(
+                tenant_id=g.tenant_id,
+                user_id=user_uuid,
+                status="in_progress",
+            )
+            .order_by(AssessmentSubmission.updated_at.desc())
+            .first()
+        )
 
     def _find_latest_completed_submission(
         self, user_id: uuid.UUID | str, framework_id: str | None = None
     ) -> AssessmentSubmission | None:
         user_uuid = self._as_uuid(user_id, "user_id")
-        fw = framework_id or g.framework_id
+        fw = framework_id or getattr(g, "framework_id", None)
+        if fw:
+            submission = (
+                AssessmentSubmission.query.filter_by(
+                    tenant_id=g.tenant_id,
+                    user_id=user_uuid,
+                    framework_id=fw,
+                    status="completed",
+                )
+                .order_by(AssessmentSubmission.created_at.desc())
+                .first()
+            )
+            if submission:
+                return submission
         return (
             AssessmentSubmission.query.filter_by(
                 tenant_id=g.tenant_id,
                 user_id=user_uuid,
-                framework_id=fw,
                 status="completed",
             )
             .order_by(AssessmentSubmission.created_at.desc())

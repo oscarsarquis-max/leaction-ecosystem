@@ -7,6 +7,7 @@ from typing import Any
 
 from flask import g
 
+from app.core.td_constants import TD_GENESE_MAX_SPRINTS
 from app.database.models import db
 from app.models.td_models import (
     TD_KANBAN_BOARD_STAGES,
@@ -135,17 +136,78 @@ class TdService:
         if "kanban_stage" in payload:
             stage = str(payload.get("kanban_stage") or "").strip()
             self._validate_stage(stage)
+            if (
+                stage in TD_KANBAN_BOARD_STAGES
+                and sprint.kanban_stage == TdKanbanStage.BACKLOG.value
+                and stage != TdKanbanStage.BACKLOG.value
+            ):
+                if self._count_board_sprints(exclude_sprint_id=sprint.id) >= TD_GENESE_MAX_SPRINTS:
+                    raise ValueError(
+                        f"O Kanban já possui {TD_GENESE_MAX_SPRINTS} sprints ativas. "
+                        "Conclua ou devolva uma sprint antes de promover outra."
+                    )
             sprint.kanban_stage = stage
+            goals = dict(sprint.goals_payload or {})
+            goals["stat_sprn"] = self._panel_status_for_stage(stage)
+            sprint.goals_payload = goals
 
         if "goals_payload" in payload:
             goals = payload.get("goals_payload")
             if goals is not None and not isinstance(goals, dict):
                 raise ValueError("goals_payload deve ser um objeto JSON.")
-            sprint.goals_payload = goals or {}
+            merged = dict(sprint.goals_payload or {})
+            merged.update(goals or {})
+            sprint.goals_payload = merged
+
+        if "exec_notes" in payload:
+            merged = dict(sprint.goals_payload or {})
+            merged["exec_notes"] = self._optional_text(payload.get("exec_notes"))
+            sprint.goals_payload = merged
 
         db.session.commit()
         db.session.refresh(sprint)
         return sprint
+
+    def promote_sprint_to_planning(self, sprint_id: str) -> TdSprint:
+        """Backlog do Plano Geral → coluna Planejadas no Kanban (PanelDX)."""
+        sprint = self._get_sprint_or_404(sprint_id)
+        if sprint.kanban_stage != TdKanbanStage.BACKLOG.value:
+            raise ValueError("Somente sprints em Backlog podem ser promovidas ao planejamento.")
+        if self._count_board_sprints() >= TD_GENESE_MAX_SPRINTS:
+            raise ValueError(
+                f"Limite de {TD_GENESE_MAX_SPRINTS} sprints no Kanban atingido. "
+                "Conclua ou reorganize o quadro antes de promover outra sprint."
+            )
+        return self.update_sprint(
+            sprint_id,
+            {"kanban_stage": TdKanbanStage.PLANEJADA.value},
+        )
+
+    def _count_board_sprints(self, *, exclude_sprint_id: uuid.UUID | None = None) -> int:
+        tenant_id = self._tenant_id()
+        query = TdSprint.query.filter(
+            TdSprint.tenant_id == tenant_id,
+            TdSprint.kanban_stage.in_(TD_KANBAN_BOARD_STAGES),
+        )
+        if exclude_sprint_id:
+            query = query.filter(TdSprint.id != exclude_sprint_id)
+        return query.count()
+
+    @staticmethod
+    def _panel_status_for_stage(stage: str) -> str:
+        mapping = {
+            TdKanbanStage.BACKLOG.value: "planejada_backlog",
+            TdKanbanStage.KAIZEN_ENTRADA.value: "em_analise",
+            TdKanbanStage.PLANEJADA.value: "planejada_backlog",
+            TdKanbanStage.EXECUCAO.value: "em_andamento",
+            TdKanbanStage.CONCLUIDA.value: "concluida",
+        }
+        return mapping.get(stage, "planejada_backlog")
+
+    def get_readiness_status(self) -> dict[str, Any]:
+        from app.services.client_journey_service import build_td_readiness_status
+
+        return build_td_readiness_status(self._tenant_id())
 
     def _build_sprint(
         self,

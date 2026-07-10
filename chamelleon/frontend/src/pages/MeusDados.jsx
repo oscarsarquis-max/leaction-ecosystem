@@ -60,7 +60,7 @@ export default function MeusDados() {
     try {
       if (isListening) stopDictation();
       await saveClientContext(buildContextPayload(values));
-      await refreshProfile();
+      await refreshProfile({ background: true });
       setMessage('Contexto empresarial salvo. Status avançado para CONTEXTO OK.');
     } catch (err) {
       setError(err.message || 'Erro ao salvar contexto.');
@@ -74,7 +74,7 @@ export default function MeusDados() {
     setError('');
     try {
       await activateClientProject();
-      await refreshProfile();
+      await refreshProfile({ background: true });
       setMessage('Projeto ativado (PROJETO OK).');
     } catch (err) {
       setError(err.message || 'Erro ao ativar projeto.');

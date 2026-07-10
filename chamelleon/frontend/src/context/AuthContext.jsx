@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ROLE_LABELS } from '../config/rbac';
 import { getAuthMe } from '../services/api';
 import { clearSession, getSession, isAuthenticated, saveSession } from '../services/session';
@@ -19,72 +19,99 @@ function sessionToProfile(session) {
   };
 }
 
+function normalizeSessionPatch(current, me) {
+  const nextFrameworkId = me.framework_id ?? null;
+  const nextSector = me.sector ?? null;
+  const currentFrameworkId = current.frameworkId ?? null;
+  const currentSector = current.sector ?? null;
+  const nextTenantName = me.tenant_name ?? current.tenantName;
+
+  const changed =
+    currentFrameworkId !== nextFrameworkId ||
+    currentSector !== nextSector ||
+    (nextTenantName && current.tenantName !== nextTenantName);
+
+  if (!changed) return null;
+
+  return {
+    ...current,
+    frameworkId: nextFrameworkId,
+    tenantName: nextTenantName,
+    sector: nextSector,
+  };
+}
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(getSession);
   const [profile, setProfile] = useState(() => sessionToProfile(getSession()));
   const [loading, setLoading] = useState(true);
+  const hasHydratedRef = useRef(false);
 
-  const refreshProfile = useCallback(async () => {
+  const refreshProfile = useCallback(async (options = {}) => {
+    const background = Boolean(options.background);
     const current = getSession();
     if (!current?.userId) {
       setProfile(null);
       setLoading(false);
+      hasHydratedRef.current = true;
       return;
     }
 
-    setLoading(true);
+    if (!background && !hasHydratedRef.current) {
+      setLoading(true);
+    }
+
     try {
       const me = await getAuthMe();
       setProfile(me);
-      if (current.tenantId && current.frameworkId !== me.framework_id) {
-        saveSession({
-          ...current,
-          frameworkId: me.framework_id ?? null,
-          tenantName: me.tenant_name ?? current.tenantName,
-          sector: me.sector ?? null,
-        });
-        setSession(getSession());
-      } else if (me.sector !== undefined && current.sector !== me.sector) {
-        saveSession({
-          ...current,
-          sector: me.sector ?? null,
-        });
-        setSession(getSession());
+
+      const updated = normalizeSessionPatch(current, me);
+      if (updated) {
+        saveSession(updated);
+        setSession(updated);
       }
     } catch {
       setProfile(sessionToProfile(current));
     } finally {
       setLoading(false);
+      hasHydratedRef.current = true;
     }
   }, []);
 
   useEffect(() => {
     refreshProfile();
-  }, [session, refreshProfile]);
+  }, [refreshProfile]);
 
-  const loginWithResponse = useCallback((data) => {
-    const next = {
-      userId: data.user_id,
-      tenantId: data.tenant_id,
-      systemRole: data.system_role,
-      userName: data.user_name,
-      email: data.email,
-      tenantName: data.tenant_name,
-      frameworkId: data.framework_id,
-      sector: data.sector ?? null,
-      authType: data.auth_type,
-      token: data.token || null,
-    };
-    saveSession(next);
-    setSession(next);
-    setProfile(sessionToProfile(next));
-    return next;
-  }, []);
+  const loginWithResponse = useCallback(
+    (data) => {
+      const next = {
+        userId: data.user_id,
+        tenantId: data.tenant_id,
+        systemRole: data.system_role,
+        userName: data.user_name,
+        email: data.email,
+        tenantName: data.tenant_name,
+        frameworkId: data.framework_id,
+        sector: data.sector ?? null,
+        authType: data.auth_type,
+        token: data.token || null,
+      };
+      saveSession(next);
+      setSession(next);
+      setProfile(sessionToProfile(next));
+      hasHydratedRef.current = false;
+      void refreshProfile({ background: true });
+      return next;
+    },
+    [refreshProfile],
+  );
 
   const logout = useCallback(() => {
     clearSession();
     setSession(null);
     setProfile(null);
+    hasHydratedRef.current = false;
+    setLoading(false);
   }, []);
 
   const value = useMemo(() => {

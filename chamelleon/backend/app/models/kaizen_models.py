@@ -162,6 +162,12 @@ class KaizenTicket(db.Model):
     )
     standardization_action: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_operator_retrained: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    escalated_to_sprint_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("td_sprints.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -189,6 +195,10 @@ class KaizenTicket(db.Model):
             "root_cause_analysis": self.root_cause_analysis or dict(DEFAULT_ROOT_CAUSE_ANALYSIS),
             "standardization_action": self.standardization_action,
             "is_operator_retrained": self.is_operator_retrained,
+            "escalated_to_sprint_id": str(self.escalated_to_sprint_id)
+            if self.escalated_to_sprint_id
+            else None,
+            "is_escalated": self.escalated_to_sprint_id is not None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

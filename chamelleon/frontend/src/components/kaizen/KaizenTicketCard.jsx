@@ -50,6 +50,12 @@ export default function KaizenTicketCard({
         </div>
       )}
 
+      {(ticket.is_escalated || ticket.escalated_to_sprint_id) && (
+        <span className="mb-2 inline-flex rounded-full bg-emerald-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          Escalado para Sprint
+        </span>
+      )}
+
       <h3 className="text-sm font-semibold leading-snug text-slate-800">{ticket.title}</h3>
 
       {preview && (

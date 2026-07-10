@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import OccurrencesCharts from '../components/operational/OccurrencesCharts';
+import RdoDetailsModal from '../components/operational/RdoDetailsModal';
 import {
   getOperationalReportsSummary,
   listOperationalReports,
   listOperationalSites,
+  reopenOperationalDay,
 } from '../services/operationalApi';
 import { getIndustryLabels, getLabelsFromSites } from '../utils/industryLabels';
-
+import { getImpedimentTags, getReportDate } from '../utils/rdoReportUtils';
 function statusTone(report) {
   if (report.pending) return 'pending';
   if (report.goal_achieved === true) return 'success';
@@ -27,69 +30,27 @@ const TONE_DOT = {
   neutral: 'bg-amber-400',
 };
 
-function ImpedimentsModal({ report, onClose }) {
-  if (!report) return null;
-  const labels = getIndustryLabels(report.industry_type);
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="impediments-title"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 id="impediments-title" className="text-lg font-semibold text-slate-900">
-              Impeditivos — {labels.unit} {report.site_name}
-            </h2>
-            <p className="mt-1 text-xs text-slate-500">
-              {report.report_date || report.date}
-              {report.sprint_daily_goal ? ` · Meta: ${report.sprint_daily_goal}` : ''}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-200 px-2 py-1 text-sm text-slate-600 hover:bg-slate-50"
-            onClick={onClose}
-          >
-            Fechar
-          </button>
-        </div>
-        <div className="mt-5 space-y-4 text-sm text-slate-700">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-red-800">Impeditivo</p>
-            <p className="mt-1 whitespace-pre-wrap">{report.impediment_details || '—'}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-red-800">Mitigação</p>
-            <p className="mt-1 whitespace-pre-wrap">{report.mitigation_action || '—'}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-red-800">Prevenção</p>
-            <p className="mt-1 whitespace-pre-wrap">{report.preventive_action || '—'}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const TAG_TONE_STYLES = {
+  danger: 'bg-red-100 text-red-800 ring-red-200',
+  warning: 'bg-amber-100 text-amber-900 ring-amber-200',
+};
 
-function ReportCard({ report, onOpenImpediments }) {
+function ReportCard({ report, onOpenDetails }) {
   const tone = statusTone(report);
   const labels = getIndustryLabels(report.industry_type);
+  const impedimentTags = getImpedimentTags(report);
+  const reportDate = getReportDate(report);
 
   return (
     <article className={`rounded-xl border-2 p-4 shadow-sm ${TONE_STYLES[tone]}`}>
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
           <span className={`mt-1.5 h-3 w-3 shrink-0 rounded-full ${TONE_DOT[tone]}`} />
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              {reportDate}
+            </p>
+            <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               {labels.unit}
             </p>
             <h3 className="font-semibold text-slate-900">{report.site_name}</h3>
@@ -104,26 +65,65 @@ function ReportCard({ report, onOpenImpediments }) {
             </p>
             {report.sprint_daily_goal && (
               <p className="mt-2 text-xs text-slate-600">
-                <span className="font-medium">🎯 Meta:</span> {report.sprint_daily_goal}
+                <span className="font-medium">Meta:</span> {report.sprint_daily_goal}
               </p>
+            )}
+            {impedimentTags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {impedimentTags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${
+                      TAG_TONE_STYLES[tag.tone] || TAG_TONE_STYLES.warning
+                    }`}
+                  >
+                    {tag.label}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>
-        {report.goal_achieved === false && (
+      </div>
+      {!report.pending && (
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-            onClick={() => onOpenImpediments(report)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50"
+            onClick={() => onOpenDetails(report)}
           >
-            Ver Impeditivos
+            Ver Relatório Completo
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </article>
   );
 }
 
-function DailyFarolTab({ reportDate, setReportDate, reports, loading, error, onSelect }) {
+function DailyFarolTab({ reportDate, setReportDate, reports, loading, error, onOpenDetails, onReload }) {
+  const [reopeningKey, setReopeningKey] = useState('');
+  const [reopenMessage, setReopenMessage] = useState('');
+
+  async function handleReopen(report) {
+    const siteId = report.operational_site_id || report.site_id;
+    if (!siteId) return;
+    const key = `${siteId}-${reportDate}`;
+    if (!window.confirm(`Reabrir o dia ${reportDate} em ${report.site_name}? O executor poderá editar o RDO novamente.`)) {
+      return;
+    }
+    setReopeningKey(key);
+    setReopenMessage('');
+    try {
+      await reopenOperationalDay({ siteId, date: reportDate });
+      setReopenMessage(`Dia reaberto em ${report.site_name}.`);
+      onReload?.();
+    } catch (err) {
+      setReopenMessage(err.message || 'Não foi possível reabrir o dia.');
+    } finally {
+      setReopeningKey('');
+    }
+  }
+
   const listLabels = useMemo(
     () => getLabelsFromSites(reports.map((r) => ({ industry_type: r.industry_type }))),
     [reports],
@@ -151,6 +151,12 @@ function DailyFarolTab({ reportDate, setReportDate, reports, loading, error, onS
           />
         </label>
       </div>
+
+      {reopenMessage && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          {reopenMessage}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -206,17 +212,29 @@ function DailyFarolTab({ reportDate, setReportDate, reports, loading, error, onS
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {report.goal_achieved === false ? (
-                      <button
-                        type="button"
-                        className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                        onClick={() => onSelect(report)}
-                      >
-                        Ver Impeditivos
-                      </button>
-                    ) : (
-                      <span className="text-xs text-slate-400">—</span>
-                    )}
+                    <div className="flex flex-wrap justify-end gap-2">
+                      {!report.pending && (
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          onClick={() => onOpenDetails(report)}
+                        >
+                          Ver relatório
+                        </button>
+                      )}
+                      {!report.pending && (
+                        <button
+                          type="button"
+                          disabled={reopeningKey === `${report.operational_site_id || report.site_id}-${reportDate}`}
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                          onClick={() => handleReopen(report)}
+                        >
+                          {reopeningKey === `${report.operational_site_id || report.site_id}-${reportDate}`
+                            ? 'Reabrindo…'
+                            : 'Reabrir dia'}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -248,7 +266,7 @@ function DailyFarolTab({ reportDate, setReportDate, reports, loading, error, onS
             <ReportCard
               key={`card-${report.id || report.operational_site_id || report.site_id}-${report.report_date}`}
               report={report}
-              onOpenImpediments={onSelect}
+              onOpenDetails={onOpenDetails}
             />
           ))}
         </div>
@@ -269,7 +287,7 @@ function ConsolidatedTab({
   onEndDate,
   onSiteId,
   onReload,
-  onSelect,
+  onOpenDetails,
 }) {
   const listLabels = useMemo(() => getLabelsFromSites(sites), [sites]);
 
@@ -345,6 +363,19 @@ function ConsolidatedTab({
             </div>
           </div>
 
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Dashboard de ocorrências</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Visão gráfica das falhas e alertas reportados no período.
+              </p>
+            </div>
+            <OccurrencesCharts
+              occurrencesByType={summary.occurrences_by_type || []}
+              occurrencesOverTime={summary.occurrences_over_time || []}
+            />
+          </section>
+
           <section>
             <h2 className="text-base font-semibold text-slate-900">Impeditivos consolidados</h2>
             <p className="mt-1 text-sm text-slate-600">
@@ -379,9 +410,9 @@ function ConsolidatedTab({
                       <button
                         type="button"
                         className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                        onClick={() => onSelect(item)}
+                        onClick={() => onOpenDetails(item)}
                       >
-                        Ver detalhes
+                        Ver relatório completo
                       </button>
                     </div>
                     <p className="mt-3 line-clamp-2 text-sm text-slate-700">
@@ -513,7 +544,8 @@ export default function OperationalReports() {
           reports={reports}
           loading={dailyLoading}
           error={dailyError}
-          onSelect={setSelected}
+          onOpenDetails={setSelected}
+          onReload={loadDaily}
         />
       )}
 
@@ -530,11 +562,11 @@ export default function OperationalReports() {
           onEndDate={setEndDate}
           onSiteId={setSiteId}
           onReload={loadSummary}
-          onSelect={setSelected}
+          onOpenDetails={setSelected}
         />
       )}
 
-      <ImpedimentsModal report={selected} onClose={() => setSelected(null)} />
+      <RdoDetailsModal report={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }

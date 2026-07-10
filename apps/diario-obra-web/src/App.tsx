@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import DailyLogForm from './components/DailyLogForm';
 import Header from './components/Header';
+import MicPermissionBanner from './components/MicPermissionBanner';
 import SiteCalendar from './components/SiteCalendar';
 import SiteSelector from './components/SiteSelector';
 import type { CalendarDay, ProjectSite } from './types';
@@ -59,6 +60,7 @@ export default function App() {
   return (
     <div className="mx-auto flex h-screen max-w-md flex-col overflow-hidden bg-slate-50 shadow-2xl">
       <Header subtitle={site ? site.name : 'Selecione o canteiro'} />
+      <MicPermissionBanner />
 
       <main className="flex flex-1 flex-col overflow-hidden">
         {!site || view === 'sites' ? (

@@ -193,6 +193,43 @@ class OperationalService:
                     )
         return results
 
+    def reopen_execution_day(
+        self,
+        *,
+        site_id: str,
+        report_date: date,
+        reopened_by: str | None = None,
+    ) -> dict[str, Any]:
+        """Reabre RDO no satélite para edição pelo executor."""
+        site = self._get_site(site_id)
+        if not site.satellite_site_id:
+            raise ValueError("Canteiro ainda não sincronizado com o Diário de Obra.")
+
+        actor = (reopened_by or getattr(g, "user_name", None) or "Gestor operacional").strip()
+        result = SatelliteClient().reopen_rdo_log(
+            {
+                "project_id": site.satellite_site_id,
+                "date": report_date.isoformat(),
+                "reopened_by": actor,
+            }
+        )
+
+        report = DailyExecutionReport.query.filter_by(
+            tenant_id=g.tenant_id,
+            operational_site_id=site.id,
+            report_date=report_date,
+        ).first()
+        if report:
+            db.session.delete(report)
+            db.session.commit()
+
+        return {
+            "status": "ok",
+            "site": self._site_dict(site),
+            "date": report_date.isoformat(),
+            "satellite": result,
+        }
+
     def reports_summary(
         self,
         *,
@@ -227,7 +264,18 @@ class OperationalService:
         )
 
         consolidated_impediments: list[dict[str, Any]] = []
+        occurrences_by_type: dict[str, int] = {}
+        occurrences_over_time: dict[str, int] = {}
+
         for report in reports:
+            rdo = report.raw_payload if isinstance(report.raw_payload, dict) else {}
+            day_key = report.report_date.isoformat()
+            day_count = self._count_rdo_occurrences(rdo)
+            if day_count:
+                occurrences_over_time[day_key] = occurrences_over_time.get(day_key, 0) + day_count
+            for occ_type, count in self._occurrence_type_counts(rdo).items():
+                occurrences_by_type[occ_type] = occurrences_by_type.get(occ_type, 0) + count
+
             if report.goal_achieved is not False:
                 continue
             site = site_map.get(str(report.operational_site_id) if report.operational_site_id else "")
@@ -240,12 +288,29 @@ class OperationalService:
                     "site_name": site.name if site else "Unidade",
                     "industry_type": str(site.industry_type) if site else None,
                     "date": report.report_date.isoformat(),
+                    "report_date": report.report_date.isoformat(),
                     "sprint_daily_goal": report.sprint_daily_goal,
+                    "goal_achieved": report.goal_achieved,
                     "impediment_details": report.impediment_details,
                     "mitigation_action": report.mitigation_action,
                     "preventive_action": report.preventive_action,
+                    "raw_payload": report.raw_payload,
                 }
             )
+
+        type_labels = self._occurrence_type_labels()
+        occurrences_by_type_list = [
+            {
+                "type": key,
+                "label": type_labels.get(key, key.replace("_", " ").title()),
+                "count": count,
+            }
+            for key, count in sorted(occurrences_by_type.items(), key=lambda item: (-item[1], item[0]))
+        ]
+        occurrences_over_time_list = [
+            {"date": day, "count": count}
+            for day, count in sorted(occurrences_over_time.items())
+        ]
 
         return {
             "start_date": start_date.isoformat(),
@@ -257,7 +322,87 @@ class OperationalService:
             "total_unanswered": sum(1 for r in reports if r.goal_achieved is None),
             "success_rate": success_rate,
             "consolidated_impediments": consolidated_impediments,
+            "occurrences_by_type": occurrences_by_type_list,
+            "occurrences_over_time": occurrences_over_time_list,
         }
+
+    @staticmethod
+    def _occurrence_type_labels() -> dict[str, str]:
+        return {
+            "meta_nao_atingida": "Meta não atingida",
+            "acidente": "Acidente",
+            "falta_material": "Falta de material",
+            "queda_energia": "Queda de energia",
+            "chuva_forte": "Chuva forte",
+            "geral": "Ocorrência geral",
+            "equipment_breakdown": "Quebra de equipamento",
+            "delay_material": "Espera de material",
+            "delay_rework": "Retrabalho",
+            "delay_front": "Falta de frente",
+            "ppe_non_compliance": "EPI não conforme",
+            "excessive_absences": "Faltas excessivas",
+        }
+
+    @staticmethod
+    def _occurrence_type_counts(rdo: dict[str, Any]) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        if not rdo:
+            return counts
+
+        if rdo.get("goal_achieved") is False:
+            counts["meta_nao_atingida"] = counts.get("meta_nao_atingida", 0) + 1
+
+        for item in rdo.get("occurrences") or []:
+            if not isinstance(item, dict):
+                continue
+            occ_type = str(item.get("type") or "geral").strip().lower() or "geral"
+            counts[occ_type] = counts.get(occ_type, 0) + 1
+
+        for item in rdo.get("equipment_statuses") or []:
+            if not isinstance(item, dict):
+                continue
+            status = str(item.get("status") or "").strip().lower()
+            if status == "parado por quebra":
+                counts["equipment_breakdown"] = counts.get("equipment_breakdown", 0) + 1
+
+        if rdo.get("ppe_compliant") is False:
+            counts["ppe_non_compliance"] = counts.get("ppe_non_compliance", 0) + 1
+        if rdo.get("delay_waiting_material"):
+            counts["delay_material"] = counts.get("delay_material", 0) + 1
+        if rdo.get("delay_rework"):
+            counts["delay_rework"] = counts.get("delay_rework", 0) + 1
+        if rdo.get("delay_lack_of_front"):
+            counts["delay_front"] = counts.get("delay_front", 0) + 1
+
+        workforce = [row for row in (rdo.get("workforce") or []) if isinstance(row, dict)]
+        total_absences = sum(
+            int(
+                row.get("absences_count")
+                if row.get("absences_count") is not None
+                else row.get("absences") or 0
+            )
+            for row in workforce
+        )
+        hot_spots = sum(
+            1
+            for row in workforce
+            if int(
+                row.get("absences_count")
+                if row.get("absences_count") is not None
+                else row.get("absences") or 0
+            )
+            >= 3
+        )
+        if total_absences >= 5 or hot_spots:
+            counts["excessive_absences"] = counts.get("excessive_absences", 0) + 1
+
+        return counts
+
+    @staticmethod
+    def _count_rdo_occurrences(rdo: dict[str, Any]) -> int:
+        if not rdo:
+            return 0
+        return sum(OperationalService._occurrence_type_counts(rdo).values())
 
     def upsert_execution_report_from_rdo(
         self,
@@ -268,9 +413,10 @@ class OperationalService:
         payload: dict[str, Any],
     ) -> DailyExecutionReport | None:
         rdo = payload.get("rdo") if isinstance(payload.get("rdo"), dict) else payload
-        goal_achieved = rdo.get("goal_achieved")
-        if goal_achieved is None and "goal_achieved" not in rdo:
+        if not isinstance(rdo, dict):
             return None
+
+        goal_achieved = rdo.get("goal_achieved")
 
         site = self._resolve_site_from_payload(tenant_id, rdo, payload)
         site_id = site.id if site else None

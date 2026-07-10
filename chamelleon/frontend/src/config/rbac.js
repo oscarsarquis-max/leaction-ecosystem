@@ -34,10 +34,11 @@ export const DEV_STANDARD_USERS = {
 /** Rotas e papéis permitidos (sem bypass automático de sysadmin no menu). */
 export const ROUTE_PERMISSIONS = {
   '/': [ROLE_SYSADMIN, ROLE_LED, ROLE_CONSULTOR, ROLE_EXECUTOR],
-  '/meus-dados': [ROLE_LED],
+  '/meus-dados': [ROLE_LED, ROLE_CONSULTOR],
   '/plano-geral': [ROLE_LED],
   '/kanban': [ROLE_LED],
   '/avaliacoes': [ROLE_SYSADMIN, ROLE_CONSULTOR],
+  '/my-assessment': [ROLE_SYSADMIN, ROLE_CONSULTOR, ROLE_LED],
   '/usuarios': [ROLE_SYSADMIN],
   '/questoes': [ROLE_SYSADMIN],
   '/diagnostico': [ROLE_LED],
@@ -126,7 +127,7 @@ export const TD_AREA_NAV = {
 /** Menu simplificado para lead — diagnóstico + resultado (sem listagem administrativa). */
 export const LEAD_NAV_ITEMS = [
   { to: '/', label: 'Meu Resultado', end: true },
-  { to: '/diagnostico', label: 'Diagnóstico' },
+  { to: '/my-assessment', label: 'Minha Avaliação' },
   { to: '/meus-dados', label: 'Meus Dados' },
 ];
 
@@ -136,10 +137,9 @@ export const NAV_ITEMS = [
   TD_AREA_NAV,
   OPERATIONAL_AREA_NAV,
   ORGANIZATION_NAV_ITEM,
-  { to: '/avaliacoes', label: 'Avaliações', roles: ROUTE_PERMISSIONS['/avaliacoes'] },
+  { to: '/my-assessment', label: 'Minha Avaliação', roles: ROUTE_PERMISSIONS['/my-assessment'] },
   { to: '/usuarios', label: 'Utilizadores', roles: ROUTE_PERMISSIONS['/usuarios'] },
   { to: '/questoes', label: 'Questões', roles: ROUTE_PERMISSIONS['/questoes'] },
-  { to: '/diagnostico', label: 'Novo Diagnóstico', roles: ROUTE_PERMISSIONS['/diagnostico'] },
   { to: '/builder', label: 'Frameworks (Builder)', roles: ROUTE_PERMISSIONS['/builder'] },
 ];
 
@@ -151,6 +151,7 @@ export function hasRole(userRole, allowedRoles) {
 export function canAccessRoute(userRole, path) {
   let key = path.split('/').slice(0, 2).join('/') || '/';
   if (path.startsWith('/avaliacoes/')) key = '/avaliacoes';
+  if (path.startsWith('/my-assessment')) key = '/my-assessment';
   if (path.startsWith('/settings/')) key = '/settings/organization';
   if (path.startsWith('/operational/')) {
     if (path.startsWith('/operational/reports')) key = '/operational/reports';

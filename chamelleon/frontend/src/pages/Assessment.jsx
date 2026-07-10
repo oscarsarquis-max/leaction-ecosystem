@@ -5,11 +5,13 @@ import { ROLE_SYSADMIN } from '../config/rbac';
 import {
   getAssessmentDraft,
   getAssessmentQuestions,
+  getMyLatestResult,
   resetAssessmentDraft,
   saveAssessmentDraft,
   submitAssessment,
   updatePresentAssessment,
 } from '../services/api';
+import { contextIsComplete, readContextFromJourney } from '../utils/businessContext';
 import { getSession } from '../services/session';
 
 function resolveOptionWeight(option) {
@@ -91,7 +93,9 @@ function restoreAnswersFromDraft(draftAnswers, itemsById) {
 export default function Assessment() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { systemRole, frameworkId: sessionFrameworkId, loading: authLoading, refreshProfile } = useAuth();
+  const isMyAssessment = location.pathname.startsWith('/my-assessment');
+  const { systemRole, frameworkId: sessionFrameworkId, loading: authLoading, refreshProfile, journey } =
+    useAuth();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -104,6 +108,7 @@ export default function Assessment() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [submissionId, setSubmissionId] = useState(null);
   const [completedAt, setCompletedAt] = useState(null);
+  const [maturityResult, setMaturityResult] = useState(null);
   const saveTimerRef = useRef(null);
   const answersRef = useRef(answers);
   const itemsByIdRef = useRef({});
@@ -130,7 +135,7 @@ export default function Assessment() {
   useEffect(() => {
     if (!authLoading && !sessionFrameworkId && !retriedFrameworkRef.current) {
       retriedFrameworkRef.current = true;
-      refreshProfile();
+      refreshProfile({ background: true });
     }
   }, [authLoading, sessionFrameworkId, refreshProfile]);
 
@@ -156,6 +161,9 @@ export default function Assessment() {
           await resetAssessmentDraft();
         }
 
+        const draftData = await getAssessmentDraft();
+        if (cancelled) return;
+
         const data = await getAssessmentQuestions();
         if (cancelled) return;
 
@@ -170,12 +178,13 @@ export default function Assessment() {
           }
         }
 
-        const draftData = await getAssessmentDraft();
-        if (cancelled) return;
-
         const payload = draftData.draft;
-        if (payload?.answers?.length) {
-          setAnswers(restoreAnswersFromDraft(payload.answers, map));
+        if (payload) {
+          if (payload.answers?.length) {
+            setAnswers(restoreAnswersFromDraft(payload.answers, map));
+          } else {
+            setAnswers({});
+          }
           setIsCompleted(payload.status === 'completed');
           setSubmissionId(payload.submission_id || null);
           setCompletedAt(payload.completed_at || null);
@@ -204,6 +213,21 @@ export default function Assessment() {
       cancelled = true;
     };
   }, [location.state?.resetDraft, sessionFrameworkId, authLoading]);
+
+  useEffect(() => {
+    if (!isCompleted || authLoading) return undefined;
+    let cancelled = false;
+    getMyLatestResult()
+      .then((data) => {
+        if (!cancelled && data.result) setMaturityResult(data.result);
+      })
+      .catch(() => {
+        if (!cancelled) setMaturityResult(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isCompleted, authLoading, submissionId]);
 
   const totalQuestions = useMemo(
     () => dimensions.reduce((acc, dim) => acc + (dim.items?.length || 0), 0),
@@ -310,25 +334,39 @@ export default function Assessment() {
     setError('');
 
     try {
+      const contextValues = readContextFromJourney(journey?.context_data);
+      const needsContext = !contextIsComplete(contextValues);
+
       if (isCompleted) {
         const respostas = buildAnswersPayload(answers, itemsById, { presentOnly: true });
         if (!respostas.length) {
           setError('Nenhuma resposta de Realidade (Presente) para atualizar.');
           return;
         }
-        const result = await updatePresentAssessment({ respostas });
+        await updatePresentAssessment({ respostas });
+        await refreshProfile({ background: true });
+        const latest = await getMyLatestResult();
+        const result = latest.result;
         navigate('/', {
           replace: true,
-          state: { assessmentResult: result },
+          state: {
+            assessmentResult: result,
+            promptContext: needsContext,
+          },
         });
         return;
       }
 
-      const respostas = buildAnswersPayload(answers, itemsById);
-      const result = await submitAssessment({ respostas });
+      await submitAssessment({ respostas: buildAnswersPayload(answers, itemsById) });
+      await refreshProfile({ background: true });
+      const latest = await getMyLatestResult();
+      const result = latest.result;
       navigate('/', {
         replace: true,
-        state: { assessmentResult: result },
+        state: {
+          assessmentResult: result,
+          promptContext: needsContext,
+        },
       });
     } catch (err) {
       setError(err.message || 'Erro ao enviar diagnóstico.');
@@ -371,13 +409,22 @@ export default function Assessment() {
     <div className="mx-auto max-w-4xl space-y-8 pb-44">
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-wider text-chameleon">
-          Diagnóstico de Maturidade
+          {isMyAssessment ? 'Minha Avaliação' : 'Diagnóstico de Maturidade'}
         </p>
-        <h2 className="mt-1 text-2xl font-bold text-slate-800">Avaliação Dinâmica</h2>
+        <h2 className="mt-1 text-2xl font-bold text-slate-800">
+          {isMyAssessment ? 'Questionário PanelDX' : 'Avaliação Dinâmica'}
+        </h2>
         <p className="mt-2 text-sm text-slate-500">
-          Framework ativo:{' '}
-          <span className="font-medium text-chameleon-dark">{frameworkId || '—'}</span>
+          {isMyAssessment
+            ? 'Continue de onde parou. Suas respostas são salvas automaticamente enquanto você preenche.'
+            : (
+              <>
+                Framework ativo:{' '}
+                <span className="font-medium text-chameleon-dark">{frameworkId || '—'}</span>
+              </>
+            )}
         </p>
+        {!isMyAssessment && (
         <p className="mt-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
           Questionário publicado do framework — somente leitura. As questões são definidas
           administrativamente e compartilhadas por todos os leads.
@@ -385,26 +432,67 @@ export default function Assessment() {
             <> Para editar o catálogo, use o menu <strong>Questões</strong> ou o Builder.</>
           )}
         </p>
+        )}
         {isCompleted && (
-          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-            <p className="font-semibold">Diagnóstico concluído — respostas preservadas</p>
-            <p className="mt-1 text-emerald-800">
-              Você pode revisar todo o questionário a qualquer momento. Atualize apenas as respostas
-              de <strong>Realidade (Presente)</strong> conforme o projeto evolui; Ambição (Futuro)
-              permanece como referência original.
-              {completedAt && (
-                <span className="mt-1 block text-xs text-emerald-700">
-                  Concluído em {new Date(completedAt).toLocaleString('pt-BR')}
-                </span>
-              )}
-            </p>
-            {submissionId && (
-              <Link
-                to={`/relatorio/${submissionId}`}
-                className="mt-2 inline-flex text-sm font-semibold text-chameleon-dark underline"
-              >
-                Ver relatório de diagnóstico
-              </Link>
+          <div className="mt-4 space-y-4">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <p className="font-semibold">Diagnóstico concluído — respostas preservadas</p>
+              <p className="mt-1 text-emerald-800">
+                Você pode revisar todo o questionário a qualquer momento. Atualize apenas as respostas
+                de <strong>Realidade (Presente)</strong> conforme o projeto evolui; Ambição (Futuro)
+                permanece como referência original.
+                {completedAt && (
+                  <span className="mt-1 block text-xs text-emerald-700">
+                    Concluído em {new Date(completedAt).toLocaleString('pt-BR')}
+                  </span>
+                )}
+              </p>
+            </div>
+
+            {maturityResult && (
+              <div className="rounded-xl border border-chameleon/30 bg-gradient-to-br from-chameleon/5 to-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wider text-chameleon-dark">
+                  Seu nível de maturidade
+                </p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">{maturityResult.nivel_maturidade}</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  Score global:{' '}
+                  <strong>{maturityResult.score_global?.toFixed?.(2) ?? maturityResult.score_global}</strong>
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Link
+                    to="/"
+                    className="inline-flex rounded-lg bg-chameleon px-4 py-2 text-sm font-semibold text-white hover:bg-chameleon-dark"
+                  >
+                    Ver painel de maturidade
+                  </Link>
+                  {submissionId && (
+                    <Link
+                      to={`/relatorio/${submissionId}`}
+                      className="inline-flex rounded-lg border border-chameleon/30 px-4 py-2 text-sm font-semibold text-chameleon-dark hover:bg-chameleon/5"
+                    >
+                      Relatório de diagnóstico
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!maturityResult && submissionId && (
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  to="/"
+                  className="inline-flex rounded-lg bg-chameleon px-4 py-2 text-sm font-semibold text-white hover:bg-chameleon-dark"
+                >
+                  Ver painel de maturidade
+                </Link>
+                <Link
+                  to={`/relatorio/${submissionId}`}
+                  className="inline-flex text-sm font-semibold text-chameleon-dark underline"
+                >
+                  Ver relatório de diagnóstico
+                </Link>
+              </div>
             )}
           </div>
         )}

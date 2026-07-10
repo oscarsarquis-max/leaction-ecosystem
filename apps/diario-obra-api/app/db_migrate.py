@@ -85,6 +85,9 @@ def ensure_rdo_schema() -> None:
     _add_column_if_missing("daily_logs", "mitigation_action", "mitigation_action TEXT")
     _add_column_if_missing("daily_logs", "preventive_action", "preventive_action TEXT")
 
+    _add_column_if_missing("daily_logs", "reopened_at", "reopened_at TIMESTAMPTZ")
+    _add_column_if_missing("daily_logs", "reopened_by", "reopened_by VARCHAR(255)")
+
     _add_column_if_missing("occurrences", "exact_location", "exact_location TEXT")
     _add_column_if_missing("occurrences", "what_happened", "what_happened TEXT")
     _add_column_if_missing(

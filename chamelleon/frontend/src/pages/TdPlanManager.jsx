@@ -1,25 +1,48 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import GenesisProgressOverlay from '../components/td/GenesisProgressOverlay';
+import TdReadinessChecklist from '../components/td/TdReadinessChecklist';
 import TdSprintModal, { TdToast } from '../components/td/TdSprintModal';
 import {
   extractTopGaps,
-  groupSprintsByDomain,
+  formatSprintBlockLabel,
+  groupSprintsByDimensionDomain,
   TD_STAGE,
 } from '../constants/td';
 import { useAuth } from '../context/AuthContext';
-import { generateTdPlan, getTdPlan, listTdSprints } from '../services/tdApi';
+import { useGenesisProgress } from '../hooks/useGenesisProgress';
+import { readContextFromJourney } from '../utils/businessContext';
+import { buildGenesisHints } from '../utils/genesisHints';
+import { generateTdPlan, getTdPlan, getTdReadinessStatus, listTdSprints, promoteTdSprintToPlanning } from '../services/tdApi';
 
 export default function TdPlanManager() {
   const { journey, refreshProfile } = useAuth();
   const [plan, setPlan] = useState(null);
   const [backlog, setBacklog] = useState([]);
+  const [allSprints, setAllSprints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ message: '', tone: 'dark' });
   const [selected, setSelected] = useState(null);
+  const [readiness, setReadiness] = useState(null);
+  const [readinessLoading, setReadinessLoading] = useState(true);
 
   const statusIa = (journey?.status_ia || '').toUpperCase();
   const isProcessing = statusIa === 'PENDENTE' || statusIa === 'PROCESSANDO';
+  const iaReady = readiness?.is_ready === true;
+  const contextValues = readContextFromJourney(journey?.context_data);
+
+  const loadReadiness = useCallback(async () => {
+    setReadinessLoading(true);
+    try {
+      const data = await getTdReadinessStatus();
+      setReadiness(data);
+    } catch {
+      setReadiness(null);
+    } finally {
+      setReadinessLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -29,8 +52,15 @@ export default function TdPlanManager() {
         getTdPlan(),
         listTdSprints(TD_STAGE.BACKLOG),
       ]);
-      setPlan(planRes.plan || null);
-      setBacklog(backlogRes.sprints || []);
+      const activePlan = planRes.plan || null;
+      setPlan(activePlan);
+      const planSprints = activePlan?.sprints || [];
+      setAllSprints(planSprints);
+      setBacklog(
+        planSprints.length > 0
+          ? planSprints.filter((s) => s.kanban_stage === TD_STAGE.BACKLOG)
+          : backlogRes.sprints || [],
+      );
     } catch (err) {
       setError(err.message || 'Erro ao carregar o Plano Diretor de TD.');
       setPlan(null);
@@ -40,42 +70,81 @@ export default function TdPlanManager() {
     }
   }, []);
 
+  const snapshotGaps = useMemo(() => extractTopGaps(plan?.survey_snapshot), [plan?.survey_snapshot]);
+
+  const genesisHints = useMemo(
+    () => buildGenesisHints({ contextValues, gaps: snapshotGaps }),
+    [contextValues, snapshotGaps],
+  );
+
+  const genesis = useGenesisProgress({
+    hints: genesisHints,
+    onComplete: async () => {
+      setGenerating(false);
+      if (typeof refreshProfile === 'function') {
+        await refreshProfile({ background: true });
+      }
+      await load();
+      await loadReadiness();
+      setToast({
+        message: 'Plano de Transformação Digital gerado com sucesso.',
+        tone: 'success',
+      });
+    },
+    onError: async (message) => {
+      setError(message);
+      setGenerating(false);
+      setToast({ message, tone: 'error' });
+      if (typeof refreshProfile === 'function') {
+        await refreshProfile({ background: true });
+      }
+    },
+  });
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadReadiness();
+  }, [load, loadReadiness]);
 
   const gaps = useMemo(
     () => extractTopGaps(plan?.survey_snapshot),
     [plan?.survey_snapshot],
   );
-  const grouped = useMemo(() => groupSprintsByDomain(backlog), [backlog]);
+  const grouped = useMemo(() => groupSprintsByDimensionDomain(backlog), [backlog]);
+  const kanbanCount = useMemo(
+    () => allSprints.filter((s) => s.kanban_stage !== TD_STAGE.BACKLOG && s.kanban_stage !== TD_STAGE.CONCLUIDA).length,
+    [allSprints],
+  );
 
-  async function handleGenerateAiPlan() {
-    if (generating || isProcessing) return;
-    setGenerating(true);
+  async function handlePromoteToPlanning(sprintId) {
     setError('');
-    setToast({ message: 'Gênese em andamento — Motor PanelDX…', tone: 'dark' });
     try {
-      const result = await generateTdPlan({ force: true });
-      setPlan(result.plan || null);
-      if (typeof refreshProfile === 'function') {
-        await refreshProfile();
-      }
+      await promoteTdSprintToPlanning(sprintId);
       await load();
       setToast({
-        message: result.message || `Plano gerado (${result.generated_count || 0} sprints).`,
+        message: 'Sprint promovida para a coluna Planejadas no Kanban.',
         tone: 'success',
       });
     } catch (err) {
-      setError(err.message || 'Falha na Gênese do plano de TD.');
-      setToast({ message: err.message || 'Falha na Gênese.', tone: 'error' });
-      if (typeof refreshProfile === 'function') {
-        await refreshProfile();
-      }
-    } finally {
-      setGenerating(false);
+      setError(err.message || 'Não foi possível promover a sprint.');
+      setToast({ message: err.message || 'Falha ao promover.', tone: 'error' });
     }
   }
+
+  async function handleGenerateAiPlan() {
+    if (generating || genesis.active || isProcessing || !iaReady) return;
+    setGenerating(true);
+    setError('');
+    genesis.start(() => generateTdPlan({ force: true }));
+  }
+
+  useEffect(() => {
+    if (generating || genesis.active) return;
+    if (isProcessing) {
+      setGenerating(true);
+      genesis.resume();
+    }
+  }, [isProcessing, generating, genesis.active, genesis.resume]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -88,27 +157,41 @@ export default function TdPlanManager() {
             Plano Diretor e Backlog
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            Motor de Decisão Tática PanelDX. A geração acontece sob comando do usuário e migra a
-            jornada: PENDENTE → PROCESSANDO → CONCLUIDO.
+            Uma sprint por par dimensão×domínio com gap F−P positivo, acoplada ao bloco e
+            entregável do framework. As 12 de maior gap entram no Kanban (3 em execução imediata);
+            o restante fica aqui até você promover para Planejadas.
           </p>
+          {allSprints.length > 0 && (
+            <p className="mt-2 text-xs text-slate-500">
+              {allSprints.length} sprint(s) no plano · {backlog.length} em backlog ·{' '}
+              {kanbanCount} no Kanban
+            </p>
+          )}
           {statusIa && (
             <p className="mt-2 text-xs font-medium text-slate-500">
               status_ia: <span className="text-slate-800">{statusIa}</span>
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={handleGenerateAiPlan}
-          disabled={generating || isProcessing}
-          className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {generating || isProcessing
-            ? 'Gerando plano…'
-            : plan
-              ? 'Gerar/Atualizar Plano de TD com IA'
-              : 'Gerar Plano de TD com IA'}
-        </button>
+        <div className="flex w-full max-w-sm flex-col gap-3 sm:w-auto">
+          <TdReadinessChecklist readiness={readiness} loading={readinessLoading} />
+          <button
+            type="button"
+            onClick={handleGenerateAiPlan}
+            disabled={generating || genesis.active || isProcessing || !iaReady}
+            className={`rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${
+              iaReady
+                ? 'bg-slate-900 ring-2 ring-amber-300 ring-offset-2 hover:bg-slate-800 hover:shadow-md'
+                : 'bg-slate-900'
+            }`}
+          >
+            {generating || genesis.active || isProcessing
+              ? 'Gerando plano…'
+              : plan
+                ? 'Gerar/Atualizar Plano de TD com IA'
+                : 'Gerar Plano de TD com IA'}
+          </button>
+        </div>
       </header>
 
       {error && (
@@ -171,10 +254,11 @@ export default function TdPlanManager() {
       <section>
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Backlog de sprints</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Backlog geral (todas as pendências)</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Sprints em <span className="font-medium">Backlog</span>, agrupadas por domínio. Clique
-              para abrir o painel de execução (padrão PanelDX).
+              Sprints fora do Kanban (após as 12 priorizadas). Use{' '}
+              <span className="font-medium">Colocar em planejamento</span> para enviar à coluna
+              Planejadas quando houver vaga (máx. 12 no quadro).
             </p>
           </div>
           <p className="text-xs font-medium text-slate-500">
@@ -190,37 +274,65 @@ export default function TdPlanManager() {
           </div>
         ) : (
           <div className="space-y-6">
-            {grouped.map(({ domain, sprints }) => (
-              <div key={domain}>
+            {grouped.map(({ dimensionName, domainName, sprints }) => (
+              <div key={`${dimensionName}|${domainName}`}>
                 <div className="mb-3 flex items-center gap-2">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">
-                    {domain}
+                    {dimensionName ? `${dimensionName} × ` : ''}
+                    {domainName}
                   </h3>
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
                     {sprints.length}
                   </span>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {sprints.map((sprint) => (
-                    <button
-                      key={sprint.id}
-                      type="button"
-                      onClick={() => setSelected(sprint)}
-                      className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-slate-400 hover:shadow"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-semibold text-slate-900">{sprint.title}</h4>
-                        <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                          {sprint.origin_type === 'kaizen_emergent' ? 'Emergente' : 'Baseline'}
-                        </span>
-                      </div>
-                      {sprint.description && (
-                        <p className="mt-2 line-clamp-3 text-sm text-slate-600">
-                          {sprint.description}
-                        </p>
-                      )}
-                    </button>
-                  ))}
+                  {sprints.map((sprint) => {
+                    const block = formatSprintBlockLabel(sprint);
+                    return (
+                      <article
+                        key={sprint.id}
+                        className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setSelected(sprint)}
+                          className="w-full text-left"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="font-semibold text-slate-900">{sprint.title}</h4>
+                            <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                              {sprint.origin_type === 'kaizen_emergent' ? 'Emergente' : 'Baseline'}
+                            </span>
+                          </div>
+                          {block?.dimBlock && (
+                            <p className="mt-2 text-xs font-medium text-violet-800">{block.dimBlock}</p>
+                          )}
+                          {block?.meta?.deliverableName && (
+                            <p className="mt-1 text-[11px] text-slate-500">
+                              Entregável: {block.meta.deliverableName}
+                            </p>
+                          )}
+                          {block?.meta?.gapFp != null && (
+                            <p className="mt-1 text-xs font-semibold text-amber-700">
+                              Gap F−P: {Number(block.meta.gapFp).toFixed(2)}
+                            </p>
+                          )}
+                          {sprint.description && (
+                            <p className="mt-2 line-clamp-3 text-sm text-slate-600">
+                              {sprint.description}
+                            </p>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handlePromoteToPlanning(sprint.id)}
+                          className="mt-3 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-100"
+                        >
+                          Colocar em planejamento (Kanban)
+                        </button>
+                      </article>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -233,6 +345,15 @@ export default function TdPlanManager() {
         message={toast.message}
         tone={toast.tone}
         onClose={() => setToast({ message: '', tone: 'dark' })}
+      />
+      <GenesisProgressOverlay
+        visible={genesis.active}
+        progress={genesis.progress}
+        statusMessage={genesis.statusMessage}
+        subtitle={genesis.subtitle}
+        currentHint={genesis.currentHint}
+        hintIndex={genesis.hintIndex}
+        hintCount={genesis.hintCount}
       />
     </div>
   );

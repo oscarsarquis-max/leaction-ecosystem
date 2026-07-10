@@ -9,6 +9,9 @@ from app.services.assessment_service import AssessmentService
 assessment_bp = Blueprint("assessment", __name__)
 
 
+_ASSESSMENT_FORM_ROLES = (ROLE_LED, ROLE_CONSULTOR, ROLE_SYSADMIN)
+
+
 @assessment_bp.get("/surveys")
 @require_tenant_context
 @require_auth
@@ -28,7 +31,7 @@ def list_surveys():
 @assessment_bp.get("/my-result")
 @require_tenant_context
 @require_auth
-@require_role(ROLE_LED)
+@require_role(ROLE_LED, ROLE_CONSULTOR)
 def get_my_latest_result():
     """Último diagnóstico do lead autenticado — para exibir em Meu Resultado."""
     try:
@@ -63,7 +66,7 @@ def get_survey(submission_id: str):
 @assessment_bp.get("/questions")
 @require_tenant_context
 @require_auth
-@require_role(ROLE_LED)
+@require_role(*_ASSESSMENT_FORM_ROLES)
 def get_assessment_questions():
     """Questionário do framework ativo — somente leitura; não cria questões."""
     try:
@@ -113,7 +116,7 @@ def get_action_plan(action_plan_id: str):
 @assessment_bp.get("/draft")
 @require_tenant_context
 @require_auth
-@require_role(ROLE_LED)
+@require_role(*_ASSESSMENT_FORM_ROLES)
 def get_assessment_draft():
     try:
         service = AssessmentService()
@@ -130,7 +133,7 @@ def get_assessment_draft():
 @assessment_bp.post("/draft")
 @require_tenant_context
 @require_auth
-@require_role(ROLE_LED)
+@require_role(*_ASSESSMENT_FORM_ROLES)
 def save_assessment_draft():
     payload = request.get_json(silent=True) or {}
     respostas = payload.get("respostas")
@@ -152,7 +155,7 @@ def save_assessment_draft():
 @assessment_bp.delete("/draft")
 @require_tenant_context
 @require_auth
-@require_role(ROLE_LED)
+@require_role(*_ASSESSMENT_FORM_ROLES)
 def reset_assessment_draft():
     try:
         service = AssessmentService()
@@ -165,7 +168,7 @@ def reset_assessment_draft():
 @assessment_bp.post("/update-present")
 @require_tenant_context
 @require_auth
-@require_role(ROLE_LED)
+@require_role(*_ASSESSMENT_FORM_ROLES)
 def update_present_responses():
     """Atualiza Realidade (Presente) no diagnóstico concluído e recalcula o relatório."""
     payload = request.get_json(silent=True) or {}
@@ -190,7 +193,7 @@ def update_present_responses():
 @assessment_bp.post("/submit")
 @require_tenant_context
 @require_auth
-@require_role(ROLE_LED)
+@require_role(*_ASSESSMENT_FORM_ROLES)
 def submit_assessment():
     """Persiste respostas do diagnóstico — não altera o catálogo de questões."""
     payload = request.get_json(silent=True) or {}

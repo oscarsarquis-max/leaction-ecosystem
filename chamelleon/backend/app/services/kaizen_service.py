@@ -12,6 +12,10 @@ from app.models.kaizen_models import (
     DEFAULT_ROOT_CAUSE_ANALYSIS,
     KAIZEN_WORKFLOW_STAGES,
     STAGE_ALERTA,
+    STAGE_CINCO_PORQUES,
+    STAGE_CONCLUIDO,
+    STAGE_CONTENCAO,
+    STAGE_PADRONIZACAO,
     KaizenTicket,
     GembaEvent,
 )
@@ -100,6 +104,7 @@ class KaizenService:
         if "workflow_stage" in payload:
             stage = str(payload.get("workflow_stage") or "").strip()
             self._validate_workflow_stage(stage)
+            self._validate_stage_transition_requirements(ticket, stage, payload)
             ticket.workflow_stage = stage
 
         if "temporary_containment_action" in payload:
@@ -142,6 +147,78 @@ class KaizenService:
         db.session.commit()
         return ticket
 
+    def escalate_to_sprint(self, ticket_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Escala ticket Kaizen para uma Sprint no plano TD ativo do Chamelleon."""
+        from app.core.td_constants import TD_OFFICIAL_DOMAINS_SET
+        from app.models.td_models import TdKanbanStage, TdOriginType, TdSprint
+        from app.services.td_service import TdService
+
+        ticket = self._get_ticket_or_404(ticket_id)
+        if ticket.escalated_to_sprint_id:
+            raise ValueError("Este ticket Kaizen já foi escalado para uma Sprint.")
+
+        if isinstance(payload.get("root_cause_analysis"), dict):
+            ticket.root_cause_analysis = self._merge_root_cause(
+                payload["root_cause_analysis"],
+                ticket.root_cause_analysis,
+            )
+
+        rca = ticket.root_cause_analysis or dict(DEFAULT_ROOT_CAUSE_ANALYSIS)
+        root_cause = (rca.get("root_cause") or rca.get("why_5") or rca.get("why_1") or "").strip()
+        if not root_cause:
+            raise ValueError(
+                "Preencha a causa raiz (5 Porquês) antes de escalar para o plano organizacional."
+            )
+
+        domain = str(payload.get("paneldx_domain") or payload.get("domain") or "").strip()
+        if domain not in TD_OFFICIAL_DOMAINS_SET:
+            allowed = ", ".join(sorted(TD_OFFICIAL_DOMAINS_SET))
+            raise ValueError(f"Domínio inválido. Escolha um de: {allowed}.")
+
+        td_service = TdService()
+        plan = td_service._resolve_plan_for_write(payload.get("plan_id"))
+
+        description_parts = []
+        if ticket.temporary_containment_action:
+            description_parts.append(f"Contenção: {ticket.temporary_containment_action}")
+        if ticket.description:
+            description_parts.append(ticket.description)
+        description = "\n\n".join(description_parts) or None
+
+        sprint = TdSprint(
+            tenant_id=ticket.tenant_id,
+            plan_id=plan.id,
+            title=f"Kaizen Escalado: {ticket.title}",
+            description=description,
+            paneldx_domain=domain,
+            origin_type=TdOriginType.KAIZEN_EMERGENT.value,
+            kanban_stage=TdKanbanStage.KAIZEN_ENTRADA.value,
+            origin_ref_id=ticket.id,
+            current_state_gap=root_cause,
+            goals_payload={
+                "name_sprn": f"Kaizen Escalado: {ticket.title}",
+                "objetivo": root_cause,
+                "paneldx_domain": domain,
+                "origin_type": TdOriginType.KAIZEN_EMERGENT.value,
+                "kaizen_ticket_id": str(ticket.id),
+                "stat_sprn": "em_analise",
+                "gemba_driven": True,
+            },
+        )
+        db.session.add(sprint)
+        db.session.flush()
+
+        ticket.workflow_stage = STAGE_CONCLUIDO
+        ticket.escalated_to_sprint_id = sprint.id
+        db.session.commit()
+        db.session.refresh(sprint)
+        db.session.refresh(ticket)
+
+        return {
+            "ticket": ticket.to_dict(),
+            "sprint": sprint.to_dict(),
+        }
+
     def delete_ticket(self, ticket_id: str) -> None:
         ticket = self._get_ticket_or_404(ticket_id)
         db.session.delete(ticket)
@@ -166,6 +243,43 @@ class KaizenService:
         if stage not in KAIZEN_WORKFLOW_STAGES:
             allowed = ", ".join(KAIZEN_WORKFLOW_STAGES)
             raise ValueError(f"workflow_stage inválido. Use: {allowed}.")
+
+    def _validate_stage_transition_requirements(
+        self,
+        ticket: KaizenTicket,
+        target_stage: str,
+        payload: dict[str, Any],
+    ) -> None:
+        if target_stage == ticket.workflow_stage:
+            return
+
+        if target_stage == STAGE_CONTENCAO:
+            action = self._optional_text(payload.get("temporary_containment_action"))
+            if action is None:
+                action = ticket.temporary_containment_action
+            if not action:
+                raise ValueError("Informe a ação de contenção adotada para avançar para Contenção.")
+
+        if target_stage == STAGE_CINCO_PORQUES:
+            rca = self._merge_root_cause(
+                payload.get("root_cause_analysis"),
+                ticket.root_cause_analysis,
+            )
+            if not (rca.get("why_1") or rca.get("root_cause")):
+                raise ValueError("Preencha a análise dos 5 Porquês antes de avançar para esta fase.")
+
+        if target_stage == STAGE_PADRONIZACAO:
+            action = self._optional_text(payload.get("standardization_action"))
+            if action is None:
+                action = ticket.standardization_action
+            if not action:
+                raise ValueError(
+                    "Informe o novo padrão ou plano de ação definitivo para avançar para Padronização."
+                )
+
+        if target_stage == STAGE_CONCLUIDO:
+            if "is_operator_retrained" not in payload:
+                raise ValueError("Confirme se o operador foi retreinado antes de concluir o ticket.")
 
     @staticmethod
     def _optional_text(value: Any) -> str | None:

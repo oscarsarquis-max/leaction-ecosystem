@@ -366,9 +366,15 @@ def seed_dev_client_stage(stage: int):
     body = request.get_json(silent=True) or {}
     framework_id = body.get("framework_id")
     sector = body.get("sector")
+    email = (body.get("email") or "").strip().lower() or None
 
     try:
-        payload = apply_dev_client_stage(stage, framework_id=framework_id, sector=sector)
+        if email:
+            from app.services.dev_client_seed_service import apply_dev_client_stage_for_email
+
+            payload = apply_dev_client_stage_for_email(stage, email)
+        else:
+            payload = apply_dev_client_stage(stage, framework_id=framework_id, sector=sector)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except RuntimeError as exc:

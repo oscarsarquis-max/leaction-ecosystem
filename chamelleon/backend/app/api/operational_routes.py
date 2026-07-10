@@ -120,7 +120,7 @@ def sync_site_satellite(site_id: str):
 @operational_bp.post("/planning/weekly-goals")
 @require_tenant_context
 @require_auth
-@require_role(ROLE_SYSADMIN, ROLE_LED)
+@require_role(*_MANAGER_ROLES)
 def push_weekly_goals():
     payload = request.get_json(silent=True) or {}
     try:
@@ -187,6 +187,30 @@ def list_reports():
         return jsonify({"error": str(exc)}), 400
     except Exception:
         return jsonify({"error": "Erro ao carregar relatórios operacionais."}), 500
+
+
+@operational_bp.post("/reports/reopen")
+@require_tenant_context
+@require_auth
+@require_role(*_MANAGER_ROLES)
+def reopen_report_day():
+    payload = request.get_json(silent=True) or {}
+    site_id = (payload.get("site_id") or payload.get("operational_site_id") or "").strip()
+    raw_date = (payload.get("date") or payload.get("report_date") or "").strip()
+    if not site_id:
+        return jsonify({"error": "Campo obrigatório: site_id."}), 400
+    try:
+        report_date = date.fromisoformat(raw_date[:10]) if raw_date else date.today()
+        result = OperationalService().reopen_execution_day(
+            site_id=site_id,
+            report_date=report_date,
+            reopened_by=payload.get("reopened_by"),
+        )
+        return jsonify(result), 200
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": str(exc) or "Erro ao reabrir dia."}), 500
 
 
 @operational_bp.get("/users")

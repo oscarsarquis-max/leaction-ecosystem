@@ -40,6 +40,10 @@ chaves/
 env-pack/
 **/env-pack/
 
+# Dumps PostgreSQL para transferência máquina → máquina
+db-pack/
+**/db-pack/
+
 # Tokens OAuth / integrações
 **/.ml_tokens.json
 **/.env.ml.secrets

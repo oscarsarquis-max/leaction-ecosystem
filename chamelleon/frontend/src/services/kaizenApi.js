@@ -21,3 +21,10 @@ export function saveKaizenFiveWhys(ticketId, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function escalateKaizenTicket(ticketId, payload) {
+  return apiRequest(`/kaizen/tickets/${encodeURIComponent(ticketId)}/escalate`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}

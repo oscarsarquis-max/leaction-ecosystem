@@ -98,3 +98,41 @@ def receive_daily_goals():
         return jsonify({"error": str(exc)}), 400
     except Exception:
         return jsonify({"error": "Erro ao aplicar metas diárias."}), 500
+
+
+@integration_bp.post("/logs/reopen")
+@require_integration_auth
+def reopen_daily_log():
+    """
+    Reabre um RDO assinado para edição (gestor via Chamelleon).
+
+    Payload: { "project_id": "uuid", "date": "YYYY-MM-DD", "reopened_by": "Nome" }
+    """
+    from datetime import date as date_cls
+
+    from app.services.rdo_service import RdoService
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON inválido."}), 400
+
+    project_id = payload.get("project_id")
+    raw_date = payload.get("date") or payload.get("log_date")
+    reopened_by = str(payload.get("reopened_by") or "Gestor operacional").strip()
+
+    try:
+        log_date = date_cls.fromisoformat(str(raw_date)[:10])
+    except (TypeError, ValueError):
+        return jsonify({"error": "Campo date inválido (YYYY-MM-DD)."}), 400
+
+    try:
+        daily_log = RdoService().reopen_log(
+            project_id=project_id,
+            log_date=log_date,
+            reopened_by=reopened_by,
+        )
+        return jsonify({"status": "ok", "log": RdoService().serialize_log(daily_log)}), 200
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        return jsonify({"error": "Erro ao reabrir RDO."}), 500

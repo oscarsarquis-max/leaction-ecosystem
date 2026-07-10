@@ -8,7 +8,22 @@ $Root = $PSScriptRoot
 $BackendDir = Join-Path $Root "backend"
 $FrontendDir = Join-Path $Root "frontend"
 $VenvPython = Join-Path $BackendDir ".venv\Scripts\python.exe"
-$FlaskPort = if ($env:FLASK_PORT) { $env:FLASK_PORT } else { "5010" }
+
+function Read-DotEnvValue([string]$FilePath, [string]$Key) {
+    if (-not (Test-Path $FilePath)) { return $null }
+    foreach ($line in Get-Content $FilePath) {
+        if ($line -match "^\s*$([regex]::Escape($Key))\s*=\s*(.+?)\s*$") {
+            return $Matches[1].Trim().Trim('"').Trim("'")
+        }
+    }
+    return $null
+}
+
+# Porta do backend: prioriza backend\.env (evita FLASK_PORT=5002 de outro projeto no shell)
+$EnvFile = Join-Path $BackendDir ".env"
+$FlaskPort = Read-DotEnvValue $EnvFile "FLASK_PORT"
+if (-not $FlaskPort) { $FlaskPort = $env:FLASK_PORT }
+if (-not $FlaskPort) { $FlaskPort = "5010" }
 $NodePort = if ($env:VITE_PORT) { $env:VITE_PORT } else { "5173" }
 
 function Test-Port([int]$Port) {
@@ -27,7 +42,17 @@ if (-not (Test-Path $VenvPython)) {
 }
 
 if (Test-Port $FlaskPort) {
-    Write-Host "AVISO: porta $FlaskPort ja em uso. Ajuste FLASK_PORT no .env ou encerre o processo." -ForegroundColor Yellow
+    Write-Host "AVISO: porta $FlaskPort ja em uso." -ForegroundColor Yellow
+    $pids = @(Get-NetTCPConnection -LocalPort $FlaskPort -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty OwningProcess -Unique |
+        Where-Object { $_ -gt 0 })
+    foreach ($procId in $pids) {
+        $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
+        if ($proc) {
+            Write-Host "  -> PID $($proc.Id) ($($proc.ProcessName))" -ForegroundColor DarkYellow
+        }
+    }
+    Write-Host "  Encerre esse processo ou altere FLASK_PORT em backend\.env" -ForegroundColor Yellow
 }
 if (Test-Port $NodePort) {
     Write-Host "AVISO: porta $NodePort ja em uso. O Vite pode escolher outra porta." -ForegroundColor Yellow
@@ -38,7 +63,7 @@ $python = if (Test-Path $VenvPython) { $VenvPython } else { "python" }
 Write-Host ">> Backend Flask (porta $FlaskPort)..." -ForegroundColor Cyan
 Start-Process powershell -ArgumentList @(
     "-NoExit", "-Command",
-    "cd '$BackendDir'; `$env:PYTHONPATH='$BackendDir'; `$env:FLASK_PORT='$FlaskPort'; & '$python' run.py"
+    "cd '$BackendDir'; `$env:PYTHONPATH='$BackendDir'; `$env:FLASK_PORT='$FlaskPort'; Remove-Item Env:PORT -ErrorAction SilentlyContinue; & '$python' run.py"
 )
 
 Start-Sleep -Seconds 2

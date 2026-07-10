@@ -1,13 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { TD_STAGE } from '../../constants/td';
+import { formatSprintBlockLabel } from '../../constants/td';
 
 /**
- * Modal de execução de Sprint — espelho estrutural do Painel PanelDX
- * (modal-sprint-exec / sprintmod), sem alterar o PanelDX.
+ * Modal de execução de Sprint — espelho PanelDX (bloco × dimensão-domínio + entregável).
+ * Editável quando a sprint está em Execução (acompanhamento da efetivação).
  */
-export default function TdSprintModal({ sprint, onClose }) {
-  if (!sprint) return null;
+export default function TdSprintModal({ sprint, onClose, onSave, saving = false }) {
+  const editable = sprint?.kanban_stage === TD_STAGE.EXECUCAO;
 
-  const goals = sprint.goals_payload || {};
+  const goals = sprint?.goals_payload || {};
+  const block = useMemo(() => formatSprintBlockLabel(sprint), [sprint]);
   const dod = goals.criteria_dod || {};
   const required = Array.isArray(dod.required) ? dod.required : [];
   const education = Array.isArray(dod.context_education) ? dod.context_education : [];
@@ -15,9 +18,34 @@ export default function TdSprintModal({ sprint, onClose }) {
   const metrics = goals.metrics_scores && typeof goals.metrics_scores === 'object'
     ? Object.entries(goals.metrics_scores)
     : [];
+
+  const [objetivo, setObjetivo] = useState('');
+  const [execNotes, setExecNotes] = useState('');
+  const [realv, setRealv] = useState(0);
+
+  useEffect(() => {
+    if (!sprint) return;
+    setObjetivo(goals.objetivo || sprint.description || goals.desc_sprn || '');
+    setExecNotes(goals.exec_notes || '');
+    setRealv(Number(goals.realv_sprn || 0));
+  }, [sprint, goals.objetivo, goals.desc_sprn, goals.exec_notes, goals.realv_sprn, sprint?.description]);
+
+  if (!sprint) return null;
+
   const target = Number(goals.targv_sprn || 10);
-  const real = Number(goals.realv_sprn || 0);
-  const progress = target > 0 ? Math.min(100, Math.round((real / target) * 100)) : 0;
+  const progress = target > 0 ? Math.min(100, Math.round((realv / target) * 100)) : 0;
+
+  async function handleSave() {
+    if (!onSave) return;
+    await onSave({
+      goals_payload: {
+        objetivo,
+        desc_sprn: objetivo,
+        exec_notes: execNotes,
+        realv_sprn: Number(realv) || 0,
+      },
+    });
+  }
 
   return (
     <div
@@ -45,14 +73,55 @@ export default function TdSprintModal({ sprint, onClose }) {
               {goals.week_sprn ? ` · ${goals.week_sprn} semana(s)` : ''}
             </p>
           </div>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-            onClick={onClose}
-          >
-            Fechar
-          </button>
+          <div className="flex gap-2">
+            {editable && onSave && (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={handleSave}
+                className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+              >
+                {saving ? 'Salvando…' : 'Salvar execução'}
+              </button>
+            )}
+            <button
+              type="button"
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+              onClick={onClose}
+            >
+              Fechar
+            </button>
+          </div>
         </header>
+
+        {block && (
+          <section className="border-b border-violet-100 bg-violet-50/50 px-6 py-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+              Acoplamento metodológico (dimensão × domínio → bloco → entregável)
+            </p>
+            <p className="mt-1 text-sm font-semibold text-violet-950">{block.dimBlock}</p>
+            {block.pair && <p className="mt-0.5 text-xs text-violet-800">{block.pair}</p>}
+            <div className="mt-2 flex flex-wrap gap-3 text-xs text-violet-900">
+              {block.meta.deliverableName && (
+                <span>
+                  <span className="font-semibold">Entregável:</span> {block.meta.deliverableName}
+                </span>
+              )}
+              {block.meta.gapFp != null && !Number.isNaN(Number(block.meta.gapFp)) && (
+                <span>
+                  <span className="font-semibold">Gap F−P:</span>{' '}
+                  {Number(block.meta.gapFp).toFixed(2)}
+                </span>
+              )}
+              {block.meta.legacyIdBloc != null && (
+                <span>
+                  <span className="font-semibold">Bloco #</span>
+                  {block.meta.legacyIdBloc}
+                </span>
+              )}
+            </div>
+          </section>
+        )}
 
         <div className="grid gap-6 p-6 lg:grid-cols-[1.4fr_1fr]">
           <div className="space-y-5">
@@ -60,9 +129,18 @@ export default function TdSprintModal({ sprint, onClose }) {
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Objetivo / Descrição
               </h3>
-              <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
-                {goals.objetivo || sprint.description || goals.desc_sprn || '—'}
-              </p>
+              {editable ? (
+                <textarea
+                  value={objetivo}
+                  onChange={(e) => setObjetivo(e.target.value)}
+                  rows={4}
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              ) : (
+                <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+                  {goals.objetivo || sprint.description || goals.desc_sprn || '—'}
+                </p>
+              )}
               {goals.justificativa_baseada_no_relatorio && (
                 <p className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-600">
                   <span className="font-semibold">Justificativa: </span>
@@ -105,6 +183,21 @@ export default function TdSprintModal({ sprint, onClose }) {
               )}
             </section>
 
+            {editable && (
+              <section>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Notas de execução
+                </h3>
+                <textarea
+                  value={execNotes}
+                  onChange={(e) => setExecNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Evidências, ritos, impedimentos e efetivação no Gemba…"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </section>
+            )}
+
             <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-900">
                 SWOT ({goals.swot_type || 'Fraqueza'})
@@ -127,9 +220,23 @@ export default function TdSprintModal({ sprint, onClose }) {
                   style={{ width: `${Math.max(progress, progress > 0 ? 8 : 0)}%` }}
                 />
               </div>
-              <p className="mt-2 text-xs text-slate-500">
-                Realizado {real} / Meta {target} pts · mínimo recomendado 80%
-              </p>
+              {editable ? (
+                <label className="mt-3 block text-xs text-slate-600">
+                  Realizado (pts)
+                  <input
+                    type="number"
+                    min={0}
+                    max={target}
+                    value={realv}
+                    onChange={(e) => setRealv(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                </label>
+              ) : (
+                <p className="mt-2 text-xs text-slate-500">
+                  Realizado {realv} / Meta {target} pts · mínimo recomendado 80%
+                </p>
+              )}
             </div>
 
             <div className="rounded-xl border border-slate-200 p-4">

@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -101,6 +101,19 @@ class TdSprint(db.Model):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     paneldx_domain: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    framework_block_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("framework_blocks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    framework_deliverable_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("framework_deliverables.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    gap_fp: Mapped[float | None] = mapped_column(Float, nullable=True)
     origin_type: Mapped[str] = mapped_column(
         String(64), nullable=False, default=TdOriginType.BASELINE.value, index=True
     )
@@ -112,6 +125,13 @@ class TdSprint(db.Model):
         index=True,
     )
     goals_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    origin_ref_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("kaizen_tickets.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    current_state_gap: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -132,11 +152,30 @@ class TdSprint(db.Model):
             "title": self.title,
             "description": self.description,
             "paneldx_domain": self.paneldx_domain,
+            "framework_block_id": str(self.framework_block_id) if self.framework_block_id else None,
+            "framework_deliverable_id": (
+                str(self.framework_deliverable_id) if self.framework_deliverable_id else None
+            ),
+            "gap_fp": self.gap_fp,
+            "block_linkage": self._block_linkage_summary(),
             "origin_type": self.origin_type,
             "kanban_stage": self.kanban_stage,
             "goals_payload": self.goals_payload or {},
+            "origin_ref_id": str(self.origin_ref_id) if self.origin_ref_id else None,
+            "current_state_gap": self.current_state_gap,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "is_emergent": self.origin_type == TdOriginType.KAIZEN_EMERGENT.value
             or self.kanban_stage == TdKanbanStage.KAIZEN_ENTRADA.value,
+        }
+
+    def _block_linkage_summary(self) -> dict[str, Any]:
+        goals = self.goals_payload or {}
+        return {
+            "dimension_name": goals.get("dimension_name"),
+            "domain_name": goals.get("domain_name"),
+            "dimension_num": goals.get("dimension_num"),
+            "name_bloc": goals.get("name_bloc"),
+            "name_derv": goals.get("name_derv"),
+            "legacy_id_bloc": goals.get("legacy_id_bloc"),
         }

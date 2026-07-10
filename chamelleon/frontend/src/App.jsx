@@ -59,13 +59,14 @@ export default function App() {
           }
         />
         <Route
-          path="diagnostico"
+          path="my-assessment"
           element={
-            <ProtectedRoute roles={ROUTE_PERMISSIONS['/diagnostico']}>
+            <ProtectedRoute roles={ROUTE_PERMISSIONS['/my-assessment']}>
               <Assessment />
             </ProtectedRoute>
           }
         />
+        <Route path="diagnostico" element={<Navigate to="/my-assessment" replace />} />
         <Route
           path="meus-dados"
           element={
@@ -108,11 +109,7 @@ export default function App() {
         />
         <Route
           path="avaliacoes"
-          element={
-            <ProtectedRoute roles={ROUTE_PERMISSIONS['/avaliacoes']}>
-              <Avaliacoes />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/my-assessment" replace />}
         />
         <Route
           path="avaliacoes/:id"
@@ -197,7 +194,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="assessment" element={<Navigate to="/diagnostico" replace />} />
+        <Route path="assessment" element={<Navigate to="/my-assessment" replace />} />
         <Route path="frameworks" element={<Navigate to="/builder" replace />} />
       </Route>
 

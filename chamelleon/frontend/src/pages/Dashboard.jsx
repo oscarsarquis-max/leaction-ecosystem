@@ -3,8 +3,13 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import ScoreComparativeTable from '../components/ScoreComparativeTable';
 import DiagnosticScoreCharts from '../components/DiagnosticScoreCharts';
 import JourneyStepper from '../components/JourneyStepper';
+import ClientContextModal from '../components/ClientContextModal';
+import GenesisProgressOverlay from '../components/td/GenesisProgressOverlay';
+import { buildGenesisHints } from '../utils/genesisHints';
+import { useGenesisProgress } from '../hooks/useGenesisProgress';
 import { buildSectorLegendLabel, extractSetorialPresente } from '../utils/diagnosticScores';
 import { resolveJourneyFlags } from '../utils/journeyState';
+import { contextIsComplete, readContextFromJourney } from '../utils/businessContext';
 import { useAuth } from '../context/AuthContext';
 import { getMyLatestResult } from '../services/api';
 import { generateTdPlan } from '../services/tdApi';
@@ -91,7 +96,7 @@ function GenesisPanel({ flags, onGenerate, generating, error }) {
     return (
       <section className="rounded-xl border border-violet-200 bg-violet-50 p-6 text-center">
         <p className="text-sm text-violet-800">
-          O Motor PanelDX está gerando seu plano (PENDENTE / PROCESSANDO)…
+          Gênese em andamento — acompanhe o progresso na tela cheia.
         </p>
       </section>
     );
@@ -129,7 +134,7 @@ function GenesisPanel({ flags, onGenerate, generating, error }) {
       )}
       <button
         type="button"
-        disabled={!flags.podeGerarPlano && !flags.isErroIa}
+        disabled={generating || (!flags.podeGerarPlano && !flags.isErroIa)}
         onClick={onGenerate}
         className="mt-6 rounded-lg bg-gradient-to-r from-amber-400 to-amber-600 px-8 py-3 text-sm font-bold text-black shadow disabled:cursor-not-allowed disabled:opacity-50"
         title={
@@ -147,51 +152,68 @@ function GenesisPanel({ flags, onGenerate, generating, error }) {
 export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isLead, isExecutor, frameworkId, loading: authLoading, refreshProfile, journey } =
+  const { isLead, isConsultor, isExecutor, frameworkId, loading: authLoading, refreshProfile, journey } =
     useAuth();
+  const isClientUser = isLead || isConsultor;
   const journeyFlags = resolveJourneyFlags(journey);
   const stateResult = location.state?.assessmentResult;
   const forbidden = location.state?.forbidden;
+  const promptContext = location.state?.promptContext;
 
   const [loadedResult, setLoadedResult] = useState(null);
-  const [loadingResult, setLoadingResult] = useState(isLead && !stateResult);
+  const [loadingResult, setLoadingResult] = useState(isClientUser && !stateResult);
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [genesisError, setGenesisError] = useState('');
+  const [contextModalOpen, setContextModalOpen] = useState(false);
   const retriedFrameworkRef = useRef(false);
+  const contextPromptedRef = useRef(false);
 
   const result = stateResult || loadedResult;
+  const contextValues = readContextFromJourney(journey?.context_data);
+  const hasContextData = journey?.context_filled ?? contextIsComplete(contextValues);
+
+  const genesisHints = useMemo(
+    () => buildGenesisHints({ result, contextValues }),
+    [result, contextValues],
+  );
+
+  const genesis = useGenesisProgress({
+    hints: genesisHints,
+    onComplete: async () => {
+      setGeneratingPlan(false);
+      await refreshProfile({ background: true });
+      navigate('/td/plan');
+    },
+    onError: async (message) => {
+      setGenesisError(message);
+      setGeneratingPlan(false);
+      await refreshProfile({ background: true });
+    },
+  });
 
   async function handleGenerateTdPlan() {
+    if (generatingPlan || genesis.active) return;
     setGeneratingPlan(true);
     setGenesisError('');
-    try {
-      await generateTdPlan({ force: true });
-      await refreshProfile();
-      navigate('/td/plan');
-    } catch (err) {
-      setGenesisError(err.message || 'Falha na Gênese do plano de TD.');
-      await refreshProfile();
-    } finally {
-      setGeneratingPlan(false);
-    }
+    genesis.start(() => generateTdPlan({ force: true }));
   }
 
   useEffect(() => {
-    if (!authLoading && isLead && !frameworkId && !retriedFrameworkRef.current) {
+    if (!authLoading && isClientUser && !frameworkId && !retriedFrameworkRef.current) {
       retriedFrameworkRef.current = true;
-      refreshProfile();
+      refreshProfile({ background: true });
     }
-  }, [authLoading, isLead, frameworkId, refreshProfile]);
+  }, [authLoading, isClientUser, frameworkId, refreshProfile]);
 
   useEffect(() => {
     if (stateResult?.submission_id) {
-      refreshProfile();
+      refreshProfile({ background: true });
     }
   }, [stateResult?.submission_id, refreshProfile]);
 
   useEffect(() => {
-    if (!isLead || stateResult || authLoading) return undefined;
-    if (!frameworkId) {
+    if (!isClientUser || authLoading) return undefined;
+    if (!frameworkId && !journeyFlags.isAvaliacaoOk) {
       setLoadingResult(false);
       return undefined;
     }
@@ -212,7 +234,35 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [isLead, stateResult, frameworkId, authLoading]);
+  }, [isClientUser, frameworkId, authLoading, journeyFlags.isAvaliacaoOk]);
+
+  useEffect(() => {
+    if (contextPromptedRef.current) return;
+    if (!isClientUser || !journeyFlags.isAvaliacaoOk || hasContextData) return;
+    if (promptContext || result?.submission_id) {
+      contextPromptedRef.current = true;
+      setContextModalOpen(true);
+      if (promptContext) {
+        navigate('.', { replace: true, state: { assessmentResult: stateResult || result } });
+      }
+    }
+  }, [
+    isClientUser,
+    journeyFlags.isAvaliacaoOk,
+    hasContextData,
+    promptContext,
+    result?.submission_id,
+    navigate,
+    stateResult,
+  ]);
+
+  useEffect(() => {
+    if (!isClientUser || genesis.active || generatingPlan) return;
+    if (journeyFlags.isEmProcessamento) {
+      setGeneratingPlan(true);
+      genesis.resume();
+    }
+  }, [isClientUser, journeyFlags.isEmProcessamento, genesis.active, genesis.resume, generatingPlan]);
 
   const axisEntries = useMemo(
     () => Object.entries(result?.scores_por_eixo || {}),
@@ -240,13 +290,13 @@ export default function Dashboard() {
   if (!result) {
     return (
       <div className="space-y-6">
-        {isLead && <JourneyStepper steps={journeyFlags.steps} />}
+        {isClientUser && <JourneyStepper steps={journeyFlags.steps} />}
         {forbidden && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             Acesso negado para o seu perfil nesta área.
           </div>
         )}
-        {isLead && !frameworkId && (
+        {isClientUser && !frameworkId && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             Nenhum framework ativo está vinculado ao seu tenant. O administrador precisa publicar
             o framework do setor no Estúdio de Criação (Builder).
@@ -254,18 +304,18 @@ export default function Dashboard() {
         )}
         <section className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <h2 className="text-2xl font-bold text-slate-800">
-            {isLead ? 'Meu Resultado' : 'Painel de Maturidade'}
+            {isClientUser ? 'Meu Resultado' : 'Painel de Maturidade'}
           </h2>
           <p className="mt-2 text-slate-500">
-            {isLead
+            {isClientUser
               ? 'Responda ao questionário completo para avançar para AVALIACAO OK e liberar a análise de maturidade.'
               : isExecutor
                 ? 'Como executor, o seu foco será a sala de execução (em breve). Consulte avaliações via o gestor lead.'
                 : 'Ainda não há diagnóstico nesta sessão. Consulte a listagem de avaliações para ver resultados dos clientes.'}
           </p>
-          {isLead && frameworkId && (
+          {isClientUser && frameworkId && (
             <Link
-              to="/diagnostico"
+              to="/my-assessment"
               className="mt-6 inline-flex rounded-lg bg-chameleon px-6 py-3 text-sm font-semibold text-white hover:bg-chameleon-dark"
             >
               Iniciar Diagnóstico
@@ -278,12 +328,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {isLead && <JourneyStepper steps={journeyFlags.steps} />}
+      {isClientUser && <JourneyStepper steps={journeyFlags.steps} />}
 
       <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">
-            {isLead ? 'Meu Resultado' : 'Resultados do Diagnóstico'}
+            {isClientUser ? 'Meu Resultado' : 'Resultados do Diagnóstico'}
           </h2>
           <p className="mt-1 text-slate-500">
             Framework: <span className="font-medium">{result.framework_id}</span>
@@ -294,7 +344,7 @@ export default function Dashboard() {
             )}
           </p>
         </div>
-        {isLead && result?.submission_id && result?.has_diagnostic_report && (
+        {isClientUser && result?.submission_id && (
           <Link
             to={`/relatorio/${result.submission_id}`}
             className="rounded-lg bg-chameleon px-4 py-2 text-sm font-semibold text-white hover:bg-chameleon-dark"
@@ -302,9 +352,9 @@ export default function Dashboard() {
             Ver relatório completo
           </Link>
         )}
-        {isLead && (
+        {isClientUser && (
           <Link
-            to="/diagnostico"
+            to="/my-assessment"
             className="rounded-lg border border-chameleon/30 bg-chameleon/5 px-4 py-2 text-sm font-semibold text-chameleon-dark hover:bg-chameleon/10"
           >
             Ver questionário respondido
@@ -359,7 +409,23 @@ export default function Dashboard() {
         </article>
       </section>
 
-      {isLead && (
+      {!hasContextData && journeyFlags.isAvaliacaoOk && (
+        <section className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p>
+            <strong>Contexto pendente.</strong> Preencha mercado, clientes e clima organizacional
+            para liberar a Gênese IA.{' '}
+            <button
+              type="button"
+              onClick={() => setContextModalOpen(true)}
+              className="font-semibold text-amber-950 underline"
+            >
+              Abrir formulário de contexto
+            </button>
+          </p>
+        </section>
+      )}
+
+      {isClientUser && (
         <GenesisPanel
           flags={journeyFlags}
           onGenerate={handleGenerateTdPlan}
@@ -414,6 +480,23 @@ export default function Dashboard() {
           </section>
         )
       )}
+
+      <ClientContextModal
+        open={contextModalOpen}
+        onClose={() => setContextModalOpen(false)}
+        onSaved={() => refreshProfile({ background: true })}
+        title="Complete o contexto para a próxima etapa"
+      />
+
+      <GenesisProgressOverlay
+        visible={genesis.active}
+        progress={genesis.progress}
+        statusMessage={genesis.statusMessage}
+        subtitle={genesis.subtitle}
+        currentHint={genesis.currentHint}
+        hintIndex={genesis.hintIndex}
+        hintCount={genesis.hintCount}
+      />
     </div>
   );
 }

@@ -161,7 +161,7 @@ export default function DiagnosticReport() {
             </div>
           </div>
           <Link
-            to="/diagnostico"
+            to="/my-assessment"
             className="mt-4 inline-flex text-sm font-semibold text-chameleon-dark underline"
           >
             Atualizar respostas de Realidade no questionário

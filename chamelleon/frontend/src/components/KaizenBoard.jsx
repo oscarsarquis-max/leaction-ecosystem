@@ -2,8 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { KAIZEN_STAGES } from '../constants/kaizen';
 import { fetchKaizenKanban, updateKaizenTicket } from '../services/kaizenApi';
 import { emptyKanbanBoard } from '../utils/kaizenTicketMeta';
+import { TdToast } from './td/TdSprintModal';
 import FiveWhysModal from './kaizen/FiveWhysModal';
+import KaizenStageTransitionModal from './kaizen/KaizenStageTransitionModal';
 import KaizenTicketCard from './kaizen/KaizenTicketCard';
+
+const GATED_STAGES = new Set(['Contencao', 'Cinco_Porques', 'Padronizacao', 'Concluido']);
 
 export default function KaizenBoard() {
   const [board, setBoard] = useState(emptyKanbanBoard);
@@ -12,6 +16,8 @@ export default function KaizenBoard() {
   const [draggingId, setDraggingId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const [investigationTicket, setInvestigationTicket] = useState(null);
+  const [pendingTransition, setPendingTransition] = useState(null);
+  const [toastMessage, setToastMessage] = useState('');
 
   const loadBoard = useCallback(async () => {
     setError('');
@@ -29,20 +35,31 @@ export default function KaizenBoard() {
     loadBoard();
   }, [loadBoard]);
 
+  function findTicketById(ticketId) {
+    for (const stage of KAIZEN_STAGES) {
+      const found = (board[stage.id] || []).find((ticket) => ticket.id === ticketId);
+      if (found) return found;
+    }
+    return null;
+  }
+
   function findTicketStage(ticketId) {
     return KAIZEN_STAGES.find((stage) =>
       (board[stage.id] || []).some((ticket) => ticket.id === ticketId),
     )?.id;
   }
 
-  function moveTicketLocally(ticketId, fromStage, toStage) {
+  function moveTicketLocally(ticketId, fromStage, toStage, patch = {}) {
     if (fromStage === toStage) return;
     setBoard((prev) => {
       const next = { ...prev };
       const ticket = (next[fromStage] || []).find((item) => item.id === ticketId);
       if (!ticket) return prev;
       next[fromStage] = (next[fromStage] || []).filter((item) => item.id !== ticketId);
-      next[toStage] = [{ ...ticket, workflow_stage: toStage }, ...(next[toStage] || [])];
+      next[toStage] = [
+        { ...ticket, ...patch, workflow_stage: toStage },
+        ...(next[toStage] || []),
+      ];
       return next;
     });
   }
@@ -74,14 +91,67 @@ export default function KaizenBoard() {
     const fromStage = findTicketStage(ticketId);
     if (!fromStage || fromStage === targetStage) return;
 
+    const ticket = findTicketById(ticketId);
+    if (!ticket) return;
+
+    if (GATED_STAGES.has(targetStage)) {
+      setPendingTransition({ ticket, fromStage, toStage: targetStage });
+      return;
+    }
+
     moveTicketLocally(ticketId, fromStage, targetStage);
 
     try {
-      await updateKaizenTicket(ticketId, { workflow_stage: targetStage });
+      const response = await updateKaizenTicket(ticketId, { workflow_stage: targetStage });
+      handleTicketUpdated(response.ticket || response);
     } catch (err) {
       setError(err.message || 'Erro ao mover o card.');
       await loadBoard();
     }
+  }
+
+  function cancelPendingTransition() {
+    setPendingTransition(null);
+  }
+
+  function handleTransitionCompleted({ ticket, fromStage, toStage }) {
+    moveTicketLocally(ticket.id, fromStage, toStage, ticket);
+    handleTicketUpdated(ticket);
+    setPendingTransition(null);
+  }
+
+  async function handleFiveWhysTransitionSaved(savedTicket) {
+    if (!pendingTransition) return;
+    const { fromStage, toStage, ticket } = pendingTransition;
+    try {
+      const response = await updateKaizenTicket(ticket.id, { workflow_stage: toStage });
+      const merged = { ...(response.ticket || response), ...savedTicket };
+      moveTicketLocally(ticket.id, fromStage, toStage, merged);
+      handleTicketUpdated(merged);
+      setPendingTransition(null);
+    } catch (err) {
+      setError(err.message || 'Análise salva, mas não foi possível avançar a fase.');
+      await loadBoard();
+      setPendingTransition(null);
+    }
+  }
+
+  function handleEscalated(response) {
+    const ticket = response.ticket;
+    if (!ticket) return;
+
+    const fromStage = pendingTransition?.fromStage || findTicketStage(ticket.id);
+    if (fromStage && fromStage !== 'Concluido') {
+      moveTicketLocally(ticket.id, fromStage, 'Concluido', ticket);
+    } else {
+      handleTicketUpdated(ticket);
+    }
+
+    setPendingTransition(null);
+    setInvestigationTicket(null);
+    setToastMessage(
+      'Problema escalado! Uma nova Sprint foi gerada no Kanban de Transformação Digital.',
+    );
   }
 
   function handleCardClick(ticket, stageId) {
@@ -95,7 +165,7 @@ export default function KaizenBoard() {
       const next = { ...prev };
       for (const stage of KAIZEN_STAGES) {
         next[stage.id] = (next[stage.id] || []).map((ticket) =>
-          ticket.id === updatedTicket.id ? updatedTicket : ticket,
+          ticket.id === updatedTicket.id ? { ...ticket, ...updatedTicket } : ticket,
         );
       }
       return next;
@@ -107,6 +177,12 @@ export default function KaizenBoard() {
     0,
   );
 
+  const showFiveWhysTransition =
+    pendingTransition?.toStage === 'Cinco_Porques' && pendingTransition?.ticket;
+  const showStageTransition =
+    pendingTransition &&
+    ['Contencao', 'Padronizacao', 'Concluido'].includes(pendingTransition.toStage);
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -117,7 +193,7 @@ export default function KaizenBoard() {
           <h1 className="text-2xl font-bold text-slate-900">Quadro Kaizen</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
             Alertas do Diário de Obra entram automaticamente. Arraste os cards para avançar na
-            jornada Lean.
+            jornada Lean — cada fase exige o preenchimento dos dados obrigatórios.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -207,7 +283,28 @@ export default function KaizenBoard() {
         ticket={investigationTicket}
         onClose={() => setInvestigationTicket(null)}
         onSaved={handleTicketUpdated}
+        onEscalated={handleEscalated}
       />
+
+      <FiveWhysModal
+        open={Boolean(showFiveWhysTransition)}
+        ticket={pendingTransition?.ticket}
+        onClose={cancelPendingTransition}
+        onSaved={handleFiveWhysTransitionSaved}
+        onEscalated={handleEscalated}
+        requireComplete
+      />
+
+      {showStageTransition && (
+        <KaizenStageTransitionModal
+          transition={pendingTransition}
+          onClose={cancelPendingTransition}
+          onCompleted={handleTransitionCompleted}
+          onEscalated={handleEscalated}
+        />
+      )}
+
+      <TdToast message={toastMessage} tone="success" onClose={() => setToastMessage('')} />
     </div>
   );
 }

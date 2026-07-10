@@ -128,6 +128,28 @@ def save_five_whys(ticket_id: str):
         return jsonify({"error": "Erro ao salvar análise 5 Porquês."}), 500
 
 
+@kaizen_bp.post("/tickets/<ticket_id>/escalate")
+@require_tenant_context
+@require_auth
+@require_role(*_KAIZEN_ROLES)
+def escalate_ticket(ticket_id: str):
+    """
+    Escala um ticket Kaizen para uma Sprint no plano TD ativo do Chamelleon.
+
+    Body: ``{"paneldx_domain": "Processos", "root_cause_analysis": {...}`` (opcional)
+    """
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = KaizenService().escalate_to_sprint(ticket_id, payload)
+        return jsonify({"status": "ok", **result}), 201
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
+    except Exception:
+        return jsonify({"error": "Erro ao escalar ticket Kaizen para Sprint."}), 500
+
+
 @kaizen_bp.delete("/tickets/<ticket_id>")
 @require_tenant_context
 @require_auth

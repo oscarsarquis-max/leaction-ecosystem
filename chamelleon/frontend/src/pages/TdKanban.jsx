@@ -1,14 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
+import KaizenOriginModal from '../components/kaizen/KaizenOriginModal';
 import TdSprintModal from '../components/td/TdSprintModal';
 import {
   emptyTdKanbanBoard,
+  formatSprintBlockLabel,
   isEmergentSprint,
   TD_KANBAN_COLUMNS,
+  TD_STAGE,
 } from '../constants/td';
 import { fetchTdKanban, updateTdSprint } from '../services/tdApi';
 
-function SprintCard({ sprint, isDragging, onDragStart, onDragEnd, onOpen }) {
+function SprintCard({ sprint, isDragging, onDragStart, onDragEnd, onOpen, onOpenOrigin }) {
   const emergent = isEmergentSprint(sprint);
+  const block = formatSprintBlockLabel(sprint);
+  const showOriginLink =
+    sprint.origin_ref_id &&
+    (sprint.kanban_stage === TD_STAGE.KAIZEN_ENTRADA || emergent);
 
   return (
     <article
@@ -38,10 +45,30 @@ function SprintCard({ sprint, isDragging, onDragStart, onDragEnd, onOpen }) {
         )}
       </div>
       <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-        {sprint.paneldx_domain}
+        {block?.pair || sprint.paneldx_domain}
       </p>
+      {block?.dimBlock && (
+        <p className="mt-1 text-xs font-medium text-violet-800">{block.dimBlock}</p>
+      )}
+      {block?.meta?.deliverableName && (
+        <p className="mt-0.5 text-[11px] text-slate-500">
+          Entregável: {block.meta.deliverableName}
+        </p>
+      )}
       {sprint.description && (
         <p className="mt-2 line-clamp-2 text-xs text-slate-600">{sprint.description}</p>
+      )}
+      {showOriginLink && (
+        <button
+          type="button"
+          className="mt-2 text-left text-[11px] font-semibold text-orange-700 hover:text-orange-900 hover:underline"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenOrigin(sprint.origin_ref_id);
+          }}
+        >
+          Ver origem no Gemba
+        </button>
       )}
       {!emergent && sprint.origin_type === 'baseline' && (
         <p className="mt-2 text-[10px] font-medium text-slate-400">Baseline</p>
@@ -57,6 +84,8 @@ export default function TdKanban() {
   const [draggingId, setDraggingId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [originTicketId, setOriginTicketId] = useState(null);
+  const [savingModal, setSavingModal] = useState(false);
 
   const loadBoard = useCallback(async () => {
     setError('');
@@ -132,6 +161,30 @@ export default function TdKanban() {
     }
   }
 
+  async function handleSaveSprint(payload) {
+    if (!selected?.id) return;
+    setSavingModal(true);
+    setError('');
+    try {
+      const res = await updateTdSprint(selected.id, payload);
+      const updated = res.sprint;
+      setSelected(updated);
+      setBoard((prev) => {
+        const next = { ...prev };
+        for (const col of TD_KANBAN_COLUMNS) {
+          next[col.id] = (next[col.id] || []).map((item) =>
+            item.id === updated.id ? updated : item,
+          );
+        }
+        return next;
+      });
+    } catch (err) {
+      setError(err.message || 'Falha ao salvar a sprint.');
+    } finally {
+      setSavingModal(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
       <header>
@@ -191,6 +244,7 @@ export default function TdKanban() {
                       onDragStart={handleDragStart}
                       onDragEnd={handleDragEnd}
                       onOpen={setSelected}
+                      onOpenOrigin={setOriginTicketId}
                     />
                   ))}
                 </div>
@@ -200,7 +254,13 @@ export default function TdKanban() {
         </div>
       )}
 
-      <TdSprintModal sprint={selected} onClose={() => setSelected(null)} />
+      <TdSprintModal
+        sprint={selected}
+        onClose={() => setSelected(null)}
+        onSave={selected?.kanban_stage === TD_STAGE.EXECUCAO ? handleSaveSprint : undefined}
+        saving={savingModal}
+      />
+      <KaizenOriginModal ticketId={originTicketId} onClose={() => setOriginTicketId(null)} />
     </div>
   );
 }

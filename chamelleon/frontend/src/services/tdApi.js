@@ -39,10 +39,24 @@ export function updateTdSprint(sprintId, payload) {
   });
 }
 
+export function promoteTdSprintToPlanning(sprintId) {
+  return apiRequest(`/td/sprints/${encodeURIComponent(sprintId)}/promote-planning`, {
+    method: 'POST',
+  });
+}
+
 export function generateTdPlan(payload = {}) {
   return apiRequest('/td/plan/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+}
+
+export function getTdReadinessStatus() {
+  return apiRequest('/td/readiness-status');
+}
+
+export function getTdGenesisStatus() {
+  return apiRequest('/td/genesis-status');
 }

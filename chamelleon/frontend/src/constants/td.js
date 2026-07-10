@@ -13,6 +13,16 @@ export const TD_ORIGIN = {
   KAIZEN_EMERGENT: 'kaizen_emergent',
 };
 
+/** Domínios oficiais do plano TD (taxonomia organizacional Chamelleon). */
+export const TD_OFFICIAL_DOMAINS = [
+  'Estratégia',
+  'Cultura',
+  'Processos',
+  'Tecnologia',
+  'Dados',
+  'Clientes',
+];
+
 /** Colunas do Kanban de Implementação (ordem de fluxo). */
 export const TD_KANBAN_COLUMNS = [
   {
@@ -91,6 +101,48 @@ export function extractTopGaps(snapshot, limit = 5) {
   }
 
   return [];
+}
+
+export function getSprintBlockMeta(sprint) {
+  const goals = sprint?.goals_payload || {};
+  const linkage = sprint?.block_linkage || {};
+  return {
+    dimensionName: goals.dimension_name || linkage.dimension_name,
+    domainName: goals.domain_name || linkage.domain_name,
+    dimensionNum: goals.dimension_num ?? linkage.dimension_num,
+    blockName: goals.name_bloc || linkage.name_bloc,
+    deliverableName: goals.name_derv || linkage.name_derv,
+    gapFp: sprint?.gap_fp ?? goals.gap_fp ?? null,
+    legacyIdBloc: goals.legacy_id_bloc ?? linkage.legacy_id_bloc,
+  };
+}
+
+export function formatSprintBlockLabel(sprint) {
+  const meta = getSprintBlockMeta(sprint);
+  if (!meta.blockName && !meta.dimensionName) return null;
+  const dim = meta.dimensionNum != null ? `[DIM ${meta.dimensionNum}] ` : '';
+  const pair =
+    meta.dimensionName && meta.domainName
+      ? `${meta.dimensionName} × ${meta.domainName}`
+      : meta.domainName || meta.dimensionName || '';
+  return { dimBlock: `${dim}${meta.blockName || 'Bloco'}`.trim(), pair, meta };
+}
+
+export function groupSprintsByDimensionDomain(sprints) {
+  const groups = new Map();
+  for (const sprint of sprints || []) {
+    const meta = getSprintBlockMeta(sprint);
+    const key = `${meta.dimensionName || '—'}|${meta.domainName || sprint.paneldx_domain || 'Outros'}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        dimensionName: meta.dimensionName,
+        domainName: meta.domainName || sprint.paneldx_domain,
+        sprints: [],
+      });
+    }
+    groups.get(key).sprints.push(sprint);
+  }
+  return Array.from(groups.values());
 }
 
 export function groupSprintsByDomain(sprints) {

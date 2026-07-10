@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createDailyLogDraft,
   fetchLogByDay,
-  todayIso,
   updateDailyLog,
 } from '../api/rdoApi';
 import {
@@ -13,6 +12,11 @@ import {
   type TabId,
 } from '../constants/rdo';
 import { useVoiceDictation } from '../hooks/useVoiceDictation';
+import {
+  clearLocalDraft,
+  loadLocalDraft,
+  saveLocalDraft,
+} from '../services/rdoDraftStorage';
 import type {
   EquipmentRow,
   OccurrenceRow,
@@ -157,9 +161,46 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [serverEditable, setServerEditable] = useState<boolean | null>(null);
 
   const voice = useVoiceDictation();
-  const editable = !readOnly && date === todayIso();
+  const editable = serverEditable !== null ? serverEditable : !readOnly;
+  const [localDraftSavedAt, setLocalDraftSavedAt] = useState<string | null>(null);
+  const skipAutoSaveRef = useRef(false);
+
+  const applyLogToForm = useCallback((log: NonNullable<Awaited<ReturnType<typeof fetchLogByDay>>['log']>) => {
+    setLogId(log.id);
+    setStatus(log.status);
+    setWeatherMorning(log.weather_morning || null);
+    setWeatherAfternoon(log.weather_afternoon || null);
+    setTechnicalComments(log.technical_comments || '');
+    setWorkforce(mergeWorkforce(log.workforce));
+    setSupplies(mergeSupplies(log.supplies));
+    setEquipment(mergeEquipment(log.equipment_statuses));
+    setPpeCompliant(log.ppe_compliant ?? null);
+    setPpeDetails(log.ppe_compliant_details || '');
+    setOccurrences(
+      (log.occurrences || []).map((o) => ({
+        type: o.type,
+        exact_location: o.exact_location || '',
+        what_happened: o.what_happened || (o as { description?: string }).description || '',
+        immediate_action_taken: o.immediate_action_taken || '',
+        safety_ppe_notes: o.safety_ppe_notes,
+      })),
+    );
+    setDelayWaitingMaterial(Boolean(log.delay_waiting_material));
+    setDelayRework(Boolean(log.delay_rework));
+    setDelayLackOfFront(Boolean(log.delay_lack_of_front));
+    setEndShiftClean(log.end_shift_clean ?? null);
+    setEndShiftToolsStored(log.end_shift_tools_stored ?? null);
+    setEndShiftLooseMaterials(log.end_shift_loose_materials ?? null);
+    setSprintDailyGoal(log.sprint_daily_goal || '');
+    setSprintGoalLocked(Boolean((log as { sprint_goal_locked?: boolean }).sprint_goal_locked));
+    setGoalAchieved(log.goal_achieved ?? null);
+    setImpedimentDetails(log.impediment_details || '');
+    setMitigationAction(log.mitigation_action || '');
+    setPreventiveAction(log.preventive_action || '');
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -170,38 +211,47 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
         const data = await fetchLogByDay(site.id, date);
         if (cancelled) return;
         const log = data.log;
+        const local = loadLocalDraft(site.id, date);
+        setServerEditable(
+          typeof data.is_editable === 'boolean'
+            ? data.is_editable
+            : log?.is_editable ?? null,
+        );
+
         if (log) {
-          setLogId(log.id);
-          setStatus(log.status);
-          setWeatherMorning(log.weather_morning || null);
-          setWeatherAfternoon(log.weather_afternoon || null);
-          setTechnicalComments(log.technical_comments || '');
-          setWorkforce(mergeWorkforce(log.workforce));
-          setSupplies(mergeSupplies(log.supplies));
-          setEquipment(mergeEquipment(log.equipment_statuses));
-          setPpeCompliant(log.ppe_compliant ?? null);
-          setPpeDetails(log.ppe_compliant_details || '');
-          setOccurrences(
-            (log.occurrences || []).map((o) => ({
-              type: o.type,
-              exact_location: o.exact_location || '',
-              what_happened: o.what_happened || (o as { description?: string }).description || '',
-              immediate_action_taken: o.immediate_action_taken || '',
-              safety_ppe_notes: o.safety_ppe_notes,
-            })),
-          );
-          setDelayWaitingMaterial(Boolean(log.delay_waiting_material));
-          setDelayRework(Boolean(log.delay_rework));
-          setDelayLackOfFront(Boolean(log.delay_lack_of_front));
-          setEndShiftClean(log.end_shift_clean ?? null);
-          setEndShiftToolsStored(log.end_shift_tools_stored ?? null);
-          setEndShiftLooseMaterials(log.end_shift_loose_materials ?? null);
-          setSprintDailyGoal(log.sprint_daily_goal || '');
-          setSprintGoalLocked(Boolean((log as { sprint_goal_locked?: boolean }).sprint_goal_locked));
-          setGoalAchieved(log.goal_achieved ?? null);
-          setImpedimentDetails(log.impediment_details || '');
-          setMitigationAction(log.mitigation_action || '');
-          setPreventiveAction(log.preventive_action || '');
+          applyLogToForm(log);
+          if (local?.saved_at) setLocalDraftSavedAt(local.saved_at);
+        } else if (local?.payload) {
+          const p = local.payload;
+          setLogId(null);
+          setStatus('Rascunho local');
+          setServerEditable(true);
+          setWeatherMorning((p.weather_morning as WeatherPeriod | null) || null);
+          setWeatherAfternoon((p.weather_afternoon as WeatherPeriod | null) || null);
+          setTechnicalComments(String(p.technical_comments || ''));
+          if (Array.isArray(p.workforce)) setWorkforce(mergeWorkforce(p.workforce as WorkforceRow[]));
+          if (Array.isArray(p.supplies)) setSupplies(mergeSupplies(p.supplies as SupplyRow[]));
+          if (Array.isArray(p.equipment_statuses)) {
+            setEquipment(mergeEquipment(p.equipment_statuses as EquipmentRow[]));
+          }
+          setPpeCompliant((p.ppe_compliant as boolean | null) ?? null);
+          setPpeDetails(String(p.ppe_compliant_details || ''));
+          if (Array.isArray(p.occurrences)) {
+            setOccurrences(p.occurrences as OccurrenceRow[]);
+          }
+          setDelayWaitingMaterial(Boolean(p.delay_waiting_material));
+          setDelayRework(Boolean(p.delay_rework));
+          setDelayLackOfFront(Boolean(p.delay_lack_of_front));
+          setEndShiftClean((p.end_shift_clean as boolean | null) ?? null);
+          setEndShiftToolsStored((p.end_shift_tools_stored as boolean | null) ?? null);
+          setEndShiftLooseMaterials((p.end_shift_loose_materials as boolean | null) ?? null);
+          setSprintDailyGoal(String(p.sprint_daily_goal || ''));
+          setSprintGoalLocked(Boolean(p.sprint_goal_locked));
+          setGoalAchieved((p.goal_achieved as boolean | null) ?? null);
+          setImpedimentDetails(String(p.impediment_details || ''));
+          setMitigationAction(String(p.mitigation_action || ''));
+          setPreventiveAction(String(p.preventive_action || ''));
+          setLocalDraftSavedAt(local.saved_at);
         } else {
           setLogId(null);
           setStatus('—');
@@ -210,7 +260,42 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
           setEquipment(DEFAULT_EQUIPMENT);
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Erro ao carregar RDO.');
+        if (!cancelled) {
+          const local = loadLocalDraft(site.id, date);
+          if (local?.payload) {
+            const p = local.payload;
+            setServerEditable(true);
+            setLogId(null);
+            setStatus('Rascunho local (offline)');
+            setWeatherMorning((p.weather_morning as WeatherPeriod | null) || null);
+            setWeatherAfternoon((p.weather_afternoon as WeatherPeriod | null) || null);
+            setTechnicalComments(String(p.technical_comments || ''));
+            if (Array.isArray(p.workforce)) setWorkforce(mergeWorkforce(p.workforce as WorkforceRow[]));
+            if (Array.isArray(p.supplies)) setSupplies(mergeSupplies(p.supplies as SupplyRow[]));
+            if (Array.isArray(p.equipment_statuses)) {
+              setEquipment(mergeEquipment(p.equipment_statuses as EquipmentRow[]));
+            }
+            setPpeCompliant((p.ppe_compliant as boolean | null) ?? null);
+            setPpeDetails(String(p.ppe_compliant_details || ''));
+            if (Array.isArray(p.occurrences)) setOccurrences(p.occurrences as OccurrenceRow[]);
+            setDelayWaitingMaterial(Boolean(p.delay_waiting_material));
+            setDelayRework(Boolean(p.delay_rework));
+            setDelayLackOfFront(Boolean(p.delay_lack_of_front));
+            setEndShiftClean((p.end_shift_clean as boolean | null) ?? null);
+            setEndShiftToolsStored((p.end_shift_tools_stored as boolean | null) ?? null);
+            setEndShiftLooseMaterials((p.end_shift_loose_materials as boolean | null) ?? null);
+            setSprintDailyGoal(String(p.sprint_daily_goal || ''));
+            setSprintGoalLocked(Boolean(p.sprint_goal_locked));
+            setGoalAchieved((p.goal_achieved as boolean | null) ?? null);
+            setImpedimentDetails(String(p.impediment_details || ''));
+            setMitigationAction(String(p.mitigation_action || ''));
+            setPreventiveAction(String(p.preventive_action || ''));
+            setLocalDraftSavedAt(local.saved_at);
+            setError('Sem conexão — exibindo rascunho salvo no celular.');
+          } else {
+            setError(err instanceof Error ? err.message : 'Erro ao carregar RDO.');
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -219,7 +304,46 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
     return () => {
       cancelled = true;
     };
-  }, [site.id, date]);
+  }, [site.id, date, applyLogToForm]);
+
+  useEffect(() => {
+    if (!editable || loading || skipAutoSaveRef.current) return;
+    const timer = window.setTimeout(() => {
+      try {
+        const payload = buildPayload();
+        saveLocalDraft(site.id, date, payload);
+        setLocalDraftSavedAt(new Date().toISOString());
+      } catch {
+        /* ignore draft build errors while typing */
+      }
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [
+    editable,
+    loading,
+    site.id,
+    date,
+    weatherMorning,
+    weatherAfternoon,
+    technicalComments,
+    workforce,
+    supplies,
+    equipment,
+    ppeCompliant,
+    ppeDetails,
+    occurrences,
+    delayWaitingMaterial,
+    delayRework,
+    delayLackOfFront,
+    endShiftClean,
+    endShiftToolsStored,
+    endShiftLooseMaterials,
+    sprintDailyGoal,
+    goalAchieved,
+    impedimentDetails,
+    mitigationAction,
+    preventiveAction,
+  ]);
 
   function handleDictate(current: string, apply: (t: string) => void) {
     if (voice.isListening) {
@@ -286,6 +410,8 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
         setStatus(log.status);
       }
       setSuccess('Rascunho salvo.');
+      clearLocalDraft(site.id, date);
+      setLocalDraftSavedAt(null);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar.');
@@ -328,6 +454,8 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
         setStatus(log.status);
       }
       setSuccess('RDO assinado e finalizado.');
+      clearLocalDraft(site.id, date);
+      setLocalDraftSavedAt(null);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao assinar.');
@@ -378,12 +506,32 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
           <p className="text-lg font-bold capitalize text-slate-900">{dateLabel}</p>
           <p className="mt-1 text-sm">
             Status: <strong>{status}</strong>
+            {localDraftSavedAt && editable && (
+              <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                Rascunho local salvo
+              </span>
+            )}
             {readOnly && (
               <span className="ml-2 rounded bg-slate-200 px-2 py-0.5 text-xs font-bold text-slate-700">
                 Somente leitura
               </span>
             )}
           </p>
+          {!editable && !localDraftSavedAt && status !== 'Rascunho local' && status !== 'Rascunho local (offline)' && (
+            <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-700">
+              {status === 'Assinado' || status === 'Sincronizado' ? (
+                <>
+                  Este dia já foi <strong>assinado e fechado</strong>. Para editar de novo, o gestor
+                  precisa usar <strong>Reabrir dia</strong> em Relatórios Operacionais.
+                </>
+              ) : (
+                <>
+                  Este dia está <strong>somente leitura</strong>. Preencha o <strong>dia de hoje</strong>{' '}
+                  no calendário ou peça ao gestor para reabrir um dia anterior.
+                </>
+              )}
+            </p>
+          )}
         </div>
 
         {loading ? (
@@ -622,6 +770,13 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
         >
           <button
             type="button"
+            onClick={onBack}
+            className="mb-2 w-full min-h-11 rounded-2xl border-2 border-slate-300 bg-slate-50 text-sm font-bold text-slate-800"
+          >
+            📅 Calendário
+          </button>
+          <button
+            type="button"
             disabled={saving || signing || loading || !weatherMorning || !weatherAfternoon}
             onClick={handleSave}
             className="mb-2 w-full min-h-12 rounded-2xl border-2 border-emerald-600 bg-white text-base font-bold text-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
@@ -655,6 +810,21 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
               Responda o Fechamento do Canteiro para habilitar a assinatura.
             </p>
           )}
+        </div>
+      )}
+
+      {!editable && (
+        <div
+          className="shrink-0 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur"
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+        >
+          <button
+            type="button"
+            onClick={onBack}
+            className="w-full min-h-11 rounded-2xl border-2 border-slate-300 bg-slate-50 text-sm font-bold text-slate-800"
+          >
+            📅 Calendário
+          </button>
         </div>
       )}
     </div>

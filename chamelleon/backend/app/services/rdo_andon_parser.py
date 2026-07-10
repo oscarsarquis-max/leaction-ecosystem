@@ -7,6 +7,14 @@ from typing import Any
 
 EQUIPMENT_BROKEN_STATUS = "parado por quebra"
 OCCURRENCE_ACCIDENT_TYPE = "acidente"
+
+OCCURRENCE_ANDON_LABELS: dict[str, tuple[str, str]] = {
+    "acidente": ("accident", "Alerta Crítico: Acidente de Trabalho"),
+    "falta_material": ("material_shortage", "Alerta: Falta de material"),
+    "queda_energia": ("power_outage", "Alerta: Queda de energia"),
+    "chuva_forte": ("heavy_rain", "Alerta: Chuva forte no canteiro"),
+    "geral": ("general_occurrence", "Alerta: Ocorrência no canteiro"),
+}
 WORKFORCE_ABSENCE_ROW_THRESHOLD = 3
 WORKFORCE_ABSENCE_TOTAL_THRESHOLD = 5
 
@@ -27,6 +35,7 @@ class RdoAndonParser:
 
         anomalies.extend(self._scan_equipment_breakdowns(rdo))
         anomalies.extend(self._scan_accidents(rdo))
+        anomalies.extend(self._scan_occurrences(rdo))
         anomalies.extend(self._scan_excessive_absences(rdo))
 
         if not rdo.get("ppe_compliant", True) and rdo.get("ppe_compliant") is False:
@@ -101,16 +110,28 @@ class RdoAndonParser:
         return anomalies
 
     def _scan_accidents(self, rdo: dict[str, Any]) -> list[AndonAnomaly]:
+        return self._scan_occurrences(rdo, only_type=OCCURRENCE_ACCIDENT_TYPE)
+
+    def _scan_occurrences(
+        self, rdo: dict[str, Any], *, only_type: str | None = None
+    ) -> list[AndonAnomaly]:
         anomalies: list[AndonAnomaly] = []
         for item in rdo.get("occurrences") or []:
             if not isinstance(item, dict):
                 continue
             occ_type = str(item.get("type") or "").strip().lower()
-            if occ_type != OCCURRENCE_ACCIDENT_TYPE:
+            if only_type and occ_type != only_type:
                 continue
+            if not only_type and occ_type == OCCURRENCE_ACCIDENT_TYPE:
+                # Acidente já tratado em _scan_accidents para manter título crítico dedicado.
+                continue
+            label = OCCURRENCE_ANDON_LABELS.get(occ_type)
+            if not label and only_type:
+                continue
+            anomaly_type, title = label or ("occurrence", "Alerta: Ocorrência no canteiro")
             description = (
                 (item.get("what_happened") or item.get("description") or "").strip()
-                or "Acidente registrado no RDO."
+                or "Ocorrência registrada no RDO."
             )
             location = (item.get("exact_location") or "").strip()
             containment = (item.get("immediate_action_taken") or "").strip()
@@ -123,8 +144,8 @@ class RdoAndonParser:
                 description = f"{description} | EPI/Segurança: {safety}"
             anomalies.append(
                 AndonAnomaly(
-                    anomaly_type="accident",
-                    title="Alerta Crítico: Acidente de Trabalho",
+                    anomaly_type=anomaly_type,
+                    title=title,
                     description=description,
                 )
             )

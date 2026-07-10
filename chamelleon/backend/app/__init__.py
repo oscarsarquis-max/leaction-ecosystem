@@ -272,3 +272,44 @@ def _apply_schema_patches() -> None:
                     )
                 )
         db.session.commit()
+
+    if "kaizen_tickets" in tables:
+        cols = {c["name"] for c in inspector.get_columns("kaizen_tickets")}
+        if "escalated_to_sprint_id" not in cols:
+            db.session.execute(
+                text(
+                    "ALTER TABLE kaizen_tickets "
+                    "ADD COLUMN escalated_to_sprint_id UUID "
+                    "REFERENCES td_sprints(id) ON DELETE SET NULL"
+                )
+            )
+            db.session.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_kaizen_tickets_escalated_to_sprint_id "
+                    "ON kaizen_tickets (escalated_to_sprint_id)"
+                )
+            )
+            db.session.commit()
+
+    if "td_sprints" in tables:
+        cols = {c["name"] for c in inspector.get_columns("td_sprints")}
+        sprint_patches = {
+            "origin_ref_id": "UUID REFERENCES kaizen_tickets(id) ON DELETE SET NULL",
+            "current_state_gap": "TEXT",
+            "framework_block_id": "UUID REFERENCES framework_blocks(id) ON DELETE SET NULL",
+            "framework_deliverable_id": "UUID REFERENCES framework_deliverables(id) ON DELETE SET NULL",
+            "gap_fp": "DOUBLE PRECISION",
+        }
+        for col_name, col_def in sprint_patches.items():
+            if col_name not in cols:
+                db.session.execute(
+                    text(f"ALTER TABLE td_sprints ADD COLUMN {col_name} {col_def}")
+                )
+        if "origin_ref_id" not in cols:
+            db.session.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_td_sprints_origin_ref_id "
+                    "ON td_sprints (origin_ref_id)"
+                )
+            )
+        db.session.commit()

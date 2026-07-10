@@ -33,7 +33,7 @@ from app.core.dev_users import (
     SECTOR_PROFILES,
     SYSADMIN_PASSWORD,
 )
-from app.core.rbac.constants import ROLE_EXECUTOR, ROLE_LED, ROLE_SYSADMIN
+from app.core.rbac.constants import ROLE_EXECUTOR, ROLE_LED, ROLE_CONSULTOR, ROLE_SYSADMIN
 from app.database.models import (
     ActionPlan,
     AssessmentItem,
@@ -416,6 +416,47 @@ def _finalize_submission(
     return submission
 
 
+def resolve_lead_membership_by_email(email: str) -> tuple[uuid.UUID, uuid.UUID, str]:
+    """Retorna (tenant_id, user_id, framework_id) do lead/consultor cliente pelo e-mail."""
+    from app.core.tenant_framework_resolver import resolve_framework_for_tenant
+
+    normalized = (email or "").strip().lower()
+    if not normalized:
+        raise ValueError("Informe o e-mail do utilizador.")
+
+    user = User.query.filter_by(email=normalized).first()
+    if not user:
+        raise ValueError(f"Utilizador não encontrado: {normalized}")
+
+    membership = (
+        TenantUser.query.filter_by(user_id=user.id)
+        .filter(TenantUser.role.in_([ROLE_LED, ROLE_CONSULTOR]))
+        .first()
+    )
+    if not membership:
+        raise ValueError(f"Nenhuma membership lead/consultor para {normalized}.")
+
+    framework = resolve_framework_for_tenant(membership.tenant_id)
+    if not framework:
+        raise ValueError("Tenant sem framework ativo.")
+
+    return membership.tenant_id, user.id, framework.id
+
+
+def apply_dev_client_stage_for_email(
+    stage: int,
+    email: str,
+) -> dict[str, Any]:
+    """Posiciona qualquer lead/consultor cliente no estágio 1-3 pelo e-mail."""
+    tenant_id, user_id, framework_id = resolve_lead_membership_by_email(email)
+    return apply_dev_client_stage(
+        stage,
+        framework_id=framework_id,
+        tenant_id=tenant_id,
+        user_id=user_id,
+    )
+
+
 def apply_dev_client_stage(
     stage: int,
     *,
@@ -424,34 +465,59 @@ def apply_dev_client_stage(
     tenant_id: uuid.UUID | None = None,
     user_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
-    """Aplica estagio 1-3 no lead demo de um setor."""
+    """Aplica estagio 1-3 no lead demo de um setor ou num tenant/cliente específico."""
     if stage not in STAGE_LABELS:
         raise ValueError("Estagio invalido. Use 1, 2 ou 3.")
 
     assert_seed_environment()
-    profile = _resolve_sector_profile(sector, framework_id)
-    tenant_id = tenant_id or profile["tenant_id"]
-    user_id = user_id or profile["user_id"]
-    framework_id = profile["framework_id"]
+    explicit_target = tenant_id is not None and user_id is not None
 
-    framework = ensure_demo_accounts(sector=sector or DEV_DEFAULT_SECTOR)
+    if explicit_target:
+        from app.core.tenant_framework_resolver import resolve_framework_for_tenant
+
+        framework = db.session.get(Framework, framework_id) if framework_id else None
+        if not framework:
+            framework = resolve_framework_for_tenant(tenant_id)
+        if not framework:
+            raise ValueError("Nenhum framework ativo para o tenant informado.")
+        framework_id = framework.id
+        user = db.session.get(User, user_id)
+        lead_email = user.email if user else ""
+        access_code = None
+        sector_label = sector or getattr(framework, "sector", None) or DEV_DEFAULT_SECTOR
+    else:
+        profile = _resolve_sector_profile(sector, framework_id)
+        tenant_id = profile["tenant_id"]
+        user_id = profile["user_id"]
+        framework_id = profile["framework_id"]
+        framework = ensure_demo_accounts(sector=sector or DEV_DEFAULT_SECTOR)
+        lead_email = profile["email"]
+        access_code = profile["access_code"]
+        sector_label = sector or DEV_DEFAULT_SECTOR
+
     removed = reset_lead_diagnostic_data(tenant_id=tenant_id, user_id=user_id)
 
     result: dict[str, Any] = {
         "stage": stage,
         "status": STAGE_LABELS[stage],
-        "sector": sector or DEV_DEFAULT_SECTOR,
+        "sector": sector_label,
         "tenant_id": str(tenant_id),
         "user_id": str(user_id),
         "framework_id": framework.id,
-        "lead_email": profile["email"],
-        "access_code": profile["access_code"],
+        "lead_email": lead_email,
+        "access_code": access_code,
         "removed_records": removed,
         "answers_count": 0,
         "submission_id": None,
     }
 
     if stage == 1:
+        tenant = db.session.get(Tenant, tenant_id)
+        if tenant:
+            from app.core.journey_constants import JOURNEY_AGUARDANDO_CONTEXTO
+            from app.services.client_journey_service import set_journey_status
+
+            set_journey_status(tenant, JOURNEY_AGUARDANDO_CONTEXTO)
         db.session.commit()
         return result
 

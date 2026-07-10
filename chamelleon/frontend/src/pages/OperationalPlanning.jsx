@@ -1,15 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getSession } from '../services/session';
-import { listOperationalSites } from '../services/operationalApi';
+import { listOperationalSites, pushWeeklyGoals } from '../services/operationalApi';
 import { getIndustryLabels, getLabelsFromSites, selectUnitPrompt } from '../utils/industryLabels';
-
-const WEEKDAY_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-
-const DIARIO_API_URL = (
-  import.meta.env.VITE_DIARIO_OBRA_API_URL || 'http://localhost:6010'
-).replace(/\/$/, '');
-
-const INTEGRATION_API_KEY = import.meta.env.VITE_INTEGRATION_API_KEY || '';
 
 function mondayOfWeek(isoDate) {
   const d = new Date(`${isoDate}T12:00:00`);
@@ -112,40 +103,20 @@ export default function OperationalPlanning() {
       return;
     }
 
-    const session = getSession();
-    const tenantId = selectedSite.tenant_id || session?.tenantId;
-    if (!tenantId) {
-      setError('Sessão sem tenant_id.');
-      return;
-    }
-
     setSaving(true);
     setError('');
     setMessage('');
     try {
-      const headers = { 'Content-Type': 'application/json' };
-      if (INTEGRATION_API_KEY) headers['X-Integration-Key'] = INTEGRATION_API_KEY;
-
-      const response = await fetch(`${DIARIO_API_URL}/api/integration/daily-goals`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          tenant_id: tenantId,
-          project_id: selectedSite.satellite_site_id,
-          goals: payloadGoals,
-        }),
+      const data = await pushWeeklyGoals({
+        site_id: siteId,
+        goals: payloadGoals,
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || `Satélite respondeu HTTP ${response.status}`);
-      }
-      setMessage(
-        `Plano salvo no Diário de Obra (${data.total || payloadGoals.length} meta(s) injetadas).`,
-      );
+      const total = data?.satellite?.total || payloadGoals.length;
+      setMessage(`Plano salvo no Diário de Obra (${total} meta(s) injetadas).`);
     } catch (err) {
       setError(
         err.message ||
-          'Erro ao salvar plano no satélite. Confirme se o Diário de Obra está em :6010.',
+          'Erro ao salvar plano no Diário de Obra. Verifique se o canteiro está sincronizado.',
       );
     } finally {
       setSaving(false);

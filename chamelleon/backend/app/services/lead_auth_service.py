@@ -416,7 +416,7 @@ class LeadAuthService:
             "tenant_name": tenant.name if tenant else None,
             "framework_id": framework_id,
             "sector": sector,
-            "redirect": "/" if has_diagnostic else "/diagnostico",
+            "redirect": "/" if has_diagnostic else "/my-assessment",
         }
 
     def _build_team_session(self, user: User, membership: TenantUser) -> dict[str, Any]:
@@ -430,7 +430,7 @@ class LeadAuthService:
         framework_id = framework.id if framework else (tenant_fw.framework_id if tenant_fw else None)
         sector = self._sector_for_framework(framework_id, framework)
 
-        lead_redirect = "/diagnostico"
+        lead_redirect = "/my-assessment"
         if membership.role == ROLE_LED:
             has_diagnostic = (
                 AssessmentSubmission.query.filter_by(
@@ -440,12 +440,12 @@ class LeadAuthService:
                 ).first()
                 is not None
             )
-            lead_redirect = "/" if has_diagnostic else "/diagnostico"
+            lead_redirect = "/" if has_diagnostic else "/my-assessment"
 
         redirects = {
             ROLE_SYSADMIN: "/builder",
             ROLE_LED: lead_redirect,
-            "consultor": "/avaliacoes",
+            "consultor": "/my-assessment",
             "executor": "/",
         }
         return {

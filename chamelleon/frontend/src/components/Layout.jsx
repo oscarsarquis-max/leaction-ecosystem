@@ -4,6 +4,7 @@ import {
   filterNavItems,
   NAV_ITEMS,
   ROLE_LED,
+  ROLE_CONSULTOR,
   ROLE_SYSADMIN,
 } from '../config/rbac';
 import { GearIcon } from './icons/GearIcon';
@@ -142,14 +143,14 @@ export default function Layout() {
   const { userName, roleLabel, tenantName, sector, systemRole, journey, logout } = useAuth();
   const journeyFlags = resolveJourneyFlags(journey);
 
-  const visibleNav =
-    systemRole === ROLE_LED
-      ? buildLeadNavItems(journeyFlags)
-      : filterNavItems(NAV_ITEMS, systemRole);
+  const isClientUser = systemRole === ROLE_LED || systemRole === ROLE_CONSULTOR;
+  const visibleNav = isClientUser
+    ? buildLeadNavItems(journeyFlags, journey)
+    : filterNavItems(NAV_ITEMS, systemRole);
 
-  const headerTitle = systemRole === ROLE_LED ? 'Meu Diagnóstico' : 'Painel de Maturidade';
-  const headerKicker = systemRole === ROLE_LED ? 'Resultado e maturidade' : 'Visão executiva';
-  const showSectorQualifier = Boolean(sector) && systemRole === ROLE_LED;
+  const headerTitle = isClientUser ? 'Meu Diagnóstico' : 'Painel de Maturidade';
+  const headerKicker = isClientUser ? 'Resultado e maturidade' : 'Visão executiva';
+  const showSectorQualifier = Boolean(sector) && isClientUser;
   const showTenantContext = systemRole !== ROLE_SYSADMIN && Boolean(tenantName);
 
   function handleLogout() {

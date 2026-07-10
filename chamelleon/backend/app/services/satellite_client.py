@@ -54,3 +54,16 @@ class SatelliteClient:
                 data.get("error") or f"Satélite respondeu HTTP {response.status_code}"
             )
         return data
+
+    def reopen_rdo_log(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """POST /api/integration/logs/reopen — reabre RDO para edição."""
+        url = f"{self.base_url}/api/integration/logs/reopen"
+        response = requests.post(
+            url, json=payload, headers=self._headers(require_auth=True), timeout=30
+        )
+        data = response.json() if response.content else {}
+        if not response.ok:
+            raise RuntimeError(
+                data.get("error") or f"Satélite respondeu HTTP {response.status_code}"
+            )
+        return data

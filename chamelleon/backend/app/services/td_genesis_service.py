@@ -36,8 +36,28 @@ from app.services.client_journey_service import (
 )
 from app.services.diagnostic_scoring_service import maturity_scores_snapshot
 from app.services.operational_service import OperationalService
+from app.services.td_framework_gap_service import (
+    build_block_candidates,
+    format_block_catalog_for_prompt,
+    parse_block_id,
+)
 
 logger = logging.getLogger(__name__)
+
+_GENESIS_PHASE_KEY = "_genesis_phase"
+
+
+def _set_genesis_phase(tenant: Tenant, phase: str) -> None:
+    ctx = dict(tenant.context_data or {})
+    ctx[_GENESIS_PHASE_KEY] = phase
+    tenant.context_data = ctx
+
+
+def _clear_genesis_phase(tenant: Tenant) -> None:
+    ctx = dict(tenant.context_data or {})
+    if _GENESIS_PHASE_KEY in ctx:
+        del ctx[_GENESIS_PHASE_KEY]
+        tenant.context_data = ctx
 
 
 def _extract_json_object(raw: str) -> dict[str, Any]:
@@ -103,19 +123,42 @@ class TdGenesisService:
                 "É necessário concluir a avaliação PanelDX antes de gerar o plano de TD."
             )
 
+        from app.services.client_journey_service import _context_is_complete
+
+        if not _context_is_complete(tenant.context_data or {}):
+            raise ValueError(
+                "Preencha o contexto organizacional (Meus Dados) antes de gerar o plano de TD."
+            )
+
         set_journey_status(tenant, JOURNEY_PENDENTE)
+        _set_genesis_phase(tenant, "Preparando insumos do diagnóstico…")
         db.session.commit()
 
         try:
             set_journey_status(tenant, JOURNEY_PROCESSANDO)
+            _set_genesis_phase(tenant, "Cruzando Bússola Presente × Futuro com gaps…")
             db.session.commit()
 
             survey_snapshot = self._build_survey_snapshot(tenant_id)
+            submission = self._latest_completed_submission(tenant_id)
+            block_candidates = (
+                build_block_candidates(submission) if submission else []
+            )
+            survey_snapshot["block_candidates"] = block_candidates
+            survey_snapshot["block_pairs_with_gap"] = len(block_candidates)
             impediments = self._collect_gemba_impediments()
-            prompt = self._build_prompt(tenant, survey_snapshot, impediments)
+            prompt = self._build_prompt(
+                tenant, survey_snapshot, impediments, block_candidates
+            )
+            _set_genesis_phase(tenant, "Consultor LeAction analisando com Claude…")
+            db.session.commit()
             raw = invoke_claude(prompt, max_tokens=TD_AI_MAX_TOKENS)
             ai_payload = _extract_json_object(raw)
-            sprints_raw = self._normalize_sprints(ai_payload, survey_snapshot, impediments)
+            sprints_raw = self._normalize_sprints(
+                ai_payload, survey_snapshot, impediments, block_candidates
+            )
+            _set_genesis_phase(tenant, "Materializando plano e sprints no Kanban…")
+            db.session.commit()
             plan = self._materialize_plan(
                 tenant_id=tenant_id,
                 survey_snapshot=survey_snapshot,
@@ -124,6 +167,7 @@ class TdGenesisService:
             )
 
             set_journey_status(tenant, JOURNEY_CONCLUIDO)
+            _clear_genesis_phase(tenant)
             tenant.has_active_project = True
             db.session.commit()
 
@@ -139,6 +183,7 @@ class TdGenesisService:
             tenant = db.session.get(Tenant, tenant_id)
             if tenant:
                 set_journey_status(tenant, JOURNEY_ERRO_IA)
+                _clear_genesis_phase(tenant)
                 db.session.commit()
             raise
 
@@ -247,13 +292,17 @@ class TdGenesisService:
         tenant: Tenant,
         survey_snapshot: dict[str, Any],
         impediments: list[dict[str, Any]],
+        block_candidates: list[dict[str, Any]],
     ) -> str:
         context = tenant.context_data or {}
         priority = survey_snapshot.get("priority_domains") or []
+        catalog = format_block_catalog_for_prompt(block_candidates)
         return f"""{TD_GENESIS_SYSTEM_CONTRACT}
 
 TENANT: {tenant.name}
-PRIORITY_DOMAINS (os dois de maior gap / menor pontuação — as 3 primeiras sprints DEVEM pertencer a estes): {json.dumps(priority, ensure_ascii=False)}
+PRIORITY_DOMAINS (maior gap nos 6 domínios oficiais PanelDX): {json.dumps(priority, ensure_ascii=False)}
+
+{catalog}
 
 SURVEY_SNAPSHOT (escores agregados nos 6 domínios oficiais):
 {json.dumps(survey_snapshot.get("domains"), ensure_ascii=False, indent=2)}
@@ -264,10 +313,11 @@ IMPEDITIVOS_DO_GEMBA (últimos 30 dias — falhas de meta operacional):
 CONTEXTO_INSTITUCIONAL:
 {json.dumps({k: context.get(k) for k in ("dados_mercado", "dados_clientes", "clima_organizacional", "mercado_resumo", "dados_etnograficos", "clima_resumo") if context.get(k)}, ensure_ascii=False, indent=2)}
 
-SCHEMA DE OUTPUT (objeto JSON único — espelho do modal de execução de Sprint PanelDX):
+SCHEMA DE OUTPUT (objeto JSON único — espelho do modal PanelDX):
 {{
   "sprints": [
     {{
+      "id_bloc": "UUID do bloco metodológico (obrigatório — use id_bloc do catálogo)",
       "nome_sprint": "string",
       "paneldx_domain": "Estratégia|Cultura|Processos|Tecnologia|Dados|Clientes",
       "origin_type": "baseline|kaizen_emergent",
@@ -293,10 +343,10 @@ SCHEMA DE OUTPUT (objeto JSON único — espelho do modal de execução de Sprin
 }}
 
 CONSTRAINTS ADICIONAIS:
-- Gere entre 6 e {TD_GENESE_MAX_SPRINTS} sprints.
-- As sprints com priority_rank 1, 2 e 3 DEVEM ter paneldx_domain em {json.dumps(priority, ensure_ascii=False)}.
-- Pelo menos 1 sprint com gemba_driven=true e origin_type="kaizen_emergent" atacando a causa raiz dos Impeditivos do Gemba (se a lista estiver vazia, crie 1 sprint estrutural de Processos/Cultura para padronizar a rotina do Gemba).
-- Cada sprint DEVE preencher os campos do modal PanelDX (derv_defi, derv_comp, criteria_dod, atividades_taticas, swot_*).
+- Gere enriquecimento para os blocos do catálogo com gap F−P positivo (priorize maior gap).
+- Cada sprint DEVE referenciar id_bloc existente no catálogo — NÃO invente blocos.
+- Use o contexto institucional para personalizar objetivo, DoD e atividades táticas.
+- Pelo menos 1 sprint gemba_driven=true atacando impeditivos do Gemba (se houver), sempre com id_bloc.
 - Output: somente JSON válido, sem markdown.
 """
 
@@ -305,137 +355,162 @@ CONSTRAINTS ADICIONAIS:
         ai_payload: dict[str, Any],
         survey_snapshot: dict[str, Any],
         impediments: list[dict[str, Any]],
+        block_candidates: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         raw_list = ai_payload.get("sprints")
         if not isinstance(raw_list, list):
             raw_list = ai_payload.get("roadmap_estrategico") or []
         if not isinstance(raw_list, list):
-            raise ValueError("Payload da IA sem lista de sprints.")
+            raw_list = []
 
-        priority_domains = list(survey_snapshot.get("priority_domains") or [])
-        if len(priority_domains) < 2:
-            priority_domains = [d["domain"] for d in (survey_snapshot.get("top_gaps") or [])[:2]]
-        if not priority_domains:
-            priority_domains = ["Processos", "Tecnologia"]
-
-        normalized: list[dict[str, Any]] = []
-        for index, item in enumerate(raw_list):
+        ai_by_block = {}
+        for item in raw_list:
             if not isinstance(item, dict):
                 continue
-            title = str(
-                item.get("nome_sprint")
-                or item.get("name_sprn")
-                or item.get("title")
-                or ""
-            ).strip()
-            if not title:
-                continue
-            domain = resolve_td_domain(
-                item.get("paneldx_domain") or item.get("dominio") or item.get("domain")
+            block_id = parse_block_id(
+                item.get("id_bloc") or item.get("framework_block_id") or item.get("id_bloco")
             )
-            if not domain:
-                domain = priority_domains[index % len(priority_domains)]
-            origin = str(item.get("origin_type") or TdOriginType.BASELINE.value).strip()
-            if origin not in (
-                TdOriginType.BASELINE.value,
-                TdOriginType.KAIZEN_EMERGENT.value,
-            ):
-                origin = TdOriginType.BASELINE.value
-            gemba_driven = bool(item.get("gemba_driven")) or origin == (
-                TdOriginType.KAIZEN_EMERGENT.value
-            )
-            if gemba_driven:
-                origin = TdOriginType.KAIZEN_EMERGENT.value
+            if block_id:
+                ai_by_block[block_id] = item
 
-            rank = item.get("priority_rank")
-            try:
-                rank = int(rank) if rank is not None else index + 1
-            except (TypeError, ValueError):
-                rank = index + 1
-
-            dod = item.get("criteria_dod") if isinstance(item.get("criteria_dod"), dict) else {}
-            required = dod.get("required") if isinstance(dod.get("required"), list) else []
-            education = (
-                dod.get("context_education")
-                if isinstance(dod.get("context_education"), list)
-                else []
-            )
-
-            normalized.append(
-                {
-                    "title": title[:255],
-                    "description": str(
-                        item.get("descricao")
-                        or item.get("desc_sprn")
-                        or item.get("objetivo")
-                        or item.get("justificativa_baseada_no_relatorio")
-                        or ""
-                    ).strip()
-                    or None,
-                    "paneldx_domain": domain,
-                    "origin_type": origin,
-                    "gemba_driven": gemba_driven,
-                    "priority_rank": rank,
-                    "goals_payload": {
-                        "name_sprn": title,
-                        "desc_sprn": str(
-                            item.get("descricao") or item.get("desc_sprn") or ""
-                        ).strip(),
-                        "objetivo": str(
-                            item.get("objetivo") or item.get("descricao") or ""
-                        ).strip(),
-                        "derv_defi": str(item.get("derv_defi") or "").strip(),
-                        "derv_comp": str(item.get("derv_comp") or "").strip(),
-                        "criteria_dod": {
-                            "required": [str(x) for x in required],
-                            "context_education": [str(x) for x in education],
-                        },
-                        "atividades_taticas": [
-                            str(x)
-                            for x in (item.get("atividades_taticas") or [])
-                            if str(x).strip()
-                        ],
-                        "swot_type": str(item.get("swot_type") or "Fraqueza").strip(),
-                        "swot_justification": str(
-                            item.get("swot_justification")
-                            or item.get("justificativa_baseada_no_relatorio")
-                            or ""
-                        ).strip(),
-                        "week_sprn": int(item.get("week_sprn") or 2),
-                        "targv_sprn": int(item.get("targv_sprn") or 10),
-                        "realv_sprn": 0,
-                        "metrics_scores": item.get("metrics_scores")
-                        if isinstance(item.get("metrics_scores"), dict)
-                        else {},
-                        "justificativa_baseada_no_relatorio": str(
-                            item.get("justificativa_baseada_no_relatorio") or ""
-                        ).strip(),
-                        "onda": str(item.get("onda") or "").strip(),
-                        "gemba_driven": gemba_driven,
-                        "priority_rank": rank,
-                        "paneldx_domain": domain,
-                    },
-                }
-            )
-
-        if not normalized:
+        if block_candidates:
+            normalized = [
+                self._sprint_from_block_candidate(
+                    candidate,
+                    ai_by_block.get(candidate["framework_block_id"]),
+                    rank=index + 1,
+                )
+                for index, candidate in enumerate(block_candidates)
+            ]
+        else:
+            priority_domains = list(survey_snapshot.get("priority_domains") or [])
             normalized = self._fallback_sprints(survey_snapshot, impediments, priority_domains)
 
-        # Enforce: first 3 belong to the two priority domains
-        normalized.sort(key=lambda s: s["priority_rank"])
-        for i in range(min(3, len(normalized))):
-            if normalized[i]["paneldx_domain"] not in priority_domains:
-                normalized[i]["paneldx_domain"] = priority_domains[i % len(priority_domains)]
-                normalized[i]["goals_payload"]["paneldx_domain"] = normalized[i][
-                    "paneldx_domain"
-                ]
-
-        # Enforce at least one Gemba structural sprint
+        # Enriquecer / inserir sprint Gemba com bloco vinculado
         if not any(s["gemba_driven"] for s in normalized):
-            gemba = self._build_gemba_sprint(impediments, priority_domains)
-            normalized.insert(min(3, len(normalized)), gemba)
+            gemba = self._build_gemba_sprint(impediments, block_candidates, survey_snapshot)
+            if gemba:
+                normalized.append(gemba)
 
-        return normalized[:TD_GENESE_MAX_SPRINTS]
+        normalized.sort(
+            key=lambda s: (
+                0 if s.get("gemba_driven") else 1,
+                -(s.get("gap_fp") or 0),
+                s.get("priority_rank") or 999,
+            )
+        )
+        for index, sprint in enumerate(normalized, start=1):
+            sprint["priority_rank"] = index
+            sprint["goals_payload"]["priority_rank"] = index
+
+        return normalized
+
+    def _sprint_from_block_candidate(
+        self,
+        candidate: dict[str, Any],
+        ai_item: dict[str, Any] | None,
+        *,
+        rank: int,
+    ) -> dict[str, Any]:
+        dim_num = candidate.get("dimension_num") or "?"
+        block_name = candidate.get("name_bloc") or "Bloco metodológico"
+        default_title = f"[DIM {dim_num}] {block_name}"
+        ai_item = ai_item or {}
+
+        title = str(
+            ai_item.get("nome_sprint") or ai_item.get("name_sprn") or default_title
+        ).strip()[:255]
+        if not title.startswith("[DIM"):
+            title = default_title[:255]
+
+        origin = str(ai_item.get("origin_type") or TdOriginType.BASELINE.value).strip()
+        gemba_driven = bool(ai_item.get("gemba_driven")) or origin == (
+            TdOriginType.KAIZEN_EMERGENT.value
+        )
+        if gemba_driven:
+            origin = TdOriginType.KAIZEN_EMERGENT.value
+
+        dod = ai_item.get("criteria_dod") if isinstance(ai_item.get("criteria_dod"), dict) else {}
+        if not dod:
+            dod = candidate.get("criteria_dod") or {}
+        required = dod.get("required") if isinstance(dod.get("required"), list) else []
+        education = (
+            dod.get("context_education") if isinstance(dod.get("context_education"), list) else []
+        )
+
+        domain = resolve_td_domain(
+            ai_item.get("paneldx_domain") or candidate.get("paneldx_domain")
+        ) or candidate.get("paneldx_domain")
+
+        description = str(
+            ai_item.get("descricao")
+            or ai_item.get("desc_sprn")
+            or ai_item.get("objetivo")
+            or candidate.get("desc_bloc")
+            or ""
+        ).strip() or None
+
+        goals_payload = {
+            "name_sprn": title,
+            "desc_sprn": description or "",
+            "objetivo": str(ai_item.get("objetivo") or description or "").strip(),
+            "derv_defi": str(
+                ai_item.get("derv_defi") or candidate.get("derv_defi") or ""
+            ).strip(),
+            "derv_comp": str(
+                ai_item.get("derv_comp") or candidate.get("derv_comp") or ""
+            ).strip(),
+            "criteria_dod": {
+                "required": [str(x) for x in required],
+                "context_education": [str(x) for x in education],
+            },
+            "atividades_taticas": [
+                str(x) for x in (ai_item.get("atividades_taticas") or []) if str(x).strip()
+            ],
+            "swot_type": str(ai_item.get("swot_type") or "Fraqueza").strip(),
+            "swot_justification": str(
+                ai_item.get("swot_justification")
+                or ai_item.get("justificativa_baseada_no_relatorio")
+                or ""
+            ).strip(),
+            "week_sprn": int(ai_item.get("week_sprn") or 2),
+            "targv_sprn": int(ai_item.get("targv_sprn") or 10),
+            "realv_sprn": 0,
+            "metrics_scores": ai_item.get("metrics_scores")
+            if isinstance(ai_item.get("metrics_scores"), dict)
+            else {},
+            "justificativa_baseada_no_relatorio": str(
+                ai_item.get("justificativa_baseada_no_relatorio") or ""
+            ).strip(),
+            "onda": str(ai_item.get("onda") or "Onda 1 — Prioridade Gap").strip(),
+            "gemba_driven": gemba_driven,
+            "priority_rank": rank,
+            "paneldx_domain": domain,
+            "framework_block_id": candidate["framework_block_id"],
+            "framework_deliverable_id": candidate.get("framework_deliverable_id"),
+            "legacy_id_bloc": candidate.get("legacy_id_bloc"),
+            "name_bloc": candidate.get("name_bloc"),
+            "name_derv": candidate.get("name_derv"),
+            "dimension_name": candidate.get("dimension_name"),
+            "domain_name": candidate.get("domain_name"),
+            "dimension_num": candidate.get("dimension_num"),
+            "gap_fp": candidate.get("gap_fp"),
+            "score_presente": candidate.get("score_presente"),
+            "score_futuro": candidate.get("score_futuro"),
+        }
+
+        return {
+            "title": title,
+            "description": description,
+            "paneldx_domain": domain,
+            "origin_type": origin,
+            "gemba_driven": gemba_driven,
+            "priority_rank": rank,
+            "gap_fp": candidate.get("gap_fp"),
+            "framework_block_id": candidate["framework_block_id"],
+            "framework_deliverable_id": candidate.get("framework_deliverable_id"),
+            "goals_payload": goals_payload,
+        }
 
     def _fallback_sprints(
         self,
@@ -493,6 +568,48 @@ CONSTRAINTS ADICIONAIS:
         return sprints
 
     def _build_gemba_sprint(
+        self,
+        impediments: list[dict[str, Any]],
+        block_candidates: list[dict[str, Any]],
+        survey_snapshot: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        if not impediments and not block_candidates:
+            return None
+        sample = impediments[0] if impediments else {}
+        detail = (sample.get("impediment_details") or "falhas recorrentes de meta no Gemba")[:280]
+
+        candidate = None
+        for cand in block_candidates:
+            if cand.get("paneldx_domain") == "Processos":
+                candidate = cand
+                break
+        if not candidate and block_candidates:
+            candidate = block_candidates[0]
+
+        if candidate:
+            sprint = self._sprint_from_block_candidate(candidate, None, rank=999)
+            sprint["gemba_driven"] = True
+            sprint["origin_type"] = TdOriginType.KAIZEN_EMERGENT.value
+            sprint["title"] = f"[TÁTICO] [DIM {candidate.get('dimension_num')}] Eliminar causa raiz — Gemba"
+            sprint["description"] = (
+                f"Sprint estrutural contra impeditivos recorrentes: {detail}"
+            )
+            sprint["goals_payload"]["gemba_driven"] = True
+            sprint["goals_payload"]["name_sprn"] = sprint["title"]
+            sprint["goals_payload"]["desc_sprn"] = sprint["description"]
+            sprint["goals_payload"]["objetivo"] = (
+                "Padronizar contenção e prevenção das falhas operacionais recorrentes."
+            )
+            sprint["goals_payload"]["onda"] = "Gemba — Causa Raiz"
+            sprint["goals_payload"]["swot_justification"] = detail
+            sprint["gap_fp"] = (candidate.get("gap_fp") or 0) + 0.5
+            sprint["goals_payload"]["gap_fp"] = sprint["gap_fp"]
+            return sprint
+
+        priority_domains = list(survey_snapshot.get("priority_domains") or ["Processos"])
+        return self._build_gemba_sprint_legacy(impediments, priority_domains)
+
+    def _build_gemba_sprint_legacy(
         self, impediments: list[dict[str, Any]], priority_domains: list[str]
     ) -> dict[str, Any]:
         domain = "Processos" if "Processos" in TD_OFFICIAL_DOMAINS_SET else priority_domains[0]
@@ -574,10 +691,43 @@ CONSTRAINTS ADICIONAIS:
             plan.is_active = False
 
         snapshot = dict(survey_snapshot)
+        ordered = sorted(sprints_raw, key=lambda s: s.get("priority_rank") or 999)
+        kanban_slots = 0
+        exec_count = 0
+        backlog_reserve: list[dict[str, Any]] = []
+
+        for item in ordered:
+            if kanban_slots < TD_GENESE_MAX_SPRINTS:
+                if item.get("gemba_driven"):
+                    item["_stage"] = TdKanbanStage.KAIZEN_ENTRADA.value
+                    kanban_slots += 1
+                elif exec_count < TD_GENESE_ONDA1_ATIVAS:
+                    item["_stage"] = TdKanbanStage.EXECUCAO.value
+                    exec_count += 1
+                    kanban_slots += 1
+                else:
+                    item["_stage"] = TdKanbanStage.PLANEJADA.value
+                    kanban_slots += 1
+            else:
+                item["_stage"] = TdKanbanStage.BACKLOG.value
+                backlog_reserve.append(
+                    {
+                        "title": item.get("title"),
+                        "framework_block_id": item.get("framework_block_id"),
+                        "dimension_name": (item.get("goals_payload") or {}).get("dimension_name"),
+                        "domain_name": (item.get("goals_payload") or {}).get("domain_name"),
+                        "gap_fp": item.get("gap_fp"),
+                    }
+                )
+
         snapshot["ai_meta"] = {
-            "sprint_count": len(sprints_raw),
+            "sprint_count": len(ordered),
+            "kanban_count": min(len(ordered), TD_GENESE_MAX_SPRINTS),
+            "backlog_count": max(0, len(ordered) - TD_GENESE_MAX_SPRINTS),
             "priority_domains": survey_snapshot.get("priority_domains"),
         }
+        if backlog_reserve:
+            snapshot["backlog_geral_relatorio"] = backlog_reserve
         if isinstance(ai_payload.get("relatorio_inteligencia"), dict):
             snapshot["relatorio_inteligencia"] = ai_payload["relatorio_inteligencia"]
 
@@ -594,12 +744,28 @@ CONSTRAINTS ADICIONAIS:
             for sprint in list(old.sprints):
                 db.session.delete(sprint)
 
-        ordered = sorted(sprints_raw, key=lambda s: s["priority_rank"])
+        ordered = sorted(sprints_raw, key=lambda s: s.get("priority_rank") or 999)
         for index, item in enumerate(ordered):
-            stage = self._stage_for_rank(index, item)
+            stage = item.pop("_stage", None) or self._stage_for_rank(index, item)
             goals = dict(item["goals_payload"])
             goals["ordr_sprn"] = index + 1
             goals["stat_sprn"] = self._panel_status_for_stage(stage)
+
+            block_uuid = None
+            derv_uuid = None
+            raw_block = item.get("framework_block_id")
+            raw_derv = item.get("framework_deliverable_id")
+            if raw_block:
+                try:
+                    block_uuid = uuid.UUID(str(raw_block))
+                except (TypeError, ValueError):
+                    block_uuid = None
+            if raw_derv:
+                try:
+                    derv_uuid = uuid.UUID(str(raw_derv))
+                except (TypeError, ValueError):
+                    derv_uuid = None
+
             sprint = TdSprint(
                 tenant_id=tenant_id,
                 plan_id=plan.id,
@@ -609,6 +775,9 @@ CONSTRAINTS ADICIONAIS:
                 origin_type=item["origin_type"],
                 kanban_stage=stage,
                 goals_payload=goals,
+                framework_block_id=block_uuid,
+                framework_deliverable_id=derv_uuid,
+                gap_fp=item.get("gap_fp"),
             )
             db.session.add(sprint)
 
@@ -622,7 +791,7 @@ CONSTRAINTS ADICIONAIS:
             return TdKanbanStage.KAIZEN_ENTRADA.value
         if index < TD_GENESE_ONDA1_ATIVAS:
             return TdKanbanStage.EXECUCAO.value
-        if index < TD_GENESE_ONDA1_ATIVAS + 4:
+        if index < TD_GENESE_MAX_SPRINTS:
             return TdKanbanStage.PLANEJADA.value
         return TdKanbanStage.BACKLOG.value
 

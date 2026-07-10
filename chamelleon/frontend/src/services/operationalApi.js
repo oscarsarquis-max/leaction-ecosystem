@@ -78,3 +78,11 @@ export function getOperationalReportsSummary({ startDate, endDate, siteId } = {}
   const query = params.toString() ? `?${params.toString()}` : '';
   return apiRequest(`/operational/reports/summary${query}`);
 }
+
+export function reopenOperationalDay({ siteId, date }) {
+  return apiRequest('/operational/reports/reopen', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ site_id: siteId, date }),
+  });
+}

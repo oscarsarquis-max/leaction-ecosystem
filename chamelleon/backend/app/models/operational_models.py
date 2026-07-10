@@ -122,6 +122,7 @@ class DailyExecutionReport(db.Model):
             "impediment_details": self.impediment_details,
             "mitigation_action": self.mitigation_action,
             "preventive_action": self.preventive_action,
+            "raw_payload": self.raw_payload,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

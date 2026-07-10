@@ -43,12 +43,23 @@ export function resolveJourneyFlags(journey) {
   };
 }
 
-export function buildLeadNavItems(journeyFlags) {
+export function buildLeadNavItems(journeyFlags, journey) {
+  const submissionId = journey?.latest_submission_id || null;
   const base = [
-    { to: '/', label: 'Meu Resultado', end: true },
-    { to: '/diagnostico', label: 'Diagnóstico' },
-    { to: '/meus-dados', label: 'Meus Dados' },
+    { to: '/', label: 'Painel de Maturidade', end: true },
   ];
+
+  if (submissionId) {
+    base.push({
+      to: `/relatorio/${submissionId}`,
+      label: 'Relatório de Diagnóstico',
+    });
+  }
+
+  base.push(
+    { to: '/my-assessment', label: 'Minha Avaliação' },
+    { to: '/meus-dados', label: 'Meus Dados' },
+  );
 
   base.push(KAIZEN_NAV_ITEM);
   base.push(TD_AREA_NAV);

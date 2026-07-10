@@ -136,7 +136,7 @@ def build_journey_payload(tenant: Tenant) -> dict[str, Any]:
     is_aguardando_contexto = status_ia == JOURNEY_AGUARDANDO_CONTEXTO
     is_presurvey_ok = status_ia == JOURNEY_PRESURVEY_OK
     is_projeto_ok = status_ia == JOURNEY_PROJETO_OK or has_active
-    is_contexto_ok = status_ia == JOURNEY_CONTEXTO_OK or has_context
+    is_contexto_ok = has_context
     is_avaliacao_ok = status_ia == JOURNEY_AVALIACAO_OK or _has_completed_assessment(tenant.id)
     is_em_processamento = status_ia in (JOURNEY_PENDENTE, JOURNEY_PROCESSANDO)
     is_plano_concluido = status_ia == JOURNEY_CONCLUIDO
@@ -172,10 +172,25 @@ def build_journey_payload(tenant: Tenant) -> dict[str, Any]:
         and (not is_plano_concluido or is_erro_ia)
     )
 
+    latest_submission = (
+        AssessmentSubmission.query.filter_by(
+            tenant_id=tenant.id,
+            status="completed",
+        )
+        .order_by(
+            AssessmentSubmission.evaluated_at.desc().nulls_last(),
+            AssessmentSubmission.created_at.desc(),
+        )
+        .first()
+    )
+
     return {
         "status_ia": status_ia,
         "has_active_project": has_active,
         "context_data": context_data,
+        "context_filled": has_context,
+        "latest_submission_id": str(latest_submission.id) if latest_submission else None,
+        "has_diagnostic_report": bool(latest_submission and latest_submission.report_data),
         "flags": {
             "is_aguardando_contexto": is_aguardando_contexto,
             "is_presurvey_ok": is_presurvey_ok,
@@ -226,3 +241,28 @@ def get_journey_for_tenant(tenant_id) -> dict[str, Any]:
     if not tenant:
         raise ValueError("Tenant não encontrado.")
     return build_journey_payload(tenant)
+
+
+def build_td_readiness_status(tenant_id) -> dict[str, Any]:
+    """Portão de prontidão para Gênese TD — contexto + avaliação completa."""
+    from app.services.assessment_service import AssessmentService
+
+    tenant = db.session.get(Tenant, tenant_id)
+    if not tenant:
+        raise ValueError("Tenant não encontrado.")
+
+    context_data = tenant.context_data or {}
+    context_filled = _context_is_complete(context_data)
+    survey_completed = _has_completed_assessment(tenant.id)
+    survey_progress_pct = (
+        100.0 if survey_completed else AssessmentService().get_tenant_survey_progress_pct(tenant.id)
+    )
+
+    is_ready = context_filled and survey_completed
+
+    return {
+        "is_ready": is_ready,
+        "context_filled": context_filled,
+        "survey_completed": survey_completed,
+        "survey_progress_pct": round(survey_progress_pct, 1),
+    }
