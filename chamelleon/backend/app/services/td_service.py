@@ -146,6 +146,13 @@ class TdService:
                         f"O Kanban já possui {TD_GENESE_MAX_SPRINTS} sprints ativas. "
                         "Conclua ou devolva uma sprint antes de promover outra."
                     )
+            if (
+                stage == TdKanbanStage.EXECUCAO.value
+                and sprint.kanban_stage != TdKanbanStage.EXECUCAO.value
+            ):
+                from app.services.capacity_service import CapacityService
+
+                CapacityService().assert_squad_ready_for_execution(sprint)
             sprint.kanban_stage = stage
             goals = dict(sprint.goals_payload or {})
             goals["stat_sprn"] = self._panel_status_for_stage(stage)
@@ -155,9 +162,16 @@ class TdService:
             goals = payload.get("goals_payload")
             if goals is not None and not isinstance(goals, dict):
                 raise ValueError("goals_payload deve ser um objeto JSON.")
-            merged = dict(sprint.goals_payload or {})
+            previous = dict(sprint.goals_payload or {})
+            merged = dict(previous)
             merged.update(goals or {})
+            self._validate_activities_okr_and_assignee(sprint, merged)
             sprint.goals_payload = merged
+            affected_krs = self._collect_activity_kr_ids(previous) | self._collect_activity_kr_ids(
+                merged
+            )
+            if affected_krs:
+                self._sync_kr_progress_from_activities(sprint.tenant_id, affected_krs)
 
         if "exec_notes" in payload:
             merged = dict(sprint.goals_payload or {})
@@ -311,3 +325,186 @@ class TdService:
             raise ValueError(
                 f"origin_type inválido. Use um de: {', '.join(TD_ORIGIN_TYPES)}"
             )
+
+    @staticmethod
+    def _activity_is_done(activity: dict[str, Any]) -> bool:
+        status = str(activity.get("status") or "").strip().lower()
+        return bool(activity.get("done")) or status in {"concluida", "done", "completed"}
+
+    @staticmethod
+    def _collect_activity_kr_ids(goals: dict[str, Any]) -> set[str]:
+        ids: set[str] = set()
+        raw = goals.get("atividades_execucao")
+        if not isinstance(raw, list):
+            return ids
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            kr_id = item.get("linked_kr_id")
+            if kr_id:
+                ids.add(str(kr_id))
+        return ids
+
+    def _squad_assignee_ids(self, sprint: TdSprint) -> set[str]:
+        from app.models.capacity_models import SprintSquad
+
+        squad = SprintSquad.query.filter_by(
+            sprint_id=sprint.id,
+            tenant_id=sprint.tenant_id,
+        ).first()
+        if not squad:
+            return set()
+        return {str(pid) for pid in squad.all_professional_ids() if pid}
+
+    def _validate_activities_okr_and_assignee(
+        self,
+        sprint: TdSprint,
+        goals: dict[str, Any],
+    ) -> None:
+        """Toda atividade tática exige KR (OKR) + responsável da squad."""
+        from app.models.capacity_models import Professional
+        from app.models.okr_models import OkrKeyResult
+
+        raw = goals.get("atividades_execucao")
+        if raw is None:
+            return
+        if not isinstance(raw, list):
+            raise ValueError("atividades_execucao deve ser uma lista.")
+
+        squad_ids = self._squad_assignee_ids(sprint)
+        for index, item in enumerate(raw, start=1):
+            if not isinstance(item, dict):
+                raise ValueError(f"Atividade #{index}: formato inválido.")
+            text = str(item.get("text") or item.get("nome") or "").strip()
+            if not text:
+                raise ValueError(f"Atividade #{index}: informe o nome.")
+
+            kr_raw = item.get("linked_kr_id")
+            if not kr_raw:
+                raise ValueError(
+                    f"Atividade '{text}': vincule obrigatoriamente a um Key Result (OKR)."
+                )
+            try:
+                kr_uuid = uuid.UUID(str(kr_raw))
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Atividade '{text}': linked_kr_id inválido.") from exc
+
+            kr = (
+                db.session.query(OkrKeyResult)
+                .filter(
+                    OkrKeyResult.id == kr_uuid,
+                    OkrKeyResult.tenant_id == sprint.tenant_id,
+                )
+                .first()
+            )
+            if not kr:
+                raise ValueError(f"Atividade '{text}': Key Result não encontrado neste tenant.")
+
+            assignee_raw = item.get("assignee_id")
+            if not assignee_raw:
+                raise ValueError(
+                    f"Atividade '{text}': atribua obrigatoriamente a um membro da equipe."
+                )
+            try:
+                assignee_uuid = uuid.UUID(str(assignee_raw))
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Atividade '{text}': assignee_id inválido.") from exc
+
+            professional = (
+                db.session.query(Professional)
+                .filter(
+                    Professional.id == assignee_uuid,
+                    Professional.tenant_id == sprint.tenant_id,
+                    Professional.is_active.is_(True),
+                )
+                .first()
+            )
+            if not professional:
+                raise ValueError(
+                    f"Atividade '{text}': responsável inválido ou inativo no pool."
+                )
+            if not squad_ids:
+                raise ValueError(
+                    f"Atividade '{text}': forme a Squad desta sprint (PO + SM) no planejamento "
+                    "antes de atribuir responsáveis. A Squad é exclusiva desta sprint e pode "
+                    "ser ajustada durante a execução."
+                )
+            if str(assignee_uuid) not in squad_ids:
+                raise ValueError(
+                    f"Atividade '{text}': o responsável deve pertencer à Squad desta sprint."
+                )
+
+            # Normaliza campos canônicos no payload.
+            item["linked_kr_id"] = str(kr_uuid)
+            item["assignee_id"] = str(assignee_uuid)
+            item["text"] = text
+            if self._activity_is_done(item):
+                item["status"] = "concluida"
+                item["done"] = True
+
+    def _sync_kr_progress_from_activities(
+        self,
+        tenant_id: uuid.UUID,
+        kr_ids: set[str],
+    ) -> None:
+        """Recalcula current_value do KR pela conclusão das atividades vinculadas."""
+        from app.models.okr_models import OkrKeyResult
+
+        if not kr_ids:
+            return
+
+        sprints = (
+            TdSprint.query.filter(TdSprint.tenant_id == tenant_id)
+            .order_by(TdSprint.created_at.asc())
+            .all()
+        )
+
+        buckets: dict[str, list[dict[str, Any]]] = {kid: [] for kid in kr_ids}
+        for sprint in sprints:
+            goals = sprint.goals_payload or {}
+            raw = goals.get("atividades_execucao")
+            if not isinstance(raw, list):
+                continue
+            for item in raw:
+                if not isinstance(item, dict):
+                    continue
+                kid = str(item.get("linked_kr_id") or "")
+                if kid in buckets:
+                    buckets[kid].append(item)
+
+        for kid, items in buckets.items():
+            try:
+                kr_uuid = uuid.UUID(kid)
+            except ValueError:
+                continue
+            kr = (
+                db.session.query(OkrKeyResult)
+                .filter(
+                    OkrKeyResult.id == kr_uuid,
+                    OkrKeyResult.tenant_id == tenant_id,
+                )
+                .first()
+            )
+            if not kr:
+                continue
+            if not items:
+                continue
+
+            total_weight = 0.0
+            done_weight = 0.0
+            for item in items:
+                weight = float(item.get("contribution_value") or 1.0)
+                if weight <= 0:
+                    weight = 1.0
+                total_weight += weight
+                if self._activity_is_done(item):
+                    done_weight += weight
+
+            if total_weight <= 0:
+                kr.current_value = 0.0
+            else:
+                ratio = min(1.0, max(0.0, done_weight / total_weight))
+                kr.current_value = round(float(kr.target_value or 0.0) * ratio, 2)
+
+            # Mantém vínculo sprint↔KR no nível da sprint (último KR tocado).
+            # Não sobrescreve se já houver outro — opcional via caller.

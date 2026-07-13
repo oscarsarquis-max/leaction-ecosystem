@@ -13,14 +13,17 @@ from app.api.kaizen_routes import kaizen_bp
 from app.api.operational_routes import operational_bp
 from app.api.questions_routes import questions_bp
 from app.api.td_routes import td_bp
+from app.api.okr_routes import okr_bp
 from app.api.users_routes import users_bp
 from app.api.seed_routes import seed_bp
 from app.api.webhook_routes import webhook_bp
 from app.core.gemba_webhook_auth import resolve_gemba_webhook_secret
 from app.core.middlewares import load_tenant_context
 from app.database.models import db
+import app.models.capacity_models  # noqa: F401 — Pool de Talentos / SprintSquad
 import app.models.kaizen_models  # noqa: F401 — registra tabelas Gemba-Kaizen
 import app.models.operational_models  # noqa: F401 — unidades operacionais e relatórios
+import app.models.okr_models  # noqa: F401 — Planejamento Estratégico (OKR)
 import app.models.td_models  # noqa: F401 — Transformação Digital (Plano + Sprints)
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -53,6 +56,7 @@ def create_app() -> Flask:
     app.register_blueprint(kaizen_bp, url_prefix="/api/kaizen")
     app.register_blueprint(operational_bp, url_prefix="/api/operational")
     app.register_blueprint(td_bp, url_prefix="/api/td")
+    app.register_blueprint(okr_bp, url_prefix="/api/okr")
     app.register_blueprint(users_bp, url_prefix="/api")
     app.register_blueprint(seed_bp, url_prefix="/api")
     app.register_blueprint(webhook_bp, url_prefix="/api/webhooks")
@@ -63,6 +67,10 @@ def create_app() -> Flask:
         from app.core.bootstrap import ensure_published_framework
 
         ensure_published_framework()
+        # OKRs canônicos PanelDX para todo tenant (novos e existentes sem matriz).
+        from app.services.okr_service import ensure_canonical_okrs_for_all_tenants
+
+        ensure_canonical_okrs_for_all_tenants()
 
     @app.get("/api/health")
     def health_check():
@@ -229,6 +237,7 @@ def _apply_schema_patches() -> None:
             "location": "VARCHAR(512)",
             "industry_type": "VARCHAR(64) NOT NULL DEFAULT 'Construcao'",
             "manager_id": "UUID",
+            "weekly_goals": "JSONB",
         }
         for col_name, col_def in site_patches.items():
             if col_name not in cols:
@@ -299,6 +308,7 @@ def _apply_schema_patches() -> None:
             "framework_block_id": "UUID REFERENCES framework_blocks(id) ON DELETE SET NULL",
             "framework_deliverable_id": "UUID REFERENCES framework_deliverables(id) ON DELETE SET NULL",
             "gap_fp": "DOUBLE PRECISION",
+            "linked_kr_id": "UUID REFERENCES okr_key_results(id) ON DELETE SET NULL",
         }
         for col_name, col_def in sprint_patches.items():
             if col_name not in cols:
@@ -312,4 +322,47 @@ def _apply_schema_patches() -> None:
                     "ON td_sprints (origin_ref_id)"
                 )
             )
+        if "linked_kr_id" not in cols:
+            db.session.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_td_sprints_linked_kr_id "
+                    "ON td_sprints (linked_kr_id)"
+                )
+            )
+        db.session.commit()
+
+    if "professionals" in tables:
+        cols = {c["name"] for c in inspector.get_columns("professionals")}
+        prof_patches = {
+            "email": "VARCHAR(255)",
+            "observations": "TEXT",
+            "user_id": "UUID REFERENCES users(id) ON DELETE SET NULL",
+        }
+        for col_name, col_def in prof_patches.items():
+            if col_name not in cols:
+                db.session.execute(
+                    text(f"ALTER TABLE professionals ADD COLUMN {col_name} {col_def}")
+                )
+        if "user_id" not in cols:
+            db.session.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_professionals_user_id "
+                    "ON professionals (user_id)"
+                )
+            )
+        if "email" not in cols:
+            db.session.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_professionals_email "
+                    "ON professionals (email)"
+                )
+            )
+        # Unique (tenant_id, email) — parcial para emails não-nulos
+        db.session.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_professionals_tenant_email "
+                "ON professionals (tenant_id, lower(email)) "
+                "WHERE email IS NOT NULL"
+            )
+        )
         db.session.commit()

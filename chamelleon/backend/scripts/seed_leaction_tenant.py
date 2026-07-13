@@ -18,7 +18,7 @@ from werkzeug.security import generate_password_hash
 
 from app import create_app
 from app.core.dev_users import DEV_FRAMEWORK_CONSTRUCAO_ID
-from app.core.rbac.constants import ROLE_CONSULTOR, ROLE_EXECUTOR
+from app.core.rbac.constants import ROLE_EXECUTOR, ROLE_LED
 from app.database.models import Tenant, TenantFramework, TenantUser, User, db
 from app.models.operational_models import INDUSTRY_CONSTRUCAO, OperationalSite
 from app.services.operational_service import OperationalService
@@ -32,7 +32,8 @@ USERS = [
     {
         "email": "gestor@leactionengenharia.com.br",
         "name": "Gestor LeAction",
-        "role": ROLE_CONSULTOR,
+        # Lead da empresa: administra o tenant (jornada, plano TD, operacional).
+        "role": ROLE_LED,
     },
     {
         "email": "executor@leactionengenharia.com.br",
@@ -157,6 +158,10 @@ def main() -> int:
         tenant = _get_or_create_tenant()
         _ensure_framework(tenant)
 
+        from app.services.okr_service import ensure_canonical_okrs_for_tenant
+
+        ensure_canonical_okrs_for_tenant(tenant.id, commit=False)
+
         created_users: list[User] = []
         for spec in USERS:
             created_users.append(_upsert_user(tenant, spec))
@@ -179,8 +184,8 @@ def main() -> int:
         for spec in USERS:
             print(f"    {spec['role']:10} {spec['email']}")
         print("\nFluxo:")
-        print("  Gestor   -> login -> Gestão operacional / planejamento / reabrir dias")
-        print("  Executor -> login -> Portal -> Diário de Obra")
+        print("  Lead/Gestor -> login -> jornada, plano TD, gestão operacional")
+        print("  Executor    -> login -> Portal -> Diário de Obra")
     return 0
 
 

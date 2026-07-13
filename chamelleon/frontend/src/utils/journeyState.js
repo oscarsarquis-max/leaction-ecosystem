@@ -1,7 +1,11 @@
 import {
+  CONTEXT_ORG_NAV,
+  filterNavItems,
+  GERENCIAL_NAV_ITEM,
   KAIZEN_NAV_ITEM,
   OPERATIONAL_AREA_NAV,
   ORGANIZATION_NAV_ITEM,
+  ROLE_LED,
   TD_AREA_NAV,
 } from '../config/rbac';
 
@@ -43,36 +47,53 @@ export function resolveJourneyFlags(journey) {
   };
 }
 
-export function buildLeadNavItems(journeyFlags, journey) {
-  const submissionId = journey?.latest_submission_id || null;
-  const base = [
-    { to: '/', label: 'Painel de Maturidade', end: true },
-  ];
+function withFilteredChildren(group, systemRole) {
+  const role = systemRole || ROLE_LED;
+  const filtered = filterNavItems([group], role)[0];
+  if (!filtered?.children?.length) return null;
+  return filtered;
+}
 
+/**
+ * Sidebar do Lead/Consultor — hierarquia acordada de navegação.
+ *
+ * 1. Painel Gerencial
+ * 2. Melhoria Contínua
+ * 3. Configurações da Organização
+ * 4. Contexto Organizacional
+ * 5. Gestão Operacional
+ * 6. Estratégia e Transformação Digital
+ *    - Estratégia e OKRs
+ *    - Backlog / Kanban TD
+ */
+export function buildLeadNavItems(journeyFlags, journey, systemRole = ROLE_LED) {
+  const submissionId = journey?.latest_submission_id || null;
+
+  const contextChildren = [...(CONTEXT_ORG_NAV.children || [])];
   if (submissionId) {
-    base.push({
+    contextChildren.unshift({
       to: `/relatorio/${submissionId}`,
       label: 'Relatório de Diagnóstico',
     });
   }
 
-  base.push(
-    { to: '/my-assessment', label: 'Minha Avaliação' },
-    { to: '/meus-dados', label: 'Meus Dados' },
+  const contextGroup = withFilteredChildren(
+    { ...CONTEXT_ORG_NAV, children: contextChildren },
+    systemRole,
   );
 
-  base.push(KAIZEN_NAV_ITEM);
-  base.push(TD_AREA_NAV);
-  base.push(ORGANIZATION_NAV_ITEM);
-  base.push(OPERATIONAL_AREA_NAV);
+  const operationalGroup = withFilteredChildren(OPERATIONAL_AREA_NAV, systemRole);
+  const tdGroup = withFilteredChildren(TD_AREA_NAV, systemRole);
 
-  if (journeyFlags.mostrarPlanoKanban) {
-    // Prefere o módulo TD; mantém links legado se alguém ainda usar essas rotas.
-    base.push(
-      { to: '/td/plan', label: 'Plano Diretor TD', highlight: true },
-      { to: '/td/kanban', label: 'Kanban TD' },
-    );
-  }
+  const base = [
+    { ...GERENCIAL_NAV_ITEM },
+    { ...KAIZEN_NAV_ITEM },
+    { ...ORGANIZATION_NAV_ITEM },
+  ];
+
+  if (contextGroup) base.push(contextGroup);
+  if (operationalGroup) base.push(operationalGroup);
+  if (tdGroup) base.push(tdGroup);
 
   return base;
 }

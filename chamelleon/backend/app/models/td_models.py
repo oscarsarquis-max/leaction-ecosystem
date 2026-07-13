@@ -132,6 +132,12 @@ class TdSprint(db.Model):
         index=True,
     )
     current_state_gap: Mapped[str | None] = mapped_column(Text, nullable=True)
+    linked_kr_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("okr_key_results.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -163,11 +169,19 @@ class TdSprint(db.Model):
             "goals_payload": self.goals_payload or {},
             "origin_ref_id": str(self.origin_ref_id) if self.origin_ref_id else None,
             "current_state_gap": self.current_state_gap,
+            "linked_kr_id": str(self.linked_kr_id) if self.linked_kr_id else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "is_emergent": self.origin_type == TdOriginType.KAIZEN_EMERGENT.value
             or self.kanban_stage == TdKanbanStage.KAIZEN_ENTRADA.value,
+            "squad": self._squad_summary(),
         }
+
+    def _squad_summary(self) -> dict[str, Any] | None:
+        squad = getattr(self, "squad", None)
+        if not squad:
+            return None
+        return squad.to_dict()
 
     def _block_linkage_summary(self) -> dict[str, Any]:
         goals = self.goals_payload or {}

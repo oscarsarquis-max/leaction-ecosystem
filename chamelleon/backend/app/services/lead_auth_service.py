@@ -115,6 +115,10 @@ class LeadAuthService:
                 access_code=access_code,
             )
         )
+        # Matriz OKR canônica PanelDX — padrão de todo cliente novo (editável depois).
+        from app.services.okr_service import ensure_canonical_okrs_for_tenant
+
+        ensure_canonical_okrs_for_tenant(tenant.id, commit=False)
         try:
             db.session.commit()
         except IntegrityError as exc:

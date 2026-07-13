@@ -220,6 +220,31 @@ def update_sprint(sprint_id: str):
         return jsonify({"error": "Erro ao atualizar sprint de TD."}), 500
 
 
+@td_bp.post("/sprints/<sprint_id>/modulador")
+@require_tenant_context
+@require_auth
+@require_role(*_TD_ROLES)
+def avaliar_modulador_sprint(sprint_id: str):
+    """Agente Modulador — audita evidência vs DoD (padrão PanelDX)."""
+    payload = request.get_json(silent=True) or {}
+    evidencia = str(payload.get("evidencia") or "").strip()
+    try:
+        from app.services.td_modulador_service import TdModuladorService
+
+        result = TdModuladorService().evaluate(sprint_id, evidencia)
+        return jsonify({"status": "ok", **result}), 200
+    except ValueError as exc:
+        msg = str(exc)
+        code = 404 if "não encontrada" in msg.lower() else 400
+        return jsonify({"error": msg}), code
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 502
+    except Exception:
+        return jsonify({"error": "Erro ao avaliar evidência no Modulador."}), 500
+
+
 @td_bp.post("/sprints/<sprint_id>/promote-planning")
 @require_tenant_context
 @require_auth
@@ -244,3 +269,194 @@ def promote_sprint_planning(sprint_id: str):
         return jsonify({"error": str(exc)}), 403
     except Exception:
         return jsonify({"error": "Erro ao promover sprint para planejamento."}), 500
+
+
+# ── Capacity Planning: Pool de Talentos + Sprint Squad ─────────────────
+
+
+@td_bp.get("/professionals")
+@require_tenant_context
+@require_auth
+@require_role(*_TD_ROLES)
+def list_professionals():
+    from app.services.capacity_service import CapacityService
+
+    active_only = str(request.args.get("active") or "").lower() in ("1", "true", "yes")
+    try:
+        service = CapacityService()
+        items = service.list_professionals(active_only=active_only)
+        return (
+            jsonify(
+                {
+                    "status": "ok",
+                    "professionals": [p.to_dict() for p in items],
+                    "licenses": service.get_license_usage(),
+                }
+            ),
+            200,
+        )
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
+    except Exception:
+        return jsonify({"error": "Erro ao listar profissionais."}), 500
+
+
+@td_bp.post("/professionals")
+@require_tenant_context
+@require_auth
+@require_role(*_TD_ROLES)
+def create_professional():
+    from app.services.capacity_service import CapacityService, LicenseLimitError
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        service = CapacityService()
+        professional = service.create_professional(payload)
+        return (
+            jsonify(
+                {
+                    "status": "ok",
+                    "professional": professional.to_dict(),
+                    "licenses": service.get_license_usage(),
+                    "message": (
+                        "Profissional registado! As credenciais de acesso foram "
+                        "enviadas para o e-mail informado."
+                    ),
+                }
+            ),
+            201,
+        )
+    except LicenseLimitError as exc:
+        return (
+            jsonify(
+                {
+                    "error": str(exc),
+                    "code": exc.code,
+                    "used": exc.used,
+                    "limit": exc.limit,
+                }
+            ),
+            402,
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
+    except Exception:
+        return jsonify({"error": "Erro ao criar profissional."}), 500
+
+
+@td_bp.put("/professionals/<professional_id>")
+@require_tenant_context
+@require_auth
+@require_role(*_TD_ROLES)
+def update_professional(professional_id: str):
+    from app.services.capacity_service import CapacityService, LicenseLimitError
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        service = CapacityService()
+        professional = service.update_professional(professional_id, payload)
+        return (
+            jsonify(
+                {
+                    "status": "ok",
+                    "professional": professional.to_dict(),
+                    "licenses": service.get_license_usage(),
+                }
+            ),
+            200,
+        )
+    except LicenseLimitError as exc:
+        return (
+            jsonify(
+                {
+                    "error": str(exc),
+                    "code": exc.code,
+                    "used": exc.used,
+                    "limit": exc.limit,
+                }
+            ),
+            402,
+        )
+    except ValueError as exc:
+        msg = str(exc)
+        status = 404 if "não encontrado" in msg.lower() else 400
+        return jsonify({"error": msg}), status
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
+    except Exception:
+        return jsonify({"error": "Erro ao atualizar profissional."}), 500
+
+
+@td_bp.delete("/professionals/<professional_id>")
+@require_tenant_context
+@require_auth
+@require_role(*_TD_ROLES)
+def delete_professional(professional_id: str):
+    from app.services.capacity_service import CapacityService
+
+    try:
+        service = CapacityService()
+        professional = service.delete_professional(professional_id)
+        return (
+            jsonify(
+                {
+                    "status": "ok",
+                    "professional": professional.to_dict(),
+                    "licenses": service.get_license_usage(),
+                }
+            ),
+            200,
+        )
+    except ValueError as exc:
+        msg = str(exc)
+        status = 404 if "não encontrado" in msg.lower() else 400
+        return jsonify({"error": msg}), status
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
+    except Exception:
+        return jsonify({"error": "Erro ao desativar profissional."}), 500
+
+
+@td_bp.get("/sprints/<sprint_id>/squad")
+@require_tenant_context
+@require_auth
+@require_role(*_TD_ROLES)
+def get_sprint_squad(sprint_id: str):
+    from app.services.capacity_service import CapacityService
+
+    try:
+        squad = CapacityService().get_squad(sprint_id)
+        return jsonify({"status": "ok", "squad": squad.to_dict() if squad else None}), 200
+    except ValueError as exc:
+        msg = str(exc)
+        status = 404 if "não encontrada" in msg.lower() else 400
+        return jsonify({"error": msg}), status
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
+    except Exception:
+        return jsonify({"error": "Erro ao obter Squad da sprint."}), 500
+
+
+@td_bp.post("/sprints/<sprint_id>/squad")
+@td_bp.put("/sprints/<sprint_id>/squad")
+@require_tenant_context
+@require_auth
+@require_role(*_TD_ROLES)
+def upsert_sprint_squad(sprint_id: str):
+    """Monta/atualiza a Task Force 1:1 da sprint (regras de capacity)."""
+    from app.services.capacity_service import CapacityService
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        squad = CapacityService().upsert_squad(sprint_id, payload)
+        return jsonify({"status": "ok", "squad": squad.to_dict()}), 200
+    except ValueError as exc:
+        msg = str(exc)
+        status = 404 if "não encontrada" in msg.lower() or "não encontrado" in msg.lower() else 400
+        return jsonify({"error": msg, "code": "CAPACITY_RULE"}), status
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
+    except Exception:
+        return jsonify({"error": "Erro ao salvar Squad da sprint."}), 500

@@ -39,6 +39,14 @@ export function updateTdSprint(sprintId, payload) {
   });
 }
 
+export function evaluateTdModulador(sprintId, evidencia) {
+  return apiRequest(`/td/sprints/${encodeURIComponent(sprintId)}/modulador`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ evidencia }),
+  });
+}
+
 export function promoteTdSprintToPlanning(sprintId) {
   return apiRequest(`/td/sprints/${encodeURIComponent(sprintId)}/promote-planning`, {
     method: 'POST',
@@ -59,4 +67,45 @@ export function getTdReadinessStatus() {
 
 export function getTdGenesisStatus() {
   return apiRequest('/td/genesis-status');
+}
+
+// ── Capacity Planning ────────────────────────────────────────────────
+
+export function listProfessionals({ activeOnly = false } = {}) {
+  const query = activeOnly ? '?active=1' : '';
+  return apiRequest(`/td/professionals${query}`);
+}
+
+export function createProfessional(payload) {
+  return apiRequest('/td/professionals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateProfessional(professionalId, payload) {
+  return apiRequest(`/td/professionals/${encodeURIComponent(professionalId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteProfessional(professionalId) {
+  return apiRequest(`/td/professionals/${encodeURIComponent(professionalId)}`, {
+    method: 'DELETE',
+  });
+}
+
+export function getTdSprintSquad(sprintId) {
+  return apiRequest(`/td/sprints/${encodeURIComponent(sprintId)}/squad`);
+}
+
+export function saveTdSprintSquad(sprintId, payload) {
+  return apiRequest(`/td/sprints/${encodeURIComponent(sprintId)}/squad`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 }

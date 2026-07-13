@@ -65,19 +65,27 @@ def get_bedrock_client(*, read_timeout: int = 45):
     return boto3.client(**kwargs)
 
 
-def invoke_claude(prompt: str, max_tokens: int = 1000) -> str:
+def invoke_claude(
+    prompt: str,
+    max_tokens: int = 1000,
+    *,
+    system: str | None = None,
+    temperature: float = 0.5,
+) -> str:
     """Invoca o Claude via Bedrock e retorna o texto da resposta."""
     read_timeout = _read_timeout_for_tokens(max_tokens)
     client = get_bedrock_client(read_timeout=read_timeout)
 
-    body = json.dumps(
-        {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": max_tokens,
-            "temperature": 0.5,
-            "messages": [{"role": "user", "content": prompt}],
-        }
-    )
+    body_obj: dict = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    if system:
+        body_obj["system"] = system
+
+    body = json.dumps(body_obj)
 
     try:
         response = client.invoke_model(

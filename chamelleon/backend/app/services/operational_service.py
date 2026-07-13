@@ -111,8 +111,6 @@ class OperationalService:
     def push_weekly_plan(self, payload: dict[str, Any]) -> dict[str, Any]:
         site_id = payload.get("operational_site_id") or payload.get("site_id")
         site = self._get_site(site_id)
-        if not site.satellite_site_id:
-            raise ValueError("Unidade sem vínculo com o satélite Diário de Obra.")
 
         goals = payload.get("goals") or []
         if not isinstance(goals, list) or not goals:
@@ -131,14 +129,73 @@ class OperationalService:
         if not normalized:
             raise ValueError("Nenhuma meta válida informada.")
 
-        result = SatelliteClient().push_daily_goals(
-            {
-                "tenant_id": str(site.tenant_id),
-                "project_id": site.satellite_site_id,
-                "goals": normalized,
+        # 1) Persiste localmente no hub (sobrevive a refresh / Diário offline)
+        cached = dict(site.weekly_goals or {})
+        for item in normalized:
+            cached[item["date"]] = item["sprint_daily_goal"]
+        site.weekly_goals = cached
+        db.session.commit()
+        db.session.refresh(site)
+
+        # 2) Espelha no Diário de Obra quando houver vínculo
+        satellite_result: dict[str, Any] | None = None
+        satellite_warning: str | None = None
+        if site.satellite_site_id:
+            try:
+                satellite_result = SatelliteClient().push_daily_goals(
+                    {
+                        "tenant_id": str(site.tenant_id),
+                        "project_id": site.satellite_site_id,
+                        "goals": normalized,
+                    }
+                )
+            except Exception as exc:
+                satellite_warning = (
+                    f"Metas salvas no Chamelleon, mas falhou o envio ao Diário: {exc}"
+                )
+        else:
+            satellite_warning = (
+                "Metas salvas no Chamelleon. Sincronize o canteiro para publicar no Diário de Obra."
+            )
+
+        result: dict[str, Any] = {
+            "status": "ok",
+            "site": self._site_dict(site),
+            "goals": cached,
+            "saved_count": len(normalized),
+        }
+        if satellite_result is not None:
+            result["satellite"] = satellite_result
+        if satellite_warning:
+            result["satellite_warning"] = satellite_warning
+        return result
+
+    def get_weekly_goals(
+        self,
+        *,
+        site_id: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> dict[str, Any]:
+        site = self._get_site(site_id)
+        cached = dict(site.weekly_goals or {})
+        start = self._parse_date(start_date)
+        end = self._parse_date(end_date)
+        if start and end:
+            filtered = {
+                day: text
+                for day, text in cached.items()
+                if start <= date.fromisoformat(str(day)[:10]) <= end
             }
-        )
-        return {"status": "ok", "site": self._site_dict(site), "satellite": result}
+        else:
+            filtered = cached
+        return {
+            "status": "ok",
+            "site_id": str(site.id),
+            "satellite_site_id": site.satellite_site_id,
+            "goals": filtered,
+            "all_goals": cached,
+        }
 
     def list_execution_reports(
         self, *, report_date: date | None = None, site_id: str | None = None

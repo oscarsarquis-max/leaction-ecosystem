@@ -117,7 +117,7 @@ export default function OrganizationSettings() {
       <header>
         <h1 className="text-2xl font-bold text-slate-900">Configurações da Organização</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Gestão de usuários e acessos do tenant. Unidades operacionais ficam em Área Operacional.
+          Gestão de usuários e acessos do tenant. Unidades operacionais ficam em Gestão Operacional.
         </p>
       </header>
 

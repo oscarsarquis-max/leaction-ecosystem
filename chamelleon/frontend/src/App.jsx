@@ -24,6 +24,8 @@ import OperationalPlanning from './pages/OperationalPlanning';
 import OperationalReports from './pages/OperationalReports';
 import TdPlanManager from './pages/TdPlanManager';
 import TdKanban from './pages/TdKanban';
+import ProfessionalsManager from './pages/ProfessionalsManager';
+import OkrDashboard from './pages/OkrDashboard';
 
 export default function App() {
   return (
@@ -148,6 +150,22 @@ export default function App() {
           element={
             <ProtectedRoute roles={ROUTE_PERMISSIONS['/operational/reports']}>
               <OperationalReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="professionals-manager"
+          element={
+            <ProtectedRoute roles={ROUTE_PERMISSIONS['/professionals-manager']}>
+              <ProfessionalsManager />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="strategic-planning"
+          element={
+            <ProtectedRoute roles={ROUTE_PERMISSIONS['/strategic-planning']}>
+              <OkrDashboard />
             </ProtectedRoute>
           }
         />

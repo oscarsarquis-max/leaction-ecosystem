@@ -50,6 +50,8 @@ class OperationalSite(db.Model):
     )
     satellite_site_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Cache local do planejamento semanal { "YYYY-MM-DD": "meta..." }
+    weekly_goals: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -68,6 +70,7 @@ class OperationalSite(db.Model):
             "manager_id": str(self.manager_id) if self.manager_id else None,
             "satellite_site_id": self.satellite_site_id,
             "is_active": self.is_active,
+            "weekly_goals": self.weekly_goals or {},
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

@@ -33,12 +33,12 @@ export const TD_KANBAN_COLUMNS = [
   {
     id: TD_STAGE.PLANEJADA,
     label: 'Planejadas',
-    hint: 'Baseline do Plano Diretor',
+    hint: 'Formar Squad 1:1 da sprint',
   },
   {
     id: TD_STAGE.EXECUCAO,
     label: 'Em Execução',
-    hint: 'Em andamento',
+    hint: 'Squad ajustável · execução',
   },
   {
     id: TD_STAGE.CONCLUIDA,

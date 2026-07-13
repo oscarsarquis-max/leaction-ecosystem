@@ -24,14 +24,24 @@ function NavItemLink({ item, classNameBuilder }) {
 
 function SidebarNav({ items }) {
   const location = useLocation();
-  const [openGroups, setOpenGroups] = useState(() => ({
-    'Área Operacional': true,
-    'Transformação Digital (TD)': true,
-  }));
+  // Estado natural: só nível 1 visível; grupos abrem sob demanda.
+  const [openGroups, setOpenGroups] = useState({});
 
   function toggleGroup(label) {
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
   }
+
+  const topItemClass = ({ isActive }) =>
+    [
+      'block rounded-lg px-3 py-2.5 text-sm font-bold transition-colors text-chameleon-dark',
+      isActive ? 'bg-chameleon/10' : 'hover:bg-chameleon/5',
+    ].join(' ');
+
+  const childItemClass = ({ isActive }) =>
+    [
+      'block rounded-lg px-3 py-2 text-sm font-medium transition-colors text-slate-900',
+      isActive ? 'bg-slate-100' : 'hover:bg-slate-50',
+    ].join(' ');
 
   return (
     <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
@@ -40,36 +50,29 @@ function SidebarNav({ items }) {
           const childActive = item.children.some((child) =>
             location.pathname.startsWith(child.to),
           );
-          const isOpen = openGroups[item.label] ?? childActive;
+          const isOpen = Boolean(openGroups[item.label]);
           return (
-            <div key={item.label} className="space-y-1">
+            <div key={item.label} className="space-y-0.5">
               <button
                 type="button"
                 onClick={() => toggleGroup(item.label)}
                 className={[
-                  'flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors',
-                  childActive
-                    ? 'bg-chameleon/10 text-chameleon-dark'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-chameleon-dark',
+                  'flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-bold text-chameleon-dark transition-colors',
+                  childActive ? 'bg-chameleon/10' : 'hover:bg-chameleon/5',
                 ].join(' ')}
               >
                 <span>{item.label}</span>
-                <span className="text-xs text-slate-400">{isOpen ? '▾' : '▸'}</span>
+                <span className="text-xs font-bold text-chameleon-dark/60">
+                  {isOpen ? '▾' : '▸'}
+                </span>
               </button>
               {isOpen && (
-                <div className="ml-2 space-y-1 border-l border-slate-200 pl-2">
+                <div className="ml-4 space-y-0.5 border-l border-chameleon/20 pl-3">
                   {item.children.map((child) => (
                     <NavItemLink
                       key={child.to}
                       item={child}
-                      classNameBuilder={({ isActive }) =>
-                        [
-                          'block rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                          isActive
-                            ? 'bg-chameleon/10 text-chameleon-dark'
-                            : 'text-slate-600 hover:bg-slate-50 hover:text-chameleon-dark',
-                        ].join(' ')
-                      }
+                      classNameBuilder={childItemClass}
                     />
                   ))}
                 </div>
@@ -80,18 +83,9 @@ function SidebarNav({ items }) {
 
         return (
           <NavItemLink
-            key={item.to}
+            key={`${item.to}::${item.label}`}
             item={item}
-            classNameBuilder={({ isActive }) =>
-              [
-                'block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-chameleon/10 text-chameleon-dark'
-                  : item.highlight
-                    ? 'text-sky-700 hover:bg-sky-50'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-chameleon-dark',
-              ].join(' ')
-            }
+            classNameBuilder={topItemClass}
           />
         );
       })}
@@ -116,7 +110,7 @@ function MobileNav({ items }) {
     >
       {flat.map((item) => (
         <NavLink
-          key={item.to}
+          key={`${item.to}::${item.label}`}
           to={item.to}
           end={item.end}
           className={({ isActive }) =>
@@ -144,8 +138,9 @@ export default function Layout() {
   const journeyFlags = resolveJourneyFlags(journey);
 
   const isClientUser = systemRole === ROLE_LED || systemRole === ROLE_CONSULTOR;
-  const visibleNav = isClientUser
-    ? buildLeadNavItems(journeyFlags, journey)
+  // Fallback: se o papel ainda não hidratou, monta menu de lead completo (não esconde ops).
+  const visibleNav = isClientUser || !systemRole
+    ? buildLeadNavItems(journeyFlags, journey, systemRole || ROLE_LED)
     : filterNavItems(NAV_ITEMS, systemRole);
 
   const headerTitle = isClientUser ? 'Meu Diagnóstico' : 'Painel de Maturidade';
@@ -166,7 +161,7 @@ export default function Layout() {
             <img
               src="/images/camelleonlogo.png"
               alt="Chamelleon"
-              className="h-28 w-28 rounded-xl object-cover shadow-sm"
+              className="h-16 w-16 rounded-xl object-cover shadow-sm"
             />
             {showSectorQualifier && (
               <span className="mt-2 text-xs font-semibold uppercase tracking-wider text-emerald-800">

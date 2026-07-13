@@ -257,6 +257,12 @@ def ensure_demo_accounts(
         )
 
     db.session.flush()
+    from app.services.okr_service import ensure_canonical_okrs_for_tenant
+
+    ensure_canonical_okrs_for_tenant(tenant_id, commit=False)
+    if tenant_id == DEV_LEAD_TENANT_ID:
+        ensure_canonical_okrs_for_tenant(SECTOR_PROFILES["construcao"]["tenant_id"], commit=False)
+    ensure_canonical_okrs_for_tenant(DEV_TEAM_TENANT_ID, commit=False)
     return lead_framework
 
 

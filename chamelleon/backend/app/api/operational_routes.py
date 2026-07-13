@@ -134,6 +134,27 @@ def push_weekly_goals():
         return jsonify({"error": "Erro ao enviar planejamento ao satélite."}), 500
 
 
+@operational_bp.get("/planning/weekly-goals")
+@require_tenant_context
+@require_auth
+@require_role(*_MANAGER_ROLES)
+def get_weekly_goals():
+    site_id = (request.args.get("site_id") or "").strip()
+    if not site_id:
+        return jsonify({"error": "Parâmetro obrigatório: site_id."}), 400
+    try:
+        result = OperationalService().get_weekly_goals(
+            site_id=site_id,
+            start_date=request.args.get("start_date"),
+            end_date=request.args.get("end_date"),
+        )
+        return jsonify(result), 200
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        return jsonify({"error": "Erro ao carregar metas do planejamento."}), 500
+
+
 @operational_bp.get("/planning/week-dates")
 @require_tenant_context
 @require_auth

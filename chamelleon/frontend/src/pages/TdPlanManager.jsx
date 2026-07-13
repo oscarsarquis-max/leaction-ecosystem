@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import GenesisProgressOverlay from '../components/td/GenesisProgressOverlay';
 import TdReadinessChecklist from '../components/td/TdReadinessChecklist';
 import TdSprintModal, { TdToast } from '../components/td/TdSprintModal';
+import TdSprintRationaleModal, {
+  TdSprintRationaleLink,
+} from '../components/td/TdSprintRationaleModal';
 import {
   extractTopGaps,
   formatSprintBlockLabel,
@@ -25,6 +28,7 @@ export default function TdPlanManager() {
   const [error, setError] = useState('');
   const [toast, setToast] = useState({ message: '', tone: 'dark' });
   const [selected, setSelected] = useState(null);
+  const [rationaleSprint, setRationaleSprint] = useState(null);
   const [readiness, setReadiness] = useState(null);
   const [readinessLoading, setReadinessLoading] = useState(true);
 
@@ -313,7 +317,7 @@ export default function TdPlanManager() {
                             </span>
                           </div>
                           {block?.dimBlock && (
-                            <p className="mt-2 text-xs font-medium text-violet-800">{block.dimBlock}</p>
+                            <p className="mt-2 text-xs font-medium text-chameleon-dark">{block.dimBlock}</p>
                           )}
                           {block?.meta?.deliverableName && (
                             <p className="mt-1 text-[11px] text-slate-500">
@@ -331,10 +335,14 @@ export default function TdPlanManager() {
                             </p>
                           )}
                         </button>
+                        <TdSprintRationaleLink
+                          sprint={sprint}
+                          onOpen={setRationaleSprint}
+                        />
                         <button
                           type="button"
                           onClick={() => handlePromoteToPlanning(sprint.id)}
-                          className="mt-3 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-100"
+                          className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-100"
                         >
                           Colocar em planejamento (Kanban)
                         </button>
@@ -349,6 +357,10 @@ export default function TdPlanManager() {
       </section>
 
       <TdSprintModal sprint={selected} onClose={() => setSelected(null)} />
+      <TdSprintRationaleModal
+        sprint={rationaleSprint}
+        onClose={() => setRationaleSprint(null)}
+      />
       <TdToast
         message={toast.message}
         tone={toast.tone}

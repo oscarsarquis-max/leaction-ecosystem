@@ -65,6 +65,15 @@ export function pushWeeklyGoals(payload) {
   });
 }
 
+export function getWeeklyGoals({ siteId, startDate, endDate } = {}) {
+  const params = new URLSearchParams();
+  if (siteId) params.set('site_id', siteId);
+  if (startDate) params.set('start_date', startDate);
+  if (endDate) params.set('end_date', endDate);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest(`/operational/planning/weekly-goals${query}`);
+}
+
 export function listOperationalReports(date) {
   const query = date ? `?date=${encodeURIComponent(date)}` : '';
   return apiRequest(`/operational/reports${query}`);

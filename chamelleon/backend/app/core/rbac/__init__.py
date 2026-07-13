@@ -3,6 +3,7 @@ from app.core.rbac.constants import (
     ROLE_EXECUTOR,
     ROLE_LABELS,
     ROLE_LED,
+    ROLE_SQUAD_MEMBER,
     ROLE_SYSADMIN,
     SYSTEM_ROLES,
 )
@@ -13,6 +14,7 @@ __all__ = [
     "ROLE_EXECUTOR",
     "ROLE_LABELS",
     "ROLE_LED",
+    "ROLE_SQUAD_MEMBER",
     "ROLE_SYSADMIN",
     "SYSTEM_ROLES",
     "require_auth",

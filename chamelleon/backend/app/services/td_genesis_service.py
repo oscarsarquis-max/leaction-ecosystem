@@ -23,6 +23,7 @@ from app.core.td_constants import (
     TD_AI_MAX_TOKENS,
     TD_GENESE_MAX_SPRINTS,
     TD_GENESE_ONDA1_ATIVAS,
+    TD_GENESIS_OUTPUT_SCHEMA,
     TD_GENESIS_SYSTEM_CONTRACT,
     TD_OFFICIAL_DOMAINS,
     TD_OFFICIAL_DOMAINS_SET,
@@ -313,39 +314,18 @@ IMPEDITIVOS_DO_GEMBA (últimos 30 dias — falhas de meta operacional):
 CONTEXTO_INSTITUCIONAL:
 {json.dumps({k: context.get(k) for k in ("dados_mercado", "dados_clientes", "clima_organizacional", "mercado_resumo", "dados_etnograficos", "clima_resumo") if context.get(k)}, ensure_ascii=False, indent=2)}
 
-SCHEMA DE OUTPUT (objeto JSON único — espelho do modal PanelDX):
-{{
-  "sprints": [
-    {{
-      "id_bloc": "UUID do bloco metodológico (obrigatório — use id_bloc do catálogo)",
-      "nome_sprint": "string",
-      "paneldx_domain": "Estratégia|Cultura|Processos|Tecnologia|Dados|Clientes",
-      "origin_type": "baseline|kaizen_emergent",
-      "objetivo": "string",
-      "descricao": "string",
-      "justificativa_baseada_no_relatorio": "string",
-      "derv_defi": "definição do entregável",
-      "derv_comp": "competências necessárias",
-      "criteria_dod": {{
-        "required": ["item obrigatório"],
-        "context_education": ["item contextual"]
-      }},
-      "atividades_taticas": ["atividade 1", "atividade 2"],
-      "swot_type": "Fraqueza",
-      "swot_justification": "string",
-      "week_sprn": 2,
-      "targv_sprn": 10,
-      "priority_rank": 1,
-      "gemba_driven": false,
-      "onda": "Onda 1 — Prioridade Gap"
-    }}
-  ]
-}}
+INSTRUÇÃO DE PRIORIZAÇÃO: Blocos de catálogo que possuam um Gap elevado E QUE, simultaneamente, resolvam uma dor explícita listada nos [IMPEDITIVOS_DO_GEMBA] têm prioridade absoluta. Utiliza o [CONTEXTO_INSTITUCIONAL] para garantir que a justificativa reflete o momento e o jargão da nossa organização.
+
+CHAIN OF THOUGHT (obrigatório por sprint): Ao construir a justificativa, DEVES OBRIGATORIAMENTE preencher os campos '_analise_gap', '_analise_gemba' e '_analise_contexto' primeiro. Eles servem de raciocínio lógico para construíres o parágrafo final e maduro na 'justificativa_baseada_no_relatorio'.
+
+SCHEMA DE OUTPUT (objeto JSON único — espelho do modal PanelDX; respeite as descriptions do schema):
+{json.dumps(TD_GENESIS_OUTPUT_SCHEMA, ensure_ascii=False, indent=2)}
 
 CONSTRAINTS ADICIONAIS:
 - Gere enriquecimento para os blocos do catálogo com gap F−P positivo (priorize maior gap).
 - Cada sprint DEVE referenciar id_bloc existente no catálogo — NÃO invente blocos.
-- Use o contexto institucional para personalizar objetivo, DoD e atividades táticas.
+- Preencha sempre _analise_gap, _analise_gemba e _analise_contexto ANTES de justificativa_baseada_no_relatorio; a justificativa deve sintetizar as três análises num único parágrafo (sem tópicos).
+- Use o contexto institucional para personalizar objetivo, DoD, atividades táticas e sobretudo a justificativa (triangulação obrigatória).
 - Pelo menos 1 sprint gemba_driven=true atacando impeditivos do Gemba (se houver), sempre com id_bloc.
 - Output: somente JSON válido, sem markdown.
 """
@@ -479,6 +459,9 @@ CONSTRAINTS ADICIONAIS:
             "metrics_scores": ai_item.get("metrics_scores")
             if isinstance(ai_item.get("metrics_scores"), dict)
             else {},
+            "_analise_gap": str(ai_item.get("_analise_gap") or "").strip(),
+            "_analise_gemba": str(ai_item.get("_analise_gemba") or "").strip(),
+            "_analise_contexto": str(ai_item.get("_analise_contexto") or "").strip(),
             "justificativa_baseada_no_relatorio": str(
                 ai_item.get("justificativa_baseada_no_relatorio") or ""
             ).strip(),
@@ -670,6 +653,9 @@ CONSTRAINTS ADICIONAIS:
             "targv_sprn": 10,
             "realv_sprn": 0,
             "metrics_scores": {},
+            "_analise_gap": "",
+            "_analise_gemba": "",
+            "_analise_contexto": "",
             "justificativa_baseada_no_relatorio": objetivo,
             "onda": "Gemba — Causa Raiz" if gemba else "Onda 1 — Prioridade Gap",
             "gemba_driven": gemba,
