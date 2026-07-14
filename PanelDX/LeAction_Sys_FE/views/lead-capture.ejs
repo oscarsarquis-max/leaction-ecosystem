@@ -191,6 +191,26 @@
         width: 100%;
     }
 
+    .form-group-premium input.is-invalid {
+        border-color: #dc2626 !important;
+        box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.08) !important;
+        background: #fffafa;
+    }
+    .form-group-premium input.is-valid {
+        border-color: #16a34a !important;
+    }
+    .field-error {
+        display: none;
+        margin-top: 6px;
+        font-size: 0.78em;
+        font-weight: 600;
+        color: #dc2626;
+        line-height: 1.35;
+    }
+    .field-error.is-visible {
+        display: block;
+    }
+
     @keyframes bounce {
         0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
         40% { transform: translateY(-5px); }
@@ -234,12 +254,14 @@
 
                 <div class="form-group-premium">
                     <label for="mail_clie">E-mail Corporativo ou Principal</label>
-                    <input type="email" id="mail_clie" name="MAIL_CLIE" required placeholder="Ex: diretoria@organizacao.com">
+                    <input type="email" id="mail_clie" name="MAIL_CLIE" required autocomplete="email" inputmode="email" placeholder="Ex: diretoria@organizacao.com">
+                    <div class="field-error" id="err_mail_clie"></div>
                 </div>
 
                 <div class="form-group-premium">
                     <label for="fone_clie">Linha de Contato Direta</label>
-                    <input type="tel" id="fone_clie" name="FONE_CLIE" placeholder="Ex: (85) 99180-0606">
+                    <input type="tel" id="fone_clie" name="FONE_CLIE" required autocomplete="tel" inputmode="numeric" maxlength="15" placeholder="Ex: (85) 99180-0606">
+                    <div class="field-error" id="err_fone_clie"></div>
                 </div>
             </div>
 
@@ -257,12 +279,14 @@
 
                     <div class="form-group-premium">
                         <label for="docu_clie">CNPJ Institucional</label>
-                        <input type="text" id="docu_clie" name="DOCU_CLIE" required placeholder="Ex: 11.111.111/0001-00">
+                        <input type="text" id="docu_clie" name="DOCU_CLIE" required inputmode="numeric" maxlength="18" placeholder="Ex: 11.222.333/0001-81">
+                        <div class="field-error" id="err_docu_clie"></div>
                     </div>
 
                     <div class="form-group-premium">
                         <label for="zipn_clie">CEP da Sede Administrativa</label>
-                        <input type="text" id="zipn_clie" name="ZIPN_CLIE" placeholder="Ex: 60135-410">
+                        <input type="text" id="zipn_clie" name="ZIPN_CLIE" required inputmode="numeric" maxlength="9" placeholder="Ex: 60135-410">
+                        <div class="field-error" id="err_zipn_clie"></div>
                     </div>
 
                     <div class="form-group-premium grid-full">
@@ -323,6 +347,194 @@
 </div>
 
 <script>
+    // ── Validação / máscaras BR ─────────────────────────────────────────────
+    function onlyDigits(value) {
+        return String(value || '').replace(/\D+/g, '');
+    }
+
+    function isValidEmail(value) {
+        var email = String(value || '').trim();
+        if (!email || email.length > 254) return false;
+        return /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/.test(email);
+    }
+
+    function isValidBrPhone(value) {
+        var d = onlyDigits(value);
+        if (d.length !== 10 && d.length !== 11) return false;
+        var ddd = parseInt(d.slice(0, 2), 10);
+        if (ddd < 11 || ddd > 99) return false;
+        if (d.length === 11 && d.charAt(2) !== '9') return false;
+        return true;
+    }
+
+    function isValidCep(value) {
+        return onlyDigits(value).length === 8;
+    }
+
+    function isValidCnpj(value) {
+        var d = onlyDigits(value);
+        if (d.length !== 14) return false;
+        if (/^(\d)\1{13}$/.test(d)) return false;
+        function check(base, weights) {
+            var total = 0;
+            for (var i = 0; i < weights.length; i++) total += parseInt(base.charAt(i), 10) * weights[i];
+            var rest = total % 11;
+            return rest < 2 ? '0' : String(11 - rest);
+        }
+        var w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        var w2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        var d1 = check(d.slice(0, 12), w1);
+        var d2 = check(d.slice(0, 12) + d1, w2);
+        return d.endsWith(d1 + d2);
+    }
+
+    function maskPhone(value) {
+        var d = onlyDigits(value).slice(0, 11);
+        if (d.length <= 2) return d.length ? '(' + d : '';
+        if (d.length <= 6) return '(' + d.slice(0, 2) + ') ' + d.slice(2);
+        if (d.length <= 10) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6);
+        return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
+    }
+
+    function maskCnpj(value) {
+        var d = onlyDigits(value).slice(0, 14);
+        if (d.length <= 2) return d;
+        if (d.length <= 5) return d.slice(0, 2) + '.' + d.slice(2);
+        if (d.length <= 8) return d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5);
+        if (d.length <= 12) return d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5, 8) + '/' + d.slice(8);
+        return d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5, 8) + '/' + d.slice(8, 12) + '-' + d.slice(12);
+    }
+
+    function maskCep(value) {
+        var d = onlyDigits(value).slice(0, 8);
+        if (d.length <= 5) return d;
+        return d.slice(0, 5) + '-' + d.slice(5);
+    }
+
+    function setFieldError(inputId, message) {
+        var input = document.getElementById(inputId);
+        var err = document.getElementById('err_' + inputId);
+        if (!input) return;
+        if (message) {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            if (err) {
+                err.textContent = message;
+                err.classList.add('is-visible');
+            }
+        } else {
+            input.classList.remove('is-invalid');
+            if (input.value && String(input.value).trim()) input.classList.add('is-valid');
+            else input.classList.remove('is-valid');
+            if (err) {
+                err.textContent = '';
+                err.classList.remove('is-visible');
+            }
+        }
+    }
+
+    function validateEmailField() {
+        var el = document.getElementById('mail_clie');
+        var v = (el.value || '').trim();
+        if (!v) { setFieldError('mail_clie', 'Informe o e-mail.'); return false; }
+        if (!isValidEmail(v)) { setFieldError('mail_clie', 'E-mail inválido. Use o formato nome@dominio.com'); return false; }
+        setFieldError('mail_clie', '');
+        return true;
+    }
+
+    function validatePhoneField() {
+        var el = document.getElementById('fone_clie');
+        var v = el.value || '';
+        if (!onlyDigits(v)) { setFieldError('fone_clie', 'Informe o telefone com DDD.'); return false; }
+        if (!isValidBrPhone(v)) { setFieldError('fone_clie', 'Telefone inválido. Ex: (85) 99180-0606'); return false; }
+        setFieldError('fone_clie', '');
+        return true;
+    }
+
+    function validateCnpjField() {
+        var el = document.getElementById('docu_clie');
+        if (!el.required && document.getElementById('perfil_lead').value === 'INOVADOR') {
+            setFieldError('docu_clie', '');
+            return true;
+        }
+        var v = el.value || '';
+        if (!onlyDigits(v)) { setFieldError('docu_clie', 'Informe o CNPJ.'); return false; }
+        if (!isValidCnpj(v)) { setFieldError('docu_clie', 'CNPJ inválido. Verifique os dígitos verificadores.'); return false; }
+        setFieldError('docu_clie', '');
+        return true;
+    }
+
+    function validateCepField() {
+        var el = document.getElementById('zipn_clie');
+        if (!el.required && document.getElementById('perfil_lead').value === 'INOVADOR') {
+            setFieldError('zipn_clie', '');
+            return true;
+        }
+        var v = el.value || '';
+        if (!onlyDigits(v)) { setFieldError('zipn_clie', 'Informe o CEP.'); return false; }
+        if (!isValidCep(v)) { setFieldError('zipn_clie', 'CEP inválido. Use 8 dígitos. Ex: 60135-410'); return false; }
+        setFieldError('zipn_clie', '');
+        return true;
+    }
+
+    async function lookupCep() {
+        if (!validateCepField()) return;
+        var cep = onlyDigits(document.getElementById('zipn_clie').value);
+        var adre = document.getElementById('adre_clie');
+        try {
+            var res = await fetch('https://viacep.com.br/ws/' + cep + '/json/');
+            if (!res.ok) return;
+            var data = await res.json();
+            if (data.erro) {
+                setFieldError('zipn_clie', 'CEP não encontrado. Confira os dígitos.');
+                return;
+            }
+            setFieldError('zipn_clie', '');
+            if (adre && !String(adre.value || '').trim()) {
+                var parts = [data.logradouro, data.bairro, data.localidade, data.uf].filter(Boolean);
+                adre.value = parts.join(' - ');
+            }
+        } catch (err) {
+            // Offline/ViaCEP falhou: mantém só a validação de formato
+        }
+    }
+
+    function bindMasksAndValidation() {
+        var phone = document.getElementById('fone_clie');
+        var cnpj = document.getElementById('docu_clie');
+        var cep = document.getElementById('zipn_clie');
+        var mail = document.getElementById('mail_clie');
+
+        if (phone) {
+            phone.addEventListener('input', function () { phone.value = maskPhone(phone.value); });
+            phone.addEventListener('blur', validatePhoneField);
+        }
+        if (cnpj) {
+            cnpj.addEventListener('input', function () { cnpj.value = maskCnpj(cnpj.value); });
+            cnpj.addEventListener('blur', validateCnpjField);
+        }
+        if (cep) {
+            cep.addEventListener('input', function () { cep.value = maskCep(cep.value); });
+            cep.addEventListener('blur', lookupCep);
+        }
+        if (mail) {
+            mail.addEventListener('blur', validateEmailField);
+        }
+    }
+
+    function validateLeadFormBeforeSubmit() {
+        var perfil = document.getElementById('perfil_lead').value;
+        var okMail = validateEmailField();
+        var okPhone = validatePhoneField();
+        var okCnpj = true;
+        var okCep = true;
+        if (perfil !== 'INOVADOR') {
+            okCnpj = validateCnpjField();
+            okCep = validateCepField();
+        }
+        return okMail && okPhone && okCnpj && okCep;
+    }
+
     // 🔀 CONTROLADOR DE TRILHA E ESCOPO: SOLO VS GENERAL
     function alternarPerfil(perfil) {
         document.getElementById('perfil_lead').value = perfil;
@@ -336,6 +548,7 @@
         const empInput = document.getElementById('empresa_clie');
         const docuInput = document.getElementById('docu_clie');
         const funcInput = document.getElementById('func_lead');
+        const cepInput = document.getElementById('zipn_clie');
 
         if (perfil === 'INOVADOR') {
             tabInovador.className = "tab-btn tab-active";
@@ -346,10 +559,12 @@
 
             submitBtn.innerText = "Iniciar Integração Da Vinci";
 
-            // Flexibiliza o core de validação frontal para permitir cadastro sem CNPJ
             empInput.required = false;
             docuInput.required = false;
             funcInput.required = false;
+            if (cepInput) cepInput.required = false;
+            setFieldError('docu_clie', '');
+            setFieldError('zipn_clie', '');
         } else {
             tabEmpresa.className = "tab-btn tab-active";
             tabInovador.className = "tab-btn tab-inactive";
@@ -359,10 +574,10 @@
 
             submitBtn.innerText = "Finalizar Solicitação e Enviar";
 
-            // Restabelece a rigidez de validação frontal corporativa
             empInput.required = true;
             docuInput.required = true;
             funcInput.required = true;
+            if (cepInput) cepInput.required = true;
         }
     }
 
@@ -420,12 +635,22 @@
         const msgEl = document.getElementById('leadStatusMessage');
         const submitBtn = document.getElementById('submitLeadBtn');
 
+        if (!validateLeadFormBeforeSubmit()) {
+            msgEl.style.display = "block";
+            msgEl.style.color = "#991b1b";
+            msgEl.innerText = "Revise os campos destacados antes de enviar.";
+            const firstInvalid = document.querySelector('#leadCaptureFormDirect input.is-invalid');
+            if (firstInvalid) firstInvalid.focus();
+            return;
+        }
+
         submitBtn.disabled = true;
         const textoOriginalBotao = submitBtn.innerText;
         submitBtn.innerText = "Validando Parâmetros no Ecossistema...";
         submitBtn.style.opacity = "0.6";
 
         msgEl.style.display = "block";
+        msgEl.style.color = "#4A2E80";
         msgEl.innerText = "Sincronizando com o barramento central de serviços...";
 
         const perfilValue = document.getElementById('perfil_lead').value;
@@ -454,20 +679,19 @@
         const inviteParam = (urlParams.get('invite') || '').trim();
 
         const formData = {
-            nome_clie: document.getElementById('nome_clie').value,
-            mail_clie: document.getElementById('mail_clie').value,
-            fone_clie: document.getElementById('fone_clie').value || "",
+            nome_clie: document.getElementById('nome_clie').value.trim(),
+            mail_clie: document.getElementById('mail_clie').value.trim().toLowerCase(),
+            fone_clie: maskPhone(document.getElementById('fone_clie').value),
             empresa_clie: empresaValue,
-            docu_clie: docuValue,
-            zipn_clie: zipnValue,
+            docu_clie: docuValue ? maskCnpj(docuValue) : docuValue,
+            zipn_clie: zipnValue ? maskCep(zipnValue) : zipnValue,
             adre_clie: adreValue,
-            init_role: initRoleValue, // 🌟 AQUI ESTÁ ELE
+            init_role: initRoleValue,
             justificativa_solo: justificativaValue
         };
         if (refParam) formData.ref = refParam;
         if (inviteParam) formData.invite = inviteParam;
 
-        // 🔍 INSPEÇÃO DE AVANÇO: Abre um painel visual no console do Chrome
         console.group("🔬 [DEBUG FRONT-END] DADOS DISPARADOS PELO FORMULÁRIO");
         console.log("Aba selecionada na UI:", perfilValue);
         console.log("Valor definido para o Banco (init_role):", initRoleValue);
@@ -508,12 +732,14 @@
                 document.getElementById('leadCaptureFormDirect').reset();
                 submitBtn.innerText = "Acesso Concluído";
             } else {
+                msgEl.style.color = "#991b1b";
                 msgEl.innerText = "Aviso operacional: " + mensagemRetorno;
                 liberarBotaoEnvio(submitBtn, textoOriginalBotao);
             }
 
         } catch (err) {
             console.error("❌ CRASH NA TRANSMISSÃO DE REDE:", err);
+            msgEl.style.color = "#991b1b";
             msgEl.innerText = "Erro de conexão com o barramento.";
             liberarBotaoEnvio(submitBtn, textoOriginalBotao);
         }
@@ -525,4 +751,6 @@
         botao.style.opacity = "1";
         botao.style.cursor = "pointer";
     }
+
+    bindMasksAndValidation();
 </script>

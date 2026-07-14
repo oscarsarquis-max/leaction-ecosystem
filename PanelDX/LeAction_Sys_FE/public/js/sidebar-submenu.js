@@ -2,7 +2,7 @@
     'use strict';
 
     function normalizePath(path) {
-        if (!path || path === '#') return '';
+        if (!path || path === '#' || path.indexOf('javascript:') === 0) return '';
         var p = path.split('?')[0].split('#')[0];
         if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
         return p;
@@ -15,20 +15,33 @@
         return false;
     }
 
+    function linkMatches(link, currentPath) {
+        var custom = (link.getAttribute('data-nav-match') || '').trim();
+        if (custom) {
+            return custom.split(',').some(function (raw) {
+                return pathMatchesCurrent(normalizePath(raw.trim()), currentPath);
+            });
+        }
+        return pathMatchesCurrent(normalizePath(link.getAttribute('href')), currentPath);
+    }
+
     function closeSiblingMenus(item) {
         var parentUl = item.parentElement;
         if (!parentUl) return;
         parentUl.querySelectorAll(':scope > .menu-item.is-open').forEach(function (openItem) {
-            if (openItem !== item) openItem.classList.remove('is-open');
+            if (openItem !== item) {
+                openItem.classList.remove('is-open');
+                var tr = openItem.querySelector(':scope > a.submenu-toggle');
+                if (tr) tr.setAttribute('aria-expanded', 'false');
+            }
         });
     }
 
     function ensureChevron(trigger) {
-        if (trigger.querySelector('.submenu-chevron')) return;
-        var chevron = document.createElement('i');
-        chevron.className = 'fas fa-chevron-down submenu-chevron';
-        chevron.setAttribute('aria-hidden', 'true');
-        trigger.appendChild(chevron);
+        // Indicador visual via CSS (::after) — não injeta ícone Font Awesome
+        trigger.querySelectorAll('.submenu-chevron').forEach(function (el) {
+            el.remove();
+        });
     }
 
     function initSubmenus() {
@@ -43,6 +56,8 @@
             if (!submenu || !trigger) return;
 
             item.classList.add('has-children');
+            // Estado inicial: todos colapsados (só abre se houver match ativo)
+            item.classList.remove('is-open');
             ensureChevron(trigger);
 
             trigger.setAttribute('role', 'button');
@@ -58,13 +73,19 @@
                 trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
             });
 
+            var hasActive = false;
             submenu.querySelectorAll('a[href]').forEach(function (link) {
-                var href = normalizePath(link.getAttribute('href'));
-                if (pathMatchesCurrent(href, currentPath)) {
-                    item.classList.add('is-open');
-                    trigger.setAttribute('aria-expanded', 'true');
+                link.classList.remove('is-active');
+                if (linkMatches(link, currentPath)) {
+                    link.classList.add('is-active');
+                    hasActive = true;
                 }
             });
+
+            if (hasActive) {
+                item.classList.add('is-open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
         });
     }
 

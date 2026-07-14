@@ -646,18 +646,41 @@ def handle_clientes():
             # 🧠 3. TRAVAS INTELIGENTES DE INTEGRIDADE CONTRA CAMPOS NOT NULL
             # Captura a role para saber se aplica os fallbacks corporativos ou limpa para o Inovador
             current_role = clie_payload.get('init_role', 'GENERAL').strip().upper()
+            is_solo = current_role == 'SOLO'
 
-            if current_role == 'SOLO':
+            # Normalização + validação de e-mail, telefone, CNPJ e CEP
+            from validators_br import (
+                format_br_phone,
+                format_cep,
+                format_cnpj,
+                only_digits,
+                validate_lead_signup,
+            )
+            if clie_payload.get('mail_clie'):
+                clie_payload['mail_clie'] = str(clie_payload['mail_clie']).strip().lower()
+            if clie_payload.get('fone_clie'):
+                clie_payload['fone_clie'] = format_br_phone(clie_payload.get('fone_clie'))
+            if not is_solo:
+                if clie_payload.get('docu_clie'):
+                    clie_payload['docu_clie'] = format_cnpj(clie_payload.get('docu_clie'))
+                if clie_payload.get('zipn_clie'):
+                    clie_payload['zipn_clie'] = format_cep(clie_payload.get('zipn_clie'))
+
+            signup_errors = validate_lead_signup(clie_payload, is_solo=is_solo)
+            if signup_errors:
+                return jsonify({"error": signup_errors[0], "errors": signup_errors}), 400
+
+            if is_solo:
                 # Se for Inovador Solo, garantimos que os campos corporativos fiquem limpos/nulos como na UI
                 clie_payload['empresa_clie'] = "Autônomo / Inovador Solo"
-                if not clie_payload.get('docu_clie'):
-                    clie_payload['docu_clie'] = "00.000.000/0001-00" # Evita quebra de NOT NULL se houver constraint
+                if not clie_payload.get('docu_clie') or only_digits(clie_payload.get('docu_clie')) in ('', '00000000000100'):
+                    clie_payload['docu_clie'] = "00.000.000/0001-00"  # Evita quebra de NOT NULL se houver constraint
             else:
-                # Caso contrário (GENERAL), aplica os fallbacks corporativos originais
-                if not clie_payload.get('docu_clie'):
-                    clie_payload['docu_clie'] = "00.000.000/0001-00"
+                # Caso contrário (GENERAL), não aceita CNPJ/CEP placeholder genéricos
                 if not clie_payload.get('empresa_clie'):
-                    clie_payload['empresa_clie'] = "Da Vinci Sandbox (Solo)"
+                    return jsonify({"error": "Informe a instituição / razão social."}), 400
+                if only_digits(clie_payload.get('docu_clie')) == '00000000000100':
+                    return jsonify({"error": "Informe um CNPJ institucional válido."}), 400
 
             # Evita cadastro duplicado: reenvia o código existente
             mail_informado = (clie_payload.get('mail_clie') or '').strip()
@@ -2288,6 +2311,21 @@ def _verify_leaction_hub_jwt(token):
 # Mesmo status usado pelo admin em POST /api/admin/toggle-project (is_active=true)
 HUB_MATU_ACTIVE_STATUS = 'PROJETO OK'
 HUB_PROJETO_ACTIVE_STATUS = 'ATIVO'
+_STATUS_IA_PRESERVE_ON_ACTIVATE = frozenset({
+    'AVALIACAO OK',
+    'PENDENTE',
+    'PROCESSANDO',
+    'CONCLUIDO',
+    'ERRO_IA',
+})
+
+
+def _resolve_status_ia_on_activate(current_status):
+    """Não regride assessment/gênese já avançados ao ativar o projeto."""
+    normalized = (current_status or '').strip().upper()
+    if normalized in _STATUS_IA_PRESERVE_ON_ACTIVATE:
+        return normalized
+    return HUB_MATU_ACTIVE_STATUS
 
 
 class HubFulfillmentError(ValueError):
@@ -2344,9 +2382,9 @@ def _fulfill_leaction_hub_payment(order_id, customer_email, gateway_ref, id_matu
         projeto_status = projeto_row[0] if projeto_row else None
 
         already_active = (
-            (status_ia or '').strip().upper() == HUB_MATU_ACTIVE_STATUS
-            and projeto_status == HUB_PROJETO_ACTIVE_STATUS
+            projeto_status == HUB_PROJETO_ACTIVE_STATUS
             and bool(has_active_project)
+            and (status_ia or '').strip().upper() == _resolve_status_ia_on_activate(status_ia)
         )
         if already_active:
             print(
@@ -2363,6 +2401,8 @@ def _fulfill_leaction_hub_payment(order_id, customer_email, gateway_ref, id_matu
                 'gateway_ref': gateway_ref,
             }
 
+        next_status = _resolve_status_ia_on_activate(status_ia)
+
         cursor.execute(
             """
             UPDATE public.ctdi_clie
@@ -2377,7 +2417,7 @@ def _fulfill_leaction_hub_payment(order_id, customer_email, gateway_ref, id_matu
             SET status_ia = %s
             WHERE id_matu = %s
             """,
-            (HUB_MATU_ACTIVE_STATUS, id_matu_int),
+            (next_status, id_matu_int),
         )
         cursor.execute(
             """
@@ -2399,7 +2439,7 @@ def _fulfill_leaction_hub_payment(order_id, customer_email, gateway_ref, id_matu
             'status': 'activated',
             'id_matu': id_matu_int,
             'id_clie': id_clie,
-            'status_ia': HUB_MATU_ACTIVE_STATUS,
+            'status_ia': next_status,
             'projeto_status': HUB_PROJETO_ACTIVE_STATUS,
             'order_id': order_id,
             'gateway_ref': gateway_ref,
@@ -3474,11 +3514,22 @@ def admin_toggle_project():
         id_clie = data.get('id_clie')
         is_active = data.get('status')
 
-        # A nossa Máquina de Estado
-        novo_status = "PROJETO OK" if is_active else "AVALIACAO OK"
-
         conn = get_db_conn()
         cursor = conn.cursor()
+
+        # A nossa Máquina de Estado — não regredir AVALIACAO OK / CONCLUIDO
+        cursor.execute(
+            "SELECT status_ia FROM ctdi_matu WHERE id_clie = %s ORDER BY id_matu DESC LIMIT 1",
+            (id_clie,),
+        )
+        matu_row = cursor.fetchone()
+        status_atual = matu_row[0] if matu_row else None
+        if is_active:
+            novo_status = _resolve_status_ia_on_activate(status_atual)
+        else:
+            # Desativar não apaga gênese; volta ao estágio de avaliação se ainda não concluiu.
+            atual = (status_atual or '').strip().upper()
+            novo_status = atual if atual in ('CONCLUIDO', 'PENDENTE', 'PROCESSANDO', 'ERRO_IA') else 'AVALIACAO OK'
 
         # 1. ATUALIZA A CTDI_CLIE (Apenas o booleano de ativação)
         cursor.execute("""
@@ -3503,6 +3554,49 @@ def admin_toggle_project():
             ON CONFLICT (id_clie) 
             DO UPDATE SET status = EXCLUDED.status
         """, (id_clie, status_str))
+
+        # 4. SINCRONIZA CONTRATO CRM (dx_contratos) — toggle admin também é contratação operacional
+        if is_active:
+            cursor.execute(
+                """
+                SELECT id FROM public.dx_contratos
+                WHERE id_clie = %s AND status IN ('ativo', 'trial', 'inadimplente')
+                ORDER BY id DESC LIMIT 1
+                """,
+                (id_clie,),
+            )
+            contrato = cursor.fetchone()
+            if contrato:
+                cursor.execute(
+                    """
+                    UPDATE public.dx_contratos
+                    SET status = 'ativo', atualizado_em = NOW()
+                    WHERE id = %s
+                    """,
+                    (contrato[0],),
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO public.dx_contratos
+                        (id_clie, id_plano, valor_negociado, status, data_inicio, data_vencimento)
+                    SELECT %s, p.id, COALESCE(p.valor_mensal, 1), 'ativo', CURRENT_DATE, CURRENT_DATE + 365
+                    FROM public.dx_planos p
+                    WHERE p.ativo = TRUE
+                    ORDER BY p.id
+                    LIMIT 1
+                    """,
+                    (id_clie,),
+                )
+        else:
+            cursor.execute(
+                """
+                UPDATE public.dx_contratos
+                SET status = 'cancelado', atualizado_em = NOW()
+                WHERE id_clie = %s AND status IN ('ativo', 'trial', 'inadimplente')
+                """,
+                (id_clie,),
+            )
 
         conn.commit()
         cursor.close()
@@ -4171,6 +4265,7 @@ def handle_single_sprint(record_id):
 # Detalhamento das sprints com metadados do Framework (leaf_derv)
 @app.route('/api/sprint_details/<int:id_sprn>', methods=['GET'])
 def get_sprint_details(id_sprn):
+    conn = None
     try:
         conn = get_db_conn()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -4194,6 +4289,7 @@ def get_sprint_details(id_sprn):
 
         if sprint_data:
             from estrategia_matriz import resolver_hierarquia_objetivo
+            from sprint_qualidade import enriquecer_sprint_details
 
             payload = dict(sprint_data)
             oid = payload.get("objetivo_id")
@@ -4201,11 +4297,347 @@ def get_sprint_details(id_sprn):
                 hier = resolver_hierarquia_objetivo(conn, int(oid))
                 if hier:
                     payload["estrategia_okr"] = hier
+            try:
+                payload = enriquecer_sprint_details(conn, payload)
+            except Exception as enrich_err:
+                print(f"⚠️ sprint_qualidade enrich: {enrich_err}")
             return jsonify(payload), 200
         return jsonify({"error": "Sprint não encontrada no repositório."}), 404
     except Exception as e:
         print(f"❌ Erro no Python (sprint_details): {e}")
         return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/sprints/metricas/comprovar', methods=['POST'])
+def sprints_metricas_comprovar():
+    """Cliente envia comprovação (documento_url e/ou depoimento) de uma métrica."""
+    conn = None
+    try:
+        from rbac.context import resolve_rbac_context
+        from sprint_qualidade import comprovar_metrica, e_moderador
+
+        ctx = resolve_rbac_context()
+        if e_moderador(ctx):
+            return jsonify({
+                "error": "O Moderador não submete comprovação — apenas avalia a qualidade das entregas do Cliente."
+            }), 403
+
+        data = request.get_json(silent=True) or {}
+        id_metrica = data.get('id_metrica') or data.get('id')
+        if not id_metrica:
+            return jsonify({"error": "id_metrica é obrigatório."}), 400
+
+        conn = get_db_conn()
+        result = comprovar_metrica(
+            conn,
+            id_metrica=int(id_metrica),
+            documento_url=data.get('documento_url'),
+            depoimento=data.get('depoimento'),
+        )
+        return jsonify({"success": True, **result}), 200
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
+    except LookupError as le:
+        return jsonify({"error": str(le)}), 404
+    except Exception as e:
+        print(f"❌ Erro comprovar métrica: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/sprints/metricas/submeter-analise', methods=['POST'])
+def sprints_metricas_submeter_analise():
+    """
+    Cliente submete a comprovação de UMA métrica.
+    Nota automática (regra interna): só texto 40, só documento 40, ambos 100.
+    """
+    conn = None
+    try:
+        from rbac.context import resolve_rbac_context
+        from sprint_qualidade import (
+            aplicar_nota_em_metrica,
+            calcular_nota_por_evidencia,
+            comprovar_metrica,
+            e_moderador,
+        )
+
+        ctx = resolve_rbac_context()
+        if e_moderador(ctx):
+            return jsonify({
+                "error": "Apenas o Cliente submete métricas para análise do Modulador."
+            }), 403
+
+        data = request.get_json(silent=True) or {}
+        id_metrica = data.get('id_metrica') or data.get('id')
+        if not id_metrica:
+            return jsonify({"error": "id_metrica é obrigatório."}), 400
+
+        documento_url = (data.get('documento_url') or '').strip()
+        depoimento = (data.get('depoimento') or '').strip()
+        if not documento_url and not depoimento:
+            return jsonify({"error": "Informe documento (link) e/ou depoimento para esta métrica."}), 400
+
+        nota = calcular_nota_por_evidencia(documento_url, depoimento)
+        status_mod = 'Aprovado' if nota >= 100 else 'Revisão Necessária'
+
+        conn = get_db_conn()
+        comprovar_metrica(
+            conn,
+            id_metrica=int(id_metrica),
+            documento_url=documento_url or None,
+            depoimento=depoimento or None,
+        )
+        result = aplicar_nota_em_metrica(conn, int(id_metrica), nota)
+        return jsonify({
+            "success": True,
+            "status": status_mod,
+            "nota": nota,
+            **result,
+        }), 200
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
+    except LookupError as le:
+        return jsonify({"error": str(le)}), 404
+    except Exception as e:
+        print(f"❌ Erro submeter-analise métrica: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/sprints/metricas/avaliar', methods=['POST'])
+def sprints_metricas_avaliar():
+    """
+    Consultor humano revisa a nota do Modulador — somente sob solicitação do Cliente.
+    """
+    conn = None
+    try:
+        from sprint_qualidade import avaliar_metrica, pode_revisar_nota_consultor
+        from rbac.context import resolve_rbac_context
+
+        ctx = resolve_rbac_context()
+        data = request.get_json(silent=True) or {}
+        id_metrica = data.get('id_metrica') or data.get('id')
+        if id_metrica is None:
+            return jsonify({"error": "id_metrica é obrigatório."}), 400
+        if 'nota_qualidade' not in data:
+            return jsonify({"error": "nota_qualidade é obrigatória."}), 400
+
+        conn = get_db_conn()
+
+        # Descobre a sprint da métrica para validar a exceção
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id_sprn FROM public.dx_entregas_metricas
+            WHERE id = %s OR id_metrica = %s
+            LIMIT 1
+            """,
+            (int(id_metrica), int(id_metrica)),
+        )
+        row = cur.fetchone()
+        cur.close()
+        if not row:
+            return jsonify({"error": "Métrica/entrega não encontrada."}), 404
+        id_sprn = int(row[0])
+
+        if not pode_revisar_nota_consultor(conn, id_sprn, ctx):
+            return jsonify({
+                "error": (
+                    "Revisão do consultor é excepcional: só é permitida quando o Cliente "
+                    "solicitar revisão da nota do Modulador."
+                ),
+                "codigo": "revisao_nao_solicitada",
+            }), 403
+
+        result = avaliar_metrica(
+            conn,
+            id_metrica=int(id_metrica),
+            nota_qualidade=data.get('nota_qualidade'),
+            id_moderador=ctx.id_usuario,
+        )
+        return jsonify({"success": True, **result}), 200
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
+    except LookupError as le:
+        return jsonify({"error": str(le)}), 404
+    except Exception as e:
+        print(f"❌ Erro avaliar métrica: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/sprints/revisao-consultor/solicitar', methods=['POST'])
+def sprints_revisao_solicitar():
+    """Cliente solicita revisão excepcional da nota do Modulador por consultor humano."""
+    conn = None
+    try:
+        from rbac.context import resolve_rbac_context
+        from sprint_qualidade import e_moderador, solicitar_revisao_consultor
+
+        ctx = resolve_rbac_context()
+        if e_moderador(ctx):
+            return jsonify({
+                "error": "Apenas o Cliente solicita revisão do consultor."
+            }), 403
+
+        data = request.get_json(silent=True) or {}
+        id_sprn = data.get('id_sprn')
+        if not id_sprn:
+            return jsonify({"error": "id_sprn é obrigatório."}), 400
+
+        conn = get_db_conn()
+        result = solicitar_revisao_consultor(conn, int(id_sprn), data.get('motivo'))
+        return jsonify({"success": True, **result}), 200
+    except LookupError as le:
+        return jsonify({"error": str(le)}), 404
+    except Exception as e:
+        print(f"❌ Erro solicitar revisão: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/sprints/revisao-consultor/finalizar', methods=['POST'])
+def sprints_revisao_finalizar():
+    """Cliente ou consultor encerra o ciclo de revisão excepcional."""
+    conn = None
+    try:
+        from sprint_qualidade import finalizar_revisao_consultor
+
+        data = request.get_json(silent=True) or {}
+        id_sprn = data.get('id_sprn')
+        if not id_sprn:
+            return jsonify({"error": "id_sprn é obrigatório."}), 400
+
+        conn = get_db_conn()
+        result = finalizar_revisao_consultor(conn, int(id_sprn))
+        return jsonify({"success": True, **result}), 200
+    except LookupError as le:
+        return jsonify({"error": str(le)}), 404
+    except Exception as e:
+        print(f"❌ Erro finalizar revisão: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/sprints/dod/atualizar', methods=['POST'])
+def sprints_dod_atualizar():
+    """Persiste checkboxes DoD (concluido boolean). Não altera nota de qualidade. Só Cliente."""
+    conn = None
+    try:
+        from sprint_qualidade import atualizar_dod_checklist, dod_100_porcento, e_moderador
+        from rbac.context import resolve_rbac_context
+
+        ctx = resolve_rbac_context()
+        if e_moderador(ctx):
+            return jsonify({"error": "O Moderador não altera DoD — apenas o Cliente marca critérios e solicita o fechamento."}), 403
+
+        data = request.get_json(silent=True) or {}
+        id_sprn = data.get('id_sprn')
+        itens = data.get('itens') or data.get('dod_itens') or []
+        if not id_sprn:
+            return jsonify({"error": "id_sprn é obrigatório."}), 400
+
+        conn = get_db_conn()
+        dod = atualizar_dod_checklist(conn, int(id_sprn), itens)
+        completo, total, ok = dod_100_porcento(conn, int(id_sprn))
+        return jsonify({
+            "success": True,
+            "dod_itens": dod,
+            "dod_completo": completo,
+            "dod_resumo": {"total": total, "concluidos": ok},
+        }), 200
+    except Exception as e:
+        print(f"❌ Erro atualizar DoD: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/sprints/fechar', methods=['POST'])
+def sprints_fechar():
+    """
+    Cliente solicita encerramento da Sprint.
+    Exige: DoD 100% + média das notas do Moderador >= 80.
+    """
+    conn = None
+    try:
+        from rbac.context import resolve_rbac_context
+        from sprint_qualidade import (
+            atualizar_dod_checklist,
+            pode_fechar_sprint,
+            validar_prontidao_fechamento,
+        )
+        from sprint_governance import STAT_CONCLUIDA
+
+        ctx = resolve_rbac_context()
+        if not pode_fechar_sprint(ctx):
+            return jsonify({
+                "error": "Apenas o Cliente pode solicitar o encerramento da Sprint. O Moderador apenas pontua a qualidade."
+            }), 403
+
+        data = request.get_json(silent=True) or {}
+        id_sprn = data.get('id_sprn')
+        if not id_sprn:
+            return jsonify({"error": "id_sprn é obrigatório."}), 400
+
+        conn = get_db_conn()
+
+        dod_itens = data.get('dod_itens') or data.get('itens')
+        if isinstance(dod_itens, list) and dod_itens:
+            atualizar_dod_checklist(conn, int(id_sprn), dod_itens)
+
+        prontidao = validar_prontidao_fechamento(conn, int(id_sprn))
+        if not prontidao["ok"]:
+            status = 400
+            # Prioriza feedback de qualidade < 80 quando aplicável (mensagem pedida no fluxo)
+            msg = prontidao["mensagem"]
+            if not prontidao.get("qualidade_ok") and prontidao.get("dod_completo"):
+                from sprint_qualidade import MSG_QUALIDADE_ABAIXO
+                msg = MSG_QUALIDADE_ABAIXO
+            return jsonify({
+                "success": False,
+                "error": msg,
+                "codigo": prontidao.get("codigo"),
+                **{k: v for k, v in prontidao.items() if k not in ("ok", "mensagem")},
+            }), status
+
+        progresso = prontidao["progresso_qualidade"]
+        update_data = {
+            "stat_sprn": STAT_CONCLUIDA,
+            "realv_sprn": str(int(progresso)),
+        }
+        success = db_manager.update_record(conn, 'ctdi_sprn', int(id_sprn), update_data)
+        if not success:
+            return jsonify({"error": "Falha ao encerrar a Sprint no banco."}), 500
+
+        return jsonify({
+            "success": True,
+            "message": "Sprint encerrada com sucesso.",
+            "progresso_qualidade": progresso,
+            "stat_sprn": STAT_CONCLUIDA,
+        }), 200
+    except Exception as e:
+        print(f"❌ Erro fechar sprint: {e}")
+        if conn:
+            conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 # =========================================================================
@@ -4317,7 +4749,7 @@ def avaliar_modulador():
     cur.execute(
         """
         SELECT s.id_sprn, s.name_sprn, s.desc_sprn, s.stat_sprn,
-               d.name_derv, d.derv_defi, d.criteria_dod
+               d.name_derv, d.derv_defi, d.derv_metr, d.criteria_dod
         FROM public.ctdi_sprn s
         LEFT JOIN public.leaf_derv d ON s.id_bloc = d.id_bloc
         WHERE s.id_sprn = %s
@@ -4432,40 +4864,48 @@ def avaliar_modulador():
     resultado["nota"] = nota
     status = resultado["status"]
 
-    # 5) Persistência: veredito + NOTA no realv_sprn (Progresso Qualitativo do bloco)
+    # 5) Persistência: veredito + nota de qualidade.
+    # Encerramento da Sprint é SEMPRE do Cliente (nunca do Modulador/consultor).
+    progresso = float(nota)
     try:
+        from sprint_qualidade import aplicar_nota_modulador, sync_entregas_metricas
+
+        sync_entregas_metricas(conn, int(id_sprn), sprint.get('derv_metr'))
+
         cur = conn.cursor()
         feedback_json = json.dumps(resultado, ensure_ascii=False)
-        if aprovado:
-            cur.execute(
-                """
-                UPDATE public.ctdi_sprn
-                SET evidencia_texto = %s, modulador_status = %s, modulador_feedback = %s,
-                    realv_sprn = %s, stat_sprn = 'concluida'
-                WHERE id_sprn = %s
-                """,
-                (evidencia, status, feedback_json, nota, id_sprn),
-            )
-        else:
-            cur.execute(
-                """
-                UPDATE public.ctdi_sprn
-                SET evidencia_texto = %s, modulador_status = %s, modulador_feedback = %s,
-                    realv_sprn = %s
-                WHERE id_sprn = %s
-                """,
-                (evidencia, status, feedback_json, nota, id_sprn),
-            )
+        cur.execute(
+            """
+            UPDATE public.ctdi_sprn
+            SET evidencia_texto = %s,
+                modulador_status = %s,
+                modulador_feedback = %s
+            WHERE id_sprn = %s
+            """,
+            (evidencia, status, feedback_json, id_sprn),
+        )
         conn.commit()
         cur.close()
+        progresso = aplicar_nota_modulador(conn, int(id_sprn), nota)
     except Exception as e:
         conn.rollback()
         print(f"⚠️ Falha ao persistir veredito do Modulador: {e}", file=sys.stderr)
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE public.ctdi_sprn SET realv_sprn = %s WHERE id_sprn = %s",
+                (str(int(nota)), id_sprn),
+            )
+            conn.commit()
+            cur.close()
+        except Exception:
+            conn.rollback()
 
     return jsonify({
         "success": True,
         "id_sprn": id_sprn,
-        "sprint_concluida": aprovado,
+        "sprint_concluida": False,
+        "progresso_qualidade": progresso,
         **resultado,
     }), 200
 
@@ -4476,23 +4916,52 @@ def update_sprint_strategic():
     conn = get_db_conn()
 
     try:
-        data = request.json
+        data = request.json or {}
         id_sprn = data.get('id_sprn')
 
         if not id_sprn:
             return jsonify({"error": "ID da sprint não fornecido"}), 400
 
-        # 2. Montar o dicionário com os nomes exatos das colunas do seu banco
-        # Usei psycopg2.extras.Json para o campo metrics_scores que é JSONB
+        from rbac.context import resolve_rbac_context
+        from sprint_qualidade import (
+            atualizar_dod_checklist,
+            e_moderador,
+            recalcular_progresso_sprint,
+        )
+
+        ctx = resolve_rbac_context()
+
+        # Encerramento oficial: usar POST /api/sprints/fechar (Cliente + DoD 100% + média >= 80)
+        raw_status = data.get('status')
+        if raw_status:
+            from sprint_governance import canonicalizar_status_dnd, STAT_CONCLUIDA
+            canon = canonicalizar_status_dnd(raw_status)
+            if canon == STAT_CONCLUIDA:
+                return jsonify({
+                    "error": "Use POST /api/sprints/fechar para encerrar a Sprint (Cliente; exige DoD 100% e qualidade >= 80%).",
+                    "codigo": "use_endpoint_fechar",
+                }), 400
+
+        # Moderador não altera DoD / evolução operacional do cliente
+        dod_itens = data.get('dod_itens') or data.get('itens')
+        if isinstance(dod_itens, list) and dod_itens:
+            if e_moderador(ctx):
+                return jsonify({
+                    "error": "O Moderador não marca DoD nem encerra a Sprint — apenas pontua métricas."
+                }), 403
+            atualizar_dod_checklist(conn, int(id_sprn), dod_itens)
+
+        # Progresso qualitativo é calculado pelo backend (média das notas do moderador)
+        progresso = recalcular_progresso_sprint(conn, int(id_sprn))
+
         update_data = {
             "swot_type": data.get('swot_type'),
             "swot_justification": data.get('swot_justification'),
             "evidence_url": data.get('evidence_url'),
             "exec_notes": data.get('exec_notes'),
             "metrics_scores": psycopg2.extras.Json(data.get('metrics_scores', {})),
-            "realv_sprn": data.get('realv_sprn'),
+            "realv_sprn": str(int(progresso)),
         }
-        raw_status = data.get('status')
         if raw_status:
             from sprint_governance import canonicalizar_status_dnd
             canon = canonicalizar_status_dnd(raw_status)
@@ -4501,11 +4970,14 @@ def update_sprint_strategic():
 
         print(f"--- [DEBUG PYTHON] Atualizando Sprint {id_sprn} com dados estratégicos ---")
 
-        # 3. Executar o update usando seu db_manager
         success = db_manager.update_record(conn, 'ctdi_sprn', id_sprn, update_data)
 
         if success:
-            return jsonify({"success": True, "message": "Evolução gravada com sucesso!"}), 200
+            return jsonify({
+                "success": True,
+                "message": "Evolução gravada com sucesso!",
+                "progresso_qualidade": progresso,
+            }), 200
         else:
             return jsonify({"error": "Falha ao atualizar registro no banco."}), 500
 
@@ -8646,6 +9118,7 @@ def get_okr_consolidado(id_clie=None):
                 FROM public.ctdi_okr_direcionadores d
                          LEFT JOIN public.ctdi_okr_objetivos_dt o ON d.id_direc = o.id_direc
                          LEFT JOIN public.ctdi_okr_krs k ON o.id_obj_dt = k.id_obj_dt
+                              AND COALESCE(k.ativo, true) = true
                 WHERE d.id_clie = %s
                 ORDER BY
                     CASE WHEN d.slug_catalogo IS NOT NULL THEN 0 ELSE 1 END,
@@ -8815,8 +9288,19 @@ def handle_krs():
         if not data or 'id_obj_dt' not in data:
             return jsonify({"error": "Alinhamento corrompido. 'id_obj_dt' é obrigatório."}), 400
 
+        payload = dict(data)
+        if not payload.get('desc_kr') and payload.get('nome_kr'):
+            payload['desc_kr'] = payload['nome_kr']
+        payload.setdefault('ativo', True)
+        payload.setdefault('valor_inicial', 0)
+        payload.setdefault('valor_alvo', 100)
+        payload.setdefault('valor_atual', 0)
+        payload.setdefault('status_kr', 'Em Andamento')
+        if not payload.get('kpi_nome'):
+            payload['kpi_nome'] = 'Meta personalizada'
+
         # Executa a escrita diretamente
-        db_manager.create_record(conn, 'ctdi_okr_krs', data)
+        db_manager.create_record(conn, 'ctdi_okr_krs', payload)
 
         # Sucesso baseado em execução limpa
         return jsonify({"success": True, "message": "Key Result estabelecido com sucesso!"}), 201
@@ -8877,17 +9361,26 @@ def handle_atividades():
 
         cur_val = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur_val.execute(
-            "SELECT dx_kr_id FROM public.ctdi_okr_krs WHERE id_kr = %s",
+            """
+            SELECT dx_kr_id, COALESCE(ativo, true) AS ativo
+            FROM public.ctdi_okr_krs WHERE id_kr = %s
+            """,
             (int(data['id_kr']),),
         )
         kr_row = cur_val.fetchone()
         cur_val.close()
-        if not kr_row or not kr_row.get('dx_kr_id'):
+        if not kr_row:
             return jsonify({
                 "success": False,
-                "error": "O KR selecionado não está vinculado à matriz canônica (dx_krs).",
+                "error": "Key Result selecionado não encontrado.",
             }), 400
-        data['dx_kr_id'] = int(kr_row['dx_kr_id'])
+        if not kr_row.get('ativo', True):
+            return jsonify({
+                "success": False,
+                "error": "Este KR está suprimido. Reative-o na matriz estratégica antes de vincular atividades.",
+            }), 400
+        # Canônico: sincroniza dx_kr_id. Personalizado: NULL permitido.
+        data['dx_kr_id'] = int(kr_row['dx_kr_id']) if kr_row.get('dx_kr_id') else None
 
         executor_id = data.get('executor_id') or data.get('id_team')
         if not executor_id:
@@ -9036,17 +9529,25 @@ def _put_atividade_sprint(conn, record_id, data):
     if update_data.get('id_kr'):
         cur_kr = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur_kr.execute(
-            "SELECT dx_kr_id FROM public.ctdi_okr_krs WHERE id_kr = %s",
+            """
+            SELECT dx_kr_id, COALESCE(ativo, true) AS ativo
+            FROM public.ctdi_okr_krs WHERE id_kr = %s
+            """,
             (int(update_data['id_kr']),),
         )
         kr_row = cur_kr.fetchone()
         cur_kr.close()
-        if not kr_row or not kr_row.get('dx_kr_id'):
+        if not kr_row:
             return jsonify({
                 "success": False,
-                "error": "O KR selecionado não está vinculado à matriz canônica (dx_krs).",
+                "error": "Key Result selecionado não encontrado.",
             }), 400
-        update_data['dx_kr_id'] = int(kr_row['dx_kr_id'])
+        if not kr_row.get('ativo', True):
+            return jsonify({
+                "success": False,
+                "error": "Este KR está suprimido.",
+            }), 400
+        update_data['dx_kr_id'] = int(kr_row['dx_kr_id']) if kr_row.get('dx_kr_id') else None
 
     if update_data.get('executor_id') or update_data.get('id_team'):
         executor_id = update_data.get('executor_id') or update_data.get('id_team')
@@ -9150,6 +9651,25 @@ def handle_single_okr_entity(entity_type, record_id):
                         "error": "Direcionadores do catálogo PanelDX não podem ser removidos."
                     }), 403
 
+            # KRs canônicos: soft-suppress (seed não recria). Custom: hard delete.
+            if entity_type == 'krs':
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                cur.execute(
+                    "SELECT dx_kr_id FROM public.ctdi_okr_krs WHERE id_kr = %s",
+                    (record_id,),
+                )
+                kr_row = cur.fetchone()
+                cur.close()
+                if kr_row and kr_row.get('dx_kr_id'):
+                    from estrategia_matriz import atualizar_kr_cliente
+                    if atualizar_kr_cliente(conn, record_id, ativo=False):
+                        return jsonify({
+                            "success": True,
+                            "message": "KR canônico suprimido (pode ser reativado na matriz).",
+                            "suprimido": True,
+                        }), 200
+                    return jsonify({"error": "Não foi possível suprimir o KR."}), 500
+
             if db_manager.delete_record(conn, table_name, record_id):
                 return jsonify({"success": True, "message": "Registro removido com sucesso!"}), 200
             return jsonify({"error": "Registro não encontrado ou já removido."}), 404
@@ -9194,6 +9714,7 @@ def get_okr_admin_dashboard():
                          LEFT JOIN public.ctdi_okr_direcionadores d ON c.id_clie = d.id_clie
                          LEFT JOIN public.ctdi_okr_objetivos_dt o ON d.id_direc = o.id_direc
                          LEFT JOIN public.ctdi_okr_krs k ON o.id_obj_dt = k.id_obj_dt
+                              AND COALESCE(k.ativo, true) = true
                 GROUP BY c.id_clie, c.nome_clie
                 ORDER BY progresso_medio DESC, c.nome_clie ASC; \
                 """

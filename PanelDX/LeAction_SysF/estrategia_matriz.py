@@ -494,6 +494,15 @@ def carregar_painel_okr_cliente(conn, id_clie: int) -> dict:
         cur.close()
 
 
+def _titulo_kr_cliente(kr: dict) -> str:
+    """Preferência: texto editado no cliente → canônico → nome."""
+    for key in ("desc_kr", "nome_kr", "desc_canonica"):
+        val = (kr.get(key) or "").strip()
+        if val:
+            return val
+    return f"KR {kr.get('id_kr') or ''}".strip()
+
+
 def carregar_detalhe_objetivo_cliente(conn, id_obj_dt: int) -> dict | None:
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
@@ -515,24 +524,31 @@ def carregar_detalhe_objetivo_cliente(conn, id_obj_dt: int) -> dict | None:
             """
             SELECT k.id_kr, k.nome_kr, k.desc_kr, k.kpi_nome, k.meta_cliente,
                    k.valor_inicial, k.valor_alvo, k.valor_atual, k.dx_kr_id,
+                   COALESCE(k.ativo, true) AS ativo,
                    dxk.descricao AS desc_canonica,
                    dxk.metrica_alvo_placeholder
             FROM public.ctdi_okr_krs k
             LEFT JOIN public.dx_krs dxk ON dxk.id = k.dx_kr_id
             WHERE k.id_obj_dt = %s
-            ORDER BY k.dx_kr_id NULLS LAST, k.id_kr
+            ORDER BY COALESCE(k.ativo, true) DESC, k.dx_kr_id NULLS LAST, k.id_kr
             """,
             (id_obj_dt,),
         )
-        krs = []
+        # fetchall ANTES do cálculo de progresso — o progresso reutiliza o mesmo cursor
+        kr_rows = list(cur.fetchall())
         progresso_obj, kr_stats = calcular_progresso_objetivo_atividades(cur, id_obj_dt)
         stats_by_kr = {s["id_kr"]: s for s in kr_stats}
-        for kr in cur.fetchall():
+        krs = []
+        for kr in kr_rows:
             extra = stats_by_kr.get(kr["id_kr"], {})
             krs.append({
                 "id_kr": kr["id_kr"],
                 "dx_kr_id": kr.get("dx_kr_id"),
-                "descricao": kr.get("desc_canonica") or kr.get("desc_kr") or kr.get("nome_kr"),
+                "ativo": bool(kr.get("ativo", True)),
+                "is_canonico": kr.get("dx_kr_id") is not None,
+                "nome_kr": kr.get("nome_kr") or "",
+                "desc_kr": kr.get("desc_kr") or "",
+                "descricao": _titulo_kr_cliente(kr),
                 "meta_placeholder": kr.get("metrica_alvo_placeholder") or kr.get("kpi_nome"),
                 "meta_cliente": kr.get("meta_cliente") or "",
                 "valor_inicial": float(kr["valor_inicial"] or 0),
@@ -571,15 +587,18 @@ def carregar_cascata_okr_atividade(
                 (int(id_sprn),),
             )
             sp = cur.fetchone()
-            objetivo_sprint_dx = sp.get("objetivo_id") if sp else None
+            raw_obj = sp.get("objetivo_id") if sp else None
+            objetivo_sprint_dx = int(raw_obj) if raw_obj is not None else None
 
         cur.execute(
             """
             SELECT o.id_direc, o.id_obj_dt,
-                   k.id_kr,
-                   COALESCE(dxk.descricao, k.nome_kr, k.desc_kr) AS kr_titulo
+                   k.id_kr, k.nome_kr, k.desc_kr,
+                   dxk.descricao AS desc_canonica
             FROM public.ctdi_okr_objetivos_dt o
-            JOIN public.ctdi_okr_krs k ON k.id_obj_dt = o.id_obj_dt AND k.dx_kr_id IS NOT NULL
+            JOIN public.ctdi_okr_krs k
+              ON k.id_obj_dt = o.id_obj_dt
+             AND COALESCE(k.ativo, true) = true
             LEFT JOIN public.dx_krs dxk ON dxk.id = k.dx_kr_id
             JOIN public.ctdi_okr_direcionadores d ON d.id_direc = o.id_direc
             WHERE d.id_clie = %s
@@ -592,7 +611,7 @@ def carregar_cascata_okr_atividade(
             oid = int(row["id_obj_dt"])
             krs_por_obj.setdefault(oid, []).append({
                 "id_kr": row["id_kr"],
-                "titulo": row["kr_titulo"] or f"KR {row['id_kr']}",
+                "titulo": _titulo_kr_cliente(row),
             })
     finally:
         cur.close()
@@ -601,16 +620,23 @@ def carregar_cascata_okr_atividade(
     for d in painel.get("direcionadores") or []:
         objetivos_out: list[dict] = []
         for obj in d.get("objetivos") or []:
-            dx_obj_id = obj.get("dx_objetivo_id")
-            if objetivo_sprint_dx and dx_obj_id != objetivo_sprint_dx:
+            dx_raw = obj.get("dx_objetivo_id")
+            dx_obj_id = int(dx_raw) if dx_raw is not None else None
+            if objetivo_sprint_dx is not None and dx_obj_id != objetivo_sprint_dx:
                 continue
             oid = int(obj["id_obj_dt"])
+            krs_obj = krs_por_obj.get(oid, [])
+            if not krs_obj:
+                continue
             objetivos_out.append({
                 "id_obj_dt": oid,
                 "titulo": obj.get("objetivo_titulo") or obj.get("nome_obj") or f"Objetivo {oid}",
                 "dx_objetivo_id": dx_obj_id,
-                "krs": krs_por_obj.get(oid, []),
+                "krs": krs_obj,
             })
+        # Com filtro de sprint, esconde direcionadores vazios (evita "nenhum KR" ao escolher pilar errado)
+        if objetivo_sprint_dx is not None and not objetivos_out:
+            continue
         saida.append({
             "id_direc": d["id_direc"],
             "nome": d.get("nome_direc") or "Direcionador",
@@ -618,6 +644,7 @@ def carregar_cascata_okr_atividade(
             "is_catalogo_fixo": bool(d.get("is_catalogo_fixo")),
             "ordem_catalogo": d.get("ordem_catalogo", 999),
             "objetivos": objetivos_out,
+            "objetivo_sprint_filtrado": objetivo_sprint_dx is not None,
         })
     return saida
 
@@ -648,7 +675,7 @@ def carregar_krs_para_sprint(conn, id_sprn: int, id_clie: int) -> list[dict]:
             JOIN public.ctdi_okr_direcionadores d ON d.id_direc = o.id_direc
             LEFT JOIN public.dx_krs dxk ON dxk.id = k.dx_kr_id
             WHERE d.id_clie = %s
-              AND k.dx_kr_id IS NOT NULL
+              AND COALESCE(k.ativo, true) = true
         """
         params: list = [int(id_clie)]
         if objetivo_id:
@@ -663,7 +690,7 @@ def carregar_krs_para_sprint(conn, id_sprn: int, id_clie: int) -> list[dict]:
                 "id_kr": r["id_kr"],
                 "dx_kr_id": r["dx_kr_id"],
                 "nome_kr": r.get("nome_kr"),
-                "descricao": r.get("desc_canonica") or r.get("desc_kr") or r.get("nome_kr"),
+                "descricao": _titulo_kr_cliente(r),
                 "meta_placeholder": r.get("metrica_alvo_placeholder"),
                 "objetivo_titulo": r.get("nome_obj"),
                 "direcionador_nome": r.get("nome_direc"),
@@ -700,6 +727,10 @@ def atualizar_kr_cliente(
     meta_cliente: str | None = None,
     valor_alvo: float | None = None,
     valor_atual: float | None = None,
+    nome_kr: str | None = None,
+    desc_kr: str | None = None,
+    kpi_nome: str | None = None,
+    ativo: bool | None = None,
 ) -> bool:
     cur = conn.cursor()
     try:
@@ -714,6 +745,23 @@ def atualizar_kr_cliente(
         if valor_atual is not None:
             sets.append("valor_atual = %s")
             params.append(valor_atual)
+        if nome_kr is not None:
+            nome = nome_kr.strip()[:200]
+            sets.append("nome_kr = %s")
+            params.append(nome)
+            # Mantém desc alinhado ao título quando o cliente edita
+            if desc_kr is None:
+                sets.append("desc_kr = %s")
+                params.append(nome)
+        if desc_kr is not None:
+            sets.append("desc_kr = %s")
+            params.append(desc_kr.strip())
+        if kpi_nome is not None:
+            sets.append("kpi_nome = %s")
+            params.append(kpi_nome.strip()[:150] or "Meta")
+        if ativo is not None:
+            sets.append("ativo = %s")
+            params.append(bool(ativo))
         if not sets:
             return False
         sets.append("data_revisao = CURRENT_TIMESTAMP")
@@ -725,6 +773,54 @@ def atualizar_kr_cliente(
         ok = cur.rowcount > 0
         conn.commit()
         return ok
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+
+
+def criar_kr_cliente(
+    conn,
+    id_obj_dt: int,
+    *,
+    nome_kr: str,
+    kpi_nome: str | None = None,
+    meta_cliente: str | None = None,
+    valor_alvo: float = 100,
+) -> int | None:
+    """Cria KR personalizado do cliente (sem dx_kr_id — elegível a atividades)."""
+    nome = (nome_kr or "").strip()
+    if not nome:
+        return None
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute(
+            "SELECT 1 FROM public.ctdi_okr_objetivos_dt WHERE id_obj_dt = %s",
+            (int(id_obj_dt),),
+        )
+        if not cur.fetchone():
+            return None
+        cur.execute(
+            """
+            INSERT INTO public.ctdi_okr_krs
+                (id_obj_dt, nome_kr, desc_kr, kpi_nome,
+                 valor_inicial, valor_alvo, valor_atual, status_kr, meta_cliente, ativo)
+            VALUES (%s, %s, %s, %s, 0, %s, 0, 'Em Andamento', %s, true)
+            RETURNING id_kr
+            """,
+            (
+                int(id_obj_dt),
+                nome[:200],
+                nome,
+                (kpi_nome or "Meta personalizada").strip()[:150],
+                float(valor_alvo or 100),
+                (meta_cliente or "").strip() or None,
+            ),
+        )
+        new_id = int(cur.fetchone()["id_kr"])
+        conn.commit()
+        return new_id
     except Exception:
         conn.rollback()
         raise

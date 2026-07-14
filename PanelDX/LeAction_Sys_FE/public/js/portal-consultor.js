@@ -202,12 +202,16 @@
             list.innerHTML = items.map(function (d) {
                 var actions = '';
                 if (status === 'aberta') {
-                    actions = '<button type="button" data-demanda-status="' + d.id + '" data-next="em_andamento">Iniciar</button>';
+                    actions = '<button type="button" class="mesa-btn mesa-btn--lilac" data-demanda-status="'
+                        + d.id + '" data-next="em_andamento"><i class="fas fa-play"></i> Iniciar</button>';
                 } else if (status === 'em_andamento') {
-                    actions = '<button type="button" data-demanda-status="' + d.id + '" data-next="resolvida">Resolver</button>'
-                        + '<button type="button" data-demanda-status="' + d.id + '" data-next="aberta">Reabrir</button>';
+                    actions = '<button type="button" class="mesa-btn mesa-btn--gold" data-demanda-status="'
+                        + d.id + '" data-next="resolvida"><i class="fas fa-check"></i> Resolver</button>'
+                        + '<button type="button" class="mesa-btn mesa-btn--ghost" data-demanda-status="'
+                        + d.id + '" data-next="aberta">Reabrir</button>';
                 } else {
-                    actions = '<button type="button" data-demanda-status="' + d.id + '" data-next="em_andamento">Reativar</button>';
+                    actions = '<button type="button" class="mesa-btn mesa-btn--lilac" data-demanda-status="'
+                        + d.id + '" data-next="em_andamento"><i class="fas fa-redo"></i> Reativar</button>';
                 }
                 var consultorBadge = '';
                 if (isAgencia && d.consultor_responsavel_nome) {
@@ -366,7 +370,7 @@
         tbody.innerHTML = prospectosCache.map(function (item) {
             var link = inviteUrlFromItem(item);
             var copyBtn = link
-                ? '<button type="button" class="mesa-btn mesa-btn--ghost" data-copy-invite="'
+                ? '<button type="button" class="mesa-btn mesa-btn--lilac" data-copy-invite="'
                   + escapeHtml(link) + '"><i class="fas fa-copy"></i> Copiar Link</button>'
                 : '—';
             return (

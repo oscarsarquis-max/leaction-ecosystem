@@ -32,6 +32,7 @@ def rbac_listar_tarefas_executor():
             f"""
             SELECT a.id_ativ, a.id_sprn, a.id_kr, a.nome_ativ, a.desc_ativ,
                    a.status_ativ, a.data_planejamento, a.data_conclusao, a.executor_id,
+                   a.obs_encaminhamentos,
                    t.nome AS executor_nome, t.position AS executor_position,
                    s.name_sprn, s.stat_sprn
             FROM public.ctdi_okr_atividades a

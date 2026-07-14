@@ -220,43 +220,13 @@
             margin: 0;
             flex: 1;
         }
-        .sidebar-menu__toggle {
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            padding: 12px 12px;
-            border: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(0, 0, 0, 0.25);
-            color: var(--text-muted);
-            font-size: 0.82rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s ease, color 0.2s ease;
-            order: -1;
-        }
-        .sidebar-menu__toggle:hover {
-            background: rgba(255, 255, 255, 0.06);
-            color: #fff;
-        }
-        .sidebar-menu__toggle i {
-            font-size: 1rem;
-            transition: transform 0.3s ease;
-        }
-        body.sidebar-collapsed .sidebar-menu__toggle i.fa-chevron-left {
-            transform: rotate(180deg);
-        }
         body.sidebar-collapsed .sidebar-menu {
             width: var(--sidebar-width-collapsed);
         }
         body.sidebar-collapsed .sidebar-menu .sidebar-label,
         body.sidebar-collapsed .sidebar-menu hr,
         body.sidebar-collapsed .sidebar-menu .submenu,
-        body.sidebar-collapsed .sidebar-menu #btnDouradoLayout span,
-        body.sidebar-collapsed .sidebar-menu__toggle-label {
+        body.sidebar-collapsed .sidebar-menu #btnDouradoLayout span {
             display: none !important;
         }
         body.sidebar-collapsed .sidebar-menu a {
@@ -297,10 +267,72 @@
             color: white !important;
         }
 
+        /* Grupos do lead: itens em bold, subitens normal, sem ícones */
+        .sidebar-menu .nav-group > a.submenu-toggle {
+            font-weight: 700 !important;
+            letter-spacing: 0.01em;
+            color: #e5e7eb !important;
+        }
+        .sidebar-menu .nav-group .submenu a {
+            font-weight: 400 !important;
+            font-size: 0.84rem !important;
+            padding: 8px 16px 8px 28px !important;
+            color: #9ca3af !important;
+        }
+        .sidebar-menu .nav-group .submenu a.is-active {
+            color: #fff !important;
+            background: rgba(79, 172, 254, 0.14) !important;
+            font-weight: 600 !important;
+        }
+        .sidebar-menu .nav-group .submenu a:hover {
+            color: #fff !important;
+        }
+        body.sidebar-collapsed .sidebar-menu .nav-group > a.submenu-toggle {
+            font-size: 0.62rem !important;
+            padding: 10px 4px !important;
+            justify-content: center !important;
+            text-align: center;
+            line-height: 1.15;
+        }
+        body.sidebar-collapsed .sidebar-menu .nav-group > a.submenu-toggle .sidebar-label {
+            display: block !important;
+            white-space: normal;
+            font-size: 0.58rem !important;
+        }
+
+        /* Sem ícones Font Awesome na sidebar (exceto seletor dedicado do chevron CSS) */
+        #sidebar-menu i,
+        #sidebar-menu [class^="fa-"],
+        #sidebar-menu [class*=" fa-"] {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            margin: 0 !important;
+            font-size: 0 !important;
+        }
+
+        .sidebar-menu .nav-link-italic {
+            font-style: italic !important;
+            font-weight: 400 !important;
+            font-size: 0.82rem !important;
+            color: #9ca3af !important;
+            padding-top: 14px !important;
+            padding-bottom: 8px !important;
+        }
+        .sidebar-menu .nav-link-italic:hover {
+            color: #e5e7eb !important;
+        }
+        .sidebar-menu .nav-link-italic i {
+            display: none !important;
+        }
+        body.sidebar-collapsed .sidebar-menu .nav-link-italic .sidebar-label {
+            display: none !important;
+        }
+
         /* SUBMENUS — ocultos até clicar no item superior */
         .sidebar-menu .menu-item > .submenu {
             display: none !important;
-            padding-left: 20px !important;
+            padding-left: 8px !important;
             background: rgba(0, 0, 0, 0.2);
             margin: 0;
             list-style: none;
@@ -314,20 +346,21 @@
             position: relative;
             padding-right: 36px !important;
         }
-        .sidebar-menu .menu-item.has-children > a.submenu-toggle .submenu-chevron {
+        .sidebar-menu .menu-item.has-children > a.submenu-toggle::after {
+            content: '';
             position: absolute;
-            right: 16px;
+            right: 18px;
             top: 50%;
-            transform: translateY(-50%);
-            font-size: 0.72rem !important;
-            width: auto !important;
-            margin: 0 !important;
-            color: rgba(255, 255, 255, 0.45) !important;
-            transition: transform 0.2s ease, color 0.2s ease;
+            width: 6px;
+            height: 6px;
+            border-right: 1.5px solid rgba(255, 255, 255, 0.45);
+            border-bottom: 1.5px solid rgba(255, 255, 255, 0.45);
+            transform: translateY(-60%) rotate(45deg);
+            transition: transform 0.2s ease, border-color 0.2s ease;
         }
-        .sidebar-menu .menu-item.is-open > a.submenu-toggle .submenu-chevron {
-            transform: translateY(-50%) rotate(180deg);
-            color: rgba(255, 255, 255, 0.85) !important;
+        .sidebar-menu .menu-item.is-open > a.submenu-toggle::after {
+            transform: translateY(-20%) rotate(225deg);
+            border-color: rgba(255, 255, 255, 0.85);
         }
         .sidebar-menu .menu-item.is-open > a.submenu-toggle {
             background: #1f2937 !important;
@@ -336,21 +369,9 @@
         .sidebar-menu .submenu a {
             font-size: 0.85rem !important;
         }
-
-        /* CORES APENAS NOS ÍCONES */
-        .sidebar-menu i {
-            width: 25px !important;
-            font-size: 1.1rem !important;
-            margin-right: 10px !important;
-            /* Cor padrão dos ícones */
-            color: var(--accent-blue);
+        body.sidebar-collapsed .sidebar-menu .menu-item.has-children > a.submenu-toggle::after {
+            display: none;
         }
-
-        /* CORES ESPECÍFICAS PARA CADA ÍCONE (SINALIZAÇÃO SUTIL) */
-        .fa-brain { color: #a29bfe !important; }      /* Violeta IA */
-        .fa-id-card { color: #27ae60 !important; }    /* Verde Dados */
-        .fa-sign-out-alt { color: #ef4444 !important; } /* Vermelho Sair */
-        .fa-rocket, .fa-map-marked-alt { color: var(--accent-blue) !important; }
 
         /* BOTÃO GÊNESE (MANTÉM O ESTILO DOURADO) */
         #btnDouradoLayout {
@@ -433,11 +454,16 @@
             margin-left: var(--sidebar-width-collapsed);
         }
 
-        /* Isso vai forçar TODOS os ícones dentro da sidebar a terem a mesma cor azul */
+        /* Ícones Font Awesome ocultos na sidebar — tipografia só texto */
         .sidebar-menu i,
         .sidebar-menu [class^="fa-"],
         .sidebar-menu [class*=" fa-"] {
-            color: var(--accent-blue) !important;
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            margin: 0 !important;
+            font-size: 0 !important;
+            color: transparent !important;
         }
 
         /* Isso remove qualquer cor específica que tenha sobrado nos links */
@@ -535,12 +561,10 @@
         }
         body.sidebar-collapsed .sidebar-menu .submenu,
         body.sidebar-collapsed .sidebar-menu hr,
-        body.sidebar-collapsed .sidebar-menu__toggle-label,
         body.sidebar-collapsed .sidebar-menu #btnDouradoLayout span,
         body.sidebar-collapsed .sidebar-menu .sidebar-label,
         #sidebar-menu.is-collapsed .submenu,
         #sidebar-menu.is-collapsed hr,
-        #sidebar-menu.is-collapsed .sidebar-menu__toggle-label,
         #sidebar-menu.is-collapsed #btnDouradoLayout span,
         #sidebar-menu.is-collapsed .sidebar-label {
             display: none !important;
@@ -679,23 +703,7 @@
 <% } %>
     <main>
         <nav class="sidebar-menu" id="sidebar-menu">
-            <button type="button" class="sidebar-menu__toggle" id="sidebar-toggle" data-sidebar-toggle aria-label="Recolher menu lateral" title="Recolher menu" aria-expanded="true">
-                <i class="fas fa-chevron-left" aria-hidden="true"></i>
-                <span class="sidebar-menu__toggle-label">Recolher menu</span>
-            </button>
             <ul>
-                <li class="menu-item"> </li>
-
-                <li class="menu-item" style="margin-top: 5px;">
-                    <% if (!locals.isHolding && !locals.isConsultor) { %>
-                    <a href="/instrucoes-de-uso" style="font-weight: bold;">
-                        <i class="fas fa-book"></i><span class="sidebar-label"> Instruções de Uso</span>
-                    </a>
-                    <% } %>
-                </li>
-
-                <hr style="border-top: 1px solid rgba(255,255,255,0.2); margin: 10px 0;">
-
                 <% if (!locals.isLoggedIn) { %>
                     <li class="menu-item">
                         <a href="/cadastro">
@@ -796,83 +804,132 @@
                         </ul>
                     </li>
                 <% } else { %>
-                    <li class="menu-item">
-                        <a href="javascript:void(0)" class="submenu-toggle has-submenu">
-                            <i class="fas fa-user"></i>
-                            <span class="sidebar-label">Olá, <%= locals.lead && lead.nome ? lead.nome.split(' ')[0] : 'Consultor' %></span>
+                    <%
+                        const leadSidebar = locals.lead || null;
+                        const idMatuSidebar = leadSidebar && leadSidebar.id_matu;
+                        const initRoleLead = String(leadSidebar?.init_role || locals.init_role || '').toUpperCase().trim();
+                        const perfilLead = String(leadSidebar?.perfil_lead || '').toUpperCase().trim();
+                        const ehInovadorSolo = initRoleLead === 'SOLO' || perfilLead === 'INOVADOR';
+                        const statusIA = (leadSidebar && leadSidebar.status_ia)
+                            ? String(leadSidebar.status_ia).trim().toUpperCase()
+                            : '';
+                        const relatorioCompleto = statusIA === 'AVALIACAO OK' || statusIA.indexOf('CONCLU') !== -1;
+                        let linkEstadoAtual = '#';
+                        if (idMatuSidebar) {
+                            if (!statusIA || statusIA === 'AGUARDANDO CONTEXTO') {
+                                linkEstadoAtual = '/avaliacoes/' + idMatuSidebar;
+                            } else if (relatorioCompleto) {
+                                linkEstadoAtual = '/diagnostico/' + idMatuSidebar;
+                            } else {
+                                linkEstadoAtual = '/diagnostico-inicial/' + idMatuSidebar;
+                            }
+                        }
+                        // Fases:
+                        // 1) Pré-contrato → só Contexto Empresarial
+                        // 2) Contratado → Contexto + CTA (completar/gerar) + Meu Contrato
+                        // 3) Plano pronto → + Estratégia e TD + Gestão de Time
+                        const projetoAtivoSidebar = !!(leadSidebar && (
+                            leadSidebar.hasActiveProject === true
+                            || leadSidebar.hasActiveProject === 1
+                            || leadSidebar.hasActiveProject === 'true'
+                            || leadSidebar.has_active_project === true
+                        ));
+                        const statusSidebar = statusIA;
+                        const planoProntoSidebar = statusSidebar === 'CONCLUIDO'
+                            || statusSidebar.indexOf('CONCLU') !== -1
+                            || leadSidebar?.plano_ia_concluido === true;
+                        const contextoPreenchidoSidebar = !!(
+                            leadSidebar
+                            && leadSidebar.clima_organizacional
+                            && String(leadSidebar.clima_organizacional).trim().length > 5
+                        );
+                        const elegivelGeneseSidebar = projetoAtivoSidebar && (
+                            statusSidebar === 'AVALIACAO OK'
+                            || statusSidebar === 'PROJETO OK'
+                        ) && !planoProntoSidebar;
+                        const genesisDisponivelSidebar = elegivelGeneseSidebar && contextoPreenchidoSidebar;
+                        const geneseEmAndamentoSidebar = statusSidebar === 'PENDENTE'
+                            || statusSidebar === 'PROCESSANDO';
+                        const mostrarGestaoTime = planoProntoSidebar;
+                        const mostrarMeuContrato = projetoAtivoSidebar;
+                        const mostrarGestaoProjeto = mostrarGestaoTime || mostrarMeuContrato;
+                    %>
+
+                    <li class="menu-item nav-group">
+                        <a href="javascript:void(0)" class="submenu-toggle">
+                            <span class="sidebar-label">Contexto Empresarial</span>
                         </a>
                         <ul class="submenu">
-                            <%
-                                const initRoleLead = String(locals.lead?.init_role || locals.init_role || '').toUpperCase().trim();
-                                const perfilLead = String(locals.lead?.perfil_lead || '').toUpperCase().trim();
-                                const ehInovadorSolo = initRoleLead === 'SOLO' || perfilLead === 'INOVADOR';
-                            %>
-                            <% if (!ehInovadorSolo) { %>
-                            <li><a href="/avaliacoes/<%= lead.id_matu %>"><i class="fas fa-edit"></i> Avaliação Inicial</a></li>
-
-                            <%
-                                const statusIA = (locals.lead && lead.status_ia) ? String(lead.status_ia).trim().toUpperCase() : '';
-                                const relatorioCompleto = statusIA === 'AVALIACAO OK' || statusIA.indexOf('CONCLU') !== -1;
-                                let linkContexto;
-                                if (!statusIA || statusIA === 'AGUARDANDO CONTEXTO') {
-                                    linkContexto = '/avaliacoes/' + lead.id_matu;
-                                } else if (relatorioCompleto) {
-                                    linkContexto = '/diagnostico/' + lead.id_matu;
-                                } else {
-                                    linkContexto = '/diagnostico-inicial/' + lead.id_matu;
-                                }
-                            %>
-                            <li><a href="<%= linkContexto %>"><i class="fas fa-file-pdf"></i> Análise de Contexto</a></li>
+                            <% if (!ehInovadorSolo && idMatuSidebar) { %>
+                            <li><a href="/avaliacoes/<%= idMatuSidebar %>" data-nav-match="/avaliacoes">Avaliação Inicial</a></li>
+                            <li><a href="<%= linkEstadoAtual %>" data-nav-match="/diagnostico,/diagnostico-inicial">Estado Atual</a></li>
                             <% } %>
+                            <li>
+                                <a href="javascript:void(0)" onclick="abrirModalContextoLead(); event.stopPropagation();" data-nav-match="">
+                                    Meus Dados
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
 
-                            <% if (locals.lead && lead.hasActiveProject) { %>
-                                <li style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px;">
-                                    <a href="/insights-ia/<%= lead.id_matu %>" style="color: #f1c40f; font-weight: bold !important;">
-                                        <i class="fas fa-brain"></i> Inteligência de Negócio
-                                    </a>
-                                </li>
+                    <% if (projetoAtivoSidebar && elegivelGeneseSidebar && !contextoPreenchidoSidebar) { %>
+                        <li class="menu-item" style="padding: 0 15px; margin: 8px 0;">
+                            <button type="button" onclick="abrirModalContextoLead(); event.stopPropagation();" style="width: 100%; background: #374151; border: 1px solid #ca8a04; color: #facc15; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.8rem;">
+                                Completar Contexto
+                            </button>
+                        </li>
+                    <% } else if (projetoAtivoSidebar && genesisDisponivelSidebar) { %>
+                        <li class="menu-item" style="padding: 0 15px; margin: 8px 0;">
+                            <button type="button" onclick="dispararGeneseLayout(event)" id="btnDouradoLayout" style="width: 100%; background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%); border: 1px solid #DAA520; color: #000; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;">
+                                <span id="textoBotaoLayout">Gerar Estratégia</span>
+                            </button>
+                        </li>
+                    <% } else if (projetoAtivoSidebar && geneseEmAndamentoSidebar) { %>
+                        <li class="menu-item" style="padding: 0 15px; margin: 8px 0;">
+                            <div style="width: 100%; background: rgba(79,172,254,0.15); border: 1px solid rgba(79,172,254,0.4); color: #9ecbff; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; text-align: center;">
+                                Gerando plano…
+                            </div>
+                        </li>
+                    <% } %>
 
-                                <li style="margin-top: 5px;">
-                                    <a href="/planejamento-estrategico" style="font-weight: bold !important;">
-                                        <i class="fas fa-chess"></i> Estratégia Empresarial
-                                    </a>
-                                </li>
+                    <% if (planoProntoSidebar && idMatuSidebar) { %>
+                    <li class="menu-item nav-group">
+                        <a href="javascript:void(0)" class="submenu-toggle">
+                            <span class="sidebar-label">Estratégia e TD</span>
+                        </a>
+                        <ul class="submenu">
+                            <li><a href="/insights-ia/<%= idMatuSidebar %>" data-nav-match="/insights-ia">Inteligência de Negócio</a></li>
+                            <li><a href="/planejamento-estrategico" data-nav-match="/planejamento-estrategico">Estratégia Empresarial</a></li>
+                            <li><a href="/meu-plano" data-nav-match="/meu-plano">Plano Diretor e Backlog</a></li>
+                            <li><a href="/projeto/sprint-atual" data-nav-match="/projeto/sprint-atual,/sprint">Quadro Kanban</a></li>
+                            <li><a href="/projeto/mesa-inovacao" data-nav-match="/projeto/mesa-inovacao">Mesa de Inovações</a></li>
+                        </ul>
+                    </li>
+                    <% } %>
 
-                                <li style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 5px; padding-top: 5px;">
-                                    <a href="javascript:void(0)" onclick="abrirModalContextoLead(); event.stopPropagation();" style="font-weight: bold;">
-                                        <i class="fas fa-id-card"></i> Meus Dados
-                                    </a>
-                                </li>
-
-                                <li style="margin-top: 5px;">
-                                    <a href="/teams" style="color: #a3bffa; font-weight: bold !important;">
-                                        <i class="fas fa-users-cog"></i> Gestão de Time
-                                    </a>
-                                </li>
-
-                                <li style="margin: 15px 0 5px 0; border-top: 1px solid rgba(255,255,255,0.1);"></li>
-
-
-
-                                <%
-                                    const statusSidebar = (locals.lead && lead.status_ia) ? lead.status_ia.toUpperCase() : '';
-                                    const mostrarBotaoGenesis = statusSidebar === 'AVALIACAO OK';
-                                %>
-                                <% if (mostrarBotaoGenesis) { %>
-                                    <li style="padding: 0 15px; margin-bottom: 10px;">
-                                        <button type="button" onclick="dispararGeneseLayout(event)" id="btnDouradoLayout" style="width: 100%; background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%); border: 1px solid #DAA520; color: #000; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;">
-                                            <i class="fas fa-magic" id="iconeMagiaLayout" style="margin-right: 8px;"></i>
-                                            <span id="textoBotaoLayout">Gerar Estratégia</span>
-                                        </button>
-                                    </li>
-                                <% } else { %>
-                                    <li><a href="/meu-plano" style="color: #4facfe; font-weight: bold;"><i class="fas fa-map-marked-alt"></i> Plano Geral</a></li>
-                                    <li><a href="/projeto/mesa-inovacao" style="color: #fbbf24; font-weight: bold;"><i class="fas fa-lightbulb"></i> Mesa de Inovação</a></li>
-                                    <li><a href="/projeto/sprint-atual"><i class="fas fa-rocket"></i> Quadro Kanban</a></li>
-                                <% } %>
+                    <% if (mostrarGestaoProjeto) { %>
+                    <li class="menu-item nav-group">
+                        <a href="javascript:void(0)" class="submenu-toggle">
+                            <span class="sidebar-label">Gestão do Projeto</span>
+                        </a>
+                        <ul class="submenu">
+                            <% if (mostrarGestaoTime) { %>
+                            <li><a href="/teams" data-nav-match="/teams">Gestão de Time</a></li>
+                            <% } %>
+                            <% if (mostrarMeuContrato) { %>
+                            <li><a href="/meu-contrato" data-nav-match="/meu-contrato">Meu Contrato</a></li>
                             <% } %>
                         </ul>
                     </li>
+                    <% } %>
+                <% } %>
+
+                <% if (locals.isLoggedIn && !locals.isHolding && !locals.isConsultor) { %>
+                <li class="menu-item" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 4px;">
+                    <a href="/instrucoes-de-uso" class="nav-link-italic">
+                        <span class="sidebar-label">Instruções de Uso</span>
+                    </a>
+                </li>
                 <% } %>
             </ul>
         </nav>
@@ -1113,7 +1170,7 @@
     </footer>
 
     <script src="/js/sidebar-toggle.js"></script>
-    <script src="/js/sidebar-submenu.js"></script>
+    <script src="/js/sidebar-submenu.js?v=3"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
     <script>
@@ -1142,19 +1199,59 @@
         } catch (e) { console.error("Erro JSON:", e); }
 
         // Mapeia e redireciona os gatilhos de layout para o novo parcial inteligente unificado
+        function ehPapelClienteLead() {
+            // Contexto de escola/projeto é exclusivo do Cliente (lead). Executor/consultor/sysadmin não devem ser bloqueados.
+            const role = String(
+                (_leadData && (_leadData.system_role || _leadData.role))
+                || '<%= (typeof system_role !== "undefined" && system_role) ? system_role : "" %>'
+                || ''
+            ).toLowerCase();
+            if (role === 'executor' || role === 'consultor' || role === 'sysadmin' || role === 'admin') {
+                return false;
+            }
+            <% if (locals.isExecutor || locals.isConsultor || locals.isAdmin) { %>
+            return false;
+            <% } %>
+            return true;
+        }
+
         function abrirModalContextoLead() {
-            if (!_leadData) return;
+            if (!_leadData || !ehPapelClienteLead()) return;
 
             const statusMacro = (_leadData.status_ia || "").toUpperCase();
-            const jaBloqueadoPeloPlano = (statusMacro === 'CONCLUIDO');
-            const obrigatorio = statusMacro === 'PROJETO OK';
+            // Só trava edição quando o plano/Kanban já existe — status CONCLUIDO sozinho não basta.
+            const jaBloqueadoPeloPlano = !!(
+                _leadData.plano_ia_concluido === true
+                || _leadData.plano_ia_concluido === 1
+                || _leadData.plano_ia_concluido === 'true'
+                || (statusMacro === 'CONCLUIDO' && !!_leadData.data_geracao_plano)
+            );
+            const projetoAtivo = !!(
+                _leadData.hasActiveProject === true
+                || _leadData.hasActiveProject === 1
+                || _leadData.hasActiveProject === 'true'
+                || _leadData.has_active_project === true
+            );
+            const contextoOk = !!((_leadData.clima_organizacional || '').trim().length > 5);
+            // Após contratação, contexto é obrigatório antes da gênese (mesmo se status permanecer AVALIACAO OK).
+            const obrigatorio = projetoAtivo && !contextoOk && !jaBloqueadoPeloPlano;
 
             abrirModalContextoLeadGeral(_leadData, jaBloqueadoPeloPlano, false, obrigatorio);
         }
 
         document.addEventListener('DOMContentLoaded', function () {
+            if (typeof abrirModalContextoLeadGeral !== 'function' || !_leadData) return;
+            if (!ehPapelClienteLead()) return;
             const statusMacro = (_leadData.status_ia || '').toUpperCase();
-            if (statusMacro === 'PROJETO OK' && typeof abrirModalContextoLeadGeral === 'function') {
+            const projetoAtivo = !!(
+                _leadData.hasActiveProject === true
+                || _leadData.hasActiveProject === 1
+                || _leadData.hasActiveProject === 'true'
+                || _leadData.has_active_project === true
+            );
+            const contextoOk = !!((_leadData.clima_organizacional || '').trim().length > 5);
+            const planoPronto = statusMacro === 'CONCLUIDO' || statusMacro.indexOf('CONCLU') !== -1;
+            if (projetoAtivo && !contextoOk && !planoPronto) {
                 setTimeout(function () {
                     abrirModalContextoLeadGeral(_leadData, false, false, true);
                 }, 500);

@@ -25,18 +25,30 @@
 
 <div class="mesa-modal" id="modal-execucao" aria-hidden="true">
     <div class="mesa-modal__card execucao__modal-card">
-        <h3 id="modal-exec-titulo">Execução de Sprint</h3>
+        <h3 id="modal-exec-titulo">Execução da Atividade</h3>
+        <p class="execucao__modal-sprint" id="exec-sprint-label"></p>
         <form id="form-execucao">
             <input type="hidden" id="exec-id-ativ">
             <input type="hidden" id="exec-id-sprn">
-            <div class="admin-esim__field">
+
+            <div class="admin-esim__field execucao__field-stack">
                 <label>Atividade</label>
-                <p id="exec-nome" style="margin:0;font-weight:700;color:var(--dark-lilac);"></p>
+                <p id="exec-nome" class="execucao__ativ-nome"></p>
             </div>
-            <div class="admin-esim__field">
+
+            <div class="admin-esim__field execucao__field-stack">
                 <label for="exec-desc">Descrição / escopo</label>
-                <textarea id="exec-desc" class="mesa-textarea" rows="4" readonly></textarea>
+                <textarea id="exec-desc" class="mesa-textarea execucao__desc-box" rows="6" readonly
+                          placeholder="Sem descrição cadastrada para esta atividade."></textarea>
             </div>
+
+            <div class="admin-esim__field execucao__field-stack">
+                <label for="exec-obs">Observações e encaminhamentos</label>
+                <textarea id="exec-obs" class="mesa-textarea execucao__obs-box" rows="5"
+                          placeholder="Registre aqui observações, encaminhamentos e andamentos. O conteúdo fica no registro da atividade na sprint."></textarea>
+                <p class="admin-esim__field-hint">Persistido no registro da atividade e visível no painel da sprint.</p>
+            </div>
+
             <div class="admin-esim__field">
                 <label for="exec-status">Status</label>
                 <select id="exec-status" class="mesa-select">
@@ -45,6 +57,7 @@
                     <option value="Entregue">Entregue</option>
                 </select>
             </div>
+
             <div class="admin-esim__modal-actions">
                 <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-fechar-exec">Fechar</button>
                 <button type="submit" class="mesa-btn mesa-btn--lilac">Salvar evolução</button>

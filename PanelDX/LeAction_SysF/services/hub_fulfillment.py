@@ -6,6 +6,16 @@ from datetime import date, timedelta
 
 HUB_MATU_ACTIVE_STATUS = "PROJETO OK"
 HUB_PROJETO_ACTIVE_STATUS = "ATIVO"
+# Status avançados não devem ser sobrescritos pelo pagamento/toggle.
+_STATUS_IA_PRESERVE_ON_ACTIVATE = frozenset(
+    {
+        "AVALIACAO OK",
+        "PENDENTE",
+        "PROCESSANDO",
+        "CONCLUIDO",
+        "ERRO_IA",
+    }
+)
 
 
 class HubFulfillmentError(ValueError):
@@ -20,8 +30,16 @@ def _parse_positive_int(value) -> int | None:
     return parsed if parsed > 0 else None
 
 
+def _resolve_status_ia_on_activate(current_status: str | None) -> str:
+    """Mantém o status do funil se o assessment/gênese já avançaram."""
+    normalized = (current_status or "").strip().upper()
+    if normalized in _STATUS_IA_PRESERVE_ON_ACTIVATE:
+        return normalized
+    return HUB_MATU_ACTIVE_STATUS
+
+
 def _activate_matu_and_projeto(cur, id_matu: int, id_clie: int) -> dict:
-    """Ativa diagnóstico (PROJETO OK) e projeto ATIVO — idempotente."""
+    """Ativa projeto (has_active + ctdi_projetos ATIVO) sem regredir status_ia."""
     cur.execute(
         """
         SELECT m.status_ia, COALESCE(p.status, ''), COALESCE(c.has_active_project, false)
@@ -38,10 +56,11 @@ def _activate_matu_and_projeto(cur, id_matu: int, id_clie: int) -> dict:
         raise HubFulfillmentError(f"id_matu {id_matu} não encontrado para id_clie {id_clie}")
 
     status_ia, projeto_status, has_active = row
+    next_status = _resolve_status_ia_on_activate(status_ia)
     already_active = (
-        (status_ia or "").strip().upper() == HUB_MATU_ACTIVE_STATUS
-        and projeto_status == HUB_PROJETO_ACTIVE_STATUS
+        projeto_status == HUB_PROJETO_ACTIVE_STATUS
         and bool(has_active)
+        and (status_ia or "").strip().upper() == next_status
     )
     if already_active:
         return {
@@ -57,7 +76,7 @@ def _activate_matu_and_projeto(cur, id_matu: int, id_clie: int) -> dict:
     )
     cur.execute(
         "UPDATE public.ctdi_matu SET status_ia = %s WHERE id_matu = %s",
-        (HUB_MATU_ACTIVE_STATUS, id_matu),
+        (next_status, id_matu),
     )
     cur.execute(
         """
@@ -71,7 +90,7 @@ def _activate_matu_and_projeto(cur, id_matu: int, id_clie: int) -> dict:
         "status": "activated",
         "id_matu": id_matu,
         "id_clie": id_clie,
-        "status_ia": HUB_MATU_ACTIVE_STATUS,
+        "status_ia": next_status,
         "projeto_status": HUB_PROJETO_ACTIVE_STATUS,
     }
 

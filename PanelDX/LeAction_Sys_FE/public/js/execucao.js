@@ -53,7 +53,14 @@
         document.getElementById('exec-id-ativ').value = t.id_ativ;
         document.getElementById('exec-id-sprn').value = t.id_sprn || '';
         document.getElementById('exec-nome').textContent = t.nome_ativ || '';
+        var sprintLabel = document.getElementById('exec-sprint-label');
+        if (sprintLabel) {
+            sprintLabel.textContent = t.name_sprn
+                ? ('Sprint: ' + t.name_sprn)
+                : '';
+        }
         document.getElementById('exec-desc').value = t.desc_ativ || '';
+        document.getElementById('exec-obs').value = t.obs_encaminhamentos || '';
         document.getElementById('exec-status').value = t.status_ativ || 'A Fazer';
         document.getElementById('modal-execucao').classList.add('is-open');
     }
@@ -128,11 +135,15 @@
         ev.preventDefault();
         var idAtiv = document.getElementById('exec-id-ativ').value;
         var status = document.getElementById('exec-status').value;
+        var obs = (document.getElementById('exec-obs').value || '').trim();
         try {
             await api('/api/okr/atividades/' + idAtiv, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status_ativ: status })
+                body: JSON.stringify({
+                    status_ativ: status,
+                    obs_encaminhamentos: obs
+                })
             });
             fecharModal();
             await carregarTarefas();

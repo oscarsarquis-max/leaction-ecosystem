@@ -183,6 +183,12 @@ def patch_objetivo_cliente(id_obj_dt: int):
 
                 meta_cliente=item.get("meta_cliente"),
 
+                nome_kr=item.get("nome_kr") or item.get("descricao"),
+
+                desc_kr=item.get("desc_kr") or item.get("descricao"),
+
+                ativo=item.get("ativo"),
+
             )
 
 
@@ -246,6 +252,14 @@ def patch_kr_cliente(id_kr: int):
             valor_alvo=body.get("valor_alvo"),
 
             valor_atual=body.get("valor_atual"),
+
+            nome_kr=body.get("nome_kr") or body.get("descricao"),
+
+            desc_kr=body.get("desc_kr") or body.get("descricao"),
+
+            kpi_nome=body.get("kpi_nome"),
+
+            ativo=body.get("ativo"),
 
         )
 

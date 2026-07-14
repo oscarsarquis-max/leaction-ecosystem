@@ -3,7 +3,7 @@
     const gamificacao = locals.gamificacao || { nivel: 1, xp: 0, xpNoNivel: 0, xpProximo: 400, progressoMedio: 0, badges: [], totalObj: 0, totalKr: 0, fixosComObj: 0, totalFixos: 5 };
     const comentariosPorEntidade = locals.comentariosPorEntidade || {};
     const idClienteMestre = locals.id_clie || (locals.lead && lead.id_clie) || (locals.user && user.id_clie) || '';
-    const eReadOnly = locals.readOnly || (locals.user && user.role === 'ADMIN') || false;
+    const eReadOnly = !!locals.readOnly;
     const nomeGestor = (locals.user && (user.nome || user.name)) || (locals.lead && lead.nome) || 'Gestor';
     const qsClieOkr = idClienteMestre ? ('?id_clie=' + idClienteMestre) : '';
     const urlMatrizOkr = '/planejamento-estrategico' + qsClieOkr;
@@ -17,317 +17,275 @@
 
 <style>
     :root {
-        --strat-violet: #6c5ce7;
-        --strat-dark: #4A2E80;
-        --strat-gold: #d97706;
-        --strat-green: #16a34a;
-        --strat-red: #dc2626;
+        --ck-ink: #0f172a;
+        --ck-muted: #64748b;
+        --ck-line: #e2e8f0;
+        --ck-surface: #ffffff;
+        --ck-bg: #f4f6fb;
+        --ck-accent: #1d4ed8;
+        --ck-accent-soft: #dbeafe;
+        --ck-good: #059669;
+        --ck-warn: #d97706;
     }
-    #okr-strategic-page { max-width: 1200px; margin: 0 auto; }
-    .strat-hero {
-        background: linear-gradient(135deg, #f8f6ff 0%, #fff 55%, #fefce8 100%);
-        border: 1px solid #e9e0ff;
-        border-radius: 16px;
-        padding: 24px 28px;
-        margin-bottom: 24px;
-        box-shadow: 0 8px 28px rgba(74, 46, 128, 0.08);
+    #okr-strategic-page { max-width: 1180px; margin: 0 auto; }
+    .ck-hero {
+        display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; justify-content: space-between;
+        padding: 8px 0 18px; border-bottom: 1px solid var(--ck-line); margin-bottom: 22px;
     }
-    .strat-hero__top { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; justify-content: space-between; }
-    .strat-hero h1 { margin: 0; font-size: 1.65rem; color: var(--strat-dark); font-weight: 800; }
-    .strat-hero p { margin: 6px 0 0; color: #64748b; font-size: 0.92rem; }
-    .strat-level {
-        display: flex; align-items: center; gap: 12px;
-        background: linear-gradient(135deg, var(--strat-dark), var(--strat-violet));
-        color: #fff; padding: 10px 16px; border-radius: 12px; min-width: 200px;
+    .ck-hero h1 { margin: 0; font-size: 1.55rem; color: var(--ck-ink); font-weight: 800; letter-spacing: -0.02em; }
+    .ck-hero p { margin: 6px 0 0; color: var(--ck-muted); font-size: 0.92rem; max-width: 52ch; }
+    .ck-summary {
+        display: grid; grid-template-columns: repeat(4, minmax(90px, 1fr)); gap: 10px; min-width: min(100%, 420px);
     }
-    .strat-level__badge {
-        width: 44px; height: 44px; border-radius: 50%;
-        background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;
-        font-weight: 900; font-size: 1.1rem;
+    .ck-summary__item {
+        background: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 12px; padding: 10px 12px;
     }
-    .strat-xp { margin-top: 14px; }
-    .strat-xp__bar { height: 10px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
-    .strat-xp__fill { height: 100%; background: linear-gradient(90deg, var(--strat-violet), var(--strat-gold)); transition: width 0.4s; }
-    .strat-xp__label { font-size: 0.72rem; color: #6b7280; margin-top: 4px; }
-    .strat-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 18px; }
-    @media (max-width: 768px) { .strat-kpis { grid-template-columns: repeat(2, 1fr); } }
-    .strat-kpi { background: #fff; border: 1px solid #f1f5f9; border-radius: 10px; padding: 12px; text-align: center; }
-    .strat-kpi strong { display: block; font-size: 1.4rem; color: var(--strat-dark); }
-    .strat-kpi span { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: #9ca3af; font-weight: 700; }
-    .strat-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-    .strat-badge {
-        display: inline-flex; align-items: center; gap: 6px;
-        background: #fff; border: 1px solid #fde68a; border-radius: 999px;
-        padding: 5px 12px; font-size: 0.75rem; font-weight: 700; color: #92400e;
-        cursor: help;
+    .ck-summary__item strong { display: block; font-size: 1.25rem; color: var(--ck-ink); line-height: 1.1; }
+    .ck-summary__item span { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ck-muted); font-weight: 700; }
+    .ck-toolbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-bottom: 16px; }
+    .ck-pillars {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;
+        margin-bottom: 18px;
     }
-    .strat-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; justify-content: flex-end; }
-    .strat-card {
-        background: #fff; border-radius: 14px; border: 1px solid #e5e7eb;
-        margin-bottom: 22px; overflow: hidden;
-        box-shadow: 0 4px 16px rgba(17, 24, 39, 0.05);
+    .ck-pillar {
+        border: 1px solid var(--ck-line); border-radius: 12px; background: #fff; padding: 12px 14px;
+        display: flex; flex-direction: column; gap: 8px;
     }
-    .strat-card--fixo { border-top: 4px solid var(--strat-violet); }
-    .strat-card--custom { border-top: 4px solid var(--strat-gold); }
-    .strat-card__head {
-        padding: 18px 20px; display: flex; flex-wrap: wrap; gap: 16px;
-        justify-content: space-between; align-items: flex-start;
-        background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
+    .ck-pillar__name { margin: 0; font-size: 0.92rem; font-weight: 800; color: var(--ck-ink); }
+    .ck-pillar__meta { margin: 0; font-size: 0.75rem; color: var(--ck-muted); }
+    .ck-pillar__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+    .ck-btn-sm {
+        display: inline-flex; align-items: center; gap: 5px;
+        border: 1px solid var(--ck-line); background: #f8fafc; color: #334155;
+        border-radius: 8px; padding: 5px 9px; font-size: 0.72rem; font-weight: 700; cursor: pointer;
     }
-    .strat-card__title { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 240px; }
-    .strat-card__icon { font-size: 1.8rem; line-height: 1; }
-    .strat-card__name { margin: 0; font-size: 1.2rem; color: #1e293b; font-weight: 800; }
-    .strat-pill {
-        display: inline-flex; align-items: center; gap: 4px;
-        font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
-        letter-spacing: 0.04em; padding: 3px 10px; border-radius: 999px; margin-bottom: 6px;
+    .ck-btn-sm--primary { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+    .ck-btn-sm--warn { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+    .ck-btn-sm--danger { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .ck-obj {
+        background: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 16px;
+        margin-bottom: 18px; overflow: hidden; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
     }
-    .strat-pill--fixo { background: #ede9fe; color: #5b21b6; }
-    .strat-pill--custom { background: #fef3c7; color: #92400e; }
-    .strat-pill--receita { background: #ecfdf5; color: #047857; }
-    .strat-pill--custo { background: #eff6ff; color: #1d4ed8; }
-    .strat-progress-ring {
-        width: 64px; height: 64px; border-radius: 50%;
-        background: conic-gradient(var(--strat-violet) var(--pct), #e5e7eb 0);
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    .ck-obj__head {
+        display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; align-items: center;
+        padding: 18px 20px; border-bottom: 1px solid var(--ck-line);
+        background: linear-gradient(180deg, #fafbff 0%, #fff 100%);
     }
-    .strat-progress-ring span {
-        width: 48px; height: 48px; border-radius: 50%; background: #fff;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 0.8rem; font-weight: 800; color: var(--strat-dark);
+    .ck-obj__path {
+        font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--ck-accent); margin-bottom: 4px;
     }
-    .strat-card__body { padding: 0 20px 20px; }
-    .strat-evolution {
-        height: 8px; background: #f1f5f9; border-radius: 999px; overflow: hidden; margin: 10px 0 14px;
+    .ck-obj__title { margin: 0; font-size: 1.18rem; color: var(--ck-ink); font-weight: 800; letter-spacing: -0.01em; }
+    .ck-obj__meta { margin: 4px 0 0; color: var(--ck-muted); font-size: 0.86rem; }
+    .ck-obj__side { display: flex; align-items: center; gap: 12px; }
+    .ck-ring {
+        --pct: 0deg;
+        width: 72px; height: 72px; border-radius: 50%;
+        background: conic-gradient(var(--ck-accent) var(--pct), #e8edf5 0);
+        display: grid; place-items: center; flex-shrink: 0;
     }
-    .strat-evolution__fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #a78bfa, var(--strat-violet)); }
-    .strat-comments {
-        background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-top: 12px;
+    .ck-ring span {
+        width: 54px; height: 54px; border-radius: 50%; background: #fff;
+        display: grid; place-items: center; font-weight: 800; font-size: 0.85rem; color: var(--ck-ink);
     }
-    .strat-comments__list { max-height: 120px; overflow-y: auto; margin-bottom: 10px; }
-    .strat-comment { font-size: 0.82rem; color: #475569; padding: 6px 0; border-bottom: 1px solid #e2e8f0; }
-    .strat-comment:last-child { border-bottom: none; }
-    .strat-comment strong { color: var(--strat-dark); }
-    .strat-comment time { font-size: 0.7rem; color: #94a3b8; margin-left: 6px; }
-    .strat-comment-form { display: flex; gap: 8px; }
-    .strat-comment-form input { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; }
-    .strat-comment-form button { padding: 8px 14px; border: none; border-radius: 8px; background: var(--strat-violet); color: #fff; font-weight: 700; cursor: pointer; }
-    .strat-obj { background: #fafafa; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-top: 14px; margin-left: 12px; border-left: 3px solid #0369a1; }
-    .strat-kr {
-        background: #fff; border: 1px solid #f1f5f9; border-radius: 8px; padding: 12px;
-        margin-top: 10px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;
+    .ck-krs {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;
+        padding: 16px 18px 18px;
     }
-    .strat-kr__bar { width: 100%; height: 6px; background: #e2e8f0; border-radius: 999px; margin-top: 8px; overflow: hidden; }
-    .strat-kr__fill { height: 100%; background: linear-gradient(90deg, #f1c40f, var(--strat-gold)); }
-    .strat-empty-cta {
-        text-align: center; padding: 16px; border: 1px dashed #cbd5e1; border-radius: 10px;
-        color: #64748b; font-size: 0.88rem; margin-top: 12px;
+    .ck-kr {
+        border: 1px solid var(--ck-line); border-radius: 14px; padding: 14px;
+        display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: center;
+        background: #fcfdff; min-height: 118px;
     }
-    .strat-icon-btn { background: none; border: none; cursor: pointer; padding: 4px; font-size: 0.9rem; }
-    .strat-icon-btn--edit { color: #3b82f6; }
-    .strat-icon-btn--del { color: #ef4444; }
+    .ck-kr__title { margin: 0 0 4px; font-size: 0.92rem; color: var(--ck-ink); font-weight: 700; line-height: 1.35; }
+    .ck-kr__metric { margin: 0; font-size: 0.78rem; color: var(--ck-muted); }
+    .ck-kr__vals {
+        display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 8px;
+        font-size: 0.75rem; color: var(--ck-muted);
+    }
+    .ck-kr__vals strong { color: var(--ck-ink); }
+    .ck-kr__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .ck-kr__actions .ck-btn-sm { font-size: 0.7rem; }
+    .ck-empty {
+        margin: 18px; padding: 22px; text-align: center; border: 1px dashed #cbd5e1; border-radius: 12px; color: var(--ck-muted);
+    }
+    .ck-icon-btn { background: none; border: none; cursor: pointer; padding: 4px; font-size: 0.88rem; }
+    .ck-icon-btn--edit { color: #2563eb; }
+    .ck-icon-btn--del { color: #dc2626; }
+    @media (max-width: 720px) {
+        .ck-summary { grid-template-columns: repeat(2, 1fr); width: 100%; }
+        .ck-kr { grid-template-columns: 64px 1fr; }
+    }
 </style>
+
+<%
+    const objetivosFlat = [];
+    listaDirecionadores.forEach(function (direc) {
+        (direc.objetivos || []).forEach(function (obj) {
+            let soma = 0;
+            let n = 0;
+            (obj.krs || []).forEach(function (kr) {
+                const totalMeta = Math.abs(kr.valor_alvo - kr.valor_inicial);
+                const atualProg = Math.abs(kr.valor_atual - kr.valor_inicial);
+                let pctKr = totalMeta > 0 ? (atualProg / totalMeta) * 100 : 0;
+                if (pctKr > 100) pctKr = 100;
+                kr._pct = Math.round(pctKr);
+                soma += pctKr;
+                n += 1;
+            });
+            objetivosFlat.push({
+                obj: obj,
+                direc: direc,
+                progresso: n ? Math.round(soma / n) : 0
+            });
+        });
+    });
+%>
 
 <%- include('partials/eo-view-tabs', { urlMatriz: urlMatrizOkr, urlCockpit: urlCockpitOkr, activeView: 'cockpit' }) %>
 
 <div class="main-content" id="okr-strategic-page" data-id-clie="<%= idClienteMestre %>" data-autor="<%= nomeGestor %>">
 
-    <section class="strat-hero" aria-label="Cockpit do gestor">
-        <div class="strat-hero__top">
-            <div>
-                <h1>Cockpit Estratégico</h1>
-                <p>Planejamento empresarial gamificado — direcionadores, objetivos de TD e KRs vinculados às atividades.</p>
-            </div>
-            <div class="strat-level" title="Nível do gestor baseado em XP estratégico">
-                <div class="strat-level__badge">L<%= gamificacao.nivel %></div>
-                <div>
-                    <div style="font-size:0.72rem;opacity:0.9;text-transform:uppercase;letter-spacing:0.05em;">Nível do Gestor</div>
-                    <div style="font-weight:800;"><%= gamificacao.xp %> XP</div>
-                </div>
-            </div>
+    <header class="ck-hero">
+        <div>
+            <h1>Cockpit Estratégico</h1>
+            <p>Uma visão por objetivo: cada card agrupa os Key Results com o gráfico de acompanhamento correspondente.</p>
         </div>
-        <div class="strat-xp">
-            <div class="strat-xp__bar"><div class="strat-xp__fill" style="width:<%= Math.round((gamificacao.xpNoNivel / gamificacao.xpProximo) * 100) %>%"></div></div>
-            <div class="strat-xp__label"><%= gamificacao.xpNoNivel %> / <%= gamificacao.xpProximo %> XP para o próximo nível</div>
+        <div class="ck-summary" aria-label="Resumo">
+            <div class="ck-summary__item"><strong><%= gamificacao.totalObj %></strong><span>Objetivos</span></div>
+            <div class="ck-summary__item"><strong><%= gamificacao.totalKr %></strong><span>KRs</span></div>
+            <div class="ck-summary__item"><strong><%= gamificacao.progressoMedio %>%</strong><span>Evolução</span></div>
+            <div class="ck-summary__item"><strong>L<%= gamificacao.nivel %></strong><span><%= gamificacao.xp %> XP</span></div>
         </div>
-        <div class="strat-kpis">
-            <div class="strat-kpi"><strong><%= gamificacao.fixosComObj %>/<%= gamificacao.totalFixos %></strong><span>Pilares ativos</span></div>
-            <div class="strat-kpi"><strong><%= gamificacao.totalObj %></strong><span>Objetivos TD</span></div>
-            <div class="strat-kpi"><strong><%= gamificacao.totalKr %></strong><span>Key Results</span></div>
-            <div class="strat-kpi"><strong><%= gamificacao.progressoMedio %>%</strong><span>Evolução média</span></div>
-        </div>
-        <% if (gamificacao.badges && gamificacao.badges.length) { %>
-        <div class="strat-badges">
-            <% gamificacao.badges.forEach(function(b) { %>
-            <span class="strat-badge" title="<%= b.desc || b.label %>"><%= b.icon %> <%= b.label %></span>
-            <% }); %>
-        </div>
-        <% } %>
-    </section>
+    </header>
 
     <% if (!eReadOnly) { %>
-    <div class="strat-actions">
-        <button class="btn-dash btn-gold" onclick="abrirModalDirecionador()" style="padding: 10px 20px; border-radius: 8px; font-weight: bold;">
-            <i class="fas fa-plus"></i> Novo direcionador personalizado
+    <div class="ck-toolbar">
+        <button class="btn-dash" onclick="abrirModalDirecionador()" style="padding:8px 14px;border-radius:8px;">
+            <i class="fas fa-plus"></i> Novo direcionador
         </button>
     </div>
     <% } %>
 
-    <% listaDirecionadores.forEach(function(direc) {
-        const comentariosDirec = comentariosDe('direcionador', direc.id_direc);
-        const pct = direc.progresso_pct || 0;
-    %>
-    <article class="strat-card <%= direc.is_catalogo_fixo ? 'strat-card--fixo' : 'strat-card--custom' %>">
-        <header class="strat-card__head">
-            <div class="strat-card__title">
-                <span class="strat-card__icon" aria-hidden="true"><%= direc.icone || '🎯' %></span>
-                <div>
-                    <% if (direc.is_catalogo_fixo) { %>
-                    <span class="strat-pill strat-pill--fixo">Pilar PanelDX</span>
-                    <% } else { %>
-                    <span class="strat-pill strat-pill--custom">Personalizado</span>
-                    <% } %>
-                    <h2 class="strat-card__name"><%= direc.nome_direc %></h2>
-                    <span class="strat-pill <%= direc.meta_financeira === 'aumento_receita' ? 'strat-pill--receita' : 'strat-pill--custo' %>">
-                        <%= direc.meta_label || 'Meta financeira' %>
-                    </span>
-                </div>
+    <% if (listaDirecionadores.length) { %>
+    <section class="ck-pillars" aria-label="Direcionadores estratégicos">
+        <% listaDirecionadores.forEach(function (d) { %>
+        <article class="ck-pillar">
+            <p class="ck-pillar__name"><%= d.icone || '◎' %> <%= d.nome_direc %></p>
+            <p class="ck-pillar__meta">
+                <%= (d.objetivos || []).length %> objetivo(s)
+                · <%= d.is_catalogo_fixo ? 'Pilar PanelDX' : 'Personalizado' %>
+            </p>
+            <% if (!eReadOnly) { %>
+            <div class="ck-pillar__actions">
+                <button type="button" class="ck-btn-sm ck-btn-sm--primary" onclick="abrirModalObjetivo('<%= d.id_direc %>')">
+                    <i class="fas fa-plus"></i> Objetivo
+                </button>
+                <% if (!d.is_catalogo_fixo) { %>
+                <button type="button" class="ck-btn-sm" onclick="prepararEdicaoDirecionador(this)"
+                    data-id="<%= d.id_direc %>"
+                    data-nome="<%= d.nome_direc %>"
+                    data-desc="<%= d.desc_direc || '' %>"
+                    data-kpi="<%= d.kpi_descricao || '' %>"
+                    data-receita="<%= d.meta_receita_alvo || 0 %>"
+                    data-custo="<%= d.meta_custo_alvo || 0 %>">
+                    <i class="fas fa-pencil-alt"></i> Editar
+                </button>
+                <button type="button" class="ck-btn-sm ck-btn-sm--danger" onclick="deletarEntidade('direcionadores', '<%= d.id_direc %>')">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                <% } else { %>
+                <span class="ck-pillar__meta">Catálogo (edite objetivos/KRs abaixo)</span>
+                <% } %>
             </div>
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div class="strat-progress-ring" style="--pct:<%= pct %>%;" title="Evolução média dos KRs">
-                    <span><%= pct %>%</span>
+            <% } %>
+        </article>
+        <% }); %>
+    </section>
+    <% } %>
+
+    <% if (!objetivosFlat.length) { %>
+    <div class="ck-empty">
+        Nenhum objetivo de TD cadastrado. Use <strong>+ Objetivo</strong> em um direcionador acima.
+    </div>
+    <% } %>
+
+    <% objetivosFlat.forEach(function (item) {
+        const obj = item.obj;
+        const direc = item.direc;
+        const pctObj = item.progresso;
+        const degObj = Math.round((pctObj / 100) * 360);
+    %>
+    <article class="ck-obj" data-id-obj="<%= obj.id_obj_dt %>">
+        <header class="ck-obj__head">
+            <div style="flex:1;min-width:220px;">
+                <div class="ck-obj__path"><%= direc.icone || '◎' %> <%= direc.nome_direc %></div>
+                <h2 class="ck-obj__title"><%= obj.nome_obj %></h2>
+                <p class="ck-obj__meta">
+                    <%= (obj.krs || []).length %> KR<%= (obj.krs || []).length === 1 ? '' : 's' %>
+                    <% if (obj.kpi_descricao) { %> · KPI: <%= obj.kpi_descricao %><% } %>
+                </p>
+            </div>
+            <div class="ck-obj__side">
+                <div class="ck-ring" style="--pct: <%= degObj %>deg;" title="Progresso do objetivo">
+                    <span><%= pctObj %>%</span>
                 </div>
                 <% if (!eReadOnly) { %>
-                <div>
-                    <% if (!direc.is_catalogo_fixo) { %>
-                    <button class="strat-icon-btn strat-icon-btn--edit" onclick="prepararEdicaoDirecionador(this)"
-                        data-id="<%= direc.id_direc %>" data-nome="<%= direc.nome_direc %>" data-desc="<%= direc.desc_direc %>"
-                        data-kpi="<%= direc.kpi_descricao %>" data-receita="<%= direc.meta_receita_alvo %>" data-custo="<%= direc.meta_custo_alvo %>" title="Editar">
-                        <i class="fas fa-pencil-alt"></i>
+                <div class="ck-pillar__actions" style="justify-content:flex-end;">
+                    <button type="button" class="ck-btn-sm" onclick="prepararEdicaoObjetivo(this)"
+                        data-id="<%= obj.id_obj_dt %>" data-id-direc="<%= direc.id_direc %>"
+                        data-nome="<%= obj.nome_obj %>" data-desc="<%= obj.desc_obj || '' %>" data-kpi="<%= obj.kpi_descricao || '' %>">
+                        <i class="fas fa-pencil-alt"></i> Editar objetivo
                     </button>
-                    <button class="strat-icon-btn strat-icon-btn--del" onclick="deletarEntidade('direcionadores', '<%= direc.id_direc %>')" title="Excluir">
+                    <button type="button" class="ck-btn-sm ck-btn-sm--danger" onclick="deletarEntidade('objetivos', '<%= obj.id_obj_dt %>')">
                         <i class="fas fa-trash-alt"></i>
                     </button>
-                    <% } %>
-                    <button class="btn-dash" onclick="abrirModalObjetivo('<%= direc.id_direc %>')" style="margin-top:6px;font-size:0.75rem;padding:6px 12px;background:#eef2ff;color:#4c51bf;border:1px solid #c7d2fe;">
-                        <i class="fas fa-plus"></i> Objetivo TD
+                    <button type="button" class="ck-btn-sm ck-btn-sm--warn" onclick="abrirModalKR('<%= obj.id_obj_dt %>')">
+                        <i class="fas fa-plus"></i> KR
                     </button>
                 </div>
                 <% } %>
             </div>
         </header>
 
-        <div class="strat-card__body">
-            <p style="color:#475569;margin:0 0 8px;font-size:0.9rem;"><%= direc.desc_direc %></p>
-            <small style="color:#64748b;"><strong>KPI global:</strong> <%= direc.kpi_descricao || 'Defina o indicador-guia deste pilar' %></small>
-
-            <div class="strat-evolution" title="Evolução do direcionador">
-                <div class="strat-evolution__fill" style="width:<%= pct %>%"></div>
-            </div>
-
-            <div class="strat-comments" data-entidade="direcionador" data-id="<%= direc.id_direc %>">
-                <strong style="font-size:0.78rem;color:#64748b;text-transform:uppercase;">Comentários do gestor</strong>
-                <div class="strat-comments__list">
-                    <% if (!comentariosDirec.length) { %>
-                    <p style="font-size:0.8rem;color:#94a3b8;margin:8px 0;">Registre decisões, riscos ou próximos passos deste pilar.</p>
-                    <% } %>
-                    <% comentariosDirec.forEach(function(c) { %>
-                    <div class="strat-comment"><strong><%= c.autor_nome %></strong><time><%= new Date(c.criado_em).toLocaleString('pt-BR') %></time><br><%= c.texto %></div>
-                    <% }); %>
-                </div>
-                <% if (!eReadOnly) { %>
-                <form class="strat-comment-form" onsubmit="salvarComentario(event, 'direcionador', <%= direc.id_direc %>)">
-                    <input type="text" placeholder="Adicionar comentário estratégico..." required maxlength="500">
-                    <button type="submit"><i class="fas fa-paper-plane"></i></button>
-                </form>
-                <% } %>
-            </div>
-
-            <% if (!direc.objetivos.length) { %>
-            <div class="strat-empty-cta">
-                <i class="fas fa-flag"></i> Nenhum objetivo de TD vinculado — crie o primeiro para desbloquear KRs e atividades.
-            </div>
-            <% } %>
-
-            <% direc.objetivos.forEach(function(obj) {
-                const comentariosObj = comentariosDe('objetivo', obj.id_obj_dt);
+        <% if (!(obj.krs || []).length) { %>
+        <div class="ck-empty" style="margin:14px;">Este objetivo ainda não tem Key Results.</div>
+        <% } else { %>
+        <div class="ck-krs">
+            <% obj.krs.forEach(function (kr) {
+                const deg = Math.round(((kr._pct || 0) / 100) * 360);
+                const ringColor = (kr._pct || 0) >= 70 ? 'var(--ck-good)' : ((kr._pct || 0) >= 35 ? 'var(--ck-warn)' : 'var(--ck-accent)');
             %>
-            <div class="strat-obj">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
-                    <div>
-                        <span class="strat-pill" style="background:#e0f2fe;color:#0369a1;">Nível 2 · Objetivo TD</span>
-                        <h3 style="margin:6px 0 4px;font-size:1.05rem;color:#0f172a;"><%= obj.nome_obj %></h3>
-                        <p style="margin:0;font-size:0.88rem;color:#475569;"><%= obj.desc_obj %></p>
-                        <small style="color:#64748b;">KPI: <%= obj.kpi_descricao %></small>
+            <div class="ck-kr">
+                <div class="ck-ring" style="--pct: <%= deg %>deg; background: conic-gradient(<%= ringColor %> <%= deg %>deg, #e8edf5 0);">
+                    <span><%= kr._pct || 0 %>%</span>
+                </div>
+                <div>
+                    <h3 class="ck-kr__title"><%= kr.nome_kr %></h3>
+                    <p class="ck-kr__metric"><%= kr.kpi_nome || 'Métrica' %></p>
+                    <div class="ck-kr__vals">
+                        <span>Inicial <strong><%= Number(kr.valor_inicial || 0).toLocaleString('pt-BR') %></strong></span>
+                        <span>Atual <strong><%= Number(kr.valor_atual || 0).toLocaleString('pt-BR') %></strong></span>
+                        <span>Alvo <strong><%= Number(kr.valor_alvo || 0).toLocaleString('pt-BR') %></strong></span>
                     </div>
                     <% if (!eReadOnly) { %>
-                    <div>
-                        <button class="strat-icon-btn strat-icon-btn--edit" onclick="prepararEdicaoObjetivo(this)"
-                            data-id="<%= obj.id_obj_dt %>" data-id-direc="<%= direc.id_direc %>"
-                            data-nome="<%= obj.nome_obj %>" data-desc="<%= obj.desc_obj %>" data-kpi="<%= obj.kpi_descricao %>"><i class="fas fa-pencil-alt"></i></button>
-                        <button class="strat-icon-btn strat-icon-btn--del" onclick="deletarEntidade('objetivos', '<%= obj.id_obj_dt %>')"><i class="fas fa-trash-alt"></i></button>
-                        <button class="btn-dash" onclick="abrirModalKR('<%= obj.id_obj_dt %>')" style="display:block;margin-top:6px;font-size:0.72rem;padding:5px 10px;background:#fffbeb;color:#b45309;border:1px solid #fde68a;">+ KR</button>
+                    <div class="ck-kr__actions">
+                        <button type="button" class="ck-btn-sm" onclick="prepararEdicaoKR(this)"
+                            data-id="<%= kr.id_kr %>" data-id-obj="<%= obj.id_obj_dt %>"
+                            data-nome="<%= kr.nome_kr %>" data-kpi="<%= kr.kpi_nome %>"
+                            data-inicial="<%= kr.valor_inicial %>" data-alvo="<%= kr.valor_alvo %>" data-atual="<%= kr.valor_atual %>">
+                            <i class="fas fa-pencil-alt"></i> Editar KR
+                        </button>
+                        <button type="button" class="ck-btn-sm ck-btn-sm--danger" onclick="deletarEntidade('krs', '<%= kr.id_kr %>')">
+                            <i class="fas fa-trash-alt"></i> Remover
+                        </button>
                     </div>
                     <% } %>
                 </div>
-
-                <div class="strat-comments" style="margin-top:10px;" data-entidade="objetivo" data-id="<%= obj.id_obj_dt %>">
-                    <div class="strat-comments__list">
-                        <% comentariosObj.forEach(function(c) { %>
-                        <div class="strat-comment"><strong><%= c.autor_nome %></strong> — <%= c.texto %></div>
-                        <% }); %>
-                    </div>
-                    <% if (!eReadOnly) { %>
-                    <form class="strat-comment-form" onsubmit="salvarComentario(event, 'objetivo', <%= obj.id_obj_dt %>)">
-                        <input type="text" placeholder="Nota sobre este objetivo..." required maxlength="500">
-                        <button type="submit"><i class="fas fa-paper-plane"></i></button>
-                    </form>
-                    <% } %>
-                </div>
-
-                <% obj.krs.forEach(function(kr) {
-                    const totalMeta = Math.abs(kr.valor_alvo - kr.valor_inicial);
-                    const atualProg = Math.abs(kr.valor_atual - kr.valor_inicial);
-                    let percentual = totalMeta > 0 ? (atualProg / totalMeta) * 100 : 0;
-                    if (percentual > 100) percentual = 100;
-                    const comentariosKr = comentariosDe('kr', kr.id_kr);
-                %>
-                <div class="strat-kr">
-                    <div style="flex:1;min-width:200px;">
-                        <span style="font-size:0.68rem;font-weight:900;color:#b45309;background:#fef3c7;padding:2px 6px;border-radius:4px;">KR</span>
-                        <strong style="display:block;color:#334155;margin-top:4px;"><%= kr.nome_kr %></strong>
-                        <small style="color:#64748b;">Métrica: <%= kr.kpi_nome %></small>
-                        <div class="strat-kr__bar"><div class="strat-kr__fill" style="width:<%= percentual %>%"></div></div>
-                        <% if (!eReadOnly) { %>
-                        <div style="margin-top:6px;">
-                            <button class="strat-icon-btn strat-icon-btn--edit" onclick="prepararEdicaoKR(this)"
-                                data-id="<%= kr.id_kr %>" data-id-obj="<%= obj.id_obj_dt %>"
-                                data-nome="<%= kr.nome_kr %>" data-kpi="<%= kr.kpi_nome %>"
-                                data-inicial="<%= kr.valor_inicial %>" data-alvo="<%= kr.valor_alvo %>" data-atual="<%= kr.valor_atual %>"><i class="fas fa-pencil-alt"></i></button>
-                            <button class="strat-icon-btn strat-icon-btn--del" onclick="deletarEntidade('krs', '<%= kr.id_kr %>')"><i class="fas fa-trash-alt"></i></button>
-                        </div>
-                        <% } %>
-                        <% comentariosKr.forEach(function(c) { %>
-                        <div class="strat-comment" style="margin-top:6px;"><%= c.texto %></div>
-                        <% }); %>
-                        <% if (!eReadOnly) { %>
-                        <form class="strat-comment-form" style="margin-top:6px;" onsubmit="salvarComentario(event, 'kr', <%= kr.id_kr %>)">
-                            <input type="text" placeholder="Comentário no KR..." required maxlength="300">
-                            <button type="submit"><i class="fas fa-paper-plane"></i></button>
-                        </form>
-                        <% } %>
-                    </div>
-                    <div style="text-align:right;font-size:0.82rem;min-width:140px;">
-                        <div style="color:#64748b;">Inicial: <strong><%= kr.valor_inicial.toLocaleString('pt-BR') %></strong></div>
-                        <div style="color:#4c51bf;font-weight:bold;">Atual: <%= kr.valor_atual.toLocaleString('pt-BR') %></div>
-                        <div style="color:#10b981;">Alvo: <strong><%= kr.valor_alvo.toLocaleString('pt-BR') %></strong></div>
-                        <div style="font-weight:800;color:var(--strat-dark);margin-top:4px;"><%= Math.round(percentual) %>%</div>
-                    </div>
-                </div>
-                <% }); %>
             </div>
             <% }); %>
         </div>
+        <% } %>
     </article>
     <% }); %>
 </div>

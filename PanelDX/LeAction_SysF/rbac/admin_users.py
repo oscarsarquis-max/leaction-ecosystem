@@ -448,6 +448,34 @@ def led_obter_cota_usuarios():
         conn.close()
 
 
+@admin_users_bp.route("/api/led/meu-contrato", methods=["GET"])
+@require_role(ROLE_LED, ROLE_SYSADMIN)
+def led_obter_meu_contrato():
+    """Contrato, planos, aditivos e histórico comercial do cliente autenticado."""
+    from rbac.context import resolve_rbac_context
+    from services.addon_engine import obter_detalhe_comercial_cliente
+
+    ctx = resolve_rbac_context()
+    id_clie_raw = request.args.get("id_clie") or ctx.id_clie
+    if not id_clie_raw:
+        return jsonify({"status": "error", "error": "id_clie obrigatório."}), 400
+
+    id_clie = int(id_clie_raw)
+    if ctx.system_role == ROLE_LED and ctx.id_clie and int(ctx.id_clie) != id_clie:
+        return jsonify({"status": "error", "error": "Acesso negado ao contrato de outro cliente."}), 403
+
+    conn = _get_conn()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        detalhe = obter_detalhe_comercial_cliente(cur, id_clie)
+        return jsonify({"status": "success", "data": detalhe}), 200
+    except Exception as exc:
+        return jsonify({"status": "error", "error": str(exc)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+
 @admin_users_bp.route("/api/led/usuarios", methods=["POST"])
 @require_role(ROLE_LED)
 def led_criar_usuario():

@@ -1041,7 +1041,6 @@ body.sidebar-collapsed .sidebar-menu a i {
 }
 body.sidebar-collapsed .sidebar-menu .submenu,
 body.sidebar-collapsed .sidebar-menu hr,
-body.sidebar-collapsed .sidebar-menu__toggle-label,
 body.sidebar-collapsed .sidebar-menu #btnDouradoLayout span,
 body.sidebar-collapsed .sidebar-menu .sidebar-label {
     display: none !important;

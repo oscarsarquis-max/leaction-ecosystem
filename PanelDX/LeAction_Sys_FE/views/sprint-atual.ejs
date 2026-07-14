@@ -349,12 +349,69 @@
         padding: 15px; font-size: 0.9em; line-height: 1.5; color: var(--text-dark); max-height: 320px; overflow-y: auto;
     }
 
-    /* Vetores da Operação (Coluna Esquerda) */
+    /* Seções da operação (coluna esquerda) */
     fieldset.vector-fieldset {
-        border: 1px solid #e2e8f0; padding: 22px; border-radius: 12px; margin-bottom: 20px; background: var(--pure-white);
+        border: 1px solid var(--border-lilac);
+        border-radius: 10px;
+        padding: 16px 18px 18px;
+        margin: 0 0 18px 0;
+        background: #fff;
     }
     fieldset.vector-fieldset legend {
-        padding: 0 15px; font-weight: 900; color: var(--dark-lilac); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px;
+        padding: 0 8px;
+        font-weight: 800;
+        font-size: 0.92em;
+        color: var(--dark-lilac);
+    }
+    fieldset.metrics-audit-fieldset {
+        border: 1px solid var(--border-lilac);
+        background: #fff;
+    }
+    fieldset.metrics-audit-fieldset legend {
+        color: var(--dark-lilac);
+    }
+    .metric-nota-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 6px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        color: #047857;
+        font-size: 0.88em;
+        font-weight: 800;
+    }
+    .metric-nota-empty {
+        display: inline-flex;
+        margin-top: 6px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        color: #64748b;
+        font-size: 0.8em;
+        font-weight: 600;
+    }
+    .btn-analisar-comprovacao {
+        width: 100%;
+        height: 44px;
+        font-size: 0.92em;
+        font-weight: 800;
+        border-radius: 8px;
+        background: #0f766e !important;
+        color: #fff !important;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .btn-analisar-comprovacao:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
     }
 
     .form-group label { display: block; margin-bottom: 6px; font-weight: 700; font-size: 0.85em; color: var(--text-dark); }
@@ -364,10 +421,54 @@
     .framework-guide { background: #fdfdfd; border-radius: 10px; padding: 15px; margin-bottom: 25px; border: 1px solid #eee; border-left: 5px solid var(--dark-lilac); }
     .metric-range-box { background: #fafafa; border: 1px solid #f0f0f0; border-radius: 8px; padding: 15px; }
 
-    /* Sliders */
+    /* Sliders (exclusivo moderador) */
     .metric-range { -webkit-appearance: none; width: 100%; height: 8px; border-radius: 4px; background: #e0e0e0; outline: none; }
     .metric-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--dark-lilac); cursor: pointer; transition: 0.1s; }
     .metric-range::-webkit-slider-thumb:hover { transform: scale(1.15); }
+    .metric-proof-card {
+        background: #fff;
+        border: 1px solid var(--border-lilac);
+        border-radius: 10px;
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .metric-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.72em;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+        background: #f8fafc;
+        color: #475569;
+        width: fit-content;
+    }
+    .metric-status-badge.pendente_envio { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+    .metric-status-badge.aguardando_avaliacao { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+    .metric-status-badge.avaliado { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+    .dod-aviso-box {
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 12px;
+        font-size: 0.78em;
+        color: #92400e;
+        line-height: 1.45;
+    }
+    .progress-readonly-hint {
+        font-size: 0.72em;
+        color: #94a3b8;
+        display: block;
+        margin-top: 8px;
+        line-height: 1.35;
+    }
 
     /* Animação de Pulso para o Microfone Ativo */
     @keyframes mic-pulse {
@@ -598,79 +699,7 @@ function renderCard(sprint, colorClass, showButton) {
                 <div id="sprint-estrategia-okr" hidden></div>
 
                 <fieldset class="vector-fieldset">
-                    <legend><i class="fas fa-file-signature"></i> Vetor 1: Comprovação Documental / Relato Verbal</legend>
-                    <div style="display: flex; align-items: flex-end; gap: 15px; background: var(--light-lilac); padding: 15px; border-radius: 8px; border: 1px solid var(--border-lilac); margin-bottom: 15px;">
-                        <div style="flex: 1.5;">
-                            <label style="font-weight: bold; color: var(--dark-lilac); font-size: 0.85em;"><i class="fas fa-link"></i> Link da Evidência (Drive/Sharepoint)</label>
-                            <input type="url" id="evid_url" placeholder="https://..." style="margin-top: 5px;">
-                        </div>
-                        <div style="flex: 1;">
-                            <label style="font-weight: bold; color: var(--dark-lilac); font-size: 0.85em;"><i class="fas fa-puzzle-piece"></i> Componente Vinculado</label>
-                            <select id="evid_componente" style="margin-top: 5px;"></select>
-                        </div>
-                        <button type="button" class="btn-action btn-purple-dark" style="width: 140px; height: 40px;" onclick="adicionarEvidencia()">
-                            <i class="fas fa-plus"></i> Vincular
-                        </button>
-                    </div>
-                    <div style="width: 100%; background: var(--pure-white); border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
-                            <thead style="background: var(--light-lilac); color: var(--dark-lilac);">
-                                <tr>
-                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border-lilac);">Componente</th>
-                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border-lilac);">Link</th>
-                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--border-lilac);">Status Modulador</th>
-                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--border-lilac);">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody id="lista-evidencias-corpo"></tbody>
-                        </table>
-                    </div>
-
-                    <!-- ✍️ MODULADOR IA — Editor Premium de Evidência + Veredito -->
-                    <div class="modulador-wrap">
-                        <div class="modulador-head">
-                            <i class="fas fa-robot"></i>
-                            <div>
-                                <h4>Submissão ao Modulador Consultor LeAction</h4>
-                                <small>Descreva ou cole a evidência do trabalho. O Modulador comparará com os Critérios de Aceite (DoD).</small>
-                            </div>
-                        </div>
-                        <div class="modulador-body">
-                            <div id="quill-evidencia"></div>
-                            <p class="modulador-help">
-                                <i class="fas fa-shield-halved"></i>
-                                <strong>Atenção:</strong> O Modulador Consultor LeAction é rigoroso. Se o critério exige link ou e-mail, cole-os acima ou sua Sprint será reprovada.
-                            </p>
-                            <button type="button" id="btn-submeter-modulador" class="btn-modulador" onclick="submeterParaModulador()">
-                                <i class="fas fa-gavel"></i> Submeter para Análise do Modulador
-                            </button>
-
-                            <div id="modulador-resultado" class="modulador-resultado">
-                                <div class="res-head">
-                                    <i id="res-icone" class="fas fa-circle-check"></i>
-                                    <span id="res-titulo">Resultado da Avaliação</span>
-                                    <span id="res-badge" class="res-badge">—</span>
-                                </div>
-                                <div class="res-body">
-                                    <p id="res-feedback" class="res-feedback"></p>
-                                    <div class="res-cols">
-                                        <div class="res-col fortes">
-                                            <h5><i class="fas fa-thumbs-up"></i> Pontos Fortes</h5>
-                                            <ul id="res-pontos-fortes"></ul>
-                                        </div>
-                                        <div class="res-col pend">
-                                            <h5><i class="fas fa-triangle-exclamation"></i> Pendências</h5>
-                                            <ul id="res-pendencias"></ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </fieldset>
-
-                <fieldset class="vector-fieldset">
-                    <legend><i class="fas fa-tasks"></i> Vetor 2: Atividades Táticas da Sprint</legend>
+                    <legend><i class="fas fa-tasks"></i> Atividades Táticas da Sprint</legend>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <small style="color: var(--text-gray);">Ações operacionais atreladas aos KRs estratégicos para execução do bloco.</small>
                         <button type="button" class="btn-action btn-purple-dark" onclick="abrirSubModalAtividade()" style="width: auto; padding: 6px 15px; font-size: 0.8rem;">
@@ -680,8 +709,8 @@ function renderCard(sprint, colorClass, showButton) {
                     <div id="lista-atividades-sprint" style="display: grid; grid-template-columns: 1fr; gap: 8px; max-height: 220px; overflow-y: auto; padding: 2px;"></div>
                 </fieldset>
 
-                <fieldset class="vector-fieldset">
-                    <legend><i class="fas fa-comments"></i> Vetor 3: Ritos, Cerimônias e Alinhamentos Coletivos</legend>
+                <fieldset class="vector-fieldset" style="border-color:#c7d2fe;">
+                    <legend style="color:#4338ca;"><i class="fas fa-comments"></i> Ritos, Cerimônias e Alinhamentos</legend>
                     <div style="display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 25px; width: 100%;">
                         <div>
                             <div style="display: flex; gap: 15px; margin-bottom: 15px;">
@@ -732,9 +761,40 @@ function renderCard(sprint, colorClass, showButton) {
                     </div>
                 </fieldset>
 
-                <fieldset class="vector-fieldset">
-                    <legend><i class="fas fa-sliders-h"></i> Métricas de Qualidade Associadas à Execução</legend>
-                    <div id="container-metrics-dynamic" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;" class="metric-range-box"></div>
+                <fieldset class="vector-fieldset metrics-audit-fieldset" id="secao-comprovacoes-metricas">
+                    <legend><i class="fas fa-clipboard-check"></i> Comprovações das Métricas</legend>
+                    <p style="margin: 0 0 14px 0; font-size: 0.85em; color: var(--text-gray); line-height: 1.45;">
+                        Cada métrica tem seu próprio botão de submissão. O <strong>Modulador</strong> analisa individualmente
+                        e a nota aparece ao lado da métrica; o % superior é a média das três métricas (sem nota = 0).
+                    </p>
+
+                    <div id="barra-revisao-consultor" style="display:none; margin-bottom:12px; padding:12px; border-radius:8px; background:#fff7ed; border:1px solid var(--border-lilac);">
+                        <div style="font-size:0.82em; color:#9a3412; margin-bottom:8px; line-height:1.4;">
+                            Discorda da nota do Modulador? Solicite revisão excepcional do consultor humano.
+                        </div>
+                        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                            <input type="text" id="motivo-revisao-consultor" placeholder="Motivo da revisão (opcional)" style="flex:1; min-width:180px; padding:8px;">
+                            <button type="button" id="btn-solicitar-revisao" class="btn-action" style="background:#c2410c; color:#fff; height:40px; width:auto; padding:0 14px;" onclick="solicitarRevisaoConsultor()">
+                                <i class="fas fa-user-tie"></i> Solicitar revisão do consultor
+                            </button>
+                            <button type="button" id="btn-finalizar-revisao" class="btn-action" style="background:#64748b; color:#fff; height:40px; width:auto; padding:0 14px; display:none;" onclick="finalizarRevisaoConsultor()">
+                                <i class="fas fa-check"></i> Encerrar revisão
+                            </button>
+                        </div>
+                        <div id="status-revisao-consultor" style="margin-top:8px; font-size:0.8em; font-weight:700; color:#9a3412;"></div>
+                    </div>
+
+                    <div id="aviso-consultor-revisao" style="display:none; margin-bottom:12px; padding:12px; border-radius:8px; background:#faf5ff; border:1px solid var(--border-lilac); color:var(--dark-lilac); font-size:0.85em;">
+                        <strong>Revisão solicitada pelo Cliente.</strong> Você pode ajustar a nota do Modulador nas métricas abaixo.
+                        <button type="button" class="btn-action" style="margin-top:8px; background:var(--dark-lilac); color:#fff; height:36px; width:auto; padding:0 12px;" onclick="finalizarRevisaoConsultor()">
+                            Finalizar revisão
+                        </button>
+                    </div>
+                    <div id="aviso-consultor-sem-pedido" style="display:none; margin-bottom:12px; padding:12px; border-radius:8px; background:#fff; border:1px dashed var(--border-lilac); color:#64748b; font-size:0.85em;">
+                        Papel excepcional: só revise notas se o Cliente solicitar. Enquanto isso, a pontuação vigente é a do Modulador.
+                    </div>
+
+                    <div id="container-metrics-dynamic" style="display: grid; grid-template-columns: 1fr; gap: 14px;" class="metric-range-box"></div>
                 </fieldset>
             </div>
 
@@ -746,11 +806,16 @@ function renderCard(sprint, colorClass, showButton) {
                     <div style="background: #222; height: 10px; border-radius: 5px; margin-top: 15px; border: 1px solid #333; overflow: hidden;">
                         <div id="progress-bar-exec" style="background: var(--pure-white); width: 0%; height: 100%; border-radius: 5px; transition: 0.4s;"></div>
                     </div>
-                    <small style="font-size: 0.75em; color: #aaa; display: block; margin-top: 8px;">Mínimo para Homologação: <strong>80%</strong></small>
+                    <span class="progress-readonly-hint">Somente leitura — qualidade do Modulador (revisão humana só se o Cliente solicitar). Encerramento pelo Cliente: DoD 100% + média ≥ 80%.</span>
+                    <div id="fechamento-feedback" style="display:none; margin-top:10px; padding:10px 12px; border-radius:8px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; font-size:0.78em; line-height:1.4;"></div>
                 </div>
 
                 <div style="background: var(--pure-white); border: 1px solid var(--border-lilac); padding: 18px; border-radius: 10px;">
                     <h4 style="margin: 0 0 12px 0; font-size: 0.8em; color: var(--dark-lilac); font-weight: 900; text-transform: uppercase;"><i class="fas fa-clipboard-check"></i> Critérios de Aceite (DoD)</h4>
+                    <div class="dod-aviso-box">
+                        <strong>Atenção:</strong> 100% dos critérios DoD precisam estar marcados para encerrar a Sprint.
+                        Eles são binários (sim/não) e <strong>não alteram</strong> a nota de qualidade — essa vem apenas das métricas avaliadas.
+                    </div>
                     <div id="dod-checklist-container">
                         <div id="dod-items-gerais" style="display: flex; flex-direction: column; gap: 6px;"></div>
                         <div id="dod-items-educacional" style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;"></div>
@@ -761,12 +826,12 @@ function renderCard(sprint, colorClass, showButton) {
                     <h4 style="margin: 0 0 8px 0; font-size: 0.8em; color: var(--dark-lilac); font-weight: 900; text-transform: uppercase;"><i class="fas fa-robot"></i> Console Modulador Autônomo</h4>
                     <div id="modulador-status-global" style="background: var(--pure-white); border: 1px solid var(--border-lilac); border-radius: 10px; padding: 18px; flex-grow: 1; display: flex; flex-direction: column; gap: 10px;">
                         <div id="modulador-message-global" class="modulador-live-console">
-                            Aguardando mapeamento dos vetores operacionais para disparar auditoria cruzada...
+                            Aguardando consolidação das comprovações para apoio à auditoria...
                         </div>
                     </div>
                 </div>
 
-                <form id="form-sprint-exec" onsubmit="salvarExecucaoSprint(event)" style="margin: 0; width: 100%;">
+                <form id="form-sprint-exec" onsubmit="salvarExecucaoSprint(event)" style="margin: 0; width: 100%; display:flex; flex-direction:column; gap:10px;">
                     <input type="hidden" id="exec_id_sprn">
                     <input type="hidden" id="exec_swot_type" value="Fraqueza">
                     <input type="hidden" id="exec_swot_justification" value="Atualização unificada via console do modulador.">
@@ -775,6 +840,9 @@ function renderCard(sprint, colorClass, showButton) {
 
                     <button type="submit" id="btn-save-strategic" class="btn-action btn-purple-dark" style="height: 48px; font-size: 1.05em; border-radius: 8px;">
                         <i class="fas fa-cloud-upload-alt"></i> Salvar Evolução Estratégica
+                    </button>
+                    <button type="button" id="btn-encerrar-sprint" class="btn-action" style="height: 48px; font-size: 1.02em; border-radius: 8px; background:#0f766e; color:#fff; display:none;" onclick="encerrarSprintCliente()">
+                        <i class="fas fa-flag-checkered"></i> Encerrar Sprint
                     </button>
                 </form>
             </div>
@@ -813,7 +881,14 @@ function renderCard(sprint, colorClass, showButton) {
                     </div>
                     <div class="form-group">
                         <label for="ativ_desc">Descrição e Escopo de Execução</label>
-                        <textarea id="ativ_desc" rows="3" placeholder="Descreva os entregáveis esperados pelo time..."></textarea>
+                        <textarea id="ativ_desc" rows="5" placeholder="Descreva os entregáveis esperados pelo time..." style="width:100%; min-height:110px; resize:vertical;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="ativ_obs">Observações e encaminhamentos</label>
+                        <textarea id="ativ_obs" rows="4" placeholder="Notas de andamento, encaminhamentos e observações da execução..." style="width:100%; min-height:96px; resize:vertical;"></textarea>
+                        <small style="color:#64748b;display:block;margin-top:6px;">
+                            Persistido no registro da atividade (também editável na Sala de Execução).
+                        </small>
                     </div>
                     <div class="form-group">
                         <label for="ativ_id_team">Responsável Alocado (Integrantes da Squad desta Sprint) *</label>
@@ -1290,67 +1365,137 @@ let cascataOkrAtividadeCache = [];
 let atividadesSprintCache = [];
 let squadAtividadeVazia = false;
 let moduladorTimer = null;
+const PODE_AVALIAR_METRICAS = <%= JSON.stringify(!!(typeof podeAvaliarMetricas !== 'undefined' ? podeAvaliarMetricas : false)) %>;
+const PODE_ENCERRAR_SPRINT = <%= JSON.stringify(typeof podeEncerrarSprint !== 'undefined' ? !!podeEncerrarSprint : !(typeof podeAvaliarMetricas !== 'undefined' && podeAvaliarMetricas)) %>;
+const MSG_QUALIDADE_ABAIXO_80 = 'A qualidade média das entregas avaliadas pela moderação está abaixo de 80%. Melhore as entregas pendentes para concluir a Sprint.';
+/** Exceção: consultor só revisa nota do Modulador se o Cliente pediu. */
+let REVISAO_CONSULTOR_ATIVA = false;
 
 // --- SISTEMA DE CAPTURA VOCAL NATIVO (WEB SPEECH API NATIVA) ---
 let motorReconhecimentoVoz = null;
-let estáGravandoVozRito = false;
+let estáGravandoVoz = false;
+let vozAlvoAtual = null; // { icon, status, textarea, placeholderOff }
+
+function obterSpeechRecognition() {
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+function garantirMotorVoz() {
+    const SpeechRecognition = obterSpeechRecognition();
+    if (!SpeechRecognition) return null;
+    if (motorReconhecimentoVoz) return motorReconhecimentoVoz;
+
+    motorReconhecimentoVoz = new SpeechRecognition();
+    motorReconhecimentoVoz.lang = 'pt-BR';
+    motorReconhecimentoVoz.continuous = true;
+    motorReconhecimentoVoz.interimResults = false;
+
+    motorReconhecimentoVoz.onstart = () => {
+        estáGravandoVoz = true;
+        const alvo = vozAlvoAtual;
+        if (!alvo) return;
+        if (alvo.icon) alvo.icon.classList.add('mic-ativo');
+        if (alvo.status) {
+            alvo.status.innerText = 'Ouvindo... Fale agora';
+            alvo.status.style.color = '#e74c3c';
+        }
+        if (alvo.textarea) {
+            alvo.textarea.style.borderColor = 'var(--dark-lilac)';
+            alvo.textarea.placeholder = 'Escutando a sua voz... Fale de forma clara.';
+        }
+    };
+
+    motorReconhecimentoVoz.onresult = (event) => {
+        const alvo = vozAlvoAtual;
+        if (!alvo || !alvo.textarea) return;
+        let textoCapturado = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) textoCapturado += event.results[i][0].transcript;
+        }
+        if (textoCapturado) {
+            const espaco = alvo.textarea.value.length > 0 ? ' ' : '';
+            alvo.textarea.value += espaco + textoCapturado.trim();
+            alvo.textarea.scrollTop = alvo.textarea.scrollHeight;
+        }
+    };
+
+    motorReconhecimentoVoz.onerror = (err) => {
+        console.error(err.error);
+        desativarInterfaceMicrofone();
+    };
+
+    motorReconhecimentoVoz.onend = () => {
+        desativarInterfaceMicrofone();
+    };
+
+    return motorReconhecimentoVoz;
+}
+
+function desativarInterfaceMicrofone() {
+    estáGravandoVoz = false;
+    const alvo = vozAlvoAtual;
+    if (!alvo) return;
+    if (alvo.icon) alvo.icon.classList.remove('mic-ativo');
+    if (alvo.status) {
+        alvo.status.innerText = 'Ditado Desligado';
+        alvo.status.style.color = 'var(--text-gray)';
+    }
+    if (alvo.textarea) {
+        alvo.textarea.style.borderColor = '#dddddd';
+        alvo.textarea.placeholder = alvo.placeholderOff || 'Clique no microfone para ditar ou digite...';
+    }
+}
+
+function alternarVozCampo({ icon, status, textarea, placeholderOff }) {
+    if (!obterSpeechRecognition()) {
+        return alert('⚠️ O seu navegador atual não suporta a API de ditado por voz. Recomendamos usar o Google Chrome ou Microsoft Edge.');
+    }
+    if (!textarea) return;
+
+    const motor = garantirMotorVoz();
+    if (!motor) return;
+
+    // Se já está gravando neste mesmo campo → para
+    if (estáGravandoVoz && vozAlvoAtual && vozAlvoAtual.textarea === textarea) {
+        motor.stop();
+        return;
+    }
+
+    // Se está gravando em outro campo → para e troca o alvo
+    if (estáGravandoVoz) {
+        try { motor.stop(); } catch (_) { /* ignore */ }
+    }
+
+    vozAlvoAtual = { icon, status, textarea, placeholderOff };
+    try {
+        motor.start();
+    } catch (err) {
+        console.error(err);
+        desativarInterfaceMicrofone();
+    }
+}
 
 function alternarVozRito() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-        return alert("⚠️ O seu navegador atual não suporta a API de ditado por voz. Recomendamos usar o Google Chrome ou Microsoft Edge.");
-    }
-
-    const micIcon = document.getElementById('mic-icon-cerm');
-    const micStatus = document.getElementById('mic-status-cerm');
-    const campoTexto = document.getElementById('cerm_note');
-
-    if (!motorReconhecimentoVoz) {
-        motorReconhecimentoVoz = new SpeechRecognition();
-        motorReconhecimentoVoz.lang = 'pt-BR';
-        motorReconhecimentoVoz.continuous = true;
-        motorReconhecimentoVoz.interimResults = false;
-
-        motorReconhecimentoVoz.onstart = () => {
-            estáGravandoVozRito = true;
-            if (micIcon) micIcon.classList.add('mic-ativo');
-            if (micStatus) { micStatus.innerText = "Ouvindo... Fale agora"; micStatus.style.color = "#e74c3c"; }
-            if (campoTexto) { campoTexto.style.borderColor = "var(--dark-lilac)"; campoTexto.placeholder = "Escutando a sua voz... Fale de forma clara."; }
-        };
-
-        motorReconhecimentoVoz.onresult = (event) => {
-            let textoCapturado = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) { textoCapturado += event.results[i][0].transcript; }
-            }
-            if (textoCapturado && campoTexto) {
-                const espaco = campoTexto.value.length > 0 ? ' ' : '';
-                campoTexto.value += espaco + textoCapturado.trim();
-                campoTexto.scrollTop = campoTexto.scrollHeight;
-            }
-        };
-
-        motorReconhecimentoVoz.onerror = (err) => {
-            console.error(err.error);
-            desativarInterfaceMicrofone(micIcon, micStatus, campoTexto);
-        };
-
-        motorReconhecimentoVoz.onend = () => {
-            desativarInterfaceMicrofone(micIcon, micStatus, campoTexto);
-        };
-    }
-
-    if (!estáGravandoVozRito) { motorReconhecimentoVoz.start(); }
-    else { motorReconhecimentoVoz.stop(); }
+    alternarVozCampo({
+        icon: document.getElementById('mic-icon-cerm'),
+        status: document.getElementById('mic-status-cerm'),
+        textarea: document.getElementById('cerm_note'),
+        placeholderOff: 'Clique no microfone para ditar ou digite as notas do rito...'
+    });
 }
 
-function desativarInterfaceMicrofone(icon, status, textarea) {
-    estáGravandoVozRito = false;
-    if (icon) icon.classList.remove('mic-ativo');
-    if (status) { status.innerText = "Ditado Desligado"; status.style.color = "var(--text-gray)"; }
-    if (textarea) { textarea.style.borderColor = "#dddddd"; textarea.placeholder = "Clique no microfone para ditar ou digite as notas do rito..."; }
+function alternarVozDepoimentoMetrica(idMetrica) {
+    const card = document.querySelector(`.metric-proof-card[data-id-metrica="${idMetrica}"]`);
+    if (!card) return;
+    alternarVozCampo({
+        icon: card.querySelector('.mic-icon-depoimento'),
+        status: card.querySelector('.mic-status-depoimento'),
+        textarea: card.querySelector('.metric-depoimento'),
+        placeholderOff: 'Clique no microfone para ditar ou digite o depoimento...'
+    });
 }
+
+let estáGravandoVozRito = false; // legado — mantido para não quebrar refs antigas
 
 function definirConclusaoAgora() {
     const campo = document.getElementById('ativ_dt_concl');
@@ -1433,11 +1578,13 @@ async function carregarAtividadesDaSprint(idSprn) {
             const statusAtual = ativ.status_ativ || 'A Fazer';
             const nomeSafe = String(ativ.nome_ativ || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             const descSafe = ativ.desc_ativ ? String(ativ.desc_ativ).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+            const obsSafe = ativ.obs_encaminhamentos ? String(ativ.obs_encaminhamentos).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
             return `
-            <div style="background: #fdfdfd; padding: 12px; border-radius: 6px; border: 1px solid #eee; display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:5px; flex-wrap:wrap;">
-                <div style="flex:1; min-width:180px;">
+            <div style="background: #fdfdfd; padding: 12px; border-radius: 6px; border: 1px solid #eee; display:flex; flex-direction:column; gap:10px; margin-bottom:5px;">
+                <div style="min-width:0;">
                     <div style="font-size:0.9rem; font-weight:700; color:var(--pure-black);">${nomeSafe}</div>
-                    ${descSafe ? `<small style="color:var(--text-gray); display:block; margin-top:2px;">${descSafe}</small>` : ''}
+                    ${descSafe ? `<div style="color:var(--text-gray); font-size:0.82rem; margin-top:6px; line-height:1.45; white-space:pre-wrap; word-break:break-word;">${descSafe}</div>` : ''}
+                    ${obsSafe ? `<div style="margin-top:8px; padding:8px 10px; background:#faf5ff; border:1px solid var(--border-lilac); border-radius:6px; font-size:0.8rem; color:#4c1d95; white-space:pre-wrap; word-break:break-word;"><strong style="display:block; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px;">Observações / encaminhamentos</strong>${obsSafe}</div>` : ''}
                 </div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <button type="button" onclick="abrirSubModalAtividadeEditar(${ativ.id_ativ})" class="btn-action btn-purple-light" style="width:auto; padding:5px 12px; font-size:0.7rem; height:auto;">
@@ -1637,20 +1784,25 @@ async function carregarCascataOkrAtividade() {
         const res = await fetch(urlCascata);
         const data = await res.json().catch(function () { return {}; });
 
-        if (res.ok && data.direcionadores && data.direcionadores.length) {
-            cascataOkrAtividadeCache = data.direcionadores;
-        } else {
+        var cascata = (res.ok && Array.isArray(data.direcionadores)) ? data.direcionadores : [];
+        var temKrs = cascata.some(function (d) {
+            return (d.objetivos || []).some(function (o) { return (o.krs || []).length > 0; });
+        });
+
+        if (!temKrs) {
             const resKrs = await fetch('/api/estrategia/krs-por-sprint?id_sprn=' + encodeURIComponent(idSprintAtivaGlobal) + '&id_clie=' + encodeURIComponent(idClie));
             const dataKrs = await resKrs.json().catch(function () { return {}; });
             if (!resKrs.ok) {
                 selDirec.innerHTML = '<option value="">' + (dataKrs.error || data.error || 'Erro ao carregar matriz OKR') + '</option>';
                 return;
             }
-            cascataOkrAtividadeCache = montarCascataDeKrsFlat(dataKrs.krs || []);
+            cascata = montarCascataDeKrsFlat(dataKrs.krs || []);
         }
 
+        cascataOkrAtividadeCache = cascata;
+
         if (!cascataOkrAtividadeCache.length) {
-            selDirec.innerHTML = '<option value="">Nenhum direcionador disponível para esta sprint</option>';
+            selDirec.innerHTML = '<option value="">Nenhum KR ativo nesta sprint — ajuste na Matriz OKR</option>';
             return;
         }
 
@@ -1659,6 +1811,20 @@ async function carregarCascataOkrAtividade() {
             html += '<option value="' + d.id_direc + '">' + (d.nome || ('Direcionador ' + d.id_direc)) + '</option>';
         });
         selDirec.innerHTML = html;
+
+        // Auto-seleciona quando a sprint já filtra um único caminho (direcionador → objetivo → KRs)
+        if (cascataOkrAtividadeCache.length === 1) {
+            selDirec.value = String(cascataOkrAtividadeCache[0].id_direc);
+            aoMudarDirecionadorAtividade();
+            var objs = cascataOkrAtividadeCache[0].objetivos || [];
+            if (objs.length === 1) {
+                var selObj = document.getElementById('ativ_sel_objetivo');
+                if (selObj) {
+                    selObj.value = String(objs[0].id_obj_dt);
+                    aoMudarObjetivoAtividade();
+                }
+            }
+        }
     } catch (err) {
         console.error(err);
         selDirec.innerHTML = '<option value="">Erro ao carregar direcionadores</option>';
@@ -1730,6 +1896,8 @@ async function abrirSubModalAtividade(atividadeEdicao) {
     if (isEdicao) {
         document.getElementById('ativ_nome').value = atividadeEdicao.nome_ativ || '';
         document.getElementById('ativ_desc').value = atividadeEdicao.desc_ativ || '';
+        const ativObs = document.getElementById('ativ_obs');
+        if (ativObs) ativObs.value = atividadeEdicao.obs_encaminhamentos || '';
         if (atividadeEdicao.data_planejamento) {
             const dp = String(atividadeEdicao.data_planejamento).slice(0, 10);
             document.getElementById('ativ_dt_plan').value = dp;
@@ -1790,6 +1958,7 @@ async function salvarAtividadeSprint(e) {
         id_team: parseInt(document.getElementById('ativ_id_team').value, 10),
         nome_ativ: document.getElementById('ativ_nome').value.trim(),
         desc_ativ: document.getElementById('ativ_desc').value.trim(),
+        obs_encaminhamentos: (document.getElementById('ativ_obs')?.value || '').trim(),
         data_planejamento: document.getElementById('ativ_dt_plan').value,
         data_conclusao: dtConclValue ? dtConclValue.replace('T', ' ') + ':00' : null,
         status_ativ: status
@@ -1969,7 +2138,17 @@ async function abrirPainelSprint(id_sprn) {
         const statusLimpo = (data.stat_sprn || data.status || '').toLowerCase().trim();
         const isConcluida = isStatConcluidaClient(data.stat_sprn || data.status);
 
-        if (document.getElementById('btn-save-strategic')) document.getElementById('btn-save-strategic').style.display = isConcluida ? 'none' : 'inline-flex';
+        if (document.getElementById('btn-save-strategic')) {
+            const showSave = !isConcluida && PODE_ENCERRAR_SPRINT;
+            document.getElementById('btn-save-strategic').style.display = showSave ? 'inline-flex' : 'none';
+        }
+        if (document.getElementById('btn-encerrar-sprint')) {
+            document.getElementById('btn-encerrar-sprint').style.display =
+                (!isConcluida && PODE_ENCERRAR_SPRINT) ? 'inline-flex' : 'none';
+        }
+        REVISAO_CONSULTOR_ATIVA = !!data.revisao_consultor_solicitada;
+        atualizarUIRevisaoConsultor(data);
+        mostrarFeedbackFechamento(null);
         if (document.getElementById('sprint-subtitle')) document.getElementById('sprint-subtitle').innerText = isConcluida ? `[AUDITORIA] Entregável: ${data.name_derv || 'N/A'}` : `Entregável: ${data.name_derv || 'N/A'}`;
 
         document.getElementById('guide-defi').innerText = data.derv_defi || 'N/A';
@@ -1986,10 +2165,31 @@ async function abrirPainelSprint(id_sprn) {
 
         if (listaGerais && listaEducacional) {
             listaGerais.innerHTML = ""; listaEducacional.innerHTML = "";
-            if (data.criteria_dod) {
+            const dodItens = Array.isArray(data.dod_itens) ? data.dod_itens : [];
+            if (dodItens.length > 0) {
+                dodContainer.style.display = 'block';
+                const dodReadonly = isConcluida || PODE_AVALIAR_METRICAS;
+                const gerarItemHTML = (item, cor) => `
+                    <label style="display: flex; align-items:center; gap:8px; background:#fff; padding:6px; border-radius:4px; border:1px solid var(--border-lilac); cursor: ${dodReadonly ? 'default' : 'pointer'}; margin-bottom: 2px;">
+                        <input type="checkbox" class="dod-checkbox"
+                               data-dod-id="${item.id || ''}"
+                               data-dod-chave="${item.criterio_chave || ''}"
+                               ${item.concluido || isConcluida ? 'checked' : ''}
+                               ${dodReadonly ? 'disabled' : ''}
+                               style="width:auto;">
+                        <span style="font-size:0.85em; color:${cor}; font-weight:600;">${item.criterio_texto || item.texto || ''}</span>
+                    </label>
+                `;
+                dodItens.forEach((item) => {
+                    if (item.grupo === 'context_education') {
+                        listaEducacional.innerHTML += gerarItemHTML(item, 'var(--dark-lilac)');
+                    } else {
+                        listaGerais.innerHTML += gerarItemHTML(item, 'var(--text-dark)');
+                    }
+                });
+            } else if (data.criteria_dod) {
                 let parsedDod = typeof data.criteria_dod === 'string' ? JSON.parse(data.criteria_dod) : data.criteria_dod;
                 dodContainer.style.display = 'block';
-
                 const gerarItemHTML = (item, cor) => `
                     <label style="display: flex; align-items:center; gap:8px; background:#fff; padding:6px; border-radius:4px; border:1px solid var(--border-lilac); cursor: pointer; margin-bottom: 2px;">
                         <input type="checkbox" class="dod-checkbox" ${isConcluida ? 'checked disabled' : ''} style="width:auto;">
@@ -2011,24 +2211,19 @@ async function abrirPainelSprint(id_sprn) {
         const metricsContainer = document.getElementById('container-metrics-dynamic');
         if (metricsContainer) {
             metricsContainer.innerHTML = "";
-            const metricas = (data.derv_metr || "").split(/[;,\n]/).map(m => m.trim()).filter(m => m !== "");
-            const scores = data.metrics_scores || {};
-
-            metricsContainer.innerHTML += metricas.map(m => {
-                const val = scores[m] || 0;
-                return `
-                    <div style="margin-bottom: 5px; opacity: ${isConcluida ? '0.6' : '1'}">
-                        <label style="font-size: 0.82em; font-weight: 800; color: var(--text-dark); display:block; margin-bottom:3px;">${m}</label>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="range" class="metric-range" data-metrica="${m}"
-                                   value="${val}" min="0" max="100" style="flex: 1;"
-                                   ${isConcluida ? 'disabled' : ''}
-                                   oninput="this.nextElementSibling.innerText = this.value + '%'; atualizarProgresso();">
-                            <span style="font-size: 0.85em; font-weight: bold; color: var(--dark-lilac); width:40px; text-align:right;">${val}%</span>
-                        </div>
-                    </div>`;
-            }).join('');
-            atualizarProgresso();
+            const entregas = Array.isArray(data.entregas_metricas) ? data.entregas_metricas : [];
+            if (entregas.length === 0) {
+                metricsContainer.innerHTML = '<p style="grid-column:1/-1;color:#64748b;font-size:0.9em;margin:0;">Nenhuma métrica vinculada a este entregável.</p>';
+            } else {
+                metricsContainer.innerHTML = entregas.map((e) => renderMetricProofCard(e, isConcluida)).join('');
+            }
+            atualizarProgresso(data.progresso_qualidade != null ? data.progresso_qualidade : data.realv_sprn);
+            if (data.prontidao_fechamento && !data.prontidao_fechamento.ok && PODE_ENCERRAR_SPRINT && !isConcluida) {
+                // Feedback tipográfico só quando qualidade é o bloqueio principal
+                if (data.prontidao_fechamento.dod_completo && !data.prontidao_fechamento.qualidade_ok) {
+                    mostrarFeedbackFechamento(MSG_QUALIDADE_ABAIXO_80);
+                }
+            }
         }
 
         document.getElementById('exec_swot_type').value = data.swot_type || "Fraqueza";
@@ -2044,18 +2239,18 @@ async function abrirPainelSprint(id_sprn) {
             });
         }
 
-        carregarListaEvidencias(cleanId);
+        if (document.getElementById('lista-evidencias-corpo') && typeof carregarListaEvidencias === "function") {
+            carregarListaEvidencias(cleanId);
+        }
         if (typeof carregarAtividadesDaSprint === "function") { carregarAtividadesDaSprint(cleanId); }
 
         const idMatu = data.id_matu || '0';
-        document.getElementById('exec_evidence_url').value = `https://paneldx.com.br/projetos/${idMatu}/${cleanId}`;
+        const evidUrlHidden = document.getElementById('exec_evidence_url');
+        if (evidUrlHidden) evidUrlHidden.value = `https://paneldx.com.br/projetos/${idMatu}/${cleanId}`;
         document.getElementById('exec_id_sprn').value = cleanId;
 
         if (typeof carregarHistoricoCerimonias === "function") { carregarHistoricoCerimonias(cleanId); }
         document.getElementById('modal-sprint-exec').style.display = 'block';
-
-        inicializarQuillModulador();
-        restaurarEstadoModulador(data);
 
     } catch (e) { console.error("Erro ao abrir painel:", e); }
 }
@@ -2102,7 +2297,7 @@ async function carregarListaEvidencias(id_sprn) {
         corpoTabela.innerHTML = '';
         if (evidencias.length === 0) {
             corpoTabela.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #999; padding: 20px;">Nenhum documento comprobatório anexado.</td></tr>';
-            if (msgGlobal) msgGlobal.innerHTML = "Aguardando consolidação dos vetores operacionais para disparar auditoria cruzada...";
+            if (msgGlobal) msgGlobal.innerHTML = "Aguardando consolidação das comprovações para apoio à auditoria...";
             if (moduladorTimer) { clearTimeout(moduladorTimer); moduladorTimer = null; }
             return;
         }
@@ -2195,13 +2390,346 @@ async function excluirEvidencia(event, id_evid) {
     } catch (error) { alert("Erro de conexão."); }
 }
 
-function atualizarProgresso() {
-    const ranges = document.querySelectorAll('.metric-range');
-    let total = 0;
-    ranges.forEach(r => total += parseInt(r.value));
-    const media = ranges.length > 0 ? Math.round(total / ranges.length) : 0;
-    document.getElementById('progress-bar-exec').style.width = media + "%";
-    document.getElementById('progress-label').innerText = media + "%";
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function nomeArquivoDeUrl(url) {
+    try {
+        const clean = String(url || '').split('?')[0];
+        const parts = clean.split('/').filter(Boolean);
+        const last = parts[parts.length - 1] || clean;
+        return decodeURIComponent(last);
+    } catch (_) {
+        return String(url || 'documento');
+    }
+}
+
+function dispararUploadMetrica(btn) {
+    const card = btn.closest('.metric-proof-card');
+    const input = card?.querySelector('.metric-doc-file');
+    if (input) input.click();
+}
+
+async function uploadDocumentoMetrica(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const card = input.closest('.metric-proof-card');
+    if (!card) return;
+    const btn = card.querySelector('.metric-doc-upload-btn');
+    const nameEl = card.querySelector('.metric-doc-name');
+    const hidden = card.querySelector('.metric-doc-url');
+    const original = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+    }
+    try {
+        const fd = new FormData();
+        fd.append('documento', file);
+        const res = await fetch('/api/sprints/metricas/upload', { method: 'POST', body: fd });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.url) {
+            throw new Error(data.error || 'Falha no upload do documento.');
+        }
+        if (hidden) hidden.value = data.url;
+        const label = data.filename || nomeArquivoDeUrl(data.url);
+        if (nameEl) {
+            const a = document.createElement('a');
+            a.className = 'metric-doc-name';
+            a.href = data.url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.style.cssText = 'font-size:0.82em; color:var(--dark-lilac); font-weight:600; word-break:break-all;';
+            a.innerHTML = `<i class="fas fa-paperclip"></i> ${escapeHtml(label)}`;
+            nameEl.replaceWith(a);
+        }
+    } catch (err) {
+        alert(err.message || 'Erro ao enviar arquivo.');
+        input.value = '';
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
+    }
+}
+
+function renderMetricProofCard(entrega, isConcluida) {
+    const id = entrega.id_metrica || entrega.id;
+    const status = entrega.status || 'pendente_envio';
+    const label = entrega.status_label || status;
+    const doc = entrega.documento_url || '';
+    const dep = entrega.depoimento || '';
+    const temNota = entrega.nota_qualidade != null && entrega.nota_qualidade !== '';
+    const nota = temNota ? Math.round(Number(entrega.nota_qualidade)) : 0;
+    const readonlyAttr = isConcluida ? 'disabled' : '';
+    const temProva = !!(doc || dep);
+
+    // Nota ao lado do nome da métrica
+    const notaBadge = temNota
+        ? `<span class="metric-nota-badge" style="margin:0;"><i class="fas fa-star"></i> ${nota}%</span>`
+        : `<span class="metric-nota-empty" style="margin:0;">Sem nota</span>`;
+
+    const podeRevisarAgora = PODE_AVALIAR_METRICAS && REVISAO_CONSULTOR_ATIVA;
+
+    let evidenciaHtml = '';
+    if (PODE_AVALIAR_METRICAS) {
+        evidenciaHtml = temProva ? `
+            <div style="background:#fff; border:1px solid var(--border-lilac); border-radius:8px; padding:10px 12px; font-size:0.84em; color:#334155;">
+                <small style="font-weight:800; color:var(--dark-lilac); text-transform:uppercase; font-size:0.7em; display:block; margin-bottom:6px;">Comprovação do Cliente</small>
+                ${doc ? `<div><strong>Documento:</strong> <a href="${escapeHtml(doc)}" target="_blank" rel="noopener">${escapeHtml(doc)}</a></div>` : ''}
+                ${dep ? `<div style="margin-top:6px;"><strong>Depoimento:</strong> ${escapeHtml(dep)}</div>` : ''}
+            </div>
+        ` : `<div style="font-size:0.84em; color:#94a3b8; padding:8px 0;">Aguardando comprovação do Cliente nesta métrica.</div>`;
+    } else {
+        evidenciaHtml = `
+            <div style="display:grid; gap:8px;">
+                <div>
+                    <label style="font-size:0.75em; font-weight:700;">Anexar Documento</label>
+                    <input type="hidden" class="metric-doc-url" value="${escapeHtml(doc)}">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:4px;">
+                        <button type="button" class="btn-action btn-purple-dark metric-doc-upload-btn"
+                                style="height:36px; font-size:0.82em; padding:0 14px;"
+                                onclick="dispararUploadMetrica(this)" ${readonlyAttr}>
+                            <i class="fas fa-upload"></i> Enviar arquivo
+                        </button>
+                        <input type="file" class="metric-doc-file" style="display:none;"
+                               accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf,image/*"
+                               onchange="uploadDocumentoMetrica(this)" ${readonlyAttr}>
+                        ${doc
+                            ? `<a class="metric-doc-name" href="${escapeHtml(doc)}" target="_blank" rel="noopener"
+                                  style="font-size:0.82em; color:var(--dark-lilac); font-weight:600; word-break:break-all;">
+                                   <i class="fas fa-paperclip"></i> ${escapeHtml(nomeArquivoDeUrl(doc))}
+                               </a>`
+                            : `<span class="metric-doc-name" style="font-size:0.82em; color:#94a3b8;">Nenhum arquivo</span>`
+                        }
+                    </div>
+                </div>
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:8px;">
+                        <label style="font-size:0.75em; font-weight:700; margin:0;">Registrar Depoimento (Texto)</label>
+                        <button type="button" class="btn-voice-depoimento" onclick="alternarVozDepoimentoMetrica(${id})"
+                                style="background:#fff; border:1px solid var(--border-lilac); color:var(--dark-lilac); cursor:pointer; display:flex; align-items:center; gap:6px; padding:4px 10px; border-radius:20px;"
+                                ${readonlyAttr}>
+                            <i class="fas fa-microphone mic-icon-depoimento"></i>
+                            <small class="mic-status-depoimento" style="font-weight:800; text-transform:uppercase; font-size:0.7em; color:var(--text-gray);">Ditado Desligado</small>
+                        </button>
+                    </div>
+                    <textarea class="metric-depoimento" rows="3" placeholder="Clique no microfone para ditar ou digite o depoimento..." ${readonlyAttr}>${escapeHtml(dep)}</textarea>
+                </div>
+                ${!isConcluida ? `
+                    <button type="button" class="btn-action btn-purple-dark" style="height:40px; font-size:0.88em;"
+                            onclick="submeterMetricaParaAnalise(${id}, this)">
+                        <i class="fas fa-gavel"></i> Submeter esta métrica para análise
+                    </button>` : ''}
+            </div>
+        `;
+    }
+
+    let revisaoHtml = '';
+    if (podeRevisarAgora) {
+        revisaoHtml = `
+            <div style="border-top:1px solid var(--border-lilac); padding-top:12px; margin-top:2px; display:grid; gap:10px;">
+                <small style="font-weight:800; color:#c2410c; text-transform:uppercase; font-size:0.72em;">
+                    Revisão excepcional (solicitada pelo Cliente)
+                </small>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <label style="font-size:0.78em; font-weight:700; white-space:nowrap;">Revisar nota 0–100</label>
+                    <input type="range" class="metric-mod-range" data-id-metrica="${id}"
+                           value="${nota}" min="0" max="100" style="flex:1;" ${readonlyAttr}
+                           ${(!temProva || isConcluida) ? 'disabled' : ''}
+                           oninput="this.nextElementSibling.innerText = this.value + '%'">
+                    <span style="font-size:0.9em; font-weight:bold; color:#c2410c; width:44px; text-align:right;">${nota}%</span>
+                </div>
+                ${!isConcluida ? `
+                    <button type="button" class="btn-action" style="background:#c2410c; color:#fff; height:40px;"
+                            ${!temProva ? 'disabled' : ''}
+                            onclick="salvarAvaliacaoMetrica(${id}, this)">
+                        <i class="fas fa-user-tie"></i> Revisar nota desta métrica
+                    </button>` : ''}
+            </div>
+        `;
+    }
+
+    return `
+        <div class="metric-proof-card" data-id-metrica="${id}" style="opacity:${isConcluida ? '0.75' : '1'}; border:1px solid var(--border-lilac); background:#fff;">
+            <div style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
+                <label style="font-size:0.92em; font-weight:800; color:var(--text-dark); margin:0;">${escapeHtml(entrega.metrica_rotulo || '')}</label>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    ${notaBadge}
+                    <span class="metric-status-badge ${status}">${escapeHtml(label)}</span>
+                </div>
+            </div>
+            ${evidenciaHtml}
+            ${revisaoHtml}
+        </div>
+    `;
+}
+
+function atualizarUIRevisaoConsultor(data) {
+    const solicitada = !!(data && data.revisao_consultor_solicitada);
+    REVISAO_CONSULTOR_ATIVA = solicitada;
+
+    const barra = document.getElementById('barra-revisao-consultor');
+    const btnSolicitar = document.getElementById('btn-solicitar-revisao');
+    const btnFinalizar = document.getElementById('btn-finalizar-revisao');
+    const statusEl = document.getElementById('status-revisao-consultor');
+    const avisoCom = document.getElementById('aviso-consultor-revisao');
+    const avisoSem = document.getElementById('aviso-consultor-sem-pedido');
+
+    if (barra) {
+        // Cliente vê a barra quando há progresso/nota do modulador (ou sempre, para poder pedir)
+        barra.style.display = PODE_ENCERRAR_SPRINT ? 'block' : 'none';
+    }
+    if (btnSolicitar) btnSolicitar.style.display = (PODE_ENCERRAR_SPRINT && !solicitada) ? 'inline-flex' : 'none';
+    if (btnFinalizar) btnFinalizar.style.display = (PODE_ENCERRAR_SPRINT && solicitada) ? 'inline-flex' : 'none';
+    if (statusEl) {
+        statusEl.textContent = solicitada
+            ? ('Revisão solicitada' + (data.revisao_consultor_motivo ? `: ${data.revisao_consultor_motivo}` : '. Aguardando consultor.'))
+            : '';
+    }
+    if (avisoCom) avisoCom.style.display = (PODE_AVALIAR_METRICAS && solicitada) ? 'block' : 'none';
+    if (avisoSem) avisoSem.style.display = (PODE_AVALIAR_METRICAS && !solicitada) ? 'block' : 'none';
+}
+
+async function solicitarRevisaoConsultor() {
+    if (!PODE_ENCERRAR_SPRINT) return alert('Apenas o Cliente solicita revisão do consultor.');
+    const id = document.getElementById('exec_id_sprn')?.value;
+    if (!id) return;
+    const motivo = (document.getElementById('motivo-revisao-consultor')?.value || '').trim();
+    try {
+        const res = await fetch('/api/sprints/revisao-consultor/solicitar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_sprn: parseInt(id, 10), motivo: motivo || null })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Falha ao solicitar revisão');
+        alert('Revisão do consultor solicitada. Ele poderá ajustar a nota do Modulador.');
+        await abrirPainelSprint(id);
+    } catch (err) {
+        alert(err.message || 'Erro ao solicitar revisão.');
+    }
+}
+
+async function finalizarRevisaoConsultor() {
+    const id = document.getElementById('exec_id_sprn')?.value;
+    if (!id) return;
+    try {
+        const res = await fetch('/api/sprints/revisao-consultor/finalizar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_sprn: parseInt(id, 10) })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Falha ao finalizar revisão');
+        alert('Ciclo de revisão encerrado. A pontuação vigente permanece a última registrada.');
+        await abrirPainelSprint(id);
+    } catch (err) {
+        alert(err.message || 'Erro ao finalizar revisão.');
+    }
+}
+
+function mostrarFeedbackFechamento(msg) {
+    const box = document.getElementById('fechamento-feedback');
+    if (!box) return;
+    if (!msg) {
+        box.style.display = 'none';
+        box.textContent = '';
+        return;
+    }
+    box.style.display = 'block';
+    box.textContent = msg;
+}
+
+function atualizarProgresso(valor) {
+    let media = 0;
+    if (valor != null && valor !== '') {
+        media = Math.round(parseFloat(String(valor).replace('%', '')) || 0);
+    } else {
+        const label = document.getElementById('progress-label');
+        media = parseInt((label?.innerText || '0').replace('%', ''), 10) || 0;
+    }
+    const bar = document.getElementById('progress-bar-exec');
+    const lab = document.getElementById('progress-label');
+    if (bar) bar.style.width = media + '%';
+    if (lab) lab.innerText = media + '%';
+}
+
+async function submeterMetricaParaAnalise(idMetrica, btn) {
+    if (!PODE_ENCERRAR_SPRINT) {
+        return alert('Apenas o Cliente submete métricas para análise.');
+    }
+    const card = btn.closest('.metric-proof-card');
+    if (!card) return;
+    const documento_url = (card.querySelector('.metric-doc-url')?.value || '').trim();
+    const depoimento = (card.querySelector('.metric-depoimento')?.value || '').trim();
+    if (!documento_url && !depoimento) {
+        return alert('Informe ao menos um documento (link) ou um depoimento para esta métrica.');
+    }
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando comprovação...';
+    try {
+        const res = await fetch('/api/sprints/metricas/submeter-analise', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_metrica: idMetrica, documento_url, depoimento })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Falha na análise da métrica');
+        if (data.progresso_qualidade != null) atualizarProgresso(data.progresso_qualidade);
+        const idSprn = document.getElementById('exec_id_sprn')?.value;
+        if (idSprn) await abrirPainelSprint(idSprn);
+        else alert(`Nota da métrica: ${data.nota}%`);
+    } catch (err) {
+        alert(err.message || 'Erro ao submeter métrica para análise.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
+
+async function salvarComprovacaoMetrica(idMetrica, btn) {
+    // Mantido por compatibilidade — preferir submeterMetricaParaAnalise
+    return submeterMetricaParaAnalise(idMetrica, btn);
+}
+
+async function salvarAvaliacaoMetrica(idMetrica, btn) {
+    const card = btn.closest('.metric-proof-card');
+    const range = card?.querySelector('.metric-mod-range');
+    const nota = parseInt(range?.value || '0', 10);
+    btn.disabled = true;
+    try {
+        const res = await fetch('/api/sprints/metricas/avaliar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_metrica: idMetrica, nota_qualidade: nota })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Falha ao avaliar');
+        atualizarProgresso(data.progresso_qualidade);
+        const idSprn = document.getElementById('exec_id_sprn')?.value;
+        if (idSprn) await abrirPainelSprint(idSprn);
+        else alert('Avaliação salva.');
+    } catch (err) {
+        alert(err.message || 'Erro ao salvar avaliação.');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function coletarDodItensDoDom() {
+    return Array.from(document.querySelectorAll('.dod-checkbox')).map((cb) => ({
+        id: cb.dataset.dodId ? parseInt(cb.dataset.dodId, 10) : null,
+        criterio_chave: cb.dataset.dodChave || null,
+        concluido: !!cb.checked,
+    }));
 }
 
 async function adicionarEvidencia() {
@@ -2327,38 +2855,21 @@ function fecharModalSprint() {
 
 async function salvarExecucaoSprint(e) {
     if (e) e.preventDefault();
+    if (!PODE_ENCERRAR_SPRINT) {
+        return alert('Apenas o Cliente salva a evolução operacional e solicita o encerramento. O Moderador apenas pontua as métricas.');
+    }
     const id = document.getElementById('exec_id_sprn')?.value;
     if (!id) return alert("Erro: ID da sprint não encontrado.");
 
-    const checkboxes = document.querySelectorAll('.dod-checkbox');
-    const temCheckboxes = checkboxes.length > 0;
-    const todosMarcados = temCheckboxes && Array.from(checkboxes).every(cb => cb.checked);
-
-    const notaAtual = parseInt(document.getElementById('progress-label').innerText.replace('%', ''), 10);
-
-    let novoStatus = 'em_andamento';
-    if (temCheckboxes && todosMarcados) {
-        if (notaAtual < 80) {
-            alert(`⚠️ Bloqueio do Modulador: O progresso qualitativo atual é de ${notaAtual}%. As métricas do entregável exigem um cumprimento mínimo de 80% para homologar o fechamento deste bloco.`);
-            return;
-        }
-        if (confirm("Todos os critérios DoD foram assinados e o Modulador validou a nota mínima. Concluir este Bloco Estratégico?")) {
-            novoStatus = 'concluida';
-        } else { return; }
-    }
-
-    const scores = {};
-    document.querySelectorAll('.metric-range').forEach(r => { scores[r.dataset.metrica] = parseInt(r.value); });
-
+    const dodItens = coletarDodItensDoDom();
     const payload = {
         id_sprn: id,
         swot_type: document.getElementById('exec_swot_type')?.value || "Fraqueza",
         swot_justification: document.getElementById('exec_swot_justification')?.value || "Atualização unificada via painel do modulador.",
         evidence_url: document.getElementById('exec_evidence_url')?.value || "",
         exec_notes: document.getElementById('exec_notes')?.value || "Processamento via esteira de inteligência.",
-        metrics_scores: scores,
-        realv_sprn: notaAtual.toString(),
-        status: novoStatus
+        dod_itens: dodItens,
+        status: 'em_andamento'
     };
 
     try {
@@ -2367,15 +2878,69 @@ async function salvarExecucaoSprint(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-
+        const errData = await res.json().catch(() => ({}));
         if (res.ok) {
-            alert(novoStatus === 'concluido' ? "Bloco Estratégico Homologado e Concluído com Sucesso!" : "Evolução Salva com Sucesso!");
-            location.reload();
+            alert("Evolução Salva com Sucesso!");
+            if (errData.progresso_qualidade != null) atualizarProgresso(errData.progresso_qualidade);
         } else {
-            const errData = await res.json();
             alert("Erro ao salvar: " + (errData.error || "Erro desconhecido"));
         }
     } catch (err) { alert("Erro de comunicação com o servidor."); }
+}
+
+async function encerrarSprintCliente() {
+    if (!PODE_ENCERRAR_SPRINT) {
+        return alert('Apenas o Cliente pode encerrar a Sprint.');
+    }
+    const id = document.getElementById('exec_id_sprn')?.value;
+    if (!id) return alert("Erro: ID da sprint não encontrado.");
+
+    const checkboxes = document.querySelectorAll('.dod-checkbox');
+    const temCheckboxes = checkboxes.length > 0;
+    const todosMarcados = temCheckboxes && Array.from(checkboxes).every(cb => cb.checked);
+    if (temCheckboxes && !todosMarcados) {
+        mostrarFeedbackFechamento('Para encerrar a Sprint, 100% dos critérios DoD precisam estar marcados.');
+        return alert('Marque todos os critérios DoD antes de encerrar.');
+    }
+
+    const notaAtual = parseInt(document.getElementById('progress-label').innerText.replace('%', ''), 10) || 0;
+    if (notaAtual < 80) {
+        mostrarFeedbackFechamento(MSG_QUALIDADE_ABAIXO_80);
+        return alert(MSG_QUALIDADE_ABAIXO_80);
+    }
+
+    if (!confirm('Confirma o encerramento desta Sprint? Requisitos: DoD 100% e qualidade média ≥ 80%.')) return;
+
+    const btn = document.getElementById('btn-encerrar-sprint');
+    if (btn) btn.disabled = true;
+    try {
+        const res = await fetch('/api/sprints/fechar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_sprn: id,
+                dod_itens: coletarDodItensDoDom(),
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            const msg = data.error || data.mensagem || 'Não foi possível encerrar a Sprint.';
+            if (data.codigo === 'qualidade_abaixo' || (data.qualidade_ok === false) || /abaixo de 80/i.test(msg)) {
+                mostrarFeedbackFechamento(MSG_QUALIDADE_ABAIXO_80);
+                alert(MSG_QUALIDADE_ABAIXO_80);
+            } else {
+                mostrarFeedbackFechamento(msg);
+                alert(msg);
+            }
+            return;
+        }
+        alert('Sprint encerrada com sucesso!');
+        location.reload();
+    } catch (err) {
+        alert('Erro de comunicação com o servidor.');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 }
 
 // ==================================================================
@@ -2403,6 +2968,9 @@ function inicializarQuillModulador() {
 }
 
 async function submeterParaModulador() {
+    if (!PODE_ENCERRAR_SPRINT) {
+        return mostrarToastEvolucao('Apenas o Cliente submete evidência ao Modulador.', 'error');
+    }
     const idSprn = document.getElementById('exec_id_sprn')?.value;
     if (!idSprn) { return mostrarToastEvolucao('ID da sprint não encontrado.', 'error'); }
     if (!quillEvidencia) { inicializarQuillModulador(); }
@@ -2429,19 +2997,24 @@ async function submeterParaModulador() {
 
         if (res.ok && data.success) {
             renderizarVeredito(data);
-            mostrarToastEvolucao('Avaliação do Modulador concluída!', 'success');
-            if (data.sprint_concluida) {
-                setTimeout(() => window.location.reload(), 2600);
+            const prog = data.progresso_qualidade != null ? data.progresso_qualidade : data.nota;
+            if (prog != null) atualizarProgresso(prog);
+            mostrarToastEvolucao('Avaliação do Modulador concluída! A nota alimenta o progresso. O Cliente pode encerrar quando DoD e qualidade (≥80%) estiverem ok.', 'success');
+            // Recarrega cards para exibir "Nota do Moderador" por métrica
+            if (typeof abrirPainelSprint === 'function') {
+                await abrirPainelSprint(idSprn);
             }
         } else {
             mostrarToastEvolucao(data.error || 'Falha na avaliação do Modulador.', 'error');
         }
     } catch (err) {
         console.error(err);
-        mostrarToastEvolucao('Erro de comunicação com o Modulador Consultor LeAction.', 'error');
+        mostrarToastEvolucao('Erro de comunicação com o Modulador.', 'error');
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = htmlOriginal;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = htmlOriginal;
+        }
     }
 }
 

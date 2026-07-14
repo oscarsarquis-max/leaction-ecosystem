@@ -234,7 +234,13 @@
     function renderKrCards(krs) {
         if (!krsContainer) return;
         if (!krs || !krs.length) {
-            krsContainer.innerHTML = '<p class="eo-empty">Nenhum Key Result vinculado. Use o cockpit gamificado para adicionar KRs personalizados.</p>';
+            krsContainer.innerHTML = '<p class="eo-empty">Nenhum Key Result ainda. Adicione o primeiro abaixo.</p>';
+            if (!readOnly) {
+                krsContainer.innerHTML +=
+                    '<button type="button" class="eo-btn eo-btn--gold" id="eo-btn-add-kr" style="margin-top:12px">' +
+                    '<i class="fas fa-plus"></i> Adicionar KR</button>';
+                bindAddKrButton();
+            }
             return;
         }
         krsContainer.innerHTML = krs.map(function (kr, i) {
@@ -242,9 +248,22 @@
             var krPct = kr.progresso_pct != null ? kr.progresso_pct : 0;
             var concl = kr.atividades_concluidas != null ? kr.atividades_concluidas : 0;
             var total = kr.total_atividades != null ? kr.total_atividades : 0;
+            var ativo = kr.ativo !== false;
+            var tag = kr.is_canonico
+                ? '<span class="eo-kr-tag">Sugestão PanelDX</span>'
+                : '<span class="eo-kr-tag eo-kr-tag--custom">Personalizado</span>';
+            if (!ativo) tag += ' <span class="eo-kr-tag eo-kr-tag--off">Suprimido</span>';
+            var descVal = kr.descricao || kr.nome_kr || '';
             return (
-                '<article class="eo-kr-card" data-id-kr="' + kr.id_kr + '">' +
-                '<p class="eo-kr-card__desc"><strong>KR ' + (i + 1) + '.</strong> ' + escapeHtml(kr.descricao) + '</p>' +
+                '<article class="eo-kr-card' + (ativo ? '' : ' eo-kr-card--suprimido') + '" data-id-kr="' + kr.id_kr + '">' +
+                '<div class="eo-kr-card__top">' +
+                '<strong>KR ' + (i + 1) + '</strong> ' + tag +
+                '</div>' +
+                (readOnly
+                    ? '<p class="eo-kr-card__desc">' + escapeHtml(descVal) + '</p>'
+                    : '<label class="eo-kr-card__hint">Descrição / título do KR' +
+                      '<textarea class="eo-kr-desc-input" data-id-kr="' + kr.id_kr + '" rows="2"' +
+                      (ativo ? '' : ' disabled') + '>' + escapeHtml(descVal) + '</textarea></label>') +
                 '<div class="eo-kr-card__progress">' +
                 '<div class="eo-nivel eo-nivel--readonly eo-nivel--sm">' +
                 '<div class="eo-nivel__bar"><div class="eo-nivel__fill" style="width:' + krPct + '%"></div></div>' +
@@ -252,9 +271,85 @@
                 '<small class="eo-kr-card__ativ">' + concl + ' / ' + total + ' atividades concluídas</small></div>' +
                 '<div class="eo-kr-card__hint">Meta real (placeholder: ' + escapeHtml(ph) + ')</div>' +
                 '<input type="text" class="eo-kr-meta-input" data-id-kr="' + kr.id_kr + '" value="' + escapeHtml(kr.meta_cliente || '') + '" ' +
-                'placeholder="Ex.: ' + escapeHtml(ph) + '" ' + (readOnly ? 'readonly disabled' : '') + ' /></article>'
+                'placeholder="Ex.: ' + escapeHtml(ph) + '" ' + (readOnly || !ativo ? 'readonly disabled' : '') + ' />' +
+                (!readOnly
+                    ? '<div class="eo-kr-card__actions">' +
+                      (ativo
+                          ? '<button type="button" class="eo-btn eo-btn--ghost eo-btn--sm eo-kr-suppress" data-id-kr="' + kr.id_kr + '">Suprimir</button>'
+                          : '<button type="button" class="eo-btn eo-btn--gold eo-btn--sm eo-kr-restore" data-id-kr="' + kr.id_kr + '">Reativar</button>') +
+                      '</div>'
+                    : '') +
+                '</article>'
             );
         }).join('');
+
+        if (!readOnly) {
+            krsContainer.innerHTML +=
+                '<button type="button" class="eo-btn eo-btn--gold" id="eo-btn-add-kr" style="margin-top:14px">' +
+                '<i class="fas fa-plus"></i> Adicionar KR</button>';
+            bindAddKrButton();
+            bindKrLifecycleButtons();
+        }
+    }
+
+    function bindAddKrButton() {
+        var btn = document.getElementById('eo-btn-add-kr');
+        if (!btn || btn._bound) return;
+        btn._bound = true;
+        btn.addEventListener('click', async function () {
+            if (!detalheAtual || readOnly) return;
+            var texto = window.prompt('Descrição do novo Key Result:');
+            if (!texto || !texto.trim()) return;
+            try {
+                var res = await fetch('/api/okr/krs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id_obj_dt: detalheAtual.id_obj_dt,
+                        nome_kr: texto.trim(),
+                        desc_kr: texto.trim(),
+                        kpi_nome: 'Meta personalizada',
+                        valor_inicial: 0,
+                        valor_alvo: 100,
+                        valor_atual: 0
+                    })
+                });
+                var data = await res.json().catch(function () { return {}; });
+                if (!res.ok) throw new Error(data.error || 'Falha ao adicionar KR.');
+                showToast('KR adicionado.');
+                await abrirDetalhe(detalheAtual.id_obj_dt);
+                await carregarPainel();
+            } catch (err) {
+                showToast(err.message, true);
+            }
+        });
+    }
+
+    function bindKrLifecycleButtons() {
+        if (!krsContainer) return;
+        krsContainer.querySelectorAll('.eo-kr-suppress, .eo-kr-restore').forEach(function (btn) {
+            if (btn._bound) return;
+            btn._bound = true;
+            btn.addEventListener('click', async function () {
+                var idKr = parseInt(btn.getAttribute('data-id-kr'), 10);
+                var reativar = btn.classList.contains('eo-kr-restore');
+                if (!reativar && !window.confirm('Suprimir este KR? Ele sai das sugestões e do vínculo de novas atividades.')) return;
+                try {
+                    var res = await fetch('/api/estrategia/kr-cliente/' + idKr, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ativo: reativar })
+                    });
+                    var data = await res.json().catch(function () { return {}; });
+                    if (!res.ok) throw new Error(data.error || 'Falha ao atualizar KR.');
+                    showToast(reativar ? 'KR reativado.' : 'KR suprimido.');
+                    await abrirDetalhe(detalheAtual.id_obj_dt);
+                    await carregarPainel();
+                } catch (err) {
+                    showToast(err.message, true);
+                }
+            });
+        });
     }
 
     async function abrirDetalhe(idObjDt) {
@@ -284,11 +379,37 @@
         btnSave.textContent = 'Salvando…';
         try {
             var inputs = krsContainer.querySelectorAll('.eo-kr-meta-input');
+            var descInputs = krsContainer.querySelectorAll('.eo-kr-desc-input');
+            var descById = {};
+            Array.prototype.forEach.call(descInputs, function (el) {
+                descById[el.getAttribute('data-id-kr')] = el.value.trim();
+            });
             var krsPayload = Array.prototype.map.call(inputs, function (input) {
-                return {
-                    id_kr: parseInt(input.getAttribute('data-id-kr'), 10),
+                var idKr = input.getAttribute('data-id-kr');
+                var payload = {
+                    id_kr: parseInt(idKr, 10),
                     meta_cliente: input.value.trim()
                 };
+                if (descById[idKr]) {
+                    payload.descricao = descById[idKr];
+                    payload.nome_kr = descById[idKr];
+                    payload.desc_kr = descById[idKr];
+                }
+                return payload;
+            });
+            // Inclui KRs só com descrição editada (sem meta input ativo — ex.: suprimidos não)
+            Array.prototype.forEach.call(descInputs, function (el) {
+                var idKr = el.getAttribute('data-id-kr');
+                if (!inputs.length || !Array.prototype.some.call(inputs, function (i) { return i.getAttribute('data-id-kr') === idKr; })) {
+                    if (!el.disabled && el.value.trim()) {
+                        krsPayload.push({
+                            id_kr: parseInt(idKr, 10),
+                            descricao: el.value.trim(),
+                            nome_kr: el.value.trim(),
+                            desc_kr: el.value.trim()
+                        });
+                    }
+                }
             });
             var resObj = await fetch('/api/estrategia/objetivo-cliente/' + detalheAtual.id_obj_dt, {
                 method: 'PATCH',

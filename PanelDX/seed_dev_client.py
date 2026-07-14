@@ -504,17 +504,30 @@ def create_dev_client(cur) -> tuple[int, int]:
     cur.execute(
         """
         INSERT INTO ctdi_clie (
-            nome_clie, mail_clie, docu_clie, fone_clie, empresa_clie, init_role, has_active_project
-        ) VALUES (%s, %s, %s, %s, %s, %s, false)
+            nome_clie, mail_clie, docu_clie, fone_clie, empresa_clie, init_role,
+            has_active_project, adre_clie, zipn_clie, bairro_clie, cidade_clie,
+            estado_clie, localizacao_sede, tipo_ensino
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s,
+            false, %s, %s, %s, %s,
+            %s, %s, %s
+        )
         RETURNING id_clie
         """,
         (
             DEV_CLIENT_NAME,
             DEV_EMAIL.lower(),
-            "00.000.000/0001-99",
+            "04.252.011/0001-10",
             "(85) 99999-0000",
             DEV_COMPANY,
             "GENERAL",
+            "Av. Dom Luís, 1200",
+            "60160-230",
+            "Meireles",
+            "Fortaleza",
+            "CE",
+            "Fortaleza - CE",
+            "K-12",
         ),
     )
     id_clie = cur.fetchone()["id_clie"]
@@ -963,22 +976,103 @@ def repair_sprint_squads_for_client(cur, id_clie: int) -> int:
     return len(rows)
 
 
-def seed_mock_plan_and_kanban(cur, id_clie: int, id_matu: int) -> None:
-    """Estágio 4 — plano geral + Kanban sem chamar Bedrock."""
+def fill_institutional_profile(cur, id_clie: int, *, contracted: bool = False) -> None:
+    """Completa endereço/contexto institucionais — evita modal Meus Dados travado no passo 1."""
     cur.execute(
         """
         UPDATE ctdi_clie SET
-            has_active_project = true,
-            tipo_ensino = 'K12',
-            qtd_alunos = 620,
-            qtd_colaboradores = 48,
-            clima_organizacional = 'Equipe receptiva à transformação digital',
-            dados_mercado = 'Mercado educacional competitivo na região metropolitana.',
-            dados_etnograficos = 'Comunidade escolar engajada em eventos pedagógicos.'
+            docu_clie = COALESCE(NULLIF(TRIM(docu_clie), ''), '04.252.011/0001-10'),
+            adre_clie = COALESCE(NULLIF(TRIM(adre_clie), ''), 'Av. Dom Luís, 1200'),
+            zipn_clie = COALESCE(NULLIF(TRIM(zipn_clie), ''), '60160-230'),
+            bairro_clie = COALESCE(NULLIF(TRIM(bairro_clie), ''), 'Meireles'),
+            cidade_clie = COALESCE(NULLIF(TRIM(cidade_clie), ''), 'Fortaleza'),
+            estado_clie = COALESCE(NULLIF(TRIM(estado_clie), ''), 'CE'),
+            localizacao_sede = COALESCE(NULLIF(TRIM(localizacao_sede), ''), 'Fortaleza - CE'),
+            tipo_ensino = COALESCE(NULLIF(TRIM(tipo_ensino), ''), 'K-12'),
+            qtd_alunos = COALESCE(qtd_alunos, 620),
+            qtd_colaboradores = COALESCE(qtd_colaboradores, 48),
+            qtd_unidades = COALESCE(qtd_unidades, 1),
+            clima_organizacional = COALESCE(
+                NULLIF(TRIM(clima_organizacional), ''),
+                'Equipe receptiva à transformação digital; liderança alinhada ao plano TD.'
+            ),
+            dados_mercado = COALESCE(
+                NULLIF(TRIM(dados_mercado), ''),
+                'Mercado educacional competitivo na região metropolitana de Fortaleza.'
+            ),
+            dados_etnograficos = COALESCE(
+                NULLIF(TRIM(dados_etnograficos), ''),
+                'Comunidade escolar engajada em eventos pedagógicos e projetos de inovação.'
+            ),
+            has_active_project = CASE WHEN %s THEN TRUE ELSE has_active_project END
         WHERE id_clie = %s
+        """,
+        (contracted, id_clie),
+    )
+    if contracted:
+        ensure_demo_contract(cur, id_clie)
+
+
+def ensure_demo_contract(cur, id_clie: int) -> None:
+    """Garante dx_contratos ativo (plano básico) para o lead demo contratado."""
+    cur.execute(
+        """
+        SELECT id FROM public.dx_planos
+        WHERE ativo = TRUE AND COALESCE(tipo_plano, 'base') = 'base'
+        ORDER BY valor_mensal ASC, id ASC
+        LIMIT 1
+        """
+    )
+    plano = cur.fetchone()
+    if not plano:
+        return
+    id_plano = plano["id"] if isinstance(plano, dict) else plano[0]
+    cur.execute(
+        """
+        SELECT valor_mensal FROM public.dx_planos WHERE id = %s
+        """,
+        (id_plano,),
+    )
+    valor_row = cur.fetchone()
+    valor = float(
+        (valor_row["valor_mensal"] if isinstance(valor_row, dict) else valor_row[0]) or 1
+    )
+    cur.execute(
+        """
+        SELECT id FROM public.dx_contratos
+        WHERE id_clie = %s AND status IN ('ativo', 'trial', 'inadimplente')
+        ORDER BY id DESC LIMIT 1
         """,
         (id_clie,),
     )
+    existente = cur.fetchone()
+    if existente:
+        id_contrato = existente["id"] if isinstance(existente, dict) else existente[0]
+        cur.execute(
+            """
+            UPDATE public.dx_contratos
+            SET status = 'ativo',
+                id_plano = COALESCE(id_plano, %s),
+                valor_negociado = COALESCE(NULLIF(valor_negociado, 0), %s),
+                atualizado_em = NOW()
+            WHERE id = %s
+            """,
+            (id_plano, valor, id_contrato),
+        )
+        return
+    cur.execute(
+        """
+        INSERT INTO public.dx_contratos
+            (id_clie, id_plano, valor_negociado, status, data_inicio, data_vencimento)
+        VALUES (%s, %s, %s, 'ativo', CURRENT_DATE, CURRENT_DATE + INTERVAL '1 year')
+        """,
+        (id_clie, id_plano, valor),
+    )
+
+
+def seed_mock_plan_and_kanban(cur, id_clie: int, id_matu: int) -> None:
+    """Estágio 4 — plano geral + Kanban sem chamar Bedrock."""
+    fill_institutional_profile(cur, id_clie, contracted=True)
 
     cur.execute(
         """
@@ -1102,8 +1196,10 @@ def apply_stage(cur, stage: int, id_clie: int, id_matu: int) -> str:
         print(f"    -> {n} respostas do questionario completo (aleatorias)")
 
     if stage == 3:
+        fill_institutional_profile(cur, id_clie, contracted=False)
         return "AVALIACAO OK"
 
+    fill_institutional_profile(cur, id_clie, contracted=True)
     seed_mock_plan_and_kanban(cur, id_clie, id_matu)
     n_repair = repair_sprint_squads_for_client(cur, id_clie)
     if n_repair:

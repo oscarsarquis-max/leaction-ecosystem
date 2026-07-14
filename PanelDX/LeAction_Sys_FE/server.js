@@ -38,7 +38,7 @@ const gatekeeperRoutes = require('./routes/gatekeeper');
 const { gatekeeperMiddleware } = require('./middleware/gatekeeper');
 const { contractAccessMiddleware } = require('./middleware/contract-access');
 const { isSessionAdmin, resolveSessionSystemRole, getAdminEmail, resolveLeadIdClie } = require('./lib/auth-session');
-const { buildActionHubCheckoutUrl, buildActionHubAddonCheckoutUrl } = require('./lib/actionhub-checkout');
+const { buildActionHubCheckoutUrl, buildActionHubAddonCheckoutUrl, resolveHubPublicUrl } = require('./lib/actionhub-checkout');
 const cmsS3 = require('./lib/cms-s3-storage');
 
 const app = express();
@@ -239,6 +239,51 @@ const cmsImageUpload = multer({
     },
 });
 
+// --- Upload de comprovação documental das métricas da Sprint ---
+const METRICAS_UPLOAD_DIR = path.join(__dirname, 'public', 'uploads', 'metricas');
+fs.mkdirSync(METRICAS_UPLOAD_DIR, { recursive: true });
+
+const METRICA_DOC_EXTS = new Set([
+    '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif',
+    '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt',
+]);
+
+function isMetricaDocumentoPermitido(file) {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (METRICAS_DOC_EXTS.has(ext)) return true;
+    const mime = String(file.mimetype || '').toLowerCase();
+    return (
+        mime.startsWith('image/') ||
+        mime === 'application/pdf' ||
+        mime === 'text/plain' ||
+        mime.includes('msword') ||
+        mime.includes('officedocument') ||
+        mime.includes('ms-excel') ||
+        mime.includes('ms-powerpoint')
+    );
+}
+
+const metricasDocStorage = cmsS3.isCmsS3Enabled()
+    ? multer.memoryStorage()
+    : multer.diskStorage({
+        destination: (req, file, cb) => cb(null, METRICAS_UPLOAD_DIR),
+        filename: (req, file, cb) => {
+            cb(null, cmsS3.buildCmsFilename(file.originalname));
+        },
+    });
+
+const metricasDocUpload = multer({
+    storage: metricasDocStorage,
+    limits: { fileSize: 15 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (isMetricaDocumentoPermitido(file)) {
+            cb(null, true);
+            return;
+        }
+        cb(new Error('Tipo de arquivo não permitido. Use PDF, imagem ou Office.'));
+    },
+});
+
 // --- Integração Action Hub (URLs dinâmicas — não dependem de IP fixo na LAN) ---
 const HUB_GATEWAY_INTERNAL = (process.env.HUB_GATEWAY_INTERNAL_URL || 'http://127.0.0.1:4001').replace(/\/$/, '');
 const HUB_PUBLIC_URL = (process.env.HUB_PUBLIC_URL || '').replace(/\/$/, '');
@@ -380,6 +425,142 @@ const publicPaths = ['/', '/cadastro', '/login', '/logout', '/termos-de-uso', '/
 const restrictedPaths = ['/clientes', '/dimensoes', '/fases', '/blocos', '/questoes', '/sprints', '/rodadas', '/maturidades', '/surveys', '/entregaveis', '/movimentos', '/dominios', '/admin', '/teams', '/inteligencia-negocio'];
 const leadPaths = ['/avaliacoes', '/diagnostico'];
 
+/** Páginas públicas com layout — precisam do mesmo lead enriquecido da sidebar. */
+const PUBLIC_LAYOUT_PATHS = new Set(['/instrucoes-de-uso', '/versao-aplicacao', '/termos-de-uso']);
+
+/** Monta objeto lead a partir da sessão (IDs soltos + lead parcial). */
+function buildLeadFromSession(req) {
+    const raw = req.session.lead || null;
+    const idMatu = raw?.id_matu || req.session.id_matu || null;
+    const idClie = raw?.id_clie || req.session.user_id || null;
+    if (!raw && !idMatu && !idClie && !req.session.user_name) return null;
+
+    const hasActive = raw?.hasActiveProject === true
+        || raw?.hasActiveProject === 1
+        || raw?.hasActiveProject === 'true'
+        || raw?.has_active_project === true
+        || req.session.hasActiveProject === true;
+
+    return {
+        ...(raw || {}),
+        id_matu: idMatu,
+        id_clie: idClie,
+        nome: raw?.nome || req.session.user_name || null,
+        email: raw?.email || null,
+        hasActiveProject: hasActive,
+        has_active_project: hasActive,
+        plano_ia_concluido: !!(raw?.plano_ia_concluido),
+        status_ia: raw?.status_ia || null,
+        clima_organizacional: raw?.clima_organizacional || null,
+        init_role: raw?.init_role || req.session.init_role || null,
+        perfil_lead: raw?.perfil_lead || null,
+        system_role: raw?.system_role || req.session.system_role || null,
+    };
+}
+
+/** Injeta sessão no EJS (necessário em rotas públicas que usam layout com sidebar). */
+function injectSessionLocals(req, res) {
+    const isTeam = !!req.session.isTeam;
+    const lead = buildLeadFromSession(req);
+    const isLoggedIn = !!(lead || isTeam || req.session.user_id);
+    res.locals.isLoggedIn = isLoggedIn;
+    res.locals.isAdmin = isSessionAdmin(req) || isTeam || !!(lead && lead.email === ADMIN_EMAIL);
+    res.locals.isHolding = !!req.session.is_holding;
+    res.locals.system_role = resolveSessionSystemRole(req);
+    res.locals.isExecutor = req.session.system_role === 'executor';
+    res.locals.isConsultor = req.session.system_role === 'consultor';
+    res.locals.user = lead || (isTeam
+        ? { nome: req.session.user_name || 'Admin', role: 'ADMIN' }
+        : null);
+    res.locals.lead = res.locals.user;
+    res.locals.isRelatorioCompletoDisponivel = isRelatorioCompletoDisponivel;
+    res.locals.getDiagnosticoHref = getDiagnosticoHref;
+}
+
+/**
+ * Enriquece lead na sessão/locals (status IA, plano, contrato) para a sidebar
+ * ficar igual à do /projeto mesmo em páginas que não montam o commonContext.
+ */
+async function hydrateLeadSidebarContext(req, res) {
+    injectSessionLocals(req, res);
+    if (res.locals.isAdmin || res.locals.isHolding || res.locals.isConsultor || res.locals.isExecutor) {
+        return;
+    }
+
+    const idMatu = req.session.id_matu || req.session.lead?.id_matu || null;
+    const idClie = req.session.user_id || req.session.lead?.id_clie || null;
+    if (!idMatu && !idClie) return;
+
+    const merged = buildLeadFromSession(req) || {};
+
+    const tasks = [];
+    if (idMatu) {
+        tasks.push(
+            axios.get(`${API_BASE_URL}/client/genese-status/${idMatu}`, { timeout: 4000 })
+                .then((r) => ({ kind: 'genese', data: r.data }))
+                .catch(() => ({ kind: 'genese', data: null }))
+        );
+        tasks.push(
+            axios.get(`${API_BASE_URL}/ctdi_matu/${idMatu}`, { timeout: 4000 })
+                .then((r) => ({ kind: 'matu', data: r.data }))
+                .catch(() => ({ kind: 'matu', data: null }))
+        );
+    }
+    if (idClie) {
+        tasks.push(
+            axios.get(`${API_BASE_URL}/ctdi_clie/${idClie}`, { timeout: 4000 })
+                .then((r) => ({ kind: 'clie', data: r.data }))
+                .catch(() => ({ kind: 'clie', data: null }))
+        );
+    }
+
+    const results = await Promise.all(tasks);
+    for (const item of results) {
+        if (!item || !item.data) continue;
+        if (item.kind === 'genese') {
+            if (item.data.status_ia) merged.status_ia = item.data.status_ia;
+            if (item.data.plano_pronto != null) {
+                merged.plano_ia_concluido = !!item.data.plano_pronto;
+            }
+        }
+        if (item.kind === 'matu') {
+            if (item.data.status_ia) merged.status_ia = item.data.status_ia;
+            if (item.data.data_geracao_plano) {
+                merged.data_geracao_plano = item.data.data_geracao_plano;
+            }
+            const st = String(item.data.status_ia || merged.status_ia || '').toUpperCase();
+            if (st.indexOf('CONCLU') !== -1) merged.plano_ia_concluido = true;
+        }
+        if (item.kind === 'clie') {
+            if (item.data.clima_organizacional) {
+                merged.clima_organizacional = item.data.clima_organizacional;
+            }
+            if (item.data.empresa_clie) merged.empresa_clie = item.data.empresa_clie;
+            if (item.data.nome_clie && !merged.nome) merged.nome = item.data.nome_clie;
+            if (item.data.has_active_project) {
+                merged.hasActiveProject = true;
+                merged.has_active_project = true;
+            }
+            if (item.data.perfil_lead) merged.perfil_lead = item.data.perfil_lead;
+            if (item.data.init_role) merged.init_role = item.data.init_role;
+        }
+    }
+
+    merged.id_matu = idMatu || merged.id_matu;
+    merged.id_clie = idClie || merged.id_clie;
+    if (merged.hasActiveProject) req.session.hasActiveProject = true;
+
+    req.session.lead = { ...(req.session.lead || {}), ...merged };
+    if (idMatu) req.session.id_matu = idMatu;
+
+    res.locals.lead = req.session.lead;
+    res.locals.user = req.session.lead;
+}
+
+async function syncLeadGeneseStatus(req, res) {
+    await hydrateLeadSidebarContext(req, res);
+}
+
 // ==================================================================
 // 3. MIDDLEWARE DE AUTENTICAÇÃO (O PORTEIRO INTELIGENTE)
 // ==================================================================
@@ -394,6 +575,7 @@ const authMiddleware = async (req, res, next) => {
     console.log(`------------------------------------------------\n`);
 
     // A. O "FURA-FILA" (VIP) - Libera estáticos e APIs públicas
+    // Páginas públicas com layout ainda precisam da sessão na sidebar.
     if (publicPaths.includes(currentPath) ||
         currentPath.startsWith('/hub-api') ||
         currentPath.startsWith('/bff/') ||
@@ -402,6 +584,11 @@ const authMiddleware = async (req, res, next) => {
         currentPath.startsWith('/js/') ||
         currentPath.startsWith('/img/') ||
         currentPath.startsWith('/images/')) {
+        if (PUBLIC_LAYOUT_PATHS.has(currentPath)) {
+            await hydrateLeadSidebarContext(req, res);
+        } else if (publicPaths.includes(currentPath)) {
+            injectSessionLocals(req, res);
+        }
         return next();
     }
 
@@ -419,22 +606,12 @@ const authMiddleware = async (req, res, next) => {
     }
 
     // B. RECUPERA SESSÃO
+    injectSessionLocals(req, res);
     const lead = req.session.lead;
     const isTeam = req.session.isTeam;
     const isHolding = !!req.session.is_holding;
     const isLoggedIn = !!(lead || isTeam);
-    const isAdmin = isTeam || (lead && lead.email === ADMIN_EMAIL);
-
-    // Injeta no EJS
-    res.locals.isLoggedIn = isLoggedIn;
-    res.locals.isAdmin = isAdmin;
-    res.locals.isHolding = isHolding;
-    res.locals.system_role = resolveSessionSystemRole(req);
-    res.locals.isExecutor = req.session.system_role === 'executor';
-    res.locals.isConsultor = req.session.system_role === 'consultor';
-    //res.locals.lead = lead || (isTeam ? { nome: req.session.user_name || 'Admin' } : null);
-    res.locals.user = lead || (isTeam ? { nome: req.session.user_name || 'Admin', role: 'ADMIN' } : null);
-    res.locals.lead = res.locals.user; // Mantém o padrão que você já usa
+    const isAdmin = !!res.locals.isAdmin;
 
     // C. REGRAS DE BLOQUEIO
 
@@ -478,31 +655,7 @@ const authMiddleware = async (req, res, next) => {
         return res.redirect('/projeto');
     }
 
-    // Sincroniza status da Gênese IA com o banco (evita sidebar desatualizada)
-    const leadAtual = req.session.lead;
-    if (leadAtual && !isAdmin && !isTeam && leadAtual.id_matu) {
-        try {
-            const { data: st } = await axios.get(
-                `${API_BASE_URL}/client/genese-status/${leadAtual.id_matu}`,
-                { timeout: 4000 }
-            );
-            if (st && st.status_ia) {
-                req.session.lead.status_ia = st.status_ia;
-                req.session.lead.plano_ia_concluido = !!st.plano_pronto;
-                if (st.plano_pronto) {
-                    req.session.lead.data_geracao_plano =
-                        req.session.lead.data_geracao_plano || new Date().toISOString();
-                }
-                res.locals.user = { ...req.session.lead };
-                res.locals.lead = res.locals.user;
-            }
-        } catch (syncErr) {
-            // Mantém sessão se o sync falhar
-        }
-    }
-
-    res.locals.isRelatorioCompletoDisponivel = isRelatorioCompletoDisponivel;
-    res.locals.getDiagnosticoHref = getDiagnosticoHref;
+    await syncLeadGeneseStatus(req, res);
 
     next();
 };
@@ -592,8 +745,12 @@ app.get('/portal-consultor', (req, res) => {
     }
     res.render('portal-consultor', {
         title: 'Portal do Parceiro',
-        pageStylesheet: '/css/portal-consultor.css?v=1',
-        pageScript: '/js/portal-consultor.js?v=1',
+        pageStylesheets: [
+            '/css/mesa-inovacao.css?v=7',
+            '/css/admin-esim.css?v=3',
+            '/css/portal-consultor.css?v=2',
+        ],
+        pageScript: '/js/portal-consultor.js?v=2',
         isLoggedIn: true,
         isConsultor: sr === 'consultor',
         system_role: sr,
@@ -739,6 +896,42 @@ app.get('/bff/public/vitrine/planos', async (req, res) => {
 app.get('/api/led/usuarios-disponiveis', (req, res) => proxyFlaskRbac(req, res, 'GET', '/api/led/usuarios-disponiveis'));
 app.post('/bff/led/usuarios', (req, res) => proxyFlaskRbac(req, res, 'POST', '/api/led/usuarios'));
 app.get('/bff/led/cota-usuarios', (req, res) => proxyFlaskRbac(req, res, 'GET', '/api/led/cota-usuarios'));
+app.get('/bff/led/meu-contrato', (req, res) => proxyFlaskRbac(req, res, 'GET', '/api/led/meu-contrato'));
+
+app.get('/meu-contrato', async (req, res) => {
+    const dadosUsuario = req.session.user || req.session.lead;
+    if (!dadosUsuario) {
+        return res.redirect('/');
+    }
+
+    const idClie = await resolveLeadIdClie(req);
+    const checkoutUpgradeUrl = idClie
+        ? buildActionHubCheckoutUrl(req, idClie, { returnTo: '/meu-contrato' })
+        : '';
+    const checkoutAddonUrlTemplate = idClie
+        ? buildActionHubAddonCheckoutUrl(req, idClie, '{addon_id}', { returnTo: '/meu-contrato' })
+        : '';
+    const hubDashboardUrl = `${resolveHubPublicUrl(req)}/dashboard`;
+
+    res.render('meu-contrato', {
+        title: 'Meu Contrato',
+        pageStylesheets: [
+            '/css/mesa-inovacao.css?v=7',
+            '/css/admin-esim.css?v=3',
+            '/css/meu-contrato.css?v=1',
+        ],
+        pageScript: '/js/meu-contrato.js?v=1',
+        user: dadosUsuario,
+        lead: dadosUsuario,
+        isLoggedIn: true,
+        isAdmin: isSessionAdmin(req),
+        idClie: idClie || '',
+        checkoutUpgradeUrl,
+        checkoutAddonUrlTemplate,
+        hubDashboardUrl,
+        API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:3000/api',
+    });
+});
 
 app.post('/api/webhooks/ativar-addon', async (req, res) => {
     try {
@@ -849,8 +1042,8 @@ app.get('/execucao', (req, res) => {
     }
     res.render('execucao', {
         title: 'Sala de Execução',
-        pageStylesheet: '/css/execucao.css?v=1',
-        pageScript: '/js/execucao.js?v=1',
+        pageStylesheet: '/css/execucao.css?v=2',
+        pageScript: '/js/execucao.js?v=2',
         isLoggedIn: true,
         isAdmin: !!req.session.isAdmin,
         isExecutor: true,
@@ -1221,11 +1414,10 @@ app.post('/api/public/consultor-ia', async (req, res) => {
 app.get('/termos-de-uso', (req, res) => res.render('termos-de-uso', { title: 'Termos de Uso' }));
 app.get('/instrucoes-de-uso', async (req, res) => {
     const cms = await fetchCmsPublic();
+    // Sessão/sidebar já injetadas no authMiddleware (rota pública).
     res.render('instrucoes-de-uso', {
         title: 'Guia MVP',
-        cms,
-        isLoggedIn: !!req.session.user_id,
-        isAdmin: isSessionAdmin(req)
+        cms
     });
 });
 
@@ -1233,9 +1425,7 @@ app.get('/versao-aplicacao', async (req, res) => {
     const cms = await fetchCmsPublic();
     res.render('versao-aplicacao', {
         title: 'Versão da Aplicação',
-        cms,
-        isLoggedIn: !!req.session.user_id,
-        isAdmin: isSessionAdmin(req)
+        cms
     });
 });
 
@@ -1734,14 +1924,24 @@ app.get('/projeto/sprint-atual', async (req, res) => {
 
         // 3. Renderiza passando TUDO.
         // O EJS agora tem o "journey" completo para filtrar as 3 colunas (Backlog, Ativa, Concluída)
+        injectSessionLocals(req, res);
         attachCoachLocals(req, res, 'execucao');
+
+        const systemRole = String(res.locals.system_role || req.session.system_role || '').toLowerCase();
+        const isModerator = systemRole === 'consultor' || systemRole === 'sysadmin';
 
         res.render('sprint-atual', {
             title: 'Quadro Kanban',
             isLoggedIn: true,
-            isAdmin: false,
+            isAdmin: !!res.locals.isAdmin,
+            isConsultor: !!res.locals.isConsultor,
+            system_role: systemRole || 'led',
+            // Moderador = consultor | sysadmin (pontua qualidade)
+            podeAvaliarMetricas: isModerator,
+            // Cliente executa, marca DoD e encerra
+            podeEncerrarSprint: !isModerator,
             lead: req.session.lead,
-            user: { nome: req.session.user_name, role: 'LEAD' },
+            user: { nome: req.session.user_name, role: isModerator ? 'MODERADOR' : 'LEAD' },
             journey: journeyData // Enviamos a estrutura completa
         });
 
@@ -2279,20 +2479,193 @@ app.put('/api/ctdi_sprn/update-strategic', async (req, res) => {
     try {
         console.log("Encaminhando para o Python:", req.body.id_sprn);
 
-        // Tente trocar 127.0.0.1 por localhost ou vice-versa para testar a ponte
         const response = await axios.put(`${BACKEND_URL}/api/ctdi_sprn/update-strategic`, req.body, {
-            timeout: 5000 // Adicionamos um tempo limite de 5 segundos
+            timeout: 15000,
+            headers: { 'Content-Type': 'application/json', ...flaskRbacHeaders(req) },
         });
 
         res.json(response.data);
     } catch (error) {
-        // OSCAR: O erro real do que o Python respondeu vai aparecer aqui no seu terminal do NODE
         if (error.response) {
             console.error("O PYTHON RESPONDEU ERRO:", error.response.data);
-            res.status(500).json(error.response.data); // Repassa o erro REAL do Python para a tela
+            res.status(error.response.status || 500).json(error.response.data);
         } else {
             console.error("ERRO DE CONEXÃO COM PYTHON:", error.message);
             res.status(500).json({ error: "O Python está desligado ou inacessível." });
+        }
+    }
+});
+
+// Upload local/S3 do documento de comprovação de métrica (substitui colar URL).
+app.post('/api/sprints/metricas/upload', (req, res) => {
+    const loggedIn = !!(
+        req.session.lead ||
+        req.session.isTeam ||
+        req.session.user_id ||
+        req.session.id_member
+    );
+    if (!loggedIn) {
+        return res.status(401).json({ success: false, error: 'Sessão expirada.' });
+    }
+
+    metricasDocUpload.single('documento')(req, res, async (err) => {
+        if (err) {
+            const message = err.code === 'LIMIT_FILE_SIZE'
+                ? 'Arquivo muito grande. Limite: 15 MB.'
+                : (err.message || 'Falha no upload.');
+            return res.status(400).json({ success: false, error: message });
+        }
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado.' });
+        }
+
+        try {
+            if (cmsS3.isCmsS3Enabled()) {
+                const uploaded = await cmsS3.uploadCmsImage(
+                    req.file.buffer,
+                    req.file.mimetype,
+                    req.file.originalname
+                );
+                return res.json({
+                    success: true,
+                    url: uploaded.publicUrl,
+                    filename: req.file.originalname,
+                    storage: 's3',
+                });
+            }
+
+            const filename = req.file.filename;
+            const url = `/uploads/metricas/${filename}`;
+            return res.json({
+                success: true,
+                url,
+                filename: req.file.originalname || filename,
+                storage: 'local',
+            });
+        } catch (uploadErr) {
+            console.error('[Métrica Upload] Erro:', uploadErr.message);
+            return res.status(500).json({
+                success: false,
+                error: 'Falha ao persistir o documento.',
+            });
+        }
+    });
+});
+
+// Governança Vetor 1 — comprovação e avaliação de métricas + DoD
+app.post('/api/sprints/metricas/comprovar', async (req, res) => {
+    try {
+        const response = await axios.post(`${BACKEND_URL}/api/sprints/metricas/comprovar`, req.body, {
+            headers: { 'Content-Type': 'application/json', ...flaskRbacHeaders(req) },
+            timeout: 15000,
+        });
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            console.error('Erro comprovar métrica:', error.message);
+            res.status(500).json({ error: 'Erro ao conectar com o motor Python.' });
+        }
+    }
+});
+
+app.post('/api/sprints/metricas/submeter-analise', async (req, res) => {
+    try {
+        const response = await axios.post(`${BACKEND_URL}/api/sprints/metricas/submeter-analise`, req.body, {
+            headers: { 'Content-Type': 'application/json', ...flaskRbacHeaders(req) },
+            timeout: 90000,
+        });
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            console.error('Erro submeter-analise métrica:', error.message);
+            res.status(500).json({ error: 'Erro ao conectar com o motor Python.' });
+        }
+    }
+});
+
+app.post('/api/sprints/metricas/avaliar', async (req, res) => {
+    try {
+        const response = await axios.post(`${BACKEND_URL}/api/sprints/metricas/avaliar`, req.body, {
+            headers: { 'Content-Type': 'application/json', ...flaskRbacHeaders(req) },
+            timeout: 15000,
+        });
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            console.error('Erro avaliar métrica:', error.message);
+            res.status(500).json({ error: 'Erro ao conectar com o motor Python.' });
+        }
+    }
+});
+
+app.post('/api/sprints/dod/atualizar', async (req, res) => {
+    try {
+        const response = await axios.post(`${BACKEND_URL}/api/sprints/dod/atualizar`, req.body, {
+            headers: { 'Content-Type': 'application/json', ...flaskRbacHeaders(req) },
+            timeout: 15000,
+        });
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            console.error('Erro atualizar DoD:', error.message);
+            res.status(500).json({ error: 'Erro ao conectar com o motor Python.' });
+        }
+    }
+});
+
+app.post('/api/sprints/fechar', async (req, res) => {
+    try {
+        const response = await axios.post(`${BACKEND_URL}/api/sprints/fechar`, req.body, {
+            headers: { 'Content-Type': 'application/json', ...flaskRbacHeaders(req) },
+            timeout: 15000,
+        });
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            console.error('Erro fechar sprint:', error.message);
+            res.status(500).json({ error: 'Erro ao conectar com o motor Python.' });
+        }
+    }
+});
+
+app.post('/api/sprints/revisao-consultor/solicitar', async (req, res) => {
+    try {
+        const response = await axios.post(`${BACKEND_URL}/api/sprints/revisao-consultor/solicitar`, req.body, {
+            headers: { 'Content-Type': 'application/json', ...flaskRbacHeaders(req) },
+            timeout: 15000,
+        });
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({ error: 'Erro ao conectar com o motor Python.' });
+        }
+    }
+});
+
+app.post('/api/sprints/revisao-consultor/finalizar', async (req, res) => {
+    try {
+        const response = await axios.post(`${BACKEND_URL}/api/sprints/revisao-consultor/finalizar`, req.body, {
+            headers: { 'Content-Type': 'application/json', ...flaskRbacHeaders(req) },
+            timeout: 15000,
+        });
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({ error: 'Erro ao conectar com o motor Python.' });
         }
     }
 });
@@ -2341,11 +2714,17 @@ app.get('/api/admin/agentes/metricas', async (req, res) => {
 app.get('/api/sprint_details/:id', async (req, res) => {
     try {
         const id = req.params.id.replace(':', ''); // Limpeza de segurança
-        // O Node chama o Python na porta 5000
-        const response = await axios.get(`${BACKEND_URL}/api/sprint_details/${id}`);
+        const response = await axios.get(`${BACKEND_URL}/api/sprint_details/${id}`, {
+            headers: { ...flaskRbacHeaders(req) },
+            timeout: 15000,
+        });
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: "Erro ao conectar com o motor Python" });
+        if (error.response) {
+            res.status(error.response.status).json(error.response.data);
+        } else {
+            res.status(500).json({ error: "Erro ao conectar com o motor Python" });
+        }
     }
 });
 
@@ -3166,6 +3545,21 @@ function calcularProgressoDirecionador(direc) {
     return count > 0 ? Math.round(soma / count) : 0;
 }
 
+/** Readonly só ao inspecionar outro cliente (coach/admin). O próprio gestor com ?id_clie= continua editável. */
+function isEstrategiaReadOnly(req, idClieResolved) {
+    const q = req.query && req.query.id_clie;
+    if (!q) return false;
+    const sessionClie =
+        req.session.user_id
+        || req.session.id_clie
+        || (req.session.lead && req.session.lead.id_clie)
+        || (req.session.user && req.session.user.id_clie)
+        || null;
+    if (sessionClie && String(q) === String(sessionClie)) return false;
+    if (isSessionAdmin(req)) return true;
+    return String(q) !== String(idClieResolved || sessionClie || '');
+}
+
 
 // Rota de Front-End — Matriz OKR Master-Detail (tabela resumo + modal)
 app.get('/planejamento-estrategico', async (req, res) => {
@@ -3189,14 +3583,14 @@ app.get('/planejamento-estrategico', async (req, res) => {
         id_clie: id_clie,
         lead: leadData,
         user: userData,
-        readOnly: !!req.query.id_clie,
+        readOnly: isEstrategiaReadOnly(req, id_clie),
         pageStylesheet: '/css/estrategia-okrs.css?v=9',
         pageScript: '/js/estrategia-okrs.js?v=9',
         title: "Matriz de Estratégia — OKRs"
     });
 });
 
-// Visão gamificada legada (árvore expandida)
+// Visão gamificada (cockpit por objetivo)
 app.get('/planejamento-estrategico/cockpit', async (req, res) => {
     const id_clie = req.query.id_clie
         || req.session.user_id
@@ -3304,7 +3698,7 @@ app.get('/planejamento-estrategico/cockpit', async (req, res) => {
             id_clie: id_clie,
             lead: leadData,
             user: userData,
-            readOnly: !!req.query.id_clie,
+            readOnly: isEstrategiaReadOnly(req, id_clie),
             pageStylesheet: '/css/estrategia-okrs.css?v=9',
             title: "Cockpit Estratégico — Planejamento Empresarial"
         });
@@ -3319,7 +3713,7 @@ app.get('/planejamento-estrategico/cockpit', async (req, res) => {
             id_clie: id_clie,
             lead: leadData,
             user: userData,
-            readOnly: !!req.query.id_clie,
+            readOnly: isEstrategiaReadOnly(req, id_clie),
             pageStylesheet: '/css/estrategia-okrs.css?v=9',
             title: "Cockpit Estratégico — Planejamento Empresarial"
         });

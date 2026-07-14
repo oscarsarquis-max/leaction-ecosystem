@@ -381,19 +381,19 @@
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-floating">
-                                        <input type="text" class="form-control" id="bairro_clie" placeholder="Bairro" readonly>
+                                        <input type="text" class="form-control" id="bairro_clie" placeholder="Bairro">
                                         <label for="bairro_clie">Bairro</label>
                                     </div>
                                 </div>
                                 <div class="col-md-5">
                                     <div class="form-floating">
-                                        <input type="text" class="form-control" id="cidade_clie" placeholder="Cidade" readonly>
+                                        <input type="text" class="form-control" id="cidade_clie" placeholder="Cidade">
                                         <label for="cidade_clie">Cidade</label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-floating">
-                                        <input type="text" class="form-control" id="estado_clie" placeholder="UF" maxlength="2" readonly>
+                                        <input type="text" class="form-control" id="estado_clie" placeholder="UF" maxlength="2">
                                         <label for="estado_clie">UF</label>
                                     </div>
                                 </div>
@@ -636,8 +636,15 @@
     function validarPasso1() {
         var cep = (document.getElementById('zipn_clie').value || '').replace(/\D/g, '');
         var endereco = (document.getElementById('adre_clie').value || '').trim();
+        var cidade = (document.getElementById('cidade_clie').value || '').trim();
         var loc = (document.getElementById('localizacao_sede').value || '').trim();
-        if (cep.length !== 8) return 'Informe um CEP válido com 8 dígitos.';
+        if (!loc && cidade) {
+            preencherLocalizacaoSede();
+            loc = (document.getElementById('localizacao_sede').value || '').trim();
+        }
+        // Aceita CEP válido OU endereço institucional já pré-preenchido (seed/admin).
+        if (cep && cep.length !== 8) return 'Informe um CEP válido com 8 dígitos.';
+        if (!cep && !cidade) return 'Informe um CEP válido com 8 dígitos.';
         if (!endereco) return 'Informe o logradouro e número da escola.';
         if (!loc) return 'Informe a localização da sede.';
         return null;
@@ -797,20 +804,41 @@
         });
     }
 
+    function normalizarTipoEnsino(valor) {
+        var raw = String(valor || '').trim();
+        if (!raw) return '';
+        var mapa = {
+            'K12': 'K-12',
+            'K-12': 'K-12',
+            'Educação Básica': 'K-12',
+            'Basica': 'K-12',
+            'Superior': 'Superior',
+            'Tecnico': 'Tecnico',
+            'Técnico': 'Tecnico',
+            'Idiomas': 'Idiomas',
+            'Idiomas/Cursos Livres': 'Idiomas',
+            'Corporativo': 'Corporativo',
+            'Educação Corporativa': 'Corporativo',
+        };
+        return mapa[raw] || raw;
+    }
+
     function preencherFormularioContexto(dados) {
         if (!dados) return;
         aplicarIdClieNoFormulario(dados.id_clie || dados.id || resolverIdClieContexto());
         document.getElementById('empresa_clie').value = dados.empresa_clie || dados.empresa || '';
         document.getElementById('docu_clie').value = dados.docu_clie || dados.docu || '';
         document.getElementById('adre_clie').value = dados.adre_clie || '';
-        document.getElementById('zipn_clie').value = dados.zipn_clie || '';
+        document.getElementById('zipn_clie').value = typeof mascaraCep === 'function'
+            ? mascaraCep(dados.zipn_clie || '')
+            : (dados.zipn_clie || '');
         document.getElementById('bairro_clie').value = dados.bairro_clie || '';
         document.getElementById('cidade_clie').value = dados.cidade_clie || '';
         document.getElementById('estado_clie').value = dados.estado_clie || '';
         document.getElementById('nome_clie').value = dados.nome_clie || dados.nome || '';
         document.getElementById('fone_clie').value = dados.fone_clie || dados.fone || '';
         document.getElementById('mail_clie').value = dados.mail_clie || dados.mail || dados.email || '';
-        document.getElementById('tipo_ensino').value = dados.tipo_ensino || '';
+        document.getElementById('tipo_ensino').value = normalizarTipoEnsino(dados.tipo_ensino);
         document.getElementById('qtd_alunos').value = dados.qtd_alunos || '';
         document.getElementById('qtd_colaboradores').value = dados.qtd_colaboradores || '';
         document.getElementById('qtd_unidades').value = dados.qtd_unidades || '';
@@ -824,6 +852,10 @@
         document.getElementById('lbl_ctx_cnpj').textContent = dados.docu_clie || dados.docu || '—';
         document.getElementById('lbl_ctx_representante').textContent = dados.nome_clie || dados.nome || '—';
         document.getElementById('lbl_ctx_email').textContent = dados.mail_clie || dados.mail || dados.email || '—';
+
+        if (!(document.getElementById('localizacao_sede').value || '').trim()) {
+            preencherLocalizacaoSede();
+        }
     }
 
     async function solicitarAnaliseModerador(campo) {
@@ -1212,6 +1244,8 @@
         });
     }
 
+    var modalBloquearEdicao = false;
+
     window.abrirModalContextoLeadGeral = async function (dados, bloquearEdicao, modoAdmin, obrigatorio) {
         dados = dados || null;
         bloquearEdicao = !!bloquearEdicao;
@@ -1220,8 +1254,10 @@
 
         modalModoAdmin = modoAdmin;
         modalObrigatorio = obrigatorio;
+        modalBloquearEdicao = bloquearEdicao;
         window.modalModoAdmin = modoAdmin;
         window.modalObrigatorio = obrigatorio;
+        window.modalBloquearEdicao = bloquearEdicao;
 
         var root = getModalEl();
         if (root) root.classList.toggle('modo-admin', modoAdmin);
@@ -1322,8 +1358,11 @@
         if (btnNext) {
             btnNext.addEventListener('click', function () {
                 limparErroCtx();
-                var err = validarPasso1();
-                if (err) { mostrarErroCtx(err); return; }
+                // Em visualização (pós-gênese) não bloqueia a 2ª aba por campos incompletos.
+                if (!modalBloquearEdicao) {
+                    var err = validarPasso1();
+                    if (err) { mostrarErroCtx(err); return; }
+                }
                 irParaPasso(2);
             });
         }

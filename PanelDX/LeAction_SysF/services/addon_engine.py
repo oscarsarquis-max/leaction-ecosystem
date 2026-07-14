@@ -257,3 +257,152 @@ def cancelar_addon_contrato(cursor, addon_id: int) -> bool:
         (int(addon_id),),
     )
     return bool(cursor.fetchone())
+
+
+def listar_planos_base_ativos(cursor) -> list[dict[str, Any]]:
+    cursor.execute(
+        """
+        SELECT id, nome, valor_mensal, periodicidade, descricao_beneficios,
+               max_usuarios, tipo_plano, ativo
+        FROM public.dx_planos
+        WHERE ativo = TRUE
+          AND COALESCE(tipo_plano, 'base') = 'base'
+        ORDER BY valor_mensal ASC, nome ASC;
+        """
+    )
+    rows = cursor.fetchall()
+    out = []
+    for row in rows:
+        item = dict(row) if isinstance(row, dict) else {
+            "id": row[0],
+            "nome": row[1],
+            "valor_mensal": float(row[2] or 0),
+            "periodicidade": row[3],
+            "descricao_beneficios": row[4],
+            "max_usuarios": int(row[5] or 0),
+            "tipo_plano": row[6] or "base",
+            "ativo": bool(row[7]),
+        }
+        item["valor_mensal"] = float(item.get("valor_mensal") or 0)
+        item["max_usuarios"] = int(item.get("max_usuarios") or 0)
+        out.append(item)
+    return out
+
+
+def obter_detalhe_comercial_cliente(cursor, id_clie: int) -> dict[str, Any]:
+    """Contrato vigente + addons + planos disponíveis + cota — visão do gestor."""
+    from services.seat_limits import obter_cota_usuarios
+
+    cursor.execute(
+        f"""
+        SELECT c.id, c.id_clie, c.id_plano, c.valor_negociado, c.status,
+               c.data_inicio, c.data_vencimento, c.criado_em, c.atualizado_em,
+               p.nome AS nome_plano,
+               p.valor_mensal AS valor_plano_lista,
+               p.periodicidade,
+               p.max_usuarios,
+               p.descricao_beneficios,
+               cl.nome_clie, cl.empresa_clie, cl.mail_clie
+        FROM public.dx_contratos c
+        JOIN public.dx_planos p ON p.id = c.id_plano
+        JOIN public.ctdi_clie cl ON cl.id_clie = c.id_clie
+        WHERE c.id_clie = %s
+        {_CONTRATO_VIGENTE_ORDER};
+        """,
+        (int(id_clie),),
+    )
+    row = cursor.fetchone()
+    contrato = None
+    addons: list[dict[str, Any]] = []
+    if row:
+        data = dict(row) if isinstance(row, dict) else {
+            "id": row[0], "id_clie": row[1], "id_plano": row[2],
+            "valor_negociado": row[3], "status": row[4],
+            "data_inicio": row[5], "data_vencimento": row[6],
+            "criado_em": row[7], "atualizado_em": row[8],
+            "nome_plano": row[9], "valor_plano_lista": row[10],
+            "periodicidade": row[11], "max_usuarios": row[12],
+            "descricao_beneficios": row[13],
+            "nome_clie": row[14], "empresa_clie": row[15], "mail_clie": row[16],
+        }
+        inicio = data.get("data_inicio")
+        venc = data.get("data_vencimento")
+        contrato = {
+            "id": data["id"],
+            "id_clie": data["id_clie"],
+            "id_plano": data["id_plano"],
+            "nome_plano": data.get("nome_plano"),
+            "valor_negociado": float(data.get("valor_negociado") or 0),
+            "valor_plano_lista": float(data.get("valor_plano_lista") or 0),
+            "periodicidade": data.get("periodicidade") or "Mensal",
+            "max_usuarios": int(data.get("max_usuarios") or DEFAULT_MAX_USUARIOS_SEM_CONTRATO),
+            "descricao_beneficios": data.get("descricao_beneficios") or "",
+            "status": data.get("status"),
+            "data_inicio": inicio.isoformat() if hasattr(inicio, "isoformat") else inicio,
+            "data_vencimento": venc.isoformat() if hasattr(venc, "isoformat") else venc,
+            "criado_em": data["criado_em"].isoformat() if hasattr(data.get("criado_em"), "isoformat") else data.get("criado_em"),
+            "atualizado_em": data["atualizado_em"].isoformat() if hasattr(data.get("atualizado_em"), "isoformat") else data.get("atualizado_em"),
+            "nome_clie": data.get("nome_clie"),
+            "empresa_clie": data.get("empresa_clie"),
+            "mail_clie": data.get("mail_clie"),
+        }
+        addons = listar_addons_contrato(cursor, int(contrato["id"]))
+
+    planos = listar_planos_base_ativos(cursor)
+    id_plano_atual = contrato["id_plano"] if contrato else None
+    valor_ref = float((contrato or {}).get("valor_negociado") or (contrato or {}).get("valor_plano_lista") or 0)
+    for p in planos:
+        p["atual"] = id_plano_atual is not None and int(p["id"]) == int(id_plano_atual)
+        if id_plano_atual is None:
+            p["movimento"] = "contratar"
+        elif p["atual"]:
+            p["movimento"] = "atual"
+        elif float(p["valor_mensal"]) > valor_ref:
+            p["movimento"] = "upgrade"
+        elif float(p["valor_mensal"]) < valor_ref:
+            p["movimento"] = "downgrade"
+        else:
+            p["movimento"] = "troca"
+
+    addon_padrao = obter_addon_padrao(cursor)
+    cota = obter_cota_usuarios(cursor, int(id_clie))
+
+    historico = []
+    if contrato:
+        historico.append({
+            "tipo": "contrato",
+            "titulo": f"Contrato — {contrato['nome_plano']}",
+            "status": contrato["status"],
+            "valor": contrato["valor_negociado"],
+            "referencia": f"CTR-{contrato['id']}",
+            "data": contrato.get("criado_em") or contrato.get("data_inicio"),
+            "descricao": "Ativação / vigência comercial do plano base.",
+        })
+    for a in addons:
+        historico.append({
+            "tipo": "addon",
+            "titulo": a.get("nome_addon") or "Pacote adicional",
+            "status": a.get("status"),
+            "valor": a.get("mrr_linha"),
+            "referencia": a.get("hub_order_id") or f"ADDON-{a.get('id')}",
+            "data": a.get("criado_em"),
+            "descricao": f"+{a.get('usuarios_extra') or 0} usuários · qtd {a.get('quantidade') or 1}",
+        })
+    historico.sort(key=lambda h: h.get("data") or "", reverse=True)
+
+    return {
+        "id_clie": int(id_clie),
+        "tem_contrato": contrato is not None,
+        "contrato": contrato,
+        "addons": addons,
+        "planos_disponiveis": planos,
+        "addon_sugerido": {
+            "id": addon_padrao["id"],
+            "nome": addon_padrao["nome"],
+            "valor_mensal": float(addon_padrao.get("valor_mensal") or 0),
+            "max_usuarios": int(addon_padrao.get("max_usuarios") or 0),
+            "periodicidade": addon_padrao.get("periodicidade") or "Mensal",
+        } if addon_padrao else None,
+        "cota": cota,
+        "historico_comercial": historico,
+    }

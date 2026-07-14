@@ -119,6 +119,56 @@
 }
 
 .execucao__modal-card {
-    max-width: 640px;
+    max-width: 720px;
     width: 100%;
+    max-height: min(92vh, 820px);
+    overflow-y: auto;
+}
+
+.execucao__modal-sprint {
+    margin: -4px 0 14px;
+    font-size: 0.82rem;
+    color: var(--wb-muted);
+    font-weight: 600;
+}
+
+.execucao__field-stack {
+    display: block;
+    width: 100%;
+}
+
+.execucao__ativ-nome {
+    margin: 0;
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: var(--dark-lilac);
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.execucao__desc-box,
+.execucao__obs-box {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 120px;
+    resize: vertical;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
+.execucao__desc-box {
+    background: #f8fafc;
+    color: #334155;
+    cursor: default;
+}
+
+.execucao__obs-box {
+    background: #fff;
+    border-color: #c4b5fd;
+}
+
+.execucao__obs-box:focus {
+    border-color: var(--lilac);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+    outline: none;
 }
