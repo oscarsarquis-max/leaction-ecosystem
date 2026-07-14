@@ -1,5 +1,5 @@
--- 027: ciclo de vida dos KRs do cliente (editáveis / suprimíveis / custom)
--- e atividades podem vincular KRs custom (sem dx_kr_id).
+-- 027 (prod-safe): ciclo de vida dos KRs + dx_kr_id opcional em atividades
+-- Idempotente para ambientes onde dx_kr_id ainda não existe.
 
 ALTER TABLE public.ctdi_okr_krs
     ADD COLUMN IF NOT EXISTS ativo boolean NOT NULL DEFAULT true;
@@ -7,9 +7,44 @@ ALTER TABLE public.ctdi_okr_krs
 COMMENT ON COLUMN public.ctdi_okr_krs.ativo IS
     'false = KR suprimido pelo cliente (não reaparece no seed da matriz).';
 
--- Atividades: dx_kr_id deixa de ser obrigatório para KRs personalizados
+-- Garante a coluna (nullable) quando o ambiente ainda não a tinha
 ALTER TABLE public.ctdi_okr_atividades
-    ALTER COLUMN dx_kr_id DROP NOT NULL;
+    ADD COLUMN IF NOT EXISTS dx_kr_id integer;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'ctdi_okr_atividades'
+          AND column_name = 'dx_kr_id'
+          AND is_nullable = 'NO'
+    ) THEN
+        ALTER TABLE public.ctdi_okr_atividades
+            ALTER COLUMN dx_kr_id DROP NOT NULL;
+    END IF;
+END $$;
+
+-- FK para catálogo canônico (somente se dx_krs existir)
+DO $$
+BEGIN
+    IF to_regclass('public.dx_krs') IS NOT NULL
+       AND NOT EXISTS (
+           SELECT 1 FROM pg_constraint
+           WHERE conname = 'fk_atividade_dx_kr'
+       ) THEN
+        ALTER TABLE public.ctdi_okr_atividades
+            ADD CONSTRAINT fk_atividade_dx_kr
+            FOREIGN KEY (dx_kr_id) REFERENCES public.dx_krs(id) ON DELETE RESTRICT;
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+    WHEN undefined_table THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_ctdi_okr_atividades_dx_kr
+    ON public.ctdi_okr_atividades (dx_kr_id);
 
 CREATE OR REPLACE FUNCTION public.fn_sync_atividade_dx_kr_id()
 RETURNS trigger
@@ -36,8 +71,13 @@ BEGIN
         RAISE EXCEPTION 'KR cliente % está suprimido e não pode receber atividades', NEW.id_kr;
     END IF;
 
-    -- KRs canônicos sincronizam; custom (dx_kr_id null) seguem só pelo id_kr
     NEW.dx_kr_id := v_dx_kr_id;
     RETURN NEW;
 END;
 $function$;
+
+DROP TRIGGER IF EXISTS tg_sync_atividade_dx_kr ON public.ctdi_okr_atividades;
+CREATE TRIGGER tg_sync_atividade_dx_kr
+    BEFORE INSERT OR UPDATE OF id_kr ON public.ctdi_okr_atividades
+    FOR EACH ROW
+    EXECUTE FUNCTION public.fn_sync_atividade_dx_kr_id();
