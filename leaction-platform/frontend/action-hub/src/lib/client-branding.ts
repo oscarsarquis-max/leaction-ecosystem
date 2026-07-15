@@ -40,16 +40,15 @@ const PANELDX_BRAND: ClientBrandTheme = {
   checkoutTitle: 'Contratar PanelDX',
   logo: paneldxLogo,
   logoAlt: 'Panel DX — diagnóstico de maturidade digital educacional LeAction',
-  logoLayout: { heightPx: 120, marginTopPx: 40, borderPx: 4 },
   colors: {
-    headerBg: '#1f2937',
-    pageBg: '#f3f4f6',
-    accent: '#dc2626',
-    accentHover: '#b91c1c',
-    accentMuted: '#ffedd5',
-    textOnHeader: '#ffffff',
-    textMutedOnHeader: '#d1d5db',
-    cardBorder: '#d1d5db',
+    headerBg: '#ffffff',
+    pageBg: '#fafaf9',
+    accent: '#f97316',
+    accentHover: '#ea580c',
+    accentMuted: '#fff7ed',
+    textOnHeader: '#1c1917',
+    textMutedOnHeader: '#78716c',
+    cardBorder: '#e7e5e4',
     infoBg: '#fff7ed',
     infoBorder: '#fdba74',
     infoText: '#7c2d12',
@@ -92,12 +91,9 @@ export function listRegisteredClientBrands(): ClientBrandId[] {
 }
 
 const CHECKOUT_HEADER_HEIGHT_PX = 60;
-const CHECKOUT_CONTENT_GAP_PX = 20;
+const CHECKOUT_CONTENT_GAP_PX = 16;
 
-/** Espaço reservado abaixo do header fixo (inclui logo que invade a área útil, como no PanelDX). */
-export function getCheckoutContentOffset(brand: ClientBrandTheme): number {
-  const layout = brand.logoLayout ?? { heightPx: 120, marginTopPx: 40, borderPx: 4 };
-  const logoBottom = layout.marginTopPx + layout.heightPx;
-  const logoOverlap = Math.max(0, logoBottom - CHECKOUT_HEADER_HEIGHT_PX);
-  return CHECKOUT_HEADER_HEIGHT_PX + logoOverlap + CHECKOUT_CONTENT_GAP_PX;
+/** Espaço reservado abaixo do header fixo (logo inline — sem sobreposição). */
+export function getCheckoutContentOffset(_brand: ClientBrandTheme): number {
+  return CHECKOUT_HEADER_HEIGHT_PX + CHECKOUT_CONTENT_GAP_PX;
 }

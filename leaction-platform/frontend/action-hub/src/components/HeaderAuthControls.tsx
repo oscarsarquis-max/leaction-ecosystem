@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Loader2, LogIn, LogOut, ShoppingCart } from 'lucide-react';
@@ -8,6 +8,7 @@ import axios from 'axios';
 import { useCart } from '@/context/CartContext';
 import { useHubSession } from '@/context/HubSessionContext';
 import { getHubApiBase } from '@/lib/hub-api';
+import { useAuthGate } from '@/lib/require-hub-login';
 
 function cartItemsToSkus(items: { id?: string | number; sku?: string }[]): string[] {
   return items
@@ -29,6 +30,7 @@ function CartIconLink({
   variant: 'light' | 'dark';
 }) {
   const { cartItems, cartHydrated } = useCart();
+  const { requireLogin } = useAuthGate();
   const count = cartItems.length;
   const prevCountRef = useRef<number | null>(null);
   const [pulseCart, setPulseCart] = useState(false);
@@ -59,12 +61,19 @@ function CartIconLink({
     return () => window.clearTimeout(t);
   }, [pulseCart]);
 
+  function onCartClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (!isAnonymous) return;
+    event.preventDefault();
+    requireLogin(href, 'Faça login para acessar o carrinho do Marketplace.');
+  }
+
   return (
     <Link
       href={href}
+      onClick={onCartClick}
       className={
         isLight
-          ? 'relative inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-red-900'
+          ? 'relative inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-orange-800'
           : 'relative inline-flex items-center justify-center rounded-lg p-2 text-orange-200 transition hover:bg-white/10 hover:text-white'
       }
       aria-label={count > 0 ? `Carrinho com ${count} item(ns)` : 'Carrinho'}

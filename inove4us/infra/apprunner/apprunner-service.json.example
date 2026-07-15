@@ -1,0 +1,46 @@
+{
+  "ServiceName": "inove4us-prod",
+  "SourceConfiguration": {
+    "ImageRepository": {
+      "ImageIdentifier": "ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/inove4us:latest",
+      "ImageRepositoryType": "ECR",
+      "ImageConfiguration": {
+        "Port": "8080",
+        "RuntimeEnvironmentVariables": {
+          "INOVE4US_ENV": "production",
+          "FLASK_ENV": "production",
+          "FRONTEND_ORIGIN": "https://inove4us.com.br",
+          "CORS_ORIGINS": "https://inove4us.com.br,https://www.inove4us.com.br",
+          "DB_HOST": "SEU_RDS.amazonaws.com",
+          "DB_PORT": "5432",
+          "DB_NAME": "LeAction_SysF",
+          "DB_USER": "inove4us_app",
+          "DB_SSLMODE": "require",
+          "EMAIL_DEV_MODE": "0"
+        }
+      }
+    },
+    "AutoDeploymentsEnabled": true,
+    "AuthenticationConfiguration": {
+      "AccessRoleArn": "arn:aws:iam::ACCOUNT:role/AppRunnerECRAccessRole"
+    }
+  },
+  "InstanceConfiguration": {
+    "Cpu": "1 vCPU",
+    "Memory": "2 GB"
+  },
+  "HealthCheckConfiguration": {
+    "Protocol": "HTTP",
+    "Path": "/api/health",
+    "Interval": 20,
+    "Timeout": 5,
+    "HealthyThreshold": 2,
+    "UnhealthyThreshold": 3
+  },
+  "NetworkConfiguration": {
+    "EgressConfiguration": {
+      "EgressType": "VPC",
+      "VpcConnectorArn": "arn:aws:apprunner:us-east-1:ACCOUNT:vpcconnector/inove4us/1/xxxx"
+    }
+  }
+}

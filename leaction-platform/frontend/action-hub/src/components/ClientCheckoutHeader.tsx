@@ -8,62 +8,50 @@ type ClientCheckoutHeaderProps = {
   subtitle?: string;
 };
 
-const DEFAULT_LOGO_LAYOUT = { heightPx: 120, marginTopPx: 40, borderPx: 4 };
-
 /**
- * Cabeçalho de checkout white-label — mesmo comportamento do PanelDX:
- * barra 60px (#1f2937) e logo à direita com margin-top 40px / height 120px,
- * invadindo a área útil abaixo (style.css `.header-logo`).
+ * Cabeçalho de checkout — padrão ActionHub (logo inline, sem suspensão).
+ * White-label só nos textos/cores do parceiro.
  */
 export function ClientCheckoutHeader({ brand, subtitle }: ClientCheckoutHeaderProps) {
-  const logoLayout = brand.logoLayout ?? DEFAULT_LOGO_LAYOUT;
-
   return (
     <header
-      className="fixed left-0 top-0 z-[60] h-[60px] w-full overflow-visible border-b border-black/20 shadow-md"
-      style={{ backgroundColor: brand.colors.headerBg, color: brand.colors.textOnHeader }}
+      className="fixed left-0 top-0 z-[60] h-[60px] w-full border-b border-stone-200/80 bg-white/95 shadow-sm backdrop-blur-md"
     >
-      <div className="mx-auto flex w-full max-w-6xl justify-between gap-4 px-4 md:px-5">
-        <div className="flex h-[60px] min-w-0 flex-1 items-center">
+      <div className="mx-auto flex h-[60px] w-full max-w-6xl items-center justify-between gap-4 px-4 md:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <Image
+            src={brand.logo}
+            alt={brand.logoAlt}
+            width={40}
+            height={40}
+            priority
+            className="h-10 w-10 shrink-0 rounded-xl bg-white object-cover shadow-sm ring-1 ring-stone-200/80"
+          />
           <div className="min-w-0">
             <p
-              className="truncate text-[11px] font-semibold uppercase tracking-[0.14em]"
-              style={{ color: brand.colors.textMutedOnHeader }}
+              className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400"
             >
               {brand.id === 'paneldx' ? 'Pagamento seguro · PanelDX' : 'Pagamento seguro · ActionHub'}
             </p>
-            <h1 className="truncate text-base font-bold tracking-tight md:text-lg">
+            <h1 className="truncate text-base font-bold tracking-tight text-orange-950 md:text-lg">
               {brand.checkoutTitle}
             </h1>
             {(subtitle || brand.productLabel) && (
-              <p
-                className="hidden truncate text-xs sm:block"
-                style={{ color: brand.colors.textMutedOnHeader }}
-              >
+              <p className="hidden truncate text-xs text-stone-500 sm:block">
                 {subtitle || brand.productLabel}
               </p>
             )}
           </div>
         </div>
-
-        <div className="relative z-[61] flex shrink-0 items-start">
-          <Image
-            src={brand.logo}
-            alt={brand.logoAlt}
-            width={brand.logo.width}
-            height={brand.logo.height}
-            priority
-            className="box-border w-auto shrink-0 rounded bg-white object-contain p-px"
-            style={{
-              height: `${logoLayout.heightPx}px`,
-              marginTop: `${logoLayout.marginTopPx}px`,
-              borderWidth: `${logoLayout.borderPx}px`,
-              borderStyle: 'solid',
-              borderColor: '#bdc3c7',
-              maxWidth: 'min(220px, 42vw)',
-            }}
-          />
-        </div>
+        <span
+          className="hidden rounded-full px-3 py-1 text-xs font-semibold sm:inline-flex"
+          style={{
+            backgroundColor: brand.colors.accentMuted || '#fff7ed',
+            color: brand.colors.accent || '#c2410c',
+          }}
+        >
+          {brand.displayName}
+        </span>
       </div>
     </header>
   );

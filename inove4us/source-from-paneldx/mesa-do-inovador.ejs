@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= typeof title !== 'undefined' ? title : 'Mesa do Inovador' %></title>
+    <meta name="description" content="Ferramenta freemium Mesa do Inovador — organize ideias e avance na transformação digital da sua instituição.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white">
+    <main class="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 py-16">
+        <p class="mb-3 text-sm font-semibold uppercase tracking-wider text-amber-400">Panel DX · Freemium</p>
+        <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Mesa do Inovador</h1>
+        <p class="mt-4 max-w-xl text-base leading-relaxed text-slate-300">
+            Estruture desafios, capture insights e prepare o caminho para a Mesa de Inovação —
+            sem custo inicial. Comece agora e acompanhe sua jornada de maturidade digital.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+            <a href="/cadastro"
+               data-crm-event="click_cta_mesa_inovador"
+               class="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-amber-400">
+                <i class="fas fa-rocket" aria-hidden="true"></i>
+                Começar grátis
+            </a>
+            <a href="/"
+               class="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10">
+                Voltar à Home
+            </a>
+        </div>
+    </main>
+    <script src="/js/tracking.js?v=2"></script>
+</body>
+</html>

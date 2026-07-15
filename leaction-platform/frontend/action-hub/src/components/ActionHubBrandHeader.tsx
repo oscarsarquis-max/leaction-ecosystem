@@ -3,59 +3,41 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-export const ACTION_HUB_LOGO_LAYOUT = { heightPx: 150, marginTopPx: 28 };
-
-const LOGO_FRAME_STYLE = {
-  marginTop: `${ACTION_HUB_LOGO_LAYOUT.marginTopPx}px`,
-  border: '1px solid #b8c2cc',
-  boxShadow:
-    'inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(15,23,42,0.16), inset 1px 0 0 rgba(255,255,255,0.8), inset -1px 0 0 rgba(15,23,42,0.12), 0 6px 18px rgba(15,23,42,0.22)',
-} as const;
-
 type ActionHubBrandHeaderProps = {
+  /** Conteúdo à direita (login / carrinho). */
+  right?: ReactNode;
+  /** @deprecated use `right` — mantido para chamadas antigas com `left`. */
   left?: ReactNode;
-  /**
-   * `classic` — barra vermelha + logo pendurada (páginas internas).
-   * `light` — barra clara sem logo (home: logo vai no hero).
-   */
+  /** Ignorado — padrão único alinhado à home SaaS. */
   variant?: 'classic' | 'light';
 };
 
-/** Barra sticky do ActionHub. */
-export function ActionHubBrandHeader({ left, variant = 'classic' }: ActionHubBrandHeaderProps) {
-  if (variant === 'light') {
-    return (
-      <header className="sticky top-0 z-[60] h-[56px] w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex h-[56px] max-w-6xl items-center justify-between gap-3 px-4 md:px-6">
-          {left}
-        </div>
-      </header>
-    );
-  }
+/**
+ * Header global ActionHub — mesmo padrão da home:
+ * barra clara, logo arredondada inline (sem logo suspensa).
+ */
+export function ActionHubBrandHeader({ right, left }: ActionHubBrandHeaderProps) {
+  const controls = right ?? left;
 
   return (
-    <header className="relative sticky top-0 z-[60] h-[60px] w-full overflow-visible border-b border-black/20 bg-red-950 shadow-md">
-      <div className="mx-auto flex h-[60px] max-w-6xl items-center px-4 md:px-6">{left}</div>
-
-      <div className="pointer-events-none absolute right-2 top-0 z-[61] sm:right-4 md:right-8 lg:right-12 xl:right-16">
-        <Link
-          href="/"
-          className="pointer-events-auto block shrink-0 rounded-sm bg-white p-px"
-          style={LOGO_FRAME_STYLE}
-          aria-label="ActionHub — início"
-        >
-          <span className="block rounded-[2px] bg-red-950 px-2.5 py-1.5 md:px-3 md:py-2">
-            <img
-              src="/logo.png"
-              alt="ActionHub"
-              className="block w-auto object-contain"
-              style={{
-                height: `${ACTION_HUB_LOGO_LAYOUT.heightPx}px`,
-                maxWidth: 'min(240px, 38vw)',
-              }}
-            />
-          </span>
+    <header className="sticky top-0 z-[60] h-[60px] w-full border-b border-stone-200/80 bg-white/95 backdrop-blur-md">
+      <div className="mx-auto flex h-[60px] max-w-7xl items-center justify-between gap-3 px-4 md:px-6">
+        <Link href="/" className="flex min-w-0 items-center gap-2.5" aria-label="ActionHub — início">
+          <img
+            src="/logo.png"
+            alt="ActionHub"
+            className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-stone-200/80"
+          />
+          <div className="min-w-0">
+            <p className="truncate text-lg font-bold leading-none tracking-tight text-orange-950">
+              ActionHub
+            </p>
+            <p className="mt-0.5 hidden text-[10px] font-medium uppercase tracking-wider text-stone-400 sm:block">
+              Contextual Platform
+            </p>
+          </div>
         </Link>
+        <div className="flex min-w-0 flex-1 items-center justify-end">{controls}</div>
       </div>
     </header>
   );

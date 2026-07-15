@@ -9,7 +9,6 @@ export function PreviewMiniCard({ offer }: { offer: PreviewOffer }) {
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100">
         <MarketplaceProductImage
           src={offer.image}
-          fallback={offer.fallback}
           title={offer.title}
           className="p-1"
           objectFit="cover"

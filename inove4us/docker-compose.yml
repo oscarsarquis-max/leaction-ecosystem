@@ -1,0 +1,26 @@
+# Produção local / smoke test da imagem (não sobe Postgres — usa o shared LeAction_SysF)
+services:
+  inove4us:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: inove4us:latest
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.production
+    environment:
+      INOVE4US_ENV: production
+      FLASK_ENV: production
+      PORT: "8080"
+      WEB_CONCURRENCY: "2"
+      SPA_DIR: /app/frontend/dist
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-https://inove4us.com.br}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://inove4us.com.br,https://www.inove4us.com.br}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s

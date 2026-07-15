@@ -36,7 +36,6 @@ export function OfferCard({ offer }) {
       <div className="relative aspect-square overflow-hidden bg-slate-100">
         <MarketplaceProductImage
           src={offer.image}
-          fallback={offer.fallback}
           title={offer.title}
           className="p-2"
           objectFit="cover"

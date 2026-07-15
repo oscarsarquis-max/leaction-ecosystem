@@ -12,7 +12,12 @@ function SiteHeaderInner() {
   const checkoutId = parseCheckoutOrderId(searchParams.get('checkout'));
   const clientId = parseClientId(searchParams.get('client'));
 
-  // Home também usa o header (login + carrinho); só oculta em checkout white-label.
+  // Home SaaS tem shell próprio (sidebar + action center) — sem barra global.
+  if (pathname === '/') {
+    return null;
+  }
+
+  // Checkout white-label: chrome do parceiro assume o header.
   if (pathname === '/dashboard' && (checkoutId.length > 0 || clientId.length > 0)) {
     return null;
   }

@@ -90,7 +90,6 @@ function OfferGrid({
               <div className="relative h-40 w-full shrink-0 overflow-hidden bg-slate-50">
                 <MarketplaceProductImage
                   src={offer.image}
-                  fallback={offer.fallback}
                   title={offer.title}
                 />
               </div>

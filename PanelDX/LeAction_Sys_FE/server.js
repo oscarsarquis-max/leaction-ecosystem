@@ -421,7 +421,7 @@ app.post('/api/admin/upload', handleCmsImageUpload);
 // ==================================================================
 // 2. LISTAS DE PERMISSÃO
 // ==================================================================
-const publicPaths = ['/', '/cadastro', '/login', '/logout', '/termos-de-uso', '/instrucoes-de-uso', '/versao-aplicacao', '/verificar-email', '/consultor-leaction', '/manutencao', '/gatekeeper/bypass', '/gatekeeper/unlock', '/gatekeeper/lock'];
+const publicPaths = ['/', '/cadastro', '/login', '/logout', '/termos-de-uso', '/instrucoes-de-uso', '/versao-aplicacao', '/verificar-email', '/consultor-leaction', '/mesa-do-inovador', '/solucionador-de-problemas', '/manutencao', '/gatekeeper/bypass', '/gatekeeper/unlock', '/gatekeeper/lock'];
 const restrictedPaths = ['/clientes', '/dimensoes', '/fases', '/blocos', '/questoes', '/sprints', '/rodadas', '/maturidades', '/surveys', '/entregaveis', '/movimentos', '/dominios', '/admin', '/teams', '/inteligencia-negocio'];
 const leadPaths = ['/avaliacoes', '/diagnostico'];
 
@@ -1395,6 +1395,44 @@ app.get('/cadastro', (req, res) => res.render('lead-capture', { title: 'Inscriç
 app.get('/consultor-leaction', (req, res) => {
     attachCoachLocals(req, res, 'consultor');
     res.render('consultor-leaction', { title: 'Consultor LeAction', layout: false });
+});
+
+// Freemium PLG — aliases canônicos para tracking/funil no Action Hub
+app.get('/solucionador-de-problemas', (req, res) => {
+    attachCoachLocals(req, res, 'consultor');
+    res.render('consultor-leaction', {
+        title: 'Solucionador de Problemas — Consultor LeAction',
+        layout: false,
+    });
+});
+
+app.get('/mesa-do-inovador', (req, res) => {
+    res.render('mesa-do-inovador', {
+        title: 'Mesa do Inovador | Panel DX',
+        layout: false,
+    });
+});
+
+// Proxy sensor → Flask → Action Hub (fire-and-forget no cliente)
+app.post('/api/tracking/enviar', async (req, res) => {
+    try {
+        const response = await axios.post(`${BACKEND_URL}/api/tracking/enviar`, req.body, {
+            timeout: 6000,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Forwarded-For':
+                    req.headers['x-forwarded-for'] ||
+                    req.socket?.remoteAddress ||
+                    '',
+                'User-Agent': req.headers['user-agent'] || '',
+            },
+            validateStatus: () => true,
+        });
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.warn('⚠️ [tracking/enviar] proxy falhou (UX não bloqueada):', error.message);
+        return res.status(202).json({ ok: true, forwarded: false, error: 'proxy_unavailable' });
+    }
 });
 
 // Ponte pública para o agente de IA do Consultor (não exige autenticação)

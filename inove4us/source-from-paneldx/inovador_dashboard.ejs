@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PanelDX - QG do Inovador</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --dark-lilac: #4A2E80;
+            --lilac: #7C3AED;
+            --brand-gold: #d97706;
+            --gold-soft: #fbbf24;
+            --wb-bg: #f8fafc;
+            --wb-card: #ffffff;
+            --wb-border: #e2e8f0;
+            --wb-ink: #1e293b;
+            --wb-muted: #64748b;
+        }
+        body {
+            background: var(--wb-bg);
+            background-image:
+                radial-gradient(circle at 12% 8%, rgba(124,58,237,0.06), transparent 42%),
+                radial-gradient(circle at 90% 95%, rgba(217,119,6,0.06), transparent 42%);
+            min-height: 100vh;
+            color: var(--wb-ink);
+        }
+        /* Whiteboard card: branco, borda sutil, sombra leve */
+        .wb-card {
+            background: var(--wb-card);
+            border: 1px solid var(--wb-border);
+            box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 10px 30px rgba(15,23,42,0.05);
+        }
+        .wb-soft { background: #f8fafc; border: 1px solid var(--wb-border); }
+        .wb-input {
+            background: #ffffff; border: 1px solid var(--wb-border); color: var(--wb-ink);
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .wb-input::placeholder { color: #94a3b8; }
+        .wb-input:focus { outline: none; border-color: var(--lilac); box-shadow: 0 0 0 3px rgba(124,58,237,0.12); }
+        .title-lilac { color: var(--dark-lilac); }
+        .accent-gold { color: var(--brand-gold); }
+        .btn-lilac { background: linear-gradient(135deg, var(--dark-lilac), var(--lilac)); color: #fff; transition: filter .15s, transform .15s; }
+        .btn-lilac:hover { filter: brightness(1.08); transform: translateY(-1px); }
+        .btn-gold { background: linear-gradient(135deg, var(--brand-gold), #f59e0b); color: #fff; transition: filter .15s, transform .15s; }
+        .btn-gold:hover { filter: brightness(1.06); transform: translateY(-1px); }
+        .btn-ghost { background: #fff; border: 1px solid var(--wb-border); color: var(--dark-lilac); transition: background .15s; }
+        .btn-ghost:hover { background: #f1f5f9; }
+
+        .pulse-mic { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        [contenteditable][data-placeholder]:empty:before {
+            content: attr(data-placeholder);
+            color: #94a3b8;
+        }
+        /* Scrollbar suave no tema claro */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Elementos exclusivos do relatório impresso (escondidos na tela) */
+        .print-only { display: none; }
+        /* Deck do Pitch Elevator: oculto na tela, só aparece na impressão dedicada */
+        #pitch-deck { display: none; }
+
+        /* =====================================================================
+           📄 RELATÓRIO EXECUTIVO — Print CSS (@media print)
+           Fluxo: Cabeçalho → Justificativa/Impacto → 4 Pilares → Experimentos
+           ===================================================================== */
+        @media print {
+            @page { size: A4; margin: 1.5cm; }
+
+            html, body {
+                background: #ffffff !important;
+                color: #111111 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* Esconde TODA a interface operacional (distrações) */
+            header,
+            #left-column,
+            #ia-empty-state,
+            #cmu-block,
+            #bloco-block,
+            #panel-experimentacao,
+            #escolas-block,
+            #export-json-block,
+            #footer-actions,
+            #card-cmu-selecionado,
+            #social-card-molde,
+            #toast-feedback,
+            .no-print,
+            button {
+                display: none !important;
+            }
+
+            /* Mostra os blocos exclusivos do relatório */
+            .print-only { display: block !important; }
+
+            /* Container principal ocupa a folha inteira, sem molduras */
+            main {
+                display: block !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                gap: 0 !important;
+            }
+            #mesa-section {
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                display: block !important;
+            }
+            /* Título interno "Mesa de Lapidação..." some na impressão */
+            #mesa-section > h2 { display: none !important; }
+
+            /* Remove a moldura tracejada e libera o painel de resultado */
+            #result-wrap {
+                border: none !important;
+                background: #fff !important;
+                padding: 0 !important;
+                min-height: 0 !important;
+            }
+            #ia-result-panel {
+                display: block !important;
+                max-height: none !important;
+                overflow: visible !important;
+                padding: 0 !important;
+            }
+
+            /* Cabeçalho do relatório */
+            #print-report-header {
+                border-bottom: 3px solid #000;
+                padding-bottom: 12px;
+                margin-bottom: 22px;
+            }
+            #print-report-header .rep-kicker {
+                font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+                color: #444; font-weight: 700; margin: 0 0 6px;
+            }
+            #print-report-header .rep-title {
+                font-size: 22px; font-weight: 800; color: #000; margin: 0 0 8px; line-height: 1.25;
+            }
+            #print-report-header .rep-meta {
+                font-size: 12px; color: #333; margin: 0;
+            }
+
+            /* Títulos de seção corporativos */
+            .rep-heading {
+                font-size: 13px !important;
+                font-weight: 800 !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.5px !important;
+                color: #000 !important;
+                border-bottom: 2px solid #000 !important;
+                padding-bottom: 5px !important;
+                margin: 22px 0 12px !important;
+                display: block !important;
+                page-break-after: avoid;
+            }
+
+            /* Cartões de conteúdo no modo leitura (alto contraste, sem sombra) */
+            #ia-result-panel .p-3,
+            #ia-result-panel .p-4 {
+                box-shadow: none !important;
+                background: #fff !important;
+                border: 1px solid #ccc !important;
+                border-radius: 4px !important;
+                page-break-inside: avoid;
+                margin-bottom: 10px;
+            }
+            #ia-result-panel span,
+            #ia-result-panel p,
+            #ia-result-panel h4,
+            #ia-result-panel strong { color: #111 !important; }
+            #ia-result-panel span[class*="text-[9px]"] { font-size: 10px !important; color: #555 !important; }
+
+            #res-titulo { font-size: 16px !important; color: #000 !important; }
+            #res-justificativa, #res-impacto { font-size: 12px !important; line-height: 1.5 !important; }
+
+            /* Cada um dos 4 Pilares: nunca cortar no meio da página */
+            #res-composicao > div {
+                page-break-inside: avoid;
+                border: 1px solid #ccc !important;
+                border-left: 4px solid #4A2E80 !important;
+                background: #fafafa !important;
+                padding: 8px 10px !important;
+                margin-bottom: 8px;
+                font-size: 12px !important;
+            }
+            #res-composicao strong { color: #000 !important; }
+
+            /* Seção de Experimentos (impressa) */
+            #print-experimentos-wrap { margin-top: 18px; }
+            .print-exp-card {
+                page-break-inside: avoid;
+                border: 1px solid #ccc !important;
+                border-radius: 4px;
+                padding: 10px 12px;
+                margin-bottom: 10px;
+            }
+            .print-exp-card .exp-num {
+                font-weight: 800; color: #4A2E80; font-size: 12px; margin-bottom: 4px; display: block;
+            }
+            .print-exp-card .exp-line { font-size: 12px; color: #111; margin: 3px 0; line-height: 1.45; }
+            .print-exp-card .exp-line b { color: #000; }
+
+            /* Rodapé institucional repetido */
+            #print-report-footer {
+                margin-top: 26px; padding-top: 8px; border-top: 1px solid #999;
+                font-size: 10px; color: #666; text-align: center;
+            }
+
+            /* Em modo relatório, o deck do pitch nunca aparece */
+            #pitch-deck { display: none !important; }
+        }
+
+        /* =====================================================================
+           🎤 PITCH ELEVATOR — impressão dedicada (paisagem, 1 slide por página)
+           Ativada por body.printing-pitch (window.print disparado pelo botão)
+           ===================================================================== */
+        @page pitch-page { size: A4 landscape; margin: 0; }
+
+        @media print {
+            body.printing-pitch * { visibility: hidden !important; }
+            body.printing-pitch #pitch-deck,
+            body.printing-pitch #pitch-deck * { visibility: visible !important; }
+
+            body.printing-pitch main,
+            body.printing-pitch header,
+            body.printing-pitch #social-studio-modal,
+            body.printing-pitch #social-card-molde,
+            body.printing-pitch #toast-feedback { display: none !important; }
+
+            body.printing-pitch #pitch-deck {
+                display: block !important;
+                position: absolute; left: 0; top: 0; width: 100%;
+            }
+
+            .pitch-slide {
+                page: pitch-page;
+                page-break-after: always;
+                break-after: page;
+                box-sizing: border-box;
+                width: 297mm; height: 209mm;
+                padding: 20mm 24mm;
+                display: flex; flex-direction: column;
+                background: #ffffff; color: #0f172a;
+                overflow: hidden;
+                -webkit-print-color-adjust: exact; print-color-adjust: exact;
+            }
+            .pitch-slide:last-child { page-break-after: auto; break-after: auto; }
+
+            .pitch-kicker {
+                font-size: 13pt; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+                color: #4A2E80; margin-bottom: 8mm;
+            }
+            .pitch-kicker-light { color: #fde68a; }
+            .pitch-h2 { font-size: 30pt; font-weight: 900; color: #0f172a; margin: 0 0 10mm; line-height: 1.15; }
+            .pitch-h2-light { color: #ffffff; }
+            .pitch-body { font-size: 16pt; line-height: 1.55; color: #1e293b; margin: 0; }
+            .pitch-body-light { color: rgba(255,255,255,0.95); }
+
+            /* Slide 1 — Capa */
+            .pitch-cover {
+                justify-content: center; text-align: center; align-items: center;
+                background: linear-gradient(135deg, #4A2E80 0%, #6d28d9 48%, #d97706 100%) !important;
+                color: #ffffff;
+            }
+            .pitch-badge {
+                background: rgba(255,255,255,0.18); color: #fde68a; font-weight: 800; font-size: 13pt;
+                padding: 5mm 11mm; border-radius: 999px; margin-bottom: 12mm;
+            }
+            .pitch-cover-title { font-size: 40pt; font-weight: 900; color: #fff; margin: 0 0 8mm; line-height: 1.12; }
+            .pitch-cover-sub { font-size: 17pt; color: rgba(255,255,255,0.9); max-width: 210mm; margin: 0; }
+            .pitch-cover-foot {
+                position: absolute; bottom: 16mm; left: 0; right: 0;
+                display: flex; align-items: center; justify-content: center; gap: 5mm;
+                font-size: 12pt; color: rgba(255,255,255,0.92);
+            }
+            .pitch-dx {
+                width: 12mm; height: 12mm; border-radius: 3mm; background: #fff; color: #4A2E80;
+                font-weight: 900; font-size: 14pt; display: inline-flex; align-items: center; justify-content: center;
+            }
+
+            /* Slide 3 — Grid dos 4 Pilares */
+            .pitch-pilares-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 2mm; }
+            .pitch-pilar {
+                border: 1px solid #cbd5e1; border-left: 5px solid #4A2E80; border-radius: 3mm;
+                padding: 6mm 7mm; background: #f8fafc !important;
+            }
+            .pitch-pilar h3 { font-size: 13pt; font-weight: 800; color: #4A2E80; margin: 0 0 3mm; }
+            .pitch-pilar p { font-size: 11.5pt; line-height: 1.4; color: #334155; margin: 0; }
+
+            /* Slide 4 — Impacto */
+            .pitch-impact {
+                background: linear-gradient(135deg, #0a2540 0%, #4A2E80 100%) !important;
+                color: #ffffff; justify-content: flex-start;
+            }
+            .pitch-validacao { font-size: 13pt; color: #bae6fd; margin: 8mm 0 0; }
+            .pitch-cta {
+                margin-top: auto; font-size: 18pt; font-weight: 800; color: #fde68a;
+                border-top: 1px solid rgba(255,255,255,0.25); padding-top: 8mm;
+            }
+        }
+    </style>
+
+</head>
+<body class="text-slate-700 font-sans">
+
+    <!-- 📱 MOLDE INVISÍVEL DO SOCIAL CARD (renderizado pelo html2canvas) -->
+    <div id="social-card-molde" style="position: absolute; left: -9999px; top: 0; width: 800px; height: 800px;
+        background: linear-gradient(135deg, #4A2E80 0%, #6d28d9 45%, #d97706 100%);
+        font-family: 'Segoe UI', Arial, sans-serif; color: #ffffff; box-sizing: border-box;
+        padding: 70px 64px; display: flex; flex-direction: column; justify-content: space-between;
+        overflow: hidden;">
+        <div style="position: absolute; top: -120px; right: -120px; width: 360px; height: 360px;
+            border-radius: 50%; background: rgba(255,255,255,0.07);"></div>
+        <div style="position: absolute; bottom: -140px; left: -90px; width: 320px; height: 320px;
+            border-radius: 50%; background: rgba(251,191,36,0.12);"></div>
+
+        <div style="position: relative;">
+            <span style="display: inline-block; background: rgba(255,255,255,0.16); color: #fde68a;
+                font-size: 22px; font-weight: 800; letter-spacing: 0.5px; padding: 12px 24px;
+                border-radius: 999px;">💡 Nova Ideia de Inovação Educacional</span>
+        </div>
+
+        <div style="position: relative; flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 24px 0;">
+            <h1 id="sc-titulo" style="font-size: 60px; line-height: 1.12; font-weight: 900; margin: 0 0 24px;
+                color: #ffffff; text-shadow: 0 4px 18px rgba(0,0,0,0.25);">Inovação Educacional</h1>
+            <p id="sc-resumo" style="font-size: 27px; line-height: 1.5; font-weight: 400; margin: 0;
+                color: rgba(255,255,255,0.92); white-space: pre-line;"></p>
+            <div id="sc-selo" style="display: none; margin-top: 26px; align-self: flex-start;
+                background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
+                border-radius: 999px; padding: 12px 24px; font-size: 22px; font-weight: 700; color: #ffffff;">
+                <span style="color:#fde68a;">Inovação liderada por:</span> <span id="sc-selo-nome"></span>
+            </div>
+        </div>
+
+        <div style="position: relative; border-top: 2px solid rgba(255,255,255,0.25); padding-top: 26px;
+            display: flex; align-items: center; gap: 16px;">
+            <div style="width: 56px; height: 56px; border-radius: 14px; background: #ffffff; color: #4A2E80;
+                font-weight: 900; font-size: 24px; display: flex; align-items: center; justify-content: center;">DX</div>
+            <div>
+                <div style="font-size: 24px; font-weight: 800; color: #ffffff;">Gerado via PanelDX</div>
+                <div style="font-size: 19px; color: #fde68a;">O Motor da Transformação CTDI</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎨 SOCIAL STUDIO MODAL -->
+    <div id="social-studio-modal" class="no-print" style="display:none; position: fixed; inset: 0; z-index: 9998;
+        background: rgba(15,23,42,0.65); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 24px;">
+        <div class="wb-card" style="background:#fff; border-radius: 20px; width: 100%; max-width: 940px; max-height: 92vh;
+            overflow: hidden; display: flex; flex-direction: column;">
+            <!-- Header -->
+            <div style="display:flex; justify-content: space-between; align-items: center; padding: 18px 24px;
+                border-bottom: 1px solid var(--wb-border);">
+                <div>
+                    <h3 class="title-lilac" style="font-size: 1.1rem; font-weight: 800; margin: 0;">
+                        <i class="fa-solid fa-wand-magic-sparkles accent-gold"></i> Social Studio
+                    </h3>
+                    <p style="font-size: 0.75rem; color: var(--wb-muted); margin: 2px 0 0;">Personalize sua postagem antes de levar para as redes</p>
+                </div>
+                <button type="button" onclick="fecharSocialStudio()" class="text-slate-400 hover:text-rose-500 text-xl px-2">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Body: 2 colunas -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 22px; padding: 22px 24px; overflow-y: auto;">
+                <!-- Coluna Esquerda: Preview -->
+                <div>
+                    <span class="title-lilac" style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; display:block; margin-bottom: 8px;">Pré-visualização</span>
+                    <div style="background:#f1f5f9; border:1px solid var(--wb-border); border-radius: 14px; padding: 14px; display:flex; align-items:center; justify-content:center; aspect-ratio: 1/1;">
+                        <div id="sc-preview-loading" style="text-align:center; color: var(--wb-muted); font-size: 0.8rem;">
+                            <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.4rem;"></i>
+                            <p style="margin-top:8px;">Gerando preview...</p>
+                        </div>
+                        <img id="sc-preview-img" alt="Preview do card" style="display:none; width:100%; height:auto; border-radius: 10px; box-shadow: 0 8px 24px rgba(15,23,42,0.18);">
+                    </div>
+                </div>
+
+                <!-- Coluna Direita: Editor -->
+                <div style="display:flex; flex-direction: column; gap: 14px;">
+                    <div>
+                        <label class="title-lilac" style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing:.5px; display:block; margin-bottom: 6px;">Nome do Perfil</label>
+                        <input type="text" id="sc-input-perfil" class="wb-input rounded-xl p-2.5 text-sm w-full" placeholder="Ex: @colegioinovador" oninput="onPerfilInput()">
+                    </div>
+
+                    <div>
+                        <label class="title-lilac" style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing:.5px; display:block; margin-bottom: 6px;">Rede Social</label>
+                        <select id="sc-select-rede" class="wb-input rounded-xl p-2.5 text-sm w-full" onchange="onRedeChange()">
+                            <option value="Instagram">Instagram</option>
+                            <option value="LinkedIn">LinkedIn</option>
+                        </select>
+                    </div>
+
+                    <div style="flex:1; display:flex; flex-direction:column;">
+                        <label class="title-lilac" style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing:.5px; display:block; margin-bottom: 6px;">Chamada de Colaboração</label>
+                        <textarea id="sc-textarea-legenda" rows="6" class="wb-input rounded-xl p-3 text-sm w-full" style="resize: vertical; flex:1; min-height: 150px;" oninput="onLegendaInput()"></textarea>
+                        <span style="font-size: 0.68rem; color: var(--wb-muted); margin-top: 6px; display:block;">
+                            <i class="fa-solid fa-circle-info"></i> Este texto aparece no card e também é copiado para a legenda da postagem.
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer: ação primária -->
+            <div style="padding: 16px 24px; border-top: 1px solid var(--wb-border);">
+                <button type="button" id="btn-finalizar-social" onclick="finalizarECopiar()" class="btn-gold w-full py-3.5 rounded-xl text-sm font-bold uppercase tracking-wide flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-check"></i> Finalizar e Copiar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎤 PITCH ELEVATOR DECK (4 slides) — renderizado apenas na impressão dedicada -->
+    <div id="pitch-deck" aria-hidden="true">
+        <!-- Slide 1 — Capa -->
+        <section class="pitch-slide pitch-cover">
+            <div class="pitch-badge">🎤 Pitch de Inovação · Elevator Pitch</div>
+            <h1 id="pitch-titulo" class="pitch-cover-title">Inovação Educacional</h1>
+            <p id="pitch-sub" class="pitch-cover-sub">Uma tese de transformação digital com o aluno no centro.</p>
+            <div class="pitch-cover-foot">
+                <span class="pitch-dx">DX</span>
+                <span>PanelDX · Metodologia CTDI &nbsp;·&nbsp; <span id="pitch-data"></span></span>
+            </div>
+        </section>
+
+        <!-- Slide 2 — A Tese / O Porquê -->
+        <section class="pitch-slide">
+            <div class="pitch-kicker">01 · A Tese Pedagógica</div>
+            <h2 class="pitch-h2">Qual problema estamos resolvendo</h2>
+            <p id="pitch-justificativa" class="pitch-body"></p>
+        </section>
+
+        <!-- Slide 3 — Como Executamos (4 Pilares) -->
+        <section class="pitch-slide">
+            <div class="pitch-kicker">02 · Como Executamos</div>
+            <h2 class="pitch-h2">Os 4 Pilares de Execução</h2>
+            <div id="pitch-pilares" class="pitch-pilares-grid"></div>
+        </section>
+
+        <!-- Slide 4 — Impacto & Próximos Passos -->
+        <section class="pitch-slide pitch-impact">
+            <div class="pitch-kicker pitch-kicker-light">03 · Impacto &amp; Validação</div>
+            <h2 class="pitch-h2 pitch-h2-light">Por que isso importa</h2>
+            <p id="pitch-impacto" class="pitch-body pitch-body-light"></p>
+            <p id="pitch-validacao" class="pitch-validacao"></p>
+            <div class="pitch-cta">Vamos colaborar para colocar essa ideia em prática? 🚀</div>
+        </section>
+    </div>
+
+    <!-- ✅ Toast de feedback -->
+    <div id="toast-feedback" style="position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(140%);
+        background: #059669; color: #fff; padding: 14px 22px; border-radius: 12px; font-size: 14px; font-weight: 600;
+        box-shadow: 0 12px 32px rgba(5,150,105,0.4); z-index: 9999; opacity: 0; transition: transform .35s ease, opacity .35s ease;
+        max-width: 420px; text-align: center;"></div>
+
+
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur px-8 py-4 flex justify-between items-center shadow-sm sticky top-0 z-40">
+        <div class="flex items-center gap-3">
+            <div class="p-2 rounded-lg text-xl font-bold text-white btn-lilac">DX</div>
+            <div>
+                <h1 class="text-lg font-extrabold title-lilac">Oficina do Inovador</h1>
+                <p class="text-xs text-slate-500">Espaço criativo de captura e operação pedagógica</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="text-xs px-3 py-1.5 rounded-lg wb-soft text-slate-600">
+                Cliente Ativo ID: <strong class="title-lilac" id="lbl-cliente-id">{{ id_clie }}</strong>
+            </div>
+            <button onclick="executarLogout()" class="text-rose-500 hover:text-white hover:bg-rose-500 transition-colors text-lg p-2 rounded-xl bg-white border border-slate-200 shadow-sm" title="Sair da Oficina e voltar ao PanelDX">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- 📄 CABEÇALHO DO RELATÓRIO (visível apenas na impressão/PDF) -->
+        <div id="print-report-header" class="print-only">
+            <p class="rep-kicker">Relatório de Inovação · Metodologia CTDI</p>
+            <h1 class="rep-title" id="print-rep-titulo">Inovação</h1>
+            <p class="rep-meta">Gerado em <span id="print-rep-data"></span> · LeAction PanelDX</p>
+        </div>
+
+        <section id="left-column" class="lg:col-span-5 flex flex-col gap-6">
+            <div class="wb-card rounded-2xl p-5 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-bold tracking-wide title-lilac uppercase"><i class="fa-solid fa-calendar-day accent-gold mr-2"></i>1. Rotina Contextual</h2>
+                    <div class="flex gap-1">
+                        <button onclick="editarRotinaAtiva()" class="text-slate-400 hover:text-[var(--lilac)] text-xs p-1"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deletarRotinaAtiva()" class="text-slate-400 hover:text-rose-500 text-xs p-1"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                <select id="select-rotina" class="w-full wb-input rounded-xl p-2.5 text-xs">
+                    <option value="">Carregando suas aulas...</option>
+                </select>
+                <div class="flex gap-2 border-t border-slate-200 pt-3">
+                    <input type="text" id="txt-nova-rotina" class="flex-1 wb-input rounded-xl p-2 text-xs" placeholder="Nova Aula (Ex: 3º Ano - Física)">
+                    <button id="btn-add-rotina" class="btn-lilac font-bold px-3 rounded-xl text-xs"><i class="fa-solid fa-plus"></i></button>
+                </div>
+            </div>
+
+            <div class="wb-card rounded-2xl p-5">
+                <h2 class="text-sm font-bold tracking-wide title-lilac uppercase mb-4"><i class="fa-solid fa-microphone-lines accent-gold mr-2"></i>2. Desabafo de Campo</h2>
+                <div class="flex flex-col items-center justify-center p-3 wb-soft rounded-xl mb-3">
+                    <button id="btn-mic" class="w-14 h-14 btn-lilac rounded-full flex items-center justify-center text-white text-xl shadow-lg transition-all hover:scale-105">
+                        <i class="fa-solid fa-microphone" id="mic-icon"></i>
+                    </button>
+                    <p id="mic-status" class="text-[10px] text-slate-500 mt-2 text-center">Clique para ditar ideias ou gargalos</p>
+                </div>
+                <div class="space-y-2">
+                    <textarea id="txt-nota" rows="3" class="w-full wb-input rounded-xl p-3 text-sm" placeholder="Escreva ou dite o problema ocorrido na aula..."></textarea>
+                    <button id="btn-salvar-nota" class="w-full btn-gold py-2.5 rounded-xl text-xs font-bold tracking-wide">Registrar no Diário de Bordo</button>
+                </div>
+            </div>
+
+            <div class="wb-card rounded-2xl p-5 flex-1 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-bold tracking-wide title-lilac uppercase"><i class="fa-solid fa-palette accent-gold mr-2"></i>Mural de Afinidades</h2>
+                    <span id="contador-notas" class="text-xs wb-soft px-2.5 py-0.5 rounded-full text-slate-600 font-bold">0</span>
+                </div>
+                <div id="container-notas" class="grid grid-cols-2 gap-3 max-h-[350px] overflow-y-auto p-1 flex-1"></div>
+            </div>
+        </section>
+
+        <section id="mesa-section" class="lg:col-span-7 wb-card rounded-2xl p-6 flex flex-col">
+            <h2 class="text-sm font-bold tracking-wide title-lilac uppercase mb-4"><i class="fa-solid fa-flask-vial accent-gold mr-2"></i>Mesa de Lapidação Inteligente</h2>
+
+            <div id="cmu-block" class="wb-soft rounded-xl p-4 mb-4 relative">
+                <span class="text-[10px] uppercase title-lilac font-bold block mb-1.5"><i class="fa-solid fa-graduation-cap mr-1"></i> Classificação Científica CMU (Referencial Teórico)</span>
+                <div class="relative">
+                    <input type="text" id="txt-busca-cmu" oninput="executarBuscaCMU(this.value)" class="w-full wb-input rounded-lg p-2.5 pl-9 text-xs" placeholder="Digite um termo para classificar o problema (Ex: falta, tecnologia, nota)...">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-xs"></i>
+                </div>
+                <div id="dropdown-resultados-cmu" class="hidden absolute left-4 right-4 top-[68px] bg-white border border-slate-200 rounded-xl shadow-2xl z-50 max-h-[220px] overflow-y-auto"></div>
+
+                <div id="bloco-exibicao-cmu" class="hidden mt-3 p-3 bg-white border border-slate-200 rounded-xl space-y-2 text-xs">
+                    <div><strong class="title-lilac"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Descrição do Problema:</strong> <p id="lbl-cmu-desc" class="text-slate-700 mt-0.5 leading-relaxed"></p></div>
+                    <div><strong class="title-lilac"><i class="fa-solid fa-code-fork mr-1"></i> Razões Causa-Raiz:</strong> <p id="lbl-cmu-razoes" class="text-slate-600 mt-0.5 leading-relaxed"></p></div>
+                    <div><strong class="title-lilac"><i class="fa-solid fa-lightbulb mr-1"></i> Soluções Mapeadas:</strong> <p id="lbl-cmu-solucoes" class="text-slate-600 mt-0.5 leading-relaxed"></p></div>
+                </div>
+            </div>
+
+            <div id="bloco-block" class="wb-soft rounded-xl p-4 mb-6">
+                <select id="select-bloco" class="w-full wb-input rounded-xl p-3 text-sm">
+                    <option value="Aprendizagem_Experiencial">Aprendizagem Experiencial (Framework de Programa Baseado em Experiência)</option>
+                    <option value="Aprendizagem_Digital">Aprendizagem Digital (Plano LXD - Design de Experiência do Aprendiz)</option>
+                    <option value="Testes_Exames">Testes e Exames (Sistema de Avaliação Digital Formativa/Somativa)</option>
+                </select>
+            </div>
+
+            <div id="result-wrap" class="flex-1 flex flex-col border border-dashed border-slate-300 rounded-xl p-4 bg-slate-50/60 relative min-h-[300px]">
+                <div id="ia-empty-state" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                    <div class="w-12 h-12 rounded-full bg-[#7C3AED]/10 flex items-center justify-center title-lilac mb-2 text-xl"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <p class="text-xs text-slate-500">Clique em um post-it já <strong>Incubado</strong> para leitura ou selecione os <strong>Pendentes</strong> para lapidar com o Consultor LeAction.</p>
+                </div>
+
+                <div id="ia-result-panel" class="hidden space-y-4 text-sm flex-1 overflow-y-auto max-h-[420px] pr-1">
+                    <input type="hidden" id="hdn-id-acao" value="">
+
+                    <div id="card-cmu-selecionado" class="hidden p-3 bg-[#7C3AED]/5 border border-[#7C3AED]/20 rounded-xl space-y-1.5">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[9px] uppercase bg-[#7C3AED]/10 px-2 py-0.5 rounded title-lilac font-bold" id="lbl-cmu-grupo-cat"></span>
+                            <button onclick="removerClassificacaoCMU()" class="text-slate-400 hover:text-rose-500 text-[10px]"><i class="fa-solid fa-xmark"></i> Remover</button>
+                        </div>
+                        <p class="text-xs text-slate-700 font-semibold" id="lbl-cmu-sintoma"></p>
+                        <div class="text-[11px] text-slate-500 border-t border-slate-200 pt-1" id="lbl-cmu-remedio"></div>
+                    </div>
+
+                    <div class="p-3 bg-gradient-to-r from-[#4A2E80]/8 to-[#d97706]/8 border border-[#7C3AED]/25 rounded-xl">
+                        <span class="text-[9px] uppercase tracking-wider font-bold accent-gold block mb-1 no-print">Título do Projeto (Clique para editar)</span>
+                        <h4 id="res-titulo" contenteditable="true" class="font-bold text-slate-800 text-base focus:outline-none"></h4>
+                    </div>
+
+                    <div class="print-only rep-heading">Justificativa Pedagógica e Impacto no Negócio</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-3 bg-white rounded-xl border border-slate-200">
+                            <span class="text-[9px] uppercase text-slate-500 block font-bold mb-1">Justificativa Pedagógica</span>
+                            <p id="res-justificativa" contenteditable="true" class="text-xs text-slate-600 focus:outline-none p-1"></p>
+                        </div>
+                        <div class="p-3 bg-white rounded-xl border border-slate-200">
+                            <span class="text-[9px] uppercase text-slate-500 block font-bold mb-1">Impacto no Negócio (ROI/ESG)</span>
+                            <p id="res-impacto" contenteditable="true" class="text-xs text-slate-600 focus:outline-none p-1"></p>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-white rounded-xl border border-slate-200 space-y-3">
+                        <span class="rep-heading text-xs font-bold title-lilac block uppercase tracking-wider">Os 4 Pilares de Execução</span>
+                        <div id="res-composicao" class="space-y-2 text-xs text-slate-600"></div>
+                    </div>
+
+                    <!-- 📄 EXPERIMENTOS DE VALIDAÇÃO (preenchido no momento da impressão) -->
+                    <div id="print-experimentos-wrap" class="print-only">
+                        <div class="rep-heading">Experimentos de Validação</div>
+                        <div id="print-experimentos-body"></div>
+                    </div>
+
+                    <!-- Rodapé institucional do relatório (apenas impressão) -->
+                    <div id="print-report-footer" class="print-only">
+                        Documento gerado pela Mesa de Inovação · LeAction PanelDX — Metodologia CTDI
+                    </div>
+
+                    <div id="panel-experimentacao" class="hidden border-t border-slate-200 pt-4 space-y-4">
+                        <span class="text-xs font-bold title-lilac block uppercase tracking-wider">
+                            <i class="fa-solid fa-vial-circle-check mr-1"></i> Laboratório de Experimentação Ativa
+                        </span>
+
+                        <div id="form-novo-experimento" class="p-3 wb-soft rounded-xl space-y-3 relative">
+                            <span class="text-[10px] uppercase title-lilac font-bold block"><i class="fa-solid fa-magnifying-glass-chart mr-1"></i> Ancorar Metodologia Ativa de Referência</span>
+
+                            <div class="relative">
+                                <input type="text" id="txt-busca-metodo" oninput="executarBuscaMetodologia(this.value)" class="w-full wb-input rounded-lg p-2 text-xs" placeholder="Pesquisar Metodologia (Ex: Ágeis, Imersivas, Analíticas)...">
+                                <div id="dropdown-resultados-metodo" class="hidden absolute left-0 right-0 top-9 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 max-h-[180px] overflow-y-auto"></div>
+                            </div>
+
+                            <div id="wrapper-select-pratica" class="hidden space-y-1">
+                                <label class="text-[9px] text-slate-500 uppercase font-bold block">Prática Pedagógica Co-Autora Alvo</label>
+                                <select id="select-pratica-ativa" onchange="configurarPlaceholdersPraticaAtiva()" class="w-full wb-input rounded-lg p-2 text-xs"></select>
+                            </div>
+
+                            <span class="text-[10px] uppercase text-slate-500 font-bold block pt-2 border-t border-slate-200">Registrar Evidência de Campo</span>
+
+                            <div class="space-y-2">
+                                <input type="hidden" id="hdn-id-espex" value="">
+
+                                <div id="txt-hipo-espex" contenteditable="true" data-placeholder="Hipótese Empírica (O que você acreditava que iria acontecer?)" class="w-full wb-input rounded-lg p-2 text-xs min-h-[40px]"></div>
+                                <div id="txt-desc-espex" contenteditable="true" data-placeholder="Descrição da Experimentação Ativa (O que foi executado na prática?)" class="w-full wb-input rounded-lg p-2 text-xs min-h-[60px]"></div>
+                                <div id="txt-result-espex" contenteditable="true" data-placeholder="Resultados Alcançados (Qual foi o impacto observado?)" class="w-full wb-input rounded-lg p-2 text-xs min-h-[60px]"></div>
+
+                                <button type="button" id="btn-salvar-experimento" onclick="adicionarExperimentoDescritivo()" class="w-full btn-lilac font-bold py-1.5 rounded-lg text-[11px] uppercase tracking-wide">Adicionar Experimento</button>
+                            </div>
+                        </div>
+
+                        <div id="container-experimentos-lista" class="space-y-2 max-h-[220px] overflow-y-auto pr-1"></div>
+
+                        <!-- 🎯 GERENCIADOR DE SUBTASKS VINCULADAS AOS 4 PILARES -->
+                        <div class="p-4 bg-white rounded-xl border border-[#d97706]/30 mt-4 space-y-3">
+                            <span class="text-[10px] uppercase accent-gold font-bold block mb-2"><i class="fa-solid fa-list-check mr-1"></i> Planejamento de Subtasks por Pilar (Máx 4)</span>
+
+                            <div class="flex flex-col gap-2 wb-soft p-2 rounded-lg">
+                                <div id="txt-nova-subtask" contenteditable="true" data-placeholder="Descreva a subtask (Ex: Configurar ambiente...)" class="w-full wb-input rounded-lg p-2 text-xs min-h-[40px]"></div>
+
+                                <div class="flex flex-wrap justify-between items-center gap-2 border-t border-slate-200 pt-2">
+                                    <div class="flex flex-wrap gap-3">
+                                        <label class="flex items-center gap-1 text-[9px] text-slate-600 uppercase cursor-pointer hover:text-[var(--brand-gold)]">
+                                            <input type="radio" name="rd_pilar_subtask" value="contencao" class="accent-[#d97706]" checked> Contenção
+                                        </label>
+                                        <label class="flex items-center gap-1 text-[9px] text-slate-600 uppercase cursor-pointer hover:text-[var(--brand-gold)]">
+                                            <input type="radio" name="rd_pilar_subtask" value="implementacao" class="accent-[#d97706]"> Implementação
+                                        </label>
+                                        <label class="flex items-center gap-1 text-[9px] text-slate-600 uppercase cursor-pointer hover:text-[var(--brand-gold)]">
+                                            <input type="radio" name="rd_pilar_subtask" value="prevencao" class="accent-[#d97706]"> Prevenção
+                                        </label>
+                                        <label class="flex items-center gap-1 text-[9px] text-slate-600 uppercase cursor-pointer hover:text-[var(--brand-gold)]">
+                                            <input type="radio" name="rd_pilar_subtask" value="sustentacao" class="accent-[#d97706]"> Sustentação
+                                        </label>
+                                    </div>
+                                    <button type="button" onclick="adicionarSubtaskNaLista()" class="btn-gold font-bold px-2 py-1 rounded text-[9px] uppercase">Vincular</button>
+                                </div>
+                            </div>
+                            <div id="lista-subtasks-adicionadas" class="space-y-1 mt-2"></div>
+                        </div>
+                    </div>
+
+                    <div id="escolas-block" class="p-3 bg-white rounded-xl border border-slate-200 mt-4">
+                        <span class="text-[10px] uppercase title-lilac block font-bold mb-1">
+                            <i class="fa-solid fa-network-wired mr-1"></i> Integração Projeto Escola (cód. ref.)
+                        </span>
+                        <input type="text" id="txt-escolas-ref" class="wb-input rounded-lg p-2.5 text-xs w-full" placeholder="Ex: 71, 85, 104 (separe por vírgula para espalhar em mais de uma)">
+                        <span class="text-[9px] text-slate-400 block mt-1">Esta inovação será distribuída de forma assíncrona para o Kanban de todas as escolas listadas.</span>
+                    </div>
+
+                    <div id="export-json-block" class="p-4 bg-white rounded-xl border border-slate-200 mt-4 space-y-3">
+                        <span class="text-[10px] uppercase accent-gold block font-bold">
+                            <i class="fa-solid fa-file-export mr-1"></i> Exportação Híbrida de Sprint (Agile Delivery)
+                        </span>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[10px] text-slate-500 block mb-1">Nome do Arquivo JSON</label>
+                                <input type="text" id="txt-nome-arquivo-export" class="wb-input rounded-lg p-2 text-xs w-full" placeholder="sprint_backlog_pedagogico">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-500 block mb-1">Formato / Destino Alvo</label>
+                                <select id="combo-formato-destino" class="wb-input rounded-lg p-2 text-xs w-full">
+                                    <option value="Universal">Universal (Agnóstico / Envelope Puro)</option>
+                                    <option value="Jira">Jira Cloud (Scrum Native / Issue Stories)</option>
+                                    <option value="Trello">Trello Workspace (Kanban Pure / Board Lists)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="button" id="btn-exportar-json" class="w-full btn-gold font-bold py-2 rounded-xl text-xs uppercase tracking-wide">
+                            <i class="fa-solid fa-download mr-1"></i> Compilar e Baixar Arquivo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="footer-actions" class="mt-6 pt-4 border-t border-slate-200 flex flex-wrap gap-4">
+                <button id="btn-incubar" class="flex-1 btn-lilac text-xs font-bold uppercase tracking-wider py-3 rounded-xl shadow-lg">Lapidar com Consultor LeAction</button>
+                <button id="btn-sprint" disabled class="bg-slate-100 border border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider px-6 rounded-xl transition-all cursor-not-allowed">Lançar Sprint</button>
+                <button id="btn-exportar-pdf" type="button" onclick="exportarRelatorioPDF()" class="btn-ghost text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl shadow-sm flex items-center gap-2" title="Gerar relatório executivo em PDF">
+                    <i class="fa-solid fa-print"></i> Exportar Relatório (PDF)
+                </button>
+                <button id="btn-pitch-pdf" type="button" onclick="gerarPitchPDF()" class="btn-ghost text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl shadow-sm flex items-center gap-2" title="Gerar um pitch elevator em PDF (até 4 slides)">
+                    <i class="fa-solid fa-microphone-lines"></i> Pitch Elevator (PDF)
+                </button>
+                <button id="btn-social-card" type="button" onclick="abrirSocialStudio()" class="text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl shadow-md flex items-center gap-2" style="background: linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%);" title="Abrir o Social Studio para customizar a postagem">
+                    <i class="fa-solid fa-share-nodes"></i> Compartilhar na Rede
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+
+        const idClieReal = parseInt("{{ id_clie }}") || 999;
+        let notasLocais = [];
+        let cmuSelecionadoLocal = null;
+        let cacheResultadosCMU = [];
+
+        let cacheMetodologiasAtivas = [];
+        let cachePraticasAtivas = [];
+        let rotasMetodologicasSalvas = [];
+        let cacheExperimentosLocais = [];
+
+        // 🎯 NOVO VETOR GLOBAL PARA GERENCIAR AS SUBTASKS ANTES DE SALVAR/EXPORTAR
+        let listaSubtasksLocais = [];
+
+        // 🏛️ OS 4 PILARES FIXOS DO ARTEFATO (nunca usar a palavra "item")
+        const ORDEM_PILARES = ['contencao', 'implementacao', 'prevencao', 'sustentacao'];
+        const PILARES_FIXOS = {
+            contencao:    { label: 'Contenção do Problema',    prioridade: 'Critica', esforco: 5 },
+            implementacao:{ label: 'Implementação da Solução', prioridade: 'Alta',    esforco: 8 },
+            prevencao:    { label: 'Prevenção de Recorrência', prioridade: 'Media',   esforco: 3 },
+            sustentacao:  { label: 'Sustentação',              prioridade: 'Baixa',   esforco: 2 }
+        };
+        // Compatibilidade com inovações antigas gravadas com chaves item_1..item_4
+        const MAPA_LEGADO = { item_1: 'contencao', item_2: 'implementacao', item_3: 'prevencao', item_4: 'sustentacao' };
+        function normalizarChavePilar(key) { return MAPA_LEGADO[key] || key; }
+        function rotuloPilar(key) {
+            const k = normalizarChavePilar(key);
+            return (PILARES_FIXOS[k] && PILARES_FIXOS[k].label) || k;
+        }
+
+        const selectRotina = document.getElementById('select-rotina');
+        const txtNovaRotina = document.getElementById('txt-nova-rotina');
+        const containerNotas = document.getElementById('container-notas');
+        const txtNota = document.getElementById('txt-nota');
+        const btnMic = document.getElementById('btn-mic');
+        const micIcon = document.getElementById('mic-icon');
+        const micStatus = document.getElementById('mic-status');
+        const btnIncubar = document.getElementById('btn-incubar');
+        const btnSprint = document.getElementById('btn-sprint');
+
+        async function inicializarDashboard() {
+            try {
+                const lblId = document.getElementById('lbl-cliente-id');
+                if (lblId) lblId.innerText = idClieReal;
+
+                const resRotinas = await fetch(`/inovador/api/rotinas?id_clie=${idClieReal}`);
+                const dataRotinas = await resRotinas.json();
+                if (dataRotinas.status === 'success' && dataRotinas.data.length > 0) {
+                    selectRotina.innerHTML = dataRotinas.data.map(r => `<option value="${r.id_rotina}">${r.titulo_atividade}</option>`).join('');
+                } else {
+                    selectRotina.innerHTML = `<option value="">Crie uma aula abaixo para começar</option>`;
+                }
+
+                const resNotas = await fetch(`/inovador/api/notas?id_clie=${idClieReal}`);
+                const dataNotas = await resNotas.json();
+                notasLocais = dataNotas.status === 'success' ? dataNotas.data : [];
+                renderizarNotas();
+
+                const resCmuSessao = await fetch('/inovador/api/cmu/sessao');
+                const dataCmuSessao = await resCmuSessao.json();
+                if (dataCmuSessao.status === 'success' && dataCmuSessao.data) {
+                    cmuSelecionadoLocal = dataCmuSessao.data;
+                    document.getElementById('txt-busca-cmu').value = cmuSelecionadoLocal.categoria_prob;
+                    mostrarCmuNoPainelBusca(cmuSelecionadoLocal);
+                }
+            } catch (err) { console.error("Erro no carregamento do painel:", err); }
+        }
+
+        function mostrarCmuNoPainelBusca(item) {
+            const bloco = document.getElementById('bloco-exibicao-cmu');
+            if (!item) { bloco.classList.add('hidden'); return; }
+            bloco.classList.remove('hidden');
+            document.getElementById('lbl-cmu-desc').innerText = item.desc_prob || '';
+            document.getElementById('lbl-cmu-razoes').innerText = item.razoes_prob || '';
+            document.getElementById('lbl-cmu-solucoes').innerText = item.solucoes_prob || '';
+        }
+
+        async function executarBuscaCMU(termo) {
+            const dropdown = document.getElementById('dropdown-resultados-cmu');
+            if (termo.trim().length < 2) { dropdown.classList.add('hidden'); cacheResultadosCMU = []; return; }
+            try {
+                const res = await fetch(`/inovador/api/cmu/buscar?q=${encodeURIComponent(termo)}`);
+                const resData = await res.json();
+                if (resData.status === 'success' && resData.data.length > 0) {
+                    cacheResultadosCMU = resData.data; dropdown.classList.remove('hidden');
+                    dropdown.innerHTML = resData.data.map(item => `
+                        <div onclick="selecionarProblemaCMUPorId(${item.id_prob})" class="p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-all text-left">
+                            <div class="text-[9px] title-lilac font-bold uppercase tracking-wider mb-1">${item.grupo_prob} › ${item.categoria_prob}</div>
+                            <div class="text-xs text-slate-700 font-bold leading-tight"><i class="fa-solid fa-triangle-exclamation accent-gold mr-1"></i>${item.desc_prob}</div>
+                            <div class="text-[11px] text-slate-500 font-medium mt-1 pl-4 border-l border-slate-200 py-0.5"><strong>Causa:</strong> ${item.razoes_prob}</div>
+                        </div>
+                    `).join('');
+                } else { dropdown.classList.remove('hidden'); dropdown.innerHTML = '<div class="p-3 text-xs text-slate-400 italic">Sem correspondência diagnóstica.</div>'; }
+            } catch(e) { console.error(e); }
+        }
+
+        function selecionarProblemaCMUPorId(idProb) {
+            const itemEncontrado = cacheResultadosCMU.find(item => item.id_prob === idProb);
+            if (!itemEncontrado) return;
+            cmuSelecionadoLocal = itemEncontrado;
+            document.getElementById('dropdown-resultados-cmu').classList.add('hidden');
+            document.getElementById('txt-busca-cmu').value = itemEncontrado.categoria_prob;
+
+            mostrarCmuNoPainelBusca(itemEncontrado);
+            if (!document.getElementById('ia-result-panel').classList.contains('hidden')) {
+                exibirCardCMUAcoplado();
+            }
+
+            try {
+                fetch('/inovador/api/cmu/sessao', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cmu: itemEncontrado })
+                });
+            } catch(err) { console.error(err); }
+        }
+
+        function exibirCardCMUAcoplado() {
+            if (!cmuSelecionadoLocal) return;
+            const card = document.getElementById('card-cmu-selecionado');
+            card.classList.remove('hidden');
+            document.getElementById('lbl-cmu-grupo-cat').innerText = `${cmuSelecionadoLocal.grupo_prob} / ${cmuSelecionadoLocal.categoria_prob}`;
+            document.getElementById('lbl-cmu-sintoma').innerText = `Sintoma: ${cmuSelecionadoLocal.desc_prob}`;
+            document.getElementById('lbl-cmu-remedio').innerHTML = `<strong>Estratégia CMU:</strong> ${cmuSelecionadoLocal.solucoes_prob}`;
+        }
+
+        function removerClassificacaoCMU() {
+            cmuSelecionadoLocal = null;
+            document.getElementById('card-cmu-selecionado').classList.add('hidden');
+            document.getElementById('txt-busca-cmu').value = '';
+            mostrarCmuNoPainelBusca(null);
+
+            try {
+                fetch('/inovador/api/cmu/sessao', { method: 'DELETE' });
+            } catch(e) { console.error(e); }
+        }
+
+        async function executarBuscaMetodologia(termo) {
+            const dropdown = document.getElementById('dropdown-resultados-metodo');
+            if (termo.trim().length < 2) { dropdown.classList.add('hidden'); cacheMetodologiasAtivas = []; return; }
+            try {
+                const res = await fetch(`/inovador/api/metodologias/buscar?q=${encodeURIComponent(termo)}`);
+                const resData = await res.json();
+                if (resData.status === 'success' && resData.data.length > 0) {
+                    cacheMetodologiasAtivas = resData.data;
+                    dropdown.classList.remove('hidden');
+                    dropdown.innerHTML = resData.data.map(item => `
+                        <div onclick="selecionarMetodologiaAtivaPorId(${item.id_meta})" class="p-2 border-b border-slate-100 hover:bg-slate-50 cursor-pointer text-left transition-all">
+                            <div class="text-[10px] title-lilac font-bold uppercase"><i class="fa-solid fa-graduation-cap mr-1"></i>${item.cate_metodo}</div>
+                            <div class="text-xs text-slate-700 mt-0.5 font-semibold">${item.prop_pratico}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    dropdown.classList.remove('hidden');
+                    dropdown.innerHTML = '<div class="p-2 text-xs text-slate-400 italic">Nenhum catálogo encontrado.</div>';
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function selecionarMetodologiaAtivaPorId(idMeta) {
+            const meta = cacheMetodologiasAtivas.find(m => m.id_meta === idMeta);
+            if (!meta) return;
+
+            document.getElementById('dropdown-resultados-metodo').classList.add('hidden');
+            document.getElementById('txt-busca-metodo').value = meta.cate_metodo;
+
+            try {
+                const res = await fetch(`/inovador/api/metodologias/praticas?id_meta=${idMeta}`);
+                const resData = await res.json();
+                if (resData.status === 'success' && resData.data.length > 0) {
+                    cachePraticasAtivas = resData.data;
+                    const selectPratica = document.getElementById('select-pratica-ativa');
+
+                    selectPratica.innerHTML = '<option value="">-- Escolha uma Prática Ativa --</option>' +
+                        resData.data.map(p => `<option value="${p.id_prat}">${p.estra_pratica}</option>`).join('');
+
+                    document.getElementById('wrapper-select-pratica').classList.remove('hidden');
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        function configurarPlaceholdersPraticaAtiva() {
+            const idPrat = parseInt(document.getElementById('select-pratica-ativa').value);
+            if (!idPrat) return;
+            const pratica = cachePraticasAtivas.find(p => p.id_prat === idPrat);
+            if (!pratica) return;
+
+            document.getElementById('txt-hipo-espex').innerText = `Hipótese: O impacto de aplicar a estratégia "${pratica.estra_pratica}" no aprendizado...`;
+            document.getElementById('txt-desc-espex').innerText = `Passos de Implementação da Prática: ${pratica.meca_func}`;
+            document.getElementById('txt-result-espex').innerText = `Resultados e Recursos Alvo: ${pratica.recursos_impacto}`;
+
+            document.getElementById('txt-hipo-espex').setAttribute('data-placeholder', `Hipótese: O impacto de aplicar a estratégia "${pratica.estra_pratica}" no aprendizado...`);
+            document.getElementById('txt-desc-espex').setAttribute('data-placeholder', `Passos de Implementação da Prática: ${pratica.meca_func}`);
+            document.getElementById('txt-result-espex').setAttribute('data-placeholder', `Resultados e Recursos Alvo: ${pratica.recursos_impacto}`);
+
+            const jaExiste = rotasMetodologicasSalvas.some(r => r.id_prat === idPrat);
+            if (!jaExiste) rotasMetodologicasSalvas.push({ "id_meta": pratica.id_meta, "id_prat": idPrat });
+        }
+
+        // 🎯 FUNÇÕES DE GERENCIAMENTO DA LISTA DE SUBTASKS
+        function renderizarSubtasksLocais() {
+            const container = document.getElementById('lista-subtasks-adicionadas');
+            if (!container) return;
+            if (listaSubtasksLocais.length === 0) {
+                container.innerHTML = '<div class="text-[9px] text-slate-500 italic mt-1">Nenhuma subtask vinculada no momento.</div>';
+                return;
+            }
+            container.innerHTML = listaSubtasksLocais.map((st, idx) => `
+                <div class="flex justify-between items-center p-2 bg-white border border-slate-200 rounded shadow-sm">
+                    <div class="text-[10px] text-slate-600 leading-tight pr-2"><strong class="accent-gold uppercase">[${rotuloPilar(st.pilar_subtask)}]</strong> ${st.desc_subtask}</div>
+                    <button type="button" onclick="removerSubtaskLocal(${idx})" class="text-rose-500 hover:text-rose-400 px-2 flex-shrink-0 transition-colors" title="Excluir subtask"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function adicionarSubtaskNaLista() {
+            if (listaSubtasksLocais.length >= 4) return alert("O limite máximo de planejamento é de 4 subtasks.");
+            const txtEl = document.getElementById('txt-nova-subtask');
+            const texto = txtEl.innerText.trim();
+            if (!texto) return alert("Por favor, descreva a subtask antes de tentar vinculá-la.");
+
+            const radioPilar = document.querySelector('input[name="rd_pilar_subtask"]:checked');
+            const pilarVal = radioPilar ? radioPilar.value : 'contencao';
+
+            listaSubtasksLocais.push({ pilar_subtask: pilarVal, desc_subtask: texto });
+            txtEl.innerText = ''; // Limpa a caixa após adicionar
+            renderizarSubtasksLocais();
+        }
+
+        function removerSubtaskLocal(idx) {
+            listaSubtasksLocais.splice(idx, 1);
+            renderizarSubtasksLocais();
+        }
+
+
+        async function carregarHistoricoExperimentos(idAcao) {
+            const container = document.getElementById('container-experimentos-lista');
+            if(!container) return; container.innerHTML = '<div class="text-[11px] text-slate-500 italic">Atualizando laboratório...</div>';
+            try {
+                const res = await fetch(`/inovador/api/experimentos?id_acao=${idAcao}`);
+                const resData = await res.json();
+                if (resData.status === 'success' && resData.data && resData.data.length > 0) {
+                    cacheExperimentosLocais = resData.data;
+                    container.innerHTML = resData.data.map(exp => `
+                        <div onclick="carregarExperimentoParaEdicao(${exp.id_espex})" class="p-2 bg-white border border-slate-200 rounded-md flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-all" title="Clique para editar">
+                            <span class="text-xs text-slate-600 truncate"><i class="fa-solid fa-flask accent-gold mr-2"></i>Exp: ${exp.hipo_espex.substring(0, 50)}...</span>
+                            <span class="text-[10px] title-lilac"><i class="fa-solid fa-pen"></i></span>
+                        </div>
+                    `).join('');
+                } else {
+                    cacheExperimentosLocais = [];
+                    container.innerHTML = '<div class="text-[11px] text-slate-400 italic">Nenhum experimento registrado.</div>';
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        function carregarExperimentoParaEdicao(idEspex) {
+            const exp = cacheExperimentosLocais.find(e => e.id_espex === idEspex);
+            if(!exp) return;
+            document.getElementById('hdn-id-espex').value = exp.id_espex;
+            document.getElementById('txt-hipo-espex').innerText = exp.hipo_espex;
+            document.getElementById('txt-desc-espex').innerText = exp.desc_espex;
+            document.getElementById('txt-result-espex').innerText = exp.result_espex;
+            document.getElementById('btn-salvar-experimento').innerText = "Atualizar Experimento";
+        }
+
+        async function adicionarExperimentoDescritivo() {
+            const idAcao = document.getElementById('hdn-id-acao').value;
+            if(!idAcao) return alert("Lance a Sprint ou selecione uma ação incubada antes!");
+
+            const idEspexEdicao = document.getElementById('hdn-id-espex').value;
+            const hipo = document.getElementById('txt-hipo-espex').innerText.trim();
+            const desc = document.getElementById('txt-desc-espex').innerText.trim();
+            const result = document.getElementById('txt-result-espex').innerText.trim();
+
+            if(!hipo || !desc || !result) return alert("Preencha todos os campos do experimento!");
+
+            try {
+                const metodo = idEspexEdicao ? 'PUT' : 'POST';
+                const payload = { id_acao: parseInt(idAcao), hipo_espex: hipo, desc_espex: desc, result_espex: result };
+                if(idEspexEdicao) payload.id_espex = parseInt(idEspexEdicao);
+
+                const response = await fetch('/inovador/api/experimentos', {
+                    method: metodo, headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if((await response.json()).status === 'success') {
+                    document.getElementById('hdn-id-espex').value = '';
+                    document.getElementById('txt-hipo-espex').innerText = '';
+                    document.getElementById('txt-desc-espex').innerText = '';
+                    document.getElementById('txt-result-espex').innerText = '';
+                    document.getElementById('btn-salvar-experimento').innerText = "Adicionar Experimento";
+                    carregarHistoricoExperimentos(parseInt(idAcao));
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function dispararLançamentoOuAtualizacao(idAcaoOpcional = null, blocoForcado = null) {
+            const bloco = blocoForcado || document.getElementById('select-bloco').value;
+            let pilaresFinais = {};
+            document.querySelectorAll('.pilar-editavel').forEach(el => { pilaresFinais[el.getAttribute('data-key')] = el.innerText.trim(); });
+            const selecionadas = Array.from(document.querySelectorAll('.chk-nota:checked')).map(cb => parseInt(cb.value));
+            const schoolsInput = document.getElementById('txt-escolas-ref');
+            const codigosEsf = schoolsInput ? schoolsInput.value.trim() : "";
+
+            try {
+                const response = await fetch('/inovador/api/acoes/salvar', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id_acao: idAcaoOpcional,
+                        id_clie: idClieReal,
+                        bloco_leaction: bloco,
+                        ids_notas: selecionadas,
+                        nome_acao: document.getElementById('res-titulo').innerText.trim(),
+                        justificativa_pedagogica: document.getElementById('res-justificativa').innerText.trim(),
+                        impacto_negocio: document.getElementById('res-impacto').innerText.trim(),
+                        composicao_estruturada: pilaresFinais,
+                        codigos_escolas_ref: codigosEsf,
+                        id_prob: cmuSelecionadoLocal ? cmuSelecionadoLocal.id_prob : null,
+                        rotas_metodologicas: rotasMetodologicasSalvas,
+                        subtasks_list: listaSubtasksLocais // Apenas o vetor da nova tabela é enviado
+                    })
+                });
+                if((await response.json()).status === 'success') {
+                    alert("Operação realizada com sucesso!");
+                    window.location.reload();
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function editarRotinaAtiva() {
+            const id = selectRotina.value; if(!id) return alert("Selecione uma aula ativa.");
+            const textoAtual = selectRotina.options[selectRotina.selectedIndex].text;
+            const novoTitulo = prompt("Refine o título:", textoAtual); if(!novoTitulo) return;
+            try {
+                const res = await fetch('/inovador/api/rotinas', {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_rotina: parseInt(id), titulo_atividade: novoTitulo })
+                });
+                if((await res.json()).status === 'success') inicializarDashboard();
+            } catch(e) { console.error(e); }
+        }
+
+        async function deletarRotinaAtiva() {
+            const id = selectRotina.value; if(!id) return alert("Selecione uma aula.");
+            if(!confirm("Deseja apagar?")) return;
+            try {
+                const res = await fetch(`/inovador/api/rotinas?id_rotina=${id}`, { method: 'DELETE' });
+                if((await res.json()).status === 'success') inicializarDashboard();
+            } catch(e) { console.error(e); }
+        }
+
+        async function editarNotaNoMural(idNota, event) {
+            event.stopPropagation(); const notaObj = notasLocais.find(n => n.id_nota === idNota);
+            const novoTexto = prompt("Refine:", notaObj.conteudo_bruto); if(!novoTexto) return;
+            try {
+                const res = await fetch('/inovador/api/notas', {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_nota: idNota, conteudo_bruto: novoTexto })
+                });
+                if((await res.json()).status === 'success') inicializarDashboard();
+            } catch(e) { console.error(e); }
+        }
+
+        async function deletarNotaNoMural(idNota, event) {
+            event.stopPropagation(); if(!confirm("Remover?")) return;
+            try {
+                const res = await fetch(`/inovador/api/notas?id_nota=${idNota}`, { method: 'DELETE' });
+                if((await res.json()).status === 'success') inicializarDashboard();
+            } catch(e) { console.error(e); }
+        }
+
+        function renderizarNotas() {
+            document.getElementById('contador-notas').innerText = notasLocais.length;
+            if(notasLocais.length === 0) { containerNotas.innerHTML = `<div class="col-span-2 text-center text-slate-400 text-xs py-8">Nenhum post-it.</div>`; return; }
+            containerNotas.innerHTML = notasLocais.map((n, index) => {
+                let postItColor = "bg-amber-50 border-amber-200 text-amber-900";
+                if (n.tipo_observacao === 'Comportamento_Aluno') postItColor = "bg-rose-50 border-rose-200 text-rose-900";
+                if (n.status_nota === 'Incubada') postItColor = "bg-emerald-50 border-emerald-200 text-emerald-900";
+                const rotation = index % 2 === 0 ? "rotate-1" : "-rotate-1";
+                return `
+                    <div onclick="gerenciarCliquePostIt(${n.id_nota}, '${n.status_nota}', event)" class="group relative aspect-square p-4 rounded-xl border ${postItColor} ${rotation} shadow-sm flex flex-col justify-between cursor-pointer transition-all duration-200 hover:scale-105 hover:rotate-0 hover:shadow-md">
+                        <div class="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                            ${n.status_nota === 'Pendente' ? `<button onclick="editarNotaNoMural(${n.id_nota}, event)" class="text-[10px] text-slate-400 hover:text-[var(--lilac)]"><i class="fa-solid fa-pen"></i></button><button onclick="deletarNotaNoMural(${n.id_nota}, event)" class="text-[10px] text-slate-400 hover:text-rose-500"><i class="fa-solid fa-trash"></i></button>` : ''}
+                            <input type="checkbox" value="${n.id_nota}" ${n.status_nota !== 'Pendente' ? 'disabled' : ''} class="chk-nota accent-[#7C3AED] w-3.5 h-3.5 rounded">
+                        </div>
+                        <div class="flex-1 overflow-hidden mt-2">
+                            <span class="text-[8px] bg-white/70 border border-slate-200 px-1.5 py-0.5 rounded text-slate-500 block w-max mb-1 truncate">${n.aula_contexto || 'Sem contexto'}</span>
+                            <p class="text-[11px] font-medium leading-relaxed line-clamp-4">${n.conteudo_bruto}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function resetMesaDeLapidacao(mensagem = "Processando alquimia...") {
+            document.getElementById('ia-empty-state').classList.add('hidden');
+            document.getElementById('ia-result-panel').classList.remove('hidden');
+            document.getElementById('res-titulo').innerText = mensagem;
+            document.getElementById('res-justificativa').innerText = "";
+            document.getElementById('res-impacto').innerText = "";
+            document.getElementById('res-composicao').innerHTML = "";
+
+            listaSubtasksLocais = []; // Limpa cache de subtasks
+            cacheExperimentosLocais = []; // Evita que o relatório PDF herde experimentos de outra inovação
+            renderizarSubtasksLocais();
+        }
+
+        async function gerenciarCliquePostIt(idNota, statusNota, event) {
+            if (event.target.type === 'checkbox' || event.target.closest('button')) return;
+            if (statusNota === 'Incubada') {
+                document.querySelectorAll('.chk-nota').forEach(cb => cb.checked = false);
+                resetMesaDeLapidacao("Buscando projeto estocado na base...");
+                try {
+                    const response = await fetch(`/inovador/api/acoes?id_nota=${idNota}`);
+                    const resData = await response.json();
+                    if (resData.status === 'success' && resData.data) {
+                        const acao = resData.data;
+                        document.getElementById('hdn-id-acao').value = acao.id_acao;
+                        document.getElementById('select-bloco').value = acao.bloco_leaction;
+                        document.getElementById('res-titulo').innerText = acao.nome_acao;
+                        document.getElementById('res-justificativa').innerText = acao.justificativa_pedagogica;
+                        document.getElementById('res-impacto').innerText = acao.impacto_negocio;
+                        const schoolsInput = document.getElementById('txt-escolas-ref');
+                        if (schoolsInput) schoolsInput.value = acao.codigos_escolas_ref || '';
+
+                        if (acao.id_prob) {
+                            cmuSelecionadoLocal = {
+                                id_prob: acao.id_prob, grupo_prob: acao.grupo_prob,
+                                categoria_prob: acao.categoria_prob, desc_prob: acao.desc_prob,
+                                razoes_prob: acao.razoes_prob, solucoes_prob: acao.solucoes_prob
+                            };
+                            document.getElementById('txt-busca-cmu').value = acao.categoria_prob;
+                            mostrarCmuNoPainelBusca(cmuSelecionadoLocal);
+                            exibirCardCMUAcoplado();
+                        } else { removerClassificacaoCMU(); }
+
+                        rotasMetodologicasSalvas = acao.rotas_metodologicas || [];
+
+                        // 🎯 CARREGA O VETOR DE SUBTASKS E RENDERIZA NA TELA
+                        listaSubtasksLocais = acao.subtasks_list || [];
+                        renderizarSubtasksLocais();
+
+                        const comp = acao.composicao_estruturada || {};
+                        let htmlPilares = '';
+                        ORDEM_PILARES.forEach(pilarKey => {
+                            // Aceita tanto a chave nova (contencao...) quanto a legada (item_1...)
+                            const legada = Object.keys(MAPA_LEGADO).find(k => MAPA_LEGADO[k] === pilarKey);
+                            const valor = comp[pilarKey] !== undefined ? comp[pilarKey] : (legada ? comp[legada] : '');
+                            if (valor === undefined || valor === null) return;
+                            htmlPilares += `<div class="p-2.5 bg-slate-50 rounded-lg border-l-4 border-[#7C3AED]"><strong class="title-lilac">${PILARES_FIXOS[pilarKey].label}:</strong> <span contenteditable="true" data-key="${pilarKey}" class="pilar-editavel focus:outline-none px-1 text-slate-700">${valor || ''}</span></div>`;
+                        });
+                        document.getElementById('res-composicao').innerHTML = htmlPilares;
+                        document.getElementById('panel-experimentacao').classList.remove('hidden');
+                        carregarHistoricoExperimentos(acao.id_acao);
+
+                        btnSprint.disabled = false; btnSprint.innerText = "Atualizar Projeto / Vínculos";
+                        btnSprint.className = "bg-gradient-to-r from-teal-600 to-indigo-600 text-white text-xs font-bold uppercase tracking-wider px-6 rounded-xl shadow-lg cursor-pointer transition-all";
+                        btnSprint.onclick = () => dispararLançamentoOuAtualizacao(acao.id_acao, acao.bloco_leaction);
+                    }
+                } catch (err) { console.error(err); }
+            } else {
+                const chk = event.currentTarget.querySelector('.chk-nota'); if (chk) chk.checked = !chk.checked;
+            }
+        }
+
+        document.getElementById('btn-salvar-nota').addEventListener('click', async () => {
+            const idRotina = selectRotina.value; const conteudo = txtNota.value.trim();
+            if(!idRotina) return alert('Selecione ou crie uma aula antes de registrar no diário!');
+            if(!conteudo) return alert('O desabafo está vazio!');
+            try {
+                const response = await fetch('/inovador/api/notas', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_clie: idClieReal, id_rotina: parseInt(idRotina), conteudo_bruto: conteudo })
+                });
+                if((await response.json()).status === 'success') { txtNota.value = ''; inicializarDashboard(); }
+            } catch(err) { console.error(err); }
+        });
+
+        document.getElementById('btn-add-rotina').addEventListener('click', async () => {
+            const titulo = txtNovaRotina.value.trim(); if(!titulo) return alert("Digite o nome da aula!");
+            try {
+                const response = await fetch('/inovador/api/rotinas', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_clie: idClieReal, titulo_atividade: titulo })
+                });
+                if((await response.json()).status === 'success') { txtNovaRotina.value = ''; inicializarDashboard(); }
+            } catch(e) { console.error(e); }
+        });
+
+        btnIncubar.addEventListener('click', async () => {
+            const selecionadas = Array.from(document.querySelectorAll('.chk-nota:checked')).map(cb => parseInt(cb.value));
+            if(selecionadas.length === 0) return alert('Selecione post-its pendentes no mural para lapidar!');
+            const bloco = document.getElementById('select-bloco').value;
+            btnIncubar.disabled = true; resetMesaDeLapidacao("O Consultor LeAction está desenhando a solução... Aguarde.");
+            try {
+                const response = await fetch('/inovador/api/acoes/gerar-preview', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bloco_leaction: bloco, ids_notas: selecionadas, id_prob_cmu: cmuSelecionadoLocal ? cmuSelecionadoLocal.id_prob : null })
+                });
+                const resData = await response.json();
+                if (resData.status === 'success') {
+                    const rascunho = resData.rascunho;
+                    const pilares = rascunho.pilares || {};
+                    document.getElementById('res-titulo').innerText = rascunho.nome_acao || '';
+                    document.getElementById('res-justificativa').innerText = rascunho.justificativa_pedagogica || '';
+                    document.getElementById('res-impacto').innerText = rascunho.impacto_negocio || '';
+
+                    // Sempre os 4 pilares fixos, na ordem, com rótulos em português
+                    let htmlPilares = '';
+                    ORDEM_PILARES.forEach(pilarKey => {
+                        const valor = pilares[pilarKey] || '';
+                        htmlPilares += `<div class="p-2.5 bg-slate-50 rounded-lg border-l-4 border-[#d97706]"><strong class="title-lilac">${PILARES_FIXOS[pilarKey].label}:</strong> <span contenteditable="true" data-key="${pilarKey}" class="pilar-editavel focus:outline-none px-1 text-slate-700">${valor}</span></div>`;
+                    });
+                    document.getElementById('res-composicao').innerHTML = htmlPilares; exibirCardCMUAcoplado();
+
+                    btnSprint.disabled = false; btnSprint.innerText = "Lançar Sprint";
+                    btnSprint.className = "btn-gold text-xs font-bold uppercase tracking-wider px-6 rounded-xl shadow-lg cursor-pointer transition-all";
+                    btnSprint.onclick = () => dispararLançamentoOuAtualizacao(null, bloco);
+                } else {
+                    // Sem fallback feio: avisamos e devolvemos o painel ao estado inicial
+                    alert(resData.message || 'Não foi possível gerar a inovação agora. Tente novamente.');
+                    document.getElementById('ia-result-panel').classList.add('hidden');
+                    document.getElementById('ia-empty-state').classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Falha de comunicação ao gerar a inovação. Verifique sua conexão e tente novamente.');
+                document.getElementById('ia-result-panel').classList.add('hidden');
+                document.getElementById('ia-empty-state').classList.remove('hidden');
+            } finally { btnIncubar.disabled = false; btnIncubar.innerText = "Lapidar com Consultor LeAction"; }
+        });
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; const rec = new SpeechRecognition(); rec.lang = 'pt-BR';
+            btnMic.addEventListener('click', () => { btnMic.classList.contains('pulse-mic') ? rec.stop() : rec.start(); });
+            rec.onstart = () => { btnMic.classList.add('pulse-mic', 'from-red-500', 'to-rose-600'); micIcon.className = 'fa-solid fa-stop'; };
+            rec.onend = () => { btnMic.classList.remove('pulse-mic', 'from-red-500', 'to-rose-600'); micIcon.className = 'fa-solid fa-microphone'; };
+            rec.onresult = (e) => { txtNota.value = e.results[0][0].transcript; };
+        }
+
+        window.onload = inicializarDashboard;
+
+        function executarLogout() {
+            if (confirm("Deseja encerrar a sessão na Oficina do Inovador?")) {
+                window.location.href = '/inovador/logout';
+            }
+        }
+
+        // 🖨️ Gera o Relatório Executivo (PDF) via janela nativa de impressão
+        function exportarRelatorioPDF() {
+            const painel = document.getElementById('ia-result-panel');
+            if (!painel || painel.classList.contains('hidden')) {
+                return alert("Abra ou gere uma inovação na Mesa de Lapidação antes de exportar o relatório.");
+            }
+
+            // Cabeçalho do relatório
+            const titulo = (document.getElementById('res-titulo').innerText || '').trim();
+            document.getElementById('print-rep-titulo').innerText = titulo || 'Inovação sem título';
+            document.getElementById('print-rep-data').innerText = new Date().toLocaleDateString('pt-BR', {
+                day: '2-digit', month: 'long', year: 'numeric'
+            });
+
+            // Monta a seção de Experimentos de Validação a partir do cache carregado
+            const wrap = document.getElementById('print-experimentos-wrap');
+            const body = document.getElementById('print-experimentos-body');
+            const experimentos = Array.isArray(cacheExperimentosLocais) ? cacheExperimentosLocais : [];
+
+            if (experimentos.length === 0) {
+                body.innerHTML = '<p class="exp-line" style="color:#666;">Nenhum experimento de validação registrado para esta inovação.</p>';
+            } else {
+                body.innerHTML = experimentos.map((exp, i) => `
+                    <div class="print-exp-card">
+                        <span class="exp-num">Experimento ${i + 1}</span>
+                        <p class="exp-line"><b>Hipótese:</b> ${(exp.hipo_espex || '—')}</p>
+                        <p class="exp-line"><b>Experimentação:</b> ${(exp.desc_espex || '—')}</p>
+                        <p class="exp-line"><b>Resultados:</b> ${(exp.result_espex || '—')}</p>
+                    </div>
+                `).join('');
+            }
+            // A seção sempre compõe o documento (mesmo vazia, registra a validação)
+            wrap.classList.remove('hidden');
+
+            window.print();
+        }
+
+        // 🎤 Gera um Pitch Elevator (PDF, até 4 slides) com os dados da inovação atual
+        function gerarPitchPDF() {
+            const painel = document.getElementById('ia-result-panel');
+            if (!painel || painel.classList.contains('hidden')) {
+                return alert("Abra ou gere uma inovação na Mesa de Lapidação antes de gerar o pitch.");
+            }
+
+            const titulo = (document.getElementById('res-titulo').innerText || '').trim() || 'Inovação Educacional';
+            const justificativa = (document.getElementById('res-justificativa').innerText || '').trim();
+            const impacto = (document.getElementById('res-impacto').innerText || '').trim();
+
+            // Slide 1 — Capa
+            document.getElementById('pitch-titulo').innerText = titulo;
+            document.getElementById('pitch-data').innerText = new Date().toLocaleDateString('pt-BR', {
+                day: '2-digit', month: 'long', year: 'numeric'
+            });
+
+            // Slide 2 — A Tese (justificativa pedagógica)
+            document.getElementById('pitch-justificativa').innerText =
+                justificativa || 'Justificativa pedagógica ainda não preenchida.';
+
+            // Slide 3 — Os 4 Pilares (lê o conteúdo vivo já editado na composição)
+            const comp = {};
+            document.querySelectorAll('#res-composicao .pilar-editavel').forEach(el => {
+                comp[normalizarChavePilar(el.getAttribute('data-key'))] = (el.innerText || '').trim();
+            });
+            document.getElementById('pitch-pilares').innerHTML = ORDEM_PILARES.map(key => `
+                <div class="pitch-pilar">
+                    <h3>${PILARES_FIXOS[key].label}</h3>
+                    <p>${comp[key] || '—'}</p>
+                </div>
+            `).join('');
+
+            // Slide 4 — Impacto & Validação
+            document.getElementById('pitch-impacto').innerText =
+                impacto || 'Impacto no negócio ainda não preenchido.';
+            const qtdExp = Array.isArray(cacheExperimentosLocais) ? cacheExperimentosLocais.length : 0;
+            document.getElementById('pitch-validacao').innerText = qtdExp > 0
+                ? `Validação em andamento: ${qtdExp} experimento(s) desenhado(s) para testar esta tese.`
+                : 'Próximo passo: desenhar experimentos de validação para testar a tese na prática.';
+
+            // Ativa o modo de impressão dedicado do pitch (paisagem) e restaura ao fim
+            document.body.classList.add('printing-pitch');
+            const restaurar = () => {
+                document.body.classList.remove('printing-pitch');
+                window.removeEventListener('afterprint', restaurar);
+            };
+            window.addEventListener('afterprint', restaurar);
+            setTimeout(() => window.print(), 60);
+        }
+
+        // ✅ Toast de feedback (verde por padrão)
+        function mostrarToast(mensagem, cor = '#059669') {
+            const toast = document.getElementById('toast-feedback');
+            if (!toast) return;
+            toast.style.background = cor;
+            toast.innerText = mensagem;
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+            toast.style.opacity = '1';
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => {
+                toast.style.transform = 'translateX(-50%) translateY(140%)';
+                toast.style.opacity = '0';
+            }, 4200);
+        }
+
+        // ✂️ Resume um texto preservando SENTENÇAS INTEIRAS (sempre termina em pontuação, sem "...")
+        function resumoPorSentencas(texto, limite = 300) {
+            texto = (texto || '').replace(/\s+/g, ' ').trim();
+            if (!texto) return '';
+
+            // Quebra em sentenças mantendo a pontuação final (. ! ? …)
+            const sentencas = texto.match(/[^.!?…]+[.!?…]+/g);
+            if (!sentencas) {
+                // Texto sem pontuação: devolve inteiro e garante um ponto final
+                return /[.!?…]$/.test(texto) ? texto : texto + '.';
+            }
+
+            let resultado = '';
+            for (const s of sentencas) {
+                const candidato = (resultado ? resultado + ' ' : '') + s.trim();
+                // Para antes de estourar o limite, mas nunca corta uma sentença pela metade
+                if (resultado && candidato.length > limite) break;
+                resultado = candidato;
+            }
+            // Garante ao menos a primeira sentença inteira, mesmo que seja maior que o limite
+            return (resultado || sentencas[0].trim());
+        }
+
+        // ====================================================================
+        // 🎨 SOCIAL STUDIO — preview, customização e exportação do card social
+        // ====================================================================
+        const TEMAS_REDE = {
+            Instagram: {
+                fundo: 'linear-gradient(135deg, #4A2E80 0%, #6d28d9 45%, #d97706 100%)',
+                acento: '#fde68a'
+            },
+            LinkedIn: {
+                fundo: 'linear-gradient(135deg, #0a2540 0%, #0e76a8 55%, #4A2E80 100%)',
+                acento: '#bae6fd'
+            }
+        };
+        let _previewTimer = null;
+
+        function legendaPadrao(titulo) {
+            return `Acabo de estruturar uma nova tese de inovação educacional focada no nosso aluno: ${titulo}. `
+                + `Estou usando a Metodologia CTDI e a inteligência do PanelDX para lapidar isso. `
+                + `Rede, o que vocês acham dessa abordagem? Toda colaboração é bem-vinda! 👇 `
+                + `#TransformacaoDigital #Educacao #PanelDX`;
+        }
+
+        // Define o título do card a partir da inovação atual (tipografia adaptativa)
+        function prepararMoldeBase() {
+            const titulo = (document.getElementById('res-titulo').innerText || '').trim() || 'Nova Inovação Educacional';
+            const elTitulo = document.getElementById('sc-titulo');
+            elTitulo.innerText = titulo;
+            elTitulo.style.fontSize = titulo.length > 60 ? '44px' : (titulo.length > 38 ? '52px' : '60px');
+            return titulo;
+        }
+
+        // Escreve no corpo do card EXATAMENTE o texto editado pelo usuário (com fonte adaptativa)
+        function aplicarTextoCard(texto) {
+            const elResumo = document.getElementById('sc-resumo');
+            const t = (texto || '').trim();
+            elResumo.innerText = t;
+            const n = t.length;
+            let fonte = '29px';
+            if (n > 420) fonte = '17px';
+            else if (n > 300) fonte = '19px';
+            else if (n > 220) fonte = '22px';
+            else if (n > 140) fonte = '25px';
+            elResumo.style.fontSize = fonte;
+        }
+
+        function aplicarTemaRede(rede) {
+            const tema = TEMAS_REDE[rede] || TEMAS_REDE.Instagram;
+            const molde = document.getElementById('social-card-molde');
+            molde.style.background = tema.fundo;
+            // Acentos (selo "liderada por" e subtítulo do rodapé) acompanham a rede
+            document.querySelectorAll('#sc-selo span:first-child').forEach(el => el.style.color = tema.acento);
+        }
+
+        function aplicarSelo(nome) {
+            const selo = document.getElementById('sc-selo');
+            const nomeEl = document.getElementById('sc-selo-nome');
+            const limpo = (nome || '').trim();
+            if (limpo) {
+                nomeEl.innerText = limpo;
+                selo.style.display = 'inline-block';
+            } else {
+                selo.style.display = 'none';
+            }
+        }
+
+        async function renderizarCanvasCard() {
+            const molde = document.getElementById('social-card-molde');
+            return await html2canvas(molde, {
+                width: 800, height: 800, scale: 2,
+                backgroundColor: null, useCORS: true, logging: false
+            });
+        }
+
+        // Re-renderiza o preview no modal (debounced para digitação fluida)
+        function atualizarPreview() {
+            clearTimeout(_previewTimer);
+            _previewTimer = setTimeout(async () => {
+                const loading = document.getElementById('sc-preview-loading');
+                const img = document.getElementById('sc-preview-img');
+                try {
+                    const canvas = await renderizarCanvasCard();
+                    img.src = canvas.toDataURL('image/png');
+                    img.style.display = 'block';
+                    loading.style.display = 'none';
+                } catch (e) {
+                    console.error('Erro ao gerar preview:', e);
+                    loading.innerHTML = '<p style="color:#dc2626;">Falha ao gerar preview.</p>';
+                }
+            }, 220);
+        }
+
+        function onPerfilInput() {
+            aplicarSelo(document.getElementById('sc-input-perfil').value);
+            atualizarPreview();
+        }
+
+        function onLegendaInput() {
+            aplicarTextoCard(document.getElementById('sc-textarea-legenda').value);
+            atualizarPreview();
+        }
+
+        function onRedeChange() {
+            aplicarTemaRede(document.getElementById('sc-select-rede').value);
+            atualizarPreview();
+        }
+
+        function abrirSocialStudio() {
+            const painel = document.getElementById('ia-result-panel');
+            if (!painel || painel.classList.contains('hidden')) {
+                return alert("Abra ou gere uma inovação na Mesa de Lapidação antes de compartilhar.");
+            }
+            if (typeof html2canvas === 'undefined') {
+                return alert("A biblioteca de geração de imagem ainda está carregando. Tente novamente em instantes.");
+            }
+
+            const titulo = prepararMoldeBase();
+
+            // Reseta estado do estúdio
+            document.getElementById('sc-input-perfil').value = '';
+            document.getElementById('sc-select-rede').value = 'Instagram';
+            const legenda = legendaPadrao(titulo);
+            document.getElementById('sc-textarea-legenda').value = legenda;
+            aplicarTextoCard(legenda); // incorpora o texto da legenda no card desde o início
+            aplicarSelo('');
+            aplicarTemaRede('Instagram');
+
+            // Mostra modal + estado de loading do preview
+            const img = document.getElementById('sc-preview-img');
+            img.style.display = 'none';
+            document.getElementById('sc-preview-loading').style.display = 'block';
+            document.getElementById('social-studio-modal').style.display = 'flex';
+
+            atualizarPreview();
+        }
+
+        function fecharSocialStudio() {
+            document.getElementById('social-studio-modal').style.display = 'none';
+        }
+
+        async function finalizarECopiar() {
+            const btn = document.getElementById('btn-finalizar-social');
+            const textoOriginal = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
+
+            const rede = document.getElementById('sc-select-rede').value;
+            const legenda = document.getElementById('sc-textarea-legenda').value;
+
+            try {
+                const canvas = await renderizarCanvasCard();
+
+                // Download do PNG
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = 'minha_inovacao_paneldx.png';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+
+                // Copia o texto EXATO editado pelo usuário
+                let copiou = true;
+                try {
+                    await navigator.clipboard.writeText(legenda);
+                } catch (clipErr) {
+                    copiou = false;
+                    console.warn('Clipboard indisponível:', clipErr);
+                }
+
+                fecharSocialStudio();
+                if (copiou) {
+                    mostrarToast(`Pronto! A imagem foi salva e seu texto copiado. Abra seu ${rede} e cole!`);
+                } else {
+                    mostrarToast(`Imagem salva! Copie a legenda manualmente (clipboard bloqueado pelo navegador).`, '#d97706');
+                }
+            } catch (e) {
+                console.error('Erro ao finalizar o social card:', e);
+                mostrarToast('Não foi possível gerar a imagem agora. Tente novamente.', '#dc2626');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+            }
+        }
+
+        document.getElementById('btn-exportar-json').addEventListener('click', () => {
+            const nomeSprint = document.getElementById('res-titulo').innerText.trim() || "Sprint de Inovacao";
+            const justificativa = document.getElementById('res-justificativa').innerText.trim() || "";
+            const impacto = document.getElementById('res-impacto').innerText.trim() || "";
+            const idMesa = document.getElementById('hdn-id-acao').value || "mesa_preview_" + Math.floor(Math.random() * 10000);
+            const formato = document.getElementById('combo-formato-destino').value;
+            let nomeArquivo = document.getElementById('txt-nome-arquivo-export').value.trim() || "sprint_exportada";
+            if (!nomeArquivo.toLowerCase().endsWith('.json')) nomeArquivo += '.json';
+
+            const bloco = document.getElementById('select-bloco').value;
+
+            // Rótulos/pesos derivados dos 4 pilares fixos (com compatibilidade legada)
+            const labelsMap = {};
+            const prioridadesMap = {};
+            const esforceMap = {};
+            Object.keys(PILARES_FIXOS).forEach(k => {
+                labelsMap[k] = PILARES_FIXOS[k].label;
+                prioridadesMap[k] = PILARES_FIXOS[k].prioridade;
+                esforceMap[k] = PILARES_FIXOS[k].esforco;
+            });
+            Object.keys(MAPA_LEGADO).forEach(legada => {
+                const nova = MAPA_LEGADO[legada];
+                labelsMap[legada] = PILARES_FIXOS[nova].label;
+                prioridadesMap[legada] = PILARES_FIXOS[nova].prioridade;
+                esforceMap[legada] = PILARES_FIXOS[nova].esforco;
+            });
+
+            let payload = {};
+
+            if (formato === 'Universal') {
+                let backlogItens = [];
+                document.querySelectorAll('.pilar-editavel').forEach(el => {
+                    const key = el.getAttribute('data-key');
+                    if (el.innerText.trim()) {
+
+                        // 🎯 FILTRA DO VETOR LOCAL SÓ AS SUBTASKS PERTENCENTES A ESSE PILAR ESPECÍFICO
+                        let subtasksDestePilar = listaSubtasksLocais
+                            .filter(st => st.pilar_subtask === key)
+                            .map(st => ({ "subtask_title": st.desc_subtask }));
+
+                        backlogItens.push({
+                            "id_item": `st_${idMesa}_${key.replace('item_', '')}`,
+                            "pilar_original": key,
+                            "titulo": `Fase: ${labelsMap[key] || key}`,
+                            "descricao": el.innerText.trim(),
+                            "pontos_esforco_scrum": esforceMap[key] || 5,
+                            "prioridade": prioridadesMap[key] || "Media",
+                            "status_inicial": "To Do",
+                            "subtasks": subtasksDestePilar // 🎯 ARRAY INJETADO DIRETAMENTE NO BACKLOG ITEM
+                        });
+                    }
+                });
+
+                payload = {
+                    "metadados": { "origem": "Mesa de Inovação - PanelDX", "schema_versao": "1.0.0", "gerado_em": new Date().toISOString() },
+                    "sprint_exportada": { "id_origem_mesa": idMesa, "nome_sprint": nomeSprint, "meta_da_sprint": `Justificativa Pedagógica: ${justificativa} | Impacto no Negócio: ${impacto}`, "duracao_sugerida_semanas": 2, "backlog_itens": backlogItens }
+                };
+            } else if (formato === 'Jira') {
+                let issues = [];
+                document.querySelectorAll('.pilar-editavel').forEach(el => {
+                    const key = el.getAttribute('data-key');
+                    if (el.innerText.trim()) {
+
+                        // 🎯 FILTRA DO VETOR PARA O JIRA
+                        let subtasksDestePilar = listaSubtasksLocais
+                            .filter(st => st.pilar_subtask === key)
+                            .map(st => ({ "subtask_title": st.desc_subtask }));
+
+                        issues.push({
+                            "projectKey": "PROJ", "issueType": "Story", "summary": `[Mesa Inovação] ${labelsMap[key] || key}: ${nomeSprint}`,
+                            "description": el.innerText.trim(), "storyPoints": esforceMap[key] || 5,
+                            "priority": prioridadesMap[key] === 'Critica' ? 'Highest' : (prioridadesMap[key] === 'Alta' ? 'High' : 'Medium'),
+                            "labels": ["mesa-inovacao", bloco],
+                            "subtasks": subtasksDestePilar
+                        });
+                    }
+                });
+                payload = { "sprint": { "name": nomeSprint, "goal": `Justificativa: ${justificativa} | Impacto: ${impacto}`, "id_origem_mesa": idMesa }, "issues": issues };
+            } else if (formato === 'Trello') {
+                let cards = [];
+                document.querySelectorAll('.pilar-editavel').forEach(el => {
+                    const key = el.getAttribute('data-key');
+                    if (el.innerText.trim()) {
+
+                        // 🎯 FILTRA DO VETOR PARA O TRELLO
+                        let subtasksDestePilar = listaSubtasksLocais
+                            .filter(st => st.pilar_subtask === key)
+                            .map(st => ({ "subtask_title": st.desc_subtask }));
+
+                        cards.push({
+                            "name": `${labelsMap[key] || key} - ${nomeSprint}`,
+                            "desc": `Descrição do Backlog:\n${el.innerText.trim()}\n\nPontos de Esforço Scrum: ${esforceMap[key] || 5}`,
+                            "labels": [prioridadesMap[key] || "Media"], "pos": "top",
+                            "subtasks": subtasksDestePilar
+                        });
+                    }
+                });
+                payload = { "list": { "name": nomeSprint }, "cards": cards };
+            }
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", nomeArquivo);
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        });
+
+    </script>
+</body>
+</html>

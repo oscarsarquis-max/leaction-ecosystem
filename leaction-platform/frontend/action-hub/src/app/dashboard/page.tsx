@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import {
@@ -870,6 +871,12 @@ function DashboardContent() {
           <p className="mt-3 text-sm text-orange-100 md:text-base">
             Acompanhe seus pedidos e acesse seus conteudos assim que os pagamentos forem aprovados.
           </p>
+          <Link
+            href="/dashboard/crm/tracking"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-orange-50 transition hover:bg-white/20"
+          >
+            Tracking &amp; Conversão (PLG)
+          </Link>
         </div>
         )}
 

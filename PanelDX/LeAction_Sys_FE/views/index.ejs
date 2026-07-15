@@ -2257,7 +2257,7 @@
         const heroCtaSubtitle = cmsHeroCta.subtitle || '';
         const heroCtaBadge = cmsHeroCta.badge_text || 'Consultor LeAction';
         const heroCtaBtn = cmsHeroCta.button_text || 'Falar com Consultor LeAction';
-        const heroCtaUrl = cmsHeroCta.button_url || '/consultor-leaction';
+        const heroCtaUrl = cmsHeroCta.button_url || '/solucionador-de-problemas';
         const heroCtaImg = cmsHeroCta.image_url || '';
         const highlightAccent = function (text) {
             if (!text) return '';
@@ -2270,7 +2270,7 @@
         const col1Title = cmsCol1.title || 'Leve sua escola ao próximo nível';
         const col1Subtitle = cmsCol1.subtitle || '';
         const col1CtaText = cmsCol1.cta_text || 'Agendar Mesa Gratuita';
-        const col1CtaUrl = cmsCol1.cta_url || '#';
+        const col1CtaUrl = cmsCol1.cta_url || '/mesa-do-inovador';
         const col1Img = cmsCol1.image_path || '';
         const col1CtaExternal = /^https?:\/\//i.test(col1CtaUrl);
         const col1ThemeStyle = [
@@ -2305,7 +2305,11 @@
                         <% if (heroCtaSubtitle) { %>
                             <p class="hero-3d-banner__subtitle"><%- highlightAccent(heroCtaSubtitle) %></p>
                         <% } %>
-                        <a href="<%= heroCtaUrl %>" target="_blank" rel="noopener" class="hero-3d-banner__btn">
+                        <a href="<%= heroCtaUrl %>"
+                           target="_blank"
+                           rel="noopener"
+                           class="hero-3d-banner__btn"
+                           data-crm-event="click_cta_solucionador">
                             <i class="fas fa-brain" aria-hidden="true"></i>
                             <%= heroCtaBtn %>
                         </a>
@@ -2345,6 +2349,7 @@
                                 <% } %>
                                 <a href="<%= col1CtaUrl %>"
                                    class="hero-3d-banner__btn"
+                                   data-crm-event="click_cta_mesa_inovador"
                                    <% if (col1CtaExternal) { %>target="_blank" rel="noopener"<% } %>>
                                     <i class="fas fa-calendar-check" aria-hidden="true"></i>
                                     <%= col1CtaText %>

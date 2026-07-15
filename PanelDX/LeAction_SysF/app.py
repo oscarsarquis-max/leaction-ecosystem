@@ -149,6 +149,13 @@ try:
 except Exception as e:
     print(f"⚠️ ALERTA: Subsistema /inovador não foi carregado: {e}", file=sys.stderr)
 
+# Proxy PLG Tracking → Action Hub (não persiste no PanelDX)
+try:
+    from routes.tracking_proxy import tracking_bp
+    app.register_blueprint(tracking_bp)
+except Exception as e:
+    print(f"⚠️ ALERTA: Proxy CRM tracking não carregado: {e}", file=sys.stderr)
+
 # Rotas /api/* do subsistema inovador no app principal — ALB envia /api/* ao Flask em produção
 try:
     from routes.inovador_routes import register_paneldx_public_api_routes

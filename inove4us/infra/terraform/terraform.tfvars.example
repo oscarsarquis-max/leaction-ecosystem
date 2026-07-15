@@ -1,0 +1,31 @@
+aws_region   = "us-east-1"
+environment  = "prod"
+domain_name  = "inove4us.com.br"
+hosted_zone_id = "ZXXXXXXXXXXXX"
+
+vpc_id             = "vpc-xxxxxxxx"
+private_subnet_ids = ["subnet-aaa", "subnet-bbb"]
+public_subnet_ids  = ["subnet-ccc", "subnet-ddd"]
+
+# Após o primeiro apply + push da imagem, fixe a URI:
+container_image = "" # vazio = <ecr>/inove4us:latest
+
+rds_security_group_id = "sg-rds-paneldx"
+certificate_arn       = "arn:aws:acm:us-east-1:ACCOUNT:certificate/UUID"
+
+desired_count = 2
+min_capacity  = 2
+max_capacity  = 20
+cpu           = 512
+memory        = 1024
+
+secrets = {
+  secret_key   = "gere-um-segredo-longo"
+  db_host      = "seu-rds.xxxxx.us-east-1.rds.amazonaws.com"
+  db_port      = "5432"
+  db_name      = "LeAction_SysF"
+  db_user      = "inove4us_app"
+  db_pass      = "****"
+  db_sslmode   = "require"
+  email_sender = "noreply@inove4us.com.br"
+}
