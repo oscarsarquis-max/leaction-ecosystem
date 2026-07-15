@@ -12,11 +12,16 @@ export async function loginAdmin(password) {
 
 /**
  * Persiste sessão admin no localStorage.
+ * @param {string} token
+ * @param {string} [username]
  */
-export function salvarSessaoAdmin(token) {
+export function salvarSessaoAdmin(token, username = 'admin') {
   localStorage.setItem('isAdmin', 'true')
   if (token) {
     localStorage.setItem('adminToken', token)
+  }
+  if (username) {
+    localStorage.setItem('adminUsername', username)
   }
 }
 
@@ -28,7 +33,12 @@ export function obterAdminToken() {
   return localStorage.getItem('adminToken')
 }
 
+export function obterAdminUsername() {
+  return localStorage.getItem('adminUsername') || 'admin'
+}
+
 export function encerrarSessaoAdmin() {
   localStorage.removeItem('isAdmin')
   localStorage.removeItem('adminToken')
+  localStorage.removeItem('adminUsername')
 }

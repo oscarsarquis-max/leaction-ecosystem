@@ -1,14 +1,13 @@
 """
-MAtivas - Diagnóstico rápido de metodologia (sem IA)
+MAtivas - Diagnóstico por palavras-chave (fallback)
 =====================================================================
-Faz a correspondência entre o desafio relatado pelo professor e a base
-de conhecimento `problema_mativa` por sobreposição de palavras-chave
-(normalizando acentos e removendo stopwords). Usado pelo endpoint
-síncrono POST /api/diagnostico para exibir uma prévia da metodologia em
-/resultado antes da geração completa do roteiro.
+Correspondência entre o desafio do professor e `problema_mativa` por
+sobreposição de tokens. Continua disponível como fallback quando o
+diagnóstico por Árvore de Decisão (Bedrock) falha — ver
+`diagnostico_arvore.diagnosticar_com_arvore`.
 
-A metodologia escolhida aqui é "travada": é repassada ao worker, que
-apenas elabora os passos para ela (sem reescolher).
+Quando usado via fallback, a metodologia é "travada" e repassada ao
+worker, que apenas elabora os passos (sem reescolher).
 """
 
 import re
@@ -62,6 +61,10 @@ _NIVEL_PATTERNS = [
     (
         "Educação Profissional e Tecnológica",
         r"\b(educacao profissional|tecnologica|etec|senai|curso tecnico)\b",
+    ),
+    (
+        "Ensino Superior",
+        r"\b(ensino superior|faculdade|universidade|graduacao|bacharelado|licenciatura)\b",
     ),
     ("Educação Corporativa", r"\b(educacao corporativa|treinamento corporativo|empresa)\b"),
     ("Educação Continuada", r"\b(educacao continuada|pos[- ]?graduacao|extensao)\b"),

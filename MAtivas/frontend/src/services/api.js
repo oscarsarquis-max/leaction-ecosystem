@@ -17,13 +17,23 @@ export async function criarRoteiro(payload) {
 }
 
 /**
- * Diagnóstico rápido (sem IA) da metodologia recomendada, a partir do
- * desafio relatado. Usado para a prévia na tela de resultado.
+ * Diagnóstico por Árvore de Decisão (Claude/Bedrock):
+ * match_perfeito + alternativas_mesmo_ramo + fusao_estrategica.
  * @param {object} payload - { desafio, opcoes, sintese, nivel, formato }
- * @returns {Promise<object>} { metodologia, justificativa, ... }
+ * @returns {Promise<object>}
  */
 export async function diagnosticarMetodologia(payload) {
   const { data } = await api.post('/api/diagnostico', payload)
+  return data
+}
+
+/**
+ * Diálogo de refinamento: feedback sobre a abordagem escolhida →
+ * novas sugestões com justificativa.
+ * @param {object} payload
+ */
+export async function refinarDiagnostico(payload) {
+  const { data } = await api.post('/api/diagnostico/refinar', payload)
   return data
 }
 

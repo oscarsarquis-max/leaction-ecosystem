@@ -1,17 +1,34 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, ClipboardList, Layout, LogOut, MessageSquare, Trash2, X } from 'lucide-react'
+import {
+  BookOpen,
+  ClipboardList,
+  Download,
+  FileDown,
+  Layout,
+  LogOut,
+  MessageSquare,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react'
 import Brand from '../components/Brand.jsx'
 import AdminUiContent from '../components/AdminUiContent.jsx'
-import { encerrarSessaoAdmin } from '../services/adminAuth.js'
+import { encerrarSessaoAdmin, obterAdminUsername } from '../services/adminAuth.js'
 import {
   RULE_TYPE_LABELS,
   RULE_TYPE_TO_API,
+  baixarPlanilhaAuditoria,
   criarRegra,
   desativarRegra,
   listarAuditoria,
   listarRegras,
+  obterAdminMe,
 } from '../services/adminApi.js'
+import {
+  baixarPdfHistoricoCompleto,
+  baixarPdfHistoricoInteracao,
+} from '../utils/exportHistoricoPdf.js'
 
 const TABS = {
   DICTIONARY: 'dictionary',
@@ -35,6 +52,107 @@ function parseInteractionHistory(item) {
 function formatDiagnostico(item) {
   const partes = [item.conteudo_desafio, item.sintese, item.opcoes_selecionadas].filter(Boolean)
   return partes.join(' · ') || '—'
+}
+
+function csvEscape(value) {
+  const raw = value == null ? '' : String(value)
+  const normalized = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  if (/[;"\n]/.test(normalized)) {
+    return `"${normalized.replace(/"/g, '""')}"`
+  }
+  return normalized
+}
+
+function jsonParaCelula(valor) {
+  if (valor == null || valor === '') return ''
+  if (typeof valor === 'string') {
+    try {
+      const parsed = JSON.parse(valor)
+      return JSON.stringify(parsed)
+    } catch {
+      return valor
+    }
+  }
+  try {
+    return JSON.stringify(valor)
+  } catch {
+    return String(valor)
+  }
+}
+
+/** Exporta o estado atual da tabela de auditoria como mativas_auditoria.csv */
+function exportarAuditoriaCsvLocal(itens) {
+  const header = [
+    'ID do Projeto',
+    'Status',
+    'Metodologia',
+    'Justificativa',
+    'Feedback da autora',
+    'Data geracao do roteiro',
+    'Passos (JSON)',
+    'Professor ID',
+    'Professor nome',
+    'Professor email',
+    'Professor estado',
+    'Desafio ID',
+    'Desafio / contexto',
+    'Opcoes selecionadas',
+    'Nivel de ensino',
+    'Formato da aula',
+    'Sintese',
+    'Diagnostico (resumo)',
+    'Dialogo IA (JSON)',
+  ]
+  const linhas = [header.join(';')]
+  for (const item of itens || []) {
+    const dialogo = parseInteractionHistory(item).map((h) => ({
+      id: h.id ?? null,
+      tipo_acao: h.tipo_acao ?? null,
+      data_registro: h.data_registro ?? null,
+      modelo_ia: h.modelo_ia ?? null,
+      prompt_usuario: h.prompt_usuario ?? null,
+      resposta_ia: h.resposta_ia ?? null,
+      prompt_sistema: h.prompt_sistema ?? null,
+      tokens_prompt: h.tokens_prompt ?? null,
+      tokens_resposta: h.tokens_resposta ?? null,
+    }))
+    linhas.push(
+      [
+        item.roteiro_id ?? '',
+        item.status ?? '',
+        item.metodologia_recomendada ?? '',
+        item.justificativa ?? '',
+        item.feedback_autora ?? '',
+        item.data_geracao ?? '',
+        jsonParaCelula(item.passos_json),
+        item.professor_id ?? '',
+        item.professor_nome ?? '',
+        item.professor_email ?? '',
+        item.professor_estado ?? '',
+        item.desafio_id ?? '',
+        item.conteudo_desafio ?? '',
+        item.opcoes_selecionadas ?? '',
+        item.nivel_ensino ?? '',
+        item.formato_aula ?? '',
+        item.sintese ?? '',
+        formatDiagnostico(item),
+        jsonParaCelula(dialogo),
+      ]
+        .map(csvEscape)
+        .join(';'),
+    )
+  }
+  const blob = new Blob(['\ufeff' + linhas.join('\n')], {
+    type: 'text/csv;charset=utf-8;',
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'mativas_auditoria.csv'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
 function statusBadgeClass(status) {
@@ -112,61 +230,98 @@ function HistoricoModal({ item, onClose }) {
                   </pre>
                 </div>
               )}
+              <div className="flex justify-end border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => baixarPdfHistoricoCompleto(item, [])}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-brand-primary transition hover:bg-indigo-50"
+                >
+                  <FileDown size={14} />
+                  Formatar relatório em PDF
+                </button>
+              </div>
             </div>
           ) : (
-            interacoes.map((interacao, index) => (
-              <div key={interacao.id || index} className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span className="font-semibold uppercase tracking-wide">
-                    Interação {index + 1}
-                    {interacao.tipo_acao ? ` · ${interacao.tipo_acao}` : ''}
-                  </span>
-                  <span>
-                    {interacao.modelo_ia || 'modelo não informado'}
-                    {interacao.data_registro
-                      ? ` · ${new Date(interacao.data_registro).toLocaleString('pt-BR')}`
-                      : ''}
-                  </span>
-                </div>
+            <>
+              {interacoes.map((interacao, index) => (
+                <div
+                  key={interacao.id || index}
+                  className="space-y-3 rounded-xl border border-slate-100 p-1"
+                >
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span className="font-semibold uppercase tracking-wide">
+                      Interação {index + 1}
+                      {interacao.tipo_acao ? ` · ${interacao.tipo_acao}` : ''}
+                    </span>
+                    <span>
+                      {interacao.modelo_ia || 'modelo não informado'}
+                      {interacao.data_registro
+                        ? ` · ${new Date(interacao.data_registro).toLocaleString('pt-BR')}`
+                        : ''}
+                    </span>
+                  </div>
 
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-                    <MessageSquare size={14} />
-                    Pergunta do usuário / professor
-                  </p>
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-                    {interacao.prompt_usuario || '—'}
-                  </p>
-                </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      <MessageSquare size={14} />
+                      Pergunta do usuário / professor
+                    </p>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+                      {interacao.prompt_usuario || '—'}
+                    </p>
+                  </div>
 
-                <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
-                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-indigo-700">
-                    Resposta do agente (IA)
-                  </p>
-                  <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-indigo-950">
-                    {interacao.resposta_ia || '—'}
-                  </pre>
-                </div>
-
-                {interacao.prompt_sistema && (
-                  <details className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm">
-                    <summary className="cursor-pointer font-medium text-slate-600">
-                      Ver prompt de sistema (contexto interno)
-                    </summary>
-                    <pre className="mt-3 max-h-48 overflow-y-auto whitespace-pre-wrap font-mono text-xs text-slate-600">
-                      {interacao.prompt_sistema}
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-indigo-700">
+                      Resposta do agente (IA)
+                    </p>
+                    <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-indigo-950">
+                      {interacao.resposta_ia || '—'}
                     </pre>
-                  </details>
-                )}
+                  </div>
 
-                {(interacao.tokens_prompt > 0 || interacao.tokens_resposta > 0) && (
-                  <p className="text-xs text-slate-400">
-                    Tokens: {interacao.tokens_prompt ?? 0} entrada ·{' '}
-                    {interacao.tokens_resposta ?? 0} saída
-                  </p>
-                )}
+                  {interacao.prompt_sistema && (
+                    <details className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm">
+                      <summary className="cursor-pointer font-medium text-slate-600">
+                        Ver prompt de sistema (contexto interno)
+                      </summary>
+                      <pre className="mt-3 max-h-48 overflow-y-auto whitespace-pre-wrap font-mono text-xs text-slate-600">
+                        {interacao.prompt_sistema}
+                      </pre>
+                    </details>
+                  )}
+
+                  {(interacao.tokens_prompt > 0 || interacao.tokens_resposta > 0) && (
+                    <p className="text-xs text-slate-400">
+                      Tokens: {interacao.tokens_prompt ?? 0} entrada ·{' '}
+                      {interacao.tokens_resposta ?? 0} saída
+                    </p>
+                  )}
+
+                  <div className="flex justify-end border-t border-slate-100 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => baixarPdfHistoricoInteracao(item, interacao, index)}
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-brand-primary transition hover:bg-indigo-50"
+                    >
+                      <FileDown size={14} />
+                      Formatar relatório em PDF
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <div className="flex justify-end border-t border-slate-200 pt-4">
+                <button
+                  type="button"
+                  onClick={() => baixarPdfHistoricoCompleto(item, interacoes)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:opacity-90"
+                >
+                  <FileDown size={14} />
+                  PDF do histórico completo
+                </button>
               </div>
-            ))
+            </>
           )}
         </div>
       </div>
@@ -191,6 +346,11 @@ function Admin() {
   const [carregandoAuditoria, setCarregandoAuditoria] = useState(false)
   const [erroAuditoria, setErroAuditoria] = useState('')
   const [modalItem, setModalItem] = useState(null)
+  const [adminUsername, setAdminUsername] = useState(() => obterAdminUsername())
+  const [baixandoPlanilha, setBaixandoPlanilha] = useState(false)
+  const [erroPlanilha, setErroPlanilha] = useState('')
+  const [buscaAuditoria, setBuscaAuditoria] = useState('')
+  const [buscaAplicada, setBuscaAplicada] = useState('')
 
   const carregarRegras = useCallback(async () => {
     setCarregandoRegras(true)
@@ -207,30 +367,72 @@ function Admin() {
     }
   }, [navigate])
 
-  const carregarAuditoria = useCallback(async () => {
-    setCarregandoAuditoria(true)
-    setErroAuditoria('')
-    try {
-      const dados = await listarAuditoria(50)
-      setAuditoria(dados)
-    } catch {
-      setErroAuditoria('Não foi possível carregar a auditoria.')
-      encerrarSessaoAdmin()
-      navigate('/', { replace: true })
-    } finally {
-      setCarregandoAuditoria(false)
-    }
-  }, [navigate])
+  const carregarAuditoria = useCallback(
+    async (termo = '') => {
+      setCarregandoAuditoria(true)
+      setErroAuditoria('')
+      try {
+        const dados = await listarAuditoria(50, termo)
+        setAuditoria(Array.isArray(dados) ? dados : [])
+        setBuscaAplicada((termo || '').trim())
+      } catch {
+        setErroAuditoria('Não foi possível carregar a auditoria.')
+        encerrarSessaoAdmin()
+        navigate('/', { replace: true })
+      } finally {
+        setCarregandoAuditoria(false)
+      }
+    },
+    [navigate],
+  )
 
   useEffect(() => {
     carregarRegras()
   }, [carregarRegras])
 
   useEffect(() => {
-    if (abaAtiva === TABS.AUDIT) {
-      carregarAuditoria()
+    let ativo = true
+    obterAdminMe()
+      .then((me) => {
+        if (ativo && me?.username) {
+          setAdminUsername(me.username)
+          localStorage.setItem('adminUsername', me.username)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      ativo = false
     }
-  }, [abaAtiva, carregarAuditoria])
+  }, [])
+
+  useEffect(() => {
+    if (abaAtiva === TABS.AUDIT) {
+      carregarAuditoria(buscaAplicada)
+    }
+    // Carrega ao abrir a aba; buscas manuais chamam carregarAuditoria diretamente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abaAtiva])
+
+  const handleBuscarAuditoria = (event) => {
+    event?.preventDefault?.()
+    carregarAuditoria(buscaAuditoria)
+  }
+
+  const handleExportarCsvTabela = () => {
+    exportarAuditoriaCsvLocal(auditoria)
+  }
+
+  const handleBaixarPlanilha = async () => {
+    setBaixandoPlanilha(true)
+    setErroPlanilha('')
+    try {
+      await baixarPlanilhaAuditoria(500)
+    } catch {
+      setErroPlanilha('Não foi possível gerar a planilha. Tente novamente.')
+    } finally {
+      setBaixandoPlanilha(false)
+    }
+  }
 
   const handleLogout = () => {
     encerrarSessaoAdmin()
@@ -284,6 +486,11 @@ function Admin() {
             <h1 className="admin-header-title">Painel Administrativo</h1>
             <p className="admin-header-subtitle">
               Gestão de vocabulário, conteúdo da interface e auditoria de projetos
+            </p>
+            <p className="mt-2 text-xs text-slate-500">
+              Credencial associada:{' '}
+              <span className="font-semibold text-slate-700">{adminUsername}</span>
+              <span className="text-slate-400"> · autenticação por senha administrativa</span>
             </p>
           </div>
           <button
@@ -466,9 +673,88 @@ function Admin() {
             {erroAuditoria && (
               <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{erroAuditoria}</p>
             )}
+            {erroPlanilha && (
+              <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{erroPlanilha}</p>
+            )}
+
+            <form
+              onSubmit={handleBuscarAuditoria}
+              className="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:flex-row sm:items-center"
+            >
+              <div className="min-w-0 flex-1">
+                <input
+                  type="text"
+                  value={buscaAuditoria}
+                  onChange={(e) => {
+                    const limpo = e.target.value.replace(/[\u200B-\u200D\uFEFF]/g, '')
+                    setBuscaAuditoria(limpo)
+                  }}
+                  placeholder="Buscar metodologia, contexto, professor..."
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none ring-brand-primary/30 transition focus:border-brand-primary focus:ring-2"
+                  aria-label="Busca global na auditoria"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  disabled={carregandoAuditoria}
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Search size={14} />
+                  Buscar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportarCsvTabela}
+                  disabled={carregandoAuditoria || auditoria.length === 0}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Download size={14} />
+                  Exportar CSV
+                </button>
+                {buscaAplicada && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBuscaAuditoria('')
+                      carregarAuditoria('')
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg px-3 py-2.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100"
+                  >
+                    <X size={14} />
+                    Limpar
+                  </button>
+                )}
+              </div>
+            </form>
+            {buscaAplicada && (
+              <p className="text-xs text-slate-500">
+                Resultados para <span className="font-semibold text-slate-700">&quot;{buscaAplicada}&quot;</span>
+                {' · '}
+                {auditoria.length} projeto(s)
+              </p>
+            )}
+
             <div className="admin-card overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-              <div className="border-b border-slate-200 px-5 py-4">
-                <h2 className="text-base font-semibold text-slate-900">Projetos dos clientes</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Projetos dos clientes</h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Planilha completa: dados do professor, contexto do desafio, roteiro e diálogo
+                    IA↔professor (coluna JSON).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleBaixarPlanilha}
+                  disabled={baixandoPlanilha || carregandoAuditoria}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-brand-primary transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Download size={14} />
+                  {baixandoPlanilha ? 'Gerando planilha…' : 'Criar planilha (CSV)'}
+                </button>
               </div>
               {carregandoAuditoria ? (
                 <p className="px-5 py-8 text-sm text-slate-500">Carregando projetos…</p>
@@ -521,7 +807,9 @@ function Admin() {
                       {auditoria.length === 0 && (
                         <tr>
                           <td colSpan={5} className="px-5 py-8 text-center text-slate-500">
-                            Nenhum projeto encontrado.
+                            {buscaAplicada
+                              ? 'Nenhum projeto encontrado para esta busca.'
+                              : 'Nenhum projeto encontrado.'}
                           </td>
                         </tr>
                       )}

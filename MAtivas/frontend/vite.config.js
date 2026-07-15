@@ -7,8 +7,9 @@ export default defineConfig({
     postcss: './postcss.config.js',
   },
   server: {
-    port: 5173,
-    strictPort: false,
+    // 5173 fica com o Chamelleon neste host; MAtivas usa 5174.
+    port: 5174,
+    strictPort: true,
     host: true,
   },
 })

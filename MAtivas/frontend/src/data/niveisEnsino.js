@@ -4,6 +4,7 @@ export const NIVEIS_ENSINO = [
   'Fundamental II',
   'Ensino Médio',
   'Educação Profissional e Tecnológica',
+  'Ensino Superior',
   'Educação Corporativa',
   'Educação Continuada',
   'Outros',

@@ -36,7 +36,8 @@ from psycopg2.extras import RealDictCursor
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from diagnostico import buscar_base_conhecimento, diagnosticar
+from diagnostico import buscar_base_conhecimento
+from diagnostico_arvore import diagnosticar_com_arvore, refinar_diagnostico_com_dialogo
 from routes.admin import admin_bp
 from ui_content_service import carregar_conteudo_ui
 from database.models import get_db_session
@@ -141,9 +142,10 @@ def conteudo_ui_publico():
 
 # =====================================================================
 # POST /api/diagnostico
-# Diagnóstico rápido e síncrono (sem IA): cruza o desafio com a base
-# `problema_mativa` por palavras-chave e devolve uma prévia da
-# metodologia recomendada + justificativa. Usado em /resultado.
+# Diagnóstico por Árvore de Decisão (Claude via Bedrock):
+# match_perfeito + alternativas do mesmo ramo + fusão estratégica.
+# Fallback automático para matching por palavras-chave se a AWS falhar.
+# Usado em /resultado.
 # =====================================================================
 @app.route("/api/diagnostico", methods=["POST"])
 def diagnostico():
@@ -164,16 +166,79 @@ def diagnostico():
     try:
         conn = get_connection()
         registros = buscar_base_conhecimento(conn)
-        resultado = diagnosticar(texto, registros, nivel=nivel, formato=formato)
+        resultado = diagnosticar_com_arvore(
+            texto, registros, nivel=nivel, formato=formato
+        )
+        match = (resultado.get("match_perfeito") or {}).get("nome")
         logger.info(
-            "Diagnóstico: metodologia=%s (score=%s)",
-            resultado.get("metodologia"),
-            resultado.get("score"),
+            "Diagnóstico árvore: match=%s fonte=%s",
+            match or resultado.get("metodologia"),
+            resultado.get("fonte"),
         )
         return jsonify(resultado), 200
     except Exception as exc:
-        logger.exception("Falha no diagnóstico rápido.")
+        logger.exception("Falha no diagnóstico por árvore.")
         return jsonify({"erro": "Falha ao diagnosticar.", "detalhe": str(exc)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+# =====================================================================
+# POST /api/diagnostico/refinar
+# Diálogo: professor indica o que não se adequa na abordagem escolhida
+# e recebe novas sugestões, cada uma com justificativa.
+# =====================================================================
+@app.route("/api/diagnostico/refinar", methods=["POST"])
+def diagnostico_refinar():
+    data = request.get_json(silent=True) or {}
+    desafio = (data.get("desafio") or "").strip()
+    sintese = (data.get("sintese") or "").strip()
+    opcoes = data.get("opcoes") or []
+    nivel = data.get("nivel") or None
+    formato = data.get("formato") or None
+    abordagem_atual = (data.get("abordagem_atual") or data.get("metodologia") or "").strip()
+    feedback = (data.get("feedback") or data.get("inadequacao") or "").strip()
+    categoria_atual = (data.get("categoria_atual") or data.get("categoria") or "").strip() or None
+    justificativa_atual = (data.get("justificativa_atual") or "").strip() or None
+
+    opcoes_txt = ", ".join(opcoes) if isinstance(opcoes, list) else str(opcoes)
+    texto = " ".join(p for p in (desafio, sintese, opcoes_txt) if p).strip()
+
+    if not texto:
+        return jsonify({"erro": "Informe o desafio original."}), 400
+    if not abordagem_atual:
+        return jsonify({"erro": "Selecione antes a abordagem em discussão."}), 400
+    if len(feedback) < 8:
+        return jsonify(
+            {"erro": "Descreva com mais detalhes o que não se adequa à sua realidade."}
+        ), 400
+
+    conn = None
+    try:
+        conn = get_connection()
+        registros = buscar_base_conhecimento(conn)
+        resultado = refinar_diagnostico_com_dialogo(
+            texto,
+            registros,
+            abordagem_atual=abordagem_atual,
+            feedback=feedback,
+            categoria_atual=categoria_atual,
+            justificativa_atual=justificativa_atual,
+            nivel=nivel,
+            formato=formato,
+        )
+        logger.info(
+            "Refino diálogo: %d sugestões (fonte=%s)",
+            len(resultado.get("sugestoes") or []),
+            resultado.get("fonte"),
+        )
+        return jsonify(resultado), 200
+    except ValueError as exc:
+        return jsonify({"erro": str(exc)}), 400
+    except Exception as exc:
+        logger.exception("Falha no refino do diagnóstico.")
+        return jsonify({"erro": "Falha ao refinar sugestões.", "detalhe": str(exc)}), 500
     finally:
         if conn:
             conn.close()

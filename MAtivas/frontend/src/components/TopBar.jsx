@@ -34,7 +34,7 @@ function TopBar({ showBack = false, backTo = -1 }) {
 
     try {
       const data = await loginAdmin(password)
-      salvarSessaoAdmin(data.token)
+      salvarSessaoAdmin(data.token, data.username || 'admin')
       setAdminSenha('')
       navigate('/admin')
     } catch (err) {

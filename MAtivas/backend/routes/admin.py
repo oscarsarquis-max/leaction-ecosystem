@@ -6,6 +6,9 @@ Autenticação, CRUD de regras de vocabulário e auditoria de roteiros.
 
 import os
 import sys
+import csv
+import io
+import json
 import logging
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -14,7 +17,7 @@ from pathlib import Path
 
 import jwt
 from dotenv import load_dotenv
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request
 from sqlalchemy import text
 from werkzeug.security import check_password_hash
 
@@ -231,14 +234,62 @@ def delete_rule(rule_id):
 @admin_bp.route("/auditoria", methods=["GET"])
 @require_admin
 def auditoria():
-    """Lista projetos recentes com diagnóstico e histórico de interações com a IA."""
+    """Lista projetos recentes com diagnóstico e histórico de interações com a IA.
+
+    Query opcional:
+      ?q=termo  — busca seletiva (ILIKE) em metodologia, justificativa, passos,
+                  diagnóstico/contexto, dados do professor e o que o professor
+                  digitou no diálogo com a IA (prompt_usuario).
+
+    Não busca em prompt_sistema nem resposta_ia: esses campos repetem o
+    catálogo/vocabulário da plataforma (ex.: "World Café", "Aprendizagem")
+    e fariam termos comuns retornar quase todos os projetos.
+    """
     limite = request.args.get("limit", 50, type=int)
     limite = max(1, min(limite, 200))
+    # Remove caracteres invisíveis (ZWSP, BOM, etc.) que poluem a caixa de busca
+    termo_busca = (request.args.get("q") or "").strip()
+    termo_busca = "".join(
+        ch for ch in termo_busca if ch.isprintable() and ord(ch) not in (0x200B, 0x200C, 0x200D, 0xFEFF)
+    ).strip()
+
+    params = {"limite": limite}
+    where_clause = ""
+
+    if termo_busca:
+        where_clause = """
+                WHERE (
+                    COALESCE(r.metodologia_recomendada, '') ILIKE :termo
+                    OR COALESCE(r.justificativa, '') ILIKE :termo
+                    OR CAST(r.passos_json AS TEXT) ILIKE :termo
+                    OR COALESCE(r.status, '') ILIKE :termo
+                    OR COALESCE(r.feedback_autora, '') ILIKE :termo
+                    OR COALESCE(d.conteudo_desafio, '') ILIKE :termo
+                    OR COALESCE(d.sintese, '') ILIKE :termo
+                    OR COALESCE(d.opcoes_selecionadas, '') ILIKE :termo
+                    OR COALESCE(d.nivel_ensino, '') ILIKE :termo
+                    OR COALESCE(d.formato_aula, '') ILIKE :termo
+                    OR COALESCE(p.nome, '') ILIKE :termo
+                    OR COALESCE(p.email, '') ILIKE :termo
+                    OR EXISTS (
+                        SELECT 1
+                          FROM historico_interacoes_ia hi
+                         WHERE hi.professor_id = p.id
+                           AND (
+                             r.data_geracao IS NULL
+                             OR hi.data_registro BETWEEN r.data_geracao - INTERVAL '2 hours'
+                                                    AND r.data_geracao + INTERVAL '2 hours'
+                           )
+                           AND COALESCE(hi.prompt_usuario, '') ILIKE :termo
+                    )
+                )
+                """
+        params["termo"] = f"%{termo_busca}%"
 
     with db_session() as session:
         rows = session.execute(
             text(
-                """
+                f"""
                 SELECT
                     r.id                    AS roteiro_id,
                     r.status,
@@ -283,6 +334,118 @@ def auditoria():
                                                AND r.data_geracao + INTERVAL '2 hours'
                       )
                 ) hist ON TRUE
+                {where_clause}
+                ORDER BY r.data_geracao DESC NULLS LAST, r.id DESC
+                LIMIT :limite
+                """
+            ),
+            params,
+        ).mappings().all()
+
+        logger.info(
+            "Auditoria listada (q=%r, resultados=%d)",
+            termo_busca or None,
+            len(rows),
+        )
+        return jsonify([dict(row) for row in rows]), 200
+
+
+# Colunas da planilha completa de auditoria (relatório + usuário + diálogo).
+_PLANILHA_COLUNAS = (
+    ("roteiro_id", "Projeto ID"),
+    ("status", "Status"),
+    ("metodologia_recomendada", "Metodologia"),
+    ("justificativa", "Justificativa"),
+    ("feedback_autora", "Feedback da autora"),
+    ("data_geracao", "Data geracao do roteiro"),
+    ("passos_json", "Passos (JSON)"),
+    ("professor_id", "Professor ID"),
+    ("professor_nome", "Professor nome"),
+    ("professor_email", "Professor email"),
+    ("professor_estado", "Professor estado"),
+    ("desafio_id", "Desafio ID"),
+    ("conteudo_desafio", "Desafio"),
+    ("opcoes_selecionadas", "Opcoes selecionadas"),
+    ("nivel_ensino", "Nivel de ensino"),
+    ("formato_aula", "Formato da aula"),
+    ("qtd_participantes", "Qtd participantes"),
+    ("sintese", "Sintese"),
+    ("data_envio_desafio", "Data envio do desafio"),
+    ("dialogo_ia_json", "Dialogo IA (JSON)"),
+)
+
+
+def _cell(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.isoformat(sep=" ", timespec="seconds")
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False)
+    return str(value).replace("\r\n", "\n").replace("\r", "\n")
+
+
+@admin_bp.route("/auditoria/planilha", methods=["GET"])
+@require_admin
+def auditoria_planilha():
+    """Gera CSV (planilha) com o conteúdo completo dos relatórios.
+
+    Inclui dados do professor/usuário, contexto do desafio, roteiro (passos)
+    e o diálogo IA↔professor em uma coluna JSON.
+    """
+    limite = request.args.get("limit", 500, type=int)
+    limite = max(1, min(limite, 2000))
+
+    with db_session() as session:
+        rows = session.execute(
+            text(
+                """
+                SELECT
+                    r.id                    AS roteiro_id,
+                    r.status,
+                    r.metodologia_recomendada,
+                    r.justificativa,
+                    r.feedback_autora,
+                    r.data_geracao,
+                    r.passos_json,
+                    p.id                    AS professor_id,
+                    p.nome                  AS professor_nome,
+                    p.email                 AS professor_email,
+                    p.estado                AS professor_estado,
+                    d.id                    AS desafio_id,
+                    d.conteudo_desafio,
+                    d.opcoes_selecionadas,
+                    d.nivel_ensino,
+                    d.formato_aula,
+                    d.qtd_participantes,
+                    d.sintese,
+                    d.data_envio            AS data_envio_desafio,
+                    COALESCE(hist.dialogo_ia_json, '[]'::json) AS dialogo_ia_json
+                FROM roteiros r
+                JOIN desafios d ON d.id = r.desafio_id
+                JOIN professores p ON p.id = d.professor_id
+                LEFT JOIN LATERAL (
+                    SELECT json_agg(
+                        json_build_object(
+                            'id', hi.id,
+                            'tipo_acao', hi.tipo_acao,
+                            'prompt_sistema', hi.prompt_sistema,
+                            'prompt_usuario', hi.prompt_usuario,
+                            'resposta_ia', hi.resposta_ia,
+                            'modelo_ia', hi.modelo_ia,
+                            'tokens_prompt', hi.tokens_prompt,
+                            'tokens_resposta', hi.tokens_resposta,
+                            'data_registro', hi.data_registro
+                        ) ORDER BY hi.data_registro DESC
+                    ) AS dialogo_ia_json
+                    FROM historico_interacoes_ia hi
+                    WHERE hi.professor_id = p.id
+                      AND (
+                        r.data_geracao IS NULL
+                        OR hi.data_registro BETWEEN r.data_geracao - INTERVAL '2 hours'
+                                               AND r.data_geracao + INTERVAL '2 hours'
+                      )
+                ) hist ON TRUE
                 ORDER BY r.data_geracao DESC NULLS LAST, r.id DESC
                 LIMIT :limite
                 """
@@ -290,7 +453,43 @@ def auditoria():
             {"limite": limite},
         ).mappings().all()
 
-        return jsonify([dict(row) for row in rows]), 200
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, delimiter=";", quoting=csv.QUOTE_MINIMAL)
+    writer.writerow([label for _, label in _PLANILHA_COLUNAS])
+    for row in rows:
+        writer.writerow([_cell(row.get(key)) for key, _ in _PLANILHA_COLUNAS])
+
+    # BOM UTF-8 para abrir corretamente no Excel / Google Sheets
+    payload = "\ufeff" + buffer.getvalue()
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    filename = f"mativas-auditoria-relatorios-{stamp}.csv"
+
+    logger.info("Planilha de auditoria gerada (%d linhas)", len(rows))
+    return Response(
+        payload,
+        mimetype="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@admin_bp.route("/me", methods=["GET"])
+@require_admin
+def admin_me():
+    """Confirma a credencial/sessão administrativa associada ao token."""
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "").strip()
+    payload = _verify_token(token) or {}
+    username = payload.get("sub") or "admin"
+    return jsonify(
+        {
+            "username": username,
+            "auth_mode": "ADMIN_PASSWORD" if _env("ADMIN_PASSWORD") else "admin_users",
+            "authenticated": True,
+        }
+    ), 200
 
 
 @admin_bp.route("/ui-content", methods=["GET"])
