@@ -1,43 +1,61 @@
-import { useEffect } from 'react'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import BrandLogo from '../components/BrandLogo'
+import MapaRealizacoes from '../components/MapaRealizacoes'
+import AgendaExecutiva from '../components/AgendaExecutiva'
 
 /**
- * Após o login freemium, abre a Oficina do Inovador fiel ao PanelDX
- * (inovador_dashboard.ejs servida em /inovador/?id_clie=…).
+ * Página inicial — realizações + agenda. O fluxo de investigação fica em /desafio.
  */
 export default function MesaDoInovador() {
-  const { user, loading, logout } = useAuth()
-
-  useEffect(() => {
-    if (loading) return
-    if (!user?.id_clie) return
-    window.location.replace(`/inovador/?id_clie=${user.id_clie}`)
-  }, [user, loading])
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-bordo-soft">
-        Carregando sessão…
-      </div>
-    )
-  }
-
-  if (!user) {
-    return null
-  }
+  const { user, logout } = useAuth()
+  const [refreshKey, setRefreshKey] = useState(0)
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-6 text-center">
-      <p className="text-sm text-bordo-soft">Abrindo a Mesa do Inovador…</p>
-      <a
-        href={`/inovador/?id_clie=${user.id_clie}`}
-        className="btn-primary mt-4"
-      >
-        Entrar na mesa
-      </a>
-      <button type="button" onClick={logout} className="btn-ghost mt-3">
-        Sair
-      </button>
-    </main>
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-40 border-b border-brand-200/80 bg-white/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <a href="/mesa-do-inovador" className="flex items-center gap-3" aria-label="inove4us — início">
+            <BrandLogo
+              variant="internal"
+              className="h-24 w-auto max-w-[280px] object-contain sm:max-w-[320px]"
+            />
+          </a>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <p className="hidden text-sm text-bordo-soft sm:block">
+              Olá, <span className="font-semibold text-bordo">{user?.nome_clie || 'professor'}</span>
+            </p>
+            <Link to="/desafio" className="btn-primary !px-4 !py-2 text-sm">
+              + Desafio
+            </Link>
+            <button type="button" onClick={logout} className="btn-ghost !px-3 !py-1.5 text-xs">
+              Sair
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="px-4 pb-16 pt-5 sm:px-6">
+        <div className="mx-auto mb-6 max-w-6xl">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-600">
+            Espaço do professor
+          </p>
+          <h1 className="font-display text-3xl font-bold text-bordo-deep sm:text-4xl">
+            Sua prática inovadora
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-bordo-soft">
+            Acompanhe realizações, agenda e desdobramentos. Quando quiser investigar um problema e
+            montar um plano EduScrum, use <strong>+ Desafio</strong>.
+          </p>
+        </div>
+
+        <MapaRealizacoes refreshKey={refreshKey} />
+        <AgendaExecutiva
+          refreshKey={refreshKey}
+          onChanged={() => setRefreshKey((n) => n + 1)}
+        />
+      </main>
+    </div>
   )
 }

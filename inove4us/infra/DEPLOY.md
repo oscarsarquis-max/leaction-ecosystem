@@ -1,22 +1,22 @@
 # Deploy AWS — inove4us.com.br (Top of Funnel isolado)
 
 Infraestrutura **própria** do inove4us, separada do PanelDX.  
-**Único recurso compartilhado:** PostgreSQL `LeAction_SysF` (mesmo banco do PanelDX).
+**Banco:** RDS PostgreSQL dedicado `inove4us` (não usa `LeAction_SysF` / paneldx-database).
 
 ## Decisão de arquitetura
 
 | Opção | Quando usar |
 |-------|-------------|
-| **ECS Fargate + ALB** (recomendado neste repo) | Alto tráfego ToF, autoscaling por CPU/QPS, SG preciso no RDS via VPC |
+| **ECS Fargate + ALB** (recomendado neste repo) | Alto tráfego ToF, autoscaling por CPU/QPS |
 | **App Runner + VPC Connector** | Time-to-market; veja `infra/apprunner/` |
 
-Este roteiro assume **ECS Fargate + ALB + Route 53 + ECR**.
+Este roteiro assume **ECS Fargate + ALB + Route 53 + ECR + RDS dedicado**.
 
 ```
 Internet → Route 53 (inove4us.com.br)
         → ALB (HTTPS/ACM)
         → ECS Fargate (N≥2, autoscale)
-        → RDS PostgreSQL compartilhado (SG: só tasks inove4us:5432)
+        → RDS PostgreSQL inove4us (SG: só tasks inove4us:5432)
 ```
 
 ---

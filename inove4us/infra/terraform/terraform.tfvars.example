@@ -1,4 +1,4 @@
-aws_region   = "us-east-1"
+aws_region   = "us-east-2"
 environment  = "prod"
 domain_name  = "inove4us.com.br"
 hosted_zone_id = "ZXXXXXXXXXXXX"
@@ -10,8 +10,16 @@ public_subnet_ids  = ["subnet-ccc", "subnet-ddd"]
 # Após o primeiro apply + push da imagem, fixe a URI:
 container_image = "" # vazio = <ecr>/inove4us:latest
 
-rds_security_group_id = "sg-rds-paneldx"
-certificate_arn       = "arn:aws:acm:us-east-1:ACCOUNT:certificate/UUID"
+# RDS dedicado inove4us (não usa PanelDX)
+create_dedicated_rds     = true
+rds_publicly_accessible  = true   # true só no bootstrap; depois false
+rds_bootstrap_cidr       = "SEU.IP.PUBLICO/32"
+rds_deletion_protection  = true
+rds_instance_class       = "db.t4g.micro"
+
+# Legado (só se create_dedicated_rds=false)
+rds_security_group_id = ""
+certificate_arn       = "arn:aws:acm:us-east-2:ACCOUNT:certificate/UUID"
 
 desired_count = 2
 min_capacity  = 2
@@ -21,11 +29,11 @@ memory        = 1024
 
 secrets = {
   secret_key   = "gere-um-segredo-longo"
-  db_host      = "seu-rds.xxxxx.us-east-1.rds.amazonaws.com"
+  db_host      = ""
   db_port      = "5432"
-  db_name      = "LeAction_SysF"
-  db_user      = "inove4us_app"
-  db_pass      = "****"
+  db_name      = "inove4us"
+  db_user      = "inove4us_admin"
+  db_pass      = ""
   db_sslmode   = "require"
   email_sender = "noreply@inove4us.com.br"
 }

@@ -1,4 +1,4 @@
-"""Conexão PostgreSQL — LeAction_SysF (solicitações em ctdi_clie)."""
+"""Conexão PostgreSQL — DB inove4us (solicitações em ctdi_clie)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def get_dsn() -> dict:
     return {
         "host": os.environ.get("DB_HOST", "127.0.0.1"),
         "port": int(os.environ.get("DB_PORT", "5433")),
-        "dbname": os.environ.get("DB_NAME", "LeAction_SysF"),
+        "dbname": os.environ.get("DB_NAME", "inove4us"),
         "user": os.environ.get("DB_USER", "admin"),
         "password": os.environ.get("DB_PASS", ""),
         "sslmode": os.environ.get("DB_SSLMODE", "disable"),

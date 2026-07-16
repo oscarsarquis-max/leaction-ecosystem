@@ -42,4 +42,44 @@ export const api = {
       body: JSON.stringify({ email, code }),
     }),
   logout: () => request('/api/auth/logout', { method: 'POST', body: '{}' }),
+  estruturarWizard: (payload) =>
+    request('/api/wizard/estruturar', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  selecionarCaminho: (caminho) =>
+    request('/api/wizard/selecionar-caminho', {
+      method: 'POST',
+      body: JSON.stringify({ caminho }),
+    }),
+  listAgendaEventos: (mes, planoSession) => {
+    const q = new URLSearchParams()
+    if (mes) q.set('mes', mes)
+    if (planoSession) q.set('plano_session', planoSession)
+    const qs = q.toString()
+    return request(`/api/agenda-eventos${qs ? `?${qs}` : ''}`)
+  },
+  grafoAgenda: () => request('/api/agenda-eventos/grafo'),
+  createAgendaEvento: (payload) =>
+    request('/api/agenda-eventos', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  registrarAulas: (payload) =>
+    request('/api/agenda-eventos/registrar-aulas', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  concluirAula: (id, payload) =>
+    request(`/api/agenda-eventos/${id}/concluir-aula`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateAgendaEvento: (id, payload) =>
+    request(`/api/agenda-eventos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteAgendaEvento: (id) =>
+    request(`/api/agenda-eventos/${id}`, { method: 'DELETE' }),
 }

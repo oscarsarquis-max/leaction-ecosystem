@@ -118,7 +118,7 @@ def _fallback_rascunho_mesa_organizacional(gap_context, notas_texto, direcionado
 
 
 def get_db_connection():
-    """Usa o mesmo PostgreSQL LeAction_SysF configurado no .env do inove4us."""
+    """Usa o PostgreSQL configurado no .env do inove4us (DB_NAME=inove4us)."""
     backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     if backend_dir not in sys.path:
         sys.path.insert(0, backend_dir)

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import BrandLogo from '../components/BrandLogo'
+import DictationField from '../components/DictationField'
 
 export default function Acesso() {
   const navigate = useNavigate()
@@ -17,11 +19,6 @@ export default function Acesso() {
 
   function enterSession(user) {
     setUser(user)
-    // Oficina fiel ao PanelDX (inovador_dashboard.ejs)
-    if (user?.id_clie) {
-      window.location.replace(`/inovador/?id_clie=${user.id_clie}`)
-      return
-    }
     navigate('/mesa-do-inovador', { replace: true })
   }
 
@@ -94,13 +91,13 @@ export default function Acesso() {
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-6 py-16">
       <div className="rounded-3xl border border-brand-100 bg-white/85 p-8 shadow-soft backdrop-blur">
         <div className="mb-6 flex flex-col items-center text-center">
-          <img
-            src="/imagens/logosombra3.png"
+          <BrandLogo
+            variant="access"
+            className="h-56 w-auto max-w-full rounded-2xl object-contain shadow-soft ring-1 ring-brand-100 sm:h-64"
             alt="INOVE4US — tecnologia e inovação"
-            className="h-28 w-auto max-w-full rounded-2xl object-contain shadow-soft ring-1 ring-brand-100 sm:h-32"
           />
           <p className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">
-            Freemium · Mesa do Inovador
+            Inovação e Agilidade
           </p>
         </div>
         <h1 className="font-display text-3xl font-bold tracking-tight text-bordo sm:text-4xl">
@@ -114,16 +111,17 @@ export default function Acesso() {
               <label htmlFor="email" className="field-label">
                 E-mail
               </label>
-              <input
+              <DictationField
                 id="email"
                 type="email"
                 required
                 autoFocus
                 autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={setEmail}
                 className="field-input"
                 placeholder="voce@empresa.com"
+                continuous={false}
               />
             </div>
             {error ? (
@@ -141,41 +139,44 @@ export default function Acesso() {
               <label htmlFor="nome" className="field-label">
                 Nome
               </label>
-              <input
+              <DictationField
                 id="nome"
                 type="text"
                 required
                 autoFocus
                 value={nome}
-                onChange={(e) => setNome(e.target.value)}
+                onChange={setNome}
                 className="field-input"
                 placeholder="Seu nome completo"
+                continuous={false}
               />
             </div>
             <div>
               <label htmlFor="email-lead" className="field-label">
                 E-mail
               </label>
-              <input
+              <DictationField
                 id="email-lead"
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={setEmail}
                 className="field-input"
+                continuous={false}
               />
             </div>
             <div>
               <label htmlFor="empresa" className="field-label">
                 Empresa <span className="font-normal normal-case tracking-normal text-brand-400">(opcional)</span>
               </label>
-              <input
+              <DictationField
                 id="empresa"
                 type="text"
                 value={empresa}
-                onChange={(e) => setEmpresa(e.target.value)}
+                onChange={setEmpresa}
                 className="field-input"
                 placeholder="Instituição ou empresa"
+                continuous={false}
               />
               <p className="mt-1.5 text-xs leading-snug text-bordo-soft/80">
                 Se você for inovador solo ou ainda não tiver vínculo institucional, deixe em branco.
@@ -210,29 +211,31 @@ export default function Acesso() {
               <label htmlFor="email-code" className="field-label">
                 E-mail
               </label>
-              <input
+              <DictationField
                 id="email-code"
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={setEmail}
                 className="field-input"
+                continuous={false}
               />
             </div>
             <div>
               <label htmlFor="code" className="field-label">
                 Código de acesso
               </label>
-              <input
+              <DictationField
                 id="code"
                 type="text"
                 required
                 autoFocus
                 autoComplete="one-time-code"
                 value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onChange={(v) => setCode(String(v || '').toUpperCase())}
                 className="field-input tracking-widest"
                 placeholder="LA-XXXXXX"
+                continuous={false}
               />
             </div>
             {hint ? (

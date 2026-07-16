@@ -51,8 +51,9 @@ resource "aws_security_group" "ecs_tasks" {
   }
 }
 
-# Shared Postgres: TCP 5432 only from inove4us ECS tasks
+# Legado: acesso ao Postgres compartilhado PanelDX (desligado com RDS dedicado)
 resource "aws_security_group_rule" "rds_from_inove4us" {
+  count                    = var.create_dedicated_rds ? 0 : 1
   type                     = "ingress"
   description              = "PostgreSQL from ECS inove4us only"
   from_port                = 5432

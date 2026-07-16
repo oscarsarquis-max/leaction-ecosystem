@@ -9,11 +9,16 @@ Oficina do Inovador (cópia operacional do PanelDX) + gate de acesso por e-mail/
 
 - **Frontend:** React + Vite (login) + Oficina EJS/Flask
 - **Backend:** Flask + Gunicorn (produção)
-- **Banco:** PostgreSQL `LeAction_SysF` (compartilhado com PanelDX; infra AWS isolada)
+- **Banco:** PostgreSQL `inove4us` no Docker `leaction_db` (`localhost:5433`, user `admin`) — mesmas credenciais do PanelDX, banco separado. Bootstrap: `infra/scripts/bootstrap-inove4us-db.ps1`
+
 
 ## Dev local
 
 ```powershell
+# (opcional) popular DB inove4us a partir do snapshot LeAction_SysF — não altera o PanelDX
+cd C:\Projetos\inove4us
+.\infra\scripts\bootstrap-inove4us-db.ps1
+
 # API
 cd C:\Projetos\inove4us\backend
 .\.venv\Scripts\Activate.ps1

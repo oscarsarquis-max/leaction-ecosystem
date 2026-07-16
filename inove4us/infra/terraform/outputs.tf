@@ -15,8 +15,25 @@ output "ecs_service_name" {
 }
 
 output "ecs_tasks_security_group_id" {
-  description = "Use este SG como origem no RDS (já aplicado via aws_security_group_rule.rds_from_inove4us)"
+  description = "SG das tasks Fargate"
   value       = aws_security_group.ecs_tasks.id
+}
+
+output "rds_endpoint" {
+  description = "Endpoint do RDS dedicado (vazio se create_dedicated_rds=false)"
+  value       = var.create_dedicated_rds ? aws_db_instance.inove4us[0].address : null
+}
+
+output "rds_db_name" {
+  value = var.create_dedicated_rds ? aws_db_instance.inove4us[0].db_name : null
+}
+
+output "rds_security_group_id" {
+  value = var.create_dedicated_rds ? aws_security_group.rds[0].id : null
+}
+
+output "db_secret_arn" {
+  value = var.create_dedicated_rds ? aws_secretsmanager_secret.inove4us_db[0].arn : null
 }
 
 output "public_urls" {

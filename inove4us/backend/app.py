@@ -24,6 +24,8 @@ from db import (  # noqa: E402
 )
 from mail import send_access_code_email  # noqa: E402
 from paneldx_port.inovador_routes import inovador_bp  # noqa: E402
+from wizard_routes import wizard_bp  # noqa: E402
+from agenda_routes import agenda_bp  # noqa: E402
 
 EMAIL_RE = re.compile(
     r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9]"
@@ -94,6 +96,10 @@ def create_app() -> Flask:
 
     # Oficina do Inovador — cópia fiel do PanelDX (inovador_dashboard + APIs)
     app.register_blueprint(inovador_bp, url_prefix="/inovador")
+    # Fluxo guiado Mesa do Inovador (wizard 4 etapas)
+    app.register_blueprint(wizard_bp)
+    # Agenda executiva (calendário + compromissos)
+    app.register_blueprint(agenda_bp)
 
     @app.get("/api/health")
     def health():

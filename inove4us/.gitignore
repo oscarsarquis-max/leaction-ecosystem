@@ -21,5 +21,6 @@ infra/terraform/*.tfstate*
 infra/terraform/*.tfstate.*
 infra/terraform/tfplan
 infra/terraform/apply.log
+infra/db/*.sql
 *.tfstate*
 
