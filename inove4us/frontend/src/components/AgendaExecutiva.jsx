@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import DictationField from './DictationField'
+
+function hasPlanData(planData) {
+  if (!planData || typeof planData !== 'object') return false
+  return Object.keys(planData).length > 0
+}
 
 const MESES = [
   'Janeiro',
@@ -53,10 +59,17 @@ const STATUS_LABEL = {
   concluido: 'Concluído',
 }
 
+const TURNO_LABEL = { manha: 'Manhã', tarde: 'Tarde', noite: 'Noite' }
+const MODO_LABEL = {
+  continuidade: 'Prosseguimento',
+  reinicio: 'Começar do início',
+}
+
 /**
  * Agenda executiva — calendário mensal + lista/registro de compromissos.
  */
 export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
+  const navigate = useNavigate()
   const hoje = hojeISO()
   const now = new Date()
   const [viewYear, setViewYear] = useState(now.getFullYear())
@@ -136,6 +149,32 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
       data_evento: diaDeEvento(ev.data_evento),
       nota_texto: ev.nota_texto || '',
     })
+  }
+
+  /**
+   * Clique no card: retoma execução se houver plan_data; senão Desafio (aula) ou edição.
+   */
+  function handleEventClick(ev) {
+    if (!ev) return
+    if (ev.status === 'concluido') {
+      openEdit(ev)
+      return
+    }
+    if (hasPlanData(ev.plan_data)) {
+      navigate(`/execucao/${ev.id_evento}`, {
+        state: {
+          plan_data: ev.plan_data,
+          kanban_state: ev.kanban_state,
+          evento: ev,
+        },
+      })
+      return
+    }
+    if (ev.tipo === 'aula_eduscrum') {
+      navigate('/desafio')
+      return
+    }
+    openEdit(ev)
   }
 
   async function saveModal(e) {
@@ -293,11 +332,13 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
               </p>
             ) : (
               <ul className="flex-1 space-y-2 overflow-y-auto">
-                {eventosDoDia.map((ev) => (
+                {eventosDoDia.map((ev) => {
+                  const retomavel = ev.status !== 'concluido' && hasPlanData(ev.plan_data)
+                  return (
                   <li key={ev.id_evento}>
                     <button
                       type="button"
-                      onClick={() => openEdit(ev)}
+                      onClick={() => handleEventClick(ev)}
                       className="w-full rounded-xl border border-brand-100 bg-brand-50/50 px-3 py-2.5 text-left transition hover:border-brand-300 hover:bg-brand-50"
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -313,6 +354,23 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
                       {ev.tipo === 'aula_eduscrum' ? (
                         <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-brand-600">
                           Aula EduScrum
+                          {retomavel ? ' · Retomar' : ''}
+                        </p>
+                      ) : null}
+                      {(ev.turma || ev.turno || ev.modo_execucao) ? (
+                        <p className="mt-1 text-[11px] text-bordo">
+                          {[
+                            ev.turma,
+                            TURNO_LABEL[ev.turno] || ev.turno,
+                            MODO_LABEL[ev.modo_execucao] || ev.modo_execucao,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
+                      ) : null}
+                      {retomavel && ev.tipo !== 'aula_eduscrum' ? (
+                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-brand-600">
+                          Retomar execução
                         </p>
                       ) : null}
                       {ev.nota_texto ? (
@@ -322,7 +380,8 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
                       ) : null}
                     </button>
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             )}
           </div>

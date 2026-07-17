@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from db import (  # noqa: E402
     create_lead_solicitacao,
+    ensure_creditos_ia_column,
     find_cliente_by_email,
     upsert_access_code,
     verify_access_code,
@@ -26,6 +27,8 @@ from mail import send_access_code_email  # noqa: E402
 from paneldx_port.inovador_routes import inovador_bp  # noqa: E402
 from wizard_routes import wizard_bp  # noqa: E402
 from agenda_routes import agenda_bp  # noqa: E402
+from webhook_routes import webhook_bp  # noqa: E402
+from feedback_routes import feedback_bp  # noqa: E402
 
 EMAIL_RE = re.compile(
     r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9]"
@@ -50,6 +53,7 @@ def _session_user(cliente: dict) -> dict:
         "nome_clie": cliente.get("nome_clie") or "",
         "mail_clie": cliente.get("mail_clie") or "",
         "empresa_clie": cliente.get("empresa_clie") or "",
+        "creditos_ia": int(cliente.get("creditos_ia") or 0),
     }
 
 
@@ -94,12 +98,21 @@ def create_app() -> Flask:
     ]
     CORS(app, supports_credentials=True, origins=origins)
 
+    try:
+        ensure_creditos_ia_column()
+    except Exception as exc:
+        print(f"[inove4us] aviso creditos_ia: {exc}", file=sys.stderr)
+
     # Oficina do Inovador — cópia fiel do PanelDX (inovador_dashboard + APIs)
     app.register_blueprint(inovador_bp, url_prefix="/inovador")
     # Fluxo guiado Mesa do Inovador (wizard 4 etapas)
     app.register_blueprint(wizard_bp)
     # Agenda executiva (calendário + compromissos)
     app.register_blueprint(agenda_bp)
+    # Action Hub — webhooks S2S (sem login de sessão)
+    app.register_blueprint(webhook_bp)
+    # Programa de Co-criação — ideias / bugs / melhorias
+    app.register_blueprint(feedback_bp)
 
     @app.get("/api/health")
     def health():

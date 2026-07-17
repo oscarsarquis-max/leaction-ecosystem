@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import FloatingDictation from '../components/FloatingDictation'
+import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import ProgressStepper from '../components/wizard/ProgressStepper'
 import StepProblema from '../components/wizard/StepProblema'
 import StepEstruturacao from '../components/wizard/StepEstruturacao'
@@ -38,6 +39,7 @@ export default function DesafioPage() {
   const [plano, setPlano] = useState(null)
   const [planoSession, setPlanoSession] = useState(null)
   const [ditadoLivre, setDitadoLivre] = useState('')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   async function handleEstruturar() {
     setError('')
@@ -59,8 +61,14 @@ export default function DesafioPage() {
       setReferencial(data.referencial || null)
       setFallback(Boolean(data.fallback))
     } catch (err) {
-      setError(err.message || 'Não foi possível estruturar o problema.')
       setCurrentStep(1)
+      const code = err?.code || err?.data?.code
+      if (err?.status === 403 && code === 'INSUFFICIENT_CREDITS') {
+        setError('')
+        setShowUpgradeModal(true)
+        return
+      }
+      setError(err.message || 'Não foi possível estruturar o problema.')
     } finally {
       setBusy(false)
       setLoadingIa(false)
@@ -167,6 +175,11 @@ export default function DesafioPage() {
           setProblema(next)
           setDitadoLivre('')
         }}
+      />
+
+      <UpgradeCreditsModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
       />
     </div>
   )

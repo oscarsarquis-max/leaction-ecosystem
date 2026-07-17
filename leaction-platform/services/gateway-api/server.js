@@ -29,6 +29,9 @@ const {
 const { fulfillOrderPayment, parsePanelDxIdMatu } = require('./payment-fulfillment');
 const { loginOrRegister, ensurePasswordColumn } = require('./hub-auth');
 const { registerCrmTrackingRoutes } = require('./crm-tracking');
+const { registerEntitlementsRoutes } = require('./domain/entitlements-api');
+const { startOutboxWorker } = require('./domain/outbox-worker');
+const { registerAdminRoutes } = require('./admin');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-hub-key-2026';
 const ACTION_HUB_PUBLIC_URL = (process.env.ACTION_HUB_PUBLIC_URL || 'http://localhost:4000').replace(/\/$/, '');
@@ -1333,6 +1336,9 @@ app.post('/sync-cart', async (req, res) => {
 });
 
 registerCrmTrackingRoutes(app, pool);
+registerEntitlementsRoutes(app, pool);
+registerAdminRoutes(app, pool, { jwtSecret: JWT_SECRET });
+startOutboxWorker(pool);
 
 // API na 4001; Action Hub (Next.js) na 4000
 const PORT = process.env.GATEWAY_PORT || 4001;

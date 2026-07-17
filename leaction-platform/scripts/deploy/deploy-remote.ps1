@@ -32,12 +32,8 @@ function Invoke-Ssh([string]$Cmd) {
 
 if (-not $SkipSync) {
     Write-Host "`n==> Backup tokens ML (persistente)" -ForegroundColor Cyan
-    Invoke-Ssh @"
-mkdir -p /var/lib/leaction-platform
-if [ -f $RemotePath/backend/.ml_tokens.json ]; then
-  cp $RemotePath/backend/.ml_tokens.json /var/lib/leaction-platform/.ml_tokens.json
-fi
-"@
+    # One-liner: PowerShell here-strings quebram o quoting no ssh remoto
+    Invoke-Ssh "sudo mkdir -p /var/lib/leaction-platform && sudo chown ${User}:${User} /var/lib/leaction-platform; if [ -f $RemotePath/backend/.ml_tokens.json ]; then cp $RemotePath/backend/.ml_tokens.json /var/lib/leaction-platform/.ml_tokens.json; fi"
 
     Write-Host "`n==> Preparando diretorio remoto" -ForegroundColor Cyan
     Invoke-Ssh "sudo rm -rf $RemotePath && sudo mkdir -p $RemotePath && sudo chown -R ${User}:${User} $RemotePath && chmod -R u+rwX $RemotePath"

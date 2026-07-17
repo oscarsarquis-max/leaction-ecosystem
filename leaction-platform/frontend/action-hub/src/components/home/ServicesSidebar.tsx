@@ -1,19 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   Activity,
+  AppWindow,
   ChevronDown,
   ChevronRight,
   CreditCard,
   ExternalLink,
   Lock,
+  Package,
   Rocket,
+  Settings2,
   Store,
 } from 'lucide-react';
-import { useState, type MouseEvent } from 'react';
+import { Suspense, useState, type MouseEvent } from 'react';
 import { useAuthGate } from '@/lib/require-hub-login';
+import { useAdminGate } from '@/lib/require-admin';
 
 type NavChild = {
   label: string;
@@ -29,6 +33,7 @@ type NavItem = {
   href?: string;
   icon: typeof Store;
   requiresAuth?: boolean;
+  requiresAdmin?: boolean;
   children?: NavChild[];
 };
 
@@ -43,8 +48,10 @@ const NAV: NavItem[] = [
   {
     id: 'marketplace',
     label: 'Marketplace B2B',
-    href: '/#vitrine',
+    // Pedidos / carrinho — nunca curadoria (rota admin separada abaixo)
+    href: '/dashboard?view=cart',
     icon: Store,
+    requiresAuth: true,
   },
   {
     id: 'transformacao',
@@ -52,10 +59,16 @@ const NAV: NavItem[] = [
     icon: Rocket,
     children: [
       {
-        label: 'PanelDX',
+        label: 'mudaedu',
         description: 'Transformação Digital Educacional',
-        href: 'https://paneldx.com.br',
-        iconSrc: '/brands/paneldx.jpg',
+        href: 'https://mudaedu.com.br',
+        iconSrc: '/brands/mudaedu.png',
+      },
+      {
+        label: 'inove4us',
+        description: 'Inovação Educacional',
+        href: 'https://inove4us.com.br',
+        iconSrc: '/brands/inove4us.png',
       },
       {
         label: 'Chamelleon',
@@ -72,19 +85,51 @@ const NAV: NavItem[] = [
     icon: Activity,
     requiresAuth: true,
   },
+  {
+    id: 'admin-apps',
+    label: 'Aplicações Integradas',
+    href: '/dashboard/admin/apps',
+    icon: AppWindow,
+    requiresAuth: true,
+    requiresAdmin: true,
+  },
+  {
+    id: 'admin-plans',
+    label: 'Construtor de Planos',
+    href: '/dashboard/admin/plans',
+    icon: Package,
+    requiresAuth: true,
+    requiresAdmin: true,
+  },
+  {
+    id: 'admin-curadoria',
+    label: 'Curadoria Marketplace',
+    href: '/dashboard/marketplace/curadoria',
+    icon: Settings2,
+    requiresAuth: true,
+    requiresAdmin: true,
+  },
 ];
 
-function navActive(pathname: string, href?: string) {
+function navActive(pathname: string, href: string | undefined, view: string | null) {
   if (!href || href === '#') return false;
   if (href.startsWith('/#')) return pathname === '/';
-  if (href === '/dashboard') return pathname === '/dashboard';
+  if (href.includes('view=cart')) {
+    return pathname === '/dashboard' && view === 'cart';
+  }
+  if (href === '/dashboard') {
+    return pathname === '/dashboard' && view !== 'cart';
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function ServicesSidebar() {
+function ServicesSidebarInner() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const view = searchParams.get('view');
   const [openTransform, setOpenTransform] = useState(true);
   const { isAuthenticated, hydrated, requireLogin } = useAuthGate();
+  const { isAdmin } = useAdminGate();
 
   function handleAuthNav(
     event: MouseEvent,
@@ -101,6 +146,8 @@ export function ServicesSidebar() {
       requireLogin(href, 'Faça login para acessar este serviço.');
     }
   }
+
+  const visibleNav = NAV.filter((item) => !item.requiresAdmin || isAdmin);
 
   return (
     <aside className="flex h-full flex-col rounded-2xl border border-stone-200 bg-white shadow-sm">
@@ -123,9 +170,9 @@ export function ServicesSidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Serviços ActionHub">
-        {NAV.map((item) => {
+        {visibleNav.map((item) => {
           const Icon = item.icon;
-          const active = navActive(pathname, item.href);
+          const active = navActive(pathname, item.href, view);
           const hasChildren = Boolean(item.children?.length);
           const locked = Boolean(item.requiresAuth) && hydrated && !isAuthenticated;
 
@@ -163,7 +210,7 @@ export function ServicesSidebar() {
                             <img
                               src={child.iconSrc}
                               alt=""
-                              className="mt-0.5 h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-stone-200"
+                              className="mt-0.5 h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-orange-200/80"
                             />
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center gap-1 text-sm font-semibold text-stone-800 group-hover:text-orange-900">
@@ -228,9 +275,22 @@ export function ServicesSidebar() {
 
       <div className="border-t border-stone-100 p-4">
         <div className="rounded-xl bg-orange-50 px-3 py-2.5 text-xs leading-relaxed text-orange-800">
-          Action-Pay, Carrinho e Analytics exigem login. Marketplace (catálogo) é público.
+          Marketplace B2B abre pedidos/carrinho. Curadoria e apps/planos são só Admin. A
+          vitrine pública fica na home.
         </div>
       </div>
     </aside>
+  );
+}
+
+export function ServicesSidebar() {
+  return (
+    <Suspense
+      fallback={
+        <aside className="flex h-full flex-col rounded-2xl border border-stone-200 bg-white shadow-sm" />
+      }
+    >
+      <ServicesSidebarInner />
+    </Suspense>
   );
 }

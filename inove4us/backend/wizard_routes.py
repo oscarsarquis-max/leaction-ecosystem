@@ -13,10 +13,10 @@ import sys
 
 import boto3
 from botocore.config import Config
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor
 
-from db import get_conn
+from db import consumir_credito_ia, get_conn, get_creditos_ia
 
 wizard_bp = Blueprint("wizard", __name__)
 
@@ -326,14 +326,39 @@ def _normalizar_payload(raw: dict, problema: str, contexto: str, refs: list[dict
 
 @wizard_bp.post("/api/wizard/estruturar")
 def estruturar_problema():
-    """Recebe o problema do professor e devolve JSON para as etapas 2–4."""
+    """Recebe o problema do professor e devolve JSON para as etapas 2–4.
+
+    Freemium local: 1 crédito IA por geração bem-sucedida via Bedrock.
+    Upgrade/pagamentos ficam no ActionHub (webhooks — passo futuro).
+    """
+    user = session.get("user") or {}
+    id_clie = user.get("id_clie")
+    if not id_clie:
+        return jsonify({"error": "Não autenticado"}), 401
+
     data = request.get_json(silent=True) or {}
     problema = str(data.get("problema") or "").strip()
     contexto = str(data.get("contexto") or data.get("localizacao") or "").strip()
-    id_clie = data.get("id_clie")
 
     if len(problema) < 12:
         return jsonify({"error": "Descreva o problema com pelo menos algumas frases."}), 400
+
+    try:
+        saldo = get_creditos_ia(int(id_clie))
+    except Exception as exc:
+        print(f"[wizard] créditos: {exc}", file=sys.stderr)
+        return jsonify({"error": "Falha ao consultar créditos de uso."}), 500
+
+    if saldo <= 0:
+        return (
+            jsonify(
+                {
+                    "erro": "Limite de uso gratuito atingido.",
+                    "code": "INSUFFICIENT_CREDITS",
+                }
+            ),
+            403,
+        )
 
     try:
         refs = _buscar_problemas_referencia(problema, contexto)
@@ -401,7 +426,7 @@ Formato exato:
     user_content = (
         f"PROBLEMA DO PROFESSOR:\n{problema}\n\n"
         f"LOCALIZAÇÃO / CONTEXTO:\n{contexto or 'Não informado'}\n\n"
-        f"id_clie: {id_clie or 'n/a'}"
+        f"id_clie: {id_clie}"
     )
 
     usou_fallback = False
@@ -430,6 +455,24 @@ Formato exato:
         payload = _fallback_payload(problema, contexto, refs)
         usou_fallback = True
 
+    creditos_restantes = saldo
+    # Consome crédito somente quando a IA respondeu com sucesso (não no fallback local)
+    if not usou_fallback:
+        try:
+            novo = consumir_credito_ia(int(id_clie))
+            if novo is not None:
+                creditos_restantes = novo
+                if isinstance(session.get("user"), dict):
+                    session["user"]["creditos_ia"] = novo
+                    session.modified = True
+            else:
+                print(
+                    f"[wizard] aviso: IA ok mas não foi possível debitar crédito id_clie={id_clie}",
+                    file=sys.stderr,
+                )
+        except Exception as exc:
+            print(f"[wizard] erro ao debitar crédito: {exc}", file=sys.stderr)
+
     return jsonify(
         {
             "status": "success",
@@ -441,6 +484,7 @@ Formato exato:
             "plano_eduscrum": payload.get("plano_eduscrum"),
             "referencial": payload.get("referencial"),
             "fallback": usou_fallback,
+            "creditos_ia": creditos_restantes,
         }
     )
 

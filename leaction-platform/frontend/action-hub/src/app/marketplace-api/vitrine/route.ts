@@ -20,12 +20,16 @@ export async function GET(request: NextRequest) {
     const data = await response.json().catch(() => ({}));
 
     if (Array.isArray(data.recommended)) {
-      data.recommended = normalizeOfferImages(data.recommended);
+      data.recommended = normalizeOfferImages(
+        data.recommended as Record<string, unknown>[]
+      );
     }
     if (Array.isArray(data.shelves)) {
       data.shelves = data.shelves.map((shelf: { offers?: unknown[] }) => ({
         ...shelf,
-        offers: Array.isArray(shelf.offers) ? normalizeOfferImages(shelf.offers) : [],
+        offers: Array.isArray(shelf.offers)
+          ? normalizeOfferImages(shelf.offers as Record<string, unknown>[])
+          : [],
       }));
     }
 

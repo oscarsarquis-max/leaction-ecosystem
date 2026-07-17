@@ -16,9 +16,12 @@ async function request(path, options = {}) {
   }
 
   if (!res.ok) {
-    const err = new Error((data && data.error) || 'Falha na requisição')
+    const message =
+      (data && (data.error || data.erro)) || 'Falha na requisição'
+    const err = new Error(message)
     err.status = res.status
     err.data = data
+    err.code = data?.code || null
     throw err
   }
   return data
@@ -70,9 +73,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  getAgendaEvento: (id) => request(`/api/agenda-eventos/${id}`),
   concluirAula: (id, payload) =>
     request(`/api/agenda-eventos/${id}/concluir-aula`, {
       method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateAgendaEstado: (id, payload) =>
+    request(`/api/agenda-eventos/${id}/estado`, {
+      method: 'PUT',
       body: JSON.stringify(payload),
     }),
   updateAgendaEvento: (id, payload) =>
@@ -82,4 +91,9 @@ export const api = {
     }),
   deleteAgendaEvento: (id) =>
     request(`/api/agenda-eventos/${id}`, { method: 'DELETE' }),
+  enviarFeedback: ({ tipo, mensagem }) =>
+    request('/api/feedbacks', {
+      method: 'POST',
+      body: JSON.stringify({ tipo, mensagem }),
+    }),
 }

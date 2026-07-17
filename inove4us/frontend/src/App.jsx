@@ -1,8 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
 import BrandLogo from './components/BrandLogo'
+import CoCriacaoEntry from './components/CoCriacaoEntry'
 import Acesso from './pages/Acesso'
 import DesafioPage from './pages/DesafioPage'
+import ExecucaoPage from './pages/ExecucaoPage'
 import MesaDoInovador from './pages/MesaDoInovador'
 
 function LoadingScreen({ label = 'Carregando…' }) {
@@ -21,7 +23,12 @@ function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <LoadingScreen label="Carregando sessão…" />
   if (!user) return <Navigate to="/acesso" replace />
-  return children
+  return (
+    <>
+      {children}
+      <CoCriacaoEntry />
+    </>
+  )
 }
 
 function AppRoutes() {
@@ -48,6 +55,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <DesafioPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/execucao/:idEvento"
+        element={
+          <ProtectedRoute>
+            <ExecucaoPage />
           </ProtectedRoute>
         }
       />

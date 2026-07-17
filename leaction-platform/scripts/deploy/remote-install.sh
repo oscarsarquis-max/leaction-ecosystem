@@ -34,7 +34,8 @@ cd backend
 sudo mkdir -p /var/lib/leaction-platform
 sudo chown "$(whoami):$(whoami)" /var/lib/leaction-platform 2>/dev/null || true
 chmod 700 /var/lib/leaction-platform 2>/dev/null || true
-if [[ ! -d .venv ]]; then
+if [[ ! -f .venv/bin/activate ]]; then
+  rm -rf .venv
   python3 -m venv .venv
 fi
 # shellcheck disable=SC1091

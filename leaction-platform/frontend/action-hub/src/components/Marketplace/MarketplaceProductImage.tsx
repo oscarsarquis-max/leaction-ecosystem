@@ -19,7 +19,7 @@ type MarketplaceProductImageProps = {
   objectFit?: 'contain' | 'cover';
 };
 
-const LOAD_TIMEOUT_MS = 4500;
+const LOAD_TIMEOUT_MS = 15000;
 
 function MarketplaceOrangeFallback({ title }: { title: string }) {
   return (
@@ -81,15 +81,17 @@ export function MarketplaceProductImage({
   const attempts = useMemo(() => buildLiveImageAttemptQueue(src), [src]);
   const [attemptIndex, setAttemptIndex] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     setAttemptIndex(0);
     setFailed(false);
+    setLoaded(false);
   }, [attempts]);
 
-  // Timeout: se a imagem não carregar, tenta a próxima ou exibe fallback laranja.
+  // Timeout só se a imagem ainda não carregou (antes o timer rodava mesmo após onLoad).
   useEffect(() => {
-    if (failed || attempts.length === 0) return undefined;
+    if (failed || loaded || attempts.length === 0) return undefined;
     const timer = window.setTimeout(() => {
       if (attemptIndex + 1 < attempts.length) {
         setAttemptIndex((index) => index + 1);
@@ -98,7 +100,7 @@ export function MarketplaceProductImage({
       }
     }, LOAD_TIMEOUT_MS);
     return () => window.clearTimeout(timer);
-  }, [attemptIndex, attempts.length, failed]);
+  }, [attemptIndex, attempts.length, failed, loaded]);
 
   if (failed || attempts.length === 0) {
     return (
@@ -120,6 +122,7 @@ export function MarketplaceProductImage({
   const fitClass = objectFit === 'cover' ? 'object-cover' : 'object-contain';
 
   const advanceOrFail = () => {
+    setLoaded(false);
     if (attemptIndex + 1 < attempts.length) {
       setAttemptIndex((index) => index + 1);
       return;
@@ -143,7 +146,9 @@ export function MarketplaceProductImage({
           const img = event.currentTarget;
           if (!img.naturalWidth || !img.naturalHeight) {
             advanceOrFail();
+            return;
           }
+          setLoaded(true);
         }}
       />
     </div>

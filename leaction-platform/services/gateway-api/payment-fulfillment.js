@@ -1,11 +1,14 @@
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
+const { createContractService } = require('./domain/contract-service');
 
 /**
- * Marca pedido como PAID, dispara webhook JWT ao originador (PanelDX) e retorna pedido atualizado.
+ * Marca pedido como PAID, ativa contrato (ContractService + outbox) e
+ * dispara webhook JWT ao originador (PanelDX) — legado, até o worker de outbox.
  */
 async function fulfillOrderPayment(pool, orderId, jwtSecret, options = {}) {
   const gatewayReference = options.gatewayReference || null;
+  const contractService = createContractService(pool);
 
   const orderResult = await pool.query(
     `SELECT 
@@ -63,6 +66,21 @@ async function fulfillOrderPayment(pool, orderId, jwtSecret, options = {}) {
   );
   const updatedOrder = updateResult.rows[0];
 
+  // Fase 1B — ledger de contratos + outbox (transação própria, tudo-ou-nada)
+  let contractActivation = null;
+  try {
+    contractActivation = await contractService.activateFromOrder(orderId);
+    console.log(
+      `📋 [ContractService] Ativação order=${orderId} contract=${contractActivation.contract_id} event=${contractActivation.event_type || 'idempotent'}`
+    );
+  } catch (contractErr) {
+    // Pagamento já está PAID; não reverte cobrança — falha fica rastreável nos logs
+    console.error(
+      `❌ [ContractService] Falha ao ativar contrato order=${orderId}:`,
+      contractErr.message
+    );
+  }
+
   const webhook_url = order.payment_url && String(order.payment_url).trim();
   let webhookDelivered = false;
 
@@ -79,6 +97,7 @@ async function fulfillOrderPayment(pool, orderId, jwtSecret, options = {}) {
         hub_payload: hubPayloadParsed,
         payment_provider: options.paymentProvider || 'mercadopago',
         mp_preapproval_id: options.mpPreapprovalId || null,
+        contract_id: contractActivation?.contract_id || null,
       };
       const tecnicoToken = jwt.sign(tokenPayload, jwtSecret, { expiresIn: '1h' });
 
@@ -119,6 +138,7 @@ async function fulfillOrderPayment(pool, orderId, jwtSecret, options = {}) {
     customer_email: order.customer_email,
     id_matu: idMatuForJwt,
     product_type: order.product_type,
+    contract: contractActivation,
   };
 }
 

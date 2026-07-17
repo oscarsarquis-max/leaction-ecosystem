@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import BrandLogo from '../BrandLogo'
 import RelatoAulaModal from '../RelatoAulaModal'
 import { api } from '../../lib/api'
+import { debounce } from '../../lib/debounce'
 import KanbanMoveModal from './KanbanMoveModal'
 
 const COLUNAS = [
@@ -45,6 +46,23 @@ const STATUS_LABEL = {
   concluido: 'Concluída',
 }
 
+function tasksFromKanbanState(kanbanState, fallback) {
+  if (Array.isArray(kanbanState?.tarefas) && kanbanState.tarefas.length) {
+    return kanbanState.tarefas
+  }
+  if (Array.isArray(kanbanState) && kanbanState.length) return kanbanState
+  return fallback || []
+}
+
+function buildPlanData({ plano, hipotese, problema, planoSession }) {
+  return {
+    problema: problema || '',
+    hipotese: hipotese || '',
+    plano_session: planoSession || null,
+    plano: plano || null,
+  }
+}
+
 export default function StepEduScrum({
   plano,
   hipotese,
@@ -53,6 +71,9 @@ export default function StepEduScrum({
   planoSession,
   onVoltar,
   onAgendaChanged,
+  initialEventoId = null,
+  initialKanbanState = null,
+  resumeMode = false,
 }) {
   const timebox = plano?.timebox || []
   const totalSeconds = useMemo(
@@ -60,7 +81,9 @@ export default function StepEduScrum({
     [timebox],
   )
 
-  const [tasks, setTasks] = useState(() => plano?.tarefas_kanban || [])
+  const [tasks, setTasks] = useState(() =>
+    tasksFromKanbanState(initialKanbanState, plano?.tarefas_kanban || []),
+  )
   const [running, setRunning] = useState(false)
   const [mode, setMode] = useState('regressivo')
   const [elapsed, setElapsed] = useState(0)
@@ -69,23 +92,86 @@ export default function StepEduScrum({
   const [pendingMove, setPendingMove] = useState(null)
 
   const [aulas, setAulas] = useState([])
-  const [aulaAtivaId, setAulaAtivaId] = useState(null)
+  const [aulaAtivaId, setAulaAtivaId] = useState(initialEventoId || null)
   const [showRegistro, setShowRegistro] = useState(false)
-  const [datasRegistro, setDatasRegistro] = useState([hojeISO()])
-  const [novaData, setNovaData] = useState('')
+  const [slotsRegistro, setSlotsRegistro] = useState(() => [
+    {
+      key: `s-${Date.now()}`,
+      data: hojeISO(),
+      turma: '',
+      turno: 'manha',
+      modo_execucao: 'reinicio',
+    },
+  ])
   const [registroBusy, setRegistroBusy] = useState(false)
   const [registroErro, setRegistroErro] = useState('')
+
+  const TURNO_OPTS = [
+    { id: 'manha', label: 'Manhã' },
+    { id: 'tarde', label: 'Tarde' },
+    { id: 'noite', label: 'Noite' },
+  ]
+  const MODO_OPTS = [
+    {
+      id: 'continuidade',
+      label: 'Prosseguimento',
+      hint: 'Mesma turma / mesmo problema — retoma o Kanban de onde parou',
+    },
+    {
+      id: 'reinicio',
+      label: 'Começar do início',
+      hint: 'Outra turma (ou reset) — mesmo problema, Kanban zerado',
+    },
+  ]
+
+  function updateSlot(key, patch) {
+    setSlotsRegistro((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)))
+  }
+
+  function addSlot() {
+    setSlotsRegistro((prev) => [
+      ...prev,
+      {
+        key: `s-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        data: hojeISO(),
+        turma: prev[prev.length - 1]?.turma || '',
+        turno: 'tarde',
+        modo_execucao: 'reinicio',
+      },
+    ])
+  }
+
+  function removeSlot(key) {
+    setSlotsRegistro((prev) => (prev.length <= 1 ? prev : prev.filter((s) => s.key !== key)))
+  }
   const [acaoErro, setAcaoErro] = useState('')
   const [showRelato, setShowRelato] = useState(false)
   const [relatoBusy, setRelatoBusy] = useState(false)
+  const [saveStatus, setSaveStatus] = useState('idle') // idle | saving | saved | error
+  const [novaTarefaTitulo, setNovaTarefaTitulo] = useState('')
+
+  const eventoIdRef = useRef(null)
+  eventoIdRef.current = aulaAtivaId || initialEventoId
+
+  const planMetaRef = useRef({ plano, hipotese, problema, planoSession })
+  planMetaRef.current = { plano, hipotese, problema, planoSession }
 
   const loadAulas = useCallback(async () => {
-    if (!planoSession) return
     try {
-      const data = await api.listAgendaEventos('', planoSession)
-      const lista = (data.eventos || []).filter((e) => e.tipo === 'aula_eduscrum')
+      let lista = []
+      if (planoSession) {
+        const data = await api.listAgendaEventos('', planoSession)
+        lista = (data.eventos || []).filter((e) => e.tipo === 'aula_eduscrum')
+      }
+      if (initialEventoId && !lista.some((a) => a.id_evento === initialEventoId)) {
+        const one = await api.getAgendaEvento(initialEventoId)
+        if (one?.evento) lista = [one.evento, ...lista]
+      }
       setAulas(lista)
       setAulaAtivaId((prev) => {
+        if (initialEventoId && lista.some((a) => a.id_evento === initialEventoId)) {
+          return initialEventoId
+        }
         if (prev && lista.some((a) => a.id_evento === prev)) return prev
         const prefer =
           lista.find((a) => a.status === 'em_execucao') ||
@@ -97,20 +183,68 @@ export default function StepEduScrum({
     } catch {
       setAulas([])
     }
-  }, [planoSession])
+  }, [planoSession, initialEventoId])
 
   useEffect(() => {
-    setTasks(plano?.tarefas_kanban || [])
+    setTasks(tasksFromKanbanState(initialKanbanState, plano?.tarefas_kanban || []))
     setElapsed(0)
     setRunning(false)
     setPendingMove(null)
     setShowRegistro(false)
     setAcaoErro('')
-  }, [plano])
+    if (initialEventoId) setAulaAtivaId(initialEventoId)
+  }, [plano, initialKanbanState, initialEventoId])
 
   useEffect(() => {
     loadAulas()
   }, [loadAulas])
+
+  /**
+   * Auto-save do quadro — PUT /api/agenda-eventos/:id/estado
+   * @param {{ tarefas: any[] }} newState
+   * @param {object|null} newPlanData — se o plano estrutural mudou (add/edit/delete)
+   */
+  const saveBoardState = useCallback(async (newState, newPlanData = null) => {
+    const id = eventoIdRef.current
+    if (!id) return null
+    setSaveStatus('saving')
+    try {
+      const payload = { kanban_state: newState }
+      if (newPlanData != null) payload.plan_data = newPlanData
+      const data = await api.updateAgendaEstado(id, payload)
+      setSaveStatus('saved')
+      return data
+    } catch (err) {
+      console.warn('Falha ao auto-salvar kanban:', err)
+      setSaveStatus('error')
+      return null
+    }
+  }, [])
+
+  const saveBoardStateDebounced = useMemo(
+    () =>
+      debounce((newState, newPlanData = null) => {
+        saveBoardState(newState, newPlanData)
+      }, 700),
+    [saveBoardState],
+  )
+
+  useEffect(() => () => saveBoardStateDebounced.cancel(), [saveBoardStateDebounced])
+
+  function queueBoardSave(nextTasks, { syncPlan = false } = {}) {
+    const kanbanState = { tarefas: nextTasks }
+    if (!eventoIdRef.current) return
+    if (syncPlan) {
+      const meta = planMetaRef.current
+      const newPlanData = buildPlanData({
+        ...meta,
+        plano: { ...(meta.plano || {}), tarefas_kanban: nextTasks },
+      })
+      saveBoardStateDebounced(kanbanState, newPlanData)
+    } else {
+      saveBoardStateDebounced(kanbanState)
+    }
+  }
 
   useEffect(() => {
     if (!running || totalSeconds <= 0) return undefined
@@ -191,28 +325,107 @@ export default function StepEduScrum({
       nota: nota.trim(),
       em: new Date().toISOString(),
     }
-    setTasks((prev) =>
-      prev.map((t) => {
+    setTasks((prev) => {
+      const next = prev.map((t) => {
         if (t.id !== task.id) return t
         const historico = Array.isArray(t.historico) ? [...t.historico, entrada] : [entrada]
         return { ...t, coluna: toColuna, historico, ultima_observacao: nota.trim() }
-      }),
-    )
+      })
+      queueBoardSave(next)
+      return next
+    })
     setPendingMove(null)
+  }
+
+  function handleAddTask(e) {
+    e?.preventDefault?.()
+    if (!podeExecutar) {
+      setAcaoErro('Registre a aula na agenda antes de editar o Kanban.')
+      return
+    }
+    const titulo = novaTarefaTitulo.trim()
+    if (!titulo) return
+    const id =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `t-${Date.now()}`
+    setTasks((prev) => {
+      const next = [
+        ...prev,
+        {
+          id,
+          titulo,
+          coluna: 'para_fazer',
+          cor: '#FDE68A',
+          historico: [],
+        },
+      ]
+      queueBoardSave(next, { syncPlan: true })
+      return next
+    })
+    setNovaTarefaTitulo('')
+  }
+
+  function handleEditTask(task) {
+    if (!podeExecutar || !task) return
+    const titulo = window.prompt('Editar título do card:', task.titulo || '')
+    if (titulo == null) return
+    const nextTitle = titulo.trim()
+    if (!nextTitle) return
+    setTasks((prev) => {
+      const next = prev.map((t) => (t.id === task.id ? { ...t, titulo: nextTitle } : t))
+      queueBoardSave(next, { syncPlan: true })
+      return next
+    })
+  }
+
+  function handleDeleteTask(task) {
+    if (!podeExecutar || !task) return
+    if (!window.confirm(`Excluir o card “${task.titulo}”?`)) return
+    setTasks((prev) => {
+      const next = prev.filter((t) => t.id !== task.id)
+      queueBoardSave(next, { syncPlan: true })
+      return next
+    })
   }
 
   async function handleRegistrarAulas(e) {
     e?.preventDefault?.()
     setRegistroErro('')
-    const datas = [...new Set(datasRegistro.filter(Boolean))]
-    if (!datas.length) {
-      setRegistroErro('Inclua ao menos uma data para a(s) aula(s).')
+    const aulas = slotsRegistro.map((s) => ({
+      data: s.data,
+      turma: (s.turma || '').trim(),
+      turno: s.turno,
+      modo_execucao: s.modo_execucao,
+    }))
+    if (!aulas.length) {
+      setRegistroErro('Inclua ao menos uma aula.')
       return
+    }
+    for (const a of aulas) {
+      if (!a.data) {
+        setRegistroErro('Cada aula precisa de uma data.')
+        return
+      }
+      if (!a.turma) {
+        setRegistroErro('Informe a turma de cada aula.')
+        return
+      }
+    }
+    const dupKey = new Set()
+    for (const a of aulas) {
+      const k = `${a.data}|${a.turma.toLowerCase()}|${a.turno}`
+      if (dupKey.has(k)) {
+        setRegistroErro(`Duplicado: ${formatarDataBR(a.data)} · ${a.turma} · ${a.turno}. No mesmo dia, mude a turma ou o turno.`)
+        return
+      }
+      dupKey.add(k)
     }
     setRegistroBusy(true)
     try {
+      const planData = buildPlanData({ plano, hipotese, problema, planoSession })
       const data = await api.registrarAulas({
-        datas,
+        aulas,
         titulo: `EduScrum · ${tituloAula}`,
         nota_texto: [
           hipotese ? `Hipótese: ${hipotese}` : null,
@@ -227,9 +440,19 @@ export default function StepEduScrum({
           problema: (problema || '').slice(0, 500),
           timebox_min: totalSeconds / 60,
         },
+        plan_data: planData,
+        kanban_state: { tarefas: tasks },
       })
       setShowRegistro(false)
-      setDatasRegistro([hojeISO()])
+      setSlotsRegistro([
+        {
+          key: `s-${Date.now()}`,
+          data: hojeISO(),
+          turma: '',
+          turno: 'manha',
+          modo_execucao: 'reinicio',
+        },
+      ])
       await loadAulas()
       onAgendaChanged?.()
       const criados = data.eventos || []
@@ -276,6 +499,9 @@ export default function StepEduScrum({
     setRelatoBusy(true)
     setAcaoErro('')
     try {
+      // garante último estado do board antes de concluir
+      saveBoardStateDebounced.cancel()
+      await saveBoardState({ tarefas: tasks })
       await api.concluirAula(aulaAtiva.id_evento, payload)
       setShowRelato(false)
       await loadAulas()
@@ -309,7 +535,9 @@ export default function StepEduScrum({
           Aula EduScrum
         </h1>
         <p className="mt-2 text-sm text-bordo-soft print:hidden">
-          Plano de aula interativo — registre o dia na agenda para executar.
+          {resumeMode
+            ? 'Retomada da aula — o Kanban e o plano foram restaurados da agenda.'
+            : 'Plano de aula interativo — registre o dia na agenda para executar.'}
         </p>
       </div>
 
@@ -357,7 +585,13 @@ export default function StepEduScrum({
             >
               {aulas.map((a) => (
                 <option key={a.id_evento} value={a.id_evento}>
-                  {formatarDataBR(a.data_evento)} · {STATUS_LABEL[a.status] || a.status}
+                  {formatarDataBR(a.data_evento)}
+                  {a.turma ? ` · ${a.turma}` : ''}
+                  {a.turno ? ` · ${TURNO_OPTS.find((t) => t.id === a.turno)?.label || a.turno}` : ''}
+                  {' · '}
+                  {a.modo_execucao === 'continuidade' ? 'Prosseguimento' : a.modo_execucao === 'reinicio' ? 'Início' : ''}
+                  {' · '}
+                  {STATUS_LABEL[a.status] || a.status}
                 </option>
               ))}
             </select>
@@ -373,7 +607,11 @@ export default function StepEduScrum({
                         : 'bg-brand-100 text-bordo'
                   }`}
                 >
-                  {formatarDataBR(a.data_evento)} · {STATUS_LABEL[a.status] || a.status}
+                  {formatarDataBR(a.data_evento)}
+                  {a.turma ? ` · ${a.turma}` : ''}
+                  {a.turno ? ` · ${TURNO_OPTS.find((t) => t.id === a.turno)?.label || a.turno}` : ''}
+                  {' · '}
+                  {STATUS_LABEL[a.status] || a.status}
                 </li>
               ))}
             </ul>
@@ -436,13 +674,55 @@ export default function StepEduScrum({
 
           <div className="rounded-2xl border border-brand-200 bg-white/80 p-4 shadow-soft sm:p-5">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-bordo">
-                Quadro Kanban
-              </p>
-              <p className="text-[11px] text-bordo-soft print:hidden">
-                Arraste o card. Observação de implementação é obrigatória.
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-bordo">
+                  Quadro Kanban
+                </p>
+                <p className="mt-0.5 text-[11px] text-bordo-soft print:hidden">
+                  Arraste o card. Observação de implementação é obrigatória. Auto-save ativo.
+                </p>
+              </div>
+              <p
+                className={`text-[10px] font-bold uppercase tracking-wide print:hidden ${
+                  saveStatus === 'saving'
+                    ? 'text-amber-700'
+                    : saveStatus === 'saved'
+                      ? 'text-emerald-700'
+                      : saveStatus === 'error'
+                        ? 'text-rose-600'
+                        : 'text-bordo-soft'
+                }`}
+                aria-live="polite"
+              >
+                {saveStatus === 'saving'
+                  ? 'Salvando…'
+                  : saveStatus === 'saved'
+                    ? 'Salvo'
+                    : saveStatus === 'error'
+                      ? 'Erro ao salvar'
+                      : aulaAtivaId || initialEventoId
+                        ? 'Auto-save'
+                        : 'Salva ao registrar aula'}
               </p>
             </div>
+
+            {podeExecutar && !aulaConcluida ? (
+              <form
+                onSubmit={handleAddTask}
+                className="mb-3 flex flex-wrap gap-2 print:hidden"
+              >
+                <input
+                  className="field-input min-w-[180px] flex-1 !py-2 text-sm"
+                  value={novaTarefaTitulo}
+                  onChange={(e) => setNovaTarefaTitulo(e.target.value)}
+                  placeholder="Novo card / passo…"
+                />
+                <button type="submit" className="btn-ghost !px-3 !py-2 text-xs">
+                  + Card
+                </button>
+              </form>
+            ) : null}
+
             <div className="grid gap-3 md:grid-cols-3">
               {COLUNAS.map((col) => {
                 const cards = tasks.filter((t) => (t.coluna || 'para_fazer') === col.id)
@@ -508,6 +788,30 @@ export default function StepEduScrum({
                               <i className="fa-solid fa-comment-dots mr-1 opacity-70" />
                               {task.ultima_observacao}
                             </p>
+                          ) : null}
+                          {podeExecutar && !aulaConcluida ? (
+                            <div className="mt-2 flex gap-2 print:hidden">
+                              <button
+                                type="button"
+                                className="text-[10px] font-bold text-bordo/70 hover:text-bordo"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEditTask(task)
+                                }}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                className="text-[10px] font-bold text-rose-600/80 hover:text-rose-700"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteTask(task)
+                                }}
+                              >
+                                Excluir
+                              </button>
+                            </div>
                           ) : null}
                         </li>
                       ))}
@@ -686,7 +990,7 @@ export default function StepEduScrum({
         >
           <form
             onSubmit={handleRegistrarAulas}
-            className="w-full max-w-md rounded-2xl border border-brand-200 bg-white p-5 shadow-soft"
+            className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-brand-200 bg-white p-5 shadow-soft"
           >
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600">
               Agenda executiva
@@ -695,51 +999,104 @@ export default function StepEduScrum({
               Registrar aula(s)
             </h3>
             <p className="mt-2 text-sm text-bordo-soft">
-              Cria evento(s) no calendário vinculados a este plano EduScrum.
+              Para cada data, informe turma, turno e o caminho: prosseguimento (mesma turma) ou
+              começar do início (outra turma / reset). No mesmo dia pode haver mais de uma aula se
+              turma ou turno forem diferentes.
             </p>
             <p className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-xs text-bordo">
               <strong>Missão:</strong> {tituloAula}
             </p>
 
-            <ul className="mt-4 space-y-2">
-              {datasRegistro.map((d) => (
+            <ul className="mt-4 space-y-3">
+              {slotsRegistro.map((slot, idx) => (
                 <li
-                  key={d}
-                  className="flex items-center justify-between rounded-lg border border-brand-100 bg-brand-50/50 px-3 py-2 text-sm"
+                  key={slot.key}
+                  className="rounded-xl border border-brand-100 bg-brand-50/40 p-3"
                 >
-                  <span className="font-semibold text-bordo-deep">{formatarDataBR(d)}</span>
-                  <button
-                    type="button"
-                    className="text-xs font-bold text-rose-600 hover:underline"
-                    onClick={() => setDatasRegistro((prev) => prev.filter((x) => x !== d))}
-                  >
-                    Remover
-                  </button>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-bordo">
+                      Aula {idx + 1}
+                    </p>
+                    {slotsRegistro.length > 1 ? (
+                      <button
+                        type="button"
+                        className="text-xs font-bold text-rose-600 hover:underline"
+                        onClick={() => removeSlot(slot.key)}
+                      >
+                        Remover
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-bordo-soft">Data</label>
+                      <input
+                        type="date"
+                        className="field-input mt-1 !py-2"
+                        value={slot.data}
+                        onChange={(e) => updateSlot(slot.key, { data: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-bordo-soft">
+                        Turma
+                      </label>
+                      <input
+                        className="field-input mt-1 !py-2"
+                        value={slot.turma}
+                        onChange={(e) => updateSlot(slot.key, { turma: e.target.value })}
+                        placeholder="Ex.: 8º A"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-bordo-soft">
+                        Turno
+                      </label>
+                      <select
+                        className="field-input mt-1 !py-2"
+                        value={slot.turno}
+                        onChange={(e) => updateSlot(slot.key, { turno: e.target.value })}
+                      >
+                        {TURNO_OPTS.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase text-bordo-soft">
+                        Caminho
+                      </label>
+                      <select
+                        className="field-input mt-1 !py-2"
+                        value={slot.modo_execucao}
+                        onChange={(e) => updateSlot(slot.key, { modo_execucao: e.target.value })}
+                      >
+                        {MODO_OPTS.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[11px] leading-snug text-bordo-soft">
+                    {MODO_OPTS.find((m) => m.id === slot.modo_execucao)?.hint}
+                  </p>
                 </li>
               ))}
             </ul>
 
-            <div className="mt-3 flex gap-2">
-              <input
-                type="date"
-                className="field-input flex-1"
-                value={novaData}
-                onChange={(e) => setNovaData(e.target.value)}
-              />
-              <button
-                type="button"
-                className="btn-ghost !px-3 !py-2 text-xs"
-                onClick={() => {
-                  if (!novaData) return
-                  setDatasRegistro((prev) =>
-                    prev.includes(novaData) ? prev : [...prev, novaData].sort(),
-                  )
-                  setNovaData('')
-                }}
-              >
-                + Data
-              </button>
-            </div>
+            <button
+              type="button"
+              className="btn-ghost mt-3 w-full !py-2 text-xs"
+              onClick={addSlot}
+            >
+              + Outra aula (outra data, turno ou turma)
+            </button>
 
             {registroErro ? (
               <p className="mt-2 text-xs font-semibold text-brand-700">{registroErro}</p>

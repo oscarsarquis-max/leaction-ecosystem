@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { Loader2, Search, ShoppingBag } from 'lucide-react';
 import { MarketplaceProductImage } from '@/components/Marketplace/MarketplaceProductImage';
+import { fetchMarketplaceOffers } from '@/components/Marketplace/marketplaceApi';
 import { useCart } from '@/context/CartContext';
 import { useAuthGate } from '@/lib/require-hub-login';
 import { openExternalUrl } from '@/utils/openExternalUrl';
@@ -68,6 +69,8 @@ const PLACEHOLDER_OFFERS: Offer[] = [
   },
 ];
 
+const SEARCH_DEBOUNCE_MS = 400;
+
 function flattenOffers(payload: VitrinePayload | null): Offer[] {
   if (!payload) return [];
   const fromRecommended = Array.isArray(payload.recommended) ? payload.recommended : [];
@@ -84,19 +87,48 @@ function flattenOffers(payload: VitrinePayload | null): Offer[] {
   return Array.from(map.values());
 }
 
+function normalizeSearchOffer(raw: Record<string, unknown>): Offer | null {
+  const id = String(raw.id || '').trim();
+  const title = String(raw.title || '').trim();
+  const link = String(raw.link || '').trim();
+  if (!id || !title || !link) return null;
+  return {
+    id,
+    title,
+    price: typeof raw.price === 'number' ? raw.price : null,
+    price_label: typeof raw.price_label === 'string' ? raw.price_label : undefined,
+    image: typeof raw.image === 'string' ? raw.image : null,
+    link,
+    vendor: typeof raw.vendor === 'string' ? raw.vendor : undefined,
+    category: typeof raw.category === 'string' ? raw.category : undefined,
+    fallback: Boolean(raw.fallback),
+  };
+}
+
 export function OffersVitrine() {
   const { addToCart, cartItems } = useCart();
   const { requireLogin } = useAuthGate();
-  const [offers, setOffers] = useState<Offer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [vitrineOffers, setVitrineOffers] = useState<Offer[]>([]);
+  const [searchOffers, setSearchOffers] = useState<Offer[] | null>(null);
+  const [loadingVitrine, setLoadingVitrine] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
 
     async function load() {
-      setLoading(true);
+      setLoadingVitrine(true);
       try {
         const res = await fetch('/marketplace-api/vitrine?limit=8', {
           cache: 'no-store',
@@ -106,12 +138,12 @@ export function OffersVitrine() {
         const data = (await res.json().catch(() => ({}))) as VitrinePayload;
         const list = flattenOffers(data);
         if (!cancelled) {
-          setOffers(list.length ? list : PLACEHOLDER_OFFERS);
+          setVitrineOffers(list.length ? list : PLACEHOLDER_OFFERS);
         }
       } catch {
-        if (!cancelled) setOffers(PLACEHOLDER_OFFERS);
+        if (!cancelled) setVitrineOffers(PLACEHOLDER_OFFERS);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoadingVitrine(false);
       }
     }
 
@@ -122,16 +154,53 @@ export function OffersVitrine() {
     };
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return offers;
-    return offers.filter(
-      (o) =>
-        o.title.toLowerCase().includes(q) ||
-        (o.category || '').toLowerCase().includes(q) ||
-        (o.vendor || '').toLowerCase().includes(q)
-    );
-  }, [offers, query]);
+  useEffect(() => {
+    if (!debouncedQuery) {
+      setSearchOffers(null);
+      setSearchError('');
+      setSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    async function runSearch() {
+      setSearching(true);
+      setSearchError('');
+      try {
+        const data = await fetchMarketplaceOffers({
+          q: debouncedQuery,
+          limit: 12,
+          signal: controller.signal,
+        });
+        if (cancelled) return;
+        const rawOffers = Array.isArray(data.offers) ? data.offers : [];
+        const list = rawOffers
+          .map((offer: unknown) => normalizeSearchOffer(offer as Record<string, unknown>))
+          .filter((offer: Offer | null): offer is Offer => Boolean(offer));
+        setSearchOffers(list);
+      } catch (err) {
+        if (cancelled || (err instanceof DOMException && err.name === 'AbortError')) return;
+        setSearchOffers([]);
+        setSearchError(
+          err instanceof Error ? err.message : 'Não foi possível buscar soluções no momento.'
+        );
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }
+
+    void runSearch();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [debouncedQuery]);
+
+  const isSearchMode = Boolean(debouncedQuery);
+  const displayedOffers = isSearchMode ? searchOffers || [] : vitrineOffers;
+  const loading = isSearchMode ? searching : loadingVitrine;
 
   function acquire(offer: Offer, event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
@@ -187,15 +256,19 @@ export function OffersVitrine() {
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-20 text-sm text-stone-500">
             <Loader2 className="size-4 animate-spin" aria-hidden />
-            Carregando vitrine…
+            {isSearchMode ? 'Buscando soluções…' : 'Carregando vitrine…'}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : searchError ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-10 text-center text-sm text-amber-900">
+            {searchError}
+          </div>
+        ) : displayedOffers.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-stone-200 bg-white px-6 py-16 text-center text-sm text-stone-500">
-            Nenhuma oferta encontrada para “{query}”.
+            Nenhuma oferta encontrada para “{query.trim()}”.
           </div>
         ) : (
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {filtered.map((offer) => {
+            {displayedOffers.map((offer) => {
               const inCart = cartItems.some((i) => String(i.id) === String(offer.id));
               return (
                 <li key={offer.id}>
