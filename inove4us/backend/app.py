@@ -20,6 +20,7 @@ from db import (  # noqa: E402
     create_lead_solicitacao,
     ensure_creditos_ia_column,
     find_cliente_by_email,
+    get_creditos_ia,
     upsert_access_code,
     verify_access_code,
 )
@@ -29,6 +30,7 @@ from wizard_routes import wizard_bp  # noqa: E402
 from agenda_routes import agenda_bp  # noqa: E402
 from webhook_routes import webhook_bp  # noqa: E402
 from feedback_routes import feedback_bp  # noqa: E402
+from billing_routes import billing_bp  # noqa: E402
 
 EMAIL_RE = re.compile(
     r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9]"
@@ -111,6 +113,8 @@ def create_app() -> Flask:
     app.register_blueprint(agenda_bp)
     # Action Hub — webhooks S2S (sem login de sessão)
     app.register_blueprint(webhook_bp)
+    # Billing — proxy S2S checkout (secret fica só no backend)
+    app.register_blueprint(billing_bp)
     # Programa de Co-criação — ideias / bugs / melhorias
     app.register_blueprint(feedback_bp)
 
@@ -123,6 +127,25 @@ def create_app() -> Flask:
         user = session.get("user")
         if not user:
             return jsonify({"authenticated": False, "user": None})
+
+        # Saldo fresco do banco (webhook Hub atualiza ctdi_clie.creditos_ia)
+        email = str(user.get("mail_clie") or "").strip().lower()
+        id_clie = user.get("id_clie")
+        try:
+            cliente = find_cliente_by_email(email) if email else None
+            if cliente:
+                fresh_user = _session_user(cliente)
+                session["user"] = fresh_user
+                return jsonify({"authenticated": True, "user": fresh_user})
+
+            if id_clie:
+                fresh = get_creditos_ia(int(id_clie))
+                user = {**user, "creditos_ia": fresh}
+                session["user"] = user
+                return jsonify({"authenticated": True, "user": user})
+        except Exception as exc:
+            print(f"[inove4us] auth/me refresh creditos: {exc}", file=sys.stderr)
+
         return jsonify({"authenticated": True, "user": user})
 
     @app.post("/api/tracking/enviar")

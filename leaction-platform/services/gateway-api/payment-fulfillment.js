@@ -53,6 +53,34 @@ async function fulfillOrderPayment(pool, orderId, jwtSecret, options = {}) {
     hubPayloadParsed = null;
   }
 
+  // Idempotência: já PAID — ainda garante activateFromOrder (noop se contrato existe)
+  if (String(order.status || '').toUpperCase() === 'PAID') {
+    let contractActivation = null;
+    try {
+      contractActivation = await contractService.activateFromOrder(orderId);
+    } catch (contractErr) {
+      console.error(
+        `❌ [ContractService] Falha (order já PAID) order=${orderId}:`,
+        contractErr.message
+      );
+    }
+    return {
+      order: {
+        id: order.id,
+        status: order.status,
+        paid_at: null,
+        gateway_reference: gatewayReference,
+        updated_at: null,
+      },
+      alreadyPaid: true,
+      webhookDelivered: false,
+      customer_email: order.customer_email,
+      id_matu: idMatuForJwt,
+      product_type: order.product_type,
+      contract: contractActivation,
+    };
+  }
+
   const updateResult = await pool.query(
     `UPDATE orders
      SET status = 'PAID',

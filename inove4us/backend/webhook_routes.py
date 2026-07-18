@@ -87,7 +87,7 @@ def _handle_credits_granted(payload: dict) -> dict:
     delta = _credits_delta(payload)
     if not subject_id:
         print(
-            "[actionhub-webhook] CREDITS_GRANTED sem subject_id — ignorado",
+            "[actionhub-webhook] CREDITS_GRANTED sem subject_id - ignorado",
             file=sys.stderr,
         )
         return {"handled": False, "reason": "missing_subject"}
@@ -95,8 +95,8 @@ def _handle_credits_granted(payload: dict) -> dict:
     cliente = find_cliente_by_email(subject_id)
     if not cliente:
         print(
-            f"[actionhub-webhook] CREDITS_GRANTED: cliente não encontrado "
-            f"mail={subject_id} credits={delta} — ack sem aplicar",
+            f"[actionhub-webhook] CREDITS_GRANTED: cliente nao encontrado "
+            f"mail={subject_id} credits={delta} - ack sem aplicar",
             file=sys.stderr,
         )
         return {"handled": False, "reason": "user_not_found", "subject_id": subject_id}
@@ -116,7 +116,7 @@ def _handle_credits_granted(payload: dict) -> dict:
     novo = adicionar_creditos_ia(int(cliente["id_clie"]), delta)
     print(
         f"[actionhub-webhook] CREDITS_GRANTED mail={subject_id} "
-        f"+{delta} → saldo={novo}"
+        f"+{delta} -> saldo={novo}"
     )
     return {
         "handled": True,
@@ -130,7 +130,7 @@ def _handle_contract_activated(payload: dict) -> dict:
     subject_id = str(payload.get("subject_id") or "").strip().lower()
     print(
         f"[actionhub-webhook] CONTRACT_ACTIVATED recebido "
-        f"subject_id={subject_id or '—'} contract_id={payload.get('contract_id')}"
+        f"subject_id={subject_id or '-'} contract_id={payload.get('contract_id')}"
     )
     # Premium / entitlements persistidos — fase futura
     return {"handled": True, "logged": True, "subject_id": subject_id or None}

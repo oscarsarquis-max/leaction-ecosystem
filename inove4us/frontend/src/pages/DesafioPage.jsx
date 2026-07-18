@@ -114,9 +114,16 @@ export default function DesafioPage() {
             Desafio · <span className="font-semibold text-bordo">{user?.nome_clie || 'professor'}</span>
           </p>
         </div>
-        <button type="button" onClick={logout} className="btn-ghost !px-3 !py-1.5 text-xs">
-          Sair
-        </button>
+        <div className="flex items-center gap-2">
+          {user?.creditos_ia != null ? (
+            <span className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo">
+              {Number(user.creditos_ia)} créditos
+            </span>
+          ) : null}
+          <button type="button" onClick={logout} className="btn-ghost !px-3 !py-1.5 text-xs">
+            Sair
+          </button>
+        </div>
       </div>
 
       <main className="px-4 pb-16 pt-2 sm:px-6">

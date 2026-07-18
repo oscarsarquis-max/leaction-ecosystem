@@ -3,6 +3,9 @@ import { AuthProvider, useAuth } from './lib/auth'
 import BrandLogo from './components/BrandLogo'
 import CoCriacaoEntry from './components/CoCriacaoEntry'
 import Acesso from './pages/Acesso'
+import PaymentFailurePage from './pages/billing/PaymentFailurePage'
+import PaymentPendingPage from './pages/billing/PaymentPendingPage'
+import PaymentSuccessPage from './pages/billing/PaymentSuccessPage'
 import DesafioPage from './pages/DesafioPage'
 import ExecucaoPage from './pages/ExecucaoPage'
 import MesaDoInovador from './pages/MesaDoInovador'
@@ -63,6 +66,30 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ExecucaoPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pagamento/sucesso"
+        element={
+          <ProtectedRoute>
+            <PaymentSuccessPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pagamento/pendente"
+        element={
+          <ProtectedRoute>
+            <PaymentPendingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pagamento/erro"
+        element={
+          <ProtectedRoute>
+            <PaymentFailurePage />
           </ProtectedRoute>
         }
       />

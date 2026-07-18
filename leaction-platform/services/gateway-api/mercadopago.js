@@ -4,6 +4,7 @@ const tls = require('tls');
 
 const MP_PREAPPROVAL_URL = 'https://api.mercadopago.com/preapproval';
 const MP_PAYMENTS_URL = 'https://api.mercadopago.com/v1/payments';
+const MP_PREFERENCES_URL = 'https://api.mercadopago.com/checkout/preferences';
 
 const MP_OK_STATUSES = new Set(['authorized', 'pending']);
 const MP_PAYMENT_OK_STATUSES = new Set(['approved', 'authorized']);
@@ -199,6 +200,246 @@ function extractMpErrorMessage(err) {
   }
 
   return 'Erro ao processar assinatura no Mercado Pago';
+}
+
+/**
+ * Busca pagamento na API MP (fonte da verdade do webhook).
+ * @see https://www.mercadopago.com.br/developers/pt/reference/payments/_payments_id/get
+ */
+async function fetchMercadoPagoPayment(paymentId) {
+  const accessToken = getMercadoPagoAccessToken();
+  if (!accessToken) {
+    const err = new Error('MP_ACCESS_TOKEN não configurado no .env do gateway');
+    err.statusCode = 503;
+    throw err;
+  }
+  const id = String(paymentId || '').trim();
+  if (!id) {
+    const err = new Error('payment_id obrigatório');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  try {
+    const { data } = await axios.get(
+      `${MP_PAYMENTS_URL}/${encodeURIComponent(id)}`,
+      buildMpAxiosConfig({
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+    );
+    return data;
+  } catch (err) {
+    const wrapped = new Error(extractMpErrorMessage(err));
+    wrapped.statusCode = err.response?.status || 502;
+    wrapped.mpResponse = err.response?.data;
+    throw wrapped;
+  }
+}
+
+/**
+ * Busca merchant_order (Checkout Pro costuma notificar este tópico).
+ * @see https://www.mercadopago.com.br/developers/pt/reference/merchant_orders/_merchant_orders_id/get
+ */
+async function fetchMercadoPagoMerchantOrder(orderId) {
+  const accessToken = getMercadoPagoAccessToken();
+  if (!accessToken) {
+    const err = new Error('MP_ACCESS_TOKEN não configurado no .env do gateway');
+    err.statusCode = 503;
+    throw err;
+  }
+  const id = String(orderId || '').trim();
+  if (!id) {
+    const err = new Error('merchant_order_id obrigatório');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  try {
+    const { data } = await axios.get(
+      `https://api.mercadopago.com/merchant_orders/${encodeURIComponent(id)}`,
+      buildMpAxiosConfig({
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+    );
+    return data;
+  } catch (err) {
+    const wrapped = new Error(extractMpErrorMessage(err));
+    wrapped.statusCode = err.response?.status || 502;
+    wrapped.mpResponse = err.response?.data;
+    throw wrapped;
+  }
+}
+
+/**
+ * Cria Preference (Checkout Pro) e devolve init_point / sandbox_init_point.
+ * @see https://www.mercadopago.com.br/developers/pt/reference/preferences/_checkout_preferences/post
+ */
+async function createCheckoutPreference({
+  title,
+  amount,
+  quantity = 1,
+  currencyId = 'BRL',
+  externalReference,
+  payerEmail,
+  notificationUrl,
+  backUrls,
+  statementDescriptor,
+}) {
+  const accessToken = getMercadoPagoAccessToken();
+  if (!accessToken) {
+    const err = new Error('MP_ACCESS_TOKEN não configurado no .env do gateway');
+    err.statusCode = 503;
+    throw err;
+  }
+
+  const unitPrice = Math.round(Number(amount) * 100) / 100;
+  if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+    const err = new Error('unit_price inválido para Preference Mercado Pago');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const itemTitle = String(title || 'Plano Action Hub').trim() || 'Plano Action Hub';
+  const qty = Math.max(1, Number(quantity) || 1);
+
+  const payload = {
+    items: [
+      {
+        title: itemTitle,
+        quantity: qty,
+        unit_price: unitPrice,
+        currency_id: String(currencyId || 'BRL').trim() || 'BRL',
+      },
+    ],
+  };
+
+  if (externalReference) {
+    payload.external_reference = String(externalReference);
+  }
+
+  const email = String(payerEmail || '').trim();
+  if (email.includes('@')) {
+    payload.payer = { email: resolveSandboxPayerEmail(email) };
+  }
+
+  const notif = String(notificationUrl || '').trim();
+  // MP rejeita notification_url em localhost/loopback (precisa URL pública / túnel)
+  if (notif && isPubliclyReachableUrl(notif)) {
+    payload.notification_url = notif;
+  } else if (notif) {
+    console.warn(
+      `⚠️ [Mercado Pago] notification_url ignorada (não pública): ${notif}`
+    );
+  }
+
+  if (backUrls && typeof backUrls === 'object') {
+    const urls = {};
+    for (const key of ['success', 'failure', 'pending']) {
+      if (backUrls[key] && String(backUrls[key]).trim()) {
+        urls[key] = String(backUrls[key]).trim();
+      }
+    }
+    if (urls.success) {
+      payload.back_urls = urls;
+      // Redireciona o comprador de volta à app demandante após approved
+      payload.auto_return = 'approved';
+    }
+  }
+
+  if (statementDescriptor && String(statementDescriptor).trim()) {
+    payload.statement_descriptor = String(statementDescriptor).trim().slice(0, 22);
+  }
+
+  console.log(
+    `🛒 [Mercado Pago] Preference "${itemTitle}" R$ ${unitPrice} ref=${externalReference || '—'} back_urls=${payload.back_urls?.success || '—'}`
+  );
+
+  async function postPreference(body) {
+    const { data } = await axios.post(
+      MP_PREFERENCES_URL,
+      body,
+      buildMpAxiosConfig({
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
+    );
+    return data;
+  }
+
+  function warnIfBackUrlsStripped(pref, requested) {
+    const got = String(pref?.back_urls?.success || '').trim();
+    const want = String(requested?.success || '').trim();
+    if (want && !got) {
+      console.warn(
+        '⚠️ [Mercado Pago] back_urls foram esvaziadas pela API (comum com http://localhost). ' +
+          'Use HTTPS público (túnel/produção) em INOVE4US_FRONTEND_URL / APP_FRONTEND_URL_* para auto_return funcionar.'
+      );
+    }
+  }
+
+  try {
+    const pref = await postPreference(payload);
+    warnIfBackUrlsStripped(pref, payload.back_urls);
+    return pref;
+  } catch (err) {
+    const msg = extractMpErrorMessage(err).toLowerCase();
+    // Sandbox costuma rejeitar auto_return com http://localhost — retenta sem auto_return
+    if (payload.auto_return && payload.back_urls?.success && msg.includes('auto_return')) {
+      console.warn(
+        '⚠️ [Mercado Pago] auto_return rejeitado; recriando Preference só com back_urls'
+      );
+      const retryPayload = { ...payload };
+      delete retryPayload.auto_return;
+      try {
+        const pref = await postPreference(retryPayload);
+        warnIfBackUrlsStripped(pref, retryPayload.back_urls);
+        return pref;
+      } catch (retryErr) {
+        const wrapped = new Error(extractMpErrorMessage(retryErr));
+        wrapped.statusCode = retryErr.response?.status || 502;
+        wrapped.mpResponse = retryErr.response?.data;
+        throw wrapped;
+      }
+    }
+    const wrapped = new Error(extractMpErrorMessage(err));
+    wrapped.statusCode = err.response?.status || 502;
+    wrapped.mpResponse = err.response?.data;
+    throw wrapped;
+  }
+}
+
+/** URL alcançável pela internet (webhook MP). Localhost/loopback não serve. */
+function isPubliclyReachableUrl(raw) {
+  try {
+    const u = new URL(String(raw).trim());
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    const host = u.hostname.toLowerCase();
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0' ||
+      host === '::1' ||
+      host.endsWith('.local') ||
+      host.startsWith('192.168.') ||
+      host.startsWith('10.')
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** URL de checkout pública da Preference (sandbox vs produção). */
+function resolvePreferenceCheckoutUrl(preference) {
+  if (!preference || typeof preference !== 'object') return '';
+  if (isSandboxAccessToken()) {
+    return String(preference.sandbox_init_point || preference.init_point || '').trim();
+  }
+  return String(preference.init_point || preference.sandbox_init_point || '').trim();
 }
 
 /**
@@ -604,6 +845,10 @@ async function createCardPaymentWithSandboxFallback(params) {
 }
 
 module.exports = {
+  fetchMercadoPagoPayment,
+  fetchMercadoPagoMerchantOrder,
+  createCheckoutPreference,
+  resolvePreferenceCheckoutUrl,
   createPreapprovalSubscription,
   createCardPayment,
   createCardPaymentWithSandboxFallback,

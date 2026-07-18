@@ -96,4 +96,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ tipo, mensagem }),
     }),
+  createBillingCheckout: (sku = 'golive-50') =>
+    request('/api/billing/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ sku }),
+    }),
 }

@@ -26,6 +26,11 @@ export default function MesaDoInovador() {
             <p className="hidden text-sm text-bordo-soft sm:block">
               Olá, <span className="font-semibold text-bordo">{user?.nome_clie || 'professor'}</span>
             </p>
+            {user?.creditos_ia != null ? (
+              <span className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo">
+                {Number(user.creditos_ia)} créditos
+              </span>
+            ) : null}
             <Link to="/desafio" className="btn-primary !px-4 !py-2 text-sm">
               + Desafio
             </Link>

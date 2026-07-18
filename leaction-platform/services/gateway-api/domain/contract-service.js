@@ -423,10 +423,14 @@ function mapProductTypeToItemType(productType) {
 }
 
 function buildContractItems(order, hubPayload) {
-  const sku = String(order.product_sku || 'UNKNOWN').trim();
+  // Checkout de catálogo grava o SKU real em hubPayload.sku (product pode ser HUB_CATALOG bridge)
+  const sku = String(hubPayload?.sku || order.product_sku || 'UNKNOWN').trim();
   const productType = String(order.product_type || '');
+  const declaredType = String(
+    hubPayload?.item_type || hubPayload?.catalog_type || ''
+  ).toLowerCase();
 
-  // Pacote de créditos (inove4us / genérico)
+  // Pacote de créditos (inove4us / genérico / catalog_plans)
   const credits =
     Number(
       hubPayload?.credits ??
@@ -435,8 +439,8 @@ function buildContractItems(order, hubPayload) {
         0
     ) || 0;
   const isCreditPack =
+    declaredType === 'credit_pack' ||
     credits > 0 ||
-    String(hubPayload?.item_type || '').toLowerCase() === 'credit_pack' ||
     /credit/i.test(sku);
 
   if (isCreditPack && credits > 0) {
@@ -469,7 +473,7 @@ function buildContractItems(order, hubPayload) {
   }
 
   // Assento explícito
-  if (String(hubPayload?.item_type || '').toLowerCase() === 'seat') {
+  if (declaredType === 'seat') {
     return [
       {
         item_type: 'seat',
@@ -477,6 +481,28 @@ function buildContractItems(order, hubPayload) {
         quantity: Number(hubPayload?.quantidade || hubPayload?.seats || 1) || 1,
         unit_label: 'seats',
         meta_json: { hub_payload: hubPayload },
+      },
+    ];
+  }
+
+  // Catálogo Hub (product bridge HUB_CATALOG) — respeita type do catalog_plans
+  if (
+    (productType === 'HUB_CATALOG' || hubPayload?.source === 'catalog_checkout') &&
+    (declaredType === 'plan' || declaredType === 'addon')
+  ) {
+    return [
+      {
+        item_type: declaredType,
+        sku,
+        quantity: Number(hubPayload?.quantidade || hubPayload?.seats || 1) || 1,
+        unit_label: declaredType === 'addon' ? 'seats' : hubPayload?.periodicidade || 'plano',
+        meta_json: {
+          id_plano: hubPayload?.id_plano || hubPayload?.catalog_plan_id,
+          plano_nome: hubPayload?.plano_nome,
+          periodicidade: hubPayload?.periodicidade,
+          product_type: productType,
+          hub_payload: hubPayload,
+        },
       },
     ];
   }
