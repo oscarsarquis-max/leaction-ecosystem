@@ -70,7 +70,8 @@ export function parseReturnOrigin(raw: string | null | undefined): string {
 export function parseReturnTo(raw: string | null | undefined): string {
   const value = (raw || '').trim();
   if (!value || !value.startsWith('/') || value.startsWith('//')) {
-    return '/projeto';
+    // Fallback neutro — NÃO forçar /projeto (PanelDX); cada app envia return_to.
+    return '/';
   }
   return value;
 }
@@ -87,16 +88,28 @@ export function buildClientReturnUrl(
   const path = parseReturnTo(returnTo);
   if (origin) return `${origin}${path}`;
 
-  // Fallback apenas para dev local (quando o parceiro ainda não envia return_origin)
-  const devBase = (process.env.NEXT_PUBLIC_PANELDX_URL || '').trim().replace(/\/$/, '');
-  if (devBase) return `${devBase}${path}`;
+  // Fallbacks de dev — preferir inove4us / PanelDX por env; nunca misturar apps
+  const inoveBase = (process.env.NEXT_PUBLIC_INOVE4US_URL || '').trim().replace(/\/$/, '');
+  if (inoveBase && (path.startsWith('/mesa') || path.startsWith('/pagamento') || path.startsWith('/desafio') || path.startsWith('/acesso'))) {
+    return `${inoveBase}${path}`;
+  }
+  const paneldxBase = (process.env.NEXT_PUBLIC_PANELDX_URL || '').trim().replace(/\/$/, '');
+  if (paneldxBase) return `${paneldxBase}${path}`;
   if (typeof window !== 'undefined') {
     const { protocol, hostname } = window.location;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${hostname}:${PANELDX_PORT}${path}`;
+      // Último recurso: Porta do app sugerida pelo path
+      const port =
+        path.startsWith('/mesa') ||
+        path.startsWith('/pagamento') ||
+        path.startsWith('/desafio') ||
+        path.startsWith('/acesso')
+          ? '5174'
+          : PANELDX_PORT;
+      return `${protocol}//${hostname}:${port}${path}`;
     }
   }
-  return `http://localhost:${PANELDX_PORT}${path}`;
+  return `http://localhost:5174${path === '/' ? '/mesa-do-inovador' : path}`;
 }
 
 /** @deprecated use buildClientReturnUrl(returnOrigin, returnTo) */

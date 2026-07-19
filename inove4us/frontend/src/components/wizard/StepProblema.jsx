@@ -75,7 +75,7 @@ export default function StepProblema({
           ) : (
             <>
               <i className="fa-solid fa-wand-magic-sparkles" />
-              Estruturar com IA
+              Estruturar com a inove4us
             </>
           )}
         </button>

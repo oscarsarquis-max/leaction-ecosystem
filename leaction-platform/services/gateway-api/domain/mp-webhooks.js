@@ -76,6 +76,9 @@ async function fulfillFromApprovedPayment(pool, jwtSecret, payment) {
     return { handled: false, reason: 'missing_external_reference', payment_id: paymentId };
   }
 
+  console.log('📦 Order ID recebida:', orderId);
+  console.log('🔍 Buscando ordem no banco de dados...');
+
   const existing = await pool.query(
     `SELECT id, status FROM orders WHERE id = $1 LIMIT 1`,
     [orderId]
@@ -92,9 +95,7 @@ async function fulfillFromApprovedPayment(pool, jwtSecret, payment) {
 
   const order = existing.rows[0];
   if (String(order.status || '').toUpperCase() === 'PAID') {
-    console.log(
-      `${LOG} Order ${orderId} já está PAID — idempotência (payment=${paymentId})`
-    );
+    console.log('⚠️ Ordem já estava paga. Ignorando para evitar duplicidade.');
     // Garante activateFromOrder caso fulfill anterior tenha falhado no contrato
     const result = await fulfillOrderPayment(pool, orderId, jwtSecret, {
       gatewayReference: paymentId,
@@ -109,14 +110,20 @@ async function fulfillFromApprovedPayment(pool, jwtSecret, payment) {
     };
   }
 
-  console.log(
-    `${LOG} Pagamento aprovado para a order ${orderId}. Acionando ContractService...`
-  );
+  console.log('✅ Pagamento Aprovado! Acionando ContractService.activateFromOrder...');
 
   const result = await fulfillOrderPayment(pool, orderId, jwtSecret, {
     gatewayReference: paymentId,
     paymentProvider: 'mercadopago',
   });
+
+  if (result.contract) {
+    console.log('🎉 Contrato criado e evento de Outbox gerado com sucesso!');
+  } else {
+    console.warn(
+      `${LOG} Fulfill OK order=${orderId} mas ContractService sem retorno — ver logs anteriores`
+    );
+  }
 
   console.log(
     `${LOG} Fulfill OK order=${orderId} contract=${result.contract?.contract_id || '—'} alreadyPaid=${Boolean(result.alreadyPaid)}`
@@ -148,6 +155,12 @@ async function processMpNotification(pool, jwtSecret, notification) {
   if (isPaymentNotification(notification)) {
     console.log(`${LOG} Recebido payment id=${id} topic=${topic || action || '—'}`);
     const payment = await fetchMercadoPagoPayment(id);
+    console.log('💳 Detalhe do pagamento (API MP):', {
+      id: payment?.id,
+      status: payment?.status,
+      external_reference: payment?.external_reference,
+      transaction_amount: payment?.transaction_amount,
+    });
     return fulfillFromApprovedPayment(pool, jwtSecret, payment);
   }
 
@@ -166,12 +179,17 @@ async function processMpNotification(pool, jwtSecret, notification) {
       return { handled: false, reason: 'merchant_order_no_approved', merchant_order_id: id };
     }
 
-    // Processa cada payment approved (busca detalhe para external_reference)
     const results = [];
     for (const p of approved) {
       const payId = p.id != null ? String(p.id) : '';
       if (!payId) continue;
       const payment = await fetchMercadoPagoPayment(payId);
+      console.log('💳 Detalhe do pagamento (API MP):', {
+        id: payment?.id,
+        status: payment?.status,
+        external_reference: payment?.external_reference,
+        transaction_amount: payment?.transaction_amount,
+      });
       results.push(await fulfillFromApprovedPayment(pool, jwtSecret, payment));
     }
     return {
@@ -194,18 +212,36 @@ async function processMpNotification(pool, jwtSecret, notification) {
  */
 function registerMpWebhookRoutes(app, pool, { jwtSecret }) {
   const handler = async (req, res) => {
+    console.log('\n\n=== 🚨 INÍCIO WEBHOOK MERCADO PAGO 🚨 ===');
+    console.log('📥 method:', req.method);
+    console.log('📥 query:', JSON.stringify(req.query || {}, null, 2));
+    console.log('📥 body (payload):', JSON.stringify(req.body || {}, null, 2));
+    console.log('📥 headers (x-request-id / user-agent):', {
+      'user-agent': req.headers['user-agent'],
+      'x-request-id': req.headers['x-request-id'],
+      'content-type': req.headers['content-type'],
+    });
+
     try {
       const notification = extractNotification(req);
       console.log(
-        `${LOG} Incoming ${req.method} topic=${notification.topic || '—'} action=${notification.action || '—'} id=${notification.id || '—'}`
+        `${LOG} Incoming topic=${notification.topic || '—'} action=${notification.action || '—'} id=${notification.id || '—'}`
       );
 
       const result = await processMpNotification(pool, jwtSecret, notification);
+
+      console.log('📤 resultado:', JSON.stringify(result, null, 2));
+      console.log('=== 🏁 FIM WEBHOOK MERCADO PAGO 🏁 ===\n\n');
 
       // MP espera 200/201 para não reenviar em loop; erros de negócio ainda 200
       return res.status(200).json({ ok: true, ...result });
     } catch (err) {
       console.error(`${LOG} Erro:`, err.message);
+      if (err.mpResponse) {
+        console.error(`${LOG} mpResponse:`, JSON.stringify(err.mpResponse, null, 2));
+      }
+      console.log('=== 🏁 FIM WEBHOOK MERCADO PAGO 🏁 ===\n\n');
+
       const status = err.statusCode && err.statusCode >= 400 && err.statusCode < 600 ? err.statusCode : 500;
       // 5xx faz o MP reintentar — útil se a API MP estiver instável
       if (status >= 500) {

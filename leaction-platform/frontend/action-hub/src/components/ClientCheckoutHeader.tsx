@@ -31,7 +31,7 @@ export function ClientCheckoutHeader({ brand, subtitle }: ClientCheckoutHeaderPr
             <p
               className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400"
             >
-              {brand.id === 'paneldx' ? 'Pagamento seguro · PanelDX' : 'Pagamento seguro · ActionHub'}
+              {`Pagamento seguro · ${brand.displayName}`}
             </p>
             <h1 className="truncate text-base font-bold tracking-tight text-orange-950 md:text-lg">
               {brand.checkoutTitle}

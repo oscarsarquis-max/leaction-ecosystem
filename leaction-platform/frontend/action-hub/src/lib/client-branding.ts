@@ -1,14 +1,14 @@
 import type { StaticImageData } from 'next/image';
 import paneldxLogo from '@/imagens/paneldx/logo.jpg';
 
-export type ClientBrandId = 'paneldx' | (string & {});
+export type ClientBrandId = 'paneldx' | 'inove4us' | (string & {});
 
 export type ClientBrandTheme = {
   id: ClientBrandId;
   displayName: string;
   productLabel: string;
   checkoutTitle: string;
-  logo: StaticImageData;
+  logo: StaticImageData | string;
   logoAlt: string;
   /** Mesmas medidas do `.header-logo` do PanelDX (layout.ejs / style.css). */
   logoLayout?: {
@@ -57,8 +57,35 @@ const PANELDX_BRAND: ClientBrandTheme = {
   },
 };
 
+/** Branding inove4us (Mesa do Inovador) — cores bordo/brand do produto. */
+const INOVE4US_BRAND: ClientBrandTheme = {
+  id: 'inove4us',
+  displayName: 'inove4us',
+  productLabel: 'Mesa do Inovador',
+  checkoutTitle: 'Upgrade inove4us',
+  logo: '/brands/inove4us.png',
+  logoAlt: 'inove4us — Mesa do Inovador',
+  colors: {
+    headerBg: '#ffffff',
+    pageBg: '#faf7f5',
+    accent: '#7f1d1d',
+    accentHover: '#991b1b',
+    accentMuted: '#fef2f2',
+    textOnHeader: '#450a0a',
+    textMutedOnHeader: '#78716c',
+    cardBorder: '#e7e5e4',
+    infoBg: '#fef2f2',
+    infoBorder: '#fecaca',
+    infoText: '#7f1d1d',
+    // CTA pós-pagamento — mesma família bordo (sem verde no brand inove4us)
+    success: '#7f1d1d',
+    successHover: '#991b1b',
+  },
+};
+
 const BRAND_REGISTRY: Record<string, ClientBrandTheme> = {
   paneldx: PANELDX_BRAND,
+  inove4us: INOVE4US_BRAND,
 };
 
 export function parseClientId(raw: string | null | undefined): string {
@@ -82,6 +109,9 @@ export function resolveClientBrand(
   }
   if (productType === 'PANELDX_ASSESSMENT' || productType === 'PANELDX_SUBSCRIPTION') {
     return PANELDX_BRAND;
+  }
+  if (productType === 'HUB_CATALOG') {
+    return INOVE4US_BRAND;
   }
   return null;
 }

@@ -21,7 +21,7 @@ function newSessionKey() {
  * Fluxo de investigação do problema → plano EduScrum (página própria).
  */
 export default function DesafioPage() {
-  const { user, logout } = useAuth()
+  const { user, logout, applyCredits, refresh } = useAuth()
 
   const [currentStep, setCurrentStep] = useState(1)
   const [problema, setProblema] = useState('')
@@ -40,6 +40,7 @@ export default function DesafioPage() {
   const [planoSession, setPlanoSession] = useState(null)
   const [ditadoLivre, setDitadoLivre] = useState('')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [upgradeExhausted, setUpgradeExhausted] = useState(false)
 
   async function handleEstruturar() {
     setError('')
@@ -60,11 +61,19 @@ export default function DesafioPage() {
       setCaminhos(data.caminhos || [])
       setReferencial(data.referencial || null)
       setFallback(Boolean(data.fallback))
+      if (data.creditos_ia != null) {
+        applyCredits(data.creditos_ia)
+      } else {
+        void refresh()
+      }
     } catch (err) {
       setCurrentStep(1)
       const code = err?.code || err?.data?.code
       if (err?.status === 403 && code === 'INSUFFICIENT_CREDITS') {
         setError('')
+        applyCredits(0)
+        void refresh()
+        setUpgradeExhausted(true)
         setShowUpgradeModal(true)
         return
       }
@@ -116,10 +125,28 @@ export default function DesafioPage() {
         </div>
         <div className="flex items-center gap-2">
           {user?.creditos_ia != null ? (
-            <span className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo">
+            <button
+              type="button"
+              onClick={() => {
+                setUpgradeExhausted(false)
+                setShowUpgradeModal(true)
+              }}
+              className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo hover:bg-brand-100"
+              title="Fazer upgrade de créditos"
+            >
               {Number(user.creditos_ia)} créditos
-            </span>
+            </button>
           ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              setUpgradeExhausted(false)
+              setShowUpgradeModal(true)
+            }}
+            className="btn-primary !px-3 !py-1.5 text-xs"
+          >
+            Upgrade
+          </button>
           <button type="button" onClick={logout} className="btn-ghost !px-3 !py-1.5 text-xs">
             Sair
           </button>
@@ -186,7 +213,11 @@ export default function DesafioPage() {
 
       <UpgradeCreditsModal
         open={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
+        exhausted={upgradeExhausted}
+        onClose={() => {
+          setShowUpgradeModal(false)
+          setUpgradeExhausted(false)
+        }}
       />
     </div>
   )

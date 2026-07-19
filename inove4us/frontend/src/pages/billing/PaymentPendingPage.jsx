@@ -15,8 +15,8 @@ export default function PaymentPendingPage() {
         <p className="mt-3 text-sm text-bordo-soft">
           Assim que o Mercado Pago confirmar, seus créditos serão liberados automaticamente.
         </p>
-        <Link to="/desafio" className="btn-primary mt-8 inline-flex !px-5 !py-3 text-sm">
-          Voltar para Meus Planejamentos
+        <Link to="/mesa-do-inovador" className="btn-primary mt-8 inline-flex !px-5 !py-3 text-sm">
+          Voltar para o início
         </Link>
       </div>
     </div>

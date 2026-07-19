@@ -74,10 +74,10 @@ export default function PaymentSuccessPage() {
         </p>
 
         <Link
-          to="/desafio"
+          to="/mesa-do-inovador?paid=1"
           className="btn-primary mt-8 inline-flex !px-5 !py-3 text-sm"
         >
-          Voltar para Meus Planejamentos
+          Voltar para o início
         </Link>
       </div>
     </div>

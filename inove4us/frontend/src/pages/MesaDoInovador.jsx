@@ -1,16 +1,20 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import BrandLogo from '../components/BrandLogo'
 import MapaRealizacoes from '../components/MapaRealizacoes'
 import AgendaExecutiva from '../components/AgendaExecutiva'
+import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 
 /**
  * Página inicial — realizações + agenda. O fluxo de investigação fica em /desafio.
  */
 export default function MesaDoInovador() {
   const { user, logout } = useAuth()
+  const [searchParams] = useSearchParams()
   const [refreshKey, setRefreshKey] = useState(0)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const paidReturn = searchParams.get('paid') === '1'
 
   return (
     <div className="min-h-screen">
@@ -27,10 +31,22 @@ export default function MesaDoInovador() {
               Olá, <span className="font-semibold text-bordo">{user?.nome_clie || 'professor'}</span>
             </p>
             {user?.creditos_ia != null ? (
-              <span className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo">
+              <button
+                type="button"
+                onClick={() => setShowUpgradeModal(true)}
+                className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo hover:bg-brand-100"
+                title="Fazer upgrade de créditos"
+              >
                 {Number(user.creditos_ia)} créditos
-              </span>
+              </button>
             ) : null}
+            <button
+              type="button"
+              onClick={() => setShowUpgradeModal(true)}
+              className="btn-ghost !px-3 !py-1.5 text-xs font-semibold"
+            >
+              Upgrade
+            </button>
             <Link to="/desafio" className="btn-primary !px-4 !py-2 text-sm">
               + Desafio
             </Link>
@@ -53,6 +69,11 @@ export default function MesaDoInovador() {
             Acompanhe realizações, agenda e desdobramentos. Quando quiser investigar um problema e
             montar um plano EduScrum, use <strong>+ Desafio</strong>.
           </p>
+          {paidReturn ? (
+            <p className="mt-3 text-sm font-medium text-bordo">
+              Pagamento recebido — atualizando seu saldo…
+            </p>
+          ) : null}
         </div>
 
         <MapaRealizacoes refreshKey={refreshKey} />
@@ -61,6 +82,11 @@ export default function MesaDoInovador() {
           onChanged={() => setRefreshKey((n) => n + 1)}
         />
       </main>
+
+      <UpgradeCreditsModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+      />
     </div>
   )
 }

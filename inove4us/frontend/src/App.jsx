@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { AuthProvider, useAuth } from './lib/auth'
+import { AuthBalanceSync, AuthProvider, useAuth } from './lib/auth'
 import BrandLogo from './components/BrandLogo'
 import CoCriacaoEntry from './components/CoCriacaoEntry'
 import Acesso from './pages/Acesso'
@@ -104,6 +104,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
+      <AuthBalanceSync />
       <AppRoutes />
     </AuthProvider>
   )

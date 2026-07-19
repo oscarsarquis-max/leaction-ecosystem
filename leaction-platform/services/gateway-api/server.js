@@ -31,6 +31,7 @@ const { loginOrRegister, ensurePasswordColumn } = require('./hub-auth');
 const { registerCrmTrackingRoutes } = require('./crm-tracking');
 const { registerEntitlementsRoutes } = require('./domain/entitlements-api');
 const { registerCheckoutSessionsRoutes } = require('./domain/checkout-sessions');
+const { registerCatalogPublicRoutes } = require('./domain/catalog-public');
 const { registerMpWebhookRoutes } = require('./domain/mp-webhooks');
 const { startOutboxWorker } = require('./domain/outbox-worker');
 const { registerAdminRoutes } = require('./admin');
@@ -1340,6 +1341,7 @@ app.post('/sync-cart', async (req, res) => {
 registerCrmTrackingRoutes(app, pool);
 registerEntitlementsRoutes(app, pool);
 registerCheckoutSessionsRoutes(app, pool);
+registerCatalogPublicRoutes(app, pool);
 registerMpWebhookRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerAdminRoutes(app, pool, { jwtSecret: JWT_SECRET });
 startOutboxWorker(pool);

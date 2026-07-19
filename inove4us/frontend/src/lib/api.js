@@ -101,4 +101,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ sku }),
     }),
+  /** Vitrine de planos no Action Hub (escolha antes do pagamento). */
+  getBillingPlansUrl: () => request('/api/billing/plans-url'),
 }

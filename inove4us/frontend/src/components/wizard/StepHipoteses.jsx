@@ -16,7 +16,7 @@ export default function StepHipoteses({
           Hipóteses e Testes
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-bordo-soft sm:text-base">
-          A IA propõe dois caminhos. Escolha um e receba a Hipótese de Aprendizado.
+          Nós propomos dois caminhos. Escolha um e receba a Hipótese de Aprendizado.
         </p>
       </div>
 

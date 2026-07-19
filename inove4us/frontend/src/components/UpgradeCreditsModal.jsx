@@ -1,15 +1,25 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 
 const ERROR_TOAST =
   'Não foi possível gerar o pagamento no momento. Tente novamente.'
 
 /**
- * Freemium → checkout seguro via backend (proxy Action Hub).
+ * Freemium → checkout Brick white-label no Action Hub (mesmo padrão PanelDX).
+ * @param {object} props
+ * @param {boolean} props.open
+ * @param {() => void} props.onClose
+ * @param {boolean} [props.exhausted] — true quando o uso foi bloqueado por falta de créditos
  */
-export default function UpgradeCreditsModal({ open, onClose }) {
+export default function UpgradeCreditsModal({ open, onClose, exhausted = false }) {
+  const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [toast, setToast] = useState('')
+
+  const saldo = Number(user?.creditos_ia)
+  const semCreditos =
+    exhausted || (Number.isFinite(saldo) && saldo <= 0)
 
   useEffect(() => {
     if (!open) {
@@ -29,12 +39,21 @@ export default function UpgradeCreditsModal({ open, onClose }) {
     setIsLoading(true)
     setToast('')
     try {
-      const data = await api.createBillingCheckout('golive-50')
-      const checkoutUrl = data?.checkout_url
-      if (!checkoutUrl) {
-        throw new Error('checkout_url ausente')
+      // Vitrine Hub (escolhe plano) → depois Brick — padrão PanelDX
+      const data = await api.getBillingPlansUrl()
+      const plansUrl = data?.url
+      if (!plansUrl) {
+        throw new Error('plans url ausente')
       }
-      window.location.href = checkoutUrl
+      try {
+        sessionStorage.setItem(
+          'i4_credits_before_checkout',
+          String(Number(user?.creditos_ia ?? 0)),
+        )
+      } catch {
+        /* ignore */
+      }
+      window.location.href = plansUrl
     } catch {
       setIsLoading(false)
       setToast(ERROR_TOAST)
@@ -57,17 +76,32 @@ export default function UpgradeCreditsModal({ open, onClose }) {
       >
         <div className="w-full max-w-md rounded-2xl border border-brand-200 bg-white p-6 shadow-soft sm:p-7">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600">
-            Plano gratuito
+            Seus créditos
           </p>
           <h2
             id="upgrade-credits-title"
             className="mt-2 font-display text-2xl font-bold leading-snug text-bordo-deep"
           >
-            Você atingiu o seu limite gratuito!
+            {semCreditos
+              ? 'Seus créditos acabaram'
+              : 'Quer mais créditos?'}
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-bordo-soft">
-            Seus 10 planejamentos gratuitos foram utilizados. Para continuar criando aulas com a
-            IA, faça o upgrade para a versão Premium.
+            {semCreditos ? (
+              <>
+                Você usou todos os planejamentos disponíveis. Faça o upgrade para continuarmos
+                resolvendo desafios e criando planos de aula juntos.
+              </>
+            ) : (
+              <>
+                Você tem{' '}
+                <span className="font-semibold text-bordo">
+                  {Number.isFinite(saldo) ? saldo : '—'} créditos
+                </span>{' '}
+                disponíveis. Escolha um pacote para ampliar o uso do inove4us na resolução de
+                mais desafios e na criação de mais planos de aulas.
+              </>
+            )}
           </p>
 
           <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -85,7 +119,7 @@ export default function UpgradeCreditsModal({ open, onClose }) {
               onClick={handleUpgrade}
               disabled={isLoading}
             >
-              {isLoading ? 'Gerando link seguro...' : 'Fazer Upgrade Agora'}
+              {isLoading ? 'Abrindo planos...' : 'Ver planos'}
             </button>
           </div>
         </div>

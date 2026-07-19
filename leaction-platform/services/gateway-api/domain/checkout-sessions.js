@@ -2,43 +2,65 @@
 
 /**
  * POST /v1/checkout/sessions
- * Ponte satélite → catalog_plans → order PENDING → Preference Mercado Pago.
+ * Ponte satélite → catalog_plans → order PENDING → checkout Brick no Action Hub
+ * (mesmo padrão white-label do PanelDX — NÃO usa Checkout Pro / Preference redirect).
  *
- * Body: { app_id, subject_id, sku }
- * Auth: Bearer / X-App-Secret (mesmo padrão de /v1/entitlements)
- * Resposta: { checkout_url, order_id?, preference_id? }
+ * Body: { app_id, subject_id, sku, return_origin?, return_to?, hub_public_url? }
+ * Auth: Bearer / X-App-Secret
+ * Resposta: { checkout_url }  → Hub /dashboard?checkout=…&client=…
  */
 
-const {
-  createCheckoutPreference,
-  resolvePreferenceCheckoutUrl,
-  isMercadoPagoConfigured,
-} = require('../mercadopago');
+const { isMercadoPagoConfigured } = require('../mercadopago');
 const { authenticateApp, extractCallerSecret } = require('./entitlements-api');
 
 const BRIDGE_PRODUCT_SKU = 'HUB_CATALOG';
 
-/**
- * back_urls padrão por app (white-label) — retorno pós-MP no frontend da demandante.
- * Override: body.back_urls ou env APP_FRONTEND_URL_<APP> / INOVE4US_FRONTEND_URL.
- */
-function resolveDefaultBackUrls(appId) {
+function resolveAppFrontendBase(appId) {
   const id = String(appId || '').trim().toLowerCase();
   const envKey = `APP_FRONTEND_URL_${id.replace(/[^a-z0-9]+/g, '_').toUpperCase()}`;
   let base = String(process.env[envKey] || '').trim().replace(/\/$/, '');
   if (!base && id === 'inove4us') {
-    base = String(
-      process.env.INOVE4US_FRONTEND_URL || 'http://localhost:5174'
-    )
+    base = String(process.env.INOVE4US_FRONTEND_URL || 'http://localhost:5174')
       .trim()
       .replace(/\/$/, '');
   }
-  if (!base) return null;
-  return {
-    success: `${base}/pagamento/sucesso`,
-    pending: `${base}/pagamento/pendente`,
-    failure: `${base}/pagamento/erro`,
-  };
+  return base || '';
+}
+
+/** URL do Brick no Action Hub (white-label via ?client=). */
+function buildHubBrickCheckoutUrl({
+  orderId,
+  customerEmail,
+  appId,
+  hubPublicBase,
+  returnTo,
+  returnOrigin,
+}) {
+  const hubBase = String(
+    hubPublicBase || process.env.ACTION_HUB_PUBLIC_URL || 'http://localhost:4000'
+  )
+    .trim()
+    .replace(/\/$/, '');
+  const params = new URLSearchParams();
+  params.set('checkout', String(orderId));
+  if (customerEmail) params.set('email', String(customerEmail).trim());
+  if (appId) params.set('client', String(appId).trim().toLowerCase());
+  const path = String(returnTo || '').trim();
+  if (path.startsWith('/') && !path.startsWith('//')) {
+    params.set('return_to', path);
+  }
+  const originRaw = String(returnOrigin || '').trim();
+  if (originRaw) {
+    try {
+      const parsed = new URL(originRaw.includes('://') ? originRaw : `https://${originRaw}`);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        params.set('return_origin', parsed.origin);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return `${hubBase}/dashboard?${params.toString()}`;
 }
 
 function normalizeMeta(value) {
@@ -55,11 +77,18 @@ function normalizeMeta(value) {
   return {};
 }
 
-/** Créditos do plano: meta_json → features → nome (ex.: "Pacote GoLive 50"). */
+/** Créditos do plano: meta_json → entitlements → features → nome. */
 function resolveCreditsFromPlan(plan) {
   const meta = normalizeMeta(plan.meta_json);
+  const entitlements =
+    meta.entitlements && typeof meta.entitlements === 'object' ? meta.entitlements : {};
   const fromMeta = Number(
-    meta.credits ?? meta.credit_quantity ?? meta.quantidade_creditos ?? meta.quantidade ?? 0
+    meta.credits ??
+      entitlements.credits ??
+      meta.credit_quantity ??
+      meta.quantidade_creditos ??
+      meta.quantidade ??
+      0
   );
   if (Number.isFinite(fromMeta) && fromMeta > 0) {
     return Math.floor(fromMeta);
@@ -232,77 +261,34 @@ function registerCheckoutSessionsRoutes(app, pool) {
         order.id,
       ]);
 
-      let notificationUrl = String(
-        body.notification_url || process.env.MP_NOTIFICATION_URL || ''
-      ).trim();
-      if (!notificationUrl) {
-        const publicBase = String(
-          process.env.GATEWAY_PUBLIC_URL ||
-            process.env.HUB_GATEWAY_PUBLIC_URL ||
-            `http://127.0.0.1:${process.env.GATEWAY_PORT || 4001}`
-        ).replace(/\/$/, '');
-        notificationUrl = `${publicBase}/webhooks/mercadopago`;
-      }
+      const appFrontend = resolveAppFrontendBase(appId);
+      const returnOrigin =
+        String(body.return_origin || appFrontend || '').trim() || undefined;
+      const returnTo =
+        String(body.return_to || '/mesa-do-inovador?paid=1').trim() ||
+        '/mesa-do-inovador?paid=1';
 
-      // White-label: demandante pode enviar statement_descriptor / back_urls
-      const statementDescriptor = String(
-        body.statement_descriptor || process.env.MP_STATEMENT_DESCRIPTOR || 'ACTIONHUB'
-      )
-        .trim()
-        .slice(0, 22);
-
-      const bodyBack =
-        body.back_urls && typeof body.back_urls === 'object' ? body.back_urls : null;
-      const defaultBack = resolveDefaultBackUrls(appId);
-      const backUrls = {
-        success: String(bodyBack?.success || defaultBack?.success || '').trim(),
-        pending: String(bodyBack?.pending || defaultBack?.pending || '').trim(),
-        failure: String(bodyBack?.failure || defaultBack?.failure || '').trim(),
-      };
-      const hasBackUrls = Boolean(backUrls.success);
-
-      const preference = await createCheckoutPreference({
-        title: plan.name,
-        amount: price,
-        quantity: 1,
-        currencyId: plan.currency || 'BRL',
-        externalReference: order.id,
-        payerEmail: payerEmail.includes('@') ? payerEmail : undefined,
-        notificationUrl: notificationUrl.startsWith('http') ? notificationUrl : undefined,
-        backUrls: hasBackUrls ? backUrls : undefined,
-        statementDescriptor: statementDescriptor || 'ACTIONHUB',
+      const checkoutUrl = buildHubBrickCheckoutUrl({
+        orderId: order.id,
+        customerEmail: userEmail,
+        appId,
+        hubPublicBase: body.hub_public_url,
+        returnTo,
+        returnOrigin,
       });
 
-      const checkoutUrl = resolvePreferenceCheckoutUrl(preference);
-      if (!checkoutUrl) {
-        return res.status(502).json({
-          error: 'Preference criada sem init_point no Mercado Pago',
-          order_id: order.id,
-          preference_id: preference?.id || null,
-        });
-      }
-
-      const preferenceId = preference?.id != null ? String(preference.id) : null;
-      if (preferenceId) {
-        const enriched = { ...hubPayload, mp_preference_id: preferenceId };
-        await pool.query(`UPDATE orders SET external_resource_id = $1 WHERE id = $2`, [
-          JSON.stringify(enriched),
-          order.id,
-        ]);
-      }
-
       console.log(
-        `📥 [CHECKOUT SESSION] app=${appId} sku=${plan.sku} order=${order.id} preference=${preferenceId || '—'}`
+        `📥 [CHECKOUT SESSION] app=${appId} sku=${plan.sku} order=${order.id} brick=${checkoutUrl}`
       );
 
       return res.status(200).json({
         checkout_url: checkoutUrl,
         order_id: order.id,
-        preference_id: preferenceId,
         amount: price,
         currency: plan.currency || 'BRL',
         sku: plan.sku,
         plan_name: plan.name,
+        checkout_mode: 'hub_brick',
       });
     } catch (err) {
       console.error('❌ Erro em POST /v1/checkout/sessions:', err.message);
@@ -319,5 +305,6 @@ module.exports = {
   registerCheckoutSessionsRoutes,
   ensureCatalogBridgeProduct,
   resolveCreditsFromPlan,
+  buildHubBrickCheckoutUrl,
   BRIDGE_PRODUCT_SKU,
 };

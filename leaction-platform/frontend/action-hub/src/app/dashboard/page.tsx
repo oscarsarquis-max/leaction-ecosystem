@@ -366,10 +366,13 @@ function DashboardContent() {
 
   const checkoutBrand = useMemo(() => {
     if (!isPartnerCheckout) return null;
-    return resolveClientBrand(
-      clientParam || (isCheckoutFlow ? 'paneldx' : null),
-      checkoutOrder?.product_type ?? PANELDX_TYPE
-    );
+    const byClient = resolveClientBrand(clientParam, checkoutOrder?.product_type ?? null);
+    if (byClient) return byClient;
+    const byProduct = resolveClientBrand(null, checkoutOrder?.product_type ?? null);
+    if (byProduct) return byProduct;
+    // Legado PanelDX sem ?client=
+    if (isCheckoutFlow) return resolveClientBrand('paneldx', PANELDX_TYPE);
+    return null;
   }, [isPartnerCheckout, clientParam, isCheckoutFlow, checkoutOrder?.product_type]);
 
   const checkoutPaymentAmount = useMemo(() => {
@@ -387,7 +390,9 @@ function DashboardContent() {
     checkoutPaymentAmount > 0 &&
     checkoutOrder?.status !== 'PAID';
 
-  const mpPayerEmail = mpSandboxPayerEmail || email;
+  // E-mail do cliente (query) — NÃO trocar pelo comprador sandbox no Brick/UI.
+  // O gateway já reescreve payer_email para a conta de teste no POST /payments/card.
+  const mpPayerEmail = email;
 
   const checkoutPlanLabel = useMemo(
     () => parseOrderPlanLabel(checkoutOrder),
@@ -672,17 +677,21 @@ function DashboardContent() {
           <div
             className="w-full max-w-lg rounded-3xl border bg-white p-8 text-center shadow-xl"
             style={{
-              borderColor: checkoutBrand?.colors.cardBorder ?? '#a7f3d0',
+              borderColor: checkoutBrand?.colors.cardBorder ?? '#e7e5e4',
               boxShadow: checkoutBrand
-                ? '0 20px 40px rgba(108, 92, 231, 0.08)'
-                : '0 20px 40px rgba(16, 185, 129, 0.12)',
+                ? `0 20px 40px ${
+                    checkoutBrand.id === 'inove4us'
+                      ? 'rgba(127, 29, 29, 0.12)'
+                      : 'rgba(249, 115, 22, 0.12)'
+                  }`
+                : '0 20px 40px rgba(15, 23, 42, 0.08)',
             }}
           >
             <div
               className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"
               style={{
-                backgroundColor: checkoutBrand?.colors.accentMuted ?? '#d1fae5',
-                color: checkoutBrand?.colors.accent ?? '#059669',
+                backgroundColor: checkoutBrand?.colors.accentMuted ?? '#f1f5f9',
+                color: checkoutBrand?.colors.accent ?? '#0f172a',
               }}
             >
               <CheckCircle2 className="size-8" />
@@ -958,10 +967,17 @@ function DashboardContent() {
                       <strong>123</strong>, validade futura, titular <strong>APRO</strong> e CPF{' '}
                       <strong>123.456.789-09</strong>. Valor cobrado: R${' '}
                       {checkoutPaymentAmount.toFixed(2).replace('.', ',')}.
-                      {mpSandboxPayerEmail ? (
+                      {email ? (
                         <>
                           {' '}
-                          Comprador sandbox: <strong>{mpSandboxPayerEmail}</strong>.
+                          Pedido vinculado a <strong>{email}</strong>
+                          {mpSandboxPayerEmail ? (
+                            <>
+                              {' '}
+                              (cobrança MP sandbox usa {mpSandboxPayerEmail} só no servidor).
+                            </>
+                          ) : null}
+                          .
                         </>
                       ) : null}
                     </p>

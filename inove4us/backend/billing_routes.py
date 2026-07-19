@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 from functools import wraps
+from urllib.parse import urlencode
 
 import requests
 from flask import Blueprint, jsonify, request, session
@@ -62,20 +63,35 @@ def _resolve_sku(raw: str | None) -> str:
     return sku
 
 
-def _branding_back_urls() -> dict:
-    """Retorno pós-pagamento na experiência da demandante (white-label)."""
-    base = _frontend_origin()
-    return {
-        "success": f"{base}/pagamento/sucesso",
-        "pending": f"{base}/pagamento/pendente",
-        "failure": f"{base}/pagamento/erro",
-    }
+def _hub_public_base() -> str:
+    return (
+        os.environ.get("ACTION_HUB_PUBLIC_URL") or "http://localhost:4000"
+    ).rstrip("/")
 
 
-def _statement_descriptor() -> str:
-    # Máx. 22 chars no Mercado Pago
-    raw = (os.environ.get("MP_STATEMENT_DESCRIPTOR") or "INOVE4US").strip()
-    return raw[:22] or "INOVE4US"
+@billing_bp.get("/api/billing/plans-url")
+@require_session
+def plans_checkout_url():
+    """
+    URL da vitrine intermediária no Action Hub (/checkout/inove4us),
+    no mesmo padrão PanelDX — escolha de plano antes do Brick.
+    """
+    user = session["user"]
+    email = str(user.get("mail_clie") or "").strip().lower()
+    frontend = _frontend_origin()
+    qs = urlencode(
+        {
+            "email": email,
+            "return_origin": frontend,
+            "return_to": "/mesa-do-inovador?paid=1",
+        }
+    )
+    return jsonify(
+        {
+            "url": f"{_hub_public_base()}/checkout/inove4us?{qs}",
+            "app_id": APP_ID,
+        }
+    )
 
 
 @billing_bp.post("/api/billing/checkout")
@@ -95,14 +111,15 @@ def create_checkout():
         return jsonify({"error": "Billing não configurado no servidor"}), 503
 
     hub_url = f"{_hub_api_base()}/v1/checkout/sessions"
+    frontend = _frontend_origin()
     payload = {
         "app_id": os.environ.get("ACTION_HUB_APP_ID", APP_ID).strip() or APP_ID,
         "subject_id": subject_id,
         "sku": sku,
-        # White-label: retorno na app demandante + extrato com nome curto dela
-        "back_urls": body.get("back_urls") or _branding_back_urls(),
-        "statement_descriptor": body.get("statement_descriptor")
-        or _statement_descriptor(),
+        # Brick white-label no Hub + retorno à home logada do inove4us
+        "return_origin": frontend,
+        "return_to": "/mesa-do-inovador?paid=1",
+        "hub_public_url": os.environ.get("ACTION_HUB_PUBLIC_URL") or "http://localhost:4000",
     }
 
     try:
@@ -139,11 +156,11 @@ def create_checkout():
             {
                 "checkout_url": checkout_url,
                 "order_id": data.get("order_id"),
-                "preference_id": data.get("preference_id"),
                 "amount": data.get("amount"),
                 "currency": data.get("currency"),
                 "sku": data.get("sku") or sku,
                 "plan_name": data.get("plan_name"),
+                "checkout_mode": data.get("checkout_mode") or "hub_brick",
             }
         ),
         200,

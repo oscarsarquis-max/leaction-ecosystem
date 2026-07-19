@@ -16,10 +16,10 @@ export default function PaymentFailurePage() {
           Não foi possível confirmar o pagamento. Você pode tentar novamente quando quiser.
         </p>
         <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
-          <Link to="/desafio" className="btn-ghost !px-5 !py-3 text-sm">
-            Voltar
+          <Link to="/mesa-do-inovador" className="btn-ghost !px-5 !py-3 text-sm">
+            Voltar ao início
           </Link>
-          <Link to="/desafio" className="btn-primary !px-5 !py-3 text-sm">
+          <Link to="/mesa-do-inovador" className="btn-primary !px-5 !py-3 text-sm">
             Tentar de novo
           </Link>
         </div>

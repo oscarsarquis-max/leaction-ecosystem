@@ -50,7 +50,12 @@ export function metaFromEntitlements(rows: EntitlementRow[]): Record<string, unk
       entitlements[key] = row.value;
     }
   }
-  return { entitlements };
+  // Espelha credits no topo — checkout/fulfill lê meta_json.credits
+  const out: Record<string, unknown> = { entitlements };
+  if (entitlements.credits != null) {
+    out.credits = entitlements.credits;
+  }
+  return out;
 }
 
 type Props = {

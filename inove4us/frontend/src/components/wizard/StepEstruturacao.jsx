@@ -27,7 +27,7 @@ export default function StepEstruturacao({ loading, causas, referencial, onNext,
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-bordo-soft sm:text-base">
           {loading
-            ? 'A IA está cruzando o seu relato com a base de problemas do sistema…'
+            ? 'Estamos cruzando o seu relato com a base de problemas da inove4us…'
             : 'Causas ocultas identificadas a partir do seu problema e da base de referência.'}
         </p>
       </div>
