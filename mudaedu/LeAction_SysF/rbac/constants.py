@@ -1,0 +1,20 @@
+"""Constantes RBAC PanelDX."""
+
+from __future__ import annotations
+
+ROLE_SYSADMIN = "sysadmin"
+ROLE_LED = "led"
+ROLE_CONSULTOR = "consultor"
+ROLE_EXECUTOR = "executor"
+
+SYSTEM_ROLES = frozenset({ROLE_SYSADMIN, ROLE_LED, ROLE_CONSULTOR, ROLE_EXECUTOR})
+
+MAX_SQUADS_POR_MEMBRO = 3
+
+NOTIF_NOVA_ATRIBUICAO = "NOVA_ATRIBUICAO"
+
+POSITION_EXECUTOR_TI = "Analista de TI"
+POSITION_EXECUTOR = "Analista Executor"
+POSITION_CONSULTOR = "Consultor Estratégico"
+
+EXECUTOR_POSITIONS = frozenset({POSITION_EXECUTOR_TI, POSITION_EXECUTOR})

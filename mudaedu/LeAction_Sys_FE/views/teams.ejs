@@ -1,0 +1,289 @@
+<div class="mesa-org teams-page" id="teams-root">
+    <%
+        const squadList = (typeof projetos !== 'undefined' && projetos) ? projetos : [];
+        const squadAtiva = squadList.length ? squadList[0] : null;
+        const hasSquad = !!squadAtiva;
+    %>
+    <header class="mesa-org__hero">
+        <div>
+            <h1><i class="fas fa-users-cog" style="color: #a3bffa;"></i> Gestão de Time</h1>
+            <p>
+                Aloque o seu time nas <strong>squads do seu projeto</strong>.
+                Escolha a squad, depois aloque ou cadastre os membros.
+            </p>
+        </div>
+        <div class="mesa-org__meta">
+            <div><strong>Meu Time</strong></div>
+            <div>Squad ativa · Alocação</div>
+        </div>
+    </header>
+
+    <div class="teams-page__callout" role="note">
+        <i class="fas fa-info-circle" aria-hidden="true"></i>
+        <span>Aloque o seu time nas squads do seu projeto.</span>
+    </div>
+
+    <section class="teams-page__seat-meter mesa-card" id="teams-seat-meter" hidden aria-live="polite">
+        <div class="teams-page__seat-meter-head">
+            <div>
+                <h2 class="teams-page__seat-meter-title">
+                    <i class="fas fa-id-badge"></i> Uso do Plano
+                </h2>
+                <p class="teams-page__seat-meter-sub" id="teams-seat-plano-label">—</p>
+            </div>
+            <div class="teams-page__seat-meter-actions">
+                <span class="teams-page__seat-count" id="teams-seat-count">—</span>
+                <a href="#" id="teams-btn-upgrade" class="teams-page__btn-upgrade" hidden>
+                    <i class="fas fa-rocket"></i> Fazer Upgrade de Plano
+                </a>
+                <a href="#" id="teams-btn-addon" class="teams-page__btn-addon" hidden>
+                    <i class="fas fa-user-plus"></i> Comprar Pacote de +5 Usuários
+                </a>
+            </div>
+        </div>
+        <div class="teams-page__seat-bar" aria-hidden="true">
+            <div class="teams-page__seat-bar-fill" id="teams-seat-bar-fill" style="width:0%"></div>
+        </div>
+    </section>
+
+    <!-- Escolha da squad (sempre visível quando há squads) -->
+    <section class="mesa-card teams-page__squad-select" id="teams-squad-select-panel"<%= hasSquad ? '' : ' hidden' %>>
+        <h2 class="mesa-card__title teams-page__squad-select-title">
+            <i class="fas fa-layer-group"></i> Escolha a squad para alocação
+        </h2>
+        <p class="admin-esim__field-hint teams-page__squad-select-hint">
+            Selecione abaixo em qual squad do projeto o time será alocado.
+        </p>
+        <div class="teams-page__squad-select-row">
+            <label class="teams-page__squad-select-label" for="projeto_selector">Squad do projeto</label>
+            <select id="projeto_selector" class="mesa-select teams-page__squad-select-input" aria-label="Squad para alocação">
+                <% squadList.forEach(function (s) { %>
+                <option value="<%= s.id_squad %>"<%= squadAtiva && s.id_squad === squadAtiva.id_squad ? ' selected' : '' %>>
+                    <%= s.nome_squad %><%= s.name_sprn ? ' — ' + s.name_sprn : '' %><%= s.name_ctdi ? ' (' + s.name_ctdi + ')' : '' %>
+                </option>
+                <% }); %>
+            </select>
+        </div>
+        <div class="teams-page__squad-picker<%= squadList.length < 2 ? ' teams-page__squad-picker--solo' : '' %>" id="teams-squad-picker" role="tablist" aria-label="Squads do projeto">
+            <% squadList.forEach(function (s) { %>
+            <button
+                type="button"
+                class="teams-page__squad-chip<%= squadAtiva && s.id_squad === squadAtiva.id_squad ? ' is-active' : '' %>"
+                data-squad-id="<%= s.id_squad %>"
+                role="tab"
+                aria-selected="<%= squadAtiva && s.id_squad === squadAtiva.id_squad ? 'true' : 'false' %>"
+            >
+                <span class="teams-page__squad-chip-name"><%= s.nome_squad %></span>
+                <span class="teams-page__squad-chip-meta">#<%= s.id_squad %><%= s.name_sprn ? ' · ' + s.name_sprn : '' %></span>
+            </button>
+            <% }); %>
+        </div>
+    </section>
+
+    <!-- Contexto da sprint / squad ativa -->
+    <section class="teams-page__context mesa-card" id="teams-context-panel" aria-live="polite">
+        <div class="teams-page__context-loading" id="teams-context-loading"<%= hasSquad ? ' hidden' : '' %>>
+            <i class="fas fa-circle-notch fa-spin"></i> Carregando squad da sprint ativa…
+        </div>
+        <div class="teams-page__context-body" id="teams-context-body"<%= hasSquad ? '' : ' hidden' %>>
+            <div class="teams-page__context-main">
+                <span class="teams-page__context-kicker">Squad selecionada</span>
+                <h2 class="teams-page__context-title" id="teams-squad-nome"><%= hasSquad ? (squadAtiva.nome_squad || 'Squad sem nome') : '—' %></h2>
+                <p class="teams-page__context-sub" id="teams-projeto-label"><%
+                    if (hasSquad) {
+                        const lbl = squadAtiva.nome_clie || 'Cliente';
+                        %><%= lbl %><%= squadAtiva.name_ctdi ? ' · ' + squadAtiva.name_ctdi : '' %><%
+                    } else { %>—<% }
+                %></p>
+            </div>
+            <div class="teams-page__context-stats">
+                <div class="teams-page__stat">
+                    <span class="teams-page__stat-value" id="teams-stat-membros">0</span>
+                    <span class="teams-page__stat-label">Membros</span>
+                </div>
+                <div class="teams-page__stat">
+                    <span class="teams-page__stat-value" id="teams-stat-squad"><%= hasSquad ? ('#' + squadAtiva.id_squad) : '—' %></span>
+                    <span class="teams-page__stat-label">Squad</span>
+                </div>
+            </div>
+        </div>
+        <div class="teams-page__context-empty" id="teams-context-empty" hidden>
+            <i class="fas fa-users-slash"></i>
+            <p>Nenhuma squad ativa encontrada para este cliente.</p>
+            <small>Verifique se há uma sprint com status <em>ativa</em> no plano estratégico.</small>
+        </div>
+    </section>
+
+    <!-- Membros -->
+    <div class="mesa-card">
+        <div class="teams-page__toolbar">
+            <div>
+                <h2 class="mesa-card__title" style="margin-bottom: 4px;">
+                    <i class="fas fa-user-friends"></i> Membros da Squad
+                </h2>
+                <p class="admin-esim__field-hint" style="margin: 0;">
+                    Especialidade e status de cada pessoa alocada na sprint atual.
+                </p>
+            </div>
+            <div class="teams-page__toolbar-actions">
+            <button type="button" class="mesa-btn mesa-btn--ghost teams-page__btn-cadastro" id="btnCadastrarMembro"<%= hasSquad ? '' : ' hidden' %>>
+                <i class="fas fa-user-tag"></i> Cadastrar membro
+            </button>
+            <button type="button" class="mesa-btn mesa-btn--lilac" id="btnNovoMembro"<%= hasSquad ? '' : ' hidden' %>>
+                <i class="fas fa-user-plus"></i> Alocar time
+            </button>
+            </div>
+        </div>
+
+        <div class="teams-page__filters" id="teams-filters"<%= hasSquad ? '' : ' hidden' %>>
+            <div class="teams-page__search-wrap">
+                <i class="fas fa-search teams-page__search-icon" aria-hidden="true"></i>
+                <input
+                    type="search"
+                    id="teams-busca"
+                    class="mesa-input teams-page__search-input"
+                    placeholder="Buscar por nome, e-mail ou especialidade…"
+                    autocomplete="off"
+                    aria-label="Buscar membros"
+                >
+            </div>
+            <span class="teams-page__result-count" id="teams-result-count" aria-live="polite"></span>
+        </div>
+
+        <div class="teams-page__table-wrap">
+            <table class="teams-page__table">
+                <thead>
+                    <tr>
+                        <th style="width: 56px;">ID</th>
+                        <th>Membro / Especialidade</th>
+                        <th>E-mail</th>
+                        <th style="width: 120px;">Persona</th>
+                        <th style="width: 100px;">Status</th>
+                        <th style="width: 108px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <% if (hasSquad) { %>
+                    <tr>
+                        <td colspan="6" class="teams-page__empty">
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                            Carregando membros…
+                        </td>
+                    </tr>
+                    <% } else { %>
+                    <tr>
+                        <td colspan="6" class="teams-page__empty">
+                            <i class="fas fa-hourglass-half"></i>
+                            Aguardando squad ativa…
+                        </td>
+                    </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal alocação -->
+<div class="mesa-modal" id="modal-form" aria-hidden="true">
+    <div class="mesa-modal__card teams-page__modal-card">
+        <h3 id="modal-title">Alocar time</h3>
+        <p class="teams-page__modal-squad" id="modal-squad-label" hidden></p>
+        <p class="admin-esim__field-hint" style="margin: 0 0 16px;">
+            Selecione um membro já cadastrado na sua empresa e defina sua função na squad escolhida.
+        </p>
+
+        <form id="form-team">
+            <input type="hidden" id="id_member">
+            <input type="hidden" id="id_team_vinc">
+
+            <div class="admin-esim__field">
+                <label for="id_usuario">Usuário do sistema *</label>
+                <select id="id_usuario" class="mesa-select" required>
+                    <option value="">— Selecione um usuário —</option>
+                </select>
+                <p class="admin-esim__field-hint" id="usuario-info"></p>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="position">Especialidade na Squad *</label>
+                <select id="position" class="mesa-select" required>
+                    <option value="Gerente de Projeto">Gerente de Projeto</option>
+                    <option value="Especialista Educação">Especialista Educação</option>
+                    <option value="Analista TI">Analista TI</option>
+                    <option value="Analista Executor">Analista Executor</option>
+                    <option value="Consultor Estratégico">Consultor Estratégico</option>
+                </select>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="ativo">Status na Squad</label>
+                <select id="ativo" class="mesa-select">
+                    <option value="true">Ativo</option>
+                    <option value="false">Inativo</option>
+                </select>
+            </div>
+
+            <div class="admin-esim__modal-actions">
+                <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-fechar-modal">Cancelar</button>
+                <button type="submit" class="mesa-btn mesa-btn--gold" id="btn-submit-team">
+                    <i class="fas fa-user-plus"></i> Incluir no time
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="mesa-modal" id="modal-cadastro-membro" aria-hidden="true">
+    <div class="mesa-modal__card teams-page__modal-card">
+        <h3>Cadastrar membro da empresa</h3>
+        <p class="admin-esim__field-hint" style="margin: 0 0 16px;">
+            Nova conta vinculada à sua empresa. Consultores continuam sendo cadastrados pelo SysAdmin.
+        </p>
+        <form id="form-cadastro-membro">
+            <div class="admin-esim__field">
+                <label for="cadastro-nome">Nome *</label>
+                <input type="text" id="cadastro-nome" class="mesa-input" required placeholder="Nome completo">
+            </div>
+            <div class="admin-esim__field">
+                <label for="cadastro-email">E-mail *</label>
+                <input type="email" id="cadastro-email" class="mesa-input" required placeholder="membro@empresa.com.br">
+            </div>
+            <div class="admin-esim__field">
+                <label for="cadastro-senha">Senha *</label>
+                <input type="password" id="cadastro-senha" class="mesa-input" required placeholder="••••••••" autocomplete="new-password">
+            </div>
+            <div class="admin-esim__field">
+                <label for="cadastro-role">Papel na empresa *</label>
+                <select id="cadastro-role" class="mesa-select" required>
+                    <option value="executor">Executor</option>
+                    <option value="led">Gestor</option>
+                </select>
+            </div>
+            <div class="admin-esim__modal-actions">
+                <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-fechar-cadastro">Cancelar</button>
+                <button type="submit" class="mesa-btn mesa-btn--gold">
+                    <i class="fas fa-save"></i> Salvar membro
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="teams-page__toast" id="toast-teams" role="status" aria-live="polite"></div>
+
+<script>
+    window.TEAMS_PAGE_CONFIG = {
+        apiUrl: '/api/ctdi_team',
+        userRole: '<%= typeof userRole !== "undefined" ? userRole : "LEAD" %>',
+        userIdClie: '<%= typeof idClie !== "undefined" ? idClie : ((lead && lead.id_clie) || "") %>',
+        initialSquads: <%- JSON.stringify(typeof projetos !== "undefined" ? projetos : []) %>,
+        initialSquadId: <%= hasSquad ? squadAtiva.id_squad : 'null' %>,
+        bffSquadsUrl: '/bff/meus-projetos',
+        bffCadastroUrl: '/bff/led/usuarios',
+        bffCotaUrl: '/bff/led/cota-usuarios',
+        checkoutUpgradeUrl: '<%= typeof checkoutUpgradeUrl !== "undefined" ? checkoutUpgradeUrl : "" %>',
+        checkoutAddonUrlTemplate: '<%= typeof checkoutAddonUrlTemplate !== "undefined" ? checkoutAddonUrlTemplate : "" %>',
+        canCadastrarMembro: <%= (typeof isAdmin !== 'undefined' && isAdmin) || (typeof userRole !== 'undefined' && userRole === 'LEAD') ? 'true' : 'false' %>
+    };
+</script>

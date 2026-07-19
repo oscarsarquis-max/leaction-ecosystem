@@ -1,0 +1,756 @@
+﻿<style>
+    .capture-container {
+        padding: 60px 15px;
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: #f9fafb;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    .capture-card {
+        width: 100%;
+        max-width: 760px;
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 50px;
+        box-shadow: 0 25px 60px rgba(91, 53, 217,0.08);
+        border-top: 8px solid #5B35D9;
+        box-sizing: border-box;
+    }
+
+    /* Alternador de Perfil Premium (Estilo Tab Desafiadora) */
+    .profile-tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        background: #F4F2FF;
+        padding: 6px;
+        border-radius: 14px;
+        border: 1px solid #E2D9FF;
+        margin-bottom: 35px;
+        box-sizing: border-box;
+    }
+
+    .tab-btn {
+        padding: 16px;
+        font-size: 0.85em;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        text-align: center;
+    }
+
+    .tab-active {
+        background: #5B35D9;
+        color: #ffffff !important;
+        border-color: #5B35D9;
+        box-shadow: 0 6px 16px rgba(91, 53, 217,0.18);
+    }
+
+    .tab-inactive {
+        background: transparent;
+        color: #5B35D9;
+    }
+
+    .tab-inactive:hover {
+        background: rgba(91, 53, 217,0.08);
+    }
+
+    /* Mapeamento de Grid Assimétrico e Equilibrado */
+    .capture-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .grid-full {
+        grid-column: span 2;
+    }
+
+    .form-group-premium {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 5px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .form-group-premium label {
+        font-size: 0.78em;
+        font-weight: 800;
+        color: #111827;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .form-group-premium input {
+        width: 100%;
+        padding: 14px 18px;
+        border: 1px solid #E5E7EB;
+        border-radius: 10px;
+        font-size: 0.95em;
+        font-weight: 500;
+        box-sizing: border-box;
+        background: #ffffff;
+        color: #111827;
+        transition: all 0.2s ease;
+    }
+
+    /* Efeito de Foco Estilo Terminal de Alta Performance */
+    .form-group-premium input:focus {
+        border-color: #5B35D9;
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(91, 53, 217,0.08);
+        background: #FDFCFF;
+    }
+
+    /* Títulos de Seção e Divisores Operacionais */
+    .form-section-title-premium {
+        font-size: 0.82em;
+        text-transform: uppercase;
+        color: #5B35D9;
+        margin: 40px 0 20px 0;
+        border-bottom: 2px solid #E2D9FF;
+        padding-bottom: 10px;
+        font-weight: 900;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        letter-spacing: 0.8px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Painel do Laboratório Da Vinci */
+    .sandbox-info-box {
+        background: #FDFCFF;
+        border: 1px solid #E2D9FF;
+        padding: 24px;
+        border-radius: 14px;
+        font-size: 0.92em;
+        color: #111827;
+        line-height: 1.6;
+        box-shadow: inset 0 2px 4px rgba(91, 53, 217,0.02);
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    /* Botão de Disparo de Entrada */
+    .btn-submit-premium {
+        display: block;
+        width: 100%;
+        padding: 18px;
+        background-color: #5B35D9;
+        color: #ffffff !important;
+        font-size: 0.95em;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        box-shadow: 0 10px 28px rgba(91, 53, 217,0.18);
+        text-align: center;
+        margin-top: 40px;
+        box-sizing: border-box;
+    }
+
+    .btn-submit-premium:hover {
+        background-color: #3b2366;
+        transform: translateY(-2px);
+        box-shadow: 0 12px 32px rgba(91, 53, 217,0.25);
+    }
+
+    /* Monitor de Feedback */
+    .status-message-wrapper {
+        margin-top: 25px;
+        padding: 16px;
+        border-radius: 10px;
+        font-size: 0.9em;
+        font-weight: 700;
+        text-align: center;
+        display: none;
+        border: 1px solid #E2D9FF;
+        background: #FDFCFF;
+        color: #5B35D9;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .form-group-premium input.is-invalid {
+        border-color: #dc2626 !important;
+        box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.08) !important;
+        background: #fffafa;
+    }
+    .form-group-premium input.is-valid {
+        border-color: #16a34a !important;
+    }
+    .field-error {
+        display: none;
+        margin-top: 6px;
+        font-size: 0.78em;
+        font-weight: 600;
+        color: #dc2626;
+        line-height: 1.35;
+    }
+    .field-error.is-visible {
+        display: block;
+    }
+
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-5px); }
+        60% { transform: translateY(-2px); }
+    }
+</style>
+
+<div class="capture-container" id="lead-capture-page">
+    <div class="capture-card">
+
+        <div style="margin-bottom: 40px; border-left: 4px solid #5B35D9; padding-left: 20px;">
+            <h1 style="font-size: 1.7em; font-weight: 900; color: #000; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: -0.5px;">Onboarding de Maturidade Cognitiva</h1>
+            <p style="font-size: 0.95em; color: #4b5563; font-weight: 500; margin: 0; line-height: 1.6;">Estabeleça seus parâmetros iniciais de identificação para ativação das camadas de inteligência do ecossistema.</p>
+        </div>
+
+        <div class="profile-tabs">
+            <button type="button" id="tab-empresa" onclick="alternarPerfil('EMPRESA')" class="tab-btn tab-active">
+                <i class="fas fa-building" style="margin-right: 8px;"></i> Diagnóstico Geral
+            </button>
+            <button type="button" id="tab-inovador" onclick="alternarPerfil('INOVADOR')" class="tab-btn tab-inactive">
+                <i class="fas fa-flask" style="margin-right: 8px;"></i> Laboratório Da Vinci
+            </button>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 30px; color: #5B35D9; opacity: 0.6; animation: bounce 2.5s infinite;">
+            <i class="fas fa-chevron-down" style="font-size: 1.3em;"></i>
+        </div>
+
+        <form id="leadCaptureFormDirect" style="width: 100%; margin: 0; padding: 0; box-sizing: border-box;">
+            <input type="hidden" id="perfil_lead" name="PERFIL_LEAD" value="EMPRESA">
+
+            <div class="form-section-title-premium">
+                <i class="fas fa-user-shield"></i> Núcleo de Identificação Pessoal
+            </div>
+
+            <div class="capture-grid">
+                <div class="form-group-premium grid-full">
+                    <label for="nome_clie">Nome Completo do Solicitante</label>
+                    <input type="text" id="nome_clie" name="NOME_CLIE" required placeholder="Ex: Oscar Sarquis González Braga">
+                </div>
+
+                <div class="form-group-premium">
+                    <label for="mail_clie">E-mail Corporativo ou Principal</label>
+                    <input type="email" id="mail_clie" name="MAIL_CLIE" required autocomplete="email" inputmode="email" placeholder="Ex: diretoria@organizacao.com">
+                    <div class="field-error" id="err_mail_clie"></div>
+                </div>
+
+                <div class="form-group-premium">
+                    <label for="fone_clie">Linha de Contato Direta</label>
+                    <input type="tel" id="fone_clie" name="FONE_CLIE" required autocomplete="tel" inputmode="numeric" maxlength="15" placeholder="Ex: (85) 99180-0606">
+                    <div class="field-error" id="err_fone_clie"></div>
+                </div>
+            </div>
+
+            <div id="secao-empresa-fields" style="display: block; width: 100%; margin: 0; padding: 0; box-sizing: border-box;">
+
+                <div class="form-section-title-premium">
+                    <i class="fas fa-sitemap"></i> Matriz Organizacional e Localização
+                </div>
+
+                <div class="capture-grid">
+                    <div class="form-group-premium grid-full">
+                        <label for="empresa_clie">Instituição / Razão Social</label>
+                        <input type="text" id="empresa_clie" name="EMPRESA_CLIE" required placeholder="Ex: Escola para Todos S/A">
+                    </div>
+
+                    <div class="form-group-premium">
+                        <label for="docu_clie">CNPJ Institucional</label>
+                        <input type="text" id="docu_clie" name="DOCU_CLIE" required inputmode="numeric" maxlength="18" placeholder="Ex: 11.222.333/0001-81">
+                        <div class="field-error" id="err_docu_clie"></div>
+                    </div>
+
+                    <div class="form-group-premium">
+                        <label for="zipn_clie">CEP da Sede Administrativa</label>
+                        <input type="text" id="zipn_clie" name="ZIPN_CLIE" required inputmode="numeric" maxlength="9" placeholder="Ex: 60135-410">
+                        <div class="field-error" id="err_zipn_clie"></div>
+                    </div>
+
+                    <div class="form-group-premium grid-full">
+                        <label for="adre_clie">Endereço Completo da Infraestrutura</label>
+                        <input type="text" id="adre_clie" name="ADRE_CLIE" placeholder="Ex: Rua Dom Expedito Lopes, 2360 - Bairro Fátima">
+                    </div>
+
+                    <div class="form-group-premium grid-full">
+                        <label for="func_lead">Cargo / Função de Liderança Executiva</label>
+                        <input type="text" id="func_lead" name="FUNC_LEAD" required placeholder="Ex: Diretor de Operações e Processos (BPM)">
+                    </div>
+                </div>
+            </div>
+
+            <div id="secao-inovador-fields" style="display: none; width: 100%; margin: 0; padding: 0; box-sizing: border-box;">
+                <div class="form-section-title-premium">
+                    <i class="fas fa-project-diagram"></i> Escopo do Laboratório Independente
+                </div>
+
+                <div class="sandbox-info-box" style="margin-bottom: 25px;">
+                    <i class="fas fa-cube" style="color: #5B35D9; margin-right: 6px;"></i>
+                    <strong>Trilha Inovador Solo:</strong> Suas experimentações, modelagens de processos e testes de hipóteses de negócios serão processados dentro da mesa pessoal de lapidação. Nenhuma amarração corporativa ou validação de CNPJ é exigida nesta fase de incubação de ideias.
+                </div>
+
+                <div class="form-group-premium grid-full">
+                    <label for="justificativa_solo">
+                        <i class="fas fa-comment-alt-lines" style="color: #5B35D9;"></i>
+                        Justificativa de Uso Pessoal / Escopo do Projeto Proposto
+                    </label>
+                    <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                        <input type="text" id="justificativa_solo" name="JUSTIFICATIVA_SOLO"
+                               placeholder="Clique no microfone à direita para ditar seu objetivo estratégico por voz ou digite aqui..."
+                               style="padding-right: 50px; width: 100%;">
+                        <button type="button" id="btn-dictate" onclick="iniciarDitado()"
+                                style="position: absolute; right: 10px; background: transparent; border: none; color: #5B35D9; cursor: pointer; font-size: 1.25em; padding: 6px; transition: all 0.2s;"
+                                title="Ativar captura cognitiva por voz">
+                            <i class="fas fa-microphone" id="mic-icon"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 35px; display: flex; flex-direction: row; align-items: flex-start; width: 100%; box-sizing: border-box;">
+                <input type="checkbox" id="consent_nd" name="CONSENT_ND" required style="margin-top: 5px; width: 18px; height: 18px; min-width: 18px; cursor: pointer;">
+                <label for="consent_nd" style="font-size: 0.9em; margin-left: 14px; text-transform: none; font-weight: 500; color: #374151; line-height: 1.6; cursor: pointer; letter-spacing: normal; display: inline;">
+                    Estou ciente e concedo o <strong>Consentimento Explícito</strong> para o processamento de dados sob as diretrizes contratuais de confidencialidade e segurança da informação aplicadas pelo barramento central.
+                    <a href="/termos-de-uso" target="_blank" style="font-weight: 700; color: #5B35D9; text-decoration: underline; margin-left: 3px; display: inline;">(Diretrizes de Privacidade e NDA)</a>
+                </label>
+            </div>
+
+            <button type="submit" id="submitLeadBtn" class="btn-submit-premium">
+                Finalizar Solicitação e Enviar
+            </button>
+
+            <div id="leadStatusMessage" class="status-message-wrapper"></div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // ── Validação / máscaras BR ─────────────────────────────────────────────
+    function onlyDigits(value) {
+        return String(value || '').replace(/\D+/g, '');
+    }
+
+    function isValidEmail(value) {
+        var email = String(value || '').trim();
+        if (!email || email.length > 254) return false;
+        return /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/.test(email);
+    }
+
+    function isValidBrPhone(value) {
+        var d = onlyDigits(value);
+        if (d.length !== 10 && d.length !== 11) return false;
+        var ddd = parseInt(d.slice(0, 2), 10);
+        if (ddd < 11 || ddd > 99) return false;
+        if (d.length === 11 && d.charAt(2) !== '9') return false;
+        return true;
+    }
+
+    function isValidCep(value) {
+        return onlyDigits(value).length === 8;
+    }
+
+    function isValidCnpj(value) {
+        var d = onlyDigits(value);
+        if (d.length !== 14) return false;
+        if (/^(\d)\1{13}$/.test(d)) return false;
+        function check(base, weights) {
+            var total = 0;
+            for (var i = 0; i < weights.length; i++) total += parseInt(base.charAt(i), 10) * weights[i];
+            var rest = total % 11;
+            return rest < 2 ? '0' : String(11 - rest);
+        }
+        var w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        var w2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        var d1 = check(d.slice(0, 12), w1);
+        var d2 = check(d.slice(0, 12) + d1, w2);
+        return d.endsWith(d1 + d2);
+    }
+
+    function maskPhone(value) {
+        var d = onlyDigits(value).slice(0, 11);
+        if (d.length <= 2) return d.length ? '(' + d : '';
+        if (d.length <= 6) return '(' + d.slice(0, 2) + ') ' + d.slice(2);
+        if (d.length <= 10) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6);
+        return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
+    }
+
+    function maskCnpj(value) {
+        var d = onlyDigits(value).slice(0, 14);
+        if (d.length <= 2) return d;
+        if (d.length <= 5) return d.slice(0, 2) + '.' + d.slice(2);
+        if (d.length <= 8) return d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5);
+        if (d.length <= 12) return d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5, 8) + '/' + d.slice(8);
+        return d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5, 8) + '/' + d.slice(8, 12) + '-' + d.slice(12);
+    }
+
+    function maskCep(value) {
+        var d = onlyDigits(value).slice(0, 8);
+        if (d.length <= 5) return d;
+        return d.slice(0, 5) + '-' + d.slice(5);
+    }
+
+    function setFieldError(inputId, message) {
+        var input = document.getElementById(inputId);
+        var err = document.getElementById('err_' + inputId);
+        if (!input) return;
+        if (message) {
+            input.classList.add('is-invalid');
+            input.classList.remove('is-valid');
+            if (err) {
+                err.textContent = message;
+                err.classList.add('is-visible');
+            }
+        } else {
+            input.classList.remove('is-invalid');
+            if (input.value && String(input.value).trim()) input.classList.add('is-valid');
+            else input.classList.remove('is-valid');
+            if (err) {
+                err.textContent = '';
+                err.classList.remove('is-visible');
+            }
+        }
+    }
+
+    function validateEmailField() {
+        var el = document.getElementById('mail_clie');
+        var v = (el.value || '').trim();
+        if (!v) { setFieldError('mail_clie', 'Informe o e-mail.'); return false; }
+        if (!isValidEmail(v)) { setFieldError('mail_clie', 'E-mail inválido. Use o formato nome@dominio.com'); return false; }
+        setFieldError('mail_clie', '');
+        return true;
+    }
+
+    function validatePhoneField() {
+        var el = document.getElementById('fone_clie');
+        var v = el.value || '';
+        if (!onlyDigits(v)) { setFieldError('fone_clie', 'Informe o telefone com DDD.'); return false; }
+        if (!isValidBrPhone(v)) { setFieldError('fone_clie', 'Telefone inválido. Ex: (85) 99180-0606'); return false; }
+        setFieldError('fone_clie', '');
+        return true;
+    }
+
+    function validateCnpjField() {
+        var el = document.getElementById('docu_clie');
+        if (!el.required && document.getElementById('perfil_lead').value === 'INOVADOR') {
+            setFieldError('docu_clie', '');
+            return true;
+        }
+        var v = el.value || '';
+        if (!onlyDigits(v)) { setFieldError('docu_clie', 'Informe o CNPJ.'); return false; }
+        if (!isValidCnpj(v)) { setFieldError('docu_clie', 'CNPJ inválido. Verifique os dígitos verificadores.'); return false; }
+        setFieldError('docu_clie', '');
+        return true;
+    }
+
+    function validateCepField() {
+        var el = document.getElementById('zipn_clie');
+        if (!el.required && document.getElementById('perfil_lead').value === 'INOVADOR') {
+            setFieldError('zipn_clie', '');
+            return true;
+        }
+        var v = el.value || '';
+        if (!onlyDigits(v)) { setFieldError('zipn_clie', 'Informe o CEP.'); return false; }
+        if (!isValidCep(v)) { setFieldError('zipn_clie', 'CEP inválido. Use 8 dígitos. Ex: 60135-410'); return false; }
+        setFieldError('zipn_clie', '');
+        return true;
+    }
+
+    async function lookupCep() {
+        if (!validateCepField()) return;
+        var cep = onlyDigits(document.getElementById('zipn_clie').value);
+        var adre = document.getElementById('adre_clie');
+        try {
+            var res = await fetch('https://viacep.com.br/ws/' + cep + '/json/');
+            if (!res.ok) return;
+            var data = await res.json();
+            if (data.erro) {
+                setFieldError('zipn_clie', 'CEP não encontrado. Confira os dígitos.');
+                return;
+            }
+            setFieldError('zipn_clie', '');
+            if (adre && !String(adre.value || '').trim()) {
+                var parts = [data.logradouro, data.bairro, data.localidade, data.uf].filter(Boolean);
+                adre.value = parts.join(' - ');
+            }
+        } catch (err) {
+            // Offline/ViaCEP falhou: mantém só a validação de formato
+        }
+    }
+
+    function bindMasksAndValidation() {
+        var phone = document.getElementById('fone_clie');
+        var cnpj = document.getElementById('docu_clie');
+        var cep = document.getElementById('zipn_clie');
+        var mail = document.getElementById('mail_clie');
+
+        if (phone) {
+            phone.addEventListener('input', function () { phone.value = maskPhone(phone.value); });
+            phone.addEventListener('blur', validatePhoneField);
+        }
+        if (cnpj) {
+            cnpj.addEventListener('input', function () { cnpj.value = maskCnpj(cnpj.value); });
+            cnpj.addEventListener('blur', validateCnpjField);
+        }
+        if (cep) {
+            cep.addEventListener('input', function () { cep.value = maskCep(cep.value); });
+            cep.addEventListener('blur', lookupCep);
+        }
+        if (mail) {
+            mail.addEventListener('blur', validateEmailField);
+        }
+    }
+
+    function validateLeadFormBeforeSubmit() {
+        var perfil = document.getElementById('perfil_lead').value;
+        var okMail = validateEmailField();
+        var okPhone = validatePhoneField();
+        var okCnpj = true;
+        var okCep = true;
+        if (perfil !== 'INOVADOR') {
+            okCnpj = validateCnpjField();
+            okCep = validateCepField();
+        }
+        return okMail && okPhone && okCnpj && okCep;
+    }
+
+    // 🔀 CONTROLADOR DE TRILHA E ESCOPO: SOLO VS GENERAL
+    function alternarPerfil(perfil) {
+        document.getElementById('perfil_lead').value = perfil;
+
+        const tabEmpresa = document.getElementById('tab-empresa');
+        const tabInovador = document.getElementById('tab-inovador');
+        const secaoEmpresa = document.getElementById('secao-empresa-fields');
+        const secaoInovador = document.getElementById('secao-inovador-fields');
+        const submitBtn = document.getElementById('submitLeadBtn');
+
+        const empInput = document.getElementById('empresa_clie');
+        const docuInput = document.getElementById('docu_clie');
+        const funcInput = document.getElementById('func_lead');
+        const cepInput = document.getElementById('zipn_clie');
+
+        if (perfil === 'INOVADOR') {
+            tabInovador.className = "tab-btn tab-active";
+            tabEmpresa.className = "tab-btn tab-inactive";
+
+            secaoEmpresa.style.display = "none";
+            secaoInovador.style.display = "block";
+
+            submitBtn.innerText = "Iniciar Integração Da Vinci";
+
+            empInput.required = false;
+            docuInput.required = false;
+            funcInput.required = false;
+            if (cepInput) cepInput.required = false;
+            setFieldError('docu_clie', '');
+            setFieldError('zipn_clie', '');
+        } else {
+            tabEmpresa.className = "tab-btn tab-active";
+            tabInovador.className = "tab-btn tab-inactive";
+
+            secaoEmpresa.style.display = "block";
+            secaoInovador.style.display = "none";
+
+            submitBtn.innerText = "Finalizar Solicitação e Enviar";
+
+            empInput.required = true;
+            docuInput.required = true;
+            funcInput.required = true;
+            if (cepInput) cepInput.required = true;
+        }
+    }
+
+    // 🎙️ CAPTURA COGNITIVA POR VOZ: DITADO DA JUSTIFICATIVA (WEB SPEECH API NATIVA)
+    function iniciarDitado() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("A captura cognitiva por voz não é suportada por este navegador. Recomendamos a utilização do Google Chrome.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        const micIcon = document.getElementById('mic-icon');
+        const inputField = document.getElementById('justificativa_solo');
+
+        recognition.onstart = () => {
+            micIcon.style.color = '#EF4444';
+            micIcon.style.animation = 'pulse 1s infinite';
+            inputField.placeholder = "Ouvindo sua voz... Fale agora.";
+        };
+
+        recognition.onerror = (e) => {
+            console.error("Erro capturado no barramento de voz:", e);
+            restaurarMic();
+        };
+
+        recognition.onend = () => {
+            restaurarMic();
+            if(!inputField.value) {
+                inputField.placeholder = "Clique no microfone à direita para ditar seu objetivo estratégico por voz ou digite aqui...";
+            }
+        };
+
+        recognition.onresult = (event) => {
+            const textoDitado = event.results[0][0].transcript;
+            inputField.value = textoDitado;
+        };
+
+        function restaurarMic() {
+            micIcon.style.color = '#5B35D9';
+            micIcon.style.animation = 'none';
+        }
+
+        recognition.start();
+    }
+
+    // 🛰️ ORQUESTRADOR DE ENVIO DE DADOS (IMUNE A CACHES EXTERNOS)
+    document.getElementById('leadCaptureFormDirect').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const msgEl = document.getElementById('leadStatusMessage');
+        const submitBtn = document.getElementById('submitLeadBtn');
+
+        if (!validateLeadFormBeforeSubmit()) {
+            msgEl.style.display = "block";
+            msgEl.style.color = "#991b1b";
+            msgEl.innerText = "Revise os campos destacados antes de enviar.";
+            const firstInvalid = document.querySelector('#leadCaptureFormDirect input.is-invalid');
+            if (firstInvalid) firstInvalid.focus();
+            return;
+        }
+
+        submitBtn.disabled = true;
+        const textoOriginalBotao = submitBtn.innerText;
+        submitBtn.innerText = "Validando Parâmetros no Ecossistema...";
+        submitBtn.style.opacity = "0.6";
+
+        msgEl.style.display = "block";
+        msgEl.style.color = "#5B35D9";
+        msgEl.innerText = "Sincronizando com o barramento central de serviços...";
+
+        const perfilValue = document.getElementById('perfil_lead').value;
+        let empresaValue = document.getElementById('empresa_clie').value;
+        let docuValue = document.getElementById('docu_clie').value;
+        let zipnValue = document.getElementById('zipn_clie').value;
+        let adreValue = document.getElementById('adre_clie').value;
+        let justificativaValue = "";
+
+        // Atribuição do flag de inicialização estruturada (SOLO ou GENERAL)
+        let initRoleValue = "GENERAL";
+
+        if (perfilValue === 'INOVADOR') {
+            initRoleValue = "SOLO";
+            justificativaValue = document.getElementById('justificativa_solo').value;
+
+            empresaValue = null;
+            docuValue = null;
+            zipnValue = null;
+            adreValue = null;
+        }
+
+        // O pacote strict completo que vai trafegar na rede
+        const urlParams = new URLSearchParams(window.location.search);
+        const refParam = (urlParams.get('ref') || '').trim();
+        const inviteParam = (urlParams.get('invite') || '').trim();
+
+        const formData = {
+            nome_clie: document.getElementById('nome_clie').value.trim(),
+            mail_clie: document.getElementById('mail_clie').value.trim().toLowerCase(),
+            fone_clie: maskPhone(document.getElementById('fone_clie').value),
+            empresa_clie: empresaValue,
+            docu_clie: docuValue ? maskCnpj(docuValue) : docuValue,
+            zipn_clie: zipnValue ? maskCep(zipnValue) : zipnValue,
+            adre_clie: adreValue,
+            init_role: initRoleValue,
+            justificativa_solo: justificativaValue
+        };
+        if (refParam) formData.ref = refParam;
+        if (inviteParam) formData.invite = inviteParam;
+
+        console.group("🔬 [DEBUG FRONT-END] DADOS DISPARADOS PELO FORMULÁRIO");
+        console.log("Aba selecionada na UI:", perfilValue);
+        console.log("Valor definido para o Banco (init_role):", initRoleValue);
+        console.table(formData);
+        console.groupEnd();
+
+        try {
+            const urlBaseDefinitiva = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '';
+            let endpointFinal = `${urlBaseDefinitiva}/api/ctdi_clie`;
+            if (urlBaseDefinitiva.endsWith('/api') || urlBaseDefinitiva.endsWith('/api/')) {
+                endpointFinal = urlBaseDefinitiva.endsWith('/') ? `${urlBaseDefinitiva}ctdi_clie` : `${urlBaseDefinitiva}/ctdi_clie`;
+            }
+
+            console.log("✈️ Despachando payload para o endpoint:", endpointFinal);
+
+            const response = await fetch(endpointFinal, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            console.log("📡 HTTP Status de Retorno:", response.status);
+
+            let mensagemRetorno = "";
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                const resultJson = await response.json();
+                console.log("📦 Resposta JSON do Servidor:", resultJson);
+                mensagemRetorno = resultJson.message || resultJson.error || "";
+            } else {
+                mensagemRetorno = await response.text();
+                console.log("📄 Resposta Text/HTML do Servidor:", mensagemRetorno);
+            }
+
+            if (response.ok) {
+                msgEl.style.color = "#111827";
+                msgEl.innerText = mensagemRetorno || "Sucesso absoluto!";
+                document.getElementById('leadCaptureFormDirect').reset();
+                submitBtn.innerText = "Acesso Concluído";
+            } else {
+                msgEl.style.color = "#991b1b";
+                msgEl.innerText = "Aviso operacional: " + mensagemRetorno;
+                liberarBotaoEnvio(submitBtn, textoOriginalBotao);
+            }
+
+        } catch (err) {
+            console.error("❌ CRASH NA TRANSMISSÃO DE REDE:", err);
+            msgEl.style.color = "#991b1b";
+            msgEl.innerText = "Erro de conexão com o barramento.";
+            liberarBotaoEnvio(submitBtn, textoOriginalBotao);
+        }
+    });
+
+    function liberarBotaoEnvio(botao, textoOriginal) {
+        botao.disabled = false;
+        botao.innerText = textoOriginal;
+        botao.style.opacity = "1";
+        botao.style.cursor = "pointer";
+    }
+
+    bindMasksAndValidation();
+</script>

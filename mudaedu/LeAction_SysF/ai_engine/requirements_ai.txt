@@ -1,0 +1,16 @@
+# --- Banco de Dados e Conexão ---
+psycopg2-binary>=2.9.0      # Necessário para o database.py
+python-dotenv               # Carregamento de variáveis de ambiente
+
+# --- Bibliotecas Core para RAG e AWS ---
+boto3>=1.34.0               # Comunicação com S3 e Bedrock
+langchain>=0.1.0            # Orquestrador da lógica de IA
+langchain-community         # Conectores para OpenSearch e Bedrock
+langchain-aws               # Conector oficial da AWS para LangChain
+opensearch-py               # Driver do banco vetorial
+requests-aws4auth           # Autenticação AWS para OpenSearch
+tiktoken                    # Contagem de tokens
+
+# --- Geração de Documentos e Utilitários ---
+fpdf2                       # Para o pdf_generator.py
+requests                    # Necessário para o RequestsHttpConnection

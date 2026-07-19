@@ -1,0 +1,21 @@
+<%
+    const matrizHref = locals.urlMatriz || '/planejamento-estrategico';
+    const cockpitHref = locals.urlCockpit || '/planejamento-estrategico/cockpit';
+    const activeView = locals.activeView || 'matriz';
+    const matrizAtiva = activeView === 'matriz';
+    const cockpitAtivo = activeView === 'cockpit';
+%>
+<nav class="eo-view-tabs" aria-label="Alternar visualização estratégica">
+    <a href="<%= matrizHref %>"
+       class="eo-view-tabs__item<%= matrizAtiva ? ' is-active' : '' %>"
+       <%= matrizAtiva ? 'aria-current="page"' : '' %>>
+        <i class="fas fa-table" aria-hidden="true"></i>
+        <span class="eo-view-tabs__label">Matriz resumida</span>
+    </a>
+    <a href="<%= cockpitHref %>"
+       class="eo-view-tabs__item<%= cockpitAtivo ? ' is-active' : '' %>"
+       <%= cockpitAtivo ? 'aria-current="page"' : '' %>>
+        <i class="fas fa-chess" aria-hidden="true"></i>
+        <span class="eo-view-tabs__label">Cockpit gamificado</span>
+    </a>
+</nav>

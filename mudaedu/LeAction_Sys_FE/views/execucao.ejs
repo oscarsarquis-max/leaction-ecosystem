@@ -1,0 +1,67 @@
+<div class="mesa-org execucao" id="execucao-root"
+     data-id-member="<%= id_member || '' %>"
+     data-position="<%= position || '' %>">
+    <header class="mesa-org__hero execucao__topbar">
+        <div>
+            <h1><i class="fas fa-tasks" style="color: #fbbf24;"></i> Sala de Execução</h1>
+            <p>Fila operacional — sem ruído gerencial. Foque nas suas atribuições.</p>
+        </div>
+        <div style="position: relative;">
+            <button type="button" class="execucao__bell" id="btn-notificacoes" aria-label="Notificações">
+                <i class="fas fa-bell"></i>
+                <span class="execucao__bell-badge" id="notif-badge" hidden>0</span>
+            </button>
+            <div class="execucao__notif-panel" id="notif-panel"></div>
+        </div>
+    </header>
+
+    <section class="mesa-card">
+        <h2 class="mesa-card__title"><i class="fas fa-inbox"></i> Fila de Atribuições</h2>
+        <div class="execucao__fila" id="fila-tarefas">
+            <p class="mesa-empty-hint">Carregando tarefas…</p>
+        </div>
+    </section>
+</div>
+
+<div class="mesa-modal" id="modal-execucao" aria-hidden="true">
+    <div class="mesa-modal__card execucao__modal-card">
+        <h3 id="modal-exec-titulo">Execução da Atividade</h3>
+        <p class="execucao__modal-sprint" id="exec-sprint-label"></p>
+        <form id="form-execucao">
+            <input type="hidden" id="exec-id-ativ">
+            <input type="hidden" id="exec-id-sprn">
+
+            <div class="admin-esim__field execucao__field-stack">
+                <label>Atividade</label>
+                <p id="exec-nome" class="execucao__ativ-nome"></p>
+            </div>
+
+            <div class="admin-esim__field execucao__field-stack">
+                <label for="exec-desc">Descrição / escopo</label>
+                <textarea id="exec-desc" class="mesa-textarea execucao__desc-box" rows="6" readonly
+                          placeholder="Sem descrição cadastrada para esta atividade."></textarea>
+            </div>
+
+            <div class="admin-esim__field execucao__field-stack">
+                <label for="exec-obs">Observações e encaminhamentos</label>
+                <textarea id="exec-obs" class="mesa-textarea execucao__obs-box" rows="5"
+                          placeholder="Registre aqui observações, encaminhamentos e andamentos. O conteúdo fica no registro da atividade na sprint."></textarea>
+                <p class="admin-esim__field-hint">Persistido no registro da atividade e visível no painel da sprint.</p>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="exec-status">Status</label>
+                <select id="exec-status" class="mesa-select">
+                    <option value="A Fazer">A Fazer</option>
+                    <option value="Em Execução">Em Execução</option>
+                    <option value="Entregue">Entregue</option>
+                </select>
+            </div>
+
+            <div class="admin-esim__modal-actions">
+                <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-fechar-exec">Fechar</button>
+                <button type="submit" class="mesa-btn mesa-btn--lilac">Salvar evolução</button>
+            </div>
+        </form>
+    </div>
+</div>

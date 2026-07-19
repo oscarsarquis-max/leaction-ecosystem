@@ -1,0 +1,92 @@
+<div class="main-content" id="avaliacoes-list-page">
+    <h2 style="color: #333; margin-bottom: 8px;">Avaliações Iniciais (Estratégia)</h2>
+    <p style="color: #666; margin-bottom: 20px; font-size: 0.95rem;">
+        Somente clientes empresariais que solicitaram diagnóstico. Inovadores solo não possuem esta etapa.
+    </p>
+
+    <div class="search-container" style="display: flex; gap: 10px; margin-bottom: 25px;">
+        <input type="text" id="search-input" placeholder="Buscar por nome do cliente..."
+               style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+
+        <button type="button" id="search-btn" class="btn blue-btn"
+                style="background-color: #3498db !important; color: white !important; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            <i class="fas fa-search" style="pointer-events: none;"></i> Buscar
+        </button>
+    </div>
+
+    <% if (maturidades && maturidades.length > 0) { %>
+        <table class="data-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f8f9fa;">
+                    <th style="padding: 12px; border-bottom: 2px solid #dee2e6; text-align: left;">ID</th>
+                    <th style="padding: 12px; border-bottom: 2px solid #dee2e6; text-align: left;">Cliente</th>
+                    <th style="padding: 12px; border-bottom: 2px solid #dee2e6; text-align: center;">Gap Domínio</th>
+                    <th style="padding: 12px; border-bottom: 2px solid #dee2e6; text-align: center;">Gap Dimensão</th>
+                    <th style="padding: 12px; border-bottom: 2px solid #dee2e6; text-align: center;">Gap Geral</th>
+                    <th style="padding: 12px; border-bottom: 2px solid #dee2e6; text-align: center;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% maturidades.forEach(maturidade => {
+                    // 1. Função Inteligente para extrair média de Gaps (suporta Número ou JSON)
+                    const calcularMediaGap = (valor) => {
+                        if (valor === null || valor === undefined) return 0;
+
+                        // Se já for um número (como o pgen_gap costuma ser)
+                        if (typeof valor === 'number') return valor;
+                        if (!isNaN(parseFloat(valor)) && isFinite(valor)) return parseFloat(valor);
+
+                        // Se for um objeto ou string JSON (como o pdom_gap do ID 71)
+                        try {
+                            const obj = (typeof valor === 'string') ? JSON.parse(valor.replace(/""/g, '"')) : valor;
+                            const scores = Object.values(obj);
+
+                            if (scores.length === 0) return 0;
+
+                            const soma = scores.reduce((a, b) => a + parseFloat(b || 0), 0);
+                            return soma / scores.length;
+                        } catch (e) {
+                            // Fallback: se não for JSON válido, tenta caçar números na string
+                            const matches = String(valor).match(/\d+(\.\d+)?/g);
+                            if (matches) {
+                                const soma = matches.reduce((a, b) => a + parseFloat(b), 0);
+                                return soma / matches.length;
+                            }
+                            return 0;
+                        }
+                    };
+
+                    // 2. Aplicando a lógica nas colunas corretas (baseado no seu log)
+                    const gapDom = calcularMediaGap(maturidade.pdom_gap || maturidade.pdom_matu);
+                    const gapDim = calcularMediaGap(maturidade.pdim_gap || maturidade.pdim_matu);
+                    const gapGen = calcularMediaGap(maturidade.pgen_gap || maturidade.pgen_matu);
+                %>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 12px;"><%= maturidade.id_matu %></td>
+                            <td style="padding: 12px; font-weight: bold;"><%= maturidade.nome_clie || maturidade.id_clie %></td>
+
+                            <td style="padding: 12px; text-align: center;"><%= gapDom.toFixed(2) %></td>
+                            <td style="padding: 12px; text-align: center;"><%= gapDim.toFixed(2) %></td>
+                            <td style="padding: 12px; text-align: center;"><%= gapGen.toFixed(2) %></td>
+
+                            <td class="actions" style="padding: 12px; display: flex; gap: 25px; justify-content: center; align-items: center;">
+                                <button type="button" class="view-btn" data-id="<%= maturidade.id_matu %>" title="Abrir Formulário"
+                                        style="background: none; border: none; padding: 0; cursor: pointer;">
+                                    <i class="fas fa-clipboard-list view-btn" data-id="<%= maturidade.id_matu %>"
+                                       style="color: #ff6600 !important; font-size: 1.6rem; pointer-events: none;"></i>
+                                </button>
+
+                                <button type="button" class="view-btn-dia" data-id="<%= maturidade.id_matu %>" title="Ver Diagnóstico"
+                                        style="background: none; border: none; padding: 0; cursor: pointer;">
+                                    <i class="fas fa-chart-pie view-btn-dia" data-id="<%= maturidade.id_matu %>"
+                                       style="color: #e74c3c !important; font-size: 1.6rem; pointer-events: none;"></i>
+                                </button>
+                            </td>
+                        </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    <% } else { %>
+        <p style="text-align: center; color: #666; margin-top: 30px;">Nenhuma avaliação encontrada.</p>
+    <% } %>
+</div>

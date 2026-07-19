@@ -1,0 +1,94 @@
+# =====================================================================
+# PanelDX — Orquestração local (Docker Compose)
+# Sobe 3 serviços: db (Postgres), backend (Flask/Gunicorn) e frontend (Node).
+# As variáveis vêm do arquivo .env na raiz (copie de .env.example).
+# Uso: docker-compose up -d --build
+# =====================================================================
+
+services:
+  # -------------------------------------------------------------------
+  # Banco de dados PostgreSQL (apenas para testes locais)
+  # -------------------------------------------------------------------
+  db:
+    image: postgres:14
+    container_name: paneldx_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres}
+      POSTGRES_DB: ${DB_NAME:-LeAction_SysF}
+    ports:
+      # Host 5434 evita conflito com Postgres local (5432). Em CI limpo, troque para "5432:5432".
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Schema montado separado; script de init filtra diretivas incompativeis com PG 14
+      - ./schema_paneldx.sql:/schema/schema_paneldx.sql:ro
+      - ./docker/db-init/01_schema.sh:/docker-entrypoint-initdb.d/01_schema.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-LeAction_SysF}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # -------------------------------------------------------------------
+  # Backend Flask + Agentes de IA (Gunicorn)
+  # -------------------------------------------------------------------
+  backend:
+    build:
+      context: ./LeAction_SysF
+      dockerfile: Dockerfile
+    container_name: paneldx_backend
+    restart: unless-stopped
+    environment:
+      # Banco: aponta para o serviço 'db' na rede interna do compose
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-LeAction_SysF}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres}
+      DB_SSLMODE: disable
+      # Segredo de sessão do Flask
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-dev-secret-troque-em-producao}
+      # AWS / Bedrock (deixe vazio se não usar IA localmente)
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      BEDROCK_REGION: ${BEDROCK_REGION:-us-east-1}
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-us.anthropic.claude-sonnet-4-20250514-v1:0}
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------
+  # Frontend / BFF (Express + EJS)
+  # -------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./LeAction_Sys_FE
+      dockerfile: Dockerfile
+    container_name: paneldx_frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      FLASK_API_URL: http://backend:5000
+      SESSION_SECRET: ${SESSION_SECRET:-dev-secret-troque-em-producao}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-sysadmin@leaction.com.br}
+      PRODUCTION_MASTER_KEY: ${PRODUCTION_MASTER_KEY:-dev-gatekeeper-local}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-LeAction_SysF}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres}
+      DB_SSLMODE: disable
+    ports:
+      # Host 3001 evita conflito com Node local (3000). Em CI limpo, troque para "3000:3000".
+      - "3001:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

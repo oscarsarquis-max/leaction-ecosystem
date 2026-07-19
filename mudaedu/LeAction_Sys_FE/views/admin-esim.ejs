@@ -1,0 +1,201 @@
+<div class="mesa-org admin-esim" id="admin-esim-root">
+    <header class="mesa-org__hero">
+        <div>
+            <h1><i class="fas fa-sim-card" style="color: #fbbf24;"></i> Gestão eSIM</h1>
+            <p>
+                Configure o <strong>catálogo de eventos</strong> e os <strong>provedores de telemetria</strong>.
+                Os códigos cadastrados aqui alimentam o webhook e a correlação automática com o Framework LeAction.
+            </p>
+        </div>
+        <div class="mesa-org__meta">
+            <div><strong>Área Administrativa</strong></div>
+            <div>Telemetria · Framework CTDI</div>
+        </div>
+    </header>
+
+    <nav class="admin-esim__tabs" role="tablist">
+        <button type="button" class="admin-esim__tab is-active" data-tab="catalog" role="tab" aria-selected="true">
+            <i class="fas fa-list-alt"></i> Catálogo de Eventos
+        </button>
+        <button type="button" class="admin-esim__tab" data-tab="provedores" role="tab" aria-selected="false">
+            <i class="fas fa-broadcast-tower"></i> Provedores eSIM
+        </button>
+    </nav>
+
+    <!-- Tab: Catálogo -->
+    <section class="admin-esim__panel is-active" id="panel-catalog" role="tabpanel">
+        <div class="mesa-card">
+            <div class="admin-esim__toolbar">
+                <div>
+                    <h2 class="mesa-card__title" style="margin-bottom: 4px;">
+                        <i class="fas fa-book"></i> esim_eventos_catalog
+                    </h2>
+                    <p class="admin-esim__field-hint" style="margin: 0;">
+                        Mapeamento código da operadora → dimensão, domínio e blocos candidatos.
+                    </p>
+                </div>
+                <div class="admin-esim__toolbar-actions">
+                    <p class="admin-esim__disparo-hint">
+                        <i class="fas fa-bullseye"></i>
+                        Disparos de teste vão para <strong>sistema@mudaedu.com.br</strong>
+                    </p>
+                    <button type="button" class="mesa-btn mesa-btn--lilac" id="btn-novo-catalog">
+                        <i class="fas fa-plus"></i> Novo evento
+                    </button>
+                </div>
+            </div>
+
+            <div class="admin-esim__table-wrap">
+                <table class="admin-esim__table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Dimensão / Domínio</th>
+                            <th>Blocos</th>
+                            <th>Provedor</th>
+                            <th style="width: 168px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="catalog-table-body">
+                        <tr><td colspan="5" class="admin-esim__empty">Carregando catálogo…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tab: Provedores -->
+    <section class="admin-esim__panel" id="panel-provedores" role="tabpanel">
+        <div class="mesa-card">
+            <div class="admin-esim__toolbar">
+                <div>
+                    <h2 class="mesa-card__title" style="margin-bottom: 4px;">
+                        <i class="fas fa-server"></i> esim_provedores
+                    </h2>
+                    <p class="admin-esim__field-hint" style="margin: 0;">
+                        Endpoints de webhook e upload por operadora integrada.
+                    </p>
+                </div>
+                <button type="button" class="mesa-btn mesa-btn--lilac" id="btn-novo-provedor">
+                    <i class="fas fa-plus"></i> Novo provedor
+                </button>
+            </div>
+
+            <div class="admin-esim__table-wrap">
+                <table class="admin-esim__table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Webhook</th>
+                            <th>Upload</th>
+                            <th>Slug</th>
+                            <th style="width: 120px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="provedores-table-body">
+                        <tr><td colspan="5" class="admin-esim__empty">Carregando provedores…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Modal Catálogo -->
+<div class="mesa-modal" id="modal-catalog" aria-hidden="true">
+    <div class="mesa-modal__card admin-esim__modal-card">
+        <h3 id="modal-catalog-title">Novo evento no catálogo</h3>
+        <form id="form-catalog">
+            <input type="hidden" id="catalog-id">
+
+            <div class="admin-esim__field">
+                <label for="catalog-codigo">Código do evento *</label>
+                <input type="text" id="catalog-codigo" class="mesa-input" placeholder="Ex: QDA_ACESSO_PEDAG" required
+                       pattern="[A-Za-z0-9_]{3,64}" style="text-transform: uppercase;">
+                <p class="admin-esim__field-hint">Apenas letras, números e underscore. Será normalizado em maiúsculas.</p>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="catalog-provedor">Provedor *</label>
+                <select id="catalog-provedor" class="mesa-select" required>
+                    <option value="">Carregando…</option>
+                </select>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="catalog-dimensao">Dimensão fixada *</label>
+                <select id="catalog-dimensao" class="mesa-select" required>
+                    <option value="">Selecione…</option>
+                </select>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="catalog-dominio">Domínio fixado *</label>
+                <select id="catalog-dominio" class="mesa-select" required>
+                    <option value="">Selecione…</option>
+                </select>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="catalog-descricao">Descrição técnica / interpretação LeAction *</label>
+                <textarea id="catalog-descricao" class="mesa-textarea" rows="4" required
+                          placeholder="Impacto operacional e contexto do evento para a IA Master…"></textarea>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="catalog-bloco-busca">Blocos candidatos do framework *</label>
+                <input type="text" id="catalog-bloco-busca" class="mesa-input"
+                       placeholder="Buscar bloco por nome (mín. 2 caracteres)…" autocomplete="off">
+                <div id="catalog-bloco-results" class="admin-esim__bloco-results" hidden></div>
+                <div id="catalog-blocos-selecionados" class="admin-esim__chips"></div>
+                <p class="admin-esim__field-hint">Selecione os blocos autorizados para classificação pela IA.</p>
+            </div>
+
+            <div class="admin-esim__modal-actions">
+                <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-catalog">Cancelar</button>
+                <button type="submit" class="mesa-btn mesa-btn--gold" id="btn-salvar-catalog">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Provedor -->
+<div class="mesa-modal" id="modal-provedor" aria-hidden="true">
+    <div class="mesa-modal__card admin-esim__modal-card">
+        <h3 id="modal-provedor-title">Novo provedor eSIM</h3>
+        <form id="form-provedor">
+            <input type="hidden" id="provedor-id">
+
+            <div class="admin-esim__field">
+                <label for="provedor-nome">Nome do provedor *</label>
+                <input type="text" id="provedor-nome" class="mesa-input" required placeholder="Ex: Base Mobile">
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="provedor-webhook">Caminho do webhook *</label>
+                <input type="text" id="provedor-webhook" class="mesa-input" required
+                       placeholder="/api/webhooks/esim" value="/api/webhooks/esim">
+                <p class="admin-esim__field-hint">Rota relativa no MudaEdu que receberá a telemetria.</p>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="provedor-upload">Endpoint de upload (operadora)</label>
+                <input type="url" id="provedor-upload" class="mesa-input"
+                       placeholder="https://api.operadora.com/v1/upload">
+                <p class="admin-esim__field-hint">URL externa para envio de arquivos/telemetria em lote, se aplicável.</p>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="provedor-slug">Slug interno</label>
+                <input type="text" id="provedor-slug" class="mesa-input" placeholder="basemobile">
+            </div>
+
+            <div class="admin-esim__modal-actions">
+                <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-provedor">Cancelar</button>
+                <button type="submit" class="mesa-btn mesa-btn--gold" id="btn-salvar-provedor">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="admin-esim__toast" id="admin-esim-toast" role="status"></div>

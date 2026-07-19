@@ -1,0 +1,119 @@
+<aside class="w-64 bg-gray-900 text-white hidden md:flex flex-col shadow-xl h-full fixed left-0 top-0 overflow-y-auto z-50" id="sidebar-client-alt">
+
+    <div class="h-16 flex items-center justify-center border-b border-gray-800 bg-gray-900">
+        <span class="text-2xl font-bold tracking-wider text-blue-400">LeAction</span>
+    </div>
+
+    <nav class="flex-1 px-3 py-5 space-y-1 text-sm" id="sidebar-client-nav">
+        <%
+            const statusSidebar = (user.status_ia || '').toString().trim().toUpperCase();
+            const relatorioCompletoSidebar = statusSidebar === 'AVALIACAO OK' || statusSidebar.indexOf('CONCLU') !== -1;
+            let linkEstadoAtual;
+            if (!statusSidebar || statusSidebar === 'AGUARDANDO CONTEXTO') {
+                linkEstadoAtual = '/avaliacoes/' + user.id_matu;
+            } else if (relatorioCompletoSidebar) {
+                linkEstadoAtual = '/diagnostico/' + user.id_matu;
+            } else {
+                linkEstadoAtual = '/diagnostico-inicial/' + user.id_matu;
+            }
+            const projetoAtivado = (user.hasActiveProject === true || user.hasActiveProject === 1 || user.hasActiveProject === "true");
+            const climaPreenchido = (user.clima_organizacional && user.clima_organizacional.trim().length > 5);
+            const planoPronto = statusSidebar === 'CONCLUIDO' || statusSidebar.indexOf('CONCLU') !== -1;
+            const genesisDisponivel = projetoAtivado && (statusSidebar === 'AVALIACAO OK' || statusSidebar === 'PROJETO OK') && !planoPronto;
+            const geneseEmAndamento = statusSidebar === 'PENDENTE' || statusSidebar === 'PROCESSANDO';
+        %>
+
+        <details class="rounded-lg group" data-nav-group>
+            <summary class="px-3 py-2.5 cursor-pointer font-bold text-gray-100 list-none flex items-center justify-between hover:bg-gray-800 rounded-lg">
+                <span>Contexto Empresarial</span>
+                <i class="fas fa-chevron-down text-[10px] text-gray-500 group-open:rotate-180 transition-transform"></i>
+            </summary>
+            <div class="ml-2 mt-1 mb-2 space-y-0.5 border-l border-gray-800 pl-2">
+                <a href="/avaliacoes/<%= user.id_matu %>" data-nav-match="/avaliacoes" class="block px-3 py-2 text-gray-400 font-normal hover:text-white hover:bg-gray-800 rounded-md">Avaliação Inicial</a>
+                <a href="<%= linkEstadoAtual %>" data-nav-match="/diagnostico,/diagnostico-inicial" class="block px-3 py-2 text-gray-400 font-normal hover:text-white hover:bg-gray-800 rounded-md">Estado Atual</a>
+                <a href="javascript:void(0)"
+                   onclick="typeof abrirModalContextoLead === 'function' ? abrirModalContextoLead() : (typeof abrirModalContextoLeadGeral === 'function' ? abrirModalContextoLeadGeral(window._leadData || {}, false, false, false) : null)"
+                   class="block px-3 py-2 text-gray-400 font-normal hover:text-white hover:bg-gray-800 rounded-md">Meus Dados</a>
+            </div>
+        </details>
+
+        <% if (projetoAtivado && !climaPreenchido && genesisDisponivel) { %>
+        <button type="button"
+                onclick="typeof abrirModalContextoLead === 'function' ? abrirModalContextoLead() : abrirModalContextoLeadGeral(window._leadData || {}, false, false, false)"
+                class="w-full my-2 px-3 py-2.5 bg-gray-800 text-yellow-500 rounded-lg border border-yellow-600/40 text-xs font-bold">
+            Completar Contexto
+        </button>
+        <% } else if (projetoAtivado && genesisDisponivel && climaPreenchido) { %>
+        <button type="button" onclick="typeof executarGeneseEstrategica === 'function' && executarGeneseEstrategica()" id="btnDourado"
+                class="w-full my-2 px-3 py-2.5 bg-gradient-to-r from-yellow-600 to-yellow-500 text-white rounded-lg text-sm font-bold">
+            Gerar Estratégia
+        </button>
+        <% } else if (projetoAtivado && geneseEmAndamento) { %>
+        <div class="my-2 px-3 py-2 text-center text-blue-200 text-sm">Gerando plano…</div>
+        <% } %>
+
+        <% if (planoPronto) { %>
+        <details class="rounded-lg group" data-nav-group>
+            <summary class="px-3 py-2.5 cursor-pointer font-bold text-gray-100 list-none flex items-center justify-between hover:bg-gray-800 rounded-lg">
+                <span>Estratégia e TD</span>
+                <i class="fas fa-chevron-down text-[10px] text-gray-500 group-open:rotate-180 transition-transform"></i>
+            </summary>
+            <div class="ml-2 mt-1 mb-2 space-y-0.5 border-l border-gray-800 pl-2">
+                <a href="/insights-ia/<%= user.id_matu %>" data-nav-match="/insights-ia" class="block px-3 py-2 text-gray-400 font-normal hover:text-white hover:bg-gray-800 rounded-md">Inteligência de Negócio</a>
+                <a href="/planejamento-estrategico" data-nav-match="/planejamento-estrategico" class="block px-3 py-2 text-gray-400 font-normal hover:text-white hover:bg-gray-800 rounded-md">Estratégia Empresarial</a>
+                <a href="/meu-plano" data-nav-match="/meu-plano" class="block px-3 py-2 text-gray-400 font-normal hover:text-white hover:bg-gray-800 rounded-md">Plano Diretor e Backlog</a>
+                <a href="/projeto/sprint-atual" data-nav-match="/projeto/sprint-atual,/sprint" class="block px-3 py-2 text-gray-400 font-normal hover:text-white hover:bg-gray-800 rounded-md">Quadro Kanban</a>
+                <a href="/projeto/mesa-inovacao" data-nav-match="/projeto/mesa-inovacao" class="block px-3 py-2 text-gray-400 font-normal hover:text-white hover:bg-gray-800 rounded-md">Mesa de Inovações</a>
+            </div>
+        </details>
+        <% } %>
+
+        <% if (projetoAtivado || planoPronto) { %>
+        <details class="rounded-lg group" data-nav-group>
+            <summary class="px-3 py-2.5 cursor-pointer font-bold text-gray-100 list-none flex items-center justify-between hover:bg-gray-800 rounded-lg">
+                <span>Gestão do Projeto</span>
+                <i class="fas fa-chevron-down text-[10px] text-gray-500 group-open:rotate-180 transition-transform"></i>
+            </summary>
+            <div class="ml-2 mt-1 mb-2 space-y-0.5 border-l border-gray-800 pl-2">
+                <% if (planoPronto) { %>
+                <a href="/teams" data-nav-match="/teams" class="block px-3 py-2 text-gray-400 font-normal hover:text-white hover:bg-gray-800 rounded-md">Gestão de Time</a>
+                <% } %>
+                <% if (projetoAtivado) { %>
+                <a href="/meu-contrato" data-nav-match="/meu-contrato" class="block px-3 py-2 text-gray-400 font-normal hover:text-white hover:bg-gray-800 rounded-md">Meu Contrato</a>
+                <% } %>
+            </div>
+        </details>
+        <% } %>
+
+        <a href="/instrucoes-de-uso" class="block mt-4 pt-3 border-t border-gray-800 px-3 py-2 text-gray-400 italic text-sm font-normal hover:text-gray-200">
+            Instruções de Uso
+        </a>
+    </nav>
+
+    <div class="p-4 border-t border-gray-800 bg-gray-900">
+        <a href="/logout" class="flex items-center text-gray-400 hover:text-red-400 transition-colors">
+            <span class="text-sm">Sair do Sistema</span>
+        </a>
+    </div>
+
+    <script>
+        (function () {
+            var path = (window.location.pathname || '').split('?')[0];
+            if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+            document.querySelectorAll('#sidebar-client-nav [data-nav-group]').forEach(function (group) {
+                group.removeAttribute('open');
+                group.querySelectorAll('a[data-nav-match]').forEach(function (a) {
+                    var specs = (a.getAttribute('data-nav-match') || '').split(',');
+                    var hit = specs.some(function (s) {
+                        var p = (s || '').trim();
+                        return p && (path === p || path.indexOf(p + '/') === 0);
+                    });
+                    if (hit) {
+                        a.classList.add('text-white', 'bg-gray-800');
+                        group.setAttribute('open', '');
+                    }
+                });
+            });
+        })();
+    </script>
+</aside>

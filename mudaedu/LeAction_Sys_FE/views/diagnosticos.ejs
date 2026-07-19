@@ -1,0 +1,453 @@
+<div class="main-content" id="diagnostico-page" data-id-matu="<%= report.id_matu || '' %>" data-id-clie="<%= report.id_clie || (lead && lead.id_clie) || '' %>">
+    <script>window.diagnosticReport = <%- JSON.stringify(report) %>;</script>
+    <h1>Análise de contexto estratégico</h1>
+
+    <% 
+        const mov = report.movimento_principal || {};
+        const gapGeral = parseFloat(report.score_geral_gap) || 0;
+        const scorePres = parseFloat(report.score_geral_presente) || 0;
+        const scoreFut = parseFloat(report.score_geral_futuro) || 0;
+        let urgenciaClasse = 'diag-kpi--ok';
+        let urgenciaRotulo = 'Baixa urgência';
+        if (gapGeral >= 0.5) { urgenciaClasse = 'diag-kpi--alto'; urgenciaRotulo = 'Alta urgência'; }
+        else if (gapGeral > 0.15) { urgenciaClasse = 'diag-kpi--medio'; urgenciaRotulo = 'Urgência moderada'; }
+        const traits = (mov.caracteristicas || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+        const implicacao = (mov.implicacoes_diagnostico || '').replace(/^["'“”]+|["'“”]+$/g, '').trim();
+    %>
+
+    <div class="diag-client-bar">
+        <div class="diag-client-bar__meta">
+            <strong><%= report.cliente %></strong>
+            <span>Avaliação #<%= report.id_matu %></span>
+        </div>
+        <div class="diag-kpi-row">
+            <div class="diag-kpi">
+                <span class="diag-kpi__label">Realidade</span>
+                <strong class="diag-kpi__value"><%= scorePres.toFixed(2) %></strong>
+            </div>
+            <div class="diag-kpi">
+                <span class="diag-kpi__label">Ambição</span>
+                <strong class="diag-kpi__value"><%= scoreFut.toFixed(2) %></strong>
+            </div>
+            <div class="diag-kpi <%= urgenciaClasse %>">
+                <span class="diag-kpi__label">Lacuna</span>
+                <strong class="diag-kpi__value"><%= gapGeral.toFixed(2) %></strong>
+                <span class="diag-kpi__hint"><%= urgenciaRotulo %></span>
+            </div>
+        </div>
+    </div>
+
+    <section class="diag-movement" aria-label="Movimento estratégico identificado">
+        <div class="diag-movement__banner">
+            <div class="diag-movement__banner-text">
+                <span class="strat-pill strat-pill--exec">Movimento estratégico</span>
+                <h2 class="diag-movement__nome"><%= mov.nome || '—' %></h2>
+                <p class="diag-movement__resumo"><%= mov.estagio_descricao || '' %></p>
+            </div>
+            <div class="diag-movement__badge" title="Nível de maturidade atual">
+                <span class="diag-movement__badge-label">Estágio</span>
+                <strong><%= scorePres > 3.5 ? 'Evolução' : (scorePres > 2 ? 'Escalabilidade' : 'Iniciação') %></strong>
+            </div>
+        </div>
+
+        <div class="diag-movement__insights">
+            <% if (traits.length) { %>
+            <div class="diag-movement__insight">
+                <span class="diag-movement__insight-label">Sinais-chave</span>
+                <div class="diag-movement__tags">
+                    <% traits.forEach(function (t) { %>
+                    <span class="diag-movement__tag"><%= t %></span>
+                    <% }); %>
+                </div>
+            </div>
+            <% } %>
+            <% if (implicacao) { %>
+            <blockquote class="diag-movement__quote">
+                <span class="diag-movement__insight-label">Leitura para o gestor</span>
+                <p><%= implicacao %></p>
+            </blockquote>
+            <% } %>
+        </div>
+    </section>
+
+    <hr>
+
+    <div class="report-section detailed-analysis diag-charts-wrap">
+
+        <section class="diag-chart-panel" aria-label="Gráfico de barras por dimensão">
+            <header class="diag-chart-panel__head">
+                <div>
+                    <span class="diag-chart-panel__eyebrow">Análise detalhada</span>
+                    <h2 class="diag-chart-panel__title">Dimensões — Realidade vs Ambição</h2>
+                    <p class="diag-chart-panel__lead">Escala ampliada para destacar lacunas pequenas entre realidade e ambição.</p>
+                </div>
+                <ul class="diag-chart-legend" aria-label="Legenda dos gráficos">
+                    <li><span class="diag-chart-legend__dot diag-chart-legend__dot--real"></span>Realidade</li>
+                    <li><span class="diag-chart-legend__dot diag-chart-legend__dot--amb"></span>Ambição</li>
+                    <li><span class="diag-chart-legend__dot diag-chart-legend__dot--edu"></span>Setor Educação</li>
+                </ul>
+            </header>
+            <div class="diag-chart-panel__body diag-chart-panel__body--bars">
+                <canvas id="dimensaoChart"></canvas>
+            </div>
+        </section>
+
+        <section class="diag-chart-panel" aria-label="Gráficos por domínio">
+            <header class="diag-chart-panel__head">
+                <div>
+                    <span class="diag-chart-panel__eyebrow">Comparativo</span>
+                    <h2 class="diag-chart-panel__title">Domínios — Realidade, Ambição e Referência do Setor</h2>
+                </div>
+            </header>
+            <div class="diag-domains-grid">
+                <%
+                    const domListCharts = [
+                        {id: 1, name: 'Estratégia Digital', sigla: 'ds'},
+                        {id: 2, name: 'Modelo de Negócio Digital', sigla: 'bm'},
+                        {id: 3, name: 'Cultura de Inovação', sigla: 'ic'},
+                        {id: 4, name: 'Cultura de Dados', sigla: 'dcd'},
+                        {id: 5, name: 'Cultura de Colaboração', sigla: 'cc'},
+                        {id: 6, name: 'Governança Digital', sigla: 'dg'},
+                        {id: 7, name: 'Plataformas Digitais', sigla: 'dp'},
+                        {id: 8, name: 'Capacidades Digitais', sigla: 'dcp'},
+                        {id: 9, name: 'Métricas Digitais', sigla: 'dm'}
+                    ];
+                    domListCharts.forEach(function (dom) {
+                %>
+                <article class="diag-domain-card">
+                    <div class="diag-domain-card__head">
+                        <span class="diag-domain-card__sigla"><%= dom.sigla %></span>
+                        <h3 class="diag-domain-card__title"><%= dom.name %></h3>
+                    </div>
+                    <div class="diag-domain-card__canvas">
+                        <canvas id="domainChart_<%= dom.id %>"></canvas>
+                    </div>
+                </article>
+                <% }); %>
+            </div>
+        </section>
+
+        <hr class="diag-section-divider">
+        <div class="score-tables diag-score-panel">
+            <h4 class="diag-score-panel__title">Detalhamento e Comparativo de Notas</h4>
+            <div class="diag-score-table-wrap">
+            <table class="diag-score-table">
+                <thead>
+                    <tr>
+                        <th>Maturidade</th>
+                        <th>Realidade</th>
+                        <th>Ambição</th>
+                        <th>Lacuna</th>
+                        <th>Estágio</th>
+                        <th>Referência do Setor</th>
+                        <th>Estágio do Setor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <%
+                        // FUNÇÕES E HELPERS (MANTIDOS E ADAPTADOS)
+                        const scoresDimPres = report.scores_detalhe_presente.pdim_scores || {};
+                        const scoresDomPres = report.scores_detalhe_presente.pdom_scores || {};
+
+                        const scoresDimFut = report.scores_detalhe_futuro.pdim_scores || {};
+                        const scoresDomFut = report.scores_detalhe_futuro.pdom_scores || {};
+
+                        const scoresDimGap = report.scores_detalhe_gap.pdim_scores || {};
+                        const scoresDomGap = report.scores_detalhe_gap.pdom_scores || {};
+
+                        const getScore = (scores, id) => {
+                            const stringId = id.toString();
+                            const value = scores[stringId];
+                            const numValue = parseFloat(value);
+                            if (isNaN(numValue) || numValue === 0) return '0.00';
+                            return numValue.toFixed(2);
+                        };
+
+                        const getBenchmark = (key) => report.benchmark_setorial.find(b => `DIME_${b.id_dime}` === key || `DOMA_${b.id_doma}` === key) || {};
+
+                        const getClientStage = (score) => {
+                            const numScore = parseFloat(score);
+                            if (isNaN(numScore)) return 'N/A';
+                            if (numScore <= 2.0) return 'Iniciação';
+                            if (numScore <= 3.5) return 'Escalabilidade';
+                            return 'Evolução';
+                        };
+                    %>
+
+                    <tr class="diag-row-total">
+                        <td>Nota Geral de Maturidade</td>
+                        <td class="diag-num">
+                            <%= report.score_geral_presente ? parseFloat(report.score_geral_presente).toFixed(2) : '0.00' %>
+                        </td>
+                        <td class="diag-num">
+                            <%= report.score_geral_futuro ? parseFloat(report.score_geral_futuro).toFixed(2) : '0.00' %>
+                        </td>
+                        <td class="diag-num <%= parseFloat(report.score_geral_gap) > 0 ? 'diag-gap--alto' : 'diag-gap--baixo' %>">
+                            <%= report.score_geral_gap ? parseFloat(report.score_geral_gap).toFixed(2) : '0.00' %>
+                        </td>
+                        <td><span class="diag-pill"><%= getClientStage(report.score_geral_presente) %></span></td>
+                        <td colspan="2"></td>
+                    </tr>
+
+                    <tr class="diag-row-section"><td colspan="7">Dimensão</td></tr>
+
+                    <%
+                        const dimList = [
+                            {id: 1, name: 'Visão Compartilhada (SV)'}, {id: 2, name: 'Coração e Conexão (HC)'},
+                            {id: 3, name: 'Estrutura Fluida (FS)'}, {id: 4, name: 'Aprendizagem em Ação (LA)'},
+                            {id: 5, name: 'Arquitetura Digital (DA)'}
+                        ];
+
+                        dimList.forEach(dim => {
+                            const scorePres = getScore(scoresDimPres, dim.id);
+                            const scoreFut = getScore(scoresDimFut, dim.id);
+                            const scoreGap = getScore(scoresDimGap, dim.id);
+                            const benchmark = getBenchmark(`DIME_${dim.id}`);
+                            const clientStage = getClientStage(scorePres);
+                    %>
+                        <tr>
+                            <td><%= dim.name %></td>
+                            <td class="diag-num"><%= scorePres %></td>
+                            <td class="diag-num"><%= scoreFut %></td>
+                            <td class="diag-num <%= parseFloat(scoreGap) > 0 ? 'diag-gap--alto' : 'diag-gap--baixo' %>"><%= scoreGap %></td>
+                            <td><span class="diag-pill"><%= clientStage %></span></td>
+                            <td><%= benchmark.grad_refb || 'N/A' %></td>
+                            <td><%= benchmark.estagio_refb || 'N/A' %></td>
+                        </tr>
+                    <% }); %>
+
+
+                    <tr class="diag-row-section"><td colspan="7">Domínio</td></tr>
+
+                    <%
+                        const domList = [
+                            {id: 1, name: 'Estratégia Digital (ds)'}, {id: 2, name: 'Modelo de Negócio Digital (bm)'},
+                            {id: 3, name: 'Cultura de Inovação (ic)'}, {id: 4, name: 'Cultura de Dados (dc)'},
+                            {id: 5, name: 'Cultura de Colaboração (cc)'}, {id: 6, name: 'Governança Digital (dg)'},
+                            {id: 7, name: 'Plataformas Digitais (dp)'}, {id: 8, name: 'Capacidades Digitais (dc)'},
+                            {id: 9, name: 'Métricas Digitais (dm)'}
+                        ];
+
+                        domList.forEach(dom => {
+                            const scorePres = getScore(scoresDomPres, dom.id);
+                            const scoreFut = getScore(scoresDomFut, dom.id);
+                            const scoreGap = getScore(scoresDomGap, dom.id);
+                            const benchmark = getBenchmark(`DOMA_${dom.id}`);
+                            const clientStage = getClientStage(scorePres);
+                    %>
+                        <tr>
+                            <td><%= dom.name %></td>
+                            <td class="diag-num"><%= scorePres %></td>
+                            <td class="diag-num"><%= scoreFut %></td>
+                            <td class="diag-num <%= parseFloat(scoreGap) > 0 ? 'diag-gap--alto' : 'diag-gap--baixo' %>"><%= scoreGap %></td>
+                            <td><span class="diag-pill"><%= clientStage %></span></td>
+                            <td><%= benchmark.grad_refb || 'N/A' %></td>
+                            <td><%= benchmark.estagio_refb || 'N/A' %></td>
+                        </tr>
+                    <% }); %>
+
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <hr class="diag-section-divider">
+        <section class="report-section prioritization-matrix diag-chart-panel diag-matrix-panel">
+            <header class="diag-chart-panel__head">
+                <div>
+                    <span class="diag-chart-panel__eyebrow">Posicionamento estratégico</span>
+                    <h2 class="diag-chart-panel__title">Matriz de Desempenho — Ambição vs Realidade</h2>
+                    <p class="diag-matrix-panel__lead">
+                        Modelo híbrido: eixo Y penaliza incoerência interna (CV) e elo mais fraco;
+                        quadrantes divididos pela mediana desta escola. <strong>Cor = domínio</strong> · <strong>tamanho = fragmentação</strong>.
+                    </p>
+                </div>
+            </header>
+
+            <div class="matrix-container diag-matrix-panel__canvas">
+                <canvas id="prioritizationMatrix"></canvas>
+                <span class="matrix-label diag-matrix-label diag-matrix-label--vitoria"><b>Rumo à Vitória</b></span>
+                <span class="matrix-label diag-matrix-label diag-matrix-label--everest"><b>Escalada do Everest</b></span>
+                <span class="matrix-label diag-matrix-label diag-matrix-label--inercia"><b>Pico da Inércia</b></span>
+                <span class="matrix-label diag-matrix-label diag-matrix-label--morte"><b>Vale da Morte</b></span>
+            </div>
+
+            <div class="diag-matrix-legend">
+                <article class="diag-matrix-legend__item diag-matrix-legend__item--vitoria">
+                    <strong>Rumo à Vitória</strong>
+                    <span>Realidade ajustada alta e ambição acima da mediana da escola.</span>
+                </article>
+                <article class="diag-matrix-legend__item diag-matrix-legend__item--everest">
+                    <strong>Escalada do Everest</strong>
+                    <span>Realidade ajustada baixa com alta ambição — maior esforço de transformação.</span>
+                </article>
+                <article class="diag-matrix-legend__item diag-matrix-legend__item--inercia">
+                    <strong>Pico da Inércia</strong>
+                    <span>Maturidade relativamente ok, ambição abaixo da mediana — estagnação.</span>
+                </article>
+                <article class="diag-matrix-legend__item diag-matrix-legend__item--morte">
+                    <strong>Vale da Morte</strong>
+                    <span>Baixa realidade ajustada e baixa ambição — prioridade crítica.</span>
+                </article>
+            </div>
+            <p class="diag-matrix-footnote">
+                <strong>Realidade ajustada</strong> = média presente − 0,4×CV − 0,25×(média − elo mais fraco).
+                Cada bolha tem <strong>cor própria por domínio</strong>; <strong>quanto maior, mais fragmentadas as respostas</strong> (CV, desvio ou elo fraco).
+                <strong>Siglas:</strong> ds · bm · ic · dcd · cc · dg · dp · dcp · dm
+            </p>
+        </section>
+
+        <div id="subdiagnostico-alerta" class="report-section sprint-priorities">
+            <section class="strat-hero" aria-label="Ações que você deve executar agora">
+                <div class="strat-hero__top">
+                    <div>
+                        <span class="strat-pill strat-pill--exec">Relatório de Maturidade · Execução</span>
+                        <h1>Ações que Você Deve Executar Agora</h1>
+                        <p class="strat-hero__lead">
+                            Os <strong>5 blocos</strong> abaixo compõem sua <strong>primeira sprint de execução</strong> —
+                            priorizados pela maior <strong>lacuna</strong> entre ambição digital e realidade atual.
+                        </p>
+                    </div>
+                    <div class="strat-level" title="Primeira sprint de transformação">
+                        <div class="strat-level__badge">1ª</div>
+                        <div>
+                            <div class="strat-level__label">Primeira sprint</div>
+                            <div class="strat-level__value">Execução</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <% if (report.suggestions && report.suggestions.length > 0) {
+                const dimNameById = {
+                    1: 'Visão Compartilhada (SV)', 2: 'Coração e Conexão (HC)', 3: 'Estrutura Fluida (FS)',
+                    4: 'Aprendizagem em Ação (LA)', 5: 'Arquitetura Digital (DA)'
+                };
+
+                const allPriorityBlocks = [];
+                report.suggestions.forEach(function (sug) {
+                    (sug.blocos_sugeridos || []).forEach(function (block) {
+                        allPriorityBlocks.push({
+                            id_bloc: block.id_bloc || null,
+                            id_doma: block.id_doma || sug.id_doma || null,
+                            id_dime: block.id_dime || null,
+                            nome: block.nome || 'Bloco sem nome',
+                            desc: block.desc || 'Sem descrição disponível.',
+                            gap: parseFloat(sug.gap_dom) || 0,
+                            score_pres: parseFloat(sug.score_dom_pres) || 0,
+                            score_fut: parseFloat(sug.score_dom_fut) || 0,
+                            dominio: sug.dominio_nome || 'Domínio',
+                            dimensao: dimNameById[block.id_dime] || 'Dimensão'
+                        });
+                    });
+                });
+
+                allPriorityBlocks.sort(function (a, b) {
+                    if (b.gap !== a.gap) return b.gap - a.gap;
+                    return a.nome.localeCompare(b.nome, 'pt-BR');
+                });
+
+                const topBlocks = allPriorityBlocks.slice(0, 5);
+                const backlogBlocks = allPriorityBlocks.slice(5);
+                const objetivosPlano = report.objetivos_vinculados_plano || [];
+
+                function findOkrPorBloco(idBloco) {
+                    if (!idBloco) return null;
+                    return objetivosPlano.find(function (o) {
+                        return String(o.id_bloco) === String(idBloco);
+                    }) || null;
+                }
+
+                function truncateDesc(text, max) {
+                    if (!text || text.length <= max) return text;
+                    return text.substring(0, max).trim() + '…';
+                }
+            %>
+                <div class="action-cards-grid" id="action-cards-grid">
+                    <% topBlocks.forEach(function (block, index) {
+                        const gapClass = block.gap >= 0.5 ? 'tag--gap-high' : 'tag--gap-mid';
+                        const okrVinc = findOkrPorBloco(block.id_bloc);
+                    %>
+                    <article class="action-card" data-rank="<%= index + 1 %>" data-block-key="<%= block.id_bloc || block.nome %>">
+                        <div class="action-card__head">
+                            <span class="action-card__rank">#<%= index + 1 %></span>
+                            <h4 class="action-card__title"><%= block.nome %></h4>
+                        </div>
+                        <div class="action-card__tags">
+                            <span class="tag <%= gapClass %>" title="Nota futura menos nota presente">Lacuna: <%= block.gap.toFixed(2) %></span>
+                            <span class="tag tag--domain" title="Domínio de maturidade"><%= block.dominio %></span>
+                        </div>
+                        <% if (okrVinc) { %>
+                        <div class="action-card__okr" title="Objetivo canônico da matriz OKR">
+                            <strong><%= okrVinc.direcionador_nome %></strong>
+                            <i class="fas fa-chevron-right" style="font-size:0.65em;margin:0 4px;color:#94a3b8;"></i>
+                            <%= okrVinc.objetivo_titulo %>
+                        </div>
+                        <% } %>
+                        <p class="action-card__desc" title="<%= block.desc %>"><%= truncateDesc(block.desc, 160) %></p>
+                        <div class="action-card__metrics">
+                            <span>Realidade: <strong><%= block.score_pres.toFixed(2) %></strong></span>
+                            <span>Ambição: <strong><%= block.score_fut.toFixed(2) %></strong></span>
+                        </div>
+                        <button
+                            type="button"
+                            class="action-card__cta action-card__cta--mesa"
+                            data-action="mesa-inovacao"
+                            data-bloco-nome="<%= block.nome %>"
+                            data-id-bloc="<%= block.id_bloc || '' %>"
+                            data-id-doma="<%= block.id_doma || '' %>"
+                            data-gap="<%= block.gap.toFixed(2) %>"
+                        >
+                            Abrir na Mesa de Inovação
+                        </button>
+                    </article>
+                    <% }); %>
+                </div>
+
+                <% if (backlogBlocks.length > 0) { %>
+                <div class="sprint-priorities__backlog-bar">
+                    <button type="button" id="backlog-open-btn" class="backlog-trigger">
+                        <i class="fas fa-layer-group"></i>
+                        <span id="backlog-open-label">Ver demais blocos por lacuna (<%= backlogBlocks.length %>)</span>
+                    </button>
+                </div>
+
+                <div id="backlog-modal" class="backlog-modal" aria-hidden="true" role="dialog" aria-labelledby="backlog-modal-title">
+                    <div class="backlog-modal__backdrop" data-backlog-close></div>
+                    <div class="backlog-modal__panel" role="document">
+                        <header class="backlog-modal__header">
+                            <div class="backlog-modal__header-text">
+                                <h4 id="backlog-modal-title">Backlog por Lacuna</h4>
+                                <p class="backlog-modal__subtitle" id="backlog-modal-subtitle">
+                                    Fluxo: Mesa de Inovação → Kanban (Inovação) → após planejamento → coluna Planejada.
+                                </p>
+                            </div>
+                            <button type="button" class="backlog-modal__close" data-backlog-close aria-label="Fechar">&times;</button>
+                        </header>
+                        <div class="backlog-modal__body" id="backlog-modal-body"></div>
+                    </div>
+                </div>
+                <% } %>
+
+                <script type="application/json" id="diagnostico-blocos-data"><%- JSON.stringify({
+                    id_matu: report.id_matu,
+                    id_clie: report.id_clie || null,
+                    topCount: 5,
+                    blocks: allPriorityBlocks
+                }) %></script>
+
+            <% } else { %>
+                <p class="sprint-priorities__empty">Nenhuma necessidade de transformação crítica identificada. A ambição de futuro está alinhada com o presente.</p>
+            <% } %>
+        </div>
+
+        <div class="report-section print-actions" style="text-align: center; margin-top: 40px;">
+                <button id="exportPdfBtn" class="btn blue-btn">Exportar Relatório para PDF</button>
+        </div>
+
+        <script>
+            // diagnosticReport definido no topo da página para scripts.js
+        </script>
+    </div>
+
+</div>

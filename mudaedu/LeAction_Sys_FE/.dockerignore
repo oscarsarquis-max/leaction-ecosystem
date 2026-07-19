@@ -1,0 +1,21 @@
+# Dependências (reinstaladas no build)
+node_modules
+npm-debug.log*
+
+# Segredos e variáveis de ambiente (injetados via docker-compose / ECS)
+.env
+.env.*
+
+# Artefatos de IDE / SO
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Git
+.git
+.gitignore

@@ -1,0 +1,357 @@
+﻿/* Portal do Parceiro — alinhado ao padrão Mesa (lilás / botões em gradiente) */
+
+.portal-consultor {
+    --dark-lilac: #5B35D9;
+    --lilac: #7060F0;
+    --light-lilac: #F4F2FF;
+    --border-lilac: #E2D9FF;
+    --brand-gold: #d97706;
+    padding-bottom: 72px;
+}
+
+.portal-consultor__hero h1 i {
+    margin-right: 8px;
+    color: var(--dark-lilac) !important;
+}
+
+.portal-consultor__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 20px;
+    padding-bottom: 2px;
+}
+
+.portal-consultor__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border-lilac);
+    background: #fff;
+    color: #334155;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(91, 53, 217, 0.06);
+    transition: transform 0.15s, box-shadow 0.15s, background 0.15s, color 0.15s;
+}
+
+.portal-consultor__tab:hover {
+    border-color: var(--lilac);
+    color: var(--dark-lilac);
+    transform: translateY(-1px);
+}
+
+.portal-consultor__tab.is-active {
+    background: linear-gradient(135deg, #5B35D9, #7060F0);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(91, 53, 217, 0.28);
+}
+
+.portal-consultor__tab.is-active i {
+    color: #fff;
+}
+
+.portal-consultor__panel[hidden] {
+    display: none !important;
+}
+
+.portal-consultor__agency-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--light-lilac);
+    border: 1px solid var(--border-lilac);
+    color: var(--dark-lilac);
+    font-weight: 600;
+}
+
+.portal-consultor__metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.portal-consultor__metrics--stats {
+    margin-bottom: 20px;
+}
+
+.portal-consultor__metric {
+    background: #fff;
+    border: 1px solid var(--border-lilac);
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 4px 14px rgba(91, 53, 217, 0.05);
+}
+
+.portal-consultor__metric--gold {
+    border-color: #fbbf24;
+    background: linear-gradient(180deg, #fffbeb, #fff);
+}
+
+.portal-consultor__metric-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--dark-lilac);
+    margin-bottom: 6px;
+}
+
+.portal-consultor__metric-value {
+    font-size: 1.35rem;
+    color: #0f172a;
+}
+
+.portal-consultor.is-finance-hidden .portal-col-finance,
+.portal-consultor.is-finance-hidden #portal-finance-metrics {
+    display: none !important;
+}
+
+.portal-consultor__demandas-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.portal-consultor__board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 960px) {
+    .portal-consultor__board {
+        grid-template-columns: 1fr;
+    }
+}
+
+.portal-consultor__board-col {
+    background: var(--light-lilac);
+    border: 1px solid var(--border-lilac);
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 220px;
+}
+
+.portal-consultor__board-col h3 {
+    margin: 0 0 10px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--dark-lilac);
+}
+
+.portal-consultor__board-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.portal-consultor__card {
+    background: #fff;
+    border: 1px solid var(--border-lilac);
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-shadow: 0 2px 8px rgba(91, 53, 217, 0.06);
+}
+
+.portal-consultor__card-title {
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 4px;
+}
+
+.portal-consultor__card-meta {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.portal-consultor__card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.portal-consultor__card-actions .mesa-btn {
+    font-size: 0.7rem;
+    padding: 8px 12px;
+}
+
+.portal-consultor__badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.portal-consultor__badge--origem { background: #dcfce7; color: #166534; }
+.portal-consultor__badge--tecnico { background: #ede9fe; color: #5b21b6; }
+.portal-consultor__badge--origem_tecnico { background: #e0e7ff; color: #3730a3; }
+.portal-consultor__badge--responsavel {
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.68rem;
+    white-space: nowrap;
+}
+
+.portal-consultor__team-card {
+    margin-bottom: 16px;
+}
+
+.portal-consultor__card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.portal-consultor__card-head .portal-consultor__card-title {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.portal-consultor__prospeccao-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.portal-consultor__status-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--light-lilac);
+    color: var(--dark-lilac);
+    border: 1px solid var(--border-lilac);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+/* Modais — ocultos até .is-open (fallback se mesa-inovacao falhar) */
+.portal-consultor ~ .mesa-modal,
+.mesa-modal#modal-demanda,
+.mesa-modal#modal-vincular-matu,
+.mesa-modal#modal-prospecto {
+    display: none;
+}
+
+#modal-demanda.mesa-modal.is-open,
+#modal-vincular-matu.mesa-modal.is-open,
+#modal-prospecto.mesa-modal.is-open {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+#modal-demanda .admin-crm__modal-dialog,
+#modal-vincular-matu .admin-crm__modal-dialog,
+#modal-prospecto .admin-crm__modal-dialog {
+    width: min(520px, 100%);
+    max-height: min(90vh, 640px);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 20px 48px rgba(91, 53, 217, 0.25);
+    border: 1px solid var(--border-lilac);
+}
+
+.admin-crm__modal-head {
+    padding: 16px 18px 10px;
+    border-bottom: 1px solid var(--border-lilac);
+    background: linear-gradient(180deg, var(--light-lilac), #fff);
+}
+
+.admin-crm__modal-head h3 {
+    margin: 0;
+    color: var(--dark-lilac);
+    font-weight: 900;
+}
+
+.admin-crm__modal-scroll {
+    padding: 16px 18px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+
+.admin-crm__modal-foot {
+    padding: 12px 18px 16px;
+    border-top: 1px solid var(--border-lilac);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: #fafafa;
+}
+
+/* Toast próprio (independente do admin-crm) */
+#portal-consultor-toast.admin-crm__toast,
+.portal-consultor-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--dark-lilac);
+    box-shadow: 0 8px 24px rgba(91, 53, 217, 0.35);
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    max-width: min(360px, calc(100vw - 32px));
+}
+
+#portal-consultor-toast.admin-crm__toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#portal-consultor-toast.admin-crm__toast.is-error {
+    background: #b91c1c;
+}
+
+#portal-consultor-toast.admin-crm__toast.is-success {
+    background: #047857;
+}
+
+/* Tabelas largas: scroll horizontal sem estourar o layout */
+.portal-consultor .admin-esim__table-wrap {
+    max-width: 100%;
+}
+
+.portal-consultor .mesa-btn--ghost {
+    box-shadow: 0 2px 6px rgba(91, 53, 217, 0.08);
+}
+
+.portal-consultor .mesa-btn--lilac,
+.portal-consultor .mesa-btn--gold {
+    box-shadow: 0 4px 12px rgba(91, 53, 217, 0.22);
+}

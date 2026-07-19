@@ -1,0 +1,134 @@
+@import url('/css/mesa-inovacao.css?v=6');
+
+.admin-mesas {
+    max-width: 1180px;
+}
+
+.admin-mesas__toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.admin-mesas__table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.admin-mesas__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+}
+
+.admin-mesas__table th {
+    text-align: left;
+    padding: 12px 14px;
+    background: #f8fafc;
+    color: var(--dark-lilac);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--wb-border);
+}
+
+.admin-mesas__table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.admin-mesas__table tr:hover td {
+    background: #fafafa;
+}
+
+.admin-mesas__empty {
+    text-align: center;
+    color: var(--wb-muted);
+    padding: 28px !important;
+}
+
+.admin-mesas__cliente strong {
+    display: block;
+    color: var(--wb-ink);
+}
+
+.admin-mesas__cliente span {
+    font-size: 0.75rem;
+    color: var(--wb-muted);
+}
+
+.admin-mesas__badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.admin-mesas__badge--ativa {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.admin-mesas__badge--disponivel {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.admin-mesas__badge--em_setup {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+.admin-mesas__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    background: #f1f5f9;
+    color: var(--dark-lilac);
+}
+
+.admin-mesas__count--alert {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.admin-mesas__actions {
+    display: flex;
+    gap: 6px;
+}
+
+.admin-mesas__toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 10000;
+    padding: 12px 18px;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.2);
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.admin-mesas__toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}

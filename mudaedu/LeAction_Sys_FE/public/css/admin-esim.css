@@ -1,0 +1,286 @@
+﻿/* Admin eSIM — branding alinhada à Mesa de Inovação */
+@import url('/css/mesa-inovacao.css?v=6');
+
+.admin-esim {
+    max-width: 1180px;
+}
+
+.admin-esim__tabs {
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid var(--wb-border);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.admin-esim__tab {
+    padding: 10px 18px;
+    border: none;
+    background: transparent;
+    color: var(--wb-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.admin-esim__tab:hover {
+    color: var(--dark-lilac);
+}
+
+.admin-esim__tab.is-active {
+    color: var(--lilac);
+    border-bottom-color: var(--lilac);
+}
+
+.admin-esim__panel {
+    display: none;
+}
+
+.admin-esim__panel.is-active {
+    display: block;
+}
+
+.admin-esim__toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.admin-esim__toolbar-actions {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.admin-esim__cliente-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 120px;
+}
+
+.admin-esim__cliente-field span {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--dark-lilac);
+}
+
+.admin-esim__cliente-field .mesa-input {
+    width: 120px;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+}
+
+.admin-esim__disparo-hint {
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-esim__table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--wb-border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.admin-esim__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.admin-esim__table th {
+    text-align: left;
+    padding: 12px 14px;
+    background: #f8fafc;
+    color: var(--dark-lilac);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--wb-border);
+}
+
+.admin-esim__table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+    color: var(--wb-ink);
+}
+
+.admin-esim__table tr:hover td {
+    background: #fafafa;
+}
+
+.admin-esim__code {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--dark-lilac);
+}
+
+.admin-esim__actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.admin-esim__btn-icon {
+    padding: 6px 10px !important;
+    font-size: 0.72rem !important;
+}
+
+.admin-esim__empty {
+    padding: 28px;
+    text-align: center;
+    color: var(--wb-muted);
+    font-size: 0.85rem;
+}
+
+.admin-esim__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    min-height: 32px;
+}
+
+.admin-esim__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #ede9fe;
+    color: #5b21b6;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.admin-esim__chip button {
+    border: none;
+    background: transparent;
+    color: #7060F0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1;
+    padding: 0;
+}
+
+.admin-esim__bloco-results {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--wb-border);
+    border-radius: 10px;
+    margin-top: 8px;
+    background: #fafafa;
+}
+
+.admin-esim__bloco-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    border-bottom: 1px solid #eef2f7;
+    background: transparent;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.admin-esim__bloco-item:hover {
+    background: #f3e8ff;
+}
+
+.admin-esim__bloco-item strong {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--dark-lilac);
+}
+
+.admin-esim__bloco-item span {
+    font-size: 0.72rem;
+    color: var(--wb-muted);
+}
+
+.admin-esim__field {
+    margin-bottom: 14px;
+}
+
+.admin-esim__field label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--dark-lilac);
+    margin-bottom: 6px;
+}
+
+.admin-esim__field-hint {
+    font-size: 0.72rem;
+    color: var(--wb-muted);
+    margin: 4px 0 0;
+}
+
+.admin-esim__modal-card {
+    max-width: 640px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.admin-esim__modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+}
+
+.admin-esim__toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    padding: 12px 18px;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.admin-esim__toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+    .admin-esim__table th:nth-child(4),
+    .admin-esim__table td:nth-child(4) {
+        display: none;
+    }
+}

@@ -1,0 +1,265 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <div>
+                <h1><i class="fas fa-file-contract"></i> Entregáveis & DoD (Engine)</h1>
+                <p style="color: #666; margin-top: 5px;">Gestão de artefatos, métricas e Critérios de Aceite (DoD).</p>
+            </div>
+            <button class="btn blue-btn" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Novo Entregável
+            </button>
+        </div>
+    </div>
+
+    <div class="search-box-container" style="margin-bottom: 20px;">
+        <div style="position: relative; max-width: 500px;">
+            <i class="fas fa-search" style="position: absolute; left: 15px; top: 12px; color: #bdc3c7;"></i>
+            <input type="text" id="global-search" onkeyup="filtrarTabela()"
+                   placeholder="Busca rápida em qualquer campo (Nome, Bloco, Descrição...)"
+                   style="width: 100%; padding: 10px 10px 10px 40px; border: 1px solid #ddd; border-radius: 25px; outline: none; transition: border 0.3s;">
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th style="width: 220px;">Bloco / Entregável</th>
+                    <th>Definição & Composição</th>
+                    <th>Métricas (DoD)</th>
+                    <th style="text-align: center; width: 100px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="table-body-entregaveis"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-form-entregaveis" class="modal">
+    <div class="modal-content" style="width: 850px; margin-top: 1%;">
+        <span class="close" onclick="fecharModal()">&times;</span>
+        <h2 id="modal-title" style="color: #3498db; margin-bottom: 20px;">Configurar Entregável</h2>
+
+        <form id="form-derv" onsubmit="salvarRegistro(event)">
+            <input type="hidden" id="id_derv">
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label>Bloco Relacionado *</label>
+                    <select id="id_bloc" required></select>
+                </div>
+                <div class="form-group" style="flex: 2;">
+                    <label>Nome do Entregável *</label>
+                    <input type="text" id="name_derv" required placeholder="Ex: Roadmap de Transformação">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Descrição Curta</label>
+                <input type="text" id="desc_derv" placeholder="Resumo executivo do entregável">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label>Definição (derv_defi)</label>
+                    <textarea id="derv_defi" rows="3" placeholder="Critérios técnicos..."></textarea>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Composição (derv_comp)</label>
+                    <textarea id="derv_comp" rows="3" placeholder="O que compõe o artefato?"></textarea>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label>Métricas de Sucesso (derv_metr)</label>
+                    <textarea id="derv_metr" rows="4" placeholder="Indicadores e KPIs..."></textarea>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Critérios DoD (JSON)</label>
+                    <textarea id="criteria_dod" rows="4" style="background: #f9f9f9; font-family: monospace; font-size: 0.85em;"
+                              placeholder='{"check": "exemplo"}'></textarea>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button type="button" class="btn cancel-btn" onclick="fecharModal()">Cancelar</button>
+                <button type="submit" class="btn blue-btn"><i class="fas fa-save"></i> Salvar na Engine</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #eee; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background-color: #f8f9fa; color: #7f8c8d; font-weight: bold; text-transform: uppercase; padding: 15px; border-bottom: 2px solid #eee; text-align: left; font-size: 0.8em; }
+    td { padding: 15px; border-bottom: 1px solid #eee; color: #2c3e50; font-size: 0.9em; vertical-align: top; }
+
+    #global-search:focus { border-color: #3498db; }
+
+    .action-btn { border: none; background: none; cursor: pointer; font-size: 1.1em; padding: 5px; transition: transform 0.2s; }
+    .action-btn:hover { transform: scale(1.1); }
+    .btn-edit { color: #f39c12; }
+    .btn-delete { color: #e74c3c; }
+
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+    .modal-content { background-color: white; margin: 3% auto; padding: 30px; border-radius: 8px; animation: slideDown 0.3s ease; }
+    @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .close { float: right; font-size: 24px; cursor: pointer; color: #999; }
+
+    .form-row { display: flex; gap: 15px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 0.85em; color: #34495e; }
+    input, textarea, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; }
+
+    .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
+    .btn { padding: 8px 18px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .blue-btn { background-color: #3498db; color: white; }
+    .cancel-btn { background-color: #ecf0f1; color: #7f8c8d; }
+</style>
+
+<script>
+    const API_DERV = "<%= API_BASE_URL %>/leaf_derv";
+    const API_BLOC = "<%= API_BASE_URL %>/leaf_bloc";
+    let cacheDerv = [];
+    let mapaBlocos = {}; // Para tradução ID -> Nome
+
+    async function init() {
+        await carregarBlocos();
+        await carregarEntregaveis();
+    }
+
+    async function carregarBlocos() {
+        try {
+            const res = await fetch(API_BLOC);
+            const blocos = await res.json();
+
+            // Monta o mapa de tradução
+            blocos.forEach(b => { mapaBlocos[b.id_bloc] = b.name_bloc; });
+
+            document.getElementById('id_bloc').innerHTML = '<option value="">Selecione o Bloco...</option>' +
+                blocos.map(b => `<option value="${b.id_bloc}">${b.name_bloc}</option>`).join('');
+        } catch (e) { console.error("Erro blocos:", e); }
+    }
+
+    async function carregarEntregaveis() {
+        try {
+            const res = await fetch(API_DERV);
+            cacheDerv = await res.json();
+            renderTable(cacheDerv);
+        } catch (e) { console.error("Erro entregáveis:", e); }
+    }
+
+    function renderTable(dados) {
+        const tbody = document.getElementById('table-body-entregaveis');
+        tbody.innerHTML = '';
+        dados.forEach(item => {
+            // Lógica de tradução do Bloco
+            const nomeBloco = item.name_bloc_text || mapaBlocos[item.id_bloc] || `ID: ${item.id_bloc}`;
+            const corBloco = item.id_bloc ? "#9b59b6" : "#e74c3c";
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="color:#888;">#${item.id_derv}</td>
+                <td>
+                    <div style="font-size:0.7em; color:${corBloco}; font-weight:bold; text-transform:uppercase;">
+                        <i class="fas fa-cubes"></i> ${nomeBloco}
+                    </div>
+                    <div style="font-weight:bold; font-size:1.05em; margin-top:4px;">${item.name_derv}</div>
+                    <div style="font-size:0.85em; color:#7f8c8d;">${item.desc_derv || ''}</div>
+                </td>
+                <td>
+                    <div style="font-size:0.85em; margin-bottom:5px;"><strong>Definição:</strong> ${item.derv_defi || '-'}</div>
+                    <div style="font-size:0.85em; color:#666;"><strong>Composição:</strong> ${item.derv_comp || '-'}</div>
+                </td>
+                <td>
+                    <div style="background:#f0fff4; padding:8px; border-radius:6px; border-left:3px solid #27ae60;">
+                        <strong style="font-size:0.75em; color:#27ae60; display:block; margin-bottom:4px;">MÉTRICAS / DOD</strong>
+                        <div style="font-size:0.85em;">${item.derv_metr || 'Não definida'}</div>
+                    </div>
+                </td>
+                <td style="text-align: center;">
+                    <button class="action-btn btn-edit" onclick="editarDerv(${item.id_derv})"><i class="fas fa-edit"></i></button>
+                    <button class="action-btn btn-delete" onclick="deletarDerv(${item.id_derv})"><i class="fas fa-trash-alt"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function filtrarTabela() {
+        const termo = document.getElementById('global-search').value.toLowerCase();
+        const filtrados = cacheDerv.filter(i => {
+            const nBloco = (mapaBlocos[i.id_bloc] || "").toLowerCase();
+            return i.name_derv.toLowerCase().includes(termo) ||
+                   (i.desc_derv && i.desc_derv.toLowerCase().includes(termo)) ||
+                   (i.derv_metr && i.derv_metr.toLowerCase().includes(termo)) ||
+                   nBloco.includes(termo);
+        });
+        renderTable(filtrados);
+    }
+
+    function abrirModal(limpar = true) {
+        if(limpar) {
+            document.getElementById('form-derv').reset();
+            document.getElementById('id_derv').value = '';
+            document.getElementById('modal-title').innerText = "Novo Entregável";
+        }
+        document.getElementById('modal-form-entregaveis').style.display = 'block';
+    }
+
+    function fecharModal() { document.getElementById('modal-form-entregaveis').style.display = 'none'; }
+
+    function editarDerv(id) {
+        const i = cacheDerv.find(d => d.id_derv === id);
+        if(!i) return;
+        abrirModal(false);
+        document.getElementById('modal-title').innerText = "Editar Entregável";
+        document.getElementById('id_derv').value = i.id_derv;
+        document.getElementById('id_bloc').value = i.id_bloc;
+        document.getElementById('name_derv').value = i.name_derv;
+        document.getElementById('desc_derv').value = i.desc_derv || '';
+        document.getElementById('derv_defi').value = i.derv_defi || '';
+        document.getElementById('derv_comp').value = i.derv_comp || '';
+        document.getElementById('derv_metr').value = i.derv_metr || '';
+        document.getElementById('criteria_dod').value = typeof i.criteria_dod === 'object' ? JSON.stringify(i.criteria_dod) : i.criteria_dod;
+    }
+
+    async function salvarRegistro(e) {
+        e.preventDefault();
+        const id = document.getElementById('id_derv').value;
+        const payload = {
+            name_derv: document.getElementById('name_derv').value,
+            desc_derv: document.getElementById('desc_derv').value,
+            derv_defi: document.getElementById('derv_defi').value,
+            derv_comp: document.getElementById('derv_comp').value,
+            derv_metr: document.getElementById('derv_metr').value,
+            id_bloc: parseInt(document.getElementById('id_bloc').value),
+            criteria_dod: document.getElementById('criteria_dod').value || "{}"
+        };
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_DERV}/${id}` : API_DERV;
+
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) { fecharModal(); carregarEntregaveis(); }
+            else alert("Erro ao salvar.");
+        } catch(e) { console.error(e); }
+    }
+
+    async function deletarDerv(id) {
+        if(confirm("Confirma exclusão?")) {
+            await fetch(`${API_DERV}/${id}`, { method: 'DELETE' });
+            carregarEntregaveis();
+        }
+    }
+
+    init();
+</script>

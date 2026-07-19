@@ -1,0 +1,150 @@
+﻿<div class="mesa-org admin-usuarios" id="admin-usuarios-root">
+    <header class="mesa-org__hero">
+        <div>
+            <h1><i class="fas fa-users-cog" style="color: #a3bffa;"></i> Gestão Global de Usuários</h1>
+            <p>
+                Cadastro central de identidades do MudaEdu. Aqui nascem as contas com papel de sistema
+                (<strong>sysadmin</strong>, <strong>gestor</strong>, <strong>consultor</strong>, <strong>executor</strong>).
+                A alocação em squads é feita separadamente em Gestão de Time.
+            </p>
+        </div>
+        <div class="mesa-org__meta">
+            <div><strong>Área Administrativa</strong></div>
+            <div>Identidade · RBAC · Auth</div>
+        </div>
+    </header>
+
+    <div class="mesa-card">
+        <div class="admin-usuarios__toolbar">
+            <div>
+                <h2 class="mesa-card__title" style="margin-bottom: 4px;">
+                    <i class="fas fa-id-card"></i> usuários MudaEdu
+                </h2>
+                <p class="admin-esim__field-hint" style="margin: 0;">Todas as contas autenticáveis do ecossistema.</p>
+            </div>
+            <button type="button" class="mesa-btn mesa-btn--lilac" id="btn-novo-usuario">
+                <i class="fas fa-plus"></i> Novo Usuário
+            </button>
+        </div>
+
+        <div class="admin-usuarios__filters" role="search">
+            <div class="admin-usuarios__search-wrap">
+                <i class="fas fa-search admin-usuarios__search-icon" aria-hidden="true"></i>
+                <input
+                    type="search"
+                    id="usuarios-busca"
+                    class="mesa-input admin-usuarios__search-input"
+                    placeholder="Buscar por nome, e-mail, empresa ou grupo…"
+                    autocomplete="off"
+                    aria-label="Buscar usuários"
+                >
+                <button type="button" class="admin-usuarios__search-clear" id="btn-limpar-busca" title="Limpar busca" hidden>
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <select id="usuarios-filtro-empresa" class="mesa-select admin-usuarios__filter-empresa" aria-label="Filtrar por empresa ou grupo">
+                <option value="">Todas empresas / grupos</option>
+            </select>
+            <select id="usuarios-filtro-role" class="mesa-select admin-usuarios__filter-role" aria-label="Filtrar por papel">
+                <option value="">Todos os papéis</option>
+                <option value="sysadmin">SysAdmin</option>
+                <option value="led">GESTOR</option>
+                <option value="consultor">Consultor</option>
+                <option value="executor">Executor</option>
+            </select>
+            <label class="admin-usuarios__filter-inativos">
+                <input type="checkbox" id="usuarios-incluir-inativos" checked>
+                Incluir inativos
+            </label>
+            <span class="admin-usuarios__result-count" id="usuarios-result-count" aria-live="polite"></span>
+        </div>
+
+        <div class="admin-usuarios__table-wrap">
+            <table class="admin-usuarios__table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>E-mail</th>
+                        <th>Empresa / Grupo</th>
+                        <th>Papel (system_role)</th>
+                        <th style="width: 110px;">Status</th>
+                        <th style="width: 130px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="usuarios-table-body">
+                    <tr><td colspan="6" class="admin-usuarios__empty">Carregando usuários…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal — padrão mesa-modal (eSIM / Mesa de Inovação) -->
+<div class="mesa-modal" id="modal-usuario" aria-hidden="true">
+    <div class="mesa-modal__card admin-usuarios__modal-card">
+        <h3 id="modal-usuario-title">Novo Usuário</h3>
+        <p class="admin-esim__field-hint" style="margin: 0 0 16px;">
+            Crie a identidade global. O Gestor aloca o usuário nas squads em Gestão de Time.
+        </p>
+
+        <form id="form-usuario">
+            <input type="hidden" id="usuario-id">
+
+            <div class="admin-esim__field">
+                <label for="usuario-nome">Nome *</label>
+                <input type="text" id="usuario-nome" class="mesa-input" required placeholder="Nome completo">
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="usuario-email">E-mail *</label>
+                <input type="email" id="usuario-email" class="mesa-input" required placeholder="usuario@leaction.com.br">
+            </div>
+
+            <div class="admin-esim__field" id="field-codigo-lead" hidden>
+                <label for="usuario-codigo-acesso">Código de acesso (Lead)</label>
+                <input type="password" id="usuario-codigo-acesso" class="mesa-input" readonly placeholder="—" data-pwd-toggle>
+                <p class="admin-esim__field-hint">Usado no login pelo fluxo de código LA-* (ex.: cliente sistema).</p>
+            </div>
+
+            <div class="admin-esim__field" id="field-senha-atual" hidden>
+                <label for="usuario-senha-atual">Senha atual</label>
+                <input type="password" id="usuario-senha-atual" class="mesa-input" readonly placeholder="—" data-pwd-toggle>
+                <p class="admin-esim__field-hint">A senha fica criptografada no banco. Use o olho para ver o lembrete ou defina uma nova senha abaixo.</p>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="usuario-senha">Senha <span id="senha-opcional">*</span></label>
+                <input type="password" id="usuario-senha" class="mesa-input" placeholder="••••••••" autocomplete="new-password" data-pwd-toggle>
+                <p class="admin-esim__field-hint" id="senha-hint">Obrigatória na criação. Em edição, deixe em branco para manter a senha atual.</p>
+            </div>
+
+            <div class="admin-esim__field">
+                <label for="usuario-role">Papel de sistema *</label>
+                <select id="usuario-role" class="mesa-select" required>
+                    <option value="">— Selecione —</option>
+                    <option value="sysadmin">SysAdmin</option>
+                    <option value="led">GESTOR (Empresa)</option>
+                    <option value="consultor">Consultor</option>
+                    <option value="executor">Executor</option>
+                </select>
+            </div>
+
+            <div class="admin-esim__field" id="field-ativo" hidden>
+                <label for="usuario-ativo">Status</label>
+                <select id="usuario-ativo" class="mesa-select">
+                    <option value="true">Ativo</option>
+                    <option value="false">Inativo</option>
+                </select>
+            </div>
+
+            <div class="admin-esim__modal-actions">
+                <button type="button" class="mesa-btn mesa-btn--ghost" id="btn-cancelar-modal">Cancelar</button>
+                <button type="submit" class="mesa-btn mesa-btn--gold" id="btn-submit-usuario">
+                    <i class="fas fa-plus"></i> Incluir usuário
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="admin-usuarios__toast" id="admin-usuarios-toast" role="status"></div>

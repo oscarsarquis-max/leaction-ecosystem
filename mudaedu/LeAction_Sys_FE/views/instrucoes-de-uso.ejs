@@ -1,0 +1,93 @@
+﻿<style>
+    #instrucoes-cms-page {
+        max-width: 960px;
+        margin: 0 auto;
+        padding-bottom: 40px;
+    }
+    #instrucoes-cms-page .instrucoes-cms-header {
+        margin-bottom: 28px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #E2D9FF;
+    }
+    #instrucoes-cms-page .instrucoes-cms-header h1 {
+        margin: 0 0 8px;
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #5B35D9;
+        border: none;
+        padding: 0;
+    }
+    #instrucoes-cms-page .instrucoes-cms-header p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.95rem;
+    }
+    /* Estilos para HTML gerado pelo Quill */
+    #instrucoes-cms-body {
+        background: #fff;
+        border-radius: 12px;
+        padding: 32px 36px;
+        box-shadow: 0 2px 12px rgba(17, 24, 39, 0.06);
+        border-top: 4px solid #7060F0;
+        line-height: 1.65;
+        color: #334155;
+    }
+    #instrucoes-cms-body h1, #instrucoes-cms-body h2, #instrucoes-cms-body h3 {
+        color: #1e293b;
+        margin-top: 1.4em;
+        margin-bottom: 0.6em;
+        font-weight: 800;
+    }
+    #instrucoes-cms-body h1:first-child,
+    #instrucoes-cms-body h2:first-child,
+    #instrucoes-cms-body h3:first-child { margin-top: 0; }
+    #instrucoes-cms-body p { margin: 0 0 1em; }
+    #instrucoes-cms-body ul, #instrucoes-cms-body ol {
+        margin: 0 0 1em 1.25em;
+        padding-left: 1em;
+    }
+    #instrucoes-cms-body li { margin-bottom: 0.35em; }
+    #instrucoes-cms-body a { color: #5B35D9; font-weight: 600; }
+    #instrucoes-cms-body blockquote {
+        border-left: 4px solid #d97706;
+        margin: 1em 0;
+        padding: 0.5em 1em;
+        background: #fffbeb;
+        color: #78350f;
+    }
+    #instrucoes-cms-body table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1em 0;
+        font-size: 0.92rem;
+    }
+    #instrucoes-cms-body th, #instrucoes-cms-body td {
+        border: 1px solid #e2e8f0;
+        padding: 10px 12px;
+        text-align: left;
+    }
+    #instrucoes-cms-body th {
+        background: #f8fafc;
+        font-weight: 700;
+    }
+    #instrucoes-cms-body img { max-width: 100%; height: auto; border-radius: 8px; }
+    #instrucoes-cms-body .ql-align-center { text-align: center; }
+    #instrucoes-cms-body .ql-align-right { text-align: right; }
+    #instrucoes-cms-body strong { color: #1e293b; }
+</style>
+
+<%
+    const instrucoesHtml = (locals.cms && locals.cms.instructions_data)
+        ? locals.cms.instructions_data
+        : '<p>Conteúdo das instruções em atualização. Consulte o administrador do sistema.</p>';
+%>
+
+<div id="instrucoes-cms-page">
+    <header class="instrucoes-cms-header">
+        <h1><i class="fas fa-book-open"></i> Instruções de Uso</h1>
+        <p>Guia operacional do MudaEdu — conteúdo mantido pela equipe LeAction.</p>
+    </header>
+    <article id="instrucoes-cms-body">
+        <%- instrucoesHtml %>
+    </article>
+</div>

@@ -1,0 +1,280 @@
+﻿/* Modal padronizado — Dimensões, Domínios e demais CRUDs do Engine */
+
+.engine-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    padding: 16px;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(3px);
+    align-items: center;
+    justify-content: center;
+}
+
+.engine-modal.is-open {
+    display: flex;
+}
+
+.engine-modal__dialog {
+    position: relative;
+    width: min(650px, 100%);
+    max-height: min(90vh, 900px);
+    overflow-y: auto;
+    margin: 0;
+    padding: 28px 30px;
+    background: #fff;
+    border-radius: 12px;
+    border-top: 5px solid #3498db;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+    animation: engineModalIn 0.25s ease;
+    box-sizing: border-box;
+}
+
+.engine-modal__dialog--wide {
+    width: min(720px, 100%);
+}
+
+@keyframes engineModalIn {
+    from {
+        opacity: 0;
+        transform: translateY(-14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.engine-modal__close {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    border: none;
+    background: transparent;
+    font-size: 26px;
+    line-height: 1;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+}
+
+.engine-modal__close:hover {
+    color: #333;
+}
+
+.engine-modal__title {
+    color: #3498db;
+    margin: 0 36px 20px 0;
+    font-size: 1.35rem;
+}
+
+.engine-modal__form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.engine-modal__form-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.engine-modal__buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    z-index: 2;
+}
+
+/* Tabela CRUD Engine */
+.engine-crud-table-wrap {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    border: 1px solid #eee;
+}
+
+.engine-crud-table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.engine-crud-table-wrap th {
+    background-color: #f8f9fa;
+    color: #7f8c8d;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 15px;
+    border-bottom: 2px solid #eee;
+    text-align: left;
+    font-size: 0.85em;
+}
+
+.engine-crud-table-wrap td {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    color: #2c3e50;
+    font-size: 0.95em;
+}
+
+.engine-crud-table-wrap tr:last-child td {
+    border-bottom: none;
+}
+
+.engine-crud-table-wrap tr:hover {
+    background-color: #f9f9f9;
+}
+
+.engine-form-group {
+    margin-bottom: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.engine-form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #2c3e50;
+    font-size: 0.9em;
+}
+
+.engine-form-group input,
+.engine-form-group textarea,
+.engine-form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.engine-form-group input:focus,
+.engine-form-group textarea:focus,
+.engine-form-group select:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.2);
+}
+
+.engine-form-group--accent label {
+    color: #7060F0;
+}
+
+.engine-form-group--accent textarea,
+.engine-form-group--accent select {
+    border-color: #7060F0;
+}
+
+.engine-form-group--master label {
+    color: #8e44ad;
+}
+
+.engine-form-group--master select {
+    border-color: #8e44ad;
+}
+
+td.col-perspective {
+    background-color: #fcfcfc;
+    color: #3498db;
+    font-weight: 500;
+    border-right: 1px solid #f0f0f0;
+}
+
+tr.row-dime:hover {
+    background-color: #f8f9ff !important;
+    cursor: help;
+}
+
+.dime-name-main {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.action-btn {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 4px;
+    margin: 0 2px;
+    line-height: 1;
+    border-radius: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.action-btn:hover,
+.action-btn:focus,
+.action-btn:focus-visible,
+.action-btn:active {
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.action-btn:hover {
+    transform: scale(1.08);
+}
+
+.action-btn.btn-edit,
+.action-btn.btn-edit i {
+    color: #e67e22 !important;
+}
+
+.action-btn.btn-edit:hover,
+.action-btn.btn-edit:hover i {
+    color: #d35400 !important;
+}
+
+.action-btn.btn-delete,
+.action-btn.btn-delete i {
+    color: #e74c3c !important;
+}
+
+.action-btn.btn-delete:hover,
+.action-btn.btn-delete:hover i {
+    color: #c0392b !important;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.blue-btn {
+    background-color: #3498db;
+    color: white;
+}
+
+.blue-btn:hover {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+}
+
+.cancel-btn {
+    background-color: #ecf0f1;
+    color: #7f8c8d;
+}
+
+.cancel-btn:hover {
+    background-color: #bdc3c7;
+}

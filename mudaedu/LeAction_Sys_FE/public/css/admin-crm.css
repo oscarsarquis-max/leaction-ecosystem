@@ -1,0 +1,585 @@
+@import url('/css/mesa-inovacao.css?v=6');
+@import url('/css/admin-esim.css?v=3');
+
+.admin-crm {
+    max-width: 1180px;
+}
+
+.admin-crm__section {
+    margin-bottom: 28px;
+}
+
+.admin-crm__section-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--dark-lilac);
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-crm__metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.admin-crm__metric-card {
+    border-radius: 14px;
+    padding: 18px 20px;
+    border: 1px solid var(--wb-border);
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.admin-crm__metric-card--mrr {
+    border-left: 4px solid #34d399;
+}
+
+.admin-crm__metric-card--count {
+    border-left: 4px solid #a78bfa;
+}
+
+.admin-crm__metric-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--wb-muted);
+    margin-bottom: 6px;
+}
+
+.admin-crm__metric-value {
+    display: block;
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--dark-lilac);
+    line-height: 1.2;
+}
+
+.admin-crm__metric-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--wb-muted);
+}
+
+.admin-crm__chart-card {
+    padding: 18px 20px;
+}
+
+.admin-crm__chart {
+    min-height: 300px;
+}
+
+.admin-crm__chart-empty {
+    text-align: center;
+    color: var(--wb-muted);
+    font-size: 0.85rem;
+    padding: 24px 0;
+}
+
+.admin-crm__table--contratos td {
+    vertical-align: middle;
+}
+
+.admin-crm__badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.admin-crm__badge--ativo {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.admin-crm__badge--trial {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.admin-crm__badge--inadimplente {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.admin-crm__badge--inativo {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.admin-crm__badge--cancelado {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.admin-crm__plano-status--ativo {
+    color: #059669;
+    font-weight: 700;
+}
+
+.admin-crm__plano-status--inativo {
+    color: #94a3b8;
+    font-weight: 700;
+}
+
+.admin-crm__progress {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.admin-crm__progress-track {
+    height: 10px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+}
+
+.admin-crm__progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.35s ease, background-color 0.25s ease;
+    min-width: 0;
+}
+
+.admin-crm__progress-fill--ok {
+    background: linear-gradient(90deg, #34d399, #10b981);
+}
+
+.admin-crm__progress-fill--warn {
+    background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+.admin-crm__progress-fill--urgent {
+    background: linear-gradient(90deg, #f87171, #ef4444);
+}
+
+.admin-crm__progress-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.admin-crm__vigencia {
+    font-size: 0.78rem;
+    color: #475569;
+    line-height: 1.35;
+}
+
+.admin-crm__row-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.admin-crm__icon-btn {
+    border: 1px solid var(--wb-border);
+    background: #fff;
+    color: var(--dark-lilac);
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.admin-crm__icon-btn:hover {
+    background: #f8fafc;
+    border-color: var(--lilac);
+    color: var(--lilac);
+}
+
+.admin-crm__toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.admin-crm__publish-status {
+    margin: 8px 0 0;
+    font-size: 0.78rem;
+    color: var(--wb-muted);
+}
+
+.admin-crm__publish-status.is-ok {
+    color: #047857;
+    font-weight: 600;
+}
+
+.admin-crm__publish-status.is-pending {
+    color: #b45309;
+    font-weight: 600;
+}
+
+.admin-crm__row-dirty td:first-child strong::after {
+    content: ' *';
+    color: #f59e0b;
+    font-weight: 800;
+}
+
+/* Modais CRM — portal no body evita corte ao abrir no fim da página */
+body.mesa-modal-open {
+    overflow: hidden;
+}
+
+#modal-plano.mesa-modal,
+#modal-contrato.mesa-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+}
+
+#modal-plano.mesa-modal.is-open,
+#modal-contrato.mesa-modal.is-open {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#modal-plano.mesa-modal.is-open .admin-crm__modal-card,
+#modal-contrato.mesa-modal.is-open .admin-crm__modal-card {
+    margin: auto;
+    flex-shrink: 0;
+}
+
+.admin-crm__modal-card {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-height: min(92vh, 860px);
+}
+
+.admin-crm__modal-card--plano {
+    max-width: 500px;
+    padding: 18px 20px 16px;
+}
+
+.admin-crm__modal-card--contrato {
+    max-width: 680px;
+    padding: 0;
+}
+
+.admin-crm__modal-head {
+    flex-shrink: 0;
+    padding: 18px 20px 12px;
+    border-bottom: 1px solid var(--wb-border);
+}
+
+.admin-crm__modal-head h3 {
+    margin: 0 0 6px;
+}
+
+.admin-crm__modal-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 16px 20px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-crm__modal-foot {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 12px 20px 18px;
+    border-top: 1px solid var(--wb-border);
+    background: #fff;
+}
+
+.admin-crm__modal-card--plano > h3,
+.admin-crm__modal-card--plano > .admin-crm__modal-tabs {
+    flex-shrink: 0;
+}
+
+.admin-crm__modal-card--plano h3 {
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+.admin-crm__modal-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--wb-border);
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.admin-crm__modal-tab {
+    flex: 1;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    color: var(--wb-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.admin-crm__modal-tab:hover {
+    color: var(--dark-lilac);
+}
+
+.admin-crm__modal-tab.is-active {
+    color: var(--lilac);
+    border-bottom-color: var(--lilac);
+}
+
+.admin-crm__modal-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.admin-crm__modal-panel {
+    display: none;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-crm__modal-panel.is-active {
+    display: block;
+}
+
+.admin-crm__modal-panel[hidden] {
+    display: none !important;
+}
+
+.admin-crm__modal-panel-intro {
+    margin: 0 0 10px !important;
+}
+
+.admin-crm__modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+@media (max-width: 480px) {
+    .admin-crm__modal-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.admin-crm__modal-field--flush {
+    margin-bottom: 0;
+}
+
+.admin-crm__modal-actions {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--wb-border);
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    z-index: 2;
+}
+
+.admin-crm__textarea {
+    min-height: 88px;
+    max-height: 140px;
+    resize: vertical;
+    line-height: 1.45;
+}
+
+.admin-crm__toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+    background: #334155;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.admin-crm__toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.admin-crm__toast.is-error {
+    background: #b91c1c;
+}
+
+.admin-crm__toast.is-success {
+    background: #047857;
+}
+
+.admin-crm__tipo-plano {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+}
+.admin-crm__tipo-plano--base {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+.admin-crm__tipo-plano--addon {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.admin-crm__addons-section {
+    margin: 18px 0 8px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+.admin-crm__addons-title {
+    margin: 0 0 6px;
+    font-size: 0.95rem;
+    color: #334155;
+}
+.admin-crm__addons-intro {
+    margin: 0 0 10px !important;
+}
+.admin-crm__addons-table {
+    margin-bottom: 12px;
+}
+.admin-crm__addons-table-wrap {
+    max-height: 200px;
+    overflow-x: auto;
+    overflow-y: auto;
+}
+.admin-crm__addons-form {
+    display: grid;
+    grid-template-columns: 1fr 120px auto;
+    gap: 10px;
+    align-items: end;
+}
+@media (max-width: 720px) {
+    .admin-crm__addons-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Funil de Vendas */
+.admin-crm__funil-totais {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+.admin-crm__funil-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.admin-crm__funil-board {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(180px, 1fr));
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+.admin-crm__funil-col {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+}
+.admin-crm__funil-col h3 {
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    color: #0f172a;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.admin-crm__funil-count {
+    background: #e2e8f0;
+    color: #475569;
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 0.75rem;
+}
+.admin-crm__funil-list {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+.admin-crm__funil-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.admin-crm__funil-card strong {
+    display: block;
+    font-size: 0.9rem;
+    color: #0f172a;
+    margin-bottom: 2px;
+}
+.admin-crm__funil-card .meta {
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.35;
+}
+.admin-crm__funil-card .actions {
+    margin-top: 8px;
+}
+.admin-crm__funil-col[data-status="novo_lead"] {
+    border-color: #fbbf24;
+    background: #fffbeb;
+}
+@media (max-width: 1200px) {
+    .admin-crm__funil-board {
+        grid-template-columns: repeat(3, minmax(200px, 1fr));
+    }
+}
+@media (max-width: 720px) {
+    .admin-crm__funil-board {
+        grid-template-columns: minmax(240px, 1fr);
+    }
+}
+

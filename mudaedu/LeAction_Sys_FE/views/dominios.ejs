@@ -1,0 +1,206 @@
+<div class="main-content">
+    <div class="header-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+            <div>
+                <h1><i class="fas fa-cubes"></i> Domínios</h1>
+                <p style="color: #666; margin-top: 5px;">Áreas fundamentais da transformação (Ex: Pessoas, Processos).</p>
+            </div>
+            <button class="btn blue-btn" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Novo Domínio
+            </button>
+        </div>
+    </div>
+
+    <div class="engine-crud-table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th>Nome do Domínio</th>
+                    <th>Descrição</th>
+                    <th style="text-align: center; width: 100px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal-form" class="engine-modal" aria-hidden="true">
+    <div class="engine-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <button type="button" class="engine-modal__close" onclick="fecharModal()" aria-label="Fechar">&times;</button>
+        <h2 id="modal-title" class="engine-modal__title">Configuração de Domínio</h2>
+
+        <form id="form-doma" class="engine-modal__form" onsubmit="salvarRegistro(event)">
+            <input type="hidden" id="id_doma">
+
+            <div class="engine-form-group">
+                <label for="name_doma">Nome do Domínio *</label>
+                <input type="text" id="name_doma" required placeholder="Ex: Tecnologia e Dados">
+            </div>
+
+            <div class="engine-form-group engine-form-group--master">
+                <label for="vetor_estrategico"><i class="fas fa-compass"></i> Vetor Estratégico (Master)</label>
+                <select id="vetor_estrategico">
+                    <option value="">Selecione o direcionamento...</option>
+                    <option value="Visão e Ambição Digital">Visão e Ambição Digital</option>
+                    <option value="Sustentabilidade e Diferenciação">Sustentabilidade e Diferenciação</option>
+                    <option value="Agilidade e Tolerância ao Erro">Agilidade e Tolerância ao Erro</option>
+                    <option value="Inteligência Decisória">Inteligência Decisória</option>
+                    <option value="Sinergia e Capital Social">Sinergia e Capital Social</option>
+                    <option value="Fluidez Operacional">Fluidez Operacional</option>
+                    <option value="Ecossistema de Experiência">Ecossistema de Experiência</option>
+                    <option value="Alfabetização e Fluência Digital">Alfabetização e Fluência Digital</option>
+                    <option value="Monitoramento de Performance">Monitoramento de Performance</option>
+                </select>
+            </div>
+
+            <div class="engine-form-group">
+                <label for="desc_doma">Descrição</label>
+                <textarea id="desc_doma" rows="3" placeholder="Descrição detalhada do domínio..."></textarea>
+            </div>
+
+            <div class="engine-modal__buttons">
+                <button type="button" class="btn cancel-btn" onclick="fecharModal()">Cancelar</button>
+                <button type="submit" class="btn blue-btn"><i class="fas fa-save"></i> Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const API_URL = "<%= API_BASE_URL %>/leaf_doma";
+    const modalEl = document.getElementById('modal-form');
+
+    async function carregarDados() {
+        try {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Carregando...</td></tr>';
+
+            const res = await fetch(API_URL);
+            const dados = await res.json();
+            renderizarTabela(dados);
+        } catch (error) {
+            console.error("Erro:", error);
+            document.getElementById('table-body').innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Erro ao carregar dados.</td></tr>';
+        }
+    }
+
+    function renderizarTabela(dados) {
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+
+        if (!dados || dados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:#777;">Nenhum domínio cadastrado.</td></tr>';
+            return;
+        }
+
+        const dadosOrdenados = [...dados].sort((a, b) => a.id_doma - b.id_doma);
+
+        dadosOrdenados.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="color: #7f8c8d; font-size: 0.85em;">#${item.id_doma}</td>
+                <td><strong>${item.name_doma}</strong></td>
+                <td>${item.desc_doma || '-'}</td>
+                <td style="text-align: center;">
+                    <button class="action-btn btn-edit" title="Editar" onclick='editar(${JSON.stringify(item)})'>
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="action-btn btn-delete" title="Excluir" onclick="deletar(${item.id_doma})">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function abrirModal(limpar = true) {
+        if (limpar) {
+            document.getElementById('form-doma').reset();
+            document.getElementById('id_doma').value = '';
+            document.getElementById('vetor_estrategico').value = '';
+            document.getElementById('modal-title').innerText = "Novo Domínio";
+        }
+        modalEl.classList.add('is-open');
+        modalEl.setAttribute('aria-hidden', 'false');
+    }
+
+    function fecharModal() {
+        modalEl.classList.remove('is-open');
+        modalEl.setAttribute('aria-hidden', 'true');
+    }
+
+    async function salvarRegistro(e) {
+        e.preventDefault();
+
+        const id = document.getElementById('id_doma').value;
+        const payload = {
+            name_doma: document.getElementById('name_doma').value.trim(),
+            desc_doma: document.getElementById('desc_doma').value.trim(),
+            vetor_estrategico: document.getElementById('vetor_estrategico').value
+        };
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/${id}` : API_URL;
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                fecharModal();
+                carregarDados();
+                alert("Domínio salvo com sucesso!");
+            } else {
+                const errorText = await res.text();
+                console.error("Erro no servidor:", errorText);
+                alert("Erro ao salvar. Verifique se o servidor Python aceita o método " + method);
+            }
+        } catch (error) {
+            console.error("Erro na requisição:", error);
+            alert("Falha de comunicação. Verifique se o CORS está ativo no Python.");
+        }
+    }
+
+    function editar(item) {
+        abrirModal(false);
+        document.getElementById('modal-title').innerText = "Editar Domínio";
+        document.getElementById('id_doma').value = item.id_doma;
+        document.getElementById('name_doma').value = item.name_doma;
+        document.getElementById('desc_doma').value = item.desc_doma || '';
+
+        const selectVetor = document.getElementById('vetor_estrategico');
+        if (item.vetor_estrategico) {
+            selectVetor.value = item.vetor_estrategico;
+        } else {
+            selectVetor.selectedIndex = 0;
+        }
+    }
+
+    async function deletar(id) {
+        if (!confirm("Tem certeza que deseja remover este domínio?")) return;
+
+        try {
+            const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (res.ok) carregarDados();
+            else alert("Erro ao excluir.");
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    modalEl.addEventListener('click', function (e) {
+        if (e.target === modalEl) fecharModal();
+    });
+
+    carregarDados();
+</script>

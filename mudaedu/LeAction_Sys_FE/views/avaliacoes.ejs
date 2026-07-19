@@ -1,0 +1,1231 @@
+﻿<div class="main-content" id="evaluation-page">
+    <div class="form-container">
+        <%
+           // 1. CAPTURA O STATUS BUSCANDO EM MÚLTIPLOS ESCOPOS PARA GARANTIR SEGURANÇA
+           let statusIA_Raw = "";
+           if (typeof maturityData !== 'undefined' && maturityData && maturityData.status_ia) {
+               statusIA_Raw = maturityData.status_ia;
+           } else if (locals.lead && lead.status_ia) {
+               statusIA_Raw = lead.status_ia;
+           } else if (locals.status_ia) {
+               statusIA_Raw = locals.status_ia;
+           }
+
+           const statusIA = statusIA_Raw.toString().trim().toUpperCase();
+
+           // 2. REGRA DE DESTRAVAMENTO SEQUENCIAL NATIVO
+           // Se o status for 'AGUARDANDO CONTEXTO' ou 'PENDENTE', o modoRestrito é TRUE (trava tudo).
+           // O modo restrito cai (vira false) se o status for CONTEXTO OK, AVALIACAO OK, etc.
+           const modoRestrito = statusIA === 'AGUARDANDO CONTEXTO' || statusIA === 'PENDENTE' || (!statusIA.includes('CONTEXTO') && !statusIA.includes('AVALIACAO') && !statusIA.includes('CONCLU'));
+
+           const presurveyRelatorioPronto = statusIA === 'PRESURVEY OK';
+           const planoContratado = !!(locals.lead && (lead.hasActiveProject === true || lead.hasActiveProject === 1 || lead.hasActiveProject === 'true'))
+               || statusIA === 'PROJETO OK' || statusIA === 'CONTEXTO OK' || statusIA === 'AVALIACAO OK'
+               || statusIA === 'PENDENTE' || statusIA === 'PROCESSANDO' || statusIA.includes('CONCLU');
+           const chatIaMasterBloqueado = modoRestrito && presurveyRelatorioPronto && !planoContratado;
+           const totalPresurvey = (questions && questions.length)
+               ? questions.filter(q => q.presurvey_ques === true || q.presurvey_ques === 'true').length
+               : 28;
+        %>
+
+        <style>
+            :root {
+                --brand-violet: #7060F0;
+                --brand-violet-dark: #5B35D9;
+                --brand-gold: #d4af37;
+            }
+
+            #evaluation-page {
+                display: flex;
+                flex-direction: column;
+                height: calc(100vh - var(--evaluation-chrome-offset, 108px));
+                max-height: calc(100vh - var(--evaluation-chrome-offset, 108px));
+                overflow: hidden;
+                padding-top: 0 !important;
+                box-sizing: border-box;
+            }
+            #evaluation-page > .form-container {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                min-height: 0;
+                overflow: hidden;
+                width: 100%;
+            }
+            .evaluation-page-body {
+                flex: 1;
+                min-height: 0;
+                overflow-y: auto;
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch;
+                padding-top: 18px;
+            }
+            .content:has(#evaluation-page) {
+                overflow: hidden;
+                padding-top: 4px !important;
+                padding-bottom: 8px !important;
+            }
+            #evaluation-page-body > h2 {
+                margin: 4px 0 10px;
+                font-size: 1.35rem;
+                line-height: 1.25;
+            }
+
+            #evaluation-page #evaluationForm {
+                margin-top: 6px;
+                padding: 12px 14px;
+            }
+
+            /* ——— Barra de progresso compacta (mais área para questões) ——— */
+            .assessment-progress-dock {
+                position: relative;
+                flex-shrink: 0;
+                z-index: 10;
+                width: 100%;
+                box-sizing: border-box;
+                background: linear-gradient(180deg, #ffffff 0%, #faf8ff 100%);
+                border-bottom: 1px solid rgba(112, 96, 240, 0.18);
+                box-shadow: 0 2px 8px rgba(91, 53, 217, 0.06);
+            }
+            .assessment-progress-dock__inner {
+                padding: 6px 16px 10px;
+                max-width: 1200px;
+            }
+            .assessment-progress-dock__head {
+                display: grid;
+                grid-template-columns: auto 1fr auto;
+                align-items: center;
+                gap: 10px 12px;
+                margin-bottom: 0;
+            }
+            .assessment-progress-dock__title {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                min-width: 0;
+            }
+            .assessment-progress-dock__badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 0.65rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                color: var(--brand-violet-dark);
+                background: rgba(112, 96, 240, 0.1);
+                border: 1px solid rgba(112, 96, 240, 0.22);
+                border-radius: 999px;
+                padding: 2px 8px;
+                width: fit-content;
+                white-space: nowrap;
+            }
+            .assessment-progress-dock__badge--mini {
+                background: rgba(212, 175, 55, 0.12);
+                border-color: rgba(212, 175, 55, 0.35);
+                color: #92650a;
+            }
+            .assessment-progress-dock__encourage {
+                font-size: 0.88rem;
+                color: #475569;
+                line-height: 1.35;
+            }
+            .assessment-progress-dock__footer {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 5px 10px;
+                margin-top: 4px;
+            }
+            .assessment-gamify-strip {
+                margin-top: 0;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 5px 8px;
+                flex: 1 1 200px;
+                min-width: 0;
+            }
+            .assessment-gamify-badges {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                min-height: 0;
+                flex: 1 1 auto;
+            }
+            .assessment-gamify-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 2px 8px;
+                border-radius: 999px;
+                font-size: 0.65rem;
+                font-weight: 700;
+                letter-spacing: 0.02em;
+                animation: gamify-badge-in 0.35s ease;
+            }
+            @keyframes gamify-badge-in {
+                from { opacity: 0; transform: scale(0.92) translateY(4px); }
+                to   { opacity: 1; transform: scale(1) translateY(0); }
+            }
+            .assessment-gamify-badge--gold {
+                background: linear-gradient(135deg, rgba(241, 196, 15, 0.2), rgba(212, 175, 55, 0.15));
+                border: 1px solid rgba(212, 175, 55, 0.45);
+                color: #92650a;
+            }
+            .assessment-gamify-badge--violet {
+                background: rgba(112, 96, 240, 0.12);
+                border: 1px solid rgba(112, 96, 240, 0.28);
+                color: var(--brand-violet-dark);
+            }
+            .assessment-gamify-badge--fire {
+                background: rgba(249, 115, 22, 0.12);
+                border: 1px solid rgba(249, 115, 22, 0.35);
+                color: #c2410c;
+            }
+            .assessment-gamify-badge--green {
+                background: rgba(34, 197, 94, 0.12);
+                border: 1px solid rgba(34, 197, 94, 0.3);
+                color: #15803d;
+            }
+            .assessment-gamify-badge--muted {
+                background: #f1f5f9;
+                border: 1px solid #e2e8f0;
+                color: #64748b;
+            }
+            .assessment-gamify-callout {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 3px 8px;
+                background: linear-gradient(90deg, rgba(112, 96, 240, 0.07) 0%, rgba(212, 175, 55, 0.06) 100%);
+                border-radius: 6px;
+                border-left: 2px solid var(--brand-violet);
+                font-size: 0.72rem;
+                font-weight: 600;
+                color: var(--brand-violet-dark);
+                line-height: 1.3;
+                transition: opacity 0.25s ease;
+                flex: 1 1 180px;
+                min-width: 0;
+            }
+            .assessment-gamify-callout span {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .assessment-gamify-callout i {
+                color: var(--brand-gold);
+                flex-shrink: 0;
+                font-size: 0.7rem;
+            }
+            .assessment-progress-dock__status {
+                font-weight: 600;
+                color: var(--brand-violet-dark);
+            }
+            .assessment-progress-dock__status--done {
+                color: #15803d;
+            }
+            .assessment-progress-dock__pct-wrap {
+                text-align: right;
+                flex-shrink: 0;
+                line-height: 1.1;
+            }
+            .assessment-progress-dock__pct {
+                display: inline;
+                font-size: 1.15rem;
+                font-weight: 800;
+                color: var(--brand-violet-dark);
+            }
+            .assessment-progress-dock__count {
+                display: block;
+                font-size: 0.68rem;
+                color: #64748b;
+                margin-top: 1px;
+            }
+            .assessment-progress-dock__track {
+                position: relative;
+                height: 7px;
+                background: #e8e4f3;
+                border-radius: 999px;
+                overflow: hidden;
+                grid-column: 2;
+                grid-row: 1;
+                min-width: 0;
+            }
+            .assessment-progress-dock__milestones {
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+                z-index: 1;
+            }
+            .assessment-progress-dock__milestones span {
+                position: absolute;
+                top: 50%;
+                width: 3px;
+                height: 3px;
+                background: rgba(91, 53, 217, 0.25);
+                border-radius: 50%;
+                transform: translate(-50%, -50%);
+            }
+            .assessment-progress-dock__fill {
+                height: 100%;
+                width: 0%;
+                border-radius: 999px;
+                background: linear-gradient(90deg, var(--brand-violet) 0%, var(--brand-violet-dark) 100%);
+                transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+                z-index: 2;
+            }
+            .assessment-progress-dock__fill--mini {
+                background: linear-gradient(90deg, #f1c40f 0%, var(--brand-gold) 55%, var(--brand-violet) 100%);
+            }
+            .assessment-progress-dock__meta {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px 10px;
+                margin-top: 0;
+                font-size: 0.68rem;
+                color: #64748b;
+                flex: 0 0 auto;
+            }
+            .assessment-progress-dock__meta span {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .assessment-progress-dock__meta i {
+                color: var(--brand-violet);
+                font-size: 0.75rem;
+            }
+            .assessment-progress-dock__hint {
+                margin-left: auto;
+                color: #94a3b8;
+                font-size: 0.75rem;
+            }
+            @media (max-width: 768px) {
+                .assessment-progress-dock__inner {
+                    padding: 6px 10px 7px;
+                }
+                .assessment-progress-dock__head {
+                    grid-template-columns: 1fr auto;
+                    grid-template-rows: auto auto;
+                }
+                .assessment-progress-dock__title {
+                    grid-column: 1;
+                    grid-row: 1;
+                }
+                .assessment-progress-dock__pct-wrap {
+                    grid-column: 2;
+                    grid-row: 1;
+                    text-align: right;
+                }
+                .assessment-progress-dock__track {
+                    grid-column: 1 / -1;
+                    grid-row: 2;
+                    margin-top: 4px;
+                }
+                .assessment-gamify-callout span {
+                    white-space: normal;
+                }
+                .assessment-progress-dock__footer {
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+                .assessment-progress-dock__meta {
+                    width: 100%;
+                }
+            }
+
+            /* 1. WIZARD (ABAS SUPERIORES) */
+            .wizard-progress {
+                position: sticky;
+                top: 0;
+                z-index: 9;
+                background: #ffffff;
+                padding: 8px 10px;
+                border-bottom: 2px solid #e8e4f3;
+                box-shadow: 0 2px 4px -1px rgba(91, 53, 217, 0.06);
+                display: flex;
+                justify-content: space-between;
+                gap: 6px;
+                margin-bottom: 12px;
+            }
+            .step-indicator {
+                flex: 1;
+                text-align: center;
+                padding: 5px 4px;
+                font-size: 0.78rem;
+                color: #94a3b8;
+                font-weight: 600;
+                border-bottom: 3px solid #e8e4f3;
+                transition: all 0.3s;
+                cursor: pointer;
+            }
+            .step-indicator.active {
+                color: var(--brand-violet-dark);
+                border-bottom-color: var(--brand-violet);
+                font-weight: bold;
+            }
+
+            /* Trava visual para abas bloqueadas */
+            .step-indicator.locked {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            .step-indicator.locked::after {
+                content: " \f023";
+                font-family: "Font Awesome 5 Free";
+                font-weight: 900;
+                font-size: 0.7rem;
+            }
+
+            /* 2. ESTRUTURA DAS QUESTÕES */
+            .question-item {
+                position: relative;
+                z-index: 1;
+                border-bottom: 2px solid #cbd5e1;
+                padding: 14px 12px;
+                margin-bottom: 0;
+                transition: all 0.3s ease;
+                background: #fff;
+            }
+
+
+
+            /* Efeito visual ao focar na pergunta */
+            .question-item:focus-within {
+                border-left: 6px solid var(--brand-violet);
+                background-color: #faf8ff;
+                box-shadow: inset 0 0 10px rgba(112, 96, 240, 0.04);
+            }
+
+            .question-item:last-of-type {
+                border-bottom: none;
+            }
+
+            .question-item h4 {
+                color: #1e293b;
+                font-size: 1.02rem;
+                margin-bottom: 8px;
+                line-height: 1.4;
+                font-weight: 600;
+            }
+
+            /* 3. GRADE DE RESPOSTAS COMPACTA */
+            .rubricas-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 4px 14px;
+                margin-top: 6px;
+            }
+
+            .rubrica-option {
+                display: flex;
+                align-items: center;
+                cursor: pointer;
+                position: relative;
+                padding: 4px 0;
+            }
+
+            .rubrica-option input {
+                margin-right: 8px;
+                width: 16px;
+                height: 16px;
+                cursor: pointer;
+                flex-shrink: 0;
+            }
+
+            .label-text {
+                font-size: 0.82rem;
+                color: #475569;
+                line-height: 1.15;
+            }
+
+            /* Campo Qualitativo */
+            .qualitative-box {
+                margin-top: 15px;
+                padding: 12px;
+                background: #f1f5f9;
+                border-radius: 8px;
+                border: 1px dashed #cbd5e1;
+            }
+            .quali-textarea {
+                width: 100%;
+                min-height: 80px;
+                padding: 10px;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                font-family: inherit;
+                font-size: 0.9rem;
+                resize: vertical;
+            }
+
+            /* 4. TOOLTIP */
+            .rubrica-tooltip {
+                visibility: hidden;
+                width: 320px;
+                background-color: #1e293b;
+                color: #ffffff;
+                text-align: left;
+                border-radius: 6px;
+                padding: 12px;
+                position: absolute;
+                z-index: 100;
+                bottom: 125%;
+                left: 0;
+                opacity: 0;
+                        transition: opacity 0.2s;
+                font-size: 0.8rem;
+                line-height: 1.4;
+                pointer-events: none;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+            }
+
+            .rubrica-option:hover .rubrica-tooltip {
+                visibility: visible;
+                opacity: 1;
+            }
+
+            /* Botões */
+            .submit-btn {
+                padding: 10px 20px;
+                border-radius: 6px;
+                border: none;
+                cursor: pointer;
+                font-weight: bold;
+                background: linear-gradient(135deg, var(--brand-violet) 0%, var(--brand-violet-dark) 100%);
+                color: white;
+                transition: all 0.3s;
+            }
+            .submit-btn:hover:not(:disabled) {
+                filter: brightness(1.06);
+                box-shadow: 0 4px 12px rgba(112, 96, 240, 0.35);
+            }
+            .submit-btn:disabled {
+                background-color: #cbd5e1;
+                cursor: not-allowed;
+            }
+
+            /* Botão de Conversão Estilo Gênese */
+            .btn-conversion {
+                background: linear-gradient(135deg, #d4af37 0%, #f1c40f 100%);
+                color: #000 !important;
+                padding: 12px 30px;
+                font-size: 1.1rem;
+                box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+            }
+            .btn-conversion:hover {
+                transform: scale(1.03);
+            }
+
+            /* MODAL FIX */
+            #modalContexto {
+                display: none;
+                position: fixed;
+                z-index: 9999;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.6);
+                overflow-y: auto;
+            }
+            .modal-content-wrap {
+                background-color: white;
+                margin: 5% auto;
+                padding: 25px;
+                width: 50%;
+                border-radius: 12px;
+            }
+
+            .step-indicator.locked {
+                opacity: 0.5;
+                cursor: not-allowed;
+                pointer-events: none;
+            }
+
+            /* ——— IA Master conversacional ——— */
+            .assessment-mode-toggle {
+                display: flex;
+                gap: 6px;
+                margin: 6px 0 8px;
+            }
+            .assessment-mode-toggle button {
+                padding: 6px 12px;
+                border-radius: 999px;
+                border: 1px solid #e8e4f3;
+                background: #fff;
+                color: #64748b;
+                font-weight: 600;
+                font-size: 0.85rem;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .ia-master-locked-panel {
+                display: none;
+                padding: 28px 24px;
+                border-radius: 16px;
+                background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+                border: 1px solid rgba(112, 96, 240, 0.25);
+                text-align: center;
+                margin-bottom: 16px;
+            }
+            .ia-master-locked-panel.is-visible { display: block; }
+            .ia-master-locked-panel h3 {
+                margin: 0 0 10px;
+                color: #5B35D9;
+                font-size: 1.05rem;
+            }
+            .ia-master-locked-panel p {
+                margin: 0;
+                color: #64748b;
+                font-size: 0.88rem;
+                line-height: 1.55;
+                max-width: 560px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .assessment-mode-toggle button.is-locked {
+                opacity: 0.45;
+                cursor: not-allowed;
+                pointer-events: none;
+            }
+            .assessment-mode-toggle button.active {
+                background: linear-gradient(135deg, #7060F0, #5B35D9);
+                color: #fff;
+                border-color: transparent;
+            }
+            #ia-master-chat {
+                display: flex;
+                flex-direction: column;
+                min-height: 420px;
+                max-height: calc(100vh - 280px);
+                background: #fff;
+                border: 1px solid rgba(112, 96, 240, 0.2);
+                border-radius: 16px;
+                box-shadow: 0 8px 32px rgba(91, 53, 217, 0.08);
+                margin-bottom: 24px;
+                overflow: hidden;
+            }
+            .ia-master-chat__head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 14px 18px;
+                background: linear-gradient(90deg, #5B35D9, #7060F0);
+                color: #fff;
+            }
+            .ia-master-chat__head h3 {
+                margin: 0;
+                font-size: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            #ia-master-badge {
+                font-size: 0.72rem;
+                background: rgba(255,255,255,0.2);
+                padding: 4px 10px;
+                border-radius: 999px;
+            }
+            #ia-master-coverage-hint {
+                font-size: 0.78rem;
+                opacity: 0.9;
+            }
+            #ia-master-messages {
+                flex: 1;
+                overflow-y: auto;
+                padding: 18px;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+                background: #faf8ff;
+            }
+            .ia-master-msg { max-width: 88%; }
+            .ia-master-msg--assistant { align-self: flex-start; }
+            .ia-master-msg--user { align-self: flex-end; }
+            .ia-master-msg__badge {
+                display: inline-block;
+                font-size: 0.68rem;
+                font-weight: 700;
+                color: #92650a;
+                background: rgba(212, 175, 55, 0.15);
+                padding: 2px 8px;
+                border-radius: 999px;
+                margin-bottom: 6px;
+            }
+            .ia-master-msg__bubble {
+                padding: 12px 16px;
+                border-radius: 14px;
+                line-height: 1.45;
+                font-size: 0.92rem;
+            }
+            .ia-master-msg--assistant .ia-master-msg__bubble {
+                background: #fff;
+                border: 1px solid #e8e4f3;
+                color: #1e293b;
+                border-bottom-left-radius: 4px;
+            }
+            .ia-master-msg--user .ia-master-msg__bubble {
+                background: linear-gradient(135deg, #7060F0, #5B35D9);
+                color: #fff;
+                border-bottom-right-radius: 4px;
+            }
+            #ia-master-deduction {
+                display: none;
+                margin: 0 18px 12px;
+                padding: 14px;
+                background: linear-gradient(90deg, rgba(241,196,15,0.12), rgba(112, 96, 240,0.08));
+                border: 1px dashed rgba(212, 175, 55, 0.5);
+                border-radius: 12px;
+            }
+            #ia-master-deduction-headline { font-weight: 700; color: #5B35D9; margin: 0 0 6px; font-size: 0.9rem; }
+            #ia-master-deduction-count { font-size: 0.8rem; color: #64748b; margin: 0 0 12px; }
+            .ia-master-deduction__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+            .ia-master-deduction__actions button {
+                padding: 10px 18px;
+                border-radius: 8px;
+                border: none;
+                font-weight: 700;
+                cursor: pointer;
+                font-size: 0.85rem;
+            }
+            #ia-master-confirm {
+                background: linear-gradient(135deg, #22c55e, #16a34a);
+                color: #fff;
+            }
+            #ia-master-reject {
+                background: #f1f5f9;
+                color: #475569;
+                border: 1px solid #e2e8f0 !important;
+            }
+            .ia-master-chat__footer {
+                padding: 14px 18px;
+                border-top: 1px solid #e8e4f3;
+                background: #fff;
+            }
+            .ia-master-chat__input-row {
+                display: flex;
+                gap: 10px;
+                align-items: flex-end;
+            }
+            #ia-master-input {
+                flex: 1;
+                min-height: 44px;
+                max-height: 120px;
+                padding: 10px 14px;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                resize: vertical;
+                font-family: inherit;
+                font-size: 0.9rem;
+            }
+            #ia-master-input:focus {
+                outline: none;
+                border-color: #7060F0;
+                box-shadow: 0 0 0 3px rgba(112, 96, 240, 0.15);
+            }
+            #ia-master-send {
+                padding: 10px 20px;
+                border: none;
+                border-radius: 12px;
+                background: linear-gradient(135deg, #7060F0, #5B35D9);
+                color: #fff;
+                font-weight: 700;
+                cursor: pointer;
+            }
+            .ia-master-chat__finalize {
+                margin-top: 10px;
+                text-align: right;
+            }
+            #ia-master-finalize {
+                padding: 10px 22px;
+                border: none;
+                border-radius: 999px;
+                background: linear-gradient(135deg, #d4af37, #f1c40f);
+                color: #1e293b;
+                font-weight: 800;
+                cursor: pointer;
+            }
+            #ia-master-finalize:disabled {
+                opacity: 0.45;
+                cursor: not-allowed;
+            }
+
+            /* Ditado por voz (padrão MudaEdu) */
+            #evaluation-page .btn-voz-campo {
+                background: #f5f3ff;
+                border: 1px solid #ddd6fe;
+                color: #5b21b6;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 12px;
+                border-radius: 999px;
+                font-weight: 700;
+                font-size: 0.75rem;
+                flex-shrink: 0;
+            }
+            #evaluation-page .btn-voz-campo.mic-voz-ouvindo {
+                background: #fef2f2;
+                border-color: #ef4444;
+                color: #b91c1c;
+                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+            }
+            #evaluation-page .btn-voz-campo.mic-voz-ouvindo .mic-label {
+                font-weight: 800;
+            }
+            #evaluation-page textarea.ditado-ativo,
+            #evaluation-page #ia-master-input.ditado-ativo {
+                border-color: #7060F0 !important;
+                box-shadow: 0 0 0 0.2rem rgba(112, 96, 240, 0.12);
+            }
+            #evaluation-page textarea.ditado-recebeu,
+            #evaluation-page #ia-master-input.ditado-recebeu {
+                border-color: #059669 !important;
+                box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.18);
+            }
+            #assessment-ditado-status {
+                font-size: 0.78rem;
+                color: #64748b;
+                min-height: 1.2rem;
+                margin: 0 0 6px;
+            }
+            #ditado-stop-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                flex-wrap: wrap;
+                padding: 10px 14px;
+                margin: 0 0 12px;
+                border-radius: 12px;
+                background: linear-gradient(90deg, rgba(239, 68, 68, 0.1), rgba(112, 96, 240, 0.08));
+                border: 1px solid rgba(239, 68, 68, 0.35);
+                animation: ditado-pulse-bar 1.6s ease-in-out infinite;
+            }
+            #ditado-stop-bar[hidden] {
+                display: none !important;
+            }
+            @keyframes ditado-pulse-bar {
+                0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.15); }
+                50%      { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.05); }
+            }
+            #ditado-stop-bar__hint {
+                font-size: 0.82rem;
+                color: #5B35D9;
+                font-weight: 600;
+            }
+            #ditado-stop-bar__hint kbd {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 6px;
+                background: #fff;
+                border: 1px solid #e2e8f0;
+                font-size: 0.78rem;
+                font-weight: 800;
+                color: #b91c1c;
+            }
+            .btn-ditado-stop {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 999px;
+                background: linear-gradient(135deg, #ef4444, #dc2626);
+                color: #fff;
+                font-weight: 800;
+                font-size: 0.82rem;
+                cursor: pointer;
+                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+            }
+            .btn-ditado-stop:hover {
+                filter: brightness(1.05);
+            }
+            .quali-voz-toolbar {
+                display: flex;
+                justify-content: flex-end;
+                margin-bottom: 6px;
+            }
+            .ia-master-voz-row {
+                display: flex;
+                justify-content: flex-end;
+                margin-bottom: 6px;
+            }
+        </style>
+
+        <div id="assessment-progress-dock" class="assessment-progress-dock" role="region" aria-label="Progresso do questionário" aria-live="polite">
+            <div class="assessment-progress-dock__inner">
+                <div class="assessment-progress-dock__head">
+                    <div class="assessment-progress-dock__title">
+                        <span id="assessment-progress-mode" class="assessment-progress-dock__badge assessment-progress-dock__badge--mini">
+                            <i class="fas fa-bolt"></i> Mini diagnóstico
+                        </span>
+                    </div>
+                    <div class="assessment-progress-dock__track" aria-hidden="true">
+                        <div class="assessment-progress-dock__milestones">
+                            <span style="left:25%"></span>
+                            <span style="left:50%"></span>
+                            <span style="left:75%"></span>
+                        </div>
+                        <div id="assessment-progress-fill" class="assessment-progress-dock__fill assessment-progress-dock__fill--mini"></div>
+                    </div>
+                    <div class="assessment-progress-dock__pct-wrap">
+                        <span id="assessment-progress-pct" class="assessment-progress-dock__pct">0%</span>
+                        <span id="assessment-progress-count" class="assessment-progress-dock__count">0 de <%= totalPresurvey %> questões</span>
+                    </div>
+                </div>
+                <div class="assessment-progress-dock__footer">
+                    <div class="assessment-gamify-strip">
+                        <div id="assessment-gamify-badges" class="assessment-gamify-badges" aria-label="Conquistas"></div>
+                        <div id="assessment-gamify-callout" class="assessment-gamify-callout">
+                            <i class="fas fa-medal"></i>
+                            <span id="assessment-gamify-callout-text">Responda a 1ª questão para desbloquear seu primeiro badge.</span>
+                        </div>
+                    </div>
+                    <div class="assessment-progress-dock__meta">
+                        <span><i class="fas fa-flag-checkered"></i> <span id="assessment-progress-status" class="assessment-progress-dock__status">Não iniciado</span></span>
+                        <span><i class="fas fa-tachometer-alt"></i> <span id="assessment-progress-pace">Ritmo: aguardando 1ª resposta</span></span>
+                        <span><i class="fas fa-clock"></i> <span id="assessment-progress-time">~3 min restantes</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="evaluation-page-body" class="evaluation-page-body">
+
+        <h2><%= modoRestrito ? 'Diagnóstico Inicial de Maturidade' : 'Questionário de Avaliação de Maturidade' %></h2>
+
+        <div id="assessment-mode-toggle" class="assessment-mode-toggle" role="tablist">
+            <button type="button" class="<%= chatIaMasterBloqueado ? '' : 'active' %><%= chatIaMasterBloqueado ? ' is-locked' : '' %>"
+                    data-mode="chat" <%= chatIaMasterBloqueado ? 'disabled aria-disabled="true"' : '' %>>
+                <i class="fas fa-comments"></i> Consultor LeAction Master — Conversacional
+            </button>
+            <button type="button" class="<%= chatIaMasterBloqueado ? 'active' : '' %>" data-mode="classic">
+                <i class="fas fa-list-ul"></i> <%= modoRestrito ? ('Modo detalhado (' + totalPresurvey + ' questões — 1ª aba)') : 'Modo detalhado (162 indicadores)' %>
+            </button>
+        </div>
+
+        <div id="ia-master-locked-panel" class="ia-master-locked-panel <%= chatIaMasterBloqueado ? 'is-visible' : '' %>">
+            <h3><i class="fas fa-lock"></i> Modo conversacional indisponível</h3>
+            <p>
+                Seu <strong>relatório preliminar</strong> já foi gerado. O Consultor LeAction Master conversacional será liberado novamente
+                após a <strong>contratação do plano</strong>, para o assessment completo (162 indicadores).
+                Enquanto isso, consulte suas respostas no modo detalhado ou abra o relatório preliminar no menu.
+            </p>
+        </div>
+        <div id="assessment-ditado-status" role="status" aria-live="polite"></div>
+        <div id="ditado-stop-bar" hidden aria-hidden="true">
+            <span id="ditado-stop-bar__hint">
+                <i class="fas fa-circle" style="color:#ef4444;font-size:0.55rem;vertical-align:middle;"></i>
+                Gravando — diga <kbd>fim</kbd> ou clique para parar
+            </span>
+            <button type="button" class="btn-ditado-stop" data-ditado-action="stop">
+                <i class="fas fa-stop"></i> Parar ditado
+            </button>
+        </div>
+
+        <div id="ia-master-chat"
+             data-maturity-id="<%= maturityData.id_matu %>"
+             data-is-mini="<%= modoRestrito ? 'true' : 'false' %>"
+             data-chat-locked="<%= chatIaMasterBloqueado ? 'true' : 'false' %>"
+             style="<%= chatIaMasterBloqueado ? 'display:none !important;' : '' %>">
+            <div class="ia-master-chat__head">
+                <h3><i class="fas fa-brain"></i> Consultor LeAction Master — Game Master Estratégico</h3>
+                <div style="text-align:right;">
+                    <span id="ia-master-badge">Preparando partida…</span>
+                    <div id="ia-master-coverage-hint"><%= modoRestrito ? ('0 de ' + totalPresurvey + ' questões da 1ª aba') : '0 de 162 indicadores' %></div>
+                </div>
+            </div>
+            <div id="ia-master-messages" aria-live="polite"></div>
+            <div id="ia-master-deduction">
+                <p id="ia-master-deduction-headline"></p>
+                <p id="ia-master-deduction-count"></p>
+                <div class="ia-master-deduction__actions">
+                    <button type="button" id="ia-master-confirm"><i class="fas fa-check"></i> Acertou — registrar bloco</button>
+                    <button type="button" id="ia-master-reject"><i class="fas fa-edit"></i> Ajustar realidade</button>
+                </div>
+            </div>
+            <div class="ia-master-chat__footer">
+                <div class="ia-master-voz-row">
+                    <button type="button" class="btn-voz-campo" data-voz-target="ia-master-input" aria-label="Ditado por voz">
+                        <i class="fas fa-microphone"></i>
+                        <span class="mic-label">Ditado</span>
+                    </button>
+                </div>
+                <div class="ia-master-chat__input-row">
+                    <textarea id="ia-master-input" rows="2" placeholder="Sua resposta ao Consultor LeAction Master…"></textarea>
+                    <button type="button" id="ia-master-send"><i class="fas fa-paper-plane"></i> Enviar</button>
+                </div>
+                <div class="ia-master-chat__finalize">
+                    <% if (modoRestrito) { %>
+                    <p style="font-size:0.78rem;color:#64748b;margin:0 0 8px;text-align:center;">
+                        Após responder as <%= totalPresurvey %> questões da 1ª aba (modo detalhado), gere o relatório preliminar.
+                        As demais abas permanecem bloqueadas até contratar o plano.
+                    </p>
+                    <button type="button" id="ia-master-finalize" disabled title="Complete as questões da 1ª aba no modo detalhado">
+                        <i class="fas fa-magic"></i> Gerar diagnóstico preliminar
+                    </button>
+                    <% } else { %>
+                    <button type="button" id="ia-master-finalize" disabled title="Complete todos os indicadores antes de finalizar">
+                        <i class="fas fa-flag-checkered"></i> Finalizar assessment (100% obrigatório)
+                    </button>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <div id="evaluation-classic-panel" style="<%= chatIaMasterBloqueado ? 'display:block;' : 'display:none;' %>">
+
+        <div class="wizard-progress">
+            <div class="step-indicator active" data-step="0">Como Estou Agora?</div>
+            <div class="step-indicator <%= modoRestrito ? 'locked' : '' %>" data-step="1">1. Educação</div>
+            <div class="step-indicator <%= modoRestrito ? 'locked' : '' %>" data-step="2">2. Estratégia/Pessoas</div>
+            <div class="step-indicator <%= modoRestrito ? 'locked' : '' %>" data-step="3">3. Estrutura/Tecnologia</div>
+            <div class="step-indicator <%= modoRestrito ? 'locked' : '' %>" data-step="4">4. Visão Geral</div>
+        </div>
+
+        <form id="evaluationForm"
+              data-maturity-id="<%= maturityData.id_matu %>"
+              data-restricted="<%= modoRestrito %>"
+              data-mini-total="<%= questions.filter(q => q.presurvey_ques === true || q.presurvey_ques === 'true').length %>"
+              data-full-total="162"
+              data-saved-ids="<%= Object.keys(savedAnswers || {}).join(',') %>">
+            <% if (questions && questions.length > 0) { %>
+                <%
+                   let visualNumber = 1;
+                   const renderQuestion = (question) => {
+                       const rawPrefu = (question.prefu_ques || '').toString().trim().toUpperCase();
+                       const tipoText = (rawPrefu === 'P') ? 'Pres' : 'Fut';
+
+                       const saved = savedAnswers[question.id_ques] || { grad: null, text: '', hasAnswer: false };
+
+                       const temRubricas = question.rubricas && question.rubricas.length > 0;
+                       const isPreSurvey = question.presurvey_ques === true || question.presurvey_ques === 'true';
+                       const instrucaoQuali = question.quali_ques && question.quali_ques.trim() !== '';
+                %>
+                    <div class="question-item"
+                         data-question-id="<%= question.id_ques %>"
+                         data-dim-id="<%= question.id_dime %>"
+                         data-doma-id="<%= question.id_doma %>"
+                         data-prefu="<%= rawPrefu %>"
+                         data-presurvey="<%= isPreSurvey ? 'true' : 'false' %>">
+
+                        <h4><%= visualNumber++ %>. <%= question.desc_ques %>
+                            <span style="font-weight: normal; color: <%= rawPrefu === 'F' ? '#b45309' : '#64748b' %>; font-size: 0.75rem;">[<%= tipoText %>]</span>
+                        </h4>
+
+                        <% if (temRubricas) { %>
+                        <div class="rubricas-grid">
+                            <% question.rubricas.forEach(rubrica => { %>
+                                <label class="rubrica-option">
+                                    <input type="radio"
+                                           name="question-<%= question.id_ques %>"
+                                           value="<%= rubrica.grad_rubr %>"
+                                           <%= (saved.hasAnswer && Number(saved.grad) === Number(rubrica.grad_rubr)) ? 'checked' : '' %>
+                                           required>
+                                    <span class="label-text"><%= rubrica.label_rubr %></span>
+                                    <div class="rubrica-tooltip">
+                                        <strong><%= rubrica.label_rubr %>:</strong><br>
+                                        <%= rubrica.desc_rubr %>
+                                    </div>
+                                </label>
+                            <% }); %>
+
+                            <label class="rubrica-option">
+                                <input type="radio" name="question-<%= question.id_ques %>" value="na" <%= (saved.grad === null && saved.hasAnswer) ? 'checked' : '' %>>
+                                <span class="label-text" style="color: #94a3b8; font-style: italic;">N/A (Não se aplica)</span>
+                                <div class="rubrica-tooltip">Informação indisponível ou processo inexistente.</div>
+                            </label>
+                        </div>
+                        <% } %>
+
+                        <%
+                           if (!isPreSurvey && (!temRubricas || instrucaoQuali)) {
+                        %>
+                            <div class="qualitative-box">
+                                <label style="font-size: 0.85rem; font-weight: bold; color: #7060F0; display: block; margin-bottom: 5px;">
+                                    <i class="fas fa-edit"></i> Evidências e Contexto:
+                                    <span style="font-weight: normal; color: #64748b; font-style: italic;">
+                                        (Palavras-chave: <%= question.insight_chave || 'Geral' %>)
+                                    </span>
+                                </label>
+                                <% if (instrucaoQuali) { %>
+                                    <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 8px;"><%= question.quali_ques %></p>
+                                <% } %>
+                                <div class="quali-voz-toolbar">
+                                    <button type="button" class="btn-voz-campo"
+                                            data-voz-target="quali-field-<%= question.id_ques %>"
+                                            aria-label="Ditado por voz para evidências">
+                                        <i class="fas fa-microphone"></i>
+                                        <span class="mic-label">Ditado</span>
+                                    </button>
+                                </div>
+                                <textarea
+                                    id="quali-field-<%= question.id_ques %>"
+                                    name="quali_ques-<%= question.id_ques %>"
+                                    class="quali-textarea"
+                                    placeholder="Descreva aqui os detalhes práticos para análise do Consultor LeAction…"><%= saved.text %></textarea>
+                            </div>
+                        <% } %>
+                    </div>
+                <% } %>
+
+                <div class="wizard-step active" id="step-0">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem; color: #5B35D9;">Diagnóstico Inicial (Pre-Survey)</h3>
+                    <% questions.filter(q => q.presurvey_ques === true || q.presurvey_ques === 'true').forEach(renderQuestion); %>
+
+                    <div style="text-align:right; margin-top: 25px;">
+                        <% if (modoRestrito) { %>
+                            <button type="button" class="submit-btn btn-conversion"
+                                    onclick="finalizarEGerarDiagnosticoInicial('<%= maturityData.id_matu %>', this)">
+                                <i class="fas fa-magic"></i> FINALIZAR E GERAR DIAGNÓSTICO PRELIMINAR &rarr;
+                            </button>
+                        <% } else { %>
+                            <button type="button" class="next-btn submit-btn">Próximo Passo</button>
+                        <% } %>
+                    </div>
+                </div>
+
+                <div class="wizard-step" id="step-1" style="display:none;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem;">1. Aprendizagem em Ação</h3>
+                    <% questions.filter(q => {
+                        const isPS = q.presurvey_ques === true || q.presurvey_ques === 'true';
+                        return !isPS && Number(q.id_dime) === 4;
+                    }).forEach(renderQuestion); %>
+                    <div style="display:flex; justify-content:space-between; margin-top: 25px;">
+                        <button type="button" class="prev-btn submit-btn" style="background:#64748b;">Anterior</button>
+                        <button type="button" class="next-btn submit-btn">Próximo Passo</button>
+                    </div>
+                </div>
+
+                <div class="wizard-step" id="step-2" style="display:none;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem;">2. Estratégia e Pessoas</h3>
+                    <% questions.filter(q => {
+                        const isPS = q.presurvey_ques === true || q.presurvey_ques === 'true';
+                        const setor = (q.setor_ques || '').toString().trim().toUpperCase();
+                        const dim = Number(q.id_dime);
+                        return !isPS && setor === 'EDUCACAO' && (dim === 1 || dim === 2) && dim !== 4;
+                    }).forEach(renderQuestion); %>
+                    <div style="display:flex; justify-content:space-between; margin-top: 25px;">
+                        <button type="button" class="prev-btn submit-btn" style="background:#64748b;">Anterior</button>
+                        <button type="button" class="next-btn submit-btn">Próximo Passo</button>
+                    </div>
+                </div>
+
+                <div class="wizard-step" id="step-3" style="display:none;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem;">3. Estrutura e Tecnologia</h3>
+                    <% questions.filter(q => {
+                        const isPS = q.presurvey_ques === true || q.presurvey_ques === 'true';
+                        const setor = (q.setor_ques || '').toString().trim().toUpperCase();
+                        const dim = Number(q.id_dime);
+                        return !isPS && setor === 'EDUCACAO' && (dim === 3 || dim === 5) && dim !== 4;
+                    }).forEach(renderQuestion); %>
+                    <div style="display:flex; justify-content:space-between; margin-top: 25px;">
+                        <button type="button" class="prev-btn submit-btn" style="background:#64748b;">Anterior</button>
+                        <button type="button" class="next-btn submit-btn">Próximo Passo</button>
+                    </div>
+                </div>
+
+                <div class="wizard-step" id="step-4" style="display:none;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem;">4. Visão Geral e Fundamentos</h3>
+                    <% questions.filter(q => {
+                        const isPS = q.presurvey_ques === true || q.presurvey_ques === 'true';
+                        const dim = Number(q.id_dime);
+                        const setor = (q.setor_ques || '').toString().trim().toUpperCase();
+                        return !isPS && setor !== 'EDUCACAO' && dim !== 4;
+                    }).forEach(renderQuestion); %>
+
+                    <div id="statusFuture" style="margin-bottom: 10px; font-weight: bold;"></div>
+
+                    <div style="display:flex; justify-content:space-between; margin-top: 25px;">
+                        <button type="button" class="prev-btn submit-btn" style="background:#64748b;">Anterior</button>
+                        <button type="button" class="submit-btn future-submit-btn">Finalizar e Gerar Diagnóstico</button>
+                    </div>
+                </div>
+            <% } %>
+        </form>
+        </div><!-- /evaluation-classic-panel -->
+
+        </div><!-- /evaluation-page-body -->
+
+        <script src="/js/voz-ditado.js"></script>
+        <script src="/js/assessment-ia-master.js" defer></script>
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.initPanelDxVozDitado) {
+                initPanelDxVozDitado('assessment', {
+                    root: '#evaluation-page',
+                    statusEl: '#assessment-ditado-status',
+                    stopBarEl: '#ditado-stop-bar',
+                    onError: function (msg) {
+                        var el = document.getElementById('assessment-ditado-status');
+                        if (el) el.textContent = msg;
+                    }
+                });
+            }
+        });
+        </script>
+    </div>
+</div>
+
+<div id="modalContexto">
+    <div class="modal-content-wrap">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="margin:0;">Meus Dados - Análise de Contexto</h3>
+            <button type="button" onclick="document.getElementById('modalContexto').style.display='none'" style="background:none; border:none; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        <hr>
+        <form id="formContexto" onsubmit="submeterContexto(event)">
+             <p class="text-sm text-gray-600 mb-4">Confirme as informações básicas da instituição para análise da IA.</p>
+             <div style="text-align:right; margin-top: 20px;">
+                 <button type="submit" class="submit-btn">Salvar Alterações</button>
+             </div>
+        </form>
+    </div>
+</div>
+
+<script>
+async function submeterContexto(event) {
+    event.preventDefault();
+    const form = document.getElementById('formContexto');
+    const formData = new FormData(form);
+    const payload = Object.fromEntries(formData.entries());
+
+    try {
+        const res = await fetch('/api/client/update-context', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("Falha ao salvar dados de contexto.");
+
+        alert("Dados salvos com sucesso!");
+        document.getElementById('modalContexto').style.display = 'none';
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao salvar. Verifique sua conexão.");
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('evaluationForm');
+    const isRestricted = form.getAttribute('data-restricted') === 'true';
+
+    if (isRestricted) {
+        const nextButtons = document.querySelectorAll('.next-btn');
+        nextButtons.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const currentStep = this.closest('.wizard-step').id;
+                if (currentStep === 'step-0') {
+                    e.stopImmediatePropagation();
+                }
+            }, true);
+        });
+    }
+});
+</script>

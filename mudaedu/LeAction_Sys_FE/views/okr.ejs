@@ -1,0 +1,516 @@
+﻿<%
+    const listaDirecionadores = locals.direcionadores || [];
+    const gamificacao = locals.gamificacao || { nivel: 1, xp: 0, xpNoNivel: 0, xpProximo: 400, progressoMedio: 0, badges: [], totalObj: 0, totalKr: 0, fixosComObj: 0, totalFixos: 5 };
+    const comentariosPorEntidade = locals.comentariosPorEntidade || {};
+    const idClienteMestre = locals.id_clie || (locals.lead && lead.id_clie) || (locals.user && user.id_clie) || '';
+    const eReadOnly = !!locals.readOnly;
+    const nomeGestor = (locals.user && (user.nome || user.name)) || (locals.lead && lead.nome) || 'Gestor';
+    const qsClieOkr = idClienteMestre ? ('?id_clie=' + idClienteMestre) : '';
+    const urlMatrizOkr = '/planejamento-estrategico' + qsClieOkr;
+    const urlCockpitOkr = '/planejamento-estrategico/cockpit' + qsClieOkr;
+
+    function comentariosDe(tipo, id) {
+        const key = tipo + ':' + id;
+        return comentariosPorEntidade[key] || [];
+    }
+%>
+
+<style>
+    :root {
+        --ck-ink: #0f172a;
+        --ck-muted: #64748b;
+        --ck-line: #e2e8f0;
+        --ck-surface: #ffffff;
+        --ck-bg: #f4f6fb;
+        --ck-accent: #1d4ed8;
+        --ck-accent-soft: #dbeafe;
+        --ck-good: #059669;
+        --ck-warn: #d97706;
+    }
+    #okr-strategic-page { max-width: 1180px; margin: 0 auto; }
+    .ck-hero {
+        display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; justify-content: space-between;
+        padding: 8px 0 18px; border-bottom: 1px solid var(--ck-line); margin-bottom: 22px;
+    }
+    .ck-hero h1 { margin: 0; font-size: 1.55rem; color: var(--ck-ink); font-weight: 800; letter-spacing: -0.02em; }
+    .ck-hero p { margin: 6px 0 0; color: var(--ck-muted); font-size: 0.92rem; max-width: 52ch; }
+    .ck-summary {
+        display: grid; grid-template-columns: repeat(4, minmax(90px, 1fr)); gap: 10px; min-width: min(100%, 420px);
+    }
+    .ck-summary__item {
+        background: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 12px; padding: 10px 12px;
+    }
+    .ck-summary__item strong { display: block; font-size: 1.25rem; color: var(--ck-ink); line-height: 1.1; }
+    .ck-summary__item span { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ck-muted); font-weight: 700; }
+    .ck-toolbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-bottom: 16px; }
+    .ck-pillars {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;
+        margin-bottom: 18px;
+    }
+    .ck-pillar {
+        border: 1px solid var(--ck-line); border-radius: 12px; background: #fff; padding: 12px 14px;
+        display: flex; flex-direction: column; gap: 8px;
+    }
+    .ck-pillar__name { margin: 0; font-size: 0.92rem; font-weight: 800; color: var(--ck-ink); }
+    .ck-pillar__meta { margin: 0; font-size: 0.75rem; color: var(--ck-muted); }
+    .ck-pillar__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+    .ck-btn-sm {
+        display: inline-flex; align-items: center; gap: 5px;
+        border: 1px solid var(--ck-line); background: #f8fafc; color: #334155;
+        border-radius: 8px; padding: 5px 9px; font-size: 0.72rem; font-weight: 700; cursor: pointer;
+    }
+    .ck-btn-sm--primary { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+    .ck-btn-sm--warn { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+    .ck-btn-sm--danger { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .ck-obj {
+        background: var(--ck-surface); border: 1px solid var(--ck-line); border-radius: 16px;
+        margin-bottom: 18px; overflow: hidden; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    }
+    .ck-obj__head {
+        display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; align-items: center;
+        padding: 18px 20px; border-bottom: 1px solid var(--ck-line);
+        background: linear-gradient(180deg, #fafbff 0%, #fff 100%);
+    }
+    .ck-obj__path {
+        font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--ck-accent); margin-bottom: 4px;
+    }
+    .ck-obj__title { margin: 0; font-size: 1.18rem; color: var(--ck-ink); font-weight: 800; letter-spacing: -0.01em; }
+    .ck-obj__meta { margin: 4px 0 0; color: var(--ck-muted); font-size: 0.86rem; }
+    .ck-obj__side { display: flex; align-items: center; gap: 12px; }
+    .ck-ring {
+        --pct: 0deg;
+        width: 72px; height: 72px; border-radius: 50%;
+        background: conic-gradient(var(--ck-accent) var(--pct), #e8edf5 0);
+        display: grid; place-items: center; flex-shrink: 0;
+    }
+    .ck-ring span {
+        width: 54px; height: 54px; border-radius: 50%; background: #fff;
+        display: grid; place-items: center; font-weight: 800; font-size: 0.85rem; color: var(--ck-ink);
+    }
+    .ck-krs {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;
+        padding: 16px 18px 18px;
+    }
+    .ck-kr {
+        border: 1px solid var(--ck-line); border-radius: 14px; padding: 14px;
+        display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: center;
+        background: #fcfdff; min-height: 118px;
+    }
+    .ck-kr__title { margin: 0 0 4px; font-size: 0.92rem; color: var(--ck-ink); font-weight: 700; line-height: 1.35; }
+    .ck-kr__metric { margin: 0; font-size: 0.78rem; color: var(--ck-muted); }
+    .ck-kr__vals {
+        display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 8px;
+        font-size: 0.75rem; color: var(--ck-muted);
+    }
+    .ck-kr__vals strong { color: var(--ck-ink); }
+    .ck-kr__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .ck-kr__actions .ck-btn-sm { font-size: 0.7rem; }
+    .ck-empty {
+        margin: 18px; padding: 22px; text-align: center; border: 1px dashed #cbd5e1; border-radius: 12px; color: var(--ck-muted);
+    }
+    .ck-icon-btn { background: none; border: none; cursor: pointer; padding: 4px; font-size: 0.88rem; }
+    .ck-icon-btn--edit { color: #2563eb; }
+    .ck-icon-btn--del { color: #dc2626; }
+    @media (max-width: 720px) {
+        .ck-summary { grid-template-columns: repeat(2, 1fr); width: 100%; }
+        .ck-kr { grid-template-columns: 64px 1fr; }
+    }
+</style>
+
+<%
+    const objetivosFlat = [];
+    listaDirecionadores.forEach(function (direc) {
+        (direc.objetivos || []).forEach(function (obj) {
+            let soma = 0;
+            let n = 0;
+            (obj.krs || []).forEach(function (kr) {
+                const totalMeta = Math.abs(kr.valor_alvo - kr.valor_inicial);
+                const atualProg = Math.abs(kr.valor_atual - kr.valor_inicial);
+                let pctKr = totalMeta > 0 ? (atualProg / totalMeta) * 100 : 0;
+                if (pctKr > 100) pctKr = 100;
+                kr._pct = Math.round(pctKr);
+                soma += pctKr;
+                n += 1;
+            });
+            objetivosFlat.push({
+                obj: obj,
+                direc: direc,
+                progresso: n ? Math.round(soma / n) : 0
+            });
+        });
+    });
+%>
+
+<%- include('partials/eo-view-tabs', { urlMatriz: urlMatrizOkr, urlCockpit: urlCockpitOkr, activeView: 'cockpit' }) %>
+
+<div class="main-content" id="okr-strategic-page" data-id-clie="<%= idClienteMestre %>" data-autor="<%= nomeGestor %>">
+
+    <header class="ck-hero">
+        <div>
+            <h1>Cockpit Estratégico</h1>
+            <p>Uma visão por objetivo: cada card agrupa os Key Results com o gráfico de acompanhamento correspondente.</p>
+        </div>
+        <div class="ck-summary" aria-label="Resumo">
+            <div class="ck-summary__item"><strong><%= gamificacao.totalObj %></strong><span>Objetivos</span></div>
+            <div class="ck-summary__item"><strong><%= gamificacao.totalKr %></strong><span>KRs</span></div>
+            <div class="ck-summary__item"><strong><%= gamificacao.progressoMedio %>%</strong><span>Evolução</span></div>
+            <div class="ck-summary__item"><strong>L<%= gamificacao.nivel %></strong><span><%= gamificacao.xp %> XP</span></div>
+        </div>
+    </header>
+
+    <% if (!eReadOnly) { %>
+    <div class="ck-toolbar">
+        <button class="btn-dash" onclick="abrirModalDirecionador()" style="padding:8px 14px;border-radius:8px;">
+            <i class="fas fa-plus"></i> Novo direcionador
+        </button>
+    </div>
+    <% } %>
+
+    <% if (listaDirecionadores.length) { %>
+    <section class="ck-pillars" aria-label="Direcionadores estratégicos">
+        <% listaDirecionadores.forEach(function (d) { %>
+        <article class="ck-pillar">
+            <p class="ck-pillar__name"><%= d.icone || '◎' %> <%= d.nome_direc %></p>
+            <p class="ck-pillar__meta">
+                <%= (d.objetivos || []).length %> objetivo(s)
+                · <%= d.is_catalogo_fixo ? 'Pilar MudaEdu' : 'Personalizado' %>
+            </p>
+            <% if (!eReadOnly) { %>
+            <div class="ck-pillar__actions">
+                <button type="button" class="ck-btn-sm ck-btn-sm--primary" onclick="abrirModalObjetivo('<%= d.id_direc %>')">
+                    <i class="fas fa-plus"></i> Objetivo
+                </button>
+                <% if (!d.is_catalogo_fixo) { %>
+                <button type="button" class="ck-btn-sm" onclick="prepararEdicaoDirecionador(this)"
+                    data-id="<%= d.id_direc %>"
+                    data-nome="<%= d.nome_direc %>"
+                    data-desc="<%= d.desc_direc || '' %>"
+                    data-kpi="<%= d.kpi_descricao || '' %>"
+                    data-receita="<%= d.meta_receita_alvo || 0 %>"
+                    data-custo="<%= d.meta_custo_alvo || 0 %>">
+                    <i class="fas fa-pencil-alt"></i> Editar
+                </button>
+                <button type="button" class="ck-btn-sm ck-btn-sm--danger" onclick="deletarEntidade('direcionadores', '<%= d.id_direc %>')">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                <% } else { %>
+                <span class="ck-pillar__meta">Catálogo (edite objetivos/KRs abaixo)</span>
+                <% } %>
+            </div>
+            <% } %>
+        </article>
+        <% }); %>
+    </section>
+    <% } %>
+
+    <% if (!objetivosFlat.length) { %>
+    <div class="ck-empty">
+        Nenhum objetivo de TD cadastrado. Use <strong>+ Objetivo</strong> em um direcionador acima.
+    </div>
+    <% } %>
+
+    <% objetivosFlat.forEach(function (item) {
+        const obj = item.obj;
+        const direc = item.direc;
+        const pctObj = item.progresso;
+        const degObj = Math.round((pctObj / 100) * 360);
+    %>
+    <article class="ck-obj" data-id-obj="<%= obj.id_obj_dt %>">
+        <header class="ck-obj__head">
+            <div style="flex:1;min-width:220px;">
+                <div class="ck-obj__path"><%= direc.icone || '◎' %> <%= direc.nome_direc %></div>
+                <h2 class="ck-obj__title"><%= obj.nome_obj %></h2>
+                <p class="ck-obj__meta">
+                    <%= (obj.krs || []).length %> KR<%= (obj.krs || []).length === 1 ? '' : 's' %>
+                    <% if (obj.kpi_descricao) { %> · KPI: <%= obj.kpi_descricao %><% } %>
+                </p>
+            </div>
+            <div class="ck-obj__side">
+                <div class="ck-ring" style="--pct: <%= degObj %>deg;" title="Progresso do objetivo">
+                    <span><%= pctObj %>%</span>
+                </div>
+                <% if (!eReadOnly) { %>
+                <div class="ck-pillar__actions" style="justify-content:flex-end;">
+                    <button type="button" class="ck-btn-sm" onclick="prepararEdicaoObjetivo(this)"
+                        data-id="<%= obj.id_obj_dt %>" data-id-direc="<%= direc.id_direc %>"
+                        data-nome="<%= obj.nome_obj %>" data-desc="<%= obj.desc_obj || '' %>" data-kpi="<%= obj.kpi_descricao || '' %>">
+                        <i class="fas fa-pencil-alt"></i> Editar objetivo
+                    </button>
+                    <button type="button" class="ck-btn-sm ck-btn-sm--danger" onclick="deletarEntidade('objetivos', '<%= obj.id_obj_dt %>')">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <button type="button" class="ck-btn-sm ck-btn-sm--warn" onclick="abrirModalKR('<%= obj.id_obj_dt %>')">
+                        <i class="fas fa-plus"></i> KR
+                    </button>
+                </div>
+                <% } %>
+            </div>
+        </header>
+
+        <% if (!(obj.krs || []).length) { %>
+        <div class="ck-empty" style="margin:14px;">Este objetivo ainda não tem Key Results.</div>
+        <% } else { %>
+        <div class="ck-krs">
+            <% obj.krs.forEach(function (kr) {
+                const deg = Math.round(((kr._pct || 0) / 100) * 360);
+                const ringColor = (kr._pct || 0) >= 70 ? 'var(--ck-good)' : ((kr._pct || 0) >= 35 ? 'var(--ck-warn)' : 'var(--ck-accent)');
+            %>
+            <div class="ck-kr">
+                <div class="ck-ring" style="--pct: <%= deg %>deg; background: conic-gradient(<%= ringColor %> <%= deg %>deg, #e8edf5 0);">
+                    <span><%= kr._pct || 0 %>%</span>
+                </div>
+                <div>
+                    <h3 class="ck-kr__title"><%= kr.nome_kr %></h3>
+                    <p class="ck-kr__metric"><%= kr.kpi_nome || 'Métrica' %></p>
+                    <div class="ck-kr__vals">
+                        <span>Inicial <strong><%= Number(kr.valor_inicial || 0).toLocaleString('pt-BR') %></strong></span>
+                        <span>Atual <strong><%= Number(kr.valor_atual || 0).toLocaleString('pt-BR') %></strong></span>
+                        <span>Alvo <strong><%= Number(kr.valor_alvo || 0).toLocaleString('pt-BR') %></strong></span>
+                    </div>
+                    <% if (!eReadOnly) { %>
+                    <div class="ck-kr__actions">
+                        <button type="button" class="ck-btn-sm" onclick="prepararEdicaoKR(this)"
+                            data-id="<%= kr.id_kr %>" data-id-obj="<%= obj.id_obj_dt %>"
+                            data-nome="<%= kr.nome_kr %>" data-kpi="<%= kr.kpi_nome %>"
+                            data-inicial="<%= kr.valor_inicial %>" data-alvo="<%= kr.valor_alvo %>" data-atual="<%= kr.valor_atual %>">
+                            <i class="fas fa-pencil-alt"></i> Editar KR
+                        </button>
+                        <button type="button" class="ck-btn-sm ck-btn-sm--danger" onclick="deletarEntidade('krs', '<%= kr.id_kr %>')">
+                            <i class="fas fa-trash-alt"></i> Remover
+                        </button>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+            <% }); %>
+        </div>
+        <% } %>
+    </article>
+    <% }); %>
+</div>
+
+<% if (!eReadOnly) { %>
+<div id="modalDirecionador" class="modal">
+    <div class="modal-content" style="border-top: 5px solid #7060F0;">
+        <h2 id="tituloModalDirecionador" style="margin-top:0;"><i class="fas fa-bullseye"></i> Novo Direcionador Personalizado</h2>
+        <form id="formDirecionador" onsubmit="salvarDirecionador(event)">
+            <input type="hidden" id="dir_id_clie" value="<%= idClienteMestre %>">
+            <input type="hidden" id="dir_id_edit" value="">
+            <div style="margin-bottom:12px;"><label style="font-weight:bold;">Título *</label>
+            <input type="text" id="dir_nome" required style="width:100%;padding:8px;box-sizing:border-box;"></div>
+            <div style="margin-bottom:12px;"><label style="font-weight:bold;">Descrição</label>
+            <textarea id="dir_desc" style="width:100%;height:90px;box-sizing:border-box;"></textarea></div>
+            <div style="margin-bottom:12px;"><label style="font-weight:bold;">KPI Global *</label>
+            <input type="text" id="dir_kpi" required style="width:100%;padding:8px;box-sizing:border-box;"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                <div><label style="font-weight:bold;">Meta Receita (R$)</label>
+                <input type="text" id="dir_receita" value="R$ 0,00" oninput="mascararMoeda(this)" style="width:100%;padding:8px;box-sizing:border-box;"></div>
+                <div><label style="font-weight:bold;">Meta Custo (R$)</label>
+                <input type="text" id="dir_custo" value="R$ 0,00" oninput="mascararMoeda(this)" style="width:100%;padding:8px;box-sizing:border-box;"></div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button type="submit" id="btnSalvarDirecionador" class="btn-dash btn-gold">Salvar</button>
+                <button type="button" class="btn-dash" onclick="fecharModalDirecionador()" style="background:#95a5a6;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="modalObjetivo" class="modal">
+    <div class="modal-content" style="border-top:5px solid #0369a1;">
+        <h2 id="tituloModalObjetivo" style="margin-top:0;"><i class="fas fa-laptop-code"></i> Objetivo de Transformação Digital</h2>
+        <form id="formObjetivo" onsubmit="salvarObjetivo(event)">
+            <input type="hidden" id="obj_id_direc"><input type="hidden" id="obj_id_edit" value="">
+            <div style="margin-bottom:12px;"><label style="font-weight:bold;">Objetivo *</label>
+            <input type="text" id="obj_nome" required style="width:100%;padding:8px;box-sizing:border-box;"></div>
+            <div style="margin-bottom:12px;"><label style="font-weight:bold;">Detalhamento</label>
+            <textarea id="obj_desc" style="width:100%;height:80px;box-sizing:border-box;"></textarea></div>
+            <div style="margin-bottom:16px;"><label style="font-weight:bold;">KPI Digital *</label>
+            <input type="text" id="obj_kpi" required style="width:100%;padding:8px;box-sizing:border-box;"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button type="submit" id="btnSalvarObjetivo" class="btn-dash btn-gold">Vincular</button>
+                <button type="button" class="btn-dash" onclick="fecharModalObjetivo()" style="background:#95a5a6;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="modalKR" class="modal">
+    <div class="modal-content" style="border-top:5px solid #d97706;">
+        <h2 id="tituloModalKR" style="margin-top:0;"><i class="fas fa-chart-line"></i> Key Result</h2>
+        <form id="formKR" onsubmit="salvarKR(event)">
+            <input type="hidden" id="kr_id_obj_dt"><input type="hidden" id="kr_id_edit" value="">
+            <div style="margin-bottom:12px;"><label style="font-weight:bold;">Resultado-chave *</label>
+            <input type="text" id="kr_nome" required style="width:100%;padding:8px;box-sizing:border-box;"></div>
+            <div style="margin-bottom:12px;"><label style="font-weight:bold;">Nome da métrica *</label>
+            <input type="text" id="kr_kpi_nome" required style="width:100%;padding:8px;box-sizing:border-box;"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+                <div><label>Inicial</label><input type="number" step="0.01" id="kr_v_inicial" value="0" style="width:100%;padding:8px;box-sizing:border-box;"></div>
+                <div><label>Alvo</label><input type="number" step="0.01" id="kr_v_alvo" value="0" style="width:100%;padding:8px;box-sizing:border-box;"></div>
+                <div><label>Atual</label><input type="number" step="0.01" id="kr_v_atual" value="0" style="width:100%;padding:8px;box-sizing:border-box;"></div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button type="submit" id="btnSalvarKR" class="btn-dash btn-gold">Estabelecer</button>
+                <button type="button" class="btn-dash" onclick="fecharModalKR()" style="background:#95a5a6;">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+<% } %>
+
+<script>
+    function mascararMoeda(input) {
+        let valor = input.value.replace(/\D/g, "");
+        valor = (valor / 100).toFixed(2) + "";
+        valor = valor.replace(".", ",").replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+        input.value = "R$ " + valor;
+    }
+    function converterParaFloat(valorStr) {
+        if (!valorStr) return 0;
+        return parseFloat(valorStr.replace("R$ ", "").replace(/\./g, "").replace(",", ".")) || 0;
+    }
+    function formatarMoedaDeFloat(valor) {
+        return "R$ " + parseFloat(valor || 0).toFixed(2).replace(".", ",").replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+    }
+
+    async function salvarComentario(e, tipo, entidadeId) {
+        e.preventDefault();
+        const root = document.getElementById('okr-strategic-page');
+        const idClie = parseInt(root.getAttribute('data-id-clie'), 10);
+        const autor = root.getAttribute('data-autor') || 'Gestor';
+        const input = e.target.querySelector('input');
+        const texto = input.value.trim();
+        if (!texto) return;
+        try {
+            const res = await fetch('/api/okr/comentarios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_clie: idClie, entidade_tipo: tipo, entidade_id: entidadeId, texto, autor_nome: autor })
+            });
+            if (res.ok) window.location.reload();
+            else alert('Não foi possível salvar o comentário.');
+        } catch (err) { console.error(err); }
+    }
+
+    <% if (!eReadOnly) { %>
+    function abrirModalDirecionador() {
+        document.getElementById('tituloModalDirecionador').innerHTML = '<i class="fas fa-bullseye"></i> Novo Direcionador Personalizado';
+        document.getElementById('btnSalvarDirecionador').innerText = 'Salvar';
+        document.getElementById('dir_id_edit').value = '';
+        document.getElementById('modalDirecionador').style.display = 'block';
+    }
+    function prepararEdicaoDirecionador(btn) {
+        document.getElementById('tituloModalDirecionador').innerHTML = '<i class="fas fa-pencil-alt"></i> Editar Direcionador';
+        document.getElementById('btnSalvarDirecionador').innerText = 'Atualizar';
+        document.getElementById('dir_id_edit').value = btn.dataset.id;
+        document.getElementById('dir_nome').value = btn.dataset.nome;
+        document.getElementById('dir_desc').value = btn.dataset.desc;
+        document.getElementById('dir_kpi').value = btn.dataset.kpi;
+        document.getElementById('dir_receita').value = formatarMoedaDeFloat(btn.dataset.receita);
+        document.getElementById('dir_custo').value = formatarMoedaDeFloat(btn.dataset.custo);
+        document.getElementById('modalDirecionador').style.display = 'block';
+    }
+    function fecharModalDirecionador() {
+        document.getElementById('modalDirecionador').style.display = 'none';
+        document.getElementById('formDirecionador').reset();
+    }
+    function abrirModalObjetivo(idDirec) {
+        document.getElementById('obj_id_direc').value = idDirec;
+        document.getElementById('obj_id_edit').value = '';
+        document.getElementById('modalObjetivo').style.display = 'block';
+    }
+    function prepararEdicaoObjetivo(btn) {
+        document.getElementById('obj_id_edit').value = btn.dataset.id;
+        document.getElementById('obj_id_direc').value = btn.getAttribute('data-id-direc');
+        document.getElementById('obj_nome').value = btn.dataset.nome;
+        document.getElementById('obj_desc').value = btn.dataset.desc;
+        document.getElementById('obj_kpi').value = btn.dataset.kpi;
+        document.getElementById('modalObjetivo').style.display = 'block';
+    }
+    function fecharModalObjetivo() {
+        document.getElementById('modalObjetivo').style.display = 'none';
+        document.getElementById('formObjetivo').reset();
+    }
+    function abrirModalKR(idObjDt) {
+        document.getElementById('kr_id_obj_dt').value = idObjDt;
+        document.getElementById('kr_id_edit').value = '';
+        document.getElementById('modalKR').style.display = 'block';
+    }
+    function prepararEdicaoKR(btn) {
+        document.getElementById('kr_id_edit').value = btn.dataset.id;
+        document.getElementById('kr_id_obj_dt').value = btn.getAttribute('data-id-obj');
+        document.getElementById('kr_nome').value = btn.dataset.nome;
+        document.getElementById('kr_kpi_nome').value = btn.dataset.kpi;
+        document.getElementById('kr_v_inicial').value = btn.dataset.inicial;
+        document.getElementById('kr_v_alvo').value = btn.dataset.alvo;
+        document.getElementById('kr_v_atual').value = btn.dataset.atual;
+        document.getElementById('modalKR').style.display = 'block';
+    }
+    function fecharModalKR() {
+        document.getElementById('modalKR').style.display = 'none';
+        document.getElementById('formKR').reset();
+    }
+    async function salvarDirecionador(e) {
+        e.preventDefault();
+        const idEdit = document.getElementById('dir_id_edit').value;
+        const idClieParsed = parseInt(document.getElementById('dir_id_clie').value, 10);
+        const payload = {
+            id_clie: idClieParsed,
+            nome_direc: document.getElementById('dir_nome').value.trim(),
+            desc_direc: document.getElementById('dir_desc').value.trim(),
+            kpi_descricao: document.getElementById('dir_kpi').value.trim(),
+            meta_receita_alvo: converterParaFloat(document.getElementById('dir_receita').value),
+            meta_custo_alvo: converterParaFloat(document.getElementById('dir_custo').value)
+        };
+        const url = idEdit ? `/api/okr/direcionadores/${idEdit}` : '/api/okr/direcionadores';
+        const res = await fetch(url, { method: idEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (res.ok) { fecharModalDirecionador(); window.location.reload(); }
+        else alert('Erro ao salvar direcionador.');
+    }
+    async function salvarObjetivo(e) {
+        e.preventDefault();
+        const idEdit = document.getElementById('obj_id_edit').value;
+        const payload = {
+            id_direc: parseInt(document.getElementById('obj_id_direc').value, 10),
+            nome_obj: document.getElementById('obj_nome').value.trim(),
+            desc_obj: document.getElementById('obj_desc').value.trim(),
+            kpi_descricao: document.getElementById('obj_kpi').value.trim()
+        };
+        const url = idEdit ? `/api/okr/objetivos/${idEdit}` : '/api/okr/objetivos';
+        const res = await fetch(url, { method: idEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (res.ok) { fecharModalObjetivo(); window.location.reload(); }
+        else alert('Erro ao salvar objetivo.');
+    }
+    async function salvarKR(e) {
+        e.preventDefault();
+        const idEdit = document.getElementById('kr_id_edit').value;
+        const payload = {
+            id_obj_dt: parseInt(document.getElementById('kr_id_obj_dt').value, 10),
+            nome_kr: document.getElementById('kr_nome').value.trim(),
+            kpi_nome: document.getElementById('kr_kpi_nome').value.trim(),
+            valor_inicial: parseFloat(document.getElementById('kr_v_inicial').value) || 0,
+            valor_alvo: parseFloat(document.getElementById('kr_v_alvo').value) || 0,
+            valor_atual: parseFloat(document.getElementById('kr_v_atual').value) || 0
+        };
+        const url = idEdit ? `/api/okr/krs/${idEdit}` : '/api/okr/krs';
+        const res = await fetch(url, { method: idEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (res.ok) { fecharModalKR(); window.location.reload(); }
+        else alert('Erro ao salvar KR.');
+    }
+    async function deletarEntidade(tipo, id) {
+        const msgs = {
+            direcionadores: 'Remover este direcionador e toda a árvore vinculada?',
+            objetivos: 'Remover este objetivo e seus KRs?',
+            krs: 'Remover este Key Result?'
+        };
+        if (!confirm(msgs[tipo] || 'Confirmar exclusão?')) return;
+        const res = await fetch(`/api/okr/${tipo}/${id}`, { method: 'DELETE' });
+        if (res.ok) window.location.reload();
+        else {
+            const data = await res.json().catch(() => ({}));
+            alert(data.error || 'Não foi possível excluir.');
+        }
+    }
+    <% } %>
+</script>

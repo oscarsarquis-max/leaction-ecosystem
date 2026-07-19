@@ -1,0 +1,423 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultor LeAction — Diagnóstico Inteligente</title>
+    <meta name="description" content="Conte seu maior desafio de negócio e receba um mini-plano de ação gerado por IA, baseado no framework LeAction.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/voz-ditado.css?v=1">
+    <style>
+        :root {
+            --dark-lilac: #5B35D9;
+            --accent-gold: #d97706;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-up { animation: fadeInUp 0.5s ease forwards; }
+        @keyframes pulseDots { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+        .dot { animation: pulseDots 1.4s infinite both; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        /* Mini-plano — simulação Kanban */
+        .kanban-demo-panel {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.25rem 1.25rem 1rem;
+        }
+        .kanban-demo-panel__title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin: 0 0 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .kanban-demo-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+        .card-tarefa-simulacao {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .card-tarefa-simulacao:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 12px rgba(91, 53, 217, 0.08);
+        }
+        .card-tarefa-simulacao .task-check {
+            margin-top: 3px;
+            flex-shrink: 0;
+        }
+        .card-tarefa-simulacao .task-check input[type="checkbox"] {
+            accent-color: #FF6B00;
+            transform: scale(1.2);
+            cursor: not-allowed;
+        }
+        .card-tarefa-simulacao .task-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .card-tarefa-simulacao .task-domain-badge {
+            display: inline-block;
+            background-color: rgba(138, 43, 226, 0.1);
+            color: #8A2BE2;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            line-height: 1.3;
+        }
+        .card-tarefa-simulacao .task-action-text {
+            margin-top: 8px;
+            margin-bottom: 0;
+            font-size: 0.95rem;
+            color: #333;
+            line-height: 1.45;
+        }
+        .kanban-demo-footnote {
+            margin-top: 0.85rem;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            font-style: italic;
+            line-height: 1.4;
+        }
+        .kanban-demo-empty {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #64748b;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+    <!-- HEADER -->
+    <header class="w-full border-b border-gray-200 bg-white">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <img src="/images/consultor-leaction-avatar.png?v=2" alt="" width="36" height="36" class="rounded-full" style="border:2px solid #e9e0ff;">
+                <span class="font-extrabold text-gray-800 tracking-tight">Consultor <span style="color: var(--dark-lilac);">LeAction</span></span>
+            </div>
+            <a href="/cadastro" class="text-sm font-semibold text-gray-500 hover:text-gray-800 transition">Já quero começar &rarr;</a>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="flex-1 w-full max-w-3xl mx-auto px-6 py-10 md:py-16">
+
+        <!-- ENTRADA -->
+        <section id="secao-entrada" class="animate-fade-up">
+            <div class="text-center mb-8">
+                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold tracking-wide mb-4" style="background:#F4F2FF; color: var(--dark-lilac);">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Diagnóstico gratuito em segundos
+                </span>
+                <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
+                    Conte-nos o seu maior <br class="hidden md:block"> desafio de negócio hoje
+                </h1>
+                <p class="mt-3 text-gray-500 text-lg">
+                    Nosso Consultor LeAction analisa o framework LeAction e desenha um caminho prático para você.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8" id="consultor-entrada-card">
+                <div id="consultor-ditado-stop-bar" class="ditado-stop-bar" hidden aria-hidden="true">
+                    <span class="ditado-stop-bar__hint">Gravando… Diga <kbd>fim</kbd> ou clique em Parar.</span>
+                    <button type="button" class="btn-ditado-stop" data-ditado-action="stop">
+                        <i class="fa-solid fa-stop"></i> Parar ditado
+                    </button>
+                </div>
+                <p id="consultor-ditado-status" class="ditado-status" aria-live="polite"></p>
+                <div class="ditado-voz-row">
+                    <button type="button" class="btn-voz-campo" data-voz-target="txt-desafio" aria-label="Ditado por voz no desafio">
+                        <i class="fa-solid fa-microphone"></i>
+                        <span class="mic-label">Ditado</span>
+                    </button>
+                </div>
+                <textarea id="txt-desafio" rows="6"
+                    class="w-full rounded-xl border border-gray-300 p-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-1 transition resize-none"
+                    style="--tw-ring-color: var(--dark-lilac);"
+                    placeholder="Clique em Ditado para falar ou digite seu desafio… Ex: Minha equipe perde muito tempo com processos manuais..."></textarea>
+
+                <button id="btn-analisar" onclick="analisarCenario()"
+                    class="mt-4 w-full inline-flex items-center justify-center gap-2 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform hover:-translate-y-0.5"
+                    style="background: var(--dark-lilac);">
+                    <i class="fa-solid fa-brain"></i> Analisar meu cenário (Consultor LeAction)
+                </button>
+                <p class="text-center text-xs text-gray-400 mt-3">
+                    <i class="fa-solid fa-lock"></i> Sem login. Sem compromisso. 100% confidencial.
+                </p>
+            </div>
+        </section>
+
+        <!-- LOADING -->
+        <section id="secao-loading" class="hidden text-center py-20">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6" style="background:#F4F2FF;">
+                <i class="fa-solid fa-compass-drafting text-2xl" style="color: var(--dark-lilac);"></i>
+            </div>
+            <h2 class="text-xl font-bold text-gray-800">Nosso Consultor LeAction está desenhando seu plano</h2>
+            <p class="text-gray-500 mt-2">Cruzando seu desafio com o framework metodológico
+                <span class="dot font-black" style="color: var(--dark-lilac);">.</span><span class="dot font-black" style="color: var(--dark-lilac);">.</span><span class="dot font-black" style="color: var(--dark-lilac);">.</span>
+            </p>
+        </section>
+
+        <!-- RESULTADO -->
+        <section id="secao-resultado" class="hidden">
+            <!-- Empatia -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 mb-6 animate-fade-up">
+                <div class="flex items-start gap-4">
+                    <img src="/images/consultor-leaction-avatar.png?v=2" alt="Consultor LeAction" width="44" height="44" class="rounded-full shrink-0" style="border:2px solid #e9e0ff;">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Análise do Consultor</h3>
+                        <p id="res-empatia" class="text-gray-700 text-lg leading-relaxed"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contexto + Blocos -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 mb-6 animate-fade-up">
+                <div class="flex flex-wrap gap-3 mb-5 text-sm">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600">
+                        <i class="fa-solid fa-layer-group text-gray-400"></i> Dimensão: <strong id="res-dimensao" class="text-gray-800"></strong>
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600">
+                        <i class="fa-solid fa-sitemap text-gray-400"></i> Domínio: <strong id="res-dominio" class="text-gray-800"></strong>
+                    </span>
+                </div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Blocos metodológicos recomendados</h3>
+                <div id="res-blocos" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <!-- Mini-plano — cartões operacionais (simulação Kanban) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 mb-8 animate-fade-up">
+                <div class="kanban-demo-panel">
+                    <h3 class="kanban-demo-panel__title">
+                        <i class="fa-solid fa-clipboard-list" style="color: var(--dark-lilac);"></i>
+                        Seu Plano de Ação Operacional (Simulação Kanban)
+                    </h3>
+                    <div id="res-plano-cards" class="kanban-demo-list" role="list" aria-live="polite"></div>
+                    <p id="res-plano-footnote" class="kanban-demo-footnote hidden">
+                        *Esta é uma demonstração de como o sistema organiza as ações no Kanban executivo.*
+                    </p>
+                </div>
+            </div>
+
+            <!-- CTA -->
+            <div class="rounded-2xl p-8 text-center text-white shadow-xl animate-fade-up"
+                 style="background: linear-gradient(135deg, var(--dark-lilac), #6d28d9);">
+                <h2 class="text-2xl font-extrabold mb-2">Pronto para tirar esse plano do papel?</h2>
+                <p class="text-violet-100 mb-6">Transforme essa análise em um projeto real, com diagnóstico completo e acompanhamento.</p>
+                <a href="/cadastro"
+                   class="inline-flex items-center justify-center gap-2 font-extrabold px-8 py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1"
+                   style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff;">
+                    <i class="fa-solid fa-rocket"></i> Quero estruturar esse projeto no MudaEdu
+                </a>
+                <div class="mt-5">
+                    <button onclick="reiniciarConsultor()" class="text-sm text-violet-200 hover:text-white underline transition">
+                        Analisar outro desafio
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="w-full py-6 text-center text-xs text-gray-400">
+        © <%= new Date().getFullYear() %> LeAction · MudaEdu — Inteligência em Transformação Digital
+    </footer>
+
+    <script>
+        const elEntrada = document.getElementById('secao-entrada');
+        const elLoading = document.getElementById('secao-loading');
+        const elResultado = document.getElementById('secao-resultado');
+        const btnAnalisar = document.getElementById('btn-analisar');
+
+        function mostrarSecao(secao) {
+            elEntrada.classList.add('hidden');
+            elLoading.classList.add('hidden');
+            elResultado.classList.add('hidden');
+            secao.classList.remove('hidden');
+        }
+
+        async function analisarCenario() {
+            if (typeof window.pararDitadoPanelDx === 'function') window.pararDitadoPanelDx();
+            const desafio = document.getElementById('txt-desafio').value.trim();
+            if (desafio.length < 10) {
+                alert('Conte um pouco mais sobre o seu desafio (mínimo 10 caracteres).');
+                return;
+            }
+
+            mostrarSecao(elLoading);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            try {
+                const res = await fetch('/api/public/consultor-ia', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ desafio })
+                });
+                const json = await res.json();
+
+                if (!res.ok || json.status !== 'success' || !json.data) {
+                    throw new Error(json.message || 'Falha na análise.');
+                }
+                renderizarResultado(json.data);
+            } catch (err) {
+                console.error(err);
+                alert('Não foi possível concluir a análise agora. Tente novamente em instantes.');
+                mostrarSecao(elEntrada);
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        /**
+         * Quebra o mini_plano da IA em itens numerados (1) 2) 3) …)
+         * e separa domínio (antes dos dois pontos) da ação (depois).
+         */
+        function parseMiniPlano(texto) {
+            if (!texto || !String(texto).trim()) return [];
+
+            const raw = String(texto).trim().replace(/\r\n/g, '\n');
+            const segments = raw.split(/(?=\d+[\)\.]\s+)/).map(function (s) { return s.trim(); }).filter(Boolean);
+            const items = [];
+
+            segments.forEach(function (segment) {
+                const numbered = segment.match(/^(\d+)[\)\.]\s*([\s\S]+)$/);
+                const body = numbered ? numbered[2].trim() : segment;
+                if (!body) return;
+
+                const colonMatch = body.match(/^([^:]{2,}?):\s*([\s\S]+)$/);
+                let dominio = '';
+                let acao = body;
+
+                if (colonMatch) {
+                    dominio = colonMatch[1].trim();
+                    acao = colonMatch[2].trim();
+                }
+
+                dominio = dominio
+                    .replace(/^dom[ií]nio\s*/i, '')
+                    .replace(/^\d+[\)\.]\s*/, '')
+                    .trim();
+
+                if (!dominio && acao) {
+                    dominio = 'Ação recomendada';
+                }
+
+                if (dominio || acao) {
+                    items.push({
+                        dominio: dominio || 'Ação',
+                        acao: acao || dominio
+                    });
+                }
+            });
+
+            if (items.length === 0 && raw) {
+                items.push({ dominio: 'Plano sugerido', acao: raw });
+            }
+
+            return items;
+        }
+
+        function renderMiniPlanoCards(miniPlano) {
+            const container = document.getElementById('res-plano-cards');
+            const footnote = document.getElementById('res-plano-footnote');
+            const tasks = parseMiniPlano(miniPlano);
+
+            if (!tasks.length) {
+                container.innerHTML = '<p class="kanban-demo-empty">Nenhuma ação estruturada retornada pelo Consultor LeAction.</p>';
+                footnote.classList.add('hidden');
+                return;
+            }
+
+            container.innerHTML = tasks.map(function (task, index) {
+                return (
+                    '<div class="card-tarefa-simulacao" role="listitem" aria-label="Tarefa ' + (index + 1) + '">' +
+                        '<div class="task-check">' +
+                            '<input type="checkbox" disabled aria-label="Marcar tarefa (demonstração)">' +
+                        '</div>' +
+                        '<div class="task-content">' +
+                            '<span class="task-domain-badge">' + escapeHtml(task.dominio) + '</span>' +
+                            '<p class="task-action-text">' + escapeHtml(task.acao) + '</p>' +
+                        '</div>' +
+                    '</div>'
+                );
+            }).join('');
+
+            footnote.classList.remove('hidden');
+        }
+
+        function renderizarResultado(data) {
+            document.getElementById('res-empatia').innerText = data.mensagem_empatia || '';
+            document.getElementById('res-dimensao').innerText = data.dimensao_identificada || '—';
+            document.getElementById('res-dominio').innerText = data.dominio_identificado || '—';
+            renderMiniPlanoCards(data.mini_plano || '');
+
+            const containerBlocos = document.getElementById('res-blocos');
+            const blocos = Array.isArray(data.blocos_recomendados) ? data.blocos_recomendados : [];
+            if (blocos.length === 0) {
+                containerBlocos.innerHTML = '<span class="text-gray-400 text-sm italic">Nenhum bloco específico destacado.</span>';
+            } else {
+                containerBlocos.innerHTML = blocos.map(nome => `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
+                          style="background:#F4F2FF; color: var(--dark-lilac);">
+                        <i class="fa-solid fa-cube text-xs"></i> ${nome}
+                    </span>
+                `).join('');
+            }
+
+            mostrarSecao(elResultado);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function reiniciarConsultor() {
+            if (typeof window.pararDitadoPanelDx === 'function') window.pararDitadoPanelDx();
+            document.getElementById('txt-desafio').value = '';
+            mostrarSecao(elEntrada);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+
+    <script src="/js/voz-ditado.js"></script>
+    <script src="/js/tracking.js?v=2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!window.initPanelDxVozDitado) return;
+            initPanelDxVozDitado('consultor-publico', {
+                root: '#consultor-entrada-card',
+                statusEl: '#consultor-ditado-status',
+                stopBarEl: '#consultor-ditado-stop-bar',
+                onError: function (msg) {
+                    var el = document.getElementById('consultor-ditado-status');
+                    if (el) el.textContent = msg;
+                }
+            });
+        });
+    </script>
+
+    <% if (typeof coachContext !== 'undefined' && coachContext) { %>
+    <%- include('partials/coach-guide') %>
+    <% } %>
+</body>
+</html>

@@ -1,0 +1,1384 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= typeof title !== 'undefined' ? title : 'MudaEdu' %></title>
+    <% if (typeof metaDescription !== 'undefined' && metaDescription) { %>
+    <meta name="description" content="<%= metaDescription %>">
+    <% } %>
+    <% if (typeof metaKeywords !== 'undefined' && metaKeywords) { %>
+    <meta name="keywords" content="<%= metaKeywords %>">
+    <% } %>
+
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/password-toggle.css?v=2">
+    <% if (typeof pageStylesheets !== 'undefined' && pageStylesheets && pageStylesheets.length) { %>
+    <% pageStylesheets.forEach(function(href) { %>
+    <link rel="stylesheet" href="<%= href %>">
+    <% }); %>
+    <% } else if (typeof pageStylesheet !== 'undefined' && pageStylesheet) { %>
+    <link rel="stylesheet" href="<%= pageStylesheet %>">
+    <% } %>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+        const API_BASE_URL = '<%= typeof API_BASE_URL !== "undefined" ? API_BASE_URL : "" %>';
+    </script>
+
+    <style>
+        :root {
+            --sidebar-bg: #0B1220;
+            --header-bg: #5B35D9;
+            /* Paleta do logo mudaedu: violeta → ciano */
+            --brand-ink: #0A0A0A;
+            --brand-violet: #7060F0;
+            --brand-violet-deep: #5B35D9;
+            --brand-cyan: #20B0F0;
+            --header-gradient: linear-gradient(90deg, #4C1D95 0%, #7060F0 42%, #20B0F0 100%);
+            --header-gradient-3d: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 22%, rgba(0, 0, 0, 0) 48%, rgba(0, 0, 0, 0.28) 100%), var(--header-gradient);
+            --header-shadow-3d:
+                inset 0 1px 0 rgba(255, 255, 255, 0.28),
+                inset 0 -2px 0 rgba(0, 0, 0, 0.22),
+                0 3px 0 #2A1560,
+                0 6px 14px rgba(42, 21, 96, 0.45),
+                0 12px 28px rgba(32, 176, 240, 0.22);
+            --footer-gradient-3d: linear-gradient(0deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 24%, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.26) 100%), var(--header-gradient);
+            --footer-shadow-3d:
+                inset 0 2px 0 rgba(0, 0, 0, 0.24),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.26),
+                0 -3px 0 #2A1560,
+                0 -6px 14px rgba(42, 21, 96, 0.45),
+                0 -12px 28px rgba(32, 176, 240, 0.22);
+            --accent-violet: #7060F0;
+            --accent-blue: #20B0F0;
+            --accent-gold: #d97706;
+            --text-muted: #9ca3af;
+            --sidebar-width: 260px;
+            --sidebar-width-collapsed: 70px;
+        }
+
+        /* Acessibilidade / SEO — conteúdo legível por leitores de tela e crawlers, oculto visualmente */
+        .sr-only,
+        .visually-hidden {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            padding: 0 !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            clip: rect(0, 0, 0, 0) !important;
+            white-space: nowrap !important;
+            border: 0 !important;
+        }
+
+        /* GERAL */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #f3f4f6; }
+        main { display: flex; min-height: 100vh; padding-top: 60px; }
+
+        /* HEADER */
+        .main-header {
+            position: fixed; top: 0; left: 0; width: 100%; height: 60px;
+            background: var(--header-gradient-3d);
+            color: white; z-index: 1000;
+            display: flex; align-items: center; padding: 0 20px; box-sizing: border-box;
+            border-bottom: 2px solid rgba(20, 10, 40, 0.9);
+            box-shadow: var(--header-shadow-3d);
+            isolation: isolate;
+        }
+        .main-header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 38%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .main-header::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -1px;
+            height: 4px;
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.45) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(0, 0, 0, 0.4) 100%);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.85;
+        }
+        .main-header > div {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+        }
+        .main-header h2,
+        .main-header .header-logo {
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+        }
+        .main-header .header-logo {
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.35),
+                0 3px 8px rgba(0, 0, 0, 0.35);
+        }
+
+        /* FOOTER — mesmo padrão 3D do header (espelhado) */
+        .main-footer {
+            position: relative;
+            background: var(--footer-gradient-3d);
+            color: #f8fafc;
+            text-align: center;
+            padding: 14px 20px;
+            margin-top: auto;
+            border-top: 2px solid rgba(20, 10, 40, 0.9);
+            box-shadow: var(--footer-shadow-3d);
+            isolation: isolate;
+        }
+        .main-footer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(0deg, rgba(255, 255, 255, 0.12) 0%, transparent 42%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .main-footer::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: -1px;
+            height: 4px;
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.45) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(0, 0, 0, 0.4) 100%);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.85;
+        }
+        .main-footer p {
+            margin: 0;
+            position: relative;
+            z-index: 1;
+            font-size: 0.88rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+        }
+
+        /* LOGIN COMPACTO HEADER */
+        .login-header-form { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 50px; }
+        .login-header-form input { background: white; border: none; border-radius: 20px; padding: 6px 12px; font-size: 0.85em; width: 160px; }
+        .btn-violet-dark { background: var(--accent-violet); color: white; border: none; border-radius: 20px; padding: 6px 15px; cursor: pointer; font-weight: bold; font-size: 0.85em; transition: 0.3s; }
+        .btn-violet-dark:hover { background: #5B35D9; }
+
+        /* Wordmark MudaEdu — regra de contraste:
+           fundo escuro → Muda branco; fundo claro → Muda escuro; Edu sempre ciano */
+        .brand-wordmark { font-weight: 800; }
+        .brand-muda { color: #ffffff; } /* default = fundo escuro (header) */
+        .brand-edu { color: var(--brand-cyan); }
+        .brand-wordmark-on-light .brand-muda,
+        .brand-on-light .brand-muda { color: var(--brand-ink); }
+        .brand-wordmark-on-light .brand-edu,
+        .brand-on-light .brand-edu { color: var(--brand-cyan); }
+        .brand-wordmark-on-dark .brand-muda,
+        .brand-on-dark .brand-muda { color: #ffffff; }
+        .brand-wordmark-on-dark .brand-edu,
+        .brand-on-dark .brand-edu { color: var(--brand-cyan); }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-left: auto;
+        }
+
+        .header-logout-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(248, 113, 113, 0.85);
+            background: rgba(220, 38, 38, 0.22);
+            color: #fecaca;
+            font-size: 0.88rem;
+            font-weight: 700;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .header-logout-btn:hover {
+            background: #dc2626;
+            border-color: #fca5a5;
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        .header-logout-btn i {
+            font-size: 1rem;
+        }
+
+        /* SIDEBAR MODERNA - ESTRUTURA PRESERVADA */
+        .sidebar-menu {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            position: fixed;
+            top: 60px;
+            height: calc(100vh - 60px);
+            overflow-x: hidden;
+            overflow-y: auto;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+        }
+        .sidebar-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex: 1;
+        }
+        body.sidebar-collapsed .sidebar-menu {
+            width: var(--sidebar-width-collapsed);
+        }
+        body.sidebar-collapsed .sidebar-menu .sidebar-label,
+        body.sidebar-collapsed .sidebar-menu hr,
+        body.sidebar-collapsed .sidebar-menu .submenu,
+        body.sidebar-collapsed .sidebar-menu #btnDouradoLayout span {
+            display: none !important;
+        }
+        body.sidebar-collapsed .sidebar-menu a {
+            justify-content: center !important;
+            padding: 12px 0 !important;
+            font-size: 0 !important;
+        }
+        body.sidebar-collapsed .sidebar-menu a i {
+            font-size: 1.1rem !important;
+            margin-right: 0 !important;
+        }
+        body.sidebar-collapsed .sidebar-menu li[style*="padding: 0 15px"] {
+            padding: 0 8px !important;
+        }
+        body.sidebar-collapsed .sidebar-menu #btnDouradoLayout {
+            padding: 10px 8px !important;
+            justify-content: center !important;
+        }
+        body.sidebar-collapsed .sidebar-menu #btnDouradoLayout i {
+            margin-right: 0 !important;
+        }
+
+        /* UNIFORMIZAÇÃO DOS LINKS (AQUI ESTÁ A MÁGICA) */
+        .sidebar-menu a {
+            display: flex !important;
+            align-items: center !important;
+            padding: 10px 20px !important;
+            text-decoration: none !important;
+            font-size: 0.9rem !important;
+            transition: 0.2s !important;
+            /* FORÇA O CINZA EM TODOS OS TEXTOS, IGNORANDO O STYLE INLINE */
+            color: var(--text-muted) !important;
+            font-weight: 500 !important;
+        }
+
+        .sidebar-menu a:hover {
+            background: #1f2937 !important;
+            color: white !important;
+        }
+
+        /* Grupos do lead: itens em bold, subitens normal, sem ícones */
+        .sidebar-menu .nav-group > a.submenu-toggle {
+            font-weight: 700 !important;
+            letter-spacing: 0.01em;
+            color: #e5e7eb !important;
+        }
+        .sidebar-menu .nav-group .submenu a {
+            font-weight: 400 !important;
+            font-size: 0.84rem !important;
+            padding: 8px 16px 8px 28px !important;
+            color: #9ca3af !important;
+        }
+        .sidebar-menu .nav-group .submenu a.is-active {
+            color: #fff !important;
+            background: rgba(79, 172, 254, 0.14) !important;
+            font-weight: 600 !important;
+        }
+        .sidebar-menu .nav-group .submenu a:hover {
+            color: #fff !important;
+        }
+        body.sidebar-collapsed .sidebar-menu .nav-group > a.submenu-toggle {
+            font-size: 0.62rem !important;
+            padding: 10px 4px !important;
+            justify-content: center !important;
+            text-align: center;
+            line-height: 1.15;
+        }
+        body.sidebar-collapsed .sidebar-menu .nav-group > a.submenu-toggle .sidebar-label {
+            display: block !important;
+            white-space: normal;
+            font-size: 0.58rem !important;
+        }
+
+        /* Sem ícones Font Awesome na sidebar (exceto seletor dedicado do chevron CSS) */
+        #sidebar-menu i,
+        #sidebar-menu [class^="fa-"],
+        #sidebar-menu [class*=" fa-"] {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            margin: 0 !important;
+            font-size: 0 !important;
+        }
+
+        .sidebar-menu .nav-link-italic {
+            font-style: italic !important;
+            font-weight: 400 !important;
+            font-size: 0.82rem !important;
+            color: #9ca3af !important;
+            padding-top: 14px !important;
+            padding-bottom: 8px !important;
+        }
+        .sidebar-menu .nav-link-italic:hover {
+            color: #e5e7eb !important;
+        }
+        .sidebar-menu .nav-link-italic i {
+            display: none !important;
+        }
+        body.sidebar-collapsed .sidebar-menu .nav-link-italic .sidebar-label {
+            display: none !important;
+        }
+
+        /* SUBMENUS — ocultos até clicar no item superior */
+        .sidebar-menu .menu-item > .submenu {
+            display: none !important;
+            padding-left: 8px !important;
+            background: rgba(0, 0, 0, 0.2);
+            margin: 0;
+            list-style: none;
+            overflow: hidden;
+        }
+        .sidebar-menu .menu-item.is-open > .submenu {
+            display: block !important;
+        }
+        .sidebar-menu .menu-item.has-children > a.submenu-toggle {
+            cursor: pointer;
+            position: relative;
+            padding-right: 36px !important;
+        }
+        .sidebar-menu .menu-item.has-children > a.submenu-toggle::after {
+            content: '';
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            width: 6px;
+            height: 6px;
+            border-right: 1.5px solid rgba(255, 255, 255, 0.45);
+            border-bottom: 1.5px solid rgba(255, 255, 255, 0.45);
+            transform: translateY(-60%) rotate(45deg);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        .sidebar-menu .menu-item.is-open > a.submenu-toggle::after {
+            transform: translateY(-20%) rotate(225deg);
+            border-color: rgba(255, 255, 255, 0.85);
+        }
+        .sidebar-menu .menu-item.is-open > a.submenu-toggle {
+            background: #1f2937 !important;
+            color: #fff !important;
+        }
+        .sidebar-menu .submenu a {
+            font-size: 0.85rem !important;
+        }
+        body.sidebar-collapsed .sidebar-menu .menu-item.has-children > a.submenu-toggle::after {
+            display: none;
+        }
+
+        /* BOTÃO GÊNESE (MANTÉM O ESTILO DOURADO) */
+        #btnDouradoLayout {
+            background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%) !important;
+            color: #000 !important;
+            border: 1px solid #DAA520 !important;
+            border-radius: 6px !important;
+            padding: 10px !important;
+            font-weight: bold !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* MODAL E CONTEÚDO */
+        .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 800px; max-width: 90%; max-height: 90vh; overflow-y: auto; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+        /* Ações CRUD — ícones sem moldura; editar laranja, excluir vermelho */
+        .action-btn {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            outline: none !important;
+            padding: 4px;
+            margin: 0 2px;
+            line-height: 1;
+            border-radius: 0;
+            cursor: pointer;
+            font-size: 1.1em;
+            appearance: none;
+            -webkit-appearance: none;
+            transition: color 0.15s ease, transform 0.15s ease;
+        }
+        .action-btn:hover,
+        .action-btn:focus,
+        .action-btn:focus-visible,
+        .action-btn:active {
+            background: transparent !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }
+        .action-btn:hover {
+            transform: scale(1.08);
+        }
+        .action-btn.btn-edit,
+        .action-btn.btn-edit i {
+            color: #e67e22 !important;
+        }
+        .action-btn.btn-edit:hover,
+        .action-btn.btn-edit:hover i {
+            color: #d35400 !important;
+        }
+        .action-btn.btn-delete,
+        .action-btn.btn-delete i {
+            color: #e74c3c !important;
+        }
+        .action-btn.btn-delete:hover,
+        .action-btn.btn-delete:hover i {
+            color: #c0392b !important;
+        }
+        .content {
+            flex-grow: 1;
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            box-sizing: border-box;
+            transition: margin-left 0.3s ease;
+        }
+        body.sidebar-collapsed .content {
+            margin-left: var(--sidebar-width-collapsed);
+        }
+        .context-bar__inner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: var(--sidebar-width);
+            transition: margin-left 0.3s ease;
+        }
+        body.sidebar-collapsed .context-bar__inner {
+            margin-left: var(--sidebar-width-collapsed);
+        }
+
+        /* Ícones Font Awesome ocultos na sidebar — tipografia só texto */
+        .sidebar-menu i,
+        .sidebar-menu [class^="fa-"],
+        .sidebar-menu [class*=" fa-"] {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            margin: 0 !important;
+            font-size: 0 !important;
+            color: transparent !important;
+        }
+
+        /* Isso remove qualquer cor específica que tenha sobrado nos links */
+        .sidebar-menu a {
+            color: var(--text-muted) !important;
+        }
+
+        /* Remove o espaçamento excessivo quando a barra de contexto está ativa */
+        .context-bar + main .content {
+            padding-top: 10px !important;
+        }
+
+        /* Garante que o main não empurre o conteúdo para baixo se a barra já estiver lá */
+        main.with-context {
+            padding-top: 0 !important;
+        }
+
+        /* 🏛️ Modo Gestor da Rede — cockpit com visual executivo preservado */
+        body.holding-mode main {
+            background: #f4f2f8 !important;
+        }
+        body.holding-mode .context-bar {
+            display: none !important;
+        }
+        body.holding-mode .content {
+            padding: 20px 0 0 0 !important;
+            margin-left: var(--sidebar-width);
+            background: #f4f2f8 !important;
+            min-height: calc(100vh - 60px);
+        }
+        body.holding-mode.sidebar-collapsed .content {
+            margin-left: var(--sidebar-width-collapsed);
+        }
+        body.holding-mode .header-logo {
+            height: 46px !important;
+            margin-top: 0 !important;
+            border-width: 2px;
+        }
+        body.holding-mode .content h1,
+        body.holding-mode .content #cockpit-page h1 {
+            border-bottom: none !important;
+            padding-bottom: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        body.holding-mode .content #cockpit-page .cockpit-footer,
+        body.holding-mode .content #cockpit-page .cockpit-footer p,
+        body.holding-mode .content #cockpit-page .cockpit-footer strong {
+            color: #475569 !important;
+        }
+        body.holding-mode .content #cockpit-page .cockpit-footer strong,
+        body.holding-mode .content #cockpit-page .cockpit-footer-gestor {
+            color: #312e81 !important;
+        }
+        body.holding-mode .sidebar-menu a[href="/cockpit-rede"] {
+            color: #fbbf24 !important;
+            font-weight: 700 !important;
+        }
+
+        /* Cockpit da Rede — enquadrado na área .content (Sysadmin e Holding) */
+        .content .main-content #cockpit-page {
+            min-height: auto !important;
+        }
+        .content .main-content #cockpit-page .cockpit-header h1 {
+            border-bottom: none !important;
+            padding-bottom: 0 !important;
+            margin-bottom: 10px !important;
+        }
+
+        /* Sidebar retrátil — prioridade máxima sobre style.css legado */
+        body.sidebar-collapsed .sidebar-menu,
+        #sidebar-menu.is-collapsed {
+            width: 70px !important;
+        }
+        body.sidebar-collapsed .content,
+        body.sidebar-collapsed main .content {
+            margin-left: 70px !important;
+        }
+        body.sidebar-collapsed .context-bar__inner {
+            margin-left: 70px !important;
+        }
+        body.holding-mode.sidebar-collapsed .content {
+            margin-left: 70px !important;
+        }
+        body.sidebar-collapsed .sidebar-menu a,
+        #sidebar-menu.is-collapsed a {
+            font-size: 0 !important;
+            justify-content: center !important;
+            padding: 12px 0 !important;
+        }
+        body.sidebar-collapsed .sidebar-menu a i,
+        #sidebar-menu.is-collapsed a i {
+            font-size: 1.1rem !important;
+            margin-right: 0 !important;
+            width: auto !important;
+        }
+        body.sidebar-collapsed .sidebar-menu .submenu,
+        body.sidebar-collapsed .sidebar-menu hr,
+        body.sidebar-collapsed .sidebar-menu #btnDouradoLayout span,
+        body.sidebar-collapsed .sidebar-menu .sidebar-label,
+        #sidebar-menu.is-collapsed .submenu,
+        #sidebar-menu.is-collapsed hr,
+        #sidebar-menu.is-collapsed #btnDouradoLayout span,
+        #sidebar-menu.is-collapsed .sidebar-label {
+            display: none !important;
+        }
+
+        .header-sidebar-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            margin-right: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 8px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 100%);
+            color: #f8fafc;
+            cursor: pointer;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 4px rgba(0, 0, 0, 0.25);
+            transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+        }
+        .header-sidebar-toggle:hover {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.08) 100%);
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 3px 8px rgba(0, 0, 0, 0.3);
+        }
+
+    </style>
+</head>
+<body class="<%= locals.isHolding ? 'holding-mode' : '' %>">
+<script>
+(function () {
+    try {
+        if (localStorage.getItem('sidebarState') === 'collapsed') {
+            document.body.classList.add('sidebar-collapsed');
+            var sb = document.getElementById('sidebar-menu');
+            if (sb) sb.classList.add('is-collapsed');
+        }
+    } catch (e) { /* ignore */ }
+})();
+</script>
+
+
+<header class="main-header">
+    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="header-sidebar-toggle" data-sidebar-toggle aria-label="Recolher menu lateral" title="Recolher menu" aria-expanded="true">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <a href="/" title="Home / Dashboard" style="color: white; text-decoration: none; padding: 5px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-home" style="font-size: 1.2rem;"></i>
+                <h2 class="brand-wordmark brand-on-dark" style="margin: 0; font-size: 1.15rem; white-space: nowrap; letter-spacing: -0.02em;">
+                    <span class="brand-muda">Muda</span><span class="brand-edu">Edu</span>
+                </h2>
+            </a>
+        </div>
+
+        <div class="header-right">
+
+            <% if (locals.isLoggedIn) { %>
+                <a href="/logout" class="header-logout-btn" title="Encerrar sessão e sair do MudaEdu">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                    <span>Sair</span>
+                </a>
+            <% } else { %>
+                <div class="login-header-form" id="header-login-container">
+
+                    <i class="fas fa-sign-in-alt" style="color: rgba(255,255,255,0.7); margin-right: 5px;"></i>
+
+                    <div id="h-step-1" style="display: flex; gap: 8px;">
+                        <input type="email" id="h-email" placeholder="Seu e-mail corporativo">
+                        <button type="button" onclick="h_verificarEmail()" class="btn-login-header btn-violet-dark">Próximo</button>
+                    </div>
+
+                    <div id="h-step-2" style="display: none; gap: 8px; align-items: center;">
+                        <span id="h-email-display" style="color: white; font-size: 0.8em; font-weight: bold; margin-right: 5px;"></span>
+                        <input type="password" id="h-credential" placeholder="Senha ou Código" data-pwd-toggle>
+                        <button type="button" onclick="h_realizarLogin()" class="btn-login-header btn-violet-dark">Entrar</button>
+                        <button type="button" onclick="h_voltar()" style="background:none; border:none; color:#ccc; cursor:pointer; padding: 0 5px;"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+            <% } %>
+
+            <!-- Header escuro → versão com Muda branco (logo-escura); fundos claros usam logo-clara -->
+            <img src="/images/logo/mudaedu-logo-escura.png" alt="<%= !locals.isLoggedIn ? 'mudaedu — inovação e agilidade na educação' : 'Logo mudaedu' %>" class="header-logo">
+        </div>
+    </div>
+</header>
+
+<%
+    // Proteção contra variables inexistentes
+    const nomeExibicao = (locals.lead && lead.nome) ? lead.nome.split(' ')[0] : (locals.user && user.nome ? user.nome.split(' ')[0] : null);
+    const empresaExibicao = (locals.lead && lead.empresa_clie) ? lead.empresa_clie : null;
+%>
+
+<% if (locals.isLoggedIn && nomeExibicao) { %>
+<nav class="context-bar" style="
+    background: #f0f9ff;
+    border-bottom: 1px solid #bae6fd;
+    padding: 8px 25px;
+    margin-top: 60px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    z-index: 10;
+    position: relative;
+">
+    <div class="context-bar__inner">
+
+        <div class="user-avatar" style="
+            width: 28px;
+            height: 28px;
+            background: #0369a1;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.7rem;
+            box-shadow: 0 1px 3px rgba(3, 105, 161, 0.2);
+        ">
+            <%= nomeExibicao.charAt(0).toUpperCase() %>
+        </div>
+
+        <div style="text-align: left; line-height: 1.2;">
+            <span style="display: block; font-size: 0.85rem; color: #0c4a6e; font-weight: bold;">
+                Olá, <%= nomeExibicao %>! 👋
+            </span>
+            <% if (empresaExibicao) { %>
+                <small style="font-size: 0.65rem; color: #0369a1; text-transform: uppercase; font-weight: 600; letter-spacing: 0.3px;">
+                    <%= empresaExibicao %>
+                </small>
+            <% } %>
+        </div>
+    </div>
+</nav>
+<% } %>
+    <main>
+        <nav class="sidebar-menu" id="sidebar-menu">
+            <ul>
+                <% if (!locals.isLoggedIn) { %>
+                    <li class="menu-item">
+                        <a href="/cadastro">
+                            <i class="fas fa-play-circle"></i><span class="sidebar-label"> Iniciar Diagnóstico</span>
+                        </a>
+                    </li>
+                <% } else if (locals.isHolding) { %>
+                    <li class="menu-item">
+                        <a href="javascript:void(0)" class="submenu-toggle"><i class="fas fa-building"></i><span class="sidebar-label"> Gestor da Rede</span></a>
+                        <ul class="submenu">
+                            <li>
+                                <a href="/cockpit-rede" style="color: #fbbf24; font-weight: bold;">
+                                    <i class="fas fa-network-wired"></i> Visão Consolidada da Rede
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                <% } else if (locals.isExecutor) { %>
+                    <li class="menu-item">
+                        <a href="/execucao" style="color: #fbbf24; font-weight: bold;">
+                            <i class="fas fa-tasks"></i><span class="sidebar-label"> Minhas Tarefas</span>
+                        </a>
+                    </li>
+                <% } else if (locals.isConsultor) { %>
+                    <li class="menu-item">
+                        <a href="/portal-consultor" style="color: #34d399; font-weight: bold;">
+                            <i class="fas fa-handshake"></i><span class="sidebar-label"> Portal do Parceiro</span>
+                        </a>
+                    </li>
+                    <li class="menu-item" style="padding: 6px 18px 4px; opacity: 0.9;">
+                        <span class="sidebar-label" style="font-size: 0.78rem; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-user-circle"></i>
+                            <%= (locals.user && locals.user.nome) ? locals.user.nome : 'Meu Perfil' %>
+                        </span>
+                        <% if (locals.user && locals.user.email) { %>
+                        <small style="display: block; margin: 4px 0 0 26px; font-size: 0.65rem; color: rgba(255,255,255,0.72);">
+                            <%= locals.user.email %>
+                        </small>
+                        <% } %>
+                    </li>
+                <% } else if (locals.isAdmin) { %>
+                    <li class="menu-item">
+                        <a href="javascript:void(0)" class="submenu-toggle"><i class="fas fa-user-shield"></i><span class="sidebar-label"> Administrador</span></a>
+                        <ul class="submenu">
+                            <li>
+                                <a href="/admin-cms" style="color: #a3bffa; font-weight: bold;">
+                                    <i class="fas fa-pen-nib"></i> Gestão de Conteúdo (CMS)
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/admin/esim" style="color: #fbbf24; font-weight: bold;">
+                                    <i class="fas fa-sim-card"></i> Gestão eSIM
+                                </a>
+                            </li>
+                            <% if (locals.system_role === 'sysadmin') { %>
+                            <li>
+                                <a href="/admin/usuarios" style="color: #a3bffa; font-weight: bold;">
+                                    <i class="fas fa-users-cog"></i> Gestão Global de Usuários
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/admin/crm" style="color: #34d399; font-weight: bold;">
+                                    <i class="fas fa-handshake"></i> CRM &amp; Contratos
+                                </a>
+                            </li>
+                            <% } %>
+                        </ul>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="javascript:void(0)" class="submenu-toggle"><i class="fas fa-cogs"></i><span class="sidebar-label"> LeAction (Engine)</span></a>
+                        <ul class="submenu">
+                            <li><a href="/dimensoes">Dimensões</a></li>
+                            <li><a href="/dominios">Domínios</a></li>
+                            <li><a href="/blocos">Blocos</a></li>
+                            <li><a href="/entregaveis">Entregáveis</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="javascript:void(0)" class="submenu-toggle"><i class="fas fa-layer-group"></i><span class="sidebar-label"> Método CTDI</span></a>
+                        <ul class="submenu">
+                            <li><a href="/teams" style="color: #a3bffa; font-weight: bold;">Gestão de Time</a></li>
+                            <li><a href="/clientes">Clientes</a></li>
+                            <li><a href="/sprints">Sprints</a></li>
+                            <li><a href="/questoes">Questões</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="menu-item">
+                        <a href="javascript:void(0)" class="submenu-toggle"><i class="fas fa-chart-pie"></i><span class="sidebar-label"> Análise Estratégica</span></a>
+                        <ul class="submenu">
+                            <li><a href="/avaliacoes"><i class="fas fa-clipboard-check"></i> Avaliações Iniciais</a></li>
+                            <li><a href="/inteligencia-negocio"><i class="fas fa-brain"></i> Inteligência de Negócio</a></li>
+                            <li><a href="/cockpit-rede"><i class="fas fa-network-wired"></i> Cockpit da Rede (Holding)</a></li>
+                            <li><a href="/admin/governanca-estrategica"><i class="fas fa-gavel"></i> Governança OKR</a></li>
+                            <li><a href="/admin/mesas-inovacao" style="color: #fbbf24; font-weight: bold;"><i class="fas fa-lightbulb"></i> Mesa de Inovação</a></li>
+                        </ul>
+                    </li>
+                <% } else { %>
+                    <%
+                        const leadSidebar = locals.lead || null;
+                        const idMatuSidebar = leadSidebar && leadSidebar.id_matu;
+                        const initRoleLead = String(leadSidebar?.init_role || locals.init_role || '').toUpperCase().trim();
+                        const perfilLead = String(leadSidebar?.perfil_lead || '').toUpperCase().trim();
+                        const ehInovadorSolo = initRoleLead === 'SOLO' || perfilLead === 'INOVADOR';
+                        const statusIA = (leadSidebar && leadSidebar.status_ia)
+                            ? String(leadSidebar.status_ia).trim().toUpperCase()
+                            : '';
+                        const relatorioCompleto = statusIA === 'AVALIACAO OK' || statusIA.indexOf('CONCLU') !== -1;
+                        let linkEstadoAtual = '#';
+                        if (idMatuSidebar) {
+                            if (!statusIA || statusIA === 'AGUARDANDO CONTEXTO') {
+                                linkEstadoAtual = '/avaliacoes/' + idMatuSidebar;
+                            } else if (relatorioCompleto) {
+                                linkEstadoAtual = '/diagnostico/' + idMatuSidebar;
+                            } else {
+                                linkEstadoAtual = '/diagnostico-inicial/' + idMatuSidebar;
+                            }
+                        }
+                        // Fases:
+                        // 1) Pré-contrato → só Contexto Empresarial
+                        // 2) Contratado → Contexto + CTA (completar/gerar) + Meu Contrato
+                        // 3) Plano pronto → + Estratégia e TD + Gestão de Time
+                        const projetoAtivoSidebar = !!(leadSidebar && (
+                            leadSidebar.hasActiveProject === true
+                            || leadSidebar.hasActiveProject === 1
+                            || leadSidebar.hasActiveProject === 'true'
+                            || leadSidebar.has_active_project === true
+                        ));
+                        const statusSidebar = statusIA;
+                        const planoProntoSidebar = statusSidebar === 'CONCLUIDO'
+                            || statusSidebar.indexOf('CONCLU') !== -1
+                            || leadSidebar?.plano_ia_concluido === true;
+                        const contextoPreenchidoSidebar = !!(
+                            leadSidebar
+                            && leadSidebar.clima_organizacional
+                            && String(leadSidebar.clima_organizacional).trim().length > 5
+                        );
+                        const elegivelGeneseSidebar = projetoAtivoSidebar && (
+                            statusSidebar === 'AVALIACAO OK'
+                            || statusSidebar === 'PROJETO OK'
+                        ) && !planoProntoSidebar;
+                        const genesisDisponivelSidebar = elegivelGeneseSidebar && contextoPreenchidoSidebar;
+                        const geneseEmAndamentoSidebar = statusSidebar === 'PENDENTE'
+                            || statusSidebar === 'PROCESSANDO';
+                        const mostrarGestaoTime = planoProntoSidebar;
+                        const mostrarMeuContrato = projetoAtivoSidebar;
+                        const mostrarGestaoProjeto = mostrarGestaoTime || mostrarMeuContrato;
+                    %>
+
+                    <li class="menu-item nav-group">
+                        <a href="javascript:void(0)" class="submenu-toggle">
+                            <span class="sidebar-label">Contexto Empresarial</span>
+                        </a>
+                        <ul class="submenu">
+                            <% if (!ehInovadorSolo && idMatuSidebar) { %>
+                            <li><a href="/avaliacoes/<%= idMatuSidebar %>" data-nav-match="/avaliacoes">Avaliação Inicial</a></li>
+                            <li><a href="<%= linkEstadoAtual %>" data-nav-match="/diagnostico,/diagnostico-inicial">Estado Atual</a></li>
+                            <% } %>
+                            <li>
+                                <a href="javascript:void(0)" onclick="abrirModalContextoLead(); event.stopPropagation();" data-nav-match="">
+                                    Meus Dados
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <% if (projetoAtivoSidebar && elegivelGeneseSidebar && !contextoPreenchidoSidebar) { %>
+                        <li class="menu-item" style="padding: 0 15px; margin: 8px 0;">
+                            <button type="button" onclick="abrirModalContextoLead(); event.stopPropagation();" style="width: 100%; background: #374151; border: 1px solid #ca8a04; color: #facc15; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.8rem;">
+                                Completar Contexto
+                            </button>
+                        </li>
+                    <% } else if (projetoAtivoSidebar && genesisDisponivelSidebar) { %>
+                        <li class="menu-item" style="padding: 0 15px; margin: 8px 0;">
+                            <button type="button" onclick="dispararGeneseLayout(event)" id="btnDouradoLayout" style="width: 100%; background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%); border: 1px solid #DAA520; color: #000; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;">
+                                <span id="textoBotaoLayout">Gerar Estratégia</span>
+                            </button>
+                        </li>
+                    <% } else if (projetoAtivoSidebar && geneseEmAndamentoSidebar) { %>
+                        <li class="menu-item" style="padding: 0 15px; margin: 8px 0;">
+                            <div style="width: 100%; background: rgba(79,172,254,0.15); border: 1px solid rgba(79,172,254,0.4); color: #9ecbff; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; text-align: center;">
+                                Gerando plano…
+                            </div>
+                        </li>
+                    <% } %>
+
+                    <% if (planoProntoSidebar && idMatuSidebar) { %>
+                    <li class="menu-item nav-group">
+                        <a href="javascript:void(0)" class="submenu-toggle">
+                            <span class="sidebar-label">Estratégia e TD</span>
+                        </a>
+                        <ul class="submenu">
+                            <li><a href="/insights-ia/<%= idMatuSidebar %>" data-nav-match="/insights-ia">Inteligência de Negócio</a></li>
+                            <li><a href="/planejamento-estrategico" data-nav-match="/planejamento-estrategico">Estratégia Empresarial</a></li>
+                            <li><a href="/meu-plano" data-nav-match="/meu-plano">Plano Diretor e Backlog</a></li>
+                            <li><a href="/projeto/sprint-atual" data-nav-match="/projeto/sprint-atual,/sprint">Quadro Kanban</a></li>
+                            <li><a href="/projeto/mesa-inovacao" data-nav-match="/projeto/mesa-inovacao">Mesa de Inovações</a></li>
+                        </ul>
+                    </li>
+                    <% } %>
+
+                    <% if (mostrarGestaoProjeto) { %>
+                    <li class="menu-item nav-group">
+                        <a href="javascript:void(0)" class="submenu-toggle">
+                            <span class="sidebar-label">Gestão do Projeto</span>
+                        </a>
+                        <ul class="submenu">
+                            <% if (mostrarGestaoTime) { %>
+                            <li><a href="/teams" data-nav-match="/teams">Gestão de Time</a></li>
+                            <% } %>
+                            <% if (mostrarMeuContrato) { %>
+                            <li><a href="/meu-contrato" data-nav-match="/meu-contrato">Meu Contrato</a></li>
+                            <% } %>
+                        </ul>
+                    </li>
+                    <% } %>
+                <% } %>
+
+                <% if (locals.isLoggedIn && !locals.isHolding && !locals.isConsultor) { %>
+                <li class="menu-item" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 4px;">
+                    <a href="/instrucoes-de-uso" class="nav-link-italic">
+                        <span class="sidebar-label">Instruções de Uso</span>
+                    </a>
+                </li>
+                <% } %>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <%- body %>
+        </div>
+    </main>
+
+    <!-- ==================================================================
+         🔮 CENTRALIZAÇÃO FLAT: INCLUSÃO DO MODAL DE CONTEXTO EMITIDO PELA UI - PROTEÇÃO ATIVA
+         ================================================================== -->
+    <% if (!locals.clientesModalCarregado) {
+        locals.clientesModalCarregado = true; %>
+        <%- include('clientes_modal') %>
+    <% } %>
+
+    <% if (locals.isLoggedIn) { %>
+    <input type="hidden" id="id_cliente_hidden" value="<%= (locals.lead && locals.lead.id_clie) || (locals.user && locals.user.id_clie) || '' %>">
+    <% } %>
+
+    <% if (locals.isLoggedIn) { %>
+    <style>
+        #progress-overlay {
+            display: none; position: fixed; z-index: 10000; inset: 0;
+            background: rgba(255,255,255,0.97); align-items: center; justify-content: center;
+            padding: 24px; box-sizing: border-box;
+        }
+        .genese-overlay__inner {
+            display: grid; grid-template-columns: minmax(280px, 1fr) minmax(300px, 1.1fr);
+            gap: 28px; width: 100%; max-width: 960px; text-align: left;
+        }
+        @media (max-width: 768px) { .genese-overlay__inner { grid-template-columns: 1fr; } }
+        .genese-diretrizes-panel {
+            background: #f8f6ff; border: 1px solid #e2d9ff; border-radius: 10px;
+            padding: 18px 20px; max-height: 340px; overflow-y: auto;
+        }
+        .genese-diretrizes-panel h3 { margin: 0 0 12px; font-size: 0.95rem; color: var(--brand-violet-deep); }
+        .genese-diretrizes__section { margin-bottom: 14px; }
+        .genese-diretrizes__section h4 {
+            margin: 0 0 6px; font-size: 0.78rem; text-transform: uppercase;
+            letter-spacing: 0.04em; color: var(--brand-violet);
+        }
+        .genese-diretrizes__section ul {
+            margin: 0; padding-left: 18px; font-size: 0.82rem; color: #4b5563; line-height: 1.45;
+        }
+        #progress-overlay .progress-container {
+            width: 100%; background: #f3f3f3; border-radius: 20px; margin: 20px 0 12px;
+            overflow: hidden; border: 1px solid #ddd;
+        }
+        #progress-overlay .progress-bar {
+            width: 0%; height: 30px;
+            background: linear-gradient(135deg, var(--brand-violet-deep) 0%, var(--brand-violet) 100%);
+            transition: width 0.4s ease;
+        }
+        #progress-overlay .status-text { color: var(--brand-violet-deep); font-weight: bold; font-size: 1.15rem; }
+        #genese-subtitle { color: #6b7280; font-size: 0.9rem; margin: 8px 0 0; }
+        #percent-text { font-weight: bold; color: var(--brand-violet-deep); }
+    </style>
+    <div id="progress-overlay">
+        <div class="genese-overlay__inner">
+            <div class="genese-overlay__progress">
+                <h2 class="status-text" id="status-ia-text">Consultor LeAction gerando seu plano...</h2>
+                <p id="genese-subtitle">Analisando gaps, Bússola e contexto institucional.</p>
+                <div class="progress-container"><div id="myBar" class="progress-bar"></div></div>
+                <div id="percent-text">0%</div>
+            </div>
+            <div class="genese-diretrizes-panel">
+                <h3><i class="fas fa-compass"></i> Diretrizes assumidas para este plano</h3>
+                <div id="genese-diretrizes-list"></div>
+            </div>
+        </div>
+    </div>
+    <!-- ==================================================================
+         ⚡ WIDGET FLUTUANTE: CONSULTOR LEACTION (FAST TRACK) — isolado
+         ================================================================== -->
+    <link rel="stylesheet" href="/css/voz-ditado.css?v=1">
+    <style>
+        #fab-consultor-btn {
+            position: fixed; bottom: 24px; right: 24px; z-index: 9998;
+            width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer;
+            background: linear-gradient(135deg, var(--brand-violet-deep) 0%, #d97706 100%);
+            color: #fff; font-size: 1.4rem; box-shadow: 0 8px 24px rgba(91, 53, 217,0.45);
+            display: flex; align-items: center; justify-content: center; transition: transform 0.2s;
+        }
+        #fab-consultor-btn:hover { transform: scale(1.08); }
+        #fab-consultor-popover {
+            position: fixed; bottom: 96px; right: 24px; z-index: 9999;
+            width: 360px; max-width: calc(100vw - 32px);
+            background: #fff; border-radius: 16px; overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.30); display: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #fab-consultor-popover.open { display: block; animation: fabUp 0.25s ease; }
+        @keyframes fabUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .fab-header {
+            background: linear-gradient(135deg, var(--brand-violet-deep) 0%, #6d28d9 100%);
+            color: #fff; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .fab-header h4 { margin: 0; font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+        .fab-close { background: none; border: none; color: #ddd; font-size: 1.2rem; cursor: pointer; }
+        .fab-close:hover { color: #fff; }
+        .fab-body { padding: 18px; }
+        .fab-body p.fab-intro { font-size: 0.88rem; color: #555; margin: 0 0 12px 0; line-height: 1.5; }
+        #fab-textarea {
+            width: 100%; box-sizing: border-box; border: 1px solid #ddd; border-radius: 10px;
+            padding: 10px; font-size: 0.88rem; resize: none; color: #333; outline: none;
+        }
+        #fab-textarea:focus { border-color: var(--brand-violet-deep); }
+        .fab-btn-primary {
+            width: 100%; margin-top: 12px; padding: 12px; border: none; border-radius: 10px; cursor: pointer;
+            font-weight: 800; font-size: 0.9rem; color: #fff;
+            background: linear-gradient(135deg, var(--brand-violet-deep) 0%, #d97706 100%); transition: opacity 0.2s;
+        }
+        .fab-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .fab-state { display: none; text-align: center; padding: 10px 0; }
+        .fab-state.active { display: block; }
+        .fab-spinner {
+            width: 38px; height: 38px; margin: 6px auto 14px; border-radius: 50%;
+            border: 4px solid #eee; border-top-color: var(--brand-violet-deep); animation: fabSpin 0.9s linear infinite;
+        }
+        @keyframes fabSpin { to { transform: rotate(360deg); } }
+        .fab-success-icon { font-size: 2.4rem; color: #16a34a; margin-bottom: 10px; }
+    </style>
+
+    <button id="fab-consultor-btn" onclick="fabToggle()" title="Consultor LeAction (Fast Track)" aria-label="Abrir Consultor LeAction">
+        <i class="fas fa-bolt"></i>
+    </button>
+
+    <div id="fab-consultor-popover" role="dialog" aria-label="Consultor LeAction">
+        <div class="fab-header">
+            <h4><i class="fas fa-bolt" style="color:#fbbf24;"></i> Consultor LeAction</h4>
+            <button class="fab-close" onclick="fabToggle()" aria-label="Fechar">&times;</button>
+        </div>
+        <div class="fab-body">
+            <!-- Estado inicial -->
+            <div id="fab-state-input" class="fab-state active">
+                <p class="fab-intro">Qual é o seu desafio mais urgente hoje? Pule a fila e comece a executar agora.</p>
+                <div id="fab-ditado-stop-bar" class="ditado-stop-bar" hidden aria-hidden="true">
+                    <span class="ditado-stop-bar__hint">Gravando… Diga <kbd>fim</kbd> ou clique em Parar.</span>
+                    <button type="button" class="btn-ditado-stop" data-ditado-action="stop">
+                        <i class="fas fa-stop"></i> Parar ditado
+                    </button>
+                </div>
+                <p id="fab-ditado-status" class="ditado-status" aria-live="polite"></p>
+                <div class="ditado-voz-row">
+                    <button type="button" class="btn-voz-campo" data-voz-target="fab-textarea" aria-label="Ditado por voz no desafio">
+                        <i class="fas fa-microphone"></i>
+                        <span class="mic-label">Ditado</span>
+                    </button>
+                </div>
+                <textarea id="fab-textarea" rows="4" placeholder="Clique em Ditado para falar ou digite seu desafio… Ex: Minha equipe perde tempo com retrabalho e não tenho indicadores claros..."></textarea>
+                <button id="fab-btn-gerar" class="fab-btn-primary" onclick="fabGerarSprint()">
+                    <i class="fas fa-wand-magic-sparkles"></i> Gerar Sprint de Solução
+                </button>
+            </div>
+            <!-- Estado loading -->
+            <div id="fab-state-loading" class="fab-state">
+                <div class="fab-spinner"></div>
+                <p style="font-size:0.9rem; color:var(--brand-violet-deep); font-weight:700; margin:0;">Analisando framework e montando sua Sprint Tática...</p>
+            </div>
+            <!-- Estado sucesso -->
+            <div id="fab-state-success" class="fab-state">
+                <div class="fab-success-icon"><i class="fas fa-circle-check"></i></div>
+                <p style="font-size:0.95rem; color:#333; font-weight:700; margin:0 0 14px 0;">Tudo pronto! Uma nova Sprint foi alocada no seu Backlog.</p>
+                <a href="/projeto/sprint-atual" class="fab-btn-primary" style="display:inline-block; text-decoration:none; text-align:center; box-sizing:border-box;">
+                    <i class="fas fa-table-columns"></i> Ir para o Quadro Kanban
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            function fabSetState(stateId) {
+                ['fab-state-input', 'fab-state-loading', 'fab-state-success'].forEach(id => {
+                    document.getElementById(id).classList.toggle('active', id === stateId);
+                });
+            }
+            window.fabToggle = function() {
+                const pop = document.getElementById('fab-consultor-popover');
+                const abrindo = !pop.classList.contains('open');
+                if (!abrindo && typeof window.pararDitadoPanelDx === 'function') {
+                    window.pararDitadoPanelDx();
+                }
+                pop.classList.toggle('open');
+                if (pop.classList.contains('open')) fabSetState('fab-state-input');
+            };
+            window.fabGerarSprint = async function() {
+                if (typeof window.pararDitadoPanelDx === 'function') window.pararDitadoPanelDx();
+                const txt = document.getElementById('fab-textarea').value.trim();
+                if (txt.length < 10) { alert('Conte um pouco mais sobre o seu desafio (mínimo 10 caracteres).'); return; }
+
+                const idClie = (_leadData && (_leadData.id_clie || _leadData.id)) || null;
+                const idMatu = (_leadData && _leadData.id_matu) || null;
+                if (!idClie || !idMatu) { alert('Não foi possível identificar seu contexto. Recarregue a página.'); return; }
+
+                fabSetState('fab-state-loading');
+                try {
+                    const res = await fetch('/api/consultor-interno/gerar-sprint-avulsa', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ problema: txt, id_clie: idClie, id_matu: idMatu })
+                    });
+                    const json = await res.json();
+                    if (res.ok && json.success) {
+                        fabSetState('fab-state-success');
+                    } else {
+                        throw new Error(json.error || 'Falha ao gerar a sprint.');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Não foi possível gerar a sprint agora. Tente novamente em instantes.');
+                    fabSetState('fab-state-input');
+                }
+            };
+        })();
+    </script>
+    <script src="/js/voz-ditado.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!window.initPanelDxVozDitado) return;
+            initPanelDxVozDitado('fab-consultor', {
+                root: '#fab-consultor-popover',
+                statusEl: '#fab-ditado-status',
+                stopBarEl: '#fab-ditado-stop-bar',
+                onError: function (msg) {
+                    var el = document.getElementById('fab-ditado-status');
+                    if (el) el.textContent = msg;
+                }
+            });
+        });
+    </script>
+    <% } %>
+
+    <footer class="main-footer">
+        <p>&copy; 2026 LeAction. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="/js/sidebar-toggle.js"></script>
+    <script src="/js/sidebar-submenu.js?v=3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script>
+        if (typeof Chart !== 'undefined' && typeof ChartAnnotation !== 'undefined') {
+            Chart.register(ChartAnnotation);
+        }
+    </script>
+    <script src="/js/genese-progress.js"></script>
+    <script src="/js/password-toggle.js?v=2"></script>
+    <script src="/js/tracking.js?v=2"></script>
+    <% if (typeof pageVendorScripts !== 'undefined' && pageVendorScripts && pageVendorScripts.length) { %>
+    <% pageVendorScripts.forEach(function(src) { %>
+    <script src="<%= src %>"></script>
+    <% }); %>
+    <% } %>
+    <% if (typeof pageScript !== 'undefined' && pageScript) { %>
+    <script src="<%= pageScript %>"></script>
+    <% } %>
+    <script src="/js/relatorio-blocos.js?v=6"></script>
+    <script src="/js/meu-plano-pipeline.js?v=1"></script>
+    <script src="/js/scripts.js?v=diag23"></script>
+
+    <script>
+        var _leadData = {};
+        try {
+            _leadData = JSON.parse('<%- JSON.stringify(locals.lead || locals.user || {}).replace(/\\/g, "\\\\").replace(/\'/g, "\\\'") %>');
+        } catch (e) { console.error("Erro JSON:", e); }
+
+        // Mapeia e redireciona os gatilhos de layout para o novo parcial inteligente unificado
+        function ehPapelClienteLead() {
+            // Contexto de escola/projeto é exclusivo do Cliente (lead). Executor/consultor/sysadmin não devem ser bloqueados.
+            const role = String(
+                (_leadData && (_leadData.system_role || _leadData.role))
+                || '<%= (typeof system_role !== "undefined" && system_role) ? system_role : "" %>'
+                || ''
+            ).toLowerCase();
+            if (role === 'executor' || role === 'consultor' || role === 'sysadmin' || role === 'admin') {
+                return false;
+            }
+            <% if (locals.isExecutor || locals.isConsultor || locals.isAdmin) { %>
+            return false;
+            <% } %>
+            return true;
+        }
+
+        function abrirModalContextoLead() {
+            if (!_leadData || !ehPapelClienteLead()) return;
+
+            const statusMacro = (_leadData.status_ia || "").toUpperCase();
+            // Só trava edição quando o plano/Kanban já existe — status CONCLUIDO sozinho não basta.
+            const jaBloqueadoPeloPlano = !!(
+                _leadData.plano_ia_concluido === true
+                || _leadData.plano_ia_concluido === 1
+                || _leadData.plano_ia_concluido === 'true'
+                || (statusMacro === 'CONCLUIDO' && !!_leadData.data_geracao_plano)
+            );
+            const projetoAtivo = !!(
+                _leadData.hasActiveProject === true
+                || _leadData.hasActiveProject === 1
+                || _leadData.hasActiveProject === 'true'
+                || _leadData.has_active_project === true
+            );
+            const contextoOk = !!((_leadData.clima_organizacional || '').trim().length > 5);
+            // Após contratação, contexto é obrigatório antes da gênese (mesmo se status permanecer AVALIACAO OK).
+            const obrigatorio = projetoAtivo && !contextoOk && !jaBloqueadoPeloPlano;
+
+            abrirModalContextoLeadGeral(_leadData, jaBloqueadoPeloPlano, false, obrigatorio);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof abrirModalContextoLeadGeral !== 'function' || !_leadData) return;
+            if (!ehPapelClienteLead()) return;
+            const statusMacro = (_leadData.status_ia || '').toUpperCase();
+            const projetoAtivo = !!(
+                _leadData.hasActiveProject === true
+                || _leadData.hasActiveProject === 1
+                || _leadData.hasActiveProject === 'true'
+                || _leadData.has_active_project === true
+            );
+            const contextoOk = !!((_leadData.clima_organizacional || '').trim().length > 5);
+            const planoPronto = statusMacro === 'CONCLUIDO' || statusMacro.indexOf('CONCLU') !== -1;
+            if (projetoAtivo && !contextoOk && !planoPronto) {
+                setTimeout(function () {
+                    abrirModalContextoLeadGeral(_leadData, false, false, true);
+                }, 500);
+            }
+        });
+
+        async function dispararGeneseLayout(event) {
+            if (event) event.preventDefault();
+            if (typeof executarGeneseEstrategica === 'function') {
+                return executarGeneseEstrategica();
+            }
+            if (!confirm("Deseja iniciar o processamento da Gênese com o Consultor LeAction?")) return;
+            try {
+                await fetch('/client/generate-ai-plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_matu: _leadData.id_matu })
+                });
+                window.location.reload();
+            } catch (err) { window.location.reload(); }
+        }
+
+        async function h_verificarEmail() {
+            const email = document.getElementById('h-email').value.trim();
+            if (!email) return alert("Digite seu e-mail");
+
+            try {
+                const res = await fetch('/verificar-email', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    document.getElementById('h-step-1').style.display = 'none';
+                    document.getElementById('h-step-2').style.display = 'flex';
+                    document.getElementById('h-email-display').innerText = email.split('@')[0];
+
+                    const inputCred = document.getElementById('h-credential');
+                    inputCred.placeholder = (data.type === 'TEAM') ? "Senha Admin" : "Código";
+                    inputCred.focus();
+                } else {
+                    alert(data.error || "E-mail não encontrado.");
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function h_realizarLogin() {
+            const email = document.getElementById('h-email').value;
+            const credential = document.getElementById('h-credential').value.trim();
+
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email: email, codigo: credential })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    alert(data.error || data.message || "Credenciais inválidas.");
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function h_voltar() {
+            document.getElementById('h-step-1').style.display = 'flex';
+            document.getElementById('h-step-2').style.display = 'none';
+        }
+
+    </script>
+
+    <% if (typeof coachContext !== 'undefined' && coachContext) { %>
+    <%- include('partials/coach-guide') %>
+    <% } %>
+
+    <!-- Abas Matriz ↔ Cockpit: contraste forçado após todo CSS da página -->
+    <style id="eo-view-tabs-contrast-fix">
+        html body main .content nav.eo-view-tabs a.eo-view-tabs__item:not(.is-active),
+        html body main .content nav.eo-view-tabs a.eo-view-tabs__item:not(.is-active) .eo-view-tabs__label {
+            color: #1e293b !important;
+            -webkit-text-fill-color: #1e293b !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            font-size: 0.88rem !important;
+        }
+        html body main .content nav.eo-view-tabs a.eo-view-tabs__item:not(.is-active) i {
+            color: var(--brand-violet-deep) !important;
+            -webkit-text-fill-color: var(--brand-violet-deep) !important;
+            font-size: 0.88rem !important;
+        }
+        html body main .content nav.eo-view-tabs a.eo-view-tabs__item.is-active {
+            background: linear-gradient(135deg, var(--brand-violet-deep), var(--brand-violet)) !important;
+            box-shadow: 0 4px 12px rgba(91, 53, 217, 0.25);
+        }
+        html body main .content nav.eo-view-tabs a.eo-view-tabs__item.is-active,
+        html body main .content nav.eo-view-tabs a.eo-view-tabs__item.is-active .eo-view-tabs__label,
+        html body main .content nav.eo-view-tabs a.eo-view-tabs__item.is-active i {
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+        }
+    </style>
+</body>
+</html>

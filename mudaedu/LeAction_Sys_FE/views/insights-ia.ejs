@@ -1,0 +1,102 @@
+<div class="main-content" id="insights-ia-page">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        .ia-dashboard { padding: 25px; color: #1e293b; background-color: #f1f5f9; min-height: 100vh; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .card-insight { background: #fff; border-radius: 12px; padding: 30px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.07); border-top: 5px solid #6366f1; }
+        .markdown-render { line-height: 1.7; color: #334155; text-align: left; }
+        .markdown-render h3 { color: #1e293b; margin: 20px 0 10px 0; font-weight: 700; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+        .header-dash { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    </style>
+
+    <div class="ia-dashboard">
+
+        <div class="header-dash">
+            <div>
+                <h1 style="margin: 0; font-size: 1.8rem; font-weight: 800;"><i class="fas fa-brain" style="color: #6366f1;"></i> Insights Estratégicos IA</h1>
+                <p style="color: #64748b; margin-top: 5px;">Cliente: <strong><%= plano.nome_clie %></strong> | GAP Global: <strong style="color: #ef4444;"><%= plano.pgen_gap %></strong></p>
+            </div>
+            <% if (plano.url_pdf_ia) { %>
+                <a href="<%= plano.url_pdf_ia %>" target="_blank" style="background: #ef4444; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+                    <i class="fas fa-file-pdf"></i> Versão PDF
+                </a>
+            <% } %>
+        </div>
+
+        <section class="card-insight">
+            <h3 style="color: #4f46e5; margin: 0 0 15px 0;"><i class="fas fa-bullseye"></i> Síntese Executiva</h3>
+            <div id="render-sintese" class="markdown-render"></div>
+        </section>
+
+        <section class="card-insight" style="border-top-color: #0ea5e9;">
+            <h3 style="color: #0ea5e9; margin: 0 0 15px 0;"><i class="fas fa-layer-group"></i> Diagnóstico de Domínios</h3>
+            <div id="render-dominios" class="markdown-render"></div>
+        </section>
+
+        <section class="card-insight" style="border-top-color: #10b981;">
+            <h3 style="color: #10b981; margin: 0 0 15px 0;"><i class="fas fa-route"></i> Roadmap Estratégico</h3>
+            <div id="render-roadmap" class="markdown-render"></div>
+        </section>
+
+        <section class="card-insight" style="border-top-color: #64748b;">
+            <h3 style="color: #64748b; margin: 0 0 15px 0;"><i class="fas fa-map-marked-alt"></i> Análise Geográfica & Regional</h3>
+            <div id="render-geo" class="markdown-render"></div>
+        </section>
+
+        <section class="card-insight" style="border-top-color: #f59e0b;">
+            <h3 style="color: #f59e0b; margin: 0 0 15px 0;"><i class="fas fa-running"></i> Próximos Passos (90 Dias)</h3>
+            <div id="render-conclusao" class="markdown-render"></div>
+        </section>
+
+    </div>
+
+    <script id="texto-bruto-ia" type="text/plain"><%- plano.txt_diagnostico_ia %></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            marked.setOptions({ gfm: true, breaks: true });
+
+            const textoBruto = document.getElementById('texto-bruto-ia').textContent;
+
+            function extrairPorTag(tag) {
+                const regex = new RegExp(`\\[INICIO_${tag}\\]([\\s\\S]*?)\\[FIM_${tag}\\]`, 'i');
+                const match = textoBruto.match(regex);
+                if (match && match[1]) {
+                    return match[1].replace(/^##.*$/m, '').trim();
+                }
+                return "";
+            }
+
+            function extrairPorTitulo(titulos) {
+                for (const titulo of titulos) {
+                    const regex = new RegExp(`##\\s*${titulo}[\\s\\S]*?(?=\\n##\\s|$)`, 'i');
+                    const match = textoBruto.match(regex);
+                    if (match) {
+                        return match[0].replace(/^##.*$/m, '').trim();
+                    }
+                }
+                return "";
+            }
+
+            const secoes = [
+                { tag: "VISAO_EXECUTIVA", titulos: ["Síntese Executiva"], render: "render-sintese" },
+                { tag: "ANALISE_DOMINIOS", titulos: ["Diagnóstico dos Domínios", "Análise dos Domínios"], render: "render-dominios" },
+                { tag: "ROADMAP_ESTRATEGICO", titulos: ["Roadmap Estratégico"], render: "render-roadmap" },
+                { tag: "ANALISE_REGIONAL", titulos: ["Análise Geográfica", "Análise Geográfica & Regional"], render: "render-geo" },
+                { tag: "PROXIMOS_PASSOS", titulos: ["Próximos Passos"], render: "render-conclusao" }
+            ];
+
+            secoes.forEach(s => {
+                let conteudo = extrairPorTag(s.tag);
+                if (!conteudo && s.titulos) {
+                    conteudo = extrairPorTitulo(s.titulos);
+                }
+                if (conteudo) {
+                    document.getElementById(s.render).innerHTML = marked.parse(conteudo);
+                } else {
+                    document.getElementById(s.render).innerHTML = "<p style='color:#94a3b8;'>Dados não encontrados para esta seção.</p>";
+                }
+            });
+        });
+    </script>
+</div>
