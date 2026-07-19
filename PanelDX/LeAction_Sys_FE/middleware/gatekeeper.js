@@ -57,7 +57,27 @@ function isElbHealthCheck(req) {
 }
 
 /**
- * Middleware global — bloqueia navegação quando system_locked=true no PostgreSQL.
+ * paneldx.com.br público fica só com aviso de desativação (sem redirecionar/mencionar outro produto).
+ * Override: PANELDX_PUBLIC_DEACTIVATED=0|false libera; =1|true força em qualquer host.
+ */
+function isPublicSiteDeactivated(req) {
+    const flag = String(process.env.PANELDX_PUBLIC_DEACTIVATED || '')
+        .trim()
+        .toLowerCase();
+    if (flag === '0' || flag === 'false' || flag === 'off') return false;
+    if (flag === '1' || flag === 'true' || flag === 'on' || flag === 'yes') return true;
+
+    const host = String(req.headers['x-forwarded-host'] || req.headers.host || '')
+        .split(',')[0]
+        .trim()
+        .split(':')[0]
+        .toLowerCase();
+    return host === 'paneldx.com.br' || host === 'www.paneldx.com.br';
+}
+
+/**
+ * Middleware global — bloqueia navegação quando system_locked=true no PostgreSQL
+ * ou quando o host público PanelDX está desativado.
  * Passam sem bloqueio: rotas CMS, sysadmin logado e testers (bypass).
  */
 async function gatekeeperMiddleware(req, res, next) {
@@ -69,16 +89,18 @@ async function gatekeeperMiddleware(req, res, next) {
         return next();
     }
 
-    let locked = false;
-    try {
-        locked = await isSystemLocked();
-    } catch (err) {
-        const isProd = (process.env.NODE_ENV || 'development') === 'production';
-        console.error('[Gatekeeper] Falha ao consultar system_locked:', err.message);
-        if (isProd) {
-            return res.redirect('/manutencao');
+    let locked = isPublicSiteDeactivated(req);
+    if (!locked) {
+        try {
+            locked = await isSystemLocked();
+        } catch (err) {
+            const isProd = (process.env.NODE_ENV || 'development') === 'production';
+            console.error('[Gatekeeper] Falha ao consultar system_locked:', err.message);
+            if (isProd) {
+                return res.redirect('/manutencao');
+            }
+            return next();
         }
-        return next();
     }
 
     if (!locked) {
@@ -100,8 +122,9 @@ async function gatekeeperMiddleware(req, res, next) {
 
     if (wantsJson) {
         return res.status(503).json({
-            error: 'Sistema em preparação para homologação produtiva.',
+            error: 'PanelDX desativado. Este serviço não está mais disponível.',
             maintenance: true,
+            deactivated: true,
         });
     }
 

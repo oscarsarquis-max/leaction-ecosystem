@@ -8,8 +8,20 @@ Fork do [PanelDX](https://github.com/leaction/PanelDX) para a migração de dom�
 
 ## Pré-requisitos
 
-- PostgreSQL acessível (porta/local conforme `LeAction_SysF/.env`)
+- PostgreSQL do **ecossistema** (container `leaction_db`), não o `paneldx_db` do compose isolado
 - Node.js e Python 3 com dependências instaladas nos diretórios `LeAction_Sys_FE` e `LeAction_SysF`
+
+### Banco local (padrão monorepo)
+
+| Item | Valor |
+|------|--------|
+| Banco | `LeAction_SysF` |
+| Host | `127.0.0.1` |
+| Porta | tipicamente `5433` (confira `docker port leaction_db 5432` — pode ser `5434`) |
+| User | `admin` |
+| Config | `LeAction_SysF/.env` (veja `.env.example`) |
+
+O `docker-compose.yml` com `paneldx_db:5434` é só para subir o mudaedu **isolado** do restante do monorepo.
 
 ## Subir o ambiente local
 

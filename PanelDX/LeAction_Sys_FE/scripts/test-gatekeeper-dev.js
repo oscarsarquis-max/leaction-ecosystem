@@ -146,7 +146,7 @@ async function run() {
 
     const manutencao = await httpGet('/manutencao');
     check('/manutencao retorna 200', manutencao.status === 200);
-    check('/manutencao contém texto esperado', /preparando|PanelDX/i.test(manutencao.body));
+    check('/manutencao contém texto esperado', /desativad|PanelDX/i.test(manutencao.body));
 
     const loginBlocked = await httpGet('/login', { method: 'GET' });
     check('/login redireciona para /manutencao', loginBlocked.status === 302 && loginBlocked.location === '/manutencao');

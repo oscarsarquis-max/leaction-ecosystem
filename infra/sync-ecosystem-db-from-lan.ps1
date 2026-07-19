@@ -1,33 +1,39 @@
-<#
+﻿<#
 .SYNOPSIS
-  Na máquina DESTINO: compara e atualiza os bancos Docker (leaction_db) a partir de outra
-  estação na mesma rede.
+  Na mÃ¡quina DESTINO: compara e atualiza os bancos Docker (leaction_db) a partir de outra
+  estaÃ§Ã£o na mesma rede.
 
 .DESCRIPTION
-  Rode na raiz do workspace (ou em infra/) na máquina que precisa receber os dados.
+  Rode na raiz do workspace (ou em infra/) na mÃ¡quina que precisa receber os dados.
 
-  Pré-requisito na ORIGEM (máquina com a base “boa”):
+  Pares fixos (Ethernet):
+    - Este workspace / 192.168.0.41  <->  DESKTOP-BA2U3G4 / 192.168.0.46
+    - Saindo daqui  -> SourceHost = 192.168.0.41  (rodar o script NO BA2U3G4)
+    - Saindo de la  -> SourceHost = 192.168.0.46  (rodar o script AQUI)
+    - Nao usar IP publico Claro (189.x) para Postgres.
+
+  PrÃ©-requisito na ORIGEM (mÃ¡quina com a base "boa"):
     cd C:\Projetos\infra
     .\open-leaction-db-lan.ps1   # libera TCP 5433 na LAN
 
   Fluxo:
     1) Testa conectividade com a origem
     2) Compara fingerprint (tamanho + tabelas + linhas estimadas) de cada banco
-    3) Faz dump remoto só dos bancos diferentes (ou todos com -ForceAll)
+    3) Faz dump remoto sÃ³ dos bancos diferentes (ou todos com -ForceAll)
     4) Restaura no leaction_db local (DROP/CREATE + psql)
 
-  Não usa pipe PowerShell nos dumps (evita corrupção UTF-8).
+  NÃ£o usa pipe PowerShell nos dumps (evita corrupÃ§Ã£o UTF-8).
 
 .EXAMPLE
-  cd C:\Projetos
-  .\infra\sync-ecosystem-db-from-lan.ps1 -SourceHost 192.168.0.50 -CompareOnly
+  # Neste PC: puxar do DESKTOP-BA2U3G4
+  .\infra\sync-ecosystem-db-from-lan.ps1 -SourceHost 192.168.0.46 -Force
 
 .EXAMPLE
-  cd C:\Projetos
-  .\infra\sync-ecosystem-db-from-lan.ps1 -SourceHost 192.168.0.50 -Force
+  # No DESKTOP-BA2U3G4: puxar deste PC
+  .\infra\sync-ecosystem-db-from-lan.ps1 -SourceHost 192.168.0.41 -Force
 
 .EXAMPLE
-  .\infra\sync-ecosystem-db-from-lan.ps1 -SourceHost 192.168.0.50 -Database inove4us -Force
+  .\infra\sync-ecosystem-db-from-lan.ps1 -SourceHost 192.168.0.46 -Database inove4us -Force
 #>
 [CmdletBinding()]
 param(
@@ -44,18 +50,18 @@ param(
 
     [string]$PgImage = 'postgres:18',
 
-    # Um ou mais bancos; se omitido, sincroniza o conjunto padrão do ecossistema
+    # Um ou mais bancos; se omitido, sincroniza o conjunto padrÃ£o (sem LeAction_SysF / PanelDX)
     [string[]]$Database,
 
     [string]$WorkDir,
 
-    # Só imprime diferenças — não altera nada
+    # SÃ³ imprime diferenÃ§as - nÃ£o altera nada
     [switch]$CompareOnly,
 
-    # Não pergunta confirmação
+    # NÃ£o pergunta confirmaÃ§Ã£o
     [switch]$Force,
 
-    # Atualiza todos os bancos listados, mesmo sem diferença detectada
+    # Atualiza todos os bancos listados, mesmo sem diferenÃ§a detectada
     [switch]$ForceAll
 )
 
@@ -67,9 +73,9 @@ if (-not $WorkDir) {
 }
 $DumpsDir = Join-Path $WorkDir 'dumps'
 
+# LeAction_SysF (PanelDX legado) fica FORA do sync padrÃ£o â€” base travada.
 $DefaultDatabases = @(
     'leaction_hub',
-    'LeAction_SysF',
     'MAtivas',
     'chamelleon',
     'inove4us',
@@ -79,6 +85,10 @@ $DefaultDatabases = @(
 )
 
 $Databases = if ($Database -and $Database.Count -gt 0) { @($Database) } else { $DefaultDatabases }
+
+if ($Databases -contains 'LeAction_SysF') {
+    Write-Host "AVISO: LeAction_SysF (PanelDX) foi pedido explicitamente â€” base normalmente travada." -ForegroundColor Yellow
+}
 
 function Get-QuotedDbName([string]$Name) {
     if ($Name -cmatch '^[a-z_][a-z0-9_]*$') { return $Name }
@@ -129,7 +139,7 @@ function Invoke-LocalPsql {
 }
 
 function Get-DbFingerprintSql {
-    # Fingerprint barato e estável o bastante para decidir sync.
+    # Fingerprint barato e estÃ¡vel o bastante para decidir sync.
     # size|tables|live_rows|fingerprint
     return @"
 SELECT
@@ -176,17 +186,17 @@ function Test-SourceReachable {
     try {
         $tnc = Test-NetConnection -ComputerName $SourceHost -Port $SourcePort -WarningAction SilentlyContinue
         if (-not $tnc.TcpTestSucceeded) {
-            throw "TCP ${SourceHost}:${SourcePort} inacessível."
+            throw "TCP ${SourceHost}:${SourcePort} inacessÃ­vel."
         }
     } catch {
-        throw "Não consegui conectar em ${SourceHost}:${SourcePort}. Na origem rode: .\infra\open-leaction-db-lan.ps1"
+        throw "NÃ£o consegui conectar em ${SourceHost}:${SourcePort}. Na origem rode: .\infra\open-leaction-db-lan.ps1"
     }
 
     $ver = Invoke-RemotePsql -DatabaseName 'postgres' -Sql 'SHOW server_version;'
-    Write-Host "    Origem OK — PostgreSQL $ver" -ForegroundColor Green
+    Write-Host "    Origem OK - PostgreSQL $ver" -ForegroundColor Green
 }
 
-function Ensure-LocalDb {
+function Initialize-LocalDb {
     if (-not (Test-LeactionDbRunning $Container)) {
         $composeDir = Join-Path $MonorepoRoot 'leaction-platform'
         Write-Host "==> Subindo $Container ..." -ForegroundColor Cyan
@@ -198,11 +208,11 @@ function Ensure-LocalDb {
         }
         Start-Sleep -Seconds 3
         if (-not (Test-LeactionDbRunning $Container)) {
-            throw "Container '$Container' não subiu. Verifique: cd leaction-platform; docker compose up -d db"
+            throw "Container '$Container' nÃ£o subiu. Verifique: cd leaction-platform; docker compose up -d db"
         }
     }
     $ver = Invoke-LocalPsql -DatabaseName 'postgres' -Sql 'SHOW server_version;'
-    Write-Host "    Destino OK — $Container (PG $ver)" -ForegroundColor Green
+    Write-Host "    Destino OK - $Container (PG $ver)" -ForegroundColor Green
 }
 
 function Get-LocalDbExists([string]$Name) {
@@ -249,20 +259,28 @@ function Sync-OneDatabase {
         throw "pg_dump falhou para $DbName"
     }
 
-    $quoted = Get-QuotedDbName $DbName
+    # SQL via arquivo: no Windows o docker.exe engole aspas em -c "DROP ... \"nome\""
+    $safeSqlName = $DbName.Replace('"', '')
     Write-Host "    restore local <- $DbName" -ForegroundColor Gray
 
-    docker exec $Container psql -U $DbUser -d postgres -v ON_ERROR_STOP=1 -c `
-        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DbName' AND pid <> pg_backend_pid();" | Out-Null
-    docker exec $Container psql -U $DbUser -d postgres -v ON_ERROR_STOP=1 -c `
-        "DROP DATABASE IF EXISTS $quoted;" | Out-Null
-    docker exec $Container psql -U $DbUser -d postgres -v ON_ERROR_STOP=1 -c `
-        "CREATE DATABASE $quoted;" | Out-Null
+    $prepSqlPath = Join-Path $DumpsDir "$safeName.prep.sql"
+    $prepSql = @"
+SELECT pg_terminate_backend(pid)
+  FROM pg_stat_activity
+ WHERE datname = '$safeSqlName'
+   AND pid <> pg_backend_pid();
+DROP DATABASE IF EXISTS "$safeSqlName";
+CREATE DATABASE "$safeSqlName";
+"@
+    [System.IO.File]::WriteAllText($prepSqlPath, $prepSql.Replace("`r`n", "`n"), [System.Text.UTF8Encoding]::new($false))
 
+    $containerPrep = "/tmp/lan-sync-$safeName.prep.sql"
     $containerDump = "/tmp/lan-sync-$safeName.sql"
+    docker cp $prepSqlPath "${Container}:${containerPrep}"
+    docker exec $Container psql -U $DbUser -d postgres -v ON_ERROR_STOP=1 -f $containerPrep | Out-Null
     docker cp $outFile "${Container}:${containerDump}"
     docker exec $Container psql -U $DbUser -d $DbName -v ON_ERROR_STOP=0 -q -f $containerDump | Out-Null
-    docker exec $Container rm -f $containerDump | Out-Null
+    docker exec $Container rm -f $containerPrep $containerDump | Out-Null
 
     $sizeKb = [math]::Round((Get-Item $outFile).Length / 1KB, 1)
     Write-Host "    OK $DbName ($sizeKb KB)" -ForegroundColor Green
@@ -271,13 +289,13 @@ function Sync-OneDatabase {
 # --- main ---
 
 Write-Host "`n========================================" -ForegroundColor Cyan
-Write-Host " Sync ecossistema DB (LAN → destino)" -ForegroundColor Cyan
+Write-Host " Sync ecossistema DB (LAN -> destino)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Origem : ${SourceHost}:${SourcePort}"
 Write-Host "Destino: local/$Container"
 Write-Host "Bancos : $($Databases -join ', ')"
 
-Ensure-LocalDb
+Initialize-LocalDb
 Test-SourceReachable
 
 $fpSql = Get-DbFingerprintSql
@@ -313,7 +331,7 @@ foreach ($db in $Databases) {
             $action = 'sync'
         } elseif ($srcFp.Hash -ne $dstFp.Hash -or $srcFp.SizeBytes -ne $dstFp.SizeBytes) {
             $action = 'sync'
-            $reason = 'diferença'
+            $reason = 'diferenÃ§a'
         } else {
             $action = 'ok'
             $reason = 'igual'
@@ -322,16 +340,16 @@ foreach ($db in $Databases) {
 
     $rows += [pscustomobject]@{
         Database   = $db
-        SrcSize    = if ($srcFp) { Format-Size $srcFp.SizeBytes } else { '—' }
-        DstSize    = if ($dstFp -and $dstExists) { Format-Size $dstFp.SizeBytes } else { '—' }
-        SrcTables  = if ($srcFp) { $srcFp.Tables } else { '—' }
-        DstTables  = if ($dstFp -and $dstExists) { $dstFp.Tables } else { '—' }
-        SrcRows    = if ($srcFp) { $srcFp.LiveRows } else { '—' }
-        DstRows    = if ($dstFp -and $dstExists) { $dstFp.LiveRows } else { '—' }
+        SrcSize    = if ($srcFp) { Format-Size $srcFp.SizeBytes } else { '-' }
+        DstSize    = if ($dstFp -and $dstExists) { Format-Size $dstFp.SizeBytes } else { '-' }
+        SrcTables  = if ($srcFp) { $srcFp.Tables } else { '-' }
+        DstTables  = if ($dstFp -and $dstExists) { $dstFp.Tables } else { '-' }
+        SrcRows    = if ($srcFp) { $srcFp.LiveRows } else { '-' }
+        DstRows    = if ($dstFp -and $dstExists) { $dstFp.LiveRows } else { '-' }
         Action     = $action
         Reason     = $reason
-        SrcHash    = if ($srcFp) { $srcFp.Hash.Substring(0, [Math]::Min(8, $srcFp.Hash.Length)) } else { '—' }
-        DstHash    = if ($dstFp -and $dstExists) { $dstFp.Hash.Substring(0, [Math]::Min(8, $dstFp.Hash.Length)) } else { '—' }
+        SrcHash    = if ($srcFp) { $srcFp.Hash.Substring(0, [Math]::Min(8, $srcFp.Hash.Length)) } else { '-' }
+        DstHash    = if ($dstFp -and $dstExists) { $dstFp.Hash.Substring(0, [Math]::Min(8, $dstFp.Hash.Length)) } else { '-' }
     }
 }
 
@@ -345,11 +363,11 @@ if ($CompareOnly) {
 }
 
 if ($toSync.Count -eq 0) {
-    Write-Host "==> Destino já está alinhado com a origem. Nada a fazer.`n" -ForegroundColor Green
+    Write-Host "==> Destino jÃ¡ estÃ¡ alinhado com a origem. Nada a fazer.`n" -ForegroundColor Green
     exit 0
 }
 
-Write-Host "==> Serão atualizados $($toSync.Count) banco(s): $($toSync.Database -join ', ')" -ForegroundColor Yellow
+Write-Host "==> SerÃ£o atualizados $($toSync.Count) banco(s): $($toSync.Database -join ', ')" -ForegroundColor Yellow
 
 if (-not $Force) {
     $answer = Read-Host "Sobrescrever esses bancos no destino? [s/N]"
@@ -370,5 +388,5 @@ Write-Host "`n==> Bancos no destino agora:" -ForegroundColor Cyan
 docker exec $Container psql -U $DbUser -d postgres -c `
     "SELECT datname, pg_size_pretty(pg_database_size(datname)) AS size FROM pg_database WHERE datistemplate = false AND datname <> 'postgres' ORDER BY 1;"
 
-Write-Host "`n==> Sync concluído. Dumps temporários em: $DumpsDir" -ForegroundColor Green
+Write-Host "`n==> Sync concluÃ­do. Dumps temporÃ¡rios em: $DumpsDir" -ForegroundColor Green
 Write-Host "    (pode apagar a pasta db-pack\_lan-sync se quiser)`n" -ForegroundColor DarkGray

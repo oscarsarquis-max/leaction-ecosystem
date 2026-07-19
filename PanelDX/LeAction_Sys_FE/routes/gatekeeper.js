@@ -123,7 +123,7 @@ router.get('/gatekeeper/lock', async (req, res) => {
 router.get('/manutencao', (_req, res) => {
     res.render('manutencao', {
         layout: false,
-        title: 'PanelDX — Em preparação',
+        title: 'PanelDX — Serviço desativado',
     });
 });
 

@@ -1,13 +1,16 @@
 # =====================================================================
-# PanelDX — Orquestração local (Docker Compose)
-# Sobe 3 serviços: db (Postgres), backend (Flask/Gunicorn) e frontend (Node).
-# As variáveis vêm do arquivo .env na raiz (copie de .env.example).
-# Uso: docker-compose up -d --build
+# mudaedu — Orquestração local ISOLADA (Docker Compose)
+# Sobe db + backend + frontend. Uso: docker-compose up -d --build
+#
+# Dev habitual no monorepo: NÃO use este db — aponte LeAction_SysF/.env
+# para o Postgres compartilhado leaction_db (banco LeAction_SysF, user admin,
+# host 127.0.0.1 e porta do map do container, tipicamente 5433 ou 5434).
+# Este serviço paneldx_db:5434 é só para stack mudaedu autônoma.
 # =====================================================================
 
 services:
   # -------------------------------------------------------------------
-  # Banco de dados PostgreSQL (apenas para testes locais)
+  # Postgres isolado (opcional — preferir leaction_db do ecossistema)
   # -------------------------------------------------------------------
   db:
     image: postgres:14
@@ -18,7 +21,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS:-postgres}
       POSTGRES_DB: ${DB_NAME:-LeAction_SysF}
     ports:
-      # Host 5434 evita conflito com Postgres local (5432). Em CI limpo, troque para "5432:5432".
+      # Isolado na 5434 — não é o leaction_db do ecossistema
       - "5434:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
