@@ -5,6 +5,7 @@
  */
 
 const { createContractService } = require('../domain/contract-service');
+const { kickOutboxNow } = require('../domain/outbox-worker');
 
 /**
  * @param {import('express').Express} app
@@ -28,6 +29,7 @@ function registerAdminCreditsRoutes(app, pool, { requireAdmin }) {
         amount,
         reason
       );
+      kickOutboxNow(pool);
 
       return res.status(200).json({
         success: true,

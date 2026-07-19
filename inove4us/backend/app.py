@@ -18,9 +18,11 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from db import (  # noqa: E402
     create_lead_solicitacao,
+    dismiss_hub_notice,
     ensure_creditos_ia_column,
     find_cliente_by_email,
     get_creditos_ia,
+    list_active_hub_notices,
     upsert_access_code,
     verify_access_code,
 )
@@ -132,21 +134,37 @@ def create_app() -> Flask:
         email = str(user.get("mail_clie") or "").strip().lower()
         id_clie = user.get("id_clie")
         try:
+            notices = list_active_hub_notices(email) if email else []
             cliente = find_cliente_by_email(email) if email else None
             if cliente:
-                fresh_user = _session_user(cliente)
-                session["user"] = fresh_user
+                fresh_user = {**_session_user(cliente), "hub_notices": notices}
+                session["user"] = _session_user(cliente)
                 return jsonify({"authenticated": True, "user": fresh_user})
 
             if id_clie:
                 fresh = get_creditos_ia(int(id_clie))
-                user = {**user, "creditos_ia": fresh}
-                session["user"] = user
-                return jsonify({"authenticated": True, "user": user})
+                session["user"] = {**user, "creditos_ia": fresh}
+                return jsonify(
+                    {
+                        "authenticated": True,
+                        "user": {**session["user"], "hub_notices": notices},
+                    }
+                )
         except Exception as exc:
             print(f"[inove4us] auth/me refresh creditos: {exc}", file=sys.stderr)
 
         return jsonify({"authenticated": True, "user": user})
+
+    @app.post("/api/notices/<int:notice_id>/dismiss")
+    def dismiss_notice(notice_id: int):
+        user = session.get("user")
+        if not user:
+            return jsonify({"error": "Não autenticado"}), 401
+        email = str(user.get("mail_clie") or "").strip().lower()
+        if not email:
+            return jsonify({"error": "Sessão sem e-mail"}), 400
+        ok = dismiss_hub_notice(email, notice_id)
+        return jsonify({"ok": ok, "id": notice_id}), 200 if ok else 404
 
     @app.post("/api/tracking/enviar")
     def tracking_enviar():

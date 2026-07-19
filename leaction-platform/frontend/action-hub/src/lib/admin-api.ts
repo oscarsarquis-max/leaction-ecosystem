@@ -137,6 +137,85 @@ export async function injectAdminCredits(
   return data;
 }
 
+export type AdminPayment = {
+  id: string;
+  status: string;
+  payment_status?: string | null;
+  created_at: string;
+  paid_at?: string | null;
+  gateway_reference?: string | null;
+  payer_email?: string | null;
+  product_name?: string | null;
+  product_sku?: string | null;
+  product_type?: string | null;
+  app_id?: string | null;
+  subject_id?: string | null;
+  plan_name?: string | null;
+  plan_sku?: string | null;
+  amount?: number | null;
+  currency?: string;
+  contract_id?: string | null;
+  contract_status?: string | null;
+  latest_notice?: string | null;
+};
+
+export type AdminPaymentCounts = {
+  total: number;
+  pending: number;
+  paid: number;
+  other: number;
+};
+
+export type AdminPaymentStatPoint = {
+  day: string;
+  plan_name: string;
+  app_id: string;
+  orders_total: number;
+  orders_paid: number;
+  orders_pending: number;
+  revenue: number;
+};
+
+export async function fetchAdminPayments(
+  token: string,
+  params?: { status?: string; app_id?: string; limit?: number }
+): Promise<{ payments: AdminPayment[]; counts: AdminPaymentCounts }> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{
+    payments: AdminPayment[];
+    counts: AdminPaymentCounts;
+  }>('/admin/payments', { params });
+  return {
+    payments: Array.isArray(data?.payments) ? data.payments : [],
+    counts: data?.counts || { total: 0, pending: 0, paid: 0, other: 0 },
+  };
+}
+
+export async function fetchAdminPaymentStats(
+  token: string,
+  params?: { days?: number; app_id?: string }
+): Promise<AdminPaymentStatPoint[]> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{ series: AdminPaymentStatPoint[] }>(
+    '/admin/payments/stats',
+    { params }
+  );
+  return Array.isArray(data?.series) ? data.series : [];
+}
+
+export async function postAdminPaymentNotice(
+  token: string,
+  orderId: string,
+  body: { message: string; status_label?: string }
+): Promise<{ success?: boolean; notice?: { id: string } }> {
+  const client = createAdminClient(token);
+  const { data } = await client.post(
+    `/admin/payments/${encodeURIComponent(orderId)}/notice`,
+    body
+  );
+  return data;
+}
+
 export function planTypeLabel(type: string): string {
   switch (type) {
     case 'plan':

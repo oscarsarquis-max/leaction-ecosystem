@@ -1,6 +1,7 @@
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const { createContractService } = require('./domain/contract-service');
+const { kickOutboxNow } = require('./domain/outbox-worker');
 
 /**
  * Marca pedido como PAID, ativa contrato (ContractService + outbox) e
@@ -58,6 +59,7 @@ async function fulfillOrderPayment(pool, orderId, jwtSecret, options = {}) {
     let contractActivation = null;
     try {
       contractActivation = await contractService.activateFromOrder(orderId);
+      kickOutboxNow(pool);
     } catch (contractErr) {
       console.error(
         `❌ [ContractService] Falha (order já PAID) order=${orderId}:`,
@@ -101,6 +103,7 @@ async function fulfillOrderPayment(pool, orderId, jwtSecret, options = {}) {
     console.log(
       `📋 [ContractService] Ativação order=${orderId} contract=${contractActivation.contract_id} event=${contractActivation.event_type || 'idempotent'}`
     );
+    kickOutboxNow(pool);
   } catch (contractErr) {
     // Pagamento já está PAID; não reverte cobrança — falha fica rastreável nos logs
     console.error(

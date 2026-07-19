@@ -8,7 +8,7 @@ import sys
 import jwt
 from flask import Blueprint, jsonify, request
 
-from db import adicionar_creditos_ia, find_cliente_by_email
+from db import adicionar_creditos_ia, find_cliente_by_email, upsert_hub_notice
 
 webhook_bp = Blueprint("actionhub_webhooks", __name__)
 
@@ -58,16 +58,23 @@ def _event_payload(decoded: dict, body: dict) -> tuple[str, dict]:
 
 
 def _credits_delta(payload: dict) -> int:
-    """Créditos a adicionar — campo credits ou quantity do pack."""
-    for key in ("credits", "credits_granted", "quantidade", "quantity"):
+    """
+    Créditos a CREDITAR nesta entrega (delta), nunca o saldo acumulado do Hub.
+
+    Ordem:
+      1) credits_added / credits_granted
+      2) soma de items[].quantity (credit_pack)
+      3) credits — só se não houver items (legado / inject manual)
+    """
+    for key in ("credits_added", "credits_granted"):
         if key in payload and payload[key] is not None:
             try:
-                n = int(payload[key])
-                return max(0, n)
+                return max(0, int(payload[key]))
             except (TypeError, ValueError):
                 continue
+
     items = payload.get("items")
-    if isinstance(items, list):
+    if isinstance(items, list) and items:
         total = 0
         for item in items:
             if not isinstance(item, dict):
@@ -79,6 +86,13 @@ def _credits_delta(payload: dict) -> int:
                     pass
         if total > 0:
             return total
+
+    for key in ("credits", "quantidade", "quantity"):
+        if key in payload and payload[key] is not None:
+            try:
+                return max(0, int(payload[key]))
+            except (TypeError, ValueError):
+                continue
     return 0
 
 
@@ -136,6 +150,26 @@ def _handle_contract_activated(payload: dict) -> dict:
     return {"handled": True, "logged": True, "subject_id": subject_id or None}
 
 
+def _handle_payment_notice(payload: dict) -> dict:
+    subject_id = str(payload.get("subject_id") or "").strip().lower()
+    message = str(payload.get("message") or "").strip()
+    order_id = payload.get("order_id")
+    status_label = payload.get("status_label")
+    if not subject_id or not message:
+        return {"handled": False, "reason": "missing_fields"}
+    notice = upsert_hub_notice(
+        mail_clie=subject_id,
+        message=message,
+        order_id=str(order_id) if order_id else None,
+        status_label=str(status_label) if status_label else None,
+    )
+    print(
+        f"[actionhub-webhook] PAYMENT_NOTICE mail={subject_id} "
+        f"order={order_id or '-'} id={notice.get('id')}"
+    )
+    return {"handled": True, "notice_id": notice.get("id"), "subject_id": subject_id}
+
+
 @webhook_bp.post("/api/webhooks/actionhub")
 def actionhub_webhook():
     """Recebe eventos do outbox Action Hub. Sem login de sessão."""
@@ -162,6 +196,8 @@ def actionhub_webhook():
         result = _handle_credits_granted(payload)
     elif event_type == "CONTRACT_ACTIVATED":
         result = _handle_contract_activated(payload)
+    elif event_type == "PAYMENT_NOTICE":
+        result = _handle_payment_notice(payload)
     else:
         print(
             f"[actionhub-webhook] event_type desconhecido: {event_type or '(vazio)'}",

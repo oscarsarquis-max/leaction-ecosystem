@@ -22,6 +22,7 @@ import { MercadoPagoSubscriptionBrick } from '@/components/MercadoPagoSubscripti
 import { CheckoutChrome } from '@/components/CheckoutChrome';
 import { parseClientId, resolveClientBrand, type ClientBrandTheme } from '@/lib/client-branding';
 import { getHubApiBase, MP_PUBLIC_KEY, buildClientReturnUrl, parseCheckoutOrderId, parseReturnTo, parseReturnOrigin, MP_SUBSCRIPTION_AMOUNT } from '@/lib/hub-api';
+import { useAdminGate } from '@/lib/require-admin';
 
 function cartItemsToSkus(items: { id?: string | number; sku?: string }[]): string[] {
   return items
@@ -122,14 +123,28 @@ function parseOrderPlanLabel(order: Order | null): string | null {
   }
 }
 
-const formatDate = (dateString: string) =>
-  new Intl.DateTimeFormat('pt-BR', {
+/** Pedidos: instante UTC → exibição America/Sao_Paulo. */
+const formatDate = (dateString: string) => {
+  const raw = String(dateString || '').trim();
+  if (!raw) return '—';
+  // ISO com Z / offset, ou "YYYY-MM-DD HH:mm:ss" sem fuso (UTC do Hub)
+  const hasTz = /([zZ]|[+-]\d{2}:?\d{2})$/.test(raw);
+  const normalized = hasTz
+    ? raw
+    : /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(raw)
+      ? `${raw.replace(' ', 'T')}Z`
+      : raw;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return raw;
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
-  }).format(new Date(dateString));
+    minute: '2-digit',
+  }).format(date);
+};
 
 function DashboardContent() {
   const router = useRouter();
@@ -152,11 +167,18 @@ function DashboardContent() {
 
   const { cartItems, setCartItems } = useCart();
   const { user: sessionUser, login: hubLogin, adoptEmail } = useHubSession();
+  const { isAdmin, hydrated: adminHydrated } = useAdminGate();
   const [emailLogin, setEmailLogin] = useState('');
   const [passwordLogin, setPasswordLogin] = useState('');
   const [loginStatus, setLoginStatus] = useState<'idle' | 'syncing' | 'paying'>('idle');
   const viewParam = useMemo(() => searchParams.get('view')?.trim() || '', [searchParams]);
   const wantsCartOnly = viewParam === 'cart';
+
+  // Admin ops: histórico global fica em /dashboard/admin/payments (não no painel do comprador)
+  useEffect(() => {
+    if (!adminHydrated || !isAdmin || isCheckoutFlow || wantsCartOnly) return;
+    router.replace('/dashboard/admin/payments');
+  }, [adminHydrated, isAdmin, isCheckoutFlow, wantsCartOnly, router]);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [mpEnabled, setMpEnabled] = useState(Boolean(MP_PUBLIC_KEY));
@@ -729,6 +751,15 @@ function DashboardContent() {
     return withCheckoutChrome(checkoutBrand, checkoutOrder?.product_name, successBody);
   }
 
+  if (adminHydrated && isAdmin && !isCheckoutFlow && !wantsCartOnly) {
+    return (
+      <main className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
+        <Loader2 className="mr-2 size-5 animate-spin" />
+        Abrindo painel de pagamentos…
+      </main>
+    );
+  }
+
   if (!email) {
     const loginBody = (
       <main className="min-h-[calc(100vh-60px)] text-slate-900">
@@ -996,10 +1027,8 @@ function DashboardContent() {
                               className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
                               role="alert"
                             >
-                              Credenciais MP atualizadas (app <strong>3963970511919598</strong>), Access Token
-                              válido — mas o Brick ainda retorna erro <strong>2006</strong> (token do cartão não
-                              aceito pelo backend).
-                              {mpBrickPairHint ? <> {mpBrickPairHint}</> : null}
+                              {mpBrickPairHint ||
+                                'Não foi possível validar o par Public Key + Access Token do Mercado Pago. Confira as Credenciais de teste no painel MP (mesmo app).'}
                             </p>
                             <button
                               type="button"
@@ -1015,7 +1044,7 @@ function DashboardContent() {
                               ) : (
                                 <>
                                   <CreditCard size={16} />
-                                  Pagar sandbox (MP real, sem Brick) — recomendado
+                                  Pagar sandbox (MP real, sem Brick)
                                 </>
                               )}
                             </button>
@@ -1107,7 +1136,11 @@ function DashboardContent() {
             </h2>
           </div>
 
-          {!loading && !errorMessage && dashboardUser && !isProfileComplete(dashboardUser) && (
+          {!loading &&
+            !errorMessage &&
+            dashboardUser &&
+            !isAdmin &&
+            !isProfileComplete(dashboardUser) && (
             <div className="mb-8 rounded-2xl border border-orange-200/80 bg-orange-50/50 p-5 md:p-6">
               <h3 className="text-base font-bold text-slate-900 md:text-lg">Conclusão de Perfil</h3>
               <p className="mt-1 text-sm text-slate-600">

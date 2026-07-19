@@ -4,6 +4,7 @@ const { createRequireAdminAuth } = require('./auth');
 const { registerAdminAppsRoutes } = require('./apps');
 const { registerAdminPlansRoutes } = require('./plans');
 const { registerAdminCreditsRoutes } = require('./credits');
+const { registerAdminPaymentsRoutes } = require('./payments');
 
 /**
  * @param {import('express').Express} app
@@ -17,8 +18,11 @@ function registerAdminRoutes(app, pool, options = {}) {
   registerAdminAppsRoutes(app, pool, { requireAdmin });
   registerAdminPlansRoutes(app, pool, { requireAdmin });
   registerAdminCreditsRoutes(app, pool, { requireAdmin });
+  registerAdminPaymentsRoutes(app, pool, { requireAdmin });
 
-  console.log('🛠️  [admin] rotas /admin/apps, /admin/plans e /admin/credits registradas');
+  console.log(
+    '🛠️  [admin] rotas /admin/apps, /admin/plans, /admin/credits e /admin/payments registradas'
+  );
 }
 
 module.exports = {

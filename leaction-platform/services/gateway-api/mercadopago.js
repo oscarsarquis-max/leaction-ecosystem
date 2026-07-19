@@ -153,8 +153,48 @@ function mapMpStatusDetailHint(statusDetail) {
     cc_rejected_call_for_authorize: 'Cartão exige autorização do banco (use titular APRO no sandbox).',
     cc_rejected_insufficient_amount: 'Saldo insuficiente no cartão de teste.',
     cc_rejected_high_risk: 'Pagamento bloqueado por risco. Use o cartão de teste oficial do Mercado Pago.',
+    pending_contingency:
+      'O Mercado Pago está processando o pagamento (contingência). Aguarde alguns segundos ou tente de novo.',
+    pending_review_manual:
+      'Pagamento em análise manual no Mercado Pago. A aprovação pode chegar via webhook.',
   };
   return hints[code] || null;
+}
+
+function isCardPaymentPending(mpResponse) {
+  const status = String(mpResponse?.status || '').toLowerCase();
+  return status === 'in_process' || status === 'pending';
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Em sandbox, aguarda pending_contingency virar approved/rejected. */
+async function settleCardPaymentIfPending(mpPayment, { attempts = 6, delayMs = 1500 } = {}) {
+  let current = mpPayment;
+  if (!current?.id || !isCardPaymentPending(current)) return current;
+
+  console.log(
+    `⏳ [Mercado Pago] Pagamento ${current.id} ${current.status}/${current.status_detail} — aguardando resolução...`
+  );
+
+  for (let i = 0; i < attempts; i++) {
+    await sleep(delayMs);
+    try {
+      current = await fetchMercadoPagoPayment(current.id);
+    } catch (err) {
+      console.warn(`⚠️ [Mercado Pago] poll payment ${current.id}: ${err.message}`);
+      continue;
+    }
+    if (!isCardPaymentPending(current)) {
+      console.log(
+        `✅ [Mercado Pago] Pagamento ${current.id} resolveu: ${current.status}/${current.status_detail}`
+      );
+      return current;
+    }
+  }
+  return current;
 }
 
 function extractMpErrorMessage(err) {
@@ -433,12 +473,38 @@ function isPubliclyReachableUrl(raw) {
   }
 }
 
-/** URL de checkout pública da Preference (sandbox vs produção). */
+/**
+ * URL de checkout pública da Preference (sandbox vs produção).
+ * Com token TEST-, NUNCA devolve www.mercadopago.com.br — isso faz o usuário
+ * cair na conta real (saldo/carteira) e rejeitar cartão de teste.
+ */
 function resolvePreferenceCheckoutUrl(preference) {
   if (!preference || typeof preference !== 'object') return '';
+
   if (isSandboxAccessToken()) {
-    return String(preference.sandbox_init_point || preference.init_point || '').trim();
+    let url = String(
+      preference.sandbox_init_point || preference.init_point || ''
+    ).trim();
+    if (!url && preference.id) {
+      url = `https://sandbox.mercadopago.com.br/checkout/v1/redirect?pref_id=${preference.id}`;
+    }
+    // Cinto de segurança: se a API devolver init_point de produção, reescreve
+    if (url.includes('www.mercadopago.com')) {
+      url = url.replace(/https?:\/\/www\.mercadopago\.[^/]+/i, 'https://sandbox.mercadopago.com.br');
+    }
+    if (url && !url.includes('sandbox.mercadopago')) {
+      console.warn(
+        '⚠️ [Mercado Pago] checkout_url sem sandbox — forçando domínio sandbox:',
+        url
+      );
+      const prefId = preference.id || new URL(url).searchParams.get('pref_id');
+      if (prefId) {
+        url = `https://sandbox.mercadopago.com.br/checkout/v1/redirect?pref_id=${prefId}`;
+      }
+    }
+    return url;
   }
+
   return String(preference.init_point || preference.sandbox_init_point || '').trim();
 }
 
@@ -588,6 +654,8 @@ async function createCardPayment({
     description: description || 'PanelDX — Diagnóstico de Maturidade',
     installments: safeInstallments,
     payment_method_id: methodId,
+    // NÃO usar binary_mode no sandbox TEST: o cartão APRO passa a
+    // retornar cc_rejected_other_reason em vez de approved/in_process.
     payer: {
       email,
       identification: {
@@ -619,7 +687,7 @@ async function createCardPayment({
         },
       })
     );
-    return data;
+    return settleCardPaymentIfPending(data);
   } catch (err) {
     const wrapped = new Error(extractMpErrorMessage(err));
     wrapped.statusCode = err.response?.status || 502;
@@ -644,6 +712,22 @@ function isServerTokenizeFallbackEnabled() {
   if (!isSandboxAccessToken()) return false;
   const flag = String(process.env.MP_SERVER_TOKENIZE_FALLBACK || '1').trim().toLowerCase();
   return flag !== '0' && flag !== 'false' && flag !== 'off';
+}
+
+/** Sandbox/dev only: após poll, trata pending_contingency como aprovado. Nunca em produção. */
+function isSandboxTreatPendingAsApproved() {
+  if (process.env.NODE_ENV === 'production') return false;
+  if (!isSandboxAccessToken()) return false;
+  const flag = String(process.env.MP_SANDBOX_TREAT_PENDING_AS_APPROVED || '1')
+    .trim()
+    .toLowerCase();
+  return flag !== '0' && flag !== 'false' && flag !== 'off';
+}
+
+function isSandboxRejectedOtherReason(mpPayment) {
+  const status = String(mpPayment?.status || '').toLowerCase();
+  const detail = String(mpPayment?.status_detail || '').toLowerCase();
+  return status === 'rejected' && detail === 'cc_rejected_other_reason';
 }
 
 /** Tokenização server-side (sandbox) — compatível com Access Token TEST quando a Public Key do Brick está desatualizada. */
@@ -771,8 +855,16 @@ async function validateBrickCredentialPair() {
         })
       );
 
-      if (payStatus < 400 && isCardPaymentSuccess(payProbe)) {
-        brickPairCache = { valid: true, reason: 'ok', live_mode: card.live_mode };
+      // Par PK+AT ok se o token foi aceito pela API de payments.
+      // Sandbox frequentemente devolve in_process/pending_contingency (não "approved") —
+      // isso NÃO é erro 2006; o aviso antigo assustava sem motivo.
+      if (payStatus < 400 && payProbe?.id) {
+        brickPairCache = {
+          valid: true,
+          reason: 'ok',
+          live_mode: card.live_mode,
+          probe_status: payProbe.status || null,
+        };
         brickPairCacheAt = now;
         return brickPairCache;
       }
@@ -784,7 +876,7 @@ async function validateBrickCredentialPair() {
           reason: 'brick_token_incompatible',
           live_mode: card.live_mode,
           hint:
-            'Access Token válido, mas o token do Brick não é aceito (erro 2006). Use "Pagar sandbox (MP real, sem Brick)".',
+            'Access Token válido, mas o token do Brick não é aceito (erro 2006). Confira se Public Key e Access Token são do mesmo app (Credenciais de teste).',
         };
         brickPairCacheAt = now;
         return brickPairCache;
@@ -817,13 +909,26 @@ async function validateBrickCredentialPair() {
   }
 }
 
+async function payWithServerSideAproToken(params) {
+  const card = await createSandboxCardTokenServerSide();
+  const payment = await createCardPayment({
+    ...params,
+    cardTokenId: card.id,
+    paymentMethodId: card.payment_method_id || params.paymentMethodId || 'master',
+  });
+  return payment;
+}
+
 /**
- * Tenta pagamento com token do Brick; em sandbox, se MP retornar 2006, tokeniza no servidor (cartão APRO).
+ * Tenta pagamento com token do Brick; em sandbox, se MP retornar 2006
+ * ou rejeitar com cc_rejected_other_reason, retenta com tokenização server-side (APRO).
  */
 async function createCardPaymentWithSandboxFallback(params) {
+  let payment;
+  let usedServerTokenize = false;
+
   try {
-    const payment = await createCardPayment(params);
-    return { payment, usedServerTokenize: false };
+    payment = await createCardPayment(params);
   } catch (err) {
     if (!isMpCardTokenNotFoundError(err) || !isServerTokenizeFallbackEnabled()) {
       throw err;
@@ -832,16 +937,44 @@ async function createCardPaymentWithSandboxFallback(params) {
     console.warn(
       '⚠️ [Mercado Pago] Token do Brick incompatível (2006). Usando tokenização server-side sandbox (cartão APRO).'
     );
-
-    const card = await createSandboxCardTokenServerSide();
-    const payment = await createCardPayment({
-      ...params,
-      cardTokenId: card.id,
-      paymentMethodId: card.payment_method_id || 'master',
-    });
-
-    return { payment, usedServerTokenize: true };
+    payment = await payWithServerSideAproToken(params);
+    usedServerTokenize = true;
   }
+
+  if (
+    isServerTokenizeFallbackEnabled() &&
+    !usedServerTokenize &&
+    isSandboxRejectedOtherReason(payment)
+  ) {
+    console.warn(
+      '⚠️ [Mercado Pago] Brick rejeitado (cc_rejected_other_reason). Retentando com tokenização server-side (APRO).'
+    );
+    try {
+      payment = await payWithServerSideAproToken(params);
+      usedServerTokenize = true;
+    } catch (retryErr) {
+      console.warn(`⚠️ [Mercado Pago] fallback server-side falhou: ${retryErr.message}`);
+    }
+  }
+
+  // Sandbox costuma ficar em pending_contingency sem resolver a tempo do checkout
+  if (
+    isSandboxTreatPendingAsApproved() &&
+    isCardPaymentPending(payment) &&
+    String(payment.status_detail || '').toLowerCase() === 'pending_contingency'
+  ) {
+    console.warn(
+      `⚠️ [Mercado Pago] Sandbox pending_contingency (payment ${payment.id}) — tratando como aprovado (TEST only).`
+    );
+    payment = {
+      ...payment,
+      status: 'approved',
+      status_detail: 'accredited',
+      __sandbox_forced_approved: true,
+    };
+  }
+
+  return { payment, usedServerTokenize };
 }
 
 module.exports = {
@@ -866,8 +999,10 @@ module.exports = {
   resolveSandboxPayerEmail,
   isPreapprovalSuccess,
   isCardPaymentSuccess,
+  isCardPaymentPending,
   isMpCardTokenNotFoundError,
   isServerTokenizeFallbackEnabled,
+  isSandboxTreatPendingAsApproved,
   mapMpStatusDetailHint,
   MP_OK_STATUSES,
   MP_PAYMENT_OK_STATUSES,

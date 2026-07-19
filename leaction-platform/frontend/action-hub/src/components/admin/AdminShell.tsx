@@ -2,11 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AppWindow, LayoutDashboard, Package, Shield } from 'lucide-react';
+import { AppWindow, CreditCard, LayoutDashboard, Package, Shield } from 'lucide-react';
 import { useHubSession } from '@/context/HubSessionContext';
 import type { ReactNode } from 'react';
 
 const ADMIN_NAV = [
+  {
+    href: '/dashboard/admin/payments',
+    label: 'Pagamentos & Ops',
+    icon: CreditCard,
+  },
   {
     href: '/dashboard/admin/apps',
     label: 'Aplicações Integradas',
@@ -65,11 +70,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </nav>
             <div className="border-t border-stone-100 p-3">
               <Link
-                href="/dashboard"
+                href={
+                  user?.email
+                    ? `/dashboard?email=${encodeURIComponent(user.email)}`
+                    : '/dashboard'
+                }
                 className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-stone-500 transition hover:bg-stone-50 hover:text-stone-800"
               >
                 <LayoutDashboard className="size-3.5" aria-hidden />
-                Voltar ao dashboard
+                Área do LeActioner
               </Link>
             </div>
           </div>
@@ -82,7 +91,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 Painel administrativo
               </p>
               <p className="text-sm font-semibold text-stone-800">
-                Gestão de aplicações e planos
+                Pagamentos, aplicações e planos
               </p>
             </div>
             {user ? (

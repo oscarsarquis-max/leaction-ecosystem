@@ -1,10 +1,22 @@
 const express = require('express');
 const { randomUUID } = require('crypto');
-const { Pool } = require('pg');
+const { Pool, types: pgTypes } = require('pg');
 const cors = require('cors'); // Importa o porteiro
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 require('dotenv').config({ path: '../../.env', override: true }); // Busca o .env na raiz
+
+// Postgres do Hub roda em UTC (timestamp without time zone).
+// Sem isso o node-pg no Windows interpreta o valor como horário local (BRT)
+// e o histórico fica +3h adiantado.
+const PG_TIMESTAMP_OID = 1114;
+pgTypes.setTypeParser(PG_TIMESTAMP_OID, (value) => {
+  if (value == null) return value;
+  const raw = String(value).trim();
+  if (!raw) return raw;
+  const hasTz = /([zZ]|[+-]\d{2}:?\d{2})$/.test(raw);
+  return new Date(hasTz ? raw : `${raw.replace(' ', 'T')}Z`);
+});
 
 const {
   createPreapprovalSubscription,
@@ -19,6 +31,7 @@ const {
   isMercadoPagoConfigured,
   isPreapprovalSuccess,
   isCardPaymentSuccess,
+  isCardPaymentPending,
   getMercadoPagoPublicKey,
   getMercadoPagoAccessToken,
   getSandboxPayerEmail,
@@ -734,6 +747,35 @@ app.post('/payments/card', async (req, res) => {
       console.log('✅ [Mercado Pago] Pagamento sandbox via fallback server-side (MP real aprovado).');
     }
 
+    if (isCardPaymentPending(mpPayment)) {
+      const hint = mapMpStatusDetailHint(mpPayment.status_detail);
+      if (mpPayment.id != null) {
+        await pool.query(
+          `UPDATE orders SET gateway_ref = COALESCE(gateway_ref, $1) WHERE id = $2`,
+          [`mp:${mpPayment.id}`, orderId]
+        );
+      }
+      console.warn(
+        `⏳ [Mercado Pago] Pagamento pendente: ${mpPayment.status} / ${mpPayment.status_detail}`,
+        hint ? `| ${hint}` : ''
+      );
+      return res.status(202).json({
+        success: false,
+        pending: true,
+        error: 'Pagamento em processamento no Mercado Pago',
+        mp_status: mpPayment.status,
+        mp_status_detail: mpPayment.status_detail,
+        hint:
+          hint ||
+          'Aguarde a confirmação (webhook). Se não atualizar em 1–2 min, tente novamente com titular APRO.',
+        mercadopago: {
+          id: mpPayment.id,
+          status: mpPayment.status,
+          status_detail: mpPayment.status_detail,
+        },
+      });
+    }
+
     if (!isCardPaymentSuccess(mpPayment)) {
       const hint = mapMpStatusDetailHint(mpPayment.status_detail);
       console.warn(
@@ -853,6 +895,26 @@ app.post('/payments/sandbox-card', async (req, res) => {
       description: orderRow.product_name || 'PanelDX',
       installments: 1,
     });
+
+    if (isCardPaymentPending(mpPayment)) {
+      const hint = mapMpStatusDetailHint(mpPayment.status_detail);
+      if (mpPayment.id != null) {
+        await pool.query(
+          `UPDATE orders SET gateway_ref = COALESCE(gateway_ref, $1) WHERE id = $2`,
+          [`mp:${mpPayment.id}`, orderId]
+        );
+      }
+      return res.status(202).json({
+        success: false,
+        pending: true,
+        error: 'Pagamento em processamento no Mercado Pago',
+        mp_status: mpPayment.status,
+        mp_status_detail: mpPayment.status_detail,
+        hint:
+          hint ||
+          'Aguarde a confirmação (webhook). Se não atualizar em 1–2 min, tente novamente.',
+      });
+    }
 
     if (!isCardPaymentSuccess(mpPayment)) {
       const hint = mapMpStatusDetailHint(mpPayment.status_detail);

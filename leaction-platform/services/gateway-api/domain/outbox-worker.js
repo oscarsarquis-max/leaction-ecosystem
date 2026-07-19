@@ -15,7 +15,7 @@ const LOG = '[OutboxWorker]';
 const BATCH_LIMIT = 50;
 const MAX_ATTEMPTS = 5;
 const BACKOFF_MINUTES = 5;
-const DEFAULT_INTERVAL_MS = 15_000;
+const DEFAULT_INTERVAL_MS = 5_000;
 const HTTP_TIMEOUT_MS = 15_000;
 
 function backoffMinutes(attempts) {
@@ -304,10 +304,32 @@ function startOutboxWorker(pool, options = {}) {
   };
 }
 
+/**
+ * Dispara entrega imediata (após fulfill / inject) sem esperar o intervalo.
+ * Fire-and-forget — erros só vão para o log.
+ * @param {import('pg').Pool} pool
+ */
+function kickOutboxNow(pool) {
+  setImmediate(() => {
+    process_pending_outbox_events(pool)
+      .then((stats) => {
+        if (stats.claimed > 0) {
+          console.log(
+            `${LOG} kick claimed=${stats.claimed} delivered=${stats.delivered} failed=${stats.failed}`
+          );
+        }
+      })
+      .catch((err) => {
+        console.error(`${LOG} kick error:`, err.message);
+      });
+  });
+}
+
 module.exports = {
   process_pending_outbox_events,
   processPendingOutboxEvents,
   startOutboxWorker,
+  kickOutboxNow,
   claimPendingEvents,
   deliverEvent,
   MAX_ATTEMPTS,

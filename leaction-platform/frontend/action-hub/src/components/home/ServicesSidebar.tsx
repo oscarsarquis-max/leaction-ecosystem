@@ -86,6 +86,14 @@ const NAV: NavItem[] = [
     requiresAuth: true,
   },
   {
+    id: 'admin-payments',
+    label: 'Pagamentos & Ops',
+    href: '/dashboard/admin/payments',
+    icon: CreditCard,
+    requiresAuth: true,
+    requiresAdmin: true,
+  },
+  {
     id: 'admin-apps',
     label: 'Aplicações Integradas',
     href: '/dashboard/admin/apps',

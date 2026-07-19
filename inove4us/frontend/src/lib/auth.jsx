@@ -12,8 +12,8 @@ import { api } from './api'
 const AuthContext = createContext(null)
 
 const POLL_MS = 20_000
-const PAID_POLL_MS = 2_000
-const PAID_POLL_MAX_MS = 40_000
+const PAID_POLL_MS = 1_000
+const PAID_POLL_MAX_MS = 90_000
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)

@@ -159,6 +159,115 @@ def consumir_credito_ia(id_clie: int) -> int | None:
             return int(row[0])
 
 
+_hub_notices_ensured = False
+
+
+def ensure_hub_notices_table() -> None:
+    """Avisos do Action Hub (pagamento pendente / intervenção admin)."""
+    global _hub_notices_ensured
+    if _hub_notices_ensured:
+        return
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.hub_notices (
+                    id SERIAL PRIMARY KEY,
+                    mail_clie TEXT NOT NULL,
+                    order_id TEXT,
+                    message TEXT NOT NULL,
+                    status_label TEXT,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    dismissed_at TIMESTAMP
+                )
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_hub_notices_mail_active
+                    ON public.hub_notices (LOWER(TRIM(mail_clie)))
+                    WHERE dismissed_at IS NULL
+                """
+            )
+    _hub_notices_ensured = True
+
+
+def upsert_hub_notice(
+    *,
+    mail_clie: str,
+    message: str,
+    order_id: str | None = None,
+    status_label: str | None = None,
+) -> dict:
+    ensure_hub_notices_table()
+    mail = (mail_clie or "").strip().lower()
+    text = (message or "").strip()
+    if not mail or not text:
+        raise ValueError("mail_clie e message são obrigatórios")
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Substitui aviso ativo do mesmo pedido (se houver)
+            if order_id:
+                cur.execute(
+                    """
+                    UPDATE public.hub_notices
+                    SET dismissed_at = CURRENT_TIMESTAMP
+                    WHERE LOWER(TRIM(mail_clie)) = %s
+                      AND order_id = %s
+                      AND dismissed_at IS NULL
+                    """,
+                    (mail, str(order_id)),
+                )
+            cur.execute(
+                """
+                INSERT INTO public.hub_notices (mail_clie, order_id, message, status_label)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id, mail_clie, order_id, message, status_label, created_at
+                """,
+                (mail, order_id, text, status_label),
+            )
+            return dict(cur.fetchone())
+
+
+def list_active_hub_notices(mail_clie: str, limit: int = 5) -> list[dict]:
+    ensure_hub_notices_table()
+    mail = (mail_clie or "").strip().lower()
+    if not mail:
+        return []
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, order_id, message, status_label, created_at
+                FROM public.hub_notices
+                WHERE LOWER(TRIM(mail_clie)) = %s
+                  AND dismissed_at IS NULL
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (mail, max(1, min(20, int(limit)))),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def dismiss_hub_notice(mail_clie: str, notice_id: int) -> bool:
+    ensure_hub_notices_table()
+    mail = (mail_clie or "").strip().lower()
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE public.hub_notices
+                SET dismissed_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                  AND LOWER(TRIM(mail_clie)) = %s
+                  AND dismissed_at IS NULL
+                """,
+                (int(notice_id), mail),
+            )
+            return cur.rowcount > 0
+
+
 def adicionar_creditos_ia(id_clie: int, quantidade: int) -> int:
     """
     Soma créditos IA (webhook Action Hub / pacotes).

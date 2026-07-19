@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { api } from '../lib/api'
 import BrandLogo from '../components/BrandLogo'
 import MapaRealizacoes from '../components/MapaRealizacoes'
 import AgendaExecutiva from '../components/AgendaExecutiva'
@@ -10,11 +11,21 @@ import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
  * Página inicial — realizações + agenda. O fluxo de investigação fica em /desafio.
  */
 export default function MesaDoInovador() {
-  const { user, logout } = useAuth()
+  const { user, logout, refresh } = useAuth()
   const [searchParams] = useSearchParams()
   const [refreshKey, setRefreshKey] = useState(0)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const paidReturn = searchParams.get('paid') === '1'
+  const notices = Array.isArray(user?.hub_notices) ? user.hub_notices : []
+
+  async function dismissNotice(id) {
+    try {
+      await api.dismissNotice(id)
+      await refresh()
+    } catch {
+      /* ignore */
+    }
+  }
 
   return (
     <div className="min-h-screen">
@@ -73,6 +84,32 @@ export default function MesaDoInovador() {
             <p className="mt-3 text-sm font-medium text-bordo">
               Pagamento recebido — atualizando seu saldo…
             </p>
+          ) : null}
+          {notices.length > 0 ? (
+            <div className="mt-4 space-y-2">
+              {notices.map((n) => (
+                <div
+                  key={n.id}
+                  className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+                >
+                  <div>
+                    {n.status_label ? (
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                        {n.status_label}
+                      </p>
+                    ) : null}
+                    <p className="mt-0.5 font-medium">{n.message}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void dismissNotice(n.id)}
+                    className="shrink-0 text-xs font-semibold text-amber-800 underline-offset-2 hover:underline"
+                  >
+                    Entendi
+                  </button>
+                </div>
+              ))}
+            </div>
           ) : null}
         </div>
 

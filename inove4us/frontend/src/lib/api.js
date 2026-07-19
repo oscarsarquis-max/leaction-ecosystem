@@ -45,6 +45,11 @@ export const api = {
       body: JSON.stringify({ email, code }),
     }),
   logout: () => request('/api/auth/logout', { method: 'POST', body: '{}' }),
+  dismissNotice: (id) =>
+    request(`/api/notices/${id}/dismiss`, {
+      method: 'POST',
+      body: '{}',
+    }),
   estruturarWizard: (payload) =>
     request('/api/wizard/estruturar', {
       method: 'POST',

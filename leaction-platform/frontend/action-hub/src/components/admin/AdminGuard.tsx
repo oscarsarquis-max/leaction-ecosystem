@@ -32,14 +32,14 @@ export function AdminGuard({ children }: { children: ReactNode }) {
         <div>
           <h1 className="text-xl font-bold text-stone-900">Área administrativa</h1>
           <p className="mt-1 max-w-md text-sm text-stone-500">
-            Faça login com uma conta de administrador para gerenciar aplicações e planos.
+            Faça login com uma conta de administrador para acompanhar pagamentos e o catálogo.
           </p>
         </div>
         <button
           type="button"
           onClick={() =>
             requireLogin(
-              '/dashboard/admin/apps',
+              '/dashboard/admin/payments',
               'Faça login como administrador para continuar.'
             )
           }
@@ -93,7 +93,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
           type="button"
           onClick={() =>
             requireLogin(
-              '/dashboard/admin/apps',
+              '/dashboard/admin/payments',
               'Entre com e-mail e senha de administrador.'
             )
           }

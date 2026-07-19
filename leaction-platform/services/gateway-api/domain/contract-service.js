@@ -132,13 +132,19 @@ function createContractService(pool) {
       const hasCredits = items.some((i) => i.item_type === 'credit_pack');
       const eventType = hasCredits ? 'CREDITS_GRANTED' : 'CONTRACT_ACTIVATED';
       const idempotencyKey = `order_${orderId}_activation`;
+      // Delta desta compra (não o saldo acumulado do snapshot — satélites fazem += )
+      const creditsAdded = items
+        .filter((i) => i.item_type === 'credit_pack')
+        .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
       const outboxPayload = {
         subject_type: subjectType,
         subject_id: subjectId,
         contract_id: contract.id,
         order_id: orderId,
         event_type: eventType,
-        credits: snap.payload.credits ?? 0,
+        credits: creditsAdded,
+        credits_added: creditsAdded,
+        credits_balance: snap.payload.credits ?? 0,
         plan: snap.payload.plan || null,
         premium: Boolean(snap.payload.premium),
         items: items.map((i) => ({
