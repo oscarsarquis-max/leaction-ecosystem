@@ -37,18 +37,29 @@ def get_conn():
 
 _creditos_ensured = False
 
+# Desafios/planos gratuitos na entrada (IA intensiva → cota reduzida).
+CREDITO_IA_FREEMIUM_DEFAULT = 3
+
 
 def ensure_creditos_ia_column() -> None:
-    """Garante coluna freemium creditos_ia em ctdi_clie (default 10)."""
+    """Garante coluna freemium creditos_ia em ctdi_clie (default 3)."""
     global _creditos_ensured
     if _creditos_ensured:
         return
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 ALTER TABLE public.ctdi_clie
-                    ADD COLUMN IF NOT EXISTS creditos_ia INTEGER NOT NULL DEFAULT 10;
+                    ADD COLUMN IF NOT EXISTS creditos_ia INTEGER NOT NULL
+                    DEFAULT {int(CREDITO_IA_FREEMIUM_DEFAULT)};
+                """
+            )
+            cur.execute(
+                f"""
+                ALTER TABLE public.ctdi_clie
+                    ALTER COLUMN creditos_ia
+                    SET DEFAULT {int(CREDITO_IA_FREEMIUM_DEFAULT)};
                 """
             )
     _creditos_ensured = True
@@ -79,7 +90,7 @@ def find_cliente_by_email(email: str) -> dict | None:
 
 
 def create_lead_solicitacao(*, nome: str, email: str, empresa: str) -> dict:
-    """Grava lead freemium em ctdi_clie (+ slot ctdi_matu). Novos leads: 10 créditos IA."""
+    """Grava lead freemium em ctdi_clie (+ slot ctdi_matu). Novos leads: 3 créditos IA."""
     nome = (nome or "").strip()
     email = (email or "").strip().lower()
     empresa = (empresa or "").strip() or None
@@ -95,7 +106,7 @@ def create_lead_solicitacao(*, nome: str, email: str, empresa: str) -> dict:
                     nome_clie, mail_clie, empresa_clie, init_role,
                     has_active_project, justificativa_solo, creditos_ia
                 )
-                VALUES (%s, %s, %s, 'GENERAL', false, %s, 10)
+                VALUES (%s, %s, %s, 'GENERAL', false, %s, %s)
                 RETURNING id_clie, nome_clie, mail_clie, empresa_clie,
                           init_role, has_active_project, creditos_ia
                 """,
@@ -104,6 +115,7 @@ def create_lead_solicitacao(*, nome: str, email: str, empresa: str) -> dict:
                     email,
                     empresa,
                     "Lead freemium inove4us — Mesa do Inovador",
+                    int(CREDITO_IA_FREEMIUM_DEFAULT),
                 ),
             )
             cliente = dict(cur.fetchone())

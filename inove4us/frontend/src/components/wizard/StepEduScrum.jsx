@@ -11,10 +11,23 @@ const COLUNAS = [
   { id: 'pronto', label: 'Pronto', tone: 'border-emerald-200 bg-emerald-50/50' },
 ]
 
-function formatMmSs(totalSeconds) {
-  const m = Math.floor(totalSeconds / 60)
-  const s = totalSeconds % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+function cardMinutes(task) {
+  const n = Number(task?.duracao_minutos)
+  return Number.isFinite(n) && n > 0 ? n : 10
+}
+
+function formatMinutos(min) {
+  const m = Math.max(0, Math.round(Number(min) || 0))
+  if (m < 60) return `${m} min`
+  const h = Math.floor(m / 60)
+  const rest = m % 60
+  return rest ? `${h} h ${rest} min` : `${h} h`
+}
+
+const CONTEXTO_LABEL = {
+  sala: 'Sala de aula',
+  campo: 'Campo / externo',
+  misto: 'Misto (sala + campo)',
 }
 
 function colunaLabel(id) {
@@ -75,19 +88,29 @@ export default function StepEduScrum({
   initialKanbanState = null,
   resumeMode = false,
 }) {
-  const timebox = plano?.timebox || []
-  const totalSeconds = useMemo(
-    () => timebox.reduce((acc, t) => acc + (Number(t.minutos) || 0) * 60, 0),
-    [timebox],
-  )
-
   const [tasks, setTasks] = useState(() =>
     tasksFromKanbanState(initialKanbanState, plano?.tarefas_kanban || []),
   )
-  const [running, setRunning] = useState(false)
-  const [mode, setMode] = useState('regressivo')
-  const [elapsed, setElapsed] = useState(0)
+  const [duracaoMetaMin, setDuracaoMetaMin] = useState(() => {
+    const fromPlano = Number(plano?.duracao_total_estimada_min)
+    if (Number.isFinite(fromPlano) && fromPlano > 0) return fromPlano
+    const cards = tasksFromKanbanState(initialKanbanState, plano?.tarefas_kanban || [])
+    const soma = cards.reduce((acc, t) => acc + cardMinutes(t), 0)
+    return soma || 50
+  })
   const [draggingId, setDraggingId] = useState(null)
+
+  useEffect(() => {
+    const fromPlano = Number(plano?.duracao_total_estimada_min)
+    const soma = tasks.reduce((acc, t) => acc + cardMinutes(t), 0)
+    if (Number.isFinite(fromPlano) && fromPlano > 0) {
+      setDuracaoMetaMin(Math.max(fromPlano, soma || 0))
+    } else if (soma > 0) {
+      setDuracaoMetaMin(soma)
+    }
+    // Só reage a novo plano gerado / retomado — não a cada drag.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plano?.duracao_total_estimada_min, plano?.missao, planoSession])
   const [dropTarget, setDropTarget] = useState(null)
   const [pendingMove, setPendingMove] = useState(null)
 
@@ -187,8 +210,6 @@ export default function StepEduScrum({
 
   useEffect(() => {
     setTasks(tasksFromKanbanState(initialKanbanState, plano?.tarefas_kanban || []))
-    setElapsed(0)
-    setRunning(false)
     setPendingMove(null)
     setShowRegistro(false)
     setAcaoErro('')
@@ -246,37 +267,39 @@ export default function StepEduScrum({
     }
   }
 
-  useEffect(() => {
-    if (!running || totalSeconds <= 0) return undefined
-    const id = setInterval(() => {
-      setElapsed((prev) => {
-        if (mode === 'regressivo' && prev >= totalSeconds) {
-          setRunning(false)
-          return totalSeconds
-        }
-        return prev + 1
-      })
-    }, 1000)
-    return () => clearInterval(id)
-  }, [running, mode, totalSeconds])
-
-  const displaySeconds =
-    mode === 'regressivo'
-      ? Math.max(totalSeconds - elapsed, 0)
-      : Math.min(elapsed, totalSeconds)
-
-  const phase = useMemo(() => {
-    let cursor = 0
-    const consumed = mode === 'regressivo' ? totalSeconds - displaySeconds : displaySeconds
-    for (const t of timebox) {
-      const secs = (Number(t.minutos) || 0) * 60
-      if (consumed < cursor + secs) {
-        return { ...t, remainingInPhase: cursor + secs - consumed }
+  const execucao = useMemo(() => {
+    const somaCards = tasks.reduce((acc, t) => acc + cardMinutes(t), 0) || 50
+    const total = Math.max(Number(duracaoMetaMin) || somaCards, somaCards)
+    let feitos = 0
+    let fazendoMin = 0
+    let prontoCount = 0
+    let fazendoCount = 0
+    for (const t of tasks) {
+      const m = cardMinutes(t)
+      if (t.coluna === 'pronto') {
+        feitos += m
+        prontoCount += 1
+      } else if (t.coluna === 'fazendo') {
+        feitos += m * 0.5
+        fazendoMin += m
+        fazendoCount += 1
       }
-      cursor += secs
     }
-    return timebox[timebox.length - 1] || { fase: 'Encerrado', minutos: 0 }
-  }, [timebox, displaySeconds, mode, totalSeconds])
+    const pct = total > 0 ? Math.min(100, Math.round((feitos / total) * 100)) : 0
+    return {
+      somaCards,
+      total,
+      feitos: Math.round(feitos),
+      restantes: Math.max(0, Math.round(total - feitos)),
+      pct,
+      prontoCount,
+      fazendoCount,
+      pendentes: tasks.length - prontoCount - fazendoCount,
+      fazendoMin,
+    }
+  }, [tasks, duracaoMetaMin])
+
+  const contextoExecucao = plano?.contexto_execucao || (execucao.total > 60 ? 'campo' : 'sala')
 
   const aulaAtiva = useMemo(
     () => aulas.find((a) => a.id_evento === aulaAtivaId) || null,
@@ -288,10 +311,6 @@ export default function StepEduScrum({
     Boolean(aulaAtiva) &&
     (aulaAtiva.status === 'planejado' || aulaAtiva.status === 'em_execucao')
   const aulaConcluida = aulaAtiva?.status === 'concluido'
-  const timeboxEncerrado =
-    totalSeconds > 0 &&
-    ((mode === 'regressivo' && displaySeconds === 0) ||
-      (mode === 'progressivo' && elapsed >= totalSeconds))
 
   const tituloAula = useMemo(() => {
     const missao = (plano?.missao || 'Aula EduScrum').trim()
@@ -357,6 +376,7 @@ export default function StepEduScrum({
           titulo,
           coluna: 'para_fazer',
           cor: '#FDE68A',
+          duracao_minutos: 10,
           historico: [],
         },
       ]
@@ -438,7 +458,9 @@ export default function StepEduScrum({
           missao: plano?.missao || '',
           hipotese: hipotese || '',
           problema: (problema || '').slice(0, 500),
-          timebox_min: totalSeconds / 60,
+          timebox_min: execucao.total,
+          duracao_total_estimada_min: execucao.total,
+          contexto_execucao: contextoExecucao,
         },
         plan_data: planData,
         kanban_state: { tarefas: tasks },
@@ -484,13 +506,11 @@ export default function StepEduScrum({
         return
       }
     }
-    setRunning(true)
   }
 
   function openRelato() {
     setAcaoErro('')
     if (!aulaAtiva || aulaAtiva.status === 'concluido') return
-    setRunning(false)
     setShowRelato(true)
   }
 
@@ -581,7 +601,6 @@ export default function StepEduScrum({
               className="field-input"
               value={aulaAtivaId || ''}
               onChange={(e) => setAulaAtivaId(Number(e.target.value) || null)}
-              disabled={running}
             >
               {aulas.map((a) => (
                 <option key={a.id_evento} value={a.id_evento}>
@@ -782,7 +801,35 @@ export default function StepEduScrum({
                             transform: `rotate(${(String(task.id).charCodeAt(1) % 3) - 1}deg)`,
                           }}
                         >
-                          <p>{task.titulo}</p>
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-semibold leading-snug">{task.titulo}</p>
+                            <span className="shrink-0 rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-bordo">
+                              {cardMinutes(task)}′
+                            </span>
+                          </div>
+                          {task.objetivo ? (
+                            <p className="mt-1.5 text-[10px] font-normal leading-snug text-bordo/90">
+                              <span className="font-bold">Objetivo: </span>
+                              {task.objetivo}
+                            </p>
+                          ) : null}
+                          {task.como_executar_detalhado
+                          || task.mecanica_passo_a_passo
+                          || task.descricao ? (
+                            <p className="mt-1.5 text-[10px] font-normal leading-snug text-bordo/85">
+                              <span className="font-bold">Como fazer: </span>
+                              {task.como_executar_detalhado
+                                || task.mecanica_passo_a_passo
+                                || task.descricao}
+                            </p>
+                          ) : null}
+                          {task.dica_de_facilitacao ? (
+                            <p className="mt-1.5 text-[10px] font-normal leading-snug text-bordo/80">
+                              <i className="fa-solid fa-lightbulb mr-1 opacity-70" />
+                              <span className="font-bold">Dica: </span>
+                              {task.dica_de_facilitacao}
+                            </p>
+                          ) : null}
                           {task.ultima_observacao ? (
                             <p className="mt-2 line-clamp-2 text-[10px] font-normal leading-snug text-bordo/80">
                               <i className="fa-solid fa-comment-dots mr-1 opacity-70" />
@@ -825,97 +872,100 @@ export default function StepEduScrum({
 
         <aside className="rounded-2xl border border-brand-200 bg-white/95 p-4 shadow-soft print:border print:shadow-none">
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-bordo">
-            Timebox
+            Execução do plano
           </p>
-          <div className="mb-4 rounded-xl bg-gradient-to-b from-brand-600 to-bordo p-4 text-center text-white">
-            <p className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
-              {phase?.fase || '—'}
+
+          <div className="mb-4 rounded-xl bg-gradient-to-b from-brand-600 to-bordo p-4 text-white">
+            <div className="flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-widest opacity-85">
+              <span>{CONTEXTO_LABEL[contextoExecucao] || 'Execução'}</span>
+              <span>{execucao.pct}%</span>
+            </div>
+            <p className="mt-2 font-display text-3xl font-bold tabular-nums tracking-tight">
+              {formatMinutos(execucao.feitos)}
+              <span className="ml-1 text-base font-semibold opacity-80">
+                / {formatMinutos(execucao.total)}
+              </span>
             </p>
-            <p className="mt-1 font-display text-4xl font-bold tabular-nums tracking-tight">
-              {formatMmSs(displaySeconds)}
+            <p className="mt-1 text-[11px] opacity-85">
+              Progresso pela movimentação dos cards (Pronto = 100%, Fazendo = 50%).
             </p>
-            <p className="mt-1 text-[11px] opacity-80">
-              {mode === 'regressivo' ? 'Regressivo' : 'Progressivo'} · {totalSeconds / 60} min
+            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/25">
+              <div
+                className="h-full rounded-full bg-white transition-all duration-500 ease-out"
+                style={{ width: `${execucao.pct}%` }}
+              />
+            </div>
+            <p className="mt-2 text-[11px] opacity-85">
+              Restam ~{formatMinutos(execucao.restantes)} · {execucao.prontoCount} prontos ·{' '}
+              {execucao.fazendoCount} em andamento · {execucao.pendentes} a fazer
             </p>
           </div>
 
-          <div className="mb-3 flex gap-2 print:hidden">
-            <button
-              type="button"
-              className="btn-primary flex-1 !px-2 !py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={aulaConcluida || (!podeExecutar && !running)}
-              onClick={() => {
-                if (running) setRunning(false)
-                else handleIniciar()
+          <label className="mb-3 block print:hidden">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-bordo-soft">
+              Duração prevista do projeto (min)
+            </span>
+            <input
+              type="number"
+              min={20}
+              max={480}
+              step={5}
+              className="field-input mt-1 !py-2"
+              value={duracaoMetaMin}
+              onChange={(e) => {
+                const n = Number(e.target.value)
+                if (!Number.isFinite(n)) return
+                setDuracaoMetaMin(Math.max(20, Math.min(480, n)))
               }}
-            >
-              {running ? 'Pausar' : 'Iniciar'}
-            </button>
-            <button
-              type="button"
-              className="btn-ghost flex-1 !px-2 !py-2 text-xs"
-              onClick={() => {
-                setElapsed(0)
-                setRunning(false)
-              }}
-            >
-              Reset
-            </button>
-          </div>
+            />
+            <span className="mt-1 block text-[11px] text-bordo-soft">
+              Padrão de sala: 50 min. Em campo/externo, aumente conforme a complexidade
+              (soma dos cards: {formatMinutos(execucao.somaCards)}).
+            </span>
+          </label>
 
-          <div className="mb-4 flex gap-2 print:hidden">
-            <button
-              type="button"
-              onClick={() => setMode('regressivo')}
-              className={`flex-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${
-                mode === 'regressivo' ? 'bg-bordo text-white' : 'bg-brand-50 text-bordo-soft'
-              }`}
-            >
-              Regressivo
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('progressivo')}
-              className={`flex-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${
-                mode === 'progressivo' ? 'bg-bordo text-white' : 'bg-brand-50 text-bordo-soft'
-              }`}
-            >
-              Progressivo
-            </button>
-          </div>
-
-          <ul className="space-y-2">
-            {timebox.map((t) => (
-              <li
-                key={t.fase}
-                className={`rounded-lg border px-3 py-2 text-xs ${
-                  phase?.fase === t.fase
-                    ? 'border-brand-500 bg-brand-50'
+          <ul className="mb-3 max-h-56 space-y-1.5 overflow-y-auto">
+            {tasks.map((t) => {
+              const col = t.coluna || 'para_fazer'
+              const tone =
+                col === 'pronto'
+                  ? 'border-emerald-200 bg-emerald-50'
+                  : col === 'fazendo'
+                    ? 'border-amber-200 bg-amber-50'
                     : 'border-brand-100 bg-white'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-bordo-deep">{t.fase}</span>
-                  <span className="tabular-nums text-bordo-soft">{t.minutos} min</span>
-                </div>
-                {t.descricao && (
-                  <p className="mt-1 text-[11px] text-bordo-soft">{t.descricao}</p>
-                )}
-              </li>
-            ))}
+              return (
+                <li
+                  key={t.id}
+                  className={`rounded-lg border px-2.5 py-1.5 text-[11px] ${tone}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-semibold text-bordo-deep">{t.titulo}</span>
+                    <span className="shrink-0 tabular-nums text-bordo-soft">
+                      {cardMinutes(t)}′
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-bordo-soft">{colunaLabel(col)}</p>
+                </li>
+              )
+            })}
           </ul>
+
+          {podeExecutar && !aulaConcluida && aulaAtiva?.status === 'planejado' ? (
+            <button
+              type="button"
+              className="btn-primary mb-2 w-full !py-2.5 text-xs print:hidden"
+              onClick={handleIniciar}
+            >
+              Marcar aula em execução
+            </button>
+          ) : null}
 
           {podeExecutar && !aulaConcluida ? (
             <button
               type="button"
-              className="btn-primary mt-4 w-full !py-2.5 text-xs print:hidden"
+              className="btn-primary mt-1 w-full !py-2.5 text-xs print:hidden"
               onClick={openRelato}
-              disabled={running && !timeboxEncerrado}
-              title={
-                running && !timeboxEncerrado
-                  ? 'Pause ou aguarde o fim do timebox para concluir'
-                  : 'Registrar o que houve e concluir a realização'
-              }
+              title="Registrar o que houve e concluir a realização"
             >
               Registrar e concluir aula
             </button>

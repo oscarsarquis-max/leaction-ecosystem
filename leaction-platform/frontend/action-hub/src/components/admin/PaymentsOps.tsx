@@ -10,10 +10,12 @@ import {
 } from 'lucide-react';
 import { useHubSession } from '@/context/HubSessionContext';
 import {
+  fetchAdminApps,
   fetchAdminPaymentStats,
   fetchAdminPayments,
   formatBrl,
   postAdminPaymentNotice,
+  type AdminApp,
   type AdminPayment,
   type AdminPaymentCounts,
   type AdminPaymentStatPoint,
@@ -71,10 +73,15 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function PaymentsOps() {
+type PaymentsOpsProps = {
+  initialAppId?: string;
+};
+
+export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
   const { token } = useHubSession();
   const [statusFilter, setStatusFilter] = useState('');
-  const [appFilter, setAppFilter] = useState('');
+  const [appFilter, setAppFilter] = useState(initialAppId);
+  const [apps, setApps] = useState<AdminApp[]>([]);
   const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [counts, setCounts] = useState<AdminPaymentCounts>({
     total: 0,
@@ -89,6 +96,17 @@ export function PaymentsOps() {
   const [noticeText, setNoticeText] = useState('');
   const [noticeSending, setNoticeSending] = useState(false);
   const [noticeFeedback, setNoticeFeedback] = useState('');
+
+  useEffect(() => {
+    setAppFilter(initialAppId);
+  }, [initialAppId]);
+
+  useEffect(() => {
+    if (!token) return;
+    void fetchAdminApps(token)
+      .then((rows) => setApps(rows.filter((a) => a.active !== false)))
+      .catch(() => setApps([]));
+  }, [token]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -245,8 +263,17 @@ export function PaymentsOps() {
           className="ml-auto rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700"
         >
           <option value="">Todas as apps</option>
-          <option value="inove4us">inove4us</option>
-          <option value="paneldx">paneldx</option>
+          {(apps.length > 0
+            ? apps
+            : [
+                { app_id: 'inove4us', name: 'inove4us' },
+                { app_id: 'paneldx', name: 'PanelDX' },
+              ]
+          ).map((a) => (
+            <option key={a.app_id} value={a.app_id}>
+              {a.name || a.app_id}
+            </option>
+          ))}
         </select>
       </div>
 

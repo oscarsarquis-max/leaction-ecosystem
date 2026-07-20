@@ -68,9 +68,14 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
       setPrice('29.90');
       setActive(true);
       setBullets('');
+      // Default alinhado aos pacotes inove4us (cota freemium = 3; pacote típico = 10)
       setRows([{ key: 'credits', value: '10', kind: 'number' }]);
+      if (appId === 'inove4us') {
+        setSku('INOVE4US_CREDITS_10');
+        setName('Pacote 10 desafios');
+      }
     }
-  }, [open, plan]);
+  }, [open, plan, appId]);
 
   if (!open) return null;
 

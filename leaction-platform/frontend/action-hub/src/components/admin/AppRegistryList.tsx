@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Gift, Loader2, Package, RefreshCw } from 'lucide-react';
+import { Gift, Loader2, Package, Pencil, RefreshCw } from 'lucide-react';
 import { useHubSession } from '@/context/HubSessionContext';
 import { fetchAdminApps, type AdminApp } from '@/lib/admin-api';
 import { InjectCreditsModal } from '@/components/admin/InjectCreditsModal';
+import { AppEditModal } from '@/components/admin/AppEditModal';
 
 export function AppRegistryList() {
   const { token } = useHubSession();
@@ -13,6 +14,7 @@ export function AppRegistryList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [injectOpen, setInjectOpen] = useState(false);
+  const [editApp, setEditApp] = useState<AdminApp | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -142,13 +144,32 @@ export function AppRegistryList() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Link
-                    href={`/dashboard/admin/plans?app_id=${encodeURIComponent(app.app_id)}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-orange-600"
-                  >
-                    <Package className="size-3.5" aria-hidden />
-                    Ver Planos
-                  </Link>
+                  <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSuccess(null);
+                        setEditApp(app);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition hover:bg-stone-50"
+                    >
+                      <Pencil className="size-3.5" aria-hidden />
+                      Integrar
+                    </button>
+                    <Link
+                      href={`/dashboard/admin/plans?app_id=${encodeURIComponent(app.app_id)}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-orange-600"
+                    >
+                      <Package className="size-3.5" aria-hidden />
+                      Planos
+                    </Link>
+                    <Link
+                      href={`/dashboard/admin/payments?app_id=${encodeURIComponent(app.app_id)}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-900 transition hover:bg-orange-100"
+                    >
+                      Pagamentos
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -161,7 +182,21 @@ export function AppRegistryList() {
         token={token}
         apps={apps}
         onClose={() => setInjectOpen(false)}
-        onSuccess={(message) => setSuccess(message)}
+        onSuccess={(message) => {
+          setSuccess(message);
+          void load();
+        }}
+      />
+
+      <AppEditModal
+        open={Boolean(editApp)}
+        token={token}
+        app={editApp}
+        onClose={() => setEditApp(null)}
+        onSuccess={(message) => {
+          setSuccess(message);
+          void load();
+        }}
       />
     </div>
   );

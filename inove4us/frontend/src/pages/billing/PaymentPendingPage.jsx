@@ -1,7 +1,22 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import BrandLogo from '../../components/BrandLogo'
+import { useAuth } from '../../lib/auth'
+import { CrmEvents, trackEvent } from '../../lib/tracking'
 
 export default function PaymentPendingPage() {
+  const { user } = useAuth()
+  const trackedRef = useRef(false)
+
+  useEffect(() => {
+    if (trackedRef.current) return
+    trackedRef.current = true
+    void trackEvent(CrmEvents.PAGAMENTO_PENDENTE, {
+      url: '/pagamento/pendente',
+      idUsuario: user?.id_clie ?? null,
+    })
+  }, [user?.id_clie])
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
       <BrandLogo

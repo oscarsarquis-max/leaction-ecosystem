@@ -1,7 +1,7 @@
 -- Seed / reset canônico inove4us (somente DB inove4us — nunca LeAction_SysF)
 -- E-mail: inovador@inove4us.com.br
 -- Código: LA-INOVE1
--- Créditos gratuitos: 10
+-- Créditos gratuitos: 3 (cota freemium reduzida — uso intensivo de IA)
 --
 -- Idempotente: recria/atualiza o inovador, zera créditos para o freemium
 -- e remove desafios/agenda anteriores desse cliente.
@@ -20,7 +20,7 @@ SELECT
   'GENERAL',
   false,
   'Seed oficial local — Mesa do Inovador',
-  10
+  3
 WHERE NOT EXISTS (
   SELECT 1 FROM public.ctdi_clie
   WHERE LOWER(TRIM(mail_clie)) = 'inovador@inove4us.com.br'
@@ -34,7 +34,7 @@ SET
   init_role = 'GENERAL',
   has_active_project = false,
   justificativa_solo = 'Seed oficial local — Mesa do Inovador',
-  creditos_ia = 10
+  creditos_ia = 3
 WHERE LOWER(TRIM(mail_clie)) = 'inovador@inove4us.com.br';
 
 -- 3) Limpa desafios / realizações / agenda desse inovador

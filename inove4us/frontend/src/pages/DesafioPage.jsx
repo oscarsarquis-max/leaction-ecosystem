@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 import FloatingDictation from '../components/FloatingDictation'
 import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import ProgressStepper from '../components/wizard/ProgressStepper'
@@ -32,6 +33,7 @@ export default function DesafioPage() {
 
   const [causas, setCausas] = useState([])
   const [caminhos, setCaminhos] = useState([])
+  const [resumoAnalise, setResumoAnalise] = useState('')
   const [referencial, setReferencial] = useState(null)
   const [fallback, setFallback] = useState(false)
   const [selectedCaminho, setSelectedCaminho] = useState(null)
@@ -59,8 +61,15 @@ export default function DesafioPage() {
       })
       setCausas(data.causas_raiz || [])
       setCaminhos(data.caminhos || [])
+      setResumoAnalise(data.resumo_analise || '')
       setReferencial(data.referencial || null)
       setFallback(Boolean(data.fallback))
+      void trackEvent(
+        data.fallback
+          ? CrmEvents.DESAFIO_ESTRUTURAR_FALLBACK
+          : CrmEvents.DESAFIO_ESTRUTURAR,
+        { url: '/desafio', idUsuario: user?.id_clie ?? null },
+      )
       if (data.creditos_ia != null) {
         applyCredits(data.creditos_ia)
       } else {
@@ -68,6 +77,10 @@ export default function DesafioPage() {
       }
     } catch (err) {
       setCurrentStep(1)
+      void trackEvent(CrmEvents.DESAFIO_ESTRUTURAR_ERRO, {
+        url: '/desafio',
+        idUsuario: user?.id_clie ?? null,
+      })
       const code = err?.code || err?.data?.code
       if (err?.status === 403 && code === 'INSUFFICIENT_CREDITS') {
         setError('')
@@ -87,6 +100,10 @@ export default function DesafioPage() {
   function handleSelectCaminho(caminho) {
     setSelectedCaminho(caminho)
     setHipotese(caminho?.hipotese_teste || '')
+    void trackEvent(CrmEvents.CAMINHO_SELECIONAR, {
+      url: `/desafio?caminho=${encodeURIComponent(caminho?.id || '')}`,
+      idUsuario: user?.id_clie ?? null,
+    })
   }
 
   async function handleGerarPlano() {
@@ -99,11 +116,20 @@ export default function DesafioPage() {
       setPlano(data.plano_eduscrum || selectedCaminho.plano_eduscrum)
       setPlanoSession(sessionKey)
       setCurrentStep(4)
+      void trackEvent(CrmEvents.PLANO_GERAR, {
+        url: '/desafio?etapa=plano',
+        idUsuario: user?.id_clie ?? null,
+      })
     } catch (err) {
       setHipotese(selectedCaminho.hipotese_teste)
       setPlano(selectedCaminho.plano_eduscrum)
       setPlanoSession(sessionKey)
       setCurrentStep(4)
+      // Plano local ainda abre — conta como elaboração (mesmo com falha do endpoint).
+      void trackEvent(CrmEvents.PLANO_GERAR, {
+        url: '/desafio?etapa=plano&local=1',
+        idUsuario: user?.id_clie ?? null,
+      })
       console.warn(err)
     } finally {
       setBusy(false)
@@ -170,6 +196,7 @@ export default function DesafioPage() {
           <StepEstruturacao
             loading={loadingIa}
             causas={causas}
+            resumoAnalise={resumoAnalise}
             referencial={referencial}
             fallback={fallback}
             onNext={() => setCurrentStep(3)}

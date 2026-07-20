@@ -111,6 +111,18 @@ function funilDropoffs(funil: DashboardViewModel['funil']) {
 function inferFerramenta(url: string | null | undefined, evento: string | null | undefined) {
   const path = String(url || '').toLowerCase();
   const ev = String(evento || '').toLowerCase();
+  if (ev.includes('pagamento_aprovado') || ev.includes('checkout_iniciar')) {
+    return { ferramenta: 'Pagamento / assinatura', ferramentaKey: 'solucionador' as const };
+  }
+  if (ev.includes('plano_gerar') || path.includes('etapa=plano')) {
+    return { ferramenta: 'Elaborou plano', ferramentaKey: 'solucionador' as const };
+  }
+  if (ev.includes('desafio_estruturar') || ev.includes('caminho_selecionar')) {
+    return { ferramenta: 'Criou desafio', ferramentaKey: 'mesa' as const };
+  }
+  if (path.includes('/desafio')) {
+    return { ferramenta: 'Desafio', ferramentaKey: 'mesa' as const };
+  }
   if (path.includes('mesa') || ev.includes('mesa') || path.includes('/inovador')) {
     return { ferramenta: 'Mesa do Inovador', ferramentaKey: 'mesa' as const };
   }
@@ -128,11 +140,28 @@ function mapApiToDashboard(api: any): DashboardViewModel {
   const eng = api?.engajamento || {};
   const ret = api?.retencao || {};
   const dev = api?.dispositivos || {};
+  const isInove =
+    String(api?.funil_modelo || '').startsWith('inove4us_') ||
+    api?.sistema_origem === 'inove4us';
 
   const visitas = Number(funil.visitas_home || funil.total_sessoes || 0);
-  const cliques = Number(funil.cliques_ferramentas || 0);
-  const uso = Number(funil.acesso_ferramentas || 0);
-  const conv = Number(funil.taxas_conversao?.home_para_uso_pct || 0);
+  const cliques = Number(
+    isInove
+      ? funil.desafios_estruturados || funil.cliques_ferramentas || 0
+      : funil.cliques_ferramentas || 0
+  );
+  const uso = Number(
+    isInove
+      ? funil.planos_gerados || funil.acesso_ferramentas || 0
+      : funil.acesso_ferramentas || 0
+  );
+  const pagamentos = Number(funil.pagamentos_aprovados || 0);
+  const conv = Number(
+    (isInove
+      ? funil.taxas_conversao?.plano_para_pagamento_pct ??
+        funil.taxas_conversao?.home_para_uso_pct
+      : funil.taxas_conversao?.home_para_uso_pct) || 0
+  );
   const retencao = Number(ret.taxa_retencao_pct || 0);
 
   const avgMesa = Number(eng.mesa_do_inovador?.segundos || 0);
@@ -183,11 +212,22 @@ function mapApiToDashboard(api: any): DashboardViewModel {
         ? [{ name: 'Desconhecido', value: Number(dev.desconhecido || 0), color: COLOR_NEUTRAL }]
         : []),
     ],
-    funil: [
-      { etapa: 'Home', valor: visitas, fill: COLOR_PRIMARY },
-      { etapa: 'Interesse (Clique)', valor: cliques, fill: COLOR_SECONDARY },
-      { etapa: 'Uso Real', valor: uso, fill: COLOR_ACCENT },
-    ],
+    funil: isInove
+      ? [
+          { etapa: 'Acesso / Mesa', valor: visitas, fill: COLOR_PRIMARY },
+          { etapa: 'Criou desafio', valor: cliques, fill: COLOR_SECONDARY },
+          { etapa: 'Elaborou plano', valor: uso, fill: COLOR_ACCENT },
+          {
+            etapa: 'Pagou / assinou',
+            valor: pagamentos,
+            fill: COLOR_NEUTRAL,
+          },
+        ]
+      : [
+          { etapa: 'Home', valor: visitas, fill: COLOR_PRIMARY },
+          { etapa: 'Interesse (Clique)', valor: cliques, fill: COLOR_SECONDARY },
+          { etapa: 'Uso Real', valor: uso, fill: COLOR_ACCENT },
+        ],
     liveFeed,
   };
 }

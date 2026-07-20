@@ -1,5 +1,20 @@
 import DictationField from '../DictationField'
 
+const EXEMPLO_CONTEXTO =
+  '1º ano do Ensino Médio · turma de 35 alunos · 4 aulas de 50 min · concurso Bairro Sustentável'
+
+const EXEMPLO_PROBLEMA = `Contexto: Sou professor(a) do 1º ano do Ensino Médio (turma de 35 alunos). A Prefeitura da nossa cidade acabou de lançar o concurso "Bairro Sustentável", focado em soluções criativas para problemas ambientais urbanos. O prêmio é um fundo de financiamento para a ideia vencedora.
+
+O Desafio da Turma: Precisamos formar equipes de 5 alunos. Cada equipe deverá: 1) Identificar um problema ambiental real no entorno da escola (ex: descarte irregular de lixo, falta de arborização, desperdício de água), 2) Criar uma solução inovadora e de baixo custo, e 3) Montar uma apresentação persuasiva e dinâmica para defender a ideia para a banca da prefeitura.
+
+A Dor do Professor (Meu Problema): Meus alunos têm muita dificuldade com trabalho em equipe (geralmente um aluno faz tudo e os outros só colocam o nome). Além disso, eles são dispersos na fase de criação e muito tímidos ou desorganizados na hora de apresentar projetos em público. Tenho apenas 4 aulas de 50 minutos para fazer tudo isso acontecer. Preciso de uma metodologia que engaje, defina responsabilidades claras para cada membro da equipe e os prepare para uma apresentação de impacto.`
+
+const PLACEHOLDER_PROBLEMA = `Contexto: Sou professor(a) do … (série, tamanho da turma). Descreva o cenário, projeto ou concurso em que a turma está inserida.
+
+O Desafio da Turma: O que os alunos precisam entregar (etapas, equipes, prazo, banca/público).
+
+A Dor do Professor (Meu Problema): Qual a dificuldade real em sala (equipe, engajamento, apresentação, tempo…) e o que você precisa da metodologia.`
+
 export default function StepProblema({
   problema,
   contexto,
@@ -9,6 +24,11 @@ export default function StepProblema({
   busy,
   error,
 }) {
+  function usarExemplo() {
+    onProblemaChange(EXEMPLO_PROBLEMA)
+    onContextoChange(EXEMPLO_CONTEXTO)
+  }
+
   return (
     <section className="mx-auto max-w-2xl animate-fade-in">
       <div className="mb-8 text-center">
@@ -27,18 +47,31 @@ export default function StepProblema({
 
       <div className="space-y-5 rounded-2xl border border-brand-200 bg-white/90 p-6 shadow-soft">
         <div>
-          <label htmlFor="problema" className="field-label">
-            Declaração do problema
-          </label>
+          <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
+            <label htmlFor="problema" className="field-label !mb-0">
+              Declaração do problema
+            </label>
+            <button
+              type="button"
+              onClick={usarExemplo}
+              disabled={busy}
+              className="text-xs font-semibold text-brand-700 underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              Usar exemplo (Bairro Sustentável)
+            </button>
+          </div>
           <DictationField
             as="textarea"
             id="problema"
-            rows={5}
-            className="field-input resize-y"
-            placeholder="Ex.: Os alunos se distraem com o celular e não conseguem sustentar atenção nas atividades em grupo…"
+            rows={12}
+            className="field-input resize-y whitespace-pre-wrap"
+            placeholder={PLACEHOLDER_PROBLEMA}
             value={problema}
             onChange={onProblemaChange}
           />
+          <p className="mt-1.5 text-xs text-bordo-soft">
+            Estrutura sugerida: Contexto → Desafio da Turma → Dor do Professor.
+          </p>
         </div>
 
         <div>
@@ -49,7 +82,7 @@ export default function StepProblema({
             id="contexto"
             type="text"
             className="field-input"
-            placeholder="Ex.: 8º ano B · Matemática · turno manhã"
+            placeholder="Ex.: 1º ano EM · 35 alunos · 4 aulas de 50 min · concurso Bairro Sustentável"
             value={contexto}
             onChange={onContextoChange}
           />

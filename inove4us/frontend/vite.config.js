@@ -8,11 +8,11 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5011',
+        target: 'http://127.0.0.1:5010',
         changeOrigin: true,
       },
       '/inovador': {
-        target: 'http://127.0.0.1:5011',
+        target: 'http://127.0.0.1:5010',
         changeOrigin: true,
       },
     },

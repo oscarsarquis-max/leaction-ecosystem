@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 
 const ERROR_TOAST =
   'Não foi possível gerar o pagamento no momento. Tente novamente.'
@@ -53,6 +54,10 @@ export default function UpgradeCreditsModal({ open, onClose, exhausted = false }
       } catch {
         /* ignore */
       }
+      void trackEvent(CrmEvents.CHECKOUT_INICIAR, {
+        url: '/upgrade?destino=planos',
+        idUsuario: user?.id_clie ?? null,
+      })
       window.location.href = plansUrl
     } catch {
       setIsLoading(false)
@@ -89,8 +94,9 @@ export default function UpgradeCreditsModal({ open, onClose, exhausted = false }
           <p className="mt-3 text-sm leading-relaxed text-bordo-soft">
             {semCreditos ? (
               <>
-                Você usou todos os planejamentos disponíveis. Faça o upgrade para continuarmos
-                resolvendo desafios e criando planos de aula juntos.
+                Na versão gratuita você tem 3 desafios com IA. Seus créditos acabaram — faça o
+                upgrade (pacote ou assinatura) para continuar resolvendo desafios e criando
+                planos de aula.
               </>
             ) : (
               <>
@@ -98,8 +104,8 @@ export default function UpgradeCreditsModal({ open, onClose, exhausted = false }
                 <span className="font-semibold text-bordo">
                   {Number.isFinite(saldo) ? saldo : '—'} créditos
                 </span>{' '}
-                disponíveis. Escolha um pacote para ampliar o uso do inove4us na resolução de
-                mais desafios e na criação de mais planos de aulas.
+                na versão gratuita (até 3 desafios). Escolha um pacote ou assinatura para
+                ampliar o uso do inove4us.
               </>
             )}
           </p>

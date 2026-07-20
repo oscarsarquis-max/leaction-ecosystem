@@ -39,8 +39,9 @@ export function InjectCreditsModal({
 
   const [appId, setAppId] = useState('');
   const [email, setEmail] = useState('');
-  const [amount, setAmount] = useState('10');
-  const [reasonOption, setReasonOption] = useState<string>(REASON_OPTIONS[0]);
+  // Padrão alinhado à cota freemium inove4us (3 créditos / cortesia).
+  const [amount, setAmount] = useState('3');
+  const [reasonOption, setReasonOption] = useState<string>('Cortesia Comercial');
   const [reasonOther, setReasonOther] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,11 +50,12 @@ export function InjectCreditsModal({
     if (!open) return;
     setError(null);
     setEmail('');
-    setAmount('10');
-    setReasonOption(REASON_OPTIONS[0]);
+    setAmount('3');
+    setReasonOption('Cortesia Comercial');
     setReasonOther('');
     const preferred =
       lockedAppId ||
+      activeApps.find((a) => a.app_id === 'inove4us')?.app_id ||
       activeApps[0]?.app_id ||
       apps[0]?.app_id ||
       '';
@@ -179,6 +181,9 @@ export function InjectCreditsModal({
                 required
                 className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
               />
+              <p className="text-[11px] text-stone-500">
+                Padrão de cortesia: 3 créditos (mesma cota freemium).
+              </p>
             </label>
 
             <label className="block space-y-1.5">

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BrandLogo from '../../components/BrandLogo'
 import { useAuth } from '../../lib/auth'
+import { CrmEvents, trackEvent } from '../../lib/tracking'
 
 /**
  * Retorno pós-checkout Mercado Pago (back_urls.success).
@@ -10,6 +11,7 @@ import { useAuth } from '../../lib/auth'
 export default function PaymentSuccessPage() {
   const { user, refresh } = useAuth()
   const [syncing, setSyncing] = useState(true)
+  const trackedRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
@@ -24,6 +26,15 @@ export default function PaymentSuccessPage() {
       cancelled = true
     }
   }, [refresh])
+
+  useEffect(() => {
+    if (trackedRef.current) return
+    trackedRef.current = true
+    void trackEvent(CrmEvents.PAGAMENTO_APROVADO, {
+      url: '/pagamento/sucesso',
+      idUsuario: user?.id_clie ?? null,
+    })
+  }, [user?.id_clie])
 
   const credits =
     user?.creditos_ia != null && Number.isFinite(Number(user.creditos_ia))

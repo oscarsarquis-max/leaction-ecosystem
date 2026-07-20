@@ -83,9 +83,11 @@ export function PlanBuilder({ initialAppId = '' }: Props) {
   }, [loadApps]);
 
   useEffect(() => {
-    if (!appId && apps[0]?.app_id) {
-      setAppId(apps[0].app_id);
-    }
+    if (appId || apps.length === 0) return;
+    // Prefere inove4us quando o Construtor abre sem ?app_id=
+    const preferred =
+      apps.find((a) => a.app_id === 'inove4us')?.app_id || apps[0]?.app_id;
+    if (preferred) setAppId(preferred);
   }, [apps, appId]);
 
   useEffect(() => {

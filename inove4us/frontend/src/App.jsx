@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthBalanceSync, AuthProvider, useAuth } from './lib/auth'
 import BrandLogo from './components/BrandLogo'
 import CoCriacaoEntry from './components/CoCriacaoEntry'
+import CrmPageTracker from './components/CrmPageTracker'
 import Acesso from './pages/Acesso'
 import PaymentFailurePage from './pages/billing/PaymentFailurePage'
 import PaymentPendingPage from './pages/billing/PaymentPendingPage'
@@ -105,6 +106,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AuthBalanceSync />
+      <CrmPageTracker />
       <AppRoutes />
     </AuthProvider>
   )

@@ -34,6 +34,7 @@ from webhook_routes import webhook_bp  # noqa: E402
 from feedback_routes import feedback_bp  # noqa: E402
 from version_info import version_payload  # noqa: E402
 from billing_routes import billing_bp  # noqa: E402
+from tracking_routes import tracking_bp  # noqa: E402
 
 EMAIL_RE = re.compile(
     r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9]"
@@ -120,6 +121,8 @@ def create_app() -> Flask:
     app.register_blueprint(billing_bp)
     # Programa de Co-criação — ideias / bugs / melhorias
     app.register_blueprint(feedback_bp)
+    # Action-Sponge — proxy de tracking PLG (S2S → gateway :4001)
+    app.register_blueprint(tracking_bp)
 
     @app.get("/api/health")
     def health():
@@ -171,12 +174,6 @@ def create_app() -> Flask:
             return jsonify({"error": "Sessão sem e-mail"}), 400
         ok = dismiss_hub_notice(email, notice_id)
         return jsonify({"ok": ok, "id": notice_id}), 200 if ok else 404
-
-    @app.post("/api/tracking/enviar")
-    def tracking_enviar():
-        """Stub local — aceita eventos do sensor sem falhar no console."""
-        _ = request.get_json(silent=True) or {}
-        return jsonify({"ok": True}), 202
 
     @app.post("/api/auth/check-email")
     def check_email():

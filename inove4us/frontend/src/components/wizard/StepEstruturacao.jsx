@@ -15,7 +15,14 @@ function SkeletonLines() {
   )
 }
 
-export default function StepEstruturacao({ loading, causas, referencial, onNext, fallback }) {
+export default function StepEstruturacao({
+  loading,
+  causas,
+  resumoAnalise,
+  referencial,
+  onNext,
+  fallback,
+}) {
   return (
     <section className="mx-auto max-w-3xl animate-fade-in">
       <div className="mb-8 text-center">
@@ -27,8 +34,8 @@ export default function StepEstruturacao({ loading, causas, referencial, onNext,
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-bordo-soft sm:text-base">
           {loading
-            ? 'Estamos cruzando o seu relato com a base de problemas da inove4us…'
-            : 'Causas ocultas identificadas a partir do seu problema e da base de referência.'}
+            ? 'Cruzando o seu relato com a base de problemas e montando o ranking metodológico (pode levar cerca de 1 minuto)…'
+            : 'Causas reais e hipóteses associadas, a partir do seu problema e da base de referência.'}
         </p>
       </div>
 
@@ -39,7 +46,12 @@ export default function StepEstruturacao({ loading, causas, referencial, onNext,
               <div className="absolute inset-0 animate-ping rounded-full bg-brand-400/30" />
               <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-brand-100 border-t-brand-600" />
             </div>
-            <p className="text-sm font-semibold text-brand-600">Analisando causas ocultas…</p>
+            <p className="text-sm font-semibold text-brand-600">
+              Analisando causas reais e hipóteses associadas…
+            </p>
+            <p className="text-xs text-bordo-soft">
+              Planos com 4 a 7 cards detalhados — a IA costuma levar cerca de 1 minuto.
+            </p>
           </div>
           <SkeletonLines />
         </div>
@@ -54,6 +66,15 @@ export default function StepEstruturacao({ loading, causas, referencial, onNext,
               ) : null}
             </div>
           )}
+
+          {resumoAnalise ? (
+            <div className="rounded-2xl border border-brand-200 bg-white/95 p-5 shadow-soft">
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-brand-600">
+                Resumo da análise
+              </p>
+              <p className="text-sm leading-relaxed text-bordo-deep">{resumoAnalise}</p>
+            </div>
+          ) : null}
 
           <ul className="space-y-3">
             {(causas || []).map((causa, idx) => (
