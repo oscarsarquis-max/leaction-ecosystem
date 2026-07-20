@@ -35,6 +35,7 @@ from feedback_routes import feedback_bp  # noqa: E402
 from version_info import version_payload  # noqa: E402
 from billing_routes import billing_bp  # noqa: E402
 from tracking_routes import tracking_bp  # noqa: E402
+from gatekeeper_routes import register_gatekeeper  # noqa: E402
 
 EMAIL_RE = re.compile(
     r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9]"
@@ -123,6 +124,8 @@ def create_app() -> Flask:
     app.register_blueprint(feedback_bp)
     # Action-Sponge — proxy de tracking PLG (S2S → gateway :4001)
     app.register_blueprint(tracking_bp)
+    # Gatekeeper (lock/unlock/bypass) — mesmo contrato mudaedu/PanelDX
+    register_gatekeeper(app)
 
     @app.get("/api/health")
     def health():

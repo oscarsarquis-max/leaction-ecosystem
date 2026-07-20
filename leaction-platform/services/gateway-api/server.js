@@ -37,6 +37,7 @@ const {
   getSandboxPayerEmail,
   resolveSandboxPayerEmail,
   isServerTokenizeFallbackEnabled,
+  isPaymentSimulationAllowed,
   mapMpStatusDetailHint,
 } = require('./mercadopago');
 const { fulfillOrderPayment, parsePanelDxIdMatu } = require('./payment-fulfillment');
@@ -49,6 +50,7 @@ const { registerMpWebhookRoutes } = require('./domain/mp-webhooks');
 const { startOutboxWorker } = require('./domain/outbox-worker');
 const { registerAdminRoutes } = require('./admin');
 const { versionPayload } = require('./version-info');
+const { createGatekeeper } = require('./domain/gatekeeper');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-hub-key-2026';
 const ACTION_HUB_PUBLIC_URL = (process.env.ACTION_HUB_PUBLIC_URL || 'http://localhost:4000').replace(/\/$/, '');
@@ -107,6 +109,8 @@ function buildPoolConfig() {
 }
 
 const pool = new Pool(buildPoolConfig());
+const gatekeeper = createGatekeeper(pool);
+gatekeeper.registerGatekeeperRoutes(app);
 
 const VITRINE_SYNC_SECRET = (process.env.VITRINE_SYNC_SECRET || '').trim();
 
@@ -591,6 +595,13 @@ app.post('/webhook', async (req, res) => {
 });
 
 app.post('/simular-pagamento', async (req, res) => {
+  if (!isPaymentSimulationAllowed()) {
+    return res.status(403).json({
+      error: 'Simulação de pagamento desabilitada em produção.',
+      code: 'SIMULATION_DISABLED',
+    });
+  }
+
   const { order_id } = req.body;
 
   if (!order_id) {
@@ -675,6 +686,7 @@ app.get('/config/payments', async (_req, res) => {
     server_tokenize_fallback: isServerTokenizeFallbackEnabled(),
     sandbox_mode: accessToken.startsWith('TEST-'),
     sandbox_payer_email: accessToken.startsWith('TEST-') ? getSandboxPayerEmail() : '',
+    allow_payment_simulation: isPaymentSimulationAllowed(),
     subscription: {
       reason: sub.reason,
       amount: sub.amount,
@@ -690,7 +702,14 @@ app.get('/config/payments', async (_req, res) => {
  * Body: { card_token_id, payment_method_id, payer_email, order_id, installments? }
  */
 app.post('/payments/card', async (req, res) => {
-  const { card_token_id, payment_method_id, payer_email, order_id, installments } = req.body || {};
+  const {
+    card_token_id,
+    payment_method_id,
+    payer_email,
+    order_id,
+    installments,
+    payer_identification,
+  } = req.body || {};
 
   if (!card_token_id || !payment_method_id || !payer_email || !order_id) {
     return res.status(400).json({
@@ -747,8 +766,9 @@ app.post('/payments/card', async (req, res) => {
       paymentMethodId: payment_method_id,
       amount: resolveOrderPaymentAmount(orderRow),
       externalReference: orderId,
-      description: orderRow.product_name || 'PanelDX',
+      description: orderRow.product_name || 'Action Hub',
       installments: installments || 1,
+      payerIdentification: payer_identification || null,
     });
 
     if (usedServerTokenize) {

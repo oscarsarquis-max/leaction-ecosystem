@@ -64,9 +64,13 @@ def _resolve_sku(raw: str | None) -> str:
 
 
 def _hub_public_base() -> str:
-    return (
-        os.environ.get("ACTION_HUB_PUBLIC_URL") or "http://localhost:4000"
-    ).rstrip("/")
+    explicit = (os.environ.get("ACTION_HUB_PUBLIC_URL") or "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    env = (os.environ.get("INOVE4US_ENV") or os.environ.get("FLASK_ENV") or "").lower()
+    if env == "production":
+        return "https://actionhub.com.br"
+    return "http://localhost:4000"
 
 
 @billing_bp.get("/api/billing/plans-url")

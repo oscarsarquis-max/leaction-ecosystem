@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
         source: "/hub-api/:path*",
         destination: `${gatewayInternal}/:path*`,
       },
+      // Webhooks MP / IPN na URL pública (mesmo com gatekeeper bloqueando o UI)
+      {
+        source: "/webhooks/:path*",
+        destination: `${gatewayInternal}/webhooks/:path*`,
+      },
       // marketplace-api/* → route handlers Next.js (offers, image). Não reescrever para Flask.
     ];
 

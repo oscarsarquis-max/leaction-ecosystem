@@ -608,6 +608,7 @@ async function createCardPayment({
   externalReference,
   description,
   installments = 1,
+  payerIdentification = null,
 }) {
   const accessToken = getMercadoPagoAccessToken();
   if (!accessToken) {
@@ -646,22 +647,24 @@ async function createCardPayment({
   const safeInstallments =
     transactionAmount < 10 ? 1 : Math.max(1, Math.min(12, Number(installments) || 1));
 
-  const sandboxCpf = (process.env.MP_SANDBOX_PAYER_CPF || '12345678909').replace(/\D/g, '');
+  // CPF fixo só no sandbox TEST. Em produção: usa identificação do Brick, se houver.
+  let identification = normalizePayerIdentification(payerIdentification);
+  if (!identification && isSandboxAccessToken()) {
+    const sandboxCpf = (process.env.MP_SANDBOX_PAYER_CPF || '12345678909').replace(/\D/g, '');
+    identification = { type: 'CPF', number: sandboxCpf || '12345678909' };
+  }
 
   const payload = {
     transaction_amount: transactionAmount,
     token,
-    description: description || 'PanelDX — Diagnóstico de Maturidade',
+    description: description || 'Action Hub — pagamento',
     installments: safeInstallments,
     payment_method_id: methodId,
     // NÃO usar binary_mode no sandbox TEST: o cartão APRO passa a
     // retornar cc_rejected_other_reason em vez de approved/in_process.
     payer: {
       email,
-      identification: {
-        type: 'CPF',
-        number: sandboxCpf || '12345678909',
-      },
+      ...(identification ? { identification } : {}),
     },
   };
 
@@ -722,6 +725,29 @@ function isSandboxTreatPendingAsApproved() {
     .trim()
     .toLowerCase();
   return flag !== '0' && flag !== 'false' && flag !== 'off';
+}
+
+/**
+ * Simulação local de pagamento (POST /simular-pagamento).
+ * Bloqueada em production salvo ALLOW_PAYMENT_SIMULATION=1 explícito (emergência).
+ */
+function isPaymentSimulationAllowed() {
+  const flag = String(process.env.ALLOW_PAYMENT_SIMULATION || '')
+    .trim()
+    .toLowerCase();
+  if (flag === '1' || flag === 'true' || flag === 'on' || flag === 'yes') return true;
+  if (flag === '0' || flag === 'false' || flag === 'off') return false;
+  return process.env.NODE_ENV !== 'production';
+}
+
+function normalizePayerIdentification(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const type = String(raw.type || raw.identification_type || 'CPF')
+    .trim()
+    .toUpperCase();
+  const number = String(raw.number || raw.identification_number || '').replace(/\D/g, '');
+  if (!number || number.length < 11) return null;
+  return { type: type || 'CPF', number };
 }
 
 function isSandboxRejectedOtherReason(mpPayment) {
@@ -1003,6 +1029,8 @@ module.exports = {
   isMpCardTokenNotFoundError,
   isServerTokenizeFallbackEnabled,
   isSandboxTreatPendingAsApproved,
+  isPaymentSimulationAllowed,
+  normalizePayerIdentification,
   mapMpStatusDetailHint,
   MP_OK_STATUSES,
   MP_PAYMENT_OK_STATUSES,

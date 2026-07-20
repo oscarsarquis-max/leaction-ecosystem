@@ -153,25 +153,31 @@ variable "db_secret_id" {
 
 variable "secrets" {
   type = object({
-    secret_key   = string
-    db_host      = string
-    db_port      = string
-    db_name      = string
-    db_user      = string
-    db_pass      = string
-    db_sslmode   = string
-    email_sender = string
+    secret_key               = string
+    db_host                  = string
+    db_port                  = string
+    db_name                  = string
+    db_user                  = string
+    db_pass                  = string
+    db_sslmode               = string
+    email_sender             = string
+    production_master_key    = optional(string, "")
+    actionhub_webhook_secret = optional(string, "")
+    crm_tracking_secret      = optional(string, "")
   })
-  description = "Fallbacks. Com RDS dedicado, host/user/pass vêm do recurso aws_db_instance."
+  description = "Fallbacks. Com RDS dedicado, host/user/pass vêm do recurso aws_db_instance. actionhub_webhook_secret deve coincidir com app_registry.webhook_secret do Hub. crm_tracking_secret = CRM_TRACKING_SECRET do Action Hub."
   sensitive   = true
   default = {
-    secret_key   = ""
-    db_host      = ""
-    db_port      = "5432"
-    db_name      = "inove4us"
-    db_user      = "inove4us_admin"
-    db_pass      = ""
-    db_sslmode   = "require"
-    email_sender = "noreply@inove4us.com.br"
+    secret_key               = ""
+    db_host                  = ""
+    db_port                  = "5432"
+    db_name                  = "inove4us"
+    db_user                  = "inove4us_admin"
+    db_pass                  = ""
+    db_sslmode               = "require"
+    email_sender             = "noreply@inove4us.com.br"
+    production_master_key    = ""
+    actionhub_webhook_secret = ""
+    crm_tracking_secret      = ""
   }
 }

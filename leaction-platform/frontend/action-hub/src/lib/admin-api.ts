@@ -178,13 +178,25 @@ export type AdminPaymentStatPoint = {
 
 export async function fetchAdminPayments(
   token: string,
-  params?: { status?: string; app_id?: string; limit?: number }
+  params?: {
+    status?: string;
+    app_id?: string;
+    limit?: number;
+    include_test?: boolean;
+  }
 ): Promise<{ payments: AdminPayment[]; counts: AdminPaymentCounts }> {
   const client = createAdminClient(token);
   const { data } = await client.get<{
     payments: AdminPayment[];
     counts: AdminPaymentCounts;
-  }>('/admin/payments', { params });
+  }>('/admin/payments', {
+    params: {
+      status: params?.status,
+      app_id: params?.app_id,
+      limit: params?.limit,
+      ...(params?.include_test ? { include_test: '1' } : {}),
+    },
+  });
   return {
     payments: Array.isArray(data?.payments) ? data.payments : [],
     counts: data?.counts || { total: 0, pending: 0, paid: 0, other: 0 },
@@ -193,12 +205,18 @@ export async function fetchAdminPayments(
 
 export async function fetchAdminPaymentStats(
   token: string,
-  params?: { days?: number; app_id?: string }
+  params?: { days?: number; app_id?: string; include_test?: boolean }
 ): Promise<AdminPaymentStatPoint[]> {
   const client = createAdminClient(token);
   const { data } = await client.get<{ series: AdminPaymentStatPoint[] }>(
     '/admin/payments/stats',
-    { params }
+    {
+      params: {
+        days: params?.days,
+        app_id: params?.app_id,
+        ...(params?.include_test ? { include_test: '1' } : {}),
+      },
+    }
   );
   return Array.isArray(data?.series) ? data.series : [];
 }

@@ -13,6 +13,8 @@ type MercadoPagoSubscriptionBrickProps = {
   checkoutMode?: 'card' | 'subscription';
   /** Preferir a public_key do gateway (/config/payments) — evita mismatch com NEXT_PUBLIC. */
   publicKey?: string;
+  /** Só exibe cartões de teste quando true (credenciais TEST-). */
+  sandboxMode?: boolean;
   onSuccess: () => void;
   onError: (message: string) => void;
 };
@@ -65,6 +67,7 @@ export function MercadoPagoSubscriptionBrick({
   amount = 1,
   checkoutMode = 'card',
   publicKey: publicKeyProp,
+  sandboxMode = false,
   onSuccess,
   onError,
 }: MercadoPagoSubscriptionBrickProps) {
@@ -167,6 +170,12 @@ export function MercadoPagoSubscriptionBrick({
       setBrickIssue('');
       try {
         if (isCardMode) {
+          const brickForm = formData as CardPaymentFormData & {
+            payer?: { identification?: { type?: string; number?: string } };
+            identification?: { type?: string; number?: string };
+          };
+          const payerId =
+            brickForm.payer?.identification || brickForm.identification || null;
           const { data } = await axios.post(
             `${getHubApiBase()}/payments/card`,
             {
@@ -175,6 +184,7 @@ export function MercadoPagoSubscriptionBrick({
               payer_email: stableEmail,
               order_id: orderId,
               installments: formData.installments || 1,
+              ...(payerId ? { payer_identification: payerId } : {}),
             },
             { timeout: 45000 }
           );
@@ -282,10 +292,16 @@ export function MercadoPagoSubscriptionBrick({
             ? `Pagamento — R$ ${brickAmount.toFixed(2).replace('.', ',')}`
             : `Assinatura mensal — R$ ${brickAmount.toFixed(2).replace('.', ',')}`}
         </p>
-        <p className="mb-4 text-xs text-slate-500">
-          Sandbox: cartão <strong>5031 4332 1540 6351</strong>, CVV <strong>123</strong>, validade futura,
-          titular <strong>APRO</strong>, CPF <strong>123.456.789-09</strong>.
-        </p>
+        {sandboxMode || publicKey.startsWith('TEST-') ? (
+          <p className="mb-4 text-xs text-slate-500">
+            Sandbox: cartão <strong>5031 4332 1540 6351</strong>, CVV <strong>123</strong>, validade
+            futura, titular <strong>APRO</strong>, CPF <strong>123.456.789-09</strong>.
+          </p>
+        ) : (
+          <p className="mb-4 text-xs text-slate-500">
+            Ambiente de produção — informe os dados do cartão real.
+          </p>
+        )}
         {brickIssue ? (
           <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
             {brickIssue}

@@ -17,6 +17,8 @@ GIT_SHA
 
 infra/bin/
 infra/terraform/terraform.tfvars
+infra/terraform/terraform.tfvars.local
+infra/terraform/*.auto.tfvars
 infra/terraform/.terraform/
 infra/terraform/*.tfstate*
 infra/terraform/*.tfstate.*

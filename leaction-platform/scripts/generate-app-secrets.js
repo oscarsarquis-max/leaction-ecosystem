@@ -36,11 +36,12 @@ async function main() {
     `SELECT app_id, name
      FROM app_registry
      WHERE webhook_secret IS NULL
+        OR btrim(webhook_secret) = ''
      ORDER BY app_id`
   );
 
   if (rows.length === 0) {
-    console.log('Nenhum app_registry com webhook_secret NULL. Nada a fazer.');
+    console.log('Nenhum app_registry sem webhook_secret. Nada a fazer.');
     await client.end();
     return;
   }
@@ -52,7 +53,8 @@ async function main() {
     await client.query(
       `UPDATE app_registry
        SET webhook_secret = $1
-       WHERE app_id = $2 AND webhook_secret IS NULL`,
+       WHERE app_id = $2
+         AND (webhook_secret IS NULL OR btrim(webhook_secret) = '')`,
       [secret, row.app_id]
     );
 

@@ -186,9 +186,11 @@ function DashboardContent() {
   const [mpPaymentAmount, setMpPaymentAmount] = useState(1);
   const [mpPublicKey, setMpPublicKey] = useState(MP_PUBLIC_KEY);
   const [mpSandboxPayerEmail, setMpSandboxPayerEmail] = useState('');
+  const [mpSandboxMode, setMpSandboxMode] = useState(false);
   const [mpBrickPairValid, setMpBrickPairValid] = useState(true);
   const [mpBrickPairHint, setMpBrickPairHint] = useState('');
   const [mpServerTokenizeFallback, setMpServerTokenizeFallback] = useState(false);
+  const [allowPaymentSimulation, setAllowPaymentSimulation] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -233,7 +235,6 @@ function DashboardContent() {
   }, [searchParams, checkoutParam, email]);
 
   useEffect(() => {
-    if (!isCheckoutFlow) return;
     axios
       .get<{
         mercadopago_enabled: boolean;
@@ -241,17 +242,28 @@ function DashboardContent() {
         paneldx_payment_amount?: number;
         public_key?: string;
         sandbox_payer_email?: string;
+        sandbox_mode?: boolean;
         brick_pair_valid?: boolean;
         brick_pair_hint?: string | null;
         server_tokenize_fallback?: boolean;
+        allow_payment_simulation?: boolean;
       }>(`${apiBase}/config/payments`, { timeout: 8000 })
       .then((res) => {
+        setAllowPaymentSimulation(Boolean(res.data.allow_payment_simulation));
+        if (!isCheckoutFlow) return;
         const gatewayKey = String(res.data.public_key || '').trim();
         if (gatewayKey) setMpPublicKey(gatewayKey);
         const effectiveKey = gatewayKey || MP_PUBLIC_KEY;
         setMpEnabled(Boolean(res.data.mercadopago_enabled && effectiveKey));
         setMpCheckoutMode(res.data.checkout_mode === 'subscription' ? 'subscription' : 'card');
-        setMpSandboxPayerEmail(String(res.data.sandbox_payer_email || '').trim());
+        const sandbox =
+          Boolean(res.data.sandbox_mode) ||
+          effectiveKey.startsWith('TEST-') ||
+          Boolean(res.data.allow_payment_simulation);
+        setMpSandboxMode(sandbox);
+        setMpSandboxPayerEmail(
+          sandbox ? String(res.data.sandbox_payer_email || '').trim() : ''
+        );
         setMpBrickPairValid(res.data.brick_pair_valid !== false);
         setMpBrickPairHint(String(res.data.brick_pair_hint || '').trim());
         setMpServerTokenizeFallback(Boolean(res.data.server_tokenize_fallback));
@@ -259,7 +271,12 @@ function DashboardContent() {
           setMpPaymentAmount(res.data.paneldx_payment_amount);
         }
       })
-      .catch(() => setMpEnabled(Boolean(MP_PUBLIC_KEY)));
+      .catch(() => {
+        if (isCheckoutFlow) {
+          setMpEnabled(Boolean(MP_PUBLIC_KEY));
+          setMpSandboxMode(String(MP_PUBLIC_KEY || '').startsWith('TEST-'));
+        }
+      });
   }, [isCheckoutFlow, apiBase]);
 
   useEffect(() => {
@@ -994,23 +1011,39 @@ function DashboardContent() {
                         color: checkoutBrand?.colors.infoText ?? '#7c2d12',
                       }}
                     >
-                      Sandbox Mercado Pago: cartão <strong>5031 4332 1540 6351</strong>, CVV{' '}
-                      <strong>123</strong>, validade futura, titular <strong>APRO</strong> e CPF{' '}
-                      <strong>123.456.789-09</strong>. Valor cobrado: R${' '}
-                      {checkoutPaymentAmount.toFixed(2).replace('.', ',')}.
-                      {email ? (
+                      {mpSandboxMode ? (
                         <>
-                          {' '}
-                          Pedido vinculado a <strong>{email}</strong>
-                          {mpSandboxPayerEmail ? (
+                          Sandbox Mercado Pago: cartão <strong>5031 4332 1540 6351</strong>, CVV{' '}
+                          <strong>123</strong>, validade futura, titular <strong>APRO</strong> e CPF{' '}
+                          <strong>123.456.789-09</strong>. Valor cobrado: R${' '}
+                          {checkoutPaymentAmount.toFixed(2).replace('.', ',')}.
+                          {email ? (
                             <>
                               {' '}
-                              (cobrança MP sandbox usa {mpSandboxPayerEmail} só no servidor).
+                              Pedido vinculado a <strong>{email}</strong>
+                              {mpSandboxPayerEmail ? (
+                                <>
+                                  {' '}
+                                  (cobrança MP sandbox usa {mpSandboxPayerEmail} só no servidor).
+                                </>
+                              ) : null}
+                              .
                             </>
                           ) : null}
-                          .
                         </>
-                      ) : null}
+                      ) : (
+                        <>
+                          Pagamento em produção. Valor: R${' '}
+                          {checkoutPaymentAmount.toFixed(2).replace('.', ',')}.
+                          {email ? (
+                            <>
+                              {' '}
+                              Pedido vinculado a <strong>{email}</strong>.
+                            </>
+                          ) : null}{' '}
+                          Use um cartão real.
+                        </>
+                      )}
                     </p>
                     {!checkoutBrickReady ? (
                       <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
@@ -1056,47 +1089,49 @@ function DashboardContent() {
                           amount={checkoutPaymentAmount}
                           checkoutMode={mpCheckoutMode}
                           publicKey={mpPublicKey}
+                          sandboxMode={mpSandboxMode}
                           onSuccess={() => setCheckoutSuccess(true)}
                           onError={(msg) => setCheckoutError(msg)}
                         />
                       </>
                     )}
-                    {/* Fallback local: par TEST do MP pode gerar token live_mode incompatível (erro 2006). */}
-                    <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3">
-                      <p className="mb-2 text-xs text-slate-600">
-                        {mpBrickPairValid ? (
-                          <>
-                            Se o Brick falhar com <strong>Card Token not found (2006)</strong>, o par de
-                            credenciais TEST do painel MP está inconsistente.
-                          </>
-                        ) : (
-                          <>
-                            O Brick pode falhar com <strong>2006</strong> no sandbox MP. Use{' '}
-                            <strong>Pagar sandbox (sem Brick)</strong> acima ou a simulação local abaixo.
-                          </>
-                        )}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => void handleCheckoutPayment()}
-                        disabled={loginStatus === 'paying'}
-                        className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-orange-300 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-70"
-                      >
-                        {loginStatus === 'paying' ? (
-                          <>
-                            <Loader2 className="size-3.5 animate-spin" />
-                            Processando...
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard size={14} />
-                            Simular pagamento (dev)
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    {allowPaymentSimulation ? (
+                      <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3">
+                        <p className="mb-2 text-xs text-slate-600">
+                          {mpBrickPairValid ? (
+                            <>
+                              Se o Brick falhar com <strong>Card Token not found (2006)</strong>, o par de
+                              credenciais TEST do painel MP está inconsistente.
+                            </>
+                          ) : (
+                            <>
+                              O Brick pode falhar com <strong>2006</strong> no sandbox MP. Use{' '}
+                              <strong>Pagar sandbox (sem Brick)</strong> acima ou a simulação local abaixo.
+                            </>
+                          )}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => void handleCheckoutPayment()}
+                          disabled={loginStatus === 'paying'}
+                          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-orange-300 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          {loginStatus === 'paying' ? (
+                            <>
+                              <Loader2 className="size-3.5 animate-spin" />
+                              Processando...
+                            </>
+                          ) : (
+                            <>
+                              <CreditCard size={14} />
+                              Simular pagamento (dev)
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ) : null}
                   </>
-                ) : (
+                ) : allowPaymentSimulation ? (
                   <div className="space-y-3">
                     <p className="text-sm text-amber-800">
                       Mercado Pago nao configurado neste ambiente. Use o botao abaixo apenas para
@@ -1122,6 +1157,11 @@ function DashboardContent() {
                       )}
                     </button>
                   </div>
+                ) : (
+                  <p className="text-sm text-amber-800">
+                    Mercado Pago nao configurado neste ambiente. Em producao, configure as chaves
+                    APP_USR no gateway.
+                  </p>
                 )}
               </>
             )}
@@ -1327,7 +1367,7 @@ function DashboardContent() {
                           )}
                         </td>
                         <td className="rounded-r-xl px-3 py-3">
-                          {isPending && (
+                          {isPending && allowPaymentSimulation && (
                             <button
                               type="button"
                               onClick={() => void handleSimulatePayment(order)}
@@ -1341,6 +1381,9 @@ function DashboardContent() {
                               )}
                               Finalizar Pagamento
                             </button>
+                          )}
+                          {isPending && !allowPaymentSimulation && (
+                            <span className="text-xs text-slate-500">Aguardando MP</span>
                           )}
                           {isPaid && (
                             <button

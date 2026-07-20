@@ -81,6 +81,7 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
   const { token } = useHubSession();
   const [statusFilter, setStatusFilter] = useState('');
   const [appFilter, setAppFilter] = useState(initialAppId);
+  const [includeTest, setIncludeTest] = useState(true);
   const [apps, setApps] = useState<AdminApp[]>([]);
   const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [counts, setCounts] = useState<AdminPaymentCounts>({
@@ -118,10 +119,12 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
           status: statusFilter || undefined,
           app_id: appFilter || undefined,
           limit: 100,
+          include_test: includeTest,
         }),
         fetchAdminPaymentStats(token, {
           days: 30,
           app_id: appFilter || undefined,
+          include_test: includeTest,
         }),
       ]);
       setPayments(list.payments);
@@ -139,7 +142,7 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
     } finally {
       setLoading(false);
     }
-  }, [token, statusFilter, appFilter]);
+  }, [token, statusFilter, appFilter, includeTest]);
 
   useEffect(() => {
     void load();
@@ -257,10 +260,19 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
             {f.label}
           </button>
         ))}
+        <label className="ml-auto inline-flex cursor-pointer items-center gap-2 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700">
+          <input
+            type="checkbox"
+            checked={includeTest}
+            onChange={(e) => setIncludeTest(e.target.checked)}
+            className="size-3.5 accent-orange-600"
+          />
+          Incluir testes
+        </label>
         <select
           value={appFilter}
           onChange={(e) => setAppFilter(e.target.value)}
-          className="ml-auto rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700"
+          className="rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700"
         >
           <option value="">Todas as apps</option>
           {(apps.length > 0

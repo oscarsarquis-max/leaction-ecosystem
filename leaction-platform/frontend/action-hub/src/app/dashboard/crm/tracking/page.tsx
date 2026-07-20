@@ -238,7 +238,7 @@ export default function CrmTrackingConversionPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardViewModel | null>(null);
   const [origens, setOrigens] = useState<OrigemItem[]>([]);
-  const [sistema, setSistema] = useState('paneldx');
+  const [sistema, setSistema] = useState('inove4us');
   const [loadError, setLoadError] = useState('');
   const [showNovaOrigem, setShowNovaOrigem] = useState(false);
   const [novaSlug, setNovaSlug] = useState('');
@@ -289,7 +289,11 @@ export default function CrmTrackingConversionPage() {
         const list = await loadOrigens();
         if (cancelled || !list.length) return;
         if (!list.some((o) => o.slug === sistema)) {
-          setSistema(list.find((o) => o.slug === 'paneldx')?.slug || list[0].slug);
+          setSistema(
+            list.find((o) => o.slug === 'inove4us')?.slug ||
+              list.find((o) => o.slug === 'paneldx')?.slug ||
+              list[0].slug
+          );
         }
       } catch (err) {
         if (!cancelled) {

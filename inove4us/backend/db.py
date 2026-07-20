@@ -62,6 +62,20 @@ def ensure_creditos_ia_column() -> None:
                     SET DEFAULT {int(CREDITO_IA_FREEMIUM_DEFAULT)};
                 """
             )
+            cur.execute(
+                """
+                ALTER TABLE public.ctdi_clie
+                    ADD COLUMN IF NOT EXISTS is_test BOOLEAN NOT NULL DEFAULT FALSE
+                """
+            )
+            cur.execute(
+                """
+                UPDATE public.ctdi_clie
+                SET is_test = TRUE
+                WHERE LOWER(TRIM(mail_clie)) = 'inovador@inove4us.com.br'
+                  AND COALESCE(is_test, FALSE) = FALSE
+                """
+            )
     _creditos_ensured = True
 
 

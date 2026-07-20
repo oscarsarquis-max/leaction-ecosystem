@@ -89,6 +89,12 @@ resource "aws_ecs_task_definition" "inove4us" {
       { name = "PORT", value = tostring(var.container_port) },
       { name = "FRONTEND_ORIGIN", value = "https://${var.domain_name}" },
       { name = "CORS_ORIGINS", value = "https://${var.domain_name},https://www.${var.domain_name}" },
+      { name = "ACTION_HUB_PUBLIC_URL", value = "https://actionhub.com.br" },
+      { name = "ACTION_HUB_API_URL", value = "https://actionhub.com.br/hub-api" },
+      { name = "ACTION_HUB_APP_ID", value = "inove4us" },
+      { name = "ACTION_HUB_APP_SECRET", value = var.secrets.actionhub_webhook_secret },
+      { name = "ACTIONHUB_WEBHOOK_SECRET", value = var.secrets.actionhub_webhook_secret },
+      { name = "CRM_TRACKING_SECRET", value = var.secrets.crm_tracking_secret },
       { name = "EMAIL_DEV_MODE", value = "0" },
       { name = "AWS_REGION", value = var.aws_region },
       { name = "AWS_DEFAULT_REGION", value = var.aws_region },
@@ -99,7 +105,8 @@ resource "aws_ecs_task_definition" "inove4us" {
       { name = "DB_SSLMODE", value = var.secrets.db_sslmode },
       { name = "EMAIL_SENDER", value = var.secrets.email_sender },
       { name = "SECRET_KEY", value = local.app_secret_key },
-      { name = "DB_PASS", value = local.db_pass }
+      { name = "DB_PASS", value = local.db_pass },
+      { name = "PRODUCTION_MASTER_KEY", value = var.secrets.production_master_key }
     ]
     logConfiguration = {
       logDriver = "awslogs"

@@ -28,12 +28,16 @@ cpu           = 512
 memory        = 1024
 
 secrets = {
-  secret_key   = "gere-um-segredo-longo"
-  db_host      = ""
-  db_port      = "5432"
-  db_name      = "inove4us"
-  db_user      = "inove4us_admin"
-  db_pass      = ""
-  db_sslmode   = "require"
-  email_sender = "noreply@inove4us.com.br"
+  secret_key               = "gere-um-segredo-longo"
+  db_host                  = ""
+  db_port                  = "5432"
+  db_name                  = "inove4us"
+  db_user                  = "inove4us_admin"
+  db_pass                  = ""
+  db_sslmode               = "require"
+  email_sender             = "noreply@inove4us.com.br"
+  # Deve ser idêntico a app_registry.webhook_secret (inove4us) no Action Hub
+  actionhub_webhook_secret = "mesmo-secret-do-hub-app-registry"
+  # Mesmo valor de CRM_TRACKING_SECRET no Action Hub (Action-Sponge)
+  crm_tracking_secret      = "mesmo-crm-tracking-secret-do-hub"
 }

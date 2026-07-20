@@ -5,10 +5,10 @@
 
 BEGIN;
 
--- Webhook S2S → inove4us local (Flask :5010)
+-- Webhook S2S → inove4us (produção; override local via APP_WEBHOOK_URL_INOVE4US)
 UPDATE app_registry
 SET
-  webhook_url = 'http://127.0.0.1:5010/api/webhooks/actionhub',
+  webhook_url = 'https://inove4us.com.br/api/webhooks/actionhub',
   return_origins = ARRAY[
     'https://inove4us.com.br',
     'http://localhost:5174'

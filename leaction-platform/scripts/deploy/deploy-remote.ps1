@@ -18,9 +18,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = (Resolve-Path (Join-Path $ScriptDir '../..')).Path
-$KeyFile = Join-Path $RepoRoot 'chaves/action_hub_keys.pem'
+$KeyFile = if ($env:ACTION_HUB_SSH_KEY) { $env:ACTION_HUB_SSH_KEY } else { Join-Path $RepoRoot 'chaves/action_hub_keys.pem' }
 
-if (-not (Test-Path $KeyFile)) { throw "Chave SSH nao encontrada: $KeyFile" }
+if (-not (Test-Path $KeyFile)) { throw "Chave SSH nao encontrada: $KeyFile (defina ACTION_HUB_SSH_KEY)" }
 
 $ssh = @('-i', $KeyFile, '-o', 'StrictHostKeyChecking=no', "${User}@${ServerHost}")
 $scp = @('-i', $KeyFile, '-o', 'StrictHostKeyChecking=no')

@@ -41,6 +41,37 @@ function parseHubPayload(raw) {
   }
 }
 
+/** Pedidos de usuários is_test (ou e-mail/subject marcado) fora das métricas. */
+const EXCLUDE_TEST_ORDERS_SQL = `
+  COALESCE(u.is_test, FALSE) = FALSE
+  AND LOWER(TRIM(COALESCE(u.email, ''))) NOT IN (
+    'inovador@inove4us.com.br',
+    'admin@actionhub.com.br'
+  )
+  AND LOWER(TRIM(COALESCE(c.subject_id, ''))) NOT IN (
+    'inovador@inove4us.com.br',
+    'admin@actionhub.com.br'
+  )
+  AND LOWER(TRIM(COALESCE(
+    CASE
+      WHEN o.external_resource_id LIKE '{%'
+      THEN o.external_resource_id::jsonb->>'subject_id'
+      ELSE NULL
+    END,
+    ''
+  ))) NOT IN (
+    'inovador@inove4us.com.br',
+    'admin@actionhub.com.br'
+  )
+`;
+
+async function ensureUsersIsTestColumn(pool) {
+  await pool.query(`
+    ALTER TABLE public.users
+      ADD COLUMN IF NOT EXISTS is_test BOOLEAN NOT NULL DEFAULT FALSE
+  `);
+}
+
 function serializePaymentRow(row) {
   const hub = parseHubPayload(row.external_resource_id);
   const amount = Number(hub.valor_negociado);
@@ -77,13 +108,18 @@ function registerAdminPaymentsRoutes(app, pool, { requireAdmin }) {
   app.get('/admin/payments', requireAdmin, async (req, res) => {
     try {
       await ensureNoticesTable(pool);
+      await ensureUsersIsTestColumn(pool);
 
       const status = String(req.query.status || '').trim().toUpperCase();
       const appId = String(req.query.app_id || '').trim().toLowerCase();
+      const includeTest = String(req.query.include_test || '').trim() === '1';
       const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 80));
 
       const params = [];
       const where = [];
+      if (!includeTest) {
+        where.push(`(${EXCLUDE_TEST_ORDERS_SQL})`);
+      }
       if (status) {
         params.push(status);
         where.push(`UPPER(o.status) = $${params.length}`);
@@ -141,10 +177,13 @@ function registerAdminPaymentsRoutes(app, pool, { requireAdmin }) {
       const counts = await pool.query(`
         SELECT
           COUNT(*)::int AS total,
-          COUNT(*) FILTER (WHERE UPPER(status) = 'PENDING')::int AS pending,
-          COUNT(*) FILTER (WHERE UPPER(status) = 'PAID')::int AS paid,
-          COUNT(*) FILTER (WHERE UPPER(status) NOT IN ('PENDING', 'PAID'))::int AS other
-        FROM orders
+          COUNT(*) FILTER (WHERE UPPER(o.status) = 'PENDING')::int AS pending,
+          COUNT(*) FILTER (WHERE UPPER(o.status) = 'PAID')::int AS paid,
+          COUNT(*) FILTER (WHERE UPPER(o.status) NOT IN ('PENDING', 'PAID'))::int AS other
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.user_id
+        LEFT JOIN contracts c ON c.order_id = o.id
+        WHERE (${EXCLUDE_TEST_ORDERS_SQL})
       `);
 
       return res.status(200).json({
@@ -159,18 +198,20 @@ function registerAdminPaymentsRoutes(app, pool, { requireAdmin }) {
 
   app.get('/admin/payments/stats', requireAdmin, async (req, res) => {
     try {
+      await ensureUsersIsTestColumn(pool);
       const days = Math.min(90, Math.max(7, Number(req.query.days) || 30));
       const appId = String(req.query.app_id || '').trim().toLowerCase();
+      const includeTest = String(req.query.include_test || '').trim() === '1';
       const params = [days];
       let appFilter = '';
       if (appId) {
         params.push(appId);
         appFilter = `AND (
-          c.app_id = $2
+          c.app_id = $${params.length}
           OR LOWER(COALESCE(
             CASE WHEN o.external_resource_id LIKE '{%' THEN o.external_resource_id::jsonb->>'app_id' ELSE NULL END,
             ''
-          )) = $2
+          )) = $${params.length}
         )`;
       }
 
@@ -212,9 +253,11 @@ function registerAdminPaymentsRoutes(app, pool, { requireAdmin }) {
             0
           ) AS revenue
         FROM orders o
+        LEFT JOIN users u ON u.id = o.user_id
         LEFT JOIN products p ON p.id = o.product_id
         LEFT JOIN contracts c ON c.order_id = o.id
         WHERE o.created_at >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
+          ${includeTest ? '' : `AND (${EXCLUDE_TEST_ORDERS_SQL})`}
           ${appFilter}
         GROUP BY 1, 2, 3
         ORDER BY 1 ASC, 2 ASC
