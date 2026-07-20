@@ -33,6 +33,9 @@ COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 
 COPY backend/ /app/backend/
+COPY VERSION /app/VERSION
+ARG GIT_SHA=unknown
+ENV GIT_SHA=$GIT_SHA
 COPY --from=frontend-build /fe/dist /app/frontend/dist
 
 # Garantir logos/imagens no static Flask

@@ -36,6 +36,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 4000,
+        APP_VERSION: process.env.APP_VERSION || '',
+        GIT_SHA: process.env.GIT_SHA || '',
       },
       error_file: path.join(LOG_DIR, 'action-hub-error.log'),
       out_file: path.join(LOG_DIR, 'action-hub-out.log'),
@@ -56,6 +58,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         GATEWAY_PORT: 4001,
+        APP_VERSION: process.env.APP_VERSION || '',
+        GIT_SHA: process.env.GIT_SHA || '',
       },
       error_file: path.join(LOG_DIR, 'gateway-api-error.log'),
       out_file: path.join(LOG_DIR, 'gateway-api-out.log'),

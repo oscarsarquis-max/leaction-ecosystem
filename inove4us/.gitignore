@@ -11,6 +11,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 *.log
+GIT_SHA
 .idea/
 .vscode/
 

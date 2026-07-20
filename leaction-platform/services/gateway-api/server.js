@@ -48,6 +48,7 @@ const { registerCatalogPublicRoutes } = require('./domain/catalog-public');
 const { registerMpWebhookRoutes } = require('./domain/mp-webhooks');
 const { startOutboxWorker } = require('./domain/outbox-worker');
 const { registerAdminRoutes } = require('./admin');
+const { versionPayload } = require('./version-info');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-hub-key-2026';
 const ACTION_HUB_PUBLIC_URL = (process.env.ACTION_HUB_PUBLIC_URL || 'http://localhost:4000').replace(/\/$/, '');
@@ -75,6 +76,13 @@ async function fetchPanelDxLiveVitrine() {
 }
 
 const app = express();
+
+app.get('/health', (_req, res) => {
+  res.status(200).json(versionPayload({ ok: true, service: 'gateway-api' }));
+});
+app.get('/api/health', (_req, res) => {
+  res.status(200).json(versionPayload({ ok: true, service: 'gateway-api' }));
+});
 
 // CONFIGURAÇÃO: Libera o acesso para o seu Frontend
 app.use(cors());

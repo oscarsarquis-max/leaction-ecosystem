@@ -14,6 +14,20 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
+# Versão de release (VERSION + SHA do checkout)
+if [[ -f VERSION ]]; then
+  export APP_VERSION="$(tr -d '[:space:]' < VERSION)"
+  echo "==> APP_VERSION=$APP_VERSION"
+fi
+if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  GIT_SHA="$(git rev-parse --short HEAD 2>/dev/null || true)"
+  if [[ -n "${GIT_SHA:-}" ]]; then
+    export GIT_SHA
+    printf '%s\n' "$GIT_SHA" > GIT_SHA
+    echo "==> GIT_SHA=$GIT_SHA"
+  fi
+fi
+
 echo "==> gateway-api — dependencias"
 cd services/gateway-api
 npm ci --omit=dev --no-audit --no-fund
@@ -68,9 +82,15 @@ fi
 
 echo "==> Health local"
 sleep 3
-curl -sf "http://127.0.0.1:4001/" >/dev/null 2>&1 || echo "[!] gateway sem resposta"
+curl -sf -o /dev/null -w "gateway /health HTTP %{http_code}\n" "http://127.0.0.1:4001/health" \
+  || echo "[!] gateway sem resposta"
+curl -sS "http://127.0.0.1:4001/health" 2>/dev/null | head -c 300 || true
+echo
 curl -sf -o /dev/null -w "marketplace HTTP %{http_code}\n" "http://127.0.0.1:4012/api/marketplace/health" || echo "[!] marketplace sem resposta"
-curl -sf -o /dev/null -w "action-hub HTTP %{http_code}\n" "http://127.0.0.1:4000/" || true
+curl -sf -o /dev/null -w "action-hub /api/health HTTP %{http_code}\n" "http://127.0.0.1:4000/api/health" \
+  || curl -sf -o /dev/null -w "action-hub / HTTP %{http_code}\n" "http://127.0.0.1:4000/" || true
+curl -sS "http://127.0.0.1:4000/api/health" 2>/dev/null | head -c 300 || true
+echo
 
 pm2 status
 echo "==> Concluido."

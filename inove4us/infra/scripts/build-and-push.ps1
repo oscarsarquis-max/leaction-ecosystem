@@ -13,9 +13,12 @@ $Uri = "$AccountId.dkr.ecr.$AwsRegion.amazonaws.com/$Repo"
 Write-Host "==> Login ECR"
 aws ecr get-login-password --region $AwsRegion | docker login --username AWS --password-stdin "$AccountId.dkr.ecr.$AwsRegion.amazonaws.com"
 
-Write-Host "==> docker build $Root"
+$GitSha = (git -C $Root rev-parse --short HEAD 2>$null)
+if (-not $GitSha) { $GitSha = "unknown" }
+
+Write-Host "==> docker build $Root (GIT_SHA=$GitSha)"
 Set-Location $Root
-docker build -t "${Repo}:${Tag}" -t "${Uri}:${Tag}" .
+docker build --build-arg "GIT_SHA=$GitSha" -t "${Repo}:${Tag}" -t "${Uri}:${Tag}" .
 
 Write-Host "==> docker push ${Uri}:${Tag}"
 docker push "${Uri}:${Tag}"

@@ -4,6 +4,9 @@
 .env.production
 .env.*.local
 
+# Release SHA gerado no deploy (não versionar)
+GIT_SHA
+
 # PM2
 logs/
 .pm2/

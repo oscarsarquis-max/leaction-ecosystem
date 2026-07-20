@@ -32,6 +32,7 @@ from wizard_routes import wizard_bp  # noqa: E402
 from agenda_routes import agenda_bp  # noqa: E402
 from webhook_routes import webhook_bp  # noqa: E402
 from feedback_routes import feedback_bp  # noqa: E402
+from version_info import version_payload  # noqa: E402
 from billing_routes import billing_bp  # noqa: E402
 
 EMAIL_RE = re.compile(
@@ -122,7 +123,12 @@ def create_app() -> Flask:
 
     @app.get("/api/health")
     def health():
-        return jsonify({"ok": True, "app": "inove4us", "db": os.environ.get("DB_NAME")})
+        return jsonify(
+            version_payload(
+                ok=True,
+                db=os.environ.get("DB_NAME"),
+            )
+        )
 
     @app.get("/api/auth/me")
     def auth_me():
