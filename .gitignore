@@ -63,6 +63,9 @@ db-pack/
 Thumbs.db
 desktop.ini
 
+# Cópia local arquivada (fora do escopo do monorepo; manter só no disco)
+inove4us_old/
+
 # -----------------------------------------------------------------------------
 # Node.js (PanelDX FE, ActionHub, Chamelleon FE, Diário de Obra, Prodinx FE…)
 # -----------------------------------------------------------------------------

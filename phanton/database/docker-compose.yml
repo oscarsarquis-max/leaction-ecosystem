@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: phanton_orquestrador_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: orquestrador
+    ports:
+      # 5435 no host — 5432 costuma estar ocupada pelo Postgres local do Windows
+      - "5435:5432"
+    volumes:
+      - phanton_pg_data:/var/lib/postgresql/data
+      - ./01_init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+
+volumes:
+  phanton_pg_data:

@@ -9,6 +9,10 @@
       "path": "PanelDX"
     },
     {
+      "name": "MudaEdu",
+      "path": "mudaedu"
+    },
+    {
       "name": "Action Hub",
       "path": "leaction-platform"
     },
@@ -27,6 +31,10 @@
     {
       "name": "Inove4us",
       "path": "inove4us"
+    },
+    {
+      "name": "Phanton",
+      "path": "phanton"
     },
     {
       "name": "Prodinx",
@@ -51,6 +59,9 @@
   ],
   "settings": {
     "git.repositoryScanMaxDepth": 2,
+    "files.exclude": {
+      "inove4us_old": true
+    },
     "search.exclude": {
       "**/node_modules": true,
       "**/.next": true,
@@ -58,12 +69,14 @@
       "**/build": true,
       "**/__pycache__": true,
       "**/.venv": true,
-      "**/venv_action": true
+      "**/venv_action": true,
+      "inove4us_old": true
     },
     "files.watcherExclude": {
       "**/node_modules/**": true,
       "**/.next/**": true,
-      "**/dist/**": true
+      "**/dist/**": true,
+      "inove4us_old/**": true
     }
   }
 }

@@ -29,10 +29,10 @@ if (Test-Port 3002) {
     Start-Sleep -Seconds 2
 }
 
-if (Test-Port 5173) {
-    Write-Host "Frontend ja ativo na porta 5173." -ForegroundColor Green
+if (Test-Port 5176) {
+    Write-Host "Frontend ja ativo na porta 5176." -ForegroundColor Green
 } else {
-    Write-Host "A iniciar frontend (porta 5173)..." -ForegroundColor Cyan
+    Write-Host "A iniciar frontend (porta 5176)..." -ForegroundColor Cyan
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$Root\frontend'; npm run dev"
     Start-Sleep -Seconds 3
 }
@@ -42,8 +42,8 @@ Write-Host "Pasta quente de JSON (copie ficheiros .json para aqui):" -Foreground
 Write-Host "  $Root\jsonfiles" -ForegroundColor White
 Write-Host ""
 Write-Host "Abra no browser externo (Chrome/Edge):" -ForegroundColor Green
-Write-Host "  http://localhost:5173" -ForegroundColor White
-Write-Host "  http://127.0.0.1:5173" -ForegroundColor White
+Write-Host "  http://localhost:5176" -ForegroundColor White
+Write-Host "  http://127.0.0.1:5176" -ForegroundColor White
 Write-Host ""
 Write-Host "API backend:" -ForegroundColor Green
 Write-Host "  http://127.0.0.1:3002/api/dashboard/metricas" -ForegroundColor White
@@ -51,7 +51,7 @@ Write-Host ""
 Write-Host "Flask ingestao (watcher ativo se porta 5000 estiver UP):" -ForegroundColor Green
 Write-Host "  http://127.0.0.1:5000/health" -ForegroundColor White
 
-$AppUrl = "http://localhost:5173/"
+$AppUrl = "http://localhost:5176/"
 Write-Host ""
 Write-Host "A abrir browser externo: $AppUrl" -ForegroundColor Cyan
 
