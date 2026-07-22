@@ -123,7 +123,7 @@ router.get('/gatekeeper/lock', async (req, res) => {
 router.get('/manutencao', (_req, res) => {
     res.render('manutencao', {
         layout: false,
-        title: 'MudaEdu — Em preparação',
+        title: 'MudaEdu — Em manutenção',
     });
 });
 

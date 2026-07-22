@@ -20,8 +20,9 @@
 1. ACM `mudaedu.com.br` + `www` (DNS validation na zona mudaedu) — **ISSUED**
 2. Alias A `mudaedu.com.br` / `www.mudaedu.com.br` → `paneldx-alb`
 3. Cert anexado ao listener HTTPS `:443` (SNI; cert default continua paneldx)
-4. Regra ALB **priority 1**: Host `paneldx.com.br` / `www.paneldx.com.br` → **301** para `https://mudaedu.com.br` (path/query preservados)
-5. Regra `/api*` movida para priority **10** (continua valendo para `mudaedu.com.br`)
+4. Regra ALB **priority 1**: Host `paneldx.com.br` / `www.paneldx.com.br` → **503 fixed-response** (página “PanelDX temporariamente desativado”) — **sem** redirect para mudaedu
+5. Regra `/api*` priority **10** → forward `paneldx-backend-tg` (mudaedu); default HTTPS → forward `paneldx-frontend-tg`
+6. Frontend `v50.0.58`: página `/manutencao` sem texto de “homologação” (só manutenção pública)
 6. SES: `verify-domain-identity` + TXT `_amazonses.mudaedu.com.br` (aguardar Success)
 7. **Deploy imagens `v50.0.56`** (build a partir de `mudaedu/`):
    - `paneldx-backend-task:87`

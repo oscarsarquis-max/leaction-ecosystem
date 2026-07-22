@@ -100,7 +100,7 @@ async function gatekeeperMiddleware(req, res, next) {
 
     if (wantsJson) {
         return res.status(503).json({
-            error: 'Sistema em preparação para homologação produtiva.',
+            error: 'Sistema temporariamente em manutenção.',
             maintenance: true,
         });
     }
