@@ -1,109 +1,39 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import {
-  Target,
-  FileText,
-  Loader2,
-  Layers,
-  GitBranch,
-  Sparkles,
-  CheckCircle2,
-  MessageSquare,
-} from 'lucide-react'
+import { Target, FileText, Loader2, Layers } from 'lucide-react'
 
 import TopBar from '../components/TopBar.jsx'
-import { diagnosticarMetodologia, refinarDiagnostico } from '../services/api.js'
+import { diagnosticarMetodologia } from '../services/api.js'
 import { FORMATOS_AULA, NIVEIS_ENSINO } from '../data/niveisEnsino.js'
 import { useUiContent } from '../contexts/UiContentContext.jsx'
 
-/**
- * Monta o payload de lock-in (metodologia + justificativa) conforme a via
- * escolhida pelo professor na árvore de decisão ou no diálogo de refino.
- */
-function resolverViaSelecionada(diagnostico, viaId, sugestoesRefino) {
-  if (!viaId) return null
-
-  if (viaId.startsWith('ref:') && sugestoesRefino?.length) {
-    const idx = Number(viaId.split(':')[1])
-    const s = sugestoesRefino[idx]
-    if (!s) return null
-    const isFusao = s.tipo === 'fusao'
-    return {
-      via: isFusao ? 'fusao_estrategica' : 'sugestao_refinada',
-      metodologia: s.nome,
-      justificativa: s.justificativa,
-      categoria: s.categoria,
-      metodologias_fusao: isFusao ? s.metodologias || null : null,
-    }
-  }
-
+/** Lock-in sempre no primeiro match da árvore (sem alternativas / fusão / escolha). */
+function resolverMatch(diagnostico) {
   if (!diagnostico) return null
-
-  if (viaId === 'match') {
-    const mp = diagnostico.match_perfeito || {}
-    return {
-      via: 'match_perfeito',
-      metodologia: mp.nome || diagnostico.metodologia,
-      justificativa: mp.justificativa || diagnostico.justificativa,
-      categoria: mp.categoria || diagnostico.grupo,
-    }
+  const mp = diagnostico.match_perfeito || {}
+  const metodologia = mp.nome || diagnostico.metodologia
+  if (!metodologia) return null
+  return {
+    via: 'match_perfeito',
+    metodologia,
+    justificativa: mp.justificativa || diagnostico.justificativa,
+    categoria: mp.categoria || diagnostico.grupo,
   }
-
-  if (viaId.startsWith('alt:')) {
-    const idx = Number(viaId.split(':')[1])
-    const alt = (diagnostico.alternativas_mesmo_ramo || [])[idx]
-    if (!alt) return null
-    return {
-      via: 'alternativa_mesmo_ramo',
-      metodologia: alt.nome,
-      justificativa: alt.justificativa,
-      categoria: alt.categoria,
-    }
-  }
-
-  if (viaId === 'fusao') {
-    const fusao = diagnostico.fusao_estrategica || {}
-    const mets = fusao.metodologias || []
-    const nomeFusao = fusao.nome || mets.join(' + ')
-    const sinergia = fusao.sinergia || ''
-    const justificativa = [
-      sinergia,
-      mets.length >= 2 ? `Fusão estratégica entre ${mets[0]} e ${mets[1]}.` : null,
-    ]
-      .filter(Boolean)
-      .join(' ')
-
-    return {
-      via: 'fusao_estrategica',
-      metodologia: nomeFusao,
-      justificativa,
-      categoria: (fusao.categorias || []).join(' + ') || null,
-      metodologias_fusao: mets,
-    }
-  }
-
-  return null
 }
 
-function OptionCard({ selected, onSelect, badge, title, subtitle, body, icon: Icon, accent }) {
+function MatchCard({ badge, title, subtitle, body }) {
   return (
-    <button
-      type="button"
-      className={`diag-option ${selected ? 'diag-option--selected' : ''} ${accent ? `diag-option--${accent}` : ''}`}
-      onClick={onSelect}
-      aria-pressed={selected}
-    >
+    <div className="diag-option diag-option--selected diag-option--match" aria-live="polite">
       <div className="diag-option__head">
         <span className="diag-option__badge">{badge}</span>
-        {selected && <CheckCircle2 size={18} className="diag-option__check" />}
       </div>
       <p className="diag-option__title">
-        {Icon ? <Icon size={18} style={{ verticalAlign: 'middle', marginRight: 6 }} /> : null}
+        <Layers size={18} style={{ verticalAlign: 'middle', marginRight: 6 }} />
         {title}
       </p>
       {subtitle ? <p className="diag-option__subtitle">{subtitle}</p> : null}
       {body ? <p className="muted diag-option__body">{body}</p> : null}
-    </button>
+    </div>
   )
 }
 
@@ -121,13 +51,7 @@ function Resultado() {
   const [diagnostico, setDiagnostico] = useState(null)
   const [carregandoDiag, setCarregandoDiag] = useState(false)
   const [erroDiag, setErroDiag] = useState(null)
-  const [viaSelecionada, setViaSelecionada] = useState(null)
-
-  const [feedback, setFeedback] = useState('')
-  const [carregandoRefino, setCarregandoRefino] = useState(false)
-  const [erroRefino, setErroRefino] = useState(null)
-  const [respostaDialogo, setRespostaDialogo] = useState(null)
-  const [sugestoesRefino, setSugestoesRefino] = useState(null)
+  const avancouRef = useRef(false)
 
   const sintese = useMemo(() => {
     if (desafio && desafio.length > 0) return desafio
@@ -142,11 +66,7 @@ function Resultado() {
     let ativo = true
     setCarregandoDiag(true)
     setErroDiag(null)
-    setViaSelecionada(null)
-    setSugestoesRefino(null)
-    setRespostaDialogo(null)
-    setFeedback('')
-    setErroRefino(null)
+    avancouRef.current = false
 
     diagnosticarMetodologia({
       desafio,
@@ -163,9 +83,6 @@ function Resultado() {
         if (ctx.nivel) setNivel(ctx.nivel)
         if (ctx.formato) setFormato(ctx.formato)
         if (ctx.participantes) setParticipantes(String(ctx.participantes))
-        if (res?.match_perfeito?.nome) {
-          setViaSelecionada('match')
-        }
       })
       .catch((err) => {
         if (!ativo) return
@@ -187,7 +104,7 @@ function Resultado() {
   const precisaParticipantes = !contextoAuto.participantes
   const precisaContexto = precisaNivel || precisaFormato || precisaParticipantes
 
-  const escolha = resolverViaSelecionada(diagnostico, viaSelecionada, sugestoesRefino)
+  const escolha = resolverMatch(diagnostico)
   const contextoPreenchido =
     (!precisaNivel || Boolean(nivel)) &&
     (!precisaFormato || Boolean(formato)) &&
@@ -195,56 +112,11 @@ function Resultado() {
   const podeGerar = Boolean(escolha?.metodologia) && contextoPreenchido
 
   const match = diagnostico?.match_perfeito
-  const alternativas = diagnostico?.alternativas_mesmo_ramo || []
-  const fusao = diagnostico?.fusao_estrategica
-
-  // Abordagem em discussão para o diálogo (prioriza a seleção atual)
-  const abordagemDialogo = useMemo(() => {
-    if (escolha?.metodologia) return escolha
-    if (match?.nome) {
-      return {
-        metodologia: match.nome,
-        justificativa: match.justificativa,
-        categoria: match.categoria,
-      }
-    }
-    return null
-  }, [escolha, match])
-
   let badgeNum = 0
 
-  const enviarFeedback = async () => {
-    if (!abordagemDialogo?.metodologia || feedback.trim().length < 8) return
-    setCarregandoRefino(true)
-    setErroRefino(null)
-    try {
-      const res = await refinarDiagnostico({
-        desafio,
-        opcoes,
-        sintese,
-        nivel: nivel || undefined,
-        formato: formato || undefined,
-        abordagem_atual: abordagemDialogo.metodologia,
-        categoria_atual: abordagemDialogo.categoria,
-        justificativa_atual: abordagemDialogo.justificativa,
-        feedback: feedback.trim(),
-      })
-      setRespostaDialogo(res.resposta_dialogo || null)
-      setSugestoesRefino(res.sugestoes || [])
-      if (res.sugestoes?.length) {
-        setViaSelecionada('ref:0')
-      }
-    } catch (err) {
-      setErroRefino(
-        err?.response?.data?.erro || 'Não foi possível gerar novas sugestões. Tente novamente.',
-      )
-    } finally {
-      setCarregandoRefino(false)
-    }
-  }
-
   const irParaCadastro = () => {
-    if (!escolha) return
+    if (!escolha || avancouRef.current) return
+    avancouRef.current = true
     navigate('/cadastro', {
       state: {
         desafio,
@@ -256,11 +128,19 @@ function Resultado() {
         metodologia: escolha.metodologia,
         justificativa: escolha.justificativa,
         via_escolhida: escolha.via,
-        metodologias_fusao: escolha.metodologias_fusao || null,
+        metodologias_fusao: null,
         categoria: escolha.categoria,
       },
     })
   }
+
+  // Só avança sozinho quando o contexto já veio completo do diagnóstico
+  // (sem formulário). Se o professor preencheu campos, espera o clique no botão.
+  useEffect(() => {
+    if (precisaContexto || !podeGerar || carregandoDiag) return
+    irParaCadastro()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [precisaContexto, podeGerar, carregandoDiag, escolha?.metodologia])
 
   return (
     <div className="page">
@@ -366,11 +246,11 @@ function Resultado() {
         </div>
       )}
 
-      {!precisaContexto && (
+      {!precisaContexto && match?.nome && !carregandoDiag && (
         <div className="card card-alt">
           <p className="muted">
-            Identificamos no seu relato o nível de ensino, a modalidade e a quantidade de
-            participantes. Escolha abaixo a via metodológica — ou dialogue se algo não se adequa.
+            Identificamos a metodologia mais adequada ao seu relato. Em seguida, geramos o roteiro
+            com ela.
           </p>
         </div>
       )}
@@ -389,66 +269,21 @@ function Resultado() {
             <p className="muted" style={{ marginBottom: 12 }}>
               {texto(
                 'resultado.arvore_intro',
-                'Selecione a via que deseja seguir. Se algum aspecto não se adequar à sua realidade, use o diálogo abaixo para gerar novas sugestões.',
+                'Metodologia recomendada para o seu desafio. Seguiremos com ela para gerar o roteiro.',
               )}
             </p>
 
-            <OptionCard
-              selected={viaSelecionada === 'match'}
-              onSelect={() => setViaSelecionada('match')}
-              badge="Match perfeito"
-              accent="match"
-              icon={Layers}
+            <MatchCard
+              badge="Metodologia recomendada"
               title={match.nome}
               subtitle={match.categoria}
               body={match.justificativa}
             />
 
-            {alternativas.length > 0 && (
-              <div className="diag-section">
-                <h2 className="diag-section__title">
-                  <GitBranch size={16} /> Outras abordagens viáveis
-                </h2>
-                <p className="muted diag-section__hint">
-                  Colaterais do mesmo ramo ({match.categoria})
-                </p>
-                <div className="diag-options-grid">
-                  {alternativas.map((alt, idx) => (
-                    <OptionCard
-                      key={`${alt.nome}-${idx}`}
-                      selected={viaSelecionada === `alt:${idx}`}
-                      onSelect={() => setViaSelecionada(`alt:${idx}`)}
-                      badge={`Alternativa ${idx + 1}`}
-                      accent="alt"
-                      title={alt.nome}
-                      subtitle={alt.categoria}
-                      body={alt.justificativa}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {fusao?.nome && (
-              <div className="diag-section">
-                <h2 className="diag-section__title">
-                  <Sparkles size={16} /> Fusão estratégica sugerida
-                </h2>
-                <OptionCard
-                  selected={viaSelecionada === 'fusao'}
-                  onSelect={() => setViaSelecionada('fusao')}
-                  badge="Fusão"
-                  accent="fusao"
-                  icon={Sparkles}
-                  title={fusao.nome}
-                  subtitle={
-                    (fusao.metodologias || []).length
-                      ? (fusao.metodologias || []).join(' + ')
-                      : null
-                  }
-                  body={fusao.sinergia}
-                />
-              </div>
+            {podeGerar && !precisaContexto && (
+              <p className="muted methodology-loading" style={{ marginTop: 14 }}>
+                <Loader2 size={16} className="spin" /> Preparando a geração do roteiro...
+              </p>
             )}
           </>
         ) : (
@@ -461,94 +296,19 @@ function Resultado() {
         )}
       </div>
 
-      {match?.nome && abordagemDialogo?.metodologia && (
-        <div className="card diag-dialogo">
-          <span className="card-title">
-            <MessageSquare size={18} /> Dialogar com a IA
-          </span>
-          <p className="muted">
-            Abordagem em discussão: <strong>{abordagemDialogo.metodologia}</strong>
-            {abordagemDialogo.categoria ? ` · ${abordagemDialogo.categoria}` : ''}
-          </p>
-          <p className="muted" style={{ marginBottom: 10 }}>
-            Conte qual aspecto dessa abordagem <strong>não se adequa</strong> à realidade da sua
-            turma ou do seu contexto. Geraremos novas sugestões, cada uma com justificativa.
-          </p>
-          <div className="field">
-            <label htmlFor="feedback-dialogo">O que não se adequa?</label>
-            <textarea
-              id="feedback-dialogo"
-              className="textarea diag-dialogo__textarea"
-              rows={4}
-              maxLength={1200}
-              placeholder="Ex.: não temos tempo para ciclos longos; a turma é muito grande para dinâmicas imersivas; falta laboratório..."
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              disabled={carregandoRefino}
-            />
-          </div>
-          {erroRefino && <p className="diag-dialogo__erro">{erroRefino}</p>}
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={carregandoRefino || feedback.trim().length < 8}
-            onClick={enviarFeedback}
-          >
-            {carregandoRefino ? (
-              <>
-                <Loader2 size={16} className="spin" /> Gerando novas sugestões...
-              </>
-            ) : (
-              <>
-                <MessageSquare size={16} /> Gerar novas sugestões
-              </>
-            )}
-          </button>
-        </div>
+      {precisaContexto && escolha?.metodologia && (
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!podeGerar || carregandoDiag}
+          onClick={irParaCadastro}
+        >
+          <FileText size={18} />
+          {podeGerar
+            ? 'Continuar para o roteiro'
+            : 'Preencha os campos obrigatórios (*) para continuar'}
+        </button>
       )}
-
-      {(respostaDialogo || (sugestoesRefino && sugestoesRefino.length > 0)) && (
-        <div className="card methodology diag-refino">
-          <span className="section-label">Sugestões ajustadas ao seu feedback</span>
-          {respostaDialogo && <p className="diag-refino__resposta">{respostaDialogo}</p>}
-          <p className="muted" style={{ marginBottom: 12 }}>
-            Selecione uma das opções abaixo. Cada sugestão traz a justificativa do ajuste.
-          </p>
-          <div className="diag-options-grid">
-            {(sugestoesRefino || []).map((s, idx) => (
-              <OptionCard
-                key={`ref-${s.nome}-${idx}`}
-                selected={viaSelecionada === `ref:${idx}`}
-                onSelect={() => setViaSelecionada(`ref:${idx}`)}
-                badge={s.tipo === 'fusao' ? 'Fusão ajustada' : `Sugestão ${idx + 1}`}
-                accent={s.tipo === 'fusao' ? 'fusao' : 'refino'}
-                icon={s.tipo === 'fusao' ? Sparkles : Layers}
-                title={s.nome}
-                subtitle={
-                  s.tipo === 'fusao' && s.metodologias?.length
-                    ? s.metodologias.join(' + ')
-                    : s.categoria
-                }
-                body={s.justificativa}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      <button
-        type="button"
-        className="btn btn-primary"
-        disabled={!podeGerar || carregandoDiag || carregandoRefino}
-        onClick={irParaCadastro}
-      >
-        <FileText size={18} />
-        {podeGerar
-          ? 'Gerar Roteiro de Aulas com a via escolhida'
-          : !contextoPreenchido
-            ? 'Preencha os campos obrigatórios (*) para continuar'
-            : 'Selecione uma via para continuar'}
-      </button>
 
       <button type="button" className="link-subtle" onClick={() => navigate('/')}>
         Começar de novo

@@ -70,6 +70,10 @@ ALTER TABLE roteiros
 ALTER TABLE roteiros
     ADD COLUMN IF NOT EXISTS email_automatico_enviado_em TIMESTAMP NULL;
 
+-- Curtida do professor no roteiro gerado.
+ALTER TABLE roteiros
+    ADD COLUMN IF NOT EXISTS curtido_em TIMESTAMP NULL;
+
 -- ---------------------------------------------------------------------
 -- Tabela: historico_interacoes_ia
 -- Rastreio detalhado das interações com a IA (prompts, respostas,

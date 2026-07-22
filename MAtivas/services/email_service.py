@@ -47,6 +47,11 @@ _STEP_ICON_STYLES = (
 )
 
 _LOGO_CID = "brand-logo"
+_CAPA_CID = "capa-livro"
+_CAPA_PNG_PATHS = (
+    _ASSETS_DIR / "capa-livro.png",
+    _BRAND_DIR / "capa-livro.png",
+)
 
 
 def _esc(value: Any) -> str:
@@ -55,6 +60,13 @@ def _esc(value: Any) -> str:
 
 def _carregar_logo_png() -> bytes | None:
     for path in _LOGO_PNG_PATHS:
+        if path.is_file():
+            return path.read_bytes()
+    return None
+
+
+def _carregar_capa_png() -> bytes | None:
+    for path in _CAPA_PNG_PATHS:
         if path.is_file():
             return path.read_bytes()
     return None
@@ -137,7 +149,13 @@ def _render_passos(passos: list) -> str:
     )
 
 
-def _montar_html(roteiro_content: dict, project_id: int, *, logo_src: str | None = None) -> str:
+def _montar_html(
+    roteiro_content: dict,
+    project_id: int,
+    *,
+    logo_src: str | None = None,
+    capa_src: str | None = None,
+) -> str:
     """Monta o corpo HTML do e-mail espelhando a página Roteiro da aplicação."""
     nome = _esc(roteiro_content.get("nome") or "Professor(a)")
     metodologia = _esc(roteiro_content.get("metodologia") or "Metodologia Inov-ativa")
@@ -175,13 +193,29 @@ def _montar_html(roteiro_content: dict, project_id: int, *, logo_src: str | None
 
     passos_html = _render_passos(passos)
     logo_html = _logo_header_html(logo_src)
-    capa_html = ""
-    if CAPA_LIVRO_URL:
-        capa_html = (
-            f'<img src="{_esc(CAPA_LIVRO_URL)}" alt="Capa do livro Metodologias inov-ativas na educação" '
-            f'width="220" style="display:block;max-width:220px;width:100%;border-radius:12px;'
-            f'box-shadow:0 4px 16px rgba(79,70,229,0.08);" />'
-        )
+    capa_url = capa_src or CAPA_LIVRO_URL or f"{SITE_URL}/capa-livro.png"
+    capa_img = (
+        f'<img src="{_esc(capa_url)}" alt="Capa do livro Metodologias inov-ativas na educação" '
+        f'width="110" style="display:block;width:110px;max-width:110px;height:auto;border-radius:10px;'
+        f'box-shadow:0 4px 14px rgba(79,70,229,0.10);" />'
+    )
+    disclaimer = (
+        "Este Roteiro foi gerado por inteligência artificial com base na obra "
+        "Metodologias inov-ativas na educação. Você conhece sua turma melhor do que ninguém. "
+        "Analise, adapte e enriqueça as propostas antes de utilizá-las."
+    )
+    disclaimer_com_capa = f"""
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+              <tr>
+                <td valign="top" style="padding-right:14px;font-size:15px;line-height:1.55;color:{_COLOR_MUTED};">
+                  {disclaimer}
+                </td>
+                <td width="110" valign="top" align="right" style="width:110px;">
+                  {capa_img}
+                </td>
+              </tr>
+            </table>
+    """
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -210,10 +244,7 @@ def _montar_html(roteiro_content: dict, project_id: int, *, logo_src: str | None
               Com base no desafio que você compartilhou, elaboramos um Roteiro de Aulas inspirado na metodologia
               <strong style="color:{_COLOR_PRIMARY};">{metodologia}</strong>.
             </p>
-            <p style="margin:0 0 16px;font-size:15px;line-height:1.55;color:{_COLOR_MUTED};">
-              Esperamos que ele ajude você a promover mais participação, engajamento e protagonismo dos estudantes.
-            </p>
-            {capa_html}
+            {disclaimer_com_capa}
           </td>
         </tr>
 
@@ -276,10 +307,16 @@ def _montar_html(roteiro_content: dict, project_id: int, *, logo_src: str | None
 </html>"""
 
 
-def _enviar_ses(destinatario: str, assunto: str, html_body: str, logo_png: bytes | None) -> dict:
+def _enviar_ses(
+    destinatario: str,
+    assunto: str,
+    html_body: str,
+    logo_png: bytes | None,
+    capa_png: bytes | None = None,
+) -> dict:
     client = boto3.client("ses", region_name=SES_REGION)
 
-    if logo_png:
+    if logo_png or capa_png:
         msg = MIMEMultipart("related")
         msg["Subject"] = assunto
         msg["From"] = FROM_EMAIL
@@ -289,10 +326,17 @@ def _enviar_ses(destinatario: str, assunto: str, html_body: str, logo_png: bytes
         alternative.attach(MIMEText(html_body, "html", "utf-8"))
         msg.attach(alternative)
 
-        image = MIMEImage(logo_png, _subtype="png")
-        image.add_header("Content-ID", f"<{_LOGO_CID}>")
-        image.add_header("Content-Disposition", "inline", filename="logo.png")
-        msg.attach(image)
+        if logo_png:
+            image = MIMEImage(logo_png, _subtype="png")
+            image.add_header("Content-ID", f"<{_LOGO_CID}>")
+            image.add_header("Content-Disposition", "inline", filename="logo.png")
+            msg.attach(image)
+
+        if capa_png:
+            capa = MIMEImage(capa_png, _subtype="png")
+            capa.add_header("Content-ID", f"<{_CAPA_CID}>")
+            capa.add_header("Content-Disposition", "inline", filename="capa-livro.png")
+            msg.attach(capa)
 
         response = client.send_raw_email(
             Source=FROM_EMAIL,
@@ -362,12 +406,19 @@ def send_roteiro_email(
             }
 
     logo_png = _carregar_logo_png()
+    capa_png = _carregar_capa_png()
     logo_src = f"cid:{_LOGO_CID}" if logo_png else None
-    html_body = _montar_html(roteiro_content or {}, roteiro_id, logo_src=logo_src)
+    capa_src = f"cid:{_CAPA_CID}" if capa_png else None
+    html_body = _montar_html(
+        roteiro_content or {},
+        roteiro_id,
+        logo_src=logo_src,
+        capa_src=capa_src,
+    )
     assunto = "Seu Roteiro de Aulas — Metodologias Inov-ativas"
 
     try:
-        response = _enviar_ses(destinatario, assunto, html_body, logo_png)
+        response = _enviar_ses(destinatario, assunto, html_body, logo_png, capa_png)
     except (ClientError, BotoCoreError):
         logger.exception(
             "Falha SES ao enviar roteiro (project_id=%s, to=%s, modo=%s)",
@@ -379,12 +430,13 @@ def send_roteiro_email(
 
     message_id = response.get("MessageId")
     logger.info(
-        "E-mail enviado via SES (project_id=%s, to=%s, message_id=%s, modo=%s, logo_inline=%s)",
+        "E-mail enviado via SES (project_id=%s, to=%s, message_id=%s, modo=%s, logo_inline=%s, capa_inline=%s)",
         roteiro_id,
         destinatario,
         message_id,
         modo_norm,
         bool(logo_png),
+        bool(capa_png),
     )
 
     if roteiro_id > 0:

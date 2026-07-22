@@ -54,12 +54,18 @@ function cabecalhoProjeto(escreverBloco, item) {
     espaco: 4,
   })
   escreverBloco(`Projeto #${item?.roteiro_id ?? '—'}`, { size: 12, style: 'bold', espaco: 2 })
+  const curtido = Boolean(item?.curtido || item?.curtido_em)
+  const curtidaTxt = curtido
+    ? `Sim${item?.curtido_em ? ` (${new Date(item.curtido_em).toLocaleString('pt-BR')})` : ''}`
+    : 'Não'
+
   escreverBloco(
     [
       item?.professor_nome && `Professor: ${item.professor_nome}`,
       item?.professor_email && `E-mail: ${item.professor_email}`,
       item?.metodologia_recomendada && `Metodologia: ${item.metodologia_recomendada}`,
       item?.status && `Status: ${item.status}`,
+      `Curtida: ${curtidaTxt}`,
     ]
       .filter(Boolean)
       .join(' · ') || '—',

@@ -296,6 +296,8 @@ def auditoria():
                     r.metodologia_recomendada,
                     r.justificativa,
                     r.feedback_autora,
+                    r.curtido_em,
+                    (r.curtido_em IS NOT NULL) AS curtido,
                     r.data_geracao,
                     r.passos_json,
                     p.id                    AS professor_id,
@@ -347,7 +349,16 @@ def auditoria():
             termo_busca or None,
             len(rows),
         )
-        return jsonify([dict(row) for row in rows]), 200
+        payload = []
+        for row in rows:
+            item = dict(row)
+            if item.get("curtido_em") is not None and hasattr(item["curtido_em"], "isoformat"):
+                item["curtido_em"] = item["curtido_em"].isoformat(sep=" ", timespec="seconds")
+            if item.get("data_geracao") is not None and hasattr(item["data_geracao"], "isoformat"):
+                item["data_geracao"] = item["data_geracao"].isoformat(sep=" ", timespec="seconds")
+            item["curtido"] = bool(item.get("curtido"))
+            payload.append(item)
+        return jsonify(payload), 200
 
 
 # Colunas da planilha completa de auditoria (relatório + usuário + diálogo).
@@ -357,6 +368,8 @@ _PLANILHA_COLUNAS = (
     ("metodologia_recomendada", "Metodologia"),
     ("justificativa", "Justificativa"),
     ("feedback_autora", "Feedback da autora"),
+    ("curtido", "Curtido"),
+    ("curtido_em", "Data da curtida"),
     ("data_geracao", "Data geracao do roteiro"),
     ("passos_json", "Passos (JSON)"),
     ("professor_id", "Professor ID"),
@@ -378,6 +391,8 @@ _PLANILHA_COLUNAS = (
 def _cell(value) -> str:
     if value is None:
         return ""
+    if isinstance(value, bool):
+        return "Sim" if value else "Nao"
     if isinstance(value, datetime):
         return value.isoformat(sep=" ", timespec="seconds")
     if isinstance(value, (dict, list)):
@@ -406,6 +421,8 @@ def auditoria_planilha():
                     r.metodologia_recomendada,
                     r.justificativa,
                     r.feedback_autora,
+                    (r.curtido_em IS NOT NULL) AS curtido,
+                    r.curtido_em,
                     r.data_geracao,
                     r.passos_json,
                     p.id                    AS professor_id,
@@ -457,7 +474,9 @@ def auditoria_planilha():
     writer = csv.writer(buffer, delimiter=";", quoting=csv.QUOTE_MINIMAL)
     writer.writerow([label for _, label in _PLANILHA_COLUNAS])
     for row in rows:
-        writer.writerow([_cell(row.get(key)) for key, _ in _PLANILHA_COLUNAS])
+        item = dict(row)
+        item["curtido"] = bool(item.get("curtido"))
+        writer.writerow([_cell(item.get(key)) for key, _ in _PLANILHA_COLUNAS])
 
     # BOM UTF-8 para abrir corretamente no Excel / Google Sheets
     payload = "\ufeff" + buffer.getvalue()

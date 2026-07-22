@@ -34,6 +34,13 @@ COPY services/ ./services/
 # Biblioteca canônica de passos (usada pelo worker)
 COPY biblioteca_passos.py .
 
+# Metadados de release (health: version + git_sha)
+COPY VERSION .
+ARG APP_VERSION=
+ARG GIT_SHA=unknown
+ENV APP_VERSION=${APP_VERSION}
+ENV GIT_SHA=${GIT_SHA}
+
 # Expõe a porta interna da API Flask
 EXPOSE 5000
 

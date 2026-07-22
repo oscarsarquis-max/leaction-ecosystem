@@ -43,6 +43,7 @@ from ui_content_service import carregar_conteudo_ui
 from database.models import get_db_session
 from email_service import send_roteiro_email
 from botocore.exceptions import BotoCoreError, ClientError
+from version_info import version_payload
 
 # ---------------------------------------------------------------------
 # Logging detalhado para depuração local
@@ -121,10 +122,12 @@ def health():
         with conn.cursor() as cur:
             cur.execute("SELECT 1")
         conn.close()
-        return jsonify({"status": "healthy", "db": "ok"}), 200
+        return jsonify(version_payload(status="healthy", db="ok")), 200
     except Exception as exc:
         logger.error("Health check falhou na conexão com o banco: %s", exc)
-        return jsonify({"status": "degraded", "db": "erro", "detalhe": str(exc)}), 503
+        return jsonify(
+            version_payload(status="degraded", db="erro", detalhe=str(exc))
+        ), 503
 
 
 @app.route("/api/ui/conteudo", methods=["GET"])
@@ -414,6 +417,69 @@ def status_roteiro(id):
 
 
 # =====================================================================
+# POST /api/roteiro/<id>/curtir
+# Registra (ou remove) a curtida do professor no roteiro.
+# =====================================================================
+@app.route("/api/roteiro/<int:id>/curtir", methods=["POST"])
+def curtir_roteiro(id):
+    data = request.get_json(silent=True) or {}
+    curtido = data.get("curtido", True)
+    if isinstance(curtido, str):
+        curtido = curtido.strip().lower() in ("1", "true", "sim", "yes")
+    else:
+        curtido = bool(curtido)
+
+    logger.info("POST /api/roteiro/%s/curtir curtido=%s", id, curtido)
+
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if curtido:
+                cur.execute(
+                    """
+                    UPDATE roteiros
+                       SET curtido_em = COALESCE(curtido_em, CURRENT_TIMESTAMP)
+                     WHERE id = %s
+                 RETURNING id, curtido_em
+                    """,
+                    (id,),
+                )
+            else:
+                cur.execute(
+                    """
+                    UPDATE roteiros
+                       SET curtido_em = NULL
+                     WHERE id = %s
+                 RETURNING id, curtido_em
+                    """,
+                    (id,),
+                )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback()
+                logger.warning("Roteiro id=%s não encontrado para curtida.", id)
+                return jsonify({"erro": "Roteiro não encontrado."}), 404
+
+        conn.commit()
+        return jsonify(
+            {
+                "id": row["id"],
+                "curtido": row["curtido_em"] is not None,
+                "curtido_em": row["curtido_em"].isoformat() if row["curtido_em"] else None,
+            }
+        ), 200
+
+    except Exception as exc:
+        if conn:
+            conn.rollback()
+        logger.exception("Falha ao gravar curtida. ROLLBACK executado.")
+        return jsonify({"erro": "Falha ao gravar curtida.", "detalhe": str(exc)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 # POST /api/roteiro/<id>/feedback
 # Atualiza a mensagem para a autora em um roteiro existente.
 # =====================================================================

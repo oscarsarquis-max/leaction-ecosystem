@@ -1,0 +1,1984 @@
+{
+  "abordagem problematizadora": [
+    {
+      "imperativo": "Identifique uma situação relevante para a realidade dos estudantes",
+      "descricao_base": "Selecione uma situação que tenha vínculo com experiências, práticas profissionais, desafios sociais, dilemas éticos, problemas do território ou questões presentes no cotidiano dos estudantes. A situação deve permitir análise crítica e não apenas aplicação mecânica de conteúdos."
+    },
+    {
+      "imperativo": "Promova a leitura inicial da realidade",
+      "descricao_base": "Convide os estudantes a relatar o que sabem, percebem, sentem ou já vivenciaram em relação à situação apresentada. Estimule a escuta, o diálogo e o reconhecimento dos diferentes pontos de vista, evitando iniciar pela explicação conceitual do tema."
+    },
+    {
+      "imperativo": "Formule perguntas problematizadoras",
+      "descricao_base": "Oriente a turma a transformar a situação em objeto de investigação. Algumas perguntas possíveis são: “Que problema aparece nessa situação?”, “Quem é afetado por ele?”, “Quais causas podem estar envolvidas?”, “Que contradições percebemos?”, “Que conhecimentos precisamos mobilizar para compreender melhor essa realidade?” e “Que possibilidades de transformação podem ser pensadas?”."
+    },
+    {
+      "imperativo": "Relacione a situação aos conceitos curriculares",
+      "descricao_base": "Apoie os estudantes na articulação entre a realidade analisada e os conhecimentos teóricos, técnicos, éticos ou profissionais previstos no curso ou disciplina. O objetivo é evitar a discussão baseada apenas em opiniões, assim como a apresentação abstrata de conceitos desconectados do problema em questão."
+    },
+    {
+      "imperativo": "Organize a investigação",
+      "descricao_base": "Proponha que os estudantes busquem dados, relatos, documentos, casos, indicadores, reportagens, pesquisas, normas ou outras fontes que ajudem a compreender a situação em profundidade. A investigação pode ser individual, em pequenos grupos ou coletiva, conforme a complexidade da atividade."
+    },
+    {
+      "imperativo": "Conduza o diálogo crítico",
+      "descricao_base": "Promova momentos de socialização das descobertas, comparação de interpretações e análise das causas e consequências da situação estudada. Estimule a argumentação, a escuta, a revisão de ideias e a identificação de relações entre os conceitos e as experiências vividas."
+    },
+    {
+      "imperativo": "Construa possibilidades de ação ou transformação",
+      "descricao_base": "Oriente os estudantes a formular encaminhamentos, princípios, propostas, posicionamentos, recomendações ou intervenções possíveis."
+    },
+    {
+      "imperativo": "Avalie a aprendizagem e o processo de conscientização",
+      "descricao_base": "Avalie se os estudantes compreenderam criticamente a situação, mobilizaram conteúdos curriculares, utilizaram evidências, argumentaram com consistência, participaram do diálogo e propuseram encaminhamentos coerentes. Finalize com uma reflexão sobre o que mudou na compreensão inicial da turma, que novas perguntas surgiram e que possibilidades de ação foram identificadas. Aprendizagem Baseada em Problemas A Aprendizagem Baseada em Problemas (PBL – sigla em inglês para problem based learnig) surgiu na McMaster University (Canadá), nos anos 1960, como reação à fragmentação do ensino médico. Howard Barrows e Robyn Tamblyn (1980) conceberam uma metodologia em que os estudantes enfrentam um problema real, identificam o que precisam aprender e conduzem o próprio processo de investigação, em grupo. A ênfase recai sobre o raciocínio clínico e a aprendizagem autodirigida, integrando teoria e prática. A PBL se consolidou como estratégia de formação para a autonomia e a colaboração, ao estimular habilidades de resolução de problemas e tomada de decisão sob incerteza. Passo a passo para a implementação da Aprendizagem Baseada em Problemas"
+    }
+  ],
+  "aprendizagem baseada em problemas": [
+    {
+      "imperativo": "Apresente a situação-problema",
+      "descricao_base": "Escolha uma situação relacionada ao tema do curso ou disciplina e contextualize-a em aspectos históricos, sociais, técnicos, econômicos, culturais, éticos ou profissionais. Formule perguntas disparadoras, como: “O que já sabemos sobre o problema?”, “O que ainda precisamos descobrir?”, “Quais hipóteses iniciais parecem plausíveis?”, “Que evidências podem confirmar, revisar ou refutar essas hipóteses?” e “Que critérios usaremos para escolher uma solução?”."
+    },
+    {
+      "imperativo": "Estabeleça um contrato didático com e entre os estudantes",
+      "descricao_base": "Defina com a turma as regras de trabalho, prazos, produtos esperados, critérios de participação, formas de registro, organização dos grupos, fontes de pesquisa e instrumentos de avaliação. O contrato didático ajuda os estudantes a compreenderem o que eles devem produzir, como devem colaborar e como serão avaliados."
+    },
+    {
+      "imperativo": "Oriente a exploração inicial",
+      "descricao_base": "Ofereça referências, casos, dados, fontes, vídeos, textos, bases de informação ou exemplos. O objetivo é apoiar a investigação sem entregar a solução para o problema. Nessa etapa, ajude os estudantes a identificar conceitos-chave, lacunas de conhecimento e focos de pesquisa."
+    },
+    {
+      "imperativo": "Acompanhe a pesquisa e a produção individual",
+      "descricao_base": "Peça que cada estudante pesquise em fontes teóricas, técnicas, empíricas ou digitais e produza uma síntese individual com achados, dúvidas, hipóteses ou proposta inicial de solução. Durante esse processo, sugira fontes, apoie a leitura crítica, oriente registros e provoque aprofundamento conceitual."
+    },
+    {
+      "imperativo": "Promova a discussão coletiva",
+      "descricao_base": "Organize a socialização das pesquisas individuais. Estimule a comparação de descobertas, a argumentação, a escuta, a identificação de convergências e divergências e a negociação de caminhos de solução. Essa etapa transforma a pesquisa individual em construção coletiva."
+    },
+    {
+      "imperativo": "Oriente a produção coletiva",
+      "descricao_base": "Apoie os grupos na construção da proposta de solução. Monitore a colaboração, a coerência conceitual, a integração das contribuições individuais e a justificativa das escolhas. A produção pode assumir diferentes formatos, como proposta, plano de ação, relatório, protótipo, apresentação, diagnóstico ou solução técnica."
+    },
+    {
+      "imperativo": "Coordene a apresentação e a avaliação da produção",
+      "descricao_base": "Organize a apresentação das soluções e aplique uma rubrica de avaliação ou outro instrumento de sua preferência. Considere critérios como pertinência da solução, fundamentação, viabilidade, criatividade, clareza, aplicabilidade e qualidade técnica. Ofereça feedback para que os estudantes possam revisar ou aprimorar a proposta."
+    },
+    {
+      "imperativo": "Conduza a avaliação da aprendizagem e do processo",
+      "descricao_base": "Avalie domínio conceitual, raciocínio, investigação, participação, argumentação, colaboração e contribuição individual para o grupo. Proponha autoavaliação e/ou avaliação por pares e/ou finalize com uma reflexão sobre o processo, sistematizando aprendizados e possíveis novas problematizações."
+    }
+  ],
+  "aprendizagem baseada em problemas (pbl)": [
+    {
+      "imperativo": "Apresente a situação-problema",
+      "descricao_base": "Escolha uma situação relacionada ao tema do curso ou disciplina e contextualize-a em aspectos históricos, sociais, técnicos, econômicos, culturais, éticos ou profissionais. Formule perguntas disparadoras, como: “O que já sabemos sobre o problema?”, “O que ainda precisamos descobrir?”, “Quais hipóteses iniciais parecem plausíveis?”, “Que evidências podem confirmar, revisar ou refutar essas hipóteses?” e “Que critérios usaremos para escolher uma solução?”."
+    },
+    {
+      "imperativo": "Estabeleça um contrato didático com e entre os estudantes",
+      "descricao_base": "Defina com a turma as regras de trabalho, prazos, produtos esperados, critérios de participação, formas de registro, organização dos grupos, fontes de pesquisa e instrumentos de avaliação. O contrato didático ajuda os estudantes a compreenderem o que eles devem produzir, como devem colaborar e como serão avaliados."
+    },
+    {
+      "imperativo": "Oriente a exploração inicial",
+      "descricao_base": "Ofereça referências, casos, dados, fontes, vídeos, textos, bases de informação ou exemplos. O objetivo é apoiar a investigação sem entregar a solução para o problema. Nessa etapa, ajude os estudantes a identificar conceitos-chave, lacunas de conhecimento e focos de pesquisa."
+    },
+    {
+      "imperativo": "Acompanhe a pesquisa e a produção individual",
+      "descricao_base": "Peça que cada estudante pesquise em fontes teóricas, técnicas, empíricas ou digitais e produza uma síntese individual com achados, dúvidas, hipóteses ou proposta inicial de solução. Durante esse processo, sugira fontes, apoie a leitura crítica, oriente registros e provoque aprofundamento conceitual."
+    },
+    {
+      "imperativo": "Promova a discussão coletiva",
+      "descricao_base": "Organize a socialização das pesquisas individuais. Estimule a comparação de descobertas, a argumentação, a escuta, a identificação de convergências e divergências e a negociação de caminhos de solução. Essa etapa transforma a pesquisa individual em construção coletiva."
+    },
+    {
+      "imperativo": "Oriente a produção coletiva",
+      "descricao_base": "Apoie os grupos na construção da proposta de solução. Monitore a colaboração, a coerência conceitual, a integração das contribuições individuais e a justificativa das escolhas. A produção pode assumir diferentes formatos, como proposta, plano de ação, relatório, protótipo, apresentação, diagnóstico ou solução técnica."
+    },
+    {
+      "imperativo": "Coordene a apresentação e a avaliação da produção",
+      "descricao_base": "Organize a apresentação das soluções e aplique uma rubrica de avaliação ou outro instrumento de sua preferência. Considere critérios como pertinência da solução, fundamentação, viabilidade, criatividade, clareza, aplicabilidade e qualidade técnica. Ofereça feedback para que os estudantes possam revisar ou aprimorar a proposta."
+    },
+    {
+      "imperativo": "Conduza a avaliação da aprendizagem e do processo",
+      "descricao_base": "Avalie domínio conceitual, raciocínio, investigação, participação, argumentação, colaboração e contribuição individual para o grupo. Proponha autoavaliação e/ou avaliação por pares e/ou finalize com uma reflexão sobre o processo, sistematizando aprendizados e possíveis novas problematizações."
+    }
+  ],
+  "pbl": [
+    {
+      "imperativo": "Apresente a situação-problema",
+      "descricao_base": "Escolha uma situação relacionada ao tema do curso ou disciplina e contextualize-a em aspectos históricos, sociais, técnicos, econômicos, culturais, éticos ou profissionais. Formule perguntas disparadoras, como: “O que já sabemos sobre o problema?”, “O que ainda precisamos descobrir?”, “Quais hipóteses iniciais parecem plausíveis?”, “Que evidências podem confirmar, revisar ou refutar essas hipóteses?” e “Que critérios usaremos para escolher uma solução?”."
+    },
+    {
+      "imperativo": "Estabeleça um contrato didático com e entre os estudantes",
+      "descricao_base": "Defina com a turma as regras de trabalho, prazos, produtos esperados, critérios de participação, formas de registro, organização dos grupos, fontes de pesquisa e instrumentos de avaliação. O contrato didático ajuda os estudantes a compreenderem o que eles devem produzir, como devem colaborar e como serão avaliados."
+    },
+    {
+      "imperativo": "Oriente a exploração inicial",
+      "descricao_base": "Ofereça referências, casos, dados, fontes, vídeos, textos, bases de informação ou exemplos. O objetivo é apoiar a investigação sem entregar a solução para o problema. Nessa etapa, ajude os estudantes a identificar conceitos-chave, lacunas de conhecimento e focos de pesquisa."
+    },
+    {
+      "imperativo": "Acompanhe a pesquisa e a produção individual",
+      "descricao_base": "Peça que cada estudante pesquise em fontes teóricas, técnicas, empíricas ou digitais e produza uma síntese individual com achados, dúvidas, hipóteses ou proposta inicial de solução. Durante esse processo, sugira fontes, apoie a leitura crítica, oriente registros e provoque aprofundamento conceitual."
+    },
+    {
+      "imperativo": "Promova a discussão coletiva",
+      "descricao_base": "Organize a socialização das pesquisas individuais. Estimule a comparação de descobertas, a argumentação, a escuta, a identificação de convergências e divergências e a negociação de caminhos de solução. Essa etapa transforma a pesquisa individual em construção coletiva."
+    },
+    {
+      "imperativo": "Oriente a produção coletiva",
+      "descricao_base": "Apoie os grupos na construção da proposta de solução. Monitore a colaboração, a coerência conceitual, a integração das contribuições individuais e a justificativa das escolhas. A produção pode assumir diferentes formatos, como proposta, plano de ação, relatório, protótipo, apresentação, diagnóstico ou solução técnica."
+    },
+    {
+      "imperativo": "Coordene a apresentação e a avaliação da produção",
+      "descricao_base": "Organize a apresentação das soluções e aplique uma rubrica de avaliação ou outro instrumento de sua preferência. Considere critérios como pertinência da solução, fundamentação, viabilidade, criatividade, clareza, aplicabilidade e qualidade técnica. Ofereça feedback para que os estudantes possam revisar ou aprimorar a proposta."
+    },
+    {
+      "imperativo": "Conduza a avaliação da aprendizagem e do processo",
+      "descricao_base": "Avalie domínio conceitual, raciocínio, investigação, participação, argumentação, colaboração e contribuição individual para o grupo. Proponha autoavaliação e/ou avaliação por pares e/ou finalize com uma reflexão sobre o processo, sistematizando aprendizados e possíveis novas problematizações."
+    }
+  ],
+  "abp": [
+    {
+      "imperativo": "Apresente a situação-problema",
+      "descricao_base": "Escolha uma situação relacionada ao tema do curso ou disciplina e contextualize-a em aspectos históricos, sociais, técnicos, econômicos, culturais, éticos ou profissionais. Formule perguntas disparadoras, como: “O que já sabemos sobre o problema?”, “O que ainda precisamos descobrir?”, “Quais hipóteses iniciais parecem plausíveis?”, “Que evidências podem confirmar, revisar ou refutar essas hipóteses?” e “Que critérios usaremos para escolher uma solução?”."
+    },
+    {
+      "imperativo": "Estabeleça um contrato didático com e entre os estudantes",
+      "descricao_base": "Defina com a turma as regras de trabalho, prazos, produtos esperados, critérios de participação, formas de registro, organização dos grupos, fontes de pesquisa e instrumentos de avaliação. O contrato didático ajuda os estudantes a compreenderem o que eles devem produzir, como devem colaborar e como serão avaliados."
+    },
+    {
+      "imperativo": "Oriente a exploração inicial",
+      "descricao_base": "Ofereça referências, casos, dados, fontes, vídeos, textos, bases de informação ou exemplos. O objetivo é apoiar a investigação sem entregar a solução para o problema. Nessa etapa, ajude os estudantes a identificar conceitos-chave, lacunas de conhecimento e focos de pesquisa."
+    },
+    {
+      "imperativo": "Acompanhe a pesquisa e a produção individual",
+      "descricao_base": "Peça que cada estudante pesquise em fontes teóricas, técnicas, empíricas ou digitais e produza uma síntese individual com achados, dúvidas, hipóteses ou proposta inicial de solução. Durante esse processo, sugira fontes, apoie a leitura crítica, oriente registros e provoque aprofundamento conceitual."
+    },
+    {
+      "imperativo": "Promova a discussão coletiva",
+      "descricao_base": "Organize a socialização das pesquisas individuais. Estimule a comparação de descobertas, a argumentação, a escuta, a identificação de convergências e divergências e a negociação de caminhos de solução. Essa etapa transforma a pesquisa individual em construção coletiva."
+    },
+    {
+      "imperativo": "Oriente a produção coletiva",
+      "descricao_base": "Apoie os grupos na construção da proposta de solução. Monitore a colaboração, a coerência conceitual, a integração das contribuições individuais e a justificativa das escolhas. A produção pode assumir diferentes formatos, como proposta, plano de ação, relatório, protótipo, apresentação, diagnóstico ou solução técnica."
+    },
+    {
+      "imperativo": "Coordene a apresentação e a avaliação da produção",
+      "descricao_base": "Organize a apresentação das soluções e aplique uma rubrica de avaliação ou outro instrumento de sua preferência. Considere critérios como pertinência da solução, fundamentação, viabilidade, criatividade, clareza, aplicabilidade e qualidade técnica. Ofereça feedback para que os estudantes possam revisar ou aprimorar a proposta."
+    },
+    {
+      "imperativo": "Conduza a avaliação da aprendizagem e do processo",
+      "descricao_base": "Avalie domínio conceitual, raciocínio, investigação, participação, argumentação, colaboração e contribuição individual para o grupo. Proponha autoavaliação e/ou avaliação por pares e/ou finalize com uma reflexão sobre o processo, sistematizando aprendizados e possíveis novas problematizações."
+    }
+  ],
+  "aprendizagem baseada em projetos": [
+    {
+      "imperativo": "Defina o desafio do projeto e o artefato esperado",
+      "descricao_base": "Escolha um tema que possa resultar em uma produção tangível. Diferencie claramente o projeto de uma simples discussão ou resolução de problema: ao final, os estudantes deverão entregar algo concreto, como protótipo, painel, relatório, plano, produto, apresentação técnica, modelo, sistema, aplicação ou intervenção."
+    },
+    {
+      "imperativo": "Contextualize a relevância do projeto",
+      "descricao_base": "Apresente a situação, demanda ou oportunidade que justifica o desenvolvimento do artefato. Relacione o projeto aos objetivos de aprendizagem, às competências a serem desenvolvidas e a possíveis contextos sociais, profissionais, comunitários ou tecnológicos nos quais o produto final poderia ser utilizado."
+    },
+    {
+      "imperativo": "Estabeleça os critérios e o escopo do projeto",
+      "descricao_base": "Defina com a turma o que será produzido, para quem, com que finalidade, em que prazo e com quais recursos. Explicite os requisitos mínimos do artefato, os critérios de qualidade, as formas de registro, os papéis dos integrantes, os momentos de acompanhamento e os instrumentos de avaliação."
+    },
+    {
+      "imperativo": "Organize os grupos e o plano de trabalho",
+      "descricao_base": "Oriente os estudantes a formar equipes, distribuir responsabilidades e elaborar um plano de ação. Esse plano deve indicar etapas, tarefas, responsáveis, cronograma, recursos necessários, fontes de consulta e entregas parciais. O objetivo é tornar visível o percurso de construção do projeto."
+    },
+    {
+      "imperativo": "Oriente a investigação e a busca de referências",
+      "descricao_base": "Apoie os grupos na busca de conceitos, dados, exemplos, normas, técnicas, referências ou modelos que ajudem a fundamentar o artefato. Nessa etapa, o professor deve garantir que o projeto não seja apenas uma produção intuitiva, mas uma construção fundamentada nos conhecimentos curriculares."
+    },
+    {
+      "imperativo": "Acompanhe o desenvolvimento do artefato",
+      "descricao_base": "Monitore a execução do projeto, observando a colaboração, a divisão de tarefas, a coerência conceitual e a evolução do produto. Promova momentos de feedback intermediário para que os estudantes possam revisar escolhas, corrigir problemas, melhorar a qualidade técnica e ajustar o projeto ao escopo definido."
+    },
+    {
+      "imperativo": "Promova testes, revisão ou validação da produção",
+      "descricao_base": "Antes da entrega final, oriente os grupos a verificar se o artefato funciona, comunica adequadamente sua finalidade, atende aos critérios estabelecidos e pode ser aplicado ao contexto previsto. Quando possível, proponha teste com usuários, pares, público-alvo, dados reais, casos de uso ou simulações."
+    },
+    {
+      "imperativo": "Organize a apresentação do projeto",
+      "descricao_base": "Coordene a apresentação dos artefatos produzidos. Cada grupo deve explicar o objetivo do projeto, o processo de desenvolvimento, as decisões tomadas, os conceitos mobilizados, as dificuldades enfrentadas, os ajustes realizados e os resultados alcançados. A apresentação deve evidenciar tanto o produto final quanto o percurso de construção."
+    },
+    {
+      "imperativo": "Avalie o artefato, o processo e a aprendizagem",
+      "descricao_base": "Avalie a qualidade do produto ou entrega tangível, a fundamentação conceitual, a viabilidade, a aplicabilidade, a criatividade, a clareza, a qualidade técnica e a colaboração do grupo. Proponha também autoavaliação e/ou avaliação por pares, para que os estudantes analisem suas contribuições individuais e o funcionamento da equipe."
+    },
+    {
+      "imperativo": "Sistematize aprendizados e possibilidades de melhoria",
+      "descricao_base": "Finalize com uma reflexão sobre o que foi aprendido, o que poderia ser aprimorado no artefato, que novas versões poderiam ser desenvolvidas e como o projeto poderia ser aplicado, ampliado ou transferido para outros contextos. Essa etapa reforça que o projeto é uma produção situada, passível de melhoria contínua."
+    }
+  ],
+  "aprendizagem baseada em casos": [
+    {
+      "imperativo": "Selecione ou elabore um caso relevante",
+      "descricao_base": "Escolha uma situação real ou verossímil que envolva dilemas, decisões, conflitos de interpretação ou consequências relevantes. O caso deve estar relacionado aos objetivos de aprendizagem permitir a mobilização dos conceitos, procedimentos, critérios técnicos ou princípios éticos previstos na formação."
+    },
+    {
+      "imperativo": "Apresente o contexto do caso",
+      "descricao_base": "Dê aos estudantes as informações necessárias para compreender a situação: personagens ou partes envolvidas, cenário, dados disponíveis, decisões já tomadas, restrições, consequências e pontos de tensão. O caso pode ser apresentado por meio de texto, vídeo, reportagem, documento técnico, base de dados, narrativa profissional, simulação curta ou relato de situação."
+    },
+    {
+      "imperativo": "Formule questões orientadoras para a análise",
+      "descricao_base": "Proponha perguntas que ajudem os estudantes a interpretar o caso sem antecipar respostas. Algumas possibilidades são: “Qual é o dilema central do caso?”, “Quem são os envolvidos?”, “Que informações são relevantes para a decisão?”, “Que conceitos ajudam a analisar a situação?”, “Que alternativas podem ser consideradas?” e “Que critérios devem orientar a decisão?”."
+    },
+    {
+      "imperativo": "Oriente a análise individual ou em pequenos grupos",
+      "descricao_base": "Solicite que os estudantes leiam, examinem ou explorem o caso, identifiquem fatos relevantes, diferenciem dados de opiniões, reconheçam lacunas de informação e formulem uma posição inicial. Essa etapa prepara os estudantes para participar do debate com argumentos mínimos estruturados."
+    },
+    {
+      "imperativo": "Promova a discussão do caso",
+      "descricao_base": "Organize a socialização das análises, estimulando comparação de interpretações, argumentação, escuta e confronto respeitoso de pontos de vista. O professor deve evitar reduzir o caso a uma resposta única; sua mediação deve ajudar a explicitar pressupostos, critérios, evidências e consequências das decisões propostas."
+    },
+    {
+      "imperativo": "Aprofunde a análise com os conceitos curriculares",
+      "descricao_base": "Retome os conceitos, modelos, métodos, normas, procedimentos ou princípios relacionados ao caso. Ajude os estudantes a perceber como os conteúdos curriculares permitem interpretar melhor a situação, avaliar alternativas e justificar decisões mais consistentes."
+    },
+    {
+      "imperativo": "Oriente a tomada de decisão",
+      "descricao_base": "Peça que os estudantes ou grupos apontem uma decisão, recomendação, diagnóstico, plano de encaminhamento ou posicionamento diante do caso. A decisão deve ser acompanhada de justificativa, considerando evidências disponíveis, conceitos mobilizados, critérios de análise, riscos, limites e possíveis consequências."
+    },
+    {
+      "imperativo": "Coordene o compartilhamento das decisões",
+      "descricao_base": "Organize a apresentação das análises e decisões tomadas. Cada estudante ou grupo deve explicar como interpretou o caso, quais alternativas considerou, que critérios utilizou e por que a decisão escolhida é mais adequada ou defensável no contexto analisado."
+    },
+    {
+      "imperativo": "Avalie a qualidade da análise e da argumentação",
+      "descricao_base": "Avalie se o caso foi compreendido, se os dilemas foram identificados, se os conteúdos foram mobilizados, se as decisões foram justificadas com base em evidências e se os argumentos consideraram diferentes perspectivas e consequências."
+    },
+    {
+      "imperativo": "Finalize com síntese e reflexão",
+      "descricao_base": "Conduza uma síntese final destacando os principais aprendizados, as diferentes interpretações apresentadas, os critérios usados nas decisões e as implicações profissionais, técnicas, éticas ou sociais do caso. Se pertinente, proponha uma reflexão sobre como os estudantes aplicariam essa análise em situações semelhantes."
+    }
+  ],
+  "design thinking": [
+    {
+      "imperativo": "Apresente o desafio de design",
+      "descricao_base": "Escolha uma situação que envolva um problema complexo, uma necessidade real ou uma oportunidade de melhoria. Explique que o objetivo é compreender o contexto, gerar alternativas, construir uma solução testável e revisá-la com base em feedback."
+    },
+    {
+      "imperativo": "Conduza a fase de empatia",
+      "descricao_base": "Oriente os estudantes a investigar os usuários, públicos ou partes interessadas envolvidos no desafio. Eles podem realizar entrevistas, observações, análise de dados, leitura de documentos, simulação de experiências ou levantamento de necessidades, dificuldades e expectativas."
+    },
+    {
+      "imperativo": "Apoie a definição do problema",
+      "descricao_base": "Ajude os grupos a organizar as informações coletadas e a delimitar o problema a ser enfrentado. A definição deve deixar claro quem é afetado, qual necessidade foi identificada, quais aspectos do contexto importam e quais conteúdos ajudam a compreender a situação."
+    },
+    {
+      "imperativo": "Promova a ideação e a seleção de alternativas",
+      "descricao_base": "Estimule a geração de várias ideias antes da escolha de uma solução. Depois, oriente os grupos a selecionar a alternativa mais promissora com base em critérios como pertinência, viabilidade, aplicabilidade, criatividade, impacto esperado e coerência com os conhecimentos curriculares."
+    },
+    {
+      "imperativo": "Oriente a prototipagem, o teste e a revisão",
+      "descricao_base": "Peça que os estudantes transformem a ideia selecionada em um protótipo simples e testável, como esboço, fluxo, storyboard, tela, dashboard, modelo, simulação, código inicial ou arquitetura de solução. Em seguida, organize o teste com usuários, colegas, professor, especialistas, dados reais ou cenários simulados, usando o feedback para revisar a proposta."
+    },
+    {
+      "imperativo": "Organize a apresentação e a avaliação da solução",
+      "descricao_base": "Cada grupo apresenta o desafio, as descobertas na fase de empatia, a definição do problema, as alternativas consideradas, o protótipo, os testes realizados, os ajustes feitos e a solução final. Avalie tanto o processo quanto a solução, considerando compreensão do contexto, definição do problema, criatividade, fundamentação conceitual, viabilidade, clareza, aplicabilidade e qualidade técnica."
+    }
+  ],
+  "aprendizagem maker": [
+    {
+      "imperativo": "Defina o desafio maker e o artefato esperado",
+      "descricao_base": "Escolha uma tarefa de construção relacionada aos objetivos de aprendizagem. O desafio maker deve deixar claro o que será criado, com que finalidade e quais conhecimentos deverão ser mobilizados. O artefato pode ser um código, modelo, protótipo, visualização, dispositivo, maquete, notebook, roteiro técnico, automação ou solução funcional."
+    },
+    {
+      "imperativo": "Apresente os recursos, restrições e critérios de construção",
+      "descricao_base": "Indique os materiais, ferramentas, tecnologias, bases de dados, linguagens, ambientes ou recursos disponíveis. Defina também as restrições do desafio, como tempo, escopo, requisitos mínimos, formato de entrega, critérios técnicos e condições de funcionamento do artefato."
+    },
+    {
+      "imperativo": "Oriente a exploração e o planejamento da construção",
+      "descricao_base": "Antes de começar a produzir, os estudantes devem analisar o desafio, levantar referências, escolher estratégias, dividir tarefas quando houver trabalho em duplas ou grupos e registrar um plano inicial. Essa etapa ajuda a evitar uma produção improvisada e favorece decisões mais conscientes."
+    },
+    {
+      "imperativo": "Acompanhe a construção do artefato",
+      "descricao_base": "Durante a produção, o professor circula entre os estudantes, observa dificuldades, faz perguntas, sugere testes, provoca ajustes e apoia o uso adequado dos conceitos curriculares. O foco não é entregar respostas prontas, mas ajudar os estudantes a tomar decisões, experimentar alternativas e compreender os efeitos de suas escolhas."
+    },
+    {
+      "imperativo": "Promova testes, erros produtivos e revisões",
+      "descricao_base": "Oriente os estudantes a testar o funcionamento, a qualidade ou a utilidade do artefato. Os erros devem ser tratados como parte do processo de aprendizagem: cada falha identificada precisa gerar diagnóstico, ajuste e nova tentativa. Quando pertinente, proponha revisão por pares, teste com usuários, validação com dados reais ou comparação entre versões."
+    },
+    {
+      "imperativo": "Organize o compartilhamento das produções",
+      "descricao_base": "Cada estudante, dupla ou grupo apresenta o artefato construído, explica sua finalidade, demonstra seu funcionamento, relata as principais decisões técnicas e identifica dificuldades, erros, ajustes e melhorias realizadas. O compartilhamento permite feedback coletivo e amplia o repertório da turma."
+    },
+    {
+      "imperativo": "Conduza a reflexão sobre o processo e a aprendizagem",
+      "descricao_base": "Finalize com uma análise do que foi aprendido pela construção. Os estudantes devem explicitar quais conteúdos foram mobilizados, quais decisões precisaram tomar, quais problemas enfrentaram, quais soluções encontraram e como poderiam aprimorar o artefato em uma nova versão."
+    }
+  ],
+  "sala de aula invertida": [
+    {
+      "imperativo": "Planeje os objetivos e selecione os conteúdos prévios",
+      "descricao_base": "Defina o que os estudantes precisam compreender antes da aula para participar das atividades coletivas. Selecione conteúdos essenciais, objetivos e adequados ao tempo de estudo disponível, como vídeos curtos, textos, slides, podcasts, simulações, tutoriais, demonstrações ou materiais interativos. Evite sobrecarregar os estudantes com excesso de materiais."
+    },
+    {
+      "imperativo": "Disponibilize orientações claras para o estudo prévio",
+      "descricao_base": "Informe o que deve ser estudado, em que prazo, com que finalidade e como esse estudo será utilizado na aula. Inclua perguntas orientadoras, pequenos registros, anotações, quiz diagnóstico ou tarefa breve para ajudar os estudantes a chegar à aula com dúvidas, ideias ou evidências mínimas de preparação."
+    },
+    {
+      "imperativo": "Verifique a preparação dos estudantes",
+      "descricao_base": "No início da aula, realize uma checagem breve da compreensão inicial. Essa verificação pode ocorrer por meio de perguntas rápidas, enquete, quiz, discussão inicial, nuvem de dúvidas ou atividade curta. O objetivo não é punir quem não estudou, mas identificar lacunas, ajustar a mediação e preparar a aplicação dos conteúdos."
+    },
+    {
+      "imperativo": "Organize atividades de prática e aplicação",
+      "descricao_base": "Use o tempo coletivo para atividades que exigem interação, raciocínio, análise, tomada de decisão ou resolução de problemas. Os estudantes podem trabalhar individualmente, em duplas ou grupos, aplicando os conteúdos estudados previamente em exercícios, casos, desafios, projetos, simulações, análise de dados, debates ou produção de soluções."
+    },
+    {
+      "imperativo": "Oriente, acompanhe e ofereça feedback",
+      "descricao_base": "Durante a aula, circule entre os estudantes, observe dificuldades, esclareça dúvidas, faça perguntas, retome conceitos necessários e ofereça feedback. A função docente é ajudar os estudantes a conectar o estudo prévio às atividades propostas, aprofundando o que foi apenas introduzido nos materiais antecipados."
+    },
+    {
+      "imperativo": "Proponha consolidação e aplicação posterior",
+      "descricao_base": "Ao final da aula, sistematize os principais aprendizados e indique os próximos passos. Os estudantes podem realizar uma tarefa de consolidação, aplicar os conhecimentos a um desafio mais complexo, revisar os materiais prévios, registrar dúvidas que ainda possam existir ou produzir uma síntese do que aprenderam."
+    },
+    {
+      "imperativo": "Avalie a aprendizagem e o processo de inversão",
+      "descricao_base": "Avalie não apenas se os estudantes realizaram as atividades propostas previamente, mas se conseguiram mobilizar os conteúdos no momento de aplicação. Considere a preparação, a participação, a aplicação conceitual, a colaboração, a qualidade das soluções produzidas e a capacidade de refletir sobre o próprio percurso de aprendizagem."
+    }
+  ],
+  "world cafe": [
+    {
+      "imperativo": "Defina o tema e o propósito da conversa",
+      "descricao_base": "Escolha um tema relevante para o programa de estudos, para o projeto em desenvolvimento ou para um desafio vivido pelo grupo. O World Café funciona melhor quando a questão exige escuta, troca de experiências, análise de diferentes perspectivas e construção coletiva de encaminhamentos. Evite temas muito fechados, que admitam apenas uma resposta correta."
+    },
+    {
+      "imperativo": "Formule perguntas orientadoras",
+      "descricao_base": "Prepare perguntas abertas, claras e provocadoras, capazes de mobilizar reflexão e diálogo. As perguntas devem convidar os estudantes a interpretar situações, relacionar experiências, levantar hipóteses, propor soluções ou identificar caminhos de ação. Exemplos: “Que desafios encontramos ao aplicar este conceito na prática?”, “Que experiências da turma ajudam a compreender melhor esse problema?”, “Que soluções poderiam ser construídas coletivamente?” e “Que critérios deveríamos considerar antes de tomar uma decisão?”."
+    },
+    {
+      "imperativo": "Organize o ambiente em mesas de conversa",
+      "descricao_base": "Disponha a sala em pequenos grupos, preferencialmente com quatro a seis participantes por mesa. Sempre que possível, crie um ambiente acolhedor, com folhas grandes de papel, canetas coloridas, post-its ou outros recursos para registro visual das ideias. O espaço deve permitir circulação entre as mesas e favorecer uma atmosfera de conversa, escuta e colaboração."
+    },
+    {
+      "imperativo": "Explique a dinâmica e combine as regras de participação",
+      "descricao_base": "Antes de iniciar, apresente o propósito da atividade, o número de rodadas, o tempo disponível e a forma de registro. Combine regras simples: focar no que realmente importa, escutar para compreender, contribuir com ideias próprias, conectar contribuições dos colegas, registrar palavras-chave, desenhos ou esquemas e respeitar diferentes pontos de vista."
+    },
+    {
+      "imperativo": "Defina um host para cada mesa",
+      "descricao_base": "Cada mesa deve contar com um host, responsável por permanecer no mesmo lugar ao longo das rodadas. A função do host é acolher os novos participantes, retomar brevemente as ideias já discutidas, estimular a continuidade da conversa e ajudar no registro das principais contribuições. O host não deve controlar a discussão nem impor conclusões; sua função é manter a memória da mesa viva entre uma rodada e outra."
+    },
+    {
+      "imperativo": "Realize a primeira rodada de conversa",
+      "descricao_base": "Na primeira rodada, os grupos discutem a pergunta proposta e registram ideias, dúvidas, exemplos, argumentos, hipóteses ou propostas. O professor ou facilitador acompanha a atividade, observa a qualidade das interações, esclarece dúvidas e incentiva a participação equilibrada, sem transformar a conversa em aula expositiva."
+    },
+    {
+      "imperativo": "Promova a circulação dos participantes entre as mesas",
+      "descricao_base": "Ao final da rodada, os participantes mudam de mesa, levando consigo ideias, perguntas e percepções da conversa anterior. O host permanece na mesa original e apresenta ao novo grupo uma breve síntese do que já foi discutido. Essa circulação permite que as ideias sejam ampliadas, combinadas, questionadas e enriquecidas por diferentes participantes."
+    },
+    {
+      "imperativo": "Conduza novas rodadas de aprofundamento",
+      "descricao_base": "Realize pelo menos duas ou três rodadas de conversa, mantendo a mesma pergunta ou apresentando perguntas progressivas. A cada rodada, os grupos devem conectar as novas contribuições às ideias anteriores, identificar padrões, aprofundar argumentos e registrar novas possibilidades. O objetivo é fazer a conversa evoluir, e não apenas repetir opiniões."
+    },
+    {
+      "imperativo": "Oriente a síntese das descobertas",
+      "descricao_base": "Na última rodada, os participantes podem retornar à mesa inicial ou permanecer na mesa em que estão para organizar uma síntese. Essa síntese pode assumir diferentes formatos, como mapa visual, lista de ideias centrais, conjunto de recomendações, painel de questões, plano de ação, critérios de decisão ou registro das principais convergências e divergências."
+    },
+    {
+      "imperativo": "Realize a plenária final",
+      "descricao_base": "Convide os hosts ou representantes das mesas a compartilharem as principais descobertas com o grupo todo. Durante a plenária, destaque padrões recorrentes, ideias potentes, tensões não resolvidas, perguntas que permaneceram abertas e possibilidades de ação. O professor ou facilitador deve ajudar a conectar as contribuições aos objetivos de aprendizagem e aos conteúdos trabalhados no curso ou disciplina."
+    },
+    {
+      "imperativo": "Sistematize a aprendizagem e os próximos passos",
+      "descricao_base": "Finalize a atividade retomando o que foi aprendido com o processo. Os estudantes podem produzir uma síntese individual, responder a uma pergunta reflexiva, transformar as ideias em plano de ação ou relacionar as descobertas aos conteúdos estudados. Quando pertinente, os registros das mesas podem ser fotografados, digitalizados ou convertidos em documento coletivo para orientar etapas posteriores da aprendizagem."
+    },
+    {
+      "imperativo": "Avalie o processo e a participação",
+      "descricao_base": "Avalie não apenas o produto final da conversa, mas também a qualidade da escuta, a pertinência das contribuições, a capacidade de conectar ideias, o respeito às diferenças, a clareza dos registros e a participação no processo coletivo. O World Café pode ser combinado com autoavaliação, avaliação por pares ou rubricas simples de participação colaborativa."
+    }
+  ],
+  "mapa de polaridades": [
+    {
+      "imperativo": "Identifique uma tensão relevante",
+      "descricao_base": "Escolha uma polaridade relacionada ao curso ou disciplina, ao projeto em desenvolvimento ou a um desafio vivido pelo grupo. A tensão deve envolver dois polos importantes e interdependentes, e não apenas uma oposição entre certo e errado. Exemplos: segurança e liberdade, colaboração e desempenho individual, inovação e estabilidade, rapidez e qualidade."
+    },
+    {
+      "imperativo": "Nomeie os dois polos da polaridade",
+      "descricao_base": "Registre os polos de forma clara, evitando formulações carregadas de julgamento. Os dois lados devem representar valores ou necessidades legítimas. Por exemplo, em vez de “ensino tradicional versus ensino inovador”, pode-se formular “estrutura e previsibilidade” de um lado e “experimentação e flexibilidade” de outro."
+    },
+    {
+      "imperativo": "Explique a lógica do mapa",
+      "descricao_base": "Apresente aos estudantes a estrutura dos quatro quadrantes: benefícios do polo A, benefícios do polo B, limitações do excesso do polo A e limitações do excesso do polo B. Deixe claro que a proposta não é “vencer” a discussão, mas compreender como os dois polos podem ser articulados de modo produtivo."
+    },
+    {
+      "imperativo": "Levante os benefícios de cada polo",
+      "descricao_base": "Oriente o grupo a identificar o que há de positivo em cada lado da polaridade. Pergunte: “O que ganhamos quando valorizamos este polo?”, “Que necessidades ele atende?”, “Que riscos ele ajuda a evitar?” e “Por que esse lado é importante para a situação analisada?”."
+    },
+    {
+      "imperativo": "Identifique as limitações do excesso de cada polo",
+      "descricao_base": "Em seguida, peça que os estudantes analisem o que acontece quando um polo é levado ao extremo ou quando o outro é negligenciado. As perguntas podem ser: “O que pode dar errado se ficarmos presos apenas a este lado?”, “Que perdas aparecem?”, “Quem pode ser prejudicado?” e “Que sinais indicam desequilíbrio?”."
+    },
+    {
+      "imperativo": "Analise o movimento entre os polos",
+      "descricao_base": "Ajude os estudantes a perceber que as polaridades são dinâmicas. Grupos, instituições e pessoas costumam oscilar entre os polos conforme percebem os limites de uma escolha unilateral. Essa análise permite compreender por que determinadas tensões reaparecem ao longo do tempo."
+    },
+    {
+      "imperativo": "Defina ações para sustentar os benefícios dos dois polos",
+      "descricao_base": "Oriente a turma a propor práticas, critérios, decisões ou combinados que permitam aproveitar os aspectos positivos dos dois lados. O foco deve estar em ações concretas que mantenham a situação no campo produtivo da polaridade."
+    },
+    {
+      "imperativo": "Estabeleça sinais de alerta",
+      "descricao_base": "Peça que os estudantes identifiquem indicadores de que o grupo, a turma ou a organização está se aproximando do lado negativo de um dos polos. Esses sinais ajudam a antecipar desequilíbrios e corrigir a rota antes que a tensão se torne conflito improdutivo."
+    },
+    {
+      "imperativo": "Socialize e discuta os mapas produzidos",
+      "descricao_base": "Se a atividade for realizada em grupos, promova a apresentação dos mapas e compare as leituras feitas por cada equipe. Observe convergências, diferenças, tensões não resolvidas e critérios utilizados para interpretar a polaridade."
+    },
+    {
+      "imperativo": "Sistematize a aprendizagem",
+      "descricao_base": "Finalize relacionando o mapa aos conceitos estudados e às situações reais em que a polaridade pode aparecer. A sistematização deve reforçar que certos desafios não desaparecem, mas podem ser gerenciados de forma mais consciente, equilibrada e sustentável."
+    },
+    {
+      "imperativo": "Avalie o processo e o raciocínio",
+      "descricao_base": "Avalie a capacidade de reconhecer a tensão, nomear os polos adequadamente, identificar benefícios e limites, propor ações coerentes e demonstrar pensamento sistêmico. A avaliação pode considerar o mapa produzido, a argumentação oral e a reflexão individual sobre o dilema analisado."
+    }
+  ],
+  "aprendizagem baseada em equipes": [
+    {
+      "imperativo": "Defina os objetivos de aprendizagem",
+      "descricao_base": "Escolha um tema ou conjunto de conceitos que precise ser compreendido e aplicado em situações reais ou verossímeis. A TBL funciona melhor quando o objetivo vai além da memorização e exige análise, decisão, comparação de alternativas ou resolução de problemas."
+    },
+    {
+      "imperativo": "Organize equipes estáveis",
+      "descricao_base": "Forme equipes de cinco a sete estudantes, buscando diversidade de repertórios, experiências e habilidades. Sempre que possível, mantenha as mesmas equipes ao longo de uma unidade ou sequência de atividades, para que se desenvolvam confiança, compromisso e responsabilidade coletiva."
+    },
+    {
+      "imperativo": "Prepare materiais para estudo prévio",
+      "descricao_base": "Disponibilize leituras, vídeos, casos, tutoriais, textos ou outros materiais essenciais antes da aula. O estudo prévio deve ser objetivo, bem delimitado e diretamente relacionado ao que será exigido nas atividades presenciais ou síncronas."
+    },
+    {
+      "imperativo": "Realize a etapa de preparo individual",
+      "descricao_base": "Oriente cada estudante a estudar os materiais indicados antes do encontro. Essa preparação é indispensável para que todos cheguem à aula com condições mínimas de contribuir com a equipe."
+    },
+    {
+      "imperativo": "Aplique um teste individual de garantia de preparo",
+      "descricao_base": "No início da aula, proponha um teste breve sobre os conceitos centrais do estudo prévio. O objetivo não é apenas atribuir nota, mas verificar se cada estudante se preparou e identificar dúvidas iniciais."
+    },
+    {
+      "imperativo": "Aplique o mesmo teste em equipe",
+      "descricao_base": "Após a resposta individual, os estudantes discutem as mesmas questões em equipe e chegam a uma resposta coletiva. Nessa etapa, precisam defender posições, comparar argumentos, rever interpretações e negociar decisões."
+    },
+    {
+      "imperativo": "Ofereça feedback imediato",
+      "descricao_base": "Apresente o gabarito ou o retorno das respostas logo após o teste em equipe. O feedback imediato ajuda a corrigir equívocos, consolidar conceitos e preparar os grupos para a etapa de aplicação."
+    },
+    {
+      "imperativo": "Permita apelações fundamentadas",
+      "descricao_base": "Quando pertinente, as equipes podem contestar uma resposta considerada correta, desde que apresentem argumentos, referências ou evidências consistentes. Essa etapa valoriza o pensamento crítico e mostra que a aprendizagem não se limita à aceitação passiva do gabarito."
+    },
+    {
+      "imperativo": "Realize esclarecimentos docentes",
+      "descricao_base": "Após a garantia de preparo, retome brevemente os conceitos que geraram mais dúvidas ou divergências. A intervenção docente deve ser objetiva e focada nos pontos necessários para que as equipes avancem para a aplicação dos conceitos."
+    },
+    {
+      "imperativo": "Proponha uma atividade de aplicação",
+      "descricao_base": "Apresente um problema significativo, comum a todas as equipes, que exija decisão específica e resposta simultânea. A atividade deve seguir os princípios dos 4S: problema significativo, escolha específica, mesmo problema para todas as equipes e relato simultâneo das decisões."
+    },
+    {
+      "imperativo": "Promova argumentação entre equipes",
+      "descricao_base": "Depois da resposta, as equipes apresentam e defendem suas decisões. O professor atua como mediador, provocando justificativas, solicitando evidências, comparando critérios e conectando as decisões aos conteúdos."
+    },
+    {
+      "imperativo": "Avalie o desempenho individual, coletivo e entre pares",
+      "descricao_base": "A avaliação deve considerar a preparação individual, o desempenho da equipe, a qualidade da argumentação e a contribuição de cada integrante. A avaliação por pares é importante para tornar visível a responsabilidade individual dentro do trabalho coletivo."
+    },
+    {
+      "imperativo": "Sistematize os aprendizados",
+      "descricao_base": "Finalize retomando os conceitos aplicados, as decisões tomadas pelas equipes, os erros mais frequentes e os critérios que levaram às melhores respostas. Essa síntese ajuda a transformar a atividade em aprendizagem consolidada."
+    }
+  ],
+  "team-based learning": [
+    {
+      "imperativo": "Defina os objetivos de aprendizagem",
+      "descricao_base": "Escolha um tema ou conjunto de conceitos que precise ser compreendido e aplicado em situações reais ou verossímeis. A TBL funciona melhor quando o objetivo vai além da memorização e exige análise, decisão, comparação de alternativas ou resolução de problemas."
+    },
+    {
+      "imperativo": "Organize equipes estáveis",
+      "descricao_base": "Forme equipes de cinco a sete estudantes, buscando diversidade de repertórios, experiências e habilidades. Sempre que possível, mantenha as mesmas equipes ao longo de uma unidade ou sequência de atividades, para que se desenvolvam confiança, compromisso e responsabilidade coletiva."
+    },
+    {
+      "imperativo": "Prepare materiais para estudo prévio",
+      "descricao_base": "Disponibilize leituras, vídeos, casos, tutoriais, textos ou outros materiais essenciais antes da aula. O estudo prévio deve ser objetivo, bem delimitado e diretamente relacionado ao que será exigido nas atividades presenciais ou síncronas."
+    },
+    {
+      "imperativo": "Realize a etapa de preparo individual",
+      "descricao_base": "Oriente cada estudante a estudar os materiais indicados antes do encontro. Essa preparação é indispensável para que todos cheguem à aula com condições mínimas de contribuir com a equipe."
+    },
+    {
+      "imperativo": "Aplique um teste individual de garantia de preparo",
+      "descricao_base": "No início da aula, proponha um teste breve sobre os conceitos centrais do estudo prévio. O objetivo não é apenas atribuir nota, mas verificar se cada estudante se preparou e identificar dúvidas iniciais."
+    },
+    {
+      "imperativo": "Aplique o mesmo teste em equipe",
+      "descricao_base": "Após a resposta individual, os estudantes discutem as mesmas questões em equipe e chegam a uma resposta coletiva. Nessa etapa, precisam defender posições, comparar argumentos, rever interpretações e negociar decisões."
+    },
+    {
+      "imperativo": "Ofereça feedback imediato",
+      "descricao_base": "Apresente o gabarito ou o retorno das respostas logo após o teste em equipe. O feedback imediato ajuda a corrigir equívocos, consolidar conceitos e preparar os grupos para a etapa de aplicação."
+    },
+    {
+      "imperativo": "Permita apelações fundamentadas",
+      "descricao_base": "Quando pertinente, as equipes podem contestar uma resposta considerada correta, desde que apresentem argumentos, referências ou evidências consistentes. Essa etapa valoriza o pensamento crítico e mostra que a aprendizagem não se limita à aceitação passiva do gabarito."
+    },
+    {
+      "imperativo": "Realize esclarecimentos docentes",
+      "descricao_base": "Após a garantia de preparo, retome brevemente os conceitos que geraram mais dúvidas ou divergências. A intervenção docente deve ser objetiva e focada nos pontos necessários para que as equipes avancem para a aplicação dos conceitos."
+    },
+    {
+      "imperativo": "Proponha uma atividade de aplicação",
+      "descricao_base": "Apresente um problema significativo, comum a todas as equipes, que exija decisão específica e resposta simultânea. A atividade deve seguir os princípios dos 4S: problema significativo, escolha específica, mesmo problema para todas as equipes e relato simultâneo das decisões."
+    },
+    {
+      "imperativo": "Promova argumentação entre equipes",
+      "descricao_base": "Depois da resposta, as equipes apresentam e defendem suas decisões. O professor atua como mediador, provocando justificativas, solicitando evidências, comparando critérios e conectando as decisões aos conteúdos."
+    },
+    {
+      "imperativo": "Avalie o desempenho individual, coletivo e entre pares",
+      "descricao_base": "A avaliação deve considerar a preparação individual, o desempenho da equipe, a qualidade da argumentação e a contribuição de cada integrante. A avaliação por pares é importante para tornar visível a responsabilidade individual dentro do trabalho coletivo."
+    },
+    {
+      "imperativo": "Sistematize os aprendizados",
+      "descricao_base": "Finalize retomando os conceitos aplicados, as decisões tomadas pelas equipes, os erros mais frequentes e os critérios que levaram às melhores respostas. Essa síntese ajuda a transformar a atividade em aprendizagem consolidada."
+    }
+  ],
+  "tbl": [
+    {
+      "imperativo": "Defina os objetivos de aprendizagem",
+      "descricao_base": "Escolha um tema ou conjunto de conceitos que precise ser compreendido e aplicado em situações reais ou verossímeis. A TBL funciona melhor quando o objetivo vai além da memorização e exige análise, decisão, comparação de alternativas ou resolução de problemas."
+    },
+    {
+      "imperativo": "Organize equipes estáveis",
+      "descricao_base": "Forme equipes de cinco a sete estudantes, buscando diversidade de repertórios, experiências e habilidades. Sempre que possível, mantenha as mesmas equipes ao longo de uma unidade ou sequência de atividades, para que se desenvolvam confiança, compromisso e responsabilidade coletiva."
+    },
+    {
+      "imperativo": "Prepare materiais para estudo prévio",
+      "descricao_base": "Disponibilize leituras, vídeos, casos, tutoriais, textos ou outros materiais essenciais antes da aula. O estudo prévio deve ser objetivo, bem delimitado e diretamente relacionado ao que será exigido nas atividades presenciais ou síncronas."
+    },
+    {
+      "imperativo": "Realize a etapa de preparo individual",
+      "descricao_base": "Oriente cada estudante a estudar os materiais indicados antes do encontro. Essa preparação é indispensável para que todos cheguem à aula com condições mínimas de contribuir com a equipe."
+    },
+    {
+      "imperativo": "Aplique um teste individual de garantia de preparo",
+      "descricao_base": "No início da aula, proponha um teste breve sobre os conceitos centrais do estudo prévio. O objetivo não é apenas atribuir nota, mas verificar se cada estudante se preparou e identificar dúvidas iniciais."
+    },
+    {
+      "imperativo": "Aplique o mesmo teste em equipe",
+      "descricao_base": "Após a resposta individual, os estudantes discutem as mesmas questões em equipe e chegam a uma resposta coletiva. Nessa etapa, precisam defender posições, comparar argumentos, rever interpretações e negociar decisões."
+    },
+    {
+      "imperativo": "Ofereça feedback imediato",
+      "descricao_base": "Apresente o gabarito ou o retorno das respostas logo após o teste em equipe. O feedback imediato ajuda a corrigir equívocos, consolidar conceitos e preparar os grupos para a etapa de aplicação."
+    },
+    {
+      "imperativo": "Permita apelações fundamentadas",
+      "descricao_base": "Quando pertinente, as equipes podem contestar uma resposta considerada correta, desde que apresentem argumentos, referências ou evidências consistentes. Essa etapa valoriza o pensamento crítico e mostra que a aprendizagem não se limita à aceitação passiva do gabarito."
+    },
+    {
+      "imperativo": "Realize esclarecimentos docentes",
+      "descricao_base": "Após a garantia de preparo, retome brevemente os conceitos que geraram mais dúvidas ou divergências. A intervenção docente deve ser objetiva e focada nos pontos necessários para que as equipes avancem para a aplicação dos conceitos."
+    },
+    {
+      "imperativo": "Proponha uma atividade de aplicação",
+      "descricao_base": "Apresente um problema significativo, comum a todas as equipes, que exija decisão específica e resposta simultânea. A atividade deve seguir os princípios dos 4S: problema significativo, escolha específica, mesmo problema para todas as equipes e relato simultâneo das decisões."
+    },
+    {
+      "imperativo": "Promova argumentação entre equipes",
+      "descricao_base": "Depois da resposta, as equipes apresentam e defendem suas decisões. O professor atua como mediador, provocando justificativas, solicitando evidências, comparando critérios e conectando as decisões aos conteúdos."
+    },
+    {
+      "imperativo": "Avalie o desempenho individual, coletivo e entre pares",
+      "descricao_base": "A avaliação deve considerar a preparação individual, o desempenho da equipe, a qualidade da argumentação e a contribuição de cada integrante. A avaliação por pares é importante para tornar visível a responsabilidade individual dentro do trabalho coletivo."
+    },
+    {
+      "imperativo": "Sistematize os aprendizados",
+      "descricao_base": "Finalize retomando os conceitos aplicados, as decisões tomadas pelas equipes, os erros mais frequentes e os critérios que levaram às melhores respostas. Essa síntese ajuda a transformar a atividade em aprendizagem consolidada."
+    }
+  ],
+  "narrativas transmidia em rotacao por estacoes": [
+    {
+      "imperativo": "Defina os objetivos de aprendizagem",
+      "descricao_base": "Determine o que os estudantes deverão compreender, analisar, produzir ou aplicar ao final da experiência. Os objetivos podem envolver exploração de conteúdos transmídia previamente selecionados pelo professor ou produção de novos conteúdos pelos próprios estudantes."
+    },
+    {
+      "imperativo": "Escolha o tema central da narrativa",
+      "descricao_base": "Selecione um tema suficientemente amplo para ser explorado em diferentes mídias e estações. O tema deve funcionar como fio condutor da experiência. Exemplos: diversidade nos ambientes de aprendizagem, sustentabilidade, cidadania digital, memória local, inteligência artificial ou transformação social."
+    },
+    {
+      "imperativo": "Defina as estações de aprendizagem",
+      "descricao_base": "Organize diferentes estações, cada uma com uma mídia, atividade ou perspectiva específica. Uma estação pode envolver análise de infográfico, outra exibição de vídeo, outra produção de podcast, outra leitura de texto, outra criação de ilustração, outra entrevista ou registro em mural colaborativo."
+    },
+    {
+      "imperativo": "Planeje a função de cada estação na narrativa",
+      "descricao_base": "Cada estação deve acrescentar uma contribuição própria ao tema central. Evite repetir a mesma atividade com mídias diferentes. O ideal é que cada estação ofereça um ponto de vista, uma linguagem, uma evidência, uma experiência ou uma produção complementar."
+    },
+    {
+      "imperativo": "Defina o fluxo de rotação",
+      "descricao_base": "Explique como os grupos circularão entre as estações, quanto tempo permanecerão em cada uma e que produto ou registro deverão produzir. A rotação pode ocorrer presencialmente, em ambientes digitais assíncronos ou em salas síncronas de videoconferência."
+    },
+    {
+      "imperativo": "Prepare os materiais e recursos tecnológicos",
+      "descricao_base": "Organize links, vídeos, textos, imagens, infográficos, formulários, murais digitais, ferramentas de edição, pastas compartilhadas ou materiais impressos. Se houver produção de conteúdos transmídia, indique as ferramentas e formatos aceitos."
+    },
+    {
+      "imperativo": "Oriente os estudantes antes do início da rotação",
+      "descricao_base": "Apresente o tema, os objetivos, as estações, as regras de circulação, o tempo de permanência, os critérios de participação e o tipo de registro esperado. Deixe claro que as partes da narrativa serão integradas ao final."
+    },
+    {
+      "imperativo": "Conduza a rotação entre as estações",
+      "descricao_base": "Durante a atividade, acompanhe os grupos, esclareça dúvidas, observe interações e garanta que todos passem pelas estações previstas. O professor atua como mediador, ajudando os estudantes a relacionar as experiências de cada estação ao tema central."
+    },
+    {
+      "imperativo": "Promova a integração da narrativa",
+      "descricao_base": "Depois da rotação, organize um momento de socialização. Cada grupo pode apresentar descobertas, produções, registros ou interpretações. O objetivo é reconstruir coletivamente o sentido da narrativa a partir das partes vivenciadas."
+    },
+    {
+      "imperativo": "Sistematize a aprendizagem",
+      "descricao_base": "Retome os conceitos, evidências e produções gerados nas estações. Conduza perguntas como: “Que partes da narrativa se complementam?”, “Que novas compreensões surgiram?”, “Que mídia ajudou mais a compreender o tema?” e “Que aspectos ainda precisam ser aprofundados?”."
+    },
+    {
+      "imperativo": "Avalie o processo e os produtos",
+      "descricao_base": "Avalie a participação nas estações, a qualidade dos registros, a integração entre mídias, a colaboração dos grupos e a capacidade de relacionar as experiências ao tema central. Quando houver produção autoral, avalie também pertinência, clareza, criatividade e coerência com os objetivos de aprendizagem."
+    }
+  ],
+  "painel da diversidade de perspectivas": [
+    {
+      "imperativo": "Defina os objetivos de aprendizagem",
+      "descricao_base": "Determine que conceitos, competências ou atitudes serão desenvolvidos. A metodologia pode ser usada para aprofundar um tema, comparar perspectivas, integrar subtemas, construir sínteses coletivas ou preparar uma tomada de decisão fundamentada."
+    },
+    {
+      "imperativo": "Escolha um tema complexo",
+      "descricao_base": "Selecione um assunto que possa ser analisado por diferentes lentes. Exemplos: uso de IA na educação, mudanças climáticas, inclusão escolar, saúde mental, cultura digital, sustentabilidade, ética profissional ou transformação digital."
+    },
+    {
+      "imperativo": "Organize o tema em subtemas ou perspectivas",
+      "descricao_base": "Divida o tema central em dimensões complementares. Por exemplo, um tema pode ser analisado por perspectiva histórica, social, tecnológica, econômica, ética, pedagógica ou ambiental. Cada subtema deve ser relevante para a compreensão do todo."
+    },
+    {
+      "imperativo": "Forme os grupos iniciais",
+      "descricao_base": "Organize a turma em grupos de até cinco participantes. Cada grupo ficará responsável por estudar uma perspectiva específica. Certifique-se de que todos compreendem qual é o recorte investigado e quais produtos deverão preparar."
+    },
+    {
+      "imperativo": "Disponibilize materiais e parâmetros de pesquisa",
+      "descricao_base": "Ofereça referências, links, textos, vídeos, perguntas orientadoras, critérios de análise ou fontes recomendadas. Os parâmetros ajudam os grupos a aprofundar o subtema sem perder o foco."
+    },
+    {
+      "imperativo": "Oriente a produção do primeiro mural",
+      "descricao_base": "Cada grupo deve registrar sua compreensão da perspectiva estudada em um mural físico ou digital. O mural pode conter conceitos-chave, exemplos, dados, imagens, perguntas, sínteses, argumentos e relações com o tema central."
+    },
+    {
+      "imperativo": "Reorganize a turma em novos grupos",
+      "descricao_base": "Misture os integrantes dos grupos originais, formando novos grupos com representantes de diferentes perspectivas. Cada novo grupo deve contar, sempre que possível, com pelo menos um integrante de cada subtema estudado."
+    },
+    {
+      "imperativo": "Promova a apresentação das perspectivas",
+      "descricao_base": "Nos novos grupos, cada participante apresenta o mural produzido por seu grupo original, explicando as principais descobertas, argumentos, evidências e questões abertas. Os demais escutam, fazem perguntas e registram conexões."
+    },
+    {
+      "imperativo": "Oriente a construção de um mural integrado",
+      "descricao_base": "Depois das apresentações, cada novo grupo deve discutir o tema central considerando todas as perspectivas compartilhadas. A tarefa é produzir um novo mural que integre elementos relevantes, identifique convergências, tensões, complementaridades e possíveis encaminhamentos."
+    },
+    {
+      "imperativo": "Organize a socialização final",
+      "descricao_base": "Reserve tempo para que os grupos apresentem seus murais integrados à turma. As apresentações podem ocorrer presencialmente, por videoconferência ou por vídeos gravados e compartilhados em ambiente digital."
+    },
+    {
+      "imperativo": "Sistematize a aprendizagem",
+      "descricao_base": "Conduza uma discussão final destacando como as diferentes perspectivas modificaram a compreensão do tema. Retome conceitos centrais, contradições, lacunas e sínteses produzidas pelos grupos."
+    },
+    {
+      "imperativo": "Avalie o processo",
+      "descricao_base": "Avalie o envolvimento na pesquisa inicial, a qualidade dos murais, a clareza das explicações, a escuta nas novas formações, a integração das perspectivas e a contribuição individual. A avaliação por pares pode ajudar a reconhecer a participação efetiva de cada estudante."
+    }
+  ],
+  "rotina veja-pense-pergunte-crie": [
+    {
+      "imperativo": "Escolha o objeto de observação",
+      "descricao_base": "Selecione uma imagem, vídeo, obra de arte, objeto, produto, artefato, conceito, documento ou situação-problema que possa gerar observação, interpretação e perguntas. O material deve ser suficientemente rico para permitir diferentes leituras."
+    },
+    {
+      "imperativo": "Apresente o objeto aos estudantes",
+      "descricao_base": "Mostre o material sem oferecer explicações excessivas no início. O objetivo é permitir que os estudantes observem antes de interpretar. Se necessário, forneça apenas o contexto mínimo para a atividade."
+    },
+    {
+      "imperativo": "Conduza a etapa “Veja”",
+      "descricao_base": "Peça que os estudantes registrem o que observam de modo descritivo. A pergunta central é: “O que você vê?”. Oriente-os a separar observação de interpretação, registrando elementos visíveis, características, detalhes, partes, padrões ou aspectos materiais do objeto."
+    },
+    {
+      "imperativo": "Conduza a etapa “Pense”",
+      "descricao_base": "Depois da observação, convide os estudantes a formular interpretações. A pergunta central é: “O que você pensa sobre isso?”. Eles podem levantar hipóteses, inferir significados, relacionar o objeto a conhecimentos anteriores ou indicar possíveis explicações."
+    },
+    {
+      "imperativo": "Conduza a etapa “Pergunte”",
+      "descricao_base": "Peça que os estudantes registrem dúvidas e perguntas que emergiram da observação e interpretação. A pergunta central é: “O que você gostaria de saber?”. Essa etapa orienta a investigação posterior e amplia a curiosidade intelectual."
+    },
+    {
+      "imperativo": "Promova a troca em pequenos grupos",
+      "descricao_base": "Organize os estudantes para compartilhar o que viram, pensaram e perguntaram. A conversa ajuda a ampliar interpretações, comparar hipóteses, reconhecer diferentes leituras e selecionar perguntas mais relevantes para investigação."
+    },
+    {
+      "imperativo": "Oriente a busca por respostas",
+      "descricao_base": "Peça que os grupos pesquisem, debatam, consultem referências, analisem dados ou mobilizem conhecimentos para responder às perguntas levantadas. O professor pode indicar fontes, critérios de validação e formas de registro."
+    },
+    {
+      "imperativo": "Conduza a etapa “Crie”",
+      "descricao_base": "Oriente os grupos a produzir algo tangível relacionado ao objeto ou tema estudado. A criação pode ser análoga, complementar, crítica ou alternativa ao que foi analisado. Pode assumir a forma de modelo físico, desenho, protótipo, mapa, tela, maquete, vídeo, infográfico, roteiro, peça, objeto ou intervenção."
+    },
+    {
+      "imperativo": "Organize a apresentação das criações",
+      "descricao_base": "Cada grupo apresenta o que criou, explica as decisões tomadas, relaciona o produto às observações iniciais e mostra como as perguntas orientaram a investigação e a produção."
+    },
+    {
+      "imperativo": "Sistematize a aprendizagem",
+      "descricao_base": "Retome com a turma o percurso completo: o que foi observado, que hipóteses surgiram, que perguntas foram formuladas, que respostas foram encontradas e como tudo isso se materializou na criação."
+    },
+    {
+      "imperativo": "Avalie o processo e o produto",
+      "descricao_base": "Avalie a qualidade da observação, a pertinência das interpretações, a relevância das perguntas, o uso de referências, a colaboração do grupo e a coerência do produto criado em relação ao tema investigado."
+    }
+  ],
+  "coaching reverso": [
+    {
+      "imperativo": "Defina os objetivos de aprendizagem",
+      "descricao_base": "Determine quais competências, conhecimentos ou atitudes serão desenvolvidos por meio da troca entre pares. O objetivo pode envolver fluência digital, comunicação, escrita, postura profissional, integração, estudo de conteúdo, orientação acadêmica ou desenvolvimento socioemocional."
+    },
+    {
+      "imperativo": "Levante o perfil dos participantes",
+      "descricao_base": "Colete informações relevantes sobre conhecimentos prévios, experiências, interesses, dificuldades, faixa etária, área de formação, fluência digital, domínio de idiomas, repertório cultural ou outras características importantes para a formação das duplas."
+    },
+    {
+      "imperativo": "Identifique complementaridades",
+      "descricao_base": "Analise quais participantes podem se apoiar mutuamente. A lógica não é hierarquizar pessoas, mas combinar perfis diferentes. Um estudante pode ser mais forte em tecnologia, outro em escrita; um pode conhecer melhor a instituição, outro pode trazer novas linguagens e repertórios."
+    },
+    {
+      "imperativo": "Forme duplas ou pequenos pares de apoio",
+      "descricao_base": "Organize os participantes em duplas com perfis complementares. Quando o objetivo for mais complexo, podem ser formados trios ou pequenos grupos, desde que as responsabilidades de cada participante estejam claras."
+    },
+    {
+      "imperativo": "Explique a metodologia e os papéis",
+      "descricao_base": "Apresente o sentido do Coaching Reverso e esclareça que todos têm algo a ensinar e algo a aprender. Defina o que se espera de cada perfil e quais atitudes são necessárias: escuta, respeito, compromisso, abertura, confidencialidade quando pertinente e responsabilidade com o processo."
+    },
+    {
+      "imperativo": "Organize um cronograma de atividades",
+      "descricao_base": "Defina encontros, tarefas, temas, registros e produtos esperados. O Coaching Reverso pode ocorrer em uma aula, ao longo de uma unidade, em um módulo ou durante um bimestre, conforme a complexidade dos objetivos."
+    },
+    {
+      "imperativo": "Oriente as interações das duplas",
+      "descricao_base": "Forneça roteiros, perguntas ou desafios para apoiar as conversas. Exemplos: “O que eu posso ensinar ao meu par?”, “Em que preciso de ajuda?”, “Que estratégia funcionou melhor?”, “Que dificuldade apareceu?” e “Que ação vamos realizar até o próximo encontro?”."
+    },
+    {
+      "imperativo": "Acompanhe o processo",
+      "descricao_base": "Monitore as duplas, observe se há reciprocidade, esclareça dúvidas, reorganize pares quando necessário e ofereça apoio para que a troca não se transforme em dependência, tutela unilateral ou simples divisão de tarefas."
+    },
+    {
+      "imperativo": "Solicite registros reflexivos",
+      "descricao_base": "Peça que cada dupla registre o que foi trabalhado, que aprendizagens ocorreram, que dificuldades surgiram e que próximos passos foram definidos. O registro pode ser individual ou conjunto."
+    },
+    {
+      "imperativo": "Promova socialização cuidadosa",
+      "descricao_base": "Ao final, convide os participantes a compartilhar aprendizagens gerais, sem expor questões pessoais ou dificuldades específicas de colegas. O foco deve estar na experiência de troca, nas competências desenvolvidas e nos benefícios da aprendizagem bidirecional."
+    },
+    {
+      "imperativo": "Avalie engajamento e aprendizagem",
+      "descricao_base": "Avalie o comprometimento de cada participante, a qualidade das interações, o cumprimento das atividades previstas, a evolução em relação aos objetivos e a capacidade de refletir sobre o que foi aprendido com o outro."
+    }
+  ],
+  "pedagogia extrema": [
+    {
+      "imperativo": "Defina uma tarefa curta e incremental",
+      "descricao_base": "Escolha uma atividade que possa ser realizada em ciclos breves, com entrega parcial ao final de cada ciclo. A tarefa deve permitir revisão, ajuste e melhoria progressiva, como desenvolver um script, resolver um problema técnico, revisar um modelo, testar uma solução, analisar um conjunto de dados ou produzir uma parte de um projeto."
+    },
+    {
+      "imperativo": "Organize os estudantes em duplas e defina os papéis",
+      "descricao_base": "Forme duplas de trabalho e explique a lógica de trabalho entre piloto e copiloto: o piloto executa a tarefa principal, enquanto o copiloto acompanha, revisa, questiona, identifica erros, sugere melhorias e verifica a coerência das decisões. Os papéis devem ser alternados periodicamente, para que ambos participem da execução e da revisão."
+    },
+    {
+      "imperativo": "Apresente os critérios da entrega e o tempo do ciclo",
+      "descricao_base": "Defina o que deve ser entregue ao final de cada ciclo, em quanto tempo e com quais critérios mínimos de qualidade. O ciclo pode durar alguns minutos, uma aula ou uma sequência curta de aulas, conforme a complexidade da atividade. O importante é que a entrega seja pequena o suficiente para permitir feedback rápido e correção de rota."
+    },
+    {
+      "imperativo": "Acompanhe a execução e promova correções de rota",
+      "descricao_base": "Durante o trabalho, circule entre as duplas, observe a comunicação, faça perguntas, identifique bloqueios e ofereça feedback pontual. A mediação deve ajudar os estudantes a perceber erros, testar alternativas, justificar decisões e melhorar a produção sem substituir o esforço da dupla."
+    },
+    {
+      "imperativo": "Realize revisão em pares e teste da entrega",
+      "descricao_base": "Ao final de cada ciclo, oriente as duplas a revisar o que foi produzido. Quando pertinente, proponha testes, execução do código, verificação de resultados, comparação com critérios, revisão cruzada entre duplas ou análise de erros recorrentes. O foco é transformar o erro em subsídio para aprendizagem e melhoria."
+    },
+    {
+      "imperativo": "Alterne papéis e inicie novo ciclo",
+      "descricao_base": "Após a revisão, os estudantes trocam os papéis de piloto e copiloto e iniciam um novo ciclo de desenvolvimento, correção ou aprimoramento. A alternância garante participação equilibrada e permite que cada estudante experimente tanto a execução quanto a revisão crítica."
+    },
+    {
+      "imperativo": "Sistematize aprendizados e avalie a produção",
+      "descricao_base": "Ao final da atividade, solicite que as duplas apresentem a entrega, expliquem as decisões tomadas, indiquem os erros encontrados, os ajustes realizados e o que aprenderam como resultado do trabalho em pares. Avalie a qualidade da produção, o uso dos conteúdos curriculares, a colaboração, a comunicação e a evolução entre versões."
+    }
+  ],
+  "eduscrum": [
+    {
+      "imperativo": "Defina o projeto e os objetivos de aprendizagem",
+      "descricao_base": "Apresente um tema para o projeto e explicite os objetivos de aprendizagem que deverão ser alcançados. O projeto deve permitir entregas parciais, revisão e ajustes ao longo do processo, em vez de depender apenas de uma entrega final."
+    },
+    {
+      "imperativo": "Organize os grupos e liste as atividades do projeto",
+      "descricao_base": "Forme grupos de estudantes e, em colaboração com eles, liste todas as atividades necessárias para a conclusão do projeto. Essa lista funciona como um conjunto inicial de tarefas a serem realizadas, revisadas e atualizadas ao longo do percurso."
+    },
+    {
+      "imperativo": "Distribua responsabilidades entre os integrantes",
+      "descricao_base": "Oriente cada estudante a escolher tarefas de forma proativa, garantindo que a distribuição contribua para o desenvolvimento de todos e que as atividades se articulem para alcançar o resultado esperado. Os papéis podem ser rotativos, favorecendo participação equilibrada e responsabilidade compartilhada."
+    },
+    {
+      "imperativo": "Planeje os sprints e as entregas parciais",
+      "descricao_base": "Divida o projeto em ciclos curtos de trabalho, com prazos definidos e entregas parciais. Cada sprint deve ter um desafio claro, um prazo de conclusão e critérios mínimos para verificar se a entrega foi realizada adequadamente."
+    },
+    {
+      "imperativo": "Utilize um quadro visual de acompanhamento",
+      "descricao_base": "Disponibilize um quadro físico ou digital para que os grupos registrem tarefas, responsáveis, andamento, impedimentos e entregas concluídas. O quadro deve ser atualizado após cada sprint, favorecendo transparência e acompanhamento do progresso."
+    },
+    {
+      "imperativo": "Realize reuniões rápidas de acompanhamento",
+      "descricao_base": "Oriente os grupos a realizar reuniões breves durante os sprints, com foco no estado do projeto. Essas reuniões servem para identificar o que foi feito, o que ainda precisa ser realizado, quais obstáculos surgiram e que ajustes são necessários."
+    },
+    {
+      "imperativo": "Promova apresentações incrementais e revisão do percurso",
+      "descricao_base": "Ao final de cada sprint, peça que os grupos compartilhem os resultados parciais com a turma ou com o professor. A entrega deve ser comparada aos objetivos de aprendizagem e aos critérios definidos, permitindo feedback, ajustes e replanejamento."
+    },
+    {
+      "imperativo": "Avalie o produto, o processo e a aprendizagem",
+      "descricao_base": "Ao final do projeto, avalie as entregas realizadas, a evolução entre os sprints, a colaboração do grupo, a gestão das tarefas, a fundamentação conceitual e a qualidade do produto final. Inclua autoavaliação e/ou avaliação por pares para que os estudantes analisem sua contribuição individual e o funcionamento do grupo."
+    }
+  ],
+  "discurso de elevador": [
+    {
+      "imperativo": "Defina o tema, o objetivo e o interlocutor",
+      "descricao_base": "Oriente os estudantes a escolherem o que será apresentado: uma ideia, solução, produto, projeto, análise, recomendação ou argumento. Em seguida, devem definir o objetivo do pitch (convencer, informar, solicitar apoio, apresentar uma proposta, defender uma decisão ou gerar interesse) e identificar quem será o interlocutor, pois a mensagem precisa ser ajustada ao público."
+    },
+    {
+      "imperativo": "Estruture a mensagem central",
+      "descricao_base": "Peça que os estudantes organizem o discurso em uma sequência curta: apresentação inicial, problema ou oportunidade, proposta principal, benefício para o interlocutor e fechamento. O pitch deve responder rapidamente: “Sobre o que estou falando?”, “Por que isso importa?”, “O que proponho?”, “Qual é o valor para quem escuta?” e “Qual é o próximo passo?”."
+    },
+    {
+      "imperativo": "Registre e refine o discurso",
+      "descricao_base": "Solicite que o pitch seja escrito ou gravado em áudio antes da apresentação. Esse registro permite revisar clareza, concisão, coerência, linguagem, tempo e força argumentativa. O professor pode orientar cortes e edições, ajustes de vocabulário, reorganização de ideias e eliminação de informações secundárias."
+    },
+    {
+      "imperativo": "Ensaie com controle de tempo",
+      "descricao_base": "Oriente os estudantes a praticarem o discurso dentro do tempo definido. O ensaio deve ajudar a ajustar ritmo, entonação, fluência, postura, contato visual e transições. A fala precisa parecer natural, mas não improvisada; objetiva, mas não mecânica."
+    },
+    {
+      "imperativo": "Apresente o pitch",
+      "descricao_base": "Cada estudante ou grupo realiza o Discurso de Elevador para a turma, professor, banca, colegas ou interlocutor simulado. A apresentação deve introduzir rapidamente quem fala ou o contexto da proposta, apresentar o desafio ou oportunidade, explicitar a solução ou ideia e destacar o benefício central para quem escuta."
+    },
+    {
+      "imperativo": "Realize o fechamento e o follow-up",
+      "descricao_base": "O pitch deve terminar com uma chamada clara para a próxima ação: marcar uma conversa, conhecer melhor a proposta, testar uma solução, apoiar o projeto, acessar um material, responder a uma pergunta ou considerar uma recomendação. Depois da apresentação, pode-se promover feedback rápido do professor e dos colegas."
+    }
+  ],
+  "elevator pitch": [
+    {
+      "imperativo": "Defina o tema, o objetivo e o interlocutor",
+      "descricao_base": "Oriente os estudantes a escolherem o que será apresentado: uma ideia, solução, produto, projeto, análise, recomendação ou argumento. Em seguida, devem definir o objetivo do pitch (convencer, informar, solicitar apoio, apresentar uma proposta, defender uma decisão ou gerar interesse) e identificar quem será o interlocutor, pois a mensagem precisa ser ajustada ao público."
+    },
+    {
+      "imperativo": "Estruture a mensagem central",
+      "descricao_base": "Peça que os estudantes organizem o discurso em uma sequência curta: apresentação inicial, problema ou oportunidade, proposta principal, benefício para o interlocutor e fechamento. O pitch deve responder rapidamente: “Sobre o que estou falando?”, “Por que isso importa?”, “O que proponho?”, “Qual é o valor para quem escuta?” e “Qual é o próximo passo?”."
+    },
+    {
+      "imperativo": "Registre e refine o discurso",
+      "descricao_base": "Solicite que o pitch seja escrito ou gravado em áudio antes da apresentação. Esse registro permite revisar clareza, concisão, coerência, linguagem, tempo e força argumentativa. O professor pode orientar cortes e edições, ajustes de vocabulário, reorganização de ideias e eliminação de informações secundárias."
+    },
+    {
+      "imperativo": "Ensaie com controle de tempo",
+      "descricao_base": "Oriente os estudantes a praticarem o discurso dentro do tempo definido. O ensaio deve ajudar a ajustar ritmo, entonação, fluência, postura, contato visual e transições. A fala precisa parecer natural, mas não improvisada; objetiva, mas não mecânica."
+    },
+    {
+      "imperativo": "Apresente o pitch",
+      "descricao_base": "Cada estudante ou grupo realiza o Discurso de Elevador para a turma, professor, banca, colegas ou interlocutor simulado. A apresentação deve introduzir rapidamente quem fala ou o contexto da proposta, apresentar o desafio ou oportunidade, explicitar a solução ou ideia e destacar o benefício central para quem escuta."
+    },
+    {
+      "imperativo": "Realize o fechamento e o follow-up",
+      "descricao_base": "O pitch deve terminar com uma chamada clara para a próxima ação: marcar uma conversa, conhecer melhor a proposta, testar uma solução, apoiar o projeto, acessar um material, responder a uma pergunta ou considerar uma recomendação. Depois da apresentação, pode-se promover feedback rápido do professor e dos colegas."
+    }
+  ],
+  "hackathons": [
+    {
+      "imperativo": "Defina o problema ou desafio do Hackathon",
+      "descricao_base": "Escolha um problema relevante, alinhado aos objetivos de aprendizagem e adequado ao tempo disponível. O desafio deve ser claro o suficiente para orientar o trabalho, mas aberto o bastante para permitir diferentes soluções. Pode envolver análise de dados, desenvolvimento de protótipos, criação de modelos, propostas de intervenção, automações, visualizações ou recomendações técnicas."
+    },
+    {
+      "imperativo": "Prepare informações, recursos e critérios",
+      "descricao_base": "Antes do evento, reúna dados, documentos, bases, ferramentas, exemplos, materiais de apoio e recursos necessários para que os grupos possam trabalhar. Defina também regras de participação, tamanho dos grupos, cronograma, formato das entregas e critérios de avaliação. Em Hackathons presenciais, organize espaço, internet, tomadas, mesas, projetor e condições de apoio. Em Hackathons online, prepare salas simultâneas, canal de comunicação e espaço para apresentação final."
+    },
+    {
+      "imperativo": "Organize os grupos e apresente as instruções iniciais",
+      "descricao_base": "Explique o desafio, os objetivos de aprendizagem, o tempo disponível, as entregas esperadas e os critérios de avaliação. Forme os grupos e oriente-os a compreender o problema, dividir responsabilidades, levantar ideias iniciais e definir uma estratégia de trabalho. A abertura deve deixar claro que o tempo é limitado e que a solução precisa ser viável dentro das condições dadas."
+    },
+    {
+      "imperativo": "Acompanhe o desenvolvimento intensivo da solução",
+      "descricao_base": "Durante o Hackathon, monitore o andamento dos grupos, tire dúvidas, ajude a remover impedimentos e ofereça feedback pontual. O professor deve apoiar a conexão entre problema, conteúdos curriculares, dados disponíveis e solução proposta, sem assumir a autoria da solução. Como o tempo é curto, é importante ajudar os grupos a priorizar o essencial e evitar dispersão."
+    },
+    {
+      "imperativo": "Estabeleça pontos de controle e ajustes de rota",
+      "descricao_base": "Inclua momentos breves de acompanhamento para que os grupos indiquem o que já fizeram, o que falta, quais dificuldades encontraram e que ajustes serão necessários. Esses checkpoints ajudam a manter o ritmo, favorecem a gestão do tempo e permitem correções antes da apresentação final."
+    },
+    {
+      "imperativo": "Organize a apresentação das soluções",
+      "descricao_base": "Reserve tempo suficiente para que os grupos apresentem o que produziram. A apresentação pode seguir formatos ágeis, como Elevator Pitch, demonstração rápida, storytelling orientado à decisão ou exposição técnica curta. Cada grupo deve explicitar o problema enfrentado, a solução desenvolvida, os dados ou evidências utilizados, as decisões tomadas, os limites da proposta e os próximos passos possíveis."
+    },
+    {
+      "imperativo": "Avalie as soluções e sistematize os aprendizados",
+      "descricao_base": "A avaliação pode ser realizada pelo professor, por pares, por uma banca convidada ou por uma combinação dessas possibilidades. Ao final, conduza uma síntese sobre os conhecimentos mobilizados, as estratégias usadas, as soluções mais consistentes, os erros recorrentes, as melhorias possíveis e os aprendizados gerados pela experiência."
+    }
+  ],
+  "hackathon": [
+    {
+      "imperativo": "Defina o problema ou desafio do Hackathon",
+      "descricao_base": "Escolha um problema relevante, alinhado aos objetivos de aprendizagem e adequado ao tempo disponível. O desafio deve ser claro o suficiente para orientar o trabalho, mas aberto o bastante para permitir diferentes soluções. Pode envolver análise de dados, desenvolvimento de protótipos, criação de modelos, propostas de intervenção, automações, visualizações ou recomendações técnicas."
+    },
+    {
+      "imperativo": "Prepare informações, recursos e critérios",
+      "descricao_base": "Antes do evento, reúna dados, documentos, bases, ferramentas, exemplos, materiais de apoio e recursos necessários para que os grupos possam trabalhar. Defina também regras de participação, tamanho dos grupos, cronograma, formato das entregas e critérios de avaliação. Em Hackathons presenciais, organize espaço, internet, tomadas, mesas, projetor e condições de apoio. Em Hackathons online, prepare salas simultâneas, canal de comunicação e espaço para apresentação final."
+    },
+    {
+      "imperativo": "Organize os grupos e apresente as instruções iniciais",
+      "descricao_base": "Explique o desafio, os objetivos de aprendizagem, o tempo disponível, as entregas esperadas e os critérios de avaliação. Forme os grupos e oriente-os a compreender o problema, dividir responsabilidades, levantar ideias iniciais e definir uma estratégia de trabalho. A abertura deve deixar claro que o tempo é limitado e que a solução precisa ser viável dentro das condições dadas."
+    },
+    {
+      "imperativo": "Acompanhe o desenvolvimento intensivo da solução",
+      "descricao_base": "Durante o Hackathon, monitore o andamento dos grupos, tire dúvidas, ajude a remover impedimentos e ofereça feedback pontual. O professor deve apoiar a conexão entre problema, conteúdos curriculares, dados disponíveis e solução proposta, sem assumir a autoria da solução. Como o tempo é curto, é importante ajudar os grupos a priorizar o essencial e evitar dispersão."
+    },
+    {
+      "imperativo": "Estabeleça pontos de controle e ajustes de rota",
+      "descricao_base": "Inclua momentos breves de acompanhamento para que os grupos indiquem o que já fizeram, o que falta, quais dificuldades encontraram e que ajustes serão necessários. Esses checkpoints ajudam a manter o ritmo, favorecem a gestão do tempo e permitem correções antes da apresentação final."
+    },
+    {
+      "imperativo": "Organize a apresentação das soluções",
+      "descricao_base": "Reserve tempo suficiente para que os grupos apresentem o que produziram. A apresentação pode seguir formatos ágeis, como Elevator Pitch, demonstração rápida, storytelling orientado à decisão ou exposição técnica curta. Cada grupo deve explicitar o problema enfrentado, a solução desenvolvida, os dados ou evidências utilizados, as decisões tomadas, os limites da proposta e os próximos passos possíveis."
+    },
+    {
+      "imperativo": "Avalie as soluções e sistematize os aprendizados",
+      "descricao_base": "A avaliação pode ser realizada pelo professor, por pares, por uma banca convidada ou por uma combinação dessas possibilidades. Ao final, conduza uma síntese sobre os conhecimentos mobilizados, as estratégias usadas, as soluções mais consistentes, os erros recorrentes, as melhorias possíveis e os aprendizados gerados pela experiência."
+    }
+  ],
+  "mapeamento mental": [
+    {
+      "imperativo": "Defina o tema ou conceito central",
+      "descricao_base": "Escolha o assunto que será organizado visualmente. Pode ser um conceito, uma pergunta orientadora, um problema, um projeto, uma leitura, uma rotina, uma competência ou uma situação prática. O tema deve ser registrado no centro do mapa, de forma clara e sintética."
+    },
+    {
+      "imperativo": "Delimite o objetivo do mapa",
+      "descricao_base": "Explique aos estudantes por que o mapa será construído. Ele pode servir para levantar conhecimentos prévios, organizar uma explicação, planejar uma produção, sistematizar uma aula, comparar ideias, preparar uma apresentação ou revisar conteúdos. O objetivo orienta o nível de detalhamento e o tipo de relação que será representada."
+    },
+    {
+      "imperativo": "Levante os tópicos principais",
+      "descricao_base": "Peça que os estudantes identifiquem as ideias mais importantes relacionadas ao tema central. Esses tópicos devem formar os primeiros ramos do mapa. Nessa etapa, o foco é reconhecer grandes categorias, dimensões ou aspectos do assunto, evitando excesso de detalhes logo no início."
+    },
+    {
+      "imperativo": "Acrescente subtópicos e exemplos",
+      "descricao_base": "A partir dos tópicos principais, oriente os estudantes a acrescentar subtópicos, exemplos, conceitos relacionados, dúvidas, evidências, aplicações ou consequências. Essa expansão ajuda a mostrar como o conhecimento se organiza em diferentes níveis de abrangência."
+    },
+    {
+      "imperativo": "Estabeleça conexões entre as ideias",
+      "descricao_base": "Incentive os estudantes a indicar relações entre tópicos, usando linhas, setas, cores, palavras de ligação, símbolos ou agrupamentos visuais. As conexões podem indicar causa, consequência, comparação, oposição, sequência, hierarquia, dependência ou complementaridade. Esse passo é essencial para que o mapa não seja apenas uma lista espalhada no papel."
+    },
+    {
+      "imperativo": "Utilize recursos visuais para dar clareza ao mapa",
+      "descricao_base": "Oriente o uso de cores, formas, imagens, ícones, post-its ou marcações para diferenciar categorias, níveis de importância, dúvidas, prioridades ou relações. O recurso visual deve facilitar a leitura e não apenas decorar o mapa."
+    },
+    {
+      "imperativo": "Promova revisão individual ou coletiva",
+      "descricao_base": "Depois da primeira versão, peça que os estudantes revisem o mapa. Eles podem verificar se o tema central está claro, se os tópicos principais fazem sentido, se há ideias repetidas, se faltam conceitos importantes e se as relações estão compreensíveis. Em mapas colaborativos, essa revisão pode envolver negociação entre diferentes interpretações."
+    },
+    {
+      "imperativo": "Socialize os mapas produzidos",
+      "descricao_base": "Organize um momento para que os estudantes apresentem seus mapas à turma, a outros grupos ou ao professor. A apresentação deve explicitar as escolhas feitas: por que organizaram o tema daquela forma, quais relações consideraram mais importantes, que dúvidas surgiram e que aspectos foram revistos durante o processo."
+    },
+    {
+      "imperativo": "Sistematize os aprendizados",
+      "descricao_base": "Ao final, retome com a turma os principais padrões observados nos mapas. Compare semelhanças e diferenças entre as representações, destaque conceitos centrais, corrija equívocos e conecte as produções aos objetivos de aprendizagem. Se necessário, produza um mapa síntese coletivo."
+    },
+    {
+      "imperativo": "Avalie o processo e o produto",
+      "descricao_base": "Avalie não apenas a aparência do mapa, mas a pertinência dos conceitos selecionados, a qualidade das relações estabelecidas, a clareza da organização, a coerência com o tema estudado e a capacidade de explicar o raciocínio representado. O mapa pode ser usado como evidência de compreensão, revisão, planejamento ou aprendizagem colaborativa."
+    }
+  ],
+  "minute paper": [
+    {
+      "imperativo": "Defina a finalidade da coleta",
+      "descricao_base": "Antes de aplicar a estratégia, determine que tipo de informação você deseja obter. O objetivo pode ser identificar conhecimentos prévios, verificar compreensão, levantar dúvidas, obter feedback, estimular reflexão, avaliar uma atividade ou preparar a próxima etapa da aula."
+    },
+    {
+      "imperativo": "Escolha o momento de aplicação",
+      "descricao_base": "O Minute Paper pode ser utilizado no início da aula, para levantar expectativas ou conhecimentos prévios; durante a aula, para verificar compreensão e ajustar a mediação; ou ao final, para consolidar aprendizagens e identificar dúvidas remanescentes. A escolha do momento deve estar vinculada ao uso que será feito das respostas."
+    },
+    {
+      "imperativo": "Formule uma ou duas perguntas claras",
+      "descricao_base": "Prepare perguntas simples, diretas e abertas, que possam ser respondidas em pouco tempo. Exemplos: “Qual foi a ideia mais importante desta aula?”, “Que ponto ainda não ficou claro?”, “Que exemplo você consegue dar para este conceito?”, “Que relação você percebe entre o conteúdo de hoje e sua prática?” ou “Que pergunta você levaria para a próxima aula?”."
+    },
+    {
+      "imperativo": "Explique a dinâmica aos estudantes",
+      "descricao_base": "Informe que eles terão cerca de 60 segundos para registrar uma resposta breve e pessoal. Deixe claro se a resposta será anônima ou identificada, se será usada para avaliação, diagnóstico ou feedback, e como o professor pretende utilizar as informações coletadas."
+    },
+    {
+      "imperativo": "Cronometre o tempo de resposta",
+      "descricao_base": "Apresente a pergunta e controle o tempo de forma objetiva. O limite de tempo é parte da estratégia, pois estimula foco, síntese e resposta espontânea. Em ambientes online, é possível pedir que todos escrevam primeiro e enviem apenas ao final do tempo combinado, para evitar influência das respostas dos colegas."
+    },
+    {
+      "imperativo": "Colete os registros",
+      "descricao_base": "Recolha os papéis, post-its, cartões ou respostas digitais. Se a atividade for presencial, os registros podem ser agrupados por tema, dúvida ou padrão de resposta. Se for digital, as respostas podem ser exportadas, lidas em tempo real ou organizadas em nuvem de palavras, planilha ou painel."
+    },
+    {
+      "imperativo": "Identifique padrões e pontos críticos",
+      "descricao_base": "Analise rapidamente as respostas em busca de recorrências. Observe quais conceitos foram compreendidos, quais dúvidas apareceram com frequência, que exemplos foram mobilizados, que expectativas surgiram ou que aspectos da aula precisam ser retomados."
+    },
+    {
+      "imperativo": "Ofereça devolutiva ao grupo",
+      "descricao_base": "Compartilhe com a turma uma síntese das respostas. A devolutiva pode ocorrer imediatamente, ao final da aula ou no início do próximo encontro. O importante é mostrar que as contribuições foram lidas e que terão algum efeito sobre a mediação docente, a retomada de conteúdos ou o planejamento das próximas atividades."
+    },
+    {
+      "imperativo": "Use as respostas para ajustar o ensino",
+      "descricao_base": "Transforme as informações coletadas em ação pedagógica. As respostas podem orientar uma breve revisão, a reorganização de grupos, a seleção de exemplos, a criação de atividades complementares, o esclarecimento de dúvidas frequentes ou a escolha de novos materiais de apoio."
+    },
+    {
+      "imperativo": "Avalie a aprendizagem e o processo",
+      "descricao_base": "O Minute Paper pode ser usado como evidência formativa, sem necessariamente gerar nota. Avalie a capacidade de síntese, a pertinência das respostas, a evolução das dúvidas e a participação dos estudantes. Também é possível comparar registros de diferentes momentos para observar avanços na compreensão do grupo."
+    }
+  ],
+  "pecha kucha": [
+    {
+      "imperativo": "Defina o tema e o objetivo da apresentação",
+      "descricao_base": "Escolha o conteúdo, problema, projeto, leitura ou experiência que será apresentado. Explique aos estudantes qual é a finalidade da Pecha Kucha: informar, defender uma ideia, apresentar uma solução, sintetizar uma pesquisa, compartilhar um projeto ou convencer um público específico."
+    },
+    {
+      "imperativo": "Apresente o formato e suas restrições",
+      "descricao_base": "Explique a regra clássica dos 20 slides de 20 segundos, ou defina uma adaptação pedagógica mais curta, se necessário. Deixe claro que a limitação de tempo e de espaço não é um obstáculo, mas uma forma de desenvolver foco, síntese e comunicação precisa."
+    },
+    {
+      "imperativo": "Oriente a construção da mensagem central",
+      "descricao_base": "Antes de preparar os slides, peça que os estudantes definam a ideia principal da apresentação. A Pecha Kucha deve ter unidade narrativa: quem apresenta precisa saber qual mensagem deseja que o público retenha ao final."
+    },
+    {
+      "imperativo": "Planeje a sequência dos slides",
+      "descricao_base": "Oriente os estudantes a distribuir o conteúdo em uma sequência coerente. A apresentação pode incluir abertura, contextualização do problema, desenvolvimento das ideias principais, exemplos, evidências, implicações e fechamento. Cada slide deve corresponder a uma etapa da narrativa, evitando acúmulo de informações."
+    },
+    {
+      "imperativo": "Selecione imagens ou elementos visuais representativos",
+      "descricao_base": "Cada slide deve apoiar a fala com uma imagem, palavra-chave, gráfico, esquema ou elemento visual forte. Evite slides com excesso de texto. A imagem não deve ser apenas decorativa: precisa ampliar, sintetizar ou tensionar a ideia apresentada."
+    },
+    {
+      "imperativo": "Escreva o roteiro de fala",
+      "descricao_base": "Peça que os estudantes preparem uma fala breve para cada slide, adequada ao tempo disponível. O roteiro deve evitar leitura mecânica e priorizar frases claras, encadeamento lógico e transições suaves. O desafio é dizer o essencial sem perder naturalidade."
+    },
+    {
+      "imperativo": "Ensaie com controle rigoroso de tempo",
+      "descricao_base": "A apresentação deve ser ensaiada várias vezes. O ensaio permite ajustar ritmo, cortar excessos, melhorar transições, sincronizar fala e imagem e evitar aceleração no final. Os estudantes podem ensaiar individualmente, em duplas, diante de pequenos grupos ou por gravação."
+    },
+    {
+      "imperativo": "Realize a apresentação",
+      "descricao_base": "Durante a entrega, os slides avançam no tempo definido, e o estudante apresenta sua fala de forma objetiva, clara e expressiva. O foco deve estar na comunicação com o público, não na leitura do roteiro. O professor pode controlar o tempo ou configurar a apresentação para avanço automático."
+    },
+    {
+      "imperativo": "Promova feedback breve e orientado",
+      "descricao_base": "Após as apresentações, ofereça feedback com base em critérios previamente definidos, como clareza da mensagem, coerência da sequência, uso adequado das imagens, domínio do conteúdo, qualidade da síntese, precisão da fala e adequação ao tempo. O feedback também pode ser feito por pares."
+    },
+    {
+      "imperativo": "Sistematize a aprendizagem",
+      "descricao_base": "Ao final, retome com a turma o que foi aprendido por meio das apresentações. Discuta quais estratégias de comunicação funcionaram melhor, quais ideias foram mais bem sintetizadas e como o formato ajudou a selecionar o essencial. Quando pertinente, as Pecha Kuchas podem ser gravadas e incorporadas a um portfólio de aprendizagem."
+    },
+    {
+      "imperativo": "Avalie o produto e o processo",
+      "descricao_base": "Avalie tanto a apresentação final quanto o percurso de preparação. Considere pesquisa, seleção de informações, organização narrativa, curadoria visual, ensaio, domínio do conteúdo, clareza da fala e capacidade de respeitar as restrições do formato. A avaliação pode combinar rubrica do professor, autoavaliação e avaliação por pares."
+    }
+  ],
+  "canvas mania": [
+    {
+      "imperativo": "Selecione o problema ou tema",
+      "descricao_base": "Escolha uma situação, desafio, projeto, conceito ou produto que os estudantes deverão explorar. O tema deve justificar uma organização visual em partes, dimensões ou etapas."
+    },
+    {
+      "imperativo": "Defina o objetivo do canvas",
+      "descricao_base": "Determine se o canvas servirá para planejar, diagnosticar, criar, comparar, sintetizar, avaliar ou apresentar uma proposta. O objetivo orienta quais blocos serão necessários."
+    },
+    {
+      "imperativo": "Faça um levantamento inicial de tópicos",
+      "descricao_base": "Antes de desenhar o canvas, organize um mapa mental simples com o tema no centro e os principais aspectos relacionados ao redor. Essa etapa ajuda a identificar quais dimensões precisam aparecer no template."
+    },
+    {
+      "imperativo": "Selecione os blocos do canvas",
+      "descricao_base": "Escolha os campos que os estudantes deverão preencher. Cada bloco deve corresponder a uma pergunta ou dimensão relevante. Exemplos: problema, público, evidências, causas, solução, recursos, riscos, critérios, etapas, responsáveis, produto final e próximos passos."
+    },
+    {
+      "imperativo": "Organize visualmente os blocos",
+      "descricao_base": "Distribua os campos em uma página, tela ou mural. A organização pode seguir uma sequência lógica, uma hierarquia ou uma proximidade entre temas relacionados. Reserve mais espaço para os blocos que exigem maior elaboração."
+    },
+    {
+      "imperativo": "Nomeie cada bloco com clareza",
+      "descricao_base": "Use títulos curtos e objetivos. Sempre que necessário, inclua uma pergunta orientadora dentro do bloco. Isso evita que os estudantes preencham o canvas de forma genérica."
+    },
+    {
+      "imperativo": "Acrescente elementos visuais",
+      "descricao_base": "Utilize ícones, cores, setas, agrupamentos ou marcações para facilitar a leitura. Os recursos visuais devem ajudar a compreender a função de cada bloco, não apenas decorar o material."
+    },
+    {
+      "imperativo": "Teste o canvas antes da aplicação",
+      "descricao_base": "Verifique se os campos estão claros, se a sequência faz sentido, se há espaço suficiente para preenchimento e se o template realmente apoia o objetivo da atividade. Se possível, teste com um pequeno grupo."
+    },
+    {
+      "imperativo": "Disponibilize o canvas aos estudantes",
+      "descricao_base": "O canvas pode ser impresso, desenhado no quadro, distribuído em folha grande, compartilhado em documento colaborativo ou carregado em plataformas como Miro, Microsoft Whiteboard, Google Slides ou equivalentes."
+    },
+    {
+      "imperativo": "Oriente o preenchimento",
+      "descricao_base": "Explique o objetivo, os critérios, o tempo disponível e o tipo de resposta esperada em cada bloco. Durante a atividade, circule entre os grupos, faça perguntas e ajude a aprofundar respostas superficiais."
+    },
+    {
+      "imperativo": "Promova apresentação e revisão",
+      "descricao_base": "Depois do preenchimento, os grupos podem apresentar seus canvas, receber feedback e revisar a proposta. A comparação entre canvas ajuda a identificar diferentes estratégias de organização e solução."
+    },
+    {
+      "imperativo": "Avalie o produto e o processo",
+      "descricao_base": "Avalie a coerência entre os blocos, a clareza das ideias, a pertinência das respostas, a capacidade de síntese, a integração entre dimensões e a qualidade da proposta final."
+    }
+  ],
+  "aprendizagem baseada em jogos": [
+    {
+      "imperativo": "Defina o objetivo de aprendizagem e selecione o jogo",
+      "descricao_base": "Escolha um jogo digital ou analógico completo, ou desenhe um jogo educacional, considerando os objetivos de aprendizagem. O jogo deve permitir que os estudantes mobilizem conhecimentos, tomem decisões, enfrentem desafios e recebam feedback durante a experiência. A escolha não deve se basear apenas no potencial de engajamento, mas na relação entre o jogo e os objetivos de aprendizagem almejados."
+    },
+    {
+      "imperativo": "Analise a estrutura do jogo e sua adequação pedagógica",
+      "descricao_base": "Verifique se o jogo possui regras claras, objetivos definidos, desafios coerentes, narrativa ou contexto significativo, formas de feedback, níveis de dificuldade e possibilidades de decisão. Avalie também se o jogo é adequado ao tempo disponível, à faixa etária, aos recursos da instituição, à acessibilidade, à modalidade da aula e aos conhecimentos prévios dos estudantes."
+    },
+    {
+      "imperativo": "Prepare os estudantes para jogar com intenção educativa",
+      "descricao_base": "Apresente o contexto do jogo, as regras, os objetivos, o tempo disponível e os critérios de participação. Explique que a atividade não será avaliada apenas pelo “vencer” ou “perder”, mas pela qualidade das decisões, pelo raciocínio utilizado, pela colaboração, pela análise das consequências e pela capacidade de relacionar a experiência aos conteúdos curriculares."
+    },
+    {
+      "imperativo": "Conduza a experiência de jogo",
+      "descricao_base": "Durante o jogo, acompanhe as decisões dos estudantes, observe estratégias, dificuldades, interações, erros, acertos e formas de cooperação ou competição. O professor deve intervir apenas quando necessário para esclarecer regras, manter o foco pedagógico, apoiar a participação ou registrar evidências relevantes para a discussão posterior."
+    },
+    {
+      "imperativo": "Promova pausas para análise ou pontos de controle",
+      "descricao_base": "Quando o jogo for mais longo ou complexo, inclua pausas breves para que os estudantes registrem decisões tomadas, resultados obtidos, estratégias utilizadas, dúvidas e mudanças de rota. Essas pausas ajudam a transformar a experiência lúdica em objeto de análise e evitam que a atividade fique restrita ao entretenimento."
+    },
+    {
+      "imperativo": "Oriente a sistematização do que foi aprendido",
+      "descricao_base": "Ao final, conduza uma reflexão estruturada sobre o que aconteceu no jogo. Pergunte quais decisões foram tomadas, que consequências surgiram, que estratégias funcionaram, que erros foram cometidos, que conteúdos foram mobilizados e como a experiência se relaciona com situações reais ou profissionais. Essa etapa é decisiva para converter a vivência em aprendizagem."
+    },
+    {
+      "imperativo": "Avalie a aprendizagem e a transferência",
+      "descricao_base": "Avalie se os estudantes compreenderam os conceitos envolvidos, tomaram decisões fundamentadas, ajustaram estratégias com base no feedback, colaboraram adequadamente e conseguiram transferir a experiência do jogo para problemas, contextos ou práticas curriculares. A avaliação pode incluir registros de jogo, discussão, síntese reflexiva, relatório, mapa de decisões, apresentação ou autoavaliação."
+    }
+  ],
+  "gamificacao estrutural": [
+    {
+      "imperativo": "Defina os objetivos da gamificação",
+      "descricao_base": "Identifique quais comportamentos ou ações de aprendizagem se pretendem estimular: concluir unidades de estudo, entregar atividades, responder a quizzes, revisar materiais, participar de discussões ou colaborar com colegas."
+    },
+    {
+      "imperativo": "Escolha os elementos de jogo que serão usados",
+      "descricao_base": "Selecione recursos simples e coerentes com a proposta pedagógica, como pontos, medalhas, níveis, barras de progresso, certificados, mensagens de feedback, recompensas simbólicas ou ranqueamento. Em cursos colaborativos, o ranqueamento deve ser usado com cautela, pois pode deslocar o foco da cooperação para a competição."
+    },
+    {
+      "imperativo": "Crie o roteiro de pontuação, conquistas e feedback",
+      "descricao_base": "Defina quais ações geram pontos ou medalhas, quais critérios precisam ser cumpridos, quais níveis poderão ser alcançados e que mensagem os estudantes receberão ao concluir cada etapa. Esse roteiro deve deixar claro o que os estudantes precisam fazer para avançar."
+    },
+    {
+      "imperativo": "Prepare o sistema de acompanhamento",
+      "descricao_base": "Insira os critérios em uma planilha, tabela de controle, mural físico, no ambiente virtual de aprendizagem ou outro recurso compatível com a modalidade de ensino adotada. O importante é que os estudantes consigam visualizar seu progresso e compreender suas próximas metas."
+    },
+    {
+      "imperativo": "Comunique as regras aos estudantes",
+      "descricao_base": "Explique como a gamificação funcionará, quais ações serão reconhecidas, que recompensas ou feedbacks serão oferecidos e como o progresso será acompanhado. As regras devem ser simples, transparentes e diretamente relacionadas à aprendizagem."
+    },
+    {
+      "imperativo": "Acompanhe o progresso e ajuste quando necessário",
+      "descricao_base": "Monitore se os elementos de gamificação estão motivando a participação sem gerar ansiedade, competição inadequada ou foco excessivo em recompensas. Ajuste critérios, mensagens ou desafios conforme a resposta da turma."
+    },
+    {
+      "imperativo": "Sistematize o percurso e relacione progresso a aprendizagem",
+      "descricao_base": "Ao final, ajude os estudantes a perceber que pontos, medalhas ou níveis são apenas indicadores de percurso. O fechamento deve conectar as conquistas registradas aos objetivos de aprendizagem efetivamente alcançados."
+    }
+  ],
+  "gamificacao de conteudo": [
+    {
+      "imperativo": "Defina os objetivos de aprendizagem ou competências",
+      "descricao_base": "Determine o que os estudantes devem aprender, aplicar ou desenvolver por meio da experiência gamificada. A narrativa, os desafios e as decisões precisam estar diretamente relacionados aos objetivos de aprendizagem."
+    },
+    {
+      "imperativo": "Escolha o contexto e a duração da experiência",
+      "descricao_base": "Defina onde e quando a gamificação será aplicada: em uma aula, em ambiente presencial, online, híbrido, ambiente virtual, rede social, laboratório ou outro espaço de aprendizagem."
+    },
+    {
+      "imperativo": "Crie a situação-problema ou narrativa central",
+      "descricao_base": "Elabore uma situação real ou fictícia que dê sentido aos desafios. A narrativa deve indicar quem está envolvido, quais papéis serão assumidos, qual problema precisa ser enfrentado, que obstáculos aparecem e por que a situação exige a mobilização dos conteúdos curriculares."
+    },
+    {
+      "imperativo": "Defina papéis, desafios e sequência de atividades",
+      "descricao_base": "Organize as ações que os estudantes deverão realizar: decidir, resolver, construir, argumentar, escolher caminhos, responder a dilemas ou superar etapas. Cada atividade deve ter uma função no desenvolvimento da narrativa e no avanço da aprendizagem."
+    },
+    {
+      "imperativo": "Estabeleça consequências, feedback e critérios de avanço",
+      "descricao_base": "Determine o que acontece após cada decisão ou atividade: nova tentativa, avanço para outra etapa, consequência narrativa, feedback positivo ou negativo. As consequências devem ajudar os estudantes a perceber os efeitos de suas escolhas."
+    },
+    {
+      "imperativo": "Conduza a experiência gamificada",
+      "descricao_base": "Apresente a narrativa, explique as regras e acompanhe a participação dos estudantes. Durante a experiência, o professor deve observar decisões, apoiar a compreensão dos desafios, oferecer feedback e manter a conexão entre a dinâmica gamificada e os objetivos educacionais."
+    },
+    {
+      "imperativo": "Finalize com síntese e transferência da aprendizagem",
+      "descricao_base": "Ao término da gamificação, construa com os estudantes uma conclusão que relacione a situação vivida aos conceitos, habilidades e atitudes trabalhados. A pergunta central é: Como a resolução dessa situação ajuda a aplicar o conteúdo aprendido em outros contextos?"
+    }
+  ],
+  "simulacoes": [
+    {
+      "imperativo": "Defina o fenômeno, processo ou situação que será simulado",
+      "descricao_base": "Escolha um conteúdo em que variáveis, relações ou decisões sejam difíceis de visualizar numa aula expositiva (por exemplo, o comportamento de um algoritmo de aprendizado de máquina conforme os dados mudam, a propagação de erros em um pipeline de dados ou as consequências de uma decisão de negócio baseada em um modelo preditivo). A simulação deve permitir ao estudante compreender o fenômeno, processo ou situação por dentro, e não apenas observá-lo de fora."
+    },
+    {
+      "imperativo": "Selecione ou construa a simulação",
+      "descricao_base": "Simulações prontas como plataformas ou notebooks interativos permitem que os estudantes façam explorações sem a necessidade de uma programação avançada. O professor também pode construir simulações para verificar como a acurácia de um modelo de classificação varia conforme o tamanho do conjunto de treinamento, ou como um pipeline de dados com valores ausentes não tratados propaga erros até a saída do modelo."
+    },
+    {
+      "imperativo": "Apresente o modelo, as variáveis e os objetivos",
+      "descricao_base": "Antes de os estudantes interagirem com qualquer ferramenta de simulação, explique o que está sendo simulado e o que não está. Uma simulação de regressão linear, por exemplo, representa certas relações matemáticas, mas simplifica o contexto real dos dados. Deixe claro quais parâmetros podem ser alterados, quais métricas devem ser observadas e qual objetivo de aprendizagem orienta a atividade. Evidenciar os limites do modelo é tão importante quanto apresentar suas funcionalidades."
+    },
+    {
+      "imperativo": "Oriente a formulação de hipóteses antes da execução",
+      "descricao_base": "Peça que os estudantes façam previsões antes de rodar qualquer código ou interagir com a simulação. Perguntas úteis para essa etapa: “O que acontecerá com o erro do modelo se dobrarmos o número de dados de treino?”, “Quais features você acredita que mais influenciam a predição neste cenário?”, “Se o conjunto de treino for muito diferente do conjunto de teste, qual o impacto esperado?”. Registrar as hipóteses por escrito, ainda que informalmente, cria ancoragem para a análise posterior."
+    },
+    {
+      "imperativo": "Acompanhe a execução",
+      "descricao_base": "Durante a atividade, os estudantes manipulam parâmetros, executam células do notebook, observam gráficos, interpretam métricas e tomam decisões. O professor acompanha o processo, intervém para ajudar a interpretar saídas contraintuitivas (“Por que o modelo com mais variáveis foi pior?”), estimula comparações entre configurações diferentes e evita que os estudantes avancem sem compreender o que o resultado significa."
+    },
+    {
+      "imperativo": "Analise os resultados e compare cenários",
+      "descricao_base": "Oriente os estudantes a registrar o que aconteceu em cada configuração testada, comparar os resultados entre grupos ou tentativas, identificar padrões (“A acurácia aumentou até certo ponto e depois estabilizou. Por que isso aconteceu?”) e revisar as hipóteses formuladas na etapa 4. Esse ponto diferencia uma simulação de uma simples demonstração: é aqui que ocorre a investigação orientada. Tabelas de comparação, gráficos gerados pelos próprios estudantes e discussões curtas entre pares são recursos eficazes nesse momento."
+    },
+    {
+      "imperativo": "Faça a síntese e a conexão com contextos reais",
+      "descricao_base": "Encerre com uma conversa sobre o que a simulação permitiu compreender que uma explicação teórica sozinha não permitiria. Perguntas orientadoras: “Que conteúdos foram mobilizados?”, “Que decisões se mostraram mais adequadas e por quê?”, “Que limites o modelo apresenta e o que ele não consegue capturar da realidade?”, “Em que situação profissional esse tipo de raciocínio seria exigido?”. Conectar a experiência simulada a contextos reais (como um projeto de análise de dados para uma empresa, uma competição Kaggle, ou um caso de uso em saúde, agricultura ou finanças, por exemplo) fortalece o sentido da atividade e prepara os estudantes para mobilizar fora da sala de aula o que foi aprendido na simulação."
+    }
+  ],
+  "simulacao": [
+    {
+      "imperativo": "Defina o fenômeno, processo ou situação que será simulado",
+      "descricao_base": "Escolha um conteúdo em que variáveis, relações ou decisões sejam difíceis de visualizar numa aula expositiva (por exemplo, o comportamento de um algoritmo de aprendizado de máquina conforme os dados mudam, a propagação de erros em um pipeline de dados ou as consequências de uma decisão de negócio baseada em um modelo preditivo). A simulação deve permitir ao estudante compreender o fenômeno, processo ou situação por dentro, e não apenas observá-lo de fora."
+    },
+    {
+      "imperativo": "Selecione ou construa a simulação",
+      "descricao_base": "Simulações prontas como plataformas ou notebooks interativos permitem que os estudantes façam explorações sem a necessidade de uma programação avançada. O professor também pode construir simulações para verificar como a acurácia de um modelo de classificação varia conforme o tamanho do conjunto de treinamento, ou como um pipeline de dados com valores ausentes não tratados propaga erros até a saída do modelo."
+    },
+    {
+      "imperativo": "Apresente o modelo, as variáveis e os objetivos",
+      "descricao_base": "Antes de os estudantes interagirem com qualquer ferramenta de simulação, explique o que está sendo simulado e o que não está. Uma simulação de regressão linear, por exemplo, representa certas relações matemáticas, mas simplifica o contexto real dos dados. Deixe claro quais parâmetros podem ser alterados, quais métricas devem ser observadas e qual objetivo de aprendizagem orienta a atividade. Evidenciar os limites do modelo é tão importante quanto apresentar suas funcionalidades."
+    },
+    {
+      "imperativo": "Oriente a formulação de hipóteses antes da execução",
+      "descricao_base": "Peça que os estudantes façam previsões antes de rodar qualquer código ou interagir com a simulação. Perguntas úteis para essa etapa: “O que acontecerá com o erro do modelo se dobrarmos o número de dados de treino?”, “Quais features você acredita que mais influenciam a predição neste cenário?”, “Se o conjunto de treino for muito diferente do conjunto de teste, qual o impacto esperado?”. Registrar as hipóteses por escrito, ainda que informalmente, cria ancoragem para a análise posterior."
+    },
+    {
+      "imperativo": "Acompanhe a execução",
+      "descricao_base": "Durante a atividade, os estudantes manipulam parâmetros, executam células do notebook, observam gráficos, interpretam métricas e tomam decisões. O professor acompanha o processo, intervém para ajudar a interpretar saídas contraintuitivas (“Por que o modelo com mais variáveis foi pior?”), estimula comparações entre configurações diferentes e evita que os estudantes avancem sem compreender o que o resultado significa."
+    },
+    {
+      "imperativo": "Analise os resultados e compare cenários",
+      "descricao_base": "Oriente os estudantes a registrar o que aconteceu em cada configuração testada, comparar os resultados entre grupos ou tentativas, identificar padrões (“A acurácia aumentou até certo ponto e depois estabilizou. Por que isso aconteceu?”) e revisar as hipóteses formuladas na etapa 4. Esse ponto diferencia uma simulação de uma simples demonstração: é aqui que ocorre a investigação orientada. Tabelas de comparação, gráficos gerados pelos próprios estudantes e discussões curtas entre pares são recursos eficazes nesse momento."
+    },
+    {
+      "imperativo": "Faça a síntese e a conexão com contextos reais",
+      "descricao_base": "Encerre com uma conversa sobre o que a simulação permitiu compreender que uma explicação teórica sozinha não permitiria. Perguntas orientadoras: “Que conteúdos foram mobilizados?”, “Que decisões se mostraram mais adequadas e por quê?”, “Que limites o modelo apresenta e o que ele não consegue capturar da realidade?”, “Em que situação profissional esse tipo de raciocínio seria exigido?”. Conectar a experiência simulada a contextos reais (como um projeto de análise de dados para uma empresa, uma competição Kaggle, ou um caso de uso em saúde, agricultura ou finanças, por exemplo) fortalece o sentido da atividade e prepara os estudantes para mobilizar fora da sala de aula o que foi aprendido na simulação."
+    }
+  ],
+  "roleplay": [
+    {
+      "imperativo": "Defina a situação e os objetivos de aprendizagem",
+      "descricao_base": "Escolha uma situação real ou hipotética, preferencialmente envolvendo um por conflito, dilema, decisão ou diferentes interesses em jogo. Defina quais conceitos, habilidades ou atitudes os estudantes deverão mobilizar durante a atividade, como análise ética, escuta ativa, argumentação, negociação, interpretação de dados, tomada de decisão ou comunicação com diferentes públicos."
+    },
+    {
+      "imperativo": "Prepare os papéis e o cenário",
+      "descricao_base": "Elabore uma breve descrição de cada papel a ser representado, indicando quem é o personagem ou parte envolvida, qual sua posição na situação, quais interesses defende, quais informações possui e quais desafios enfrenta. O cenário deve apresentar contexto suficiente para orientar a atuação, sem determinar previamente o desfecho."
+    },
+    {
+      "imperativo": "Apresente a situação e distribua os papéis",
+      "descricao_base": "Explique a situação à turma e distribua os papéis entre estudantes voluntários ou indicados. Oriente os participantes a atuarem de acordo com a perspectiva do papel recebido, buscando compreender como aquela pessoa ou grupo perceberia o problema. Quando pertinente, estudantes que não estiverem atuando podem assumir o papel de observadores, registrando argumentos, decisões, conflitos, pontos de vista e evidências."
+    },
+    {
+      "imperativo": "Conduza a interação",
+      "descricao_base": "Durante o Roleplay, acompanhe a atuação dos estudantes, garantindo respeito, foco no cenário e coerência com os papéis definidos. A intervenção docente deve ser pontual: esclarecer regras, reorganizar a dinâmica, introduzir novas informações ou provocar aprofundamento, sem eximir os estudantes da responsabilidade de argumentar e tomar decisões."
+    },
+    {
+      "imperativo": "Promova troca de papéis ou mudança de perspectiva, quando pertinente",
+      "descricao_base": "Para aumentar a empatia, a atividade pode incluir troca de papéis durante ou ao final da interação. Isso ajuda os estudantes a perceber que uma mesma situação pode ser interpretada de forma diferente conforme a posição ocupada, os interesses envolvidos e as informações disponíveis."
+    },
+    {
+      "imperativo": "Realize a sistematização da aprendizagem",
+      "descricao_base": "Ao final da atuação, faça com os estudantes uma reflexão estruturada. Algumas perguntas possíveis são: “Como foi para você assumir esse papel?”, “Que interesses e dificuldades apareceram?”, “Que pontos de vista entraram em conflito?”, “Que argumentos foram mais consistentes?”, “Que conteúdos ajudaram a interpretar a situação?” e “Como essa experiência modifica a nossa compreensão do problema?”."
+    },
+    {
+      "imperativo": "Avalie a aprendizagem e a transferência",
+      "descricao_base": "Avalie se os estudantes compreenderam o papel desempenhado, argumentaram com coerência, consideraram diferentes perspectivas, mobilizaram conteúdos e refletiram sobre a situação vivida. Finalize relacionando a experiência a contextos reais, profissionais, técnicos ou sociais em que a escuta, a empatia e a tomada de decisão fundamentada sejam necessárias."
+    }
+  ],
+  "jogos serios com blocos 3d": [
+    {
+      "imperativo": "Selecione uma situação-problema",
+      "descricao_base": "Escolha um desafio real ou fictício relacionado aos objetivos de aprendizagem. A situação deve ser relevante, aberta e capaz de gerar diferentes interpretações. Redija um texto claro e breve para contextualizar o problema."
+    },
+    {
+      "imperativo": "Formule perguntas orientadoras",
+      "descricao_base": "Prepare perguntas que ajudem os participantes a interpretar o desafio. As perguntas devem provocar reflexão e não ter resposta óbvia. Exemplos: “Como você representa este problema?”, “Que forças estão em tensão?”, “Que solução poderia emergir?” ou “Que aspecto invisível precisa ser tornado visível?”."
+    },
+    {
+      "imperativo": "Apresente a metodologia aos participantes",
+      "descricao_base": "Explique que os blocos serão usados para representar ideias e significados, não para construir objetos perfeitos. O valor da atividade está na interpretação, na explicação do modelo e na conversa que ele provoca."
+    },
+    {
+      "imperativo": "Distribua os blocos e delimite o tempo de construção",
+      "descricao_base": "Ofereça materiais suficientes para que cada participante construa um modelo individual. Defina um tempo curto, para estimular foco e espontaneidade."
+    },
+    {
+      "imperativo": "Oriente a construção individual",
+      "descricao_base": "Peça que cada participante crie um modelo que represente sua compreensão do desafio. O modelo pode ser literal, simbólico, metafórico ou abstrato. O importante é que o participante consiga explicar o significado de sua construção."
+    },
+    {
+      "imperativo": "Promova a apresentação nos pequenos grupos",
+      "descricao_base": "Cada participante apresenta seu modelo, explicando o que construiu, que elementos representam partes do problema e que significados atribuiu ao desafio. Os colegas devem escutar e fazer perguntas de esclarecimento."
+    },
+    {
+      "imperativo": "Conduza a construção de uma compreensão coletiva",
+      "descricao_base": "Após as apresentações individuais, cada grupo discute pontos comuns, divergências e novas percepções. Em seguida, pode construir um modelo coletivo ou redigir uma síntese da compreensão compartilhada do desafio."
+    },
+    {
+      "imperativo": "Oriente a criação de possíveis soluções",
+      "descricao_base": "A partir da compreensão coletiva, os grupos podem construir novos modelos que representem soluções, cenários futuros, caminhos de ação ou alternativas de intervenção."
+    },
+    {
+      "imperativo": "Socialize os modelos com a turma",
+      "descricao_base": "Cada grupo apresenta sua síntese ou solução para os demais. A apresentação deve explicitar o raciocínio do grupo, os elementos do modelo e as decisões tomadas."
+    },
+    {
+      "imperativo": "Sistematize a aprendizagem",
+      "descricao_base": "Retome os conceitos envolvidos, as diferentes interpretações do problema, as soluções propostas e os aprendizados produzidos pela materialização das ideias."
+    },
+    {
+      "imperativo": "Avalie o processo",
+      "descricao_base": "Avalie a participação individual, a clareza na explicação dos modelos, a escuta entre pares, a colaboração, a qualidade das sínteses e a pertinência das soluções propostas."
+    }
+  ],
+  "escape room": [
+    {
+      "imperativo": "Defina os objetivos de aprendizagem",
+      "descricao_base": "Determine quais conteúdos, competências ou atitudes serão mobilizados durante o jogo. Os desafios devem exigir aplicação do conhecimento, e não apenas tentativa aleatória de resolver enigmas."
+    },
+    {
+      "imperativo": "Escolha o tema central",
+      "descricao_base": "Selecione um tema curricular, interdisciplinar ou institucional que sustentará a experiência. O tema deve ser adequado ao perfil dos participantes e suficientemente interessante para gerar engajamento."
+    },
+    {
+      "imperativo": "Crie a narrativa do escape",
+      "descricao_base": "Elabore uma história que situe os participantes em uma missão. A narrativa deve apresentar contexto, problema, objetivo, urgência e papel dos jogadores. Ela pode envolver mistério, investigação, missão científica, desafio histórico, situação profissional ou problema social."
+    },
+    {
+      "imperativo": "Defina o ambiente físico ou digital",
+      "descricao_base": "Escolha onde a experiência ocorrerá: sala de aula, biblioteca, laboratório, ambiente virtual, formulário interativo, site, plataforma específica ou combinação desses espaços. Verifique recursos, acessibilidade e tempo disponível."
+    },
+    {
+      "imperativo": "Prepare o recurso de abertura",
+      "descricao_base": "Use vídeo, áudio, carta, quadrinho, apresentação, notícia fictícia, mensagem codificada ou outro recurso para introduzir a narrativa e despertar curiosidade. A abertura deve explicar o cenário sem revelar as respostas."
+    },
+    {
+      "imperativo": "Elabore os enigmas e desafios",
+      "descricao_base": "Crie uma sequência de charadas, problemas, pistas ou atividades alinhadas aos objetivos de aprendizagem. Cada desafio deve exigir raciocínio, aplicação de conteúdo, observação, colaboração ou tomada de decisão."
+    },
+    {
+      "imperativo": "Organize regras e instruções",
+      "descricao_base": "Defina tamanho dos grupos, tempo total, uso permitido de materiais, pedidos de ajuda, critérios de avanço, forma de validação das respostas e comportamento esperado durante o jogo."
+    },
+    {
+      "imperativo": "Teste o escape antes da aplicação",
+      "descricao_base": "Verifique se os enigmas são compreensíveis, se o tempo é adequado, se as pistas funcionam, se a sequência faz sentido e se não há respostas ambíguas ou bloqueios excessivos."
+    },
+    {
+      "imperativo": "Implemente a experiência",
+      "descricao_base": "Apresente a narrativa, organize os grupos e acompanhe o jogo. O professor atua como mestre do jogo ou mediador, oferecendo pistas quando necessário, observando colaboração e garantindo que a experiência permaneça segura e pedagógica."
+    },
+    {
+      "imperativo": "Conduza uma conversa reflexiva",
+      "descricao_base": "Após o escape, pergunte que estratégias foram usadas, quais conceitos foram mobilizados, que dificuldades apareceram, como o grupo colaborou e como os desafios se relacionavam com o conteúdo estudado."
+    },
+    {
+      "imperativo": "Avalie a aprendizagem e a experiência",
+      "descricao_base": "Aplique um breve questionário, rubrica ou atividade reflexiva. Avalie tanto o desempenho no jogo quanto a compreensão conceitual, a colaboração, a comunicação e a capacidade de transferir o aprendizado para outras situações."
+    }
+  ],
+  "escape room educacional": [
+    {
+      "imperativo": "Defina os objetivos de aprendizagem",
+      "descricao_base": "Determine quais conteúdos, competências ou atitudes serão mobilizados durante o jogo. Os desafios devem exigir aplicação do conhecimento, e não apenas tentativa aleatória de resolver enigmas."
+    },
+    {
+      "imperativo": "Escolha o tema central",
+      "descricao_base": "Selecione um tema curricular, interdisciplinar ou institucional que sustentará a experiência. O tema deve ser adequado ao perfil dos participantes e suficientemente interessante para gerar engajamento."
+    },
+    {
+      "imperativo": "Crie a narrativa do escape",
+      "descricao_base": "Elabore uma história que situe os participantes em uma missão. A narrativa deve apresentar contexto, problema, objetivo, urgência e papel dos jogadores. Ela pode envolver mistério, investigação, missão científica, desafio histórico, situação profissional ou problema social."
+    },
+    {
+      "imperativo": "Defina o ambiente físico ou digital",
+      "descricao_base": "Escolha onde a experiência ocorrerá: sala de aula, biblioteca, laboratório, ambiente virtual, formulário interativo, site, plataforma específica ou combinação desses espaços. Verifique recursos, acessibilidade e tempo disponível."
+    },
+    {
+      "imperativo": "Prepare o recurso de abertura",
+      "descricao_base": "Use vídeo, áudio, carta, quadrinho, apresentação, notícia fictícia, mensagem codificada ou outro recurso para introduzir a narrativa e despertar curiosidade. A abertura deve explicar o cenário sem revelar as respostas."
+    },
+    {
+      "imperativo": "Elabore os enigmas e desafios",
+      "descricao_base": "Crie uma sequência de charadas, problemas, pistas ou atividades alinhadas aos objetivos de aprendizagem. Cada desafio deve exigir raciocínio, aplicação de conteúdo, observação, colaboração ou tomada de decisão."
+    },
+    {
+      "imperativo": "Organize regras e instruções",
+      "descricao_base": "Defina tamanho dos grupos, tempo total, uso permitido de materiais, pedidos de ajuda, critérios de avanço, forma de validação das respostas e comportamento esperado durante o jogo."
+    },
+    {
+      "imperativo": "Teste o escape antes da aplicação",
+      "descricao_base": "Verifique se os enigmas são compreensíveis, se o tempo é adequado, se as pistas funcionam, se a sequência faz sentido e se não há respostas ambíguas ou bloqueios excessivos."
+    },
+    {
+      "imperativo": "Implemente a experiência",
+      "descricao_base": "Apresente a narrativa, organize os grupos e acompanhe o jogo. O professor atua como mestre do jogo ou mediador, oferecendo pistas quando necessário, observando colaboração e garantindo que a experiência permaneça segura e pedagógica."
+    },
+    {
+      "imperativo": "Conduza uma conversa reflexiva",
+      "descricao_base": "Após o escape, pergunte que estratégias foram usadas, quais conceitos foram mobilizados, que dificuldades apareceram, como o grupo colaborou e como os desafios se relacionavam com o conteúdo estudado."
+    },
+    {
+      "imperativo": "Avalie a aprendizagem e a experiência",
+      "descricao_base": "Aplique um breve questionário, rubrica ou atividade reflexiva. Avalie tanto o desempenho no jogo quanto a compreensão conceitual, a colaboração, a comunicação e a capacidade de transferir o aprendizado para outras situações."
+    }
+  ],
+  "vivencia metodologia imersiva multissensorial": [
+    {
+      "imperativo": "Defina os objetivos de aprendizagem",
+      "descricao_base": "Determine que conteúdo, competência ou experiência será desenvolvida. A vivência deve ter propósito pedagógico claro: compreender um fenômeno, explorar um conceito, desenvolver empatia, experimentar uma situação, analisar um ambiente ou produzir uma resposta criativa."
+    },
+    {
+      "imperativo": "Escolha os sentidos que serão mobilizados",
+      "descricao_base": "Selecione pelo menos duas modalidades sensoriais relevantes para a experiência. Por exemplo: visão e audição para análise audiovisual; tato e visão para construção de modelos; olfato e memória para narrativas; movimento e espaço para compreensão corporal de conceitos."
+    },
+    {
+      "imperativo": "Relacione cada estímulo ao objetivo pedagógico",
+      "descricao_base": "Para cada sentido mobilizado, defina sua função na aprendizagem. Pergunte: “Este recurso ajuda a compreender melhor o tema?”, “Que percepção ele ativa?”, “Que reflexão ele provoca?” e “Como será conectado ao conteúdo?”."
+    },
+    {
+      "imperativo": "Liste materiais e recursos necessários",
+      "descricao_base": "Organize objetos, imagens, sons, vídeos, aromas, alimentos, tecidos, mapas, ferramentas digitais, kits, espaços físicos ou ambientes virtuais necessários para a vivência. Considere segurança, acessibilidade, higiene, custo e disponibilidade."
+    },
+    {
+      "imperativo": "Planeje o espaço da experiência",
+      "descricao_base": "Defina como a sala, laboratório, pátio, ambiente virtual ou espaço híbrido será organizado. A disposição deve favorecer imersão, circulação, interação e foco nos estímulos selecionados."
+    },
+    {
+      "imperativo": "Crie uma sequência de atividades",
+      "descricao_base": "Organize a vivência em etapas: preparação, exploração sensorial, registro de percepções, discussão, produção e síntese. A sequência deve evitar dispersão e orientar os estudantes a transformar sensações em reflexão."
+    },
+    {
+      "imperativo": "Prepare orientações para os participantes",
+      "descricao_base": "Explique o propósito da vivência, os cuidados necessários, a forma de participação e o tipo de registro esperado. Se houver recursos enviados previamente para atividades online, garanta instruções claras de uso."
+    },
+    {
+      "imperativo": "Conduza a experiência",
+      "descricao_base": "Durante a vivência, acompanhe as reações, faça perguntas, estimule observação, escuta, comparação e registro. O professor deve ajudar os estudantes a relacionar percepções sensoriais a conceitos, sentimentos, hipóteses ou decisões."
+    },
+    {
+      "imperativo": "Promova reflexão após a experiência",
+      "descricao_base": "Organize um momento de conversa, escrita reflexiva, mapa visual ou compartilhamento em grupo. Pergunte: “O que foi percebido?”, “Que sentido foi mais mobilizado?”, “Que relação isso tem com o conteúdo?” e “O que a experiência ajudou a compreender?”."
+    },
+    {
+      "imperativo": "Avalie a aprendizagem e a experiência",
+      "descricao_base": "A avaliação pode envolver questionário reflexivo, produção criativa, relato, portfólio, discussão ou rubrica. Considere tanto a participação quanto a capacidade de interpretar a vivência à luz dos objetivos de aprendizagem."
+    }
+  ],
+  "vivencia imersiva multissensorial": [
+    {
+      "imperativo": "Defina os objetivos de aprendizagem",
+      "descricao_base": "Determine que conteúdo, competência ou experiência será desenvolvida. A vivência deve ter propósito pedagógico claro: compreender um fenômeno, explorar um conceito, desenvolver empatia, experimentar uma situação, analisar um ambiente ou produzir uma resposta criativa."
+    },
+    {
+      "imperativo": "Escolha os sentidos que serão mobilizados",
+      "descricao_base": "Selecione pelo menos duas modalidades sensoriais relevantes para a experiência. Por exemplo: visão e audição para análise audiovisual; tato e visão para construção de modelos; olfato e memória para narrativas; movimento e espaço para compreensão corporal de conceitos."
+    },
+    {
+      "imperativo": "Relacione cada estímulo ao objetivo pedagógico",
+      "descricao_base": "Para cada sentido mobilizado, defina sua função na aprendizagem. Pergunte: “Este recurso ajuda a compreender melhor o tema?”, “Que percepção ele ativa?”, “Que reflexão ele provoca?” e “Como será conectado ao conteúdo?”."
+    },
+    {
+      "imperativo": "Liste materiais e recursos necessários",
+      "descricao_base": "Organize objetos, imagens, sons, vídeos, aromas, alimentos, tecidos, mapas, ferramentas digitais, kits, espaços físicos ou ambientes virtuais necessários para a vivência. Considere segurança, acessibilidade, higiene, custo e disponibilidade."
+    },
+    {
+      "imperativo": "Planeje o espaço da experiência",
+      "descricao_base": "Defina como a sala, laboratório, pátio, ambiente virtual ou espaço híbrido será organizado. A disposição deve favorecer imersão, circulação, interação e foco nos estímulos selecionados."
+    },
+    {
+      "imperativo": "Crie uma sequência de atividades",
+      "descricao_base": "Organize a vivência em etapas: preparação, exploração sensorial, registro de percepções, discussão, produção e síntese. A sequência deve evitar dispersão e orientar os estudantes a transformar sensações em reflexão."
+    },
+    {
+      "imperativo": "Prepare orientações para os participantes",
+      "descricao_base": "Explique o propósito da vivência, os cuidados necessários, a forma de participação e o tipo de registro esperado. Se houver recursos enviados previamente para atividades online, garanta instruções claras de uso."
+    },
+    {
+      "imperativo": "Conduza a experiência",
+      "descricao_base": "Durante a vivência, acompanhe as reações, faça perguntas, estimule observação, escuta, comparação e registro. O professor deve ajudar os estudantes a relacionar percepções sensoriais a conceitos, sentimentos, hipóteses ou decisões."
+    },
+    {
+      "imperativo": "Promova reflexão após a experiência",
+      "descricao_base": "Organize um momento de conversa, escrita reflexiva, mapa visual ou compartilhamento em grupo. Pergunte: “O que foi percebido?”, “Que sentido foi mais mobilizado?”, “Que relação isso tem com o conteúdo?” e “O que a experiência ajudou a compreender?”."
+    },
+    {
+      "imperativo": "Avalie a aprendizagem e a experiência",
+      "descricao_base": "A avaliação pode envolver questionário reflexivo, produção criativa, relato, portfólio, discussão ou rubrica. Considere tanto a participação quanto a capacidade de interpretar a vivência à luz dos objetivos de aprendizagem."
+    }
+  ],
+  "diagnostico coletivo": [
+    {
+      "imperativo": "Defina o propósito do diagnóstico",
+      "descricao_base": "Determine que decisão pedagógica o diagnóstico deverá apoiar. O objetivo pode ser conhecer o perfil da turma, mapear conhecimentos prévios, identificar expectativas, levantar dificuldades, avaliar uma metodologia, verificar engajamento ou subsidiar a formação de grupos."
+    },
+    {
+      "imperativo": "Escolha as dimensões a serem investigadas",
+      "descricao_base": "Selecione os aspectos que serão coletados. Exemplos: familiaridade com um tema, experiência prévia, nível de confiança, interesse, expectativas, dificuldades percebidas, disponibilidade de tempo, acesso a recursos, preferências de aprendizagem ou avaliação de uma atividade."
+    },
+    {
+      "imperativo": "Formule questões objetivas e claras",
+      "descricao_base": "Elabore perguntas que gerem dados fáceis de consolidar. Escalas, múltipla escolha, seleção de alternativas e respostas curtas são úteis para produzir gráficos e sínteses rápidas. Quando necessário, inclua uma pergunta aberta para captar justificativas ou observações qualitativas."
+    },
+    {
+      "imperativo": "Defina se a coleta será anônima ou identificada",
+      "descricao_base": "A coleta anônima favorece espontaneidade, especialmente em temas sensíveis. A coleta identificada pode ser útil quando o objetivo é personalizar percursos, acompanhar estudantes específicos ou formar grupos com base em perfis."
+    },
+    {
+      "imperativo": "Escolha o instrumento de coleta",
+      "descricao_base": "Utilize formulários eletrônicos, aplicativos de enquete, ambiente virtual de aprendizagem, planilha, cartões, post-its ou votação manual. A escolha deve considerar tempo disponível, infraestrutura tecnológica, tamanho da turma e finalidade do diagnóstico."
+    },
+    {
+      "imperativo": "Aplique o diagnóstico ao grupo",
+      "descricao_base": "Explique brevemente o objetivo da coleta e solicite as respostas. O processo deve ser rápido e direto. Em ambientes digitais, os resultados podem ser exibidos automaticamente; em contextos sem tecnologia, o professor pode consolidar as respostas manualmente ou com apoio de uma planilha."
+    },
+    {
+      "imperativo": "Organize e visualize os dados",
+      "descricao_base": "Transforme as respostas em gráficos, tabelas, percentuais, painéis ou sínteses visuais. O valor pedagógico da estratégia aumenta quando os dados deixam de ser apenas registros e passam a revelar padrões compreensíveis para o grupo."
+    },
+    {
+      "imperativo": "Compartilhe os resultados com a turma",
+      "descricao_base": "Apresente os dados consolidados, preservando a privacidade dos participantes quando necessário. Convide os estudantes a interpretar os resultados: “O que esses dados mostram?”, “Que padrões aparecem?”, “Que diferenças existem no grupo?” e “Que decisões podemos tomar a partir disso?”."
+    },
+    {
+      "imperativo": "Tome decisões pedagógicas com base nos dados",
+      "descricao_base": "Use o diagnóstico para ajustar o planejamento, selecionar exemplos, retomar conceitos, diferenciar atividades, organizar grupos, propor trilhas, redefinir ritmo ou escolher estratégias de apoio. O diagnóstico só se completa quando gera alguma forma de ação pedagógica."
+    },
+    {
+      "imperativo": "Registre o diagnóstico como linha de base",
+      "descricao_base": "Sempre que pertinente, guarde os resultados para comparação posterior. Isso permite verificar evolução, mudanças de percepção, avanços de conhecimento ou impacto de uma intervenção."
+    },
+    {
+      "imperativo": "Avalie o processo",
+      "descricao_base": "Reflita se as questões foram adequadas, se os dados coletados foram úteis, se a visualização facilitou a compreensão do grupo e se as decisões tomadas a partir do diagnóstico foram pertinentes. Essa análise ajuda a aperfeiçoar coletas futuras."
+    }
+  ],
+  "extrato de participacao": [
+    {
+      "imperativo": "Defina a finalidade do extrato",
+      "descricao_base": "Determine que tipo de acompanhamento será realizado. O extrato pode apoiar autorregulação, feedback formativo, acompanhamento de engajamento, identificação de risco, personalização de atividades ou reconhecimento da participação dos estudantes."
+    },
+    {
+      "imperativo": "Escolha as categorias de dados",
+      "descricao_base": "Selecione quais aspectos serão monitorados. Exemplos: presença, pontualidade, acesso a materiais, realização de leituras, entrega de atividades, participação em discussões, colaboração em grupo, respostas a quizzes, desempenho em avaliações, revisão de tarefas ou interação no ambiente virtual."
+    },
+    {
+      "imperativo": "Estabeleça critérios claros de registro",
+      "descricao_base": "Para cada categoria, defina o que será considerado participação, conclusão, desempenho ou engajamento. Evite critérios vagos. Se for registrar participação em discussão, por exemplo, indique se será considerada a frequência, a pertinência, a profundidade ou a contribuição para o grupo."
+    },
+    {
+      "imperativo": "Prepare a matriz de acompanhamento",
+      "descricao_base": "Crie uma tabela, planilha ou painel com os nomes dos estudantes no eixo vertical e as categorias de análise no eixo horizontal. Inclua campos para somas, médias, percentuais, observações qualitativas ou indicadores de progresso."
+    },
+    {
+      "imperativo": "Colete os dados ao longo do percurso",
+      "descricao_base": "Alimente a matriz durante as aulas ou a partir dos registros do ambiente digital. O acompanhamento pode ser manual, em planilha, ou automático, quando houver relatórios de plataformas, sistemas de gestão da aprendizagem ou ferramentas digitais."
+    },
+    {
+      "imperativo": "Analise os padrões de participação",
+      "descricao_base": "Observe dados individuais e coletivos. Verifique quem está participando de forma consistente, quem reduziu a presença, quais atividades tiveram menor adesão, que tipos de interação são mais frequentes e que estudantes podem precisar de apoio."
+    },
+    {
+      "imperativo": "Compare os dados com critérios ou médias do grupo",
+      "descricao_base": "Quando apropriado, apresente ao estudante sua posição em relação aos critérios esperados ou à média da turma. Essa comparação deve ser usada com cuidado, para apoiar autorregulação, e não para expor ou constranger."
+    },
+    {
+      "imperativo": "Elabore devolutivas personalizadas",
+      "descricao_base": "Transforme os dados em feedback claro, respeitoso e acionável. A devolutiva deve indicar pontos fortes, lacunas, padrões observados e próximos passos. Sempre que possível, inclua recomendações específicas: retomar uma leitura, participar de uma discussão, revisar uma atividade, procurar apoio ou reorganizar o tempo de estudo."
+    },
+    {
+      "imperativo": "Entregue o extrato de forma individual e privada",
+      "descricao_base": "Compartilhe os dados com cada estudante, preservando a privacidade. O extrato pode ser enviado por e-mail, ambiente virtual, mensagem individual, documento impresso ou reunião breve de acompanhamento."
+    },
+    {
+      "imperativo": "Oriente o uso do extrato para autorregulação",
+      "descricao_base": "Peça que os estudantes analisem seus dados e definam uma meta de melhoria. Eles podem responder a perguntas como: “Que padrão aparece no meu percurso?”, “O que preciso manter?”, “O que preciso ajustar?” e “Que ação concreta posso realizar antes da próxima etapa?”."
+    },
+    {
+      "imperativo": "Reavalie após novas atividades",
+      "descricao_base": "Atualize os dados e compare a evolução. O valor do extrato aumenta quando ele é usado de forma recorrente, permitindo que estudantes e professores acompanhem mudanças ao longo do tempo."
+    },
+    {
+      "imperativo": "Avalie o processo de acompanhamento",
+      "descricao_base": "Ao final, analise se os dados coletados foram relevantes, se o esforço de registro foi viável, se os feedbacks ajudaram os estudantes e se o extrato contribuiu para maior participação, organização e aprendizagem."
+    }
+  ],
+  "trilhas de aprendizagem": [
+    {
+      "imperativo": "Identifique as necessidades de aprendizagem",
+      "descricao_base": "Analise quais competências, conhecimentos, habilidades ou atitudes precisam ser desenvolvidos. Essa análise pode partir de objetivos curriculares, diagnóstico coletivo, avaliação inicial, demandas institucionais, lacunas de desempenho ou interesses dos estudantes."
+    },
+    {
+      "imperativo": "Caracterize o público-alvo",
+      "descricao_base": "Levante informações sobre quem seguirá as trilhas: conhecimentos prévios, experiências, interesses, dificuldades, disponibilidade de tempo, acesso a tecnologias, nível de autonomia e objetivos individuais ou coletivos. Essa caracterização permite desenhar percursos mais adequados."
+    },
+    {
+      "imperativo": "Defina os critérios de diferenciação das trilhas",
+      "descricao_base": "Escolha como os percursos serão organizados. As trilhas podem ser diferenciadas por nível de conhecimento, área de interesse, tipo de competência, ritmo de aprendizagem, modalidade, perfil profissional, grau de complexidade ou desempenho em atividades diagnósticas."
+    },
+    {
+      "imperativo": "Estabeleça os objetivos de cada trilha",
+      "descricao_base": "Para cada percurso, defina o que o estudante deverá ser capaz de compreender, produzir, resolver, demonstrar ou aplicar ao final. Os objetivos precisam ser claros para orientar a escolha de atividades, recursos e avaliações."
+    },
+    {
+      "imperativo": "Mapeie recursos e experiências de aprendizagem",
+      "descricao_base": "Selecione ou produza os materiais que comporão cada trilha: textos, vídeos, podcasts, aulas, tutoriais, estudos de caso, simulações, atividades práticas, fóruns, projetos, mentorias, exercícios, quizzes, desafios ou objetos de aprendizagem."
+    },
+    {
+      "imperativo": "Organize a sequência e as possibilidades de escolha",
+      "descricao_base": "Defina quais atividades são obrigatórias, quais são opcionais, quais servem como aprofundamento e quais funcionam como recuperação ou apoio. A trilha pode ser linear, ramificada, modular ou aberta, dependendo dos objetivos e do nível de autonomia esperado."
+    },
+    {
+      "imperativo": "Defina critérios de entrada, progressão e conclusão",
+      "descricao_base": "Estabeleça como o estudante acessa cada trilha, como avança no percurso e como demonstra que alcançou os objetivos. Esses critérios podem envolver diagnóstico inicial, conclusão de atividades, desempenho mínimo, produção de evidências ou escolha orientada pelo professor."
+    },
+    {
+      "imperativo": "Disponibilize as trilhas aos estudantes",
+      "descricao_base": "Apresente os percursos de forma clara, com orientações sobre objetivos, atividades, prazos, produtos esperados, critérios de avaliação e formas de apoio. Se houver ambiente digital, organize os recursos em módulos, páginas, links ou painéis de navegação."
+    },
+    {
+      "imperativo": "Acompanhe o percurso dos estudantes",
+      "descricao_base": "Monitore participação, progresso, dúvidas, entregas e desempenho. O acompanhamento pode ser feito por extrato de participação, dashboards, registros do professor, relatórios do ambiente virtual ou momentos de tutoria e feedback."
+    },
+    {
+      "imperativo": "Ofereça apoio e reorientação",
+      "descricao_base": "Ao longo da trilha, alguns estudantes podem precisar mudar de percurso, retomar atividades, acessar materiais de apoio, avançar para desafios mais complexos ou receber orientação individual. A flexibilidade da trilha deve ser acompanhada por mediação docente."
+    },
+    {
+      "imperativo": "Avalie a aprendizagem e a efetividade das trilhas",
+      "descricao_base": "Avalie tanto o desempenho dos estudantes quanto a qualidade da solução educacional. Verifique se os objetivos foram alcançados, se os recursos foram adequados, se as escolhas oferecidas fizeram sentido, se houve sobrecarga ou lacunas, e se as trilhas contribuíram para personalização e autonomia."
+    },
+    {
+      "imperativo": "Revise e aperfeiçoe os percursos",
+      "descricao_base": "Com base nos dados de participação, desempenho e feedback dos estudantes, ajuste conteúdos, atividades, critérios, sequências e formas de apoio. As trilhas devem ser vistas como percursos em evolução, capazes de se adaptar a novos contextos e necessidades. Analítica da Aprendizagem A Analítica da Aprendizagem, que faz uso sistemático do poder computacional para coletar, tratar e transformar dados relativos à aprendizagem, apoiando assim a tomada de decisão de educadores, gestores e dos próprios estudantes (Chatti et al., 2012). A partir de uma perspectiva temporal, essa abordagem responde a três tipos de questões: sobre o passado (o que aconteceu e por quê), o presente (o que está acontecendo e o que fazer agora) e o futuro (o que tende a acontecer). Com isso, vai além da análise retrospectiva, oferecendo inteligência acionável para intervenções humanas em tempo real e planejamento de ações futuras. Passo a passo para a implementação da Analítica da Aprendizagem"
+    }
+  ],
+  "metodologia analitica da aprendizagem": [
+    {
+      "imperativo": "Defina o objetivo pedagógico da análise",
+      "descricao_base": "Determine qual decisão pedagógica os dados deverão apoiar (exemplos: identificar conhecimentos prévios dos estudantes, identificar dificuldades conceituais, verificar engajamento, monitorar a evolução individual ou coletiva, prever risco de baixo desempenho, personalizar atividades ou avaliar a efetividade de uma intervenção)."
+    },
+    {
+      "imperativo": "Escolha os indicadores e as fontes de dados",
+      "descricao_base": "Defina quais evidências serão coletadas e de onde elas virão. Na educação presencial, podem ser usados registros de observação, rubricas de avaliação, listas de presença estendidas, mapas de participação, checklists, avaliações diagnósticas, produções dos estudantes e formulários rápidos. Em ambientes digitais, podem ser usados dados de acesso, tempo de permanência, conclusão de atividades, resultados de quizzes, postagens em fóruns, trilhas percorridas e entregas realizadas."
+    },
+    {
+      "imperativo": "Colete e organize os dados",
+      "descricao_base": "Reúna os dados de forma simples, ética e utilizável. Em contextos presenciais, isso pode envolver planilhas de acompanhamento, formulários online de apoio, registros do professor, rubricas de avaliação preenchidas e sínteses de atividades. Em contextos digitais, isso pode envolver relatórios do AVA, planilhas exportadas, dashboards ou registros automáticos. Os dados precisam estar organizados para permitir comparação, leitura de padrões e acompanhamento ao longo do tempo."
+    },
+    {
+      "imperativo": "Analise os dados e identifique padrões",
+      "descricao_base": "Interprete os dados considerando os objetivos definidos. Observe, por exemplo, quais conteúdos geram mais erro, quais estudantes não estão avançando, quais atividades tiveram menor participação, quais tipos de dúvidas se repetem, quais grupos precisam de apoio ou quais evidências indicam progresso. A análise pode olhar para o passado, para compreender o que ocorreu; para o presente, para decidir o que fazer no momento; e para o futuro, para antecipar tendências ou riscos."
+    },
+    {
+      "imperativo": "Planeje e realize intervenções pedagógicas",
+      "descricao_base": "Transforme a análise em ação. As intervenções podem incluir feedback individual ou coletivo, retomada de conceitos, exercícios adaptativos, reagrupamento de estudantes, tutoria ou monitoria de apoio, recomendação de materiais complementares, mudança no ritmo da aula, revisão de atividades, ampliação de tempo, oferta de desafios adicionais ou apoio específico a quem apresenta dificuldade."
+    },
+    {
+      "imperativo": "Comunique os resultados aos estudantes",
+      "descricao_base": "Compartilhe os dados com cuidado e intencionalidade pedagógica, sem expor os estudantes. Mostre padrões gerais da turma, indique critérios de progresso e ajude cada estudante a compreender sua própria trajetória. O objetivo é apoiar a autorregulação, e não apenas demonstrar controle externo."
+    },
+    {
+      "imperativo": "Reavalie os efeitos da intervenção",
+      "descricao_base": "Após a intervenção, colete novas evidências para verificar se houve melhora. Compare dados antes e depois, observe se as dificuldades diminuíram, se a participação aumentou, se os estudantes avançaram e se a estratégia adotada precisa ser mantida, ajustada ou substituída. Essa etapa fecha o ciclo analítico e permite melhoria contínua."
+    }
+  ],
+  "analitica da aprendizagem": [
+    {
+      "imperativo": "Defina o objetivo pedagógico da análise",
+      "descricao_base": "Determine qual decisão pedagógica os dados deverão apoiar (exemplos: identificar conhecimentos prévios dos estudantes, identificar dificuldades conceituais, verificar engajamento, monitorar a evolução individual ou coletiva, prever risco de baixo desempenho, personalizar atividades ou avaliar a efetividade de uma intervenção)."
+    },
+    {
+      "imperativo": "Escolha os indicadores e as fontes de dados",
+      "descricao_base": "Defina quais evidências serão coletadas e de onde elas virão. Na educação presencial, podem ser usados registros de observação, rubricas de avaliação, listas de presença estendidas, mapas de participação, checklists, avaliações diagnósticas, produções dos estudantes e formulários rápidos. Em ambientes digitais, podem ser usados dados de acesso, tempo de permanência, conclusão de atividades, resultados de quizzes, postagens em fóruns, trilhas percorridas e entregas realizadas."
+    },
+    {
+      "imperativo": "Colete e organize os dados",
+      "descricao_base": "Reúna os dados de forma simples, ética e utilizável. Em contextos presenciais, isso pode envolver planilhas de acompanhamento, formulários online de apoio, registros do professor, rubricas de avaliação preenchidas e sínteses de atividades. Em contextos digitais, isso pode envolver relatórios do AVA, planilhas exportadas, dashboards ou registros automáticos. Os dados precisam estar organizados para permitir comparação, leitura de padrões e acompanhamento ao longo do tempo."
+    },
+    {
+      "imperativo": "Analise os dados e identifique padrões",
+      "descricao_base": "Interprete os dados considerando os objetivos definidos. Observe, por exemplo, quais conteúdos geram mais erro, quais estudantes não estão avançando, quais atividades tiveram menor participação, quais tipos de dúvidas se repetem, quais grupos precisam de apoio ou quais evidências indicam progresso. A análise pode olhar para o passado, para compreender o que ocorreu; para o presente, para decidir o que fazer no momento; e para o futuro, para antecipar tendências ou riscos."
+    },
+    {
+      "imperativo": "Planeje e realize intervenções pedagógicas",
+      "descricao_base": "Transforme a análise em ação. As intervenções podem incluir feedback individual ou coletivo, retomada de conceitos, exercícios adaptativos, reagrupamento de estudantes, tutoria ou monitoria de apoio, recomendação de materiais complementares, mudança no ritmo da aula, revisão de atividades, ampliação de tempo, oferta de desafios adicionais ou apoio específico a quem apresenta dificuldade."
+    },
+    {
+      "imperativo": "Comunique os resultados aos estudantes",
+      "descricao_base": "Compartilhe os dados com cuidado e intencionalidade pedagógica, sem expor os estudantes. Mostre padrões gerais da turma, indique critérios de progresso e ajude cada estudante a compreender sua própria trajetória. O objetivo é apoiar a autorregulação, e não apenas demonstrar controle externo."
+    },
+    {
+      "imperativo": "Reavalie os efeitos da intervenção",
+      "descricao_base": "Após a intervenção, colete novas evidências para verificar se houve melhora. Compare dados antes e depois, observe se as dificuldades diminuíram, se a participação aumentou, se os estudantes avançaram e se a estratégia adotada precisa ser mantida, ajustada ou substituída. Essa etapa fecha o ciclo analítico e permite melhoria contínua."
+    }
+  ],
+  "inteligencia artificial generativa": [
+    {
+      "imperativo": "Defina a finalidade pedagógica do uso da IA",
+      "descricao_base": "Determine por que a IA Generativa será utilizada na atividade (por exemplo, para geração de ideias e exemplos, revisão textual, explicação personalizada, criação de imagens, simulação de personagens, elaboração de perguntas ou produção de código. A finalidade precisa estar vinculada aos objetivos de aprendizagem."
+    },
+    {
+      "imperativo": "Estabeleça o nível de uso da IA",
+      "descricao_base": "Explique aos estudantes como a IA poderá ser usada na atividade. Uma possibilidade é adotar níveis de uso, como: sem IA; IA para geração e estruturação de ideias; IA para edição de texto ou imagem; IA para completar partes da tarefa com avaliação humana; ou IA integrada ao processo inteiro com supervisão crítica. Essa definição evita ambiguidades sobre autoria, integridade acadêmica e expectativas de aprendizagem."
+    },
+    {
+      "imperativo": "Oriente a elaboração de prompts (comandos)",
+      "descricao_base": "Ensine os estudantes a formular prompts claros, contextualizados e verificáveis. Um bom prompt deve indicar objetivo, público, contexto, formato de saída esperado, critérios de qualidade, restrições e, quando necessário, fontes ou dados a serem considerados. O professor pode fornecer modelos de prompt ou pedir que os estudantes comparem diferentes versões para observar como a qualidade do comando afeta a resposta."
+    },
+    {
+      "imperativo": "Solicite registro do processo de uso da IA",
+      "descricao_base": "Peça que os estudantes documentem como utilizaram a ferramenta: quais foram os prompts empregados, as respostas recebidas, as escolhas feitas a partir daí, trechos e imagens aproveitados, descartados ou modificados, verificações realizadas e decisões tomadas. Esse registro ajuda a tornar visível a aprendizagem e evita que o produto final oculte o processo intelectual real ao longo da interação com as ferramentas."
+    },
+    {
+      "imperativo": "Promova verificação, crítica e validação das respostas",
+      "descricao_base": "Oriente os estudantes a checar informações, identificar possíveis erros, alucinações (informações falsas, incorretas ou sem base na realidade), vieses, lacunas ou generalizações. A validação pode envolver consulta a referências confiáveis, comparação com os conteúdos, testes de código, revisão por pares, análise de fontes, conferência de dados ou justificativa técnica das escolhas."
+    },
+    {
+      "imperativo": "Integre a produção da IA à autoria humana",
+      "descricao_base": "A resposta gerada pela IA deve ser tratada como ponto de partida, não como resultado final. Os estudantes precisam revisar, adaptar, complementar, justificar e contextualizar o material produzido, demonstrando domínio conceitual, tomada de decisão e responsabilidade sobre o resultado final."
+    },
+    {
+      "imperativo": "Compartilhe, discuta e avalie o produto e o processo",
+      "descricao_base": "Organize a apresentação, entrega ou discussão dos produtos gerados com apoio da IA. Avalie tanto o resultado quanto o processo: a finalidade do uso da IA, a qualidade dos prompts, a análise crítica das respostas, a adequação aos conteúdos, a transparência, a autoria e a melhoria da produção final."
+    }
+  ],
+  "rag": [
+    {
+      "imperativo": "Defina a finalidade pedagógica do uso da RAG",
+      "descricao_base": "Determine que tipo de aprendizagem ou produção será apoiada pelo sistema RAG: consulta a tópicos de conteúdo, análise de documentos, apoio à pesquisa, elaboração de sínteses, comparação de fontes, geração de respostas fundamentadas, criação de narrativas, documentação técnica ou revisão de produções dos estudantes. A finalidade deve estar vinculada aos objetivos de aprendizagem."
+    },
+    {
+      "imperativo": "Selecione e organize as fontes de referência",
+      "descricao_base": "Defina quais documentos, bases ou fontes serão utilizados pelo sistema (por exemplo, textos do curso, normas, artigos, manuais, bases institucionais, documentações técnicas ou materiais produzidos pelo professor, além de links externos, conforme as possibilidades da ferramenta utilizada). A qualidade da resposta dependerá diretamente da qualidade, pertinência e atualização das fontes selecionadas."
+    },
+    {
+      "imperativo": "Explique aos estudantes como o sistema recupera informações",
+      "descricao_base": "Antes do uso, é importante mostrar aos estudantes que, assim como no caso da IA Generativa, uma ferramenta RAG não “sabe tudo”, mas busca informações em uma base definida ou em fontes previamente autorizadas. Explique também que a resposta gerada precisa ser conferida, pois a RAG reduz imprecisões, mas não elimina a necessidade de análise crítica, validação e responsabilidade humana."
+    },
+    {
+      "imperativo": "Oriente a formulação de perguntas ou prompts fundamentados",
+      "descricao_base": "Peça que os estudantes formulem perguntas claras, contextualizadas e relacionadas aos documentos ou bases disponíveis. Um bom prompt deve indicar o objetivo da consulta, o tipo de resposta esperado, o recorte do problema, os critérios de análise e, quando necessário, a exigência de citar ou indicar as fontes usadas."
+    },
+    {
+      "imperativo": "Solicite análise crítica das respostas geradas",
+      "descricao_base": "Oriente os estudantes a verificar se a resposta está realmente apoiada nas fontes selecionadas, se há trechos mal interpretados, lacunas, extrapolações, informações desatualizadas ou conclusões frágeis. A resposta da IA deve ser tratada como ponto de partida para análise, e não como produto final automático."
+    },
+    {
+      "imperativo": "Integre as respostas ao trabalho humano",
+      "descricao_base": "Peça que os estudantes usem as respostas geradas para produzir sínteses, argumentos, relatórios, narrativas, explicações, decisões ou recomendações, sempre revisando, complementando e justificando o uso das informações. O produto final deve evidenciar domínio conceitual e análise humana."
+    },
+    {
+      "imperativo": "Avalie a qualidade das fontes, das consultas e da produção final",
+      "descricao_base": "Avalie não apenas o resultado final, mas também a qualidade dos prompts, a pertinência das informações recuperadas, a análise crítica das respostas e a forma como os estudantes integraram a IA à sua própria produção. Quando possível, solicite registro do processo: perguntas feitas, respostas aproveitadas, ajustes realizados e decisões humanas tomadas."
+    }
+  ],
+  "chatbots": [
+    {
+      "imperativo": "Defina a função pedagógica do bot",
+      "descricao_base": "Determine se o bot será usado para responder a dúvidas frequentes, orientar estudos, oferecer feedback, sugerir recursos, apoiar projetos, acompanhar prazos, simular interlocutores, fazer perguntas investigativas ou ajudar na revisão de produções. A função precisa estar vinculada aos objetivos de aprendizagem e não apenas ao atendimento automatizado."
+    },
+    {
+      "imperativo": "Delimite o escopo de atuação",
+      "descricao_base": "Defina o que o bot pode e não pode fazer. Por exemplo: pode explicar conceitos, indicar materiais do curso, fazer perguntas orientadoras ou lembrar etapas de um projeto, mas não deve entregar respostas prontas, resolver integralmente tarefas dos estudantes ou responder fora do conteúdo previsto."
+    },
+    {
+      "imperativo": "Selecione os materiais e referências de apoio",
+      "descricao_base": "No caso de bots personalizados, organize os materiais que orientarão as respostas (plano de ensino ou plano de aula, textos, slides, tutoriais, enunciados, critérios de avaliação, rubricas, exemplos resolvidos, documentação técnica ou perguntas frequentes). Quanto melhor for a curadoria desses materiais, maior será a coerência pedagógica do bot."
+    },
+    {
+      "imperativo": "Configure as instruções do bot",
+      "descricao_base": "Defina como o bot deve interagir com os estudantes. As instruções podem indicar que ele deve fazer perguntas antes de responder, estimular o raciocínio autônomo, dar pistas progressivas, solicitar que os estudantes expliquem o que já experimentaram fazer para resolver determinado desafio didático, oferecer feedback formativo, citar materiais do curso ou limitar-se aos conteúdos autorizados."
+    },
+    {
+      "imperativo": "Teste o bot antes de disponibilizá-lo",
+      "descricao_base": "Realize testes com dúvidas frequentes, dúvidas mal formuladas, solicitações inadequadas e casos-limite. Verifique se o bot responde com clareza, mantém o escopo, não entrega indevidamente a solução, não inventa informações e se oferece apoio coerente com os objetivos de aprendizagem."
+    },
+    {
+      "imperativo": "Oriente os estudantes sobre o uso adequado",
+      "descricao_base": "Explique quando e como o bot deve ser usado, que tipo de ajuda ele pode oferecer, que limites possui e quais são as responsabilidades dos estudantes. É importante deixar claro que as respostas devem ser verificadas, que os estudantes devem registrar como usaram o bot quando isso fizer parte da atividade e que o professor continua sendo a principal referência nos estudos."
+    },
+    {
+      "imperativo": "Acompanhe interações e ajuste o funcionamento",
+      "descricao_base": "Sempre que possível, monitore padrões de uso, dúvidas recorrentes, respostas problemáticas, lacunas de conteúdo e pontos em que os estudantes continuam precisando de mediação humana. Ajuste as instruções, acrescente materiais, reformule limites ou altere o tipo de feedback oferecido pelo bot."
+    },
+    {
+      "imperativo": "Avalie o impacto pedagógico do bot",
+      "descricao_base": "Verifique se o bot contribuiu para a aprendizagem, a autonomia, a qualidade das produções ou a redução de dúvidas repetitivas. A avaliação deve considerar não apenas a eficiência do atendimento, mas a qualidade do apoio oferecido e sua contribuição para os objetivos de aprendizagem."
+    }
+  ],
+  "bots personalizaveis": [
+    {
+      "imperativo": "Defina a função pedagógica do bot",
+      "descricao_base": "Determine se o bot será usado para responder a dúvidas frequentes, orientar estudos, oferecer feedback, sugerir recursos, apoiar projetos, acompanhar prazos, simular interlocutores, fazer perguntas investigativas ou ajudar na revisão de produções. A função precisa estar vinculada aos objetivos de aprendizagem e não apenas ao atendimento automatizado."
+    },
+    {
+      "imperativo": "Delimite o escopo de atuação",
+      "descricao_base": "Defina o que o bot pode e não pode fazer. Por exemplo: pode explicar conceitos, indicar materiais do curso, fazer perguntas orientadoras ou lembrar etapas de um projeto, mas não deve entregar respostas prontas, resolver integralmente tarefas dos estudantes ou responder fora do conteúdo previsto."
+    },
+    {
+      "imperativo": "Selecione os materiais e referências de apoio",
+      "descricao_base": "No caso de bots personalizados, organize os materiais que orientarão as respostas (plano de ensino ou plano de aula, textos, slides, tutoriais, enunciados, critérios de avaliação, rubricas, exemplos resolvidos, documentação técnica ou perguntas frequentes). Quanto melhor for a curadoria desses materiais, maior será a coerência pedagógica do bot."
+    },
+    {
+      "imperativo": "Configure as instruções do bot",
+      "descricao_base": "Defina como o bot deve interagir com os estudantes. As instruções podem indicar que ele deve fazer perguntas antes de responder, estimular o raciocínio autônomo, dar pistas progressivas, solicitar que os estudantes expliquem o que já experimentaram fazer para resolver determinado desafio didático, oferecer feedback formativo, citar materiais do curso ou limitar-se aos conteúdos autorizados."
+    },
+    {
+      "imperativo": "Teste o bot antes de disponibilizá-lo",
+      "descricao_base": "Realize testes com dúvidas frequentes, dúvidas mal formuladas, solicitações inadequadas e casos-limite. Verifique se o bot responde com clareza, mantém o escopo, não entrega indevidamente a solução, não inventa informações e se oferece apoio coerente com os objetivos de aprendizagem."
+    },
+    {
+      "imperativo": "Oriente os estudantes sobre o uso adequado",
+      "descricao_base": "Explique quando e como o bot deve ser usado, que tipo de ajuda ele pode oferecer, que limites possui e quais são as responsabilidades dos estudantes. É importante deixar claro que as respostas devem ser verificadas, que os estudantes devem registrar como usaram o bot quando isso fizer parte da atividade e que o professor continua sendo a principal referência nos estudos."
+    },
+    {
+      "imperativo": "Acompanhe interações e ajuste o funcionamento",
+      "descricao_base": "Sempre que possível, monitore padrões de uso, dúvidas recorrentes, respostas problemáticas, lacunas de conteúdo e pontos em que os estudantes continuam precisando de mediação humana. Ajuste as instruções, acrescente materiais, reformule limites ou altere o tipo de feedback oferecido pelo bot."
+    },
+    {
+      "imperativo": "Avalie o impacto pedagógico do bot",
+      "descricao_base": "Verifique se o bot contribuiu para a aprendizagem, a autonomia, a qualidade das produções ou a redução de dúvidas repetitivas. A avaliação deve considerar não apenas a eficiência do atendimento, mas a qualidade do apoio oferecido e sua contribuição para os objetivos de aprendizagem."
+    }
+  ],
+  "mapa de calor": [
+    {
+      "imperativo": "Defina o fenômeno a ser investigado",
+      "descricao_base": "Escolha o que será observado ou medido. Exemplos: espaços mais frequentados da escola, horários de maior circulação, locais que precisam de manutenção, temas de maior interesse, participação em atividades ou padrões de acesso a recursos digitais."
+    },
+    {
+      "imperativo": "Escolha o espaço ou estrutura de representação",
+      "descricao_base": "Defina se o mapa de calor será aplicado a um mapa físico, planta da escola, mapa do bairro, tabela, interface digital, mural ou planilha. Se necessário, providencie previamente o desenho-base."
+    },
+    {
+      "imperativo": "Defina os dados que serão coletados",
+      "descricao_base": "Estabeleça quais informações serão registradas e com que critérios. Por exemplo: número de pessoas em cada local, frequência de uso, intensidade de preferência, quantidade de cliques, nível de satisfação ou percepção de segurança."
+    },
+    {
+      "imperativo": "Organize a coleta de dados",
+      "descricao_base": "Divida os estudantes em grupos, estabeleça horários, locais, instrumentos e formas de registro. A coleta deve seguir critérios comuns para que os dados possam ser comparados."
+    },
+    {
+      "imperativo": "Estruture os dados em uma tabela",
+      "descricao_base": "Oriente os grupos a organizar os dados coletados em linhas e colunas. A tabela deve indicar claramente as categorias analisadas e os valores observados. Essa etapa ajuda os estudantes a perceber a passagem da observação para a representação."
+    },
+    {
+      "imperativo": "Defina a escala visual",
+      "descricao_base": "Combine como os dados serão representados no mapa. Podem ser usadas cores, círculos de tamanhos diferentes, ícones, transparências ou gradações. A escala precisa ser simples e compreensível para todos."
+    },
+    {
+      "imperativo": "Construa o mapa de calor",
+      "descricao_base": "Aplique os códigos visuais ao mapa, à planta, ao mural ou à planilha. Em atividades presenciais, pode-se usar papel vegetal sobre o mapa-base. Em atividades digitais, pode-se utilizar planilhas, murais colaborativos ou softwares de visualização."
+    },
+    {
+      "imperativo": "Compare os mapas produzidos",
+      "descricao_base": "Se diferentes grupos coletaram dados em momentos ou locais distintos, organize a comparação. Pergunte: “Que padrões aparecem?”, “Onde há maior concentração?”, “Que diferenças existem entre horários?” e “Que hipótese pode explicar os dados?”."
+    },
+    {
+      "imperativo": "Faça uma nova rodada de qualificação, se necessário",
+      "descricao_base": "Para aprofundar a análise, colete novos dados, como horário, tipo de usuário, finalidade de uso, meio de transporte, motivo da preferência ou percepção qualitativa. Depois, atualize o mapa com novos códigos visuais."
+    },
+    {
+      "imperativo": "Interprete os resultados",
+      "descricao_base": "Oriente os estudantes a transformar a visualização em conhecimento. A análise deve considerar padrões, causas prováveis, limites da coleta, dados ausentes, possíveis vieses e implicações práticas."
+    },
+    {
+      "imperativo": "Proponha encaminhamentos",
+      "descricao_base": "A partir dos dados visualizados, os grupos podem sugerir melhorias, intervenções, reorganização de espaços, campanhas, novas pesquisas ou decisões baseadas em evidências."
+    },
+    {
+      "imperativo": "Avalie a atividade",
+      "descricao_base": "Avalie a qualidade da coleta, a organização dos dados, a clareza da visualização, a interpretação dos padrões e a pertinência dos encaminhamentos propostos."
+    }
+  ],
+  "dog or cat: reconhecimento de imagens": [
+    {
+      "imperativo": "Defina o objetivo de aprendizagem",
+      "descricao_base": "Determine quais conceitos serão trabalhados: reconhecimento de padrões, classificação, inteligência artificial, visão computacional, dados de treinamento, abstração, critérios de decisão ou limites dos sistemas automatizados."
+    },
+    {
+      "imperativo": "Selecione as categorias de imagem",
+      "descricao_base": "Use gatos e cachorros, como na atividade clássica, ou escolha outras categorias adequadas ao conteúdo. As categorias devem ter semelhanças e diferenças visuais suficientes para permitir comparação."
+    },
+    {
+      "imperativo": "Reúna imagens variadas",
+      "descricao_base": "Peça que os estudantes encontrem imagens ou providencie previamente um conjunto. As imagens devem estar em posição e tamanho semelhantes, sempre que possível, para facilitar a análise comparativa. Use bancos livres ou imagens próprias autorizadas."
+    },
+    {
+      "imperativo": "Imprima ou disponibilize as imagens",
+      "descricao_base": "Para a versão presencial, imagens impressas facilitam o recorte e a recombinação. Para a versão digital, podem ser usadas ferramentas de edição, slides ou murais colaborativos."
+    },
+    {
+      "imperativo": "Divida cada imagem em partes",
+      "descricao_base": "Oriente os estudantes a separar as imagens em regiões equivalentes, como orelhas, olhos e focinho/boca. Essa decomposição ajuda a mostrar que o reconhecimento de imagem depende da análise de partes e características."
+    },
+    {
+      "imperativo": "Agrupe partes semelhantes",
+      "descricao_base": "Misture os recortes e peça que os grupos organizem partes parecidas. Eles podem formar conjuntos de orelhas, olhos, focinhos e bocas, observando semelhanças internas e diferenças entre categorias."
+    },
+    {
+      "imperativo": "Identifique características distintivas",
+      "descricao_base": "Oriente os grupos a listar características que ajudam a diferenciar as categorias. Por exemplo: formato das orelhas, posição dos olhos, tamanho do focinho, proporção da boca ou contorno da cabeça."
+    },
+    {
+      "imperativo": "Registre critérios de classificação",
+      "descricao_base": "Peça que os estudantes construam uma tabela comparando as características de cada categoria. Essa tabela funciona como um modelo simples de decisão, ainda que não matemático."
+    },
+    {
+      "imperativo": "Recombine partes para criar novas imagens",
+      "descricao_base": "Solicite que os grupos montem imagens híbridas com partes recortadas. Algumas combinações parecerão mais próximas de uma categoria, outras serão ambíguas. Essa etapa ajuda a discutir incerteza e probabilidade."
+    },
+    {
+      "imperativo": "Atribua pontuações de semelhança",
+      "descricao_base": "Peça que os grupos classifiquem as novas imagens com perguntas como: “É um gato?” ou “É um cachorro?”. Eles podem atribuir pontuações conforme a presença de características típicas de cada categoria."
+    },
+    {
+      "imperativo": "Discuta ambiguidades e erros",
+      "descricao_base": "Analise com a turma por que algumas imagens são fáceis de classificar e outras geram dúvida. Relacione a discussão a dados de treinamento, qualidade das imagens, critérios insuficientes, vieses e limitações dos sistemas de reconhecimento."
+    },
+    {
+      "imperativo": "Conecte a atividade à inteligência artificial",
+      "descricao_base": "Explique que sistemas de IA fazem esse processo em escala muito maior, analisando milhares ou milhões de exemplos e extraindo padrões matemáticos. Reforce que, mesmo assim, podem errar quando os dados são inadequados, insuficientes ou enviesados."
+    },
+    {
+      "imperativo": "Avalie a aprendizagem",
+      "descricao_base": "Avalie a capacidade dos estudantes de identificar padrões, formular critérios, justificar classificações, reconhecer ambiguidades e explicar a relação entre a atividade manual e o funcionamento básico do reconhecimento de imagens. </user_query>"
+    }
+  ]
+}

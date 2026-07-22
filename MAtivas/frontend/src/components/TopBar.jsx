@@ -1,12 +1,14 @@
-import { useRef, useState } from 'react'
-import { ChevronLeft, LogIn } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronLeft, Lock, LogIn } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Brand from './Brand.jsx'
 import { loginAdmin, salvarSessaoAdmin } from '../services/adminAuth.js'
 
 function TopBar({ showBack = false, backTo = -1 }) {
   const navigate = useNavigate()
+  const gateRef = useRef(null)
   const inputRef = useRef(null)
+  const [aberto, setAberto] = useState(false)
   const [adminSenha, setAdminSenha] = useState('')
   const [shake, setShake] = useState(false)
   const [erroLogin, setErroLogin] = useState(false)
@@ -20,6 +22,39 @@ function TopBar({ showBack = false, backTo = -1 }) {
       navigate(backTo)
     }
   }
+
+  const fecharGate = () => {
+    setAberto(false)
+    setAdminSenha('')
+    setErroLogin(false)
+    setMensagemErro('')
+    setShake(false)
+  }
+
+  useEffect(() => {
+    if (!aberto) return undefined
+
+    const onPointerDown = (event) => {
+      if (!gateRef.current?.contains(event.target)) {
+        fecharGate()
+      }
+    }
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        fecharGate()
+      }
+    }
+
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    window.setTimeout(() => inputRef.current?.focus(), 0)
+
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [aberto])
 
   const handleAdminLogin = async (event) => {
     event.preventDefault()
@@ -35,7 +70,7 @@ function TopBar({ showBack = false, backTo = -1 }) {
     try {
       const data = await loginAdmin(password)
       salvarSessaoAdmin(data.token, data.username || 'admin')
-      setAdminSenha('')
+      fecharGate()
       navigate('/admin')
     } catch (err) {
       const msg =
@@ -63,32 +98,49 @@ function TopBar({ showBack = false, backTo = -1 }) {
           Voltar
         </button>
       ) : (
-        <form
-          className={`admin-login${shake ? ' admin-login--shake' : ''}${erroLogin ? ' admin-login--erro' : ''}`}
-          onSubmit={handleAdminLogin}
-        >
-          <span className="admin-login-label">Login administrativo</span>
-          <input
-            ref={inputRef}
-            type="password"
-            value={adminSenha}
-            onChange={(e) => setAdminSenha(e.target.value)}
-            autoComplete="current-password"
-            placeholder="Senha"
-            aria-label="Senha administrativa"
-            disabled={entrando}
-            className="admin-login-input"
-          />
-          <button type="submit" className="admin-login-btn" disabled={entrando}>
-            <LogIn size={15} />
-            {entrando ? 'Entrando…' : 'Entrar'}
+        <div className="admin-gate" ref={gateRef}>
+          <button
+            type="button"
+            className={`admin-gate-trigger${aberto ? ' admin-gate-trigger--open' : ''}`}
+            onClick={() => setAberto((prev) => !prev)}
+            aria-label="Acesso administrativo"
+            aria-expanded={aberto}
+            aria-haspopup="dialog"
+            title="Acesso administrativo"
+          >
+            <Lock size={16} strokeWidth={2} />
           </button>
-          {mensagemErro && (
-            <span className="admin-login-erro" role="alert">
-              {mensagemErro}
-            </span>
+
+          {aberto && (
+            <form
+              className={`admin-login${shake ? ' admin-login--shake' : ''}${erroLogin ? ' admin-login--erro' : ''}`}
+              onSubmit={handleAdminLogin}
+              role="dialog"
+              aria-label="Login administrativo"
+            >
+              <input
+                ref={inputRef}
+                type="password"
+                value={adminSenha}
+                onChange={(e) => setAdminSenha(e.target.value)}
+                autoComplete="current-password"
+                placeholder="Senha"
+                aria-label="Senha administrativa"
+                disabled={entrando}
+                className="admin-login-input"
+              />
+              <button type="submit" className="admin-login-btn" disabled={entrando}>
+                <LogIn size={15} />
+                {entrando ? 'Entrando…' : 'Entrar'}
+              </button>
+              {mensagemErro && (
+                <span className="admin-login-erro" role="alert">
+                  {mensagemErro}
+                </span>
+              )}
+            </form>
           )}
-        </form>
+        </div>
       )}
     </div>
   )

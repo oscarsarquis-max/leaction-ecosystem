@@ -32,6 +32,7 @@ sudo docker compose up -d
 echo "==> Migrations..."
 sudo docker exec -e PYTHONPATH=/app mativas_prod_backend python database/migrations/apply_005.py || true
 sudo docker exec -e PYTHONPATH=/app mativas_prod_backend python database/migrations/apply_006.py || true
+sudo docker exec -e PYTHONPATH=/app mativas_prod_backend python database/migrations/apply_007.py || true
 
 sleep 5
 echo "==> Health..."

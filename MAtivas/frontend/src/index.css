@@ -96,17 +96,17 @@ button {
 
 .brand-logo {
   display: block;
-  height: 52px;
+  height: 40px;
   width: auto;
-  max-width: min(220px, 58vw);
+  max-width: min(170px, 48vw);
   object-fit: contain;
-  object-position: left center;
+  object-position: center;
 }
 
 .brand-text {
   display: inline-flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   line-height: 1;
   gap: 2px;
 }
@@ -148,37 +148,83 @@ button {
 }
 
 .topbar {
+  position: relative;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
   margin-bottom: 4px;
+  min-height: 2.75rem;
 }
 
-/* Login administrativo visível no cabeçalho */
+.topbar .brand-wrap {
+  margin-inline: auto;
+}
+
+.topbar .back-btn,
+.topbar .admin-gate {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+/* Acesso admin: ícone discreto → popover */
+.admin-gate {
+  z-index: 20;
+}
+
+.admin-gate-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.admin-gate-trigger:hover,
+.admin-gate-trigger:focus-visible {
+  opacity: 0.9;
+  color: var(--color-primary);
+  background: rgba(79, 70, 229, 0.06);
+  outline: none;
+}
+
+.admin-gate-trigger--open {
+  opacity: 1;
+  color: var(--color-primary);
+  background: #fff;
+  border-color: var(--color-border);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
 .admin-login {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-.admin-login-label {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-muted);
+  align-items: stretch;
+  gap: 8px;
+  width: min(12.5rem, calc(100vw - 2rem));
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
 }
 
 .admin-login-input {
   width: 100%;
-  min-width: 7.5rem;
-  max-width: 9rem;
-  padding: 6px 10px;
-  font-size: 0.8rem;
+  padding: 8px 10px;
+  font-size: 0.85rem;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: #fff;
@@ -198,8 +244,8 @@ button {
   justify-content: center;
   gap: 4px;
   width: 100%;
-  padding: 6px 10px;
-  font-size: 0.78rem;
+  padding: 8px 10px;
+  font-size: 0.8rem;
   font-weight: 700;
   border: none;
   border-radius: 8px;
@@ -231,8 +277,7 @@ button {
   font-size: 0.72rem;
   font-weight: 600;
   color: #dc2626;
-  text-align: right;
-  max-width: 9rem;
+  text-align: left;
   line-height: 1.3;
 }
 
@@ -1298,6 +1343,41 @@ button {
 
 .btn-secondary:hover:not(:disabled) {
   background: #be123c;
+}
+
+.roteiro-like-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.roteiro-like {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-secondary);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.roteiro-like:hover:not(:disabled) {
+  background: rgba(225, 29, 72, 0.08);
+  transform: scale(1.06);
+}
+
+.roteiro-like:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.roteiro-like--on {
+  color: var(--color-secondary);
 }
 
 .btn-inline {

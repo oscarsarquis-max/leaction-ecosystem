@@ -72,6 +72,16 @@ export async function enviarFeedback(roteiroId, feedbackAutora) {
 }
 
 /**
+ * Registra ou remove a curtida do roteiro.
+ * @param {number} roteiroId
+ * @param {boolean} curtido
+ */
+export async function curtirRoteiro(roteiroId, curtido = true) {
+  const { data } = await api.post(`/api/roteiro/${roteiroId}/curtir`, { curtido })
+  return data
+}
+
+/**
  * Atualiza a relação do professor com o livro e o opt-in do ecossistema.
  * @param {object} payload - { email, status_livro, opt_in_ecossistema }
  */

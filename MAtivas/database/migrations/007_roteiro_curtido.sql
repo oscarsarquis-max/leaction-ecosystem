@@ -1,0 +1,2 @@
+ALTER TABLE roteiros
+    ADD COLUMN IF NOT EXISTS curtido_em TIMESTAMP NULL;

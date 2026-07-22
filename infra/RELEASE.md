@@ -13,6 +13,7 @@
 |-----|----------------|-------|
 | inove4us | `inove4us/vX.Y.Z` | `inove4us/` |
 | Action Hub | `actionhub/vX.Y.Z` | `leaction-platform/` |
+| MAtivas | `mativas/vX.Y.Z` | `MAtivas/` |
 
 ## Fluxo rápido
 
@@ -22,12 +23,14 @@
 cd C:\Projetos
 .\infra\release-app.ps1 -App inove4us -Version 1.0.1 -Summary "resumo curto" -Commit -Tag
 .\infra\release-app.ps1 -App actionhub -Version 1.0.1 -Summary "resumo curto" -Commit -Tag
+.\infra\release-app.ps1 -App mativas -Version 1.0.1 -Summary "resumo curto" -Commit -Tag
 
 # 3) Deploy do artefato (ECS / EC2)
+#    MAtivas: cd MAtivas; IMAGE_TAG=1.0.1 ./deploy.sh && ./deploy-remote.sh
 # 4) Anote SHA real no DEPLOY_LOG.md e confira /health
 # 5) Push (código + tags):
 git push origin HEAD
-git push origin inove4us/v1.0.1   # ou actionhub/v1.0.1
+git push origin inove4us/v1.0.1   # ou actionhub/v1.0.1 / mativas/v1.0.1
 ```
 
 ## Variáveis de ambiente (deploy)

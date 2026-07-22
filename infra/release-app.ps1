@@ -17,7 +17,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('inove4us', 'actionhub')]
+    [ValidateSet('inove4us', 'actionhub', 'mativas')]
     [string]$App,
 
     [Parameter(Mandatory = $true)]
@@ -46,6 +46,11 @@ $map = @{
         Dir      = 'leaction-platform'
         TagPrefix = 'actionhub'
         PackageJson = 'leaction-platform/frontend/action-hub/package.json'
+    }
+    mativas    = @{
+        Dir      = 'MAtivas'
+        TagPrefix = 'mativas'
+        PackageJson = 'MAtivas/frontend/package.json'
     }
 }
 

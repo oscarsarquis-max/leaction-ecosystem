@@ -88,6 +88,8 @@ function exportarAuditoriaCsvLocal(itens) {
     'Metodologia',
     'Justificativa',
     'Feedback da autora',
+    'Curtido',
+    'Data da curtida',
     'Data geracao do roteiro',
     'Passos (JSON)',
     'Professor ID',
@@ -116,6 +118,7 @@ function exportarAuditoriaCsvLocal(itens) {
       tokens_prompt: h.tokens_prompt ?? null,
       tokens_resposta: h.tokens_resposta ?? null,
     }))
+    const curtido = Boolean(item.curtido || item.curtido_em)
     linhas.push(
       [
         item.roteiro_id ?? '',
@@ -123,6 +126,8 @@ function exportarAuditoriaCsvLocal(itens) {
         item.metodologia_recomendada ?? '',
         item.justificativa ?? '',
         item.feedback_autora ?? '',
+        curtido ? 'Sim' : 'Nao',
+        item.curtido_em ?? '',
         item.data_geracao ?? '',
         jsonParaCelula(item.passos_json),
         item.professor_id ?? '',
@@ -202,6 +207,19 @@ function HistoricoModal({ item, onClose }) {
           <div className="rounded-lg bg-slate-50 p-4 text-sm">
             <p className="mb-1 font-semibold text-slate-700">Diagnóstico do projeto</p>
             <p className="text-slate-600">{formatDiagnostico(item)}</p>
+            <p className="mt-3 text-slate-700">
+              <span className="font-semibold">Curtida:</span>{' '}
+              {item.curtido || item.curtido_em ? (
+                <span className="font-semibold text-rose-600">
+                  Sim
+                  {item.curtido_em
+                    ? ` · ${new Date(item.curtido_em).toLocaleString('pt-BR')}`
+                    : ''}
+                </span>
+              ) : (
+                <span className="text-slate-500">Não</span>
+              )}
+            </p>
           </div>
 
           {interacoes.length === 0 ? (
@@ -767,6 +785,7 @@ function Admin() {
                         <th className="px-5 py-3 font-semibold">Cliente</th>
                         <th className="px-5 py-3 font-semibold">Metodologia</th>
                         <th className="px-5 py-3 font-semibold">Status</th>
+                        <th className="px-5 py-3 font-semibold">Curtida</th>
                         <th className="px-5 py-3 font-semibold">Ação</th>
                       </tr>
                     </thead>
@@ -794,6 +813,17 @@ function Admin() {
                             </span>
                           </td>
                           <td className="px-5 py-3">
+                            {item.curtido || item.curtido_em ? (
+                              <span className="inline-flex rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">
+                                Sim
+                              </span>
+                            ) : (
+                              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500">
+                                Não
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-5 py-3">
                             <button
                               type="button"
                               onClick={() => setModalItem(item)}
@@ -806,7 +836,7 @@ function Admin() {
                       ))}
                       {auditoria.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="px-5 py-8 text-center text-slate-500">
+                          <td colSpan={6} className="px-5 py-8 text-center text-slate-500">
                             {buscaAplicada
                               ? 'Nenhum projeto encontrado para esta busca.'
                               : 'Nenhum projeto encontrado.'}

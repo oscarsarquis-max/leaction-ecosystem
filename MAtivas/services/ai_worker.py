@@ -38,8 +38,8 @@ if _ROOT not in sys.path:
 
 from biblioteca_passos import (
     formatar_passos_para_prompt,
-    mesclar_passos_gerados,
     obter_passos_biblioteca,
+    passos_canonicos_para_roteiro,
 )
 
 # ---------------------------------------------------------------------
@@ -106,14 +106,12 @@ SYSTEM_PROMPT_TEMPLATE = (
     "indicada quando [situação pedagógica]\", usando o grupo da metodologia escolhida "
     "e a frase de 'problemas_combinados' mais próxima do relato do professor.\n\n"
     "FASE 4 — PASSO A PASSO:\n"
-    "1. Consulte a BIBLIOTECA DE PASSOS da metodologia escolhida (se disponível no "
-    "prompt). Use os imperativos EXATAMENTE como cadastrados.\n"
-    "2. No campo \"descricao\", adapte o texto-base ao nível de ensino, modalidade, "
-    "número de participantes e, se o professor citar tema ou disciplina, contextualize "
-    "sem transformar o desafio no único objeto da atividade.\n"
-    "3. O campo \"titulo\" de cada passo deve ser o imperativo canônico (verbo no "
-    "imperativo, sem ponto final).\n"
-    "4. Inclua \"tempo\" estimado por passo.\n\n"
+    "1. Se houver BIBLIOTECA DE PASSOS no prompt: copie LITERALMENTE cada "
+    "\"imperativo\" em \"titulo\" e cada \"descricao_base\" em \"descricao\" — "
+    "sem resumir, adaptar, omitir frases ou reescrever. Apenas estime \"tempo\".\n"
+    "2. Se NÃO houver biblioteca: elabore de 5 a 8 passos com \"titulo\" em "
+    "imperativo e \"descricao\" alinhada à obra de Andrea Filatro.\n"
+    "3. Inclua \"tempo\" estimado por passo.\n\n"
     "FORMATO DE SAÍDA (CONTRATO OBRIGATÓRIO):\n"
     "Responda ESTRITAMENTE em JSON válido, sem texto antes ou depois, sem "
     "blocos de código markdown. A estrutura deve ser EXATAMENTE:\n"
@@ -121,17 +119,17 @@ SYSTEM_PROMPT_TEMPLATE = (
     '  "metodologia": "<nome exato da metodologia escolhida na base>",\n'
     '  "justificativa": "<A [metodologia] faz parte das [grupo] e é indicada quando ...>",\n'
     '  "passos": [\n'
-    '    {{"titulo": "<imperativo canônico>", "descricao": "<orientação adaptada>", "tempo": "<ex: 10 min>"}}\n'
+    '    {{"titulo": "<imperativo canônico ou inventado>", "descricao": "<texto literal da biblioteca ou elaborado>", "tempo": "<ex: 10 min>"}}\n'
     "  ]\n"
     "}}\n\n"
     "O array \"passos\" deve conter todos os passos da biblioteca da metodologia, "
-    "na mesma ordem. Se não houver biblioteca, elabore de 5 a 8 passos com "
-    "\"titulo\" em imperativo e \"descricao\" adaptada."
+    "na mesma ordem, com texto idêntico. Se não houver biblioteca, elabore de 5 a 8 passos."
 )
 
 
 # Prompt para quando a metodologia JÁ FOI escolhida no diagnóstico rápido
-# (lock-in). A IA não reescolhe: apenas adapta os passos da biblioteca.
+# (lock-in). A IA não reescolhe; com biblioteca, só estima tempos (textos são
+# impostos no pós-processamento a partir da biblioteca canônica).
 SYSTEM_PROMPT_PLANEJAMENTO_TEMPLATE = (
     "Você é um especialista em Metodologias Inov-ativas na Educação, com base "
     "exclusiva na obra de Andrea Filatro.\n\n"
@@ -148,25 +146,21 @@ SYSTEM_PROMPT_PLANEJAMENTO_TEMPLATE = (
     "Elabore o PASSO A PASSO do roteiro de aula para a metodologia "
     "\"{metodologia}\".\n\n"
     "REGRAS DO PASSO A PASSO:\n"
-    "1. Os passos vêm da Biblioteca de Metodologias Inov-ativas (bloco acima, "
-    "quando disponível). O campo \"titulo\" de cada passo DEVE ser o imperativo "
-    "canônico, copiado literalmente — sem alterar, resumir ou reordenar.\n"
-    "2. No campo \"descricao\", adapte o texto-base ao nível de ensino, "
-    "modalidade e número de participantes informados pelo professor. Se o desafio "
-    "mencionar tema, disciplina ou conteúdo, contextualize respeitosamente nessa "
-    "descrição (texto explicativo, sem negrito).\n"
-    "3. Inclua \"tempo\" estimado por passo.\n"
+    "1. Se houver BIBLIOTECA DE PASSOS acima: copie LITERALMENTE cada "
+    "\"imperativo\" em \"titulo\" e cada \"descricao_base\" em \"descricao\" — "
+    "proibido resumir, parafrasear, omitir trechos ou reordenar.\n"
+    "2. Sua única liberdade com a biblioteca é estimar \"tempo\" por passo.\n"
+    "3. Se NÃO houver biblioteca: elabore de 5 a 8 passos alinhados à obra.\n"
     "4. NÃO invente passos extras nem omita passos da biblioteca.\n\n"
     "REGRA PEDAGÓGICA: o desafio relatado orienta a metodologia, mas NÃO deve "
-    "virar o tema/objeto da atividade. Proponha um problema ou situação AMPLO "
-    "para o professor escolher livremente o conteúdo. Não repita literalmente o "
-    "desafio como problema da atividade.\n\n"
+    "virar o tema/objeto da atividade. Não repita literalmente o desafio como "
+    "problema da atividade.\n\n"
     "FORMATO DE SAÍDA (CONTRATO OBRIGATÓRIO):\n"
     "Responda ESTRITAMENTE em JSON válido, sem texto antes ou depois, sem "
     "blocos de código markdown. A estrutura deve ser EXATAMENTE:\n"
     "{{\n"
     '  "passos": [\n'
-    '    {{"titulo": "<imperativo canônico>", "descricao": "<orientação adaptada>", "tempo": "<ex: 10 min>"}}\n'
+    '    {{"titulo": "<texto literal do imperativo>", "descricao": "<texto literal da descricao_base>", "tempo": "<ex: 10 min>"}}\n'
     "  ]\n"
     "}}\n\n"
     "{instrucao_quantidade_passos}"
@@ -309,14 +303,15 @@ class LeActionAIProcessor:
 
         qtd = len(canonicos)
         bloco = (
-            "=== BIBLIOTECA DE PASSOS (imperativos fixos — copie literalmente em "
-            '"titulo") ===\n'
+            "=== BIBLIOTECA DE PASSOS (FONTE DE VERDADE — copie titulo E descricao "
+            "LITERALMENTE; não resuma) ===\n"
             f"{formatar_passos_para_prompt(canonicos)}\n"
             "=== FIM DA BIBLIOTECA DE PASSOS ===\n\n"
         )
         instrucao = (
             f'O array "passos" deve conter EXATAMENTE {qtd} passos, na mesma ordem '
-            "da biblioteca, com imperativos idênticos."
+            "da biblioteca, com titulo=imperativo e descricao=descricao_base "
+            "caractere a caractere (apenas \"tempo\" pode ser estimado)."
         )
         return bloco, instrucao, canonicos
 
@@ -365,14 +360,17 @@ class LeActionAIProcessor:
         if metodologia_fixada:
             metodologia = metodologia_fixada
             justificativa = justificativa_fixada or (dados.get("justificativa") or "").strip()
-            if passos_canonicos:
-                passos = mesclar_passos_gerados(passos_canonicos, passos)
         else:
             metodologia = dados.get("metodologia", "Aprendizagem Colaborativa")
             justificativa = (dados.get("justificativa") or "").strip()
             _, _, passos_canonicos = self.montar_bloco_biblioteca(metodologia)
-            if passos_canonicos:
-                passos = mesclar_passos_gerados(passos_canonicos, passos)
+
+        # Pós-processamento obrigatório: com biblioteca, título+descrição literais.
+        # Cobre também nomes com sufixo (ex.: "... (PBL)") via obter_passos_biblioteca.
+        if not passos_canonicos:
+            passos_canonicos = obter_passos_biblioteca(metodologia)
+        if passos_canonicos:
+            passos = passos_canonicos_para_roteiro(passos_canonicos, passos)
 
         usage = getattr(resposta, "usage_metadata", None) or {}
         tokens_prompt = usage.get("input_tokens", 0) or 0
