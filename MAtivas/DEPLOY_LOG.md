@@ -1,9 +1,9 @@
-# Deploy log — MAtivas (produção)
+﻿# Deploy log — MAtivas (produção)
 
 Registro operacional de deploys. Uma linha por promoção a produção.
 
 | Data (UTC-3) | Versão | Tag Git | SHA | Ambiente | Resumo | Quem |
 |--------------|--------|---------|-----|----------|--------|------|
-| 2026-07-22 | 1.0.0 | mativas/v1.0.0 | 4a34d5a | prod | Baseline versionamento + biblioteca Faça Fácil + curtida + resultado lock-in | — |
+| 2026-07-22 | 1.0.0 | mativas/v1.0.0 | aaa1869 | prod | Baseline versionamento + biblioteca Faça Fácil + curtida + resultado lock-in | — |
 
 Ao promover: atualize esta tabela **e** confira `https://metodologiasinovativas.com.br/health` (`version` + `git_sha`).
