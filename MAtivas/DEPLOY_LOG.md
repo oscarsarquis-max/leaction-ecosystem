@@ -4,6 +4,6 @@ Registro operacional de deploys. Uma linha por promoção a produção.
 
 | Data (UTC-3) | Versão | Tag Git | SHA | Ambiente | Resumo | Quem |
 |--------------|--------|---------|-----|----------|--------|------|
-| 2026-07-22 | 1.0.0 | mativas/v1.0.0 | aaa1869 | prod | Baseline versionamento + biblioteca Faça Fácil + curtida + resultado lock-in | — |
+| 2026-07-22 | 1.0.0 | mativas/v1.0.0 | aaa1869 | prod | Baseline versionamento + biblioteca Faça Fácil + curtida + resultado lock-in; sync domínio (problema_mativa/ui_content/vocabulary_rules) | — |
 
 Ao promover: atualize esta tabela **e** confira `https://metodologiasinovativas.com.br/health` (`version` + `git_sha`).

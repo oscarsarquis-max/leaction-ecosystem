@@ -29,3 +29,13 @@ Thumbs.db
 
 # ===== Logs =====
 *.log
+
+# ===== Deploy / sync temporários =====
+domain_snapshot.json
+scripts/.tmp-domain/
+scripts/_check_*.py
+scripts/_compare_*.py
+mativas-*-deploy.tgz
+mativas-*-dist.tgz
+mativas-frontend-dist.tgz
+mativas-backend-deploy.tgz
