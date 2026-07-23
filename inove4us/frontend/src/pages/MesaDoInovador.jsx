@@ -15,6 +15,7 @@ export default function MesaDoInovador() {
   const [searchParams] = useSearchParams()
   const [refreshKey, setRefreshKey] = useState(0)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [focusFromMap, setFocusFromMap] = useState(null)
   const paidReturn = searchParams.get('paid') === '1'
   const notices = Array.isArray(user?.hub_notices) ? user.hub_notices : []
 
@@ -117,9 +118,24 @@ export default function MesaDoInovador() {
           ) : null}
         </div>
 
-        <MapaRealizacoes refreshKey={refreshKey} />
+        <MapaRealizacoes
+          refreshKey={refreshKey}
+          onSelectNode={(node) => {
+            setFocusFromMap({
+              id: node.id,
+              data_evento: node.data_evento,
+              ts: Date.now(),
+            })
+            requestAnimationFrame(() => {
+              document
+                .getElementById('agenda-executiva')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            })
+          }}
+        />
         <AgendaExecutiva
           refreshKey={refreshKey}
+          focusFromMap={focusFromMap}
           onChanged={() => setRefreshKey((n) => n + 1)}
         />
       </main>

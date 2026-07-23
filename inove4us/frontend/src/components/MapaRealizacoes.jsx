@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 
 const STATUS_FILL = {
@@ -19,10 +20,56 @@ function formatDia(iso) {
   return `${p[2]}/${p[1]}`
 }
 
+function diaISO(iso) {
+  return String(iso || '').slice(0, 10)
+}
+
+function tipoLabel(tipo) {
+  if (tipo === 'aula_eduscrum') return 'Desafio · EduScrum'
+  if (tipo === 'aula_dia') return 'Dia a Dia · ciclo rápido'
+  return 'Compromisso'
+}
+
+/** Destino do Kanban / atividade a partir de um nó do grafo. */
+export function destinoAtividadeDoNo(n) {
+  if (!n) return null
+  if (n.tipo === 'aula_dia') {
+    const aulaId = n.aula_simples_id || n.meta_json?.aula_simples_id
+    if (aulaId) {
+      return {
+        path: `/dia-a-dia/${aulaId}#kanban`,
+        label: 'Ir para o Kanban do ciclo',
+      }
+    }
+    return { path: '/dia-a-dia', label: 'Abrir Dia a Dia' }
+  }
+  if (n.tipo === 'aula_eduscrum' || n.tem_plano) {
+    if (n.status === 'concluido') {
+      return {
+        path: null,
+        label: 'Aula concluída — veja o dia na agenda',
+        agendaOnly: true,
+      }
+    }
+    return {
+      path: `/execucao/${n.id}`,
+      label: 'Ir para o Kanban da aula',
+    }
+  }
+  return {
+    path: null,
+    label: 'Ver este dia na agenda',
+    agendaOnly: true,
+  }
+}
+
 /**
  * Mapa estilizado de realizações — nós = eventos, arestas = desdobramentos vinculados.
+ * Clique no nó: destaca dias com atividade na agenda + painel de explicação.
+ * Do painel: desloca para o Kanban da atividade.
  */
-export default function MapaRealizacoes({ refreshKey = 0 }) {
+export default function MapaRealizacoes({ refreshKey = 0, onSelectNode }) {
+  const navigate = useNavigate()
   const [nodes, setNodes] = useState([])
   const [edges, setEdges] = useState([])
   const [loading, setLoading] = useState(true)
@@ -77,7 +124,6 @@ export default function MapaRealizacoes({ refreshKey = 0 }) {
       })
       frontier = next
     }
-    // órfãos não alcançados
     nodes.forEach((n) => {
       if (!visited.has(n.id)) {
         if (!levels.length) levels.push([])
@@ -102,7 +148,8 @@ export default function MapaRealizacoes({ refreshKey = 0 }) {
       lv.forEach((id, row) => {
         const n = byId[id]
         if (!n) return
-        const ySpread = total === 1 ? height / 2 : padY + ((row + 0.5) * (height - padY * 2)) / total
+        const ySpread =
+          total === 1 ? height / 2 : padY + ((row + 0.5) * (height - padY * 2)) / total
         placed.push({
           ...n,
           x: padX + col * colW + colW / 2,
@@ -130,6 +177,25 @@ export default function MapaRealizacoes({ refreshKey = 0 }) {
       .filter(Boolean)
   }, [edges, layout])
 
+  function handleSelectNode(n) {
+    setSelected(n)
+    onSelectNode?.(n)
+  }
+
+  function goToKanban(n) {
+    const dest = destinoAtividadeDoNo(n)
+    if (!dest) return
+    if (dest.path) {
+      navigate(dest.path)
+      return
+    }
+    // só agenda: reforça o destaque do dia
+    onSelectNode?.(n)
+    document.getElementById('agenda-executiva')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const destSelected = selected ? destinoAtividadeDoNo(selected) : null
+
   return (
     <section className="mx-auto mb-6 max-w-6xl animate-fade-in print:hidden">
       <div className="rounded-2xl border border-brand-200 bg-gradient-to-br from-white via-brand-50/40 to-rose-50/50 p-4 shadow-soft sm:p-5">
@@ -142,7 +208,7 @@ export default function MapaRealizacoes({ refreshKey = 0 }) {
               Mapa de eventos
             </h2>
             <p className="mt-1 text-xs text-bordo-soft">
-              Aulas e desdobramentos vinculados — o que você planejou e o que já aconteceu.
+              Clique num nó para marcar na agenda os dias com atividade; na explicação, vá ao Kanban.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-[10px] font-bold">
@@ -211,7 +277,16 @@ export default function MapaRealizacoes({ refreshKey = 0 }) {
                     key={n.id}
                     transform={`translate(${n.x}, ${n.y})`}
                     className="cursor-pointer"
-                    onClick={() => setSelected(n)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${n.titulo || 'Evento'} — ${formatDia(n.data_evento)}`}
+                    onClick={() => handleSelectNode(n)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleSelectNode(n)
+                      }
+                    }}
                   >
                     <circle
                       r={active ? 28 : 24}
@@ -250,8 +325,10 @@ export default function MapaRealizacoes({ refreshKey = 0 }) {
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-bordo-deep">{selected.titulo}</p>
                 <p className="text-xs text-bordo-soft">
-                  {formatDia(selected.data_evento)} · {STATUS_LABEL[selected.status] || selected.status}
-                  {selected.tipo === 'aula_eduscrum' ? ' · Aula EduScrum' : ''}
+                  {formatDia(selected.data_evento)} ·{' '}
+                  {STATUS_LABEL[selected.status] || selected.status}
+                  {' · '}
+                  {tipoLabel(selected.tipo)}
                 </p>
                 {selected.relato_sala ? (
                   <p className="mt-2 text-xs leading-relaxed text-bordo">
@@ -260,9 +337,14 @@ export default function MapaRealizacoes({ refreshKey = 0 }) {
                 ) : null}
                 {selected.participantes ? (
                   <p className="mt-1 text-xs leading-relaxed text-bordo-soft">
-                    <span className="font-bold text-bordo">Participantes:</span> {selected.participantes}
+                    <span className="font-bold text-bordo">Participantes:</span>{' '}
+                    {selected.participantes}
                   </p>
                 ) : null}
+                <p className="mt-2 text-[11px] text-bordo-soft">
+                  Dia do evento: <strong className="text-bordo">{diaISO(selected.data_evento)}</strong>
+                  {' — '}os dias com atividade na agenda abaixo ficam destacados.
+                </p>
               </div>
               <button
                 type="button"
@@ -270,6 +352,27 @@ export default function MapaRealizacoes({ refreshKey = 0 }) {
                 onClick={() => setSelected(null)}
               >
                 Fechar
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn-primary !px-4 !py-2 text-xs"
+                onClick={() => goToKanban(selected)}
+              >
+                {destSelected?.label || 'Ir para a atividade'}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost !px-4 !py-2 text-xs"
+                onClick={() => {
+                  onSelectNode?.(selected)
+                  document
+                    .getElementById('agenda-executiva')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
+              >
+                Ver dia na agenda
               </button>
             </div>
           </div>

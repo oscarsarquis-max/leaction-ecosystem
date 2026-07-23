@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import BrandLogo from '../components/BrandLogo'
 import DailyCycleKanban, {
   buildCycleTasks,
@@ -119,6 +119,7 @@ export default function DailyPlanner() {
   const { id } = useParams()
   const isNew = !id || id === 'nova'
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [form, setForm] = useState(emptyForm)
   const [baseline, setBaseline] = useState(() => snapshotForm(emptyForm()))
@@ -183,6 +184,18 @@ export default function DailyPlanner() {
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [])
+
+  useEffect(() => {
+    if (loading) return
+    if (location.hash !== '#kanban') return
+    const t = window.setTimeout(() => {
+      document.getElementById('ciclo-kanban')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }, 120)
+    return () => window.clearTimeout(t)
+  }, [loading, location.hash, id])
 
   function confirmLeave() {
     if (!dirtyRef.current) return true
@@ -605,11 +618,13 @@ export default function DailyPlanner() {
             </div>
             </form>
 
-            <DailyCycleKanban
-              tasks={tasks}
-              onTasksChange={setTasks}
-              enabled={Boolean(form.tema_aula.trim() && form.data_planejada)}
-            />
+            <div id="ciclo-kanban" className="scroll-mt-24">
+              <DailyCycleKanban
+                tasks={tasks}
+                onTasksChange={setTasks}
+                enabled={Boolean(form.tema_aula.trim() && form.data_planejada)}
+              />
+            </div>
           </div>
         )}
       </main>

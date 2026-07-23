@@ -93,8 +93,9 @@ const MODO_LABEL = {
 
 /**
  * Agenda executiva — calendário mensal + lista/registro de compromissos.
+ * `focusFromMap`: clique no grafo → destaca dias com atividade e foca a data do nó.
  */
-export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
+export default function AgendaExecutiva({ refreshKey = 0, onChanged, focusFromMap = null }) {
   const navigate = useNavigate()
   const hoje = hojeISO()
   const now = new Date()
@@ -105,6 +106,8 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [modal, setModal] = useState(null)
+  const [highlightBusyDays, setHighlightBusyDays] = useState(false)
+  const [focusEventId, setFocusEventId] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -123,6 +126,19 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
   useEffect(() => {
     load()
   }, [load, refreshKey])
+
+  useEffect(() => {
+    if (!focusFromMap) return
+    const iso = diaDeEvento(focusFromMap.data_evento)
+    setHighlightBusyDays(true)
+    setFocusEventId(focusFromMap.id ?? focusFromMap.eventId ?? null)
+    if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+      const [y, m] = iso.split('-').map(Number)
+      setViewYear(y)
+      setViewMonth(m - 1)
+      setSelectedDate(iso)
+    }
+  }, [focusFromMap])
 
   const diasComEvento = useMemo(() => {
     const map = {}
@@ -258,7 +274,10 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
   }
 
   return (
-    <section className="mx-auto mb-8 max-w-6xl animate-fade-in print:hidden">
+    <section
+      id="agenda-executiva"
+      className="mx-auto mb-8 max-w-6xl scroll-mt-24 animate-fade-in print:hidden"
+    >
       <div className="rounded-2xl border border-brand-200 bg-white/95 p-4 shadow-soft sm:p-5">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
           <div>
@@ -271,10 +290,29 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
             <p className="mt-1 text-xs text-bordo-soft">
               Calendário e registro de eventos / compromissos da sua prática inovadora.
             </p>
+            {highlightBusyDays ? (
+              <p className="mt-1 text-[11px] font-semibold text-brand-700">
+                Destaque do mapa: dias com atividade coloridos · dia do evento selecionado.
+              </p>
+            ) : null}
           </div>
-          {loading ? (
-            <span className="text-[11px] font-semibold text-bordo-soft">Carregando…</span>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {highlightBusyDays ? (
+              <button
+                type="button"
+                className="rounded-lg border border-brand-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-bordo-soft hover:bg-brand-50"
+                onClick={() => {
+                  setHighlightBusyDays(false)
+                  setFocusEventId(null)
+                }}
+              >
+                Limpar destaque
+              </button>
+            ) : null}
+            {loading ? (
+              <span className="text-[11px] font-semibold text-bordo-soft">Carregando…</span>
+            ) : null}
+          </div>
         </div>
 
         {error && !modal ? (
@@ -321,6 +359,12 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
                 const isSelected = iso === selectedDate
                 const dayInfo = diasComEvento[iso]
                 const hasEv = Boolean(dayInfo)
+                let busyTone = ''
+                if (highlightBusyDays && hasEv && !isSelected) {
+                  if (dayInfo.desafio) busyTone = 'bg-amber-200 text-amber-950 ring-2 ring-amber-400'
+                  else if (dayInfo.dia) busyTone = 'bg-emerald-200 text-emerald-950 ring-2 ring-emerald-400'
+                  else busyTone = 'bg-brand-200 text-bordo-deep ring-2 ring-brand-400'
+                }
                 return (
                   <button
                     key={iso}
@@ -329,10 +373,12 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
                     className={[
                       'relative aspect-square rounded-lg text-xs font-semibold transition',
                       isSelected
-                        ? 'bg-bordo text-white shadow-soft'
-                        : isToday
-                          ? 'bg-brand-200 text-bordo-deep'
-                          : 'bg-white text-bordo hover:bg-brand-100',
+                        ? 'bg-bordo text-white shadow-soft ring-2 ring-bordo-deep'
+                        : busyTone
+                          ? busyTone
+                          : isToday
+                            ? 'bg-brand-200 text-bordo-deep'
+                            : 'bg-white text-bordo hover:bg-brand-100',
                     ].join(' ')}
                   >
                     {Number(iso.slice(-2))}
@@ -407,12 +453,16 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
                 {eventosDoDia.map((ev) => {
                   const retomavel = ev.status !== 'concluido' && hasPlanData(ev.plan_data)
                   const visual = tipoVisual(ev.tipo)
+                  const fromMap =
+                    focusEventId != null && String(focusEventId) === String(ev.id_evento)
                   return (
                   <li key={ev.id_evento}>
                     <button
                       type="button"
                       onClick={() => handleEventClick(ev)}
-                      className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${visual.card}`}
+                      className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${visual.card} ${
+                        fromMap ? 'ring-2 ring-bordo shadow-soft' : ''
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-bold text-bordo-deep">{ev.titulo}</p>

@@ -215,6 +215,9 @@ def grafo_realizacoes():
         nodes = []
         edges = []
         for r in rows:
+            meta = r.get("meta_json") if isinstance(r.get("meta_json"), dict) else {}
+            plan = r.get("plan_data")
+            tem_plano = isinstance(plan, dict) and len(plan) > 0
             nodes.append(
                 {
                     "id": r["id_evento"],
@@ -226,6 +229,9 @@ def grafo_realizacoes():
                     "tem_relato": bool((r.get("relato_sala") or "").strip()),
                     "relato_sala": r.get("relato_sala") or "",
                     "participantes": r.get("participantes") or "",
+                    "meta_json": meta,
+                    "tem_plano": tem_plano,
+                    "aula_simples_id": meta.get("aula_simples_id"),
                 }
             )
             if r.get("id_evento_pai"):
