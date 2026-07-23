@@ -1,0 +1,65 @@
+# PanelDX app (backend + frontend) → leaction_db (:5433 no host, admin/Cmgv6190!@)
+# Uso: docker compose -f docker-compose.app.yml up -d --build
+services:
+  backend:
+    build:
+      context: ./LeAction_SysF
+      dockerfile: Dockerfile
+    container_name: paneldx_backend
+    restart: unless-stopped
+    env_file:
+      - ./LeAction_SysF/.env
+    environment:
+      DB_HOST: leaction_db
+      DB_PORT: "5432"
+      DB_NAME: LeAction_SysF
+      DB_USER: admin
+      DB_PASS: "Cmgv6190!@"
+      DB_PASSWORD: "Cmgv6190!@"
+      DB_SSLMODE: disable
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-dev-secret-troque-em-producao}
+    ports:
+      - "5000:5000"
+    networks:
+      leaction_net:
+        # Alias sem underscore: Werkzeug rejeita Host com "_" (HTTP 400)
+        # e "backend" colide com o Chamelleon na mesma rede
+        aliases:
+          - paneldx-api
+
+  frontend:
+    build:
+      context: ./LeAction_Sys_FE
+      dockerfile: Dockerfile
+    container_name: paneldx_frontend
+    restart: unless-stopped
+    env_file:
+      - ./LeAction_Sys_FE/.env.development
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      FLASK_API_URL: http://paneldx-api:5000
+      BACKEND_URL: http://paneldx-api:5000
+      SESSION_SECRET: ${SESSION_SECRET:-dev-secret-troque-em-producao}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-sysadmin@leaction.com.br}
+      PRODUCTION_MASTER_KEY: ${PRODUCTION_MASTER_KEY:-dev-gatekeeper-local}
+      DB_HOST: leaction_db
+      DB_PORT: "5432"
+      DB_NAME: LeAction_SysF
+      DB_USER: admin
+      DB_PASS: "Cmgv6190!@"
+      DB_SSLMODE: disable
+    volumes:
+      # Imagens CMS/logo ficam fora do git — monta pasta local no container
+      - ./LeAction_Sys_FE/public/images:/usr/src/app/public/images:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - leaction_net
+
+networks:
+  leaction_net:
+    name: leaction-platform_default
+    external: true

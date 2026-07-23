@@ -1,0 +1,24 @@
+# PostgreSQL local — LeAction_SysF
+# Dump custom format 1.16 exige pg_restore >= 17 (PG 16 só lê até 1.15).
+services:
+  postgres:
+    image: postgres:18
+    container_name: leaction-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "Cmgv6190!@"
+      POSTGRES_DB: LeAction_SysF
+    volumes:
+      # PG 18+ exige montar /var/lib/postgresql (não .../data)
+      - leaction_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d LeAction_SysF"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  leaction_pgdata:
