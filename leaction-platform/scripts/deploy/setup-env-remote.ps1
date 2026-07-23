@@ -122,7 +122,7 @@ function Get-PaneldxDbSecretJson {
 $secretJson = Get-PaneldxDbSecretJson
 $db = $secretJson | ConvertFrom-Json
 $encPass = [uri]::EscapeDataString($db.password)
-$dbUrl = "postgresql://$($db.username):${encPass}@$($db.host):$($db.port)/leaction_hub?sslmode=require"
+$dbUrl = 'postgresql://{0}:{1}@{2}:{3}/leaction_hub?sslmode=require' -f $db.username, $encPass, $db.host, $db.port
 
 $adminEmails = Read-DotenvValue $localEnv 'HUB_ADMIN_EMAILS'
 if (-not $adminEmails) { $adminEmails = 'admin@actionhub.com.br,sysadmin@inove4us.com.br' }
@@ -137,56 +137,58 @@ if (-not $crmTrackingSecret) {
     $bytes = New-Object byte[] 32
     [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
     $crmTrackingSecret = [BitConverter]::ToString($bytes).Replace('-', '').ToLowerInvariant()
-    Write-Host "[!] CRM_TRACKING_SECRET ausente no .env local — gerado para este deploy (salve no .env local)." -ForegroundColor Yellow
+    Write-Host '[!] CRM_TRACKING_SECRET ausente no .env local - gerado para este deploy (salve no .env local).' -ForegroundColor Yellow
 }
 
-$rootEnv = @"
-DATABASE_URL=$dbUrl
-ACTION_HUB_PUBLIC_URL=https://actionhub.com.br
-GATEWAY_PORT=4001
-NODE_ENV=production
-JWT_SECRET=$jwtSecret
-HUB_ADMIN_EMAILS=$adminEmails
-APP_WEBHOOK_URL_INOVE4US=$webhookInove
-MP_ACCESS_TOKEN=$mpAccess
-MP_PUBLIC_KEY=$mpPublic
-MP_SUBSCRIPTION_REASON=Assinatura Mensal - Leaction Hub
-MP_SUBSCRIPTION_AMOUNT=99
-MP_SUBSCRIPTION_CURRENCY=BRL
-MP_SUBSCRIPTION_FREQUENCY=1
-MP_SUBSCRIPTION_FREQUENCY_TYPE=months
-MP_CHECKOUT_MODE=card
-ALLOW_PAYMENT_SIMULATION=0
-PRODUCTION_MASTER_KEY="$prodMasterKey"
-CRM_TRACKING_SECRET=$crmTrackingSecret
-MARKETPLACE_PORT=4012
-ML_PUBLIC_BASE_URL=$mlPublicBase
-ML_TOKENS_FILE=/var/lib/leaction-platform/.ml_tokens.json
-"@
+$nl = [Environment]::NewLine
+$rootLines = @(
+    "DATABASE_URL=$dbUrl",
+    'ACTION_HUB_PUBLIC_URL=https://actionhub.com.br',
+    'GATEWAY_PORT=4001',
+    'NODE_ENV=production',
+    "JWT_SECRET=$jwtSecret",
+    "HUB_ADMIN_EMAILS=$adminEmails",
+    "APP_WEBHOOK_URL_INOVE4US=$webhookInove",
+    "MP_ACCESS_TOKEN=$mpAccess",
+    "MP_PUBLIC_KEY=$mpPublic",
+    'MP_SUBSCRIPTION_REASON=Assinatura Mensal - Leaction Hub',
+    'MP_SUBSCRIPTION_AMOUNT=99',
+    'MP_SUBSCRIPTION_CURRENCY=BRL',
+    'MP_SUBSCRIPTION_FREQUENCY=1',
+    'MP_SUBSCRIPTION_FREQUENCY_TYPE=months',
+    'MP_CHECKOUT_MODE=card',
+    'ALLOW_PAYMENT_SIMULATION=0',
+    ('PRODUCTION_MASTER_KEY="{0}"' -f $prodMasterKey),
+    "CRM_TRACKING_SECRET=$crmTrackingSecret",
+    'MARKETPLACE_PORT=4012',
+    "ML_PUBLIC_BASE_URL=$mlPublicBase",
+    'ML_TOKENS_FILE=/var/lib/leaction-platform/.ml_tokens.json'
+)
+if ($mlAppId) { $rootLines += "ML_APP_ID=$mlAppId" }
+if ($mlSecret) { $rootLines += "ML_SECRET_KEY=$mlSecret" }
+$rootEnv = ($rootLines -join $nl)
 
-if ($mlAppId) { $rootEnv += "`nML_APP_ID=$mlAppId" }
-if ($mlSecret) { $rootEnv += "`nML_SECRET_KEY=$mlSecret" }
+$feLines = @(
+    'NODE_ENV=production',
+    'PORT=4000',
+    'ACTION_HUB_PUBLIC_URL=https://actionhub.com.br',
+    'HUB_GATEWAY_INTERNAL_URL=http://127.0.0.1:4001',
+    'MARKETPLACE_INTERNAL_URL=http://127.0.0.1:4012',
+    'NEXT_PUBLIC_PANELDX_URL=',
+    "JWT_SECRET=$jwtSecret",
+    "HUB_ADMIN_EMAILS=$adminEmails",
+    "NEXT_PUBLIC_HUB_ADMIN_EMAILS=$adminEmails",
+    "NEXT_PUBLIC_MP_PUBLIC_KEY=$mpPublic",
+    'NEXT_PUBLIC_MP_SUBSCRIPTION_AMOUNT=99',
+    ('PRODUCTION_MASTER_KEY="{0}"' -f $prodMasterKey),
+    "CRM_TRACKING_SECRET=$crmTrackingSecret",
+    "MARKETPLACE_CURATION_USER=$curUser",
+    "MARKETPLACE_CURATION_PASSWORD=$curPass",
+    "MARKETPLACE_CURATION_AUTH_SECRET=$curSecret"
+)
+$feEnv = ($feLines -join $nl)
 
-$feEnv = @"
-NODE_ENV=production
-PORT=4000
-ACTION_HUB_PUBLIC_URL=https://actionhub.com.br
-HUB_GATEWAY_INTERNAL_URL=http://127.0.0.1:4001
-MARKETPLACE_INTERNAL_URL=http://127.0.0.1:4012
-NEXT_PUBLIC_PANELDX_URL=
-JWT_SECRET=$jwtSecret
-HUB_ADMIN_EMAILS=$adminEmails
-NEXT_PUBLIC_HUB_ADMIN_EMAILS=$adminEmails
-NEXT_PUBLIC_MP_PUBLIC_KEY=$mpPublic
-NEXT_PUBLIC_MP_SUBSCRIPTION_AMOUNT=99
-PRODUCTION_MASTER_KEY="$prodMasterKey"
-CRM_TRACKING_SECRET=$crmTrackingSecret
-MARKETPLACE_CURATION_USER=$curUser
-MARKETPLACE_CURATION_PASSWORD=$curPass
-MARKETPLACE_CURATION_AUTH_SECRET=$curSecret
-"@
-
-$sshTarget = "${User}@${ServerHost}"
+$sshTarget = ($User + '@' + $ServerHost)
 $rootTmp = Join-Path $env:TEMP 'action-hub-root.env'
 $feTmp = Join-Path $env:TEMP 'action-hub-fe.env.production'
 function Write-UnixEnvFile([string]$Path, [string]$Content) {
@@ -198,15 +200,15 @@ Write-UnixEnvFile $rootTmp $rootEnv.Trim()
 Write-UnixEnvFile $feTmp $feEnv.Trim()
 
 & ssh -i $KeyFile -o StrictHostKeyChecking=no $sshTarget "mkdir -p $RemotePath/frontend/action-hub $RemotePath/backend"
-& scp -i $KeyFile -o StrictHostKeyChecking=no $rootTmp "${sshTarget}:${RemotePath}/.env"
-& scp -i $KeyFile -o StrictHostKeyChecking=no $feTmp "${sshTarget}:${RemotePath}/frontend/action-hub/.env.production"
+& scp -i $KeyFile -o StrictHostKeyChecking=no $rootTmp ($sshTarget + ':' + $RemotePath + '/.env')
+& scp -i $KeyFile -o StrictHostKeyChecking=no $feTmp ($sshTarget + ':' + $RemotePath + '/frontend/action-hub/.env.production')
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao enviar .env' }
 
 Remove-Item $rootTmp, $feTmp -Force -ErrorAction SilentlyContinue
 Write-Host "[OK] .env de producao gravado em $RemotePath" -ForegroundColor Green
-Write-Host "[OK] MP Public Key prefix: $($mpPublic.Substring(0, [Math]::Min(12, $mpPublic.Length)))..." -ForegroundColor Green
+Write-Host ("[OK] MP Public Key prefix: {0}..." -f $mpPublic.Substring(0, [Math]::Min(12, $mpPublic.Length))) -ForegroundColor Green
 if ($mlAppId -and $mlSecret) {
-    Write-Host "[OK] Credenciais ML Marketplace incluidas" -ForegroundColor Green
+    Write-Host '[OK] Credenciais ML Marketplace incluidas' -ForegroundColor Green
 } else {
-    Write-Host "[!] ML_APP_ID/ML_SECRET_KEY ausentes no .env local" -ForegroundColor Yellow
+    Write-Host '[!] ML_APP_ID/ML_SECRET_KEY ausentes no .env local' -ForegroundColor Yellow
 }
