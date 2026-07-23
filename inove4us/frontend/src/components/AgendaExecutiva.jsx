@@ -48,15 +48,41 @@ function formatarDataBR(iso) {
 }
 
 const STATUS_STYLE = {
-  planejado: 'bg-brand-100 text-bordo',
-  em_execucao: 'bg-amber-100 text-amber-900',
-  concluido: 'bg-emerald-100 text-emerald-800',
+  planejado: 'bg-white/70 text-bordo',
+  em_execucao: 'bg-white/80 text-amber-950',
+  concluido: 'bg-white/80 text-emerald-900',
 }
 
 const STATUS_LABEL = {
   planejado: 'Planejado',
   em_execucao: 'Em execução',
   concluido: 'Concluído',
+}
+
+/** Separação visual: Desafio (âmbar) × Dia a Dia (verde) × geral (neutro). */
+const TIPO_CARD = {
+  aula_eduscrum: {
+    card: 'border-amber-300 bg-amber-50 hover:border-amber-400 hover:bg-amber-100/80',
+    label: 'text-amber-800',
+    chip: 'bg-amber-200/80 text-amber-950',
+    nome: 'Desafio · EduScrum',
+  },
+  aula_dia: {
+    card: 'border-emerald-300 bg-emerald-50 hover:border-emerald-400 hover:bg-emerald-100/80',
+    label: 'text-emerald-800',
+    chip: 'bg-emerald-200/80 text-emerald-950',
+    nome: 'Dia a Dia · ciclo rápido',
+  },
+  geral: {
+    card: 'border-brand-100 bg-brand-50/50 hover:border-brand-300 hover:bg-brand-50',
+    label: 'text-brand-600',
+    chip: 'bg-brand-100 text-bordo',
+    nome: 'Compromisso',
+  },
+}
+
+function tipoVisual(tipo) {
+  return TIPO_CARD[tipo] || TIPO_CARD.geral
 }
 
 const TURNO_LABEL = { manha: 'Manhã', tarde: 'Tarde', noite: 'Noite' }
@@ -102,9 +128,14 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
     const map = {}
     eventos.forEach((ev) => {
       const d = diaDeEvento(ev.data_evento)
-      if (d) {
-        map[d] = ev.status === 'concluido' ? 'done' : 'open'
+      if (!d) return
+      if (!map[d]) {
+        map[d] = { done: true, desafio: false, dia: false, geral: false }
       }
+      if (ev.status !== 'concluido') map[d].done = false
+      if (ev.tipo === 'aula_eduscrum') map[d].desafio = true
+      else if (ev.tipo === 'aula_dia') map[d].dia = true
+      else map[d].geral = true
     })
     return map
   }, [eventos])
@@ -172,6 +203,15 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
     }
     if (ev.tipo === 'aula_eduscrum') {
       navigate('/desafio')
+      return
+    }
+    if (ev.tipo === 'aula_dia') {
+      const aulaId = ev.meta_json?.aula_simples_id
+      if (aulaId) {
+        navigate(`/dia-a-dia/${aulaId}`)
+        return
+      }
+      navigate('/dia-a-dia')
       return
     }
     openEdit(ev)
@@ -279,8 +319,8 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
                 }
                 const isToday = iso === hoje
                 const isSelected = iso === selectedDate
-                const hasEv = Boolean(diasComEvento[iso])
-                const doneEv = diasComEvento[iso] === 'done'
+                const dayInfo = diasComEvento[iso]
+                const hasEv = Boolean(dayInfo)
                 return (
                   <button
                     key={iso}
@@ -297,15 +337,47 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
                   >
                     {Number(iso.slice(-2))}
                     {hasEv ? (
-                      <span
-                        className={`absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full ${
-                          isSelected ? 'bg-white' : doneEv ? 'bg-emerald-500' : 'bg-brand-600'
-                        }`}
-                      />
+                      <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 items-center gap-0.5">
+                        {dayInfo.desafio ? (
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              isSelected ? 'bg-amber-200' : 'bg-amber-500'
+                            }`}
+                            title="Desafio"
+                          />
+                        ) : null}
+                        {dayInfo.dia ? (
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              isSelected ? 'bg-emerald-200' : 'bg-emerald-500'
+                            }`}
+                            title="Dia a Dia"
+                          />
+                        ) : null}
+                        {dayInfo.geral ? (
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              isSelected ? 'bg-white' : 'bg-brand-600'
+                            }`}
+                            title="Compromisso"
+                          />
+                        ) : null}
+                      </span>
                     ) : null}
                   </button>
                 )
               })}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3 px-0.5 text-[10px] font-semibold text-bordo-soft">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-500" /> Desafio
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Dia a Dia
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-brand-600" /> Outros
+              </span>
             </div>
           </div>
 
@@ -334,12 +406,13 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
               <ul className="flex-1 space-y-2 overflow-y-auto">
                 {eventosDoDia.map((ev) => {
                   const retomavel = ev.status !== 'concluido' && hasPlanData(ev.plan_data)
+                  const visual = tipoVisual(ev.tipo)
                   return (
                   <li key={ev.id_evento}>
                     <button
                       type="button"
                       onClick={() => handleEventClick(ev)}
-                      className="w-full rounded-xl border border-brand-100 bg-brand-50/50 px-3 py-2.5 text-left transition hover:border-brand-300 hover:bg-brand-50"
+                      className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${visual.card}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-bold text-bordo-deep">{ev.titulo}</p>
@@ -351,10 +424,12 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
                           {STATUS_LABEL[ev.status] || ev.status || 'Planejado'}
                         </span>
                       </div>
-                      {ev.tipo === 'aula_eduscrum' ? (
-                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-brand-600">
-                          Aula EduScrum
-                          {retomavel ? ' · Retomar' : ''}
+                      {ev.tipo === 'aula_eduscrum' || ev.tipo === 'aula_dia' ? (
+                        <p
+                          className={`mt-1 text-[10px] font-semibold uppercase tracking-wide ${visual.label}`}
+                        >
+                          {visual.nome}
+                          {retomavel && ev.tipo === 'aula_eduscrum' ? ' · Retomar' : ''}
                         </p>
                       ) : null}
                       {(ev.turma || ev.turno || ev.modo_execucao) ? (
@@ -368,7 +443,7 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged }) {
                             .join(' · ')}
                         </p>
                       ) : null}
-                      {retomavel && ev.tipo !== 'aula_eduscrum' ? (
+                      {retomavel && ev.tipo !== 'aula_eduscrum' && ev.tipo !== 'aula_dia' ? (
                         <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-brand-600">
                           Retomar execução
                         </p>

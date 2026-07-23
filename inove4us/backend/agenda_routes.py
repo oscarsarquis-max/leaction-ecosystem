@@ -15,7 +15,7 @@ agenda_bp = Blueprint("agenda", __name__)
 _ensured = False
 
 STATUSES = frozenset({"planejado", "em_execucao", "concluido"})
-TIPOS = frozenset({"geral", "aula_eduscrum"})
+TIPOS = frozenset({"geral", "aula_eduscrum", "aula_dia"})
 TURNOS = frozenset({"manha", "tarde", "noite"})
 MODOS_EXECUCAO = frozenset({"continuidade", "reinicio"})
 

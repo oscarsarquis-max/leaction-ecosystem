@@ -27,6 +27,9 @@ async function request(path, options = {}) {
   return data
 }
 
+/** Cliente HTTP compartilhado (fetch + cookies de sessão). */
+export { request }
+
 export const api = {
   me: () => request('/api/auth/me'),
   checkEmail: (email) =>

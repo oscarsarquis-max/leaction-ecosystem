@@ -35,6 +35,7 @@ from feedback_routes import feedback_bp  # noqa: E402
 from version_info import version_payload  # noqa: E402
 from billing_routes import billing_bp  # noqa: E402
 from tracking_routes import tracking_bp  # noqa: E402
+from daily_routes import daily_bp  # noqa: E402  (reexport → routes.daily_routes)
 from gatekeeper_routes import register_gatekeeper  # noqa: E402
 
 EMAIL_RE = re.compile(
@@ -124,6 +125,8 @@ def create_app() -> Flask:
     app.register_blueprint(feedback_bp)
     # Action-Sponge — proxy de tracking PLG (S2S → gateway :4001)
     app.register_blueprint(tracking_bp)
+    # Vetor Dia a Dia — aulas simples (~50 min); schema via migration 007 (ainda pendente em prod)
+    app.register_blueprint(daily_bp)
     # Gatekeeper (lock/unlock/bypass) — mesmo contrato mudaedu/PanelDX
     register_gatekeeper(app)
 

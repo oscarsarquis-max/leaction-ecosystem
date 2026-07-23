@@ -58,6 +58,9 @@ export default function MesaDoInovador() {
             >
               Upgrade
             </button>
+            <Link to="/dia-a-dia" className="btn-ghost !px-4 !py-2 text-sm font-semibold">
+              Dia a Dia
+            </Link>
             <Link to="/desafio" className="btn-primary !px-4 !py-2 text-sm">
               + Desafio
             </Link>
@@ -77,8 +80,9 @@ export default function MesaDoInovador() {
             Sua prática inovadora
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-bordo-soft">
-            Acompanhe realizações, agenda e desdobramentos. Quando quiser investigar um problema e
-            montar um plano EduScrum, use <strong>+ Desafio</strong>.
+            Acompanhe realizações, agenda e desdobramentos. Para um ciclo rápido de ~50 min na
+            agenda, use <strong>Dia a Dia</strong>. Para investigar um problema e montar um plano
+            EduScrum completo, use <strong>+ Desafio</strong>.
           </p>
           {paidReturn ? (
             <p className="mt-3 text-sm font-medium text-bordo">

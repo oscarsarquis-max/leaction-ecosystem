@@ -7,6 +7,8 @@ import Acesso from './pages/Acesso'
 import PaymentFailurePage from './pages/billing/PaymentFailurePage'
 import PaymentPendingPage from './pages/billing/PaymentPendingPage'
 import PaymentSuccessPage from './pages/billing/PaymentSuccessPage'
+import DailyDashboard from './pages/DailyDashboard'
+import DailyPlanner from './pages/DailyPlanner'
 import DesafioPage from './pages/DesafioPage'
 import ExecucaoPage from './pages/ExecucaoPage'
 import MesaDoInovador from './pages/MesaDoInovador'
@@ -59,6 +61,30 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <DesafioPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dia-a-dia"
+        element={
+          <ProtectedRoute>
+            <DailyDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dia-a-dia/nova"
+        element={
+          <ProtectedRoute>
+            <DailyPlanner />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dia-a-dia/:id"
+        element={
+          <ProtectedRoute>
+            <DailyPlanner />
           </ProtectedRoute>
         }
       />
