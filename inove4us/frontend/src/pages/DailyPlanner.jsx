@@ -91,6 +91,27 @@ function CharHint({ value, max }) {
   )
 }
 
+function normalizeBusca(texto) {
+  return String(texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Filtro local do catálogo — limpar o termo devolve a lista completa na hora. */
+function filtrarDinamicas(items, termo) {
+  const q = normalizeBusca(termo)
+  if (!q) return items
+  return items.filter((d) => {
+    const blob = normalizeBusca(
+      [d.id, d.nome, d.descricao_curta, d.etiqueta].filter(Boolean).join(' '),
+    )
+    return blob.includes(q)
+  })
+}
+
 /**
  * Planejamento rápido de uma aula (~50 min) — criar ou editar.
  */
@@ -115,8 +136,9 @@ export default function DailyPlanner() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerLoading, setPickerLoading] = useState(false)
   const [pickerTermo, setPickerTermo] = useState('')
-  const [dinamicas, setDinamicas] = useState([])
+  const [catalogoDinamicas, setCatalogoDinamicas] = useState([])
   const [pickerError, setPickerError] = useState('')
+  const dinamicasVisiveis = filtrarDinamicas(catalogoDinamicas, pickerTermo)
 
   const applyForm = useCallback((next, kanbanState = null) => {
     const nextTasks = buildCycleTasks(next, kanbanState)
@@ -248,36 +270,32 @@ export default function DailyPlanner() {
 
   async function openPicker() {
     setPickerOpen(true)
+    setPickerTermo('')
     setPickerError('')
     setPickerLoading(true)
     try {
-      const data = await sugerirDinamicas(pickerTermo.trim())
-      setDinamicas(Array.isArray(data?.dinamicas) ? data.dinamicas : [])
+      const data = await sugerirDinamicas('')
+      setCatalogoDinamicas(Array.isArray(data?.dinamicas) ? data.dinamicas : [])
     } catch (err) {
       if (isSchemaPendingError(err)) {
         setSchemaPending(true)
         setPickerOpen(false)
       } else {
         setPickerError(err?.message || 'Não foi possível carregar sugestões.')
-        setDinamicas([])
+        setCatalogoDinamicas([])
       }
     } finally {
       setPickerLoading(false)
     }
   }
 
-  async function searchPicker(e) {
-    e?.preventDefault?.()
-    setPickerLoading(true)
-    setPickerError('')
-    try {
-      const data = await sugerirDinamicas(pickerTermo.trim())
-      setDinamicas(Array.isArray(data?.dinamicas) ? data.dinamicas : [])
-    } catch (err) {
-      setPickerError(err?.message || 'Falha na busca.')
-    } finally {
-      setPickerLoading(false)
-    }
+  function closePicker() {
+    setPickerOpen(false)
+    setPickerTermo('')
+  }
+
+  function limparBuscaPicker() {
+    setPickerTermo('')
   }
 
   function selectDinamica(item) {
@@ -288,7 +306,7 @@ export default function DailyPlanner() {
       dinamica_nome: item.nome || '',
       dinamica_texto: texto,
     }))
-    setPickerOpen(false)
+    closePicker()
   }
 
   async function handleSubmit(e) {
@@ -603,7 +621,7 @@ export default function DailyPlanner() {
           aria-modal="true"
           aria-labelledby="dinamica-picker-title"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setPickerOpen(false)
+            if (e.target === e.currentTarget) closePicker()
           }}
         >
           <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-brand-200 bg-white p-5 shadow-soft">
@@ -617,24 +635,36 @@ export default function DailyPlanner() {
               Dinâmicas rápidas
             </h2>
             <p className="mt-1 text-sm text-bordo-soft">
-              Catálogo completo de dinâmicas (por nome). Use a busca para filtrar.
+              Catálogo completo de dinâmicas (por nome). Digite para filtrar; limpe para ver tudo de novo.
             </p>
 
-            <form onSubmit={(e) => void searchPicker(e)} className="mt-4 flex gap-2">
+            <div className="mt-4 flex gap-2">
               <input
                 className="field-input min-h-11 flex-1"
                 value={pickerTermo}
                 onChange={(e) => setPickerTermo(e.target.value)}
-                placeholder="Buscar por nome (ex.: Escape, Pitch, Estações…)"
+                placeholder="Filtrar por nome (ex.: Escape, Pitch, Estações…)"
+                autoComplete="off"
+                aria-label="Filtrar dinâmicas por nome"
               />
-              <button
-                type="submit"
-                className="btn-ghost min-h-11 !px-4 !py-2 text-sm"
-                disabled={pickerLoading}
-              >
-                Buscar
-              </button>
-            </form>
+              {pickerTermo ? (
+                <button
+                  type="button"
+                  onClick={limparBuscaPicker}
+                  className="btn-ghost min-h-11 !px-4 !py-2 text-sm"
+                  aria-label="Limpar busca"
+                >
+                  Limpar
+                </button>
+              ) : null}
+            </div>
+            {!pickerLoading && catalogoDinamicas.length > 0 ? (
+              <p className="mt-2 text-xs text-bordo-soft">
+                {pickerTermo.trim()
+                  ? `${dinamicasVisiveis.length} de ${catalogoDinamicas.length}`
+                  : `${catalogoDinamicas.length} dinâmicas`}
+              </p>
+            ) : null}
 
             {pickerLoading ? (
               <p className="mt-4 text-sm text-bordo-soft">Carregando…</p>
@@ -644,7 +674,7 @@ export default function DailyPlanner() {
             ) : null}
 
             <ul className="mt-4 space-y-3">
-              {dinamicas.map((d) => (
+              {dinamicasVisiveis.map((d) => (
                 <li key={d.id}>
                   <button
                     type="button"
@@ -665,13 +695,27 @@ export default function DailyPlanner() {
               ))}
             </ul>
 
-            {!pickerLoading && dinamicas.length === 0 && !pickerError ? (
-              <p className="mt-4 text-sm text-bordo-soft">Nenhuma dinâmica encontrada.</p>
+            {!pickerLoading && dinamicasVisiveis.length === 0 && !pickerError ? (
+              <p className="mt-4 text-sm text-bordo-soft">
+                Nenhuma dinâmica encontrada.
+                {pickerTermo.trim() ? (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      onClick={limparBuscaPicker}
+                      className="font-semibold text-brand-700 underline underline-offset-2"
+                    >
+                      Limpar busca
+                    </button>
+                  </>
+                ) : null}
+              </p>
             ) : null}
 
             <button
               type="button"
-              onClick={() => setPickerOpen(false)}
+              onClick={closePicker}
               className="btn-ghost mt-5 min-h-11 w-full !py-3 text-sm"
             >
               Fechar
