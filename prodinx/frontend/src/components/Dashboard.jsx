@@ -312,6 +312,62 @@ function Dashboard() {
 
 
 
+  const handleSelectColaboradorTeste = (matricula) => {
+
+    const colaborador = opcoes.colaboradores?.find((item) => item.matricula === matricula);
+
+    if (colaborador) {
+
+      handleSelectColaborador(colaborador);
+
+      return;
+
+    }
+
+
+
+    const novosFiltros = normalizarFiltrosColaborador(
+
+      {
+
+        nivel: "colaborador",
+
+        busca: matricula,
+
+        id_colaborador: null,
+
+      },
+
+      opcoes.colaboradores,
+
+      matricula
+
+    );
+
+
+
+    if (!novosFiltros.id_colaborador) {
+
+      setAvisoFiltro("Colaborador não encontrado. Execute o seed APD ou selecione na lista.");
+
+      return;
+
+    }
+
+
+
+    setAvisoFiltro(null);
+
+    setFiltros(novosFiltros);
+
+    setFiltrosAplicados(novosFiltros);
+
+    setFiltrosAbertos(true);
+
+  };
+
+
+
   const paineisIndicador = extractPainelIndicadores(
 
     metricas,
@@ -373,6 +429,8 @@ function Dashboard() {
           onClear={handleClearFiltros}
 
           onRefresh={() => loadMetricas(filtrosAplicados)}
+
+          onSelectColaboradorTeste={handleSelectColaboradorTeste}
 
           onSelectColaborador={handleSelectColaborador}
 

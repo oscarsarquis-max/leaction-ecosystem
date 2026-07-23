@@ -58,6 +58,14 @@ const NIVEIS_PADRAO = [
   { valor: "setor", label: "Setor", baseline: "Média total" },
 ];
 
+/** Atalhos temporários até a importação JSON popular o universo real. */
+const COLABORADORES_TESTE = [
+  { label: "José", matricula: "F178992" },
+  { label: "Saulo", matricula: "F178841" },
+  { label: "Samuel", matricula: "F170046" },
+  { label: "Francisco", matricula: "F179117" },
+];
+
 function countActiveFilters(filtros) {
   if (filtros.id_colaborador) {
     return 1;
@@ -75,6 +83,7 @@ function FilterBar({
   onClear,
   onRefresh,
   loading,
+  onSelectColaboradorTeste,
   onSelectColaborador,
   onClearColaborador,
   onInvalidateColaborador,
@@ -129,6 +138,34 @@ function FilterBar({
           </button>
         </div>
       </div>
+
+      {onSelectColaboradorTeste && (
+        <div className="space-y-2 border-t border-gray-100 pt-4">
+          <p className="text-xs font-medium text-brand-cinza">
+            Atalhos temporários — colaboradores de validação APD
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {COLABORADORES_TESTE.map((item) => {
+              const ativo = modoColaborador && filtros.busca === item.matricula;
+              return (
+                <button
+                  key={item.matricula}
+                  type="button"
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                    ativo
+                      ? "border-brand-verde bg-brand-verde text-white"
+                      : "border-gray-200 bg-white text-brand-cinza hover:border-brand-verde/40 hover:bg-brand-verde/5"
+                  }`}
+                  onClick={() => onSelectColaboradorTeste(item.matricula)}
+                >
+                  {item.label}
+                  <span className="ml-1 font-normal opacity-70">{item.matricula}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {filtrosAbertos && (
         <div className="space-y-4 border-t border-gray-100 pt-4">
