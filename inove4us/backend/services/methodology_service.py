@@ -1,8 +1,8 @@
 """
-Dinâmicas do vetor Dia a Dia — catálogo completo a partir de core.metodologias_db.
+Dinâmicas do vetor Dia a Dia — catálogo de 39 nomes (base da obra / MAtivas).
 
-Expõe o nome de cada atividade e uma descrição curta.
-NÃO devolve as designações/categorias autorais proibidas (ÁGEIS, CRI-ATIVAS, etc.).
+Expõe nome + descrição curta (quando houver mecânica em METODOLOGIAS_DB).
+NÃO devolve designações/categorias autorais (ÁGEIS, CRI-ATIVAS, etc.).
 """
 
 from __future__ import annotations
@@ -10,11 +10,11 @@ from __future__ import annotations
 import unicodedata
 from typing import Any
 
+from core.catalogo_metodologias_dia import entradas_catalogo_dia
 from core.metodologias_db import METODOLOGIAS_DB
 
-CACHE_VERSION = "2026-07-23.v4"
+CACHE_VERSION = "2026-07-23.v5"
 
-# Nunca devolver estes rótulos na API do Dia a Dia (questão autoral).
 _PROIBIDOS = frozenset(
     {
         "ageis",
@@ -32,11 +32,13 @@ _PROIBIDOS = frozenset(
     }
 )
 
-# IDs antigos do cache mínimo → id canônico do METODOLOGIAS_DB
+# IDs antigos do cache mínimo → id canônico do catálogo Dia a Dia
 _ALIASES_LEGADOS: dict[str, str] = {
     "rapido_minute_paper": "agil_minute_paper",
     "ideacao_brainstorming_guiado": "criativa_design_thinking_express",
     "checkout_exit_ticket": "analitica_diagnostico_coletivo",
+    # Design Thinking Express era o nome curto no DB de 16
+    "criativa_design_thinking_express": "criativa_design_thinking_express",
 }
 
 
@@ -46,8 +48,7 @@ def _norm(texto: str) -> str:
     return " ".join(raw.lower().split())
 
 
-def _descricao_curta(meta: dict[str, Any]) -> str:
-    """Monta um resumo usável no Dia a Dia a partir dos cards estáticos."""
+def _descricao_curta_db(meta: dict[str, Any]) -> str:
     cards = meta.get("cards") or []
     if not cards:
         return str(meta.get("nome") or "").strip()
@@ -64,24 +65,43 @@ def _descricao_curta(meta: dict[str, Any]) -> str:
     return str(meta.get("nome") or "").strip()
 
 
-def _build_catalog() -> dict[str, dict[str, Any]]:
-    """Índice id → item interno (com aliases)."""
-    catalog: dict[str, dict[str, Any]] = {}
-    for mid, meta in METODOLOGIAS_DB.items():
-        nome = str(meta.get("nome") or mid).strip()
-        item = {
-            "id": mid,
-            "nome": nome,
-            "etiqueta": "Dinâmica",
-            "descricao_curta": _descricao_curta(meta),
-            "aliases": [],
-        }
-        catalog[mid] = item
+def _descricao_para_entrada(entrada: dict[str, Any]) -> str:
+    id_db = entrada.get("id_db")
+    if id_db and id_db in METODOLOGIAS_DB:
+        return _descricao_curta_db(METODOLOGIAS_DB[id_db])
 
-    # aliases legados apontam para a entrada canônica
+    # fallback: match por nome/alias no DB de mecânicas
+    alvos = {_norm(entrada["nome"])}
+    for a in entrada.get("aliases") or []:
+        alvos.add(_norm(a))
+    for mid, meta in METODOLOGIAS_DB.items():
+        if _norm(meta.get("nome") or "") in alvos or _norm(mid) in alvos:
+            return _descricao_curta_db(meta)
+
+    return "Dinâmica da base de metodologias — use na estação em campo do ciclo."
+
+
+def _build_catalog() -> dict[str, dict[str, Any]]:
+    catalog: dict[str, dict[str, Any]] = {}
+    for entrada in entradas_catalogo_dia():
+        mid = entrada["id"]
+        aliases = list(entrada.get("aliases") or [])
+        # permitir resolver também pelo id_db quando diferente
+        id_db = entrada.get("id_db")
+        if id_db and id_db != mid and id_db not in aliases:
+            aliases.append(id_db)
+        catalog[mid] = {
+            "id": mid,
+            "nome": entrada["nome"],
+            "etiqueta": "Dinâmica",
+            "descricao_curta": _descricao_para_entrada(entrada),
+            "aliases": aliases,
+        }
+
     for alias, canonical in _ALIASES_LEGADOS.items():
         if canonical in catalog and alias not in catalog:
-            catalog[canonical]["aliases"].append(alias)
+            if alias not in catalog[canonical]["aliases"]:
+                catalog[canonical]["aliases"].append(alias)
     return catalog
 
 
@@ -89,7 +109,6 @@ METODOLOGIAS_RAPIDAS_CACHE: dict[str, dict[str, Any]] = _build_catalog()
 
 
 def _public_item(item: dict[str, Any]) -> dict[str, Any]:
-    """Cópia pública: só id, nome, etiqueta neutra e descrição."""
     etiqueta = str(item.get("etiqueta") or "Dinâmica").strip() or "Dinâmica"
     if _norm(etiqueta) in _PROIBIDOS:
         etiqueta = "Dinâmica"
@@ -102,17 +121,12 @@ def _public_item(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def listar_dinamicas_rapidas() -> list[dict[str, Any]]:
-    """Todas as metodologias do catálogo local (visão pública, sem categorias)."""
     items = [_public_item(item) for item in METODOLOGIAS_RAPIDAS_CACHE.values()]
     items.sort(key=lambda x: _norm(x.get("nome") or ""))
     return items
 
 
 def buscar_dinamicas_rapidas(termo_busca: str = "") -> list[dict[str, Any]]:
-    """
-    Sem termo → catálogo completo.
-    Com termo → filtra por id, nome ou descrição (sem acento/case).
-    """
     termo = _norm(termo_busca)
     if not termo:
         return listar_dinamicas_rapidas()
@@ -136,12 +150,10 @@ def buscar_dinamicas_rapidas(termo_busca: str = "") -> list[dict[str, Any]]:
 
 
 def get_dinamica_by_id(dinamica_id: str) -> dict[str, Any] | None:
-    """Resolve pelo id canônico do METODOLOGIAS_DB ou alias legado."""
     key = (dinamica_id or "").strip()
     if not key:
         return None
 
-    # alias legado → canônico
     canonical = _ALIASES_LEGADOS.get(key) or _ALIASES_LEGADOS.get(key.lower())
     if canonical and canonical in METODOLOGIAS_RAPIDAS_CACHE:
         return _public_item(METODOLOGIAS_RAPIDAS_CACHE[canonical])
@@ -151,10 +163,11 @@ def get_dinamica_by_id(dinamica_id: str) -> dict[str, Any] | None:
         return _public_item(item)
 
     key_l = key.lower()
+    key_n = _norm(key)
     for mid, meta in METODOLOGIAS_RAPIDAS_CACHE.items():
-        if mid.lower() == key_l:
+        if mid.lower() == key_l or _norm(meta.get("nome") or "") == key_n:
             return _public_item(meta)
         for alias in meta.get("aliases") or []:
-            if str(alias).lower() == key_l:
+            if str(alias).lower() == key_l or _norm(alias) == key_n:
                 return _public_item(meta)
     return None
