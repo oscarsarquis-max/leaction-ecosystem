@@ -46,6 +46,7 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
         "synthesize": "synthesize",
         "synthesis": "synthesize",
         "sintese": "synthesize",
+        "síntese": "synthesize",
         "prompt": "prompt",
         "prompt_cursor": "prompt",
         "delivery": "prompt",
@@ -55,6 +56,24 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
     }
     if value in aliases:
         return aliases[value]
+
+    # Spec sem `type`: infere pelo próprio phase_id (ex.: metodologia, pesquisa_x).
+    pid = str(phase_id or "").strip().lower()
+    if pid in aliases:
+        return aliases[pid]
+    for token, capability in (
+        ("metodologia", "methodology"),
+        ("methodology", "methodology"),
+        ("pesquisa", "research"),
+        ("research", "research"),
+        ("grounding", "research"),
+        ("sintese", "synthesize"),
+        ("síntese", "synthesize"),
+        ("synthesize", "synthesize"),
+        ("prompt", "prompt"),
+    ):
+        if token in pid:
+            return capability
 
     match = re.match(r"^L(\d+)", str(phase_id).strip(), re.I)
     if match:

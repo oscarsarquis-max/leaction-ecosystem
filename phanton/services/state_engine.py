@@ -47,12 +47,16 @@ CAPABILITY_HANDLERS: dict[str, PhaseHandler] = {
     "prompt": execute_phase_L4,
 }
 
-# Compat legado: IDs L1..L4 ainda resolvem.
+# Compat legado: IDs L1..L4 e nomes da DEFAULT_PHASE_ORDER ainda resolvem.
 PHASE_HANDLERS: dict[str, PhaseHandler] = {
     "L1": execute_phase_L1,
     "L2": execute_phase_L2,
     "L3": execute_phase_L3,
     "L4": execute_phase_L4,
+    "metodologia": execute_phase_L1,
+    "pesquisa": execute_phase_L2,
+    "sintese": execute_phase_L3,
+    "prompt_cursor": execute_phase_L4,
 }
 
 STATUS_RUNNING = "RUNNING"
@@ -153,9 +157,10 @@ def _resolve_handler(phase_id: str, spec: dict[str, Any] | None) -> PhaseHandler
         return handler
 
     raise StateEngineError(
-        f"Nenhum handler para a fase '{phase_id}' (type/capability='{capability}'). "
-        f"Types válidos: methodology, research, synthesize, prompt "
-        f"(aliases: generate, grounding, evaluate, prompt_cursor…)."
+        f"Nenhum handler registrado para a fase: {phase_id} "
+        f"(type/capability='{capability}'). "
+        f"Use type methodology|research|synthesize|prompt "
+        f"(ou IDs L1/L2/L3/L4 / nomes metodologia, pesquisa, sintese, prompt_cursor)."
     )
 
 

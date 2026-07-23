@@ -280,13 +280,16 @@ def coerce_to_cursor_prompt(raw_text: str) -> str:
                 current = extract_json_payload(candidate)
                 continue
             except Exception:
-                # JSON quebrado: devolve como bloco útil
+                # JSON quebrado/vazio: devolve o texto bruto como Markdown útil
                 return (
                     "# Prompt para implementação no Cursor\n\n"
                     "## Conteúdo gerado\n\n"
                     f"{candidate}"
                 )
 
+        # Texto livre (não JSON): é o prompt Markdown esperado
+        if candidate:
+            return candidate
         return candidate
 
     if isinstance(current, str) and current.strip():
@@ -437,10 +440,24 @@ def _generate_cursor_prompt_safe(
             if not (raw_text or "").strip():
                 errors.append(f"vazio(tokens={max_tokens})")
                 continue
-            cursor_prompt = coerce_to_cursor_prompt(raw_text)
-            if cursor_prompt.strip():
-                meta = {**meta, "attempts": errors, "used_max_output_tokens": max_tokens}
-                return cursor_prompt, meta
+            try:
+                cursor_prompt = coerce_to_cursor_prompt(raw_text)
+            except Exception as coerce_exc:
+                # Nunca propaga JSONDecodeError cru para a UI
+                errors.append(f"coerce:{type(coerce_exc).__name__}: {coerce_exc}")
+                # Se o modelo já devolveu Markdown, usa direto
+                stripped = (raw_text or "").strip()
+                if stripped.startswith("#") or re.search(r"^##\s+", stripped, re.M):
+                    cursor_prompt = stripped
+                else:
+                    continue
+            if cursor_prompt and cursor_prompt.strip():
+                meta = {
+                    **meta,
+                    "attempts": errors,
+                    "used_max_output_tokens": max_tokens,
+                }
+                return cursor_prompt.strip(), meta
             errors.append(f"coerce_vazio(tokens={max_tokens})")
         except Exception as exc:
             errors.append(f"{type(exc).__name__}: {exc}")

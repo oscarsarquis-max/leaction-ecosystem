@@ -83,20 +83,42 @@ function MethodologyView({ data }) {
     'principles',
     'notas',
     'notes',
+    'observacoes',
+    'observações',
+    'recomendacoes',
+    'recomendações',
   ])
+  const notasRaw =
+    data.notas ||
+    data.notes ||
+    data.observacoes ||
+    data.observações ||
+    data.recomendacoes ||
+    data.recomendações ||
+    ''
+  const notas = Array.isArray(notasRaw)
+    ? notasRaw.filter(Boolean).join('\n')
+    : String(notasRaw || '').trim()
+
   return (
     <div className="space-y-4">
       <Section title="Metodologia">
         <p className="font-medium text-slate-900">{data.metodologia || data.methodology || '—'}</p>
       </Section>
+      <Section title="Notas">
+        {notas ? (
+          <p className="whitespace-pre-wrap break-words">{notas}</p>
+        ) : (
+          <p className="text-slate-500 italic">Nenhuma nota registrada nesta fase.</p>
+        )}
+      </Section>
       <Section title="Objetivo">
-        <p>{data.objetivo || data.objective || data.objetivo_geral || null}</p>
+        <p className="whitespace-pre-wrap break-words">
+          {data.objetivo || data.objective || data.objetivo_geral || null}
+        </p>
       </Section>
       <Section title="Princípios">
         <BulletList items={data.principios || data.principles} />
-      </Section>
-      <Section title="Notas">
-        <p className="whitespace-pre-wrap">{data.notas || data.notes || null}</p>
       </Section>
       <KeyValueBlock data={rest} />
     </div>

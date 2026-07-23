@@ -126,6 +126,14 @@ def extract_json_payload(text: str) -> Any:
     if not cleaned:
         raise ValueError("Resposta vazia do Gemini (cerca markdown sem conteúdo)")
 
+    # Evita o JSONDecodeError cru "Expecting value: line 1 column 1".
+    if not cleaned.lstrip()[:1] in "{[":
+        # Pode ser Markdown puro — quem chama decide se aceita texto.
+        raise ValueError(
+            f"Resposta do Gemini não é JSON (começa com texto). "
+            f"Prévia: {cleaned[:240]!r}"
+        )
+
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError as first_err:
@@ -136,23 +144,27 @@ def extract_json_payload(text: str) -> Any:
                 f"Prévia: {cleaned[:240]!r}"
             ) from first_err
         start = min(start_candidates)
-        fragment = cleaned[start:]
+        fragment = cleaned[start:].strip()
+        if not fragment:
+            raise ValueError(
+                "Resposta do Gemini parece JSON mas o fragmento está vazio."
+            ) from first_err
         try:
             return json.loads(fragment)
         except json.JSONDecodeError:
             pass
         try:
-            obj, _ = json.JSONDecoder().raw_decode(fragment.strip())
+            obj, _ = json.JSONDecoder().raw_decode(fragment)
             return obj
         except Exception:
             pass
         try:
             return _repair_truncated_json(fragment)
-        except Exception as repair_err:
+        except Exception:
             raise ValueError(
                 f"JSON inválido/truncado do Gemini: {first_err}. "
                 f"Prévia: {fragment[:240]!r}"
-            ) from repair_err
+            ) from first_err
 
 
 def _response_text(response: Any) -> str:
