@@ -617,7 +617,7 @@ export default function DailyPlanner() {
               Dinâmicas rápidas
             </h2>
             <p className="mt-1 text-sm text-bordo-soft">
-              Escolha uma atividade para a estação “em campo” do ciclo de 50 min.
+              Catálogo completo de dinâmicas (por nome). Use a busca para filtrar.
             </p>
 
             <form onSubmit={(e) => void searchPicker(e)} className="mt-4 flex gap-2">
@@ -625,7 +625,7 @@ export default function DailyPlanner() {
                 className="field-input min-h-11 flex-1"
                 value={pickerTermo}
                 onChange={(e) => setPickerTermo(e.target.value)}
-                placeholder="Buscar (ex.: minute, exit…)"
+                placeholder="Buscar por nome (ex.: Escape, Pitch, Estações…)"
               />
               <button
                 type="submit"
