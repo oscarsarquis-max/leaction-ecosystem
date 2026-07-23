@@ -67,10 +67,10 @@ export function AdminGuard({ children }: { children: ReactNode }) {
           </p>
         </div>
         <Link
-          href="/dashboard"
+          href="/"
           className="rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-800"
         >
-          Ir ao dashboard
+          Voltar ao Action Hub
         </Link>
       </div>
     );
@@ -101,6 +101,9 @@ export function AdminGuard({ children }: { children: ReactNode }) {
         >
           Fazer login completo
         </button>
+        <Link href="/" className="text-sm font-medium text-stone-500 hover:text-stone-800">
+          Voltar ao Action Hub
+        </Link>
       </div>
     );
   }

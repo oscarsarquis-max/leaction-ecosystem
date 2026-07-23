@@ -200,7 +200,7 @@ export function ContextualVitrineSection() {
     : payload?.title || 'Explore nossas Soluções';
   const subtitle = isContextual
     ? payload?.subtitle ||
-      'Itens alinhados às iniciativas priorizadas do seu projeto PanelDX.'
+      'Itens alinhados às iniciativas priorizadas do seu projeto.'
     : payload?.subtitle ||
       'Conteúdo organizado pela dor do cliente, com filtros de relevância corporativa.';
 
@@ -208,7 +208,7 @@ export function ContextualVitrineSection() {
     <div className="mx-auto max-w-5xl space-y-10 md:space-y-12">
       <div className="mx-auto max-w-2xl text-center">
         <p className="mb-1.5 text-sm font-semibold uppercase tracking-wider text-orange-600">
-          {isContextual ? 'Recomendação PanelDX' : 'Curadoria B2B'}
+          {isContextual ? 'Recomendação contextual' : 'Curadoria B2B'}
         </p>
         <h2
           id="vitrine-prateleiras-titulo"

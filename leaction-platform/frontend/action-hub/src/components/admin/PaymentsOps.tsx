@@ -277,10 +277,7 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
           <option value="">Todas as apps</option>
           {(apps.length > 0
             ? apps
-            : [
-                { app_id: 'inove4us', name: 'inove4us' },
-                { app_id: 'paneldx', name: 'PanelDX' },
-              ]
+            : [{ app_id: 'inove4us', name: 'inove4us' }]
           ).map((a) => (
             <option key={a.app_id} value={a.app_id}>
               {a.name || a.app_id}

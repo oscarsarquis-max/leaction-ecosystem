@@ -3,15 +3,19 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Settings2 } from 'lucide-react';
+import { useAdminGate } from '@/lib/require-admin';
 
 /**
- * Atalho discreto para curadoria — visível quando a sessão de curadoria
- * (cookie mp_curation_auth) está autenticada.
+ * Atalho discreto para curadoria — visível para admin Hub
+ * ou quando a sessão legado (cookie mp_curation_auth) está autenticada.
  */
 export function HeroCurationShortcut() {
-  const [visible, setVisible] = useState(false);
+  const { canAccessAdmin, hydrated } = useAdminGate();
+  const [cookieAuthed, setCookieAuthed] = useState(false);
 
   useEffect(() => {
+    if (!hydrated || canAccessAdmin) return;
+
     let cancelled = false;
     (async () => {
       try {
@@ -21,7 +25,7 @@ export function HeroCurationShortcut() {
         });
         const data = await res.json().catch(() => ({}));
         if (!cancelled && data?.authenticated === true) {
-          setVisible(true);
+          setCookieAuthed(true);
         }
       } catch {
         /* silencioso — visitante comum não vê o atalho */
@@ -30,9 +34,10 @@ export function HeroCurationShortcut() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hydrated, canAccessAdmin]);
 
-  if (!visible) return null;
+  if (!hydrated) return null;
+  if (!canAccessAdmin && !cookieAuthed) return null;
 
   return (
     <Link

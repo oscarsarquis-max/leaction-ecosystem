@@ -23,6 +23,8 @@ import {
   type PanelDxAddonVitrine,
 } from '@/lib/paneldx-api';
 import { useHubPaymentConfig } from '@/lib/use-hub-payment-config';
+import { isPanelDxHubLinked } from '@/lib/paneldx-hub-link';
+import { PanelDxUnlinkedNotice } from '@/components/PanelDxUnlinkedNotice';
 
 const PANELDX_BRAND = resolveClientBrand('paneldx')!;
 
@@ -273,6 +275,9 @@ function CheckoutDirectContent() {
 }
 
 export default function CheckoutDirectPage() {
+  if (!isPanelDxHubLinked()) {
+    return <PanelDxUnlinkedNotice title="Checkout de pacote PanelDX indisponível" />;
+  }
   return (
     <Suspense
       fallback={

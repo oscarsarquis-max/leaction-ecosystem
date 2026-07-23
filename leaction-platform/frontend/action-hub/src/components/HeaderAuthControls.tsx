@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Loader2, LogIn, LogOut, ShoppingCart } from 'lucide-react';
 import axios from 'axios';
+import { BackToHubHome } from '@/components/BackToHubHome';
 import { useCart } from '@/context/CartContext';
 import { useHubSession } from '@/context/HubSessionContext';
 import { getHubApiBase } from '@/lib/hub-api';
@@ -182,6 +183,14 @@ export function HeaderAuthControls({ variant = 'dark' }: HeaderAuthControlsProps
       <div
         className={`flex max-w-[min(100%,28rem)] items-center gap-1.5 sm:gap-2 ${isLight ? 'ml-auto' : ''}`}
       >
+        <BackToHubHome
+          variant="icon"
+          className={
+            isLight
+              ? 'inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-orange-800'
+              : 'inline-flex items-center justify-center rounded-lg p-2 text-orange-200 transition hover:bg-white/10 hover:text-white'
+          }
+        />
         <Link
           href={historyHref}
           className={

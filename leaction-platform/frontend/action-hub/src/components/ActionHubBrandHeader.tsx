@@ -22,7 +22,12 @@ export function ActionHubBrandHeader({ right, left }: ActionHubBrandHeaderProps)
   return (
     <header className="sticky top-0 z-[60] h-[60px] w-full border-b border-stone-200/80 bg-white/95 backdrop-blur-md">
       <div className="mx-auto flex h-[60px] max-w-7xl items-center justify-between gap-3 px-4 md:px-6">
-        <Link href="/" className="flex min-w-0 items-center gap-2.5" aria-label="ActionHub — início">
+        <Link
+          href="/"
+          className="flex min-w-0 items-center gap-2.5 transition hover:opacity-90"
+          aria-label="Voltar ao início do Action Hub"
+          title="Início"
+        >
           <img
             src="/logo.png"
             alt="ActionHub"
@@ -33,7 +38,7 @@ export function ActionHubBrandHeader({ right, left }: ActionHubBrandHeaderProps)
               ActionHub
             </p>
             <p className="mt-0.5 hidden text-[10px] font-medium uppercase tracking-wider text-stone-400 sm:block">
-              Contextual Platform
+              Início · Contextual Platform
             </p>
           </div>
         </Link>

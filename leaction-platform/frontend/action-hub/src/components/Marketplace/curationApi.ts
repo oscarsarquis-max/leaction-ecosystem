@@ -3,6 +3,22 @@
 import axios from 'axios';
 
 const API_BASE = '/api/marketplace';
+const HUB_SESSION_KEY = 'actionhub_session';
+
+/** Envia JWT do Action Hub para a API aceitar admin sem cookie da curadoria. */
+function hubAuthHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(HUB_SESSION_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as { token?: string | null };
+    const token = String(parsed?.token || '').trim();
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+  } catch {
+    return {};
+  }
+}
 
 export type CurationRule = {
   id: string;
@@ -63,7 +79,7 @@ export function rulesToMap(rules: CurationRule[]): Record<string, CurationRule> 
 export async function fetchCurationRules(): Promise<CurationRule[]> {
   try {
     const { data } = await axios.get(`${API_BASE}/curation`, {
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', ...hubAuthHeaders() },
       timeout: 15000,
     });
     if (!Array.isArray(data?.rules)) {
@@ -87,6 +103,7 @@ export async function updateCurationRule(
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
+          ...hubAuthHeaders(),
         },
         timeout: 15000,
       }
@@ -104,7 +121,7 @@ export async function fetchPreviewOffers(category: string, limit = 4) {
   try {
     const { data } = await axios.get(`${API_BASE}/preview`, {
       params: { category, limit },
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', ...hubAuthHeaders() },
       timeout: 20000,
     });
     return {

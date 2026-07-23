@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { PanelDxPricingCards } from '@/components/PanelDxPricingCards';
 import { resolveClientBrand } from '@/lib/client-branding';
+import { isPanelDxHubLinked } from '@/lib/paneldx-hub-link';
 import {
   fetchPanelDxPlanosVitrineWithMeta,
   formatVitrineUpdatedAt,
@@ -20,7 +21,12 @@ type PanelDxHomePricingSectionProps = {
 };
 
 /** Planos PanelDX — valores do CRM (via gateway), não hardcoded. */
-export function PanelDxHomePricingSection({
+export function PanelDxHomePricingSection(props: PanelDxHomePricingSectionProps) {
+  if (!isPanelDxHubLinked()) return null;
+  return <PanelDxHomePricingSectionInner {...props} />;
+}
+
+function PanelDxHomePricingSectionInner({
   sectionId = 'planos-paneldx',
   showCheckoutLink = true,
 }: PanelDxHomePricingSectionProps) {

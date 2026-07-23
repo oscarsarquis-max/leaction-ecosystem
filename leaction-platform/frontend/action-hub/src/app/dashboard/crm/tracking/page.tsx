@@ -289,11 +289,7 @@ export default function CrmTrackingConversionPage() {
         const list = await loadOrigens();
         if (cancelled || !list.length) return;
         if (!list.some((o) => o.slug === sistema)) {
-          setSistema(
-            list.find((o) => o.slug === 'inove4us')?.slug ||
-              list.find((o) => o.slug === 'paneldx')?.slug ||
-              list[0].slug
-          );
+          setSistema(list.find((o) => o.slug === 'inove4us')?.slug || list[0].slug);
         }
       } catch (err) {
         if (!cancelled) {
@@ -425,11 +421,11 @@ export default function CrmTrackingConversionPage() {
         <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <Link
-              href="/dashboard"
-              className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-slate-800"
+              href="/"
+              className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-orange-800"
             >
               <ArrowLeft className="size-4" aria-hidden />
-              Voltar ao dashboard
+              Voltar ao Action Hub
             </Link>
             <div className="min-w-0">
               <h1 className="text-2xl font-bold tracking-tight text-stone-900 md:text-3xl">

@@ -9,7 +9,7 @@ const MARKETPLACE_INTERNAL = (
 
 /** Proxy GET → Flask /api/marketplace/offers (preview da vitrine). */
 export async function GET(request: NextRequest) {
-  const denied = await requireCurationAuth();
+  const denied = await requireCurationAuth(request);
   if (denied) return denied;
 
   const search = request.nextUrl.search;

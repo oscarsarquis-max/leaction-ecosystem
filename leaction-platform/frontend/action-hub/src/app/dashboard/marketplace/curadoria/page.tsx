@@ -29,13 +29,17 @@ import {
   textToList,
   updateCurationRule,
 } from '@/components/Marketplace/curationApi';
+import { useAdminGate } from '@/lib/require-admin';
 
 type Toast = { type: 'success' | 'error'; message: string } | null;
+type AuthVia = 'hub_admin' | 'curation_cookie' | null;
 
 export default function MarketplaceCurationPage() {
+  const { canAccessAdmin, user: hubUser, token: hubToken, hydrated: hubHydrated } = useAdminGate();
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [sessionUser, setSessionUser] = useState<string | null>(null);
+  const [authVia, setAuthVia] = useState<AuthVia>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -90,41 +94,68 @@ export default function MarketplaceCurationPage() {
   }, [applyCategoryFields]);
 
   useEffect(() => {
+    if (!hubHydrated) return;
+
     let cancelled = false;
     (async () => {
+      // Admin já logado no Action Hub — sem segundo login
+      if (canAccessAdmin && hubToken) {
+        if (!cancelled) {
+          setAuthenticated(true);
+          setAuthVia('hub_admin');
+          setSessionUser(hubUser?.email || null);
+          setAuthChecked(true);
+        }
+        return;
+      }
+
       try {
-        const { data } = await axios.get('/api/marketplace/curation-auth/session', { timeout: 10000 });
+        const headers: Record<string, string> = {};
+        if (hubToken) headers.Authorization = `Bearer ${hubToken}`;
+        const { data } = await axios.get('/api/marketplace/curation-auth/session', {
+          timeout: 10000,
+          headers,
+        });
         if (cancelled) return;
         setAuthenticated(Boolean(data?.authenticated));
         setSessionUser(data?.user || null);
+        setAuthVia(
+          data?.via === 'hub_admin' || data?.via === 'curation_cookie' ? data.via : null
+        );
       } catch {
         if (!cancelled) {
           setAuthenticated(false);
           setSessionUser(null);
+          setAuthVia(null);
         }
       } finally {
         if (!cancelled) setAuthChecked(true);
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hubHydrated, canAccessAdmin, hubToken, hubUser?.email]);
 
   useEffect(() => {
     if (authenticated) loadCurationData();
   }, [authenticated, loadCurationData]);
 
   async function handleLogout() {
-    await axios.post('/api/marketplace/curation-auth/logout').catch(() => undefined);
+    if (authVia === 'curation_cookie') {
+      await axios.post('/api/marketplace/curation-auth/logout').catch(() => undefined);
+    }
     setAuthenticated(false);
     setSessionUser(null);
+    setAuthVia(null);
     setCurationData({});
     setPreviewItems([]);
   }
 
   function handleLoginSuccess() {
     setAuthenticated(true);
+    setAuthVia('curation_cookie');
     axios
       .get('/api/marketplace/curation-auth/session')
       .then(({ data }) => setSessionUser(data?.user || null))
@@ -214,7 +245,27 @@ export default function MarketplaceCurationPage() {
   }
 
   if (!authenticated) {
-    return <CurationLogin onSuccess={handleLoginSuccess} />;
+    return (
+      <div className="min-h-screen bg-slate-50">
+        {hubHydrated && !hubUser ? (
+          <div className="mx-auto max-w-lg px-4 pt-10 text-center">
+            <p className="text-sm text-red-950/70">
+              Faça login no Action Hub como admin para abrir a curadoria sem segundo login.
+            </p>
+            <Link
+              href="/"
+              className="mt-3 inline-block text-sm font-semibold text-orange-600 hover:text-orange-700"
+            >
+              Ir para o Action Hub
+            </Link>
+            <p className="mt-8 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              ou use o login dedicado da curadoria
+            </p>
+          </div>
+        ) : null}
+        <CurationLogin onSuccess={handleLoginSuccess} />
+      </div>
+    );
   }
 
   const activeRule = curationData[activeCategory];
@@ -225,24 +276,37 @@ export default function MarketplaceCurationPage() {
       <div className="mx-auto max-w-6xl px-4 py-10 md:px-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <Link
-            href="/dashboard"
+            href="/"
             className="inline-flex items-center gap-2 text-sm font-medium text-red-950/70 hover:text-orange-500"
           >
             <ArrowLeft className="size-4 text-orange-500" aria-hidden />
-            Voltar ao dashboard
+            Voltar ao Action Hub
           </Link>
           <div className="flex items-center gap-3">
             {sessionUser ? (
-              <span className="text-xs font-medium text-red-950/60">Logado como {sessionUser}</span>
+              <span className="text-xs font-medium text-red-950/60">
+                {authVia === 'hub_admin' ? 'Admin Hub · ' : ''}
+                {sessionUser}
+              </span>
             ) : null}
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-red-950 hover:border-orange-300"
-            >
-              <LogOut className="size-4 text-orange-500" aria-hidden />
-              Sair
-            </button>
+            {authVia === 'hub_admin' ? (
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-red-950 hover:border-orange-300"
+              >
+                <ArrowLeft className="size-4 text-orange-500" aria-hidden />
+                Início
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-red-950 hover:border-orange-300"
+              >
+                <LogOut className="size-4 text-orange-500" aria-hidden />
+                Sair
+              </button>
+            )}
           </div>
         </div>
 

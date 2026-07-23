@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import type { ClientBrandTheme } from '@/lib/client-branding';
+import { BackToHubHome } from '@/components/BackToHubHome';
 
 type ClientCheckoutHeaderProps = {
   brand: ClientBrandTheme;
@@ -43,15 +44,18 @@ export function ClientCheckoutHeader({ brand, subtitle }: ClientCheckoutHeaderPr
             )}
           </div>
         </div>
-        <span
-          className="hidden rounded-full px-3 py-1 text-xs font-semibold sm:inline-flex"
-          style={{
-            backgroundColor: brand.colors.accentMuted || '#fff7ed',
-            color: brand.colors.accent || '#c2410c',
-          }}
-        >
-          {brand.displayName}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <BackToHubHome variant="chip" label="Action Hub" />
+          <span
+            className="hidden rounded-full px-3 py-1 text-xs font-semibold sm:inline-flex"
+            style={{
+              backgroundColor: brand.colors.accentMuted || '#fff7ed',
+              color: brand.colors.accent || '#c2410c',
+            }}
+          >
+            {brand.displayName}
+          </span>
+        </div>
       </div>
     </header>
   );

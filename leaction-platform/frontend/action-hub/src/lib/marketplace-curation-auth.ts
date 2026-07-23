@@ -2,6 +2,8 @@ import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import type { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+import { resolveHubAdminFromRequest } from '@/lib/hub-admin-jwt';
+
 export const CURATION_AUTH_COOKIE = 'mp_curation_auth';
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
@@ -83,23 +85,33 @@ export async function isCurationAuthenticated(): Promise<boolean> {
   return parseSessionToken(token) !== null;
 }
 
-export async function requireCurationAuth(): Promise<NextResponse | null> {
-  if (!curationCredentialsConfigured()) {
-    const { NextResponse: NR } = await import('next/server');
-    return NR.json(
-      {
-        status: 'error',
-        error:
-          'Login da curadoria não configurado. Defina MARKETPLACE_CURATION_USER e MARKETPLACE_CURATION_PASSWORD.',
-      },
-      { status: 503 }
-    );
+export type CurationAuthOk = {
+  via: 'hub_admin' | 'curation_cookie';
+  user: string;
+};
+
+/** Cookie legado da curadoria OU JWT de admin do Action Hub. */
+export async function resolveCurationAuth(
+  request?: Request
+): Promise<CurationAuthOk | null> {
+  if (request) {
+    const hub = await resolveHubAdminFromRequest(request);
+    if (hub) return { via: 'hub_admin', user: hub.email };
   }
-  if (!(await isCurationAuthenticated())) {
-    const { NextResponse: NR } = await import('next/server');
-    return NR.json({ status: 'error', error: 'Não autorizado.' }, { status: 401 });
-  }
+
+  const jar = await cookies();
+  const token = jar.get(CURATION_AUTH_COOKIE)?.value;
+  const session = parseSessionToken(token);
+  if (session) return { via: 'curation_cookie', user: session.user };
   return null;
+}
+
+export async function requireCurationAuth(request?: Request): Promise<NextResponse | null> {
+  const ok = await resolveCurationAuth(request);
+  if (ok) return null;
+
+  const { NextResponse: NR } = await import('next/server');
+  return NR.json({ status: 'error', error: 'Não autorizado.' }, { status: 401 });
 }
 
 export function generateAuthSecret(): string {

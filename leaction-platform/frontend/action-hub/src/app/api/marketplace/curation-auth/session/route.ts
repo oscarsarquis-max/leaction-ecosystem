@@ -6,10 +6,17 @@ import {
   curationCredentialsConfigured,
   parseSessionToken,
 } from '@/lib/marketplace-curation-auth';
+import { resolveHubAdminFromRequest } from '@/lib/hub-admin-jwt';
 
-export async function GET() {
-  if (!curationCredentialsConfigured()) {
-    return NextResponse.json({ authenticated: false, configured: false });
+export async function GET(request: Request) {
+  const hub = await resolveHubAdminFromRequest(request);
+  if (hub) {
+    return NextResponse.json({
+      authenticated: true,
+      configured: true,
+      via: 'hub_admin',
+      user: hub.email,
+    });
   }
 
   const jar = await cookies();
@@ -18,7 +25,8 @@ export async function GET() {
 
   return NextResponse.json({
     authenticated: Boolean(session),
-    configured: true,
+    configured: curationCredentialsConfigured() || Boolean((process.env.JWT_SECRET || '').trim()),
+    via: session ? 'curation_cookie' : null,
     user: session?.user || null,
   });
 }

@@ -20,6 +20,7 @@ import { useCart } from '@/context/CartContext';
 import { useHubSession } from '@/context/HubSessionContext';
 import { MercadoPagoSubscriptionBrick } from '@/components/MercadoPagoSubscriptionBrick';
 import { CheckoutChrome } from '@/components/CheckoutChrome';
+import { BackToHubHome } from '@/components/BackToHubHome';
 import { parseClientId, resolveClientBrand, type ClientBrandTheme } from '@/lib/client-branding';
 import { getHubApiBase, MP_PUBLIC_KEY, buildClientReturnUrl, parseCheckoutOrderId, parseReturnTo, parseReturnOrigin, MP_SUBSCRIPTION_AMOUNT } from '@/lib/hub-api';
 import { useAdminGate } from '@/lib/require-admin';
@@ -409,8 +410,7 @@ function DashboardContent() {
     if (byClient) return byClient;
     const byProduct = resolveClientBrand(null, checkoutOrder?.product_type ?? null);
     if (byProduct) return byProduct;
-    // Legado PanelDX sem ?client=
-    if (isCheckoutFlow) return resolveClientBrand('paneldx', PANELDX_TYPE);
+    // PanelDX desvinculado do Hub — sem fallback de marca
     return null;
   }, [isPartnerCheckout, clientParam, isCheckoutFlow, checkoutOrder?.product_type]);
 
@@ -821,7 +821,7 @@ function DashboardContent() {
               >
                 {checkoutBrand
                   ? `Pedido ${checkoutBrand.displayName} vinculado. Na proxima tela voce vera seus pedidos e o checkout com Mercado Pago.`
-                  : 'Pedido PanelDX vinculado. Na proxima tela voce vera seus pedidos e o checkout com Mercado Pago.'}
+                  : 'Pedido vinculado. Na próxima tela você verá seus pedidos e o checkout com Mercado Pago.'}
               </div>
             )}
 
@@ -920,6 +920,10 @@ function DashboardContent() {
       <section className="mx-auto max-w-6xl px-4 py-10 pb-16 md:px-8">
         {!checkoutBrand && (
         <div className="mb-8 rounded-3xl bg-gradient-to-r from-red-950 via-red-800 to-red-600 p-8 text-white shadow-lg">
+          <BackToHubHome
+            label="Voltar ao Action Hub"
+            className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-orange-100/90 transition hover:text-white"
+          />
           <p className="mb-2 flex items-center gap-2 text-sm/6 font-medium text-orange-100">
             <UserRound size={16} />
             Area do LeActioner
@@ -958,7 +962,7 @@ function DashboardContent() {
               <div>
                 <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
                   <CreditCard size={20} style={{ color: checkoutBrand?.colors.accent }} />
-                  {checkoutBrand ? `Checkout ${checkoutBrand.displayName}` : 'Checkout PanelDX'}
+                  {checkoutBrand ? `Checkout ${checkoutBrand.displayName}` : 'Checkout'}
                 </h2>
                 <p className="mt-1 text-sm text-slate-600">
                   Pedido <span className="font-mono text-xs">{checkoutParam}</span>
@@ -991,7 +995,7 @@ function DashboardContent() {
 
             {checkoutOrder?.status === 'PAID' ? (
               <p className="text-sm text-emerald-700">
-                Este pedido ja foi pago. Voce sera redirecionado ao PanelDX em instantes.
+                Este pedido já foi pago. Você será redirecionado ao app de origem em instantes.
               </p>
             ) : (
               <>

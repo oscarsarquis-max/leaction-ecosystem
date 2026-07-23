@@ -11,7 +11,7 @@ export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ category: string }> }
 ) {
-  const denied = await requireCurationAuth();
+  const denied = await requireCurationAuth(request);
   if (denied) return denied;
 
   const { category } = await context.params;

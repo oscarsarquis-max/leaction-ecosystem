@@ -235,7 +235,7 @@ export function ActionCenter() {
               }}
             >
               <FileText className="size-4 text-orange-600" aria-hidden />
-              Meus Relatórios PanelDX
+              Meus Relatórios
             </Link>
           </li>
           <li>

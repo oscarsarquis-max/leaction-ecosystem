@@ -20,6 +20,8 @@ import {
   parseAddonIdParam,
   type PanelDxPlanoVitrine,
 } from '@/lib/paneldx-api';
+import { isPanelDxHubLinked } from '@/lib/paneldx-hub-link';
+import { PanelDxUnlinkedNotice } from '@/components/PanelDxUnlinkedNotice';
 
 const PANELDX_BRAND = resolveClientBrand('paneldx')!;
 
@@ -210,6 +212,9 @@ function CheckoutPanelDxContent() {
 }
 
 export default function CheckoutPanelDxPage() {
+  if (!isPanelDxHubLinked()) {
+    return <PanelDxUnlinkedNotice title="Checkout PanelDX indisponível" />;
+  }
   return (
     <Suspense
       fallback={

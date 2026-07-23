@@ -7,8 +7,8 @@ const MARKETPLACE_INTERNAL = (
 ).replace(/\/$/, '');
 
 /** Proxy GET → Flask /api/marketplace/curation */
-export async function GET() {
-  const denied = await requireCurationAuth();
+export async function GET(request: Request) {
+  const denied = await requireCurationAuth(request);
   if (denied) return denied;
 
   const upstream = `${MARKETPLACE_INTERNAL}/api/marketplace/curation`;
