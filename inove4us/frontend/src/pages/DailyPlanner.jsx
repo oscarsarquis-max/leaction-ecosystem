@@ -682,7 +682,7 @@ export default function DailyPlanner() {
                     className="w-full rounded-xl border border-brand-200 bg-brand-50/40 px-4 py-3.5 text-left transition hover:border-brand-400 hover:bg-brand-50"
                   >
                     <p className="text-[10px] font-bold uppercase tracking-wide text-brand-600">
-                      {d.etiqueta || 'Dinâmica'}
+                      {d.etiqueta || 'Indutivas'}
                     </p>
                     <p className="mt-0.5 font-display text-base font-bold text-bordo-deep">
                       {d.nome}

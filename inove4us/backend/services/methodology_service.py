@@ -10,27 +10,14 @@ from __future__ import annotations
 import unicodedata
 from typing import Any
 
-from core.catalogo_metodologias_dia import entradas_catalogo_dia
+from core.catalogo_metodologias_dia import (
+    ETIQUETA_INDUTIVAS,
+    entradas_catalogo_dia,
+    etiqueta_publica,
+)
 from core.metodologias_db import METODOLOGIAS_DB
 
-CACHE_VERSION = "2026-07-23.v5"
-
-_PROIBIDOS = frozenset(
-    {
-        "ageis",
-        "ágeis",
-        "criativas",
-        "cri-ativas",
-        "cri ativas",
-        "imersivas",
-        "analiticas",
-        "analíticas",
-        "inov-ativas",
-        "inovativas",
-        "metodologias inovativas",
-        "metodologias inov-ativas",
-    }
-)
+CACHE_VERSION = "2026-07-23.v6"
 
 # IDs antigos do cache mínimo → id canônico do catálogo Dia a Dia
 _ALIASES_LEGADOS: dict[str, str] = {
@@ -93,7 +80,9 @@ def _build_catalog() -> dict[str, dict[str, Any]]:
         catalog[mid] = {
             "id": mid,
             "nome": entrada["nome"],
-            "etiqueta": "Dinâmica",
+            "etiqueta": etiqueta_publica(
+                entrada.get("etiqueta"), fallback=ETIQUETA_INDUTIVAS
+            ),
             "descricao_curta": _descricao_para_entrada(entrada),
             "aliases": aliases,
         }
@@ -109,9 +98,7 @@ METODOLOGIAS_RAPIDAS_CACHE: dict[str, dict[str, Any]] = _build_catalog()
 
 
 def _public_item(item: dict[str, Any]) -> dict[str, Any]:
-    etiqueta = str(item.get("etiqueta") or "Dinâmica").strip() or "Dinâmica"
-    if _norm(etiqueta) in _PROIBIDOS:
-        etiqueta = "Dinâmica"
+    etiqueta = etiqueta_publica(item.get("etiqueta"), fallback=ETIQUETA_INDUTIVAS)
     return {
         "id": item["id"],
         "nome": item.get("nome") or "",
