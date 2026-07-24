@@ -48,17 +48,50 @@ header.main-header,
     position: fixed;
     top: 0;
     width: 100%;
-    z-index: 100;
+    z-index: 1200; /* acima da sidebar — logo overflow não some */
+    overflow: visible;
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.28),
         inset 0 -2px 0 rgba(0, 0, 0, 0.22),
         0 3px 0 #1a0d33,
         0 6px 14px rgba(26, 13, 51, 0.45),
         0 12px 28px rgba(45, 21, 85, 0.38);
-    isolation: isolate;
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+/* Só o logo cresce (360px); header/menu/layout permanecem fixos */
+.main-header .header-brand-link {
+    position: relative;
+    display: block;
+    width: 180px;
+    height: 50px;
+    color: white;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+.main-header .header-brand-logo {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(calc(-50% + 12px));
+    height: 360px;
+    width: auto;
+    max-width: none;
+    object-fit: contain;
+    display: block;
+    margin: 0;
+    pointer-events: none;
+}
+.main-header .header-brand-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 50px;
+    z-index: 2;
 }
 
 header.main-header::before,
@@ -131,12 +164,13 @@ main {
 .sidebar-menu {
     width: 260px;
     flex-shrink: 0;
-    background-color: #111827; /* Tom Gray-900 para profundidade */
+    background-color: #111827;
     position: fixed;
     top: 60px;
     height: calc(100% - 60px);
     margin: 0;
-    padding-top: 20px;
+    padding-top: 96px; /* afasta o 1º item do overflow do logo */
+    z-index: 50;
     overflow-y: auto;
     border-right: 1px solid rgba(255,255,255,0.05);
     display: flex;
@@ -928,7 +962,7 @@ table.data-table td.actions, #questoes-table td.actions, #surveys-table td.actio
 /* ========================================================= */
 #progress-container {
     position: fixed;
-    top: 60px; /* Logo abaixo do seu .main-header que tem 60px */
+    top: 60px; /* Logo abaixo do .main-header */
     left: 250px; /* Alinhado com o início do seu .content (após a sidebar) */
     width: calc(100% - 250px); /* Ocupa o restante da largura */
     height: 8px;

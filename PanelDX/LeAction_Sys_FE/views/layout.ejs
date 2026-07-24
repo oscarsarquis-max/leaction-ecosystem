@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        (function () {
+            var h = (location.hostname || '').replace(/^www\./i, '').toLowerCase();
+            if (h === 'mudaedu.com.br') {
+                location.replace('https://paneldx.com.br' + location.pathname + location.search + location.hash);
+            }
+        })();
+    </script>
     <title><%= typeof title !== 'undefined' ? title : 'LeAction Panel' %></title>
     <% if (typeof metaDescription !== 'undefined' && metaDescription) { %>
     <meta name="description" content="<%= metaDescription %>">
@@ -78,11 +86,43 @@
         .main-header {
             position: fixed; top: 0; left: 0; width: 100%; height: 60px;
             background: var(--header-gradient-3d);
-            color: white; z-index: 1000;
+            color: white; z-index: 1200; /* acima da sidebar para o logo não sumir no overflow */
             display: flex; align-items: center; padding: 0 20px; box-sizing: border-box;
             border-bottom: 2px solid rgba(20, 10, 40, 0.9);
             box-shadow: var(--header-shadow-3d);
-            isolation: isolate;
+            overflow: visible;
+        }
+        /* Só o logo cresce; pointer-events:none deixa o menu clicável por baixo */
+        .main-header .header-brand-link {
+            position: relative;
+            display: block;
+            width: 180px;
+            height: 50px;
+            color: white;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+        .main-header .header-brand-logo {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(calc(-50% + 12px));
+            height: 360px;
+            width: auto;
+            max-width: none;
+            object-fit: contain;
+            display: block;
+            margin: 0;
+            pointer-events: none;
+        }
+        .main-header .header-brand-link::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 50px;
+            z-index: 2;
         }
         .main-header::before {
             content: '';
@@ -213,6 +253,7 @@
             display: flex;
             flex-direction: column;
             transition: width 0.3s ease;
+            padding-top: 96px; /* afasta "Iniciar Diagnóstico" do overflow do logo */
         }
         .sidebar-menu ul {
             list-style: none;
@@ -615,9 +656,12 @@
             <button type="button" class="header-sidebar-toggle" data-sidebar-toggle aria-label="Recolher menu lateral" title="Recolher menu" aria-expanded="true">
                 <i class="fas fa-bars" aria-hidden="true"></i>
             </button>
-            <a href="/" title="Home / Dashboard" style="color: white; text-decoration: none; padding: 5px; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-home" style="font-size: 1.2rem;"></i>
-                <h2 style="margin: 0; font-size: 1.1rem; white-space: nowrap;">Panel DX (<i>LeActionSys</i>)</h2>
+            <a href="https://paneldx.com.br/?home=1" class="header-brand-link" title="Home / Dashboard">
+                <img
+                    src="/images/logopaneldx.png"
+                    alt="Panel DX"
+                    class="header-brand-logo"
+                >
             </a>
         </div>
 
@@ -706,7 +750,7 @@
             <ul>
                 <% if (!locals.isLoggedIn) { %>
                     <li class="menu-item">
-                        <a href="/cadastro">
+                        <a href="https://paneldx.com.br/iniciar">
                             <i class="fas fa-play-circle"></i><span class="sidebar-label"> Iniciar Diagnóstico</span>
                         </a>
                     </li>
