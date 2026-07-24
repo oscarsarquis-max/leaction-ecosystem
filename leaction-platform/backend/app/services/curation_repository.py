@@ -28,15 +28,38 @@ class CurationRules:
 class CurationRepository:
     @staticmethod
     def list_all() -> list[dict]:
+        from flask import current_app, has_app_context
+
         from app.database import DB_AVAILABLE, db
 
-        if not DB_AVAILABLE or db is None:
+        if (
+            not DB_AVAILABLE
+            or db is None
+            or MarketplaceCuration is None
+            or (
+                has_app_context()
+                and not current_app.config.get("MARKETPLACE_DB_ENABLED", True)
+            )
+        ):
             return [dict(row) for row in DEFAULT_CURATION_ROWS]
 
-        rows = MarketplaceCuration.query.order_by(MarketplaceCuration.id).all()
-        if rows:
-            return [row.to_dict() for row in rows]
-        return [dict(row) for row in DEFAULT_CURATION_ROWS]
+        try:
+            rows = (
+                db.session.execute(
+                    db.select(MarketplaceCuration).order_by(MarketplaceCuration.id)
+                )
+                .scalars()
+                .all()
+            )
+            if rows:
+                return [row.to_dict() for row in rows]
+            return [dict(row) for row in DEFAULT_CURATION_ROWS]
+        except Exception as exc:
+            logger.warning(
+                "Curadoria list via DB indisponível (%s) — usando seed local.",
+                exc,
+            )
+            return [dict(row) for row in DEFAULT_CURATION_ROWS]
 
     @staticmethod
     def get_by_id(curation_id: str) -> MarketplaceCuration | None:

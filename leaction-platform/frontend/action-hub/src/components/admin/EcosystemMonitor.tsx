@@ -1,0 +1,326 @@
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  Radio,
+  RefreshCw,
+  Server,
+  ServerCrash,
+  Timer,
+} from 'lucide-react';
+import { useHubSession } from '@/context/HubSessionContext';
+
+type ServiceStatus = 'UP' | 'DOWN' | 'TIMEOUT';
+
+type ServiceStatusItem = {
+  name: string;
+  status: ServiceStatus;
+  latency: number | null;
+  lastChecked: string;
+  detail?: string;
+};
+
+const POLL_MS = 30_000;
+
+function formatCheckedAt(iso: string | null | undefined) {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(date);
+}
+
+function StatusBadge({ status }: { status: ServiceStatus }) {
+  if (status === 'UP') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+        <span className="relative flex size-2">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-60" />
+          <span className="relative inline-flex size-2 animate-pulse rounded-full bg-green-500" />
+        </span>
+        UP
+      </span>
+    );
+  }
+  if (status === 'TIMEOUT') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">
+        <Timer className="size-3.5" aria-hidden />
+        Timeout
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-2.5 py-1 text-xs font-semibold text-white">
+      <span className="size-2 rounded-full bg-white/90" aria-hidden />
+      DOWN
+    </span>
+  );
+}
+
+function ServiceCard({ service }: { service: ServiceStatusItem }) {
+  const down = service.status === 'DOWN' || service.status === 'TIMEOUT';
+  const Icon =
+    service.status === 'UP' ? CheckCircle2 : service.status === 'TIMEOUT' ? Timer : ServerCrash;
+
+  return (
+    <article
+      className={`rounded-xl border bg-white p-5 shadow-sm transition ${
+        down ? 'border-red-300 ring-1 ring-red-100' : 'border-stone-200'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
+              down ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'
+            }`}
+          >
+            <Icon className="size-5" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-stone-900">{service.name}</h2>
+            {service.detail ? (
+              <p className="mt-0.5 line-clamp-2 text-xs text-stone-500">{service.detail}</p>
+            ) : (
+              <p className="mt-0.5 flex items-center gap-1 text-xs text-stone-500">
+                <Server className="size-3" aria-hidden />
+                Healthcheck
+              </p>
+            )}
+          </div>
+        </div>
+        <StatusBadge status={service.status} />
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-stone-100 pt-4">
+        <div>
+          <dt className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+            Latência
+          </dt>
+          <dd className="mt-0.5 text-sm font-semibold tabular-nums text-stone-800">
+            {typeof service.latency === 'number' ? `${service.latency} ms` : '—'}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+            Última verificação
+          </dt>
+          <dd className="mt-0.5 text-sm font-medium text-stone-800">
+            {formatCheckedAt(service.lastChecked)}
+          </dd>
+        </div>
+      </dl>
+    </article>
+  );
+}
+
+function fallbackDown(name: string, detail: string): ServiceStatusItem {
+  return {
+    name,
+    status: 'DOWN',
+    latency: null,
+    lastChecked: new Date().toISOString(),
+    detail,
+  };
+}
+
+export function EcosystemMonitor() {
+  const { token } = useHubSession();
+  const [services, setServices] = useState<ServiceStatusItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(POLL_MS / 1000);
+  const inFlight = useRef(false);
+
+  const loadStatus = useCallback(
+    async (manual = false) => {
+      if (inFlight.current) return;
+      inFlight.current = true;
+      if (manual) setRefreshing(true);
+      setError(null);
+
+      try {
+        const auth = String(token || '').trim();
+        if (!auth) {
+          setServices([
+            fallbackDown('Action Pay', 'Sessão admin ausente'),
+            fallbackDown('Plan Management', 'Sessão admin ausente'),
+            fallbackDown('Marketplace API', 'Sessão admin ausente'),
+            fallbackDown('PostgreSQL', 'Sessão admin ausente'),
+            fallbackDown('ActionHub Frontend', 'Sessão admin ausente'),
+          ]);
+          setError('Faça login como admin para ver o status.');
+          return;
+        }
+
+        const res = await fetch('/api/sys/status', {
+          cache: 'no-store',
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${auth}`,
+          },
+          signal: AbortSignal.timeout(20_000),
+        });
+
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(body.error || `HTTP ${res.status}`);
+        }
+
+        const data = (await res.json()) as unknown;
+        if (!Array.isArray(data)) {
+          throw new Error('Resposta inválida da API de status.');
+        }
+
+        setServices(
+          data.map((row) => {
+            const item = row as Partial<ServiceStatusItem>;
+            const status =
+              item.status === 'UP' || item.status === 'TIMEOUT' || item.status === 'DOWN'
+                ? item.status
+                : 'DOWN';
+            return {
+              name: String(item.name || 'Serviço'),
+              status,
+              latency: typeof item.latency === 'number' ? item.latency : null,
+              lastChecked: String(item.lastChecked || new Date().toISOString()),
+              detail: item.detail ? String(item.detail) : undefined,
+            };
+          })
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Falha ao carregar status';
+        const timedOut =
+          (err instanceof Error && err.name === 'TimeoutError') ||
+          /aborted|timeout/i.test(message);
+
+        setError(timedOut ? 'Timeout ao agregar status dos serviços.' : message);
+        setServices((prev) =>
+          prev.length
+            ? prev.map((s) => ({
+                ...s,
+                status: timedOut ? 'TIMEOUT' : 'DOWN',
+                lastChecked: new Date().toISOString(),
+                detail: timedOut ? 'Timeout na agregação' : message,
+              }))
+            : [
+                fallbackDown('Action Pay', message),
+                fallbackDown('Plan Management', message),
+                fallbackDown('Marketplace API', message),
+                fallbackDown('PostgreSQL', message),
+                fallbackDown('ActionHub Frontend', message),
+              ]
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        setSecondsLeft(POLL_MS / 1000);
+        inFlight.current = false;
+      }
+    },
+    [token]
+  );
+
+  useEffect(() => {
+    void loadStatus(false);
+  }, [loadStatus]);
+
+  useEffect(() => {
+    const poll = window.setInterval(() => {
+      void loadStatus(false);
+    }, POLL_MS);
+    return () => window.clearInterval(poll);
+  }, [loadStatus]);
+
+  useEffect(() => {
+    const tick = window.setInterval(() => {
+      setSecondsLeft((s) => (s <= 1 ? POLL_MS / 1000 : s - 1));
+    }, 1000);
+    return () => window.clearInterval(tick);
+  }, []);
+
+  const upCount = services.filter((s) => s.status === 'UP').length;
+  const total = services.length;
+
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-orange-600">
+            <Radio className="size-3.5" aria-hidden />
+            Operações
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900">
+            Status do Ecossistema
+          </h1>
+          <p className="mt-1 max-w-xl text-sm text-stone-500">
+            Monitoramento dos serviços internos do ActionHub (Action Pay, Plan Management,
+            Marketplace, Postgres e Frontend).
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-stone-500">
+            Próxima atualização em{' '}
+            <span className="font-semibold tabular-nums text-stone-800">{secondsLeft}s</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => void loadStatus(true)}
+            disabled={refreshing || loading}
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-50 disabled:opacity-60"
+          >
+            {refreshing || loading ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="size-4" aria-hidden />
+            )}
+            Atualizar Agora
+          </button>
+        </div>
+      </header>
+
+      {!loading && total > 0 ? (
+        <div className="rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
+          <p className="text-sm text-stone-600">
+            <span className="font-semibold text-stone-900">
+              {upCount}/{total}
+            </span>{' '}
+            serviços operacionais
+            {error ? (
+              <span className="ml-2 inline-flex items-center gap-1 text-amber-700">
+                <AlertTriangle className="size-3.5" aria-hidden />
+                {error}
+              </span>
+            ) : null}
+          </p>
+        </div>
+      ) : null}
+
+      {loading && services.length === 0 ? (
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white py-16 text-sm text-stone-500 shadow-sm">
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          Verificando serviços…
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {services.map((service) => (
+            <ServiceCard key={service.name} service={service} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -11,10 +11,14 @@ GIT_SHA
 logs/
 .pm2/
 
+# Dev orchestration (scripts/dev/start-hub.ps1)
+.dev-logs/
+
 # Node
 node_modules/
 frontend/action-hub/.next/
 services/gateway-api/node_modules/
+services/gateway-api/cms-uploads/
 
 # Chaves SSH / PEM
 chaves/

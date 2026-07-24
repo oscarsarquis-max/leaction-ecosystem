@@ -1326,7 +1326,7 @@ def _cms_log_stderr(message):
             pass
 
 
-def _parse_leaction_blog_posts(html, limit=2):
+def _parse_leaction_blog_posts(html, limit=3):
     """Extrai os posts mais recentes do HTML do blog LeAction (ordem da listagem)."""
     posts = []
     pattern = re.compile(
@@ -1360,7 +1360,7 @@ def _parse_leaction_blog_posts(html, limit=2):
     return posts
 
 
-def _fetch_leaction_blog_posts(limit=2):
+def _fetch_leaction_blog_posts(limit=3):
     now = time.time()
     cached = _blog_cache.get("posts") or []
     if cached and (now - float(_blog_cache.get("fetched_at") or 0)) < BLOG_CACHE_TTL_SEC:
@@ -1399,12 +1399,13 @@ def _blog_post_to_column(post):
 
 
 def _apply_blog_posts_to_landing(landing):
-    posts = _fetch_leaction_blog_posts(2)
+    """Preenche columns[2..4] com os 3 posts mais recentes do blog (fixa fixa)."""
+    posts = _fetch_leaction_blog_posts(3)
     if not posts:
         return landing
 
     columns = list(landing.get("columns") or [])
-    while len(columns) < 4:
+    while len(columns) < 5:
         columns.append({
             "image_url": "",
             "title": "",
@@ -1414,7 +1415,7 @@ def _apply_blog_posts_to_landing(landing):
             "source": "blog",
         })
 
-    for idx, post in zip((2, 3), posts):
+    for idx, post in zip((2, 3, 4), posts):
         columns[idx] = _blog_post_to_column(post)
 
     landing["columns"] = columns
@@ -1422,6 +1423,7 @@ def _apply_blog_posts_to_landing(landing):
         "source_url": LEACTION_BLOG_URL,
         "synced_at": datetime.utcnow().isoformat() + "Z",
         "posts_count": len(posts),
+        "slot_count": 3,
     }
     return landing
 

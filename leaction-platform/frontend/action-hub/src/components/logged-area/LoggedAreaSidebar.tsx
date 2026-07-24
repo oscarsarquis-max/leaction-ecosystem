@@ -11,6 +11,7 @@ import {
   Home,
   Newspaper,
   Package,
+  Radio,
   Rocket,
   Settings,
   Settings2,
@@ -68,7 +69,8 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
     !pathname.startsWith('/dashboard/admin') &&
     !pathname.startsWith('/dashboard/cms') &&
     !pathname.startsWith('/dashboard/crm') &&
-    !pathname.startsWith('/dashboard/marketplace');
+    !pathname.startsWith('/dashboard/marketplace') &&
+    !pathname.startsWith('/dashboard/monitor');
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-stone-200 bg-white md:w-72">
@@ -245,6 +247,18 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
                     aria-hidden
                   />
                   Curadoria
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/dashboard/monitor"
+                  className={adminLinkClass(pathActive('/dashboard/monitor'))}
+                >
+                  <Radio
+                    className={adminIconClass(pathActive('/dashboard/monitor'))}
+                    aria-hidden
+                  />
+                  Monitoramento
                 </Link>
               </li>
             </ul>

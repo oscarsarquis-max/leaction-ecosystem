@@ -139,18 +139,10 @@ function Invoke-LocalPsql {
 }
 
 function Get-DbFingerprintSql {
-    # Fingerprint barato e estÃ¡vel o bastante para decidir sync.
+    # Fingerprint barato e estavel o bastante para decidir sync.
     # size|tables|live_rows|fingerprint
-    return @"
-SELECT
-  COALESCE(pg_database_size(current_database()),0)::text || '|' ||
-  COALESCE((SELECT count(*)::text FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'),'0') || '|' ||
-  COALESCE((SELECT sum(n_live_tup)::bigint::text FROM pg_stat_user_tables),'0') || '|' ||
-  COALESCE((
-    SELECT md5(string_agg(schemaname || '.' || relname || ':' || n_live_tup::text, ',' ORDER BY schemaname, relname))
-    FROM pg_stat_user_tables
-  ),'empty')
-"@
+    # Aspas simples: Windows PowerShell trata || como operador se a string for "..."
+    return 'SELECT COALESCE(pg_database_size(current_database()),0)::text || ''|'' || COALESCE((SELECT count(*)::text FROM information_schema.tables WHERE table_schema = ''public'' AND table_type = ''BASE TABLE''),''0'') || ''|'' || COALESCE((SELECT sum(n_live_tup)::bigint::text FROM pg_stat_user_tables),''0'') || ''|'' || COALESCE((SELECT md5(string_agg(schemaname || ''.'' || relname || '':'' || n_live_tup::text, '','' ORDER BY schemaname, relname)) FROM pg_stat_user_tables),''empty'')'
 }
 
 function Parse-Fingerprint([string]$Raw) {
@@ -183,13 +175,9 @@ function Format-Size([long]$Bytes) {
 
 function Test-SourceReachable {
     Write-Host "`n==> Testando origem ${SourceHost}:${SourcePort} ..." -ForegroundColor Cyan
-    try {
-        $tnc = Test-NetConnection -ComputerName $SourceHost -Port $SourcePort -WarningAction SilentlyContinue
-        if (-not $tnc.TcpTestSucceeded) {
-            throw "TCP ${SourceHost}:${SourcePort} inacessÃ­vel."
-        }
-    } catch {
-        throw "NÃ£o consegui conectar em ${SourceHost}:${SourcePort}. Na origem rode: .\infra\open-leaction-db-lan.ps1"
+    $ready = & docker run --rm $PgImage pg_isready -h $SourceHost -p "$SourcePort" -U $DbUser -t 8 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Origem ${SourceHost}:${SourcePort} inacessivel ($ready). Na origem rode: .\infra\open-leaction-db-lan.ps1"
     }
 
     $ver = Invoke-RemotePsql -DatabaseName 'postgres' -Sql 'SHOW server_version;'
@@ -264,15 +252,12 @@ function Sync-OneDatabase {
     Write-Host "    restore local <- $DbName" -ForegroundColor Gray
 
     $prepSqlPath = Join-Path $DumpsDir "$safeName.prep.sql"
-    $prepSql = @"
-SELECT pg_terminate_backend(pid)
-  FROM pg_stat_activity
- WHERE datname = '$safeSqlName'
-   AND pid <> pg_backend_pid();
-DROP DATABASE IF EXISTS "$safeSqlName";
-CREATE DATABASE "$safeSqlName";
-"@
-    [System.IO.File]::WriteAllText($prepSqlPath, $prepSql.Replace("`r`n", "`n"), [System.Text.UTF8Encoding]::new($false))
+    $prepSql = @(
+        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$safeSqlName' AND pid <> pg_backend_pid();",
+        "DROP DATABASE IF EXISTS `"$safeSqlName`";",
+        "CREATE DATABASE `"$safeSqlName`";"
+    ) -join "`n"
+    [System.IO.File]::WriteAllText($prepSqlPath, $prepSql + "`n", [System.Text.UTF8Encoding]::new($false))
 
     $containerPrep = "/tmp/lan-sync-$safeName.prep.sql"
     $containerDump = "/tmp/lan-sync-$safeName.sql"

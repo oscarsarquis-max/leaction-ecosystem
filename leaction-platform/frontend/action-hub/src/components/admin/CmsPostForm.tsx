@@ -10,6 +10,7 @@ import {
   type CmsPostStatus,
   type CmsSistemaDestino,
 } from '@/lib/admin-api';
+import { CmsImageUploadField } from '@/components/admin/CmsImageUploadField';
 
 const DESTINOS: { value: CmsSistemaDestino; label: string }[] = [
   { value: 'actionhub', label: 'ActionHub (painel logado — coluna direita)' },
@@ -159,17 +160,16 @@ export function CmsPostForm() {
           />
         </label>
 
-        <label className="block space-y-1.5">
-          <span className="text-xs font-bold uppercase tracking-wider text-stone-500">
-            Imagem capa (URL)
-          </span>
-          <input
-            className={field}
+        <div className="space-y-1.5">
+          <CmsImageUploadField
+            label="Imagem de capa"
             value={imagemCapa}
-            onChange={(e) => setImagemCapa(e.target.value)}
-            placeholder="https://..."
+            onChange={setImagemCapa}
+            token={token}
+            preferPublicUrl
+            helpText="Upload S3 (modelo PanelDX). A URL pública é gravada no post."
           />
-        </label>
+        </div>
 
         <label className="block space-y-1.5">
           <span className="text-xs font-bold uppercase tracking-wider text-stone-500">

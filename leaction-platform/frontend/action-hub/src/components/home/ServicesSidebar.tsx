@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Lock,
   Package,
+  Radio,
   Rocket,
   Settings2,
   Store,
@@ -112,6 +113,13 @@ const ADMIN_NAV: NavItem[] = [
     label: 'Curadoria Marketplace',
     href: '/dashboard/marketplace/curadoria',
     icon: Settings2,
+    requiresAuth: true,
+  },
+  {
+    id: 'admin-monitor',
+    label: 'Monitoramento',
+    href: '/dashboard/monitor',
+    icon: Radio,
     requiresAuth: true,
   },
 ];

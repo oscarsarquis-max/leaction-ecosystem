@@ -318,3 +318,55 @@ export async function updateCmsPost(
   );
   return data.post;
 }
+
+export type CmsUploadResult = {
+  success: boolean;
+  url: string;
+  public_url?: string;
+  storage?: 's3' | 'local' | string;
+  error?: string;
+};
+
+/** Upload Multer → S3 (mesmo contrato do PanelDX: field `imagem`). */
+export async function uploadCmsImage(
+  token: string,
+  file: File
+): Promise<CmsUploadResult> {
+  const form = new FormData();
+  form.append('imagem', file);
+  const res = await fetch(`${getHubApiBase()}/api/admin/cms/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  const data = (await res.json().catch(() => ({}))) as CmsUploadResult;
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || `Falha no upload (HTTP ${res.status})`);
+  }
+  return data;
+}
+
+export type CmsSiteConfig = {
+  success?: boolean;
+  landing_page_data: Record<string, unknown>;
+  instructions_data: string;
+  updated_at?: string | null;
+};
+
+export async function fetchCmsSiteAdmin(token: string): Promise<CmsSiteConfig> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<CmsSiteConfig>('/api/admin/cms');
+  return data;
+}
+
+export async function saveCmsSiteAdmin(
+  token: string,
+  body: {
+    landing_page_data?: Record<string, unknown>;
+    instructions_data?: string;
+  }
+): Promise<CmsSiteConfig> {
+  const client = createAdminClient(token);
+  const { data } = await client.put<CmsSiteConfig>('/api/admin/cms', body);
+  return data;
+}

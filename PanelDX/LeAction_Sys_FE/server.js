@@ -40,6 +40,12 @@ const { contractAccessMiddleware } = require('./middleware/contract-access');
 const { isSessionAdmin, resolveSessionSystemRole, getAdminEmail, resolveLeadIdClie } = require('./lib/auth-session');
 const { buildActionHubCheckoutUrl, buildActionHubAddonCheckoutUrl, resolveHubPublicUrl } = require('./lib/actionhub-checkout');
 const cmsS3 = require('./lib/cms-s3-storage');
+const {
+    isCmsFromHub,
+    hubPublicCmsAdminUrl,
+    fetchCmsPublicPayload,
+    getCmsSource,
+} = require('./lib/cms-hub-client');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -177,8 +183,9 @@ async function axiosGetWithRetry(url, options = {}, retries = 3) {
 
 async function fetchCmsPublic() {
     try {
-        const response = await axios.get(`${API_BASE_URL}/public/cms`, { timeout: 8000 });
-        return response.data;
+        return await fetchCmsPublicPayload(axios, {
+            flaskPublicUrl: `${API_BASE_URL}/public/cms`,
+        });
     } catch (error) {
         console.warn('⚠️ CMS público indisponível:', error.message);
         return null;
@@ -370,6 +377,14 @@ app.use(contractAccessMiddleware);
 function handleCmsImageUpload(req, res) {
     if (!isSessionAdmin(req)) {
         return res.status(403).json({ success: false, error: 'Acesso restrito ao Sysadmin.' });
+    }
+    if (isCmsFromHub()) {
+        return res.status(409).json({
+            success: false,
+            suppressed: true,
+            error: 'Upload CMS local suprimido. Use o upload do Action Hub.',
+            hub_cms_url: hubPublicCmsAdminUrl(),
+        });
     }
 
     cmsImageUpload.single('imagem')(req, res, async (err) => {
@@ -670,6 +685,18 @@ app.get('/admin-cms', (req, res) => {
         return res.status(403).render('error', {
             title: 'Acesso negado',
             message: 'A Gestão de Conteúdo (CMS) é restrita ao Sysadmin. Faça login com uma conta administrativa.'
+        });
+    }
+    // Micro-CMS local suprimido: fonte de verdade = Action Hub (código legado permanece).
+    if (isCmsFromHub()) {
+        return res.render('admin-cms-suppressed', {
+            title: 'Gestão de Conteúdo (CMS)',
+            isLoggedIn: true,
+            isAdmin: true,
+            user: req.session.lead || { nome: req.session.user_name || 'Admin', role: 'ADMIN' },
+            lead: req.session.lead || { nome: req.session.user_name || 'Admin', role: 'ADMIN' },
+            hubCmsUrl: hubPublicCmsAdminUrl(),
+            cmsSource: getCmsSource(),
         });
     }
     res.render('admin-cms', {
@@ -1062,19 +1089,46 @@ app.get('/api/rbac/capacidade', (req, res) => proxyFlaskRbac(req, res, 'GET', '/
 
 app.get('/api/public/cms', async (req, res) => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/public/cms`, { timeout: 8000 });
-        return res.status(response.status).json(response.data);
+        const data = await fetchCmsPublic();
+        if (!data) {
+            return res.status(503).json({
+                success: false,
+                error: isCmsFromHub()
+                    ? 'Micro-CMS do Action Hub indisponível.'
+                    : 'Falha ao carregar CMS público.',
+            });
+        }
+        return res.status(200).json(data);
     } catch (error) {
         console.error('[CMS] Erro GET /api/public/cms:', error.message);
-        return res.status(error.response?.status || 500).json(
-            error.response?.data || { success: false, error: 'Falha ao carregar CMS público.' }
-        );
+        return res.status(500).json({ success: false, error: 'Falha ao carregar CMS público.' });
     }
 });
 
 app.get('/api/admin/cms', async (req, res) => {
     if (!isSessionAdmin(req)) {
         return res.status(403).json({ success: false, error: 'Acesso restrito ao Sysadmin.' });
+    }
+    if (isCmsFromHub()) {
+        try {
+            const data = await fetchCmsPublic();
+            if (!data) {
+                return res.status(503).json({
+                    success: false,
+                    error: 'Micro-CMS do Action Hub indisponível.',
+                    hub_cms_url: hubPublicCmsAdminUrl(),
+                });
+            }
+            return res.status(200).json({
+                ...data,
+                suppressed: true,
+                hub_cms_url: hubPublicCmsAdminUrl(),
+                message: 'CMS local suprimido — conteúdo servido pelo Action Hub.',
+            });
+        } catch (error) {
+            console.error('❌ Erro GET /api/admin/cms (hub):', error.message);
+            return res.status(500).json({ success: false, error: 'Falha ao carregar CMS do Hub.' });
+        }
     }
     try {
         const response = await axios.get(`${API_BASE_URL}/admin/cms`);
@@ -1090,6 +1144,14 @@ app.get('/api/admin/cms', async (req, res) => {
 app.put('/api/admin/cms', async (req, res) => {
     if (!isSessionAdmin(req)) {
         return res.status(403).json({ success: false, error: 'Acesso restrito ao Sysadmin.' });
+    }
+    if (isCmsFromHub()) {
+        return res.status(409).json({
+            success: false,
+            suppressed: true,
+            error: 'CMS local suprimido. Edite o Micro-CMS no Action Hub.',
+            hub_cms_url: hubPublicCmsAdminUrl(),
+        });
     }
     try {
         const response = await axios.put(`${API_BASE_URL}/admin/cms`, req.body, {
@@ -1428,6 +1490,21 @@ app.post('/api/tracking/enviar', async (req, res) => {
             },
             validateStatus: () => true,
         });
+        // Sensor PLG: nunca espelhar 4xx/5xx do Flask no browser (ruído no console).
+        if (response.status >= 400) {
+            console.warn(
+                '⚠️ [tracking/enviar] backend status',
+                response.status,
+                typeof response.data === 'string'
+                    ? response.data.slice(0, 120)
+                    : JSON.stringify(response.data || {}).slice(0, 120)
+            );
+            return res.status(202).json({
+                ok: true,
+                forwarded: false,
+                hub_status: response.status,
+            });
+        }
         return res.status(response.status).json(response.data);
     } catch (error) {
         console.warn('⚠️ [tracking/enviar] proxy falhou (UX não bloqueada):', error.message);

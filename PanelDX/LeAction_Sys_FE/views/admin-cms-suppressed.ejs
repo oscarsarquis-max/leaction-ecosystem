@@ -1,0 +1,39 @@
+<%- contentFor('body') %>
+<div class="main-content" style="max-width: 720px; margin: 2rem auto; padding: 0 1.25rem;">
+    <div style="border-radius: 16px; border: 1px solid #fed7aa; background: linear-gradient(180deg, #fff7ed 0%, #ffffff 40%); padding: 1.75rem; box-shadow: 0 10px 30px rgba(15,23,42,0.06);">
+        <p style="margin: 0 0 0.35rem; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #ea580c;">
+            Micro-CMS suprimido neste app
+        </p>
+        <h1 style="margin: 0 0 0.75rem; font-size: 1.45rem; color: #0f172a;">
+            Gestão de Conteúdo no Action Hub
+        </h1>
+        <p style="margin: 0 0 1rem; color: #475569; line-height: 1.55; font-size: 0.95rem;">
+            As definições da landing, instruções e imagens do PanelDX passam a valer pelo
+            <strong>Micro-CMS do Action Hub</strong>. O editor local permanece no código
+            (não foi eliminado), mas a escrita e a fonte de verdade estão no Hub.
+        </p>
+        <ul style="margin: 0 0 1.25rem; padding-left: 1.2rem; color: #64748b; font-size: 0.9rem; line-height: 1.6;">
+            <li>Leitura pública: Hub <code>/api/public/cms</code></li>
+            <li>Edição: Action Hub → Conteúdo (CMS) → Micro-CMS (site)</li>
+            <li>Para voltar ao CMS local temporariamente: <code>CMS_SOURCE=local</code></li>
+        </ul>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+            <a href="<%= hubCmsUrl %>"
+               target="_blank"
+               rel="noopener noreferrer"
+               style="display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 12px; background: #f97316; color: #fff; font-weight: 800; font-size: 0.9rem; padding: 0.75rem 1.1rem; text-decoration: none;">
+                <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                Abrir Micro-CMS no Action Hub
+            </a>
+            <a href="/"
+               style="display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; color: #334155; font-weight: 700; font-size: 0.9rem; padding: 0.75rem 1.1rem; text-decoration: none;">
+                Voltar à home
+            </a>
+        </div>
+        <% if (locals.cmsSource) { %>
+        <p style="margin: 1.25rem 0 0; font-size: 0.75rem; color: #94a3b8;">
+            Fonte ativa: <code><%= cmsSource %></code>
+        </p>
+        <% } %>
+    </div>
+</div>

@@ -1,4 +1,4 @@
-# PanelDX app (backend + frontend) → leaction_db (:5433 no host, admin/Cmgv6190!@)
+﻿# PanelDX app (backend + frontend) â†’ leaction_db (:5433 no host, admin/Cmgv6190!@)
 # Uso: docker compose -f docker-compose.app.yml up -d --build
 services:
   backend:
@@ -18,6 +18,10 @@ services:
       DB_PASSWORD: "Cmgv6190!@"
       DB_SSLMODE: disable
       FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-dev-secret-troque-em-producao}
+      # Hub na máquina host (gateway :4001). CRM_TRACKING_SECRET vem do env_file.
+      ACTION_HUB_API_URL: http://host.docker.internal:4001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "5000:5000"
     networks:
@@ -50,7 +54,7 @@ services:
       DB_PASS: "Cmgv6190!@"
       DB_SSLMODE: disable
     volumes:
-      # Imagens CMS/logo ficam fora do git — monta pasta local no container
+      # Imagens CMS/logo ficam fora do git â€” monta pasta local no container
       - ./LeAction_Sys_FE/public/images:/usr/src/app/public/images:ro
     ports:
       - "3000:3000"
@@ -63,3 +67,4 @@ networks:
   leaction_net:
     name: leaction-platform_default
     external: true
+

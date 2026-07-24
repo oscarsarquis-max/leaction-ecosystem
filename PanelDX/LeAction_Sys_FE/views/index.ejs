@@ -1331,12 +1331,20 @@
         margin: 0 -20px 1.75rem;
         padding: 1px;
         border-radius: 18px;
-        background: linear-gradient(135deg, rgba(0, 191, 255, 0.35), rgba(138, 43, 226, 0.25));
+        background: linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--hero-bg-end, #1a0b2e) 55%, rgba(0, 191, 255, 0.55)),
+            color-mix(in srgb, var(--hero-bg-start, #0b0c10) 55%, rgba(138, 43, 226, 0.4))
+        );
     }
     #home-page .hero-3d-banner__surface {
         border-radius: 16px;
-        background: linear-gradient(135deg, #0b0c10 0%, #1a0b2e 100%);
-        border: 1px solid rgba(0, 191, 255, 0.2);
+        background: linear-gradient(
+            135deg,
+            var(--hero-bg-start, #0b0c10) 0%,
+            var(--hero-bg-end, #1a0b2e) 100%
+        );
+        border: 1px solid var(--hero-border, rgba(0, 191, 255, 0.2));
         box-shadow:
             0 20px 40px rgba(0, 0, 0, 0.4),
             inset 0 2px 15px rgba(138, 43, 226, 0.1);
@@ -1371,30 +1379,30 @@
         margin-bottom: 0.65rem;
         padding: 0.35rem 0.75rem;
         border-radius: 999px;
-        background: #FF6B00;
-        color: #fff;
+        background: var(--hero-pill-bg, #FF6B00);
+        color: var(--hero-pill-text, #fff);
         font-size: 0.68rem;
         font-weight: 800;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        box-shadow: 0 4px 14px rgba(255, 107, 0, 0.35);
+        box-shadow: 0 4px 14px color-mix(in srgb, var(--hero-pill-bg, #FF6B00) 35%, transparent);
     }
     #home-page .hero-3d-banner__title {
         margin: 0 0 0.5rem;
         font-size: clamp(1.05rem, 2.2vw, 1.35rem);
         font-weight: 800;
         line-height: 1.35;
-        color: #fff;
+        color: var(--hero-title, #fff);
     }
     #home-page .hero-3d-banner__subtitle {
         margin: 0 0 1rem;
         font-size: 0.88rem;
         line-height: 1.5;
-        color: rgba(255, 255, 255, 0.82);
+        color: var(--hero-subtitle, rgba(255, 255, 255, 0.82));
         max-width: 36rem;
     }
     #home-page .hero-3d-banner__accent {
-        color: #FF6B00;
+        color: var(--hero-accent, #FF6B00);
         font-weight: 800;
     }
     #home-page .hero-3d-banner__btn {
@@ -1405,23 +1413,28 @@
         padding: 0.85rem 1.35rem;
         border-radius: 12px;
         border: none;
-        background: linear-gradient(180deg, #ff8533 0%, #FF6B00 55%, #e85d00 100%);
-        color: #fff;
+        background: linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--hero-btn-bg, #FF6B00) 85%, #fff) 0%,
+            var(--hero-btn-bg, #FF6B00) 55%,
+            color-mix(in srgb, var(--hero-btn-bg, #FF6B00) 80%, #000) 100%
+        );
+        color: var(--hero-btn-text, #fff);
         font-weight: 800;
         font-size: 0.9rem;
         text-decoration: none;
         box-shadow:
-            0 8px 0 #b34700,
-            0 14px 28px rgba(255, 107, 0, 0.35);
+            0 8px 0 var(--hero-btn-shadow, #b34700),
+            0 14px 28px color-mix(in srgb, var(--hero-btn-bg, #FF6B00) 35%, transparent);
         transform: translateY(0);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
     #home-page .hero-3d-banner__btn:hover {
         transform: scale(1.05) translateY(-2px);
         box-shadow:
-            0 10px 0 #b34700,
-            0 20px 36px rgba(255, 107, 0, 0.45);
-        color: #fff;
+            0 10px 0 var(--hero-btn-shadow, #b34700),
+            0 20px 36px color-mix(in srgb, var(--hero-btn-bg, #FF6B00) 45%, transparent);
+        color: var(--hero-btn-text, #fff);
     }
     #home-page .hero-3d-banner__visual {
         position: relative;
@@ -2250,7 +2263,7 @@
         const cmsCol2VideoId = youtubeVideoIdFromUrl(cmsCol2.video_url || cmsCol2.image_url || '');
         const cmsCol4 = cmsCols[2] || {};
         const cmsCol5 = cmsCols[3] || {};
-        const cmsVersao = cmsData.app_version || {};
+        const cmsCol6 = cmsCols[4] || {};
         const cmsHeroCta = cmsData.hero_cta || cmsData.cta_consultor || {};
         const showHeroCta = cmsHeroCta.visible !== false;
         const heroCtaTitle = cmsHeroCta.title || 'Descubra como resolver seu maior desafio de gestão em segundos.';
@@ -2259,6 +2272,19 @@
         const heroCtaBtn = cmsHeroCta.button_text || 'Falar com Consultor LeAction';
         const heroCtaUrl = cmsHeroCta.button_url || '/solucionador-de-problemas';
         const heroCtaImg = cmsHeroCta.image_url || '';
+        const heroCtaThemeStyle = [
+            '--hero-bg-start:' + (cmsHeroCta.bg_color_start || '#0b0c10'),
+            '--hero-bg-end:' + (cmsHeroCta.bg_color_end || '#1a0b2e'),
+            '--hero-border:' + (cmsHeroCta.border_color || 'rgba(0, 191, 255, 0.2)'),
+            '--hero-title:' + (cmsHeroCta.title_color || '#ffffff'),
+            '--hero-subtitle:' + (cmsHeroCta.subtitle_color || 'rgba(255, 255, 255, 0.82)'),
+            '--hero-pill-bg:' + (cmsHeroCta.pill_bg_color || '#FF6B00'),
+            '--hero-pill-text:' + (cmsHeroCta.pill_text_color || '#ffffff'),
+            '--hero-accent:' + (cmsHeroCta.accent_color || '#FF6B00'),
+            '--hero-btn-bg:' + (cmsHeroCta.button_bg_color || '#FF6B00'),
+            '--hero-btn-text:' + (cmsHeroCta.button_text_color || '#ffffff'),
+            '--hero-btn-shadow:' + (cmsHeroCta.button_shadow_color || '#b34700')
+        ].join(';');
         const highlightAccent = function (text) {
             if (!text) return '';
             return String(text).replace(/(\bGratuit\w*\b)/gi, '<span class="hero-3d-banner__accent">$1</span>');
@@ -2286,17 +2312,21 @@
             '--col1-btn-text:' + cmsCol1.button_text_color,
             '--col1-btn-shadow:' + cmsCol1.button_shadow_color
         ].join(';');
-        const cmsVersaoImg = cmsVersao.image_url || '/images/cms-version-default.png';
         const cmsInsightsSection = cmsData.insights_section || {};
         const cmsInsights = Array.isArray(cmsData.insights) ? cmsData.insights : [];
         const insightIcons = ['fa-lightbulb', 'fa-route', 'fa-chart-line'];
+        const blogCards = [
+            { data: cmsCol4, fallbackTitle: 'Destaque Complementar 1', fallbackAlt: 'Blog LeAction — inovação em instituições de ensino' },
+            { data: cmsCol5, fallbackTitle: 'Destaque Complementar 2', fallbackAlt: 'Blog LeAction — agilidade na educação' },
+            { data: cmsCol6, fallbackTitle: 'Destaque Complementar 3', fallbackAlt: 'Blog LeAction — transformação digital educacional' }
+        ];
     %>
     <div class="main-content" id="home-page">
         <h1 class="sr-only">Transformação Digital Educacional e Agilidade na Educação</h1>
 
         <!-- Banner Hero CTA 3D — Consultor IA (Micro-CMS) -->
         <% if (showHeroCta) { %>
-        <section class="hero-3d-banner" aria-label="Consultor LeAction">
+        <section class="hero-3d-banner" aria-label="Consultor LeAction" style="<%= heroCtaThemeStyle %>">
             <div class="hero-3d-banner__surface">
                 <div class="hero-3d-banner__inner">
                     <div class="hero-3d-banner__copy">
@@ -2397,112 +2427,28 @@
         </section>
         <% } %>
 
-        <!-- Cards menores: blog + versão -->
-        <section class="cms-hero-grid cms-hero-grid--row2" aria-label="Destaques complementares">
+        <!-- Cards menores: 3 destaques fixos do blog LeAction (mais recentes) -->
+        <section class="cms-hero-grid cms-hero-grid--row2" aria-label="Destaques do blog LeAction">
+            <% blogCards.forEach(function (card) {
+                var item = card.data || {};
+            %>
             <article class="cms-col-card">
-                <% if (cmsCol4.image_url) { %>
+                <% if (item.image_url) { %>
                     <div class="cms-col-card__media">
-                        <img src="<%= cmsCol4.image_url %>" alt="<%= cmsCol4.title || 'Blog LeAction — inovação em instituições de ensino' %>" class="cms-col-card__icon">
+                        <img src="<%= item.image_url %>" alt="<%= item.title || card.fallbackAlt %>" class="cms-col-card__icon">
                     </div>
                 <% } %>
                 <span class="cms-col-card__source">Blog LeAction</span>
-                <h3 class="cms-col-card__title"><%= cmsCol4.title || 'Destaque Complementar 1' %></h3>
-                <p class="cms-col-card__desc"><%= cmsCol4.description || '' %></p>
-                <% if (cmsCol4.link_url) { %>
-                    <a href="<%= cmsCol4.link_url %>" class="cms-col-card__readmore" target="_blank" rel="noopener noreferrer">
-                        <%= cmsCol4.link_text || 'Leia mais →' %>
+                <h3 class="cms-col-card__title"><%= item.title || card.fallbackTitle %></h3>
+                <p class="cms-col-card__desc"><%= item.description || '' %></p>
+                <% if (item.link_url) { %>
+                    <a href="<%= item.link_url %>" class="cms-col-card__readmore" target="_blank" rel="noopener noreferrer">
+                        <%= item.link_text || 'Leia mais →' %>
                     </a>
                 <% } %>
             </article>
-            <article class="cms-col-card">
-                <% if (cmsCol5.image_url) { %>
-                    <div class="cms-col-card__media">
-                        <img src="<%= cmsCol5.image_url %>" alt="<%= cmsCol5.title || 'Blog LeAction — agilidade na educação' %>" class="cms-col-card__icon">
-                    </div>
-                <% } %>
-                <span class="cms-col-card__source">Blog LeAction</span>
-                <h3 class="cms-col-card__title"><%= cmsCol5.title || 'Destaque Complementar 2' %></h3>
-                <p class="cms-col-card__desc"><%= cmsCol5.description || '' %></p>
-                <% if (cmsCol5.link_url) { %>
-                    <a href="<%= cmsCol5.link_url %>" class="cms-col-card__readmore" target="_blank" rel="noopener noreferrer">
-                        <%= cmsCol5.link_text || 'Leia mais →' %>
-                    </a>
-                <% } %>
-            </article>
-            <article class="cms-col-card cms-col-version">
-                <div class="cms-col-card__media">
-                    <img src="<%= cmsVersaoImg %>" alt="<%= cmsVersao.title || 'Versão atual do Panel DX — plataforma de diagnóstico educacional' %>" class="cms-col-card__icon">
-                </div>
-                <% if (cmsVersao.version_label) { %>
-                    <span class="cms-col-version__badge"><%= cmsVersao.version_label %></span>
-                <% } %>
-                <h3 class="cms-col-card__title"><%= cmsVersao.title || 'Versão atual do PanelDX' %></h3>
-                <p class="cms-col-card__desc"><%= cmsVersao.summary || 'Informações sobre a versão em uso e as últimas modificações da plataforma.' %></p>
-                <a href="#" id="btn-modal-versao-app" class="cms-col-version__link" role="button">
-                    <i class="fas fa-code-branch"></i>
-                    <%= cmsVersao.link_text || 'Ver histórico de modificações' %>
-                </a>
-            </article>
+            <% }) %>
         </section>
-
-        <!-- Modal: histórico de versão -->
-        <div id="modal-versao-app" class="modal-versao-app" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-versao-titulo">
-            <div class="modal-versao-app__backdrop" data-fechar-versao></div>
-            <div class="modal-versao-app__dialog">
-                <button type="button" class="modal-versao-app__close" data-fechar-versao aria-label="Fechar">&times;</button>
-                <header class="modal-versao-app__header">
-                    <% if (cmsVersao.version_label) { %>
-                        <span class="modal-versao-app__badge"><%= cmsVersao.version_label %></span>
-                    <% } %>
-                    <h2 id="modal-versao-titulo"><%= cmsVersao.title || 'Versão atual do PanelDX' %></h2>
-                    <% if (cmsVersao.summary) { %>
-                        <p><%= cmsVersao.summary %></p>
-                    <% } %>
-                </header>
-                <div class="modal-versao-app__body">
-                    <% if (cmsVersao.details_html) { %>
-                        <%- cmsVersao.details_html %>
-                    <% } else { %>
-                        <p>Nenhuma informação de versão cadastrada no CMS.</p>
-                    <% } %>
-                </div>
-                <footer class="modal-versao-app__footer">
-                    <a href="/versao-aplicacao" target="_blank" rel="noopener">Abrir em página inteira</a>
-                </footer>
-            </div>
-        </div>
-
-        <script>
-        (function () {
-            var modal = document.getElementById('modal-versao-app');
-            var btn = document.getElementById('btn-modal-versao-app');
-            if (!modal || !btn) return;
-
-            function abrirModalVersao() {
-                modal.classList.add('is-open');
-                modal.setAttribute('aria-hidden', 'false');
-                document.body.style.overflow = 'hidden';
-            }
-            function fecharModalVersao() {
-                modal.classList.remove('is-open');
-                modal.setAttribute('aria-hidden', 'true');
-                document.body.style.overflow = '';
-            }
-
-            btn.addEventListener('click', function (e) {
-                e.preventDefault();
-                abrirModalVersao();
-            });
-            modal.querySelectorAll('[data-fechar-versao]').forEach(function (el) {
-                el.addEventListener('click', fecharModalVersao);
-            });
-            document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape' && modal.classList.contains('is-open')) {
-                    fecharModalVersao();
-                }
-            });
-        })();
-        </script>
 
         <!-- SEO: framework (sem banner visual grande) -->
         <h2 id="lf-eco-title" class="visually-hidden">Framework de Transformação Digital - LeAction F</h2>
