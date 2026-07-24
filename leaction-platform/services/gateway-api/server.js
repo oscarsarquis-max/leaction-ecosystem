@@ -49,6 +49,7 @@ const { registerCatalogPublicRoutes } = require('./domain/catalog-public');
 const { registerMpWebhookRoutes } = require('./domain/mp-webhooks');
 const { startOutboxWorker } = require('./domain/outbox-worker');
 const { registerAdminRoutes } = require('./admin');
+const { registerCmsPostsRoutes } = require('./domain/cms-posts');
 const { versionPayload } = require('./version-info');
 const { createGatekeeper } = require('./domain/gatekeeper');
 
@@ -1434,6 +1435,7 @@ registerCheckoutSessionsRoutes(app, pool);
 registerCatalogPublicRoutes(app, pool);
 registerMpWebhookRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerAdminRoutes(app, pool, { jwtSecret: JWT_SECRET });
+registerCmsPostsRoutes(app, pool, { jwtSecret: JWT_SECRET });
 startOutboxWorker(pool);
 
 // API na 4001; Action Hub (Next.js) na 4000

@@ -259,3 +259,62 @@ export function formatBrl(price: number, currency = 'BRL'): string {
     return `R$ ${Number(price || 0).toFixed(2)}`;
   }
 }
+
+export type CmsSistemaDestino =
+  | 'hub-publico'
+  | 'actionhub'
+  | 'inove4us'
+  | 'paneldx'
+  | 'todos';
+export type CmsPostStatus = 'rascunho' | 'publicado';
+
+export type CmsPost = {
+  id: number;
+  slug: string;
+  titulo: string;
+  resumo: string | null;
+  conteudo_html: string | null;
+  imagem_capa: string | null;
+  sistema_destino: CmsSistemaDestino | string;
+  status: CmsPostStatus | string;
+  publicado_em: string | null;
+  criado_em: string;
+};
+
+export type CmsPostUpsertBody = {
+  titulo: string;
+  slug?: string;
+  resumo?: string;
+  conteudo_html?: string;
+  imagem_capa?: string | null;
+  sistema_destino: CmsSistemaDestino | string;
+  status: CmsPostStatus | string;
+};
+
+export async function fetchCmsPostsAdmin(token: string): Promise<CmsPost[]> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{ posts: CmsPost[] }>('/api/cms/posts/admin');
+  return Array.isArray(data?.posts) ? data.posts : [];
+}
+
+export async function createCmsPost(
+  token: string,
+  body: CmsPostUpsertBody
+): Promise<CmsPost> {
+  const client = createAdminClient(token);
+  const { data } = await client.post<{ post: CmsPost }>('/api/cms/posts', body);
+  return data.post;
+}
+
+export async function updateCmsPost(
+  token: string,
+  id: number,
+  body: CmsPostUpsertBody
+): Promise<CmsPost> {
+  const client = createAdminClient(token);
+  const { data } = await client.put<{ post: CmsPost }>(
+    `/api/cms/posts/${encodeURIComponent(String(id))}`,
+    body
+  );
+  return data.post;
+}

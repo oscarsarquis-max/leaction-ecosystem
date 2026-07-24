@@ -19,6 +19,8 @@ const EXEMPT_PREFIXES = [
   '/hub-api/orders/',
   // Action-Sponge: sensores S2S (inove4us/PanelDX) mesmo com site em manutenção
   '/hub-api/api/crm/tracking/',
+  // Headless CMS: leitura pública para satélites (S2S / home)
+  '/hub-api/api/cms/posts',
 ];
 
 function isExempt(pathname: string, searchParams: URLSearchParams): boolean {

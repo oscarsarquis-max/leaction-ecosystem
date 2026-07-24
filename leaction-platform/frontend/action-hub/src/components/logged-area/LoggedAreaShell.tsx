@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useHubSession } from '@/context/HubSessionContext';
 import { OffersVitrine } from '@/components/home/OffersVitrine';
 import {
@@ -10,13 +11,16 @@ import {
 import { LoggedAreaMain } from '@/components/logged-area/LoggedAreaMain';
 import { LoggedAreaRightPanel } from '@/components/logged-area/LoggedAreaRightPanel';
 
-/**
- * Dashboard da Área Logada — branding ActionHub / MudaEdu, foco Inove4us.
- * Serviços legados permanecem em "Mais serviços" e em /dashboard/*.
- */
-export function LoggedAreaShell() {
+function LoggedAreaShellInner() {
   const { user } = useHubSession();
+  const searchParams = useSearchParams();
   const [active, setActive] = useState<LoggedAreaNavId>('inicio');
+
+  useEffect(() => {
+    if (searchParams.get('nav') === 'marketplace') {
+      setActive('marketplace');
+    }
+  }, [searchParams]);
 
   const userName = useMemo(() => {
     const name = String(user?.name || '').trim();
@@ -52,5 +56,19 @@ export function LoggedAreaShell() {
         <LoggedAreaRightPanel userName={userName} userEmail={user?.email} />
       </div>
     </div>
+  );
+}
+
+export function LoggedAreaShell() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center bg-stone-50 text-sm text-stone-500">
+          Carregando…
+        </div>
+      }
+    >
+      <LoggedAreaShellInner />
+    </Suspense>
   );
 }

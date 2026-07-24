@@ -97,7 +97,7 @@ export function extractBearerToken(request: Request): string {
 }
 
 /**
- * Admin Hub válido.
+ * Admin ActionHub válido.
  * 1) JWT local (se JWT_SECRET no FE)
  * 2) Validação no gateway `/admin/apps` (produção atual sem JWT_SECRET no Next)
  */

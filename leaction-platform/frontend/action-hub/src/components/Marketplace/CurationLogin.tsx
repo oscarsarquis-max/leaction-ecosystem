@@ -40,8 +40,8 @@ export function CurationLogin({ onSuccess }: CurationLoginProps) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
+    <div className="flex items-center justify-center px-2 py-8">
+      <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50">
             <Lock className="size-7 text-orange-500" aria-hidden />

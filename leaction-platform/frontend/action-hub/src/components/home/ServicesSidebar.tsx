@@ -13,7 +13,6 @@ import {
   Package,
   Rocket,
   Settings2,
-  Shield,
   Store,
 } from 'lucide-react';
 import { Suspense, useState, type MouseEvent } from 'react';
@@ -319,46 +318,45 @@ function ServicesSidebarInner() {
         </div>
 
         {isAdmin ? (
-          <div className="rounded-2xl border border-stone-800/10 bg-stone-50/80 p-2">
-            <div className="mb-1 flex items-center gap-2 px-2 py-1.5">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-stone-900 text-orange-300">
-                <Shield className="size-3.5" aria-hidden />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-stone-800">
-                  Subsistema Admin
-                </p>
-                <p className="text-[10px] leading-snug text-stone-500">
-                  Operação do Hub — separado dos serviços
-                </p>
-              </div>
-              <span className="rounded-full bg-stone-900 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-orange-200">
-                Admin
-              </span>
-            </div>
-            <div className="space-y-0.5" aria-label="Subsistema administrativo">
-              {ADMIN_NAV.map((item) => (
-                <NavLink
-                  key={item.id}
-                  item={item}
-                  pathname={pathname}
-                  view={view}
-                  locked={Boolean(item.requiresAuth) && hydrated && !isAuthenticated}
-                  onAuthNav={handleAuthNav}
-                  tone="admin"
-                />
-              ))}
+          <div
+            className="rounded-2xl bg-stone-950 p-2 text-white shadow-sm ring-1 ring-stone-800"
+            aria-label="Administração"
+          >
+            <p className="px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-orange-400">
+              Administração
+            </p>
+            <div className="space-y-0.5">
+              {ADMIN_NAV.map((item) => {
+                const Icon = item.icon;
+                const active = navActive(pathname, item.href, view);
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href || '#'}
+                    onClick={(event) =>
+                      handleAuthNav(event, item.href, item.requiresAuth)
+                    }
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                      active
+                        ? 'bg-orange-500 text-white'
+                        : 'text-white/90 hover:bg-white/10 hover:text-orange-300'
+                    }`}
+                  >
+                    <span
+                      className={`flex size-8 items-center justify-center rounded-lg ${
+                        active ? 'bg-orange-600 text-white' : 'bg-white/10 text-orange-400'
+                      }`}
+                    >
+                      <Icon className="size-4" aria-hidden />
+                    </span>
+                    <span className="flex-1">{item.label}</span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         ) : null}
       </nav>
-
-      <div className="border-t border-stone-100 p-4">
-        <div className="rounded-xl bg-orange-50 px-3 py-2.5 text-xs leading-relaxed text-orange-800">
-          Serviços (Action-Pay, Marketplace, Analytics) são o Hub do usuário. O bloco Admin
-          só aparece para administradores e abre um painel separado.
-        </div>
-      </div>
     </aside>
   );
 }

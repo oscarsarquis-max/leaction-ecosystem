@@ -1,9 +1,10 @@
 'use client';
 
-import Link from 'next/link';
-import { Bell, BookOpen, LogOut } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bell, LogOut, X } from 'lucide-react';
 import { useHubSession } from '@/context/HubSessionContext';
-import { MOCK_PLAN, MOCK_QUICK_TIPS } from '@/components/logged-area/mock-data';
+import { getHubApiBase } from '@/lib/hub-api';
+import type { CmsPost } from '@/lib/admin-api';
 
 type LoggedAreaRightPanelProps = {
   userName: string;
@@ -12,6 +13,10 @@ type LoggedAreaRightPanelProps = {
 
 export function LoggedAreaRightPanel({ userName, userEmail }: LoggedAreaRightPanelProps) {
   const { logout } = useHubSession();
+  const [posts, setPosts] = useState<CmsPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [active, setActive] = useState<CmsPost | null>(null);
+
   const initials = userName
     .split(/\s+|@/)
     .filter(Boolean)
@@ -19,7 +24,40 @@ export function LoggedAreaRightPanel({ userName, userEmail }: LoggedAreaRightPan
     .map((p) => p[0]?.toUpperCase() || '')
     .join('');
 
-  const progressPct = Math.min(100, Math.round((MOCK_PLAN.used / MOCK_PLAN.total) * 100));
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const base = getHubApiBase();
+        const res = await fetch(
+          `${base}/api/cms/posts?sistema_destino=actionhub&limit=4`,
+          { headers: { Accept: 'application/json' }, cache: 'no-store' }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { posts?: CmsPost[] };
+        if (!cancelled) {
+          setPosts(Array.isArray(data?.posts) ? data.posts.slice(0, 4) : []);
+        }
+      } catch {
+        if (!cancelled) setPosts([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setActive(null);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [active]);
 
   return (
     <aside className="flex h-full w-80 shrink-0 flex-col gap-6 overflow-y-auto border-l border-stone-200 bg-white p-6">
@@ -38,7 +76,7 @@ export function LoggedAreaRightPanel({ userName, userEmail }: LoggedAreaRightPan
             type="button"
             className="inline-flex size-9 items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-50 hover:text-stone-800"
             aria-label="Notificações"
-            title="Notificações (mock)"
+            title="Notificações"
           >
             <Bell className="size-4" aria-hidden />
           </button>
@@ -53,51 +91,82 @@ export function LoggedAreaRightPanel({ userName, userEmail }: LoggedAreaRightPan
         </button>
       </div>
 
-      <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-bold text-stone-900">Meu Plano</h2>
-        <p className="mt-1 text-sm text-stone-500">{MOCK_PLAN.name}</p>
-        <div className="mt-4">
-          <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-stone-500">
-            <span>
-              {MOCK_PLAN.used} de {MOCK_PLAN.total} {MOCK_PLAN.unitLabel}
-            </span>
-            <span className="text-orange-600">{progressPct}%</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-stone-100">
+      <div>
+        <h2 className="mb-3 text-sm font-bold text-stone-900">Insights</h2>
+        {loading ? (
+          <p className="text-xs text-stone-400">Carregando…</p>
+        ) : posts.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-3 py-6 text-center text-xs text-stone-400">
+            Conteúdos do ActionHub aparecerão aqui.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {posts.map((post) => {
+              const short =
+                (post.resumo && post.resumo.trim()) ||
+                post.titulo ||
+                'Abrir conteúdo';
+              return (
+                <li key={post.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActive(post)}
+                    className="w-full rounded-xl border border-stone-200 bg-white p-3 text-left shadow-sm transition hover:border-orange-200 hover:bg-orange-50"
+                  >
+                    <span className="block text-sm font-semibold text-stone-900">
+                      {post.titulo}
+                    </span>
+                    <span className="mt-1 block text-xs leading-snug text-stone-500 line-clamp-2">
+                      {short}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {active ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-stone-950/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cms-insight-title"
+          onClick={() => setActive(null)}
+        >
+          <div
+            className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-stone-200 bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setActive(null)}
+              className="absolute right-3 top-3 inline-flex size-9 items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-100 hover:text-stone-800"
+              aria-label="Fechar"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+            <h3
+              id="cms-insight-title"
+              className="pr-10 text-lg font-bold tracking-tight text-stone-900"
+            >
+              {active.titulo}
+            </h3>
+            {active.resumo ? (
+              <p className="mt-2 text-sm text-stone-500">{active.resumo}</p>
+            ) : null}
             <div
-              className="h-full rounded-full bg-orange-500 transition-all"
-              style={{ width: `${progressPct}%` }}
+              className="prose prose-sm prose-stone mt-4 max-w-none"
+              dangerouslySetInnerHTML={{
+                __html:
+                  (active.conteudo_html && active.conteudo_html.trim()) ||
+                  `<p>${active.resumo || active.titulo}</p>`,
+              }}
             />
           </div>
         </div>
-        <Link
-          href="/checkout/inove4us"
-          className="mt-4 inline-flex text-xs font-semibold text-orange-600 transition hover:text-orange-700"
-        >
-          Ver opções de upgrade →
-        </Link>
-      </div>
-
-      <div>
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-stone-900">
-          <BookOpen className="size-4 text-orange-600" aria-hidden />
-          Dicas Rápidas
-        </h2>
-        <ul className="space-y-2">
-          {MOCK_QUICK_TIPS.map((tip) => (
-            <li key={tip.id}>
-              <a
-                href={tip.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-xl border border-stone-200 bg-white p-3 text-sm font-medium text-stone-900 shadow-sm transition hover:border-orange-200 hover:bg-orange-50"
-              >
-                {tip.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
+      ) : null}
     </aside>
   );
 }

@@ -17,6 +17,21 @@ function SiteHeaderInner() {
     return null;
   }
 
+  // Área logada / Action-Pay / admin / CMS / curadoria — menu lateral já traz logo e nav.
+  if (
+    pathname.startsWith('/dashboard/admin') ||
+    pathname.startsWith('/dashboard/cms') ||
+    pathname.startsWith('/dashboard/marketplace/curadoria') ||
+    pathname.startsWith('/dashboard/crm')
+  ) {
+    return null;
+  }
+
+  // Action-Pay do cliente (sem checkout white-label) usa LoggedAreaFrame.
+  if (pathname === '/dashboard' && checkoutId.length === 0 && clientId.length === 0) {
+    return null;
+  }
+
   // Checkout white-label: chrome do parceiro assume o header.
   if (pathname === '/dashboard' && (checkoutId.length > 0 || clientId.length > 0)) {
     return null;

@@ -13,17 +13,15 @@ import {
   Link2,
   Loader2,
   Mail,
-  Lock,
-  UserRound
+  Lock
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useHubSession } from '@/context/HubSessionContext';
 import { MercadoPagoSubscriptionBrick } from '@/components/MercadoPagoSubscriptionBrick';
 import { CheckoutChrome } from '@/components/CheckoutChrome';
-import { BackToHubHome } from '@/components/BackToHubHome';
 import { parseClientId, resolveClientBrand, type ClientBrandTheme } from '@/lib/client-branding';
 import { getHubApiBase, MP_PUBLIC_KEY, buildClientReturnUrl, parseCheckoutOrderId, parseReturnTo, parseReturnOrigin, MP_SUBSCRIPTION_AMOUNT } from '@/lib/hub-api';
-import { useAdminGate } from '@/lib/require-admin';
+import { LoggedAreaFrame } from '@/components/logged-area/LoggedAreaFrame';
 
 function cartItemsToSkus(items: { id?: string | number; sku?: string }[]): string[] {
   return items
@@ -167,19 +165,32 @@ function DashboardContent() {
   const apiBase = useMemo(() => getHubApiBase(), []);
 
   const { cartItems, setCartItems } = useCart();
-  const { user: sessionUser, login: hubLogin, adoptEmail } = useHubSession();
-  const { isAdmin, hydrated: adminHydrated } = useAdminGate();
+  const { user: sessionUser, login: hubLogin, adoptEmail, hydrated: sessionHydrated } =
+    useHubSession();
   const [emailLogin, setEmailLogin] = useState('');
   const [passwordLogin, setPasswordLogin] = useState('');
   const [loginStatus, setLoginStatus] = useState<'idle' | 'syncing' | 'paying'>('idle');
   const viewParam = useMemo(() => searchParams.get('view')?.trim() || '', [searchParams]);
   const wantsCartOnly = viewParam === 'cart';
 
-  // Admin ops: histórico global fica em /dashboard/admin/payments (não no painel do comprador)
+  // Action-Pay: com sessão Hub, usa o e-mail do usuário logado (histórico pessoal).
   useEffect(() => {
-    if (!adminHydrated || !isAdmin || isCheckoutFlow || wantsCartOnly) return;
-    router.replace('/dashboard/admin/payments');
-  }, [adminHydrated, isAdmin, isCheckoutFlow, wantsCartOnly, router]);
+    if (!sessionHydrated || isCheckoutFlow || isPartnerCheckout) return;
+    const sessionEmail = String(sessionUser?.email || '').trim();
+    if (!sessionEmail || email) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('email', sessionEmail);
+    router.replace(`/dashboard?${params.toString()}`);
+  }, [
+    sessionHydrated,
+    sessionUser?.email,
+    email,
+    isCheckoutFlow,
+    isPartnerCheckout,
+    router,
+    searchParams,
+  ]);
+
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [mpEnabled, setMpEnabled] = useState(Boolean(MP_PUBLIC_KEY));
@@ -768,12 +779,21 @@ function DashboardContent() {
     return withCheckoutChrome(checkoutBrand, checkoutOrder?.product_name, successBody);
   }
 
-  if (adminHydrated && isAdmin && !isCheckoutFlow && !wantsCartOnly) {
+  // Sessão existe mas e-mail ainda não entrou na URL — evita flash do formulário de login.
+  if (
+    !email &&
+    sessionHydrated &&
+    sessionUser?.email &&
+    !isCheckoutFlow &&
+    !isPartnerCheckout
+  ) {
     return (
-      <main className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
-        <Loader2 className="mr-2 size-5 animate-spin" />
-        Abrindo painel de pagamentos…
-      </main>
+      <LoggedAreaFrame activeNav={null}>
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-stone-500">
+          <Loader2 className="mr-2 size-5 animate-spin text-orange-500" />
+          Abrindo Action-Pay…
+        </div>
+      </LoggedAreaFrame>
     );
   }
 
@@ -919,25 +939,38 @@ function DashboardContent() {
     >
       <section className="mx-auto max-w-6xl px-4 py-10 pb-16 md:px-8">
         {!checkoutBrand && (
-        <div className="mb-8 rounded-3xl bg-gradient-to-r from-red-950 via-red-800 to-red-600 p-8 text-white shadow-lg">
-          <BackToHubHome
-            label="Voltar ao Action Hub"
-            className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-orange-100/90 transition hover:text-white"
-          />
-          <p className="mb-2 flex items-center gap-2 text-sm/6 font-medium text-orange-100">
-            <UserRound size={16} />
-            Area do LeActioner
+        <div className="mb-8 rounded-3xl bg-gradient-to-r from-stone-950 via-stone-900 to-orange-700 p-8 text-white shadow-lg">
+          <p className="mb-2 flex items-center gap-2 text-sm/6 font-medium text-orange-200">
+            <CreditCard size={16} />
+            Action-Pay
           </p>
-          <h1 className="text-3xl font-black tracking-tight md:text-4xl">Bem-vindo, {userName}!</h1>
-          <p className="mt-3 text-sm text-orange-100 md:text-base">
-            Acompanhe seus pedidos e acesse seus conteudos assim que os pagamentos forem aprovados.
+          <h1 className="text-3xl font-black tracking-tight md:text-4xl">
+            Olá, {userName}
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm text-orange-100/90 md:text-base">
+            Seu histórico de pagamentos e pedidos. Contrate novos serviços pelo Marketplace
+            quando quiser.
           </p>
-          <Link
-            href="/dashboard/crm/tracking"
-            className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-orange-50 transition hover:bg-white/20"
-          >
-            Tracking &amp; Conversão (PLG)
-          </Link>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              href="/?nav=marketplace"
+              className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-orange-400"
+            >
+              Contratar novos serviços
+            </Link>
+            {cartItems.length > 0 ? (
+              <Link
+                href={
+                  email
+                    ? `/dashboard?email=${encodeURIComponent(email)}&view=cart`
+                    : '/dashboard?view=cart'
+                }
+                className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20"
+              >
+                Ver carrinho ({cartItems.length})
+              </Link>
+            ) : null}
+          </div>
         </div>
         )}
 
@@ -1173,17 +1206,22 @@ function DashboardContent() {
         )}
 
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 md:text-xl">
               <BookOpen size={20} />
-              Meus Pedidos
+              Histórico de pagamentos
             </h2>
+            <Link
+              href="/?nav=marketplace"
+              className="text-sm font-semibold text-orange-600 hover:text-orange-700"
+            >
+              + Novo serviço
+            </Link>
           </div>
 
           {!loading &&
             !errorMessage &&
             dashboardUser &&
-            !isAdmin &&
             !isProfileComplete(dashboardUser) && (
             <div className="mb-8 rounded-2xl border border-orange-200/80 bg-orange-50/50 p-5 md:p-6">
               <h3 className="text-base font-bold text-slate-900 md:text-lg">Conclusão de Perfil</h3>
@@ -1272,8 +1310,14 @@ function DashboardContent() {
           )}
 
           {!loading && !errorMessage && orders.length === 0 && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center text-slate-600">
-              Voce ainda nao possui pedidos. Assim que realizar uma compra, ela aparecera aqui.
+            <div className="rounded-xl border border-stone-200 bg-stone-50 p-6 text-center text-stone-600">
+              <p>Você ainda não possui pagamentos registrados.</p>
+              <Link
+                href="/?nav=marketplace"
+                className="mt-4 inline-flex rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-orange-400"
+              >
+                Contratar um serviço
+              </Link>
             </div>
           )}
 
@@ -1419,7 +1463,18 @@ function DashboardContent() {
     </main>
   );
 
-  return withCheckoutChrome(checkoutBrand, checkoutOrder?.product_name, dashboardBody);
+  const chrome = withCheckoutChrome(
+    checkoutBrand,
+    checkoutOrder?.product_name,
+    dashboardBody
+  );
+
+  // Action-Pay (área do cliente) mantém o menu da área logada.
+  if (!isCheckoutFlow && !isPartnerCheckout) {
+    return <LoggedAreaFrame activeNav={null}>{chrome}</LoggedAreaFrame>;
+  }
+
+  return chrome;
 }
 
 export default function DashboardPage() {

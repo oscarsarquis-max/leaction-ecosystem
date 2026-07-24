@@ -5,7 +5,6 @@ import Link from 'next/link';
 import axios from 'axios';
 import {
   AlertCircle,
-  ArrowLeft,
   CheckCircle2,
   Loader2,
   LogOut,
@@ -238,7 +237,7 @@ export default function MarketplaceCurationPage() {
 
   if (!authChecked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-red-950/60">
+      <div className="flex min-h-[40vh] items-center justify-center text-stone-500">
         <Loader2 className="size-6 animate-spin text-orange-500" aria-hidden />
       </div>
     );
@@ -246,19 +245,19 @@ export default function MarketplaceCurationPage() {
 
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div>
         {hubHydrated && !hubUser ? (
-          <div className="mx-auto max-w-lg px-4 pt-10 text-center">
-            <p className="text-sm text-red-950/70">
+          <div className="mx-auto max-w-lg px-4 pb-4 pt-2 text-center">
+            <p className="text-sm text-stone-600">
               Faça login no Action Hub como admin para abrir a curadoria sem segundo login.
             </p>
             <Link
               href="/"
               className="mt-3 inline-block text-sm font-semibold text-orange-600 hover:text-orange-700"
             >
-              Ir para o Action Hub
+              Ir para o início
             </Link>
-            <p className="mt-8 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <p className="mt-6 text-xs font-semibold uppercase tracking-wider text-stone-400">
               ou use o login dedicado da curadoria
             </p>
           </div>
@@ -272,54 +271,31 @@ export default function MarketplaceCurationPage() {
   const globalRule = curationData.global;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-6xl px-4 py-10 md:px-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-red-950/70 hover:text-orange-500"
-          >
-            <ArrowLeft className="size-4 text-orange-500" aria-hidden />
-            Voltar ao Action Hub
-          </Link>
-          <div className="flex items-center gap-3">
-            {sessionUser ? (
-              <span className="text-xs font-medium text-red-950/60">
-                {authVia === 'hub_admin' ? 'Admin Hub · ' : ''}
-                {sessionUser}
-              </span>
-            ) : null}
-            {authVia === 'hub_admin' ? (
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-red-950 hover:border-orange-300"
-              >
-                <ArrowLeft className="size-4 text-orange-500" aria-hidden />
-                Início
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-red-950 hover:border-orange-300"
-              >
-                <LogOut className="size-4 text-orange-500" aria-hidden />
-                Sair
-              </button>
-            )}
-          </div>
-        </div>
-
-        <header className="mb-8">
-          <p className="mb-2 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-orange-500">
+    <div>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <header>
+          <p className="mb-1 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-orange-500">
             <Settings2 className="size-4" aria-hidden />
             Marketplace
           </p>
-          <h1 className="text-3xl font-extrabold tracking-tight text-red-950">Painel de Curadoria</h1>
-          <p className="mt-2 max-w-2xl text-sm text-red-950/70">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900">
+            Painel de Curadoria
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-stone-500">
             Edite as regras da tabela <code className="text-xs">marketplace_curation</code>.
           </p>
         </header>
+        {authVia !== 'hub_admin' && sessionUser ? (
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="inline-flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 hover:border-orange-300"
+          >
+            <LogOut className="size-4 text-orange-500" aria-hidden />
+            Sair da curadoria
+          </button>
+        ) : null}
+      </div>
 
         {toast ? (
           <div
@@ -518,7 +494,6 @@ export default function MarketplaceCurationPage() {
             </section>
           </div>
         ) : null}
-      </div>
     </div>
   );
 }
