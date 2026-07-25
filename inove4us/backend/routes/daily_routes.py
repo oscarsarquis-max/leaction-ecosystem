@@ -87,6 +87,9 @@ def _serialize(row: dict) -> dict:
         "fechamento_checkout": row.get("fechamento_checkout") or "",
         "status": row.get("status") or "draft",
         "id_evento_agenda": row.get("id_evento_agenda"),
+        "disciplina_id": row.get("disciplina_id"),
+        "tipo_registro": row.get("tipo_registro") or "aula",
+        "origem": row.get("origem") or "manual",
         "kanban_state": row.get("kanban_state")
         if isinstance(row.get("kanban_state"), (dict, list))
         else (_parse_json_field(row.get("kanban_state")) if row.get("kanban_state") else None),
@@ -183,6 +186,9 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
     kanban = _normalize_kanban_state(row.get("kanban_state"))
     kanban_json = json.dumps(kanban or {"tarefas": []}, ensure_ascii=False)
 
+    disciplina_id = row.get("disciplina_id")
+    origem_aula = _parse_origem(row.get("origem"), default="manual")
+
     if id_evento:
         cur.execute(
             """
@@ -197,7 +203,9 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
                    tipo = 'aula_dia',
                    meta_json = %s::jsonb,
                    turma = %s,
-                   kanban_state = %s::jsonb
+                   kanban_state = %s::jsonb,
+                   disciplina_id = %s,
+                   origem = %s
              WHERE id_evento = %s AND id_clie = %s
          RETURNING id_evento
             """,
@@ -208,6 +216,8 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
                 meta,
                 turma,
                 kanban_json,
+                disciplina_id,
+                origem_aula,
                 int(id_evento),
                 id_clie,
             ),
@@ -219,11 +229,23 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
     cur.execute(
         """
         INSERT INTO public.inove_agenda_eventos
-            (id_clie, data_evento, titulo, nota_texto, status, tipo, meta_json, turma, kanban_state)
-        VALUES (%s, %s, %s, %s, 'planejado', 'aula_dia', %s::jsonb, %s, %s::jsonb)
+            (id_clie, data_evento, titulo, nota_texto, status, tipo, meta_json,
+             turma, kanban_state, disciplina_id, origem)
+        VALUES (%s, %s, %s, %s, 'planejado', 'aula_dia', %s::jsonb,
+                %s, %s::jsonb, %s, %s)
         RETURNING id_evento
         """,
-        (id_clie, data_evento, titulo, nota, meta, turma, kanban_json),
+        (
+            id_clie,
+            data_evento,
+            titulo,
+            nota,
+            meta,
+            turma,
+            kanban_json,
+            disciplina_id,
+            origem_aula,
+        ),
     )
     created = cur.fetchone()
     new_id = int(created["id_evento"] if isinstance(created, dict) else created[0])
@@ -263,6 +285,50 @@ def _parse_date(raw: Any) -> date | None:
 
 def _clip(value: Any, limit: int) -> str:
     return str(value or "")[:limit]
+
+
+ORIGENS_AULA = frozenset({"manual", "wizard_ia", "importacao"})
+TIPOS_REGISTRO_AULA = frozenset({"aula", "evento"})
+
+
+def _parse_origem(raw: Any, *, default: str = "manual") -> str:
+    value = str(raw if raw is not None else default).strip().lower()
+    return value if value in ORIGENS_AULA else default
+
+
+def _parse_tipo_registro(raw: Any, *, default: str = "aula") -> str:
+    value = str(raw if raw is not None else default).strip().lower()
+    return value if value in TIPOS_REGISTRO_AULA else default
+
+
+def _resolve_disciplina_id(cur, id_clie: int, raw: Any) -> int | None:
+    """Valida disciplina ativa do professor; None limpa o vínculo."""
+    if raw in (None, "", 0, "0", "null"):
+        return None
+    try:
+        disciplina_id = int(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("disciplina_id inválido") from exc
+    cur.execute(
+        """
+        SELECT d.id
+          FROM public.inove_disciplinas d
+          JOIN public.inove_cursos c ON c.id = d.curso_id
+          JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
+          JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+         WHERE d.id = %s
+           AND i.id_clie = %s
+           AND d.ativo = TRUE
+           AND c.ativo = TRUE
+           AND p.ativo = TRUE
+           AND i.ativo = TRUE
+        """,
+        (disciplina_id, id_clie),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise ValueError("Disciplina não encontrada ou sem permissão")
+    return int(row["id"] if isinstance(row, dict) else row[0])
 
 
 def _prepare_conn(conn) -> None:
@@ -402,24 +468,36 @@ def planejar_aula():
                 fonte = "inove_local"
     kanban = _normalize_kanban_state(data.get("kanban_state"))
     kanban_json = json.dumps(kanban, ensure_ascii=False) if kanban is not None else None
+    origem = _parse_origem(data.get("origem"), default="manual")
+    tipo_registro = _parse_tipo_registro(data.get("tipo_registro"), default="aula")
 
     id_clie = int(user["id_clie"])
     try:
         with get_conn() as conn:
             _prepare_conn(conn)
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                try:
+                    disciplina_id = (
+                        _resolve_disciplina_id(cur, id_clie, data.get("disciplina_id"))
+                        if "disciplina_id" in data
+                        else None
+                    )
+                except ValueError as exc:
+                    return jsonify({"success": False, "error": str(exc)}), 400
                 cur.execute(
                     """
                     INSERT INTO public.inove_aulas_simples (
                         id_clie, data_planejada, turma_nome, tema_aula,
                         objetivo_aprendizagem, acolhida, conteudo_essencial,
                         dinamica_ativa_id, dinamica_ativa_fonte,
-                        fechamento_checkout, status, kanban_state
+                        fechamento_checkout, status, kanban_state,
+                        disciplina_id, tipo_registro, origem
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s, %s, %s,
                         %s, %s,
-                        %s, 'draft', %s::jsonb
+                        %s, 'draft', %s::jsonb,
+                        %s, %s, %s
                     )
                     RETURNING *
                     """,
@@ -435,6 +513,9 @@ def planejar_aula():
                         fonte,
                         fechamento,
                         kanban_json,
+                        disciplina_id,
+                        tipo_registro,
+                        origem,
                     ),
                 )
                 row = dict(cur.fetchone())
@@ -471,28 +552,73 @@ def listar_aulas():
     page, page_size, offset = _parse_pagination()
     id_clie = int(user["id_clie"])
 
+    filters = ["a.id_clie = %s"]
+    params: list[Any] = [id_clie]
+    join_sql = ""
+
+    disc_raw = request.args.get("disciplina_id")
+    if disc_raw not in (None, ""):
+        try:
+            filters.append("a.disciplina_id = %s")
+            params.append(int(disc_raw))
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "disciplina_id inválido"}), 400
+
+    curso_raw = request.args.get("curso_id")
+    periodo_raw = request.args.get("periodo_letivo_id")
+    if curso_raw not in (None, "") or periodo_raw not in (None, ""):
+        join_sql = """
+            LEFT JOIN public.inove_disciplinas d ON d.id = a.disciplina_id
+            LEFT JOIN public.inove_cursos c ON c.id = d.curso_id
+        """
+        if curso_raw not in (None, ""):
+            try:
+                filters.append("c.id = %s")
+                params.append(int(curso_raw))
+            except (TypeError, ValueError):
+                return jsonify({"success": False, "error": "curso_id inválido"}), 400
+        if periodo_raw not in (None, ""):
+            try:
+                filters.append("c.periodo_letivo_id = %s")
+                params.append(int(periodo_raw))
+            except (TypeError, ValueError):
+                return jsonify({"success": False, "error": "periodo_letivo_id inválido"}), 400
+
+    origem_f = request.args.get("origem")
+    if origem_f not in (None, ""):
+        origem_f = str(origem_f).strip().lower()
+        if origem_f not in ORIGENS_AULA:
+            return jsonify({"success": False, "error": "origem inválida"}), 400
+        filters.append("a.origem = %s")
+        params.append(origem_f)
+
+    where_sql = " AND ".join(filters)
+
     try:
         with get_conn() as conn:
             _prepare_conn(conn)
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
-                    """
+                    f"""
                     SELECT COUNT(*)::int AS total
-                      FROM public.inove_aulas_simples
-                     WHERE id_clie = %s
+                      FROM public.inove_aulas_simples a
+                      {join_sql}
+                     WHERE {where_sql}
                     """,
-                    (id_clie,),
+                    params,
                 )
                 total = int(cur.fetchone()["total"])
+                list_params = list(params) + [page_size, offset]
                 cur.execute(
-                    """
-                    SELECT *
-                      FROM public.inove_aulas_simples
-                     WHERE id_clie = %s
-                     ORDER BY data_planejada DESC, id DESC
+                    f"""
+                    SELECT a.*
+                      FROM public.inove_aulas_simples a
+                      {join_sql}
+                     WHERE {where_sql}
+                     ORDER BY a.data_planejada DESC, a.id DESC
                      LIMIT %s OFFSET %s
                     """,
-                    (id_clie, page_size, offset),
+                    list_params,
                 )
                 rows = [dict(r) for r in cur.fetchall()]
     except pg_errors.UndefinedTable:
@@ -662,6 +788,26 @@ def atualizar_aula(aula_id: int):
                     params.append(
                         json.dumps(kanban, ensure_ascii=False) if kanban is not None else None
                     )
+
+                if "disciplina_id" in data:
+                    try:
+                        disc_id = _resolve_disciplina_id(
+                            cur, id_clie, data.get("disciplina_id")
+                        )
+                    except ValueError as exc:
+                        return jsonify({"success": False, "error": str(exc)}), 400
+                    fields.append("disciplina_id = %s")
+                    params.append(disc_id)
+
+                if "tipo_registro" in data:
+                    tipo_reg = _parse_tipo_registro(data.get("tipo_registro"))
+                    fields.append("tipo_registro = %s")
+                    params.append(tipo_reg)
+
+                if "origem" in data:
+                    origem_val = _parse_origem(data.get("origem"))
+                    fields.append("origem = %s")
+                    params.append(origem_val)
 
                 if not fields:
                     return (

@@ -5,6 +5,7 @@ import DailyCycleKanban, {
   buildCycleTasks,
   cycleKanbanPayload,
 } from '../components/DailyCycleKanban'
+import VinculoPedagogicoSelector from '../components/VinculoPedagogicoSelector'
 import {
   atualizarAula,
   buscarAula,
@@ -46,6 +47,7 @@ function emptyForm() {
     dinamica_texto: '',
     fechamento_checkout: '',
     status: 'draft',
+    disciplina_id: null,
   }
 }
 
@@ -61,6 +63,7 @@ function snapshotForm(f) {
     dinamica_nome: f.dinamica_nome || '',
     dinamica_texto: f.dinamica_texto || '',
     fechamento_checkout: f.fechamento_checkout || '',
+    disciplina_id: f.disciplina_id ?? null,
   })
 }
 
@@ -245,6 +248,7 @@ export default function DailyPlanner() {
           dinamica_texto: dinamicaTexto,
           fechamento_checkout: aula.fechamento_checkout || '',
           status: aula.status || 'draft',
+          disciplina_id: aula.disciplina_id ?? null,
         },
         aula.kanban_state || null,
       )
@@ -344,6 +348,7 @@ export default function DailyPlanner() {
       dinamica_ativa_id: form.dinamica_ativa_id || null,
       fechamento_checkout: form.fechamento_checkout.slice(0, LIMITS.fechamento_checkout),
       kanban_state: cycleKanbanPayload(tasks),
+      disciplina_id: form.disciplina_id ?? null,
     }
 
     setSaving(true)
@@ -407,9 +412,9 @@ export default function DailyPlanner() {
       <header className="sticky top-0 z-40 border-b border-brand-200/80 bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link
-            to="/dia-a-dia"
+            to="/mesa-do-inovador"
             className="flex items-center gap-3"
-            aria-label="Dia a Dia"
+            aria-label="Voltar à Mesa do Inovador"
             onClick={handleLeaveClick}
           >
             <BrandLogo
@@ -417,12 +422,19 @@ export default function DailyPlanner() {
               className="h-16 w-auto max-w-[200px] object-contain sm:max-w-[240px]"
             />
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {dirty ? (
               <span className="hidden text-[11px] font-semibold text-amber-800 sm:inline">
                 Não salvo
               </span>
             ) : null}
+            <button
+              type="button"
+              onClick={() => goTo('/mesa-do-inovador')}
+              className="btn-ghost min-h-11 !px-4 !py-2.5 text-sm font-semibold"
+            >
+              ← Mesa
+            </button>
             <button
               type="button"
               onClick={() => goTo('/dia-a-dia')}
@@ -488,6 +500,11 @@ export default function DailyPlanner() {
                 <CharHint value={form.turma_nome} max={LIMITS.turma_nome} />
               </label>
             </div>
+
+            <VinculoPedagogicoSelector
+              disciplinaId={form.disciplina_id}
+              onChange={(id) => setField('disciplina_id', id)}
+            />
 
             <label className="block">
               <span className="field-label">Meta do ciclo (opcional)</span>

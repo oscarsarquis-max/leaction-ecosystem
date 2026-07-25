@@ -63,14 +63,23 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ caminho }),
     }),
-  listAgendaEventos: (mes, planoSession) => {
+  listAgendaEventos: (mes, planoSession, extra = {}) => {
     const q = new URLSearchParams()
     if (mes) q.set('mes', mes)
     if (planoSession) q.set('plano_session', planoSession)
+    if (extra.origem) q.set('origem', extra.origem)
     const qs = q.toString()
     return request(`/api/agenda-eventos${qs ? `?${qs}` : ''}`)
   },
-  grafoAgenda: () => request('/api/agenda-eventos/grafo'),
+
+  grafoAgenda: (periodoLetivoId) => {
+    const q = new URLSearchParams()
+    if (periodoLetivoId != null && periodoLetivoId !== '') {
+      q.set('periodo_letivo_id', String(periodoLetivoId))
+    }
+    const qs = q.toString()
+    return request(`/api/agenda-eventos/grafo${qs ? `?${qs}` : ''}`)
+  },
   createAgendaEvento: (payload) =>
     request('/api/agenda-eventos', {
       method: 'POST',

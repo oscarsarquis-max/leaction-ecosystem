@@ -11,6 +11,8 @@ import DailyDashboard from './pages/DailyDashboard'
 import DailyPlanner from './pages/DailyPlanner'
 import DesafioPage from './pages/DesafioPage'
 import ExecucaoPage from './pages/ExecucaoPage'
+import ImportacoesPage from './pages/ImportacoesPage'
+import InstituicoesPage from './pages/InstituicoesPage'
 import MesaDoInovador from './pages/MesaDoInovador'
 
 function LoadingScreen({ label = 'Carregando…' }) {
@@ -61,6 +63,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <DesafioPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/instituicoes"
+        element={
+          <ProtectedRoute>
+            <InstituicoesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/importacoes"
+        element={
+          <ProtectedRoute>
+            <ImportacoesPage />
           </ProtectedRoute>
         }
       />

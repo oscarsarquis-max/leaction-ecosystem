@@ -30,8 +30,11 @@ SELECT_COLS = """
     status, tipo, meta_json, plano_session,
     id_evento_pai, relato_sala, participantes,
     plan_data, kanban_state,
-    turma, turno, modo_execucao
+    turma, turno, modo_execucao,
+    disciplina_id, origem, id_externo_importacao, tema
 """
+
+ORIGENS = frozenset({"manual", "wizard_ia", "importacao"})
 
 
 def _require_user():
@@ -85,6 +88,12 @@ def _ensure_table(conn):
                 ADD COLUMN IF NOT EXISTS turno VARCHAR(32);
             ALTER TABLE public.inove_agenda_eventos
                 ADD COLUMN IF NOT EXISTS modo_execucao VARCHAR(32);
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS disciplina_id BIGINT;
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS origem VARCHAR(20) NOT NULL DEFAULT 'manual';
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS id_externo_importacao VARCHAR(160);
 
             CREATE INDEX IF NOT EXISTS idx_inove_agenda_eventos_session
                 ON public.inove_agenda_eventos (id_clie, plano_session);
@@ -170,18 +179,52 @@ def list_eventos():
             _ensure_table(conn)
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 sql = f"""
-                    SELECT {SELECT_COLS}
-                    FROM public.inove_agenda_eventos
-                    WHERE id_clie = %s
+                    SELECT e.id_evento, e.id_clie, e.data_evento, e.titulo, e.nota_texto, e.criado_em,
+                           e.status, e.tipo, e.meta_json, e.plano_session,
+                           e.id_evento_pai, e.relato_sala, e.participantes,
+                           e.plan_data, e.kanban_state,
+                           e.turma, e.turno, e.modo_execucao,
+                           e.disciplina_id, e.origem, e.id_externo_importacao
+                    FROM public.inove_agenda_eventos e
+                    LEFT JOIN public.inove_disciplinas d ON d.id = e.disciplina_id
+                    LEFT JOIN public.inove_cursos c ON c.id = d.curso_id
+                    WHERE e.id_clie = %s
                 """
                 params = [user["id_clie"]]
                 if mes:
-                    sql += " AND to_char(data_evento, 'YYYY-MM') = %s"
+                    sql += " AND to_char(e.data_evento, 'YYYY-MM') = %s"
                     params.append(mes)
                 if plano_session:
-                    sql += " AND plano_session = %s"
+                    sql += " AND e.plano_session = %s"
                     params.append(plano_session)
-                sql += " ORDER BY data_evento ASC, id_evento ASC"
+                disc_f = (request.args.get("disciplina_id") or "").strip()
+                if disc_f:
+                    try:
+                        sql += " AND e.disciplina_id = %s"
+                        params.append(int(disc_f))
+                    except (TypeError, ValueError):
+                        return jsonify({"success": False, "error": "disciplina_id inválido"}), 400
+                curso_f = (request.args.get("curso_id") or "").strip()
+                if curso_f:
+                    try:
+                        sql += " AND c.id = %s"
+                        params.append(int(curso_f))
+                    except (TypeError, ValueError):
+                        return jsonify({"success": False, "error": "curso_id inválido"}), 400
+                periodo_f = (request.args.get("periodo_letivo_id") or "").strip()
+                if periodo_f:
+                    try:
+                        sql += " AND c.periodo_letivo_id = %s"
+                        params.append(int(periodo_f))
+                    except (TypeError, ValueError):
+                        return jsonify({"success": False, "error": "periodo_letivo_id inválido"}), 400
+                origem_f = (request.args.get("origem") or "").strip().lower()
+                if origem_f:
+                    if origem_f not in ORIGENS:
+                        return jsonify({"success": False, "error": "origem inválida"}), 400
+                    sql += " AND e.origem = %s"
+                    params.append(origem_f)
+                sql += " ORDER BY e.data_evento ASC, e.id_evento ASC"
                 cur.execute(sql, params)
                 rows = [_serialize(dict(r)) for r in cur.fetchall()]
         return jsonify({"success": True, "eventos": rows})
@@ -192,57 +235,163 @@ def list_eventos():
 
 @agenda_bp.get("/api/agenda-eventos/grafo")
 def grafo_realizacoes():
-    """Nós e arestas para o mapa de realizações (eventos vinculados)."""
+    """
+    Nós e arestas para o mapa de planejamento (id_evento_pai).
+    Filtro opcional: periodo_letivo_id — inclui eventos da disciplina do período
+    e eventos sem disciplina cuja data cai no intervalo do período.
+    """
     user = _require_user()
     if not user:
         return jsonify({"success": False, "error": "Não autenticado"}), 401
 
+    periodo_raw = (request.args.get("periodo_letivo_id") or "").strip()
+    periodo_id = None
+    if periodo_raw:
+        try:
+            periodo_id = int(periodo_raw)
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "periodo_letivo_id inválido"}), 400
+
+    id_clie = user["id_clie"]
     try:
         with get_conn() as conn:
             _ensure_table(conn)
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(
-                    f"""
-                    SELECT {SELECT_COLS}
-                    FROM public.inove_agenda_eventos
-                    WHERE id_clie = %s
-                    ORDER BY data_evento ASC, id_evento ASC
-                    """,
-                    (user["id_clie"],),
-                )
-                rows = [_serialize(dict(r)) for r in cur.fetchall()]
+                periodo_meta = None
+                if periodo_id is not None:
+                    cur.execute(
+                        """
+                        SELECT p.id, p.rotulo, p.ano_letivo, p.data_inicio, p.data_fim,
+                               p.em_curso, p.instituicao_id, i.nome AS instituicao_nome
+                          FROM public.inove_periodos_letivos p
+                          JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+                         WHERE p.id = %s
+                           AND i.id_clie = %s
+                           AND p.ativo = TRUE
+                           AND i.ativo = TRUE
+                        """,
+                        (periodo_id, id_clie),
+                    )
+                    periodo_meta = cur.fetchone()
+                    if not periodo_meta:
+                        return jsonify({"success": False, "error": "Período letivo não encontrado"}), 404
+
+                sql = """
+                    SELECT e.id_evento, e.id_clie, e.data_evento, e.titulo, e.nota_texto,
+                           e.status, e.tipo, e.meta_json, e.plano_session,
+                           e.id_evento_pai, e.relato_sala, e.participantes,
+                           e.plan_data, e.kanban_state,
+                           e.disciplina_id, e.origem, e.id_externo_importacao, e.tema,
+                           d.nome AS nome_disciplina,
+                           c.id AS curso_id, c.nome AS nome_curso,
+                           p.id AS periodo_letivo_id, p.rotulo AS periodo_rotulo,
+                           p.data_inicio AS periodo_data_inicio, p.data_fim AS periodo_data_fim,
+                           i.id AS instituicao_id, i.nome AS nome_instituicao
+                      FROM public.inove_agenda_eventos e
+                      LEFT JOIN public.inove_disciplinas d ON d.id = e.disciplina_id
+                      LEFT JOIN public.inove_cursos c ON c.id = d.curso_id
+                      LEFT JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
+                      LEFT JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+                     WHERE e.id_clie = %s
+                """
+                params: list = [id_clie]
+                if periodo_meta is not None:
+                    sql += """
+                       AND (
+                            p.id = %s
+                            OR (
+                                e.disciplina_id IS NULL
+                                AND e.data_evento::date >= %s
+                                AND e.data_evento::date <= %s
+                            )
+                       )
+                    """
+                    params.extend(
+                        [
+                            periodo_id,
+                            periodo_meta["data_inicio"],
+                            periodo_meta["data_fim"],
+                        ]
+                    )
+                sql += " ORDER BY e.data_evento ASC, e.id_evento ASC"
+                cur.execute(sql, params)
+                raw_rows = cur.fetchall()
 
         nodes = []
         edges = []
-        for r in rows:
+        id_set = set()
+        for row in raw_rows:
+            r = _serialize(dict(row))
             meta = r.get("meta_json") if isinstance(r.get("meta_json"), dict) else {}
             plan = r.get("plan_data")
             tem_plano = isinstance(plan, dict) and len(plan) > 0
-            nodes.append(
-                {
-                    "id": r["id_evento"],
-                    "titulo": r["titulo"],
-                    "status": r.get("status") or "planejado",
-                    "tipo": r.get("tipo") or "geral",
-                    "data_evento": r.get("data_evento"),
-                    "id_evento_pai": r.get("id_evento_pai"),
-                    "tem_relato": bool((r.get("relato_sala") or "").strip()),
-                    "relato_sala": r.get("relato_sala") or "",
-                    "participantes": r.get("participantes") or "",
-                    "meta_json": meta,
-                    "tem_plano": tem_plano,
-                    "aula_simples_id": meta.get("aula_simples_id"),
-                }
-            )
-            if r.get("id_evento_pai"):
-                edges.append(
-                    {
-                        "from": r["id_evento_pai"],
-                        "to": r["id_evento"],
-                        "kind": "desdobramento",
-                    }
-                )
-        return jsonify({"success": True, "nodes": nodes, "edges": edges})
+            tema_col = r.get("tema") if isinstance(r.get("tema"), str) else None
+            tema_meta = meta.get("tema") if isinstance(meta.get("tema"), str) else None
+            tema = (tema_col or tema_meta or "").strip() or None
+            node = {
+                "id": r["id_evento"],
+                "titulo": r["titulo"],
+                "data": r.get("data_evento"),
+                "data_evento": r.get("data_evento"),
+                "status": r.get("status") or "planejado",
+                "tipo": r.get("tipo") or "geral",
+                "id_evento_pai": r.get("id_evento_pai"),
+                "disciplina_id": r.get("disciplina_id"),
+                "nome_disciplina": r.get("nome_disciplina"),
+                "curso_id": r.get("curso_id"),
+                "nome_curso": r.get("nome_curso"),
+                "periodo_letivo_id": r.get("periodo_letivo_id"),
+                "instituicao_id": r.get("instituicao_id"),
+                "nome_instituicao": r.get("nome_instituicao"),
+                "tema": tema,
+                "tem_relato": bool((r.get("relato_sala") or "").strip()),
+                "relato_sala": r.get("relato_sala") or "",
+                "participantes": r.get("participantes") or "",
+                "nota_texto": r.get("nota_texto") or "",
+                "meta_json": meta,
+                "plan_data": plan if tem_plano else None,
+                "kanban_state": r.get("kanban_state"),
+                "tem_plano": tem_plano,
+                "aula_simples_id": meta.get("aula_simples_id"),
+                "origem": r.get("origem"),
+            }
+            nodes.append(node)
+            id_set.add(r["id_evento"])
+
+        for n in nodes:
+            pai = n.get("id_evento_pai")
+            if pai and pai in id_set:
+                edges.append({"from": pai, "to": n["id"], "kind": "desdobramento"})
+
+        periodo_out = None
+        if periodo_meta is not None:
+            periodo_out = {
+                "id": int(periodo_meta["id"]),
+                "rotulo": periodo_meta.get("rotulo"),
+                "ano_letivo": periodo_meta.get("ano_letivo"),
+                "data_inicio": (
+                    periodo_meta["data_inicio"].isoformat()
+                    if hasattr(periodo_meta["data_inicio"], "isoformat")
+                    else str(periodo_meta["data_inicio"])
+                ),
+                "data_fim": (
+                    periodo_meta["data_fim"].isoformat()
+                    if hasattr(periodo_meta["data_fim"], "isoformat")
+                    else str(periodo_meta["data_fim"])
+                ),
+                "em_curso": bool(periodo_meta.get("em_curso")),
+                "instituicao_id": periodo_meta.get("instituicao_id"),
+                "instituicao_nome": periodo_meta.get("instituicao_nome"),
+            }
+
+        return jsonify(
+            {
+                "success": True,
+                "nodes": nodes,
+                "edges": edges,
+                "periodo": periodo_out,
+            }
+        )
     except Exception as exc:
         print(f"⚠️ agenda grafo: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao montar mapa de realizações"}), 500
@@ -276,16 +425,51 @@ def create_evento():
     if not titulo or not data_evento:
         return jsonify({"success": False, "error": "titulo e data_evento são obrigatórios"}), 400
 
+    origem = str(data.get("origem") or "manual").strip().lower()
+    if origem not in ORIGENS:
+        origem = "manual"
+    disciplina_raw = data.get("disciplina_id")
+    if disciplina_raw in ("", None):
+        disciplina_raw = None
+
     try:
         with get_conn() as conn:
             _ensure_table(conn)
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                disciplina_id = None
+                if disciplina_raw is not None:
+                    try:
+                        disciplina_id = int(disciplina_raw)
+                    except (TypeError, ValueError):
+                        return jsonify({"success": False, "error": "disciplina_id inválido"}), 400
+                    cur.execute(
+                        """
+                        SELECT d.id
+                          FROM public.inove_disciplinas d
+                          JOIN public.inove_cursos c ON c.id = d.curso_id
+                          JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
+                          JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+                         WHERE d.id = %s
+                           AND i.id_clie = %s
+                           AND d.ativo = TRUE
+                           AND c.ativo = TRUE
+                           AND p.ativo = TRUE
+                           AND i.ativo = TRUE
+                        """,
+                        (disciplina_id, user["id_clie"]),
+                    )
+                    if not cur.fetchone():
+                        return jsonify(
+                            {"success": False, "error": "Disciplina não encontrada ou sem permissão"}
+                        ), 404
+
                 cur.execute(
                     f"""
                     INSERT INTO public.inove_agenda_eventos
                         (id_clie, data_evento, titulo, nota_texto, status, tipo,
-                         meta_json, plano_session, id_evento_pai)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)
+                         meta_json, plano_session, id_evento_pai,
+                         disciplina_id, origem)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s)
                     RETURNING {SELECT_COLS}
                     """,
                     (
@@ -298,6 +482,8 @@ def create_evento():
                         meta_json,
                         plano_session,
                         id_evento_pai,
+                        disciplina_id,
+                        origem,
                     ),
                 )
                 row = cur.fetchone()
@@ -550,10 +736,12 @@ def registrar_aulas():
                         INSERT INTO public.inove_agenda_eventos
                             (id_clie, data_evento, titulo, nota_texto, status, tipo,
                              meta_json, plano_session, plan_data, kanban_state,
-                             turma, turno, modo_execucao, id_evento_pai)
+                             turma, turno, modo_execucao, id_evento_pai,
+                             origem)
                         VALUES (%s, %s, %s, %s, 'planejado', 'aula_eduscrum',
                                 %s::jsonb, %s, %s::jsonb, %s::jsonb,
-                                %s, %s, %s, %s)
+                                %s, %s, %s, %s,
+                                'wizard_ia')
                         RETURNING {SELECT_COLS}
                         """,
                         (

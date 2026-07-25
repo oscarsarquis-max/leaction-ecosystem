@@ -38,6 +38,9 @@ from tracking_routes import tracking_bp  # noqa: E402
 from daily_routes import daily_bp  # noqa: E402  (reexport → routes.daily_routes)
 from gatekeeper_routes import register_gatekeeper  # noqa: E402
 from cms_noticias_routes import cms_noticias_bp  # noqa: E402
+from instituicoes_routes import instituicoes_bp  # noqa: E402
+from cursos_disciplinas_routes import cursos_disciplinas_bp  # noqa: E402
+from importacoes_routes import importacoes_bp  # noqa: E402
 
 
 EMAIL_RE = re.compile(
@@ -131,6 +134,9 @@ def create_app() -> Flask:
     app.register_blueprint(daily_bp)
     # Headless CMS — notícias do Action Hub (cache S2S + graceful degradation)
     app.register_blueprint(cms_noticias_bp)
+    app.register_blueprint(instituicoes_bp)
+    app.register_blueprint(cursos_disciplinas_bp)
+    app.register_blueprint(importacoes_bp)
     # Gatekeeper (lock/unlock/bypass) — mesmo contrato mudaedu/PanelDX
     register_gatekeeper(app)
 

@@ -95,12 +95,35 @@ const MODO_LABEL = {
  * Agenda executiva — calendário mensal + lista/registro de compromissos.
  * `focusFromMap`: clique no grafo → destaca dias com atividade e foca a data do nó.
  */
-export default function AgendaExecutiva({ refreshKey = 0, onChanged, focusFromMap = null }) {
+function parseMesInicial(mesISO, fallbackDate) {
+  if (mesISO && /^\d{4}-\d{2}$/.test(mesISO)) {
+    const [y, m] = mesISO.split('-').map(Number)
+    return { year: y, month: m - 1 }
+  }
+  return { year: fallbackDate.getFullYear(), month: fallbackDate.getMonth() }
+}
+
+function aguardaPlanejamento(ev) {
+  if (ev?.origem !== 'importacao') return false
+  if (ev?.status === 'concluido' || ev?.status === 'em_execucao') return false
+  return !hasPlanData(ev?.plan_data)
+}
+
+export default function AgendaExecutiva({
+  refreshKey = 0,
+  onChanged,
+  focusFromMap = null,
+  /** { id, ts } — clique no grafo abre o mesmo fluxo de detalhe/navegação da agenda */
+  openEventRequest = null,
+  origemFilter = null,
+  initialMes = null,
+}) {
   const navigate = useNavigate()
   const hoje = hojeISO()
   const now = new Date()
-  const [viewYear, setViewYear] = useState(now.getFullYear())
-  const [viewMonth, setViewMonth] = useState(now.getMonth())
+  const initial = parseMesInicial(initialMes, now)
+  const [viewYear, setViewYear] = useState(initial.year)
+  const [viewMonth, setViewMonth] = useState(initial.month)
   const [selectedDate, setSelectedDate] = useState(hoje)
   const [eventos, setEventos] = useState([])
   const [loading, setLoading] = useState(false)
@@ -109,11 +132,22 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged, focusFromMa
   const [highlightBusyDays, setHighlightBusyDays] = useState(false)
   const [focusEventId, setFocusEventId] = useState(null)
 
+  useEffect(() => {
+    if (!initialMes || !/^\d{4}-\d{2}$/.test(initialMes)) return
+    const [y, m] = initialMes.split('-').map(Number)
+    setViewYear(y)
+    setViewMonth(m - 1)
+  }, [initialMes])
+
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const data = await api.listAgendaEventos(mesAnoISO(viewYear, viewMonth))
+      const data = await api.listAgendaEventos(
+        mesAnoISO(viewYear, viewMonth),
+        null,
+        origemFilter ? { origem: origemFilter } : {},
+      )
       setEventos(data.eventos || [])
     } catch (err) {
       setError(err.message || 'Falha ao carregar agenda')
@@ -121,7 +155,7 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged, focusFromMa
     } finally {
       setLoading(false)
     }
-  }, [viewYear, viewMonth])
+  }, [viewYear, viewMonth, origemFilter])
 
   useEffect(() => {
     load()
@@ -140,6 +174,74 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged, focusFromMa
     }
   }, [focusFromMap])
 
+  useEffect(() => {
+    if (!openEventRequest?.id) return
+    let cancelled = false
+    ;(async () => {
+      const id = openEventRequest.id
+      let ev = eventos.find((e) => String(e.id_evento) === String(id))
+      if (!ev) {
+        try {
+          const data = await api.getAgendaEvento(id)
+          ev = data?.evento || data
+        } catch {
+          return
+        }
+      }
+      if (cancelled || !ev) return
+
+      const openEditableModal = () => {
+        setModal({
+          mode: 'edit',
+          id_evento: ev.id_evento,
+          titulo: ev.titulo || '',
+          data_evento: diaDeEvento(ev.data_evento),
+          nota_texto: ev.nota_texto || '',
+          asTema: Boolean(openEventRequest.asTema),
+          tipo: ev.tipo,
+        })
+      }
+
+      // Pedidos do grafo com skip/preferência de edição ficam no modal do MapaRealizacoes
+      if (openEventRequest.skipNavigate || openEventRequest.preferEditModal || openEventRequest.asTema) {
+        return
+      }
+
+      if (ev.status === 'concluido') {
+        openEditableModal()
+        return
+      }
+      if (hasPlanData(ev.plan_data)) {
+        navigate(`/execucao/${ev.id_evento}`, {
+          state: {
+            plan_data: ev.plan_data,
+            kanban_state: ev.kanban_state,
+            evento: ev,
+          },
+        })
+        return
+      }
+      if (ev.tipo === 'aula_eduscrum') {
+        navigate('/desafio')
+        return
+      }
+      if (ev.tipo === 'aula_dia') {
+        const aulaId = ev.meta_json?.aula_simples_id || ev.aula_simples_id
+        if (aulaId) {
+          navigate(`/dia-a-dia/${aulaId}`)
+          return
+        }
+        navigate('/dia-a-dia')
+        return
+      }
+      openEditableModal()
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dispara só no pedido do grafo
+  }, [openEventRequest])
+
   const diasComEvento = useMemo(() => {
     const map = {}
     eventos.forEach((ev) => {
@@ -156,9 +258,29 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged, focusFromMa
     return map
   }, [eventos])
 
+  /**
+   * Cadeia do grafo (pai OU filho com id_evento_pai) não entra na lista do dia —
+   * vive no mapa (cápsula / cartões). Compromissos soltos continuam na lista.
+   */
+  const idsNaCadeiaGrafo = useMemo(() => {
+    const set = new Set()
+    eventos.forEach((ev) => {
+      if (ev.id_evento_pai != null && ev.id_evento_pai !== '') {
+        set.add(String(ev.id_evento_pai))
+        set.add(String(ev.id_evento))
+      }
+    })
+    return set
+  }, [eventos])
+
   const eventosDoDia = useMemo(
-    () => eventos.filter((ev) => diaDeEvento(ev.data_evento) === selectedDate),
-    [eventos, selectedDate],
+    () =>
+      eventos.filter((ev) => {
+        if (diaDeEvento(ev.data_evento) !== selectedDate) return false
+        if (idsNaCadeiaGrafo.has(String(ev.id_evento))) return false
+        return true
+      }),
+    [eventos, selectedDate, idsNaCadeiaGrafo],
   )
 
   const cells = useMemo(() => {
@@ -482,6 +604,11 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged, focusFromMa
                           {retomavel && ev.tipo === 'aula_eduscrum' ? ' · Retomar' : ''}
                         </p>
                       ) : null}
+                      {aguardaPlanejamento(ev) ? (
+                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                          Importado · aguarda planejamento
+                        </p>
+                      ) : null}
                       {(ev.turma || ev.turno || ev.modo_execucao) ? (
                         <p className="mt-1 text-[11px] text-bordo">
                           {[
@@ -527,18 +654,29 @@ export default function AgendaExecutiva({ refreshKey = 0, onChanged, focusFromMa
             className="w-full max-w-md rounded-2xl border border-brand-200 bg-white p-5 shadow-soft"
           >
             <h3 className="font-display text-lg font-bold text-bordo-deep">
-              {modal.mode === 'new' ? 'Novo compromisso' : 'Editar compromisso'}
+              {modal.mode === 'new'
+                ? 'Novo compromisso'
+                : modal.asTema
+                  ? 'Editar tema da sequência'
+                  : 'Editar compromisso'}
             </h3>
+            {modal.asTema ? (
+              <p className="mt-1 text-xs text-bordo-soft">
+                Este registro é o pai da cadeia no grafo — não aparece na lista do dia.
+              </p>
+            ) : null}
 
             <label className="mt-4 block text-xs font-bold uppercase tracking-wide text-bordo">
               Título
             </label>
             <input
-              className="field-input mt-1"
+              className="field-input mt-1 text-base font-semibold"
               value={modal.titulo}
               onChange={(e) => setModal((m) => ({ ...m, titulo: e.target.value }))}
-              placeholder="Ex.: Reunião de sprint com a turma"
+              placeholder="Ex.: Frações · sequência de 3 aulas"
               required
+              autoFocus
+              maxLength={200}
             />
 
             <label className="mt-3 block text-xs font-bold uppercase tracking-wide text-bordo">

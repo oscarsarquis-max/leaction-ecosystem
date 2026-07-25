@@ -16,7 +16,10 @@ export default function MesaDoInovador() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [focusFromMap, setFocusFromMap] = useState(null)
+  const [openEventFromMap, setOpenEventFromMap] = useState(null)
   const paidReturn = searchParams.get('paid') === '1'
+  const origemFiltro = (searchParams.get('origem') || '').trim() || null
+  const mesFiltro = (searchParams.get('mes') || '').trim() // YYYY-MM
   const notices = Array.isArray(user?.hub_notices) ? user.hub_notices : []
 
   async function dismissNotice(id) {
@@ -59,6 +62,12 @@ export default function MesaDoInovador() {
             >
               Upgrade
             </button>
+            <Link to="/instituicoes" className="btn-ghost !px-3 !py-1.5 text-xs font-semibold">
+              Instituições
+            </Link>
+            <Link to="/importacoes" className="btn-ghost !px-3 !py-1.5 text-xs font-semibold">
+              Importar
+            </Link>
             <Link to="/dia-a-dia" className="btn-ghost !px-4 !py-2 text-sm font-semibold">
               Dia a Dia
             </Link>
@@ -120,22 +129,38 @@ export default function MesaDoInovador() {
 
         <MapaRealizacoes
           refreshKey={refreshKey}
-          onSelectNode={(node) => {
+          onChanged={() => setRefreshKey((n) => n + 1)}
+          onSelectNode={(node, opts = {}) => {
+            // Só destaca o dia na agenda; edição fica no modal do próprio grafo.
             setFocusFromMap({
               id: node.id,
-              data_evento: node.data_evento,
+              data_evento: node.data_evento || node.data,
               ts: Date.now(),
             })
-            requestAnimationFrame(() => {
-              document
-                .getElementById('agenda-executiva')
-                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            })
+            if (!opts.skipNavigate && !opts.preferEditModal) {
+              setOpenEventFromMap({
+                id: node.id,
+                ts: Date.now(),
+                preferEditModal: false,
+                asTema: Boolean(opts.asTema),
+              })
+            }
           }}
         />
+        {origemFiltro === 'importacao' ? (
+          <p className="mx-auto mb-3 max-w-6xl text-xs text-bordo-soft">
+            Mostrando itens importados.{' '}
+            <Link to="/mesa-do-inovador" className="font-semibold text-bordo underline-offset-2 hover:underline">
+              Limpar filtro
+            </Link>
+          </p>
+        ) : null}
         <AgendaExecutiva
           refreshKey={refreshKey}
           focusFromMap={focusFromMap}
+          openEventRequest={openEventFromMap}
+          origemFilter={origemFiltro}
+          initialMes={mesFiltro}
           onChanged={() => setRefreshKey((n) => n + 1)}
         />
       </main>

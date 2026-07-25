@@ -11,6 +11,8 @@ __pycache__/
 .DS_Store
 Thumbs.db
 *.log
+.dev-logs/
+backend/_run_local.py
 GIT_SHA
 .idea/
 .vscode/

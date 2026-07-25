@@ -1,0 +1,37 @@
+[
+  {
+    "id_externo": "AULA-001",
+    "titulo": "Introdução a frações",
+    "tipo": "aula",
+    "data": "2026-08-04",
+    "hora_inicio": "08:00",
+    "hora_fim": "08:50",
+    "observacoes": "Sem vínculo pedagógico — freemium"
+  },
+  {
+    "id_externo": "AULA-002",
+    "titulo": "Frações equivalentes",
+    "tipo": "aula",
+    "data": "2026-08-05",
+    "hora_inicio": "08:00",
+    "instituicao": "Escola Exemplo",
+    "curso": "Ensino Fundamental II",
+    "disciplina": "Matemática",
+    "vinculo_pai_id_externo": "AULA-001",
+    "observacoes": "Continuidade da aula anterior"
+  },
+  {
+    "id_externo": "EVT-001",
+    "titulo": "Conselho de classe",
+    "tipo": "evento",
+    "data": "2026-08-08",
+    "hora_inicio": "14:00",
+    "hora_fim": "16:00"
+  },
+  {
+    "id_externo": "AULA-BAD",
+    "titulo": "Linha inválida de propósito",
+    "tipo": "aula",
+    "observacoes": "sem data — deve aparecer como erro no relatório"
+  }
+]

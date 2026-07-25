@@ -82,6 +82,18 @@ def ensure_aulas_simples_table(conn) -> None:
             CREATE INDEX IF NOT EXISTS idx_inove_aulas_simples_evento
                 ON public.inove_aulas_simples (id_evento_agenda)
                 WHERE id_evento_agenda IS NOT NULL;
+            -- Etapa 3: vínculo pedagógico opcional + origem
+            ALTER TABLE public.inove_aulas_simples
+                ADD COLUMN IF NOT EXISTS disciplina_id BIGINT;
+            ALTER TABLE public.inove_aulas_simples
+                ADD COLUMN IF NOT EXISTS tipo_registro VARCHAR(20) NOT NULL DEFAULT 'aula';
+            ALTER TABLE public.inove_aulas_simples
+                ADD COLUMN IF NOT EXISTS origem VARCHAR(20) NOT NULL DEFAULT 'manual';
+            ALTER TABLE public.inove_aulas_simples
+                ADD COLUMN IF NOT EXISTS id_externo_importacao VARCHAR(160);
+            CREATE INDEX IF NOT EXISTS idx_inove_aulas_simples_disciplina
+                ON public.inove_aulas_simples (disciplina_id)
+                WHERE disciplina_id IS NOT NULL;
             """
         )
     _ensured = True
