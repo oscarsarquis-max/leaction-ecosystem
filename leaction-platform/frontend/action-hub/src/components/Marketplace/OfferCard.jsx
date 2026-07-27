@@ -33,12 +33,12 @@ export function OfferCard({ offer }) {
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-orange-300 hover:shadow-md">
-      <div className="relative aspect-square overflow-hidden bg-slate-100">
+      <div className="relative aspect-square overflow-hidden bg-orange-50">
         <MarketplaceProductImage
-          src={offer.image}
+          src={offer.image || '/marketplace/placeholders/default.svg'}
           title={offer.title}
           className="p-2"
-          objectFit="cover"
+          objectFit="contain"
         />
         <div className="absolute left-2 top-2 z-10 pointer-events-none">
           <VendorBadge vendor={offer.vendor} />

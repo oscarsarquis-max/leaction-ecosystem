@@ -10,6 +10,8 @@ Na raiz `leaction-platform`:
 .\scripts\dev\start-hub.ps1          # sobe tudo + healthchecks
 .\scripts\dev\status-hub.ps1         # verifica Postgres / :4001 / :4012 / :4000
 .\scripts\dev\stop-hub.ps1           # mata órfãos nas portas do Hub
+.\scripts\dev\restart-hub-service.ps1 -Service marketplace  # reinício pontual
+.\scripts\dev\restart-hub-service.ps1 -Service gateway
 ```
 
 Opções:

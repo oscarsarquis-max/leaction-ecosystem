@@ -1,7 +1,8 @@
 """Prompt canônico — Ranking de Adequação Metodológica (Inov-Ativas).
 
-Arquitetura híbrida: o LLM só roteia (escolhe IDs do banco estático) e
-escreve ganchos de adaptação. Cards/mecânica vêm de core.metodologias_db.
+Arquitetura híbrida: o LLM roteia (IDs do banco estático), escreve ganchos,
+hipóteses e um trecho do RELATO DO PROFESSOR. Cards/mecânica vêm de
+core.metodologias_db (não vão no prompt).
 """
 
 from __future__ import annotations
@@ -42,7 +43,6 @@ LISTA_FLAT = (
     + METODOLOGIAS_PERMITIDAS["analiticas"]
 )
 
-# IDs canônicos do banco estático (única fonte de verdade para o roteador).
 IDS_METODOLOGIA_DB: tuple[str, ...] = tuple(sorted(METODOLOGIAS_DB.keys()))
 
 VERBOS_DT_PROIBIDOS = (
@@ -56,7 +56,7 @@ VERBOS_DT_PROIBIDOS = (
 
 
 def _framework_ids_block() -> str:
-    """Lista IDs do METODOLOGIAS_DB agrupados por categoria (para o system prompt)."""
+    """Só IDs + nomes (sem cards). Necessário para o roteador A/B/C."""
     buckets: dict[str, list[str]] = {
         "ÁGEIS": [],
         "CRI-ATIVAS": [],
@@ -88,53 +88,63 @@ def _framework_ids_block() -> str:
 
 
 def build_estruturar_system_prompt(bloco_ref: str) -> str:
-    """Roteador + adaptador: escolhe IDs do DB e escreve gancho_adaptacao (sem cards)."""
+    """Uma chamada: roteia IDs + hipóteses ancoradas no RELATO do professor."""
     framework = _framework_ids_block()
-    return f"""Você é a IA arquiteta educacional da plataforma inove4us / mativas.
-Arquitetura HÍBRIDA: você NÃO gera cards, passos EduScrum, timebox nem manuais de sala.
-Seu único papel: (1) ROTEAR — escolher 3 IDs do banco estático; (2) ADAPTAR — escrever o gancho_adaptacao.
-Resposta em PT-BR. SOMENTE JSON válido (sem markdown, sem texto fora do JSON).
+    return f"""Você é a IA arquiteta educacional da inove4us.
+Arquitetura HÍBRIDA: NÃO gere cards EduScrum, timebox nem manuais de sala.
+Papel: (1) ROTEAR 3 IDs do banco; (2) escrever gancho + hipótese + trecho do RELATO DO PROFESSOR.
+Resposta em PT-BR. SOMENTE JSON válido.
 
 <framework_obrigatorio>
-Use APENAS estes IDs exatos (copiados do banco Python `METODOLOGIAS_DB`). Nunca invente IDs nem nomes livres.
+Use APENAS estes IDs (nunca invente). Cards completos NÃO estão aqui — só IDs.
 {framework}
 </framework_obrigatorio>
 
-<base_de_problemas>
+<ancoras_de_estilo>
+Os itens abaixo são SÓ exemplo de FORMATO (categoria › tema). NÃO são o problema do professor.
+PROIBIDO copiar, parafrasear ou reutilizar o conteúdo dessas âncoras em hipóteses/causas/ganchos.
 {bloco_ref}
-</base_de_problemas>
+</ancoras_de_estilo>
 
-<regras_de_roteamento>
-1. Devolva EXATAMENTE as chaves "A", "B" e "C" (nesta ordem semântica: A=encaixe direto, B=alternativa de outro quadrante/família, C=híbrido criativo).
-2. Em cada opção, `id_metodologia` DEVE ser um ID literal de <framework_obrigatorio> (ex.: `agil_elevator_pitch`). Proibido nome amigável no lugar do ID.
-3. A, B e C devem usar IDs DIFERENTES. Prefira diversificar categorias (ÁGEIS / CRI-ATIVAS / IMERSIVAS / ANALÍTICAS) quando fizer sentido pedagógico.
-4. NÃO escolha `criativa_design_thinking_express` por hábito — só se a mecânica DT for realmente a melhor para o problema.
-5. NÃO gere campos extras (sem plano_eduscrum, sem dinamica_passo_a_passo, sem causas_raiz, sem resumo_analise). O Python monta os cards a partir do ID.
-6. `gancho_adaptacao`: um parágrafo de 3 a 4 linhas, criativo e concreto, explicando como o TEMA/problema do professor se encaixa na MECÂNICA da metodologia escolhida (o que muda na sala, qual o "coração" da aula, como os alunos vivem o conteúdo).
-</regras_de_roteamento>
+<regras>
+1. Chaves "A","B","C": A=encaixe direto, B=outro quadrante, C=híbrido. IDs DIFERENTES.
+2. `id_metodologia` = ID literal de <framework_obrigatorio>.
+3. NÃO escolha Design Thinking Express por hábito.
+4. `trecho_relato_usado` (raiz): cite 1 frase CURTA do PROBLEMA DO PROFESSOR (não das âncoras).
+5. `causas` (raiz): SEMPRE 3 itens {{titulo, descricao}} derivados SÓ do relato/contexto do professor (nunca rótulos de formulário). As 3 causas DEVEM cobrir ÂNGULOS DIFERENTES do relato (ex.: causas concorrentes do problema, coordenação entre turmas, método de teste/evidência, prazo/cronograma) — PROIBIDO repetir a mesma ideia só trocando sinônimos ou os mesmos 1–2 nomes próprios.
+6. Em cada opção: `gancho_adaptacao` (2–3 linhas) e `hipotese_teste` (1–2 frases) amarrados ao relato + mecânica do ID; cada hipótese também deve destacar um ângulo distinto.
+7. Se uma hipótese parecer com as âncoras de estilo, REESCREVA com palavras do professor.
+8. Prefira citar elementos específicos do relato (hipóteses dos alunos, turmas, concurso, evidências) em vez de só o nome do lugar/projeto.
+</regras>
 
-<formato_de_saida>
-Responda ESTRITAMENTE com este JSON (e nada mais):
+<formato>
 {{
+  "trecho_relato_usado": "frase curta copiada/parafraseada do PROBLEMA DO PROFESSOR",
+  "causas": [
+    {{"titulo": "...", "descricao": "..."}}
+  ],
   "A": {{
     "id_metodologia": "criativa_rotacao_estacoes",
-    "gancho_adaptacao": "O tema de descarte de lixo será o coração desta rotação..."
+    "gancho_adaptacao": "...",
+    "hipotese_teste": "Se aplicarmos … a partir de «trecho do professor», …"
   }},
   "B": {{
     "id_metodologia": "agil_elevator_pitch",
-    "gancho_adaptacao": "Os grupos terão 1 minuto para vender a solução urbana..."
+    "gancho_adaptacao": "...",
+    "hipotese_teste": "..."
   }},
   "C": {{
     "id_metodologia": "imersiva_escape_room",
-    "gancho_adaptacao": "A sala será transformada em um laboratório tóxico onde..."
+    "gancho_adaptacao": "...",
+    "hipotese_teste": "..."
   }}
 }}
-</formato_de_saida>
+</formato>
 """.strip()
 
 
 def build_ganchos_system_prompt(metodologia: str, cards_resumo: list[dict]) -> str:
-    """Fase 2 leve: só ganchos de adaptação — mecânica vem do banco estático."""
+    """Fase 2 leve (legado/raro): só ganchos — mecânica vem do banco estático."""
     linhas = []
     for i, c in enumerate(cards_resumo):
         tit = (c.get("titulo") or c.get("titulo_do_card") or f"Etapa {i + 1}").strip()

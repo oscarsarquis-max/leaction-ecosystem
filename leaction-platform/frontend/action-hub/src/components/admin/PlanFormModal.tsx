@@ -23,8 +23,8 @@ type Props = {
 };
 
 const TYPE_OPTIONS: Array<{ value: CatalogPlanType; label: string }> = [
-  { value: 'plan', label: 'Assinatura Mensal' },
-  { value: 'credit_pack', label: 'Pacote de Créditos' },
+  { value: 'plan', label: 'Assinatura mensal' },
+  { value: 'credit_pack', label: 'Pacote de créditos' },
 ];
 
 function featuresToBullets(features: unknown): string {
@@ -69,7 +69,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
       setActive(true);
       setBullets('');
       // Default alinhado aos pacotes inove4us (cota freemium = 3; pacote típico = 10)
-      setRows([{ key: 'credits', value: '10', kind: 'number' }]);
+      setRows([{ key: 'creditos', value: '10', kind: 'number' }]);
       if (appId === 'inove4us') {
         setSku('INOVE4US_CREDITS_10');
         setName('Pacote 10 desafios');
@@ -223,7 +223,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
 
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-                Features (uma por linha)
+                Benefícios (uma por linha)
               </span>
               <textarea
                 value={bullets}

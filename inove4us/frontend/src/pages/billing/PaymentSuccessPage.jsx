@@ -68,7 +68,7 @@ export default function PaymentSuccessPage() {
           Pagamento Aprovado!
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-bordo-soft">
-          Seus créditos foram adicionados à sua conta com sucesso.
+          Seus desafios foram liberados na conta com sucesso.
         </p>
 
         <p className="mt-4 text-sm font-medium text-bordo">
@@ -78,7 +78,7 @@ export default function PaymentSuccessPage() {
             <>
               Saldo atual:{' '}
               <span className="font-display text-lg font-bold text-emerald-700">
-                {credits} créditos
+                {credits} desafio{credits === 1 ? '' : 's'}
               </span>
             </>
           ) : null}

@@ -77,14 +77,17 @@ function normalizeMeta(value) {
   return {};
 }
 
-/** Créditos do plano: meta_json → entitlements → features → nome. */
+/** Créditos do plano: meta_json → direitos/entitlements → features → nome. */
 function resolveCreditsFromPlan(plan) {
   const meta = normalizeMeta(plan.meta_json);
-  const entitlements =
-    meta.entitlements && typeof meta.entitlements === 'object' ? meta.entitlements : {};
+  const direitos =
+    (meta.direitos && typeof meta.direitos === 'object' ? meta.direitos : null) ||
+    (meta.entitlements && typeof meta.entitlements === 'object' ? meta.entitlements : {});
   const fromMeta = Number(
-    meta.credits ??
-      entitlements.credits ??
+    meta.creditos ??
+      meta.credits ??
+      direitos.creditos ??
+      direitos.credits ??
       meta.credit_quantity ??
       meta.quantidade_creditos ??
       meta.quantidade ??
@@ -96,7 +99,7 @@ function resolveCreditsFromPlan(plan) {
 
   const features = Array.isArray(plan.features) ? plan.features : [];
   for (const f of features) {
-    const m = String(f || '').match(/(\d+)\s*cr[eé]dito/i);
+    const m = String(f || '').match(/(\d+)\s*(?:cr[eé]dito|desafio)/i);
     if (m) return Number(m[1]);
   }
 
@@ -196,7 +199,7 @@ function registerCheckoutSessionsRoutes(app, pool) {
       if (planType === 'credit_pack' && credits <= 0) {
         return res.status(422).json({
           error:
-            'Pacote de créditos sem quantidade em meta_json.credits (ou features/nome com número)',
+            'Pacote de créditos sem quantidade em meta_json.creditos (ou direitos.creditos)',
           sku: plan.sku,
         });
       }
@@ -236,6 +239,9 @@ function registerCheckoutSessionsRoutes(app, pool) {
         currency: plan.currency || 'BRL',
         credits: credits > 0 ? credits : undefined,
         period_months: Number(meta.period_months || meta.meses || 0) || undefined,
+        periodicidade: meta.periodicidade || undefined,
+        entitlements: meta.direitos || meta.entitlements || undefined,
+        direitos: meta.direitos || meta.entitlements || undefined,
         source: 'catalog_checkout',
       };
 

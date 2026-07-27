@@ -1,79 +1,146 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useRef, useState } from 'react'
 
 function getSpeechRecognition() {
   if (typeof window === 'undefined') return null
   return window.SpeechRecognition || window.webkitSpeechRecognition || null
 }
 
+function joinSpeech(base, chunk, { preserveNewlines = false } = {}) {
+  const b = base || ''
+  const c = String(chunk || '').trim()
+  if (!c) return b
+  const sep = !b ? '' : b.endsWith('\n') || b.endsWith(' ') ? '' : ' '
+  const joined = `${b}${sep}${c}`
+  if (preserveNewlines) {
+    return joined.replace(/[^\S\n]+/g, ' ').replace(/ *\n */g, '\n')
+  }
+  return joined.replace(/\s+/g, ' ').trimStart()
+}
+
 /**
  * Ditado por microfone (Web Speech API · pt-BR).
- * @param {{ value: string, onChange: (next: string) => void, continuous?: boolean }} opts
+ * Fica ativo até o usuário clicar para encerrar — pausas/respirações reiniciam sozinhas.
+ *
+ * @param {{ value: string, onChange: (next: string) => void, preserveNewlines?: boolean }} opts
  */
-export function useSpeechDictation({ value, onChange, continuous = true }) {
+export function useSpeechDictation({ value, onChange, preserveNewlines = false }) {
   const [listening, setListening] = useState(false)
   const [supported, setSupported] = useState(true)
   const [error, setError] = useState('')
+
   const recognitionRef = useRef(null)
   const baseValueRef = useRef(value)
   const interimRef = useRef('')
+  const wantListenRef = useRef(false)
+  const restartTimerRef = useRef(null)
+  const onChangeRef = useRef(onChange)
+  const valueRef = useRef(value)
+  const preserveRef = useRef(preserveNewlines)
+  const beginSessionRef = useRef(() => {})
+
+  onChangeRef.current = onChange
+  valueRef.current = value
+  preserveRef.current = preserveNewlines
 
   useEffect(() => {
     setSupported(Boolean(getSpeechRecognition()))
   }, [])
 
   useEffect(() => {
-    if (!listening) baseValueRef.current = value
-  }, [value, listening])
+    if (!wantListenRef.current) {
+      baseValueRef.current = value
+    }
+  }, [value])
 
-  const stop = useCallback(() => {
+  const clearRestartTimer = useCallback(() => {
+    if (restartTimerRef.current != null) {
+      window.clearTimeout(restartTimerRef.current)
+      restartTimerRef.current = null
+    }
+  }, [])
+
+  const commitInterimIfAny = useCallback(() => {
+    const interim = (interimRef.current || '').trim()
+    interimRef.current = ''
+    if (!interim) return
+    const next = joinSpeech(baseValueRef.current, interim, {
+      preserveNewlines: preserveRef.current,
+    })
+    baseValueRef.current = next
+    onChangeRef.current(next)
+  }, [])
+
+  const detachRecognition = useCallback(() => {
     const rec = recognitionRef.current
-    if (rec) {
+    recognitionRef.current = null
+    if (!rec) return
+    try {
+      rec.onstart = null
+      rec.onerror = null
+      rec.onresult = null
+      rec.onend = null
+      rec.abort()
+    } catch {
       try {
-        rec.onend = null
         rec.stop()
       } catch {
         /* ignore */
       }
-      recognitionRef.current = null
     }
-    interimRef.current = ''
-    setListening(false)
   }, [])
 
-  const start = useCallback(() => {
-    const SpeechRecognition = getSpeechRecognition()
-    if (!SpeechRecognition) {
-      setSupported(false)
-      setError('Seu navegador não suporta ditado por voz. Use Chrome ou Edge.')
-      return
-    }
+  const stop = useCallback(() => {
+    wantListenRef.current = false
+    clearRestartTimer()
+    detachRecognition()
+    commitInterimIfAny()
+    setListening(false)
+  }, [clearRestartTimer, commitInterimIfAny, detachRecognition])
 
-    stop()
-    setError('')
-    baseValueRef.current = value
-    interimRef.current = ''
+  const beginSession = useCallback(() => {
+    const SpeechRecognition = getSpeechRecognition()
+    if (!SpeechRecognition || !wantListenRef.current) return
+
+    clearRestartTimer()
+    detachRecognition()
 
     const rec = new SpeechRecognition()
     rec.lang = 'pt-BR'
-    rec.continuous = continuous
+    rec.continuous = true
     rec.interimResults = true
     rec.maxAlternatives = 1
 
-    rec.onstart = () => setListening(true)
+    rec.onstart = () => {
+      if (wantListenRef.current) setListening(true)
+    }
 
     rec.onerror = (event) => {
       const code = event?.error || 'error'
       if (code === 'not-allowed' || code === 'service-not-allowed') {
-        setError('Permissão de microfone negada. Libere o acesso nas configurações do navegador.')
-      } else if (code === 'no-speech') {
-        setError('Não ouvi nada. Tente novamente.')
-      } else if (code !== 'aborted') {
-        setError('Falha no ditado. Tente de novo.')
+        wantListenRef.current = false
+        clearRestartTimer()
+        setError(
+          'Permissão de microfone negada. Libere o acesso nas configurações do navegador.',
+        )
+        setListening(false)
+        return
       }
-      setListening(false)
+      if (code === 'audio-capture') {
+        wantListenRef.current = false
+        clearRestartTimer()
+        setError('Não foi possível acessar o microfone.')
+        setListening(false)
+        return
+      }
+      // no-speech / aborted / network: mantem ativo; onend reinicia
+      if (code === 'no-speech' || code === 'aborted' || code === 'network') {
+        setError('')
+      }
     }
 
     rec.onresult = (event) => {
+      if (!wantListenRef.current) return
+
       let finalChunk = ''
       let interim = ''
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
@@ -84,42 +151,80 @@ export function useSpeechDictation({ value, onChange, continuous = true }) {
       }
 
       if (finalChunk) {
-        const base = baseValueRef.current || ''
-        const sep = base && !base.endsWith(' ') && !base.endsWith('\n') ? ' ' : ''
-        const next = `${base}${sep}${finalChunk.trim()}`.replace(/\s+/g, ' ').trimStart()
-        baseValueRef.current = next
         interimRef.current = ''
-        onChange(next)
-      } else if (interim) {
+        const next = joinSpeech(baseValueRef.current, finalChunk, {
+          preserveNewlines: preserveRef.current,
+        })
+        baseValueRef.current = next
+        if (interim) {
+          interimRef.current = interim
+          onChangeRef.current(
+            joinSpeech(next, interim, { preserveNewlines: preserveRef.current }),
+          )
+        } else {
+          onChangeRef.current(next)
+        }
+        return
+      }
+
+      if (interim) {
         interimRef.current = interim
-        const base = baseValueRef.current || ''
-        const sep = base && !base.endsWith(' ') ? ' ' : ''
-        onChange(`${base}${sep}${interim}`)
+        onChangeRef.current(
+          joinSpeech(baseValueRef.current, interim, {
+            preserveNewlines: preserveRef.current,
+          }),
+        )
       }
     }
 
     rec.onend = () => {
-      // Se parou no meio do continuous, não reinicia — usuário controla pelo botão
       recognitionRef.current = null
-      setListening(false)
-      // consolida valor final sem interim
-      if (interimRef.current) {
-        interimRef.current = ''
-        onChange(baseValueRef.current || '')
+      if (!wantListenRef.current) {
+        commitInterimIfAny()
+        setListening(false)
+        return
       }
+      // Respiração/silêncio: confirma texto e reabre imediatamente
+      commitInterimIfAny()
+      setListening(true)
+      clearRestartTimer()
+      restartTimerRef.current = window.setTimeout(() => {
+        if (wantListenRef.current) beginSessionRef.current()
+      }, 60)
     }
 
     recognitionRef.current = rec
     try {
       rec.start()
+      setListening(true)
     } catch {
-      setError('Não foi possível iniciar o microfone.')
-      setListening(false)
+      if (wantListenRef.current) {
+        restartTimerRef.current = window.setTimeout(() => {
+          if (wantListenRef.current) beginSessionRef.current()
+        }, 200)
+      }
     }
-  }, [continuous, onChange, stop, value])
+  }, [clearRestartTimer, commitInterimIfAny, detachRecognition])
+
+  beginSessionRef.current = beginSession
+
+  const start = useCallback(() => {
+    if (!getSpeechRecognition()) {
+      setSupported(false)
+      setError('Seu navegador não suporta ditado por voz. Use Chrome ou Edge.')
+      return
+    }
+
+    setError('')
+    wantListenRef.current = true
+    baseValueRef.current = valueRef.current || ''
+    interimRef.current = ''
+    setListening(true)
+    beginSession()
+  }, [beginSession])
 
   const toggle = useCallback(() => {
-    if (listening) stop()
+    if (wantListenRef.current || listening) stop()
     else start()
   }, [listening, start, stop])
 
@@ -130,20 +235,21 @@ export function useSpeechDictation({ value, onChange, continuous = true }) {
 
 /**
  * Campo de texto/textarea com botão de ditado.
+ * O microfone só para quando o usuário clica de novo.
  */
 export default function DictationField({
   as = 'input',
   value,
   onChange,
   className = 'field-input',
-  continuous,
+  continuous: _continuous,
   ...rest
 }) {
   const isTextarea = as === 'textarea'
   const { listening, supported, error, toggle, setError } = useSpeechDictation({
     value: value || '',
     onChange,
-    continuous: continuous ?? isTextarea,
+    preserveNewlines: isTextarea,
   })
 
   const Tag = isTextarea ? 'textarea' : 'input'
@@ -187,7 +293,9 @@ export default function DictationField({
         ) : null}
       </div>
       {listening ? (
-        <p className="text-[11px] font-semibold text-brand-600">Ouvindo… fale agora</p>
+        <p className="text-[11px] font-semibold text-brand-600">
+          Ouvindo… continue falando. Clique no microfone para encerrar.
+        </p>
       ) : null}
       {error ? <p className="text-[11px] text-bordo">{error}</p> : null}
     </div>

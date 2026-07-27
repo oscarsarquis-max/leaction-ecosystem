@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { CrmEvents, trackEvent } from '../lib/tracking'
@@ -18,15 +18,32 @@ function newSessionKey() {
   return `aula-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
+function parseDisciplinaId(raw) {
+  if (raw == null || raw === '') return null
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 /**
  * Fluxo de investigação do problema → plano EduScrum (página própria).
  */
 export default function DesafioPage() {
   const { user, logout, applyCredits, refresh } = useAuth()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+
+  const disciplinaInicial = useMemo(() => {
+    return (
+      parseDisciplinaId(location.state?.disciplina_id) ||
+      parseDisciplinaId(searchParams.get('disciplina_id'))
+    )
+  }, [location.state, searchParams])
 
   const [currentStep, setCurrentStep] = useState(1)
   const [problema, setProblema] = useState('')
   const [contexto, setContexto] = useState('')
+  const [disciplinaId, setDisciplinaId] = useState(disciplinaInicial)
+  const [trechoRelato, setTrechoRelato] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [loadingIa, setLoadingIa] = useState(false)
@@ -44,7 +61,13 @@ export default function DesafioPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeExhausted, setUpgradeExhausted] = useState(false)
 
-  async function handleEstruturar() {
+  async function handleEstruturar(opts = {}) {
+    const complemento = typeof opts.complementacao === 'string' ? opts.complementacao.trim() : ''
+    const problemaBase = (opts.problemaOverride || problema || '').trim()
+    const problemaEnvio = complemento
+      ? `${problemaBase}\n\nComplemento do professor: ${complemento}`
+      : problemaBase
+
     setError('')
     setBusy(true)
     setLoadingIa(true)
@@ -53,17 +76,26 @@ export default function DesafioPage() {
     setHipotese('')
     setPlano(null)
     setPlanoSession(null)
+    if (complemento) {
+      setProblema(problemaEnvio)
+    }
     try {
       const data = await api.estruturarWizard({
-        problema: problema.trim(),
+        problema: problemaEnvio,
         contexto: contexto.trim(),
         id_clie: user?.id_clie,
+        ...(disciplinaId != null ? { disciplina_id: disciplinaId } : {}),
+        ...(complemento ? { complementacao: complemento } : {}),
       })
       setCausas(data.causas_raiz || [])
       setCaminhos(data.caminhos || [])
       setResumoAnalise(data.resumo_analise || '')
       setReferencial(data.referencial || null)
       setFallback(Boolean(data.fallback))
+      setTrechoRelato(data.trecho_relato_usado || '')
+      if (data.problema) {
+        setProblema(data.problema)
+      }
       void trackEvent(
         data.fallback
           ? CrmEvents.DESAFIO_ESTRUTURAR_FALLBACK
@@ -76,7 +108,9 @@ export default function DesafioPage() {
         void refresh()
       }
     } catch (err) {
-      setCurrentStep(1)
+      if (!complemento) {
+        setCurrentStep(1)
+      }
       void trackEvent(CrmEvents.DESAFIO_ESTRUTURAR_ERRO, {
         url: '/desafio',
         idUsuario: user?.id_clie ?? null,
@@ -95,6 +129,10 @@ export default function DesafioPage() {
       setBusy(false)
       setLoadingIa(false)
     }
+  }
+
+  function handleComplementar(texto) {
+    return handleEstruturar({ complementacao: texto })
   }
 
   function handleSelectCaminho(caminho) {
@@ -158,9 +196,10 @@ export default function DesafioPage() {
                 setShowUpgradeModal(true)
               }}
               className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo hover:bg-brand-100"
-              title="Fazer upgrade de créditos"
+              title="Ver planos e desafios disponíveis"
             >
-              {Number(user.creditos_ia)} créditos
+              {Number(user.creditos_ia)} desafio
+              {Number(user.creditos_ia) === 1 ? '' : 's'}
             </button>
           ) : null}
           <button
@@ -171,7 +210,7 @@ export default function DesafioPage() {
             }}
             className="btn-primary !px-3 !py-1.5 text-xs"
           >
-            Upgrade
+            Ver planos
           </button>
           <button type="button" onClick={logout} className="btn-ghost !px-3 !py-1.5 text-xs">
             Sair
@@ -184,8 +223,10 @@ export default function DesafioPage() {
           <StepProblema
             problema={problema}
             contexto={contexto}
+            disciplinaId={disciplinaId}
             onProblemaChange={setProblema}
             onContextoChange={setContexto}
+            onDisciplinaChange={setDisciplinaId}
             onSubmit={handleEstruturar}
             busy={busy}
             error={error}
@@ -200,6 +241,8 @@ export default function DesafioPage() {
             referencial={referencial}
             fallback={fallback}
             onNext={() => setCurrentStep(3)}
+            onComplementar={handleComplementar}
+            complementBusy={busy}
           />
         )}
 
@@ -209,6 +252,9 @@ export default function DesafioPage() {
             selectedId={selectedCaminho?.id}
             onSelect={handleSelectCaminho}
             hipotese={hipotese}
+            trechoRelato={
+              selectedCaminho?.trecho_relato_usado || trechoRelato
+            }
             onGerarPlano={handleGerarPlano}
             busy={busy}
           />
@@ -221,6 +267,7 @@ export default function DesafioPage() {
             problema={problema}
             user={user}
             planoSession={planoSession}
+            disciplinaId={disciplinaId}
             onVoltar={() => setCurrentStep(3)}
           />
         )}

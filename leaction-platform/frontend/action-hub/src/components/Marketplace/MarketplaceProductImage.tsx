@@ -12,13 +12,14 @@ import {
 
 type MarketplaceProductImageProps = {
   src?: string | null;
-  /** Legado — ignorado para ocultar imagem; só mantido por compat. */
+  /** Legado — ignorado; mantido por compat. */
   fallback?: boolean;
   title: string;
   className?: string;
   objectFit?: 'contain' | 'cover';
 };
 
+const FILE_PLACEHOLDER = '/marketplace/placeholders/default.svg';
 const LOAD_TIMEOUT_MS = 15000;
 
 function MarketplaceOrangeFallback({ title }: { title: string }) {
@@ -45,15 +46,20 @@ function buildLiveImageAttemptQueue(src?: string | null): string[] {
   };
 
   const raw = typeof src === 'string' ? src.trim() : '';
-  if (!raw) return queue;
+  if (!raw) {
+    pushUnique(FILE_PLACEHOLDER);
+    return queue;
+  }
 
-  if (raw.startsWith('/marketplace-api/image')) {
+  if (raw.startsWith('/marketplace-api/image') || raw.startsWith('data:')) {
     pushUnique(raw);
+    pushUnique(FILE_PLACEHOLDER);
     return queue;
   }
 
   if (isMarketplacePlaceholderPath(raw)) {
     pushUnique(resolveMarketplaceImageUrl(raw, { proxyMl: false }));
+    pushUnique(FILE_PLACEHOLDER);
     return queue;
   }
 
@@ -61,16 +67,21 @@ function buildLiveImageAttemptQueue(src?: string | null): string[] {
     raw.startsWith('//') ? `https:${raw}` : raw
   );
 
-  // CDN ML/Amazon sempre via proxy same-origin (localhost costuma bloquear hotlink).
   if (isProxiedMarketplaceCdnUrl(https)) {
     pushUnique(toMarketplaceImageProxyPath(https));
-    return queue;
+  } else {
+    pushUnique(resolveMarketplaceImageUrl(https, { proxyMl: true }));
   }
-
-  pushUnique(resolveMarketplaceImageUrl(https, { proxyMl: true }));
+  pushUnique(FILE_PLACEHOLDER);
   return queue;
 }
 
+/**
+ * Slot de imagem do marketplace.
+ * - Preenche o container com absolute inset-0 (pai deve ter altura explícita)
+ * - Não rejeita SVG via naturalWidth (quebrava placeholders)
+ * - Cadeia: src/proxy → default.svg → ícone laranja
+ */
 export function MarketplaceProductImage({
   src,
   fallback: _legacyFallback = false,
@@ -89,7 +100,6 @@ export function MarketplaceProductImage({
     setLoaded(false);
   }, [attempts]);
 
-  // Timeout só se a imagem ainda não carregou (antes o timer rodava mesmo após onLoad).
   useEffect(() => {
     if (failed || loaded || attempts.length === 0) return undefined;
     const timer = window.setTimeout(() => {
@@ -102,24 +112,8 @@ export function MarketplaceProductImage({
     return () => window.clearTimeout(timer);
   }, [attemptIndex, attempts.length, failed, loaded]);
 
-  if (failed || attempts.length === 0) {
-    return (
-      <div className="relative h-full min-h-full w-full">
-        <MarketplaceOrangeFallback title={title} />
-      </div>
-    );
-  }
-
-  const currentSrc = attempts[attemptIndex] ?? null;
-  if (!currentSrc) {
-    return (
-      <div className="relative h-full min-h-full w-full">
-        <MarketplaceOrangeFallback title={title} />
-      </div>
-    );
-  }
-
   const fitClass = objectFit === 'cover' ? 'object-cover' : 'object-contain';
+  const currentSrc = attempts[attemptIndex] ?? null;
 
   const advanceOrFail = () => {
     setLoaded(false);
@@ -130,24 +124,30 @@ export function MarketplaceProductImage({
     setFailed(true);
   };
 
+  if (failed || !currentSrc) {
+    return (
+      <div className="relative h-full w-full min-h-[11rem]">
+        <MarketplaceOrangeFallback title={title} />
+      </div>
+    );
+  }
+
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full min-h-[11rem]">
+      {/* Fallback por baixo — visível se o <img> falhar visualmente */}
+      <MarketplaceOrangeFallback title={title} />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         key={currentSrc}
         src={currentSrc}
         alt={title || 'Produto'}
-        className={`h-full w-full ${fitClass} ${className}`}
+        className={`absolute inset-0 z-[1] h-full w-full ${fitClass} ${className}`}
         referrerPolicy="no-referrer"
         loading="eager"
         decoding="async"
         onError={advanceOrFail}
-        onLoad={(event) => {
-          const img = event.currentTarget;
-          if (!img.naturalWidth || !img.naturalHeight) {
-            advanceOrFail();
-            return;
-          }
+        onLoad={() => {
+          // Aceita SVG/webp/jpeg — NÃO usar naturalWidth (SVG pode reportar 0)
           setLoaded(true);
         }}
       />

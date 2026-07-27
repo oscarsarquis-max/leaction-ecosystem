@@ -81,31 +81,32 @@ export default function UpgradeCreditsModal({ open, onClose, exhausted = false }
       >
         <div className="w-full max-w-md rounded-2xl border border-brand-200 bg-white p-6 shadow-soft sm:p-7">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600">
-            Seus créditos
+            Seu plano
           </p>
           <h2
             id="upgrade-credits-title"
             className="mt-2 font-display text-2xl font-bold leading-snug text-bordo-deep"
           >
             {semCreditos
-              ? 'Seus créditos acabaram'
-              : 'Quer mais créditos?'}
+              ? 'Seu desafio gratuito acabou'
+              : 'Quer mais liberdade no planejamento?'}
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-bordo-soft">
             {semCreditos ? (
               <>
-                Na versão gratuita você tem 3 desafios com IA. Seus créditos acabaram — faça o
-                upgrade (pacote ou assinatura) para continuar resolvendo desafios e criando
-                planos de aula.
+                No plano gratuito você tem 1 desafio e até 5 aulas simples por mês. Escolha o
+                Profissional (R$&nbsp;24,90) ou o Mentor (R$&nbsp;49,90) — ou um pacote avulso de
+                3 desafios.
               </>
             ) : (
               <>
                 Você tem{' '}
                 <span className="font-semibold text-bordo">
-                  {Number.isFinite(saldo) ? saldo : '—'} créditos
+                  {Number.isFinite(saldo) ? saldo : '—'} desafio
+                  {saldo === 1 ? '' : 's'}
                 </span>{' '}
-                na versão gratuita (até 3 desafios). Escolha um pacote ou assinatura para
-                ampliar o uso do inove4us.
+                restante{saldo === 1 ? '' : 's'}. Veja os planos Profissional e Mentor, ou compre
+                um pacote avulso.
               </>
             )}
           </p>

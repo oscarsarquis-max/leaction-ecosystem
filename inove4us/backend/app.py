@@ -17,6 +17,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 sys.path.insert(0, os.path.dirname(__file__))
 
 from db import (  # noqa: E402
+    aulas_simples_quota,
     create_lead_solicitacao,
     dismiss_hub_notice,
     ensure_creditos_ia_column,
@@ -38,6 +39,7 @@ from tracking_routes import tracking_bp  # noqa: E402
 from daily_routes import daily_bp  # noqa: E402  (reexport → routes.daily_routes)
 from gatekeeper_routes import register_gatekeeper  # noqa: E402
 from cms_noticias_routes import cms_noticias_bp  # noqa: E402
+from assistente_chat_routes import assistente_chat_bp  # noqa: E402
 from instituicoes_routes import instituicoes_bp  # noqa: E402
 from cursos_disciplinas_routes import cursos_disciplinas_bp  # noqa: E402
 from importacoes_routes import importacoes_bp  # noqa: E402
@@ -61,12 +63,19 @@ def _is_solicitacao_ativa(cliente: dict) -> bool:
 
 
 def _session_user(cliente: dict) -> dict:
+    id_clie = cliente["id_clie"]
+    try:
+        quota = aulas_simples_quota(int(id_clie))
+    except Exception:
+        quota = None
     return {
-        "id_clie": cliente["id_clie"],
+        "id_clie": id_clie,
         "nome_clie": cliente.get("nome_clie") or "",
         "mail_clie": cliente.get("mail_clie") or "",
         "empresa_clie": cliente.get("empresa_clie") or "",
         "creditos_ia": int(cliente.get("creditos_ia") or 0),
+        "plan_tier": str(cliente.get("plan_tier") or "starter"),
+        "aulas_mes": quota,
     }
 
 
@@ -134,6 +143,8 @@ def create_app() -> Flask:
     app.register_blueprint(daily_bp)
     # Headless CMS — notícias do Action Hub (cache S2S + graceful degradation)
     app.register_blueprint(cms_noticias_bp)
+    # Assistente de navegação (árvore CMS + fallback local)
+    app.register_blueprint(assistente_chat_bp)
     app.register_blueprint(instituicoes_bp)
     app.register_blueprint(cursos_disciplinas_bp)
     app.register_blueprint(importacoes_bp)

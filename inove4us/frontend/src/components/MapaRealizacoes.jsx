@@ -119,8 +119,9 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
         return String(a.label).localeCompare(String(b.label), 'pt-BR')
       })
       setPeriodos(list)
-      const emCurso = list.find((p) => p.em_curso)
-      setPeriodoId(emCurso ? String(emCurso.id) : list[0] ? String(list[0].id) : '')
+      // Default: Todos (mostra também desafios sem disciplina em qualquer data).
+      // Usuário pode filtrar por período em curso se quiser.
+      setPeriodoId('')
     } catch {
       setPeriodos([])
       setPeriodoId('')
@@ -223,8 +224,9 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
     }
 
     const tracks = Array.from(trackMap.values()).sort((a, b) => {
-      if (a.key === TRACK_NONE) return 1
-      if (b.key === TRACK_NONE) return -1
+      // Trilha sem disciplina primeiro — evita o usuário achar que o desafio “sumiu”
+      if (a.key === TRACK_NONE) return -1
+      if (b.key === TRACK_NONE) return 1
       const ia = a.nome_instituicao || ''
       const ib = b.nome_instituicao || ''
       if (ia !== ib) return ia.localeCompare(ib, 'pt-BR')
@@ -479,6 +481,7 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
                   value={periodoId}
                   onChange={(e) => setPeriodoId(e.target.value)}
                 >
+                  <option value="">Todos os períodos</option>
                   {periodos.map((p) => (
                     <option key={p.id} value={String(p.id)}>
                       {p.em_curso ? '● ' : ''}

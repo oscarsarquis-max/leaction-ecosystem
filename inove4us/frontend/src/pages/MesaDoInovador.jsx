@@ -50,9 +50,10 @@ export default function MesaDoInovador() {
                 type="button"
                 onClick={() => setShowUpgradeModal(true)}
                 className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo hover:bg-brand-100"
-                title="Fazer upgrade de créditos"
+                title="Ver planos e desafios disponíveis"
               >
-                {Number(user.creditos_ia)} créditos
+                {Number(user.creditos_ia)} desafio
+                {Number(user.creditos_ia) === 1 ? '' : 's'}
               </button>
             ) : null}
             <button
@@ -60,7 +61,7 @@ export default function MesaDoInovador() {
               onClick={() => setShowUpgradeModal(true)}
               className="btn-ghost !px-3 !py-1.5 text-xs font-semibold"
             >
-              Upgrade
+              Ver planos
             </button>
             <Link to="/instituicoes" className="btn-ghost !px-3 !py-1.5 text-xs font-semibold">
               Instituições

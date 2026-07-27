@@ -21,8 +21,12 @@ const EXEMPT_PREFIXES = [
   '/hub-api/api/crm/tracking/',
   // Headless CMS: leitura pública para satélites (S2S / home)
   '/hub-api/api/cms/posts',
+  '/hub-api/api/cms/assistente-chat',
   // Micro-CMS site (estrutura PanelDX migrada)
   '/hub-api/api/public/cms',
+  // Marketplace (vitrine, offers, proxy de imagem CDN)
+  '/marketplace-api/',
+  '/marketplace/',
 ];
 
 function isExempt(pathname: string, searchParams: URLSearchParams): boolean {

@@ -6,9 +6,9 @@ import type { PreviewOffer } from '@/components/Marketplace/curationApi';
 export function PreviewMiniCard({ offer }: { offer: PreviewOffer }) {
   return (
     <article className="flex gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-orange-50">
         <MarketplaceProductImage
-          src={offer.image}
+          src={offer.image || '/marketplace/placeholders/default.svg'}
           title={offer.title}
           className="p-1"
           objectFit="cover"

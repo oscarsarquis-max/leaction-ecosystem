@@ -136,17 +136,37 @@ function createContractService(pool) {
       const creditsAdded = items
         .filter((i) => i.item_type === 'credit_pack')
         .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+      const direitos =
+        hubPayload?.direitos ||
+        hubPayload?.entitlements ||
+        hubPayload?.meta_json?.direitos ||
+        hubPayload?.meta_json?.entitlements ||
+        null;
+      const nivel =
+        direitos?.nivel ||
+        direitos?.tier ||
+        hubPayload?.nivel ||
+        hubPayload?.tier ||
+        null;
       const outboxPayload = {
         subject_type: subjectType,
         subject_id: subjectId,
         contract_id: contract.id,
         order_id: orderId,
         event_type: eventType,
+        creditos: creditsAdded,
         credits: creditsAdded,
+        creditos_adicionados: creditsAdded,
         credits_added: creditsAdded,
+        creditos_saldo: snap.payload.credits ?? 0,
         credits_balance: snap.payload.credits ?? 0,
         plan: snap.payload.plan || null,
         premium: Boolean(snap.payload.premium),
+        sku: hubPayload?.sku || null,
+        direitos,
+        entitlements: direitos,
+        nivel,
+        tier: nivel,
         items: items.map((i) => ({
           item_type: i.item_type,
           sku: i.sku,

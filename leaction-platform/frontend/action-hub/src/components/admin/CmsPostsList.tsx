@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { FilePlus2, LayoutTemplate, Loader2, Newspaper, RefreshCw } from 'lucide-react';
+import { Bot, FilePlus2, LayoutTemplate, Loader2, Newspaper, RefreshCw } from 'lucide-react';
 import { useHubSession } from '@/context/HubSessionContext';
 import { fetchCmsPostsAdmin, type CmsPost } from '@/lib/admin-api';
 
@@ -78,6 +78,13 @@ export function CmsPostsList() {
             <RefreshCw className="size-4" aria-hidden />
             Atualizar
           </button>
+          <Link
+            href="/dashboard/cms/assistente"
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
+          >
+            <Bot className="size-4" aria-hidden />
+            Assistente Nina
+          </Link>
           <Link
             href="/dashboard/cms/site"
             className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"

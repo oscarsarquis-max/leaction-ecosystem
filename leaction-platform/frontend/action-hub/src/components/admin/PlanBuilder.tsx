@@ -18,6 +18,7 @@ import {
 } from '@/lib/admin-api';
 import { InjectCreditsModal } from '@/components/admin/InjectCreditsModal';
 import { PlanFormModal } from '@/components/admin/PlanFormModal';
+import { direitoLabel, direitoValueLabel } from '@/components/admin/EntitlementBuilder';
 
 type Props = {
   initialAppId?: string;
@@ -247,12 +248,40 @@ export function PlanBuilder({ initialAppId = '' }: Props) {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {plans.map((plan) => {
-          const entitlements =
+          const direitosRaw =
             plan.meta_json &&
-            typeof plan.meta_json.entitlements === 'object' &&
-            plan.meta_json.entitlements
-              ? (plan.meta_json.entitlements as Record<string, unknown>)
-              : plan.meta_json || {};
+            typeof plan.meta_json.direitos === 'object' &&
+            plan.meta_json.direitos
+              ? (plan.meta_json.direitos as Record<string, unknown>)
+              : plan.meta_json &&
+                  typeof plan.meta_json.entitlements === 'object' &&
+                  plan.meta_json.entitlements
+                ? (plan.meta_json.entitlements as Record<string, unknown>)
+                : plan.meta_json || {};
+          const skipKeys = new Set([
+            'direitos',
+            'entitlements',
+            'features_bullets',
+            'period_months',
+            'meses',
+            'periodicidade',
+            'display_order',
+            'ordem_exibicao',
+            'recommended',
+            'recomendado',
+          ]);
+          const direitosEntries = Object.entries(direitosRaw).filter(
+            ([k]) => !skipKeys.has(k)
+          );
+          // Evita duplicar creditos se só estiver no topo do meta
+          const topCreditos =
+            plan.meta_json?.creditos ?? plan.meta_json?.credits;
+          if (
+            topCreditos != null &&
+            !direitosEntries.some(([k]) => k === 'creditos' || k === 'credits')
+          ) {
+            direitosEntries.unshift(['creditos', topCreditos]);
+          }
           return (
             <article
               key={plan.id}
@@ -281,18 +310,16 @@ export function PlanBuilder({ initialAppId = '' }: Props) {
               <p className="mt-1 text-xs font-medium text-stone-500">
                 {planTypeLabel(plan.type)}
               </p>
-              {Object.keys(entitlements).length > 0 ? (
+              {direitosEntries.length > 0 ? (
                 <ul className="mt-3 space-y-1 border-t border-stone-100 pt-3 text-xs text-stone-600">
-                  {Object.entries(entitlements)
-                    .slice(0, 6)
-                    .map(([k, v]) => (
-                      <li key={k} className="flex justify-between gap-2">
-                        <span className="font-mono text-stone-500">{k}</span>
-                        <span className="font-semibold text-stone-800">
-                          {String(v)}
-                        </span>
-                      </li>
-                    ))}
+                  {direitosEntries.slice(0, 6).map(([k, v]) => (
+                    <li key={k} className="flex justify-between gap-2">
+                      <span className="text-stone-500">{direitoLabel(k)}</span>
+                      <span className="font-semibold text-stone-800">
+                        {direitoValueLabel(v)}
+                      </span>
+                    </li>
+                  ))}
                 </ul>
               ) : null}
               <button

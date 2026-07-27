@@ -66,3 +66,43 @@ def fetch_published_posts(
             if stale and isinstance(stale.get("posts"), list):
                 return list(stale["posts"])
         return []
+
+
+def fetch_assistente_chat(
+    *,
+    sistema_destino: str = "inove4us",
+) -> dict[str, Any] | None:
+    """
+    Busca árvore do assistente no Hub CMS.
+    Retorna dict do Hub ou None (caller usa fallback).
+    Cache em memória com o mesmo TTL das notícias.
+    """
+    key = f"assistente:{sistema_destino}"
+    now = time.time()
+
+    with _lock:
+        entry = _cache.get(key)
+        if entry and (now - float(entry["fetched_at"])) < CACHE_TTL_SEC:
+            payload = entry.get("payload")
+            return dict(payload) if isinstance(payload, dict) else None
+
+    url = f"{_hub_base()}/api/cms/assistente-chat"
+    params = {"sistema_destino": sistema_destino}
+
+    try:
+        res = requests.get(url, params=params, timeout=HUB_TIMEOUT_SEC)
+        res.raise_for_status()
+        data = res.json() if res.content else {}
+        if not isinstance(data, dict):
+            data = {}
+        tree = data.get("tree") if isinstance(data.get("tree"), dict) else data
+        with _lock:
+            _cache[key] = {"payload": tree, "fetched_at": now}
+        return dict(tree) if isinstance(tree, dict) else None
+    except Exception as exc:
+        logger.warning("[cms] Assistente Hub indisponível (%s): %s", url, exc)
+        with _lock:
+            stale = _cache.get(key)
+            if stale and isinstance(stale.get("payload"), dict):
+                return dict(stale["payload"])
+        return None

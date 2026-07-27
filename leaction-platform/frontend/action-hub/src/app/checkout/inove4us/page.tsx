@@ -60,7 +60,7 @@ function CheckoutInove4usContent() {
         if (cancelled) return;
         if (!items.length) {
           setLoadError(
-            'Nenhum plano ativo para inove4us. No Action Hub, abra Admin → Planos e cadastre pacotes.'
+            'Não há planos disponíveis no momento. Tente novamente em alguns minutos ou fale com o suporte.'
           );
         }
         setPlans(items);
@@ -70,7 +70,9 @@ function CheckoutInove4usContent() {
         }
       } catch (err) {
         if (!cancelled) {
-          setLoadError(err instanceof Error ? err.message : 'Erro ao carregar planos.');
+          setLoadError(
+            'Não foi possível carregar os planos agora. Verifique sua conexão e tente novamente.'
+          );
         }
       } finally {
         if (!cancelled) setLoadingPlans(false);
@@ -116,15 +118,15 @@ function CheckoutInove4usContent() {
   );
 
   return (
-    <CheckoutChrome brand={BRAND} subtitle="Escolha o pacote e continue para o pagamento">
+    <CheckoutChrome brand={BRAND} subtitle="Escolha o plano e continue para o pagamento">
       <main className="mx-auto max-w-6xl px-4 py-6 pb-16 md:px-6 md:py-10">
         <div className="mb-10 text-center md:text-left">
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">
-            Planos inove4us
+            Planos para o seu dia a dia
           </h2>
           <p className="mt-3 max-w-2xl text-slate-600">
-            Selecione o pacote de créditos. Na próxima tela você finaliza o pagamento com a
-            identidade inove4us.
+            Escolha o plano que combina com a sua rotina de aulas. Na próxima tela você conclui o
+            pagamento com segurança.
           </p>
         </div>
 
@@ -137,7 +139,7 @@ function CheckoutInove4usContent() {
         {loadingPlans ? (
           <div className="flex items-center justify-center gap-3 py-20 text-slate-600">
             <Loader2 className="size-6 animate-spin" aria-hidden />
-            Carregando planos...
+            Carregando planos…
           </div>
         ) : loadError ? (
           <div

@@ -22,6 +22,10 @@ Versão por app (`inove4us/vX.Y.Z`). Não usar versão única do monorepo.
   clique reutiliza o detalhe da Agenda
 - Documentação técnica em `inove4us_docs/` (resumo + integração Action Hub + Etapas 1–4 + grafo)
 
+### Changed
+- **Planos HVLT (comunidade):** freemium Starter = 1 desafio IA + até 5 aulas simples/mês;
+  assinaturas Profissional / Mentor via Hub (`plan_tier`); pacote avulso de 3 desafios
+
 ## [2.0.0] - 2026-07-23
 
 > Baseline congelada antes da Estruturação Pedagógica. Ver `inove4us_docs/VERSAO-2.0.0-BASELINE.md`.

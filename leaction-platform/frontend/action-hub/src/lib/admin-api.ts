@@ -237,13 +237,13 @@ export async function postAdminPaymentNotice(
 export function planTypeLabel(type: string): string {
   switch (type) {
     case 'plan':
-      return 'Assinatura Mensal';
+      return 'Assinatura mensal';
     case 'credit_pack':
-      return 'Pacote de Créditos';
+      return 'Pacote de créditos';
     case 'addon':
-      return 'Add-on';
+      return 'Complemento';
     case 'seat':
-      return 'Seat';
+      return 'Assento';
     default:
       return type;
   }
@@ -369,4 +369,53 @@ export async function saveCmsSiteAdmin(
   const client = createAdminClient(token);
   const { data } = await client.put<CmsSiteConfig>('/api/admin/cms', body);
   return data;
+}
+
+export type CmsAssistenteChatRecord = {
+  id: number;
+  sistema_destino: CmsSistemaDestino | string;
+  status: CmsPostStatus | string;
+  tree: Record<string, unknown>;
+  publicado_em: string | null;
+  atualizado_em: string | null;
+  atualizado_por: string | null;
+  created_at: string | null;
+};
+
+export type CmsAssistenteChatAdminResponse = {
+  rascunho: CmsAssistenteChatRecord | null;
+  publicado: CmsAssistenteChatRecord | null;
+};
+
+export type CmsAssistenteChatUpsertBody = {
+  sistema_destino: CmsSistemaDestino | string;
+  tree: Record<string, unknown>;
+  status: CmsPostStatus | string;
+};
+
+export async function fetchCmsAssistenteChatAdmin(
+  token: string,
+  sistemaDestino: string
+): Promise<CmsAssistenteChatAdminResponse> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<CmsAssistenteChatAdminResponse>(
+    '/api/cms/assistente-chat/admin',
+    { params: { sistema_destino: sistemaDestino } }
+  );
+  return {
+    rascunho: data?.rascunho ?? null,
+    publicado: data?.publicado ?? null,
+  };
+}
+
+export async function saveCmsAssistenteChat(
+  token: string,
+  body: CmsAssistenteChatUpsertBody
+): Promise<CmsAssistenteChatRecord> {
+  const client = createAdminClient(token);
+  const { data } = await client.put<{ assistente_chat: CmsAssistenteChatRecord }>(
+    '/api/cms/assistente-chat',
+    body
+  );
+  return data.assistente_chat;
 }

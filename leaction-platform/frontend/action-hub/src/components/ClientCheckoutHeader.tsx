@@ -45,7 +45,16 @@ export function ClientCheckoutHeader({ brand, subtitle }: ClientCheckoutHeaderPr
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <BackToHubHome variant="chip" label="Action Hub" />
+          {brand.id === 'inove4us' ? (
+            <a
+              href={process.env.NEXT_PUBLIC_INOVE4US_URL || 'https://inove4us.com.br'}
+              className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition hover:border-stone-300"
+            >
+              Voltar ao inove4us
+            </a>
+          ) : (
+            <BackToHubHome variant="chip" label="Início" />
+          )}
           <span
             className="hidden rounded-full px-3 py-1 text-xs font-semibold sm:inline-flex"
             style={{

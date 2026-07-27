@@ -1,4 +1,5 @@
 import DictationField from '../DictationField'
+import VinculoPedagogicoSelector from '../VinculoPedagogicoSelector'
 
 const EXEMPLO_CONTEXTO =
   '1º ano do Ensino Médio · turma de 35 alunos · 4 aulas de 50 min · concurso Bairro Sustentável'
@@ -18,8 +19,10 @@ A Dor do Professor (Meu Problema): Qual a dificuldade real em sala (equipe, enga
 export default function StepProblema({
   problema,
   contexto,
+  disciplinaId,
   onProblemaChange,
   onContextoChange,
+  onDisciplinaChange,
   onSubmit,
   busy,
   error,
@@ -46,6 +49,12 @@ export default function StepProblema({
       </div>
 
       <div className="space-y-5 rounded-2xl border border-brand-200 bg-white/90 p-6 shadow-soft">
+        <VinculoPedagogicoSelector
+          disciplinaId={disciplinaId}
+          onChange={onDisciplinaChange}
+          autoDefault
+        />
+
         <div>
           <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
             <label htmlFor="problema" className="field-label !mb-0">

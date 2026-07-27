@@ -222,7 +222,9 @@ export default function AgendaExecutiva({
         return
       }
       if (ev.tipo === 'aula_eduscrum') {
-        navigate('/desafio')
+        navigate('/desafio', {
+          state: ev.disciplina_id != null ? { disciplina_id: ev.disciplina_id } : undefined,
+        })
         return
       }
       if (ev.tipo === 'aula_dia') {
@@ -340,7 +342,9 @@ export default function AgendaExecutiva({
       return
     }
     if (ev.tipo === 'aula_eduscrum') {
-      navigate('/desafio')
+      navigate('/desafio', {
+        state: ev.disciplina_id != null ? { disciplina_id: ev.disciplina_id } : undefined,
+      })
       return
     }
     if (ev.tipo === 'aula_dia') {

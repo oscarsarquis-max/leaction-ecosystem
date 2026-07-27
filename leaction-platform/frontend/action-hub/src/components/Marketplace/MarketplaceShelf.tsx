@@ -126,9 +126,9 @@ export function MarketplaceShelf({
           {offers.map((offer) => (
             <li key={`${category}-${offer.id}`}>
               <article className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-orange-200 hover:shadow-md">
-                <div className="relative h-40 w-full shrink-0 overflow-hidden bg-slate-50">
+                <div className="relative h-44 w-full shrink-0 overflow-hidden bg-orange-50">
                   <MarketplaceProductImage
-                    src={offer.image}
+                    src={offer.image || '/marketplace/placeholders/default.svg'}
                     title={offer.title}
                   />
                 </div>

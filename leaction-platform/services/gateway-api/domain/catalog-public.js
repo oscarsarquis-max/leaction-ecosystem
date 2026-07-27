@@ -32,6 +32,9 @@ function normalizeMeta(value) {
 function serializePublicPlan(row) {
   const meta = normalizeMeta(row.meta_json);
   const credits = resolveCreditsFromPlan(row);
+  const direitos =
+    (meta.direitos && typeof meta.direitos === 'object' ? meta.direitos : null) ||
+    (meta.entitlements && typeof meta.entitlements === 'object' ? meta.entitlements : null);
   return {
     id: row.id,
     app_id: row.app_id,
@@ -43,8 +46,19 @@ function serializePublicPlan(row) {
     features: Array.isArray(row.features) ? row.features : [],
     credits: credits > 0 ? credits : null,
     meta_json: {
-      credits: meta.credits ?? meta.entitlements?.credits ?? undefined,
+      creditos: meta.creditos ?? meta.credits ?? direitos?.creditos ?? direitos?.credits ?? undefined,
+      credits: credits > 0 ? credits : undefined,
       period_months: meta.period_months ?? meta.meses ?? undefined,
+      periodicidade: meta.periodicidade || undefined,
+      display_order:
+        meta.display_order != null
+          ? Number(meta.display_order)
+          : meta.ordem_exibicao != null
+            ? Number(meta.ordem_exibicao)
+            : undefined,
+      recommended: Boolean(meta.recommended ?? meta.recomendado),
+      direitos: direitos || undefined,
+      entitlements: direitos || undefined,
     },
   };
 }
@@ -85,7 +99,8 @@ function registerCatalogPublicRoutes(app, pool) {
         `SELECT id, app_id, name, type, sku, price, currency, features, meta_json, active
          FROM catalog_plans
          WHERE app_id = $1 AND active = TRUE
-         ORDER BY price ASC NULLS LAST, name ASC`,
+         ORDER BY COALESCE((meta_json->>'display_order')::int, 999) ASC,
+                  price ASC NULLS LAST, name ASC`,
         [appId]
       );
 
@@ -162,7 +177,7 @@ function registerCatalogPublicRoutes(app, pool) {
       if (planType === 'credit_pack' && credits <= 0) {
         return res.status(422).json({
           error:
-            'Pacote de créditos sem quantidade em meta_json.credits (ou entitlements.credits)',
+            'Pacote de créditos sem quantidade em meta_json.creditos (ou direitos.creditos)',
           sku: plan.sku,
         });
       }
@@ -202,6 +217,9 @@ function registerCatalogPublicRoutes(app, pool) {
         currency: plan.currency || 'BRL',
         credits: credits > 0 ? credits : undefined,
         period_months: Number(meta.period_months || meta.meses || 0) || undefined,
+        periodicidade: meta.periodicidade || undefined,
+        entitlements: meta.direitos || meta.entitlements || undefined,
+        direitos: meta.direitos || meta.entitlements || undefined,
         source: 'catalog_vitrine',
       };
       Object.keys(hubPayload).forEach((k) => {

@@ -1,3 +1,5 @@
+import { useMemo, useState } from 'react'
+
 function SkeletonLines() {
   return (
     <div className="space-y-4">
@@ -22,7 +24,15 @@ export default function StepEstruturacao({
   referencial,
   onNext,
   fallback,
+  onComplementar,
+  complementBusy,
 }) {
+  const [complemento, setComplemento] = useState('')
+  const pendente = useMemo(
+    () => (causas || []).find((c) => c?.precisa_complemento),
+    [causas],
+  )
+
   return (
     <section className="mx-auto max-w-3xl animate-fade-in">
       <div className="mb-8 text-center">
@@ -34,8 +44,8 @@ export default function StepEstruturacao({
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-bordo-soft sm:text-base">
           {loading
-            ? 'Cruzando o seu relato com a base de problemas e montando o ranking metodológico (pode levar cerca de 1 minuto)…'
-            : 'Causas reais e hipóteses associadas, a partir do seu problema e da base de referência.'}
+            ? 'Lendo o seu relato e preparando caminhos metodológicos para a turma (cerca de 1 minuto)…'
+            : 'Causas e hipóteses a partir do seu problema, para orientar a escolha do caminho.'}
         </p>
       </div>
 
@@ -47,10 +57,10 @@ export default function StepEstruturacao({
               <div className="absolute inset-0 animate-spin rounded-full border-[3px] border-brand-100 border-t-brand-600" />
             </div>
             <p className="text-sm font-semibold text-brand-600">
-              Analisando causas reais e hipóteses associadas…
+              Organizando causas e hipóteses…
             </p>
             <p className="text-xs text-bordo-soft">
-              Planos com 4 a 7 cards detalhados — a IA costuma levar cerca de 1 minuto.
+              Em seguida você verá três opções de caminho — costuma levar cerca de 1 minuto.
             </p>
           </div>
           <SkeletonLines />
@@ -59,10 +69,10 @@ export default function StepEstruturacao({
         <div className="space-y-5">
           {referencial?.categoria_prob && (
             <div className="rounded-xl border border-bordo/20 bg-bordo/5 px-4 py-3 text-sm text-bordo">
-              <span className="font-semibold">Âncora na base:</span>{' '}
+              <span className="font-semibold">Casos semelhantes na nossa base:</span>{' '}
               {referencial.grupo_prob} › {referencial.categoria_prob}
               {fallback ? (
-                <span className="ml-2 text-xs text-bordo-soft">(modo local)</span>
+                <span className="ml-2 text-xs text-bordo-soft">(sugestão local)</span>
               ) : null}
             </div>
           )}
@@ -95,8 +105,45 @@ export default function StepEstruturacao({
             ))}
           </ul>
 
+          {pendente ? (
+            <div className="rounded-2xl border border-dashed border-brand-400 bg-brand-50/60 p-5">
+              <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-brand-700">
+                Complemento opcional
+              </p>
+              <p className="mb-3 text-sm leading-relaxed text-bordo-deep">
+                {pendente.pergunta_complemento ||
+                  'Quer acrescentar um detalhe observável para aprofundar esta hipótese?'}
+              </p>
+              <textarea
+                className="field-input min-h-[88px] w-full resize-y"
+                value={complemento}
+                onChange={(e) => setComplemento(e.target.value)}
+                placeholder="Ex.: no diagnóstico de campo o 6º ano B notou cheiro forte perto de um bueiro…"
+                disabled={complementBusy}
+              />
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-bordo-soft">
+                  Soma ao relato original e gera uma nova análise (1 desafio).
+                </p>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={complementBusy || complemento.trim().length < 12}
+                  onClick={() => onComplementar?.(complemento.trim())}
+                >
+                  {complementBusy ? 'Reestruturando…' : 'Complementar e reestruturar'}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex justify-end pt-2">
-            <button type="button" className="btn-primary" onClick={onNext}>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={onNext}
+              disabled={complementBusy}
+            >
               Avançar para Hipóteses
               <i className="fa-solid fa-arrow-right" />
             </button>

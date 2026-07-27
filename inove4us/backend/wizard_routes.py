@@ -26,6 +26,26 @@ from core.metodologias_db import (
 )
 from db import consumir_credito_ia, get_conn, get_creditos_ia
 from prompts.inov_ativas import LISTA_FLAT, build_estruturar_system_prompt
+from wizard_qualidade import (
+    aplicar_barreira_final_payload,
+    avaliar_qualidade,
+    causas_somente_do_relato,
+    contar_causas_ia,
+    contem_termo_do_relato,
+    contexto_seguro_para_ui,
+    corpus_textos_de_refs,
+    estimate_tokens,
+    extrair_trecho_relato,
+    forcar_ancoragem_payload,
+    frase_tema_do_relato,
+    jaccard_words,
+    relato_insufficiente,
+    sanitizar_causas_ia,
+    similaridade_texto,
+    texto_professor_limpo,
+    vaza_contra_corpus,
+    vinculo_minimo_com_relato,
+)
 
 
 def _normalizar_nome_metodologia(nome: str | None) -> str | None:
@@ -63,7 +83,7 @@ BEDROCK_MODEL_ID = os.environ.get(
 BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
 # Arquitetura híbrida: 1 chamada curta (roteador A/B/C + ganchos). Cards vêm do DB.
 BEDROCK_MAX_TOKENS = int(os.environ.get("BEDROCK_MAX_TOKENS", "2000"))
-WIZARD_REF_LIMIT = int(os.environ.get("WIZARD_REF_LIMIT", "3"))
+WIZARD_REF_LIMIT = int(os.environ.get("WIZARD_REF_LIMIT", "2"))
 # Vazio = BEDROCK_MODEL_ID.
 WIZARD_BEDROCK_MODEL_ID = os.environ.get("WIZARD_BEDROCK_MODEL_ID", "").strip()
 _DEFAULT_METODOLOGIA_ID = "criativa_rotacao_estacoes"
@@ -218,48 +238,82 @@ def _tokens(texto: str) -> list[str]:
 def _buscar_problemas_referencia(
     problema: str, contexto: str, limit: int | None = None
 ) -> list[dict]:
+    """Busca âncoras de estilo ranqueadas por nº de tokens batendo — nunca por id_prob."""
     if limit is None:
         limit = WIZARD_REF_LIMIT
     tokens = _tokens(f"{problema} {contexto}")
+    if not tokens:
+        return []
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            if tokens:
-                clauses = []
-                params: list = []
-                for t in tokens:
-                    like = f"%{t}%"
-                    clauses.append(
-                        "(desc_prob ILIKE %s OR razoes_prob ILIKE %s OR "
-                        "categoria_prob ILIKE %s OR solucoes_prob ILIKE %s OR grupo_prob ILIKE %s)"
-                    )
-                    params.extend([like, like, like, like, like])
-                where = " OR ".join(clauses)
-                cur.execute(
-                    f"""
-                    SELECT id_prob, grupo_prob, categoria_prob, desc_prob,
-                           razoes_prob, solucoes_prob
-                    FROM public.ctdi_problemas_referencia
-                    WHERE {where}
-                    ORDER BY id_prob ASC
-                    LIMIT %s
-                    """,
-                    (*params, limit),
+            clauses = []
+            params: list = []
+            score_parts = []
+            for t in tokens:
+                like = f"%{t}%"
+                clauses.append(
+                    "(desc_prob ILIKE %s OR razoes_prob ILIKE %s OR "
+                    "categoria_prob ILIKE %s OR solucoes_prob ILIKE %s OR grupo_prob ILIKE %s)"
                 )
-                rows = cur.fetchall()
-                if rows:
-                    return [dict(r) for r in rows]
-
+                params.extend([like, like, like, like, like])
+                score_parts.append(
+                    "(CASE WHEN desc_prob ILIKE %s OR razoes_prob ILIKE %s OR "
+                    "categoria_prob ILIKE %s OR solucoes_prob ILIKE %s OR grupo_prob ILIKE %s "
+                    "THEN 1 ELSE 0 END)"
+                )
+                params.extend([like, like, like, like, like])
+            where = " OR ".join(clauses)
+            score_expr = " + ".join(score_parts)
             cur.execute(
-                """
+                f"""
                 SELECT id_prob, grupo_prob, categoria_prob, desc_prob,
-                       razoes_prob, solucoes_prob
+                       razoes_prob, solucoes_prob,
+                       ({score_expr}) AS match_score
                 FROM public.ctdi_problemas_referencia
-                ORDER BY id_prob ASC
+                WHERE {where}
+                ORDER BY match_score DESC, id_prob ASC
                 LIMIT %s
                 """,
-                (limit,),
+                (*params, limit),
             )
-            return [dict(r) for r in cur.fetchall()]
+            rows = cur.fetchall()
+            # Exige pelo menos 2 tokens batendo para não ancorar em "aula"/"aluno" genérico
+            out = []
+            for r in rows:
+                score = int(r.get("match_score") or 0)
+                if score < 2 and len(tokens) >= 2:
+                    continue
+                out.append(dict(r))
+            return out[:limit]
+
+
+_CORPUS_REF_CACHE: list[str] | None = None
+
+
+def _carregar_corpus_referencia_completo() -> list[str]:
+    """Tabela inteira de ctdi_problemas_referencia — barreira final (sem custo de IA)."""
+    global _CORPUS_REF_CACHE
+    if _CORPUS_REF_CACHE is not None:
+        return _CORPUS_REF_CACHE
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT desc_prob, razoes_prob, solucoes_prob
+                    FROM public.ctdi_problemas_referencia
+                    """
+                )
+                rows = cur.fetchall() or []
+        _CORPUS_REF_CACHE = corpus_textos_de_refs([dict(r) for r in rows])
+        print(
+            f"[wizard] corpus_ref carregado n={len(_CORPUS_REF_CACHE)}",
+            file=sys.stderr,
+        )
+    except Exception as exc:
+        print(f"[wizard] corpus_ref indisponível: {exc}", file=sys.stderr)
+        _CORPUS_REF_CACHE = []
+    return _CORPUS_REF_CACHE
 
 
 def _parse_duracao_min(val: object, default: int = 10) -> int:
@@ -434,36 +488,16 @@ def _plano_padrao(
     }
 
 
-def _fallback_payload(problema: str, contexto: str, refs: list[dict]) -> dict:
+def _fallback_payload(
+    problema: str,
+    contexto: str,
+    refs: list[dict],
+    corpus_refs: list[str] | None = None,
+) -> dict:
     ref = refs[0] if refs else None
-    causa_base = (ref or {}).get("razoes_prob") or "Baixo engajamento e falta de propósito compartilhado."
-    solucao = (ref or {}).get("solucoes_prob") or "Dinâmicas ativas e feedback rápido."
-    categoria = (ref or {}).get("categoria_prob") or "Sala de aula"
-    desc = (ref or {}).get("desc_prob") or problema
-
-    causas = [
-        {
-            "titulo": "Causa estrutural",
-            "descricao": str(causa_base)[:320],
-            "origem": "base_referencia" if ref else "heuristica",
-        },
-        {
-            "titulo": "Contexto da turma",
-            "descricao": (
-                f"No contexto «{contexto or 'sala de aula'}», o sintoma «{desc}» "
-                f"se manifesta de forma recorrente e precisa de intervenção prática."
-            )[:320],
-            "origem": "contexto_professor",
-        },
-        {
-            "titulo": "Lacuna de protagonismo",
-            "descricao": (
-                "Os estudantes não enxergam papel ativo na resolução do problema, "
-                "o que reduz responsabilidade coletiva e aprendizagem significativa."
-            ),
-            "origem": "heuristica",
-        },
-    ]
+    trecho = extrair_trecho_relato(problema)
+    corpus = corpus_refs if corpus_refs is not None else _carregar_corpus_referencia_completo()
+    causas = causas_somente_do_relato(problema, contexto, corpus)
 
     caminho_a = {
         "id": "A",
@@ -473,7 +507,7 @@ def _fallback_payload(problema: str, contexto: str, refs: list[dict]) -> dict:
         "quadrante": "criativas",
         "resumo": (
             f"Encaixe direto: empatizar, idear e prototipar uma resposta rápida "
-            f"ao desafio «{categoria}» em um ciclo de aula."
+            f"ao desafio «{trecho}» em um ciclo de aula."
         ),
         "por_que_usar": (
             "Quando o problema é concreto e a turma precisa gerar soluções próprias, "
@@ -484,10 +518,11 @@ def _fallback_payload(problema: str, contexto: str, refs: list[dict]) -> dict:
             "um micro-roteiro de intervenção; fecham com pitch de 60s."
         ),
         "hipotese_teste": (
-            f"Se aplicarmos Design Thinking Express a «{problema[:120]}», "
+            f"Se aplicarmos Design Thinking Express a partir de «{trecho}», "
             f"os alunos aprenderão a transformar empatia em protótipo acionável "
             f"em um timebox de 50 minutos."
         ),
+        "trecho_relato_usado": trecho,
         "inspiracao_caso": None,
         "ancoragem_de_para": None,
         "plano_eduscrum": _plano_from_db(
@@ -506,7 +541,7 @@ def _fallback_payload(problema: str, contexto: str, refs: list[dict]) -> dict:
         "quadrante": "analiticas",
         "resumo": (
             "Mudança de dinâmica: primeiro evidência coletiva, depois decisão "
-            f"de intervenção. Âncora: {str(solucao)[:100]}."
+            f"de intervenção sobre «{trecho}»."
         ),
         "por_que_usar": (
             "Quando há sintomas difusos, o Diagnóstico Coletivo (quadrante analítico) "
@@ -517,10 +552,11 @@ def _fallback_payload(problema: str, contexto: str, refs: list[dict]) -> dict:
             "prioriza 1 causa e define um micro-teste para a próxima ação."
         ),
         "hipotese_teste": (
-            f"Se rodarmos Diagnóstico Coletivo sobre «{problema[:120]}», "
+            f"Se rodarmos Diagnóstico Coletivo a partir de «{trecho}», "
             f"os alunos aprenderão a decidir com evidência compartilhada "
             f"antes de propor a intervenção."
         ),
+        "trecho_relato_usado": trecho,
         "inspiracao_caso": None,
         "ancoragem_de_para": None,
         "plano_eduscrum": _plano_from_db(
@@ -550,10 +586,11 @@ def _fallback_payload(problema: str, contexto: str, refs: list[dict]) -> dict:
             "apresentam em rodada rápida e recebem feedback com rubrica curta."
         ),
         "hipotese_teste": (
-            f"Se os alunos sintetizarem «{problema[:100]}» em Elevator Pitch, "
+            f"Se os alunos sintetizarem «{trecho}» em Elevator Pitch, "
             f"aprenderão a comunicar a proposta com clareza e a validar se o "
             f"público entende o valor em menos de 90 segundos."
         ),
+        "trecho_relato_usado": trecho,
         "inspiracao_caso": (
             "Formatos públicos de pitch curto em feiras de inovação escolar e "
             "hackathons educacionais, onde times defendem soluções em 1 minuto."
@@ -572,20 +609,26 @@ def _fallback_payload(problema: str, contexto: str, refs: list[dict]) -> dict:
 
     return {
         "resumo_analise": (
-            f"O desafio «{desc[:160]}» pede intervenção ativa: há sintomas de "
-            f"«{categoria}» que se resolvem melhor com metodologias Inov-Ativas "
-            f"ancoradas em evidência e entrega em aula."
+            f"Pelo que você descreveu, a turma precisa de uma abordagem mais ativa. "
+            f"Sugerimos três caminhos metodológicos para aplicar em sala — "
+            f"escolha o que melhor se encaixa na sua realidade."
         ),
         "causas_raiz": causas,
         "caminhos": [caminho_a, caminho_b, caminho_c],
         "hipotese_teste": None,
         "plano_eduscrum": None,
+        "trecho_relato_usado": trecho,
         "referencial": {
             "id_prob": (ref or {}).get("id_prob"),
             "grupo_prob": (ref or {}).get("grupo_prob"),
             "categoria_prob": (ref or {}).get("categoria_prob"),
-            "desc_prob": (ref or {}).get("desc_prob"),
+            # desc_prob NÃO vai para a UI como sintoma do professor
             "matches": len(refs),
+        },
+        "qualidade": {
+            "vinculo_relato_ok": True,
+            "possivel_vazamento": False,
+            "fonte": "fallback_local",
         },
     }
 
@@ -594,8 +637,15 @@ _IDS_RANKING = ("A", "B", "C")
 _TIPOS_RANKING = ("encaixe_direto", "encaixe_alternativo", "adaptacao_hibrida")
 
 
-def _normalizar_payload(raw: dict, problema: str, contexto: str, refs: list[dict]) -> dict:
-    base = _fallback_payload(problema, contexto, refs)
+def _normalizar_payload(
+    raw: dict,
+    problema: str,
+    contexto: str,
+    refs: list[dict],
+    corpus_refs: list[str] | None = None,
+) -> dict:
+    corpus = corpus_refs if corpus_refs is not None else _carregar_corpus_referencia_completo()
+    base = _fallback_payload(problema, contexto, refs, corpus)
     if not isinstance(raw, dict):
         return base
 
@@ -603,12 +653,18 @@ def _normalizar_payload(raw: dict, problema: str, contexto: str, refs: list[dict
     if isinstance(resumo, str) and resumo.strip():
         base["resumo_analise"] = resumo.strip()[:600]
 
-    causas = raw.get("causas_raiz") or base["causas_raiz"]
-    if isinstance(causas, list) and causas:
-        base["causas_raiz"] = causas[:3]
+    # NUNCA aceitar causas_raiz cruas do modelo/legado sem sanitizar
+    base["causas_raiz"] = sanitizar_causas_ia(
+        raw.get("causas") or raw.get("causas_raiz"),
+        problema=problema,
+        contexto=contexto,
+        refs_no_prompt=refs,
+        corpus_refs=corpus,
+    )
 
     caminhos_in = raw.get("caminhos") or []
     caminhos_out = []
+    trecho = extrair_trecho_relato(problema)
     for i, c in enumerate(caminhos_in[:3]):
         if not isinstance(c, dict):
             continue
@@ -616,7 +672,6 @@ def _normalizar_payload(raw: dict, problema: str, contexto: str, refs: list[dict
         plano = c.get("plano_eduscrum") or fallback["plano_eduscrum"]
         if not isinstance(plano, dict):
             plano = fallback["plano_eduscrum"]
-        # Preferir passos temáticos (com foco_da_metodologia_escolhida); viram cards do Kanban.
         passos = plano.get("dinamica_passo_a_passo") or c.get("dinamica_passo_a_passo")
         tarefas = (
             passos
@@ -639,6 +694,9 @@ def _normalizar_payload(raw: dict, problema: str, contexto: str, refs: list[dict
         else:
             plano = fallback["plano_eduscrum"]
 
+        hip = str(c.get("hipotese_teste") or fallback.get("hipotese_teste") or "")
+        if similaridade_texto(hip, str((refs[0] or {}).get("desc_prob") or "") if refs else "") >= 0.42:
+            hip = fallback.get("hipotese_teste") or hip
         caminhos_out.append(
             {
                 "id": str(c.get("id") or _IDS_RANKING[i]),
@@ -651,7 +709,8 @@ def _normalizar_payload(raw: dict, problema: str, contexto: str, refs: list[dict
                 "resumo": c.get("resumo") or fallback["resumo"],
                 "por_que_usar": c.get("por_que_usar") or fallback.get("por_que_usar"),
                 "dinamica_sala": c.get("dinamica_sala") or fallback.get("dinamica_sala"),
-                "hipotese_teste": c.get("hipotese_teste") or fallback["hipotese_teste"],
+                "hipotese_teste": hip,
+                "trecho_relato_usado": trecho,
                 "inspiracao_caso": c.get("inspiracao_caso")
                 if c.get("inspiracao_caso") is not None
                 else fallback.get("inspiracao_caso"),
@@ -666,7 +725,10 @@ def _normalizar_payload(raw: dict, problema: str, contexto: str, refs: list[dict
         caminhos_out = base["caminhos"]
 
     base["caminhos"] = caminhos_out
-    return base
+    base["trecho_relato_usado"] = trecho
+    return forcar_ancoragem_payload(
+        base, problema=problema, contexto=contexto, corpus_refs=corpus
+    )
 
 
 def _categoria_para_quadrante(categoria: str | None) -> str:
@@ -706,8 +768,10 @@ def _montar_caminho_hibrido(
     *,
     problema: str,
     contexto: str,
+    trecho_relato: str,
+    refs_no_prompt: list[dict] | None = None,
 ) -> dict:
-    """Costura: id_metodologia + gancho LLM → caminho completo com cards do DB."""
+    """Costura: id_metodologia + gancho/hipótese LLM → caminho com cards do DB."""
     mid = resolve_metodologia_id(opt.get("id_metodologia"))
     db_data = get_metodologia(mid) if mid else None
     if not db_data or not db_data.get("cards"):
@@ -725,12 +789,33 @@ def _montar_caminho_hibrido(
     nome = str(db_data.get("nome") or "Metodologia Inov-Ativa").strip()
     categoria = str(db_data.get("categoria") or "").strip()
     quadrante = _categoria_para_quadrante(categoria)
-    trecho = " ".join(problema.split())[:100]
+    trecho = trecho_relato or extrair_trecho_relato(problema)
+
+    # Hipótese: preferir a da IA se ancorada no relato e sem vazamento de desc_prob
+    hip_ia = str(opt.get("hipotese_teste") or "").strip()
+    refs = refs_no_prompt or []
+    hip_ok = False
+    if hip_ia:
+        corpus_local = corpus_textos_de_refs(refs)
+        vaza = vaza_contra_corpus(hip_ia, corpus_local, problema)[0]
+        ligada = vinculo_minimo_com_relato(hip_ia, problema)
+        hip_ok = (not vaza) and ligada
+    if hip_ok:
+        hipotese = hip_ia[:420]
+    else:
+        tema = frase_tema_do_relato(problema)
+        ctx_safe = contexto_seguro_para_ui(contexto, problema)
+        hipotese = (
+            f"Se aplicarmos {nome} ao desafio em torno de {tema}, "
+            f"os alunos aprenderão com a mecânica desta metodologia "
+            f"no cenário de {ctx_safe}."
+        )
+
     gancho_resumo = gancho[:360] if gancho else (
         f"Aplicação de {nome} ao desafio «{trecho}»."
     )
 
-    missao = f"Missão: aplicar {nome} a «{trecho}»."
+    missao = f"Missão: aplicar {nome} a «{trecho[:80]}»."
     plano = _plano_padrao(
         missao,
         cards,
@@ -750,15 +835,11 @@ def _montar_caminho_hibrido(
         "resumo": gancho_resumo,
         "por_que_usar": gancho_resumo,
         "dinamica_sala": gancho_resumo,
-        "hipotese_teste": (
-            f"Se aplicarmos {nome} a «{trecho}», "
-            f"os alunos aprenderão com a mecânica desta metodologia "
-            f"ancorada no contexto «{contexto or 'sala de aula'}»."
-        ),
+        "hipotese_teste": hipotese,
+        "trecho_relato_usado": trecho,
         "inspiracao_caso": None,
         "ancoragem_de_para": None,
         "plano_eduscrum": plano,
-        # Espelho compacto pedido na arquitetura híbrida (debug / futuros clientes).
         "nome": nome,
         "categoria": categoria,
         "cards": cards,
@@ -776,24 +857,37 @@ def _stitch_ranking_hibrido(
     problema: str,
     contexto: str,
     refs: list[dict],
+    corpus_refs: list[str] | None = None,
 ) -> dict:
     """
     Costura o JSON curto do LLM (A/B/C) com cards imutáveis do METODOLOGIAS_DB.
-    Mantém o contrato do frontend: resumo, causas_raiz, caminhos[].plano_eduscrum.
+    Causas/hipóteses ancoradas no relato; telemetria de vazamento sem IA extra.
     """
-    base = _fallback_payload(problema, contexto, refs)
+    corpus = corpus_refs if corpus_refs is not None else _carregar_corpus_referencia_completo()
+    base = _fallback_payload(problema, contexto, refs, corpus)
     if not isinstance(raw, dict):
         return base
 
-    # Formato legado (caminhos[]) — ainda normaliza se aparecer.
     if isinstance(raw.get("caminhos"), list) and raw["caminhos"]:
-        return _normalizar_payload(raw, problema, contexto, refs)
+        return _normalizar_payload(raw, problema, contexto, refs, corpus)
+
+    trecho_ia = str(raw.get("trecho_relato_usado") or "").strip()
+    if trecho_ia and jaccard_words(trecho_ia, problema) >= 0.12:
+        trecho = trecho_ia[:220]
+    else:
+        trecho = extrair_trecho_relato(problema)
 
     caminhos_out = []
     for i, letra in enumerate(_IDS_RANKING):
         opt = raw.get(letra)
         if not isinstance(opt, dict):
             continue
+        trecho_opt = str(opt.get("trecho_relato_usado") or "").strip()
+        trecho_uso = (
+            trecho_opt[:220]
+            if trecho_opt and jaccard_words(trecho_opt, problema) >= 0.12
+            else trecho
+        )
         caminhos_out.append(
             _montar_caminho_hibrido(
                 letra,
@@ -801,6 +895,8 @@ def _stitch_ranking_hibrido(
                 opt,
                 problema=problema,
                 contexto=contexto,
+                trecho_relato=trecho_uso,
+                refs_no_prompt=refs,
             )
         )
 
@@ -809,14 +905,68 @@ def _stitch_ranking_hibrido(
             f"Ranking híbrido incompleto: esperava A/B/C, veio {list(raw.keys())}"
         )
 
-    # resumo/causas: LLM híbrido não envia — heurística a partir do problema/refs.
-    trecho = " ".join(problema.split())[:160]
+    causas = sanitizar_causas_ia(
+        raw.get("causas") or raw.get("causas_raiz"),
+        problema=problema,
+        contexto=contexto,
+        refs_no_prompt=refs,
+        corpus_refs=corpus,
+    )
+
+    hipoteses = [c.get("hipotese_teste") or "" for c in caminhos_out]
+    textos_causas = [
+        f"{c.get('titulo', '')} {c.get('descricao', '')}" for c in causas
+    ]
+    qualidade = avaliar_qualidade(
+        problema=problema,
+        trecho_relato_usado=trecho,
+        textos_hipoteses=hipoteses + [c.get("resumo") or "" for c in caminhos_out],
+        textos_causas=textos_causas,
+        refs_no_prompt=refs,
+        n_causas_ia=contar_causas_ia(causas),
+        corpus_refs=corpus,
+    )
+    if (
+        qualidade.get("possivel_vazamento")
+        or qualidade.get("causas_enlatadas")
+        or qualidade.get("debug_ui")
+        or qualidade.get("causas_ia_insuficientes")
+        or qualidade.get("tokens_soltos")
+    ):
+        print(
+            f"[wizard] ALERTA qualidade vazamento={qualidade.get('vazamento_score')} "
+            f"enlatadas={qualidade.get('causas_enlatadas')} "
+            f"debug_ui={qualidade.get('debug_ui')} "
+            f"tokens_soltos={qualidade.get('tokens_soltos')} "
+            f"causas_ia={contar_causas_ia(causas)} "
+            f"ancoragem={qualidade.get('ancoragem_termos_ok')}",
+            file=sys.stderr,
+        )
+
     base["resumo_analise"] = (
-        f"Ranking híbrido para «{trecho}»: três metodologias Inov-Ativas "
-        f"roteadas pela IA e costuradas com mecânicas estáticas do banco."
+        "Analisamos o seu relato e sugerimos três caminhos metodológicos "
+        "para a turma. Cada opção parte do que você descreveu — "
+        "escolha a que melhor se encaixa no seu contexto."
     )[:600]
+    base["causas_raiz"] = causas
     base["caminhos"] = caminhos_out
-    return base
+    base["trecho_relato_usado"] = qualidade.get("trecho_relato_usado") or trecho
+    base["qualidade"] = {
+        "vinculo_relato_ok": qualidade.get("vinculo_relato_ok"),
+        "vinculo_relato_score": qualidade.get("vinculo_relato_score"),
+        "possivel_vazamento": qualidade.get("possivel_vazamento"),
+        "vazamento_score": qualidade.get("vazamento_score"),
+        "ancoragem_termos_ok": qualidade.get("ancoragem_termos_ok"),
+        "causas_enlatadas": qualidade.get("causas_enlatadas"),
+        "debug_ui": qualidade.get("debug_ui"),
+        "tokens_soltos": qualidade.get("tokens_soltos"),
+        "causas_ia_insuficientes": qualidade.get("causas_ia_insuficientes"),
+        "precisa_retry": qualidade.get("precisa_retry"),
+        "fonte": "hibrido_ia",
+    }
+    return forcar_ancoragem_payload(
+        base, problema=problema, contexto=contexto, corpus_refs=corpus
+    )
 
 
 @wizard_bp.post("/api/wizard/estruturar")
@@ -834,9 +984,23 @@ def estruturar_problema():
     data = request.get_json(silent=True) or {}
     problema = str(data.get("problema") or "").strip()
     contexto = str(data.get("contexto") or data.get("localizacao") or "").strip()
+    complementacao = str(data.get("complementacao") or "").strip()
+    # Complementação soma ao relato (não substitui) e força reprocessamento completo.
+    if complementacao:
+        marcador = "Complemento do professor:"
+        if marcador.lower() not in problema.lower() or complementacao.lower() not in problema.lower():
+            problema = f"{problema.rstrip()}\n\n{marcador} {complementacao}"
+        print(
+            f"[wizard] complementacao_aplicada chars={len(complementacao)}",
+            file=sys.stderr,
+        )
 
-    if len(problema) < 12:
-        return jsonify({"error": "Descreva o problema com pelo menos algumas frases."}), 400
+    # Checagem determinística ANTES de qualquer chamada de IA
+    motivo_curto = relato_insufficiente(problema)
+    if motivo_curto:
+        return jsonify({"error": motivo_curto, "code": "RELATO_CURTO"}), 400
+
+    corpus_refs = _carregar_corpus_referencia_completo()
 
     try:
         saldo = get_creditos_ia(int(id_clie))
@@ -861,33 +1025,56 @@ def estruturar_problema():
         print(f"[wizard] DB error: {exc}", file=sys.stderr)
         return jsonify({"error": "Falha ao consultar a base de problemas."}), 500
 
-    def _clip(val: object, n: int = 180) -> str:
+    # Âncoras de estilo: no máx. 2, texto curto — nunca empilhar a base
+    refs_prompt = refs[:WIZARD_REF_LIMIT]
+
+    def _clip(val: object, n: int = 70) -> str:
         s = " ".join(str(val or "").split())
         return s if len(s) <= n else s[: n - 1] + "…"
 
-    bloco_ref = "\n".join(
-        [
-            f"- [{r['id_prob']}] {_clip(r['grupo_prob'], 40)} › {_clip(r['categoria_prob'], 40)}: "
-            f"{_clip(r['desc_prob'])} | Causas: {_clip(r['razoes_prob'])} | "
-            f"Soluções: {_clip(r['solucoes_prob'])}"
-            for r in refs[:WIZARD_REF_LIMIT]
-        ]
-    ) or "Sem matches fortes — use heurística pedagógica sólida."
+    if refs_prompt:
+        bloco_ref = "\n".join(
+            [
+                f"- (estilo) {_clip(r.get('categoria_prob'), 36)}: {_clip(r.get('desc_prob'), 70)}"
+                for r in refs_prompt
+            ]
+        )
+    else:
+        bloco_ref = (
+            "- (estilo) Engajamento: turma dispersa precisa de papéis claros e entrega curta."
+        )
 
     system_prompt = build_estruturar_system_prompt(bloco_ref)
 
+    problema_limpo = texto_professor_limpo(problema) or problema
+    ctx_prompt = contexto_seguro_para_ui(contexto, problema, corpus_refs)
     user_content = (
-        f"PROBLEMA DO PROFESSOR:\n{problema}\n\n"
-        f"LOCALIZAÇÃO / CONTEXTO:\n{contexto or 'Não informado'}\n\n"
-        f"id_clie: {id_clie}"
+        f"PROBLEMA DO PROFESSOR:\n{problema_limpo}\n\n"
+        f"LOCALIZAÇÃO / CONTEXTO:\n{ctx_prompt}\n"
+    )
+    if complementacao:
+        user_content += (
+            "\nINSTRUÇÃO: o professor acabou de complementar o relato. "
+            "Reescreva as 3 causas do zero com esse detalhe novo — "
+            "não concatene o texto antigo de 'hipótese a aprofundar'.\n"
+        )
+
+    tokens_system = estimate_tokens(system_prompt)
+    tokens_user = estimate_tokens(user_content)
+    print(
+        f"[wizard] prompt_tokens_est system={tokens_system} user={tokens_user} "
+        f"total={tokens_system + tokens_user} refs={len(refs_prompt)}",
+        file=sys.stderr,
     )
 
     usou_fallback = False
+    usou_retry = False
     json_prefill = "{"
     model_id = WIZARD_BEDROCK_MODEL_ID or BEDROCK_MODEL_ID
+    raw = None
     try:
         bedrock = _get_bedrock_runtime_client()
-        # Uma única chamada curta: roteador A/B/C + ganchos (cards vêm do DB).
+        # Chamada 1: roteador A/B/C + hipóteses + trecho do relato
         raw = _invoke_estruturar_bedrock(
             bedrock=bedrock,
             model_id=model_id,
@@ -896,14 +1083,94 @@ def estruturar_problema():
             max_tokens=BEDROCK_MAX_TOKENS,
             json_prefill=json_prefill,
         )
-        payload = _stitch_ranking_hibrido(raw, problema, contexto, refs)
+        print(
+            f"[wizard] bedrock_ok keys={list(raw.keys()) if isinstance(raw, dict) else type(raw)}",
+            file=sys.stderr,
+        )
+        payload = _stitch_ranking_hibrido(
+            raw, problema, contexto, refs_prompt, corpus_refs
+        )
+
+        # Retry único e controlado se a checagem determinística falhar
+        q0 = payload.get("qualidade") or {}
+        if q0.get("precisa_retry"):
+            print(
+                f"[wizard] retry_unico motivo vinculo={q0.get('vinculo_relato_ok')} "
+                f"vazamento={q0.get('possivel_vazamento')} "
+                f"ancoragem={q0.get('ancoragem_termos_ok')} "
+                f"enlatadas={q0.get('causas_enlatadas')}",
+                file=sys.stderr,
+            )
+            user_retry = (
+                user_content
+                + "\n\nATENÇÃO: a resposta anterior ficou genérica ou desconectada. "
+                "Reescreva causas e hipotese_teste citando termos CONCRETOS do "
+                "PROBLEMA DO PROFESSOR (nomes próprios, lugares, turmas, prazos). "
+                "PROIBIDO usar faltas, leituras obrigatórias ou absenteísmo se isso "
+                "não estiver no relato."
+            )
+            raw2 = _invoke_estruturar_bedrock(
+                bedrock=bedrock,
+                model_id=model_id,
+                system_prompt=system_prompt,
+                user_content=user_retry,
+                max_tokens=BEDROCK_MAX_TOKENS,
+                json_prefill=json_prefill,
+            )
+            payload = _stitch_ranking_hibrido(
+                raw2, problema, contexto, refs_prompt, corpus_refs
+            )
+            usou_retry = True
+            q1 = dict(payload.get("qualidade") or {})
+            q1["retry_aplicado"] = True
+            payload["qualidade"] = q1
     except Exception as exc:
         print(f"[wizard] Bedrock/fallback: {exc}", file=sys.stderr)
-        payload = _fallback_payload(problema, contexto, refs)
+        payload = _fallback_payload(problema, contexto, refs_prompt, corpus_refs)
         usou_fallback = True
 
+    # Defesa determinística + barreira final (tabela inteira de refs)
+    payload = forcar_ancoragem_payload(
+        payload, problema=problema, contexto=contexto, corpus_refs=corpus_refs
+    )
+    payload = aplicar_barreira_final_payload(
+        payload, problema=problema, contexto=contexto, corpus_refs=corpus_refs
+    )
+    # Após complementação, nenhuma causa deve continuar pedindo complemento
+    if complementacao:
+        for c in payload.get("causas_raiz") or []:
+            if isinstance(c, dict):
+                c["precisa_complemento"] = False
+                c.pop("pergunta_complemento", None)
+
+    qualidade = dict(payload.get("qualidade") or {})
+    textos_c = [
+        f"{c.get('titulo', '')} {c.get('descricao', '')}"
+        for c in (payload.get("causas_raiz") or [])
+        if isinstance(c, dict)
+    ]
+    textos_h = [
+        c.get("hipotese_teste") or ""
+        for c in (payload.get("caminhos") or [])
+        if isinstance(c, dict)
+    ]
+    qualidade.update(
+        avaliar_qualidade(
+            problema=problema,
+            trecho_relato_usado=payload.get("trecho_relato_usado"),
+            textos_hipoteses=textos_h,
+            textos_causas=textos_c,
+            refs_no_prompt=refs_prompt,
+            n_causas_ia=contar_causas_ia(payload.get("causas_raiz")),
+            corpus_refs=corpus_refs,
+        )
+    )
+    qualidade["retry_aplicado"] = usou_retry
+    qualidade["complementacao"] = bool(complementacao)
+    qualidade["fonte"] = "fallback_local" if usou_fallback else qualidade.get("fonte") or "hibrido_ia"
+    payload["qualidade"] = qualidade
+
     creditos_restantes = saldo
-    # Consome crédito somente quando a IA respondeu com sucesso (não no fallback local)
     if not usou_fallback:
         try:
             novo = consumir_credito_ia(int(id_clie))
@@ -920,6 +1187,18 @@ def estruturar_problema():
         except Exception as exc:
             print(f"[wizard] erro ao debitar crédito: {exc}", file=sys.stderr)
 
+    print(
+        f"[wizard] qualidade vinculo_ok={qualidade.get('vinculo_relato_ok')} "
+        f"vazamento={qualidade.get('possivel_vazamento')} "
+        f"ancoragem={qualidade.get('ancoragem_termos_ok')} "
+        f"debug_ui={qualidade.get('debug_ui')} "
+        f"barreira={qualidade.get('barreira_final_bloqueios')} "
+        f"causas_ia={contar_causas_ia(payload.get('causas_raiz'))} "
+        f"retry={usou_retry} fallback={usou_fallback} "
+        f"complementacao={bool(complementacao)}",
+        file=sys.stderr,
+    )
+
     return jsonify(
         {
             "status": "success",
@@ -930,9 +1209,19 @@ def estruturar_problema():
             "caminhos": payload["caminhos"],
             "hipotese_teste": payload.get("hipotese_teste"),
             "plano_eduscrum": payload.get("plano_eduscrum"),
+            "trecho_relato_usado": payload.get("trecho_relato_usado"),
             "referencial": payload.get("referencial"),
             "fallback": usou_fallback,
             "creditos_ia": creditos_restantes,
+            "qualidade": qualidade,
+            "prompt_tokens_est": {
+                "system": tokens_system,
+                "user": tokens_user,
+                "total": tokens_system + tokens_user,
+                "refs": len(refs_prompt),
+                "retry": usou_retry,
+                "complementacao": bool(complementacao),
+            },
         }
     )
 

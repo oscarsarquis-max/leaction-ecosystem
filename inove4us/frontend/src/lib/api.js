@@ -113,6 +113,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ tipo, mensagem }),
     }),
+  /** Árvore do assistente (Hub CMS + fallback local). */
+  getAssistenteChat: () => request('/api/assistente-chat'),
   createBillingCheckout: (sku = 'golive-50') =>
     request('/api/billing/checkout', {
       method: 'POST',

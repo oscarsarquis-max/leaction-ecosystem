@@ -37,12 +37,16 @@ def get_conn():
 
 _creditos_ensured = False
 
-# Desafios/planos gratuitos na entrada (IA intensiva → cota reduzida).
-CREDITO_IA_FREEMIUM_DEFAULT = 3
+# Freemium Starter: 1 desafio IA. Aulas simples: 5/mês (ver plan_limits).
+CREDITO_IA_FREEMIUM_DEFAULT = 1
+PLAN_TIER_STARTER = "starter"
+PLAN_TIER_PRO = "profissional"
+PLAN_TIER_MENTOR = "mentor"
+FREEMIUM_AULAS_MES = 5
 
 
 def ensure_creditos_ia_column() -> None:
-    """Garante coluna freemium creditos_ia em ctdi_clie (default 3)."""
+    """Garante coluna freemium creditos_ia + plan_tier em ctdi_clie."""
     global _creditos_ensured
     if _creditos_ensured:
         return
@@ -60,6 +64,12 @@ def ensure_creditos_ia_column() -> None:
                 ALTER TABLE public.ctdi_clie
                     ALTER COLUMN creditos_ia
                     SET DEFAULT {int(CREDITO_IA_FREEMIUM_DEFAULT)};
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE public.ctdi_clie
+                    ADD COLUMN IF NOT EXISTS plan_tier VARCHAR(32) NOT NULL DEFAULT 'starter'
                 """
             )
             cur.execute(
@@ -90,7 +100,7 @@ def find_cliente_by_email(email: str) -> dict | None:
             cur.execute(
                 """
                 SELECT id_clie, nome_clie, mail_clie, empresa_clie,
-                       init_role, has_active_project, creditos_ia
+                       init_role, has_active_project, creditos_ia, plan_tier
                 FROM public.ctdi_clie
                 WHERE mail_clie IS NOT NULL
                   AND LOWER(TRIM(mail_clie)) = %s
@@ -104,7 +114,7 @@ def find_cliente_by_email(email: str) -> dict | None:
 
 
 def create_lead_solicitacao(*, nome: str, email: str, empresa: str) -> dict:
-    """Grava lead freemium em ctdi_clie (+ slot ctdi_matu). Novos leads: 3 créditos IA."""
+    """Grava lead freemium em ctdi_clie (+ slot ctdi_matu). Novos leads: 1 crédito IA."""
     nome = (nome or "").strip()
     email = (email or "").strip().lower()
     empresa = (empresa or "").strip() or None
@@ -118,11 +128,11 @@ def create_lead_solicitacao(*, nome: str, email: str, empresa: str) -> dict:
                 """
                 INSERT INTO public.ctdi_clie (
                     nome_clie, mail_clie, empresa_clie, init_role,
-                    has_active_project, justificativa_solo, creditos_ia
+                    has_active_project, justificativa_solo, creditos_ia, plan_tier
                 )
-                VALUES (%s, %s, %s, 'GENERAL', false, %s, %s)
+                VALUES (%s, %s, %s, 'GENERAL', false, %s, %s, 'starter')
                 RETURNING id_clie, nome_clie, mail_clie, empresa_clie,
-                          init_role, has_active_project, creditos_ia
+                          init_role, has_active_project, creditos_ia, plan_tier
                 """,
                 (
                     nome,
@@ -160,6 +170,89 @@ def get_creditos_ia(id_clie: int) -> int:
             if not row:
                 return 0
             return int(row[0] or 0)
+
+
+def get_plan_tier(id_clie: int) -> str:
+    ensure_creditos_ia_column()
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COALESCE(plan_tier, 'starter') FROM public.ctdi_clie WHERE id_clie = %s",
+                (int(id_clie),),
+            )
+            row = cur.fetchone()
+            if not row:
+                return PLAN_TIER_STARTER
+            tier = str(row[0] or PLAN_TIER_STARTER).strip().lower()
+            if tier in (PLAN_TIER_PRO, PLAN_TIER_MENTOR):
+                return tier
+            return PLAN_TIER_STARTER
+
+
+def set_plan_tier(id_clie: int, tier: str) -> str:
+    """Atualiza plan_tier (profissional|mentor|starter)."""
+    ensure_creditos_ia_column()
+    normalized = str(tier or PLAN_TIER_STARTER).strip().lower()
+    if normalized not in (PLAN_TIER_STARTER, PLAN_TIER_PRO, PLAN_TIER_MENTOR):
+        normalized = PLAN_TIER_STARTER
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE public.ctdi_clie
+                   SET plan_tier = %s
+                 WHERE id_clie = %s
+             RETURNING plan_tier
+                """,
+                (normalized, int(id_clie)),
+            )
+            row = cur.fetchone()
+            return str(row[0]) if row else normalized
+
+
+def count_aulas_simples_mes(id_clie: int) -> int:
+    """Conta aulas simples criadas no mês civil atual (por created_at)."""
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*)::int
+                  FROM public.inove_aulas_simples
+                 WHERE id_clie = %s
+                   AND date_trunc('month', COALESCE(created_at, CURRENT_TIMESTAMP))
+                       = date_trunc('month', CURRENT_TIMESTAMP)
+                """,
+                (int(id_clie),),
+            )
+            row = cur.fetchone()
+            return int(row[0] or 0) if row else 0
+
+
+def aulas_simples_quota(id_clie: int) -> dict:
+    """
+    Limite mensal de aulas (Dia a Dia) conforme plan_tier.
+    Starter: 5/mês. Profissional/Mentor: ilimitado.
+    """
+    tier = get_plan_tier(id_clie)
+    usados = count_aulas_simples_mes(id_clie)
+    if tier in (PLAN_TIER_PRO, PLAN_TIER_MENTOR):
+        return {
+            "tier": tier,
+            "limite": None,
+            "usados": usados,
+            "restantes": None,
+            "ilimitado": True,
+            "bloqueado": False,
+        }
+    restantes = max(0, FREEMIUM_AULAS_MES - usados)
+    return {
+        "tier": tier,
+        "limite": FREEMIUM_AULAS_MES,
+        "usados": usados,
+        "restantes": restantes,
+        "ilimitado": False,
+        "bloqueado": restantes <= 0,
+    }
 
 
 def consumir_credito_ia(id_clie: int) -> int | None:

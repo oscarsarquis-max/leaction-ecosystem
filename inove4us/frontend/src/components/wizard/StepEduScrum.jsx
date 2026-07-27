@@ -82,6 +82,7 @@ export default function StepEduScrum({
   problema,
   user,
   planoSession,
+  disciplinaId = null,
   onVoltar,
   onAgendaChanged,
   initialEventoId = null,
@@ -454,6 +455,7 @@ export default function StepEduScrum({
           .filter(Boolean)
           .join('\n'),
         plano_session: planoSession,
+        ...(disciplinaId != null ? { disciplina_id: disciplinaId } : {}),
         meta_json: {
           missao: plano?.missao || '',
           hipotese: hipotese || '',
@@ -461,6 +463,7 @@ export default function StepEduScrum({
           timebox_min: execucao.total,
           duracao_total_estimada_min: execucao.total,
           contexto_execucao: contextoExecucao,
+          ...(disciplinaId != null ? { disciplina_id: disciplinaId } : {}),
         },
         plan_data: planData,
         kanban_state: { tarefas: tasks },

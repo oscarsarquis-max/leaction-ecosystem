@@ -8,19 +8,44 @@ export type EntitlementRow = {
   kind: 'string' | 'number' | 'boolean';
 };
 
+/** Chaves EN legadas → PT (exibição e gravação canônica). */
+const KEY_ALIASES: Record<string, string> = {
+  tier: 'nivel',
+  credits: 'creditos',
+  subscription: 'assinatura',
+  entitlements: 'direitos',
+};
+
+function canonicalizeKey(key: string): string {
+  const k = key.trim();
+  return KEY_ALIASES[k] || k;
+}
+
 export function entitlementsFromMeta(
   meta: Record<string, unknown> | null | undefined
 ): EntitlementRow[] {
   const source =
-    meta && typeof meta.entitlements === 'object' && meta.entitlements
-      ? (meta.entitlements as Record<string, unknown>)
-      : meta && typeof meta === 'object'
-        ? meta
-        : {};
+    meta && typeof meta.direitos === 'object' && meta.direitos
+      ? (meta.direitos as Record<string, unknown>)
+      : meta && typeof meta.entitlements === 'object' && meta.entitlements
+        ? (meta.entitlements as Record<string, unknown>)
+        : meta && typeof meta === 'object'
+          ? meta
+          : {};
 
   const rows: EntitlementRow[] = [];
-  for (const [key, raw] of Object.entries(source)) {
-    if (key === 'entitlements' || key === 'features_bullets') continue;
+  const seen = new Set<string>();
+  for (const [rawKey, raw] of Object.entries(source)) {
+    if (
+      rawKey === 'entitlements' ||
+      rawKey === 'direitos' ||
+      rawKey === 'features_bullets'
+    ) {
+      continue;
+    }
+    const key = canonicalizeKey(rawKey);
+    if (seen.has(key)) continue;
+    seen.add(key);
     if (typeof raw === 'boolean') {
       rows.push({ key, value: raw ? 'true' : 'false', kind: 'boolean' });
     } else if (typeof raw === 'number') {
@@ -31,31 +56,52 @@ export function entitlementsFromMeta(
   }
   return rows.length
     ? rows
-    : [{ key: 'credits', value: '10', kind: 'number' }];
+    : [{ key: 'creditos', value: '10', kind: 'number' }];
 }
 
 export function metaFromEntitlements(rows: EntitlementRow[]): Record<string, unknown> {
-  const entitlements: Record<string, unknown> = {};
+  const direitos: Record<string, unknown> = {};
   for (const row of rows) {
-    const key = row.key.trim();
+    const key = canonicalizeKey(row.key);
     if (!key) continue;
     if (row.kind === 'boolean') {
-      entitlements[key] = ['true', '1', 'yes', 'sim'].includes(
+      direitos[key] = ['true', '1', 'yes', 'sim'].includes(
         row.value.trim().toLowerCase()
       );
     } else if (row.kind === 'number') {
       const n = Number(row.value);
-      entitlements[key] = Number.isFinite(n) ? n : 0;
+      direitos[key] = Number.isFinite(n) ? n : 0;
     } else {
-      entitlements[key] = row.value;
+      direitos[key] = row.value;
     }
   }
-  // Espelha credits no topo — checkout/fulfill lê meta_json.credits
-  const out: Record<string, unknown> = { entitlements };
-  if (entitlements.credits != null) {
-    out.credits = entitlements.credits;
+  // Espelha creditos no topo — checkout/fulfill lê meta_json.creditos
+  const out: Record<string, unknown> = { direitos };
+  if (direitos.creditos != null) {
+    out.creditos = direitos.creditos;
   }
   return out;
+}
+
+/** Rótulos amigáveis para cards do construtor. */
+export function direitoLabel(key: string): string {
+  const k = canonicalizeKey(key);
+  const labels: Record<string, string> = {
+    nivel: 'nível',
+    creditos: 'créditos',
+    assinatura: 'assinatura',
+    aulas_simples: 'aulas simples',
+    desafios_ativos: 'desafios ativos',
+  };
+  return labels[k] || k.replace(/_/g, ' ');
+}
+
+/** Valores amigáveis: -1 = ilimitado. */
+export function direitoValueLabel(value: unknown): string {
+  if (typeof value === 'boolean') return value ? 'sim' : 'não';
+  if (typeof value === 'number' && value === -1) return 'ilimitados';
+  if (value === '-1') return 'ilimitados';
+  return String(value);
 }
 
 type Props = {
@@ -72,9 +118,9 @@ export function EntitlementBuilder({ rows, onChange }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-stone-800">Features / Entitlements</p>
+          <p className="text-sm font-semibold text-stone-800">Direitos do plano</p>
           <p className="text-xs text-stone-500">
-            Defina o que o plano entrega (ex.: credits, premium_features).
+            Defina o que o plano entrega (ex.: creditos, nivel, assinatura).
           </p>
         </div>
         <button
@@ -98,7 +144,7 @@ export function EntitlementBuilder({ rows, onChange }: Props) {
             <input
               value={row.key}
               onChange={(e) => updateRow(index, { key: e.target.value })}
-              placeholder="chave (ex: credits)"
+              placeholder="chave (ex: creditos)"
               className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none ring-orange-200 focus:ring-2"
             />
             <select
@@ -111,7 +157,7 @@ export function EntitlementBuilder({ rows, onChange }: Props) {
               className="rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm outline-none ring-orange-200 focus:ring-2"
             >
               <option value="number">Número</option>
-              <option value="boolean">Boolean</option>
+              <option value="boolean">Sim/Não</option>
               <option value="string">Texto</option>
             </select>
             {row.kind === 'boolean' ? (
@@ -120,8 +166,8 @@ export function EntitlementBuilder({ rows, onChange }: Props) {
                 onChange={(e) => updateRow(index, { value: e.target.value })}
                 className="rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm outline-none ring-orange-200 focus:ring-2"
               >
-                <option value="true">true</option>
-                <option value="false">false</option>
+                <option value="true">sim</option>
+                <option value="false">não</option>
               </select>
             ) : (
               <input

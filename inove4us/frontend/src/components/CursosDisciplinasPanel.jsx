@@ -208,7 +208,7 @@ export default function CursosDisciplinasPanel({ periodo, onSchemaPending }) {
           {periodo.rotulo}
         </h3>
         <p className="text-xs text-bordo-soft">
-          Cadastro opcional — não bloqueia aulas avulsas no freemium.
+          Cadastro opcional — não bloqueia aulas avulsas no plano gratuito.
         </p>
       </div>
 

@@ -116,7 +116,7 @@ export function MercadoPagoSubscriptionBrick({
 
   useEffect(() => {
     if (!publicKey) {
-      onErrorRef.current('Chave pública do Mercado Pago não configurada (NEXT_PUBLIC_MP_PUBLIC_KEY).');
+      onErrorRef.current('Pagamento indisponível no momento. Tente novamente em instantes.');
       return;
     }
     ensureMercadoPagoInit(publicKey);
@@ -236,7 +236,7 @@ export function MercadoPagoSubscriptionBrick({
       }
       const msg =
         message.includes('Secure Fields') || message.includes('secure_fields')
-          ? 'O Brick do Mercado Pago não carregou (Public Key desatualizada). Use o botão "Pagar sandbox (sem Brick)" abaixo.'
+          ? 'Não foi possível carregar o formulário de pagamento. Tente novamente ou fale com o suporte.'
           : message || 'Erro ao carregar o formulário Mercado Pago. Recarregue a página e tente novamente.';
       setBrickIssue(msg);
       onErrorRef.current(msg);
@@ -294,12 +294,12 @@ export function MercadoPagoSubscriptionBrick({
         </p>
         {sandboxMode || publicKey.startsWith('TEST-') ? (
           <p className="mb-4 text-xs text-slate-500">
-            Sandbox: cartão <strong>5031 4332 1540 6351</strong>, CVV <strong>123</strong>, validade
-            futura, titular <strong>APRO</strong>, CPF <strong>123.456.789-09</strong>.
+            Ambiente de teste: use o cartão de demonstração indicado pelo suporte para simular o
+            pagamento.
           </p>
         ) : (
           <p className="mb-4 text-xs text-slate-500">
-            Ambiente de produção — informe os dados do cartão real.
+            Ambiente seguro — informe os dados do cartão do titular da compra.
           </p>
         )}
         {brickIssue ? (
@@ -311,7 +311,7 @@ export function MercadoPagoSubscriptionBrick({
         {!brickMounted ? (
           <div className="mb-3 flex items-center gap-2 py-6 text-sm text-slate-500">
             <Loader2 className="size-4 animate-spin" />
-            Montando formulário Mercado Pago...
+            Preparando o formulário de pagamento…
           </div>
         ) : null}
 

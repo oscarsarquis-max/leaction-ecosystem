@@ -840,8 +840,8 @@ function DashboardContent() {
                 }}
               >
                 {checkoutBrand
-                  ? `Pedido ${checkoutBrand.displayName} vinculado. Na proxima tela voce vera seus pedidos e o checkout com Mercado Pago.`
-                  : 'Pedido vinculado. Na próxima tela você verá seus pedidos e o checkout com Mercado Pago.'}
+                  ? `Pedido do ${checkoutBrand.displayName} vinculado. Na próxima tela você conclui o pagamento com segurança.`
+                  : 'Pedido vinculado. Na próxima tela você conclui o pagamento com segurança.'}
               </div>
             )}
 
@@ -995,13 +995,14 @@ function DashboardContent() {
               <div>
                 <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
                   <CreditCard size={20} style={{ color: checkoutBrand?.colors.accent }} />
-                  {checkoutBrand ? `Checkout ${checkoutBrand.displayName}` : 'Checkout'}
+                  {checkoutBrand
+                    ? `Pagamento · ${checkoutBrand.displayName}`
+                    : 'Pagamento'}
                 </h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Pedido <span className="font-mono text-xs">{checkoutParam}</span>
                   {checkoutOrder
-                    ? ` — ${checkoutPlanLabel || checkoutOrder.product_name}`
-                    : ''}
+                    ? `${checkoutPlanLabel || checkoutOrder.product_name || 'Plano escolhido'}`
+                    : 'Preparando seu pagamento'}
                   {checkoutPaymentAmount > 0 ? (
                     <>
                       {' '}
@@ -1023,7 +1024,7 @@ function DashboardContent() {
             </div>
 
             {!checkoutParam && (
-              <p className="text-sm text-red-600">Pedido de checkout invalido na URL.</p>
+              <p className="text-sm text-red-600">Não encontramos este pedido. Volte e escolha o plano novamente.</p>
             )}
 
             {checkoutOrder?.status === 'PAID' ? (
@@ -1050,35 +1051,27 @@ function DashboardContent() {
                     >
                       {mpSandboxMode ? (
                         <>
-                          Sandbox Mercado Pago: cartão <strong>5031 4332 1540 6351</strong>, CVV{' '}
-                          <strong>123</strong>, validade futura, titular <strong>APRO</strong> e CPF{' '}
-                          <strong>123.456.789-09</strong>. Valor cobrado: R${' '}
+                          Ambiente de teste: use o cartão indicado pelo suporte para simular o
+                          pagamento. Valor: R${' '}
                           {checkoutPaymentAmount.toFixed(2).replace('.', ',')}.
                           {email ? (
                             <>
                               {' '}
-                              Pedido vinculado a <strong>{email}</strong>
-                              {mpSandboxPayerEmail ? (
-                                <>
-                                  {' '}
-                                  (cobrança MP sandbox usa {mpSandboxPayerEmail} só no servidor).
-                                </>
-                              ) : null}
-                              .
+                              Conta: <strong>{email}</strong>.
                             </>
                           ) : null}
                         </>
                       ) : (
                         <>
-                          Pagamento em produção. Valor: R${' '}
+                          Pagamento seguro. Valor: R${' '}
                           {checkoutPaymentAmount.toFixed(2).replace('.', ',')}.
                           {email ? (
                             <>
                               {' '}
-                              Pedido vinculado a <strong>{email}</strong>.
+                              Conta: <strong>{email}</strong>.
                             </>
                           ) : null}{' '}
-                          Use um cartão real.
+                          Use o cartão do titular da compra.
                         </>
                       )}
                     </p>

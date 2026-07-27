@@ -156,6 +156,101 @@ function marketplaceOk(res: Response, body: unknown): boolean {
   return true;
 }
 
+function marketplaceOffersOk(res: Response, body: unknown): boolean {
+  if (!res.ok) return false;
+  if (body && typeof body === 'object' && 'offers' in body) {
+    return Array.isArray((body as { offers?: unknown }).offers);
+  }
+  return false;
+}
+
+function marketplaceVitrineOk(res: Response): boolean {
+  return res.ok;
+}
+
+/**
+ * Health sozinho mente — a UI usa /offers e /vitrine.
+ * Se health sobe mas a rota funcional quebra (ex.: dependência ausente), o monitor deve DOWN.
+ */
+async function probeMarketplace(): Promise<ServiceStatusItem> {
+  const base = marketplaceBase();
+  const health = await probeService(
+    'Marketplace API',
+    `${base}/api/marketplace/health`,
+    marketplaceOk
+  );
+
+  if (health.status !== 'UP') {
+    return {
+      ...health,
+      detail: health.detail || 'Plugin Marketplace (:4012) sem health OK',
+    };
+  }
+
+  const healthBody = await (async () => {
+    try {
+      const res = await fetch(`${base}/api/marketplace/health`, {
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+      });
+      return (await res.json()) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  })();
+
+  const [offers, vitrine] = await Promise.all([
+    probeService(
+      'Marketplace offers',
+      `${base}/api/marketplace/offers`,
+      marketplaceOffersOk
+    ),
+    probeService(
+      'Marketplace vitrine',
+      `${base}/api/marketplace/vitrine`,
+      marketplaceVitrineOk
+    ),
+  ]);
+
+  const latency = Math.max(
+    health.latency ?? 0,
+    offers.latency ?? 0,
+    vitrine.latency ?? 0
+  );
+
+  if (offers.status !== 'UP' || vitrine.status !== 'UP') {
+    const parts: string[] = [];
+    if (offers.status !== 'UP') {
+      parts.push(`/offers ${offers.status}${offers.detail ? ` (${offers.detail})` : ''}`);
+    }
+    if (vitrine.status !== 'UP') {
+      parts.push(`/vitrine ${vitrine.status}${vitrine.detail ? ` (${vitrine.detail})` : ''}`);
+    }
+    return {
+      name: 'Marketplace API',
+      status: offers.status === 'TIMEOUT' || vitrine.status === 'TIMEOUT' ? 'TIMEOUT' : 'DOWN',
+      latency,
+      lastChecked: new Date().toISOString(),
+      detail: `Health OK, mas rota funcional falhou: ${parts.join('; ')}`,
+    };
+  }
+
+  const mlReady = healthBody?.ml_tokens_ready === true;
+  const detailParts = [
+    'Plugin · health + offers + vitrine',
+    mlReady ? 'ML tokens OK' : 'ml_tokens_ready=false (busca live ML limitada; fallback pode valer)',
+  ];
+
+  return {
+    name: 'Marketplace API',
+    status: 'UP',
+    latency,
+    lastChecked: new Date().toISOString(),
+    detail: detailParts.join(' · '),
+  };
+}
+
 function frontendOk(res: Response, body: unknown): boolean {
   if (!res.ok) return false;
   if (body && typeof body === 'object' && 'ok' in body) {
@@ -196,11 +291,7 @@ export async function GET(request: Request) {
         return { ...item, appId };
       })
     ),
-    probeService(
-      'Marketplace API',
-      `${marketplaceBase()}/api/marketplace/health`,
-      marketplaceOk
-    ),
+    probeMarketplace(),
     probeService('ActionHub Frontend', `${origin}/api/health`, frontendOk),
   ]);
 

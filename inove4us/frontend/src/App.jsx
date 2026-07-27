@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthBalanceSync, AuthProvider, useAuth } from './lib/auth'
 import BrandLogo from './components/BrandLogo'
-import CoCriacaoEntry from './components/CoCriacaoEntry'
+import AssistenteChat from './components/AssistenteChat'
 import CrmPageTracker from './components/CrmPageTracker'
 import Acesso from './pages/Acesso'
 import PaymentFailurePage from './pages/billing/PaymentFailurePage'
@@ -34,7 +34,7 @@ function ProtectedRoute({ children }) {
   return (
     <>
       {children}
-      <CoCriacaoEntry />
+      <AssistenteChat />
     </>
   )
 }

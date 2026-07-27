@@ -28,7 +28,7 @@ export default function PaymentPendingPage() {
           Pagamento em análise
         </h1>
         <p className="mt-3 text-sm text-bordo-soft">
-          Assim que o Mercado Pago confirmar, seus créditos serão liberados automaticamente.
+          Assim que o pagamento for confirmado, seus desafios serão liberados automaticamente.
         </p>
         <Link to="/mesa-do-inovador" className="btn-primary mt-8 inline-flex !px-5 !py-3 text-sm">
           Voltar para o início

@@ -30,7 +30,7 @@ export function CheckoutPayerEmailField({
           id="checkout-payer-email"
           type="email"
           autoComplete="email"
-          placeholder="voce@empresa.com"
+          placeholder="voce@escola.com.br"
           disabled={disabled}
           className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-600 focus:ring-2 focus:ring-red-600/20 disabled:cursor-not-allowed disabled:bg-slate-100"
           value={value}

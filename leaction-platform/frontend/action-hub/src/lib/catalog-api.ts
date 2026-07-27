@@ -11,6 +11,9 @@ export type CatalogPlanPublic = {
   currency: string;
   features: string[];
   credits: number | null;
+  period_months?: number | null;
+  periodicidade?: string | null;
+  recommended?: boolean;
 };
 
 export function formatCatalogCurrency(value: number, currency = 'BRL'): string {
@@ -29,17 +32,32 @@ export async function fetchCatalogPlans(appId: string): Promise<CatalogPlanPubli
   if (!id) return [];
   const res = await axios.get(`${getHubApiBase()}/v1/catalog/${encodeURIComponent(id)}`);
   const plans = Array.isArray(res.data?.plans) ? res.data.plans : [];
-  return plans.map((p: CatalogPlanPublic) => ({
-    id: String(p.id),
-    app_id: String(p.app_id || id),
-    sku: String(p.sku || ''),
-    name: String(p.name || ''),
-    type: String(p.type || 'plan'),
-    price: Number(p.price) || 0,
-    currency: String(p.currency || 'BRL'),
-    features: Array.isArray(p.features) ? p.features.map(String) : [],
-    credits: p.credits != null && Number.isFinite(Number(p.credits)) ? Number(p.credits) : null,
-  }));
+  return plans.map((p: Record<string, unknown>) => {
+    const meta =
+      p.meta_json && typeof p.meta_json === 'object' && !Array.isArray(p.meta_json)
+        ? (p.meta_json as Record<string, unknown>)
+        : {};
+    return {
+      id: String(p.id),
+      app_id: String(p.app_id || id),
+      sku: String(p.sku || ''),
+      name: String(p.name || ''),
+      type: String(p.type || 'plan'),
+      price: Number(p.price) || 0,
+      currency: String(p.currency || 'BRL'),
+      features: Array.isArray(p.features) ? p.features.map(String) : [],
+      credits:
+        p.credits != null && Number.isFinite(Number(p.credits)) ? Number(p.credits) : null,
+      period_months:
+        meta.period_months != null && Number.isFinite(Number(meta.period_months))
+          ? Number(meta.period_months)
+          : meta.meses != null && Number.isFinite(Number(meta.meses))
+            ? Number(meta.meses)
+            : null,
+      periodicidade: meta.periodicidade != null ? String(meta.periodicidade) : null,
+      recommended: Boolean(meta.recommended ?? meta.recomendado),
+    };
+  });
 }
 
 export async function startCatalogCheckout(payload: {

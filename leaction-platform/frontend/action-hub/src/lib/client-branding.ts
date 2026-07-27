@@ -62,7 +62,7 @@ const INOVE4US_BRAND: ClientBrandTheme = {
   id: 'inove4us',
   displayName: 'inove4us',
   productLabel: 'Mesa do Inovador',
-  checkoutTitle: 'Upgrade inove4us',
+  checkoutTitle: 'Escolher seu plano',
   logo: '/brands/inove4us.png',
   logoAlt: 'inove4us — Mesa do Inovador',
   colors: {

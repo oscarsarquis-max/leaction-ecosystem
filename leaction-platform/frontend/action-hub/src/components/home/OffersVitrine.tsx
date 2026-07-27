@@ -273,9 +273,9 @@ export function OffersVitrine() {
               return (
                 <li key={offer.id}>
                   <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition hover:border-orange-200 hover:shadow-md">
-                    <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-t-xl bg-stone-100">
+                    <div className="relative h-44 w-full shrink-0 overflow-hidden rounded-t-xl bg-orange-50">
                       <MarketplaceProductImage
-                        src={offer.image}
+                        src={offer.image || '/marketplace/placeholders/default.svg'}
                         title={offer.title}
                       />
                     </div>

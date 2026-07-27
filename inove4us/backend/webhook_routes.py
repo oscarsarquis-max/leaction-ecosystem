@@ -8,7 +8,12 @@ import sys
 import jwt
 from flask import Blueprint, jsonify, request
 
-from db import adicionar_creditos_ia, find_cliente_by_email, upsert_hub_notice
+from db import (
+    adicionar_creditos_ia,
+    find_cliente_by_email,
+    set_plan_tier,
+    upsert_hub_notice,
+)
 
 webhook_bp = Blueprint("actionhub_webhooks", __name__)
 
@@ -87,13 +92,41 @@ def _credits_delta(payload: dict) -> int:
         if total > 0:
             return total
 
-    for key in ("credits", "quantidade", "quantity"):
+    for key in ("creditos", "credits", "quantidade", "quantity"):
         if key in payload and payload[key] is not None:
             try:
                 return max(0, int(payload[key]))
             except (TypeError, ValueError):
                 continue
     return 0
+
+
+def _resolve_tier_from_payload(payload: dict) -> str | None:
+    """Mapeia SKU / direitos.nivel (ou legado entitlements.tier) → plan_tier local."""
+    direitos = payload.get("direitos") or payload.get("entitlements") or {}
+    if not isinstance(direitos, dict):
+        direitos = {}
+    tier = str(
+        payload.get("nivel")
+        or payload.get("tier")
+        or direitos.get("nivel")
+        or direitos.get("tier")
+        or ""
+    ).strip().lower()
+    if tier in ("profissional", "mentor", "starter"):
+        return tier
+
+    sku = str(payload.get("sku") or "").strip().upper()
+    if not sku and isinstance(payload.get("items"), list):
+        for item in payload["items"]:
+            if isinstance(item, dict) and item.get("sku"):
+                sku = str(item["sku"]).strip().upper()
+                break
+    if sku.startswith("INOVE4US_PRO"):
+        return "profissional"
+    if sku.startswith("INOVE4US_MENTOR") or sku.startswith("GOLIVE"):
+        return "mentor"
+    return None
 
 
 def _handle_credits_granted(payload: dict) -> dict:
@@ -115,9 +148,15 @@ def _handle_credits_granted(payload: dict) -> dict:
         )
         return {"handled": False, "reason": "user_not_found", "subject_id": subject_id}
 
+    id_clie = int(cliente["id_clie"])
+    tier = _resolve_tier_from_payload(payload)
+    plan_tier = None
+    if tier in ("profissional", "mentor"):
+        plan_tier = set_plan_tier(id_clie, tier)
+
     if delta <= 0:
         print(
-            f"[actionhub-webhook] CREDITS_GRANTED: delta=0 mail={subject_id}",
+            f"[actionhub-webhook] CREDITS_GRANTED: delta=0 mail={subject_id} tier={plan_tier}",
             file=sys.stderr,
         )
         return {
@@ -125,18 +164,20 @@ def _handle_credits_granted(payload: dict) -> dict:
             "subject_id": subject_id,
             "credits_added": 0,
             "creditos_ia": int(cliente.get("creditos_ia") or 0),
+            "plan_tier": plan_tier,
         }
 
-    novo = adicionar_creditos_ia(int(cliente["id_clie"]), delta)
+    novo = adicionar_creditos_ia(id_clie, delta)
     print(
         f"[actionhub-webhook] CREDITS_GRANTED mail={subject_id} "
-        f"+{delta} -> saldo={novo}"
+        f"+{delta} -> saldo={novo} tier={plan_tier}"
     )
     return {
         "handled": True,
         "subject_id": subject_id,
         "credits_added": delta,
         "creditos_ia": novo,
+        "plan_tier": plan_tier,
     }
 
 
@@ -146,8 +187,18 @@ def _handle_contract_activated(payload: dict) -> dict:
         f"[actionhub-webhook] CONTRACT_ACTIVATED recebido "
         f"subject_id={subject_id or '-'} contract_id={payload.get('contract_id')}"
     )
-    # Premium / entitlements persistidos — fase futura
-    return {"handled": True, "logged": True, "subject_id": subject_id or None}
+    plan_tier = None
+    if subject_id:
+        cliente = find_cliente_by_email(subject_id)
+        tier = _resolve_tier_from_payload(payload)
+        if cliente and tier in ("profissional", "mentor"):
+            plan_tier = set_plan_tier(int(cliente["id_clie"]), tier)
+    return {
+        "handled": True,
+        "logged": True,
+        "subject_id": subject_id or None,
+        "plan_tier": plan_tier,
+    }
 
 
 def _handle_payment_notice(payload: dict) -> dict:

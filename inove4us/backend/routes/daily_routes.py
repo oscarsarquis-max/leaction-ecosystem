@@ -473,6 +473,28 @@ def planejar_aula():
 
     id_clie = int(user["id_clie"])
     try:
+        from db import aulas_simples_quota
+
+        quota = aulas_simples_quota(id_clie)
+        if quota.get("bloqueado"):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": (
+                            "No plano gratuito você pode planejar até 5 aulas simples por mês. "
+                            "Faça o upgrade para continuar sem limites."
+                        ),
+                        "code": "AULAS_MES_LIMIT",
+                        "aulas_mes": quota,
+                    }
+                ),
+                402,
+            )
+    except Exception as exc:
+        print(f"[daily] aviso quota aulas: {exc}", file=sys.stderr)
+
+    try:
         with get_conn() as conn:
             _prepare_conn(conn)
             with conn.cursor(cursor_factory=RealDictCursor) as cur:

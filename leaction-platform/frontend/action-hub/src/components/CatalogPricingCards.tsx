@@ -16,6 +16,15 @@ type Props = {
   highlightMiddle?: boolean;
 };
 
+function periodLabel(plan: CatalogPlanPublic): string | null {
+  const months = plan.period_months;
+  const raw = (plan.periodicidade || '').toLowerCase();
+  if (raw.includes('anual') || months === 12) return '/ano';
+  if (raw.includes('mensal') || months === 1) return '/mês';
+  if (plan.type === 'credit_pack') return 'avulso';
+  return null;
+}
+
 export function CatalogPricingCards({
   plans,
   brand,
@@ -27,7 +36,7 @@ export function CatalogPricingCards({
   if (!plans.length) {
     return (
       <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-600">
-        Nenhum plano ativo no catálogo. Cadastre em Admin → Planos.
+        Não há planos disponíveis no momento. Tente novamente em breve.
       </p>
     );
   }
@@ -37,9 +46,12 @@ export function CatalogPricingCards({
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
       {plans.map((plan, index) => {
-        const isHighlight = highlightMiddle && plans.length > 1 && index === middleIndex;
+        const isHighlight =
+          Boolean(plan.recommended) ||
+          (highlightMiddle && !plans.some((p) => p.recommended) && plans.length > 1 && index === middleIndex);
         const isSelected = selectedSku === plan.sku;
         const isLoading = loadingSku === plan.sku;
+        const period = periodLabel(plan);
 
         return (
           <article
@@ -71,8 +83,17 @@ export function CatalogPricingCards({
             <div className="mt-4">
               <p className="text-3xl font-black text-slate-900">
                 {formatCatalogCurrency(plan.price, plan.currency)}
+                {period ? (
+                  <span className="ml-1 text-base font-semibold text-slate-500">{period}</span>
+                ) : null}
               </p>
-              {plan.credits != null ? (
+              {period === '/mês' ? (
+                <p className="mt-1 text-xs font-medium text-slate-500">cobrança mensal</p>
+              ) : null}
+              {period === '/ano' ? (
+                <p className="mt-1 text-xs font-medium text-slate-500">pagamento anual antecipado</p>
+              ) : null}
+              {plan.type === 'credit_pack' && plan.credits != null ? (
                 <p
                   className="mt-3 inline-flex rounded-lg px-3 py-1.5 text-sm font-bold"
                   style={{
@@ -80,22 +101,17 @@ export function CatalogPricingCards({
                     backgroundColor: `${brand.colors.accent}14`,
                   }}
                 >
-                  +{plan.credits} créditos
+                  +{plan.credits} desafio{plan.credits === 1 ? '' : 's'}
                 </p>
-              ) : (
-                <p className="mt-3 text-sm font-semibold text-slate-500">
-                  {plan.type === 'credit_pack' ? 'Pacote de créditos' : 'Plano'}
-                </p>
-              )}
+              ) : null}
             </div>
 
             <ul className="mt-6 flex-1 space-y-3">
               {(plan.features || []).map((beneficio) => (
-                <li key={beneficio} className="flex items-start gap-2 text-sm text-slate-700">
+                <li key={beneficio} className="flex gap-2 text-sm text-slate-700">
                   <CheckCircle2
-                    className="mt-0.5 size-4 shrink-0"
-                    style={{ color: brand.colors.success }}
-                    aria-hidden
+                    className="mt-0.5 h-4 w-4 shrink-0"
+                    style={{ color: brand.colors.accent }}
                   />
                   <span>{beneficio}</span>
                 </li>
@@ -104,18 +120,20 @@ export function CatalogPricingCards({
 
             <button
               type="button"
-              disabled={!!loadingSku}
+              disabled={Boolean(loadingSku)}
               onClick={() => onSelect(plan)}
-              className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white transition disabled:cursor-wait disabled:opacity-70"
+              className="mt-8 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white transition hover:opacity-95 disabled:cursor-wait disabled:opacity-70"
               style={{ backgroundColor: brand.colors.accent }}
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                  Abrindo pagamento…
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Preparando…
                 </>
+              ) : plan.type === 'credit_pack' ? (
+                'Comprar agora'
               ) : (
-                'Continuar para pagamento'
+                'Quero este plano'
               )}
             </button>
           </article>

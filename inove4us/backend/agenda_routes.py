@@ -296,21 +296,22 @@ def grafo_realizacoes():
                 """
                 params: list = [id_clie]
                 if periodo_meta is not None:
+                    # Disciplina do período: só se a data cair no intervalo.
+                    # Sem disciplina: mesma regra de data (antes sumiam fora do range
+                    # enquanto eventos com disciplina apareciam mesmo fora — assimétrico).
                     sql += """
+                       AND e.data_evento::date >= %s
+                       AND e.data_evento::date <= %s
                        AND (
                             p.id = %s
-                            OR (
-                                e.disciplina_id IS NULL
-                                AND e.data_evento::date >= %s
-                                AND e.data_evento::date <= %s
-                            )
+                            OR e.disciplina_id IS NULL
                        )
                     """
                     params.extend(
                         [
-                            periodo_id,
                             periodo_meta["data_inicio"],
                             periodo_meta["data_fim"],
+                            periodo_id,
                         ]
                     )
                 sql += " ORDER BY e.data_evento ASC, e.id_evento ASC"
@@ -580,6 +581,9 @@ def registrar_aulas():
     titulo_base = (data.get("titulo") or "Aula EduScrum").strip()[:140]
     nota_texto = (data.get("nota_texto") or "").strip() or None
     plano_session = (data.get("plano_session") or "").strip() or None
+    disciplina_raw = data.get("disciplina_id")
+    if disciplina_raw in ("", None):
+        disciplina_raw = None
 
     plan_data_obj = data.get("plan_data")
     if isinstance(plan_data_obj, str) and plan_data_obj.strip():
@@ -649,6 +653,33 @@ def registrar_aulas():
         with get_conn() as conn:
             _ensure_table(conn)
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                disciplina_id = None
+                if disciplina_raw is not None:
+                    try:
+                        disciplina_id = int(disciplina_raw)
+                    except (TypeError, ValueError):
+                        return jsonify({"success": False, "error": "disciplina_id inválido"}), 400
+                    cur.execute(
+                        """
+                        SELECT d.id
+                          FROM public.inove_disciplinas d
+                          JOIN public.inove_cursos c ON c.id = d.curso_id
+                          JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
+                          JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+                         WHERE d.id = %s
+                           AND i.id_clie = %s
+                           AND d.ativo = TRUE
+                           AND c.ativo = TRUE
+                           AND p.ativo = TRUE
+                           AND i.ativo = TRUE
+                        """,
+                        (disciplina_id, user["id_clie"]),
+                    )
+                    if not cur.fetchone():
+                        return jsonify(
+                            {"success": False, "error": "Disciplina não encontrada ou sem permissão"}
+                        ), 404
+
                 for slot in slots:
                     dia = slot["data"]
                     turma = slot["turma"]
@@ -737,11 +768,11 @@ def registrar_aulas():
                             (id_clie, data_evento, titulo, nota_texto, status, tipo,
                              meta_json, plano_session, plan_data, kanban_state,
                              turma, turno, modo_execucao, id_evento_pai,
-                             origem)
+                             disciplina_id, origem)
                         VALUES (%s, %s, %s, %s, 'planejado', 'aula_eduscrum',
                                 %s::jsonb, %s, %s::jsonb, %s::jsonb,
                                 %s, %s, %s, %s,
-                                'wizard_ia')
+                                %s, 'wizard_ia')
                         RETURNING {SELECT_COLS}
                         """,
                         (
@@ -761,6 +792,7 @@ def registrar_aulas():
                             turno,
                             modo,
                             id_pai,
+                            disciplina_id,
                         ),
                     )
                     criados.append(_serialize(dict(cur.fetchone())))

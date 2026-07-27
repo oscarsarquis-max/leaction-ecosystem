@@ -7,6 +7,7 @@ import {
   Loader2,
   Radio,
   RefreshCw,
+  RotateCcw,
   Server,
   ServerCrash,
   Timer,
@@ -23,7 +24,21 @@ type ServiceStatusItem = {
   detail?: string;
 };
 
+type MitigateService = 'marketplace' | 'gateway';
+
 const POLL_MS = 30_000;
+
+function mitigationFor(
+  name: string
+): { service: MitigateService; label: string } | null {
+  if (name === 'Marketplace API') {
+    return { service: 'marketplace', label: 'Reiniciar Marketplace' };
+  }
+  if (name === 'Action Pay' || name === 'Plan Management') {
+    return { service: 'gateway', label: 'Reiniciar Gateway' };
+  }
+  return null;
+}
 
 function formatCheckedAt(iso: string | null | undefined) {
   if (!iso) return '—';
@@ -68,10 +83,19 @@ function StatusBadge({ status }: { status: ServiceStatus }) {
   );
 }
 
-function ServiceCard({ service }: { service: ServiceStatusItem }) {
+function ServiceCard({
+  service,
+  mitigating,
+  onMitigate,
+}: {
+  service: ServiceStatusItem;
+  mitigating: boolean;
+  onMitigate?: (svc: MitigateService) => void;
+}) {
   const down = service.status === 'DOWN' || service.status === 'TIMEOUT';
   const Icon =
     service.status === 'UP' ? CheckCircle2 : service.status === 'TIMEOUT' ? Timer : ServerCrash;
+  const action = mitigationFor(service.name);
 
   return (
     <article
@@ -121,6 +145,28 @@ function ServiceCard({ service }: { service: ServiceStatusItem }) {
           </dd>
         </div>
       </dl>
+
+      {action && onMitigate ? (
+        <div className="mt-4 border-t border-stone-100 pt-3">
+          <button
+            type="button"
+            disabled={mitigating}
+            onClick={() => onMitigate(action.service)}
+            className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition disabled:opacity-60 ${
+              down
+                ? 'bg-orange-500 text-white hover:bg-orange-400'
+                : 'border border-stone-200 bg-stone-50 text-stone-800 hover:bg-stone-100'
+            }`}
+          >
+            {mitigating ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <RotateCcw className="size-4" aria-hidden />
+            )}
+            {action.label}
+          </button>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -141,6 +187,10 @@ export function EcosystemMonitor() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mitigateMsg, setMitigateMsg] = useState<string | null>(null);
+  const [mitigatingService, setMitigatingService] = useState<MitigateService | null>(
+    null
+  );
   const [secondsLeft, setSecondsLeft] = useState(POLL_MS / 1000);
   const inFlight = useRef(false);
 
@@ -233,6 +283,54 @@ export function EcosystemMonitor() {
     [token]
   );
 
+  const runMitigation = useCallback(
+    async (service: MitigateService) => {
+      const auth = String(token || '').trim();
+      if (!auth || mitigatingService) return;
+
+      const label = service === 'marketplace' ? 'Marketplace' : 'Gateway';
+      if (
+        !window.confirm(
+          `Reiniciar ${label} agora?\n\nIsso encerra o processo local e sobe de novo (pode levar ~30–60s).`
+        )
+      ) {
+        return;
+      }
+
+      setMitigatingService(service);
+      setMitigateMsg(`Reiniciando ${label}…`);
+      try {
+        const res = await fetch('/api/sys/mitigate', {
+          method: 'POST',
+          cache: 'no-store',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${auth}`,
+          },
+          body: JSON.stringify({ action: 'restart', service }),
+          signal: AbortSignal.timeout(120_000),
+        });
+        const body = (await res.json().catch(() => ({}))) as {
+          ok?: boolean;
+          message?: string;
+          error?: string;
+        };
+        if (!res.ok || !body.ok) {
+          throw new Error(body.message || body.error || `HTTP ${res.status}`);
+        }
+        setMitigateMsg(body.message || `${label} reiniciado.`);
+        await loadStatus(true);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Falha na mitigação';
+        setMitigateMsg(`Falha: ${message}`);
+      } finally {
+        setMitigatingService(null);
+      }
+    },
+    [token, mitigatingService, loadStatus]
+  );
+
   useEffect(() => {
     void loadStatus(false);
   }, [loadStatus]);
@@ -251,6 +349,12 @@ export function EcosystemMonitor() {
     return () => window.clearInterval(tick);
   }, []);
 
+  useEffect(() => {
+    if (!mitigateMsg) return undefined;
+    const t = window.setTimeout(() => setMitigateMsg(null), 8000);
+    return () => window.clearTimeout(t);
+  }, [mitigateMsg]);
+
   const upCount = services.filter((s) => s.status === 'UP').length;
   const total = services.length;
 
@@ -266,8 +370,8 @@ export function EcosystemMonitor() {
             Status do Ecossistema
           </h1>
           <p className="mt-1 max-w-xl text-sm text-stone-500">
-            Monitoramento dos serviços internos do ActionHub (Action Pay, Plan Management,
-            Marketplace, Postgres e Frontend).
+            Monitoramento dos serviços internos do ActionHub. Quando algo falha,
+            use a mitigação rápida (reinício) no card do serviço.
           </p>
         </div>
 
@@ -279,7 +383,7 @@ export function EcosystemMonitor() {
           <button
             type="button"
             onClick={() => void loadStatus(true)}
-            disabled={refreshing || loading}
+            disabled={refreshing || loading || mitigatingService !== null}
             className="inline-flex items-center gap-2 rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-50 disabled:opacity-60"
           >
             {refreshing || loading ? (
@@ -291,6 +395,18 @@ export function EcosystemMonitor() {
           </button>
         </div>
       </header>
+
+      {mitigateMsg ? (
+        <div
+          className={`rounded-xl border px-4 py-3 text-sm ${
+            mitigateMsg.startsWith('Falha')
+              ? 'border-red-200 bg-red-50 text-red-800'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+          }`}
+        >
+          {mitigateMsg}
+        </div>
+      ) : null}
 
       {!loading && total > 0 ? (
         <div className="rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
@@ -316,9 +432,20 @@ export function EcosystemMonitor() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {services.map((service) => (
-            <ServiceCard key={service.name} service={service} />
-          ))}
+          {services.map((service) => {
+            const action = mitigationFor(service.name);
+            return (
+              <ServiceCard
+                key={service.name}
+                service={service}
+                mitigating={
+                  mitigatingService !== null &&
+                  action?.service === mitigatingService
+                }
+                onMitigate={action ? runMitigation : undefined}
+              />
+            );
+          })}
         </div>
       )}
     </div>

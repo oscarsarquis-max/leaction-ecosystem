@@ -28,6 +28,7 @@ export default function StepHipoteses({
   selectedId,
   onSelect,
   hipotese,
+  trechoRelato,
   onGerarPlano,
   busy,
 }) {
@@ -38,11 +39,11 @@ export default function StepHipoteses({
           Etapa 3
         </p>
         <h1 className="font-display text-3xl font-bold text-bordo-deep sm:text-4xl">
-          Ranking de Adequação
+          Três caminhos para a turma
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-bordo-soft sm:text-base">
-          Três vias ancoradas nas Metodologias Inov-Ativas. Escolha uma e receba a
-          Hipótese de Aprendizado com plano EduScrum.
+          Escolha a opção que melhor combina com a sua sala. Em seguida você recebe a
+          hipótese de aprendizado e o plano de aula passo a passo.
         </p>
       </div>
 
@@ -50,6 +51,7 @@ export default function StepHipoteses({
         {(caminhos || []).map((caminho, index) => {
           const active = selectedId === caminho.id
           const meta = metaFor(caminho, index)
+          const trechoCard = caminho.trecho_relato_usado || trechoRelato
           return (
             <button
               key={caminho.id}
@@ -101,6 +103,13 @@ export default function StepHipoteses({
                 {caminho.por_que_usar || caminho.resumo}
               </p>
 
+              {trechoCard ? (
+                <p className="mt-3 rounded-lg bg-brand-50/80 px-2.5 py-2 text-xs leading-relaxed text-bordo">
+                  <span className="font-semibold">Baseado no que você descreveu: </span>
+                  «{trechoCard}»
+                </p>
+              ) : null}
+
               {caminho.dinamica_sala ? (
                 <p className="mt-3 border-t border-brand-100 pt-3 text-xs leading-relaxed text-bordo-soft">
                   <span className="font-semibold text-bordo">Em sala: </span>
@@ -127,6 +136,16 @@ export default function StepHipoteses({
           <p className="font-display text-lg leading-snug text-bordo-deep sm:text-xl">
             “{hipotese}”
           </p>
+          {(trechoRelato ||
+            caminhos?.find((c) => c.id === selectedId)?.trecho_relato_usado) && (
+            <p className="mt-3 text-sm leading-relaxed text-bordo-soft">
+              <span className="font-semibold text-bordo">Baseado no que você descreveu: </span>
+              «
+              {caminhos?.find((c) => c.id === selectedId)?.trecho_relato_usado ||
+                trechoRelato}
+              »
+            </p>
+          )}
         </div>
       )}
 
@@ -145,7 +164,7 @@ export default function StepHipoteses({
           ) : (
             <>
               <i className="fa-solid fa-chalkboard-user" />
-              Gerar Plano de Aula (EduScrum)
+              Gerar Plano de Aula
             </>
           )}
         </button>
