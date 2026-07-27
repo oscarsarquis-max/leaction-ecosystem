@@ -38,6 +38,9 @@ export function CmsImageUploadField({
       const next = preferPublicUrl
         ? result.public_url || result.url
         : result.url || result.public_url;
+      if (!next) {
+        throw new Error('Upload sem URL retornada');
+      }
       onChange(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha no upload');
