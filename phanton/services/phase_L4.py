@@ -1,4 +1,4 @@
-"""Capability: prompt — Prompt Engineer para Cursor a partir dos depends_on."""
+"""Capability: prompt/delivery — entrega final solicitada pelo usuário (não um prompt de IDE)."""
 
 from __future__ import annotations
 
@@ -29,6 +29,12 @@ from services.phase_context import (  # noqa: E402
 
 _MAX_INPUT_CHARS = 72_000
 
+_PRESENTATION_RE = re.compile(
+    r"\b(apresenta[cç][aã]o|slides?|pitch|deck|powerpoint|keynote|slide\s*deck)\b",
+    re.I,
+)
+_HTML_DOC_RE = re.compile(r"^\s*(<!DOCTYPE\s+html|<html\b)", re.I)
+
 
 def _compact_inputs(inputs: dict[str, Any]) -> dict[str, Any]:
     serialized = json.dumps(inputs, ensure_ascii=False, default=str)
@@ -46,136 +52,137 @@ def _compact_inputs(inputs: dict[str, Any]) -> dict[str, Any]:
     return compact
 
 
-def _build_cursor_prompt(
+def _user_request(spec: dict[str, Any], cfg: dict[str, Any]) -> str:
+    parts = [
+        str(spec.get("description") or "").strip(),
+        str(spec.get("user_prompt") or spec.get("pedido") or "").strip(),
+        phase_description(cfg, fallback=""),
+        str(cfg.get("name") or "").strip(),
+    ]
+    return "\n".join(p for p in parts if p)
+
+
+def _wants_presentation(spec: dict[str, Any], cfg: dict[str, Any]) -> bool:
+    blob = _user_request(spec, cfg)
+    return bool(_PRESENTATION_RE.search(blob))
+
+
+def _strip_tool_mentions(text: str) -> str:
+    """Remove menções a IDEs/ferramentas de código no texto final.
+
+    Não altera CSS (`cursor: pointer`) nem atributos HTML genéricos.
+    """
+    cleaned = text or ""
+    patterns = [
+        r"(?i)\bcursor\s*ide\b",
+        r"(?i)\bno\s+cursor\b",
+        r"(?i)\bpara\s+o\s+cursor\b",
+        r"(?i)\bao\s+cursor\b",
+        # Evita quebrar CSS: só "Cursor" como produto/marca (maiúscula ou contexto IDE)
+        r"(?<![.\w-])(?i:Cursor)(?!\s*:)",
+        r"(?i)\bvs\s*code\b",
+        r"(?i)\bvisual\s+studio\s+code\b",
+        r"(?i)\bcopilot\b",
+        r"(?i)\bwindsurf\b",
+        r"(?i)\bclaude\s+code\b",
+    ]
+    for pat in patterns:
+        cleaned = re.sub(pat, "assistente de implementação", cleaned)
+    # Títulos legados
+    cleaned = re.sub(
+        r"(?im)^#\s*Prompt para implementação no Cursor\s*$",
+        "# Entrega final",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"(?im)^##\s*14\.\s*Primeira mensagem sugerida ao Cursor\s*$",
+        "## 14. Próximos passos sugeridos",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"(?im)^##\s*9\.\s*Plano de implementação step-by-step \(para o Cursor executar\)\s*$",
+        "## 9. Plano de implementação step-by-step",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"(?im)^##\s*4\.\s*Instruções Step-by-step para o Cursor\s*$",
+        "## 4. Plano step-by-step",
+        cleaned,
+    )
+    return cleaned
+
+
+def _build_delivery_prompt(
     inputs: dict[str, Any],
     spec: dict[str, Any],
     phase_id: str,
     cfg: dict[str, Any],
 ) -> str:
     inputs_json = json.dumps(inputs, ensure_ascii=False, indent=2, default=str)
-    descricao = phase_description(
+    pedido = _user_request(spec, cfg) or phase_description(
         cfg,
-        fallback=(
-            "Gerar o prompt técnico detalhado e no estado da arte para ser "
-            "utilizado no Cursor IDE para a implementação do sistema."
-        ),
+        fallback="Produzir a entrega final solicitada pelo usuário.",
     )
     deps = resolve_depends_on(spec, phase_id)
     pipeline = pipeline_label(spec)
     fase_nome = cfg.get("name") or phase_id
-    spec_resumo = json.dumps(
-        {
-            "name": spec.get("name"),
-            "description": spec.get("description"),
-            "version": spec.get("version"),
-        },
-        ensure_ascii=False,
-        indent=2,
-        default=str,
-    )
+    presentation = _wants_presentation(spec, cfg)
+
+    if presentation:
+        format_rules = """
+FORMATO DA ENTREGA (apresentação)
+- Produza uma APRESENTAÇÃO COMPLETA e utilizável agora — NÃO um prompt, NÃO um roteiro
+  para outra ferramenta gerar os slides.
+- Preferência forte: um único documento HTML autocontido (<!DOCTYPE html>…</html>)
+  com slides navegáveis (teclado/setas ou botões), tipografia legível e layout clean.
+- Inclua JavaScript inline funcional (navegação entre slides, botões, teclado).
+  A interatividade DEVE funcionar ao abrir o arquivo/HTML isolado.
+- Inclua título, seções/slides com conteúdo real (não placeholders tipo “Slide 1…”).
+- Use o material das fases anteriores como fonte da verdade (metodologia, pesquisas, síntese).
+- Idioma: português do Brasil.
+- NÃO cite ferramentas de IDE (Cursor, VS Code, Copilot, etc.).
+- NÃO diga “cole isto em…” / “use o seguinte prompt…”.
+- ÚNICA saída: o HTML completo (ou Markdown de slides se HTML for impossível).
+  Sem prefácio (“claro,” “aqui está”).
+"""
+    else:
+        format_rules = """
+FORMATO DA ENTREGA
+- Produza a ENTREGA FINAL pedida pelo usuário — o artefato em si, pronto para uso.
+- NÃO produza um “prompt para implementar depois”.
+- NÃO produza meta-instruções do tipo “abra a ferramenta X e cole…”.
+- Escolha o formato mais adequado ao pedido:
+  • documento / plano / roteiro → Markdown completo
+  • página / protótipo visual → HTML autocontido
+  • checklist / playbook → Markdown estruturado
+- Conteúdo denso e específico; incorpore pesquisas e síntese.
+- Idioma: português do Brasil.
+- NÃO cite ferramentas de IDE (Cursor, VS Code, Copilot, etc.).
+- ÚNICA saída: o artefato final. Sem prefácio.
+"""
 
     return f"""
-Você é um Staff/Principal Engineer e um dos melhores Prompt Engineers do mundo
-para IAs codificadoras (Cursor IDE + Claude Sonnet/Opus).
+Você é um especialista sênior em entrega de produtos de conhecimento e soluções.
 
 MISSÃO
-O pipeline Phanton já investiu esforço real em metodologia, pesquisas e síntese.
-Sua tarefa é DESTILAR 100% desse esforço em UM ÚNICO prompt Markdown — o mais
-completo, preciso e acionável possível — para o desenvolvedor colar no Cursor
-e implementar o sistema SEM alucinar e SEM pedir o que já está decidido.
+O pipeline Phanton já produziu metodologia, pesquisas e síntese.
+Sua tarefa é GERAR A ENTREGA FINAL pedida pelo usuário — o resultado concreto,
+não um intermediário.
 
-REGRAS DE SAÍDA (obrigatórias)
-- ÚNICA saída: o prompt Markdown final, pronto para colar no Cursor.
-- NÃO retorne JSON. NÃO retorne HTML. NÃO escreva prefácio (“claro,” “aqui está”).
-- NÃO envolva o documento inteiro em cercas ```.
-- Seja denso e específico: prefira requisitos testáveis a frases genéricas.
-- NÃO descarte achados das pesquisas nem decisões da síntese — incorpore-os.
-- Quando houver tensão entre fontes, escolha a opção mais implementável e diga por quê.
-- Idioma: português do Brasil (termos técnicos podem ficar em inglês).
+PEDIDO ORIGINAL DO USUÁRIO (obrigatório honrar isto):
+{pedido}
 
 CONTEXTO DO PIPELINE
 - Nome: {pipeline}
 - Fase de entrega: {fase_nome}
 - depends_on / entradas: {", ".join(deps) or "nenhuma"}
-- Instrução desta fase: {descricao}
-
-Meta da Spec:
-{spec_resumo}
 
 === ARTEFATOS DAS FASES ANTERIORES (fonte da verdade) ===
 {inputs_json}
 
-COMO USAR OS ARTEFATOS
-1. Metodologia → princípios, papéis, ritmo, restrições pedagógicas/processuais.
-2. Pesquisas/grounding → casos reais, URLs, padrões, libs e práticas a citar.
-3. Síntese → plano integrado, cards/passos, requisitos; isso é o backlog principal.
-4. Se faltar stack explícita, proponha a MELHOR stack para o caso e justifique
-   com base nos artefatos (não invente domínio que contradiga as entradas).
+{format_rules}
 
-QUALIDADE ESPERADA DO PROMPT (estado da arte)
-- Auto-contido: o Cursor não precisa de outro documento.
-- Determinístico: nomes de arquivos, endpoints, entidades e contratos explícitos.
-- Anti-alucinação: “implemente APENAS o escopo abaixo”; “não invente APIs”.
-- Ordem de implementação segura (fundações → domínio → API → UI → testes).
-- Exemplos mínimos de payload/schema quando fizer sentido.
-- Acessibilidade, offline/baixa conectividade, segurança e DX se o contexto pedir.
-- Critérios de aceite verificáveis (checkbox).
-
-ESTRUTURA OBRIGATÓRIA DO MARKDOWN (use estes headings nesta ordem):
-
-# Prompt para implementação no Cursor
-
-## 0. Papel e modo de trabalho
-(quem o Cursor deve ser; regras duras: não alucinar, perguntar só se bloqueado,
-entregar código completo por arquivo, não omitir imports)
-
-## 1. Objetivo do produto
-(1–2 parágrafos + bullets de valor; amarrado à Spec e à síntese)
-
-## 2. Contexto de negócio, usuários e metodologia
-(público-alvo, restrições, metodologia/processo vindos das fases anteriores)
-
-## 3. Evidências e referências a preservar
-(liste 3–8 achados das pesquisas com título + URL/fonte quando existir, e como
-cada um influencia a implementação)
-
-## 4. Escopo
-### 4.1 Incluído (MVP)
-### 4.2 Explicitamente fora de escopo
-
-## 5. Stack tecnológica e justificativa
-(runtime, framework, UI, dados, auth, testes, deploy local; versões se possível)
-
-## 6. Arquitetura
-(componentes, fluxos, diagramas em Mermaid se ajudar, decisões-chave)
-
-## 7. Modelo de dados / contratos
-(entidades, campos, relações; exemplos JSON de request/response se houver API)
-
-## 8. Estrutura de arquivos esperada
-(árvore completa do monorepo/app; indique arquivos críticos)
-
-## 9. Plano de implementação step-by-step (para o Cursor executar)
-(passos numerados, pequenos e verificáveis; cada passo diz O QUE criar/alterar
-e COMO validar antes do próximo)
-
-## 10. UX / fluxos de tela (se houver frontend)
-(rotas, estados vazios/erro/loading, acessibilidade)
-
-## 11. Não-funcionais
-(performance, segurança, i18n/pt-BR, offline/baixa conexão, observabilidade)
-
-## 12. Testes e validação
-(unit/integration/e2e mínimos; comandos para rodar)
-
-## 13. Critérios de aceite (Definition of Done)
-(checklist markdown `- [ ] ...`)
-
-## 14. Primeira mensagem sugerida ao Cursor
-(um parágrafo curto que o usuário pode colar junto, dizendo “execute o passo 1”)
-
-Comece AGORA na primeira linha com:
-# Prompt para implementação no Cursor
+Comece AGORA na primeira linha do artefato final.
 """.strip()
 
 
@@ -191,87 +198,52 @@ def _strip_outer_fence(text: str) -> str:
     return "\n".join(lines).strip()
 
 
-def _dict_to_markdown_prompt(data: dict[str, Any]) -> str:
-    """Converte JSON estruturado acidental em prompt Markdown utilizável."""
+def _dict_to_delivery(data: dict[str, Any]) -> str:
     preferred_keys = (
-        "cursor_prompt",
-        "prompt",
+        "delivery",
+        "entrega",
+        "html_code",
+        "html",
+        "presentation",
+        "apresentacao",
         "markdown",
-        "prompt_markdown",
-        "texto",
+        "documento",
         "content",
+        "texto",
+        "prompt",
+        "cursor_prompt",
     )
     for key in preferred_keys:
         value = data.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
         if isinstance(value, dict):
-            nested = _dict_to_markdown_prompt(value)
+            nested = _dict_to_delivery(value)
             if nested:
                 return nested
 
-    sections: list[str] = ["# Prompt para implementação no Cursor", ""]
-    mapping = [
-        (("contexto", "business_context", "metodologia", "context"), "## 1. Contexto de Negócio e Metodologia"),
-        (("stack", "tech_stack", "tecnologias"), "## 2. Stack Tecnológico Sugerido"),
-        (("estrutura", "file_structure", "arquivos", "estrutura_arquivos"), "## 3. Estrutura de Arquivos Esperada"),
-        (("passos", "steps", "step_by_step", "instrucoes"), "## 4. Instruções Step-by-step para o Cursor"),
-        (("aceite", "acceptance", "criterios", "definition_of_done"), "## 5. Critérios de Aceite"),
-    ]
-    used = set()
-    for keys, heading in mapping:
-        for key in keys:
-            if key in data and data[key] not in (None, "", [], {}):
-                sections.append(heading)
-                sections.append("")
-                value = data[key]
-                if isinstance(value, str):
-                    sections.append(value.strip())
-                else:
-                    sections.append(
-                        json.dumps(value, ensure_ascii=False, indent=2, default=str)
-                    )
-                sections.append("")
-                used.add(key)
-                break
-
-    leftovers = {k: v for k, v in data.items() if k not in used and k not in preferred_keys}
-    if leftovers and len(sections) <= 2:
-        sections.append("## Conteúdo")
-        sections.append("")
-        sections.append(json.dumps(leftovers, ensure_ascii=False, indent=2, default=str))
-
-    return "\n".join(sections).strip()
+    return json.dumps(data, ensure_ascii=False, indent=2, default=str)
 
 
-def coerce_to_cursor_prompt(raw_text: str) -> str:
-    """Garante Markdown de prompt, mesmo se o modelo devolver JSON."""
-    text = _strip_outer_fence(raw_text)
+def coerce_to_delivery(raw_text: str) -> str:
+    """Normaliza a resposta do modelo para o artefato final (HTML ou Markdown)."""
+    text = _strip_tool_mentions(_strip_outer_fence(raw_text))
     if not text:
-        raise ValueError("Resposta vazia ao extrair cursor_prompt")
+        raise ValueError("Resposta vazia na fase de entrega")
 
     current: Any = text
     for _ in range(4):
         if isinstance(current, dict):
-            md = _dict_to_markdown_prompt(current)
-            if md and not md.lstrip().startswith("{"):
-                return md
-            # se ainda parece envelope, tenta valores string
-            for key in ("cursor_prompt", "prompt", "markdown"):
-                if isinstance(current.get(key), str):
-                    current = current[key]
-                    break
-            else:
-                return md
-            continue
+            md = _dict_to_delivery(current)
+            return _strip_tool_mentions(_strip_outer_fence(md))
 
         if not isinstance(current, str):
             current = json.dumps(current, ensure_ascii=False, indent=2, default=str)
 
-        candidate = _strip_outer_fence(current).strip()
-        # Parece Markdown de prompt
+        candidate = _strip_tool_mentions(_strip_outer_fence(current)).strip()
+        if _HTML_DOC_RE.match(candidate):
+            return candidate
         if candidate.startswith("#") or re.search(r"^##\s+", candidate, re.M):
-            # Ainda pode ser JSON dentro de cerca
             if not candidate.lstrip().startswith("{"):
                 return candidate
 
@@ -280,21 +252,60 @@ def coerce_to_cursor_prompt(raw_text: str) -> str:
                 current = extract_json_payload(candidate)
                 continue
             except Exception:
-                # JSON quebrado/vazio: devolve o texto bruto como Markdown útil
-                return (
-                    "# Prompt para implementação no Cursor\n\n"
-                    "## Conteúdo gerado\n\n"
-                    f"{candidate}"
-                )
+                return candidate
 
-        # Texto livre (não JSON): é o prompt Markdown esperado
         if candidate:
             return candidate
         return candidate
 
     if isinstance(current, str) and current.strip():
-        return current.strip()
-    raise ValueError("Não foi possível converter a resposta em prompt Markdown")
+        return _strip_tool_mentions(current.strip())
+    raise ValueError("Não foi possível converter a resposta em entrega final")
+
+
+def _package_delivery(content: str) -> dict[str, Any]:
+    cleaned = _strip_tool_mentions((content or "").strip())
+    is_html = bool(_HTML_DOC_RE.match(cleaned))
+    package: dict[str, Any] = {
+        "delivery": cleaned,
+        "format": "html" if is_html else "markdown",
+    }
+    if is_html:
+        package["html_code"] = cleaned
+    else:
+        # Compat UI antiga que lia cursor_prompt como Markdown
+        package["cursor_prompt"] = cleaned
+    return package
+
+
+def _success_payload(
+    *,
+    run_id: str,
+    phase_id: str,
+    spec: dict[str, Any],
+    package: dict[str, Any],
+    inputs: dict[str, Any],
+    meta: dict[str, Any],
+) -> dict[str, Any]:
+    """Monta resposta da fase: HTML → html_code; Markdown → delivery (sem forçar cursor_prompt no topo)."""
+    payload: dict[str, Any] = {
+        "status": "success",
+        "phase": phase_id,
+        "capability": "prompt",
+        "run_id": run_id,
+        "pipeline_name": pipeline_label(spec),
+        "delivery": package["delivery"],
+        "format": package.get("format") or "markdown",
+        "artifact_data": package,
+        "inputs_used": list(inputs.keys()),
+        "meta": meta,
+    }
+    if package.get("format") == "html" and package.get("html_code"):
+        payload["html_code"] = package["html_code"]
+    elif package.get("cursor_prompt"):
+        # Só em Markdown: campo legado para UIs antigas
+        payload["cursor_prompt"] = package["cursor_prompt"]
+    return payload
 
 
 def _call_gemini_prompt(
@@ -312,7 +323,7 @@ def _call_gemini_prompt(
     )
 
 
-def _fallback_prompt_from_inputs(
+def _fallback_delivery_from_inputs(
     inputs: dict[str, Any],
     spec: dict[str, Any],
     phase_id: str,
@@ -320,109 +331,129 @@ def _fallback_prompt_from_inputs(
     *,
     reason: str,
 ) -> str:
-    """Garante entrega útil mesmo se o Gemini falhar/devolver vazio."""
     deps = resolve_depends_on(spec, phase_id)
+    pedido = _user_request(spec, cfg) or (spec.get("description") or pipeline_label(spec))
     body = json.dumps(inputs, ensure_ascii=False, indent=2, default=str)
     if len(body) > 24_000:
         body = body[:24_000] + "\n…[truncado]"
 
-    return f"""# Prompt para implementação no Cursor
+    if _wants_presentation(spec, cfg):
+        # HTML mínimo navegável a partir dos artefatos (fallback)
+        safe_title = (
+            str(spec.get("name") or "Apresentação")
+            .replace("<", "")
+            .replace(">", "")[:80]
+        )
+        return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{safe_title}</title>
+  <style>
+    :root {{ font-family: system-ui, sans-serif; color: #0f172a; }}
+    body {{ margin: 0; background: #0f172a; }}
+    .slide {{
+      min-height: 100vh; box-sizing: border-box; padding: 8vh 10vw;
+      background: linear-gradient(160deg, #fff7ed, #ffedd5 55%, #fed7aa);
+      display: none; flex-direction: column; justify-content: center;
+    }}
+    .slide.active {{ display: flex; }}
+    h1 {{ font-size: clamp(1.8rem, 4vw, 3rem); margin: 0 0 1rem; }}
+    h2 {{ font-size: clamp(1.3rem, 3vw, 2rem); margin: 0 0 .75rem; }}
+    p, li {{ font-size: clamp(1rem, 2vw, 1.25rem); line-height: 1.5; }}
+    nav {{
+      position: fixed; bottom: 1rem; right: 1rem; display: flex; gap: .5rem;
+    }}
+    button {{
+      border: 0; border-radius: .75rem; padding: .6rem 1rem; font-weight: 700;
+      background: #ea580c; color: white; cursor: pointer;
+    }}
+    .note {{ opacity: .75; font-size: .85rem; }}
+    pre {{
+      white-space: pre-wrap; background: rgba(255,255,255,.7);
+      border-radius: .75rem; padding: 1rem; max-height: 45vh; overflow: auto;
+      font-size: .8rem;
+    }}
+  </style>
+</head>
+<body>
+  <section class="slide active">
+    <h1>{safe_title}</h1>
+    <p>{pedido}</p>
+    <p class="note">Gerado em modo fallback ({reason}). Use as setas ou os botões para navegar.</p>
+  </section>
+  <section class="slide">
+    <h2>Contexto do pipeline</h2>
+    <p>Pipeline: <strong>{pipeline_label(spec)}</strong></p>
+    <p>Fase: <strong>{cfg.get("name") or phase_id}</strong></p>
+    <p>Entradas: {", ".join(deps) or "fases anteriores"}</p>
+  </section>
+  <section class="slide">
+    <h2>Material das fases anteriores</h2>
+    <pre>{body.replace("<", "&lt;")}</pre>
+  </section>
+  <nav>
+    <button type="button" id="prev">Anterior</button>
+    <button type="button" id="next">Próximo</button>
+  </nav>
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    let i = 0;
+    function show(n) {{
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+    }}
+    document.getElementById('prev').onclick = () => show(i - 1);
+    document.getElementById('next').onclick = () => show(i + 1);
+    window.addEventListener('keydown', (e) => {{
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') show(i + 1);
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') show(i - 1);
+    }});
+  </script>
+</body>
+</html>
+""".strip()
 
-## 0. Papel e modo de trabalho
-Atue como Staff Engineer no Cursor IDE. Implemente o sistema descrito abaixo de
-forma completa e verificável. Não invente requisitos fora deste documento.
-Se algo estiver ambíguo, escolha a opção mais simples e documente a decisão.
+    return f"""# Entrega final
 
-> Nota Phanton: prompt gerado em modo fallback ({reason}). Use os artefatos
-> das fases anteriores como fonte da verdade.
+## Pedido atendido
+{pedido}
 
-## 1. Objetivo do produto
-{spec.get("description") or pipeline_label(spec)}
+## Pipeline
+- Nome: **{pipeline_label(spec)}**
+- Fase: **{cfg.get("name") or phase_id}**
+- Entradas: {", ".join(deps) or "fases anteriores"}
 
-## 2. Contexto de negócio, usuários e metodologia
-Pipeline: **{pipeline_label(spec)}**
-Fase de entrega: **{cfg.get("name") or phase_id}**
-Entradas (`depends_on`): {", ".join(deps) or "todas as fases anteriores"}
+> Nota: entrega gerada em modo fallback ({reason}). O conteúdo abaixo consolida
+> os artefatos das fases anteriores na forma de entrega utilizável.
 
-## 3. Evidências e artefatos das fases anteriores
-Use integralmente o material a seguir (metodologia, pesquisas e síntese) para
-definir escopo, stack, UX e plano de implementação:
+## Conteúdo consolidado
 
 ```json
 {body}
 ```
 
-## 4. Escopo
-### 4.1 Incluído (MVP)
-- Implementar o que a síntese e a metodologia descrevem como entregável principal
-- Cobrir fluxos essenciais end-to-end (dados → lógica → interface, se aplicável)
-
-### 4.2 Explicitamente fora de escopo
-- Features não mencionadas nos artefatos
-- Integrações externas não citadas nas pesquisas/síntese
-
-## 5. Stack tecnológica e justificativa
-Escolha a stack mais adequada aos artefatos (preferir FastAPI/React/Postgres
-quando o domínio for web; script Python quando for automação). Justifique no README.
-
-## 6. Arquitetura
-Separe domínio, API/adapters e UI. Mantenha configuração por `.env` e README com
-comandos de setup local.
-
-## 7. Modelo de dados / contratos
-Derive entidades e contratos a partir da síntese. Documente schemas e exemplos
-mínimos de request/response.
-
-## 8. Estrutura de arquivos esperada
-Crie uma árvore clara (`backend/`, `frontend/` ou equivalente) e mantenha
-consistência de imports.
-
-## 9. Plano de implementação step-by-step (para o Cursor executar)
-1. Scaffold do projeto + README + `.env.example`
-2. Modelo de dados / contratos
-3. Regras de domínio e serviços
-4. API ou interface principal
-5. UI (se houver) conectada aos contratos
-6. Testes mínimos + checklist de aceite
-
-## 10. UX / fluxos de tela (se houver frontend)
-Siga os cards/passos da síntese; estados vazios, loading e erro obrigatórios.
-
-## 11. Não-funcionais
-pt-BR, acessibilidade básica, segurança de inputs, e restrições citadas nos
-artefatos (ex.: baixa conectividade/offline).
-
-## 12. Testes e validação
-Inclua pelo menos testes do fluxo principal e comandos para executar localmente.
-
-## 13. Critérios de aceite (Definition of Done)
-- [ ] Setup documentado e executável
-- [ ] Fluxo principal funciona de ponta a ponta
-- [ ] Contratos/dados alinhados à síntese
-- [ ] Testes mínimos passando
-- [ ] README com como rodar
-
-## 14. Primeira mensagem sugerida ao Cursor
-Execute o passo 1 do plano de implementação deste prompt e pare para eu revisar
-antes do passo 2.
+## Próximos passos
+1. Revisar os pontos da síntese e das pesquisas acima.
+2. Transformar os requisitos em ações concretas no seu fluxo de trabalho.
+3. Validar com stakeholders antes de expandir o escopo.
 """.strip()
 
 
-def _generate_cursor_prompt_safe(
+def _generate_delivery_safe(
     inputs: dict[str, Any],
     spec: dict[str, Any],
     phase_id: str,
     cfg: dict[str, Any],
 ) -> tuple[str, dict[str, Any]]:
-    """Tenta Gemini (com retry); se falhar, monta prompt a partir dos artefatos."""
     meta: dict[str, Any] = {}
     errors: list[str] = []
 
     attempts = [
-        (_compact_inputs(inputs), 8192, 0.4),
-        (_compact_inputs(inputs), 4096, 0.3),
+        (_compact_inputs(inputs), 8192, 0.35),
+        (_compact_inputs(inputs), 4096, 0.25),
     ]
-    # Terceira tentativa: entradas bem menores
     tiny: dict[str, Any] = {}
     for key, value in inputs.items():
         chunk = json.dumps(value, ensure_ascii=False, default=str)
@@ -430,7 +461,7 @@ def _generate_cursor_prompt_safe(
     attempts.append((tiny, 4096, 0.2))
 
     for compact, max_tokens, temperature in attempts:
-        prompt = _build_cursor_prompt(compact, spec, phase_id, cfg)
+        prompt = _build_delivery_prompt(compact, spec, phase_id, cfg)
         try:
             raw_text, meta = _call_gemini_prompt(
                 prompt,
@@ -441,39 +472,41 @@ def _generate_cursor_prompt_safe(
                 errors.append(f"vazio(tokens={max_tokens})")
                 continue
             try:
-                cursor_prompt = coerce_to_cursor_prompt(raw_text)
+                delivery = coerce_to_delivery(raw_text)
             except Exception as coerce_exc:
-                # Nunca propaga JSONDecodeError cru para a UI
                 errors.append(f"coerce:{type(coerce_exc).__name__}: {coerce_exc}")
-                # Se o modelo já devolveu Markdown, usa direto
-                stripped = (raw_text or "").strip()
-                if stripped.startswith("#") or re.search(r"^##\s+", stripped, re.M):
-                    cursor_prompt = stripped
+                stripped = _strip_tool_mentions((raw_text or "").strip())
+                if _HTML_DOC_RE.match(stripped) or stripped.startswith("#"):
+                    delivery = stripped
                 else:
                     continue
-            if cursor_prompt and cursor_prompt.strip():
+            if delivery and delivery.strip():
                 meta = {
                     **meta,
                     "attempts": errors,
                     "used_max_output_tokens": max_tokens,
+                    "delivery_format": "html"
+                    if _HTML_DOC_RE.match(delivery)
+                    else "markdown",
                 }
-                return cursor_prompt.strip(), meta
+                return delivery.strip(), meta
             errors.append(f"coerce_vazio(tokens={max_tokens})")
         except Exception as exc:
             errors.append(f"{type(exc).__name__}: {exc}")
 
-    fallback = _fallback_prompt_from_inputs(
+    fallback = _fallback_delivery_from_inputs(
         inputs,
         spec,
         phase_id,
         cfg,
-        reason="; ".join(errors) or "gemini indisponível",
+        reason="; ".join(errors) or "modelo indisponível",
     )
     return fallback, {
         **meta,
         "fallback": True,
         "attempts": errors,
         "model": meta.get("model") or resolve_model_safe(),
+        "delivery_format": "html" if _HTML_DOC_RE.match(fallback) else "markdown",
     }
 
 
@@ -490,7 +523,7 @@ async def execute_phase_L4(
     run_id: str,
     spec: dict[str, Any],
     db_session: Optional[Session] = None,
-    phase_id: str = "prompt_cursor",
+    phase_id: str = "entrega_final",
 ) -> dict[str, Any]:
     owns_session = db_session is None
     session = db_session or SessionLocal()
@@ -503,49 +536,43 @@ async def execute_phase_L4(
             if not inputs:
                 raise RuntimeError(
                     f"Nenhum artefato de entrada encontrado para '{phase_id}'. "
-                    "Aprove as fases anteriores antes de gerar o prompt para o Cursor."
+                    "Aprove as fases anteriores antes de gerar a entrega final."
                 )
 
-            cursor_prompt, meta = await asyncio.to_thread(
-                _generate_cursor_prompt_safe,
+            delivery, meta = await asyncio.to_thread(
+                _generate_delivery_safe,
                 inputs,
                 spec,
                 phase_id,
                 cfg,
             )
-
-            return {
-                "status": "success",
-                "phase": phase_id,
-                "capability": "prompt",
-                "run_id": run_id,
-                "pipeline_name": pipeline_label(spec),
-                "cursor_prompt": cursor_prompt,
-                "artifact_data": {"cursor_prompt": cursor_prompt},
-                "inputs_used": list(inputs.keys()),
-                "meta": meta,
-            }
+            package = _package_delivery(delivery)
+            return _success_payload(
+                run_id=run_id,
+                phase_id=phase_id,
+                spec=spec,
+                package=package,
+                inputs=inputs,
+                meta=meta,
+            )
         except Exception as exc:
-            # Último recurso: nunca devolver só o erro cru de JSON vazio.
             try:
                 inputs = load_dependency_artifacts(session, run_id, spec, phase_id) or {}
             except Exception:
                 inputs = {}
             if inputs:
-                cursor_prompt = _fallback_prompt_from_inputs(
+                delivery = _fallback_delivery_from_inputs(
                     inputs, spec, phase_id, cfg, reason=str(exc)
                 )
-                return {
-                    "status": "success",
-                    "phase": phase_id,
-                    "capability": "prompt",
-                    "run_id": run_id,
-                    "pipeline_name": pipeline_label(spec),
-                    "cursor_prompt": cursor_prompt,
-                    "artifact_data": {"cursor_prompt": cursor_prompt},
-                    "inputs_used": list(inputs.keys()),
-                    "meta": {"fallback": True, "error": str(exc)},
-                }
+                package = _package_delivery(delivery)
+                return _success_payload(
+                    run_id=run_id,
+                    phase_id=phase_id,
+                    spec=spec,
+                    package=package,
+                    inputs=inputs,
+                    meta={"fallback": True, "error": str(exc)},
+                )
             return {
                 "status": "error",
                 "phase": phase_id,

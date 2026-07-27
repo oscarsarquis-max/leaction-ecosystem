@@ -32,6 +32,30 @@ docker compose up -d
 ```
 
 O script `01_init.sql` é aplicado automaticamente na primeira inicialização do volume.
+Em bases já existentes, atualize o schema:
+
+```powershell
+cd C:\Projetos\leaction-ecosystem\phanton\database
+.\apply-schema.ps1
+```
+
+### Sync entre máquinas (todas as apps + Phanton)
+
+Na **origem** (esta máquina, antes de ir embora):
+
+```powershell
+cd C:\Projetos\leaction-ecosystem\infra
+.\open-leaction-db-lan.ps1
+cd ..\phanton\database
+.\open-phanton-db-lan.ps1
+```
+
+No **destino** (outra máquina amanhã):
+
+```powershell
+cd C:\Projetos\leaction-ecosystem
+.\sync-db-from-lan.ps1 -SourceHost <IP-LAN-da-origem> -Force
+```
 
 ## Gemini (Fase L2 — Grounding)
 

@@ -24,6 +24,9 @@ from schemas import (
     GenerateSpecResponse,
     HealthResponse,
     PhaseStatusRead,
+    PipelineHistoryItem,
+    PipelineHistoryPhaseSummary,
+    PipelineHistoryResponse,
     PipelineStartRequest,
     PipelineStartResponse,
     PipelineStatusResponse,
@@ -41,11 +44,12 @@ PHASE_LABELS = {
     "metodologia": "Metodologia",
     "pesquisa": "Pesquisa",
     "sintese": "Síntese",
-    "prompt_cursor": "Prompt para o Cursor",
+    "prompt_cursor": "Entrega final",
+    "entrega_final": "Entrega final",
     "L1": "Metodologia",
     "L2": "Grounding",
     "L3": "Síntese",
-    "L4": "Prompt para o Cursor",
+    "L4": "Entrega final",
 }
 
 app = FastAPI(
@@ -100,6 +104,96 @@ async def generate_spec(payload: GenerateSpecRequest) -> GenerateSpecResponse:
     return GenerateSpecResponse(spec=spec, model=model)
 
 
+def _run_title(spec: dict) -> str:
+    if not isinstance(spec, dict):
+        return "Pipeline"
+    for key in ("name", "description", "user_prompt", "pedido"):
+        value = spec.get(key)
+        if isinstance(value, str) and value.strip():
+            text = " ".join(value.strip().split())
+            return text[:96] + ("…" if len(text) > 96 else "")
+    return "Pipeline"
+
+
+def _phase_display_name(spec_dict: dict, phase_id: str) -> str:
+    cfg = (spec_dict.get("phases") or {}).get(phase_id) if isinstance(spec_dict.get("phases"), dict) else None
+    if isinstance(cfg, dict) and cfg.get("name"):
+        return str(cfg["name"])
+    return PHASE_LABELS.get(phase_id, phase_id.replace("_", " ").title())
+
+
+@app.get("/api/pipeline", response_model=PipelineHistoryResponse)
+def list_pipeline_history(
+    limit: int = 40,
+    db: Session = Depends(get_db),
+) -> PipelineHistoryResponse:
+    """Histórico de runs persistidos — fases e artefatos recuperáveis via GET /{run_id}."""
+    safe_limit = max(1, min(int(limit or 40), 100))
+    runs = (
+        db.query(PipelineRun)
+        .order_by(PipelineRun.created_at.desc())
+        .limit(safe_limit)
+        .all()
+    )
+    total = db.query(PipelineRun).count()
+
+    items: list[PipelineHistoryItem] = []
+    for run in runs:
+        spec_dict = run.spec if isinstance(run.spec, dict) else dict(run.spec or {})
+        executions = (
+            db.query(PhaseExecution)
+            .filter(PhaseExecution.run_id == run.id)
+            .order_by(PhaseExecution.id.asc())
+            .all()
+        )
+        latest_by_phase: dict[str, PhaseExecution] = {}
+        for execution in executions:
+            latest_by_phase[execution.phase_id] = execution
+
+        plan_ids = phase_order_from_spec(spec_dict)
+        for phase_id in latest_by_phase:
+            if phase_id not in plan_ids:
+                plan_ids.append(phase_id)
+
+        phase_summaries: list[PipelineHistoryPhaseSummary] = []
+        approved_count = 0
+        for phase_id in plan_ids:
+            execution = latest_by_phase.get(phase_id)
+            status = execution.status if execution else "PENDING"
+            if status == "APPROVED":
+                approved_count += 1
+            phase_summaries.append(
+                PipelineHistoryPhaseSummary(
+                    phase_id=phase_id,
+                    name=_phase_display_name(spec_dict, phase_id),
+                    status=status,
+                    has_artifact=bool(execution and execution.artifact_data is not None),
+                )
+            )
+
+        description = None
+        if isinstance(spec_dict.get("description"), str):
+            description = spec_dict["description"].strip()[:240] or None
+        elif isinstance(spec_dict.get("user_prompt"), str):
+            description = spec_dict["user_prompt"].strip()[:240] or None
+
+        items.append(
+            PipelineHistoryItem(
+                run_id=run.id,
+                status=run.status,
+                title=_run_title(spec_dict),
+                description=description,
+                created_at=run.created_at,
+                updated_at=run.updated_at,
+                phase_count=len(plan_ids),
+                approved_count=approved_count,
+                phases=phase_summaries,
+            )
+        )
+
+    return PipelineHistoryResponse(items=items, total=total)
+
+
 @app.get("/api/pipeline/{run_id}", response_model=PipelineStatusResponse)
 def get_pipeline_status(
     run_id: str,
@@ -135,11 +229,7 @@ def get_pipeline_status(
     phases: list[PhaseStatusRead] = []
     for phase_id in plan_ids:
         execution = latest_by_phase.get(phase_id)
-        cfg = (spec_dict.get("phases") or {}).get(phase_id) if isinstance(spec_dict.get("phases"), dict) else None
-        if isinstance(cfg, dict) and cfg.get("name"):
-            display_name = str(cfg["name"])
-        else:
-            display_name = PHASE_LABELS.get(phase_id, phase_id.replace("_", " ").title())
+        display_name = _phase_display_name(spec_dict, phase_id)
 
         phases.append(
             PhaseStatusRead(
@@ -162,7 +252,6 @@ def get_pipeline_status(
         updated_at=run.updated_at,
         phases=phases,
     )
-
 
 @app.post("/api/pipeline/start", response_model=PipelineStartResponse)
 async def start_pipeline(

@@ -12,12 +12,32 @@ function tryParseJson(value) {
   }
 }
 
+function looksLikeHtml(text) {
+  if (typeof text !== 'string') return false
+  const t = text.trim()
+  return /^<!DOCTYPE\s+html/i.test(t) || /^<html\b/i.test(t)
+}
+
 function markdownFromObject(obj) {
   if (!obj || typeof obj !== 'object') return null
-  const preferred = ['cursor_prompt', 'prompt', 'markdown', 'prompt_markdown', 'texto', 'content']
+  // Preferência: entrega final; cursor_prompt só como legado
+  const preferred = [
+    'delivery',
+    'entrega',
+    'markdown',
+    'documento',
+    'prompt',
+    'cursor_prompt',
+    'prompt_markdown',
+    'texto',
+    'content',
+  ]
   for (const key of preferred) {
     const value = obj[key]
     if (typeof value === 'string' && value.trim()) {
+      // HTML não é preview de Markdown — deixa o HtmlPreview cuidar
+      if (looksLikeHtml(value)) continue
+      if (obj.format === 'html' && (key === 'delivery' || key === 'entrega')) continue
       const nested = tryParseJson(value)
       if (nested) {
         const fromNested = markdownFromObject(nested)
@@ -33,24 +53,23 @@ function markdownFromObject(obj) {
   return null
 }
 
-/** Extrai o Markdown do prompt a partir do envelope do backend. */
+/** Extrai Markdown da entrega final a partir do envelope do backend. */
 export function extractCursorPrompt(artifactData) {
   if (!artifactData) return null
 
   if (typeof artifactData === 'string') {
     const parsed = tryParseJson(artifactData)
     if (parsed) return extractCursorPrompt(parsed)
+    if (looksLikeHtml(artifactData)) return null
     if (artifactData.trim().startsWith('#')) return artifactData.trim()
     return null
   }
 
   if (typeof artifactData !== 'object') return null
 
-  // Top-level (após flatten do backend)
   const direct = markdownFromObject(artifactData)
   if (direct) return direct
 
-  // Envelope clássico: { status, artifact_data: { cursor_prompt } }
   if (artifactData.artifact_data) {
     const nested = extractCursorPrompt(artifactData.artifact_data)
     if (nested) return nested
@@ -58,6 +77,9 @@ export function extractCursorPrompt(artifactData) {
 
   return null
 }
+
+// Alias semântico (UI não cita ferramenta)
+export const extractDeliveryMarkdown = extractCursorPrompt
 
 async function copyText(text) {
   if (navigator?.clipboard?.writeText) {
@@ -75,14 +97,19 @@ async function copyText(text) {
   document.body.removeChild(el)
 }
 
-export default function CursorPromptPreview({ prompt, title = 'Prompt para o Cursor' }) {
+export default function CursorPromptPreview({
+  prompt,
+  title = 'Entrega final',
+  editable = false,
+  onChange,
+}) {
   const [copied, setCopied] = useState(false)
 
-  if (!prompt) return null
+  if (!prompt && !editable) return null
 
   const handleCopy = async () => {
     try {
-      await copyText(prompt)
+      await copyText(prompt || '')
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1800)
     } catch {
@@ -95,6 +122,7 @@ export default function CursorPromptPreview({ prompt, title = 'Prompt para o Cur
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
           {title}
+          {editable ? ' (editável)' : ''}
         </p>
         <button
           type="button"
@@ -113,14 +141,24 @@ export default function CursorPromptPreview({ prompt, title = 'Prompt para o Cur
           ) : (
             <>
               <ClipboardCopy className="h-3.5 w-3.5" />
-              Copiar Prompt para o Cursor
+              Copiar entrega
             </>
           )}
         </button>
       </div>
-      <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg border border-indigo-100 bg-white p-3 font-mono text-xs leading-relaxed text-slate-800">
-        {prompt}
-      </pre>
+      {editable ? (
+        <textarea
+          value={prompt || ''}
+          onChange={(e) => onChange?.(e.target.value)}
+          rows={16}
+          className="max-h-96 w-full resize-y overflow-auto rounded-lg border border-amber-300 bg-white p-3 font-mono text-xs leading-relaxed text-slate-800 outline-none focus:ring-2 focus:ring-amber-400"
+          aria-label={title}
+        />
+      ) : (
+        <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg border border-indigo-100 bg-white p-3 font-mono text-xs leading-relaxed text-slate-800">
+          {prompt}
+        </pre>
+      )}
     </div>
   )
 }

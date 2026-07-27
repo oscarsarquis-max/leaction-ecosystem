@@ -179,7 +179,7 @@ def _fallback_synthesis(
         "dinamica_passo_a_passo": cards[:6],
         "requisitos_para_implementacao": [
             "Respeitar metodologia e restrições das fases anteriores",
-            "Priorizar MVP implementável no Cursor",
+            "Priorizar MVP entregável e utilizável",
             "Preservar referências/casos relevantes das pesquisas",
         ],
     }

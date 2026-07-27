@@ -4,11 +4,13 @@ import { Activity, Loader2, Play, Sparkles, Workflow } from 'lucide-react'
 import CopyableBlock from './components/CopyableBlock'
 import FixedTextField from './components/FixedTextField'
 import PhaseCard from './components/PhaseCard'
+import PipelineStatusBar from './components/PipelineStatusBar'
+import RunHistory from './components/RunHistory'
 
 const API_BASE = 'http://localhost:8000'
 
 const DEFAULT_SPEC = `{
-  "description": "Exemplo dinâmico: metodologia + 2 pesquisas + síntese + prompt Cursor",
+  "description": "Exemplo: metodologia + pesquisas + síntese + entrega final (artefato pedido pelo usuário)",
   "version": "1.0",
   "phases": {
     "metodologia": {
@@ -36,12 +38,12 @@ const DEFAULT_SPEC = `{
       "depends_on": ["metodologia", "pesquisa_casos", "pesquisa_stack"],
       "descricao": "Agrupar metodologia e as duas pesquisas num plano coerente"
     },
-    "prompt_cursor": {
-      "name": "Prompt para o Cursor",
+    "entrega_final": {
+      "name": "Entrega final",
       "type": "prompt",
       "order": 5,
       "depends_on": ["sintese"],
-      "descricao": "Destilar metodologia + pesquisas + síntese no melhor prompt Markdown possível para o Cursor: completo, anti-alucinação, com stack, arquitetura, arquivos, contratos, step-by-step e DoD."
+      "descricao": "Produzir o artefato final pedido pelo usuário (apresentação, documento ou protótipo), usando a síntese como fonte da verdade. Não gerar prompt intermediário."
     }
   }
 }`
@@ -74,15 +76,41 @@ function App() {
   const [generatingSpec, setGeneratingSpec] = useState(false)
   const [approvingToken, setApprovingToken] = useState(null)
   const [error, setError] = useState(null)
+  const [historyItems, setHistoryItems] = useState([])
+  const [historyTotal, setHistoryTotal] = useState(0)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [statusBarBump, setStatusBarBump] = useState(0)
 
-  const fetchStatus = useCallback(async (id) => {
+  const fetchHistory = useCallback(async () => {
+    setHistoryLoading(true)
+    try {
+      const { data } = await axios.get(`${API_BASE}/api/pipeline`, {
+        params: { limit: 40 },
+      })
+      setHistoryItems(data.items || [])
+      setHistoryTotal(data.total || 0)
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Falha ao carregar histórico')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [])
+
+  const fetchStatus = useCallback(async (id, { syncSpec = false } = {}) => {
     const { data } = await axios.get(`${API_BASE}/api/pipeline/${id}`)
     setRunStatus(data.status)
     if (data.phases?.length) {
       setPhases(data.phases)
     }
+    if (syncSpec && data.spec) {
+      setSpecText(JSON.stringify(data.spec, null, 2))
+    }
     return data
   }, [])
+
+  useEffect(() => {
+    fetchHistory()
+  }, [fetchHistory])
 
   useEffect(() => {
     if (runId) return
@@ -115,6 +143,15 @@ function App() {
       clearInterval(timer)
     }
   }, [runId, fetchStatus])
+
+  // Atualiza histórico quando o run termina ou muda de status relevante
+  useEffect(() => {
+    if (!runStatus) return
+    const upper = String(runStatus).toUpperCase()
+    if (upper === 'COMPLETED' || upper === 'RUNNING' || upper === 'AWAITING_APPROVAL') {
+      fetchHistory()
+    }
+  }, [runStatus, fetchHistory])
 
   const handleGenerateSpec = async () => {
     setError(null)
@@ -162,6 +199,7 @@ function App() {
       setRunId(data.run_id)
       setRunStatus(data.status)
       await fetchStatus(data.run_id)
+      await fetchHistory()
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Falha ao iniciar pipeline')
       setRunStatus(null)
@@ -170,19 +208,33 @@ function App() {
     }
   }
 
-  const handleApprove = async (taskToken) => {
+  const handleApprove = async (taskToken, modifiedArtifact) => {
     setError(null)
     setApprovingToken(taskToken)
 
     try {
-      await axios.post(`${API_BASE}/api/pipeline/approve/${taskToken}`, {
-        approver: 'operator',
-      })
+      const body = { approver: 'operator' }
+      if (modifiedArtifact != null && typeof modifiedArtifact === 'object') {
+        body.modified_artifact = modifiedArtifact
+      }
+      await axios.post(`${API_BASE}/api/pipeline/approve/${taskToken}`, body)
       if (runId) await fetchStatus(runId)
+      await fetchHistory()
+      setStatusBarBump((n) => n + 1)
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Falha ao aprovar fase')
     } finally {
       setApprovingToken(null)
+    }
+  }
+
+  const handleSelectHistory = async (selectedRunId) => {
+    setError(null)
+    try {
+      setRunId(selectedRunId)
+      await fetchStatus(selectedRunId, { syncSpec: true })
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Falha ao recuperar pipeline')
     }
   }
 
@@ -221,68 +273,75 @@ function App() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[360px_1fr]">
-        {/* Painel de Controle */}
-        <aside className="h-fit rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
-          <h2 className="font-display text-lg font-semibold text-slate-950">Painel de Controle</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Descreva em linguagem natural, revise o JSON gerado e só então inicie.
-          </p>
+      <main className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-8">
+        {/* Painel de Controle — horizontal */}
+        <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
+          <div className="text-left">
+            <h2 className="font-display text-lg font-semibold text-slate-950">
+              Painel de Controle
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Descreva em linguagem natural, revise o JSON gerado e inicie o pipeline.
+            </p>
+          </div>
 
-          <label className="mt-4 block text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-            O que você deseja construir? (Linguagem Natural)
-          </label>
-          <FixedTextField
-            className="mt-2"
-            value={naturalPrompt}
-            readOnly={false}
-            onChange={(e) => setNaturalPrompt(e.target.value)}
-            aria-label="Descrição em linguagem natural"
-          />
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+              <label className="block text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                O que você deseja construir? (Linguagem Natural)
+              </label>
+              <FixedTextField
+                className="mt-2"
+                value={naturalPrompt}
+                readOnly={false}
+                onChange={(e) => setNaturalPrompt(e.target.value)}
+                aria-label="Descrição em linguagem natural"
+              />
+              <button
+                type="button"
+                onClick={handleGenerateSpec}
+                disabled={generatingSpec}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-900 px-4 py-3 font-display text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {generatingSpec ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Gerando Spec…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Transformar em Pipeline Spec
+                  </>
+                )}
+              </button>
+            </div>
 
-          <button
-            type="button"
-            onClick={handleGenerateSpec}
-            disabled={generatingSpec}
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 font-display text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {generatingSpec ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Gerando Spec…
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Transformar em Pipeline Spec
-              </>
-            )}
-          </button>
-
-          <div className="my-5 border-t border-slate-200" />
-
-          <label className="block text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Pipeline Spec (revise antes de iniciar)
-          </label>
-          <CopyableBlock
-            className="mt-2"
-            label="Copiar JSON"
-            buttonClassName="border-slate-600 bg-slate-800 text-slate-200 hover:border-slate-400 hover:bg-slate-700 hover:text-white"
-            text={specText}
-          >
-            <FixedTextField
-              value={specText}
-              readOnly={false}
-              onChange={(e) => setSpecText(e.target.value)}
-              aria-label="Pipeline Spec JSON"
-            />
-          </CopyableBlock>
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+              <label className="block text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Pipeline Spec (revise antes de iniciar)
+              </label>
+              <CopyableBlock
+                className="mt-2"
+                label="Copiar JSON"
+                buttonClassName="border-slate-600 bg-slate-800 text-slate-200 hover:border-slate-400 hover:bg-slate-700 hover:text-white"
+                text={specText}
+              >
+                <FixedTextField
+                  value={specText}
+                  readOnly={false}
+                  onChange={(e) => setSpecText(e.target.value)}
+                  aria-label="Pipeline Spec JSON"
+                />
+              </CopyableBlock>
+            </div>
+          </div>
 
           <button
             type="button"
             onClick={handleStart}
             disabled={starting || generatingSpec}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 font-display text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-700 via-emerald-600 to-lime-500 px-4 py-3.5 font-display text-sm font-semibold text-white shadow-[0_8px_24px_rgba(16,185,129,0.35)] transition hover:from-emerald-800 hover:via-emerald-700 hover:to-lime-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {starting ? (
               <>
@@ -302,7 +361,23 @@ function App() {
               {typeof error === 'string' ? error : JSON.stringify(error)}
             </p>
           )}
-        </aside>
+        </section>
+
+        <PipelineStatusBar
+          phases={planPhases}
+          runId={runId}
+          runStatus={runStatus}
+          bumpKey={statusBarBump}
+        />
+
+        <RunHistory
+          items={historyItems}
+          total={historyTotal}
+          loading={historyLoading}
+          activeRunId={runId}
+          onSelect={handleSelectHistory}
+          onRefresh={fetchHistory}
+        />
 
         {/* Plano Geral */}
         <section className="rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-sm backdrop-blur">
@@ -314,15 +389,15 @@ function App() {
               Fases do Pipeline
             </h2>
             <p className="mt-1 max-w-2xl text-sm text-slate-500">
-              Fases e nomes vêm da Pipeline Spec (types: methodology, research, synthesize,
-              prompt). O polling atualiza o status a cada 3s.
+              Resultados de cada fase são persistidos no banco. Selecione um item do
+              histórico para recuperar artefatos anteriores, ou acompanhe o run ativo.
             </p>
           </div>
 
           <div className="max-w-3xl">
             {planPhases.map((phase, index) => (
               <PhaseCard
-                key={phase.phase_id}
+                key={`${runId || 'draft'}-${phase.phase_id}`}
                 phaseId={phase.phase_id}
                 name={phase.name}
                 status={phase.status}

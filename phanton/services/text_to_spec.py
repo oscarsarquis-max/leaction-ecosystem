@@ -17,21 +17,23 @@ IMPORTANTE — o pipeline é DINÂMICO:
 - NÃO fixe sempre L1/L2/L3/L4.
 - Crie quantas fases forem necessárias, com IDs descritivos em snake_case
   (ex.: metodologia_eduscrum, pesquisa_casos_escolas, pesquisa_stack_tecnica,
-  sintese_produto, prompt_cursor).
+  sintese_produto, entrega_final).
 - Se o usuário pedir DUAS pesquisas separadas, crie DUAS fases type=research
   (com descricao distinta) e uma fase type=synthesize que as agrupe com a
   metodologia via depends_on.
-- A entrega final deve ser uma fase type=prompt (prompt técnico para o Cursor IDE),
-  tipicamente a última.
+- A ENTREGA FINAL deve ser uma fase type=prompt que PRODUZ O ARTEFATO pedido
+  pelo usuário (apresentação, documento, playbook, protótipo HTML, etc.) —
+  NÃO um prompt para outra ferramenta. Tipicamente é a última fase.
 
 O JSON deve ter:
 - "runId": slug curto (kebab-case)
-- "description": resumo em uma frase
+- "description": deve repetir/preservar o pedido do usuário (incluindo o tipo
+  de entrega: apresentação, documento, etc.)
 - "version": "1.0"
 - "phases": dicionário de fases. Cada fase:
   - "name": título curto amigável
   - "type": methodology | research | synthesize | prompt
-    (aliases aceitos: generate, grounding, evaluate, prompt_cursor)
+    (aliases aceitos: generate, grounding, evaluate, prompt_cursor, delivery)
   - "order": número sequencial (1, 2, 3...)
   - "descricao": escopo detalhado DESTA fase (o que o modelo deve fazer)
   - "depends_on": lista de ids de fases cujos artefatos alimentam esta fase
@@ -41,20 +43,25 @@ Capabilities:
 - methodology: alinhamento metodológico / princípios
 - research: pesquisa/grounding com busca (pode haver N)
 - synthesize: cruza/agrupa artefatos anteriores
-- prompt: gera o prompt Markdown para o Cursor implementar o sistema
+- prompt: GERA A ENTREGA FINAL solicitada (o artefato em si)
 
-A fase final type=prompt deve ter descricao equivalente a:
-"Gerar o prompt técnico detalhado e no estado da arte para ser utilizado no
-Cursor IDE para a implementação do sistema."
+A fase final type=prompt deve ter:
+- name amigável tipo "Entrega final" / "Apresentação" / "Documento final"
+  (conforme o pedido)
+- descricao explícita do ARTEFATO a produzir, ex.:
+  "Produzir a apresentação completa solicitada pelo usuário, em HTML
+   autocontido com slides navegáveis, usando metodologia + pesquisas + síntese
+   como fonte da verdade. Não gerar prompt intermediário."
+
+NÃO mencione Cursor, VS Code, Copilot ou outras IDEs na Spec.
 
 Retorne APENAS o JSON válido, sem markdown e sem comentários.
 """.strip()
 
 _PROMPT_DESCRICAO = (
-    "Destilar 100% do esforço das fases anteriores (metodologia, pesquisas e "
-    "síntese) no melhor prompt Markdown possível para o Cursor IDE: completo, "
-    "auto-contido, anti-alucinação, com stack, arquitetura, estrutura de "
-    "arquivos, contratos, plano step-by-step e critérios de aceite verificáveis."
+    "Produzir a ENTREGA FINAL pedida pelo usuário (o artefato concreto: "
+    "apresentação, documento, playbook ou protótipo), usando 100% do esforço "
+    "das fases anteriores. Não gerar prompt intermediário nem citar IDEs."
 )
 
 
@@ -68,7 +75,18 @@ def _slug_phase_id(value: str) -> str:
     return slug[:64] or "fase"
 
 
-def _ensure_final_prompt_phase(phases: dict[str, Any]) -> None:
+def _final_phase_name(user_prompt: str) -> str:
+    text = (user_prompt or "").lower()
+    if re.search(r"apresenta|slides?|pitch|deck", text):
+        return "Apresentação final"
+    if re.search(r"documento|relat[oó]rio|playbook|roteiro", text):
+        return "Documento final"
+    if re.search(r"prot[oó]tipo|html|p[aá]gina|landing", text):
+        return "Protótipo final"
+    return "Entrega final"
+
+
+def _ensure_final_prompt_phase(phases: dict[str, Any], user_prompt: str = "") -> None:
     """Garante ao menos uma fase type=prompt no fim (id livre)."""
     prompt_ids = [
         pid
@@ -76,15 +94,23 @@ def _ensure_final_prompt_phase(phases: dict[str, Any]) -> None:
         if isinstance(cfg, dict)
         and normalize_phase_type(cfg.get("type"), pid) == "prompt"
     ]
+    final_name = _final_phase_name(user_prompt)
     if prompt_ids:
         for pid in prompt_ids:
             cfg = phases[pid]
             cfg["type"] = "prompt"
-            if not cfg.get("descricao") and not cfg.get("description"):
-                cfg["descricao"] = _PROMPT_DESCRICAO
+            # Remove nomes/descrições legadas que apontam para IDE
+            name = str(cfg.get("name") or "")
+            if re.search(r"(?i)cursor", name) or name.strip().lower().startswith("prompt"):
+                cfg["name"] = final_name
+            descricao = str(cfg.get("descricao") or cfg.get("description") or "")
+            if not descricao or re.search(r"(?i)cursor|colar no|prompt para", descricao):
+                cfg["descricao"] = (
+                    f"{_PROMPT_DESCRICAO} Pedido do usuário: "
+                    f"{(user_prompt or '').strip()[:400]}"
+                )
         return
 
-    # Cria prompt_cursor se o modelo omitiu a entrega
     other_orders = []
     for pid, cfg in phases.items():
         if isinstance(cfg, dict):
@@ -93,11 +119,14 @@ def _ensure_final_prompt_phase(phases: dict[str, Any]) -> None:
             except (TypeError, ValueError):
                 pass
     prior = [pid for pid in phases.keys()]
-    phases["prompt_cursor"] = {
-        "name": "Prompt para o Cursor",
+    phases["entrega_final"] = {
+        "name": final_name,
         "type": "prompt",
         "order": (max(other_orders) + 1) if other_orders else len(phases) + 1,
-        "descricao": _PROMPT_DESCRICAO,
+        "descricao": (
+            f"{_PROMPT_DESCRICAO} Pedido do usuário: "
+            f"{(user_prompt or '').strip()[:400]}"
+        ),
         "depends_on": prior,
     }
 
@@ -110,8 +139,13 @@ def _normalize_generated_spec(raw: dict[str, Any], user_prompt: str) -> dict[str
         spec["name"] = str(run_id)
     if not spec.get("name"):
         spec["name"] = _slugify(user_prompt[:60])
-    if not spec.get("description"):
-        spec["description"] = user_prompt.strip()[:280] or "Pipeline gerado via Text-to-Spec"
+    # Preserva o pedido completo na description (a entrega final depende disso)
+    user_clean = user_prompt.strip()
+    if user_clean:
+        spec["description"] = user_clean[:800]
+        spec["user_prompt"] = user_clean
+    elif not spec.get("description"):
+        spec["description"] = "Pipeline gerado via Text-to-Spec"
     if not spec.get("version"):
         spec["version"] = "1.0"
 
@@ -128,7 +162,6 @@ def _normalize_generated_spec(raw: dict[str, Any], user_prompt: str) -> dict[str
                 cfg["name"] = phase_id.replace("_", " ").title()
             if not cfg.get("descricao") and cfg.get("description"):
                 cfg["descricao"] = cfg["description"]
-            # depends_on: normaliza ids
             deps = cfg.get("depends_on") or []
             if isinstance(deps, str):
                 deps = [deps]
@@ -137,7 +170,6 @@ def _normalize_generated_spec(raw: dict[str, Any], user_prompt: str) -> dict[str
             phases[phase_id] = cfg
     spec["phases"] = phases
 
-    # order sequencial se ausente
     ordered = sorted(
         phases.items(),
         key=lambda item: (
@@ -149,11 +181,13 @@ def _normalize_generated_spec(raw: dict[str, Any], user_prompt: str) -> dict[str
         if cfg.get("order") is None:
             cfg["order"] = index
 
-    # depends_on default para synthesize/prompt = fases anteriores
-    ordered_ids = [pid for pid, _ in sorted(
-        phases.items(),
-        key=lambda item: int(item[1].get("order") or 999),
-    )]
+    ordered_ids = [
+        pid
+        for pid, _ in sorted(
+            phases.items(),
+            key=lambda item: int(item[1].get("order") or 999),
+        )
+    ]
     for phase_id in ordered_ids:
         cfg = phases[phase_id]
         capability = normalize_phase_type(cfg.get("type"), phase_id)
@@ -161,7 +195,7 @@ def _normalize_generated_spec(raw: dict[str, Any], user_prompt: str) -> dict[str
             idx = ordered_ids.index(phase_id)
             cfg["depends_on"] = ordered_ids[:idx]
 
-    _ensure_final_prompt_phase(phases)
+    _ensure_final_prompt_phase(phases, user_prompt=user_clean)
     return normalize_spec_phases(spec)
 
 

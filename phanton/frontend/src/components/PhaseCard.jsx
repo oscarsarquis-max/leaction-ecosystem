@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, Circle, Loader2, ShieldCheck } from 'lucide-react'
 import ArtifactView from './ArtifactView'
+import { phaseAnchorId } from './PipelineStatusBar'
 
 const STATUS_META = {
   PENDING: {
@@ -45,9 +47,32 @@ export default function PhaseCard({
   const meta = STATUS_META[status] || STATUS_META.PENDING
   const Icon = meta.Icon
   const waiting = status === 'AWAITING_APPROVAL'
+  const [draftArtifact, setDraftArtifact] = useState(artifactData)
+  const draftRef = useRef(artifactData)
+
+  useEffect(() => {
+    setDraftArtifact(artifactData)
+    draftRef.current = artifactData
+  }, [taskToken, status])
+
+  useEffect(() => {
+    if (draftRef.current == null && artifactData != null) {
+      setDraftArtifact(artifactData)
+      draftRef.current = artifactData
+    }
+  }, [artifactData])
+
+  const handleDraftChange = (next) => {
+    draftRef.current = next
+    setDraftArtifact(next)
+  }
+
+  const handleApprove = () => {
+    onApprove(taskToken, draftRef.current ?? artifactData)
+  }
 
   return (
-    <div className="relative flex gap-4">
+    <div className="relative flex gap-4" id={phaseAnchorId(phaseId)}>
       <div className="flex flex-col items-center">
         <div
           className={`flex h-11 w-11 items-center justify-center rounded-full border-2 ${meta.iconWrap}`}
@@ -57,7 +82,7 @@ export default function PhaseCard({
         {!isLast && <div className="mt-1 w-0.5 flex-1 min-h-[2.5rem] bg-slate-200" />}
       </div>
 
-      <article className={`mb-6 min-w-0 flex-1 rounded-2xl border p-5 text-left ${meta.card}`}>
+      <article className={`mb-6 min-w-0 flex-1 scroll-mt-28 rounded-2xl border p-5 text-left ${meta.card}`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-display text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -74,15 +99,21 @@ export default function PhaseCard({
           </span>
         </div>
 
-        {artifactData ? (
-          <ArtifactView artifactData={artifactData} phaseId={phaseId} name={name} />
+        {artifactData || draftArtifact ? (
+          <ArtifactView
+            artifactData={waiting ? draftArtifact ?? artifactData : artifactData}
+            phaseId={phaseId}
+            name={name}
+            editable={waiting}
+            onChange={waiting ? handleDraftChange : undefined}
+          />
         ) : null}
 
         {waiting && taskToken && (
           <button
             type="button"
             disabled={approving}
-            onClick={() => onApprove(taskToken)}
+            onClick={handleApprove}
             className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3.5 font-display text-base font-bold text-white shadow-[0_0_28px_rgba(16,185,129,0.55)] transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           >
             {approving ? (

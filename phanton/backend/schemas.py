@@ -149,3 +149,27 @@ class PipelineStatusResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     phases: list[PhaseStatusRead]
+
+
+class PipelineHistoryPhaseSummary(BaseModel):
+    phase_id: str
+    name: str
+    status: str
+    has_artifact: bool = False
+
+
+class PipelineHistoryItem(BaseModel):
+    run_id: UUID
+    status: str
+    title: str
+    description: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    phase_count: int = 0
+    approved_count: int = 0
+    phases: list[PipelineHistoryPhaseSummary] = Field(default_factory=list)
+
+
+class PipelineHistoryResponse(BaseModel):
+    items: list[PipelineHistoryItem]
+    total: int
