@@ -271,7 +271,9 @@ export async function GET(request: Request) {
 
   const origin = new URL(request.url).origin;
   const bearer = extractBearerToken(request);
-  const authHeaders = bearer ? { Authorization: `Bearer ${bearer}` } : {};
+  const authHeaders: Record<string, string> | undefined = bearer
+    ? { Authorization: `Bearer ${bearer}` }
+    : undefined;
   const planAppIds = planProbeAppIds();
   const gw = gatewayBase();
 
