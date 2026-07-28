@@ -36,12 +36,12 @@ $ComposeDir = $PSScriptRoot
 $WorkDir = Join-Path $ComposeDir '_lan-sync'
 $DumpFile = Join-Path $WorkDir 'orquestrador.dump'
 
-Write-Host "`n==> Sync phanton DB ($SourceHost:$SourcePort/$Database -> local)" -ForegroundColor Cyan
+Write-Host "`n==> Sync phanton DB (${SourceHost}:${SourcePort}/$Database -> local)" -ForegroundColor Cyan
 
 # Connectivity
 $tnc = Test-NetConnection -ComputerName $SourceHost -Port $SourcePort -WarningAction SilentlyContinue
 if (-not $tnc.TcpTestSucceeded) {
-    throw "Porta $SourcePort fechada em $SourceHost. Na ORIGEM rode: .\open-phanton-db-lan.ps1"
+    throw "Porta ${SourcePort} fechada em ${SourceHost}. Na ORIGEM rode: .\open-phanton-db-lan.ps1"
 }
 
 New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null

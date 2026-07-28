@@ -60,6 +60,12 @@ param(
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 
+# Console UTF-8 (mensagens com acento no Windows)
+try {
+    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+    $OutputEncoding = [Console]::OutputEncoding
+} catch {}
+
 $eco = Join-Path $Root 'infra\sync-ecosystem-db-from-lan.ps1'
 if (-not (Test-Path $eco)) {
     throw "Script não encontrado: $eco"
