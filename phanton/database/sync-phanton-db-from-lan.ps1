@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-  No DESTINO: pg_dump da base phanton (orquestrador) na outra estação e restaura local.
+  No DESTINO: pg_dump da base phanton (orquestrador) na outra estacao e restaura local.
 
 .EXAMPLE
-  # Nesta máquina (.41), puxar do DESKTOP-BA2U3G4 (.46):
+  # Nesta maquina (.41), puxar do DESKTOP-BA2U3G4 (.46):
   .\phanton\database\sync-phanton-db-from-lan.ps1 -SourceHost 192.168.0.46 -Force
 
 .NOTES
-  Pré-requisito na ORIGEM:
+  Pre-requisito na ORIGEM:
     cd ...\phanton\database
     .\open-phanton-db-lan.ps1   # libera TCP 5435
 #>
@@ -89,5 +89,5 @@ docker run --rm `
 docker exec $LocalContainer psql -U $DbUser -d $Database -c `
     "SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY relname;"
 
-Write-Host "`n==> Sync phanton concluído." -ForegroundColor Green
+Write-Host "`n==> Sync phanton concluido." -ForegroundColor Green
 Write-Host "Dump em: $DumpFile"
