@@ -1,4 +1,4 @@
-/** Campo de texto de altura fixa — evita JSON/HTML estourarem a tela. */
+/** Campo de texto — altura fixa por padrão; pode crescer via className (!h-full). */
 const FIELD_CLASS =
   'block h-48 w-full resize-none overflow-auto rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-100 outline-none focus:ring-2 focus:ring-sky-400'
 

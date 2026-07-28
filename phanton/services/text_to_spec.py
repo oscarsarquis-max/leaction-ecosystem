@@ -17,43 +17,49 @@ IMPORTANTE — o pipeline é DINÂMICO:
 - NÃO fixe sempre L1/L2/L3/L4.
 - Crie quantas fases forem necessárias, com IDs descritivos em snake_case
   (ex.: metodologia_eduscrum, pesquisa_casos_escolas, pesquisa_stack_tecnica,
-  sintese_produto, entrega_final).
+  sintese_produto, generate_prd, generate_sdd, prompt_cursor, entrega_final).
 - Se o usuário pedir DUAS pesquisas separadas, crie DUAS fases type=research
   (com descricao distinta) e uma fase type=synthesize que as agrupe com a
   metodologia via depends_on.
-- A ENTREGA FINAL deve ser uma fase type=prompt que PRODUZ O ARTEFATO pedido
-  pelo usuário (apresentação, documento, playbook, protótipo HTML, etc.) —
-  NÃO um prompt para outra ferramenta. Tipicamente é a última fase.
+
+TOPOLOGIA PADRÃO — construção de SOFTWARE / aplicação / sistema / plataforma:
+1. Fases methodology e research (paralelas se necessário; research pode ser N)
+2. Uma fase synthesize unindo as anteriores (depends_on)
+3. Uma fase generate_prd dependendo da síntese
+4. Uma fase generate_sdd dependendo do PRD
+5. Uma fase final prompt_cursor dependendo do SDD
+Mapeie IDs e depends_on corretamente para formar o grafo lógico.
+
+TOPOLOGIA — entrega de ARTEFATO (HTML interativo, apresentação, playbook,
+documento educativo, protótipo visual) SEM pedir implementação de software:
+- methodology + research (+ synthesize) e fase final type=prompt que PRODUZ
+  O ARTEFATO pedido (não um prompt de IDE).
 
 O JSON deve ter:
 - "runId": slug curto (kebab-case)
 - "description": deve repetir/preservar o pedido do usuário (incluindo o tipo
-  de entrega: apresentação, documento, etc.)
+  de entrega: software, apresentação, documento, etc.)
 - "version": "1.0"
 - "phases": dicionário de fases. Cada fase:
   - "name": título curto amigável
-  - "type": methodology | research | synthesize | prompt
-    (aliases aceitos: generate, grounding, evaluate, prompt_cursor, delivery)
+  - "type": methodology | research | synthesize | generate_prd | generate_sdd
+    | prompt_cursor | prompt
+    (aliases: generate, grounding, evaluate, prd, sdd, delivery, html,
+    ide_prompt)
   - "order": número sequencial (1, 2, 3...)
   - "descricao": escopo detalhado DESTA fase (o que o modelo deve fazer)
   - "depends_on": lista de ids de fases cujos artefatos alimentam esta fase
-    (obrigatório em synthesize e prompt; omitir ou [] nas fases iniciais)
+    (obrigatório em synthesize, generate_prd, generate_sdd, prompt_cursor e
+    prompt; omitir ou [] nas fases iniciais)
 
 Capabilities:
 - methodology: alinhamento metodológico / princípios
 - research: pesquisa/grounding com busca (pode haver N)
 - synthesize: cruza/agrupa artefatos anteriores
-- prompt: GERA A ENTREGA FINAL solicitada (o artefato em si)
-
-A fase final type=prompt deve ter:
-- name amigável tipo "Entrega final" / "Apresentação" / "Documento final"
-  (conforme o pedido)
-- descricao explícita do ARTEFATO a produzir, ex.:
-  "Produzir a apresentação completa solicitada pelo usuário, em HTML
-   autocontido com slides navegáveis, usando metodologia + pesquisas + síntese
-   como fonte da verdade. Não gerar prompt intermediário."
-
-NÃO mencione Cursor, VS Code, Copilot ou outras IDEs na Spec.
+- generate_prd: gera PRD (Product Requirements Document) em Markdown
+- generate_sdd: gera SDD (Software Design Document) em Markdown a partir do PRD
+- prompt_cursor: gera prompt executável curto para o Cursor IDE (lê PRD.md/SDD.md)
+- prompt: GERA A ENTREGA FINAL solicitada (HTML/doc/artefato) — NÃO é prompt de IDE
 
 Retorne APENAS o JSON válido, sem markdown e sem comentários.
 """.strip()
@@ -63,6 +69,56 @@ _PROMPT_DESCRICAO = (
     "apresentação, documento, playbook ou protótipo), usando 100% do esforço "
     "das fases anteriores. Não gerar prompt intermediário nem citar IDEs."
 )
+
+_PRD_DESCRICAO = (
+    "Gerar PRD (Product Requirements Document) em Markdown a partir da síntese: "
+    "Visão Geral, Público-alvo, Regras de Negócio Core, Casos de Uso/Jornadas e "
+    "Critérios de Aceite."
+)
+
+_SDD_DESCRICAO = (
+    "Gerar SDD (Software Design Document) em Markdown a partir do PRD: "
+    "Stack Tecnológica, Arquitetura do Sistema, Modelo de Dados e Contratos "
+    "de API/Componentes."
+)
+
+_CURSOR_DESCRICAO = (
+    "Gerar prompt de ação curto e executável para o Cursor IDE, instruindo a "
+    "IA a ler PRD.md e SDD.md na raiz e implementar passo a passo respeitando "
+    "a arquitetura."
+)
+
+_SOFTWARE_RE = re.compile(
+    r"\b("
+    r"software|aplicativo|aplica[cç][aã]o|sistema|plataforma|saas|"
+    r"backend|frontend|full[\s-]?stack|mvp|implementar|codificar|"
+    r"desenvolver (um |o |uma |a )?(app|software|sistema|plataforma|api)"
+    r")\b",
+    re.I,
+)
+
+_ARTIFACT_DELIVERY_RE = re.compile(
+    r"\b("
+    r"html|apresenta[cç][aã]o|slides?|pitch|deck|playbook|roteiro|"
+    r"p[aá]gina interativa|prot[oó]tipo visual|experi[eê]ncia digital educativa"
+    r")\b",
+    re.I,
+)
+
+
+def _wants_software_build(user_prompt: str) -> bool:
+    """True quando o pedido é construir software (PRD→SDD→Cursor)."""
+    text = user_prompt or ""
+    if not _SOFTWARE_RE.search(text):
+        return False
+    # Artefato educativo/HTML explícito sem ênfase em implementar sistema
+    if _ARTIFACT_DELIVERY_RE.search(text) and not re.search(
+        r"\b(implementar|codificar|reposit[oó]rio|cursor ide|stack)\b",
+        text,
+        re.I,
+    ):
+        return False
+    return True
 
 
 def _slugify(value: str) -> str:
@@ -86,20 +142,36 @@ def _final_phase_name(user_prompt: str) -> str:
     return "Entrega final"
 
 
-def _ensure_final_prompt_phase(phases: dict[str, Any], user_prompt: str = "") -> None:
-    """Garante ao menos uma fase type=prompt no fim (id livre)."""
-    prompt_ids = [
+def _max_order(phases: dict[str, Any]) -> int:
+    orders: list[int] = []
+    for cfg in phases.values():
+        if isinstance(cfg, dict):
+            try:
+                orders.append(int(cfg.get("order") or 0))
+            except (TypeError, ValueError):
+                pass
+    return max(orders) if orders else 0
+
+
+def _find_phase_ids_by_capability(
+    phases: dict[str, Any], capability: str
+) -> list[str]:
+    return [
         pid
         for pid, cfg in phases.items()
         if isinstance(cfg, dict)
-        and normalize_phase_type(cfg.get("type"), pid) == "prompt"
+        and normalize_phase_type(cfg.get("type"), pid) == capability
     ]
+
+
+def _ensure_final_prompt_phase(phases: dict[str, Any], user_prompt: str = "") -> None:
+    """Garante ao menos uma fase type=prompt no fim (entrega de artefato)."""
+    prompt_ids = _find_phase_ids_by_capability(phases, "prompt")
     final_name = _final_phase_name(user_prompt)
     if prompt_ids:
         for pid in prompt_ids:
             cfg = phases[pid]
             cfg["type"] = "prompt"
-            # Remove nomes/descrições legadas que apontam para IDE
             name = str(cfg.get("name") or "")
             if re.search(r"(?i)cursor", name) or name.strip().lower().startswith("prompt"):
                 cfg["name"] = final_name
@@ -111,24 +183,97 @@ def _ensure_final_prompt_phase(phases: dict[str, Any], user_prompt: str = "") ->
                 )
         return
 
-    other_orders = []
-    for pid, cfg in phases.items():
-        if isinstance(cfg, dict):
-            try:
-                other_orders.append(int(cfg.get("order") or 0))
-            except (TypeError, ValueError):
-                pass
     prior = [pid for pid in phases.keys()]
     phases["entrega_final"] = {
         "name": final_name,
         "type": "prompt",
-        "order": (max(other_orders) + 1) if other_orders else len(phases) + 1,
+        "order": _max_order(phases) + 1,
         "descricao": (
             f"{_PROMPT_DESCRICAO} Pedido do usuário: "
             f"{(user_prompt or '').strip()[:400]}"
         ),
         "depends_on": prior,
     }
+
+
+def _ensure_software_topology(phases: dict[str, Any], user_prompt: str = "") -> None:
+    """Garante synthesize → generate_prd → generate_sdd → prompt_cursor."""
+    synth_ids = _find_phase_ids_by_capability(phases, "synthesize")
+    if not synth_ids:
+        # Cria síntese mínima dependendo de tudo que já existe
+        prior = list(phases.keys())
+        phases["sintese_produto"] = {
+            "name": "Síntese do produto",
+            "type": "synthesize",
+            "order": _max_order(phases) + 1,
+            "descricao": (
+                "Sintetizar metodologia e pesquisas em requisitos e direção "
+                f"de produto. Pedido: {(user_prompt or '').strip()[:300]}"
+            ),
+            "depends_on": prior,
+        }
+        synth_ids = ["sintese_produto"]
+
+    prd_ids = _find_phase_ids_by_capability(phases, "generate_prd")
+    if not prd_ids:
+        phases["generate_prd"] = {
+            "name": "PRD — Requisitos do Produto",
+            "type": "generate_prd",
+            "order": _max_order(phases) + 1,
+            "descricao": _PRD_DESCRICAO,
+            "depends_on": [synth_ids[-1]],
+        }
+        prd_ids = ["generate_prd"]
+    else:
+        for pid in prd_ids:
+            cfg = phases[pid]
+            cfg["type"] = "generate_prd"
+            if not cfg.get("depends_on"):
+                cfg["depends_on"] = [synth_ids[-1]]
+            if not cfg.get("descricao"):
+                cfg["descricao"] = _PRD_DESCRICAO
+
+    sdd_ids = _find_phase_ids_by_capability(phases, "generate_sdd")
+    if not sdd_ids:
+        phases["generate_sdd"] = {
+            "name": "SDD — Design de Software",
+            "type": "generate_sdd",
+            "order": _max_order(phases) + 1,
+            "descricao": _SDD_DESCRICAO,
+            "depends_on": [prd_ids[-1]],
+        }
+        sdd_ids = ["generate_sdd"]
+    else:
+        for pid in sdd_ids:
+            cfg = phases[pid]
+            cfg["type"] = "generate_sdd"
+            if not cfg.get("depends_on"):
+                cfg["depends_on"] = [prd_ids[-1]]
+            if not cfg.get("descricao"):
+                cfg["descricao"] = _SDD_DESCRICAO
+
+    cursor_ids = _find_phase_ids_by_capability(phases, "prompt_cursor")
+    if not cursor_ids:
+        phases["prompt_cursor"] = {
+            "name": "Prompt para Cursor IDE",
+            "type": "prompt_cursor",
+            "order": _max_order(phases) + 1,
+            "descricao": (
+                f"{_CURSOR_DESCRICAO} Pedido: {(user_prompt or '').strip()[:300]}"
+            ),
+            "depends_on": [sdd_ids[-1]],
+        }
+    else:
+        for pid in cursor_ids:
+            cfg = phases[pid]
+            cfg["type"] = "prompt_cursor"
+            if not cfg.get("depends_on"):
+                cfg["depends_on"] = [sdd_ids[-1]]
+            if not cfg.get("descricao"):
+                cfg["descricao"] = _CURSOR_DESCRICAO
+
+    # Em fluxo de software, não forçar fase type=prompt (entrega HTML)
+    # a menos que o modelo já a tenha criado de propósito.
 
 
 def _normalize_generated_spec(raw: dict[str, Any], user_prompt: str) -> dict[str, Any]:
@@ -188,14 +333,25 @@ def _normalize_generated_spec(raw: dict[str, Any], user_prompt: str) -> dict[str
             key=lambda item: int(item[1].get("order") or 999),
         )
     ]
+    needs_deps = {
+        "synthesize",
+        "generate_prd",
+        "generate_sdd",
+        "prompt_cursor",
+        "prompt",
+    }
     for phase_id in ordered_ids:
         cfg = phases[phase_id]
         capability = normalize_phase_type(cfg.get("type"), phase_id)
-        if capability in {"synthesize", "prompt"} and not cfg.get("depends_on"):
+        if capability in needs_deps and not cfg.get("depends_on"):
             idx = ordered_ids.index(phase_id)
             cfg["depends_on"] = ordered_ids[:idx]
 
-    _ensure_final_prompt_phase(phases, user_prompt=user_clean)
+    if _wants_software_build(user_clean):
+        _ensure_software_topology(phases, user_prompt=user_clean)
+    else:
+        _ensure_final_prompt_phase(phases, user_prompt=user_clean)
+
     return normalize_spec_phases(spec)
 
 

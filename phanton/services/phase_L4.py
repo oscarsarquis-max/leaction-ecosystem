@@ -35,6 +35,181 @@ _PRESENTATION_RE = re.compile(
 )
 _HTML_DOC_RE = re.compile(r"^\s*(<!DOCTYPE\s+html|<html\b)", re.I)
 
+_INTERACT_STYLE_MARKER = 'data-phanton-interact="1"'
+_TAB_SCRIPT_MARKER = 'data-phanton-tabs="1"'
+_INTERACT_STYLE_BLOCK = f"""
+<style {_INTERACT_STYLE_MARKER}>
+/* Phanton: overlays decorativos não roubam clique; controles sempre clicáveis */
+body::before, body::after, html::before, html::after {{
+  pointer-events: none !important;
+}}
+.overlay, .backdrop, .bg-overlay, .background-overlay, .hero-overlay,
+.glow, .particles, .bg-layer, [aria-hidden="true"] {{
+  pointer-events: none !important;
+}}
+button, a, input, select, textarea, summary,
+[role="button"], [onclick], [tabindex]:not([tabindex="-1"]),
+nav, .btn, .card, .tab, .nav-btn, .axis-card, .method-card, .tab-btn {{
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 5;
+  cursor: pointer;
+}}
+.tab-content.hidden {{ display: none !important; }}
+.tab-content.block {{ display: block !important; }}
+.tab-btn.is-active, .tab-btn[aria-selected="true"] {{
+  background: #fff !important;
+  color: #0369a1 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}}
+</style>
+""".strip()
+
+_TAB_SWITCH_SCRIPT = f"""
+<script {_TAB_SCRIPT_MARKER}>
+(function () {{
+  function switchTab(id) {{
+    var key = String(id || "");
+    document.querySelectorAll(".tab-content").forEach(function (el) {{
+      var match =
+        el.id === "content-" + key ||
+        el.id === "panel-" + key ||
+        el.getAttribute("data-tab") === key;
+      el.classList.toggle("hidden", !match);
+      el.classList.toggle("block", !!match);
+      el.hidden = !match;
+    }});
+    document.querySelectorAll(".tab-btn, [data-tab-target]").forEach(function (btn) {{
+      var btnKey =
+        (btn.getAttribute("data-tab-target") || "") ||
+        String(btn.id || "").replace(/^tab-/, "");
+      var active = btnKey === key;
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+      btn.classList.toggle("is-active", active);
+    }});
+  }}
+  window.switchTab = switchTab;
+  window.showSlide = window.showSlide || function (n) {{
+    var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+    if (!slides.length) return;
+    var i = ((n % slides.length) + slides.length) % slides.length;
+    slides.forEach(function (s, idx) {{ s.classList.toggle("active", idx === i); }});
+  }};
+}})();
+</script>
+""".strip()
+
+_HTML_INTERACTIVITY_RULES = """
+INTERATIVIDADE (obrigatório — cliques DEVEM funcionar)
+- Qualquer camada decorativa (gradient, ::before/::after, .overlay, backdrop)
+  com position fixed/absolute cobrindo a tela DEVE ter pointer-events: none.
+- NÃO cubra botões/cards com um div transparente full-screen.
+- Controles clicáveis (botões, cards, tabs, nav) com cursor:pointer e
+  listeners reais (click / keydown). Ao clicar, a UI DEVE mudar (painel,
+  slide, seção ativa, etc.).
+- Evite pointer-events: none em containers que envolvem botões.
+- A página deve funcionar isolada (arquivo único), preferindo CSS/JS inline
+  (sem CDN). Se usar onclick="foo()", a function foo DEVE existir no HTML.
+- OBRIGATÓRIO: HTML completo até </body></html>. Nunca corte no meio de uma tag.
+- Prefira página enxuta e 100% funcional a página longa e truncada.
+"""
+
+
+def _html_is_truncated(html: str) -> bool:
+    text = html or ""
+    if not _HTML_DOC_RE.match(text):
+        return False
+    if not re.search(r"</html\s*>", text, flags=re.I):
+        return True
+    called = set(re.findall(r"""\bonclick\s*=\s*["']\s*([A-Za-z_][\w]*)\s*\(""", text))
+    defined = set(re.findall(r"\bfunction\s+([A-Za-z_][\w]*)\s*\(", text))
+    defined |= set(
+        re.findall(r"\b(?:const|let|var)\s+([A-Za-z_][\w]*)\s*=\s*(?:async\s*)?function", text)
+    )
+    defined |= set(re.findall(r"\b(?:const|let|var)\s+([A-Za-z_][\w]*)\s*=\s*(?:async\s*)?\(", text))
+    return bool(called - defined)
+
+
+def _close_truncated_html(html: str) -> str:
+    text = html or ""
+    if re.search(r"</html\s*>", text, flags=re.I):
+        return text
+    open_divs = len(re.findall(r"<div\b", text, flags=re.I)) - len(
+        re.findall(r"</div\s*>", text, flags=re.I)
+    )
+    open_divs = max(0, min(open_divs, 60))
+    parts = [text.rstrip()]
+    if open_divs:
+        parts.append("\n" + ("</div>\n" * open_divs))
+    if not re.search(r"</body\s*>", text, flags=re.I):
+        parts.append("</body>")
+    parts.append("</html>")
+    return "\n".join(parts)
+
+
+def _inject_before_body_end(html: str, snippet: str) -> str:
+    if re.search(r"</body\s*>", html, flags=re.I):
+        return re.sub(
+            r"</body\s*>",
+            snippet + "\n</body>",
+            html,
+            count=1,
+            flags=re.I,
+        )
+    if re.search(r"</html\s*>", html, flags=re.I):
+        return re.sub(
+            r"</html\s*>",
+            snippet + "\n</html>",
+            html,
+            count=1,
+            flags=re.I,
+        )
+    return html.rstrip() + "\n" + snippet + "\n"
+
+
+def _inject_style_block(html: str, style_block: str, marker: str) -> str:
+    if marker in html:
+        return html
+    if re.search(r"</head\s*>", html, flags=re.I):
+        return re.sub(
+            r"</head\s*>",
+            style_block + "\n</head>",
+            html,
+            count=1,
+            flags=re.I,
+        )
+    if re.search(r"<body\b", html, flags=re.I):
+        return re.sub(
+            r"<body\b([^>]*)>",
+            lambda m: f"<body{m.group(1)}>\n{style_block}",
+            html,
+            count=1,
+            flags=re.I,
+        )
+    return style_block + "\n" + html
+
+
+def _ensure_html_clickable(html: str) -> str:
+    """Fecha HTML truncado, injeta switchTab se faltar e CSS anti-overlay."""
+    text = (html or "").strip()
+    if not text or not _HTML_DOC_RE.match(text):
+        return text
+
+    text = _close_truncated_html(text)
+
+    needs_tabs = (
+        "switchTab(" in text
+        and "function switchTab" not in text
+        and f"{_TAB_SCRIPT_MARKER}" not in text
+    ) or (
+        bool(re.search(r"""\bonclick\s*=\s*["']\s*switchTab\s*\(""", text))
+        and f"{_TAB_SCRIPT_MARKER}" not in text
+    )
+    if needs_tabs:
+        text = _inject_before_body_end(text, _TAB_SWITCH_SCRIPT)
+
+    return _inject_style_block(text, _INTERACT_STYLE_BLOCK, _INTERACT_STYLE_MARKER)
+
 
 def _compact_inputs(inputs: dict[str, Any]) -> dict[str, Any]:
     serialized = json.dumps(inputs, ensure_ascii=False, default=str)
@@ -129,7 +304,7 @@ def _build_delivery_prompt(
     presentation = _wants_presentation(spec, cfg)
 
     if presentation:
-        format_rules = """
+        format_rules = f"""
 FORMATO DA ENTREGA (apresentação)
 - Produza uma APRESENTAÇÃO COMPLETA e utilizável agora — NÃO um prompt, NÃO um roteiro
   para outra ferramenta gerar os slides.
@@ -137,6 +312,7 @@ FORMATO DA ENTREGA (apresentação)
   com slides navegáveis (teclado/setas ou botões), tipografia legível e layout clean.
 - Inclua JavaScript inline funcional (navegação entre slides, botões, teclado).
   A interatividade DEVE funcionar ao abrir o arquivo/HTML isolado.
+{_HTML_INTERACTIVITY_RULES}
 - Inclua título, seções/slides com conteúdo real (não placeholders tipo “Slide 1…”).
 - Use o material das fases anteriores como fonte da verdade (metodologia, pesquisas, síntese).
 - Idioma: português do Brasil.
@@ -146,15 +322,17 @@ FORMATO DA ENTREGA (apresentação)
   Sem prefácio (“claro,” “aqui está”).
 """
     else:
-        format_rules = """
+        format_rules = f"""
 FORMATO DA ENTREGA
 - Produza a ENTREGA FINAL pedida pelo usuário — o artefato em si, pronto para uso.
 - NÃO produza um “prompt para implementar depois”.
 - NÃO produza meta-instruções do tipo “abra a ferramenta X e cole…”.
 - Escolha o formato mais adequado ao pedido:
   • documento / plano / roteiro → Markdown completo
-  • página / protótipo visual → HTML autocontido
+  • página / protótipo visual → HTML autocontido (CSS+JS inline)
   • checklist / playbook → Markdown estruturado
+- Se a entrega for HTML interativo: JavaScript real para clique/navegação.
+{_HTML_INTERACTIVITY_RULES}
 - Conteúdo denso e específico; incorpore pesquisas e síntese.
 - Idioma: português do Brasil.
 - NÃO cite ferramentas de IDE (Cursor, VS Code, Copilot, etc.).
@@ -266,6 +444,8 @@ def coerce_to_delivery(raw_text: str) -> str:
 def _package_delivery(content: str) -> dict[str, Any]:
     cleaned = _strip_tool_mentions((content or "").strip())
     is_html = bool(_HTML_DOC_RE.match(cleaned))
+    if is_html:
+        cleaned = _ensure_html_clickable(cleaned)
     package: dict[str, Any] = {
         "delivery": cleaned,
         "format": "html" if is_html else "markdown",
@@ -451,14 +631,14 @@ def _generate_delivery_safe(
     errors: list[str] = []
 
     attempts = [
-        (_compact_inputs(inputs), 8192, 0.35),
-        (_compact_inputs(inputs), 4096, 0.25),
+        (_compact_inputs(inputs), 16384, 0.3),
+        (_compact_inputs(inputs), 8192, 0.25),
     ]
     tiny: dict[str, Any] = {}
     for key, value in inputs.items():
         chunk = json.dumps(value, ensure_ascii=False, default=str)
         tiny[key] = chunk[:6000] + ("…[truncado]" if len(chunk) > 6000 else "")
-    attempts.append((tiny, 4096, 0.2))
+    attempts.append((tiny, 8192, 0.2))
 
     for compact, max_tokens, temperature in attempts:
         prompt = _build_delivery_prompt(compact, spec, phase_id, cfg)
@@ -481,6 +661,20 @@ def _generate_delivery_safe(
                 else:
                     continue
             if delivery and delivery.strip():
+                # HTML cortado no meio (sem </html> / sem funções onclick) → tenta de novo
+                if _HTML_DOC_RE.match(delivery) and _html_is_truncated(delivery):
+                    errors.append(f"html_truncado(tokens={max_tokens})")
+                    # ainda assim guarda o melhor candidato para repair no package
+                    meta = {
+                        **meta,
+                        "attempts": errors,
+                        "used_max_output_tokens": max_tokens,
+                        "delivery_format": "html",
+                        "html_truncated_before_repair": True,
+                    }
+                    # se for a última tentativa, aceita e repara; senão continua
+                    if (compact, max_tokens, temperature) != attempts[-1]:
+                        continue
                 meta = {
                     **meta,
                     "attempts": errors,

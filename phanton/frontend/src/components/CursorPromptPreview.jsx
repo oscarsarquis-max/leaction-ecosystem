@@ -22,12 +22,14 @@ function markdownFromObject(obj) {
   if (!obj || typeof obj !== 'object') return null
   // Preferência: entrega final; cursor_prompt só como legado
   const preferred = [
+    'prd_markdown',
+    'sdd_markdown',
     'delivery',
     'entrega',
     'markdown',
     'documento',
-    'prompt',
     'cursor_prompt',
+    'prompt',
     'prompt_markdown',
     'texto',
     'content',

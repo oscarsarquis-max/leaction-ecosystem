@@ -38,9 +38,9 @@ export default function CopyableBlock({
   }
 
   return (
-    <div className={className}>
-      {children}
-      <div className="mt-2 flex justify-end">
+    <div className={`flex min-h-0 flex-1 flex-col ${className}`.trim()}>
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      <div className="mt-2 flex shrink-0 justify-end">
         <button
           type="button"
           onClick={handleCopy}

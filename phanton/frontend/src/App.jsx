@@ -1,51 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { Activity, Loader2, Play, Sparkles, Workflow } from 'lucide-react'
+import {
+  Activity,
+  AlertCircle,
+  CheckCircle2,
+  Circle,
+  Loader2,
+  Play,
+  Sparkles,
+  Workflow,
+} from 'lucide-react'
 import CopyableBlock from './components/CopyableBlock'
 import FixedTextField from './components/FixedTextField'
 import PhaseCard from './components/PhaseCard'
 import PipelineStatusBar from './components/PipelineStatusBar'
 import RunHistory from './components/RunHistory'
+import {
+  PROMPT_COMPOSITION_HINTS,
+  analyzePromptSufficiency,
+  extractInitialPromptFromSpec,
+} from './lib/promptSufficiency'
 
 const API_BASE = 'http://localhost:8000'
 
-const DEFAULT_SPEC = `{
-  "description": "Exemplo: metodologia + pesquisas + síntese + entrega final (artefato pedido pelo usuário)",
+/** Spec mínimo ao começar do zero — sem fases de exemplo. */
+const BLANK_SPEC = `{
+  "description": "",
   "version": "1.0",
-  "phases": {
-    "metodologia": {
-      "name": "Alinhamento metodológico",
-      "type": "methodology",
-      "order": 1,
-      "descricao": "Definir princípios e abordagem do projeto"
-    },
-    "pesquisa_casos": {
-      "name": "Pesquisa de casos reais",
-      "type": "research",
-      "order": 2,
-      "descricao": "Buscar casos reais e referências de domínio"
-    },
-    "pesquisa_stack": {
-      "name": "Pesquisa de stack técnica",
-      "type": "research",
-      "order": 3,
-      "descricao": "Buscar práticas e bibliotecas recomendadas para a implementação"
-    },
-    "sintese": {
-      "name": "Síntese integrada",
-      "type": "synthesize",
-      "order": 4,
-      "depends_on": ["metodologia", "pesquisa_casos", "pesquisa_stack"],
-      "descricao": "Agrupar metodologia e as duas pesquisas num plano coerente"
-    },
-    "entrega_final": {
-      "name": "Entrega final",
-      "type": "prompt",
-      "order": 5,
-      "depends_on": ["sintese"],
-      "descricao": "Produzir o artefato final pedido pelo usuário (apresentação, documento ou protótipo), usando a síntese como fonte da verdade. Não gerar prompt intermediário."
-    }
-  }
+  "phases": {}
 }`
 
 function phasesFromSpecText(specText) {
@@ -68,10 +50,10 @@ function phasesFromSpecText(specText) {
 
 function App() {
   const [naturalPrompt, setNaturalPrompt] = useState('')
-  const [specText, setSpecText] = useState(DEFAULT_SPEC)
+  const [specText, setSpecText] = useState(BLANK_SPEC)
   const [runId, setRunId] = useState(null)
   const [runStatus, setRunStatus] = useState(null)
-  const [phases, setPhases] = useState(() => phasesFromSpecText(DEFAULT_SPEC))
+  const [phases, setPhases] = useState([])
   const [starting, setStarting] = useState(false)
   const [generatingSpec, setGeneratingSpec] = useState(false)
   const [approvingToken, setApprovingToken] = useState(null)
@@ -80,6 +62,11 @@ function App() {
   const [historyTotal, setHistoryTotal] = useState(0)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [statusBarBump, setStatusBarBump] = useState(0)
+
+  const sufficiency = useMemo(
+    () => analyzePromptSufficiency(naturalPrompt),
+    [naturalPrompt],
+  )
 
   const fetchHistory = useCallback(async () => {
     setHistoryLoading(true)
@@ -156,8 +143,11 @@ function App() {
   const handleGenerateSpec = async () => {
     setError(null)
     const prompt = naturalPrompt.trim()
-    if (prompt.length < 8) {
-      setError('Descreva o que deseja construir com um pouco mais de detalhe.')
+    const check = analyzePromptSufficiency(prompt)
+    if (!check.ok) {
+      setError(
+        'Pedido ainda insuficiente. Complete os critérios abaixo da caixa de descrição antes de gerar o Spec.',
+      )
       return
     }
 
@@ -190,8 +180,23 @@ function App() {
       return
     }
 
+    const prompt = naturalPrompt.trim()
+    if (prompt) {
+      spec = {
+        ...spec,
+        description: prompt.slice(0, 800),
+        user_prompt: prompt,
+      }
+      setSpecText(JSON.stringify(spec, null, 2))
+    }
+
+    if (!spec.phases || !Object.keys(spec.phases).length) {
+      setError('Spec sem fases. Gere o Pipeline Spec a partir da descrição antes de iniciar.')
+      return
+    }
+
     setStarting(true)
-    setPhases(phasesFromSpecText(specText))
+    setPhases(phasesFromSpecText(JSON.stringify(spec)))
     setRunStatus('RUNNING')
 
     try {
@@ -232,10 +237,28 @@ function App() {
     setError(null)
     try {
       setRunId(selectedRunId)
-      await fetchStatus(selectedRunId, { syncSpec: true })
+      const data = await fetchStatus(selectedRunId, { syncSpec: true })
+      const spec = data?.spec && typeof data.spec === 'object' ? data.spec : null
+      if (spec) {
+        const initial = extractInitialPromptFromSpec(spec)
+        if (initial) setNaturalPrompt(initial)
+      }
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Falha ao recuperar pipeline')
     }
+  }
+
+  const handleNewCreation = () => {
+    setError(null)
+    setNaturalPrompt('')
+    setSpecText(BLANK_SPEC)
+    setRunId(null)
+    setRunStatus(null)
+    setPhases([])
+    setApprovingToken(null)
+    setStarting(false)
+    setGeneratingSpec(false)
+    setStatusBarBump((n) => n + 1)
   }
 
   const planPhases = useMemo(() => {
@@ -281,15 +304,26 @@ function App() {
               Painel de Controle
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Descreva em linguagem natural, revise o JSON gerado e inicie o pipeline.
+              1) Descreva à esquerda · 2) Transforme no botão do meio · 3) Revise o
+              JSON · 4) Inicie o pipeline.
             </p>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+          <div className="mt-4 flex flex-col items-stretch gap-3 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-stretch lg:gap-2">
+            <div className="flex flex-col rounded-xl border border-slate-200 bg-slate-50/70 p-4">
               <label className="block text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                O que você deseja construir? (Linguagem Natural)
+                1 · O que você deseja construir? (Linguagem Natural)
               </label>
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                Inclua no texto:{' '}
+                {PROMPT_COMPOSITION_HINTS.map((hint, i) => (
+                  <span key={hint}>
+                    {i > 0 ? ' · ' : ''}
+                    <span className="font-medium text-slate-600">{hint}</span>
+                  </span>
+                ))}
+                .
+              </p>
               <FixedTextField
                 className="mt-2"
                 value={naturalPrompt}
@@ -297,37 +331,95 @@ function App() {
                 onChange={(e) => setNaturalPrompt(e.target.value)}
                 aria-label="Descrição em linguagem natural"
               />
+
+              <div
+                className={`mt-3 rounded-lg border px-3 py-2.5 text-left ${
+                  !naturalPrompt.trim()
+                    ? 'border-slate-200 bg-white/80'
+                    : sufficiency.ok
+                      ? 'border-emerald-200 bg-emerald-50/80'
+                      : 'border-amber-200 bg-amber-50/80'
+                }`}
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                    Suficiência do pedido
+                  </p>
+                  <span className="text-[11px] font-medium text-slate-500">
+                    {sufficiency.passed}/{sufficiency.total}
+                    {sufficiency.ok ? ' · pronto' : naturalPrompt.trim() ? ' · incompleto' : ''}
+                  </span>
+                </div>
+                <ul className="space-y-1.5">
+                  {sufficiency.checks.map((item) => (
+                    <li key={item.id} className="flex items-start gap-2 text-xs text-slate-700">
+                      {item.pass ? (
+                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                      ) : naturalPrompt.trim() ? (
+                        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+                      ) : (
+                        <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-300" />
+                      )}
+                      <span>
+                        <span className={item.pass ? 'font-medium text-slate-800' : ''}>
+                          {item.label}
+                        </span>
+                        {!item.pass ? (
+                          <span className="mt-0.5 block text-[11px] text-slate-500">
+                            {item.hint}
+                          </span>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {!sufficiency.ok && naturalPrompt.trim() ? (
+                  <p className="mt-2 text-[11px] text-amber-800">
+                    Faltam itens essenciais (objetivo e formato da entrega). Complete-os
+                    para liberar o Spec.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center lg:px-1">
               <button
                 type="button"
                 onClick={handleGenerateSpec}
-                disabled={generatingSpec}
-                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-900 px-4 py-3 font-display text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-70"
+                disabled={generatingSpec || !sufficiency.ok}
+                title={
+                  sufficiency.ok
+                    ? 'Gera o JSON da Pipeline Spec a partir da descrição'
+                    : 'Complete a suficiência do pedido antes de gerar o Spec'
+                }
+                className="inline-flex w-auto items-center justify-center gap-1.5 rounded-lg bg-emerald-900 px-3 py-2 font-display text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-70 lg:w-[7.5rem] lg:flex-col lg:gap-1 lg:px-2.5 lg:py-3 lg:text-center lg:leading-snug"
               >
                 {generatingSpec ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Gerando Spec…
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                    <span>Gerando…</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4" />
-                    Transformar em Pipeline Spec
+                    <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                    <span>Transformar em Spec</span>
                   </>
                 )}
               </button>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-              <label className="block text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Pipeline Spec (revise antes de iniciar)
+            <div className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+              <label className="block shrink-0 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                2 · Pipeline Spec (revise antes de iniciar)
               </label>
               <CopyableBlock
-                className="mt-2"
+                className="mt-2 flex min-h-0 flex-1 flex-col"
                 label="Copiar JSON"
                 buttonClassName="border-slate-600 bg-slate-800 text-slate-200 hover:border-slate-400 hover:bg-slate-700 hover:text-white"
                 text={specText}
               >
                 <FixedTextField
+                  className="!h-full min-h-[12rem] flex-1"
                   value={specText}
                   readOnly={false}
                   onChange={(e) => setSpecText(e.target.value)}
@@ -336,7 +428,6 @@ function App() {
               </CopyableBlock>
             </div>
           </div>
-
           <button
             type="button"
             onClick={handleStart}
@@ -377,6 +468,7 @@ function App() {
           activeRunId={runId}
           onSelect={handleSelectHistory}
           onRefresh={fetchHistory}
+          onNewCreation={handleNewCreation}
         />
 
         {/* Plano Geral */}

@@ -612,27 +612,32 @@ function patchDeliveryFields(artifact, text, { isHtml }) {
   const target =
     next.artifact_data && typeof next.artifact_data === 'object' ? next.artifact_data : next
 
-  target.delivery = text
+  const applyMarkdown = (obj) => {
+    obj.delivery = text
+    obj.format = 'markdown'
+    delete obj.html_code
+    if (obj.prd_markdown !== undefined) obj.prd_markdown = text
+    else if (obj.sdd_markdown !== undefined) obj.sdd_markdown = text
+    else obj.cursor_prompt = text
+  }
+
   if (isHtml) {
+    target.delivery = text
     target.html_code = text
     target.format = 'html'
     delete target.cursor_prompt
   } else {
-    target.format = 'markdown'
-    target.cursor_prompt = text
-    delete target.html_code
+    applyMarkdown(target)
   }
 
   if (next.artifact_data && typeof next.artifact_data === 'object') {
-    next.delivery = text
     if (isHtml) {
+      next.delivery = text
       next.html_code = text
       next.format = 'html'
       delete next.cursor_prompt
     } else {
-      next.format = 'markdown'
-      next.cursor_prompt = text
-      delete next.html_code
+      applyMarkdown(next)
     }
   }
 
@@ -737,7 +742,15 @@ export default function ArtifactView({
         {!htmlCode && deliveryMd ? (
           <CursorPromptPreview
             prompt={deliveryMd}
-            title={`Entrega — ${name || phaseId}`}
+            title={
+              inner?.prd_markdown
+                ? `PRD — ${name || phaseId}`
+                : inner?.sdd_markdown
+                  ? `SDD — ${name || phaseId}`
+                  : inner?.cursor_prompt && !inner?.delivery
+                    ? `Prompt Cursor — ${name || phaseId}`
+                    : `Entrega — ${name || phaseId}`
+            }
             editable={editable}
             onChange={(text) => commitDraft(patchDeliveryFields(draft, text, { isHtml: false }))}
           />

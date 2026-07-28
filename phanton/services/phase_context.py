@@ -47,12 +47,22 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
         "synthesis": "synthesize",
         "sintese": "synthesize",
         "síntese": "synthesize",
+        # Documentação de produto / design (software)
+        "generate_prd": "generate_prd",
+        "prd": "generate_prd",
+        "generate_sdd": "generate_sdd",
+        "sdd": "generate_sdd",
+        # Prompt para IDE (Cursor) — NÃO confundir com entrega final
+        "prompt_cursor": "prompt_cursor",
+        "ide_prompt": "prompt_cursor",
+        "cursor_prompt": "prompt_cursor",
+        # Entrega final do artefato pedido (HTML/doc) — phase_L4
         "prompt": "prompt",
-        "prompt_cursor": "prompt",
         "delivery": "prompt",
         "html": "prompt",
         "render": "prompt",
         "frontend": "prompt",
+        "entrega": "prompt",
     }
     if value in aliases:
         return aliases[value]
@@ -64,12 +74,21 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
     for token, capability in (
         ("metodologia", "methodology"),
         ("methodology", "methodology"),
+        ("generate_prd", "generate_prd"),
+        ("_prd", "generate_prd"),
+        ("generate_sdd", "generate_sdd"),
+        ("_sdd", "generate_sdd"),
+        ("prompt_cursor", "prompt_cursor"),
+        ("cursor_prompt", "prompt_cursor"),
+        ("ide_prompt", "prompt_cursor"),
         ("pesquisa", "research"),
         ("research", "research"),
         ("grounding", "research"),
         ("sintese", "synthesize"),
         ("síntese", "synthesize"),
         ("synthesize", "synthesize"),
+        ("entrega", "prompt"),
+        ("delivery", "prompt"),
         ("prompt", "prompt"),
     ):
         if token in pid:
@@ -78,9 +97,15 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
     match = re.match(r"^L(\d+)", str(phase_id).strip(), re.I)
     if match:
         level = int(match.group(1))
-        return {1: "methodology", 2: "research", 3: "synthesize", 4: "prompt"}.get(
-            level, "research"
-        )
+        return {
+            1: "methodology",
+            2: "research",
+            3: "synthesize",
+            4: "prompt",
+            5: "generate_prd",
+            6: "generate_sdd",
+            7: "prompt_cursor",
+        }.get(level, "research")
     return "research"
 
 

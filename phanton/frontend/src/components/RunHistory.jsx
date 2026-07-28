@@ -1,4 +1,4 @@
-import { History, Loader2, RotateCcw } from 'lucide-react'
+import { FilePlus2, History, Loader2, RotateCcw } from 'lucide-react'
 
 function formatWhen(value) {
   if (!value) return '—'
@@ -38,6 +38,7 @@ export default function RunHistory({
   activeRunId = null,
   onSelect,
   onRefresh,
+  onNewCreation,
 }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
@@ -50,24 +51,34 @@ export default function RunHistory({
             Pipelines salvos
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Todos os runs e resultados de fase ficam no banco. Clique para recuperar e
-            revisar.
+            Banco de runs: clique para recuperar. Use Nova criação para limpar o painel
+            e começar do zero (o histórico permanece).
             {total ? ` · ${total} registrado${total === 1 ? '' : 's'}` : ''}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
-        >
-          {loading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <RotateCcw className="h-3.5 w-3.5" />
-          )}
-          Atualizar
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onNewCreation}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:border-emerald-400 hover:bg-emerald-100"
+          >
+            <FilePlus2 className="h-3.5 w-3.5" />
+            Nova criação
+          </button>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:opacity-60"
+          >
+            {loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RotateCcw className="h-3.5 w-3.5" />
+            )}
+            Atualizar
+          </button>
+        </div>
       </div>
 
       {loading && !items.length ? (

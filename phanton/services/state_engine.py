@@ -25,6 +25,9 @@ from services.phase_L1 import execute_phase_L1  # noqa: E402
 from services.phase_L2 import execute_phase_L2  # noqa: E402
 from services.phase_L3 import execute_phase_L3  # noqa: E402
 from services.phase_L4 import execute_phase_L4  # noqa: E402
+from services.phase_prd import execute_phase_prd  # noqa: E402
+from services.phase_prompt_cursor import execute_phase_prompt_cursor  # noqa: E402
+from services.phase_sdd import execute_phase_sdd  # noqa: E402
 
 PhaseHandler = Callable[..., Awaitable[dict[str, Any]]]
 
@@ -33,7 +36,7 @@ DEFAULT_PHASE_ORDER: list[str] = [
     "metodologia",
     "pesquisa",
     "sintese",
-    "prompt_cursor",
+    "entrega_final",
 ]
 
 # Compat: export antigo usado pelo main.py
@@ -44,6 +47,10 @@ CAPABILITY_HANDLERS: dict[str, PhaseHandler] = {
     "methodology": execute_phase_L1,
     "research": execute_phase_L2,
     "synthesize": execute_phase_L3,
+    "generate_prd": execute_phase_prd,
+    "generate_sdd": execute_phase_sdd,
+    "prompt_cursor": execute_phase_prompt_cursor,
+    # Entrega do artefato pedido (HTML/doc) — NÃO é prompt de IDE
     "prompt": execute_phase_L4,
 }
 
@@ -56,7 +63,11 @@ PHASE_HANDLERS: dict[str, PhaseHandler] = {
     "metodologia": execute_phase_L1,
     "pesquisa": execute_phase_L2,
     "sintese": execute_phase_L3,
-    "prompt_cursor": execute_phase_L4,
+    "entrega_final": execute_phase_L4,
+    # IDs explícitos das novas capabilities
+    "generate_prd": execute_phase_prd,
+    "generate_sdd": execute_phase_sdd,
+    "prompt_cursor": execute_phase_prompt_cursor,
 }
 
 STATUS_RUNNING = "RUNNING"
@@ -146,12 +157,23 @@ def _next_phase_from_spec(spec: dict[str, Any] | None, current_phase_id: str) ->
 
 
 def _resolve_handler(phase_id: str, spec: dict[str, Any] | None) -> PhaseHandler:
-    """Resolve handler pela capability (`type`) da Spec; IDs L1..L4 são só compat."""
+    """Resolve handler pela capability (`type`) da Spec; IDs L1..L4 são só compat.
+
+    Preferência: `type` explícito na Spec > PHASE_HANDLERS[phase_id] > inferência.
+    Assim `prompt_cursor` (IDE) e `prompt`/`delivery` (HTML) não se confundem.
+    """
+    cfg = phase_cfg(spec, phase_id)
+    raw_type = cfg.get("type") if isinstance(cfg, dict) else None
+    if raw_type:
+        capability = normalize_phase_type(raw_type, phase_id)
+        handler = CAPABILITY_HANDLERS.get(capability)
+        if handler:
+            return handler
+
     if phase_id in PHASE_HANDLERS:
         return PHASE_HANDLERS[phase_id]
 
-    cfg = phase_cfg(spec, phase_id)
-    capability = normalize_phase_type(cfg.get("type"), phase_id)
+    capability = normalize_phase_type(None, phase_id)
     handler = CAPABILITY_HANDLERS.get(capability)
     if handler:
         return handler
@@ -159,8 +181,10 @@ def _resolve_handler(phase_id: str, spec: dict[str, Any] | None) -> PhaseHandler
     raise StateEngineError(
         f"Nenhum handler registrado para a fase: {phase_id} "
         f"(type/capability='{capability}'). "
-        f"Use type methodology|research|synthesize|prompt "
-        f"(ou IDs L1/L2/L3/L4 / nomes metodologia, pesquisa, sintese, prompt_cursor)."
+        f"Use type methodology|research|synthesize|generate_prd|generate_sdd|"
+        f"prompt_cursor|prompt "
+        f"(ou IDs L1/L2/L3/L4 / nomes metodologia, pesquisa, sintese, "
+        f"generate_prd, generate_sdd, prompt_cursor, entrega_final)."
     )
 
 
