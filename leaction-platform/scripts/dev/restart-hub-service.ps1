@@ -113,9 +113,10 @@ try {
                 MARKETPLACE_USE_RELOADER   = '0'
             }
 
-        $healthOk = Wait-HttpOk -Url 'http://127.0.0.1:4012/api/marketplace/health' -TimeoutSec 45
-        $offersOk = Wait-HttpOk -Url 'http://127.0.0.1:4012/api/marketplace/offers' -TimeoutSec 20
-        $vitrineOk = Wait-HttpOk -Url 'http://127.0.0.1:4012/api/marketplace/vitrine' -TimeoutSec 25
+        $healthOk = Wait-HttpOk -Url 'http://127.0.0.1:4012/api/marketplace/health' -TimeoutSec 45 -RequestTimeoutSec 5
+        # Mesmo critério do monitor: offers/vitrine (agora com cache/SWR — deve ficar rápido)
+        $offersOk = Wait-HttpOk -Url 'http://127.0.0.1:4012/api/marketplace/offers' -TimeoutSec 60 -RequestTimeoutSec 45
+        $vitrineOk = Wait-HttpOk -Url 'http://127.0.0.1:4012/api/marketplace/vitrine' -TimeoutSec 90 -RequestTimeoutSec 45
 
         if (-not $healthOk) {
             Emit-Result -Ok $false -ServiceName $Service -Message 'Marketplace não respondeu no health após reinício. Veja .dev-logs/marketplace.err.log' -ExitCode 3

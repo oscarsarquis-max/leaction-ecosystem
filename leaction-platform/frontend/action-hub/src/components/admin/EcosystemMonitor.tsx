@@ -221,7 +221,7 @@ export function EcosystemMonitor() {
             Accept: 'application/json',
             Authorization: `Bearer ${auth}`,
           },
-          signal: AbortSignal.timeout(20_000),
+          signal: AbortSignal.timeout(60_000),
         });
 
         if (!res.ok) {

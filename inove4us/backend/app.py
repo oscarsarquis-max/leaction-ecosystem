@@ -31,6 +31,7 @@ from mail import send_access_code_email  # noqa: E402
 from paneldx_port.inovador_routes import inovador_bp  # noqa: E402
 from wizard_routes import wizard_bp  # noqa: E402
 from agenda_routes import agenda_bp  # noqa: E402
+from desafios_routes import desafios_bp  # noqa: E402
 from webhook_routes import webhook_bp  # noqa: E402
 from feedback_routes import feedback_bp  # noqa: E402
 from version_info import version_payload  # noqa: E402
@@ -131,6 +132,7 @@ def create_app() -> Flask:
     app.register_blueprint(wizard_bp)
     # Agenda executiva (calendário + compromissos)
     app.register_blueprint(agenda_bp)
+    app.register_blueprint(desafios_bp)
     # Action Hub — webhooks S2S (sem login de sessão)
     app.register_blueprint(webhook_bp)
     # Billing — proxy S2S checkout (secret fica só no backend)

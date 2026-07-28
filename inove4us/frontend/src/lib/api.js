@@ -91,6 +91,39 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getAgendaEvento: (id) => request(`/api/agenda-eventos/${id}`),
+  /** Kanban do desafio (cadeia + plano_session), opcionalmente filtrado por aula_id. */
+  getAgendaKanban: (id, aulaId = null) => {
+    const q = new URLSearchParams()
+    if (aulaId != null && aulaId !== '') q.set('aula_id', String(aulaId))
+    const qs = q.toString()
+    return request(`/api/agenda-eventos/${id}/kanban${qs ? `?${qs}` : ''}`)
+  },
+  getDesafioDoEvento: (idEvento) => request(`/api/agenda-eventos/${idEvento}/desafio`),
+  getDesafio: (desafioId) => request(`/api/desafios/${desafioId}`),
+  listDesafioExecucoes: (desafioId) => request(`/api/desafios/${desafioId}/execucoes`),
+  replicarDesafio: (desafioId, payload) =>
+    request(`/api/desafios/${desafioId}/replicar`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  convidarColaborador: (desafioId, payload) =>
+    request(`/api/desafios/${desafioId}/convidar`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  listDesafioColaboradores: (desafioId) =>
+    request(`/api/desafios/${desafioId}/colaboradores`),
+  getConvite: (token) => request(`/api/convites/${encodeURIComponent(token)}`),
+  aceitarConvite: (token) =>
+    request(`/api/convites/${encodeURIComponent(token)}/aceitar`, {
+      method: 'POST',
+      body: '{}',
+    }),
+  recusarConvite: (token) =>
+    request(`/api/convites/${encodeURIComponent(token)}/recusar`, {
+      method: 'POST',
+      body: '{}',
+    }),
   concluirAula: (id, payload) =>
     request(`/api/agenda-eventos/${id}/concluir-aula`, {
       method: 'POST',
@@ -115,6 +148,9 @@ export const api = {
     }),
   /** Árvore do assistente (Hub CMS + fallback local). */
   getAssistenteChat: () => request('/api/assistente-chat'),
+  /** Micro-CMS Hub — colunas /acesso (config_key=inove4us). */
+  getCmsSite: (configKey = 'inove4us') =>
+    request(`/api/cms/site?config_key=${encodeURIComponent(configKey)}`),
   createBillingCheckout: (sku = 'golive-50') =>
     request('/api/billing/checkout', {
       method: 'POST',

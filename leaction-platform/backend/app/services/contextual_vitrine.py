@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 import requests
+from flask import current_app, has_app_context
 from sqlalchemy import text
 
 from app.services.multivendor_orchestrator import MultivendorOrchestrator
@@ -261,19 +263,44 @@ def build_contextual_vitrine(
     has_context = bool(id_matu or id_clie)
     orchestrator = MultivendorOrchestrator()
 
-    # Prateleiras genéricas (live/fallback) — independentes do match contextual
-    generic_shelves = []
-    for cat in ("formacao", "equipamentos", "software"):
-        result = orchestrator.search_all_vendors(None, category=cat, limit=limit_per_category)
-        generic_shelves.append(
-            {
+    # Prateleiras genéricas em paralelo (antes: 3× serial = 3× latência ML)
+    generic_shelves: list[dict[str, Any]] = []
+    shelf_cats = ("formacao", "equipamentos", "software")
+
+    def _shelf(cat: str) -> dict[str, Any]:
+        def _build() -> dict[str, Any]:
+            result = orchestrator.search_all_vendors(None, category=cat, limit=limit_per_category)
+            return {
                 "category": cat,
                 "category_label": result.get("category_label") or cat,
                 "offers": result.get("offers") or [],
                 "count": result.get("count") or 0,
                 "source": result.get("source"),
             }
-        )
+
+        if has_app_context():
+            app = current_app._get_current_object()
+            with app.app_context():
+                return _build()
+        return _build()
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = {pool.submit(_shelf, cat): cat for cat in shelf_cats}
+        by_cat: dict[str, dict[str, Any]] = {}
+        for future in as_completed(futures):
+            cat = futures[future]
+            try:
+                by_cat[cat] = future.result()
+            except Exception as exc:
+                logger.warning("Prateleira %s falhou: %s", cat, exc)
+                by_cat[cat] = {
+                    "category": cat,
+                    "category_label": cat,
+                    "offers": [],
+                    "count": 0,
+                    "source": "unavailable",
+                }
+        generic_shelves = [by_cat[c] for c in shelf_cats]
 
     if not has_context:
         return {

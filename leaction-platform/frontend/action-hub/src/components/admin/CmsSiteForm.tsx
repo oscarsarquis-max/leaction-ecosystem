@@ -7,6 +7,7 @@ import { useHubSession } from '@/context/HubSessionContext';
 import {
   fetchCmsSiteAdmin,
   saveCmsSiteAdmin,
+  type CmsSiteConfigKey,
 } from '@/lib/admin-api';
 import { CmsImageUploadField } from '@/components/admin/CmsImageUploadField';
 
@@ -194,6 +195,7 @@ function BannerColorPreview({
 export function CmsSiteForm() {
   const { token } = useHubSession();
   const [tab, setTab] = useState<TabId>('landing');
+  const [configKey, setConfigKey] = useState<CmsSiteConfigKey>('default');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -201,12 +203,14 @@ export function CmsSiteForm() {
   const [landing, setLanding] = useState<Record<string, unknown>>({});
   const [instructions, setInstructions] = useState('');
 
+  const isInove = configKey === 'inove4us';
+
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchCmsSiteAdmin(token);
+      const data = await fetchCmsSiteAdmin(token, configKey);
       setLanding(asRecord(data.landing_page_data));
       setInstructions(String(data.instructions_data || ''));
     } catch (err) {
@@ -214,7 +218,7 @@ export function CmsSiteForm() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, configKey]);
 
   useEffect(() => {
     void load();
@@ -264,12 +268,17 @@ export function CmsSiteForm() {
     setOkMsg(null);
     try {
       const saved = await saveCmsSiteAdmin(token, {
+        config_key: configKey,
         landing_page_data: landing,
         instructions_data: instructions,
       });
       setLanding(asRecord(saved.landing_page_data));
       setInstructions(String(saved.instructions_data || ''));
-      setOkMsg('Micro-CMS salvo no Action Hub.');
+      setOkMsg(
+        isInove
+          ? 'Micro-CMS inove4us salvo — colunas de /acesso atualizadas.'
+          : 'Micro-CMS salvo no Action Hub.'
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao salvar');
     } finally {
@@ -308,11 +317,28 @@ export function CmsSiteForm() {
             <ArrowLeft className="size-3.5" aria-hidden />
             Voltar aos posts
           </Link>
-          <h1 className="text-xl font-bold text-stone-900">Micro-CMS (estrutura PanelDX)</h1>
+          <h1 className="text-xl font-bold text-stone-900">
+            {isInove ? 'Micro-CMS — inove4us (/acesso)' : 'Micro-CMS (estrutura PanelDX)'}
+          </h1>
           <p className="mt-1 max-w-2xl text-sm text-stone-500">
-            Landing + instruções migradas para o Hub. O PanelDX continua ativo até autorização
-            explícita de cutover.
+            {isInove
+              ? 'Colunas laterais da página de acesso do satélite. O inove4us só lê — sem gestão local.'
+              : 'Landing + instruções migradas para o Hub. O PanelDX continua ativo até autorização explícita de cutover.'}
           </p>
+          <label className="mt-3 block max-w-sm space-y-1">
+            <span className="text-xs font-semibold text-stone-500">Site / satélite</span>
+            <select
+              className={field}
+              value={configKey}
+              onChange={(e) => {
+                setOkMsg(null);
+                setConfigKey(e.target.value as CmsSiteConfigKey);
+              }}
+            >
+              <option value="default">PanelDX (default)</option>
+              <option value="inove4us">inove4us — página /acesso</option>
+            </select>
+          </label>
         </div>
         <button
           type="submit"
@@ -467,7 +493,11 @@ export function CmsSiteForm() {
           </section>
 
           <section className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-stone-900">Coluna 1 — Mesa / banner</h2>
+            <h2 className="text-sm font-bold text-stone-900">
+              {isInove
+                ? 'Coluna esquerda — conceito (/acesso)'
+                : 'Coluna 1 — Mesa / banner'}
+            </h2>
             <label className="flex items-center gap-2 text-sm text-stone-700">
               <input
                 type="checkbox"
@@ -559,7 +589,11 @@ export function CmsSiteForm() {
           </section>
 
           <section className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-stone-900">Coluna 2 — YouTube / metodologia</h2>
+            <h2 className="text-sm font-bold text-stone-900">
+              {isInove
+                ? 'Coluna direita — como começar (/acesso)'
+                : 'Coluna 2 — YouTube / metodologia'}
+            </h2>
             <label className="flex items-center gap-2 text-sm text-stone-700">
               <input
                 type="checkbox"

@@ -265,6 +265,7 @@ export default function DesafioPage() {
             plano={plano}
             hipotese={hipotese}
             problema={problema}
+            causas={causas}
             user={user}
             planoSession={planoSession}
             disciplinaId={disciplinaId}

@@ -83,7 +83,19 @@ if (-not (Wait-HttpOk -Url 'http://127.0.0.1:4012/api/marketplace/curation' -Tim
     Write-HubErr "Marketplace health OK, mas /curation falhou. Veja .dev-logs/marketplace.*.log"
     exit 1
 }
-Write-HubOk "Marketplace OK -> http://127.0.0.1:4012/api/marketplace/health"
+
+# Mesmo criterio do monitor (/api/sys/status): health sozinho mente — UI usa offers/vitrine.
+# Live ML pode levar >5s; request timeout alto para nao marcar falso negativo.
+Write-HubInfo "Validando rotas funcionais do Marketplace (offers + vitrine)..."
+if (-not (Wait-HttpOk -Url 'http://127.0.0.1:4012/api/marketplace/offers' -TimeoutSec 90 -RequestTimeoutSec 45)) {
+    Write-HubErr "Marketplace health OK, mas /offers falhou (criterio do monitor). Veja .dev-logs/marketplace.*.log"
+    exit 1
+}
+if (-not (Wait-HttpOk -Url 'http://127.0.0.1:4012/api/marketplace/vitrine' -TimeoutSec 90 -RequestTimeoutSec 45)) {
+    Write-HubErr "Marketplace health OK, mas /vitrine falhou (criterio do monitor). Veja .dev-logs/marketplace.*.log"
+    exit 1
+}
+Write-HubOk "Marketplace OK -> health + curation + offers + vitrine"
 
 # --- Frontend :4000 ---
 if (-not $SkipFrontend) {

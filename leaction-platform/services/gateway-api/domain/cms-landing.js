@@ -78,6 +78,136 @@ function defaultAppVersion() {
   };
 }
 
+function defaultInove4usLanding() {
+  return {
+    hero: {
+      leaction_title: 'inove4us',
+      paneldx_title: 'Mesa do Inovador',
+      subtitle: 'Inovação na hora que precisa',
+      description:
+        'Planeje aulas e desafios com método — do freemium ao ciclo completo, sem burocracia.',
+    },
+    columns: [
+      {
+        image_url: '',
+        title: 'O que é o inove4us',
+        description:
+          'A Mesa do Inovador para professores e equipes que querem inovar com método, no ritmo da sala de aula.',
+        visible: true,
+        layout: 'premium_banner',
+      },
+      {
+        video_url: '',
+        image_url: '',
+        title: 'Como começar',
+        description:
+          'Informe seu e-mail, receba o código e entre na Mesa. Dia a Dia, Desafios e Kanban — conteúdo e planos vêm do Action Hub.',
+        visible: true,
+        link_url: '',
+        link_text: '',
+      },
+      {
+        image_url: '',
+        title: '',
+        description: '',
+        link_url: '',
+        link_text: 'Leia mais →',
+        source: 'blog',
+      },
+      {
+        image_url: '',
+        title: '',
+        description: '',
+        link_url: '',
+        link_text: 'Leia mais →',
+        source: 'blog',
+      },
+      {
+        image_url: '',
+        title: '',
+        description: '',
+        link_url: '',
+        link_text: 'Leia mais →',
+        source: 'blog',
+      },
+    ],
+    app_version: defaultAppVersion(),
+    hero_cta: {
+      ...defaultHeroCta(),
+      visible: false,
+      badge_text: 'Freemium',
+      title: 'Comece pela Mesa do Inovador',
+      subtitle: 'Acesso por e-mail e código — sem cartão no freemium.',
+      button_text: 'Entrar',
+      button_url: '/acesso',
+      bg_color_start: '#450a0a',
+      bg_color_end: '#7f1d1d',
+      pill_bg_color: '#b91c1c',
+      button_bg_color: '#b91c1c',
+      button_shadow_color: '#7f1d1d',
+    },
+    coluna1: {
+      ...defaultColuna1(),
+      pill_text: 'Conceito',
+      title: 'O que é o inove4us',
+      subtitle:
+        'A Mesa do Inovador para professores e equipes que querem inovar com método, no ritmo da sala de aula.',
+      cta_text: '',
+      cta_url: '',
+      bg_color_start: '#450a0a',
+      bg_color_end: '#7f1d1d',
+      border_color: 'rgba(185, 28, 28, 0.35)',
+      pill_bg_color: '#b91c1c',
+      accent_color: '#b91c1c',
+      button_bg_color: '#b91c1c',
+      button_shadow_color: '#7f1d1d',
+    },
+    cta_consultor: {
+      title: 'Comece pela Mesa do Inovador',
+      button_text: 'Entrar',
+      visible: false,
+    },
+    insights_section: {
+      title: 'Por que a Mesa',
+      subtitle: 'Método leve para o dia a dia e profundidade quando o desafio pede.',
+    },
+    insights: [
+      {
+        title: 'Dia a Dia',
+        summary: 'Ciclo rápido (~50 min) para planejar e executar uma aula com as 4 estações.',
+        link_url: '',
+        link_text: '',
+      },
+      {
+        title: 'Desafios',
+        summary: 'Projetos com IA e Kanban — do alinhamento à entrega.',
+        link_url: '',
+        link_text: '',
+      },
+      {
+        title: 'Hub + satélite',
+        summary: 'Conteúdo e planos no Action Hub; o inove4us só consome — sem gestão local.',
+        link_url: '',
+        link_text: '',
+      },
+    ],
+  };
+}
+
+function defaultInove4usInstructions() {
+  return (
+    '<h2>inove4us — página de acesso</h2>' +
+    '<p>Este Micro-CMS alimenta as <strong>colunas laterais</strong> de ' +
+    '<code>/acesso</code> no satélite inove4us.</p>' +
+    '<ul>' +
+    '<li><strong>Coluna esquerda</strong> = bloco Conceito (coluna1 / columns[0])</li>' +
+    '<li><strong>Coluna direita</strong> = bloco Como começar (columns[1])</li>' +
+    '<li>O formulário de login fica no centro — não edite layout no inove.</li>' +
+    '</ul>' +
+    '<p>Publique alterações aqui no Action Hub; o satélite só faz leitura S2S.</p>'
+  );
+}
+
 function defaultCmsLanding() {
   return {
     hero: {
@@ -323,13 +453,23 @@ function normalizeInsights(insights, defaults) {
   return result;
 }
 
-function normalizeCmsLanding(landing) {
-  const defaults = defaultCmsLanding();
+function normalizeCmsLanding(landing, defaultsSource = null) {
+  const defaults = defaultsSource || defaultCmsLanding();
   if (!landing || typeof landing !== 'object') return defaults;
 
   const hero = { ...defaults.hero, ...(landing.hero || {}) };
-  const heroCta = normalizeHeroCta(landing);
-  const coluna1 = normalizeColuna1(landing);
+  const heroCta = normalizeHeroCta({
+    ...defaults,
+    ...landing,
+    hero_cta: { ...(defaults.hero_cta || {}), ...(landing.hero_cta || {}) },
+    cta_consultor: { ...(defaults.cta_consultor || {}), ...(landing.cta_consultor || {}) },
+  });
+  const coluna1 = normalizeColuna1({
+    ...defaults,
+    ...landing,
+    coluna1: { ...(defaults.coluna1 || {}), ...(landing.coluna1 || {}) },
+    columns: landing.columns || defaults.columns,
+  });
   const appVersion = { ...defaults.app_version, ...(landing.app_version || {}) };
   const insightsSection = {
     ...defaults.insights_section,
@@ -341,9 +481,13 @@ function normalizeCmsLanding(landing) {
   const defaultCols = defaults.columns || [];
   const columns = [];
   for (let i = 0; i < defaultCols.length; i += 1) {
-    // Slots 2–4: preenchidos em runtime pelo sync do blog (não editáveis).
+    // Slots 2–4: no PanelDX vêm do blog; no inove4us ficam vazios/reservados.
     if (i >= 2) {
-      columns.push({ ...defaultCols[i] });
+      const stored =
+        i < storedCols.length && storedCols[i] && typeof storedCols[i] === 'object'
+          ? storedCols[i]
+          : {};
+      columns.push({ ...defaultCols[i], ...stored });
       continue;
     }
     if (i === 0) {
@@ -382,11 +526,27 @@ function normalizeCmsLanding(landing) {
   };
 }
 
-function serializeCmsRow(row) {
+function defaultsForConfigKey(configKey) {
+  if (configKey === 'inove4us') {
+    return {
+      landing: defaultInove4usLanding(),
+      instructions: defaultInove4usInstructions(),
+    };
+  }
+  return {
+    landing: defaultCmsLanding(),
+    instructions: defaultCmsInstructions(),
+  };
+}
+
+function serializeCmsRow(row, configKey = 'default') {
+  const { landing: defaultLanding, instructions: defaultInstructions } =
+    defaultsForConfigKey(configKey);
   if (!row) {
     return {
-      landing_page_data: normalizeCmsLanding(defaultCmsLanding()),
-      instructions_data: defaultCmsInstructions(),
+      config_key: configKey,
+      landing_page_data: normalizeCmsLanding(defaultLanding, defaultLanding),
+      instructions_data: defaultInstructions,
       updated_at: null,
     };
   }
@@ -395,15 +555,16 @@ function serializeCmsRow(row) {
     try {
       landing = JSON.parse(landing);
     } catch {
-      landing = defaultCmsLanding();
+      landing = defaultLanding;
     }
   }
-  if (!landing || typeof landing !== 'object') landing = defaultCmsLanding();
-  landing = normalizeCmsLanding(landing);
+  if (!landing || typeof landing !== 'object') landing = defaultLanding;
+  landing = normalizeCmsLanding(landing, defaultLanding);
   const updated = row.updated_at;
   return {
+    config_key: configKey,
     landing_page_data: landing,
-    instructions_data: row.instructions_data || defaultCmsInstructions(),
+    instructions_data: row.instructions_data || defaultInstructions,
     updated_at:
       updated && typeof updated.toISOString === 'function'
         ? updated.toISOString()
@@ -414,6 +575,9 @@ function serializeCmsRow(row) {
 module.exports = {
   defaultCmsLanding,
   defaultCmsInstructions,
+  defaultInove4usLanding,
+  defaultInove4usInstructions,
+  defaultsForConfigKey,
   normalizeCmsLanding,
   serializeCmsRow,
 };

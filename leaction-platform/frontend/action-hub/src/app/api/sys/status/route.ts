@@ -13,6 +13,8 @@ export type ServiceStatusItem = {
 };
 
 const PROBE_TIMEOUT_MS = 5000;
+/** offers/vitrine batem ML ao vivo — 5s gerava TIMEOUT falso no monitor com o processo UP. */
+const MARKETPLACE_FUNCTIONAL_PROBE_TIMEOUT_MS = 30_000;
 
 function gatewayBase(): string {
   return (process.env.HUB_GATEWAY_INTERNAL_URL || 'http://127.0.0.1:4001').replace(
@@ -89,7 +91,8 @@ async function probeService(
   name: string,
   url: string,
   isOk: (res: Response, body: unknown) => boolean,
-  headers: Record<string, string> = {}
+  headers: Record<string, string> = {},
+  timeoutMs: number = PROBE_TIMEOUT_MS
 ): Promise<ServiceStatusItem> {
   const lastChecked = new Date().toISOString();
   const started = Date.now();
@@ -98,7 +101,7 @@ async function probeService(
     const res = await fetch(url, {
       cache: 'no-store',
       headers: { Accept: 'application/json', ...headers },
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const latency = Date.now() - started;
     let body: unknown = null;
@@ -131,7 +134,7 @@ async function probeService(
       status: timedOut ? 'TIMEOUT' : 'DOWN',
       latency,
       lastChecked,
-      detail: timedOut ? `Timeout após ${PROBE_TIMEOUT_MS}ms` : message.slice(0, 160),
+      detail: timedOut ? `Timeout após ${timeoutMs}ms` : message.slice(0, 160),
     };
   }
 }
@@ -204,12 +207,16 @@ async function probeMarketplace(): Promise<ServiceStatusItem> {
     probeService(
       'Marketplace offers',
       `${base}/api/marketplace/offers`,
-      marketplaceOffersOk
+      marketplaceOffersOk,
+      {},
+      MARKETPLACE_FUNCTIONAL_PROBE_TIMEOUT_MS
     ),
     probeService(
       'Marketplace vitrine',
       `${base}/api/marketplace/vitrine`,
-      marketplaceVitrineOk
+      marketplaceVitrineOk,
+      {},
+      MARKETPLACE_FUNCTIONAL_PROBE_TIMEOUT_MS
     ),
   ]);
 

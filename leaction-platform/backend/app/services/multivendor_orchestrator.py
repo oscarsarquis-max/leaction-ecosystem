@@ -10,6 +10,7 @@ from typing import Any
 
 from app.services.amazon_service import AmazonService
 from app.services.curation_repository import CurationRepository, CurationRules
+from app.services.marketplace_resilience import ml_circuit
 from app.services.mercadolivre_fallback import get_fallback_offers
 from app.services.mercadolivre_service import MercadoLivreService, MercadoLivreServiceError
 
@@ -219,20 +220,28 @@ class MultivendorOrchestrator:
         *,
         user_query: str = "",
     ) -> list[dict[str, Any]]:
+        if not ml_circuit.allow():
+            logger.warning("ML circuit aberto — pulando live (categoria=%s)", category)
+            return []
+
         if curation.has_curated_search:
             search_terms = _curated_ml_search_terms(curation.search_terms)
             if user_query:
                 search_terms = [user_query] + [
                     term for term in search_terms if _fold_text(term) != _fold_text(user_query)
                 ]
+            # Hot path: no máximo 2 termos (antes embaralhava e batia vários + pass relaxado)
+            search_terms = search_terms[:2]
         else:
             profile = CATEGORY_PROFILES.get(category, CATEGORY_PROFILES["geral"])
             fallback = user_query or profile["mercadolivre"]
             search_terms = [fallback]
 
-        per_term_limit = max(8, limit * 3)
+        per_term_limit = max(limit, min(limit * 2, 12))
         seen_links: set[str] = set()
         collected: list[dict[str, Any]] = []
+        live_ok = False
+        live_failed = False
 
         for term in search_terms:
             if len(collected) >= limit:
@@ -242,8 +251,11 @@ class MultivendorOrchestrator:
                     term,
                     limit=per_term_limit,
                 )
+                if result.get("live"):
+                    live_ok = True
             except MercadoLivreServiceError as exc:
                 logger.warning("Mercado Livre (termo=%r): %s", term, exc)
+                live_failed = True
                 continue
 
             for offer in result.get("offers") or []:
@@ -275,8 +287,9 @@ class MultivendorOrchestrator:
                         seen_links.add(link)
                     collected.append(normalized)
 
-        if len(collected) < limit and curation.has_curated_search:
-            for term in search_terms:
+        # Passo relaxado só se quase vazio (evita dobrar latência quando já há ofertas)
+        if len(collected) < max(1, limit // 2) and curation.has_curated_search:
+            for term in search_terms[:1]:
                 if len(collected) >= limit:
                     break
                 try:
@@ -286,6 +299,7 @@ class MultivendorOrchestrator:
                     )
                 except MercadoLivreServiceError as exc:
                     logger.warning("Mercado Livre relaxado (termo=%r): %s", term, exc)
+                    live_failed = True
                     continue
 
                 for offer in result.get("offers") or []:
@@ -301,6 +315,11 @@ class MultivendorOrchestrator:
                     if link:
                         seen_links.add(link)
                     collected.append(normalized)
+
+        if live_ok and not live_failed:
+            ml_circuit.record_success()
+        elif live_failed and not collected:
+            ml_circuit.record_failure()
 
         return collected[:limit]
 

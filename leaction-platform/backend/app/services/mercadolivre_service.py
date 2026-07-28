@@ -8,6 +8,7 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from app.services.ml_oauth_service import ML_API_BASE_URL, get_valid_access_token
@@ -18,8 +19,12 @@ DEFAULT_SITE = "MLB"
 DEFAULT_QUERY = "transformação digital maturidade liderança educação corporativa"
 DEFAULT_LIMIT = 12
 MAX_LIMIT = 24
-API_SEARCH_MIN_LIMIT = 20
-REQUEST_TIMEOUT_S = 12
+# Antes forçava 20 resultados e enriquecia listing 1-a-1 (N+1). Agora respeita o limit.
+API_SEARCH_MIN_LIMIT = int(os.getenv("ML_API_SEARCH_MIN_LIMIT", "6"))
+REQUEST_TIMEOUT_S = float(os.getenv("ML_REQUEST_TIMEOUT_S", "3"))
+# Quantos produtos recebem GET /items (preço/link real). 0 = só catálogo (mais rápido).
+LISTING_ENRICH_MAX = int(os.getenv("ML_LISTING_ENRICH_MAX", "4"))
+LISTING_ENRICH_WORKERS = int(os.getenv("ML_LISTING_ENRICH_WORKERS", "4"))
 
 BROWSER_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -50,13 +55,13 @@ class MercadoLivreService:
         *,
         site_id: str | None = None,
         default_query: str | None = None,
-        timeout_s: int = REQUEST_TIMEOUT_S,
+        timeout_s: float = REQUEST_TIMEOUT_S,
     ) -> None:
         self.site_id = (site_id or os.getenv("ML_SITE_ID") or DEFAULT_SITE).strip()
         self.default_query = (
             default_query or os.getenv("ML_DEFAULT_SEARCH_QUERY") or DEFAULT_QUERY
         ).strip()
-        self.timeout_s = timeout_s
+        self.timeout_s = float(timeout_s)
 
     def search_offers(
         self,
@@ -122,7 +127,7 @@ class MercadoLivreService:
         limit: int,
         access_token: str,
     ) -> list[dict[str, Any]]:
-        api_limit = max(limit, min(API_SEARCH_MIN_LIMIT, 50))
+        api_limit = max(limit, min(max(API_SEARCH_MIN_LIMIT, limit), 50))
         params = urllib.parse.urlencode(
             {
                 "site_id": self.site_id,
@@ -137,53 +142,98 @@ class MercadoLivreService:
         if not isinstance(results, list):
             return []
 
-        offers: list[dict[str, Any]] = []
+        # Formata catálogo sem N+1; enriquecer listing só nos primeiros N (paralelo).
+        candidates: list[dict[str, Any]] = []
         for product in results:
             if not isinstance(product, dict):
                 continue
-            formatted = self._format_catalog_product(product, access_token)
-            if formatted:
-                offers.append(formatted)
-            if len(offers) >= limit:
+            base = self._format_catalog_product_base(product)
+            if base:
+                candidates.append(base)
+            if len(candidates) >= limit:
                 break
-        return offers
+
+        enrich_n = max(0, min(LISTING_ENRICH_MAX, len(candidates)))
+        if enrich_n <= 0:
+            return candidates[:limit]
+
+        def _enrich(idx_offer: tuple[int, dict[str, Any]]) -> tuple[int, dict[str, Any]]:
+            idx, offer = idx_offer
+            listing = self._fetch_best_listing(str(offer["id"]), access_token)
+            if not listing:
+                return idx, offer
+            enriched = dict(offer)
+            try:
+                enriched["price"] = (
+                    float(listing.get("price")) if listing.get("price") is not None else None
+                )
+            except (TypeError, ValueError):
+                enriched["price"] = None
+            enriched["currency"] = str(listing.get("currency_id") or enriched["currency"]).strip()
+            item_id = str(listing.get("item_id") or "").strip()
+            if item_id:
+                enriched["link"] = self._item_link(item_id)
+            enriched["price_label"] = self._format_price(
+                enriched.get("price"), str(enriched.get("currency") or "BRL")
+            )
+            return idx, enriched
+
+        workers = max(1, min(LISTING_ENRICH_WORKERS, enrich_n))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = [
+                pool.submit(_enrich, (i, candidates[i]))
+                for i in range(enrich_n)
+            ]
+            for future in as_completed(futures):
+                try:
+                    idx, enriched = future.result()
+                    candidates[idx] = enriched
+                except Exception as exc:
+                    logger.debug("Listing enrich falhou: %s", exc)
+
+        return candidates[:limit]
+
+    def _format_catalog_product_base(self, product: dict[str, Any]) -> dict[str, Any] | None:
+        product_id = str(product.get("id") or "").strip()
+        title = str(product.get("name") or "").strip()
+        if not product_id or not title:
+            return None
+        currency = "BRL"
+        return {
+            "id": product_id,
+            "title": title,
+            "price": None,
+            "currency": currency,
+            "price_label": self._format_price(None, currency),
+            "image": self._picture_from_product(product),
+            "link": self._catalog_link(product_id),
+            "fallback": False,
+        }
 
     def _format_catalog_product(
         self,
         product: dict[str, Any],
         access_token: str,
     ) -> dict[str, Any] | None:
-        product_id = str(product.get("id") or "").strip()
-        title = str(product.get("name") or "").strip()
-        if not product_id or not title:
+        # Mantido para compatibilidade de testes/chamadores legados.
+        base = self._format_catalog_product_base(product)
+        if not base:
             return None
-
-        image = self._picture_from_product(product)
-        price: float | None = None
-        currency = "BRL"
-        link = self._catalog_link(product_id)
-
-        listing = self._fetch_best_listing(product_id, access_token)
-        if listing:
-            try:
-                price = float(listing.get("price")) if listing.get("price") is not None else None
-            except (TypeError, ValueError):
-                price = None
-            currency = str(listing.get("currency_id") or currency).strip()
-            item_id = str(listing.get("item_id") or "").strip()
-            if item_id:
-                link = self._item_link(item_id)
-
-        return {
-            "id": product_id,
-            "title": title,
-            "price": price,
-            "currency": currency,
-            "price_label": self._format_price(price, currency),
-            "image": image,
-            "link": link,
-            "fallback": False,
-        }
+        listing = self._fetch_best_listing(str(base["id"]), access_token)
+        if not listing:
+            return base
+        try:
+            base["price"] = (
+                float(listing.get("price")) if listing.get("price") is not None else None
+            )
+        except (TypeError, ValueError):
+            base["price"] = None
+        base["currency"] = str(listing.get("currency_id") or base["currency"]).strip()
+        item_id = str(listing.get("item_id") or "").strip()
+        if item_id:
+            base["link"] = self._item_link(item_id)
+        base["price_label"] = self._format_price(base.get("price"), str(base.get("currency") or "BRL"))
+        return base
 
     def _fetch_best_listing(
         self,

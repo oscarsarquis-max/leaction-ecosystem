@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthBalanceSync, AuthProvider, useAuth } from './lib/auth'
 import BrandLogo from './components/BrandLogo'
 import AssistenteChat from './components/AssistenteChat'
@@ -11,6 +11,7 @@ import DailyDashboard from './pages/DailyDashboard'
 import DailyPlanner from './pages/DailyPlanner'
 import DesafioPage from './pages/DesafioPage'
 import ExecucaoPage from './pages/ExecucaoPage'
+import ConvitePage from './pages/ConvitePage'
 import ImportacoesPage from './pages/ImportacoesPage'
 import InstituicoesPage from './pages/InstituicoesPage'
 import MesaDoInovador from './pages/MesaDoInovador'
@@ -27,10 +28,22 @@ function LoadingScreen({ label = 'Carregando…' }) {
   )
 }
 
+function safeNextPath(raw) {
+  if (!raw || typeof raw !== 'string') return null
+  const t = raw.trim()
+  if (!t.startsWith('/') || t.startsWith('//')) return null
+  if (t.startsWith('/acesso')) return null
+  return t
+}
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return <LoadingScreen label="Carregando sessão…" />
-  if (!user) return <Navigate to="/acesso" replace />
+  if (!user) {
+    const next = encodeURIComponent(`${location.pathname}${location.search || ''}`)
+    return <Navigate to={`/acesso?next=${next}`} replace />
+  }
   return (
     <>
       {children}
@@ -41,6 +54,8 @@ function ProtectedRoute({ children }) {
 
 function AppRoutes() {
   const { user, loading } = useAuth()
+  const location = useLocation()
+  const nextParam = safeNextPath(new URLSearchParams(location.search).get('next'))
 
   if (loading) return <LoadingScreen />
 
@@ -48,8 +63,15 @@ function AppRoutes() {
     <Routes>
       <Route
         path="/acesso"
-        element={user ? <Navigate to="/mesa-do-inovador" replace /> : <Acesso />}
+        element={
+          user ? (
+            <Navigate to={nextParam || '/mesa-do-inovador'} replace />
+          ) : (
+            <Acesso />
+          )
+        }
       />
+      <Route path="/convite/:token" element={<ConvitePage />} />
       <Route
         path="/mesa-do-inovador"
         element={

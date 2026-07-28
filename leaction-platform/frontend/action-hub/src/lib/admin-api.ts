@@ -348,20 +348,29 @@ export async function uploadCmsImage(
 
 export type CmsSiteConfig = {
   success?: boolean;
+  config_key?: string;
   landing_page_data: Record<string, unknown>;
   instructions_data: string;
   updated_at?: string | null;
 };
 
-export async function fetchCmsSiteAdmin(token: string): Promise<CmsSiteConfig> {
+export type CmsSiteConfigKey = 'default' | 'inove4us';
+
+export async function fetchCmsSiteAdmin(
+  token: string,
+  configKey: CmsSiteConfigKey = 'default'
+): Promise<CmsSiteConfig> {
   const client = createAdminClient(token);
-  const { data } = await client.get<CmsSiteConfig>('/api/admin/cms');
+  const { data } = await client.get<CmsSiteConfig>('/api/admin/cms', {
+    params: { config_key: configKey },
+  });
   return data;
 }
 
 export async function saveCmsSiteAdmin(
   token: string,
   body: {
+    config_key?: CmsSiteConfigKey;
     landing_page_data?: Record<string, unknown>;
     instructions_data?: string;
   }

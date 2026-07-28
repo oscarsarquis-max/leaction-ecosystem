@@ -67,12 +67,33 @@ function tasksFromKanbanState(kanbanState, fallback) {
   return fallback || []
 }
 
-function buildPlanData({ plano, hipotese, problema, planoSession }) {
+/** Garante aula_id em cada card (legado → dono do board). */
+function stampAulaId(tasks, aulaId) {
+  const aid = aulaId == null ? null : Number(aulaId)
+  return (tasks || []).map((t) => ({
+    ...t,
+    aula_id: t.aula_id != null ? Number(t.aula_id) : aid,
+  }))
+}
+
+function labelCurtoAula(a) {
+  if (!a) return 'Aula'
+  const data = formatarDataBR(a.data_evento)
+  const turma = a.turma ? ` · ${a.turma}` : ''
+  return `${data}${turma}`
+}
+
+function aulaExecutavel(a) {
+  return a && (a.status === 'planejado' || a.status === 'em_execucao')
+}
+
+function buildPlanData({ plano, hipotese, problema, planoSession, causas }) {
   return {
     problema: problema || '',
     hipotese: hipotese || '',
     plano_session: planoSession || null,
     plano: plano || null,
+    ...(causas != null ? { causas } : {}),
   }
 }
 
@@ -80,14 +101,17 @@ export default function StepEduScrum({
   plano,
   hipotese,
   problema,
+  causas = null,
   user,
   planoSession,
   disciplinaId = null,
   onVoltar,
   onAgendaChanged,
+  onReplicar,
   initialEventoId = null,
   initialKanbanState = null,
   resumeMode = false,
+  readOnly = false,
 }) {
   const [tasks, setTasks] = useState(() =>
     tasksFromKanbanState(initialKanbanState, plano?.tarefas_kanban || []),
@@ -117,6 +141,10 @@ export default function StepEduScrum({
 
   const [aulas, setAulas] = useState([])
   const [aulaAtivaId, setAulaAtivaId] = useState(initialEventoId || null)
+  /** Multi-aula: 'todas' | id_evento. Com 1 aula o seletor some. */
+  const [visaoKanban, setVisaoKanban] = useState('todas')
+  const [novaTarefaAulaId, setNovaTarefaAulaId] = useState(null)
+  const [boardLoading, setBoardLoading] = useState(false)
   const [showRegistro, setShowRegistro] = useState(false)
   const [slotsRegistro, setSlotsRegistro] = useState(() => [
     {
@@ -176,58 +204,159 @@ export default function StepEduScrum({
 
   const eventoIdRef = useRef(null)
   eventoIdRef.current = aulaAtivaId || initialEventoId
+  const aulasRef = useRef(aulas)
+  aulasRef.current = aulas
+  const visaoRef = useRef(visaoKanban)
+  visaoRef.current = visaoKanban
+  const initialEventoRef = useRef(initialEventoId)
+  initialEventoRef.current = initialEventoId
 
-  const planMetaRef = useRef({ plano, hipotese, problema, planoSession })
-  planMetaRef.current = { plano, hipotese, problema, planoSession }
+  const planMetaRef = useRef({ plano, hipotese, problema, planoSession, causas })
+  planMetaRef.current = { plano, hipotese, problema, planoSession, causas }
+
+  const multiAula = aulas.length > 1
 
   const loadAulas = useCallback(async () => {
     try {
       let lista = []
-      if (planoSession) {
+      const anchorId = initialEventoId
+      if (anchorId) {
+        try {
+          const kb = await api.getAgendaKanban(anchorId)
+          if (Array.isArray(kb.aulas) && kb.aulas.length) {
+            lista = kb.aulas.map((a) => ({
+              ...a,
+              tipo: 'aula_eduscrum',
+            }))
+          }
+        } catch {
+          /* fallback abaixo */
+        }
+      }
+      if (!lista.length && planoSession) {
         const data = await api.listAgendaEventos('', planoSession)
         lista = (data.eventos || []).filter((e) => e.tipo === 'aula_eduscrum')
       }
-      if (initialEventoId && !lista.some((a) => a.id_evento === initialEventoId)) {
-        const one = await api.getAgendaEvento(initialEventoId)
+      if (anchorId && !lista.some((a) => a.id_evento === anchorId)) {
+        const one = await api.getAgendaEvento(anchorId)
         if (one?.evento) lista = [one.evento, ...lista]
       }
       setAulas(lista)
       setAulaAtivaId((prev) => {
-        if (initialEventoId && lista.some((a) => a.id_evento === initialEventoId)) {
-          return initialEventoId
-        }
-        if (prev && lista.some((a) => a.id_evento === prev)) return prev
         const prefer =
           lista.find((a) => a.status === 'em_execucao') ||
           lista.find((a) => a.status === 'planejado' && diaEvento(a.data_evento) === hojeISO()) ||
           lista.find((a) => a.status === 'planejado') ||
+          (prev && lista.some((a) => a.id_evento === prev)
+            ? lista.find((a) => a.id_evento === prev)
+            : null) ||
+          (initialEventoId && lista.some((a) => a.id_evento === initialEventoId)
+            ? lista.find((a) => a.id_evento === initialEventoId)
+            : null) ||
           lista[0]
         return prefer?.id_evento ?? null
       })
+      setNovaTarefaAulaId((prev) => {
+        const executaveis = lista.filter(aulaExecutavel)
+        if (prev && executaveis.some((a) => a.id_evento === prev)) return prev
+        return executaveis[0]?.id_evento ?? lista[0]?.id_evento ?? null
+      })
+      if (lista.length > 1) {
+        setVisaoKanban((prev) => {
+          if (prev === 'todas') return 'todas'
+          if (prev && lista.some((a) => a.id_evento === Number(prev))) return prev
+          return 'todas'
+        })
+      }
     } catch {
       setAulas([])
     }
   }, [planoSession, initialEventoId])
 
   useEffect(() => {
-    setTasks(tasksFromKanbanState(initialKanbanState, plano?.tarefas_kanban || []))
+    if (!resumeMode) {
+      setTasks(
+        stampAulaId(
+          tasksFromKanbanState(initialKanbanState, plano?.tarefas_kanban || []),
+          initialEventoId,
+        ),
+      )
+    }
     setPendingMove(null)
     setShowRegistro(false)
     setAcaoErro('')
     if (initialEventoId) setAulaAtivaId(initialEventoId)
-  }, [plano, initialKanbanState, initialEventoId])
+  }, [plano, initialKanbanState, initialEventoId, resumeMode])
 
   useEffect(() => {
     loadAulas()
   }, [loadAulas])
+
+  /** Carrega board conforme visão (todas / aula). */
+  useEffect(() => {
+    if (!aulas.length) return
+    if (!resumeMode && !initialEventoId && !eventoIdRef.current) return
+
+    let cancelled = false
+    async function loadBoard() {
+      const anchor = initialEventoId || aulaAtivaId || aulas[0]?.id_evento
+      if (!anchor) return
+      setBoardLoading(true)
+      try {
+        if (multiAula && visaoKanban === 'todas') {
+          const data = await api.getAgendaKanban(anchor)
+          if (cancelled) return
+          setTasks(data.tarefas || [])
+        } else {
+          const targetId = multiAula
+            ? Number(visaoKanban)
+            : Number(aulaAtivaId || anchor)
+          const data = await api.getAgendaKanban(anchor, targetId)
+          if (cancelled) return
+          setTasks(data.tarefas || [])
+        }
+      } catch {
+        if (cancelled) return
+        try {
+          const targetId =
+            multiAula && visaoKanban !== 'todas'
+              ? Number(visaoKanban)
+              : Number(aulaAtivaId || anchor)
+          const one = await api.getAgendaEvento(targetId)
+          if (cancelled) return
+          setTasks(
+            stampAulaId(
+              tasksFromKanbanState(one.evento?.kanban_state, plano?.tarefas_kanban || []),
+              targetId,
+            ),
+          )
+        } catch {
+          /* mantém tasks atuais */
+        }
+      } finally {
+        if (!cancelled) setBoardLoading(false)
+      }
+    }
+    loadBoard()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    aulas.length,
+    multiAula,
+    visaoKanban,
+    // Só recarrega por troca de foco quando visão é 1 aula (não multi/todas)
+    multiAula && visaoKanban === 'todas' ? null : aulaAtivaId,
+    initialEventoId,
+    resumeMode,
+  ])
 
   /**
    * Auto-save do quadro — PUT /api/agenda-eventos/:id/estado
    * @param {{ tarefas: any[] }} newState
    * @param {object|null} newPlanData — se o plano estrutural mudou (add/edit/delete)
    */
-  const saveBoardState = useCallback(async (newState, newPlanData = null) => {
-    const id = eventoIdRef.current
+  const saveBoardState = useCallback(async (id, newState, newPlanData = null) => {
     if (!id) return null
     setSaveStatus('saving')
     try {
@@ -245,26 +374,98 @@ export default function StepEduScrum({
 
   const saveBoardStateDebounced = useMemo(
     () =>
-      debounce((newState, newPlanData = null) => {
-        saveBoardState(newState, newPlanData)
+      debounce((id, newState, newPlanData = null) => {
+        saveBoardState(id, newState, newPlanData)
       }, 700),
     [saveBoardState],
   )
 
-  useEffect(() => () => saveBoardStateDebounced.cancel(), [saveBoardStateDebounced])
+  const saveMultiBoardDebounced = useMemo(
+    () =>
+      debounce(async (nextTasks, syncPlan = false) => {
+        const lista = aulasRef.current || []
+        if (!lista.length) return
+        setSaveStatus('saving')
+        const byAula = new Map()
+        for (const a of lista) byAula.set(Number(a.id_evento), [])
+        const gerais = []
+        for (const t of nextTasks) {
+          const aid = t.aula_id != null ? Number(t.aula_id) : null
+          if (aid != null && byAula.has(aid)) byAula.get(aid).push(t)
+          else gerais.push(t)
+        }
+        const geralOwner =
+          (initialEventoRef.current && byAula.has(Number(initialEventoRef.current))
+            ? Number(initialEventoRef.current)
+            : null) || lista[0]?.id_evento
+        if (geralOwner != null && gerais.length) {
+          byAula.set(Number(geralOwner), [
+            ...(byAula.get(Number(geralOwner)) || []),
+            ...gerais.map((t) => ({ ...t, aula_id: null })),
+          ])
+        }
+        const meta = planMetaRef.current
+        try {
+          for (const [aid, subset] of byAula) {
+            const forSave = subset.map((t) => {
+              if (t.aula_id == null) return { ...t, aula_id: null }
+              return { ...t, aula_id: aid }
+            })
+            const payload = { kanban_state: { tarefas: forSave } }
+            if (syncPlan) {
+              payload.plan_data = buildPlanData({
+                ...meta,
+                plano: { ...(meta.plano || {}), tarefas_kanban: forSave },
+              })
+            }
+            await api.updateAgendaEstado(aid, payload)
+          }
+          setSaveStatus('saved')
+        } catch (err) {
+          console.warn('Falha ao auto-salvar kanban multi-aula:', err)
+          setSaveStatus('error')
+        }
+      }, 700),
+    [],
+  )
+
+  useEffect(
+    () => () => {
+      saveBoardStateDebounced.cancel()
+      saveMultiBoardDebounced.cancel()
+    },
+    [saveBoardStateDebounced, saveMultiBoardDebounced],
+  )
 
   function queueBoardSave(nextTasks, { syncPlan = false } = {}) {
-    const kanbanState = { tarefas: nextTasks }
-    if (!eventoIdRef.current) return
+    const lista = aulasRef.current || []
+    const multi = lista.length > 1
+    const visao = visaoRef.current
+
+    if (multi && visao === 'todas') {
+      saveBoardStateDebounced.cancel()
+      saveMultiBoardDebounced(nextTasks, syncPlan)
+      return
+    }
+
+    saveMultiBoardDebounced.cancel()
+    const targetId =
+      multi && visao !== 'todas'
+        ? Number(visao)
+        : Number(aulaAtivaId || initialEventoId || eventoIdRef.current)
+    if (!targetId) return
+    eventoIdRef.current = targetId
+    const stamped = stampAulaId(nextTasks, targetId)
+    const kanbanState = { tarefas: stamped }
     if (syncPlan) {
       const meta = planMetaRef.current
       const newPlanData = buildPlanData({
         ...meta,
-        plano: { ...(meta.plano || {}), tarefas_kanban: nextTasks },
+        plano: { ...(meta.plano || {}), tarefas_kanban: stamped },
       })
-      saveBoardStateDebounced(kanbanState, newPlanData)
+      saveBoardStateDebounced(targetId, kanbanState, newPlanData)
     } else {
-      saveBoardStateDebounced(kanbanState)
+      saveBoardStateDebounced(targetId, kanbanState)
     }
   }
 
@@ -307,11 +508,53 @@ export default function StepEduScrum({
     [aulas, aulaAtivaId],
   )
 
+  const aulasExecutaveis = useMemo(() => aulas.filter(aulaExecutavel), [aulas])
+
   const temPlanejamento = aulas.some((a) => a.status === 'planejado' || a.status === 'em_execucao')
   const podeExecutar =
+    !readOnly &&
     Boolean(aulaAtiva) &&
     (aulaAtiva.status === 'planejado' || aulaAtiva.status === 'em_execucao')
   const aulaConcluida = aulaAtiva?.status === 'concluido'
+
+  const aulaAlvoCriacao = useMemo(() => {
+    if (!multiAula) return aulaAtivaId
+    if (visaoKanban === 'todas') return novaTarefaAulaId
+    return Number(visaoKanban)
+  }, [multiAula, aulaAtivaId, visaoKanban, novaTarefaAulaId])
+
+  const podeCriarCard = useMemo(() => {
+    if (readOnly) return false
+    if (!aulasExecutaveis.length) return false
+    if (!multiAula) return podeExecutar && !aulaConcluida
+    return aulasExecutaveis.some((a) => a.id_evento === Number(aulaAlvoCriacao))
+  }, [readOnly, aulasExecutaveis, multiAula, podeExecutar, aulaConcluida, aulaAlvoCriacao])
+
+  const boardEditavel = useMemo(() => {
+    if (readOnly) return false
+    if (!aulasExecutaveis.length) return false
+    if (!multiAula) return podeExecutar
+    if (visaoKanban === 'todas') return true
+    return aulasExecutaveis.some((a) => a.id_evento === Number(visaoKanban))
+  }, [readOnly, aulasExecutaveis, multiAula, podeExecutar, visaoKanban])
+
+  function taskEditavel(task) {
+    if (readOnly) return false
+    if (!boardEditavel) return false
+    if (!multiAula) return podeExecutar
+    const aid = task?.aula_id != null ? Number(task.aula_id) : null
+    if (aid == null) {
+      return aulasExecutaveis.length > 0
+    }
+    return aulasExecutaveis.some((a) => a.id_evento === aid)
+  }
+
+  function labelAulaDoCard(task) {
+    const aid = task?.aula_id != null ? Number(task.aula_id) : null
+    if (aid == null) return 'Geral do desafio'
+    const a = aulas.find((x) => x.id_evento === aid)
+    return a ? labelCurtoAula(a) : `Aula #${aid}`
+  }
 
   const tituloAula = useMemo(() => {
     const missao = (plano?.missao || 'Aula EduScrum').trim()
@@ -319,12 +562,12 @@ export default function StepEduScrum({
   }, [plano])
 
   function requestMove(taskId, toColuna) {
-    if (!podeExecutar) {
-      setAcaoErro('Registre e selecione o dia da aula no calendário antes de mover cards.')
-      return
-    }
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
+    if (!taskEditavel(task)) {
+      setAcaoErro('Esta aula não está em execução — não é possível mover o card.')
+      return
+    }
     const fromColuna = task.coluna || 'para_fazer'
     if (fromColuna === toColuna) return
     setPendingMove({
@@ -359,12 +602,13 @@ export default function StepEduScrum({
 
   function handleAddTask(e) {
     e?.preventDefault?.()
-    if (!podeExecutar) {
-      setAcaoErro('Registre a aula na agenda antes de editar o Kanban.')
+    if (!podeCriarCard) {
+      setAcaoErro('Selecione uma aula em planejamento/execução para criar o card.')
       return
     }
     const titulo = novaTarefaTitulo.trim()
     if (!titulo) return
+    const destAula = Number(aulaAlvoCriacao)
     const id =
       typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
@@ -379,6 +623,7 @@ export default function StepEduScrum({
           cor: '#FDE68A',
           duracao_minutos: 10,
           historico: [],
+          aula_id: destAula,
         },
       ]
       queueBoardSave(next, { syncPlan: true })
@@ -388,7 +633,7 @@ export default function StepEduScrum({
   }
 
   function handleEditTask(task) {
-    if (!podeExecutar || !task) return
+    if (!taskEditavel(task) || !task) return
     const titulo = window.prompt('Editar título do card:', task.titulo || '')
     if (titulo == null) return
     const nextTitle = titulo.trim()
@@ -401,13 +646,37 @@ export default function StepEduScrum({
   }
 
   function handleDeleteTask(task) {
-    if (!podeExecutar || !task) return
+    if (!taskEditavel(task) || !task) return
     if (!window.confirm(`Excluir o card “${task.titulo}”?`)) return
     setTasks((prev) => {
       const next = prev.filter((t) => t.id !== task.id)
       queueBoardSave(next, { syncPlan: true })
       return next
     })
+  }
+
+  function handleSelectFocoAula(id) {
+    const num = Number(id) || null
+    setAulaAtivaId(num)
+    if (multiAula && num) {
+      setVisaoKanban(num)
+      if (aulasExecutaveis.some((a) => a.id_evento === num)) {
+        setNovaTarefaAulaId(num)
+      }
+    }
+  }
+
+  function handleSelectVisao(value) {
+    if (value === 'todas') {
+      setVisaoKanban('todas')
+      return
+    }
+    const num = Number(value)
+    setVisaoKanban(num)
+    setAulaAtivaId(num)
+    if (aulasExecutaveis.some((a) => a.id_evento === num)) {
+      setNovaTarefaAulaId(num)
+    }
   }
 
   async function handleRegistrarAulas(e) {
@@ -444,7 +713,7 @@ export default function StepEduScrum({
     }
     setRegistroBusy(true)
     try {
-      const planData = buildPlanData({ plano, hipotese, problema, planoSession })
+      const planData = buildPlanData({ plano, hipotese, problema, planoSession, causas })
       const data = await api.registrarAulas({
         aulas,
         titulo: `EduScrum · ${tituloAula}`,
@@ -456,6 +725,7 @@ export default function StepEduScrum({
           .join('\n'),
         plano_session: planoSession,
         ...(disciplinaId != null ? { disciplina_id: disciplinaId } : {}),
+        ...(causas != null ? { causas } : {}),
         meta_json: {
           missao: plano?.missao || '',
           hipotese: hipotese || '',
@@ -464,6 +734,7 @@ export default function StepEduScrum({
           duracao_total_estimada_min: execucao.total,
           contexto_execucao: contextoExecucao,
           ...(disciplinaId != null ? { disciplina_id: disciplinaId } : {}),
+          ...(causas != null ? { causas } : {}),
         },
         plan_data: planData,
         kanban_state: { tarefas: tasks },
@@ -524,7 +795,12 @@ export default function StepEduScrum({
     try {
       // garante último estado do board antes de concluir
       saveBoardStateDebounced.cancel()
-      await saveBoardState({ tarefas: tasks })
+      saveMultiBoardDebounced.cancel()
+      const targetId = aulaAtiva.id_evento
+      const subset = multiAula
+        ? tasks.filter((t) => Number(t.aula_id) === Number(targetId) || (t.aula_id == null && Number(targetId) === Number(initialEventoId)))
+        : tasks
+      await saveBoardState(targetId, { tarefas: stampAulaId(subset, targetId) })
       await api.concluirAula(aulaAtiva.id_evento, payload)
       setShowRelato(false)
       await loadAulas()
@@ -565,6 +841,7 @@ export default function StepEduScrum({
       </div>
 
       {/* Registro / planejamento do dia */}
+      {!readOnly ? (
       <div className="mb-5 rounded-2xl border border-brand-200 bg-white/95 p-4 shadow-soft print:hidden sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -603,7 +880,7 @@ export default function StepEduScrum({
             <select
               className="field-input"
               value={aulaAtivaId || ''}
-              onChange={(e) => setAulaAtivaId(Number(e.target.value) || null)}
+              onChange={(e) => handleSelectFocoAula(e.target.value)}
             >
               {aulas.map((a) => (
                 <option key={a.id_evento} value={a.id_evento}>
@@ -643,13 +920,14 @@ export default function StepEduScrum({
           <p className="mt-2 text-xs font-semibold text-brand-700">{acaoErro}</p>
         ) : null}
       </div>
+      ) : null}
 
       <div
         className={`grid gap-5 lg:grid-cols-[1fr_240px] ${
-          !podeExecutar ? 'relative' : ''
+          !boardEditavel ? 'relative' : ''
         }`}
       >
-        {!podeExecutar ? (
+        {!boardEditavel ? (
           <div className="pointer-events-none absolute inset-0 z-10 rounded-2xl bg-white/55 backdrop-blur-[1px] print:hidden" />
         ) : null}
 
@@ -716,19 +994,56 @@ export default function StepEduScrum({
                 }`}
                 aria-live="polite"
               >
-                {saveStatus === 'saving'
-                  ? 'Salvando…'
-                  : saveStatus === 'saved'
-                    ? 'Salvo'
-                    : saveStatus === 'error'
-                      ? 'Erro ao salvar'
-                      : aulaAtivaId || initialEventoId
-                        ? 'Auto-save'
-                        : 'Salva ao registrar aula'}
+                {boardLoading
+                  ? 'Carregando…'
+                  : saveStatus === 'saving'
+                    ? 'Salvando…'
+                    : saveStatus === 'saved'
+                      ? 'Salvo'
+                      : saveStatus === 'error'
+                        ? 'Erro ao salvar'
+                        : aulaAtivaId || initialEventoId
+                          ? 'Auto-save'
+                          : 'Salva ao registrar aula'}
               </p>
             </div>
 
-            {podeExecutar && !aulaConcluida ? (
+            {multiAula ? (
+              <div className="mb-3 flex flex-wrap gap-1.5 print:hidden" role="tablist" aria-label="Visão por aula">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={visaoKanban === 'todas'}
+                  className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
+                    visaoKanban === 'todas'
+                      ? 'bg-bordo text-white'
+                      : 'bg-brand-50 text-bordo hover:bg-brand-100'
+                  }`}
+                  onClick={() => handleSelectVisao('todas')}
+                >
+                  Todas as aulas
+                </button>
+                {aulas.map((a) => (
+                  <button
+                    key={a.id_evento}
+                    type="button"
+                    role="tab"
+                    aria-selected={Number(visaoKanban) === a.id_evento}
+                    className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
+                      Number(visaoKanban) === a.id_evento
+                        ? 'bg-bordo text-white'
+                        : 'bg-brand-50 text-bordo hover:bg-brand-100'
+                    }`}
+                    onClick={() => handleSelectVisao(a.id_evento)}
+                    title={STATUS_LABEL[a.status] || a.status}
+                  >
+                    {labelCurtoAula(a)}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {podeCriarCard ? (
               <form
                 onSubmit={handleAddTask}
                 className="mb-3 flex flex-wrap gap-2 print:hidden"
@@ -739,10 +1054,38 @@ export default function StepEduScrum({
                   onChange={(e) => setNovaTarefaTitulo(e.target.value)}
                   placeholder="Novo card / passo…"
                 />
+                {multiAula ? (
+                  <select
+                    className="field-input !w-auto min-w-[140px] !py-2 text-sm"
+                    value={
+                      visaoKanban === 'todas'
+                        ? novaTarefaAulaId || ''
+                        : Number(visaoKanban) || ''
+                    }
+                    onChange={(e) => setNovaTarefaAulaId(Number(e.target.value) || null)}
+                    disabled={visaoKanban !== 'todas'}
+                    aria-label="Aula do card"
+                  >
+                    {aulas.map((a) => (
+                      <option
+                        key={a.id_evento}
+                        value={a.id_evento}
+                        disabled={!aulaExecutavel(a)}
+                      >
+                        {labelCurtoAula(a)}
+                        {!aulaExecutavel(a) ? ' (concluída)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
                 <button type="submit" className="btn-ghost !px-3 !py-2 text-xs">
                   + Card
                 </button>
               </form>
+            ) : aulas.length && !aulasExecutaveis.length ? (
+              <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800 print:hidden">
+                Todas as aulas deste desafio estão concluídas — board somente leitura.
+              </p>
             ) : null}
 
             <div className="grid gap-3 md:grid-cols-3">
@@ -756,7 +1099,7 @@ export default function StepEduScrum({
                       isTarget ? 'ring-2 ring-brand-500 ring-offset-2' : ''
                     }`}
                     onDragOver={(e) => {
-                      if (!podeExecutar) return
+                      if (!boardEditavel) return
                       e.preventDefault()
                       e.dataTransfer.dropEffect = 'move'
                       if (dropTarget !== col.id) setDropTarget(col.id)
@@ -779,12 +1122,14 @@ export default function StepEduScrum({
                       </span>
                     </div>
                     <ul className="space-y-2">
-                      {cards.map((task) => (
+                      {cards.map((task) => {
+                        const editavel = taskEditavel(task)
+                        return (
                         <li
                           key={task.id}
-                          draggable={podeExecutar}
+                          draggable={editavel}
                           onDragStart={(e) => {
-                            if (!podeExecutar) {
+                            if (!editavel) {
                               e.preventDefault()
                               return
                             }
@@ -797,13 +1142,18 @@ export default function StepEduScrum({
                             setDropTarget(null)
                           }}
                           className={`rounded-lg border border-black/5 p-3 text-sm font-medium text-bordo-deep shadow-sm print:cursor-default ${
-                            podeExecutar ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-80'
+                            editavel ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed opacity-80'
                           } ${draggingId === task.id ? 'opacity-50' : ''}`}
                           style={{
                             backgroundColor: task.cor || '#FDE68A',
                             transform: `rotate(${(String(task.id).charCodeAt(1) % 3) - 1}deg)`,
                           }}
                         >
+                          {multiAula && visaoKanban === 'todas' ? (
+                            <p className="mb-1.5 inline-block rounded bg-white/75 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-bordo/80">
+                              {labelAulaDoCard(task)}
+                            </p>
+                          ) : null}
                           <div className="flex items-start justify-between gap-2">
                             <p className="font-semibold leading-snug">{task.titulo}</p>
                             <span className="shrink-0 rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-bordo">
@@ -839,7 +1189,7 @@ export default function StepEduScrum({
                               {task.ultima_observacao}
                             </p>
                           ) : null}
-                          {podeExecutar && !aulaConcluida ? (
+                          {editavel ? (
                             <div className="mt-2 flex gap-2 print:hidden">
                               <button
                                 type="button"
@@ -864,7 +1214,8 @@ export default function StepEduScrum({
                             </div>
                           ) : null}
                         </li>
-                      ))}
+                        )
+                      })}
                     </ul>
                   </div>
                 )
@@ -986,13 +1337,24 @@ export default function StepEduScrum({
           ← Voltar
         </button>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setShowRegistro(true)}
-            className="rounded-xl border border-brand-300 bg-brand-50 px-4 py-2 text-xs font-bold text-bordo transition hover:bg-brand-100"
-          >
-            Registrar aula(s)
-          </button>
+          {typeof onReplicar === 'function' && !readOnly ? (
+            <button
+              type="button"
+              onClick={onReplicar}
+              className="rounded-xl border border-brand-300 bg-white px-4 py-2 text-xs font-bold text-bordo transition hover:bg-brand-50"
+            >
+              Replicar para outra turma
+            </button>
+          ) : null}
+          {!readOnly ? (
+            <button
+              type="button"
+              onClick={() => setShowRegistro(true)}
+              className="rounded-xl border border-brand-300 bg-brand-50 px-4 py-2 text-xs font-bold text-bordo transition hover:bg-brand-100"
+            >
+              Registrar aula(s)
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={handlePrint}

@@ -2,20 +2,27 @@
 
 /**
  * Micro-CMS migrado do PanelDX (ctdi_cms_config → cms_site_config no Hub).
- * APIs compatíveis: GET /api/public/cms · GET/PUT /api/admin/cms
+ * APIs: GET /api/public/cms · GET/PUT /api/admin/cms
+ * Query/body: config_key=default|inove4us (default = landing PanelDX).
  */
 
 const { createRequireAdminAuth } = require('../admin/auth');
 const {
-  defaultCmsLanding,
-  defaultCmsInstructions,
-  normalizeCmsLanding,
+  defaultsForConfigKey,
   serializeCmsRow,
+  normalizeCmsLanding,
 } = require('./cms-landing');
 const {
   applyBlogPostsToLanding,
   stripBlogColumnsFromLanding,
 } = require('./cms-blog-sync');
+
+const ALLOWED_CONFIG_KEYS = new Set(['default', 'inove4us']);
+
+function resolveConfigKey(raw) {
+  const key = String(raw || 'default').trim().toLowerCase() || 'default';
+  return ALLOWED_CONFIG_KEYS.has(key) ? key : null;
+}
 
 async function ensureTable(pool) {
   await pool.query(`
@@ -30,27 +37,30 @@ async function ensureTable(pool) {
   `);
 }
 
-async function seedDefaultIfNeeded(pool) {
+async function seedConfigIfNeeded(pool, configKey) {
   const existing = await pool.query(
-    `SELECT id_cms FROM cms_site_config WHERE config_key = 'default' LIMIT 1`
+    `SELECT id_cms FROM cms_site_config WHERE config_key = $1 LIMIT 1`,
+    [configKey]
   );
   if (existing.rows.length) return;
+  const { landing, instructions } = defaultsForConfigKey(configKey);
   await pool.query(
     `INSERT INTO cms_site_config (config_key, landing_page_data, instructions_data)
-     VALUES ('default', $1::jsonb, $2)
+     VALUES ($1, $2::jsonb, $3)
      ON CONFLICT (config_key) DO NOTHING`,
-    [JSON.stringify(defaultCmsLanding()), defaultCmsInstructions()]
+    [configKey, JSON.stringify(landing), instructions]
   );
 }
 
-async function fetchRow(pool) {
+async function fetchRow(pool, configKey = 'default') {
   await ensureTable(pool);
-  await seedDefaultIfNeeded(pool);
+  await seedConfigIfNeeded(pool, configKey);
   const result = await pool.query(
     `SELECT landing_page_data, instructions_data, updated_at
      FROM cms_site_config
-     WHERE config_key = 'default'
-     LIMIT 1`
+     WHERE config_key = $1
+     LIMIT 1`,
+    [configKey]
   );
   return result.rows[0] || null;
 }
@@ -63,29 +73,46 @@ async function fetchRow(pool) {
 function registerCmsSiteConfigRoutes(app, pool, options = {}) {
   const requireAdmin = createRequireAdminAuth(options.jwtSecret || process.env.JWT_SECRET);
 
-  async function serializeWithBlog(row) {
-    const base = serializeCmsRow(row);
+  async function serializeWithBlog(row, configKey) {
+    const base = serializeCmsRow(row, configKey);
+    if (configKey !== 'default') {
+      return base;
+    }
     const landing = await applyBlogPostsToLanding(base.landing_page_data);
     return { ...base, landing_page_data: landing };
   }
 
-  app.get('/api/public/cms', async (_req, res) => {
+  app.get('/api/public/cms', async (req, res) => {
+    const configKey = resolveConfigKey(req.query.config_key || req.query.sistema);
+    if (!configKey) {
+      return res.status(400).json({
+        success: false,
+        error: `config_key inválido (use: ${[...ALLOWED_CONFIG_KEYS].join(', ')})`,
+      });
+    }
     try {
-      const row = await fetchRow(pool);
-      return res.status(200).json({ success: true, ...(await serializeWithBlog(row)) });
+      const row = await fetchRow(pool, configKey);
+      return res.status(200).json({ success: true, ...(await serializeWithBlog(row, configKey)) });
     } catch (err) {
       console.error('[cms-site] GET /api/public/cms', err.message);
       return res.status(200).json({
         success: true,
-        ...(await serializeWithBlog(null)),
+        ...(await serializeWithBlog(null, configKey)),
       });
     }
   });
 
-  app.get('/api/admin/cms', requireAdmin, async (_req, res) => {
+  app.get('/api/admin/cms', requireAdmin, async (req, res) => {
+    const configKey = resolveConfigKey(req.query.config_key || req.query.sistema);
+    if (!configKey) {
+      return res.status(400).json({
+        success: false,
+        error: `config_key inválido (use: ${[...ALLOWED_CONFIG_KEYS].join(', ')})`,
+      });
+    }
     try {
-      const row = await fetchRow(pool);
-      return res.status(200).json({ success: true, ...(await serializeWithBlog(row)) });
+      const row = await fetchRow(pool, configKey);
+      return res.status(200).json({ success: true, ...(await serializeWithBlog(row, configKey)) });
     } catch (err) {
       console.error('[cms-site] GET /api/admin/cms', err.message);
       return res.status(500).json({ success: false, error: 'Falha ao carregar CMS' });
@@ -95,6 +122,16 @@ function registerCmsSiteConfigRoutes(app, pool, options = {}) {
   app.put('/api/admin/cms', requireAdmin, async (req, res) => {
     try {
       const body = req.body && typeof req.body === 'object' ? req.body : {};
+      const configKey = resolveConfigKey(
+        body.config_key || req.query.config_key || req.query.sistema
+      );
+      if (!configKey) {
+        return res.status(400).json({
+          success: false,
+          error: `config_key inválido (use: ${[...ALLOWED_CONFIG_KEYS].join(', ')})`,
+        });
+      }
+
       let landing = body.landing_page_data;
       const instructions = body.instructions_data;
 
@@ -106,10 +143,15 @@ function registerCmsSiteConfigRoutes(app, pool, options = {}) {
       }
 
       await ensureTable(pool);
-      await seedDefaultIfNeeded(pool);
+      await seedConfigIfNeeded(pool, configKey);
+
+      const { landing: defaultLanding } = defaultsForConfigKey(configKey);
 
       if (landing != null) {
-        landing = stripBlogColumnsFromLanding(normalizeCmsLanding(landing));
+        landing = normalizeCmsLanding(landing, defaultLanding);
+        if (configKey === 'default') {
+          landing = stripBlogColumnsFromLanding(landing);
+        }
       }
 
       let result;
@@ -119,33 +161,33 @@ function registerCmsSiteConfigRoutes(app, pool, options = {}) {
            SET landing_page_data = $1::jsonb,
                instructions_data = $2,
                updated_at = CURRENT_TIMESTAMP
-           WHERE config_key = 'default'
+           WHERE config_key = $3
            RETURNING landing_page_data, instructions_data, updated_at`,
-          [JSON.stringify(landing), String(instructions)]
+          [JSON.stringify(landing), String(instructions), configKey]
         );
       } else if (landing != null) {
         result = await pool.query(
           `UPDATE cms_site_config
            SET landing_page_data = $1::jsonb,
                updated_at = CURRENT_TIMESTAMP
-           WHERE config_key = 'default'
+           WHERE config_key = $2
            RETURNING landing_page_data, instructions_data, updated_at`,
-          [JSON.stringify(landing)]
+          [JSON.stringify(landing), configKey]
         );
       } else {
         result = await pool.query(
           `UPDATE cms_site_config
            SET instructions_data = $1,
                updated_at = CURRENT_TIMESTAMP
-           WHERE config_key = 'default'
+           WHERE config_key = $2
            RETURNING landing_page_data, instructions_data, updated_at`,
-          [String(instructions)]
+          [String(instructions), configKey]
         );
       }
 
       return res.status(200).json({
         success: true,
-        ...serializeCmsRow(result.rows[0]),
+        ...serializeCmsRow(result.rows[0], configKey),
       });
     } catch (err) {
       console.error('[cms-site] PUT /api/admin/cms', err.message);
@@ -153,7 +195,15 @@ function registerCmsSiteConfigRoutes(app, pool, options = {}) {
     }
   });
 
-  console.log('📰 [cms] Micro-CMS site (/api/public/cms + /api/admin/cms) registrado');
+  console.log(
+    '📰 [cms] Micro-CMS site (/api/public/cms + /api/admin/cms) registrado — keys: default, inove4us'
+  );
 }
 
-module.exports = { registerCmsSiteConfigRoutes, ensureTable, fetchRow };
+module.exports = {
+  registerCmsSiteConfigRoutes,
+  ensureTable,
+  fetchRow,
+  resolveConfigKey,
+  ALLOWED_CONFIG_KEYS,
+};

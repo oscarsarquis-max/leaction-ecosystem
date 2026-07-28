@@ -5,10 +5,13 @@
 
 $checks = @(
     @{ Name = 'Postgres'; Kind = 'tcp'; Port = (Get-DatabaseHostPortFromUrl (Get-HubDatabaseUrl)).Port; Host = '127.0.0.1' },
-    @{ Name = 'Gateway'; Kind = 'http'; Url = 'http://127.0.0.1:4001/health' },
-    @{ Name = 'Marketplace'; Kind = 'http'; Url = 'http://127.0.0.1:4012/api/marketplace/health' },
-    @{ Name = 'Action Hub FE'; Kind = 'http'; Url = 'http://127.0.0.1:4000/api/health' },
-    @{ Name = 'Curation API'; Kind = 'http'; Url = 'http://127.0.0.1:4012/api/marketplace/curation'; Accept = @(200, 401) }
+    @{ Name = 'Gateway'; Kind = 'http'; Url = 'http://127.0.0.1:4001/health'; RequestTimeoutSec = 3 },
+    @{ Name = 'Marketplace health'; Kind = 'http'; Url = 'http://127.0.0.1:4012/api/marketplace/health'; RequestTimeoutSec = 5 },
+    @{ Name = 'Curation API'; Kind = 'http'; Url = 'http://127.0.0.1:4012/api/marketplace/curation'; Accept = @(200, 401); RequestTimeoutSec = 5 },
+    # Alinhado ao EcosystemMonitor (/api/sys/status) — rotas que a UI realmente usa
+    @{ Name = 'Marketplace offers'; Kind = 'http'; Url = 'http://127.0.0.1:4012/api/marketplace/offers'; RequestTimeoutSec = 45 },
+    @{ Name = 'Marketplace vitrine'; Kind = 'http'; Url = 'http://127.0.0.1:4012/api/marketplace/vitrine'; RequestTimeoutSec = 45 },
+    @{ Name = 'Action Hub FE'; Kind = 'http'; Url = 'http://127.0.0.1:4000/api/health'; RequestTimeoutSec = 3 }
 )
 
 $failed = 0
@@ -21,8 +24,9 @@ foreach ($c in $checks) {
     }
 
     $accept = if ($c.Accept) { $c.Accept } else { @(200) }
+    $reqTimeout = if ($c.RequestTimeoutSec) { [int]$c.RequestTimeoutSec } else { 3 }
     try {
-        $resp = Invoke-WebRequest -Uri $c.Url -UseBasicParsing -TimeoutSec 3
+        $resp = Invoke-WebRequest -Uri $c.Url -UseBasicParsing -TimeoutSec $reqTimeout
         $code = [int]$resp.StatusCode
         if ($accept -contains $code) {
             Write-HubOk "$($c.Name) HTTP $code  $($c.Url)"

@@ -31,7 +31,8 @@ SELECT_COLS = """
     id_evento_pai, relato_sala, participantes,
     plan_data, kanban_state,
     turma, turno, modo_execucao,
-    disciplina_id, origem, id_externo_importacao, tema
+    disciplina_id, origem, id_externo_importacao, tema, desafio_id,
+    id_clie_responsavel
 """
 
 ORIGENS = frozenset({"manual", "wizard_ia", "importacao"})
@@ -113,7 +114,42 @@ def _ensure_table(conn):
                   AND trim(turno) <> '';
             """
         )
+    # desafio_id / inove_desafios — schema Fase 2 (idempotente)
+    try:
+        from desafios_routes import _ensure_desafios_schema
+
+        _ensure_desafios_schema(conn)
+    except Exception:
+        pass
     _ensured = True
+
+
+def _can_access_evento(cur, user_id_clie: int, ev: dict) -> tuple[bool, bool]:
+    """
+    Retorna (pode_ler, pode_editar).
+    Editar = responsável da execução (id_clie_responsavel ou id_clie).
+    Ler = editar OU dono do desafio OU colaborador aceito (só se for a própria execução
+          para colaborador — dono lê qualquer).
+    """
+    from desafios_routes import _papel_acesso_desafio, _responsavel_evento
+
+    resp = _responsavel_evento(ev)
+    pode_editar = resp is not None and int(resp) == int(user_id_clie)
+    if pode_editar:
+        return True, True
+    if int(ev.get("id_clie") or 0) == int(user_id_clie):
+        return True, True
+
+    desafio_id = ev.get("desafio_id")
+    if not desafio_id:
+        return False, False
+    papel, _desafio = _papel_acesso_desafio(cur, str(desafio_id), user_id_clie)
+    if papel == "dono":
+        return True, False
+    if papel == "colaborador":
+        # colaborador só lê a própria execução
+        return False, False
+    return False, False
 
 
 def _json_field(value):
@@ -143,6 +179,8 @@ def _serialize(row: dict) -> dict:
         out["criado_em"] = out["criado_em"].isoformat()
     for key in ("meta_json", "plan_data", "kanban_state"):
         out[key] = _json_field(out.get(key))
+    if out.get("desafio_id") is not None:
+        out["desafio_id"] = str(out["desafio_id"])
     return out
 
 
@@ -164,6 +202,92 @@ def _parse_jsonb(value):
 
 def _parse_meta(value):
     return _parse_jsonb(value)
+
+
+def _tarefas_from_kanban(kanban_state):
+    """Extrai lista de cards de kanban_state (dict ou list legado)."""
+    if isinstance(kanban_state, list):
+        return [t for t in kanban_state if isinstance(t, dict)]
+    if isinstance(kanban_state, dict):
+        tarefas = kanban_state.get("tarefas")
+        if isinstance(tarefas, list):
+            return [t for t in tarefas if isinstance(t, dict)]
+    return []
+
+
+def _stamp_aula_id_on_tarefas(tarefas, aula_id):
+    """Garante aula_id em cada card (legado → dono do board)."""
+    aid = int(aula_id) if aula_id is not None else None
+    out = []
+    for t in tarefas or []:
+        if not isinstance(t, dict):
+            continue
+        item = dict(t)
+        raw = item.get("aula_id")
+        if raw is None or raw == "":
+            item["aula_id"] = aid
+        else:
+            try:
+                item["aula_id"] = int(raw)
+            except (TypeError, ValueError):
+                item["aula_id"] = aid
+        out.append(item)
+    return out
+
+
+def _normalize_kanban_state(kanban_state, aula_id=None):
+    """Normaliza kanban_state e carimba aula_id nos cards quando informado."""
+    if kanban_state is None:
+        return None
+    if isinstance(kanban_state, list):
+        tarefas = _stamp_aula_id_on_tarefas(kanban_state, aula_id)
+        return {"tarefas": tarefas}
+    if isinstance(kanban_state, dict):
+        out = dict(kanban_state)
+        if "tarefas" in out or aula_id is not None:
+            out["tarefas"] = _stamp_aula_id_on_tarefas(
+                out.get("tarefas") if isinstance(out.get("tarefas"), list) else [],
+                aula_id,
+            )
+        return out
+    return kanban_state
+
+
+def _cadeia_evento_ids(cur, id_clie: int, id_evento: int) -> list[int]:
+    """IDs da cadeia id_evento_pai (sobe até a raiz e desce todos os filhos)."""
+    current = id_evento
+    visited: set[int] = set()
+    while current and current not in visited:
+        visited.add(current)
+        cur.execute(
+            """
+            SELECT id_evento_pai
+              FROM public.inove_agenda_eventos
+             WHERE id_evento = %s AND id_clie = %s
+            """,
+            (current, id_clie),
+        )
+        row = cur.fetchone()
+        if not row or row.get("id_evento_pai") is None:
+            break
+        current = int(row["id_evento_pai"])
+    root = current
+    ids: set[int] = {int(root)}
+    frontier = [int(root)]
+    while frontier:
+        cur.execute(
+            """
+            SELECT id_evento
+              FROM public.inove_agenda_eventos
+             WHERE id_clie = %s
+               AND id_evento_pai = ANY(%s)
+            """,
+            (id_clie, frontier),
+        )
+        kids = [int(r["id_evento"]) for r in cur.fetchall()]
+        frontier = [k for k in kids if k not in ids]
+        ids.update(frontier)
+    return sorted(ids)
 
 
 @agenda_bp.get("/api/agenda-eventos")
@@ -614,6 +738,21 @@ def registrar_aulas():
     except Exception:
         return jsonify({"success": False, "error": "meta_json inválido"}), 400
 
+    causas_obj = data.get("causas")
+    if causas_obj is None and isinstance(plan_data_obj, dict):
+        causas_obj = plan_data_obj.get("causas")
+    if causas_obj is None:
+        causas_obj = meta_obj.get("causas")
+    tema_obj = (data.get("tema") or meta_obj.get("tema") or "").strip() or None
+
+    # Enrich plan_data with causas for persistence
+    if isinstance(plan_data_obj, dict) and causas_obj is not None and "causas" not in plan_data_obj:
+        plan_data_obj = {**plan_data_obj, "causas": causas_obj}
+    if causas_obj is not None:
+        meta_obj = {**meta_obj, "causas": causas_obj}
+    if tema_obj:
+        meta_obj = {**meta_obj, "tema": tema_obj}
+
     # valida e normaliza slots
     slots = []
     seen = set()
@@ -649,6 +788,7 @@ def registrar_aulas():
         slots.append({"data": dia, "turma": turma[:120], "turno": turno, "modo_execucao": modo})
 
     criados = []
+    desafio_id_criado = None
     try:
         with get_conn() as conn:
             _ensure_table(conn)
@@ -679,6 +819,33 @@ def registrar_aulas():
                         return jsonify(
                             {"success": False, "error": "Disciplina não encontrada ou sem permissão"}
                         ), 404
+
+                # Cria registro canônico do desafio (hipótese/causas/tema) — sem IA
+                from desafios_routes import create_desafio_row
+
+                hipotese_val = None
+                problema_val = None
+                if isinstance(plan_data_obj, dict):
+                    hipotese_val = plan_data_obj.get("hipotese") or plan_data_obj.get("hipotese_teste")
+                    problema_val = plan_data_obj.get("problema")
+                if not hipotese_val:
+                    hipotese_val = meta_obj.get("hipotese")
+                if not problema_val:
+                    problema_val = meta_obj.get("problema")
+                desafio_row = create_desafio_row(
+                    cur,
+                    id_clie=user["id_clie"],
+                    titulo=titulo_base,
+                    problema=problema_val,
+                    hipotese=hipotese_val,
+                    causas=causas_obj,
+                    tema=tema_obj,
+                    plan_data=plan_data_obj,
+                    meta_json=meta_obj,
+                    disciplina_id=disciplina_id,
+                )
+                desafio_id_criado = str(desafio_row["id"])
+                meta_obj = {**meta_obj, "desafio_id": desafio_id_criado}
 
                 for slot in slots:
                     dia = slot["data"]
@@ -768,11 +935,11 @@ def registrar_aulas():
                             (id_clie, data_evento, titulo, nota_texto, status, tipo,
                              meta_json, plano_session, plan_data, kanban_state,
                              turma, turno, modo_execucao, id_evento_pai,
-                             disciplina_id, origem)
+                             disciplina_id, origem, tema, desafio_id, id_clie_responsavel)
                         VALUES (%s, %s, %s, %s, 'planejado', 'aula_eduscrum',
                                 %s::jsonb, %s, %s::jsonb, %s::jsonb,
                                 %s, %s, %s, %s,
-                                %s, 'wizard_ia')
+                                %s, 'wizard_ia', %s, %s, %s)
                         RETURNING {SELECT_COLS}
                         """,
                         (
@@ -793,10 +960,15 @@ def registrar_aulas():
                             modo,
                             id_pai,
                             disciplina_id,
+                            tema_obj,
+                            desafio_id_criado,
+                            user["id_clie"],
                         ),
                     )
                     criados.append(_serialize(dict(cur.fetchone())))
-        return jsonify({"success": True, "eventos": criados}), 201
+        return jsonify(
+            {"success": True, "eventos": criados, "desafio_id": desafio_id_criado}
+        ), 201
     except Exception as exc:
         print(f"⚠️ agenda registrar-aulas: {exc}", file=sys.stderr)
         err = str(exc)
@@ -808,6 +980,125 @@ def registrar_aulas():
                 }
             ), 409
         return jsonify({"success": False, "error": "Falha ao registrar aulas"}), 500
+
+
+@agenda_bp.get("/api/agenda-eventos/<int:id_evento>/kanban")
+def listar_kanban_desafio(id_evento: int):
+    """
+    Lista cards do desafio com aula_id anotado.
+    Escopo: mesma plano_session (se houver) ∪ cadeia id_evento_pai.
+    Query opcional: aula_id — filtra cards daquela aula (null = bucket geral).
+    Sem aula_id: visão geral (todos os cards das aulas do desafio).
+    """
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+
+    aula_filtro_raw = (request.args.get("aula_id") or "").strip()
+    aula_filtro = None
+    if aula_filtro_raw:
+        try:
+            aula_filtro = int(aula_filtro_raw)
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "aula_id inválido"}), 400
+
+    id_clie = user["id_clie"]
+    try:
+        with get_conn() as conn:
+            _ensure_table(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    f"""
+                    SELECT {SELECT_COLS}
+                    FROM public.inove_agenda_eventos
+                    WHERE id_evento = %s
+                    """,
+                    (id_evento,),
+                )
+                base = cur.fetchone()
+                if not base:
+                    return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+                base_d = dict(base)
+                pode_ler, pode_editar = _can_access_evento(cur, id_clie, base_d)
+                if not pode_ler:
+                    return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+
+                owner_clie = int(base_d.get("id_clie") or id_clie)
+                ids = set(_cadeia_evento_ids(cur, owner_clie, id_evento))
+                plano_session = (base.get("plano_session") or "").strip() or None
+                if plano_session:
+                    cur.execute(
+                        """
+                        SELECT id_evento
+                          FROM public.inove_agenda_eventos
+                         WHERE id_clie = %s
+                           AND plano_session = %s
+                           AND tipo = 'aula_eduscrum'
+                        """,
+                        (owner_clie, plano_session),
+                    )
+                    ids.update(int(r["id_evento"]) for r in cur.fetchall())
+
+                id_list = sorted(ids)
+                cur.execute(
+                    f"""
+                    SELECT {SELECT_COLS}
+                    FROM public.inove_agenda_eventos
+                    WHERE id_clie = %s
+                      AND id_evento = ANY(%s)
+                    ORDER BY data_evento ASC, id_evento ASC
+                    """,
+                    (id_clie, id_list),
+                )
+                rows = [_serialize(dict(r)) for r in cur.fetchall()]
+
+        aulas_out = []
+        tarefas_all = []
+        for ev in rows:
+            aid = int(ev["id_evento"])
+            stamped = _stamp_aula_id_on_tarefas(
+                _tarefas_from_kanban(ev.get("kanban_state")),
+                aid,
+            )
+            aulas_out.append(
+                {
+                    "id_evento": aid,
+                    "titulo": ev.get("titulo"),
+                    "data_evento": ev.get("data_evento"),
+                    "turma": ev.get("turma"),
+                    "turno": ev.get("turno"),
+                    "status": ev.get("status"),
+                    "modo_execucao": ev.get("modo_execucao"),
+                    "id_evento_pai": ev.get("id_evento_pai"),
+                }
+            )
+            for t in stamped:
+                tarefas_all.append(t)
+
+        if aula_filtro is not None:
+            tarefas_all = [
+                t
+                for t in tarefas_all
+                if t.get("aula_id") == aula_filtro
+                or (t.get("aula_id") is None and aula_filtro == id_evento)
+            ]
+            visao = "aula"
+        else:
+            visao = "todas"
+
+        return jsonify(
+            {
+                "success": True,
+                "visao": visao,
+                "aula_id": aula_filtro,
+                "aulas": aulas_out,
+                "tarefas": tarefas_all,
+                "pode_editar": pode_editar,
+            }
+        ), 200
+    except Exception as exc:
+        print(f"⚠️ agenda kanban: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao listar kanban do desafio"}), 500
 
 
 @agenda_bp.put("/api/agenda-eventos/<int:id_evento>/estado")
@@ -831,7 +1122,19 @@ def atualizar_estado(id_evento: int):
 
     try:
         plan_data = _parse_jsonb(data["plan_data"]) if "plan_data" in data else None
-        kanban_state = _parse_jsonb(data["kanban_state"]) if "kanban_state" in data else None
+        kanban_raw = data.get("kanban_state") if "kanban_state" in data else None
+        # Carimba aula_id nos cards (default = evento sendo salvo); aceita override por card.
+        if "kanban_state" in data:
+            parsed_ks = kanban_raw
+            if isinstance(kanban_raw, str) and kanban_raw.strip():
+                try:
+                    parsed_ks = json.loads(kanban_raw)
+                except Exception as exc:
+                    raise ValueError("kanban_state inválido") from exc
+            normalized = _normalize_kanban_state(parsed_ks, id_evento)
+            kanban_state = _parse_jsonb(normalized)
+        else:
+            kanban_state = None
     except ValueError as ve:
         return jsonify({"success": False, "error": str(ve)}), 400
 
@@ -843,12 +1146,22 @@ def atualizar_estado(id_evento: int):
                     f"""
                     SELECT {SELECT_COLS}
                     FROM public.inove_agenda_eventos
-                    WHERE id_evento = %s AND id_clie = %s
+                    WHERE id_evento = %s
                     """,
-                    (id_evento, user["id_clie"]),
+                    (id_evento,),
                 )
                 atual = cur.fetchone()
                 if not atual:
+                    return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+                pode_ler, pode_editar = _can_access_evento(cur, user["id_clie"], dict(atual))
+                if not pode_editar:
+                    if pode_ler:
+                        return jsonify(
+                            {
+                                "success": False,
+                                "error": "Somente o responsável pela execução pode editar o Kanban.",
+                            }
+                        ), 403
                     return jsonify({"success": False, "error": "Evento não encontrado"}), 404
 
                 sets = []
@@ -859,7 +1172,7 @@ def atualizar_estado(id_evento: int):
                 if "kanban_state" in data:
                     sets.append("kanban_state = %s::jsonb")
                     params.append(kanban_state)
-                params.extend([id_evento, user["id_clie"]])
+                params.extend([id_evento, atual["id_clie"]])
 
                 cur.execute(
                     f"""
@@ -981,22 +1294,42 @@ def evento_detail(id_evento: int):
                         f"""
                         SELECT {SELECT_COLS}
                         FROM public.inove_agenda_eventos
-                        WHERE id_evento = %s AND id_clie = %s
+                        WHERE id_evento = %s
                         """,
-                        (id_evento, user["id_clie"]),
+                        (id_evento,),
                     )
                     row = cur.fetchone()
                     if not row:
                         return jsonify({"success": False, "error": "Evento não encontrado"}), 404
-                    return jsonify({"success": True, "evento": _serialize(dict(row))})
+                    pode_ler, pode_editar = _can_access_evento(cur, user["id_clie"], dict(row))
+                    if not pode_ler:
+                        return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+                    ev = _serialize(dict(row))
+                    ev["pode_editar"] = pode_editar
+                    ev["somente_leitura"] = not pode_editar
+                    return jsonify({"success": True, "evento": ev})
 
                 if request.method == "DELETE":
+                    cur.execute(
+                        f"""
+                        SELECT {SELECT_COLS}
+                        FROM public.inove_agenda_eventos
+                        WHERE id_evento = %s
+                        """,
+                        (id_evento,),
+                    )
+                    row = cur.fetchone()
+                    if not row:
+                        return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+                    _pl, pode_editar = _can_access_evento(cur, user["id_clie"], dict(row))
+                    if not pode_editar:
+                        return jsonify({"success": False, "error": "Evento não encontrado"}), 404
                     cur.execute(
                         """
                         DELETE FROM public.inove_agenda_eventos
                         WHERE id_evento = %s AND id_clie = %s
                         """,
-                        (id_evento, user["id_clie"]),
+                        (id_evento, row["id_clie"]),
                     )
                     if cur.rowcount == 0:
                         return jsonify({"success": False, "error": "Evento não encontrado"}), 404
@@ -1007,13 +1340,21 @@ def evento_detail(id_evento: int):
                     f"""
                     SELECT {SELECT_COLS}
                     FROM public.inove_agenda_eventos
-                    WHERE id_evento = %s AND id_clie = %s
+                    WHERE id_evento = %s
                     """,
-                    (id_evento, user["id_clie"]),
+                    (id_evento,),
                 )
                 atual = cur.fetchone()
                 if not atual:
                     return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+                _pl, pode_editar = _can_access_evento(cur, user["id_clie"], dict(atual))
+                if not pode_editar:
+                    return jsonify(
+                        {
+                            "success": False,
+                            "error": "Somente o responsável pela execução pode alterar esta aula.",
+                        }
+                    ), 403
 
                 titulo = (data.get("titulo") or atual["titulo"] or "").strip()
                 if not titulo:
@@ -1076,7 +1417,7 @@ def evento_detail(id_evento: int):
                         participantes,
                         plano_session,
                         id_evento,
-                        user["id_clie"],
+                        atual["id_clie"],
                     ),
                 )
                 row = cur.fetchone()

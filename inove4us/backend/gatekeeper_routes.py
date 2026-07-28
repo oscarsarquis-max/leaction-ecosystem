@@ -49,6 +49,9 @@ def _is_exempt(path: str) -> bool:
     # Action-Sponge sensor (proxy → Hub) mesmo com site em manutenção
     if path.startswith("/api/tracking/"):
         return True
+    # Micro-CMS / notícias / Nina — leitura pública da página /acesso
+    if path in ("/api/cms/site", "/api/noticias", "/api/assistente-chat"):
+        return True
     if path.startswith("/assets/") or path.startswith("/imagens/") or path.startswith("/static/"):
         return True
     if _STATIC_EXT.search(path or ""):

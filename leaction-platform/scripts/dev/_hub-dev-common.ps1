@@ -178,13 +178,15 @@ function Wait-HttpOk {
     param(
         [Parameter(Mandatory = $true)][string]$Url,
         [int]$TimeoutSec = 45,
-        [int[]]$AcceptStatus = @(200)
+        [int[]]$AcceptStatus = @(200),
+        # Timeout por tentativa HTTP (offers/vitrine ML podem passar de 5s)
+        [int]$RequestTimeoutSec = 3
     )
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
     $last = $null
     while ((Get-Date) -lt $deadline) {
         try {
-            $resp = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 3
+            $resp = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec $RequestTimeoutSec
             if ($AcceptStatus -contains [int]$resp.StatusCode) {
                 return $true
             }

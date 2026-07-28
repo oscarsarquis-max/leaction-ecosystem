@@ -1,12 +1,102 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import BrandLogo from '../components/BrandLogo'
 import DictationField from '../components/DictationField'
 
+function safeNextPath(raw) {
+  if (!raw || typeof raw !== 'string') return null
+  const t = raw.trim()
+  if (!t.startsWith('/') || t.startsWith('//')) return null
+  if (t.startsWith('/acesso')) return null
+  return t
+}
+function columnVisible(col) {
+  if (!col || typeof col !== 'object') return false
+  if (col.visibility === false || col.visible === false) return false
+  const title = String(col.title || '').trim()
+  const desc = String(col.description || col.subtitle || '').trim()
+  return Boolean(title || desc || col.image_url || col.image_path)
+}
+
+function CmsSideColumn({ column, side }) {
+  if (!columnVisible(column)) return null
+
+  const title = String(column.title || '').trim()
+  const subtitle = String(column.description || column.subtitle || '').trim()
+  const pill = String(column.pill_text || column.badge_text || '').trim()
+  const image = String(column.image_url || column.image_path || '').trim()
+  const ctaText = String(column.cta_text || column.button_text || column.link_text || '').trim()
+  const ctaUrl = String(column.cta_url || column.button_url || column.link_url || '').trim()
+  const bgStart = column.bg_color_start || '#450a0a'
+  const bgEnd = column.bg_color_end || '#7f1d1d'
+  const titleColor = column.title_color || '#ffffff'
+  const subtitleColor = column.subtitle_color || 'rgba(255,255,255,0.85)'
+  const pillBg = column.pill_bg_color || '#b91c1c'
+  const pillFg = column.pill_text_color || '#ffffff'
+  const btnBg = column.button_bg_color || '#b91c1c'
+  const btnFg = column.button_text_color || '#ffffff'
+
+  return (
+    <aside
+      className={`hidden w-[min(100%,17.5rem)] shrink-0 xl:block ${
+        side === 'left' ? 'order-1' : 'order-3'
+      }`}
+      aria-label={side === 'left' ? 'Conteúdo institucional' : 'Como começar'}
+    >
+      <article
+        className="flex h-full min-h-[28rem] flex-col overflow-hidden rounded-3xl border border-brand-100/60 shadow-soft"
+        style={{
+          background: `linear-gradient(160deg, ${bgStart} 0%, ${bgEnd} 100%)`,
+        }}
+      >
+        {image ? (
+          <div className="relative h-36 shrink-0 overflow-hidden">
+            <img src={image} alt="" className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+          </div>
+        ) : null}
+        <div className="flex flex-1 flex-col gap-3 p-5">
+          {pill ? (
+            <span
+              className="inline-flex w-fit rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+              style={{ backgroundColor: pillBg, color: pillFg }}
+            >
+              {pill}
+            </span>
+          ) : null}
+          {title ? (
+            <h2 className="font-display text-xl font-bold leading-snug" style={{ color: titleColor }}>
+              {title}
+            </h2>
+          ) : null}
+          {subtitle ? (
+            <p className="text-sm leading-relaxed" style={{ color: subtitleColor }}>
+              {subtitle}
+            </p>
+          ) : null}
+          {ctaText && ctaUrl ? (
+            <a
+              href={ctaUrl}
+              className="mt-auto inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition hover:opacity-90"
+              style={{ backgroundColor: btnBg, color: btnFg }}
+              target={ctaUrl.startsWith('http') ? '_blank' : undefined}
+              rel={ctaUrl.startsWith('http') ? 'noreferrer' : undefined}
+            >
+              {ctaText}
+            </a>
+          ) : null}
+        </div>
+      </article>
+    </aside>
+  )
+}
+
 export default function Acesso() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const nextPath = safeNextPath(searchParams.get('next'))
   const { setUser } = useAuth()
   const [step, setStep] = useState('email') // email | lead | code
   const [email, setEmail] = useState('')
@@ -16,10 +106,39 @@ export default function Acesso() {
   const [hint, setHint] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [leftCol, setLeftCol] = useState(null)
+  const [rightCol, setRightCol] = useState(null)
+  const [heroLine, setHeroLine] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await api.getCmsSite('inove4us')
+        if (cancelled) return
+        const landing = data?.landing_page_data || {}
+        const columns = Array.isArray(landing.columns) ? landing.columns : []
+        const col1 = landing.coluna1 && typeof landing.coluna1 === 'object' ? landing.coluna1 : null
+        setLeftCol(col1 || columns[0] || null)
+        setRightCol(columns[1] || null)
+        const hero = landing.hero && typeof landing.hero === 'object' ? landing.hero : {}
+        const line = String(hero.description || hero.subtitle || '').trim()
+        setHeroLine(line)
+      } catch {
+        if (!cancelled) {
+          setLeftCol(null)
+          setRightCol(null)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function enterSession(user) {
     setUser(user)
-    navigate('/mesa-do-inovador', { replace: true })
+    navigate(nextPath || '/mesa-do-inovador', { replace: true })
   }
 
   async function handleCheckEmail(e) {
@@ -88,36 +207,44 @@ export default function Acesso() {
         : 'Digite o código que enviamos para o seu e-mail.'
 
   const salaImg = encodeURI('/imagens/sala de aula inove4us.jpeg')
+  const showSides = columnVisible(leftCol) || columnVisible(rightCol)
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-6 sm:py-14">
-      <div className="relative flex w-full max-w-4xl items-stretch">
-        {/* Foto à esquerda — mesma altura da caixa branca; some sob ela via gradiente */}
-        <div
-          className="pointer-events-none relative z-0 hidden w-[46%] shrink-0 overflow-hidden rounded-l-[1.75rem] md:block"
-          aria-hidden="true"
-        >
-          <img
-            src={salaImg}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover object-center"
-          />
-          {/* Forte à esquerda → fraco à direita (passa por trás da caixa) */}
+      <div
+        className={`relative flex w-full items-stretch gap-4 ${
+          showSides ? 'max-w-6xl justify-center' : 'max-w-4xl'
+        }`}
+      >
+        <CmsSideColumn column={leftCol} side="left" />
+
+        {/* Foto de atmosfera (quando não há coluna CMS esquerda) */}
+        {!columnVisible(leftCol) ? (
           <div
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 38%, rgba(255,255,255,0.55) 68%, rgba(255,255,255,0.92) 88%, #fff 100%)',
-            }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(180deg, rgba(127,29,29,0.18) 0%, transparent 40%, rgba(69,10,10,0.12) 100%)',
-            }}
-          />
-        </div>
+            className="pointer-events-none relative z-0 hidden w-[46%] shrink-0 overflow-hidden rounded-l-[1.75rem] md:block"
+            aria-hidden="true"
+          >
+            <img
+              src={salaImg}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover object-center"
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 38%, rgba(255,255,255,0.55) 68%, rgba(255,255,255,0.92) 88%, #fff 100%)',
+              }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'linear-gradient(180deg, rgba(127,29,29,0.18) 0%, transparent 40%, rgba(69,10,10,0.12) 100%)',
+              }}
+            />
+          </div>
+        ) : null}
 
         {/* Mobile: faixa de atmosfera atrás da caixa */}
         <div
@@ -128,7 +255,11 @@ export default function Acesso() {
           <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-white/70 to-white" />
         </div>
 
-        <div className="relative z-10 w-full rounded-3xl border border-brand-100 bg-white/92 p-8 shadow-soft backdrop-blur-sm md:-ml-16 md:max-w-lg md:bg-white/88">
+        <div
+          className={`relative z-10 order-2 w-full rounded-3xl border border-brand-100 bg-white/92 p-8 shadow-soft backdrop-blur-sm md:max-w-lg md:bg-white/88 ${
+            !columnVisible(leftCol) ? 'md:-ml-16' : ''
+          }`}
+        >
           <div className="mb-6 flex flex-col items-center text-center">
             <BrandLogo
               variant="access"
@@ -138,6 +269,9 @@ export default function Acesso() {
             <p className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">
               Inovação na hora que precisa
             </p>
+            {heroLine ? (
+              <p className="mt-2 max-w-sm text-sm leading-relaxed text-bordo-soft/90">{heroLine}</p>
+            ) : null}
           </div>
           <h1 className="font-display text-3xl font-bold tracking-tight text-bordo sm:text-4xl">
             Acesso
@@ -305,6 +439,8 @@ export default function Acesso() {
             </form>
           ) : null}
         </div>
+
+        <CmsSideColumn column={rightCol} side="right" />
       </div>
     </main>
   )

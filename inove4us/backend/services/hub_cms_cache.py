@@ -106,3 +106,41 @@ def fetch_assistente_chat(
             if stale and isinstance(stale.get("payload"), dict):
                 return dict(stale["payload"])
         return None
+
+
+def fetch_site_cms(
+    *,
+    config_key: str = "inove4us",
+) -> dict[str, Any]:
+    """
+    Micro-CMS do Hub (landing_page_data) por config_key.
+    Degradação: cache antigo ou {} — nunca propaga falha.
+    """
+    key = f"site_cms:{config_key}"
+    now = time.time()
+
+    with _lock:
+        entry = _cache.get(key)
+        if entry and (now - float(entry["fetched_at"])) < CACHE_TTL_SEC:
+            payload = entry.get("payload")
+            return dict(payload) if isinstance(payload, dict) else {}
+
+    url = f"{_hub_base()}/api/public/cms"
+    params = {"config_key": config_key}
+
+    try:
+        res = requests.get(url, params=params, timeout=HUB_TIMEOUT_SEC)
+        res.raise_for_status()
+        data = res.json() if res.content else {}
+        if not isinstance(data, dict):
+            data = {}
+        with _lock:
+            _cache[key] = {"payload": data, "fetched_at": now}
+        return dict(data)
+    except Exception as exc:
+        logger.warning("[cms] Micro-CMS Hub indisponível (%s): %s", url, exc)
+        with _lock:
+            stale = _cache.get(key)
+            if stale and isinstance(stale.get("payload"), dict):
+                return dict(stale["payload"])
+        return {}
