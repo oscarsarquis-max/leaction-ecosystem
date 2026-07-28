@@ -4,6 +4,7 @@ Registro operacional de deploys. Uma linha por promoção a produção.
 
 | Data (UTC-3) | Versão | Tag Git | SHA | Ambiente | Resumo | Quem |
 |--------------|--------|---------|-----|----------|--------|------|
+| 2026-07-28 | 2.1.0 | (main) | f23ccd0 | prod | RDS migrations `014`–`015` aplicadas (Fargate one-off); desafios + colaboradores OK | Cursor |
 | 2026-07-28 | 2.1.0 | (main) | ebc3030 | prod | RDS migrations `008`–`013` aplicadas (Fargate one-off); schema pedagógico + `plan_tier` OK | Cursor |
 | 2026-07-27 | 2.1.0 | (main) | ebc3030 | prod | ECS task :18 · imagem ECR `v2.1.0` · health OK | Cursor |
 | 2026-07-23 | 2.0.0 | inove4us/v2.0.0 | 5b706a5 | prod | Dia a Dia + Kanban; público locked (homologação) | — |
