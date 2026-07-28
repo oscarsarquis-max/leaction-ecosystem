@@ -1,22 +1,22 @@
 <#
 .SYNOPSIS
-  Atalho na raiz: sync LAN dos bancos de TODAS as aplicações do ecossistema.
+  Atalho na raiz: sync LAN dos bancos de TODAS as aplicacoes do ecossistema.
 
 .DESCRIPTION
   1) Bancos no leaction_db (hub, MAtivas, chamelleon, inove4us, prodinx, LASim, diario-obra)
      via infra\sync-ecosystem-db-from-lan.ps1 (porta 5433)
   2) Banco Phanton (orquestrador) via phanton\database\sync-phanton-db-from-lan.ps1 (porta 5435)
 
-  Rode na máquina DESTINO. Na ORIGEM, antes:
+  Rode na maquina DESTINO. Na ORIGEM, antes:
     .\infra\open-leaction-db-lan.ps1
     .\phanton\database\open-phanton-db-lan.ps1
 
 .EXAMPLE
-  cd C:\Projetos\leaction-ecosystem
+  cd C:\Projetos
   .\sync-db-from-lan.ps1 -SourceHost 192.168.0.41 -Force
 
 .EXAMPLE
-  # Só leaction_db (sem Phanton)
+  # So leaction_db (sem Phanton)
   .\sync-db-from-lan.ps1 -SourceHost 192.168.0.41 -Force -SkipPhanton
 
 .EXAMPLE
@@ -43,7 +43,7 @@ param(
 
     [switch]$ForceAll,
 
-    # Não sincroniza o Postgres do Phanton (:5435)
+    # Nao sincroniza o Postgres do Phanton (:5435)
     [switch]$SkipPhanton,
 
     [int]$PhantonPort = 5435,
@@ -60,19 +60,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 
-# Console UTF-8 (mensagens com acento no Windows)
-try {
-    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-    $OutputEncoding = [Console]::OutputEncoding
-} catch {}
-
 $eco = Join-Path $Root 'infra\sync-ecosystem-db-from-lan.ps1'
 if (-not (Test-Path $eco)) {
-    throw "Script não encontrado: $eco"
+    throw "Script nao encontrado: $eco"
 }
 
 Write-Host "`n############################################" -ForegroundColor Cyan
-Write-Host " Sync DB — todas as aplicações (LAN)" -ForegroundColor Cyan
+Write-Host " Sync DB - todas as aplicacoes (LAN)" -ForegroundColor Cyan
 Write-Host "############################################`n" -ForegroundColor Cyan
 
 & $eco `
@@ -93,7 +87,7 @@ if ($SkipPhanton) {
 
 $phanton = Join-Path $Root 'phanton\database\sync-phanton-db-from-lan.ps1'
 if (-not (Test-Path $phanton)) {
-    Write-Host "AVISO: script Phanton não encontrado ($phanton) — ignorando." -ForegroundColor Yellow
+    Write-Host "AVISO: script Phanton nao encontrado ($phanton) - ignorando." -ForegroundColor Yellow
     return
 }
 
@@ -104,9 +98,9 @@ Write-Host "############################################`n" -ForegroundColor Cya
 if ($CompareOnly) {
     $tnc = Test-NetConnection -ComputerName $SourceHost -Port $PhantonPort -WarningAction SilentlyContinue
     if ($tnc.TcpTestSucceeded) {
-        Write-Host "Phanton origem ${SourceHost}:${PhantonPort} alcançável (CompareOnly — sem restore)." -ForegroundColor Green
+        Write-Host "Phanton origem ${SourceHost}:${PhantonPort} alcancavel (CompareOnly - sem restore)." -ForegroundColor Green
     } else {
-        Write-Host "Phanton origem ${SourceHost}:${PhantonPort} inacessível. Na origem: .\phanton\database\open-phanton-db-lan.ps1" -ForegroundColor Yellow
+        Write-Host "Phanton origem ${SourceHost}:${PhantonPort} inacessivel. Na origem: .\phanton\database\open-phanton-db-lan.ps1" -ForegroundColor Yellow
     }
     return
 }
