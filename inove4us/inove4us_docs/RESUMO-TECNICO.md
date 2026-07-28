@@ -83,6 +83,11 @@ Integração Hub (detalhe): [`INTEGRACAO-ACTION-HUB.md`](./INTEGRACAO-ACTION-HUB
 ## Subida local (referência)
 
 ```powershell
+# Preferido — sobe Hub + inove juntos
+cd C:\Projetos\leaction-ecosystem\inove4us
+.\scripts\dev\start-inove.ps1
+
+# Equivalente manual:
 # 1) Action Hub
 cd C:\Projetos\leaction-ecosystem\leaction-platform
 .\scripts\dev\start-hub.ps1

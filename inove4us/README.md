@@ -14,25 +14,35 @@ Oficina do Inovador (cópia operacional do PanelDX) + gate de acesso por e-mail/
 
 ## Dev local
 
-```powershell
-# (opcional) popular DB inove4us a partir do snapshot LeAction_SysF — não altera o PanelDX
-cd C:\Projetos\inove4us
-.\infra\scripts\bootstrap-inove4us-db.ps1
+**Regra:** ao subir o inove4us, o Action Hub (gateway `:4001`, marketplace `:4012`, FE `:4000`) sobe junto.
 
-# API
-cd C:\Projetos\inove4us\backend
+```powershell
+cd C:\Projetos\leaction-ecosystem\inove4us
+.\scripts\dev\start-inove.ps1
+```
+
+Isso chama `leaction-platform\scripts\dev\start-hub.ps1` e sobe API (`:5011`) + FE (`:5174`).
+
+Manual (equivalente):
+
+```powershell
+# 1) Hub
+cd C:\Projetos\leaction-ecosystem\leaction-platform
+.\scripts\dev\start-hub.ps1
+
+# 2) API
+cd C:\Projetos\leaction-ecosystem\inove4us\backend
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
 python app.py
 
-# UI
-cd C:\Projetos\inove4us\frontend
-npm install
+# 3) UI
+cd ..\frontend
 npm run dev
 ```
 
 - Login: http://localhost:5174/acesso  
 - Oficina: http://localhost:5174/inovador/?id_clie=…  
+ 
 
 ## Produção / AWS
 
