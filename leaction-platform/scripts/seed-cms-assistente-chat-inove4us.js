@@ -244,6 +244,20 @@ const DATABASE_URL =
   process.env.DATABASE_URL ||
   'postgresql://admin:password123@localhost:5433/leaction_hub';
 
+function pgClientConfig(databaseUrl) {
+  const forceSsl =
+    /sslmode=(require|verify-full|verify-ca|no-verify)/i.test(databaseUrl) ||
+    databaseUrl.includes('rds.amazonaws.com');
+  const connectionString = databaseUrl
+    .replace(/([?&])sslmode=[^&]*/gi, '$1')
+    .replace(/[?&]$/, '')
+    .replace(/\?&/, '?');
+  return {
+    connectionString,
+    ssl: forceSsl ? { rejectUnauthorized: false } : false,
+  };
+}
+
 (async () => {
   const missing = EXPECTED_NODE_IDS.filter((id) => !(id in TREE.nodes));
   if (missing.length) {
@@ -263,7 +277,7 @@ const DATABASE_URL =
     process.exit(1);
   }
 
-  const client = new Client({ connectionString: DATABASE_URL });
+  const client = new Client(pgClientConfig(DATABASE_URL));
   await client.connect();
 
   const table = await client.query(
