@@ -43,6 +43,7 @@ from services.text_to_spec import generate_pipeline_spec
 PHASE_LABELS = {
     "metodologia": "Metodologia",
     "pesquisa": "Pesquisa",
+    "context7_search": "Memoria context7",
     "sintese": "Síntese",
     "generate_prd": "PRD — Requisitos",
     "generate_sdd": "SDD — Design",

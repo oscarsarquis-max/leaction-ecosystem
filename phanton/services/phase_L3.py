@@ -41,6 +41,42 @@ def _compact_inputs(inputs: dict[str, Any], limit: int = _MAX_INPUT_CHARS) -> di
     return compact
 
 
+def _extract_context7_block(inputs: dict[str, Any]) -> str:
+    """Monta bloco de Base Historica se algum artefato tiver context7_hits."""
+    chunks: list[str] = []
+    for phase_id, payload in (inputs or {}).items():
+        if not isinstance(payload, dict):
+            continue
+        hits = payload.get("context7_hits")
+        if not isinstance(hits, list) or not hits:
+            nested = payload.get("artifact_data")
+            if isinstance(nested, dict):
+                hits = nested.get("context7_hits")
+        if not isinstance(hits, list) or not hits:
+            continue
+        lines = [f"Fonte fase `{phase_id}`:"]
+        keywords = payload.get("search_keywords") or []
+        if isinstance(keywords, list) and keywords:
+            lines.append("Keywords: " + ", ".join(str(k) for k in keywords[:12]))
+        for hit in hits[:6]:
+            if not isinstance(hit, dict):
+                continue
+            lines.append(
+                f"- [{hit.get('tipo') or 'DOC'}] {hit.get('titulo') or 'Documento'}: "
+                f"{hit.get('resumo') or ''}"
+            )
+        chunks.append("\n".join(lines))
+    if not chunks:
+        return ""
+    return (
+        "Base Histórica (context7): Utilize estes fragmentos de PRDs e SDDs "
+        "anteriores como padrão ouro. A nova arquitetura e as regras de negócio "
+        "devem herdar as boas práticas e se alinhar ao estilo destes documentos "
+        "históricos.\n\n"
+        + "\n\n".join(chunks)
+    )
+
+
 def _build_synthesis_prompt(
     inputs: dict[str, Any],
     spec: dict[str, Any],
@@ -56,6 +92,14 @@ def _build_synthesis_prompt(
         ),
     )
     deps = resolve_depends_on(spec, phase_id)
+    context7_block = _extract_context7_block(inputs)
+    context7_section = ""
+    if context7_block:
+        context7_section = f"""
+
+=== Base Histórica (context7) ===
+{context7_block}
+"""
 
     return f"""
 Você é um arquiteto de soluções. Sintetize os artefatos das fases anteriores.
@@ -66,7 +110,7 @@ Fases de entrada (depends_on): {", ".join(deps) or "nenhuma"}
 
 Instruções da síntese:
 {descricao}
-
+{context7_section}
 === Artefatos de entrada ===
 {inputs_json}
 
@@ -75,6 +119,8 @@ Regras anti-quebra:
 - Strings em uma linha quando possível; se precisar de quebra, use \\n escapado.
 - NÃO use aspas simples. NÃO deixe vírgula sobrando.
 - Máximo 6 cards. Textos curtos e objetivos.
+- Se houver Base Histórica (context7), cite no resumo_sintese e nos requisitos
+  quais práticas/padrões foram herdados.
 
 Formato exato:
 {{

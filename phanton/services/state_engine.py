@@ -25,6 +25,7 @@ from services.phase_L1 import execute_phase_L1  # noqa: E402
 from services.phase_L2 import execute_phase_L2  # noqa: E402
 from services.phase_L3 import execute_phase_L3  # noqa: E402
 from services.phase_L4 import execute_phase_L4  # noqa: E402
+from services.phase_internal_knowledge import execute_phase_context7_search  # noqa: E402
 from services.phase_prd import execute_phase_prd  # noqa: E402
 from services.phase_prompt_cursor import execute_phase_prompt_cursor  # noqa: E402
 from services.phase_sdd import execute_phase_sdd  # noqa: E402
@@ -46,6 +47,7 @@ PHASE_ORDER = DEFAULT_PHASE_ORDER
 CAPABILITY_HANDLERS: dict[str, PhaseHandler] = {
     "methodology": execute_phase_L1,
     "research": execute_phase_L2,
+    "context7_search": execute_phase_context7_search,
     "synthesize": execute_phase_L3,
     "generate_prd": execute_phase_prd,
     "generate_sdd": execute_phase_sdd,
@@ -65,6 +67,7 @@ PHASE_HANDLERS: dict[str, PhaseHandler] = {
     "sintese": execute_phase_L3,
     "entrega_final": execute_phase_L4,
     # IDs explícitos das novas capabilities
+    "context7_search": execute_phase_context7_search,
     "generate_prd": execute_phase_prd,
     "generate_sdd": execute_phase_sdd,
     "prompt_cursor": execute_phase_prompt_cursor,
@@ -181,10 +184,10 @@ def _resolve_handler(phase_id: str, spec: dict[str, Any] | None) -> PhaseHandler
     raise StateEngineError(
         f"Nenhum handler registrado para a fase: {phase_id} "
         f"(type/capability='{capability}'). "
-        f"Use type methodology|research|synthesize|generate_prd|generate_sdd|"
-        f"prompt_cursor|prompt "
-        f"(ou IDs L1/L2/L3/L4 / nomes metodologia, pesquisa, sintese, "
-        f"generate_prd, generate_sdd, prompt_cursor, entrega_final)."
+        f"Use type methodology|research|context7_search|synthesize|generate_prd|"
+        f"generate_sdd|prompt_cursor|prompt "
+        f"(ou IDs L1/L2/L3/L4 / nomes metodologia, pesquisa, context7_search, "
+        f"sintese, generate_prd, generate_sdd, prompt_cursor, entrega_final)."
     )
 
 

@@ -563,6 +563,39 @@ function GenericDescriptiveView({ data, editable, onPatch }) {
     if (data.resumo_sintese || data.dinamica_passo_a_passo || data.pontos_chave) {
       return <SynthesisView data={data} editable={editable} onPatch={onPatch} />
     }
+    if (Array.isArray(data.context7_hits) && data.context7_hits.length) {
+      return (
+        <div className="space-y-3 text-left">
+          {Array.isArray(data.search_keywords) && data.search_keywords.length ? (
+            <p className="text-xs text-slate-500">
+              Keywords:{' '}
+              <span className="font-medium text-slate-700">
+                {data.search_keywords.join(' · ')}
+              </span>
+            </p>
+          ) : null}
+          <ul className="space-y-3">
+            {data.context7_hits.map((hit, idx) => (
+              <li
+                key={`${hit?.titulo || 'hit'}-${idx}`}
+                className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-3 py-2.5"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                  {hit?.tipo || 'DOC'}
+                  {hit?.score != null ? ` · score ${hit.score}` : ''}
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-900">
+                  {hit?.titulo || 'Documento'}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                  {hit?.resumo || ''}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
     return (
       <div className="space-y-3">
         <KeyValueBlock

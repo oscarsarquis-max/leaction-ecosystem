@@ -47,6 +47,11 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
         "synthesis": "synthesize",
         "sintese": "synthesize",
         "síntese": "synthesize",
+        # Memoria organizacional / RAG interno
+        "context7_search": "context7_search",
+        "context7": "context7_search",
+        "internal_knowledge": "context7_search",
+        "rag_internal": "context7_search",
         # Documentação de produto / design (software)
         "generate_prd": "generate_prd",
         "prd": "generate_prd",
@@ -74,6 +79,8 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
     for token, capability in (
         ("metodologia", "methodology"),
         ("methodology", "methodology"),
+        ("context7", "context7_search"),
+        ("internal_knowledge", "context7_search"),
         ("generate_prd", "generate_prd"),
         ("_prd", "generate_prd"),
         ("generate_sdd", "generate_sdd"),
@@ -105,6 +112,7 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
             5: "generate_prd",
             6: "generate_sdd",
             7: "prompt_cursor",
+            8: "context7_search",
         }.get(level, "research")
     return "research"
 

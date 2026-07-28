@@ -32,8 +32,9 @@ class PipelineSpec(BaseModel):
 
     `phases` é um dicionário: chave = id livre da fase (ex.: "pesquisa_casos"),
     valor = configuração (name, type, order, descricao, depends_on…).
-    Types: methodology | research | synthesize | generate_prd | generate_sdd |
-    prompt_cursor | prompt (aliases: prd, sdd, delivery, html, ide_prompt).
+    Types: methodology | research | context7_search | synthesize | generate_prd |
+    generate_sdd | prompt_cursor | prompt (aliases: context7, prd, sdd, delivery,
+    html, ide_prompt).
     """
 
     model_config = ConfigDict(extra="allow")

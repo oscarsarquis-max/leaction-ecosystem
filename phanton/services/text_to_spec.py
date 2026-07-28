@@ -16,24 +16,27 @@ configuração de pipeline para o orquestrador Phanton.
 IMPORTANTE — o pipeline é DINÂMICO:
 - NÃO fixe sempre L1/L2/L3/L4.
 - Crie quantas fases forem necessárias, com IDs descritivos em snake_case
-  (ex.: metodologia_eduscrum, pesquisa_casos_escolas, pesquisa_stack_tecnica,
-  sintese_produto, generate_prd, generate_sdd, prompt_cursor, entrega_final).
+  (ex.: methodology_eduscrum, context7_search, pesquisa_casos, sintese_produto,
+  generate_prd, generate_sdd, prompt_cursor, entrega_final).
 - Se o usuário pedir DUAS pesquisas separadas, crie DUAS fases type=research
   (com descricao distinta) e uma fase type=synthesize que as agrupe com a
   metodologia via depends_on.
 
-TOPOLOGIA PADRÃO — construção de SOFTWARE / aplicação / sistema / plataforma:
-1. Fases methodology e research (paralelas se necessário; research pode ser N)
-2. Uma fase synthesize unindo as anteriores (depends_on)
-3. Uma fase generate_prd dependendo da síntese
-4. Uma fase generate_sdd dependendo do PRD
-5. Uma fase final prompt_cursor dependendo do SDD
+TOPOLOGIA PADRÃO — construção de SOFTWARE / aplicação / sistema / plataforma / SaaS:
+1. No INÍCIO do DAG (junto com methodology e research): fase obrigatória
+   type=context7_search — busca PRDs/SDDs similares na base interna context7.
+2. Fases methodology e research (paralelas se necessário; research pode ser N)
+3. Uma fase synthesize que DEPENDE de context7_search + methodology + research
+4. Uma fase generate_prd dependendo da síntese
+5. Uma fase generate_sdd dependendo do PRD
+6. Uma fase final prompt_cursor dependendo do SDD
 Mapeie IDs e depends_on corretamente para formar o grafo lógico.
 
 TOPOLOGIA — entrega de ARTEFATO (HTML interativo, apresentação, playbook,
 documento educativo, protótipo visual) SEM pedir implementação de software:
 - methodology + research (+ synthesize) e fase final type=prompt que PRODUZ
-  O ARTEFATO pedido (não um prompt de IDE).
+  O ARTEFATO pedido (não um prompt de IDE). context7_search NÃO é obrigatório
+  neste fluxo.
 
 O JSON deve ter:
 - "runId": slug curto (kebab-case)
@@ -42,20 +45,21 @@ O JSON deve ter:
 - "version": "1.0"
 - "phases": dicionário de fases. Cada fase:
   - "name": título curto amigável
-  - "type": methodology | research | synthesize | generate_prd | generate_sdd
-    | prompt_cursor | prompt
-    (aliases: generate, grounding, evaluate, prd, sdd, delivery, html,
+  - "type": methodology | research | context7_search | synthesize | generate_prd
+    | generate_sdd | prompt_cursor | prompt
+    (aliases: generate, grounding, evaluate, context7, prd, sdd, delivery, html,
     ide_prompt)
   - "order": número sequencial (1, 2, 3...)
   - "descricao": escopo detalhado DESTA fase (o que o modelo deve fazer)
   - "depends_on": lista de ids de fases cujos artefatos alimentam esta fase
     (obrigatório em synthesize, generate_prd, generate_sdd, prompt_cursor e
-    prompt; omitir ou [] nas fases iniciais)
+    prompt; omitir ou [] nas fases iniciais incluindo context7_search)
 
 Capabilities:
 - methodology: alinhamento metodológico / princípios
 - research: pesquisa/grounding com busca (pode haver N)
-- synthesize: cruza/agrupa artefatos anteriores
+- context7_search: consulta memória organizacional (PRDs/SDDs históricos)
+- synthesize: cruza/agrupa artefatos anteriores (inclui context7 quando houver)
 - generate_prd: gera PRD (Product Requirements Document) em Markdown
 - generate_sdd: gera SDD (Software Design Document) em Markdown a partir do PRD
 - prompt_cursor: gera prompt executável curto para o Cursor IDE (lê PRD.md/SDD.md)
@@ -68,6 +72,12 @@ _PROMPT_DESCRICAO = (
     "Produzir a ENTREGA FINAL pedida pelo usuário (o artefato concreto: "
     "apresentação, documento, playbook ou protótipo), usando 100% do esforço "
     "das fases anteriores. Não gerar prompt intermediário nem citar IDEs."
+)
+
+_CONTEXT7_DESCRICAO = (
+    "Buscar na base interna context7 PRDs e SDDs historicos similares ao desafio "
+    "atual; retornar fragmentos relevantes (regras de negocio e arquitetura) "
+    "como padrao ouro para a sintese."
 )
 
 _PRD_DESCRICAO = (
@@ -197,22 +207,67 @@ def _ensure_final_prompt_phase(phases: dict[str, Any], user_prompt: str = "") ->
 
 
 def _ensure_software_topology(phases: dict[str, Any], user_prompt: str = "") -> None:
-    """Garante synthesize → generate_prd → generate_sdd → prompt_cursor."""
+    """Garante context7 + synthesize → generate_prd → generate_sdd → prompt_cursor."""
+    # 1) Memoria organizacional no inicio do DAG
+    ctx_ids = _find_phase_ids_by_capability(phases, "context7_search")
+    if not ctx_ids:
+        # Empurra orders existentes para abrir espaco no inicio
+        for cfg in phases.values():
+            if not isinstance(cfg, dict):
+                continue
+            try:
+                order = int(cfg.get("order") or 0)
+            except (TypeError, ValueError):
+                order = 0
+            cfg["order"] = order + 1 if order >= 1 else order + 1
+        phases["context7_search"] = {
+            "name": "Memoria organizacional (context7)",
+            "type": "context7_search",
+            "order": 1,
+            "descricao": (
+                f"{_CONTEXT7_DESCRICAO} Pedido: {(user_prompt or '').strip()[:300]}"
+            ),
+            "depends_on": [],
+        }
+        ctx_ids = ["context7_search"]
+    else:
+        for pid in ctx_ids:
+            cfg = phases[pid]
+            cfg["type"] = "context7_search"
+            if not cfg.get("descricao"):
+                cfg["descricao"] = _CONTEXT7_DESCRICAO
+            cfg.setdefault("depends_on", [])
+
     synth_ids = _find_phase_ids_by_capability(phases, "synthesize")
     if not synth_ids:
-        # Cria síntese mínima dependendo de tudo que já existe
-        prior = list(phases.keys())
+        # Sintese depende de tudo que ja existe (inclui context7)
+        prior = [pid for pid in phases.keys() if pid not in ctx_ids]
+        # Garante context7 nas deps mesmo se prior estiver vazio
+        deps = list(dict.fromkeys(ctx_ids + prior))
         phases["sintese_produto"] = {
             "name": "Síntese do produto",
             "type": "synthesize",
             "order": _max_order(phases) + 1,
             "descricao": (
-                "Sintetizar metodologia e pesquisas em requisitos e direção "
-                f"de produto. Pedido: {(user_prompt or '').strip()[:300]}"
+                "Sintetizar metodologia, pesquisas externas e padroes historicos "
+                f"do context7. Pedido: {(user_prompt or '').strip()[:300]}"
             ),
-            "depends_on": prior,
+            "depends_on": deps,
         }
         synth_ids = ["sintese_produto"]
+    else:
+        for pid in synth_ids:
+            cfg = phases[pid]
+            cfg["type"] = "synthesize"
+            deps = list(cfg.get("depends_on") or [])
+            for ctx in ctx_ids:
+                if ctx not in deps:
+                    deps.append(ctx)
+            cfg["depends_on"] = deps
+            if not cfg.get("descricao"):
+                cfg["descricao"] = (
+                    "Sintetizar metodologia, pesquisas e Base Historica context7."
+                )
 
     prd_ids = _find_phase_ids_by_capability(phases, "generate_prd")
     if not prd_ids:
