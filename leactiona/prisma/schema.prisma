@@ -1,0 +1,251 @@
+// LEACTIONA — single-tenant LMS (uma organização global).
+// PII (nome, e-mail, CPF) persistidos como ciphertext AES-256-GCM (app-level).
+// Busca por e-mail via emailHash (HMAC-SHA256), não pelo ciphertext.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum MediaType {
+  VIDEO
+  AUDIO
+  PDF
+  SCORM
+  H5P
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  REVOKED
+}
+
+/// Organização global única (single-tenant). Seed com id fixo; sem multi-org.
+model Organization {
+  id        String   @id @default("global")
+  name      String   @default("LEACTIONA")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users   User[]
+  courses Course[]
+  badges  Badge[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  organizationId String @default("global") @map("organization_id")
+
+  /// Ciphertext AES-256-GCM (base64) — nunca plaintext.
+  nameEnc  String @map("name_enc")
+  emailEnc String @map("email_enc")
+  cpfEnc   String @map("cpf_enc")
+
+  /// HMAC-SHA256 do e-mail normalizado — único, para login/lookup sem decrypt.
+  emailHash String @unique @map("email_hash")
+
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(STUDENT)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization         Organization         @relation(fields: [organizationId], references: [id])
+  enrollments          Enrollment[]
+  gamificationProfile  GamificationProfile?
+  userBadges           UserBadge[]
+  refreshTokens        RefreshToken[]
+  lessonCompletions    LessonCompletion[]
+
+  @@index([organizationId])
+  @@index([role])
+  @@map("users")
+}
+
+/// Refresh tokens opacos (hash) — PKCE challenge + DPoP jkt vinculados (FAPI 2.0).
+model RefreshToken {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  tokenHash     String    @unique @map("token_hash")
+  codeChallenge String    @map("code_challenge")
+  dpopJkt       String    @map("dpop_jkt")
+  expiresAt     DateTime  @map("expires_at")
+  revokedAt     DateTime? @map("revoked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model Course {
+  id             String  @id @default(cuid())
+  organizationId String  @default("global") @map("organization_id")
+  title          String
+  description    String  @default("")
+  isFree         Boolean @default(false) @map("is_free")
+  isActive       Boolean @default(true) @map("is_active")
+  /// Nota mínima (%) para certificado — default PRD RN09.
+  minGrade       Float   @default(70) @map("min_grade")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  modules      Module[]
+  enrollments  Enrollment[]
+
+  @@index([organizationId, isActive])
+  @@map("courses")
+}
+
+model Module {
+  id       String @id @default(cuid())
+  courseId String @map("course_id")
+  title    String
+  position Int    @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@index([courseId, position])
+  @@map("modules")
+}
+
+model Lesson {
+  id        String    @id @default(cuid())
+  moduleId  String    @map("module_id")
+  title     String
+  position  Int       @default(0)
+  mediaType MediaType @map("media_type")
+  /// URL/chave S3 ou identificador do recurso (YouTube/Vimeo/SCORM path).
+  mediaUrl  String    @map("media_url")
+  pointsOnComplete Int @default(10) @map("points_on_complete")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  module       Module             @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  completions  LessonCompletion[]
+
+  @@index([moduleId, position])
+  @@map("lessons")
+}
+
+/// Idempotência de conclusão de lição (anti race / double-credit).
+model LessonCompletion {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  lessonId      String   @map("lesson_id")
+  pointsAwarded Int      @map("points_awarded")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@map("lesson_completions")
+}
+
+model Enrollment {
+  id           String           @id @default(cuid())
+  userId       String           @map("user_id")
+  courseId     String           @map("course_id")
+  isPaidAccess Boolean          @default(false) @map("is_paid_access")
+  progressPct  Float            @default(0) @map("progress_pct")
+  averageGrade Float            @default(0) @map("average_grade")
+  status       EnrollmentStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@map("enrollments")
+}
+
+model GamificationProfile {
+  id        String @id @default(cuid())
+  userId    String @unique @map("user_id")
+  points    Int    @default(0)
+  /// Posição no ranking (atualizada server-side).
+  rank      Int    @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([points])
+  @@map("gamification_profiles")
+}
+
+model Badge {
+  id             String @id @default(cuid())
+  organizationId String @default("global") @map("organization_id")
+  code           String
+  title          String
+  description    String @default("")
+  pointsAward    Int    @default(0) @map("points_award")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  userBadges   UserBadge[]
+
+  @@unique([organizationId, code])
+  @@map("badges")
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String   @map("user_id")
+  badgeId  String   @map("badge_id")
+  earnedAt DateTime @default(now()) @map("earned_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+/// Auditoria imutável (append-only) — ações admin críticas.
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?  @map("actor_user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  /// Apenas IDs/flags — sem PII.
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

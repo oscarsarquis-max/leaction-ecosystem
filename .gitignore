@@ -66,6 +66,9 @@ desktop.ini
 # Cópia local arquivada (fora do escopo do monorepo; manter só no disco)
 inove4us_old/
 
+# Toolchains portáteis locais (ex.: Node win-x64 baixado para builds)
+.tools/
+
 # -----------------------------------------------------------------------------
 # Node.js (PanelDX FE, ActionHub, Chamelleon FE, Diário de Obra, Prodinx FE…)
 # -----------------------------------------------------------------------------

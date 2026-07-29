@@ -1,0 +1,24 @@
+# Postgres dedicado do LEACTIONA (single-tenant). Porta host 5436.
+name: leactiona
+
+services:
+  leactiona_db:
+    image: postgres:16-alpine
+    container_name: leactiona_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: leactiona
+      POSTGRES_PASSWORD: leactiona_dev
+      POSTGRES_DB: leactiona
+    ports:
+      - "5436:5432"
+    volumes:
+      - leactiona_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leactiona -d leactiona"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  leactiona_pg_data:

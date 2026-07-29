@@ -1,0 +1,108 @@
+{
+  "description": "# Pedido inicial (texto para o Text-to-Spec) — LEACTIONA.COM.BR\n\n## Nota de adaptação\nO prompt mestre original tem duas partes bem distintas: (1) as diretrizes/requisitos do que a plataforma precisa ser, e (2) um pedido de resposta direta (\"stack recomendada, arquitetura, módulos, estratégia de mídia\"). A parte (2) foi removida do texto de entrada — não é o que se pede ao Phanton, é exatamente o que as fases research/synthesize/generate_sdd/prompt_cursor do próprio pipeline vão produzir como *saída*. Colocar isso na entrada faria o Phanton só \"ecoar\" uma resposta pré-moldada em vez de pesquisar e decidir de verdade.\n\nTambém tornei explícito o contexto de uso (single-tenant — uma operação só) e, nesta revisão, fechei as lacunas que no caso financeiro a SDD acabou preenchendo sozinha: migraç",
+  "version": "1.0",
+  "warnings": [
+    {
+      "campo": "integracoes_nomeadas",
+      "descricao": "O pedido cita banco/API bancária de forma genérica, sem nomear instituição, PSP ou padrão de integração específico.",
+      "impacto": "SDD/prompt podem inventar um conector genérico incompatível com o parceiro ou Open Finance real a integrar."
+    }
+  ],
+  "phases": {
+    "context7_search": {
+      "name": "Memoria organizacional (context7)",
+      "type": "context7_search",
+      "order": 1,
+      "descricao": "Buscar na base interna context7 PRDs e SDDs historicos similares ao desafio atual; retornar fragmentos relevantes (regras de negocio e arquitetura) como padrao ouro para a sintese.",
+      "depends_on": []
+    },
+    "sintese_produto": {
+      "name": "Síntese do produto",
+      "type": "synthesize",
+      "order": 2,
+      "descricao": "Sintetizar metodologia, pesquisas externas e padroes historicos do context7.",
+      "depends_on": ["context7_search"]
+    },
+    "generate_prd": {
+      "name": "PRD — Requisitos do Produto",
+      "type": "generate_prd",
+      "order": 3,
+      "descricao": "Gerar PRD (Product Requirements Document) em Markdown a partir da síntese: Visão Geral, Público-alvo, Regras de Negócio Core, Casos de Uso/Jornadas e Critérios de Aceite.",
+      "depends_on": ["sintese_produto"]
+    },
+    "generate_sdd": {
+      "name": "SDD — Design de Software",
+      "type": "generate_sdd",
+      "order": 4,
+      "descricao": "Gerar SDD (Software Design Document) em Markdown a partir do PRD: Stack Tecnológica, Arquitetura do Sistema, Modelo de Dados e Contratos de API/Componentes.",
+      "depends_on": ["generate_prd"]
+    },
+    "security_guidelines": {
+      "name": "Diretrizes de Segurança",
+      "type": "security_guidelines",
+      "order": 5,
+      "descricao": "Gerar diretrizes de segurança gerais e por módulo com base em padrões de mercado aplicáveis ao domínio. Fase separada — exige aprovação humana antes do prompt_cursor.",
+      "depends_on": ["generate_sdd"],
+      "requires_approval": true
+    },
+    "prompt_cursor": {
+      "name": "Prompt para Cursor IDE",
+      "type": "prompt_cursor",
+      "order": 6,
+      "descricao": "Gerar prompt de ação curto e executável para a IDE, instruindo a IA a ler PRD.md e SDD.md na raiz e implementar passo a passo respeitando a arquitetura.",
+      "depends_on": ["generate_sdd", "security_guidelines"]
+    }
+  },
+  "name": "leactiona-lms-migration",
+  "user_prompt": "# Pedido inicial (texto para o Text-to-Spec) — LEACTIONA.COM.BR\n\n## Nota de adaptação\nO prompt mestre original tem duas partes bem distintas: (1) as diretrizes/requisitos do que a plataforma precisa ser, e (2) um pedido de resposta direta (\"stack recomendada, arquitetura, módulos, estratégia de mídia\"). A parte (2) foi removida do texto de entrada — não é o que se pede ao Phanton, é exatamente o que as fases research/synthesize/generate_sdd/prompt_cursor do próprio pipeline vão produzir como *saída*. Colocar isso na entrada faria o Phanton só \"ecoar\" uma resposta pré-moldada em vez de pesquisar e decidir de verdade.\n\nTambém tornei explícito o contexto de uso (single-tenant — uma operação só) e, nesta revisão, fechei as lacunas que no caso financeiro a SDD acabou preenchendo sozinha: migração, pagamento, escala, LRS, escopo negativo e formato de certificado.\n\n---\n\nPreciso substituir a plataforma educacional que hoje uso no Moodle por uma nova plataforma multimídia própria, a LEACTIONA.COM.BR, para os cursos da minha academia.\n\nA plataforma precisa ser leve e rápida, funcionando bem em qualquer dispositivo — inclusive smartphones mais antigos — e em conexões móveis limitadas (3G/4G), com carregamento rápido e cache eficiente.\n\nPrecisa suportar os padrões SCORM 2004 (4ª edição) e xAPI (Experience API/Tin Can) para rastrear em detalhe o progresso, pontuação e navegação dos alunos. Os registros xAPI precisam ser armazenados de forma consultável (relatórios de progresso por aluno e por curso); **não tenho preferência fixa entre implementar um LRS próprio dentro da aplicação ou usar um LRS externo (ex.: Learning Locker)** — quero que a pesquisa avalie os dois caminhos e recomende com base em custo de infraestrutura e complexidade de manutenção, dado que a operação é pequena.\n\nPrecisa incorporar vídeos externos (YouTube, Vimeo) de forma leve, com um player interno que esconda distrações/anúncios externos e permita sobrepor camadas interativas (estilo H5P) sobre os vídeos.\n\nPrecisa ter as funcionalidades centrais de um LMS: gestão de cursos, módulos e lições; inscrição e gestão de alunos e professores com controle de acesso por papel (RBAC); banco de conteúdo interativo estilo H5P; avaliações/questionários; emissão de certificados; acompanhamento de conclusão; suporte a conteúdo gratuito (para atrair leads) e conteúdo restrito a alunos pagos.\n\nPrecisa reproduzir e organizar múltiplos formatos de mídia: vídeo (MP4, YouTube), áudio (podcasts/MP3), documentos (PDF, apresentações) e pacotes interativos (HTML5, SCORM, H5P).\n\nPrecisa ter gamificação: pontos, conquistas/badges e ranking de alunos, ligados ao progresso e às avaliações.\n\nCertificados são **PDF simples para download**, sem página pública de verificação por código/QR.\n\n**Controle de acesso pago vs gratuito não envolve processar pagamento.** A plataforma apenas lê um status de acesso do aluno (matrícula/flag) para liberar ou bloquear conteúdo restrito. Não há gateway de pagamento, checkout, assinatura recorrente nem cobrança dentro do sistema — a cobrança acontece fora da plataforma, em outro processo. Não implementar módulo de billing.\n\n**Migração do Moodle está fora de escopo nesta v1.** A plataforma começa com base vazia; cursos, lições e mídia serão recadastrados manualmente. Não construir importador/ETL de dados do Moodle (cursos, alunos, histórico de progresso ou certificados antigos).\n\nEscala esperada: **centenas de alunos ativos** (ordem de ~100 a 1.000) e algumas dezenas de cursos. Não é uma operação de milhares de alunos simultâneos — a arquitetura deve ser dimensionada para essa faixa, sem super-engenharia, mas com atenção real a CDN e estratégia de streaming/armazenamento de mídia, que é onde o custo pesa.\n\nÉ para uso da minha própria operação — uma instalação única, substituindo o Moodle que já uso, não um produto para vender a várias instituições/escolas. Custo de infraestrutura (AWS) precisa ficar baixo, então a arquitetura e a estratégia de armazenamento/streaming de mídia devem ser pensadas para isso desde o início.\n\nHá dado pessoal de aluno (identificação, progresso, notas), sujeito à LGPD — tratar isso como requisito de primeira classe, mesmo não sendo dado financeiro.\n\n### Fora de escopo explícito na v1\nNão construir, e não sugerir na arquitetura da v1:\n- Migração/importação de dados do Moodle.\n- Gateway de pagamento, checkout, assinatura recorrente ou qualquer cobrança dentro da plataforma.\n- App nativo mobile (a plataforma é web, responsiva).\n- Fórum, comunidade ou comentários entre alunos.\n- Webinar/aula ao vivo (streaming ao vivo, sala virtual).\n- Página pública de verificação de certificado (QR/código de validação).\n- Arquitetura multi-tenant (schema por tenant, header de tenant, isolamento por organização) — a operação é uma só.\n\n---\n\n## Classificação esperada\n- **Perfil**: Software/SaaS (sistema de verdade com múltiplos módulos: LMS, mídia, SCORM/xAPI, RBAC, gamificação).\n- **Contexto de uso**: single-tenant — uma única academia/operação, substituindo o Moodle existente. Fixar isso explicitamente no painel estruturado, não deixar `indefinido`.\n- **Domínio**: não é financeiro (sem billing na v1), mas há dado pessoal de aluno e progresso sob LGPD — vale observar se o Phanton classifica como sensível/regulado por esse motivo e insere `security_guidelines`. Se inserir, é legítimo; se não inserir, avaliar se falta cobertura de LGPD nos prompts de módulo.\n- **Verificação a fazer na saída**: com `single_tenant` fixado, nenhum `module_prompt` deve mencionar tenant/multi-organização — é exatamente a checagem de `context_consistency` que implementamos no caso financeiro.\n\n---\n\n## Destino do código gerado\nOs `module_prompts` da fila final do `prompt_cursor` serão executados aqui no Claude, com o VS Code integrado, e devem gerar os arquivos da aplicação em **`C:\\Projetos\\leaction-ecosystem\\leactiona`**. Cada prompt de módulo deve criar/alterar arquivos dentro dessa raiz (não em pasta temporária, não em outro caminho), respeitando a estrutura de projeto que a SDD definir.",
+  "structured_requirements": {
+    "perfil_sugerido": "software_saas",
+    "proposito_escopo": "Substituir a plataforma Moodle por uma solucao propria, leve e responsiva (LEACTIONA.COM.BR), focada em cursos multimedia com rastreamento detalhado via SCORM/xAPI e gamificacao.",
+    "contexto_de_uso": {
+      "tipo": "single_tenant",
+      "justificativa": "Uso exclusivo para a operacao de uma unica academia, substituindo a instalacao atual do Moodle, sem necessidade de suporte a multiplos clientes ou organizacoes."
+    },
+    "partes_interessadas": [
+      {
+        "papel": "Aluno",
+        "descricao": "Acessa os cursos, consome midias, realiza atividades interativas, acompanha seu progresso e gamificacao, e baixa certificados."
+      },
+      {
+        "papel": "Professor / Administrador",
+        "descricao": "Gerencia o catalogo de cursos, modulos, licoes, usuarios, permissoes (RBAC) e acompanha relatorios de progresso dos alunos."
+      }
+    ],
+    "requisitos_funcionais": [
+      "Gestao de cursos, modulos, licoes e controle de acesso baseado em papeis (RBAC).",
+      "Suporte aos padroes SCORM 2004 (4a edicao) e xAPI para rastreamento detalhado de progresso e notas.",
+      "Armazenamento e consulta de registros xAPI para geracao de relatorios de progresso por aluno e por curso.",
+      "Player de video interno que incorpore videos externos (YouTube/Vimeo) sem distracoes e com suporte a camadas interativas estilo H5P.",
+      "Banco de conteudo interativo estilo H5P e sistema de avaliacoes/questionarios.",
+      "Emissao de certificados simples em formato PDF para download.",
+      "Controle de acesso a conteudo gratuito e pago baseado em flag de matricula do aluno.",
+      "Suporte a multiplos formatos de midia: MP4, YouTube, MP3 (podcasts), PDF e pacotes HTML5/SCORM/H5P.",
+      "Mecanismo de gamificacao com pontos, conquistas (badges) e ranking de alunos."
+    ],
+    "requisitos_nao_funcionais": [
+      "Plataforma leve, rapida e responsiva, otimizada para smartphones antigos e conexoes moveis limitadas (3G/4G).",
+      "Estrategia eficiente de cache e carregamento rapido de paginas.",
+      "Conformidade com a LGPD para o tratamento de dados pessoais, notas e progresso dos alunos.",
+      "Arquitetura de baixo custo de infraestrutura (AWS) com otimizacao de armazenamento e streaming de midia."
+    ],
+    "restricoes_premissas": [
+      "Escala dimensionada para centenas de alunos ativos (100 a 1.000) e dezenas de cursos.",
+      "Migracao de dados do Moodle esta fora do escopo da v1 (cadastro manual de cursos e alunos).",
+      "Nao havera gateway de pagamento, checkout ou faturamento interno na plataforma.",
+      "Nao havera aplicativo movel nativo (apenas web responsiva).",
+      "Nao havera forum, comunidade, comentarios ou recursos de transmissao ao vivo (webinar).",
+      "Nao havera pagina publica de verificacao de certificados por QR Code ou codigo.",
+      "A arquitetura deve ser estritamente single-tenant."
+    ],
+    "interfaces_integracoes": [
+      "Integracao com APIs de video externas (YouTube e Vimeo).",
+      "Integracao logica ou via API simples para leitura do status de pagamento/matricula do aluno.",
+      "Integracao com LRS (interno ou externo como Learning Locker) para armazenamento de statements xAPI."
+    ]
+  },
+  "auto_approve": false
+}
