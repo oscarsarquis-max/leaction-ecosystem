@@ -6,6 +6,22 @@ from typing import Any, Optional
 
 
 VALID_STATUSES = frozenset({"liberado", "pendente", "entregue"})
+VALID_CAMADAS = frozenset({"backend", "frontend", "shared"})
+
+
+def _normalize_camada(raw: Any, *, modulo: str, escopo: str) -> str:
+    camada = str(raw or "").strip().lower()
+    if camada in VALID_CAMADAS:
+        return camada
+    blob = f"{modulo} {escopo}".lower()
+    if any(
+        tok in blob
+        for tok in ("frontend", "front-end", "-ui", "player", "spa", "portal", "webapp")
+    ):
+        return "frontend"
+    if "shared" in blob or "common" in blob or "lib-" in blob:
+        return "shared"
+    return "backend"
 
 
 def normalize_build_order(raw: Any) -> list[dict[str, Any]]:
@@ -33,7 +49,19 @@ def normalize_build_order(raw: Any) -> list[dict[str, Any]]:
         # remove self-deps
         deps = [d for d in deps if d.lower() != modulo.lower()]
         escopo = str(item.get("escopo") or item.get("scope") or "").strip()
-        out.append({"modulo": modulo, "depende_de": deps, "escopo": escopo})
+        camada = _normalize_camada(
+            item.get("camada") or item.get("layer") or item.get("tier"),
+            modulo=modulo,
+            escopo=escopo,
+        )
+        out.append(
+            {
+                "modulo": modulo,
+                "depende_de": deps,
+                "escopo": escopo,
+                "camada": camada,
+            }
+        )
     return out
 
 
@@ -107,6 +135,7 @@ def build_initial_queue(
                 "modulo": modulo,
                 "depende_de": list(entry.get("depende_de") or []),
                 "escopo": entry.get("escopo") or "",
+                "camada": entry.get("camada") or "backend",
                 "prompt": str(prompts_by_module.get(modulo) or "").strip(),
                 "status": "pendente",
             }

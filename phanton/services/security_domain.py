@@ -5,14 +5,34 @@ from __future__ import annotations
 import re
 from typing import Any, Optional
 
-# Domínios iniciais (extensível). Valor = id estável usado nos perfis.
+# Educação antes de financeiro: "conteúdo pago" / "sem pagamento" não deve
+# puxar FAPI/Open Banking para um LMS.
+_EDUCACAO_PATTERN = re.compile(
+    r"\b("
+    r"educa[cç][aã]o|educacional|lms|e[\s-]?learning|ensino|"
+    r"curso|cursos|aluno|alunos|trilha\s+de\s+aprendizagem|"
+    r"scorm|xapi|h5p|moodle|gamifica|"
+    r"certificado\s+de\s+conclus|escola|universidade|academia"
+    r")\b",
+    re.I,
+)
+
+_OPEN_FINANCE_PATTERN = re.compile(
+    r"\b("
+    r"open[\s-]?finance|open[\s-]?banking|pix|"
+    r"consentimento\s+banc[aá]rio|iniciac[aã]o\s+de\s+pagamento|"
+    r"psd2|banco\s+central|bacen"
+    r")\b",
+    re.I,
+)
+
 _DOMAIN_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (
         "financeiro",
         re.compile(
             r"\b("
-            r"financeiro|fintech|pagamento|pagamentos|pix|open[\s-]?finance|"
-            r"open[\s-]?banking|ledger|cont[aá]bil|banco|banking|cobran[cç]a|"
+            r"financeiro|fintech|pagamento|pagamentos|"
+            r"ledger|cont[aá]bil|banco|banking|cobran[cç]a|"
             r"cart[aã]o|credit|d[eé]bito|reconcili?a[cç][aã]o|tesouraria|"
             r"wallet|carteira digital|psp|adquir[eê]ncia"
             r")\b",
@@ -32,11 +52,15 @@ _DOMAIN_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ),
 ]
 
-# Standards reais por domínio (pesquisa de mercado — não inventar nomes).
 DOMAIN_STANDARDS: dict[str, list[str]] = {
+    "educacao": [
+        "OWASP ASVS 5.0 (Level 3)",
+        "OWASP API Security Top 10",
+        "LGPD",
+    ],
+    # FAPI NÃO é default de "financeiro genérico" — só Open Finance/Banking.
     "financeiro": [
         "OWASP ASVS 5.0 (Level 3)",
-        "FAPI 2.0",
         "OWASP API Security Top 10",
         "LGPD",
     ],
@@ -48,14 +72,23 @@ DOMAIN_STANDARDS: dict[str, list[str]] = {
     ],
 }
 
-# Diretrizes gerais curadas (citando capítulos/controles reais).
 DOMAIN_GENERAL_GUIDELINES: dict[str, list[str]] = {
+    "educacao": [
+        "Criptografia em repouso e em trânsito para PII de alunos (ASVS V6/V9, LGPD)",
+        "PII cifrada em app-level quando buscável; lookup via HMAC (não ciphertext aleatório)",
+        "Autorização de conteúdo (matrícula/flag) na leitura e na escrita de progresso (ASVS V4, API1)",
+        "Logs sem PII/credenciais; query-log de ORM desligado se parâmetros carregam PII pré-cifra (LGPD)",
+        "Auth first-party: access JWT curto + refresh opaco rotativo com detecção de reuso "
+        "(não exigir FAPI/PKCE/DPoP sem AS externo / Open Banking)",
+        "Player/SCORM: validar origin+source em postMessage; statements xAPI só via backend",
+        "CORS allowlist obrigatória quando SPA e API têm origens distintas",
+        "Ranking: não publicar nome completo por default (minimização LGPD)",
+    ],
     "financeiro": [
         "Criptografia em repouso e em trânsito para todo dado financeiro (ASVS V6/V9)",
         "Nenhum segredo em código/config versionada; secrets management dedicado (ASVS V3)",
         "Log estruturado de toda operação sensível, sem PII em texto claro (ASVS V7, LGPD)",
         "Rate limiting e autenticação forte em toda API exposta (OWASP API Security Top 10)",
-        "Open Finance/Open Banking: aderir a FAPI 2.0 (PAR, PKCE, token sender-constrained)",
     ],
     "saude": [
         "Criptografia em repouso e em trânsito para dados de saúde (ASVS V6/V9)",
@@ -66,12 +99,25 @@ DOMAIN_GENERAL_GUIDELINES: dict[str, list[str]] = {
     ],
 }
 
+_FAPI_STANDARD = "FAPI 2.0"
+_FAPI_GENERAL = (
+    "Open Finance/Open Banking: aderir a FAPI 2.0 (PAR, PKCE, token sender-constrained)"
+)
+
+
+def requires_open_finance_profile(text: str) -> bool:
+    """True só com sinais explícitos de Open Finance / PIX regulado / banking APIs."""
+    return bool(_OPEN_FINANCE_PATTERN.search(text or ""))
+
 
 def classify_sensitive_domain(text: str) -> Optional[str]:
     """Retorna id do domínio sensível ou None se genérico."""
     blob = (text or "").strip()
     if not blob:
         return None
+    # LMS/educação vence financeiro genérico (evita FAPI por "conteúdo pago").
+    if _EDUCACAO_PATTERN.search(blob):
+        return "educacao"
     for domain_id, pattern in _DOMAIN_PATTERNS:
         if pattern.search(blob):
             return domain_id
@@ -82,23 +128,107 @@ def is_sensitive_domain(text: str) -> bool:
     return classify_sensitive_domain(text) is not None
 
 
-def standards_for_domain(domain_id: Optional[str]) -> list[str]:
+def standards_for_domain(
+    domain_id: Optional[str],
+    *,
+    source_text: str = "",
+) -> list[str]:
     if not domain_id:
         return []
-    return list(DOMAIN_STANDARDS.get(domain_id) or [])
+    out = list(DOMAIN_STANDARDS.get(domain_id) or [])
+    if domain_id == "financeiro" and requires_open_finance_profile(source_text):
+        if _FAPI_STANDARD not in out:
+            # Inserir após ASVS se presente
+            if out and "ASVS" in out[0]:
+                out.insert(1, _FAPI_STANDARD)
+            else:
+                out.insert(0, _FAPI_STANDARD)
+    return out
 
 
-def general_guidelines_for_domain(domain_id: Optional[str]) -> list[str]:
+def general_guidelines_for_domain(
+    domain_id: Optional[str],
+    *,
+    source_text: str = "",
+) -> list[str]:
     if not domain_id:
         return []
-    return list(DOMAIN_GENERAL_GUIDELINES.get(domain_id) or [])
+    out = list(DOMAIN_GENERAL_GUIDELINES.get(domain_id) or [])
+    if domain_id == "financeiro" and requires_open_finance_profile(source_text):
+        if _FAPI_GENERAL not in out:
+            out.append(_FAPI_GENERAL)
+    return out
 
 
-def module_guidelines_hint(domain_id: Optional[str], modulo: str, escopo: str = "") -> list[str]:
+def strip_fapi_unless_open_finance(
+    items: list[str],
+    *,
+    source_text: str,
+    domain_id: Optional[str],
+) -> list[str]:
+    """Remove menções a FAPI/PKCE/DPoP de textos quando o perfil Open Finance não cabe."""
+    if requires_open_finance_profile(source_text):
+        return items
+    if domain_id == "financeiro" and requires_open_finance_profile(source_text):
+        return items
+    banned = re.compile(r"\b(FAPI|DPoP|PAR\b|PKCE)\b", re.I)
+    cleaned: list[str] = []
+    for item in items:
+        text = str(item).strip()
+        if not text:
+            continue
+        if banned.search(text):
+            continue
+        cleaned.append(text)
+    return cleaned
+
+
+def module_guidelines_hint(
+    domain_id: Optional[str],
+    modulo: str,
+    escopo: str = "",
+    *,
+    source_text: str = "",
+) -> list[str]:
     """Heurística curada por domínio + nome/escopo do módulo (fallback sem LLM)."""
     mod = (modulo or "").lower()
     esc = (escopo or "").lower()
     blob = f"{mod} {esc}"
+
+    if domain_id == "educacao":
+        if "auth" in blob or "rbac" in blob or "login" in blob:
+            return [
+                "Access JWT vida curta (ate 15 min); refresh opaco hashado, rotacao e "
+                "revogacao de familia em reuso (ASVS V3). Nao exigir perfil Open Banking.",
+                "Papel e estado da conta lidos do banco em requests autenticadas (revogacao)",
+                "Rate limit e respostas de login uniformes (anti-enumeracao)",
+            ]
+        if "frontend" in blob or "player" in blob or "ui" in blob or "spa" in blob:
+            return [
+                "CSP do SPA alinhada a CDN/YouTube/Vimeo/SCORM; COEP off se quebrar embeds",
+                "postMessage: validar event.origin e event.source (ASVS)",
+                "Nenhuma credencial LRS/API no bundle do frontend",
+            ]
+        if "certif" in blob or "pdf" in blob:
+            return [
+                "Elegibilidade 100% + nota mínima validada só no servidor antes do PDF (API1)",
+                "Sanitizar texto do PDF (controles + Unicode bidi); sem página pública/QR se fora de escopo",
+            ]
+        if "gamif" in blob or "badge" in blob or "ranking" in blob:
+            return [
+                "Pontos/badges só server-side com idempotência (constraint/ledger)",
+                "Ranking sem nome completo por default (LGPD)",
+            ]
+        if "xapi" in blob or "scorm" in blob or "lrs" in blob:
+            return [
+                "Statements xAPI via backend; actor imposto pelo token (não mbox com e-mail)",
+                "Webhook LRS: HMAC sobre raw body + janela de tempo",
+            ]
+        return [
+            "Autorização de conteúdo e progresso no servidor (ASVS V4, API1)",
+            "Minimização de PII em logs e respostas (LGPD)",
+            "Rate limiting em APIs expostas (OWASP API Top 10 — API4)",
+        ]
 
     if domain_id == "financeiro":
         if "ledger" in blob or "razão" in blob or "razao" in blob:
@@ -107,7 +237,9 @@ def module_guidelines_hint(domain_id: Optional[str], modulo: str, escopo: str = 
                 "Nenhuma escrita fora de transação ACID",
                 "Trilha de auditoria imutável separada do dado operacional (ASVS V7)",
             ]
-        if "bank" in blob or "pix" in blob or "open finance" in blob or "open-finance" in blob:
+        if requires_open_finance_profile(f"{blob} {source_text}") or (
+            "bank" in blob or "pix" in blob or "open finance" in blob or "open-finance" in blob
+        ):
             return [
                 "FAPI 2.0 obrigatório: PAR + PKCE + token sender-constrained (mTLS ou DPoP)",
                 "Validação e expiração curta de todo token de acesso a Open Finance/PIX",
@@ -127,6 +259,11 @@ def module_guidelines_hint(domain_id: Optional[str], modulo: str, escopo: str = 
             return [
                 "Nenhum dado financeiro sensível no corpo de notificação push/e-mail "
                 "(evitar exposição excessiva — OWASP API Security Top 10)",
+            ]
+        if "auth" in blob or "rbac" in blob:
+            return [
+                "Access JWT curto + refresh opaco rotativo; FAPI/DPoP só se Open Finance",
+                "Auditoria de autenticação sem PII em claro (ASVS V7, LGPD)",
             ]
         return [
             "Autorização explícita em toda operação que altere saldo ou obrigação (ASVS V4)",
@@ -187,7 +324,6 @@ def format_security_section(
         if text:
             lines.append(f"- {text}")
     if modulo:
-        # match case-insensitive
         mod_items = None
         for key, value in por_mod.items():
             if str(key).lower() == str(modulo).lower():

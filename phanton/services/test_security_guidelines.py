@@ -14,6 +14,10 @@ from services.security_domain import (  # noqa: E402
     append_security_section,
     classify_sensitive_domain,
     is_sensitive_domain,
+    module_guidelines_hint,
+    requires_open_finance_profile,
+    standards_for_domain,
+    strip_fapi_unless_open_finance,
 )
 from services.text_to_spec import _ensure_software_topology, _normalize_generated_spec  # noqa: E402
 
@@ -23,8 +27,54 @@ def test_classify_financeiro_vs_generico():
         "Quero um SaaS financeiro com ledger, PIX e Open Finance"
     ) == "financeiro"
     assert is_sensitive_domain("plataforma de pagamentos e reconciliacao bancaria")
-    assert classify_sensitive_domain("app de agenda escolar com HTML interativo") is None
+    assert classify_sensitive_domain("gerar apresentacao de slides sobre Scrum") is None
     assert not is_sensitive_domain("gerar apresentacao de slides sobre Scrum")
+
+
+def test_classify_educacao_vence_pagamento_generico():
+    """LMS com 'conteúdo pago' não pode virar domínio financeiro/FAPI."""
+    assert (
+        classify_sensitive_domain(
+            "LMS educacional com SCORM, certificados e conteudo pago sem gateway"
+        )
+        == "educacao"
+    )
+    assert classify_sensitive_domain(
+        "SaaS educacional de trilhas de aprendizagem"
+    ) == "educacao"
+
+
+def test_fapi_somente_open_finance():
+    assert requires_open_finance_profile("ledger com Open Finance e PIX")
+    assert not requires_open_finance_profile("LMS com aluno e certificado")
+    std_fin = standards_for_domain(
+        "financeiro", source_text="controle financeiro interno ledger"
+    )
+    assert "FAPI 2.0" not in std_fin
+    std_of = standards_for_domain(
+        "financeiro", source_text="integracao Open Banking PIX"
+    )
+    assert "FAPI 2.0" in std_of
+    std_edu = standards_for_domain(
+        "educacao", source_text="LMS SCORM xAPI"
+    )
+    assert "FAPI 2.0" not in std_edu
+    assert "LGPD" in std_edu
+
+    cleaned = strip_fapi_unless_open_finance(
+        ["ASVS V4", "FAPI 2.0 PAR+PKCE", "LGPD"],
+        source_text="LMS educacional",
+        domain_id="educacao",
+    )
+    assert cleaned == ["ASVS V4", "LGPD"]
+
+    auth_hint = module_guidelines_hint(
+        "educacao", "auth-rbac", "login JWT", source_text="LMS"
+    )
+    joined = " || ".join(auth_hint)
+    assert "FAPI 2.0 obrigatório" not in joined
+    assert "token sender-constrained" not in joined
+    assert "refresh" in joined.lower()
 
 
 def test_software_topology_insere_fase_separada_para_financeiro():
@@ -49,7 +99,7 @@ def test_software_topology_insere_fase_separada_para_financeiro():
     assert phases["generate_sdd"]["order"] < sec["order"] < cursor["order"]
 
 
-def test_software_topology_sem_security_em_dominio_generico():
+def test_software_topology_educacao_tem_security_sem_fapi_default():
     phases: dict = {
         "methodology": {"type": "methodology", "order": 2, "depends_on": []},
     }
@@ -57,12 +107,16 @@ def test_software_topology_sem_security_em_dominio_generico():
         phases,
         user_prompt="Quero construir um SaaS educacional de agenda escolar",
     )
-    assert "security_guidelines" not in phases
-    assert "prompt_cursor" in phases
-    assert "security_guidelines" not in (phases["prompt_cursor"].get("depends_on") or [])
+    assert "security_guidelines" in phases
+    assert "security_guidelines" in (phases["prompt_cursor"].get("depends_on") or [])
+    std = standards_for_domain(
+        "educacao",
+        source_text="Quero construir um SaaS educacional de agenda escolar",
+    )
+    assert "FAPI 2.0" not in std
 
 
-def test_normalize_removes_security_invented_on_generic_domain():
+def test_normalize_keeps_security_on_educacao():
     raw = {
         "runId": "edu-app",
         "phases": {
@@ -82,6 +136,31 @@ def test_normalize_removes_security_invented_on_generic_domain():
     spec = _normalize_generated_spec(
         raw,
         "Quero um software SaaS educacional de trilhas de aprendizagem",
+    )
+    assert "security_guidelines" in spec["phases"]
+
+
+def test_normalize_removes_security_invented_on_generic_domain():
+    """SaaS genérico (não edu/fin/saúde) não deve manter security_guidelines."""
+    raw = {
+        "runId": "todo-app",
+        "phases": {
+            "generate_sdd": {"type": "generate_sdd", "order": 5, "depends_on": []},
+            "security_guidelines": {
+                "type": "security_guidelines",
+                "order": 6,
+                "depends_on": ["generate_sdd"],
+            },
+            "prompt_cursor": {
+                "type": "prompt_cursor",
+                "order": 7,
+                "depends_on": ["security_guidelines"],
+            },
+        },
+    }
+    spec = _normalize_generated_spec(
+        raw,
+        "Quero um software SaaS de lista de tarefas e notas pessoais",
     )
     assert "security_guidelines" not in spec["phases"]
 

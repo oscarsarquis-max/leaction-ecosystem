@@ -36,6 +36,7 @@ from services.phase_context import (  # noqa: E402
 from services.structured_requirements import (  # noqa: E402
     format_structured_requirements_block,
 )
+from services.sdd_quality import apply_sdd_quality_gates  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +52,12 @@ _BUILD_ORDER_ITEM_SCHEMA = types.Schema(
             items=types.Schema(type=types.Type.STRING),
         ),
         "escopo": types.Schema(type=types.Type.STRING),
+        "camada": types.Schema(
+            type=types.Type.STRING,
+            enum=["backend", "frontend", "shared"],
+        ),
     },
-    required=["modulo", "depende_de", "escopo"],
+    required=["modulo", "depende_de", "escopo", "camada"],
 )
 
 SDD_RESPONSE_SCHEMA = types.Schema(
@@ -230,10 +235,18 @@ Regras OBRIGATÓRIAS para sdd_markdown:
 5. Se os requisitos estruturados fixarem single_tenant, NÃO desenhe multi-tenant
    (sem isolamento por schema/tenant, sem X-Tenant-ID, sem Keycloak multi-realm
    por cliente).
+6. Se o PRD mencionar avaliações/quiz/nota mínima/certificado com nota: o Modelo
+   de Dados DEVE incluir Assessment, Attempt (e Question se couber) e explicar
+   como Enrollment.averageGrade é derivado. Sem isso o SDD está incompleto.
+7. Se o PRD mencionar SPA/player/portal/UI: descreva a camada de apresentação
+   (rotas/telas mínimas) e inclua ≥1 módulo `camada=frontend` no build_order.
 
 Regras OBRIGATÓRIAS para build_order:
-- Array de módulos/serviços na ordem de implementação (tipicamente 3 a 8).
-- Cada item: modulo (kebab-case), depende_de (lista de nomes), escopo (1 linha).
+- Array de módulos na ordem de implementação (tipicamente 3 a 8).
+- Cada item: modulo (kebab-case), depende_de, escopo (1 linha),
+  camada (`backend` | `frontend` | `shared`).
+- Se houver UI/player/portal no PRD, incluir pelo menos um módulo frontend
+  (ex.: app-frontend ou *-player) descrevendo telas, não só APIs.
 - Se monolítico sem módulos claros, retorne build_order: [].
 """.strip()
 
@@ -261,7 +274,8 @@ Pedido: {pedido}
 Regras:
 - 3 a 8 módulos kebab-case quando o sistema for multi-serviço.
 - depende_de referencia nomes exatos de outros módulos da lista.
-- escopo em uma linha.
+- escopo em uma linha; camada = backend|frontend|shared.
+- Se PRD/SDD citam UI/player/portal → ≥1 módulo camada=frontend.
 - Monólito simples → build_order: [].
 """.strip()
 
@@ -364,12 +378,25 @@ def _generate_sdd_safe(
                         "generate_sdd: build_order continua vazio após pass dedicado"
                     )
 
+            pedido = str(
+                spec.get("user_prompt") or spec.get("description") or ""
+            )
+            md, order, quality_warnings = apply_sdd_quality_gates(
+                sdd_markdown=normalized["sdd_markdown"],
+                build_order=normalized.get("build_order") or [],
+                prd_text=prd_text,
+                user_prompt=pedido,
+            )
+            normalized["sdd_markdown"] = md
+            normalized["build_order"] = order
+
             return normalized, {
                 **meta,
                 "attempts": errors,
                 "used_max_output_tokens": max_tokens,
                 "prd_ref": prd_phase_id,
                 "structured_output": True,
+                "sdd_quality_warnings": quality_warnings,
             }
         except Exception as exc:
             errors.append(f"{type(exc).__name__}: {exc}")
@@ -388,12 +415,24 @@ def _generate_sdd_safe(
                 prd_text, normalized["sdd_markdown"], spec, errors
             )
             normalized["build_order"] = order
+            pedido = str(
+                spec.get("user_prompt") or spec.get("description") or ""
+            )
+            md, order, quality_warnings = apply_sdd_quality_gates(
+                sdd_markdown=normalized["sdd_markdown"],
+                build_order=normalized.get("build_order") or [],
+                prd_text=prd_text,
+                user_prompt=pedido,
+            )
+            normalized["sdd_markdown"] = md
+            normalized["build_order"] = order
             return normalized, {
                 **meta,
                 **order_meta,
                 "attempts": errors,
                 "two_pass": True,
                 "prd_ref": prd_phase_id,
+                "sdd_quality_warnings": quality_warnings,
             }
         errors.append("narrative_only_vazia")
     except Exception as exc:

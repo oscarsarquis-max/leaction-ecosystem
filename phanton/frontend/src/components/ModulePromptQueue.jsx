@@ -41,6 +41,40 @@ async function copyText(text) {
   document.body.removeChild(el)
 }
 
+/** Bloco único para colar no IDE / log de desvios (entrega completa). */
+export function formatModuleDeliveryPack(item) {
+  const modulo = item?.modulo || 'modulo'
+  const camada = item?.camada || 'backend'
+  const escopo = item?.escopo || ''
+  const deps = Array.isArray(item?.depende_de) ? item.depende_de.join(', ') : ''
+  const testes = Array.isArray(item?.testes_requeridos)
+    ? item.testes_requeridos.map((t) => `- ${t}`).join('\n')
+    : '- (definir na implementação)'
+  const prompt = (item?.prompt || '').trim()
+  const today = new Date().toISOString().slice(0, 10)
+  return `## Entrega — ${modulo} — ${today}
+
+### Meta
+- camada: ${camada}
+- escopo: ${escopo}
+- depende_de: ${deps || '(nenhuma)'}
+
+### Prompt (copiar no IDE)
+${prompt}
+
+### Testes requeridos
+${testes}
+
+### Desvios (preencher se houver)
+| ID | Tipo | O que | Incorporar em |
+|----|------|-------|---------------|
+| | LACUNA/CONFLITO/INFRA/CORREÇÃO | | PRD/SDD/security/prompt/só código |
+
+### Pendências
+- [ ]
+`
+}
+
 export default function ModulePromptQueue({
   modules = [],
   title = 'Fila de módulos (Cursor)',
@@ -49,6 +83,7 @@ export default function ModulePromptQueue({
   onDeliver,
 }) {
   const [copiedModulo, setCopiedModulo] = useState(null)
+  const [copiedPack, setCopiedPack] = useState(null)
   const list = Array.isArray(modules) ? modules : []
 
   if (!list.length) return null
@@ -60,6 +95,17 @@ export default function ModulePromptQueue({
       window.setTimeout(() => setCopiedModulo(null), 1600)
     } catch {
       setCopiedModulo(null)
+    }
+  }
+
+  const handleCopyPack = async (item) => {
+    const modulo = item?.modulo || 'modulo'
+    try {
+      await copyText(formatModuleDeliveryPack(item))
+      setCopiedPack(modulo)
+      window.setTimeout(() => setCopiedPack(null), 1600)
+    } catch {
+      setCopiedPack(null)
     }
   }
 
@@ -83,6 +129,11 @@ export default function ModulePromptQueue({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 text-left">
                   <p className="font-mono text-sm font-semibold text-slate-900">{modulo}</p>
+                  {item?.camada ? (
+                    <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                      camada: {item.camada}
+                    </p>
+                  ) : null}
                   {item?.escopo ? (
                     <p className="mt-0.5 text-xs text-slate-600">{item.escopo}</p>
                   ) : null}
@@ -147,6 +198,28 @@ export default function ModulePromptQueue({
                         <>
                           <ClipboardCopy className="h-3.5 w-3.5" />
                           Copiar prompt
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyPack(item)}
+                      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${
+                        copiedPack === modulo
+                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                          : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
+                      }`}
+                      title="Copia prompt + testes + template de desvios"
+                    >
+                      {copiedPack === modulo ? (
+                        <>
+                          <Check className="h-3.5 w-3.5" />
+                          Entrega copiada
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardCopy className="h-3.5 w-3.5" />
+                          Copiar entrega
                         </>
                       )}
                     </button>

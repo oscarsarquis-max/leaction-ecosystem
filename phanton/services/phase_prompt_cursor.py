@@ -223,6 +223,11 @@ Regras por prompt de módulo:
   invariantes daquele módulo (ex.: trigger rejeita UPDATE, constraint de soma
   zero, authz por papel). NÃO use texto genérico como "escreva testes".
 - NÃO inclua a seção ## Testes dentro de `prompt` — ela será anexada depois.
+- Se o item tiver camada=frontend (ou nome *-frontend/*-player/*-ui): o prompt
+  DEVE ser descritivo de UI — listar telas/rotas, componentes, integração com
+  APIs já entregues, estados loading/erro/offline, CSP do SPA, e testes de
+  render/interação. NÃO pedir só endpoints de backend.
+- Se camada=backend: foque API/dados/testes de servidor.
 {single_rule}
 
 Módulos obrigatórios na resposta (nesta ordem): {modules_list}
@@ -254,6 +259,12 @@ def _append_testes_section(prompt: str, testes: list[str]) -> str:
 def _default_testes_for_module(entry: dict[str, Any]) -> list[str]:
     modulo = entry.get("modulo") or "modulo"
     escopo = entry.get("escopo") or ""
+    camada = str(entry.get("camada") or "backend").lower()
+    if camada == "frontend":
+        return [
+            f"Teste de render da tela principal de `{modulo}` (componente/rota monta sem erro).",
+            f"Teste de interação/estado: loading ou erro de API tratado na UI de `{modulo}`.",
+        ]
     return [
         f"Teste automatizado cobrindo o caminho feliz principal de `{modulo}` ({escopo or 'escopo do SDD'}).",
         f"Teste automatizado de falha/invariante de segurança ou integridade em `{modulo}` (rejeição explícita).",

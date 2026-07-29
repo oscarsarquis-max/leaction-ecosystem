@@ -37,7 +37,9 @@ from services.security_domain import (  # noqa: E402
     classify_sensitive_domain,
     general_guidelines_for_domain,
     module_guidelines_hint,
+    requires_open_finance_profile,
     standards_for_domain,
+    strip_fapi_unless_open_finance,
 )
 from services.structured_requirements import (  # noqa: E402
     format_structured_requirements_block,
@@ -49,18 +51,35 @@ def _normalize_security_payload(
     *,
     domain_id: Optional[str],
     build_order: list[dict[str, Any]],
+    source_text: str = "",
 ) -> dict[str, Any]:
     standards = parsed.get("standards_aplicados") or parsed.get("standards") or []
     if isinstance(standards, str):
         standards = [standards]
     if not isinstance(standards, list) or not standards:
-        standards = standards_for_domain(domain_id)
+        standards = standards_for_domain(domain_id, source_text=source_text)
 
     gerais = parsed.get("diretrizes_gerais") or parsed.get("general") or []
     if isinstance(gerais, str):
         gerais = [gerais]
     if not isinstance(gerais, list) or not gerais:
-        gerais = general_guidelines_for_domain(domain_id)
+        gerais = general_guidelines_for_domain(domain_id, source_text=source_text)
+
+    # LLM às vezes inventa FAPI em LMS / financeiro sem Open Banking — remove.
+    standards = strip_fapi_unless_open_finance(
+        [str(s) for s in standards],
+        source_text=source_text,
+        domain_id=domain_id,
+    )
+    gerais = strip_fapi_unless_open_finance(
+        [str(g) for g in gerais],
+        source_text=source_text,
+        domain_id=domain_id,
+    )
+    if not standards:
+        standards = standards_for_domain(domain_id, source_text=source_text)
+    if not gerais:
+        gerais = general_guidelines_for_domain(domain_id, source_text=source_text)
 
     por_mod_raw = (
         parsed.get("diretrizes_por_modulo")
@@ -80,6 +99,9 @@ def _normalize_security_payload(
                 items = [value.strip()]
             else:
                 items = []
+            items = strip_fapi_unless_open_finance(
+                items, source_text=source_text, domain_id=domain_id
+            )
             if items:
                 por_mod[name] = items
 
@@ -98,11 +120,15 @@ def _normalize_security_payload(
                 por_mod[modulo] = por_mod.pop(found)
             else:
                 por_mod[modulo] = module_guidelines_hint(
-                    domain_id, modulo, entry.get("escopo") or ""
+                    domain_id,
+                    modulo,
+                    entry.get("escopo") or "",
+                    source_text=source_text,
                 )
 
     return {
         "domain": domain_id,
+        "open_finance": requires_open_finance_profile(source_text),
         "standards_aplicados": [str(s).strip() for s in standards if str(s).strip()],
         "diretrizes_gerais": [str(g).strip() for g in gerais if str(g).strip()],
         "diretrizes_por_modulo": por_mod,
@@ -114,22 +140,31 @@ def _fallback_security(
     domain_id: Optional[str],
     build_order: list[dict[str, Any]],
     reason: str,
+    source_text: str = "",
 ) -> dict[str, Any]:
     por_mod = {
         entry["modulo"]: module_guidelines_hint(
-            domain_id, entry["modulo"], entry.get("escopo") or ""
+            domain_id,
+            entry["modulo"],
+            entry.get("escopo") or "",
+            source_text=source_text,
         )
         for entry in build_order
         if entry.get("modulo")
     }
     payload = _normalize_security_payload(
         {
-            "standards_aplicados": standards_for_domain(domain_id),
-            "diretrizes_gerais": general_guidelines_for_domain(domain_id),
+            "standards_aplicados": standards_for_domain(
+                domain_id, source_text=source_text
+            ),
+            "diretrizes_gerais": general_guidelines_for_domain(
+                domain_id, source_text=source_text
+            ),
             "diretrizes_por_modulo": por_mod,
         },
         domain_id=domain_id,
         build_order=build_order,
+        source_text=source_text,
     )
     payload["meta_fallback_reason"] = reason
     return payload
@@ -147,7 +182,8 @@ def _build_security_prompt(
     pedido = str(
         spec.get("user_prompt") or spec.get("description") or pipeline_label(spec)
     ).strip()
-    standards = standards_for_domain(domain_id)
+    standards = standards_for_domain(domain_id, source_text=pedido)
+    open_finance = requires_open_finance_profile(pedido)
     descricao = phase_description(
         cfg,
         fallback=(
@@ -166,10 +202,21 @@ def _build_security_prompt(
             "X-Tenant-ID, schema por tenant, isolamento entre organizações/"
             "empresas. Fale apenas em authz por papel/usuário na mesma org."
         )
+    fapi_rule = (
+        "\n- Open Finance/PIX detectado: pode citar FAPI 2.0 (PAR+PKCE+DPoP/mTLS) "
+        "apenas em módulos de integração bancária."
+        if open_finance
+        else (
+            "\n- PROIBIDO citar FAPI 2.0, PAR, PKCE ou DPoP neste domínio/pedido. "
+            "Auth first-party: JWT curto + refresh opaco rotativo (ASVS). "
+            "Exemplos válidos: ASVS V4/V6/V7, OWASP API Top 10, LGPD."
+        )
+    )
     return f"""
 Atue como arquiteto de segurança de aplicações (AppSec).
 
 Domínio classificado: {domain_id}
+Open Finance aplicável: {open_finance}
 Standards de mercado que DEVEM fundamentar a resposta (não invente nomes):
 {json.dumps(standards, ensure_ascii=False)}
 
@@ -189,8 +236,7 @@ Instruções:
 {json.dumps(inputs, ensure_ascii=False, default=str)[:28_000]}
 
 Produza diretrizes CONCRETAS e acionáveis, citando o standard (ex.: ASVS V4,
-FAPI 2.0 PAR+PKCE, OWASP API Top 10, LGPD). Não use frases vagas como
-"seguir boas práticas".
+OWASP API Top 10, LGPD). Não use frases vagas como "seguir boas práticas".
 
 Responda APENAS com JSON válido:
 {{
@@ -202,9 +248,10 @@ Responda APENAS com JSON válido:
 }}
 
 Regras:
-- standards_aplicados deve refletir o domínio ({domain_id}).
+- standards_aplicados deve refletir o domínio ({domain_id}) e a lista acima.
 - diretrizes_por_modulo DEVE cobrir TODOS os módulos do build_order.
 - Se build_order estiver vazio, ainda assim preencha diretrizes_gerais.
+{fapi_rule}
 {single_rule}
 """.strip()
 
@@ -219,7 +266,13 @@ def _generate_security_safe(
     build_order: list[dict[str, Any]],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     errors: list[str] = []
-    meta: dict[str, Any] = {"domain": domain_id}
+    pedido = str(
+        spec.get("user_prompt") or spec.get("description") or pipeline_label(spec)
+    ).strip()
+    meta: dict[str, Any] = {
+        "domain": domain_id,
+        "open_finance": requires_open_finance_profile(pedido),
+    }
     prompt = _build_security_prompt(
         inputs, spec, phase_id, cfg, domain_id=domain_id, build_order=build_order
     )
@@ -239,13 +292,17 @@ def _generate_security_safe(
             parsed = extract_json_payload(raw_text)
             if isinstance(parsed, dict):
                 normalized = _normalize_security_payload(
-                    parsed, domain_id=domain_id, build_order=build_order
+                    parsed,
+                    domain_id=domain_id,
+                    build_order=build_order,
+                    source_text=pedido,
                 )
                 if normalized.get("diretrizes_gerais"):
                     return normalized, {
                         **meta,
                         "attempts": errors,
                         "domain": domain_id,
+                        "open_finance": requires_open_finance_profile(pedido),
                     }
             errors.append(f"payload_incompleto(tokens={max_tokens})")
         except Exception as exc:
@@ -256,8 +313,15 @@ def _generate_security_safe(
             domain_id=domain_id,
             build_order=build_order,
             reason="; ".join(errors) or "modelo indisponivel",
+            source_text=pedido,
         ),
-        {**meta, "fallback": True, "attempts": errors, "domain": domain_id},
+        {
+            **meta,
+            "fallback": True,
+            "attempts": errors,
+            "domain": domain_id,
+            "open_finance": requires_open_finance_profile(pedido),
+        },
     )
 
 
@@ -339,6 +403,7 @@ async def execute_phase_security_guidelines(
                 domain_id=domain_id,
                 build_order=build_order,
                 reason=str(exc),
+                source_text=pedido,
             )
             return {
                 "status": "success",
