@@ -157,7 +157,8 @@ def regenerar_prompt_modulo_single_tenant(
     termos = ", ".join(termos_problema) or "tenant"
     testes_hint = "\n".join(f"- {t}" for t in testes_requeridos) or "- (derive do escopo)"
     prompt = f"""
-Reescreva o prompt de implementação do módulo `{modulo}` para Cursor IDE.
+Reescreva o prompt de implementação do módulo `{modulo}` para qualquer IDE
+com agente de código (texto neutro — sem citar Cursor, Copilot, Windsurf, etc.).
 O sistema é SINGLE-TENANT (uma única organização).
 
 Escopo: {escopo or "(não informado)"}

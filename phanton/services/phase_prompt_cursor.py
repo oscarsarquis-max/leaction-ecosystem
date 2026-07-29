@@ -1,13 +1,15 @@
-"""Capability: prompt_cursor — prompt(s) executáveis para IDE a partir de PRD + SDD.
+"""Capability: prompt_cursor — prompt(s) executáveis para qualquer IDE/agente.
 
 Se o SDD trouxer `build_order`, gera uma fila de prompts por módulo.
-Caso contrário, mantém o comportamento legado: um único `cursor_prompt`.
+Caso contrário, mantém o comportamento legado: um único `cursor_prompt`
+(nome do campo histórico; o texto gerado é agnóstico de IDE).
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -116,7 +118,8 @@ def _build_cursor_prompt_request(
     descricao = phase_description(
         cfg,
         fallback=(
-            "Criar prompt de ação curto e executável para implementação no Cursor IDE."
+            "Criar prompt de acao curto e executavel para qualquer IDE com agente "
+            "de codigo (Cursor, VS Code/Copilot, Windsurf, Claude Code, JetBrains, etc.)."
         ),
     )
     deps = resolve_depends_on(spec, phase_id)
@@ -129,10 +132,12 @@ def _build_cursor_prompt_request(
 Atue como Staff Engineer.
 
 Você receberá o PRD e o SDD do projeto. Sua tarefa é criar um prompt de ação
-executável, curto e direto, para o desenvolvedor colar no Cursor IDE.
-O prompt deve instruir a IA codificadora (Claude 3.5 Sonnet / agente do Cursor)
-a ler os arquivos PRD.md e SDD.md (que serão salvos na raiz do projeto) e
-iniciar a implementação passo a passo respeitando a arquitetura definida.
+executável, curto e direto, para o desenvolvedor colar em QUALQUER IDE ou
+agente de código (não amarre o texto a um produto específico).
+O prompt deve instruir a IA codificadora a ler os arquivos PRD.md e SDD.md
+(na raiz do projeto) e implementar passo a passo respeitando a arquitetura.
+PROIBIDO citar "Cursor", "Copilot", "Windsurf" ou nomes de IDEs no texto
+do prompt gerado — use termos neutros: "IDE", "agente de código", "assistente".
 
 Pipeline: {pipeline_label(spec)}
 Fase: {cfg.get("name") or phase_id}
@@ -153,8 +158,9 @@ Instruções desta fase:
 === Artefatos brutos ===
 {inputs_json}
 
-Regras do cursor_prompt:
+Regras do prompt (campo JSON cursor_prompt — nome legado):
 - Curto, direto, acionável (idealmente < 600 palavras).
+- Agnóstico de IDE: sem marcas de produto no corpo do prompt.
 - Assumir que PRD.md e SDD.md existem na raiz.
 - Pedir implementação incremental, testes e respeito à arquitetura do SDD.
 - Não reescrever o PRD/SDD inteiros dentro do prompt.
@@ -195,8 +201,9 @@ def _build_module_queue_request(
 Atue como Staff Engineer.
 
 Crie UM prompt curto e executável por módulo da fila de implementação abaixo.
-Cada prompt será colado no Cursor IDE para implementar APENAS aquele módulo,
-respeitando PRD.md e SDD.md na raiz do projeto.
+Cada prompt será colado em qualquer IDE/agente de código para implementar
+APENAS aquele módulo, respeitando PRD.md e SDD.md na raiz do projeto.
+PROIBIDO citar nomes de IDEs/produtos no texto gerado — use linguagem neutra.
 
 Pipeline: {pipeline_label(spec)}
 Fase: {cfg.get("name") or phase_id}
@@ -291,7 +298,28 @@ def _parse_module_prompts_structured(
             testes = []
         testes = [str(t).strip() for t in testes if str(t).strip()]
         if modulo and prompt and testes:
-            out[modulo] = {"prompt": prompt, "testes_requeridos": testes}
+            out[modulo] = {
+                "prompt": neutralize_ide_branding(prompt),
+                "testes_requeridos": testes,
+            }
+    return out
+
+
+def neutralize_ide_branding(text: str) -> str:
+    """Remove amarras a produtos de IDE no texto entregue ao usuário."""
+    out = text or ""
+    replacements = (
+        (r"\bCursor IDE\b", "IDE"),
+        (r"\bno Cursor\b", "na IDE"),
+        (r"\bdo Cursor\b", "do agente de código"),
+        (r"\bCursor\b", "IDE"),
+        (r"\bGitHub Copilot\b", "agente de código"),
+        (r"\bCopilot\b", "agente de código"),
+        (r"\bWindsurf\b", "IDE"),
+        (r"\bClaude Code\b", "agente de código"),
+    )
+    for pattern, repl in replacements:
+        out = re.sub(pattern, repl, out, flags=re.IGNORECASE)
     return out
 
 
@@ -304,7 +332,7 @@ def _normalize_cursor(parsed: dict[str, Any]) -> dict[str, Any]:
     )
     if isinstance(text, dict):
         text = text.get("content") or text.get("texto") or json.dumps(text, ensure_ascii=False)
-    return {"cursor_prompt": str(text or "").strip()}
+    return {"cursor_prompt": neutralize_ide_branding(str(text or "").strip())}
 
 
 def _fallback_cursor(
@@ -318,7 +346,7 @@ def _fallback_cursor(
     return {
         "cursor_prompt": f"""# Implementação — {label}
 
-Você é um engenheiro sênior no Cursor IDE.
+Você é um engenheiro sênior trabalhando com um agente de código na IDE.
 
 ## Contexto
 Os arquivos `PRD.md` e `SDD.md` estão na raiz do projeto. Leia-os por completo
@@ -586,6 +614,12 @@ def _generate_module_queue_safe(
         security=security,
     )
 
+    # Texto entregue ao usuário: agnóstico de produto de IDE
+    prompts_map = {
+        modulo: neutralize_ide_branding(prompt)
+        for modulo, prompt in prompts_map.items()
+    }
+
     # Anexa flag de aviso no item da fila quando houver inconsistência
     warn_by_mod = {a["modulo"]: a for a in ctx_avisos}
     queue = build_initial_queue(build_order, prompts_map)
@@ -636,7 +670,7 @@ async def execute_phase_prompt_cursor(
             if not inputs:
                 raise RuntimeError(
                     f"Nenhum artefato de entrada para '{phase_id}'. "
-                    "Aprove PRD e SDD (depends_on) antes do prompt Cursor."
+                    "Aprove PRD e SDD (depends_on) antes do prompt de IDE."
                 )
 
             build_order = extract_build_order_from_inputs(inputs)

@@ -77,7 +77,7 @@ ${testes}
 
 export default function ModulePromptQueue({
   modules = [],
-  title = 'Fila de módulos (Cursor)',
+  title = 'Fila de módulos (IDE)',
   canDeliver = false,
   deliveringModulo = null,
   onDeliver,

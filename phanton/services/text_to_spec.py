@@ -87,7 +87,8 @@ Capabilities:
 - security_guidelines: fase SEPARADA de diretrizes de segurança (padrões de mercado
   como ASVS/FAPI/OWASP API Top 10/LGPD) — exige aprovação humana própria antes
   do prompt_cursor; só para domínio sensível/regulado
-- prompt_cursor: gera prompt executável curto para o Cursor IDE (lê PRD.md/SDD.md)
+- prompt_cursor: gera prompt executável curto para QUALQUER IDE/agente de código
+  (lê PRD.md/SDD.md); texto agnóstico — sem citar Cursor ou outro produto
 - prompt: GERA A ENTREGA FINAL solicitada (HTML/doc/artefato) — NÃO é prompt de IDE
 
 Retorne APENAS o JSON válido, sem markdown e sem comentários.
@@ -144,9 +145,10 @@ _SDD_DESCRICAO = (
 )
 
 _CURSOR_DESCRICAO = (
-    "Gerar prompt de ação curto e executável para o Cursor IDE, instruindo a "
-    "IA a ler PRD.md e SDD.md na raiz e implementar passo a passo respeitando "
-    "a arquitetura."
+    "Gerar prompt de acao curto e executavel para qualquer IDE com agente de "
+    "codigo (Cursor, VS Code/Copilot, Windsurf, Claude Code, JetBrains, etc.), "
+    "instruindo a IA a ler PRD.md e SDD.md na raiz e implementar passo a passo. "
+    "O texto do prompt deve ser agnostico de produto (nao citar nomes de IDEs)."
 )
 
 _SECURITY_DESCRICAO = (
@@ -175,7 +177,7 @@ _ARTIFACT_DELIVERY_RE = re.compile(
 
 
 def _wants_software_build(user_prompt: str) -> bool:
-    """True quando o pedido é construir software (PRD→SDD→Cursor)."""
+    """True quando o pedido é construir software (PRD→SDD→prompt IDE)."""
     text = user_prompt or ""
     if not _SOFTWARE_RE.search(text):
         return False
@@ -463,7 +465,7 @@ def _ensure_software_topology(phases: dict[str, Any], user_prompt: str = "") -> 
         except (TypeError, ValueError, KeyError):
             base_order = _max_order(phases) + 1
         phases["prompt_cursor"] = {
-            "name": "Prompt para Cursor IDE",
+            "name": "Prompt para IDE (agente de codigo)",
             "type": "prompt_cursor",
             "order": base_order,
             "descricao": (
@@ -475,6 +477,12 @@ def _ensure_software_topology(phases: dict[str, Any], user_prompt: str = "") -> 
         for pid in cursor_ids:
             cfg = phases[pid]
             cfg["type"] = "prompt_cursor"
+            # Renomeia label legado "Cursor" se ainda vier do LLM
+            name = str(cfg.get("name") or "")
+            if re.search(r"cursor", name, re.I) and not re.search(
+                r"IDE|agente", name, re.I
+            ):
+                cfg["name"] = "Prompt para IDE (agente de codigo)"
             # depends_on explícito: SDD (+ security quando existir) — não só append
             cfg["depends_on"] = list(cursor_upstream)
             # Garante order depois do último upstream

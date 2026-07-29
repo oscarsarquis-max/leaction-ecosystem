@@ -872,7 +872,7 @@ export default function ArtifactView({
         {moduleQueue ? (
           <ModulePromptQueue
             modules={moduleQueue}
-            title={`Fila Cursor — ${name || phaseId}`}
+            title={`Fila IDE — ${name || phaseId}`}
             canDeliver={canDeliverModules}
             deliveringModulo={deliveringModulo}
             onDeliver={onDeliverModule}
@@ -889,7 +889,7 @@ export default function ArtifactView({
                   : inner?.sdd_markdown
                     ? `SDD — ${name || phaseId}`
                     : inner?.cursor_prompt && !inner?.delivery
-                      ? `Prompt Cursor — ${name || phaseId}`
+                      ? `Prompt IDE — ${name || phaseId}`
                       : `Entrega — ${name || phaseId}`
               }
               editable={editable}

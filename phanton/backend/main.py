@@ -60,7 +60,7 @@ PHASE_LABELS = {
     "generate_prd": "PRD — Requisitos",
     "generate_sdd": "SDD — Design",
     "security_guidelines": "Diretrizes de Segurança",
-    "prompt_cursor": "Prompt Cursor IDE",
+    "prompt_cursor": "Prompt para IDE",
     "entrega_final": "Entrega final",
     "L1": "Metodologia",
     "L2": "Grounding",
