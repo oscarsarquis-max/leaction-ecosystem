@@ -1,10 +1,10 @@
 ﻿<#
 .SYNOPSIS
-  Na mÃ¡quina DESTINO: compara e atualiza os bancos Docker (leaction_db) a partir de outra
-  estaÃ§Ã£o na mesma rede.
+  Na maquina DESTINO: compara e atualiza os bancos Docker (leaction_db) a partir de outra
+  estacao na mesma rede.
 
 .DESCRIPTION
-  Rode na raiz do workspace (ou em infra/) na mÃ¡quina que precisa receber os dados.
+  Rode na raiz do workspace (ou em infra/) na maquina que precisa receber os dados.
 
   Pares fixos (Ethernet):
     - Este workspace / 192.168.0.41  <->  DESKTOP-BA2U3G4 / 192.168.0.46
@@ -12,7 +12,7 @@
     - Saindo de la  -> SourceHost = 192.168.0.46  (rodar o script AQUI)
     - Nao usar IP publico Claro (189.x) para Postgres.
 
-  PrÃ©-requisito na ORIGEM (mÃ¡quina com a base "boa"):
+  Pre-requisito na ORIGEM (maquina com a base "boa"):
     cd C:\Projetos\infra
     .\open-leaction-db-lan.ps1   # libera TCP 5433 na LAN
 
@@ -22,7 +22,7 @@
     3) Faz dump remoto sÃ³ dos bancos diferentes (ou todos com -ForceAll)
     4) Restaura no leaction_db local (DROP/CREATE + psql)
 
-  NÃ£o usa pipe PowerShell nos dumps (evita corrupÃ§Ã£o UTF-8).
+  Nao usa pipe PowerShell nos dumps (evita corrupÃ§Ã£o UTF-8).
 
 .EXAMPLE
   # Neste PC: puxar do DESKTOP-BA2U3G4
@@ -50,18 +50,18 @@ param(
 
     [string]$PgImage = 'postgres:18',
 
-    # Um ou mais bancos; se omitido, sincroniza o conjunto padrÃ£o (sem LeAction_SysF / PanelDX)
+    # Um ou mais bancos; se omitido, sincroniza o conjunto padrao (sem LeAction_SysF / PanelDX)
     [string[]]$Database,
 
     [string]$WorkDir,
 
-    # SÃ³ imprime diferenÃ§as - nÃ£o altera nada
+    # SÃ³ imprime diferencas - Nao altera nada
     [switch]$CompareOnly,
 
-    # NÃ£o pergunta confirmaÃ§Ã£o
+    # Nao pergunta confirmaÃ§Ã£o
     [switch]$Force,
 
-    # Atualiza todos os bancos listados, mesmo sem diferenÃ§a detectada
+    # Atualiza todos os bancos listados, mesmo sem diferenca detectada
     [switch]$ForceAll
 )
 
@@ -73,7 +73,7 @@ if (-not $WorkDir) {
 }
 $DumpsDir = Join-Path $WorkDir 'dumps'
 
-# LeAction_SysF (PanelDX legado) fica FORA do sync padrÃ£o â€” base travada.
+# LeAction_SysF (PanelDX legado) fica FORA do sync padrao - base travada.
 $DefaultDatabases = @(
     'leaction_hub',
     'MAtivas',
@@ -87,7 +87,7 @@ $DefaultDatabases = @(
 $Databases = if ($Database -and $Database.Count -gt 0) { @($Database) } else { $DefaultDatabases }
 
 if ($Databases -contains 'LeAction_SysF') {
-    Write-Host "AVISO: LeAction_SysF (PanelDX) foi pedido explicitamente â€” base normalmente travada." -ForegroundColor Yellow
+    Write-Host "AVISO: LeAction_SysF (PanelDX) foi pedido explicitamente - base normalmente travada." -ForegroundColor Yellow
 }
 
 function Get-QuotedDbName([string]$Name) {
@@ -196,7 +196,7 @@ function Initialize-LocalDb {
         }
         Start-Sleep -Seconds 3
         if (-not (Test-LeactionDbRunning $Container)) {
-            throw "Container '$Container' nÃ£o subiu. Verifique: cd leaction-platform; docker compose up -d db"
+            throw "Container '$Container' Nao subiu. Verifique: cd leaction-platform; docker compose up -d db"
         }
     }
     $ver = Invoke-LocalPsql -DatabaseName 'postgres' -Sql 'SHOW server_version;'
@@ -316,7 +316,7 @@ foreach ($db in $Databases) {
             $action = 'sync'
         } elseif ($srcFp.Hash -ne $dstFp.Hash -or $srcFp.SizeBytes -ne $dstFp.SizeBytes) {
             $action = 'sync'
-            $reason = 'diferenÃ§a'
+            $reason = 'diferenca'
         } else {
             $action = 'ok'
             $reason = 'igual'
@@ -348,11 +348,11 @@ if ($CompareOnly) {
 }
 
 if ($toSync.Count -eq 0) {
-    Write-Host "==> Destino jÃ¡ estÃ¡ alinhado com a origem. Nada a fazer.`n" -ForegroundColor Green
+    Write-Host "==> Destino ja esta alinhado com a origem. Nada a fazer.`n" -ForegroundColor Green
     exit 0
 }
 
-Write-Host "==> SerÃ£o atualizados $($toSync.Count) banco(s): $($toSync.Database -join ', ')" -ForegroundColor Yellow
+Write-Host "==> Serao atualizados $($toSync.Count) banco(s): $($toSync.Database -join ', ')" -ForegroundColor Yellow
 
 if (-not $Force) {
     $answer = Read-Host "Sobrescrever esses bancos no destino? [s/N]"
@@ -373,5 +373,5 @@ Write-Host "`n==> Bancos no destino agora:" -ForegroundColor Cyan
 docker exec $Container psql -U $DbUser -d postgres -c `
     "SELECT datname, pg_size_pretty(pg_database_size(datname)) AS size FROM pg_database WHERE datistemplate = false AND datname <> 'postgres' ORDER BY 1;"
 
-Write-Host "`n==> Sync concluÃ­do. Dumps temporÃ¡rios em: $DumpsDir" -ForegroundColor Green
+Write-Host "`n==> Sync concluido. Dumps temporÃ¡rios em: $DumpsDir" -ForegroundColor Green
 Write-Host "    (pode apagar a pasta db-pack\_lan-sync se quiser)`n" -ForegroundColor DarkGray

@@ -38,10 +38,17 @@ $DumpFile = Join-Path $WorkDir 'orquestrador.dump'
 
 Write-Host "`n==> Sync phanton DB (${SourceHost}:${SourcePort}/$Database -> local)" -ForegroundColor Cyan
 
-# Connectivity
-$tnc = Test-NetConnection -ComputerName $SourceHost -Port $SourcePort -WarningAction SilentlyContinue
-if (-not $tnc.TcpTestSucceeded) {
-    throw "Porta ${SourcePort} fechada em ${SourceHost}. Na ORIGEM rode: .\open-phanton-db-lan.ps1"
+# Connectivity (TcpClient — evita dependencia do modulo NetTCPIP / Test-NetConnection)
+$tcp = New-Object System.Net.Sockets.TcpClient
+try {
+    $iar = $tcp.BeginConnect($SourceHost, $SourcePort, $null, $null)
+    $ok = $iar.AsyncWaitHandle.WaitOne(8000, $false)
+    if (-not $ok -or -not $tcp.Connected) {
+        throw "Porta ${SourcePort} fechada em ${SourceHost}. Na ORIGEM rode: .\open-phanton-db-lan.ps1"
+    }
+    $tcp.EndConnect($iar) | Out-Null
+} finally {
+    $tcp.Close()
 }
 
 New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
