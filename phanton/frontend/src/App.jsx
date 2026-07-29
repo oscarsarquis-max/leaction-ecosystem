@@ -3,6 +3,7 @@ import axios from 'axios'
 import {
   Activity,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Circle,
   Loader2,
@@ -14,6 +15,7 @@ import CopyableBlock from './components/CopyableBlock'
 import FixedTextField from './components/FixedTextField'
 import PhaseCard from './components/PhaseCard'
 import PipelineStatusBar from './components/PipelineStatusBar'
+import RequirementsDraftPanel from './components/RequirementsDraftPanel'
 import RunHistory from './components/RunHistory'
 import {
   PROMPT_COMPOSITION_HINTS,
@@ -27,6 +29,7 @@ const API_BASE = 'http://localhost:8000'
 const BLANK_SPEC = `{
   "description": "",
   "version": "1.0",
+  "warnings": [],
   "phases": {}
 }`
 
@@ -48,6 +51,19 @@ function phasesFromSpecText(specText) {
   }
 }
 
+function warningsFromSpecText(specText) {
+  try {
+    const spec = JSON.parse(specText)
+    const warnings = spec?.warnings
+    if (!Array.isArray(warnings)) return []
+    return warnings.filter(
+      (w) => w && typeof w === 'object' && (w.descricao || w.campo),
+    )
+  } catch {
+    return []
+  }
+}
+
 function App() {
   const [naturalPrompt, setNaturalPrompt] = useState('')
   const [specText, setSpecText] = useState(BLANK_SPEC)
@@ -56,7 +72,13 @@ function App() {
   const [phases, setPhases] = useState([])
   const [starting, setStarting] = useState(false)
   const [generatingSpec, setGeneratingSpec] = useState(false)
+  const [draftingRequirements, setDraftingRequirements] = useState(false)
+  const [requirementsDraft, setRequirementsDraft] = useState(null)
+  const [requirementsReady, setRequirementsReady] = useState(false)
   const [approvingToken, setApprovingToken] = useState(null)
+  const [deliveringModulo, setDeliveringModulo] = useState(null)
+  const [autoApprove, setAutoApprove] = useState(false)
+  const [reopeningPhaseId, setReopeningPhaseId] = useState(null)
   const [error, setError] = useState(null)
   const [historyItems, setHistoryItems] = useState([])
   const [historyTotal, setHistoryTotal] = useState(0)
@@ -66,6 +88,11 @@ function App() {
   const sufficiency = useMemo(
     () => analyzePromptSufficiency(naturalPrompt),
     [naturalPrompt],
+  )
+
+  const contextWarnings = useMemo(
+    () => warningsFromSpecText(specText),
+    [specText],
   )
 
   const fetchHistory = useCallback(async () => {
@@ -89,8 +116,17 @@ function App() {
     if (data.phases?.length) {
       setPhases(data.phases)
     }
-    if (syncSpec && data.spec) {
-      setSpecText(JSON.stringify(data.spec, null, 2))
+    if (data.spec && typeof data.spec === 'object') {
+      setAutoApprove(Boolean(data.spec.auto_approve))
+      if (data.spec.structured_requirements) {
+        setRequirementsDraft(data.spec.structured_requirements)
+        setRequirementsReady(
+          data.spec.structured_requirements.perfil_sugerido === 'software_saas',
+        )
+      }
+      if (syncSpec) {
+        setSpecText(JSON.stringify(data.spec, null, 2))
+      }
     }
     return data
   }, [])
@@ -140,22 +176,17 @@ function App() {
     }
   }, [runStatus, fetchHistory])
 
-  const handleGenerateSpec = async () => {
-    setError(null)
-    const prompt = naturalPrompt.trim()
-    const check = analyzePromptSufficiency(prompt)
-    if (!check.ok) {
-      setError(
-        'Pedido ainda insuficiente. Complete os critérios abaixo da caixa de descrição antes de gerar o Spec.',
-      )
-      return
-    }
-
+  const runGenerateSpec = async (prompt, structuredRequirements = null) => {
     setGeneratingSpec(true)
     try {
-      const { data } = await axios.post(`${API_BASE}/api/pipeline/generate-spec`, {
-        prompt,
-      })
+      const body = { prompt }
+      if (structuredRequirements) {
+        body.structured_requirements = structuredRequirements
+      }
+      const { data } = await axios.post(
+        `${API_BASE}/api/pipeline/generate-spec`,
+        body,
+      )
       const spec = data?.spec ?? data
       const nextText = JSON.stringify(spec, null, 2)
       setSpecText(nextText)
@@ -166,6 +197,50 @@ function App() {
       )
     } finally {
       setGeneratingSpec(false)
+    }
+  }
+
+  const handleDraftOrGenerate = async () => {
+    setError(null)
+    const prompt = naturalPrompt.trim()
+    const check = analyzePromptSufficiency(prompt)
+    if (!check.ok) {
+      setError(
+        'Pedido ainda insuficiente. Complete os critérios abaixo da caixa de descrição antes de gerar o Spec.',
+      )
+      return
+    }
+
+    // Já revisou o rascunho software → confirma e gera Spec
+    if (requirementsReady && requirementsDraft?.perfil_sugerido === 'software_saas') {
+      await runGenerateSpec(prompt, requirementsDraft)
+      return
+    }
+
+    setDraftingRequirements(true)
+    try {
+      const { data } = await axios.post(
+        `${API_BASE}/api/pipeline/draft-requirements`,
+        { prompt },
+      )
+      const structured = data?.structured_requirements
+      const skipPanel = Boolean(data?.skip_panel) || structured?.perfil_sugerido === 'artefato'
+
+      if (skipPanel || !structured) {
+        setRequirementsDraft(null)
+        setRequirementsReady(false)
+        await runGenerateSpec(prompt, null)
+        return
+      }
+
+      setRequirementsDraft(structured)
+      setRequirementsReady(true)
+    } catch (err) {
+      setError(
+        err.response?.data?.detail || err.message || 'Falha ao rascunhar requisitos',
+      )
+    } finally {
+      setDraftingRequirements(false)
     }
   }
 
@@ -187,8 +262,12 @@ function App() {
         description: prompt.slice(0, 800),
         user_prompt: prompt,
       }
-      setSpecText(JSON.stringify(spec, null, 2))
     }
+    if (requirementsDraft?.perfil_sugerido === 'software_saas') {
+      spec = { ...spec, structured_requirements: requirementsDraft }
+    }
+    spec = { ...spec, auto_approve: Boolean(autoApprove) }
+    setSpecText(JSON.stringify(spec, null, 2))
 
     if (!spec.phases || !Object.keys(spec.phases).length) {
       setError('Spec sem fases. Gere o Pipeline Spec a partir da descrição antes de iniciar.')
@@ -213,6 +292,44 @@ function App() {
     }
   }
 
+  const handleAutoApproveToggle = async (checked) => {
+    setAutoApprove(checked)
+    try {
+      const nextSpec = JSON.parse(specText)
+      nextSpec.auto_approve = Boolean(checked)
+      setSpecText(JSON.stringify(nextSpec, null, 2))
+    } catch {
+      /* Spec JSON inválido — checkbox ainda vale no próximo start */
+    }
+    if (!runId) return
+    try {
+      await axios.patch(`${API_BASE}/api/pipeline/${runId}/auto-approve`, {
+        auto_approve: Boolean(checked),
+      })
+      await fetchStatus(runId, { syncSpec: true })
+    } catch (err) {
+      setError(
+        err.response?.data?.detail || err.message || 'Falha ao atualizar auto-aprovação',
+      )
+    }
+  }
+
+  const handleReopen = async (phaseId) => {
+    if (!runId || !phaseId) return
+    setError(null)
+    setReopeningPhaseId(phaseId)
+    try {
+      await axios.post(`${API_BASE}/api/pipeline/${runId}/phases/${phaseId}/reopen`)
+      await fetchStatus(runId)
+      await fetchHistory()
+      setStatusBarBump((n) => n + 1)
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Falha ao reabrir fase')
+    } finally {
+      setReopeningPhaseId(null)
+    }
+  }
+
   const handleApprove = async (taskToken, modifiedArtifact) => {
     setError(null)
     setApprovingToken(taskToken)
@@ -230,6 +347,26 @@ function App() {
       setError(err.response?.data?.detail || err.message || 'Falha ao aprovar fase')
     } finally {
       setApprovingToken(null)
+    }
+  }
+
+  const handleDeliverModule = async (phaseId, modulo) => {
+    if (!runId || !phaseId || !modulo) return
+    setError(null)
+    setDeliveringModulo(modulo)
+    try {
+      await axios.post(
+        `${API_BASE}/api/pipeline/${runId}/phases/${phaseId}/modules/deliver`,
+        { modulo },
+      )
+      await fetchStatus(runId)
+      setStatusBarBump((n) => n + 1)
+    } catch (err) {
+      setError(
+        err.response?.data?.detail || err.message || 'Falha ao marcar módulo entregue',
+      )
+    } finally {
+      setDeliveringModulo(null)
     }
   }
 
@@ -258,6 +395,9 @@ function App() {
     setApprovingToken(null)
     setStarting(false)
     setGeneratingSpec(false)
+    setDraftingRequirements(false)
+    setRequirementsDraft(null)
+    setRequirementsReady(false)
     setStatusBarBump((n) => n + 1)
   }
 
@@ -328,9 +468,21 @@ function App() {
                 className="mt-2"
                 value={naturalPrompt}
                 readOnly={false}
-                onChange={(e) => setNaturalPrompt(e.target.value)}
+                onChange={(e) => {
+                  setNaturalPrompt(e.target.value)
+                  setRequirementsDraft(null)
+                  setRequirementsReady(false)
+                }}
                 aria-label="Descrição em linguagem natural"
               />
+
+              {requirementsReady &&
+              requirementsDraft?.perfil_sugerido === 'software_saas' ? (
+                <RequirementsDraftPanel
+                  value={requirementsDraft}
+                  onChange={setRequirementsDraft}
+                />
+              ) : null}
 
               <div
                 className={`mt-3 rounded-lg border px-3 py-2.5 text-left ${
@@ -385,24 +537,34 @@ function App() {
             <div className="flex items-center justify-center lg:px-1">
               <button
                 type="button"
-                onClick={handleGenerateSpec}
-                disabled={generatingSpec || !sufficiency.ok}
+                onClick={handleDraftOrGenerate}
+                disabled={generatingSpec || draftingRequirements || !sufficiency.ok}
                 title={
-                  sufficiency.ok
-                    ? 'Gera o JSON da Pipeline Spec a partir da descrição'
-                    : 'Complete a suficiência do pedido antes de gerar o Spec'
+                  !sufficiency.ok
+                    ? 'Complete a suficiência do pedido antes de continuar'
+                    : requirementsReady &&
+                        requirementsDraft?.perfil_sugerido === 'software_saas'
+                      ? 'Gera o Spec com os requisitos revisados'
+                      : 'Analisa o pedido (rascunho 29148) e segue para o Spec'
                 }
-                className="inline-flex w-auto items-center justify-center gap-1.5 rounded-lg bg-emerald-900 px-3 py-2 font-display text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-70 lg:w-[7.5rem] lg:flex-col lg:gap-1 lg:px-2.5 lg:py-3 lg:text-center lg:leading-snug"
+                className="inline-flex w-auto items-center justify-center gap-1.5 rounded-lg bg-emerald-900 px-3 py-2 font-display text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-70 lg:w-[8.5rem] lg:flex-col lg:gap-1 lg:px-2.5 lg:py-3 lg:text-center lg:leading-snug"
               >
-                {generatingSpec ? (
+                {draftingRequirements || generatingSpec ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                    <span>Gerando…</span>
+                    <span>
+                      {draftingRequirements ? 'Analisando…' : 'Gerando…'}
+                    </span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="h-3.5 w-3.5 shrink-0" />
-                    <span>Transformar em Spec</span>
+                    <span>
+                      {requirementsReady &&
+                      requirementsDraft?.perfil_sugerido === 'software_saas'
+                        ? 'Confirmar e gerar Spec'
+                        : 'Analisar pedido'}
+                    </span>
                   </>
                 )}
               </button>
@@ -412,6 +574,44 @@ function App() {
               <label className="block shrink-0 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                 2 · Pipeline Spec (revise antes de iniciar)
               </label>
+              {contextWarnings.length > 0 ? (
+                <div
+                  className="mt-2 rounded-xl border border-amber-400 bg-amber-50 px-3 py-3 text-left shadow-[0_0_0_1px_rgba(245,158,11,0.25)]"
+                  role="status"
+                >
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-display text-sm font-semibold text-amber-950">
+                        Lacunas de contexto no pedido ({contextWarnings.length})
+                      </p>
+                      <p className="mt-0.5 text-xs text-amber-900/80">
+                        A geração não foi bloqueada — revise o pedido ou aceite o risco
+                        antes de iniciar o pipeline.
+                      </p>
+                      <ul className="mt-2 space-y-2">
+                        {contextWarnings.map((w, idx) => (
+                          <li
+                            key={`${w.campo || 'w'}-${idx}`}
+                            className="rounded-lg border border-amber-200 bg-white/70 px-2.5 py-2 text-xs text-amber-950"
+                          >
+                            <span className="font-semibold">
+                              {w.campo || 'aviso'}
+                              {w.descricao ? ': ' : ''}
+                            </span>
+                            {w.descricao || ''}
+                            {w.impacto ? (
+                              <span className="mt-1 block text-[11px] text-amber-800/90">
+                                Impacto: {w.impacto}
+                              </span>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <CopyableBlock
                 className="mt-2 flex min-h-0 flex-1 flex-col"
                 label="Copiar JSON"
@@ -428,6 +628,24 @@ function App() {
               </CopyableBlock>
             </div>
           </div>
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-left">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-600"
+              checked={autoApprove}
+              onChange={(e) => handleAutoApproveToggle(e.target.checked)}
+            />
+            <span>
+              <span className="block font-display text-sm font-semibold text-slate-900">
+                Aprovação automática quando a qualidade for alta
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-500">
+                Default desligado. Com o switch ligado, fases com nota ≥ 80 avançam sozinhas
+                (exceto security_guidelines, que continua pedindo revisão humana).
+              </span>
+            </span>
+          </label>
+
           <button
             type="button"
             onClick={handleStart}
@@ -495,9 +713,16 @@ function App() {
                 status={phase.status}
                 artifactData={phase.artifact_data}
                 taskToken={phase.task_token}
+                approver={phase.approver}
                 isLast={index === planPhases.length - 1}
                 approving={approvingToken === phase.task_token}
                 onApprove={handleApprove}
+                canDeliverModules={Boolean(runId)}
+                deliveringModulo={deliveringModulo}
+                onDeliverModule={(modulo) => handleDeliverModule(phase.phase_id, modulo)}
+                autoApproveEnabled={autoApprove}
+                reopening={reopeningPhaseId === phase.phase_id}
+                onReopen={handleReopen}
               />
             ))}
           </div>

@@ -29,6 +29,16 @@ from services.phase_internal_knowledge import execute_phase_context7_search  # n
 from services.phase_prd import execute_phase_prd  # noqa: E402
 from services.phase_prompt_cursor import execute_phase_prompt_cursor  # noqa: E402
 from services.phase_sdd import execute_phase_sdd  # noqa: E402
+from services.phase_security_guidelines import (  # noqa: E402
+    execute_phase_security_guidelines,
+)
+from services.quality_score import (  # noqa: E402
+    AUTO_APPROVE_THRESHOLD,
+    attach_quality_score,
+    compute_quality_score,
+    should_auto_approve,
+    unwrap_artifact_payload,
+)
 
 PhaseHandler = Callable[..., Awaitable[dict[str, Any]]]
 
@@ -51,6 +61,7 @@ CAPABILITY_HANDLERS: dict[str, PhaseHandler] = {
     "synthesize": execute_phase_L3,
     "generate_prd": execute_phase_prd,
     "generate_sdd": execute_phase_sdd,
+    "security_guidelines": execute_phase_security_guidelines,
     "prompt_cursor": execute_phase_prompt_cursor,
     # Entrega do artefato pedido (HTML/doc) — NÃO é prompt de IDE
     "prompt": execute_phase_L4,
@@ -70,6 +81,7 @@ PHASE_HANDLERS: dict[str, PhaseHandler] = {
     "context7_search": execute_phase_context7_search,
     "generate_prd": execute_phase_prd,
     "generate_sdd": execute_phase_sdd,
+    "security_guidelines": execute_phase_security_guidelines,
     "prompt_cursor": execute_phase_prompt_cursor,
 }
 
@@ -185,14 +197,73 @@ def _resolve_handler(phase_id: str, spec: dict[str, Any] | None) -> PhaseHandler
         f"Nenhum handler registrado para a fase: {phase_id} "
         f"(type/capability='{capability}'). "
         f"Use type methodology|research|context7_search|synthesize|generate_prd|"
-        f"generate_sdd|prompt_cursor|prompt "
+        f"generate_sdd|security_guidelines|prompt_cursor|prompt "
         f"(ou IDs L1/L2/L3/L4 / nomes metodologia, pesquisa, context7_search, "
-        f"sintese, generate_prd, generate_sdd, prompt_cursor, entrega_final)."
+        f"sintese, generate_prd, generate_sdd, security_guidelines, "
+        f"prompt_cursor, entrega_final)."
     )
 
 
 def _touch_run(run: PipelineRun) -> None:
     run.updated_at = datetime.utcnow()
+
+
+def _spec_auto_approve(spec: dict[str, Any]) -> bool:
+    return bool((spec or {}).get("auto_approve"))
+
+
+def _expected_modules_from_run(db_session: Session, run_id: UUID) -> list[str]:
+    """Módulos do build_order do SDD mais recente (p/ coverage em security)."""
+    executions = (
+        db_session.query(PhaseExecution)
+        .filter(PhaseExecution.run_id == run_id)
+        .order_by(PhaseExecution.id.desc())
+        .all()
+    )
+    for execution in executions:
+        art = execution.artifact_data if isinstance(execution.artifact_data, dict) else {}
+        capability = normalize_phase_type(
+            art.get("capability") or art.get("phase"),
+            execution.phase_id,
+        )
+        if capability != "generate_sdd":
+            continue
+        _meta, content = unwrap_artifact_payload(art)
+        order = content.get("build_order") or art.get("build_order") or []
+        if not isinstance(order, list):
+            continue
+        modules: list[str] = []
+        for item in order:
+            if isinstance(item, dict) and item.get("modulo"):
+                modules.append(str(item["modulo"]))
+            elif isinstance(item, str) and item.strip():
+                modules.append(item.strip())
+        if modules:
+            return modules
+    return []
+
+
+def _score_phase_artifact(
+    db_session: Session,
+    run_id: UUID,
+    phase_id: str,
+    spec: dict[str, Any],
+    artifact: dict[str, Any],
+) -> tuple[dict[str, Any], int]:
+    capability = normalize_phase_type(
+        (phase_cfg(spec, phase_id) or {}).get("type")
+        if isinstance(phase_cfg(spec, phase_id), dict)
+        else None,
+        phase_id,
+    )
+    meta, _content = unwrap_artifact_payload(artifact)
+    expected = None
+    if capability == "security_guidelines":
+        expected = _expected_modules_from_run(db_session, run_id) or None
+    score = compute_quality_score(
+        capability, meta, artifact, expected_modules=expected
+    )
+    return attach_quality_score(artifact, score), score
 
 
 async def start_pipeline(db_session: Session, run_id: str | UUID, spec: dict[str, Any]) -> dict[str, Any]:
@@ -203,6 +274,10 @@ async def start_pipeline(db_session: Session, run_id: str | UUID, spec: dict[str
         raise StateEngineError(f"Pipeline run não encontrado: {run_uuid}")
 
     spec = normalize_spec_phases(dict(spec) if isinstance(spec, dict) else {})
+    if "auto_approve" not in spec:
+        spec["auto_approve"] = False
+    else:
+        spec["auto_approve"] = bool(spec.get("auto_approve"))
     order = phase_order_from_spec(spec)
     if not order:
         raise StateEngineError("spec.phases vazio — nenhuma fase para executar")
@@ -222,7 +297,7 @@ async def trigger_phase(
     phase_id: str,
     spec: dict[str, Any],
 ) -> dict[str, Any]:
-    """Executa uma fase, persiste artefato e entra em AWAITING_APPROVAL (task token)."""
+    """Executa uma fase, anexa quality_score e aguarda (ou auto-aprova)."""
     run_uuid = _as_uuid(run_id)
     handler = _resolve_handler(phase_id, spec)
 
@@ -241,6 +316,12 @@ async def trigger_phase(
     db_session.refresh(phase)
 
     artifact = await handler(str(run_uuid), spec, db_session, phase_id)
+    if not isinstance(artifact, dict):
+        artifact = {"artifact_data": artifact}
+
+    artifact, score = _score_phase_artifact(
+        db_session, run_uuid, phase_id, spec, artifact
+    )
 
     phase.artifact_data = artifact
     phase.task_token = str(uuid.uuid4())
@@ -249,6 +330,25 @@ async def trigger_phase(
     db_session.commit()
     db_session.refresh(phase)
 
+    capability = normalize_phase_type(
+        (phase_cfg(spec, phase_id) or {}).get("type")
+        if isinstance(phase_cfg(spec, phase_id), dict)
+        else None,
+        phase_id,
+    )
+    if should_auto_approve(
+        auto_approve=_spec_auto_approve(spec),
+        phase_type=capability,
+        quality_score=score,
+        threshold=AUTO_APPROVE_THRESHOLD,
+    ):
+        return await approve_phase(
+            db_session,
+            phase.task_token,
+            approver="auto",
+            comments=f"auto-approve quality_score={score}",
+        )
+
     return {
         "run_id": str(run_uuid),
         "phase_id": phase_id,
@@ -256,6 +356,7 @@ async def trigger_phase(
         "status": phase.status,
         "task_token": phase.task_token,
         "artifact_data": phase.artifact_data,
+        "quality_score": score,
     }
 
 
@@ -329,5 +430,69 @@ async def approve_phase(
         "approved_phase_id": phase.phase_id,
         "status": STATUS_RUNNING,
         "next_phase": next_result,
+        "artifact_data": phase.artifact_data,
+        "task_token": next_result.get("task_token"),
+    }
+
+
+async def reopen_auto_approved_phase(
+    db_session: Session,
+    run_id: str | UUID,
+    phase_id: str,
+) -> dict[str, Any]:
+    """Reabre fase aprovada por `auto` para revisão humana; remove fases posteriores."""
+    run_uuid = _as_uuid(run_id)
+    run = db_session.get(PipelineRun, run_uuid)
+    if run is None:
+        raise StateEngineError(f"Pipeline run não encontrado: {run_uuid}")
+
+    phase = (
+        db_session.query(PhaseExecution)
+        .filter(
+            PhaseExecution.run_id == run_uuid,
+            PhaseExecution.phase_id == phase_id,
+        )
+        .order_by(PhaseExecution.id.desc())
+        .first()
+    )
+    if phase is None:
+        raise StateEngineError(f"Fase '{phase_id}' não encontrada neste run")
+
+    if phase.status != STATUS_APPROVED:
+        raise StateEngineError(
+            f"Só é possível reabrir fases APPROVED (status={phase.status})"
+        )
+    if (phase.approver or "").strip().lower() != "auto":
+        raise StateEngineError(
+            "Só é possível reabrir fases aprovadas automaticamente (approver=auto)"
+        )
+
+    # Remove execuções posteriores (encadeadas após esta aprovação).
+    later = (
+        db_session.query(PhaseExecution)
+        .filter(
+            PhaseExecution.run_id == run_uuid,
+            PhaseExecution.id > phase.id,
+        )
+        .all()
+    )
+    for row in later:
+        db_session.delete(row)
+
+    if not phase.task_token:
+        phase.task_token = str(uuid.uuid4())
+    phase.status = STATUS_AWAITING_APPROVAL
+    phase.approver = None
+    phase.comments = "reaberto para revisão humana"
+    run.status = STATUS_RUNNING
+    _touch_run(run)
+    db_session.commit()
+    db_session.refresh(phase)
+
+    return {
+        "run_id": str(run_uuid),
+        "phase_id": phase.phase_id,
+        "status": phase.status,
+        "task_token": phase.task_token,
         "artifact_data": phase.artifact_data,
     }

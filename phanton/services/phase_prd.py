@@ -55,9 +55,14 @@ def _build_prd_prompt(
         ),
     )
     deps = resolve_depends_on(spec, phase_id)
+    from services.structured_requirements import format_structured_requirements_block
+
     pedido = str(
         spec.get("user_prompt") or spec.get("description") or pipeline_label(spec)
     ).strip()
+    req_block = format_structured_requirements_block(
+        spec.get("structured_requirements") if isinstance(spec, dict) else None
+    )
 
     return f"""
 Atue como um Product Manager Sênior.
@@ -71,6 +76,8 @@ depends_on: {", ".join(deps) or "nenhuma"}
 
 Pedido original do usuário:
 {pedido}
+
+{req_block}
 
 Instruções desta fase:
 {descricao}

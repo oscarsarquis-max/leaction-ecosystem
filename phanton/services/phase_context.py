@@ -30,8 +30,72 @@ def phase_description(cfg: dict[str, Any], *, fallback: str = "") -> str:
     ).strip()
 
 
+# phase_id (exato) → capability. Sempre vence o type enviado pelo LLM.
+_PHASE_ID_EXACT: dict[str, str] = {
+    "context7_search": "context7_search",
+    "context7": "context7_search",
+    "generate_prd": "generate_prd",
+    "prd": "generate_prd",
+    "generate_sdd": "generate_sdd",
+    "sdd": "generate_sdd",
+    "security_guidelines": "security_guidelines",
+    "security_review": "security_guidelines",
+    "diretrizes_seguranca": "security_guidelines",
+    "diretrizes_de_seguranca": "security_guidelines",
+    "security": "security_guidelines",
+    "sec_guidelines": "security_guidelines",
+    "appsec": "security_guidelines",
+    "prompt_cursor": "prompt_cursor",
+    "ide_prompt": "prompt_cursor",
+    "cursor_prompt": "prompt_cursor",
+}
+
+# Substrings no phase_id (ordem importa: mais específico primeiro).
+_PHASE_ID_SUBSTRINGS: tuple[tuple[str, str], ...] = (
+    ("security_guidelines", "security_guidelines"),
+    ("diretrizes_seguranca", "security_guidelines"),
+    ("security_review", "security_guidelines"),
+    ("prompt_cursor", "prompt_cursor"),
+    ("cursor_prompt", "prompt_cursor"),
+    ("ide_prompt", "prompt_cursor"),
+    ("context7", "context7_search"),
+    ("generate_prd", "generate_prd"),
+    ("generate_sdd", "generate_sdd"),
+)
+
+
+def resolve_capability_from_phase_id(phase_id: str) -> str | None:
+    """Capability âncora pelo phase_id, ou None se não for âncora conhecida."""
+    pid = str(phase_id or "").strip().lower()
+    if not pid:
+        return None
+    if pid in _PHASE_ID_EXACT:
+        return _PHASE_ID_EXACT[pid]
+    for token, capability in _PHASE_ID_SUBSTRINGS:
+        if token in pid:
+            return capability
+    # Prefixo/sufixo security_* / *_security (exceto nomes ambíguos)
+    if pid.startswith("security_") or pid.endswith("_security"):
+        return "security_guidelines"
+    if pid.startswith("prd_") or pid.endswith("_prd"):
+        return "generate_prd"
+    if pid.startswith("sdd_") or pid.endswith("_sdd"):
+        return "generate_sdd"
+    return None
+
+
 def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
-    """Mapeia type da Spec (e aliases legados) para capability canônica."""
+    """Mapeia type da Spec para capability canônica.
+
+    Regra âncora: se o phase_id for conhecido (security_guidelines, generate_prd,
+    generate_sdd, prompt_cursor, context7_search, …), o type é FORÇADO por esse
+    id — independente do valor que o LLM tenha mandado (methodology, prompt,
+    research, ausente, etc.).
+    """
+    anchored = resolve_capability_from_phase_id(phase_id)
+    if anchored:
+        return anchored
+
     value = str(raw or "").strip().lower()
     aliases = {
         "generate": "methodology",
@@ -47,21 +111,21 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
         "synthesis": "synthesize",
         "sintese": "synthesize",
         "síntese": "synthesize",
-        # Memoria organizacional / RAG interno
         "context7_search": "context7_search",
         "context7": "context7_search",
         "internal_knowledge": "context7_search",
         "rag_internal": "context7_search",
-        # Documentação de produto / design (software)
         "generate_prd": "generate_prd",
         "prd": "generate_prd",
         "generate_sdd": "generate_sdd",
         "sdd": "generate_sdd",
-        # Prompt para IDE (Cursor) — NÃO confundir com entrega final
+        "security_guidelines": "security_guidelines",
+        "security": "security_guidelines",
+        "sec_guidelines": "security_guidelines",
+        "appsec": "security_guidelines",
         "prompt_cursor": "prompt_cursor",
         "ide_prompt": "prompt_cursor",
         "cursor_prompt": "prompt_cursor",
-        # Entrega final do artefato pedido (HTML/doc) — phase_L4
         "prompt": "prompt",
         "delivery": "prompt",
         "html": "prompt",
@@ -72,7 +136,6 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
     if value in aliases:
         return aliases[value]
 
-    # Spec sem `type`: infere pelo próprio phase_id (ex.: metodologia, pesquisa_x).
     pid = str(phase_id or "").strip().lower()
     if pid in aliases:
         return aliases[pid]
@@ -81,13 +144,6 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
         ("methodology", "methodology"),
         ("context7", "context7_search"),
         ("internal_knowledge", "context7_search"),
-        ("generate_prd", "generate_prd"),
-        ("_prd", "generate_prd"),
-        ("generate_sdd", "generate_sdd"),
-        ("_sdd", "generate_sdd"),
-        ("prompt_cursor", "prompt_cursor"),
-        ("cursor_prompt", "prompt_cursor"),
-        ("ide_prompt", "prompt_cursor"),
         ("pesquisa", "research"),
         ("research", "research"),
         ("grounding", "research"),
@@ -96,7 +152,6 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
         ("synthesize", "synthesize"),
         ("entrega", "prompt"),
         ("delivery", "prompt"),
-        ("prompt", "prompt"),
     ):
         if token in pid:
             return capability

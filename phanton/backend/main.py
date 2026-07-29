@@ -20,6 +20,12 @@ from models import PhaseExecution, PipelineRun
 from schemas import (
     ApprovePhaseRequest,
     ApprovePhaseResponse,
+    AutoApproveRequest,
+    AutoApproveResponse,
+    DeliverModuleRequest,
+    DeliverModuleResponse,
+    DraftRequirementsRequest,
+    DraftRequirementsResponse,
     GenerateSpecRequest,
     GenerateSpecResponse,
     HealthResponse,
@@ -30,12 +36,18 @@ from schemas import (
     PipelineStartRequest,
     PipelineStartResponse,
     PipelineStatusResponse,
+    ReopenPhaseResponse,
 )
 from services import state_engine
+from services.build_order import locate_module_queue, mark_module_entregue
 from services.state_engine import (
     StateEngineError,
     normalize_spec_phases,
     phase_order_from_spec,
+)
+from services.structured_requirements import (
+    PERFIL_ARTEFATO,
+    draft_structured_requirements,
 )
 from services.text_to_spec import generate_pipeline_spec
 
@@ -47,6 +59,7 @@ PHASE_LABELS = {
     "sintese": "Síntese",
     "generate_prd": "PRD — Requisitos",
     "generate_sdd": "SDD — Design",
+    "security_guidelines": "Diretrizes de Segurança",
     "prompt_cursor": "Prompt Cursor IDE",
     "entrega_final": "Entrega final",
     "L1": "Metodologia",
@@ -82,6 +95,40 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok")
 
 
+@app.post("/api/pipeline/draft-requirements", response_model=DraftRequirementsResponse)
+async def draft_requirements(
+    payload: DraftRequirementsRequest,
+) -> DraftRequirementsResponse:
+    """Rascunho estruturado de requisitos antes do Spec (Software/SaaS)."""
+    prompt = (payload.prompt or "").strip()
+    if len(prompt) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="Descreva o pedido com um pouco mais de detalhe (mín. 8 caracteres).",
+        )
+
+    try:
+        structured, model = await asyncio.to_thread(
+            draft_structured_requirements, prompt
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Falha ao rascunhar requisitos: {exc}",
+        ) from exc
+
+    skip_panel = structured.get("perfil_sugerido") == PERFIL_ARTEFATO
+    return DraftRequirementsResponse(
+        structured_requirements=structured,
+        model=model,
+        skip_panel=skip_panel,
+    )
+
+
 @app.post("/api/pipeline/generate-spec", response_model=GenerateSpecResponse)
 async def generate_spec(payload: GenerateSpecRequest) -> GenerateSpecResponse:
     """Text-to-Spec: NL → Pipeline Spec JSON (revisão humana antes do start)."""
@@ -92,8 +139,11 @@ async def generate_spec(payload: GenerateSpecRequest) -> GenerateSpecResponse:
             detail="Descreva o pipeline com um pouco mais de detalhe (mín. 8 caracteres).",
         )
 
+    structured = payload.structured_requirements
     try:
-        spec, model = await asyncio.to_thread(generate_pipeline_spec, prompt)
+        spec, model = await asyncio.to_thread(
+            generate_pipeline_spec, prompt, structured
+        )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
@@ -286,13 +336,72 @@ async def start_pipeline(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Falha ao iniciar pipeline: {exc}") from exc
 
+    # trigger_phase devolve phase_id; se auto-aprovou, approve_phase devolve
+    # approved_phase_id (+ next_phase com a fase atual aguardando).
+    phase_id = result.get("phase_id") or result.get("approved_phase_id")
+    task_token = result.get("task_token")
+    artifact = result.get("artifact_data")
+    next_phase = result.get("next_phase")
+    if isinstance(next_phase, dict):
+        phase_id = next_phase.get("phase_id") or phase_id
+        task_token = next_phase.get("task_token") or task_token
+        artifact = next_phase.get("artifact_data") or artifact
+        # Encadeamento profundo de auto-aprovações: desce até a ponta.
+        cursor = next_phase.get("next_phase")
+        while isinstance(cursor, dict):
+            phase_id = cursor.get("phase_id") or cursor.get("approved_phase_id") or phase_id
+            task_token = cursor.get("task_token") or task_token
+            artifact = cursor.get("artifact_data") or artifact
+            if cursor.get("status") == "AWAITING_APPROVAL":
+                break
+            cursor = cursor.get("next_phase")
+
     return PipelineStartResponse(
         run_id=run.id,
         status=result["status"],
-        phase_id=result["phase_id"],
-        task_token=result.get("task_token"),
-        artifact_data=result.get("artifact_data"),
+        phase_id=str(phase_id or ""),
+        task_token=task_token,
+        artifact_data=artifact,
     )
+
+
+@app.patch("/api/pipeline/{run_id}/auto-approve", response_model=AutoApproveResponse)
+def set_pipeline_auto_approve(
+    run_id: UUID,
+    payload: AutoApproveRequest,
+    db: Session = Depends(get_db),
+) -> AutoApproveResponse:
+    """Atualiza o switch de auto-aprovação no Spec do run (fases futuras)."""
+    run = db.get(PipelineRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run não encontrado")
+    spec = dict(run.spec) if isinstance(run.spec, dict) else {}
+    spec["auto_approve"] = bool(payload.auto_approve)
+    run.spec = spec
+    db.add(run)
+    db.commit()
+    return AutoApproveResponse(run_id=run_id, auto_approve=bool(payload.auto_approve))
+
+
+@app.post(
+    "/api/pipeline/{run_id}/phases/{phase_id}/reopen",
+    response_model=ReopenPhaseResponse,
+)
+async def reopen_pipeline_phase(
+    run_id: UUID,
+    phase_id: str,
+    db: Session = Depends(get_db),
+) -> ReopenPhaseResponse:
+    """Reabre fase auto-aprovada para revisão humana (remove fases posteriores)."""
+    try:
+        result = await state_engine.reopen_auto_approved_phase(db, run_id, phase_id)
+    except StateEngineError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Falha ao reabrir fase: {exc}"
+        ) from exc
+    return ReopenPhaseResponse(**result)
 
 
 @app.post("/api/pipeline/approve/{task_token}", response_model=ApprovePhaseResponse)
@@ -329,4 +438,74 @@ async def approve_pipeline_phase(
         next_phase=next_phase,
         task_token=task_token_out,
         artifact_data=result.get("artifact_data"),
+    )
+
+
+@app.post(
+    "/api/pipeline/{run_id}/phases/{phase_id}/modules/deliver",
+    response_model=DeliverModuleResponse,
+)
+def deliver_prompt_cursor_module(
+    run_id: UUID,
+    phase_id: str,
+    payload: DeliverModuleRequest,
+    db: Session = Depends(get_db),
+) -> DeliverModuleResponse:
+    """Marca módulo da fila como entregue e libera próximos elegíveis."""
+    run = db.get(PipelineRun, run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Pipeline run não encontrado")
+
+    phase = (
+        db.query(PhaseExecution)
+        .filter(
+            PhaseExecution.run_id == run_id,
+            PhaseExecution.phase_id == phase_id,
+        )
+        .order_by(PhaseExecution.id.desc())
+        .first()
+    )
+    if not phase or not isinstance(phase.artifact_data, dict):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Fase '{phase_id}' sem artefato para este run",
+        )
+
+    artifact = dict(phase.artifact_data)
+    try:
+        container, queue = locate_module_queue(artifact)
+        updated_queue = mark_module_entregue(queue, payload.modulo)
+        container["module_prompts"] = updated_queue
+        first_liberado = next(
+            (q for q in updated_queue if q.get("status") == "liberado"),
+            None,
+        )
+        if first_liberado and first_liberado.get("prompt"):
+            container["cursor_prompt"] = first_liberado["prompt"]
+
+        # Mantém envelope externo e nested artifact_data sincronizados
+        artifact["module_prompts"] = updated_queue
+        if first_liberado and first_liberado.get("prompt"):
+            artifact["cursor_prompt"] = first_liberado["prompt"]
+        nested = artifact.get("artifact_data")
+        if isinstance(nested, dict):
+            nested = dict(nested)
+            nested["module_prompts"] = updated_queue
+            if first_liberado and first_liberado.get("prompt"):
+                nested["cursor_prompt"] = first_liberado["prompt"]
+            artifact["artifact_data"] = nested
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    phase.artifact_data = artifact
+    db.add(phase)
+    db.commit()
+    db.refresh(phase)
+
+    return DeliverModuleResponse(
+        run_id=run_id,
+        phase_id=phase_id,
+        modulo=payload.modulo,
+        artifact_data=phase.artifact_data or {},
+        module_prompts=updated_queue,
     )

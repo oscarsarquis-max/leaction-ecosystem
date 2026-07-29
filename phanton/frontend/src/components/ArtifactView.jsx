@@ -4,6 +4,7 @@ import CopyableBlock from './CopyableBlock'
 import CursorPromptPreview, { extractCursorPrompt } from './CursorPromptPreview'
 import FixedTextField from './FixedTextField'
 import HtmlPreview, { extractHtmlCode } from './HtmlPreview'
+import ModulePromptQueue from './ModulePromptQueue'
 
 function cloneJson(value) {
   if (value == null) return value
@@ -563,6 +564,89 @@ function GenericDescriptiveView({ data, editable, onPatch }) {
     if (data.resumo_sintese || data.dinamica_passo_a_passo || data.pontos_chave) {
       return <SynthesisView data={data} editable={editable} onPatch={onPatch} />
     }
+    if (
+      Array.isArray(data.standards_aplicados) ||
+      Array.isArray(data.diretrizes_gerais) ||
+      (data.diretrizes_por_modulo && typeof data.diretrizes_por_modulo === 'object')
+    ) {
+      const standards = Array.isArray(data.standards_aplicados)
+        ? data.standards_aplicados
+        : []
+      const gerais = Array.isArray(data.diretrizes_gerais) ? data.diretrizes_gerais : []
+      const porMod =
+        data.diretrizes_por_modulo && typeof data.diretrizes_por_modulo === 'object'
+          ? data.diretrizes_por_modulo
+          : {}
+      const ctxWarns = Array.isArray(data.context_consistency_warnings)
+        ? data.context_consistency_warnings
+        : []
+      return (
+        <div className="space-y-4 text-left">
+          <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">
+            Diretrizes de Segurança
+            <span className="ml-2 font-normal normal-case text-slate-500">
+              (fase com aprovação humana)
+            </span>
+          </p>
+          {ctxWarns.length ? (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+              <p className="font-semibold">
+                Possível inconsistência de contexto — revisar manualmente
+              </p>
+              <ul className="mt-1 list-disc space-y-1 pl-4">
+                {ctxWarns.map((w, i) => (
+                  <li key={`${w?.modulo || 'm'}-${i}`}>
+                    <span className="font-mono font-medium">{w?.modulo || '?'}</span>
+                    {w?.mensagem ? ` — ${w.mensagem}` : ''}
+                    {Array.isArray(w?.termos) && w.termos.length
+                      ? ` [${w.termos.join(', ')}]`
+                      : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {standards.length ? (
+            <Section title="Standards aplicados">
+              <ul className="flex flex-wrap gap-2">
+                {standards.map((s, i) => (
+                  <li
+                    key={`${s}-${i}`}
+                    className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-800"
+                  >
+                    {String(s)}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          ) : null}
+          {gerais.length ? (
+            <Section title="Diretrizes gerais">
+              <BulletList items={gerais} />
+            </Section>
+          ) : null}
+          {Object.keys(porMod).length ? (
+            <Section title="Por módulo">
+              <ul className="space-y-3">
+                {Object.entries(porMod).map(([modulo, items]) => (
+                  <li
+                    key={modulo}
+                    className="rounded-xl border border-rose-100 bg-rose-50/40 px-3 py-2"
+                  >
+                    <p className="font-mono text-sm font-semibold text-slate-900">
+                      {modulo}
+                    </p>
+                    <div className="mt-1">
+                      <BulletList items={items} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          ) : null}
+        </div>
+      )
+    }
     if (Array.isArray(data.context7_hits) && data.context7_hits.length) {
       return (
         <div className="space-y-3 text-left">
@@ -683,6 +767,9 @@ export default function ArtifactView({
   name,
   editable = false,
   onChange,
+  canDeliverModules = false,
+  deliveringModulo = null,
+  onDeliverModule,
 }) {
   const [draft, setDraft] = useState(() => cloneJson(artifactData))
   const [jsonText, setJsonText] = useState(() => stringifyPretty(artifactData))
@@ -729,11 +816,21 @@ export default function ArtifactView({
   }
 
   const htmlCode = useMemo(() => extractHtmlCode(draft), [draft])
-  const deliveryMd = useMemo(
-    () => (htmlCode ? null : extractCursorPrompt(draft)),
-    [draft, htmlCode],
-  )
   const inner = useMemo(() => unwrapArtifact(draft), [draft])
+  const moduleQueue = useMemo(() => {
+    if (Array.isArray(inner?.module_prompts) && inner.module_prompts.length) {
+      return inner.module_prompts
+    }
+    return null
+  }, [inner])
+  const deliveryMd = useMemo(() => {
+    if (htmlCode || moduleQueue) return null
+    return extractCursorPrompt(draft)
+  }, [draft, htmlCode, moduleQueue])
+  const buildOrder = useMemo(() => {
+    if (Array.isArray(inner?.build_order) && inner.build_order.length) return inner.build_order
+    return null
+  }, [inner])
 
   if (!artifactData && !draft) return null
 
@@ -772,24 +869,54 @@ export default function ArtifactView({
           />
         ) : null}
 
-        {!htmlCode && deliveryMd ? (
-          <CursorPromptPreview
-            prompt={deliveryMd}
-            title={
-              inner?.prd_markdown
-                ? `PRD — ${name || phaseId}`
-                : inner?.sdd_markdown
-                  ? `SDD — ${name || phaseId}`
-                  : inner?.cursor_prompt && !inner?.delivery
-                    ? `Prompt Cursor — ${name || phaseId}`
-                    : `Entrega — ${name || phaseId}`
-            }
-            editable={editable}
-            onChange={(text) => commitDraft(patchDeliveryFields(draft, text, { isHtml: false }))}
+        {moduleQueue ? (
+          <ModulePromptQueue
+            modules={moduleQueue}
+            title={`Fila Cursor — ${name || phaseId}`}
+            canDeliver={canDeliverModules}
+            deliveringModulo={deliveringModulo}
+            onDeliver={onDeliverModule}
           />
         ) : null}
 
-        {!htmlCode && !deliveryMd ? (
+        {!htmlCode && !moduleQueue && deliveryMd ? (
+          <div className="space-y-3">
+            <CursorPromptPreview
+              prompt={deliveryMd}
+              title={
+                inner?.prd_markdown
+                  ? `PRD — ${name || phaseId}`
+                  : inner?.sdd_markdown
+                    ? `SDD — ${name || phaseId}`
+                    : inner?.cursor_prompt && !inner?.delivery
+                      ? `Prompt Cursor — ${name || phaseId}`
+                      : `Entrega — ${name || phaseId}`
+              }
+              editable={editable}
+              onChange={(text) => commitDraft(patchDeliveryFields(draft, text, { isHtml: false }))}
+            />
+            {buildOrder && inner?.sdd_markdown ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-left">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Build order (módulos)
+                </p>
+                <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-700">
+                  {buildOrder.map((m, i) => (
+                    <li key={`${m.modulo || i}`}>
+                      <span className="font-mono font-medium">{m.modulo}</span>
+                      {m.escopo ? ` — ${m.escopo}` : ''}
+                      {Array.isArray(m.depende_de) && m.depende_de.length
+                        ? ` (deps: ${m.depende_de.join(', ')})`
+                        : ''}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!htmlCode && !moduleQueue && !deliveryMd ? (
           <GenericDescriptiveView
             data={inner}
             editable={editable}

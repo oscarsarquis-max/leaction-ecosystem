@@ -1,13 +1,20 @@
-"""Capability: generate_sdd — Software Design Document a partir do PRD."""
+"""Capability: generate_sdd — Software Design Document a partir do PRD.
+
+Usa saída estruturada do Gemini (response_schema) e, se necessário, uma
+segunda chamada só para `build_order`. Não duplica o PRD no artefato.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import re
 import sys
 from pathlib import Path
 from typing import Any, Optional
 
+from google.genai import types
 from sqlalchemy.orm import Session
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -17,6 +24,7 @@ for _path in (str(_ROOT), str(_BACKEND)):
         sys.path.insert(0, _path)
 
 from database import SessionLocal  # noqa: E402
+from services.build_order import normalize_build_order  # noqa: E402
 from services.gemini_client import extract_json_payload, generate_content  # noqa: E402
 from services.phase_context import (  # noqa: E402
     load_dependency_artifacts,
@@ -25,68 +33,90 @@ from services.phase_context import (  # noqa: E402
     pipeline_label,
     resolve_depends_on,
 )
+from services.structured_requirements import (  # noqa: E402
+    format_structured_requirements_block,
+)
 
-_MAX_INPUT_CHARS = 48_000
+logger = logging.getLogger(__name__)
+
+_PRD_INPUT_CHARS = 12_000
+_SDD_MARKDOWN_MAX = 24_000
+
+_BUILD_ORDER_ITEM_SCHEMA = types.Schema(
+    type=types.Type.OBJECT,
+    properties={
+        "modulo": types.Schema(type=types.Type.STRING),
+        "depende_de": types.Schema(
+            type=types.Type.ARRAY,
+            items=types.Schema(type=types.Type.STRING),
+        ),
+        "escopo": types.Schema(type=types.Type.STRING),
+    },
+    required=["modulo", "depende_de", "escopo"],
+)
+
+SDD_RESPONSE_SCHEMA = types.Schema(
+    type=types.Type.OBJECT,
+    properties={
+        "sdd_markdown": types.Schema(type=types.Type.STRING),
+        "build_order": types.Schema(
+            type=types.Type.ARRAY,
+            items=_BUILD_ORDER_ITEM_SCHEMA,
+        ),
+    },
+    required=["sdd_markdown", "build_order"],
+)
+
+BUILD_ORDER_ONLY_SCHEMA = types.Schema(
+    type=types.Type.OBJECT,
+    properties={
+        "build_order": types.Schema(
+            type=types.Type.ARRAY,
+            items=_BUILD_ORDER_ITEM_SCHEMA,
+        ),
+    },
+    required=["build_order"],
+)
+
+SDD_NARRATIVE_ONLY_SCHEMA = types.Schema(
+    type=types.Type.OBJECT,
+    properties={
+        "sdd_markdown": types.Schema(type=types.Type.STRING),
+    },
+    required=["sdd_markdown"],
+)
 
 
-def _compact_inputs(inputs: dict[str, Any], limit: int = _MAX_INPUT_CHARS) -> dict[str, Any]:
-    serialized = json.dumps(inputs, ensure_ascii=False, default=str)
-    if len(serialized) <= limit:
-        return inputs
-    compact: dict[str, Any] = {}
-    budget = max(2500, limit // max(len(inputs), 1))
-    for key, value in inputs.items():
-        chunk = json.dumps(value, ensure_ascii=False, default=str)
-        compact[key] = chunk[:budget] + ("…[truncado]" if len(chunk) > budget else "")
-    return compact
+def _extract_prd_markdown(inputs: dict[str, Any]) -> tuple[str, Optional[str]]:
+    """Retorna (prd_text_truncado, phase_id_fonte)."""
+    for phase_id, payload in (inputs or {}).items():
+        if not isinstance(payload, dict):
+            continue
+        md = payload.get("prd_markdown")
+        if isinstance(md, str) and md.strip():
+            return md.strip()[:_PRD_INPUT_CHARS], str(phase_id)
+        nested = payload.get("artifact_data")
+        if isinstance(nested, dict):
+            md = nested.get("prd_markdown")
+            if isinstance(md, str) and md.strip():
+                return md.strip()[:_PRD_INPUT_CHARS], str(phase_id)
+    # fallback: serialização compacta sem re-expandir tudo
+    blob = json.dumps(inputs, ensure_ascii=False, default=str)
+    return blob[:_PRD_INPUT_CHARS], None
 
 
-def _build_sdd_prompt(
-    inputs: dict[str, Any],
-    spec: dict[str, Any],
-    phase_id: str,
-    cfg: dict[str, Any],
-) -> str:
-    inputs_json = json.dumps(inputs, ensure_ascii=False, indent=2, default=str)
-    descricao = phase_description(
-        cfg,
-        fallback="Gerar SDD completo a partir do PRD.",
+def _strip_prd_appendix(markdown: str) -> str:
+    """Remove seções que colam o PRD inteiro de volta no SDD."""
+    text = (markdown or "").strip()
+    if not text:
+        return text
+    # Corta a partir de headings conhecidos de "referência ao PRD"
+    pattern = re.compile(
+        r"\n##\s+Refer[eê]ncia\s+ao\s+PRD\b.*$",
+        re.IGNORECASE | re.DOTALL,
     )
-    deps = resolve_depends_on(spec, phase_id)
-    pedido = str(
-        spec.get("user_prompt") or spec.get("description") or pipeline_label(spec)
-    ).strip()
-
-    return f"""
-Atue como um Arquiteto de Software Sênior.
-
-Com base no PRD recebido, crie um SDD (Software Design Document) em formato Markdown.
-
-Pipeline: {pipeline_label(spec)}
-Fase: {cfg.get("name") or phase_id}
-depends_on: {", ".join(deps) or "nenhuma"}
-
-Pedido original do usuário:
-{pedido}
-
-Instruções desta fase:
-{descricao}
-
-=== Artefatos de entrada (PRD e correlatos) ===
-{inputs_json}
-
-O documento Markdown DEVE conter as seções:
-1. Stack Tecnológica escolhida (com justificativa breve)
-2. Arquitetura do Sistema (camadas / componentes)
-3. Modelo de Dados (tabelas/coleções principais e relacionamentos)
-4. Contratos de API / Componentes (endpoints ou interfaces principais)
-
-Responda APENAS com um único objeto JSON válido (UTF-8), SEM markdown externo
-e SEM comentários, no formato:
-{{
-  "sdd_markdown": "# SDD\\n\\n...conteúdo markdown completo..."
-}}
-""".strip()
+    text = pattern.sub("", text).rstrip()
+    return text
 
 
 def _normalize_sdd(parsed: dict[str, Any]) -> dict[str, Any]:
@@ -107,21 +137,30 @@ def _normalize_sdd(parsed: dict[str, Any]) -> dict[str, Any]:
         if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
         text = "\n".join(lines).strip()
-    return {"sdd_markdown": text}
+    text = _strip_prd_appendix(text)
+    if len(text) > _SDD_MARKDOWN_MAX:
+        text = text[:_SDD_MARKDOWN_MAX].rstrip() + "\n\n…[sdd truncado]"
+    build_order = normalize_build_order(
+        parsed.get("build_order") or parsed.get("modules") or parsed.get("modulos")
+    )
+    return {"sdd_markdown": text, "build_order": build_order}
 
 
-def _fallback_sdd(inputs: dict[str, Any], spec: dict[str, Any], *, reason: str) -> dict[str, Any]:
+def _fallback_sdd(
+    inputs: dict[str, Any],
+    spec: dict[str, Any],
+    *,
+    reason: str,
+    prd_phase_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Fallback sem colar o PRD — apenas referência por fase."""
     label = pipeline_label(spec)
-    prd_hint = ""
-    for payload in inputs.values():
-        if isinstance(payload, dict) and payload.get("prd_markdown"):
-            prd_hint = str(payload["prd_markdown"])[:4000]
-            break
+    ref = prd_phase_id or "generate_prd"
     return {
         "sdd_markdown": f"""# SDD — {label}
 
 ## Stack Tecnológica
-Definir stack alinhada ao PRD (modo fallback: {reason}).
+Definir stack alinhada ao PRD aprovado (modo fallback: {reason}).
 
 ## Arquitetura do Sistema
 - Camada de apresentação
@@ -135,9 +174,142 @@ Entidades principais a derivar do PRD.
 Listar endpoints/interfaces mínimos do MVP.
 
 ## Referência ao PRD
-{prd_hint or "_PRD não extraído — usar artefato depends_on._"}
-""".strip()
+Ver artefato da fase `{ref}` (não reimprimir o PRD neste documento).
+""".strip(),
+        "build_order": [],
     }
+
+
+def _build_sdd_structured_prompt(
+    prd_text: str,
+    spec: dict[str, Any],
+    phase_id: str,
+    cfg: dict[str, Any],
+    *,
+    prd_phase_id: Optional[str],
+) -> str:
+    descricao = phase_description(cfg, fallback="Gerar SDD completo a partir do PRD.")
+    deps = resolve_depends_on(spec, phase_id)
+    pedido = str(
+        spec.get("user_prompt") or spec.get("description") or pipeline_label(spec)
+    ).strip()
+    ref = prd_phase_id or "generate_prd"
+    req_block = format_structured_requirements_block(
+        spec.get("structured_requirements")
+        if isinstance(spec, dict)
+        else None
+    )
+
+    return f"""
+Atue como Arquiteto de Software Sênior.
+
+Gere um Software Design Document (SDD) a partir do PRD abaixo.
+A resposta será forçada em JSON estruturado pelo sistema — preencha os campos.
+
+Pipeline: {pipeline_label(spec)}
+Fase: {cfg.get("name") or phase_id}
+depends_on: {", ".join(deps) or "nenhuma"}
+Pedido: {pedido}
+
+Instruções:
+{descricao}
+
+{req_block}
+
+=== PRD (fonte; truncado se longo) ===
+{prd_text}
+
+Regras OBRIGATÓRIAS para sdd_markdown:
+1. Incluir seções: Stack Tecnológica; Arquitetura do Sistema; Modelo de Dados;
+   Contratos de API / Componentes.
+2. NÃO incluir diagramas ASCII, mermaid, sequenceDiagram ou blocos de código
+   enormes — descreva a arquitetura em prosa e listas.
+3. NÃO colar o PRD de volta. Se precisar citar a origem, use apenas:
+   "Ver artefato da fase `{ref}`".
+4. Seja conciso (MVP). Evite repetir o pedido do usuário.
+5. Se os requisitos estruturados fixarem single_tenant, NÃO desenhe multi-tenant
+   (sem isolamento por schema/tenant, sem X-Tenant-ID, sem Keycloak multi-realm
+   por cliente).
+
+Regras OBRIGATÓRIAS para build_order:
+- Array de módulos/serviços na ordem de implementação (tipicamente 3 a 8).
+- Cada item: modulo (kebab-case), depende_de (lista de nomes), escopo (1 linha).
+- Se monolítico sem módulos claros, retorne build_order: [].
+""".strip()
+
+
+def _build_order_only_prompt(
+    prd_text: str,
+    sdd_markdown: str,
+    spec: dict[str, Any],
+) -> str:
+    pedido = str(
+        spec.get("user_prompt") or spec.get("description") or pipeline_label(spec)
+    ).strip()
+    return f"""
+Com base no PRD e no SDD abaixo, produza APENAS o campo build_order
+(módulos de implementação ordenados com dependências).
+
+Pedido: {pedido}
+
+=== PRD (trecho) ===
+{prd_text[:8000]}
+
+=== SDD (trecho) ===
+{(sdd_markdown or "")[:10000]}
+
+Regras:
+- 3 a 8 módulos kebab-case quando o sistema for multi-serviço.
+- depende_de referencia nomes exatos de outros módulos da lista.
+- escopo em uma linha.
+- Monólito simples → build_order: [].
+""".strip()
+
+
+def _call_structured(
+    prompt: str,
+    *,
+    schema: Any,
+    temperature: float,
+    max_output_tokens: int,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    raw_text, meta = generate_content(
+        prompt,
+        enable_google_search=False,
+        response_json=True,
+        response_schema=schema,
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+    )
+    parsed = extract_json_payload(raw_text)
+    if not isinstance(parsed, dict):
+        raise ValueError("Resposta estruturada não é objeto JSON")
+    return parsed, meta
+
+
+def _generate_build_order_pass(
+    prd_text: str,
+    sdd_markdown: str,
+    spec: dict[str, Any],
+    errors: list[str],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    prompt = _build_order_only_prompt(prd_text, sdd_markdown, spec)
+    meta: dict[str, Any] = {}
+    for temperature, max_tokens in ((0.2, 4096), (0.15, 3072)):
+        try:
+            parsed, meta = _call_structured(
+                prompt,
+                schema=BUILD_ORDER_ONLY_SCHEMA,
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+            )
+            order = normalize_build_order(parsed.get("build_order"))
+            if order:
+                return order, {**meta, "build_order_pass": True}
+            errors.append(f"build_order_vazio(tokens={max_tokens})")
+        except Exception as exc:
+            errors.append(f"build_order_pass:{type(exc).__name__}: {exc}")
+    return [], meta
 
 
 def _generate_sdd_safe(
@@ -148,46 +320,94 @@ def _generate_sdd_safe(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     errors: list[str] = []
     meta: dict[str, Any] = {}
-    attempts = [
-        (_compact_inputs(inputs, 48_000), True, 0.3, 8192),
-        (_compact_inputs(inputs, 24_000), True, 0.2, 6144),
-        (_compact_inputs(inputs, 12_000), False, 0.15, 4096),
-    ]
-    for compact, as_json, temperature, max_tokens in attempts:
-        prompt = _build_sdd_prompt(compact, spec, phase_id, cfg)
+    prd_text, prd_phase_id = _extract_prd_markdown(inputs)
+    prompt = _build_sdd_structured_prompt(
+        prd_text, spec, phase_id, cfg, prd_phase_id=prd_phase_id
+    )
+
+    # Passo 1: narrativa + build_order via schema nativo
+    attempts = (
+        (0.25, 12_288),
+        (0.2, 10_240),
+        (0.15, 8_192),
+    )
+    for temperature, max_tokens in attempts:
         try:
-            raw_text, meta = generate_content(
+            parsed, meta = _call_structured(
                 prompt,
-                enable_google_search=False,
-                response_json=as_json,
+                schema=SDD_RESPONSE_SCHEMA,
                 temperature=temperature,
                 max_output_tokens=max_tokens,
             )
-            parsed = extract_json_payload(raw_text)
-            if isinstance(parsed, dict):
-                normalized = _normalize_sdd(parsed)
-                if normalized.get("sdd_markdown"):
-                    return normalized, {
-                        **meta,
-                        "attempts": errors,
-                        "used_max_output_tokens": max_tokens,
-                    }
-            stripped = (raw_text or "").strip()
-            if stripped.startswith("#"):
-                return {"sdd_markdown": stripped}, {
+            normalized = _normalize_sdd(parsed)
+            if not normalized.get("sdd_markdown"):
+                errors.append(f"sdd_vazio(tokens={max_tokens})")
+                continue
+
+            # Se build_order veio vazio, tenta pass dedicado (não cai no fallback ainda)
+            if not normalized.get("build_order"):
+                logger.warning(
+                    "generate_sdd: build_order vazio após schema — "
+                    "tentando pass dedicado"
+                )
+                order, order_meta = _generate_build_order_pass(
+                    prd_text, normalized["sdd_markdown"], spec, errors
+                )
+                normalized["build_order"] = order
+                meta = {
                     **meta,
-                    "attempts": errors,
-                    "raw_markdown": True,
+                    **order_meta,
+                    "build_order_recovered": bool(order),
                 }
-            errors.append(f"sem_sdd(tokens={max_tokens})")
+                if not order:
+                    logger.warning(
+                        "generate_sdd: build_order continua vazio após pass dedicado"
+                    )
+
+            return normalized, {
+                **meta,
+                "attempts": errors,
+                "used_max_output_tokens": max_tokens,
+                "prd_ref": prd_phase_id,
+                "structured_output": True,
+            }
         except Exception as exc:
             errors.append(f"{type(exc).__name__}: {exc}")
 
-    return _fallback_sdd(inputs, spec, reason="; ".join(errors) or "modelo indisponível"), {
-        **meta,
-        "fallback": True,
-        "attempts": errors,
-    }
+    # Passo 1b: só narrativa estruturada, depois build_order
+    try:
+        parsed, meta = _call_structured(
+            prompt,
+            schema=SDD_NARRATIVE_ONLY_SCHEMA,
+            temperature=0.2,
+            max_output_tokens=10_240,
+        )
+        normalized = _normalize_sdd({**parsed, "build_order": []})
+        if normalized.get("sdd_markdown"):
+            order, order_meta = _generate_build_order_pass(
+                prd_text, normalized["sdd_markdown"], spec, errors
+            )
+            normalized["build_order"] = order
+            return normalized, {
+                **meta,
+                **order_meta,
+                "attempts": errors,
+                "two_pass": True,
+                "prd_ref": prd_phase_id,
+            }
+        errors.append("narrative_only_vazia")
+    except Exception as exc:
+        errors.append(f"narrative_only:{type(exc).__name__}: {exc}")
+
+    return (
+        _fallback_sdd(
+            inputs,
+            spec,
+            reason="; ".join(errors) or "modelo indisponível",
+            prd_phase_id=prd_phase_id,
+        ),
+        {**meta, "fallback": True, "attempts": errors, "prd_ref": prd_phase_id},
+    )
 
 
 async def execute_phase_sdd(
@@ -220,6 +440,7 @@ async def execute_phase_sdd(
                 "pipeline_name": pipeline_label(spec),
                 "artifact_data": parsed,
                 "sdd_markdown": parsed.get("sdd_markdown"),
+                "build_order": parsed.get("build_order") or [],
                 "inputs_used": list(inputs.keys()),
                 "meta": meta,
             }
@@ -229,7 +450,10 @@ async def execute_phase_sdd(
             except Exception:
                 inputs = {}
             if inputs:
-                parsed = _fallback_sdd(inputs, spec, reason=str(exc))
+                _, prd_phase_id = _extract_prd_markdown(inputs)
+                parsed = _fallback_sdd(
+                    inputs, spec, reason=str(exc), prd_phase_id=prd_phase_id
+                )
                 return {
                     "status": "success",
                     "phase": phase_id,
@@ -238,6 +462,7 @@ async def execute_phase_sdd(
                     "pipeline_name": pipeline_label(spec),
                     "artifact_data": parsed,
                     "sdd_markdown": parsed.get("sdd_markdown"),
+                    "build_order": parsed.get("build_order") or [],
                     "inputs_used": list(inputs.keys()),
                     "meta": {"fallback": True, "error": str(exc)},
                 }

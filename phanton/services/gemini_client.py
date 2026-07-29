@@ -109,6 +109,7 @@ def _repair_truncated_json(fragment: str) -> Any:
 
 
 def extract_json_payload(text: str) -> Any:
+    """Extrai JSON mesmo com preâmbulo (diagrama ASCII/mermaid antes do objeto)."""
     cleaned = (text or "").strip()
     if not cleaned:
         raise ValueError("Resposta vazia do Gemini")
@@ -119,52 +120,61 @@ def extract_json_payload(text: str) -> Any:
         if fenced:
             cleaned = fenced
         else:
-            # Cerca vazia — remove delimitadores e segue.
             cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.I)
             cleaned = re.sub(r"\s*```$", "", cleaned).strip()
 
     if not cleaned:
         raise ValueError("Resposta vazia do Gemini (cerca markdown sem conteúdo)")
 
-    # Evita o JSONDecodeError cru "Expecting value: line 1 column 1".
-    if not cleaned.lstrip()[:1] in "{[":
-        # Pode ser Markdown puro — quem chama decide se aceita texto.
-        raise ValueError(
-            f"Resposta do Gemini não é JSON (começa com texto). "
-            f"Prévia: {cleaned[:240]!r}"
-        )
-
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError as first_err:
-        start_candidates = [i for i in (cleaned.find("{"), cleaned.find("[")) if i >= 0]
-        if not start_candidates:
-            raise ValueError(
-                f"Resposta do Gemini não é JSON utilizável: {first_err}. "
-                f"Prévia: {cleaned[:240]!r}"
-            ) from first_err
-        start = min(start_candidates)
-        fragment = cleaned[start:].strip()
-        if not fragment:
-            raise ValueError(
-                "Resposta do Gemini parece JSON mas o fragmento está vazio."
-            ) from first_err
+    def _try_parse(candidate: str) -> Any:
         try:
-            return json.loads(fragment)
+            return json.loads(candidate)
         except json.JSONDecodeError:
             pass
         try:
-            obj, _ = json.JSONDecoder().raw_decode(fragment)
+            obj, _ = json.JSONDecoder().raw_decode(candidate)
             return obj
         except Exception:
             pass
+        return _repair_truncated_json(candidate)
+
+    # Caminho feliz: começa com JSON
+    if cleaned.lstrip()[:1] in "{[":
         try:
-            return _repair_truncated_json(fragment)
-        except Exception:
-            raise ValueError(
-                f"JSON inválido/truncado do Gemini: {first_err}. "
-                f"Prévia: {fragment[:240]!r}"
-            ) from first_err
+            return _try_parse(cleaned.lstrip())
+        except Exception as first_err:
+            start_candidates = [
+                i for i in (cleaned.find("{"), cleaned.find("[")) if i >= 0
+            ]
+            if not start_candidates:
+                raise ValueError(
+                    f"Resposta do Gemini não é JSON utilizável: {first_err}. "
+                    f"Prévia: {cleaned[:240]!r}"
+                ) from first_err
+            fragment = cleaned[min(start_candidates) :].strip()
+            try:
+                return _try_parse(fragment)
+            except Exception:
+                raise ValueError(
+                    f"JSON inválido/truncado do Gemini: {first_err}. "
+                    f"Prévia: {fragment[:240]!r}"
+                ) from first_err
+
+    # Rede de segurança: texto livre antes do JSON (ASCII/mermaid, etc.)
+    start_candidates = [i for i in (cleaned.find("{"), cleaned.find("[")) if i >= 0]
+    if not start_candidates:
+        raise ValueError(
+            f"Resposta do Gemini não é JSON (começa com texto e sem objeto). "
+            f"Prévia: {cleaned[:240]!r}"
+        )
+    fragment = cleaned[min(start_candidates) :].strip()
+    try:
+        return _try_parse(fragment)
+    except Exception as err:
+        raise ValueError(
+            f"JSON inválido/truncado do Gemini (após preâmbulo): {err}. "
+            f"Prévia: {fragment[:240]!r}"
+        ) from err
 
 
 def _response_text(response: Any) -> str:
@@ -192,10 +202,15 @@ def generate_content(
     *,
     enable_google_search: bool = False,
     response_json: bool = False,
+    response_schema: Any = None,
     temperature: float = 0.3,
     max_output_tokens: Optional[int] = None,
 ) -> tuple[str, dict[str, Any]]:
-    """Chamada síncrona ao Gemini. Use via asyncio.to_thread no handler async."""
+    """Chamada síncrona ao Gemini. Use via asyncio.to_thread no handler async.
+
+    response_schema: Schema nativo do Gemini (types.Schema / dict) — força JSON
+    estruturado quando response_json=True (sem grounding).
+    """
     api_key = get_api_key()
     model = resolve_model()
     client = genai.Client(api_key=api_key)
@@ -207,9 +222,11 @@ def generate_content(
     config_kwargs: dict[str, Any] = {"temperature": temperature}
     if tools:
         config_kwargs["tools"] = tools
-    # response_mime_type costuma conflitar com google_search; só usar sem grounding.
-    if response_json and not enable_google_search:
+    # response_mime_type / schema costumam conflitar com google_search.
+    if (response_json or response_schema is not None) and not enable_google_search:
         config_kwargs["response_mime_type"] = "application/json"
+        if response_schema is not None:
+            config_kwargs["response_schema"] = response_schema
     if max_output_tokens:
         config_kwargs["max_output_tokens"] = max_output_tokens
 
@@ -221,6 +238,8 @@ def generate_content(
 
     text = _response_text(response)
     meta: dict[str, Any] = {"model": model}
+    if response_schema is not None:
+        meta["structured_output"] = True
 
     try:
         candidate = response.candidates[0] if response.candidates else None

@@ -33,8 +33,8 @@ class PipelineSpec(BaseModel):
     `phases` é um dicionário: chave = id livre da fase (ex.: "pesquisa_casos"),
     valor = configuração (name, type, order, descricao, depends_on…).
     Types: methodology | research | context7_search | synthesize | generate_prd |
-    generate_sdd | prompt_cursor | prompt (aliases: context7, prd, sdd, delivery,
-    html, ide_prompt).
+    generate_sdd | security_guidelines | prompt_cursor | prompt (aliases: context7,
+    prd, sdd, security, delivery, html, ide_prompt).
     """
 
     model_config = ConfigDict(extra="allow")
@@ -44,6 +44,12 @@ class PipelineSpec(BaseModel):
     version: str = "1.0"
     phases: dict[str, PhaseConfig | dict[str, Any]] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    # Quando True, fases com quality_score >= 80 (fora de ALWAYS_HUMAN) avançam sozinhas.
+    auto_approve: bool = False
+    # Lacunas de contexto no pedido (informativo — não bloqueia start).
+    warnings: list[dict[str, Any]] = Field(default_factory=list)
+    # Rascunho 29148 revisado pelo humano (quando perfil software_saas).
+    structured_requirements: Optional[dict[str, Any]] = None
 
 
 class PipelineRunCreate(BaseModel):
@@ -91,6 +97,7 @@ class HealthResponse(BaseModel):
 
 class GenerateSpecRequest(BaseModel):
     prompt: str
+    structured_requirements: Optional[dict[str, Any]] = None
 
 
 class GenerateSpecResponse(BaseModel):
@@ -100,6 +107,20 @@ class GenerateSpecResponse(BaseModel):
 
     spec: dict[str, Any]
     model: Optional[str] = None
+
+
+class DraftRequirementsRequest(BaseModel):
+    prompt: str
+
+
+class DraftRequirementsResponse(BaseModel):
+    """Rascunho estruturado de requisitos (ISO/IEC/IEEE 29148 simplificado)."""
+
+    model_config = ConfigDict(extra="allow")
+
+    structured_requirements: dict[str, Any]
+    model: Optional[str] = None
+    skip_panel: bool = False
 
 
 class PipelineStartRequest(BaseModel):
@@ -131,6 +152,39 @@ class ApprovePhaseResponse(BaseModel):
     next_phase: Optional[dict[str, Any]] = None
     task_token: Optional[str] = None
     artifact_data: Optional[dict[str, Any]] = None
+
+
+class AutoApproveRequest(BaseModel):
+    """Liga/desliga auto-aprovação por qualidade no run (afeta fases futuras)."""
+
+    auto_approve: bool = False
+
+
+class AutoApproveResponse(BaseModel):
+    run_id: UUID
+    auto_approve: bool
+
+
+class ReopenPhaseResponse(BaseModel):
+    run_id: UUID
+    phase_id: str
+    status: str
+    task_token: Optional[str] = None
+    artifact_data: Optional[dict[str, Any]] = None
+
+
+class DeliverModuleRequest(BaseModel):
+    """Marca um módulo da fila prompt_cursor como entregue."""
+
+    modulo: str
+
+
+class DeliverModuleResponse(BaseModel):
+    run_id: UUID
+    phase_id: str
+    modulo: str
+    artifact_data: dict[str, Any]
+    module_prompts: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class PhaseStatusRead(BaseModel):
