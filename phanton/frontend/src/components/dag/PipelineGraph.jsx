@@ -88,7 +88,7 @@ function PipelineGraphInner({
   approvingToken = null,
   immutable = false,
   runId = null,
-  apiBase = 'http://localhost:8000',
+  apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:8010',
 }) {
   const [nodes, setNodes] = useState([])
   const [edges, setEdges] = useState([])
@@ -233,7 +233,7 @@ export default function PipelineGraph({
   approvingToken = null,
   immutable = false,
   runId = null,
-  apiBase = 'http://localhost:8000',
+  apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:8010',
 }) {
   return (
     <ReactFlowProvider>

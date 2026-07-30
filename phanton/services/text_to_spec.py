@@ -9,7 +9,6 @@ from services.context_warnings import normalize_warnings
 from services.llm.json_utils import extract_json_payload
 from services.llm.runtime import generate_content
 from services.phase_context import normalize_phase_type
-from services.security_domain import is_sensitive_domain
 from services.state_engine import normalize_spec_phases
 from services.structured_requirements import (
     PERFIL_SOFTWARE,
@@ -37,14 +36,12 @@ TOPOLOGIA PADRÃO — construção de SOFTWARE / aplicação / sistema / platafo
 3. Uma fase synthesize que DEPENDE de context7_search + methodology + research
 4. Uma fase generate_prd dependendo da síntese
 5. Uma fase generate_sdd dependendo do PRD
-6. Se o domínio for SENSÍVEL/REGULADO (financeiro, saúde, etc.): fase SEPARADA
-   type=security_guidelines dependendo do SDD (gate humano próprio — NÃO embutir
-   segurança dentro do prompt_cursor)
-7. Uma fase final prompt_cursor dependendo do SDD (e de security_guidelines quando
-   houver)
-8. Se o usuário pedir backlog/tarefas/épicos ou exportação Linear/Jira: fase
-   type=task_breakdown no FIM do DAG, dependendo de generate_sdd (e generate_prd
-   como contexto), que fatia o projeto em Epics/Issues com micro-prompts
+6. Fase FIXA type=security_guidelines dependendo do SDD (gate humano próprio —
+   NÃO embutir segurança dentro do prompt_cursor). Sempre presente em software.
+7. Uma fase final prompt_cursor dependendo do SDD e de security_guidelines
+8. Fase FIXA type=task_breakdown no FIM do DAG, dependendo de generate_sdd
+   (e generate_prd como contexto) — fatia Epics/Issues para Linear/Jira.
+   NÃO exige o usuário citar Linear/Jira/tarefas no pedido.
 Mapeie IDs e depends_on corretamente para formar o grafo lógico.
 
 TOPOLOGIA — entrega de ARTEFATO (HTML interativo, apresentação, playbook,
@@ -87,14 +84,14 @@ Capabilities:
 - synthesize: cruza/agrupa artefatos anteriores (inclui context7 quando houver)
 - generate_prd: gera PRD (Product Requirements Document) em Markdown
 - generate_sdd: gera SDD (Software Design Document) em Markdown a partir do PRD
-- security_guidelines: fase SEPARADA de diretrizes de segurança (padrões de mercado
-  como ASVS/FAPI/OWASP API Top 10/LGPD) — exige aprovação humana própria antes
-  do prompt_cursor; só para domínio sensível/regulado
+- security_guidelines: fase FIXA de diretrizes de segurança (padrões de mercado
+  como ASVS/OWASP API Top 10/LGPD; FAPI quando Open Finance) — exige aprovação
+  humana própria antes do prompt_cursor; sempre no fluxo de software
 - prompt_cursor: gera prompt executável curto para QUALQUER IDE/agente de código
   (lê PRD.md/SDD.md); texto agnóstico — sem citar Cursor ou outro produto
-- task_breakdown: fatia PRD+SDD em Epics/Issues (JSON) com description_micro_prompt
-  copiável para o agente de código; todo texto em PT-BR (exceto nomes técnicos
-  literais); preparar export Linear/Jira
+- task_breakdown: fase FIXA no fluxo software — fatia PRD+SDD em Epics/Issues
+  (JSON) com description_micro_prompt copiável; texto em PT-BR; export Linear
+  opcional na UI (usuário NÃO precisa pedir Linear no prompt inicial)
 - prompt: GERA A ENTREGA FINAL solicitada (HTML/doc/artefato) — NÃO é prompt de IDE
 
 Retorne APENAS o JSON válido, sem markdown e sem comentários.
@@ -376,7 +373,7 @@ def _ensure_final_prompt_phase(phases: dict[str, Any], user_prompt: str = "") ->
 
 
 def _ensure_software_topology(phases: dict[str, Any], user_prompt: str = "") -> None:
-    """Garante context7 + synthesize → generate_prd → generate_sdd → prompt_cursor."""
+    """Garante context7 → … → PRD → SDD → security_guidelines → prompt_cursor."""
     # 1) Memoria organizacional no inicio do DAG
     ctx_ids = _find_phase_ids_by_capability(phases, "context7_search")
     if not ctx_ids:
@@ -476,23 +473,17 @@ def _ensure_software_topology(phases: dict[str, Any], user_prompt: str = "") -> 
             if not cfg.get("descricao"):
                 cfg["descricao"] = _SDD_DESCRICAO
 
-    # Fase SEPARADA de segurança (gate humano próprio) — só domínio sensível
-    cursor_upstream = [sdd_ids[-1]]
-    if is_sensitive_domain(user_prompt):
-        sec_id = _place_security_after_sdd(
-            phases,
-            sdd_id=sdd_ids[-1],
-            user_prompt=user_prompt or "",
-        )
-        cursor_upstream = [sdd_ids[-1], sec_id]
-    else:
-        # Remove qualquer fase de segurança inventada em domínio genérico
-        for pid in list(_find_security_candidate_ids(phases)):
-            phases.pop(pid, None)
+    # Fase FIXA de segurança (gate humano próprio) — sempre no fluxo software
+    sec_id = _place_security_after_sdd(
+        phases,
+        sdd_id=sdd_ids[-1],
+        user_prompt=user_prompt or "",
+    )
+    cursor_upstream = [sdd_ids[-1], sec_id]
 
     cursor_ids = _find_phase_ids_by_capability(phases, "prompt_cursor")
     if not cursor_ids:
-        # order depois de security (se houver)
+        # order depois de security
         after = cursor_upstream[-1]
         try:
             base_order = int(phases[after].get("order") or 0) + 1
@@ -517,7 +508,7 @@ def _ensure_software_topology(phases: dict[str, Any], user_prompt: str = "") -> 
                 r"IDE|agente", name, re.I
             ):
                 cfg["name"] = "Prompt para IDE (agente de codigo)"
-            # depends_on explícito: SDD (+ security quando existir) — não só append
+            # depends_on explícito: SDD + security — não só append
             cfg["depends_on"] = list(cursor_upstream)
             # Garante order depois do último upstream
             try:
@@ -557,10 +548,8 @@ def _ensure_task_breakdown_phase(
     prd_ids: list[str],
     sdd_ids: list[str],
 ) -> None:
-    """Inclui task_breakdown no fim do DAG quando pedido (Linear/Jira/tarefas)."""
+    """Inclui task_breakdown no fim do DAG (fase fixa do fluxo software)."""
     existing = _find_phase_ids_by_capability(phases, "task_breakdown")
-    if not existing and not _wants_task_breakdown(user_prompt):
-        return
 
     sdd_id = sdd_ids[-1] if sdd_ids else None
     prd_id = prd_ids[-1] if prd_ids else None
@@ -712,6 +701,28 @@ def _normalize_generated_spec(
     )
 
     return normalize_spec_phases(spec)
+
+
+def ensure_fixed_software_phases(spec: dict[str, Any]) -> dict[str, Any]:
+    """
+    Garante fases fixas do fluxo software (security_guidelines, task_breakdown, …)
+    também no /start — Specs antigos na UI não podem omitir security.
+    """
+    if not isinstance(spec, dict):
+        return {}
+    out = dict(spec)
+    phases = out.get("phases")
+    if not isinstance(phases, dict):
+        phases = {}
+        out["phases"] = phases
+    user_clean = str(
+        out.get("user_prompt") or out.get("description") or ""
+    ).strip()
+    if _wants_software_build(user_clean) or _find_phase_ids_by_capability(
+        phases, "generate_sdd"
+    ) or _find_phase_ids_by_capability(phases, "generate_prd"):
+        _ensure_software_topology(phases, user_prompt=user_clean)
+    return normalize_spec_phases(out)
 
 
 def generate_pipeline_spec(

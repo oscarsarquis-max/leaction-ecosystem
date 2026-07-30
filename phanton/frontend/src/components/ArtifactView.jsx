@@ -3,8 +3,10 @@ import { Braces, ChevronDown, ChevronUp, PencilLine } from 'lucide-react'
 import CopyableBlock from './CopyableBlock'
 import CursorPromptPreview, { extractCursorPrompt } from './CursorPromptPreview'
 import FixedTextField from './FixedTextField'
+import ArchitectureMermaid from './ArchitectureMermaid'
 import HtmlPreview, { extractHtmlCode } from './HtmlPreview'
 import ModulePromptQueue from './ModulePromptQueue'
+import { extractArchitectureMermaid } from '../lib/sddView'
 
 function cloneJson(value) {
   if (value == null) return value
@@ -831,6 +833,10 @@ export default function ArtifactView({
     if (Array.isArray(inner?.build_order) && inner.build_order.length) return inner.build_order
     return null
   }, [inner])
+  const architectureMermaid = useMemo(
+    () => extractArchitectureMermaid(draft),
+    [draft],
+  )
 
   if (!artifactData && !draft) return null
 
@@ -881,20 +887,39 @@ export default function ArtifactView({
 
         {!htmlCode && !moduleQueue && deliveryMd ? (
           <div className="space-y-3">
-            <CursorPromptPreview
-              prompt={deliveryMd}
-              title={
-                inner?.prd_markdown
-                  ? `PRD — ${name || phaseId}`
-                  : inner?.sdd_markdown
-                    ? `SDD — ${name || phaseId}`
-                    : inner?.cursor_prompt && !inner?.delivery
-                      ? `Prompt IDE — ${name || phaseId}`
-                      : `Entrega — ${name || phaseId}`
+            <div
+              className={
+                architectureMermaid &&
+                (inner?.sdd_markdown || draft?.sdd_markdown)
+                  ? 'grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start'
+                  : ''
               }
-              editable={editable}
-              onChange={(text) => commitDraft(patchDeliveryFields(draft, text, { isHtml: false }))}
-            />
+            >
+              <CursorPromptPreview
+                prompt={deliveryMd}
+                title={
+                  inner?.prd_markdown || draft?.prd_markdown
+                    ? `PRD — ${name || phaseId}`
+                    : inner?.sdd_markdown || draft?.sdd_markdown
+                      ? `SDD — ${name || phaseId}`
+                      : inner?.cursor_prompt && !inner?.delivery
+                        ? `Prompt IDE — ${name || phaseId}`
+                        : `Entrega — ${name || phaseId}`
+                }
+                editable={editable}
+                onChange={(text) =>
+                  commitDraft(patchDeliveryFields(draft, text, { isHtml: false }))
+                }
+              />
+              {architectureMermaid &&
+              (inner?.sdd_markdown || draft?.sdd_markdown) ? (
+                <ArchitectureMermaid
+                  source={architectureMermaid}
+                  title="Gráfico de arquitetura"
+                  className="lg:sticky lg:top-2"
+                />
+              ) : null}
+            </div>
             {buildOrder && inner?.sdd_markdown ? (
               <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-left">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

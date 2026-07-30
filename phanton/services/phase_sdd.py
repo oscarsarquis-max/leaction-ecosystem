@@ -64,12 +64,13 @@ SDD_RESPONSE_SCHEMA = {
     "type": "OBJECT",
     "properties": {
         "sdd_markdown": {"type": "STRING"},
+        "architecture_mermaid": {"type": "STRING"},
         "build_order": {
             "type": "ARRAY",
             "items": _BUILD_ORDER_ITEM_SCHEMA,
         },
     },
-    "required": ["sdd_markdown", "build_order"],
+    "required": ["sdd_markdown", "architecture_mermaid", "build_order"],
 }
 
 BUILD_ORDER_ONLY_SCHEMA = {
@@ -124,6 +125,94 @@ def _strip_prd_appendix(markdown: str) -> str:
     return text
 
 
+_MERMAID_FENCE_RE = re.compile(
+    r"```(?:mermaid)?\s*\n(.*?)```",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _clean_mermaid(raw: str) -> str:
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    fence = _MERMAID_FENCE_RE.search(text)
+    if fence:
+        text = fence.group(1).strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines:
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    # Aceita flowchart / graph / C4-ish / sequence
+    low = text.lower()
+    if not (
+        low.startswith("flowchart")
+        or low.startswith("graph ")
+        or low.startswith("sequencediagram")
+        or low.startswith("c4context")
+        or low.startswith("c4container")
+    ):
+        # Se veio sem keyword, assume flowchart TB
+        if "-->" in text or "==>" in text:
+            text = f"flowchart TB\n{text}"
+        else:
+            return ""
+    return text[:8000]
+
+
+def _architecture_from_build_order(build_order: list[dict[str, Any]]) -> str:
+    """Diagrama Mermaid mínimo a partir do build_order (fallback)."""
+    if not build_order:
+        return (
+            "flowchart TB\n"
+            "  UI[Apresentação / UI]\n"
+            "  APP[Aplicação / API]\n"
+            "  DATA[(Dados)]\n"
+            "  UI --> APP --> DATA"
+        )
+    lines = ["flowchart TB"]
+    ids: dict[str, str] = {}
+    for i, item in enumerate(build_order):
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("modulo") or f"mod-{i+1}").strip()
+        safe = re.sub(r"[^a-zA-Z0-9_]", "_", name) or f"m{i+1}"
+        ids[name] = safe
+        camada = str(item.get("camada") or "").strip()
+        label = f"{name}" + (f" ({camada})" if camada else "")
+        lines.append(f'  {safe}["{label}"]')
+    for item in build_order:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("modulo") or "").strip()
+        src = ids.get(name)
+        if not src:
+            continue
+        deps = item.get("depende_de") or []
+        if not isinstance(deps, list):
+            continue
+        for dep in deps:
+            dst = ids.get(str(dep).strip())
+            if dst:
+                lines.append(f"  {dst} --> {src}")
+    if len(lines) == 1:
+        return _architecture_from_build_order([])
+    return "\n".join(lines)
+
+
+def _extract_mermaid_from_markdown(markdown: str) -> tuple[str, str]:
+    """Se o SDD trouxe mermaid embutido, separa do texto."""
+    text = markdown or ""
+    match = _MERMAID_FENCE_RE.search(text)
+    if not match:
+        return text, ""
+    diagram = _clean_mermaid(match.group(0))
+    cleaned = (text[: match.start()] + text[match.end() :]).strip()
+    return cleaned, diagram
+
+
 def _normalize_sdd(parsed: dict[str, Any]) -> dict[str, Any]:
     md = (
         parsed.get("sdd_markdown")
@@ -135,7 +224,7 @@ def _normalize_sdd(parsed: dict[str, Any]) -> dict[str, Any]:
     if isinstance(md, dict):
         md = md.get("content") or md.get("texto") or json.dumps(md, ensure_ascii=False)
     text = str(md or "").strip()
-    if text.startswith("```"):
+    if text.startswith("```") and not text.lower().startswith("```mermaid"):
         lines = text.splitlines()
         if lines:
             lines = lines[1:]
@@ -145,10 +234,28 @@ def _normalize_sdd(parsed: dict[str, Any]) -> dict[str, Any]:
     text = _strip_prd_appendix(text)
     if len(text) > _SDD_MARKDOWN_MAX:
         text = text[:_SDD_MARKDOWN_MAX].rstrip() + "\n\n…[sdd truncado]"
+
     build_order = normalize_build_order(
         parsed.get("build_order") or parsed.get("modules") or parsed.get("modulos")
     )
-    return {"sdd_markdown": text, "build_order": build_order}
+
+    diagram = _clean_mermaid(
+        parsed.get("architecture_mermaid")
+        or parsed.get("architecture_diagram")
+        or parsed.get("diagrama_arquitetura")
+        or ""
+    )
+    if not diagram:
+        text, embedded = _extract_mermaid_from_markdown(text)
+        diagram = embedded
+    if not diagram:
+        diagram = _architecture_from_build_order(build_order)
+
+    return {
+        "sdd_markdown": text,
+        "architecture_mermaid": diagram,
+        "build_order": build_order,
+    }
 
 
 def _fallback_sdd(
@@ -181,6 +288,13 @@ Listar endpoints/interfaces mínimos do MVP.
 ## Referência ao PRD
 Ver artefato da fase `{ref}` (não reimprimir o PRD neste documento).
 """.strip(),
+        "architecture_mermaid": (
+            "flowchart TB\n"
+            "  UI[Apresentação / UI]\n"
+            "  APP[Aplicação / API]\n"
+            "  DATA[(Dados)]\n"
+            "  UI --> APP --> DATA"
+        ),
         "build_order": [],
     }
 
@@ -227,8 +341,9 @@ Instruções:
 Regras OBRIGATÓRIAS para sdd_markdown:
 1. Incluir seções: Stack Tecnológica; Arquitetura do Sistema; Modelo de Dados;
    Contratos de API / Componentes.
-2. NÃO incluir diagramas ASCII, mermaid, sequenceDiagram ou blocos de código
-   enormes — descreva a arquitetura em prosa e listas.
+2. NÃO colocar mermaid/ASCII dentro do sdd_markdown — o diagrama vai no campo
+   separado architecture_mermaid. No markdown, descreva a arquitetura em prosa
+   e listas.
 3. NÃO colar o PRD de volta. Se precisar citar a origem, use apenas:
    "Ver artefato da fase `{ref}`".
 4. Seja conciso (MVP). Evite repetir o pedido do usuário.
@@ -241,13 +356,25 @@ Regras OBRIGATÓRIAS para sdd_markdown:
 7. Se o PRD mencionar SPA/player/portal/UI: descreva a camada de apresentação
    (rotas/telas mínimas) e inclua ≥1 módulo `camada=frontend` no build_order.
 
+Regras OBRIGATÓRIAS para architecture_mermaid:
+- String com diagrama Mermaid da arquitetura (preferir `flowchart TB`).
+- Mostre camadas/módulos principais e setas de dependência (UI → API → dados,
+  ou serviços do MVP).
+- Sem fences ``` — só o corpo Mermaid.
+- Sem textos longos nos nós (rótulos curtos).
+- Se single_tenant, NÃO desenhe multi-tenant.
+
 Regras OBRIGATÓRIAS para build_order:
-- Array de módulos na ordem de implementação (tipicamente 3 a 8).
+- Array de módulos na ordem de implementação: OBRIGATÓRIO 3 a 8 itens
+  (mesmo em monólito — fatie em módulos lógicos: ex. domain-core,
+  api-or-storage, app-frontend). Nunca retorne array vazio.
 - Cada item: modulo (kebab-case), depende_de, escopo (1 linha),
   camada (`backend` | `frontend` | `shared`).
 - Se houver UI/player/portal no PRD, incluir pelo menos um módulo frontend
   (ex.: app-frontend ou *-player) descrevendo telas, não só APIs.
-- Se monolítico sem módulos claros, retorne build_order: [].
+- NÃO embutir JSON de exemplo, TypeScript, schemas de domínio nem
+  payloads grandes dentro de sdd_markdown ou de qualquer campo —
+  isso trunca a resposta. Modelo de dados em prosa/listas curtas.
 """.strip()
 
 
@@ -272,11 +399,12 @@ Pedido: {pedido}
 {(sdd_markdown or "")[:10000]}
 
 Regras:
-- 3 a 8 módulos kebab-case quando o sistema for multi-serviço.
+- OBRIGATÓRIO 3 a 8 módulos kebab-case (monólito: fatie em módulos lógicos).
+  Nunca retorne array vazio.
 - depende_de referencia nomes exatos de outros módulos da lista.
 - escopo em uma linha; camada = backend|frontend|shared.
 - Se PRD/SDD citam UI/player/portal → ≥1 módulo camada=frontend.
-- Monólito simples → build_order: [].
+- Resposta mínima: só o array build_order, sem exemplos JSON/TS embutidos.
 """.strip()
 
 
@@ -389,6 +517,10 @@ def _generate_sdd_safe(
             )
             normalized["sdd_markdown"] = md
             normalized["build_order"] = order
+            if not str(normalized.get("architecture_mermaid") or "").strip():
+                normalized["architecture_mermaid"] = _architecture_from_build_order(
+                    order or []
+                )
 
             return normalized, {
                 **meta,
@@ -426,6 +558,10 @@ def _generate_sdd_safe(
             )
             normalized["sdd_markdown"] = md
             normalized["build_order"] = order
+            if not str(normalized.get("architecture_mermaid") or "").strip():
+                normalized["architecture_mermaid"] = _architecture_from_build_order(
+                    order or []
+                )
             return normalized, {
                 **meta,
                 **order_meta,
@@ -479,6 +615,7 @@ async def execute_phase_sdd(
                 "pipeline_name": pipeline_label(spec),
                 "artifact_data": parsed,
                 "sdd_markdown": parsed.get("sdd_markdown"),
+                "architecture_mermaid": parsed.get("architecture_mermaid"),
                 "build_order": parsed.get("build_order") or [],
                 "inputs_used": list(inputs.keys()),
                 "meta": meta,
@@ -501,6 +638,7 @@ async def execute_phase_sdd(
                     "pipeline_name": pipeline_label(spec),
                     "artifact_data": parsed,
                     "sdd_markdown": parsed.get("sdd_markdown"),
+                    "architecture_mermaid": parsed.get("architecture_mermaid"),
                     "build_order": parsed.get("build_order") or [],
                     "inputs_used": list(inputs.keys()),
                     "meta": {"fallback": True, "error": str(exc)},

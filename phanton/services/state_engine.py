@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import copy
+import logging
 import re
 import sys
 import uuid
@@ -11,6 +14,8 @@ from typing import Any, Awaitable, Callable, Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 # Garante imports de backend/ e services/ a partir da raiz do projeto.
 _ROOT = Path(__file__).resolve().parent.parent
@@ -40,9 +45,13 @@ from services.phase_security_guidelines import (  # noqa: E402
 from services.phase_task_breakdown import execute_phase_task_breakdown  # noqa: E402
 from services.quality_score import (  # noqa: E402
     AUTO_APPROVE_THRESHOLD,
+    MAX_QUALITY_REDOS,
+    QUALITY_REDO_THRESHOLD,
     attach_quality_score,
+    build_quality_learning,
     compute_quality_score,
     should_auto_approve,
+    should_redo_for_quality,
     unwrap_artifact_payload,
 )
 
@@ -274,6 +283,70 @@ def _score_phase_artifact(
     return attach_quality_score(artifact, score), score
 
 
+def _schedule_background(coro: Awaitable[Any]) -> None:
+    """Agenda coroutine sem bloquear a resposta HTTP (UI pode fazer poll)."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        logger.exception("state_engine: sem event loop para background task")
+        return
+    task = loop.create_task(coro)
+
+    def _done(t: asyncio.Task) -> None:
+        try:
+            exc = t.exception()
+        except asyncio.CancelledError:
+            return
+        if exc is not None:
+            logger.exception("state_engine background task falhou: %s", exc)
+
+    task.add_done_callback(_done)
+
+
+async def _bg_auto_approve(task_token: str, score: int) -> None:
+    from database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        await approve_phase(
+            db,
+            task_token,
+            approver="auto",
+            comments=f"auto-approve quality_score={score}",
+        )
+    except Exception:
+        logger.exception("auto-approve em background falhou token=%s", task_token)
+    finally:
+        db.close()
+
+
+async def _bg_trigger_phase(run_id: UUID, phase_id: str) -> None:
+    from database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        run = db.get(PipelineRun, run_id)
+        if run is None:
+            return
+        spec = normalize_spec_phases(
+            run.spec if isinstance(run.spec, dict) else dict(run.spec or {})
+        )
+        await trigger_phase(db, run_id, phase_id, spec)
+    except Exception:
+        logger.exception(
+            "trigger_phase em background falhou run=%s phase=%s", run_id, phase_id
+        )
+        try:
+            run = db.get(PipelineRun, run_id)
+            if run is not None and (run.status or "").upper() == STATUS_RUNNING:
+                _touch_run(run)
+                db.commit()
+        except Exception:
+            db.rollback()
+    finally:
+        db.close()
+
+
 async def start_pipeline(db_session: Session, run_id: str | UUID, spec: dict[str, Any]) -> dict[str, Any]:
     """Marca o run como RUNNING e dispara a primeira fase da spec."""
     run_uuid = _as_uuid(run_id)
@@ -299,9 +372,29 @@ async def start_pipeline(db_session: Session, run_id: str | UUID, spec: dict[str
     sync_run_identity(run, spec)
     run.status = STATUS_RUNNING
     _touch_run(run)
+
+    first = order[0]
+    # Marca a 1ª fase RUNNING no banco ANTES do background — a barra de estado
+    # precisa refletir isso no primeiro poll.
+    starter = PhaseExecution(
+        id=uuid.uuid4(),
+        run_id=run_uuid,
+        phase_id=first,
+        status=STATUS_RUNNING,
+    )
+    db_session.add(starter)
     db_session.commit()
 
-    return await trigger_phase(db_session, run_uuid, order[0], run.spec)
+    # Executa a 1ª fase em background para o HTTP liberar o run_id à UI.
+    _schedule_background(_bg_trigger_phase(run_uuid, first))
+    return {
+        "run_id": str(run_uuid),
+        "phase_id": first,
+        "status": STATUS_RUNNING,
+        "task_token": None,
+        "artifact_data": None,
+        "async_start": True,
+    }
 
 
 async def trigger_phase(
@@ -318,30 +411,27 @@ async def trigger_phase(
     if run is None:
         raise StateEngineError(f"Pipeline run não encontrado: {run_uuid}")
 
-    phase = PhaseExecution(
-        id=uuid.uuid4(),
-        run_id=run_uuid,
-        phase_id=phase_id,
-        status=STATUS_RUNNING,
+    # Reusa stub RUNNING criado no start/approve (evita duplicar e permite poll).
+    phase = (
+        db_session.query(PhaseExecution)
+        .filter(
+            PhaseExecution.run_id == run_uuid,
+            PhaseExecution.phase_id == phase_id,
+            PhaseExecution.status == STATUS_RUNNING,
+        )
+        .order_by(PhaseExecution.id.desc())
+        .first()
     )
-    db_session.add(phase)
-    db_session.commit()
-    db_session.refresh(phase)
-
-    artifact = await handler(str(run_uuid), spec, db_session, phase_id)
-    if not isinstance(artifact, dict):
-        artifact = {"artifact_data": artifact}
-
-    artifact, score = _score_phase_artifact(
-        db_session, run_uuid, phase_id, spec, artifact
-    )
-
-    phase.artifact_data = artifact
-    phase.task_token = str(uuid.uuid4())
-    phase.status = STATUS_AWAITING_APPROVAL
-    _touch_run(run)
-    db_session.commit()
-    db_session.refresh(phase)
+    if phase is None:
+        phase = PhaseExecution(
+            id=uuid.uuid4(),
+            run_id=run_uuid,
+            phase_id=phase_id,
+            status=STATUS_RUNNING,
+        )
+        db_session.add(phase)
+        db_session.commit()
+        db_session.refresh(phase)
 
     capability = normalize_phase_type(
         (phase_cfg(spec, phase_id) or {}).get("type")
@@ -349,18 +439,122 @@ async def trigger_phase(
         else None,
         phase_id,
     )
+    expected_modules = None
+    if capability == "security_guidelines":
+        expected_modules = _expected_modules_from_run(db_session, run_uuid) or None
+
+    learning: dict[str, Any] | None = None
+    quality_attempts: list[dict[str, Any]] = []
+    best_artifact: dict[str, Any] | None = None
+    best_score = -1
+    score = 0
+    artifact: dict[str, Any] = {}
+
+    # Loop de qualidade: nota < 95 → refaz com regras de aprendizado.
+    for attempt_idx in range(MAX_QUALITY_REDOS + 1):
+        run_spec = copy.deepcopy(spec) if isinstance(spec, dict) else {}
+        if learning is not None:
+            phases_map = run_spec.setdefault("phases", {})
+            if not isinstance(phases_map, dict):
+                phases_map = {}
+                run_spec["phases"] = phases_map
+            cfg = dict(phases_map.get(phase_id) or {})
+            cfg["quality_learning"] = learning
+            phases_map[phase_id] = cfg
+
+        artifact = await handler(str(run_uuid), run_spec, db_session, phase_id)
+        if not isinstance(artifact, dict):
+            artifact = {"artifact_data": artifact}
+
+        artifact, score = _score_phase_artifact(
+            db_session, run_uuid, phase_id, run_spec, artifact
+        )
+        quality_attempts.append(
+            {
+                "attempt": attempt_idx + 1,
+                "score": score,
+                "learning_applied": bool(learning),
+            }
+        )
+        if score > best_score:
+            best_score = score
+            best_artifact = artifact
+
+        meta = dict(artifact.get("meta") or {})
+        meta["quality_attempts"] = list(quality_attempts)
+        meta["quality_redo_threshold"] = QUALITY_REDO_THRESHOLD
+        artifact["meta"] = meta
+        artifact = attach_quality_score(artifact, score)
+
+        # Mantém RUNNING visível na barra enquanto refaz.
+        phase.artifact_data = artifact
+        phase.status = STATUS_RUNNING
+        _touch_run(run)
+        db_session.commit()
+
+        if not should_redo_for_quality(
+            score, redos_done=attempt_idx, artifact=artifact
+        ):
+            break
+
+        learning = build_quality_learning(
+            capability,
+            score,
+            artifact,
+            attempt=attempt_idx + 1,
+            expected_modules=expected_modules,
+        )
+        logger.info(
+            "quality redo phase=%s score=%s<%s attempt=%s lessons=%s",
+            phase_id,
+            score,
+            QUALITY_REDO_THRESHOLD,
+            attempt_idx + 1,
+            len(learning.get("lessons") or []),
+        )
+
+    artifact = best_artifact or artifact
+    score = best_score if best_score >= 0 else score
+    meta = dict(artifact.get("meta") or {})
+    meta["quality_attempts"] = list(quality_attempts)
+    meta["quality_redo_threshold"] = QUALITY_REDO_THRESHOLD
+    if learning is not None and score < QUALITY_REDO_THRESHOLD:
+        meta["quality_learning_exhausted"] = True
+    artifact["meta"] = meta
+    artifact = attach_quality_score(artifact, score)
+
+    phase.artifact_data = artifact
+    phase.task_token = str(uuid.uuid4())
+    phase.status = STATUS_AWAITING_APPROVAL
+    if score < QUALITY_REDO_THRESHOLD:
+        phase.comments = (
+            f"qualidade {score}<{QUALITY_REDO_THRESHOLD} após "
+            f"{len(quality_attempts)} tentativa(s) — revisão humana"
+        )
+    _touch_run(run)
+    db_session.commit()
+    db_session.refresh(phase)
+
     if should_auto_approve(
         auto_approve=_spec_auto_approve(spec),
         phase_type=capability,
         quality_score=score,
         threshold=AUTO_APPROVE_THRESHOLD,
     ):
-        return await approve_phase(
-            db_session,
-            phase.task_token,
-            approver="auto",
-            comments=f"auto-approve quality_score={score}",
-        )
+        # Não encadear approve→próxima fase no mesmo request — a UI precisa
+        # observar RUNNING/APPROVED fase a fase via poll.
+        _schedule_background(_bg_auto_approve(phase.task_token, score))
+        return {
+            "run_id": str(run_uuid),
+            "phase_id": phase_id,
+            "phase_execution_id": str(phase.id),
+            "status": phase.status,
+            "task_token": phase.task_token,
+            "artifact_data": phase.artifact_data,
+            "quality_score": score,
+            "auto_approve_scheduled": True,
+            "quality_attempts": quality_attempts,
+        }
 
     return {
         "run_id": str(run_uuid),
@@ -370,6 +564,7 @@ async def trigger_phase(
         "task_token": phase.task_token,
         "artifact_data": phase.artifact_data,
         "quality_score": score,
+        "quality_attempts": quality_attempts,
     }
 
 
@@ -437,19 +632,32 @@ async def approve_phase(
             "artifact_data": phase.artifact_data,
         }
 
-    next_result = await trigger_phase(
-        db_session,
-        phase.run_id,
-        next_phase_id,
-        spec,
+    run.status = STATUS_RUNNING
+    _touch_run(run)
+    # Stub RUNNING da próxima fase — aparece na barra antes do LLM terminar.
+    next_stub = PhaseExecution(
+        id=uuid.uuid4(),
+        run_id=phase.run_id,
+        phase_id=next_phase_id,
+        status=STATUS_RUNNING,
     )
+    db_session.add(next_stub)
+    db_session.commit()
+
+    # Próxima fase em background — barra de estado atualiza por poll.
+    _schedule_background(_bg_trigger_phase(phase.run_id, next_phase_id))
     return {
         "run_id": str(phase.run_id),
         "approved_phase_id": phase.phase_id,
         "status": STATUS_RUNNING,
-        "next_phase": next_result,
+        "next_phase": {
+            "phase_id": next_phase_id,
+            "status": STATUS_RUNNING,
+            "task_token": None,
+            "async_trigger": True,
+        },
         "artifact_data": phase.artifact_data,
-        "task_token": next_result.get("task_token"),
+        "task_token": None,
     }
 
 

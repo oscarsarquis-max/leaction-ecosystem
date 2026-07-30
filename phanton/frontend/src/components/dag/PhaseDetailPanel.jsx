@@ -1,28 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Loader2,
-  Send,
   ShieldCheck,
   X,
 } from 'lucide-react'
+import ArchitectureMermaid from '../ArchitectureMermaid'
+import LinearExportButton from '../LinearExportButton'
+import { extractArchitectureMermaid } from '../../lib/sddView'
+import {
+  extractTaskBreakdownEpics,
+  isPhaseExportReady,
+  unwrapArtifact,
+} from '../../lib/taskBreakdown'
 
-function unwrapArtifact(raw) {
-  if (!raw || typeof raw !== 'object') return raw
-  if (
-    raw.artifact_data !== undefined &&
-    (raw.status || raw.phase || raw.capability || raw.meta || raw.quality_score != null)
-  ) {
-    return raw.artifact_data
-  }
-  return raw
-}
+export { extractTaskBreakdownEpics, unwrapArtifact } from '../../lib/taskBreakdown'
 
 const MARKDOWN_KEYS = [
   'prd_markdown',
@@ -90,15 +86,6 @@ function qualityScoreFromArtifact(artifactData) {
   const nested = artifactData.meta?.quality_score
   if (typeof nested === 'number') return Math.round(nested)
   return null
-}
-
-/** Extrai array de epics do artefato task_breakdown. */
-export function extractTaskBreakdownEpics(artifactData) {
-  const inner = unwrapArtifact(artifactData)
-  if (!inner || typeof inner !== 'object') return null
-  const epics = inner.epics
-  if (!Array.isArray(epics) || !epics.length) return null
-  return epics.filter((e) => e && typeof e === 'object')
 }
 
 function isTaskBreakdownCapability(capability) {
@@ -252,13 +239,15 @@ export default function PhaseDetailPanel({
   onApprove,
   immutable = false,
   runId = null,
-  apiBase = 'http://localhost:8000',
+  apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:8010',
 }) {
   const status = String(phaseData?.status || 'PENDING').toUpperCase()
   const title = phaseData?.name || phaseData?.title || phaseId || 'Fase'
   const capability = phaseData?.capability || phaseData?.type || '—'
   const waiting = status === 'AWAITING_APPROVAL' && Boolean(taskToken) && !immutable
-  const isBreakdown = isTaskBreakdownCapability(capability)
+  const isBreakdown =
+    isTaskBreakdownCapability(capability) ||
+    isTaskBreakdownCapability(phaseId)
   const epics = useMemo(
     () => (isBreakdown ? extractTaskBreakdownEpics(artifactData) : null),
     [isBreakdown, artifactData],
@@ -267,24 +256,20 @@ export default function PhaseDetailPanel({
     () => (epics ? null : extractMarkdownContent(artifactData)),
     [epics, artifactData],
   )
+  const architectureMermaid = useMemo(
+    () => (epics ? null : extractArchitectureMermaid(artifactData)),
+    [epics, artifactData],
+  )
   const qualityScore = qualityScoreFromArtifact(artifactData)
 
   const canExportLinear =
     isBreakdown &&
     Boolean(runId) &&
     Boolean(epics?.length) &&
-    (status === 'APPROVED' ||
-      status === 'SUCCESS' ||
-      status === 'COMPLETED' ||
-      // Backend marca a fase como APPROVED após gate; SUCCESS é alias
-      String(phaseData?.status || '').toLowerCase() === 'success')
-
-  const [isExporting, setIsExporting] = useState(false)
-  const [exportFeedback, setExportFeedback] = useState(null) // { type, message }
+    isPhaseExportReady(status)
 
   useEffect(() => {
     if (!isOpen) return undefined
-    setExportFeedback(null)
     const onKey = (e) => {
       if (e.key === 'Escape') onClose?.()
     }
@@ -297,37 +282,9 @@ export default function PhaseDetailPanel({
     }
   }, [isOpen, onClose, phaseId])
 
-  const handleExportLinear = async () => {
-    if (!runId || isExporting) return
-    setIsExporting(true)
-    setExportFeedback(null)
-    try {
-      const { data } = await axios.post(
-        `${apiBase}/api/pipeline/${runId}/export/linear`,
-      )
-      const summary = data?.summary || 'Exportado com sucesso!'
-      const url = data?.project?.url
-      setExportFeedback({
-        type: 'success',
-        message: url ? `${summary} — ${url}` : summary,
-      })
-    } catch (err) {
-      const detail =
-        err.response?.data?.detail ||
-        err.message ||
-        'Falha ao exportar para o Linear'
-      setExportFeedback({
-        type: 'error',
-        message: typeof detail === 'string' ? detail : JSON.stringify(detail),
-      })
-    } finally {
-      setIsExporting(false)
-    }
-  }
-
   if (typeof document === 'undefined') return null
 
-  const showFooter = waiting || canExportLinear || Boolean(exportFeedback)
+  const showFooter = waiting || canExportLinear
 
   return createPortal(
     <>
@@ -344,9 +301,11 @@ export default function PhaseDetailPanel({
         role="dialog"
         aria-modal="true"
         aria-label={`Detalhe da fase ${title}`}
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out sm:w-[38%] sm:min-w-[24rem] sm:max-w-none ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className={`fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out ${
+          architectureMermaid && markdown
+            ? 'max-w-4xl sm:w-[56%] sm:min-w-[32rem] sm:max-w-none'
+            : 'max-w-xl sm:w-[38%] sm:min-w-[24rem] sm:max-w-none'
+        } ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0 text-left">
@@ -388,8 +347,23 @@ export default function PhaseDetailPanel({
           ) : epics ? (
             <TaskBreakdownBoard epics={epics} />
           ) : markdown ? (
-            <div className="prose prose-slate max-w-none prose-headings:font-display prose-pre:bg-slate-900 prose-pre:text-slate-100">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+            <div
+              className={
+                architectureMermaid
+                  ? 'grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start'
+                  : ''
+              }
+            >
+              <div className="prose prose-slate max-w-none prose-headings:font-display prose-pre:bg-slate-900 prose-pre:text-slate-100">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+              </div>
+              {architectureMermaid ? (
+                <ArchitectureMermaid
+                  source={architectureMermaid}
+                  title="Gráfico de arquitetura"
+                  className="lg:sticky lg:top-0"
+                />
+              ) : null}
             </div>
           ) : (
             <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-950 p-4 text-left text-xs leading-relaxed text-slate-100">
@@ -410,22 +384,6 @@ export default function PhaseDetailPanel({
                 : 'border-slate-200 bg-slate-50/95'
             }`}
           >
-            {exportFeedback ? (
-              <div
-                role="status"
-                className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-xs ${
-                  exportFeedback.type === 'success'
-                    ? 'border-emerald-300 bg-emerald-50 text-emerald-950'
-                    : 'border-red-300 bg-red-50 text-red-900'
-                }`}
-              >
-                {exportFeedback.type === 'success' ? (
-                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                ) : null}
-                <span className="break-words">{exportFeedback.message}</span>
-              </div>
-            ) : null}
-
             {waiting ? (
               <>
                 <p className="text-xs text-amber-900">
@@ -454,24 +412,11 @@ export default function PhaseDetailPanel({
             ) : null}
 
             {canExportLinear ? (
-              <button
-                type="button"
-                disabled={isExporting || !runId}
-                onClick={handleExportLinear}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#5E6AD2] px-4 py-3 font-display text-sm font-bold text-white shadow-[0_8px_24px_rgba(94,106,210,0.35)] transition hover:bg-[#4C57B8] disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {isExporting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Exportando…
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4" />
-                    Exportar para o Linear
-                  </>
-                )}
-              </button>
+              <LinearExportButton
+                runId={runId}
+                apiBase={apiBase}
+                epicCount={epics.length}
+              />
             ) : null}
           </footer>
         ) : null}

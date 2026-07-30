@@ -140,8 +140,8 @@ def test_normalize_keeps_security_on_educacao():
     assert "security_guidelines" in spec["phases"]
 
 
-def test_normalize_removes_security_invented_on_generic_domain():
-    """SaaS genérico (não edu/fin/saúde) não deve manter security_guidelines."""
+def test_normalize_keeps_security_on_generic_saas():
+    """SaaS genérico também mantém security_guidelines (fase fixa do software)."""
     raw = {
         "runId": "todo-app",
         "phases": {
@@ -162,7 +162,57 @@ def test_normalize_removes_security_invented_on_generic_domain():
         raw,
         "Quero um software SaaS de lista de tarefas e notas pessoais",
     )
-    assert "security_guidelines" not in spec["phases"]
+    assert "security_guidelines" in spec["phases"]
+    assert "security_guidelines" in (
+        spec["phases"]["prompt_cursor"].get("depends_on") or []
+    )
+
+
+def test_software_topology_sempre_inclui_security_em_saas_generico():
+    phases: dict = {
+        "methodology": {"type": "methodology", "order": 2, "depends_on": []},
+    }
+    _ensure_software_topology(
+        phases,
+        user_prompt="Habit tracker offline-first com React e LocalStorage",
+    )
+    assert "security_guidelines" in phases
+    assert phases["security_guidelines"]["type"] == "security_guidelines"
+    assert "security_guidelines" in (phases["prompt_cursor"].get("depends_on") or [])
+    assert (
+        phases["generate_sdd"]["order"]
+        < phases["security_guidelines"]["order"]
+        < phases["prompt_cursor"]["order"]
+    )
+
+
+def test_ensure_fixed_software_phases_injeta_security_em_spec_antigo():
+    from services.text_to_spec import ensure_fixed_software_phases
+
+    spec = {
+        "user_prompt": "Quero um software SaaS de hábitos com React",
+        "description": "Quero um software SaaS de hábitos com React",
+        "phases": {
+            "context7_search": {"type": "context7_search", "order": 1},
+            "generate_prd": {"type": "generate_prd", "order": 2, "depends_on": []},
+            "generate_sdd": {
+                "type": "generate_sdd",
+                "order": 3,
+                "depends_on": ["generate_prd"],
+            },
+            "prompt_cursor": {
+                "type": "prompt_cursor",
+                "order": 4,
+                "depends_on": ["generate_sdd"],
+            },
+        },
+    }
+    out = ensure_fixed_software_phases(spec)
+    assert "security_guidelines" in out["phases"]
+    assert "task_breakdown" in out["phases"]
+    assert "security_guidelines" in (
+        out["phases"]["prompt_cursor"].get("depends_on") or []
+    )
 
 
 def test_normalize_phase_type_security():

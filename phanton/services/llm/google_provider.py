@@ -29,17 +29,31 @@ def _load_env() -> None:
     load_dotenv(_BACKEND_ENV, override=True)
 
 
+def _looks_like_google_model(name: str) -> bool:
+    """Evita enviar tag Ollama (ex.: qwen2.5-coder:3b) à API Gemini."""
+    n = name.removeprefix("models/").strip().lower()
+    if not n:
+        return False
+    if ":" in n:  # tags Ollama estilo nome:tamanho
+        return False
+    return n.startswith("gemini") or n in _DEPRECATED_MODELS
+
+
 def resolve_google_model() -> str:
-    """Resolve modelo Google: LLM_MODEL → GEMINI_MODEL → default."""
+    """Resolve modelo Google: LLM_MODEL (se Gemini) → GEMINI_MODEL → default."""
     _load_env()
-    model = (
-        (os.getenv("LLM_MODEL") or "").strip()
-        or (os.getenv("GEMINI_MODEL") or "").strip()
-        or DEFAULT_GOOGLE_MODEL
-    )
-    normalized = model.removeprefix("models/")
-    mapped = _DEPRECATED_MODELS.get(model) or _DEPRECATED_MODELS.get(normalized)
-    return mapped or normalized
+    candidates = [
+        (os.getenv("LLM_MODEL") or "").strip(),
+        (os.getenv("GEMINI_MODEL") or "").strip(),
+        DEFAULT_GOOGLE_MODEL,
+    ]
+    for model in candidates:
+        if not model or not _looks_like_google_model(model):
+            continue
+        normalized = model.removeprefix("models/")
+        mapped = _DEPRECATED_MODELS.get(model) or _DEPRECATED_MODELS.get(normalized)
+        return mapped or normalized
+    return DEFAULT_GOOGLE_MODEL
 
 
 def get_google_api_key() -> str:

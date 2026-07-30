@@ -21,13 +21,15 @@ import PipelineStatusBar from './components/PipelineStatusBar'
 import RequirementsDraftPanel from './components/RequirementsDraftPanel'
 import AcceptedProjectsPanel from './components/AcceptedProjectsPanel'
 import RunHistory from './components/RunHistory'
+import LinearExportButton from './components/LinearExportButton'
 import {
   PROMPT_COMPOSITION_HINTS,
   analyzePromptSufficiency,
   extractInitialPromptFromSpec,
 } from './lib/promptSufficiency'
+import { findLinearExportCandidate } from './lib/taskBreakdown'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8010'
 
 /** Spec mínimo ao começar do zero — sem fases de exemplo. */
 const BLANK_SPEC = `{
@@ -172,26 +174,35 @@ function App() {
     if (!runId) return undefined
 
     let cancelled = false
+    let timer = null
 
     const tick = async () => {
       try {
         if (!cancelled) {
-          await fetchStatus(runId)
+          const data = await fetchStatus(runId)
           setError(null)
+          const upper = String(data?.status || '').toUpperCase()
+          // Poll rápido enquanto executa; mais lento em gate humano / fim.
+          const nextMs =
+            upper === 'RUNNING' ? 800 : upper === 'AWAITING_APPROVAL' ? 2000 : 5000
+          if (!cancelled) {
+            timer = window.setTimeout(tick, nextMs)
+          }
+          return
         }
       } catch (err) {
         if (!cancelled) {
           setError(err.response?.data?.detail || err.message || 'Falha ao buscar status')
+          timer = window.setTimeout(tick, 2000)
         }
       }
     }
 
     tick()
-    const timer = setInterval(tick, 3000)
 
     return () => {
       cancelled = true
-      clearInterval(timer)
+      if (timer) window.clearTimeout(timer)
     }
   }, [runId, fetchStatus])
 
@@ -303,7 +314,12 @@ function App() {
     }
 
     setStarting(true)
-    setPhases(phasesFromSpecText(JSON.stringify(spec)))
+    const draftPhases = phasesFromSpecText(JSON.stringify(spec))
+    // Feedback imediato na barra: 1ª fase já como Executando.
+    if (draftPhases.length) {
+      draftPhases[0] = { ...draftPhases[0], status: 'RUNNING' }
+    }
+    setPhases(draftPhases)
     setRunStatus('RUNNING')
 
     try {
@@ -312,9 +328,21 @@ function App() {
         body.existing_run_id = pendingSubstituteRunId
       }
       const { data } = await axios.post(`${API_BASE}/api/pipeline/start`, body)
+      // runId cedo → poll começa enquanto a 1ª fase ainda roda no backend
       setRunId(data.run_id)
       setPendingSubstituteRunId(null)
-      setRunStatus(data.status)
+      setRunStatus(data.status || 'RUNNING')
+      if (data.phase_id) {
+        setPhases((prev) =>
+          prev.map((p) =>
+            p.phase_id === data.phase_id
+              ? { ...p, status: 'RUNNING' }
+              : p.status === 'RUNNING' && p.phase_id !== data.phase_id
+                ? { ...p, status: 'PENDING' }
+                : p,
+          ),
+        )
+      }
       await fetchStatus(data.run_id)
       await fetchHistory()
     } catch (err) {
@@ -366,6 +394,20 @@ function App() {
   const handleApprove = async (taskToken, modifiedArtifact) => {
     setError(null)
     setApprovingToken(taskToken)
+
+    // Otimista: fase atual aprovada; próxima pendente vira Executando na barra.
+    setPhases((prev) => {
+      const idx = prev.findIndex((p) => p.task_token === taskToken)
+      if (idx < 0) return prev
+      return prev.map((p, i) => {
+        if (i === idx) return { ...p, status: 'APPROVED', task_token: null }
+        if (i === idx + 1 && (p.status === 'PENDING' || !p.status)) {
+          return { ...p, status: 'RUNNING' }
+        }
+        return p
+      })
+    })
+    setRunStatus('RUNNING')
 
     try {
       const body = { approver: 'operator' }
@@ -484,6 +526,11 @@ function App() {
     if (phases?.length) return phases
     return phasesFromSpecText(specText)
   }, [phases, specText])
+
+  const linearExportCandidate = useMemo(
+    () => (runId ? findLinearExportCandidate(planPhases) : null),
+    [runId, planPhases],
+  )
 
   return (
     <div className="min-h-screen font-body text-slate-900">
@@ -769,6 +816,29 @@ function App() {
             )}
           </button>
 
+          {linearExportCandidate ? (
+            <div className="mt-4 rounded-xl border border-[#5E6AD2]/40 bg-[#5E6AD2]/8 px-4 py-4 text-left">
+              <p className="font-display text-sm font-semibold text-slate-950">
+                Integração Linear disponível
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                O Task Breakdown foi aprovado
+                {linearExportCandidate.epics?.length
+                  ? ` (${linearExportCandidate.epics.length} épicos)`
+                  : ''}
+                . Mesmo sem pedir Linear no texto inicial, você pode exportar
+                Epics/Issues agora.
+              </p>
+              <LinearExportButton
+                className="mt-3"
+                runId={runId}
+                apiBase={API_BASE}
+                epicCount={linearExportCandidate.epics.length}
+                compact
+              />
+            </div>
+          ) : null}
+
           {canAccept ? (
             <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50/90 px-4 py-4 text-left">
               <p className="font-display text-sm font-semibold text-emerald-950">
@@ -906,6 +976,8 @@ function App() {
                   autoApproveEnabled={autoApprove}
                   reopening={reopeningPhaseId === phase.phase_id}
                   onReopen={immutable ? undefined : handleReopen}
+                  runId={runId}
+                  apiBase={API_BASE}
                 />
               ))}
             </div>

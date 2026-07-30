@@ -1,7 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, Circle, Loader2, RotateCcw, ShieldCheck } from 'lucide-react'
 import ArtifactView from './ArtifactView'
+import LinearExportButton from './LinearExportButton'
 import { phaseAnchorId } from './PipelineStatusBar'
+import {
+  extractTaskBreakdownEpics,
+  isPhaseExportReady,
+  isTaskBreakdownPhase,
+} from '../lib/taskBreakdown'
 
 const STATUS_META = {
   PENDING: {
@@ -65,6 +71,8 @@ export default function PhaseCard({
   autoApproveEnabled = false,
   reopening = false,
   onReopen,
+  runId = null,
+  apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:8010',
 }) {
   const meta = STATUS_META[status] || STATUS_META.PENDING
   const Icon = meta.Icon
@@ -75,6 +83,15 @@ export default function PhaseCard({
   const lowQuality = typeof qualityScore === 'number' && qualityScore < 80
   const [draftArtifact, setDraftArtifact] = useState(artifactData)
   const draftRef = useRef(artifactData)
+  const breakdownEpics = useMemo(() => {
+    if (
+      !isTaskBreakdownPhase({ phase_id: phaseId, name }) ||
+      !isPhaseExportReady(status)
+    ) {
+      return null
+    }
+    return extractTaskBreakdownEpics(artifactData)
+  }, [phaseId, name, status, artifactData])
 
   useEffect(() => {
     setDraftArtifact(artifactData)
@@ -205,6 +222,20 @@ export default function PhaseCard({
             )}
           </button>
         )}
+
+        {breakdownEpics?.length && runId ? (
+          <div className="mt-5 border-t border-slate-200/80 pt-4">
+            <p className="mb-2 text-xs text-slate-600">
+              Task Breakdown aprovado — pode enviar os épicos/issues para o Linear.
+            </p>
+            <LinearExportButton
+              runId={runId}
+              apiBase={apiBase}
+              epicCount={breakdownEpics.length}
+              compact
+            />
+          </div>
+        ) : null}
       </article>
     </div>
   )

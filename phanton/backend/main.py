@@ -73,7 +73,7 @@ from services.structured_requirements import (
     PERFIL_ARTEFATO,
     draft_structured_requirements,
 )
-from services.text_to_spec import generate_pipeline_spec
+from services.text_to_spec import ensure_fixed_software_phases, generate_pipeline_spec
 from services.linear_export_helpers import (
     find_task_breakdown_artifact,
     resolve_spec_title,
@@ -174,6 +174,8 @@ async def generate_spec(payload: GenerateSpecRequest) -> GenerateSpecResponse:
         spec, model = await asyncio.to_thread(
             generate_pipeline_spec, prompt, structured
         )
+        # Defesa: Spec revisável já com fases fixas (security / task_breakdown).
+        spec = ensure_fixed_software_phases(spec)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
@@ -362,8 +364,9 @@ async def start_pipeline(
         spec_dict["phases"] = {}
     if not spec_dict.get("name"):
         spec_dict["name"] = spec_dict.get("description") or "pipeline"
-    # Ordena phases pela Spec (`order`) e normaliza types/capabilities.
-    spec_dict = normalize_spec_phases(spec_dict)
+    # Ordena phases + garante fases fixas (security_guidelines, task_breakdown…).
+    # Specs antigos na UI não podem omitir security só porque o JSON ficou desatualizado.
+    spec_dict = ensure_fixed_software_phases(normalize_spec_phases(spec_dict))
 
     if payload.existing_run_id:
         run = db.get(PipelineRun, payload.existing_run_id)
@@ -380,6 +383,7 @@ async def start_pipeline(
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         # Preserva lineage/identidade do substituto; atualiza Spec revisada.
         sync_run_identity(run, spec_dict)
+        run.spec = spec_dict
         run.status = "pending"
         db.add(run)
         db.commit()
@@ -398,7 +402,7 @@ async def start_pipeline(
         db.refresh(run)
 
     try:
-        result = await state_engine.start_pipeline(db, run.id, run.spec if isinstance(run.spec, dict) else spec_dict)
+        result = await state_engine.start_pipeline(db, run.id, spec_dict)
     except StateEngineError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:

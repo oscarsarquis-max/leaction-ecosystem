@@ -15,6 +15,7 @@ from services.text_to_spec import (
 
 
 def test_wants_task_breakdown_keywords():
+    """Helper legado (keywords) — a topologia software inclui a fase sempre."""
     assert _wants_task_breakdown("Quero exportar para o Linear")
     assert _wants_task_breakdown("Gere épicos e issues do backlog")
     assert _wants_task_breakdown("Prepare tarefas para o Jira")
@@ -122,11 +123,14 @@ def test_ensure_software_topology_adds_task_breakdown_when_asked():
     assert "generate_prd" in cfg["depends_on"]
 
 
-def test_ensure_software_topology_skips_task_breakdown_by_default():
+def test_ensure_software_topology_always_adds_task_breakdown():
+    """Task breakdown é fixo no software — sem exigir Linear/tarefas no prompt."""
     phases: dict = {}
     _ensure_software_topology(
         phases,
         user_prompt="Quero um micro-SaaS de gestão de hábitos diários.",
     )
     assert "generate_sdd" in phases
-    assert "task_breakdown" not in phases
+    assert "task_breakdown" in phases
+    assert phases["task_breakdown"]["type"] == "task_breakdown"
+    assert "generate_sdd" in phases["task_breakdown"]["depends_on"]

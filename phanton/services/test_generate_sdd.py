@@ -149,3 +149,22 @@ def test_normalize_strips_prd_appendix_and_keeps_build_order():
     )
     assert "Referência ao PRD" not in normalized["sdd_markdown"]
     assert normalized["build_order"][0]["modulo"] == "core"
+    assert "flowchart" in (normalized.get("architecture_mermaid") or "")
+
+
+def test_normalize_keeps_architecture_mermaid_and_strips_embedded_fence():
+    normalized = _normalize_sdd(
+        {
+            "sdd_markdown": (
+                "# SDD\n\n## Stack\nReact\n\n"
+                "```mermaid\nflowchart TB\n  A-->B\n```\n"
+            ),
+            "architecture_mermaid": "",
+            "build_order": [],
+        }
+    )
+    assert "```mermaid" not in normalized["sdd_markdown"]
+    assert "flowchart TB" in normalized["architecture_mermaid"]
+    assert "A-->B" in normalized["architecture_mermaid"] or "A --> B" in normalized[
+        "architecture_mermaid"
+    ]

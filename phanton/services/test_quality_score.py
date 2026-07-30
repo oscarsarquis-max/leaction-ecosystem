@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from services.phase_context import phase_description
 from services.quality_score import (
     ALWAYS_HUMAN,
     AUTO_APPROVE_THRESHOLD,
+    QUALITY_REDO_THRESHOLD,
     attach_quality_score,
+    build_quality_learning,
     compute_quality_score,
+    format_quality_learning_block,
     should_auto_approve,
+    should_redo_for_quality,
 )
 
 
@@ -144,3 +149,53 @@ def test_fallback_sdd_not_auto_approved():
     assert not should_auto_approve(
         auto_approve=True, phase_type="generate_sdd", quality_score=score
     )
+
+
+def test_should_redo_below_95():
+    assert QUALITY_REDO_THRESHOLD == 95
+    assert should_redo_for_quality(94, redos_done=0)
+    assert not should_redo_for_quality(50, redos_done=1)  # MAX_QUALITY_REDOS=1
+    assert not should_redo_for_quality(95, redos_done=0)
+    assert not should_redo_for_quality(100, redos_done=0)
+    assert not should_redo_for_quality(40, redos_done=2)
+    # Fallback já esgotou retries internos do handler — não dobra latência
+    assert not should_redo_for_quality(
+        20,
+        redos_done=0,
+        artifact={"meta": {"fallback": True}, "artifact_data": {}},
+    )
+
+
+def test_build_quality_learning_from_fallback_and_missing():
+    learning = build_quality_learning(
+        "generate_sdd",
+        20,
+        {
+            "meta": {"fallback": True, "attempts": ["boom"]},
+            "artifact_data": {"sdd_markdown": "x", "build_order": []},
+        },
+        attempt=1,
+    )
+    assert learning["previous_score"] == 20
+    assert learning["fallback"] is True
+    assert "build_order" in learning["missing_fields"]
+    joined = " ".join(learning["lessons"]).lower()
+    assert "fallback" in joined
+    assert "build_order" in joined
+
+
+def test_format_quality_learning_injected_in_phase_description():
+    learning = build_quality_learning(
+        "generate_prd",
+        80,
+        {"meta": {}, "artifact_data": {}},
+        attempt=1,
+    )
+    block = format_quality_learning_block(learning)
+    assert "APRENDIZADO" in block
+    assert "80" in block
+    desc = phase_description(
+        {"descricao": "Gerar PRD", "quality_learning": learning}
+    )
+    assert "Gerar PRD" in desc
+    assert "APRENDIZADO" in desc

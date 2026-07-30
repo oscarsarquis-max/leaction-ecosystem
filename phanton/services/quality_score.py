@@ -9,6 +9,10 @@ ALWAYS_HUMAN: frozenset[str] = frozenset({"security_guidelines"})
 
 AUTO_APPROVE_THRESHOLD = 80
 
+# Abaixo disso a fase é refeita com regras de aprendizado (antes do gate humano).
+QUALITY_REDO_THRESHOLD = 95
+MAX_QUALITY_REDOS = 1  # 1 reexecução com aprendizado (máx. 2 tentativas) — controla latência
+
 # Penalidades da fórmula inicial (ajustáveis).
 PENALTY_FALLBACK = 50
 PENALTY_RETRY = 10  # por tentativa além da primeira (cada item em attempts)
@@ -80,6 +84,7 @@ def _missing_required_fields(
     if ptype == "generate_sdd":
         need("sdd_markdown")
         need("build_order")
+        # architecture_mermaid é desejável; se ausente o frontend deriva do build_order
     elif ptype == "generate_prd":
         need("prd_markdown")
     elif ptype == "task_breakdown":
@@ -201,6 +206,134 @@ def should_auto_approve(
     if ptype in ALWAYS_HUMAN:
         return False
     return int(quality_score) >= int(threshold)
+
+
+def should_redo_for_quality(
+    quality_score: int,
+    *,
+    redos_done: int,
+    threshold: int = QUALITY_REDO_THRESHOLD,
+    max_redos: int = MAX_QUALITY_REDOS,
+    artifact: Any = None,
+) -> bool:
+    """True se a fase deve ser re-executada com aprendizado.
+
+    Não refaz quando o handler já esgotou retries internos (fallback=True):
+    a 2ª volta LLM quase nunca recupera e dobra a latência (ex.: SDD ~2–3 min).
+    """
+    if int(redos_done) >= int(max_redos):
+        return False
+    if int(quality_score) >= int(threshold):
+        return False
+    meta, _ = unwrap_artifact_payload(artifact) if artifact is not None else ({}, {})
+    if meta.get("fallback") is True:
+        return False
+    return True
+
+
+def build_quality_learning(
+    phase_type: str,
+    quality_score: int,
+    artifact: Any,
+    *,
+    attempt: int,
+    expected_modules: Optional[list[str]] = None,
+) -> dict[str, Any]:
+    """
+    Regras de aprendizado a partir da avaliação objetiva.
+
+    Usado na reexecução: o modelo recebe lições concretas (campos faltantes,
+    fallback, truncamento) para corrigir a próxima tentativa.
+    """
+    meta, content = unwrap_artifact_payload(artifact)
+    if not meta and isinstance(artifact, dict):
+        meta = _as_dict(artifact.get("meta"))
+    missing = _missing_required_fields(
+        phase_type, content, expected_modules=expected_modules
+    )
+    lessons: list[str] = []
+
+    if meta.get("fallback") is True:
+        lessons.append(
+            "A tentativa anterior caiu em FALLBACK — produza o artefato completo "
+            "nos campos obrigatórios; não devolva template genérico."
+        )
+    if _finish_reason_max_tokens(meta):
+        lessons.append(
+            "A saída foi truncada (MAX_TOKENS) — seja mais conciso, priorize "
+            "seções/campos obrigatórios e evite repetir o pedido do usuário."
+        )
+    failures = _attempt_failures(meta)
+    if failures > 0:
+        lessons.append(
+            "Houve falhas de parsing/validação antes do sucesso — responda só "
+            "JSON válido no schema pedido, sem preâmbulo nem markdown fora dos campos."
+        )
+    for field in missing:
+        lessons.append(
+            f"Campo obrigatório ausente ou vazio: `{field}` — preencha com conteúdo real."
+        )
+
+    ptype = (phase_type or "").strip().lower()
+    if ptype == "generate_sdd" and not _is_present(content.get("architecture_mermaid")):
+        lessons.append(
+            "Inclua `architecture_mermaid` (flowchart Mermaid da arquitetura) "
+            "além do sdd_markdown e build_order."
+        )
+    if ptype == "task_breakdown":
+        lessons.append(
+            "Garanta Epics com Issues e description_micro_prompt em PT-BR em cada issue."
+        )
+    if ptype == "prompt_cursor":
+        lessons.append(
+            "Entregue module_prompts substantivos (ou cursor_prompt rico); "
+            "evite um único parágrafo genérico."
+        )
+
+    if not lessons:
+        lessons.append(
+            "A nota ficou abaixo do limiar — melhore completude, precisão e "
+            "aderência ao schema da fase sem inventar dados contraditórios."
+        )
+
+    return {
+        "attempt": int(attempt),
+        "previous_score": int(quality_score),
+        "threshold": QUALITY_REDO_THRESHOLD,
+        "phase_type": ptype,
+        "missing_fields": missing,
+        "fallback": bool(meta.get("fallback") is True),
+        "max_tokens": _finish_reason_max_tokens(meta),
+        "lessons": lessons,
+    }
+
+
+def format_quality_learning_block(learning: Any) -> str:
+    """Texto injetado no prompt da reexecução."""
+    if not isinstance(learning, dict) or not learning:
+        return ""
+    lessons = learning.get("lessons") or []
+    if not isinstance(lessons, list) or not lessons:
+        return ""
+    score = learning.get("previous_score")
+    attempt = learning.get("attempt")
+    threshold = learning.get("threshold", QUALITY_REDO_THRESHOLD)
+    lines = [
+        "=== APRENDIZADO DA AVALIAÇÃO DE QUALIDADE (OBRIGATÓRIO CORRIGIR) ===",
+        f"Tentativa anterior #{attempt}: nota {score}/100 "
+        f"(limiar para aceitar sem refazer: {threshold}).",
+        "Regras a aplicar nesta reexecução:",
+    ]
+    for i, lesson in enumerate(lessons, start=1):
+        text = str(lesson or "").strip()
+        if text:
+            lines.append(f"{i}. {text}")
+    lines.append(
+        "Não repita os mesmos defeitos. Se um campo era vazio/fallback, "
+        "agora entregue conteúdo completo e verificável."
+    )
+    lines.append("=== FIM DO APRENDIZADO ===")
+    return "\n".join(lines)
 
 
 def attach_quality_score(artifact: Any, score: int) -> dict[str, Any]:

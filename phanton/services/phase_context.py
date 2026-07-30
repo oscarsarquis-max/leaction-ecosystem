@@ -21,13 +21,21 @@ def phase_cfg(spec: dict[str, Any] | None, phase_id: str) -> dict[str, Any]:
 
 
 def phase_description(cfg: dict[str, Any], *, fallback: str = "") -> str:
-    return str(
+    base = str(
         cfg.get("descricao")
         or cfg.get("description")
         or cfg.get("prompt")
         or fallback
         or ""
     ).strip()
+    learning = cfg.get("quality_learning") if isinstance(cfg, dict) else None
+    if learning:
+        from services.quality_score import format_quality_learning_block
+
+        block = format_quality_learning_block(learning)
+        if block:
+            base = f"{base}\n\n{block}".strip() if base else block
+    return base
 
 
 # phase_id (exato) → capability. Sempre vence o type enviado pelo LLM.
