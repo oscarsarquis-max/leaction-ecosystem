@@ -21,6 +21,11 @@ for _path in (str(_ROOT), str(_BACKEND)):
 
 from models import PhaseExecution, PipelineRun  # noqa: E402
 from services.phase_context import normalize_phase_type, phase_cfg  # noqa: E402
+from services.project_versioning import (  # noqa: E402
+    ProjectVersioningError,
+    assert_run_mutable,
+    sync_run_identity,
+)
 from services.phase_L1 import execute_phase_L1  # noqa: E402
 from services.phase_L2 import execute_phase_L2  # noqa: E402
 from services.phase_L3 import execute_phase_L3  # noqa: E402
@@ -273,6 +278,11 @@ async def start_pipeline(db_session: Session, run_id: str | UUID, spec: dict[str
     if run is None:
         raise StateEngineError(f"Pipeline run não encontrado: {run_uuid}")
 
+    try:
+        assert_run_mutable(run)
+    except ProjectVersioningError as exc:
+        raise StateEngineError(str(exc)) from exc
+
     spec = normalize_spec_phases(dict(spec) if isinstance(spec, dict) else {})
     if "auto_approve" not in spec:
         spec["auto_approve"] = False
@@ -282,13 +292,13 @@ async def start_pipeline(db_session: Session, run_id: str | UUID, spec: dict[str
     if not order:
         raise StateEngineError("spec.phases vazio — nenhuma fase para executar")
 
-    # Persiste a ordem canônica no run (evita JSON embaralhado no banco).
-    run.spec = spec
+    # Persiste a ordem canônica + identidade projeto/versão.
+    sync_run_identity(run, spec)
     run.status = STATUS_RUNNING
     _touch_run(run)
     db_session.commit()
 
-    return await trigger_phase(db_session, run_uuid, order[0], spec)
+    return await trigger_phase(db_session, run_uuid, order[0], run.spec)
 
 
 async def trigger_phase(
@@ -386,6 +396,11 @@ async def approve_phase(
     if run is None:
         raise StateEngineError(f"Pipeline run não encontrado: {phase.run_id}")
 
+    try:
+        assert_run_mutable(run)
+    except ProjectVersioningError as exc:
+        raise StateEngineError(str(exc)) from exc
+
     phase.status = STATUS_APPROVED
     if modified_artifact is not None:
         phase.artifact_data = modified_artifact
@@ -445,6 +460,11 @@ async def reopen_auto_approved_phase(
     run = db_session.get(PipelineRun, run_uuid)
     if run is None:
         raise StateEngineError(f"Pipeline run não encontrado: {run_uuid}")
+
+    try:
+        assert_run_mutable(run)
+    except ProjectVersioningError as exc:
+        raise StateEngineError(str(exc)) from exc
 
     phase = (
         db_session.query(PhaseExecution)

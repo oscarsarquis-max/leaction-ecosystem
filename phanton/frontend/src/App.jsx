@@ -7,7 +7,9 @@ import {
   CheckCircle2,
   Circle,
   Loader2,
+  Lock,
   Play,
+  ShieldCheck,
   Sparkles,
   Workflow,
 } from 'lucide-react'
@@ -16,6 +18,7 @@ import FixedTextField from './components/FixedTextField'
 import PhaseCard from './components/PhaseCard'
 import PipelineStatusBar from './components/PipelineStatusBar'
 import RequirementsDraftPanel from './components/RequirementsDraftPanel'
+import AcceptedProjectsPanel from './components/AcceptedProjectsPanel'
 import RunHistory from './components/RunHistory'
 import {
   PROMPT_COMPOSITION_HINTS,
@@ -84,6 +87,12 @@ function App() {
   const [historyTotal, setHistoryTotal] = useState(0)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [statusBarBump, setStatusBarBump] = useState(0)
+  const [canAccept, setCanAccept] = useState(false)
+  const [immutable, setImmutable] = useState(false)
+  const [projectMeta, setProjectMeta] = useState(null)
+  const [accepting, setAccepting] = useState(false)
+  const [pendingSubstituteRunId, setPendingSubstituteRunId] = useState(null)
+  const [acceptedPanelKey, setAcceptedPanelKey] = useState(0)
 
   const sufficiency = useMemo(
     () => analyzePromptSufficiency(naturalPrompt),
@@ -128,6 +137,14 @@ function App() {
         setSpecText(JSON.stringify(data.spec, null, 2))
       }
     }
+    setCanAccept(Boolean(data.can_accept))
+    setImmutable(Boolean(data.immutable))
+    setProjectMeta({
+      project_key: data.project_key,
+      project_name: data.project_name,
+      version: data.version,
+      acceptance_status: data.acceptance_status,
+    })
     return data
   }, [])
 
@@ -279,8 +296,13 @@ function App() {
     setRunStatus('RUNNING')
 
     try {
-      const { data } = await axios.post(`${API_BASE}/api/pipeline/start`, { spec })
+      const body = { spec }
+      if (pendingSubstituteRunId) {
+        body.existing_run_id = pendingSubstituteRunId
+      }
+      const { data } = await axios.post(`${API_BASE}/api/pipeline/start`, body)
       setRunId(data.run_id)
+      setPendingSubstituteRunId(null)
       setRunStatus(data.status)
       await fetchStatus(data.run_id)
       await fetchHistory()
@@ -372,6 +394,7 @@ function App() {
 
   const handleSelectHistory = async (selectedRunId) => {
     setError(null)
+    setPendingSubstituteRunId(null)
     try {
       setRunId(selectedRunId)
       const data = await fetchStatus(selectedRunId, { syncSpec: true })
@@ -398,7 +421,52 @@ function App() {
     setDraftingRequirements(false)
     setRequirementsDraft(null)
     setRequirementsReady(false)
+    setCanAccept(false)
+    setImmutable(false)
+    setProjectMeta(null)
+    setPendingSubstituteRunId(null)
     setStatusBarBump((n) => n + 1)
+  }
+
+  const handleAcceptProject = async () => {
+    if (!runId) return
+    setError(null)
+    setAccepting(true)
+    try {
+      await axios.post(`${API_BASE}/api/pipeline/${runId}/accept`, {})
+      await fetchStatus(runId, { syncSpec: true })
+      await fetchHistory()
+      setAcceptedPanelKey((n) => n + 1)
+    } catch (err) {
+      setError(
+        err.response?.data?.detail || err.message || 'Falha ao aceitar o projeto',
+      )
+    } finally {
+      setAccepting(false)
+    }
+  }
+
+  const handleSubstituteCreated = (data) => {
+    if (!data?.spec) return
+    setError(null)
+    setPendingSubstituteRunId(data.run_id)
+    setRunId(null)
+    setRunStatus('pending')
+    setPhases(phasesFromSpecText(JSON.stringify(data.spec, null, 2)))
+    setSpecText(JSON.stringify(data.spec, null, 2))
+    setNaturalPrompt(
+      typeof data.spec.user_prompt === 'string' ? data.spec.user_prompt : '',
+    )
+    setCanAccept(false)
+    setImmutable(false)
+    setProjectMeta({
+      project_key: data.project_key,
+      project_name: data.project_name,
+      version: data.version,
+      acceptance_status: 'open',
+    })
+    setStatusBarBump((n) => n + 1)
+    fetchHistory()
   }
 
   const planPhases = useMemo(() => {
@@ -422,16 +490,39 @@ function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
-            <Activity className="h-3.5 w-3.5 text-emerald-500" />
-            {runId ? (
-              <span>
-                Run <span className="font-mono">{String(runId).slice(0, 8)}</span>
-                {runStatus ? ` · ${runStatus}` : ''}
+          <div className="flex flex-wrap items-center gap-2">
+            {projectMeta?.version ? (
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
+                {projectMeta.project_name || 'Projeto'}
+                <span className="mx-1 text-slate-300">·</span>
+                v{projectMeta.version}
               </span>
-            ) : (
-              <span>Nenhum run ativo</span>
-            )}
+            ) : null}
+            {immutable ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">
+                <Lock className="h-3.5 w-3.5" />
+                Aceito · imutável
+              </span>
+            ) : null}
+            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700">
+              <Activity className="h-3.5 w-3.5 text-emerald-500" />
+              {runId ? (
+                <span>
+                  Run <span className="font-mono">{String(runId).slice(0, 8)}</span>
+                  {runStatus ? ` · ${runStatus}` : ''}
+                </span>
+              ) : pendingSubstituteRunId ? (
+                <span>
+                  Substituto{' '}
+                  <span className="font-mono">
+                    {String(pendingSubstituteRunId).slice(0, 8)}
+                  </span>{' '}
+                  · revise e inicie
+                </span>
+              ) : (
+                <span>Nenhum run ativo</span>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -649,7 +740,7 @@ function App() {
           <button
             type="button"
             onClick={handleStart}
-            disabled={starting || generatingSpec}
+            disabled={starting || generatingSpec || immutable}
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-700 via-emerald-600 to-lime-500 px-4 py-3.5 font-display text-sm font-semibold text-white shadow-[0_8px_24px_rgba(16,185,129,0.35)] transition hover:from-emerald-800 hover:via-emerald-700 hover:to-lime-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {starting ? (
@@ -660,10 +751,38 @@ function App() {
             ) : (
               <>
                 <Play className="h-4 w-4" />
-                Iniciar Pipeline
+                {pendingSubstituteRunId
+                  ? 'Iniciar pipeline substituto'
+                  : 'Iniciar Pipeline'}
               </>
             )}
           </button>
+
+          {canAccept ? (
+            <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50/90 px-4 py-4 text-left">
+              <p className="font-display text-sm font-semibold text-emerald-950">
+                Pipeline completo — revise antes de aceitar
+              </p>
+              <p className="mt-1 text-xs text-emerald-900/80">
+                Ao aceitar, esta versão ({projectMeta?.version || '1.0'}) fica imutável.
+                Depois disso, retorno e evolução criam um pipeline substituto com nova
+                versão.
+              </p>
+              <button
+                type="button"
+                onClick={handleAcceptProject}
+                disabled={accepting}
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-800 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {accepting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                )}
+                Aceitar projeto
+              </button>
+            </div>
+          ) : null}
 
           {error && (
             <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-left text-sm text-red-700">
@@ -689,6 +808,13 @@ function App() {
           onNewCreation={handleNewCreation}
         />
 
+        <AcceptedProjectsPanel
+          key={acceptedPanelKey}
+          apiBase={API_BASE}
+          onError={setError}
+          onSubstituteCreated={handleSubstituteCreated}
+        />
+
         {/* Plano Geral */}
         <section className="rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-sm backdrop-blur">
           <div className="mb-6 text-left">
@@ -701,28 +827,31 @@ function App() {
             <p className="mt-1 max-w-2xl text-sm text-slate-500">
               Resultados de cada fase são persistidos no banco. Selecione um item do
               histórico para recuperar artefatos anteriores, ou acompanhe o run ativo.
+              {immutable
+                ? ' Esta versão foi aceita e está imutável.'
+                : ''}
             </p>
           </div>
 
           <div className="max-w-3xl">
             {planPhases.map((phase, index) => (
               <PhaseCard
-                key={`${runId || 'draft'}-${phase.phase_id}`}
+                key={`${runId || pendingSubstituteRunId || 'draft'}-${phase.phase_id}`}
                 phaseId={phase.phase_id}
                 name={phase.name}
                 status={phase.status}
                 artifactData={phase.artifact_data}
-                taskToken={phase.task_token}
+                taskToken={immutable ? null : phase.task_token}
                 approver={phase.approver}
                 isLast={index === planPhases.length - 1}
                 approving={approvingToken === phase.task_token}
-                onApprove={handleApprove}
-                canDeliverModules={Boolean(runId)}
+                onApprove={immutable ? undefined : handleApprove}
+                canDeliverModules={Boolean(runId) && !immutable}
                 deliveringModulo={deliveringModulo}
                 onDeliverModule={(modulo) => handleDeliverModule(phase.phase_id, modulo)}
                 autoApproveEnabled={autoApprove}
                 reopening={reopeningPhaseId === phase.phase_id}
-                onReopen={handleReopen}
+                onReopen={immutable ? undefined : handleReopen}
               />
             ))}
           </div>

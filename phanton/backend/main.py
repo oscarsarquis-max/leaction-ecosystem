@@ -18,6 +18,8 @@ for _path in (str(_ROOT), str(_BACKEND)):
 from database import get_db
 from models import PhaseExecution, PipelineRun
 from schemas import (
+    AcceptProjectRequest,
+    AcceptProjectResponse,
     ApprovePhaseRequest,
     ApprovePhaseResponse,
     AutoApproveRequest,
@@ -26,20 +28,41 @@ from schemas import (
     DeliverModuleResponse,
     DraftRequirementsRequest,
     DraftRequirementsResponse,
+    EvolveRequest,
     GenerateSpecRequest,
     GenerateSpecResponse,
     HealthResponse,
     PhaseStatusRead,
+    PhantonImprovementDecisionRequest,
+    PhantonImprovementDecisionResponse,
+    PhantonImprovementRead,
     PipelineHistoryItem,
     PipelineHistoryPhaseSummary,
     PipelineHistoryResponse,
     PipelineStartRequest,
     PipelineStartResponse,
     PipelineStatusResponse,
+    ProjectSearchItem,
+    ProjectSearchResponse,
     ReopenPhaseResponse,
+    RetornoRequest,
+    SubstitutePipelineResponse,
 )
 from services import state_engine
 from services.build_order import locate_module_queue, mark_module_entregue
+from services.phanton_improvements import (
+    PhantonImprovementError,
+    decide_proposal,
+)
+from services.project_versioning import (
+    ProjectVersioningError,
+    accept_project,
+    assert_run_mutable,
+    create_substitute_draft,
+    is_accepted,
+    search_accepted_projects,
+    sync_run_identity,
+)
 from services.state_engine import (
     StateEngineError,
     normalize_spec_phases,
@@ -71,7 +94,7 @@ PHASE_LABELS = {
 app = FastAPI(
     title="Phanton Orchestrator",
     description="API de Orquestração de Pipeline Multi-Modelo",
-    version="0.1.0",
+    version="1.1.0",
 )
 
 app.add_middleware(
@@ -241,6 +264,9 @@ def list_pipeline_history(
                 phase_count=len(plan_ids),
                 approved_count=approved_count,
                 phases=phase_summaries,
+                project_key=run.project_key or spec_dict.get("project_key"),
+                version=run.version or spec_dict.get("version"),
+                acceptance_status=run.acceptance_status,
             )
         )
 
@@ -304,6 +330,18 @@ def get_pipeline_status(
         created_at=run.created_at,
         updated_at=run.updated_at,
         phases=phases,
+        project_key=run.project_key,
+        project_name=run.project_name,
+        version=run.version,
+        acceptance_status=run.acceptance_status or "open",
+        accepted_at=run.accepted_at,
+        parent_run_id=run.parent_run_id,
+        lineage_kind=run.lineage_kind,
+        immutable=is_accepted(run),
+        can_accept=(
+            (run.status or "").upper() == "COMPLETED"
+            and not is_accepted(run)
+        ),
     )
 
 @app.post("/api/pipeline/start", response_model=PipelineStartResponse)
@@ -320,17 +358,40 @@ async def start_pipeline(
     # Ordena phases pela Spec (`order`) e normaliza types/capabilities.
     spec_dict = normalize_spec_phases(spec_dict)
 
-    run = PipelineRun(
-        id=uuid4(),
-        spec=spec_dict,
-        status="pending",
-    )
-    db.add(run)
-    db.commit()
-    db.refresh(run)
+    if payload.existing_run_id:
+        run = db.get(PipelineRun, payload.existing_run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail="Pipeline run não encontrado")
+        if (run.status or "").lower() not in ("pending",):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Só é possível iniciar run pending (status={run.status})",
+            )
+        try:
+            assert_run_mutable(run)
+        except ProjectVersioningError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        # Preserva lineage/identidade do substituto; atualiza Spec revisada.
+        sync_run_identity(run, spec_dict)
+        run.status = "pending"
+        db.add(run)
+        db.commit()
+        db.refresh(run)
+    else:
+        # Identidade projeto+versão (operacional a partir do start).
+        run = PipelineRun(
+            id=uuid4(),
+            spec=spec_dict,
+            status="pending",
+            acceptance_status="open",
+        )
+        sync_run_identity(run, spec_dict)
+        db.add(run)
+        db.commit()
+        db.refresh(run)
 
     try:
-        result = await state_engine.start_pipeline(db, run.id, spec_dict)
+        result = await state_engine.start_pipeline(db, run.id, run.spec if isinstance(run.spec, dict) else spec_dict)
     except StateEngineError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -375,6 +436,10 @@ def set_pipeline_auto_approve(
     run = db.get(PipelineRun, run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Pipeline run não encontrado")
+    try:
+        assert_run_mutable(run)
+    except ProjectVersioningError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     spec = dict(run.spec) if isinstance(run.spec, dict) else {}
     spec["auto_approve"] = bool(payload.auto_approve)
     run.spec = spec
@@ -455,6 +520,10 @@ def deliver_prompt_cursor_module(
     run = db.get(PipelineRun, run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Pipeline run não encontrado")
+    try:
+        assert_run_mutable(run)
+    except ProjectVersioningError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     phase = (
         db.query(PhaseExecution)
@@ -508,4 +577,190 @@ def deliver_prompt_cursor_module(
         modulo=payload.modulo,
         artifact_data=phase.artifact_data or {},
         module_prompts=updated_queue,
+    )
+
+
+@app.post("/api/pipeline/{run_id}/accept", response_model=AcceptProjectResponse)
+def accept_pipeline_project(
+    run_id: UUID,
+    payload: Optional[AcceptProjectRequest] = None,
+    db: Session = Depends(get_db),
+) -> AcceptProjectResponse:
+    """Fecha aceitação do projeto completo — resultado fica imutável."""
+    body = payload or AcceptProjectRequest()
+    try:
+        result = accept_project(db, run_id, project_name=body.project_name)
+    except ProjectVersioningError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return AcceptProjectResponse(
+        run_id=UUID(result["run_id"]),
+        project_key=result["project_key"],
+        project_name=result["project_name"],
+        version=result["version"],
+        status=result["status"],
+        acceptance_status=result["acceptance_status"],
+        accepted_at=result.get("accepted_at"),
+    )
+
+
+@app.get("/api/projects/search", response_model=ProjectSearchResponse)
+def search_projects(
+    q: str = "",
+    version: Optional[str] = None,
+    limit: int = 40,
+    db: Session = Depends(get_db),
+) -> ProjectSearchResponse:
+    """Busca projetos aceitos por nome/chave/versão — pós-aceitação."""
+    items = search_accepted_projects(db, query=q, version=version, limit=limit)
+    return ProjectSearchResponse(
+        items=[
+            ProjectSearchItem(
+                run_id=UUID(item["run_id"]),
+                project_key=item["project_key"],
+                project_name=item["project_name"],
+                version=item["version"],
+                status=item["status"],
+                acceptance_status=item["acceptance_status"],
+                accepted_at=item.get("accepted_at"),
+                created_at=item.get("created_at"),
+                parent_run_id=(
+                    UUID(item["parent_run_id"]) if item.get("parent_run_id") else None
+                ),
+                lineage_kind=item.get("lineage_kind"),
+            )
+            for item in items
+        ],
+        total=len(items),
+    )
+
+
+@app.post(
+    "/api/pipeline/{run_id}/retorno",
+    response_model=SubstitutePipelineResponse,
+)
+async def submit_retorno(
+    run_id: UUID,
+    payload: RetornoRequest,
+    db: Session = Depends(get_db),
+) -> SubstitutePipelineResponse:
+    """Retorno do implementador → reanálise → pipeline substituto versionado."""
+    try:
+        result = await asyncio.to_thread(
+            create_substitute_draft,
+            db,
+            run_id,
+            kind="retorno",
+            user_input=payload.content,
+            generate_spec_fn=generate_pipeline_spec,
+        )
+    except ProjectVersioningError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Falha na reanálise do retorno: {exc}"
+        ) from exc
+
+    return SubstitutePipelineResponse(
+        source_run_id=UUID(result["source_run_id"]),
+        run_id=UUID(result["run_id"]),
+        project_key=result["project_key"],
+        project_name=result["project_name"],
+        version=result["version"],
+        parent_version=result["parent_version"],
+        lineage_kind=result["lineage_kind"],
+        status=result["status"],
+        spec=result["spec"],
+        model=result.get("model"),
+        phanton_improvement=_map_phanton_improvement(result.get("phanton_improvement")),
+    )
+
+
+@app.post(
+    "/api/pipeline/{run_id}/evolve",
+    response_model=SubstitutePipelineResponse,
+)
+async def evolve_project(
+    run_id: UUID,
+    payload: EvolveRequest,
+    db: Session = Depends(get_db),
+) -> SubstitutePipelineResponse:
+    """Manutenção/evolução → reanálise → pipeline substituto versionado."""
+    try:
+        result = await asyncio.to_thread(
+            create_substitute_draft,
+            db,
+            run_id,
+            kind="evolucao",
+            user_input=payload.request,
+            generate_spec_fn=generate_pipeline_spec,
+        )
+    except ProjectVersioningError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Falha na reanálise de evolução: {exc}"
+        ) from exc
+
+    return SubstitutePipelineResponse(
+        source_run_id=UUID(result["source_run_id"]),
+        run_id=UUID(result["run_id"]),
+        project_key=result["project_key"],
+        project_name=result["project_name"],
+        version=result["version"],
+        parent_version=result["parent_version"],
+        lineage_kind=result["lineage_kind"],
+        status=result["status"],
+        spec=result["spec"],
+        model=result.get("model"),
+        phanton_improvement=None,
+    )
+
+
+def _map_phanton_improvement(raw: Optional[dict]) -> Optional[PhantonImprovementRead]:
+    if not isinstance(raw, dict) or not raw.get("id"):
+        return None
+    return PhantonImprovementRead(
+        id=UUID(str(raw["id"])),
+        source_run_id=(
+            UUID(str(raw["source_run_id"])) if raw.get("source_run_id") else None
+        ),
+        substitute_run_id=(
+            UUID(str(raw["substitute_run_id"]))
+            if raw.get("substitute_run_id")
+            else None
+        ),
+        title=str(raw.get("title") or ""),
+        summary=str(raw.get("summary") or ""),
+        items=list(raw.get("items") or []),
+        status=str(raw.get("status") or "pending"),
+        source=raw.get("source"),
+        created_at=raw.get("created_at"),
+        decided_at=raw.get("decided_at"),
+    )
+
+
+@app.post(
+    "/api/phanton-improvements/{proposal_id}/decide",
+    response_model=PhantonImprovementDecisionResponse,
+)
+def decide_phanton_improvement(
+    proposal_id: UUID,
+    payload: PhantonImprovementDecisionRequest,
+    db: Session = Depends(get_db),
+) -> PhantonImprovementDecisionResponse:
+    """Aceitação ou rejeição explícita da melhoria proposta no Phanton."""
+    try:
+        result = decide_proposal(db, proposal_id, decision=payload.decision)
+    except PhantonImprovementError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return PhantonImprovementDecisionResponse(
+        id=UUID(str(result["id"])),
+        status=result["status"],
+        title=result["title"],
+        summary=result["summary"],
+        decided_at=result.get("decided_at"),
     )

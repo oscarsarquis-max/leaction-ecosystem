@@ -19,7 +19,7 @@ function formatWhen(value) {
 
 function statusTone(status) {
   const s = String(status || '').toUpperCase()
-  if (s === 'COMPLETED' || s === 'APPROVED') {
+  if (s === 'COMPLETED' || s === 'APPROVED' || s === 'ACCEPTED') {
     return 'border-emerald-200 bg-emerald-50 text-emerald-800'
   }
   if (s === 'RUNNING' || s === 'AWAITING_APPROVAL' || s === 'PENDING') {
@@ -117,17 +117,30 @@ export default function RunHistory({
                       </p>
                       <p className="mt-0.5 font-mono text-[11px] text-slate-500">
                         {String(item.run_id).slice(0, 8)}…
+                        {item.version ? (
+                          <>
+                            <span className="mx-1.5 text-slate-300">·</span>
+                            v{item.version}
+                          </>
+                        ) : null}
                         <span className="mx-1.5 text-slate-300">·</span>
                         {formatWhen(item.created_at)}
                       </p>
                     </div>
-                    <span
-                      className={`inline-flex shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${statusTone(
-                        item.status,
-                      )}`}
-                    >
-                      {item.status}
-                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${statusTone(
+                          item.status,
+                        )}`}
+                      >
+                        {item.status}
+                      </span>
+                      {item.acceptance_status === 'accepted' ? (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                          aceito
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   {item.description ? (
                     <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-600">

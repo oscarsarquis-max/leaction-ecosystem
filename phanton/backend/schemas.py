@@ -63,6 +63,13 @@ class PipelineRunRead(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    project_key: Optional[str] = None
+    project_name: Optional[str] = None
+    version: Optional[str] = None
+    acceptance_status: str = "open"
+    accepted_at: Optional[datetime] = None
+    parent_run_id: Optional[UUID] = None
+    lineage_kind: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -129,6 +136,8 @@ class PipelineStartRequest(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     spec: PipelineSpec
+    # Quando informado, inicia um run `pending` já criado (ex.: substituto pós-aceitação).
+    existing_run_id: Optional[UUID] = None
 
 
 class PipelineStartResponse(BaseModel):
@@ -205,6 +214,15 @@ class PipelineStatusResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     phases: list[PhaseStatusRead]
+    project_key: Optional[str] = None
+    project_name: Optional[str] = None
+    version: Optional[str] = None
+    acceptance_status: str = "open"
+    accepted_at: Optional[datetime] = None
+    parent_run_id: Optional[UUID] = None
+    lineage_kind: Optional[str] = None
+    immutable: bool = False
+    can_accept: bool = False
 
 
 class PipelineHistoryPhaseSummary(BaseModel):
@@ -224,8 +242,90 @@ class PipelineHistoryItem(BaseModel):
     phase_count: int = 0
     approved_count: int = 0
     phases: list[PipelineHistoryPhaseSummary] = Field(default_factory=list)
+    project_key: Optional[str] = None
+    version: Optional[str] = None
+    acceptance_status: Optional[str] = None
 
 
 class PipelineHistoryResponse(BaseModel):
     items: list[PipelineHistoryItem]
     total: int
+
+
+class AcceptProjectRequest(BaseModel):
+    project_name: Optional[str] = None
+
+
+class AcceptProjectResponse(BaseModel):
+    run_id: UUID
+    project_key: str
+    project_name: str
+    version: str
+    status: str
+    acceptance_status: str
+    accepted_at: Optional[datetime] = None
+
+
+class ProjectSearchItem(BaseModel):
+    run_id: UUID
+    project_key: str
+    project_name: str
+    version: str
+    status: str
+    acceptance_status: str
+    accepted_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    parent_run_id: Optional[UUID] = None
+    lineage_kind: Optional[str] = None
+
+
+class ProjectSearchResponse(BaseModel):
+    items: list[ProjectSearchItem]
+    total: int
+
+
+class RetornoRequest(BaseModel):
+    content: str
+
+
+class EvolveRequest(BaseModel):
+    request: str
+
+
+class PhantonImprovementRead(BaseModel):
+    id: UUID
+    source_run_id: Optional[UUID] = None
+    substitute_run_id: Optional[UUID] = None
+    title: str
+    summary: str
+    items: list[Any] = Field(default_factory=list)
+    status: str
+    source: Optional[str] = None
+    created_at: Optional[datetime] = None
+    decided_at: Optional[datetime] = None
+
+
+class PhantonImprovementDecisionRequest(BaseModel):
+    decision: str  # aceitar | rejeitar | accept | reject
+
+
+class PhantonImprovementDecisionResponse(BaseModel):
+    id: UUID
+    status: str
+    title: str
+    summary: str
+    decided_at: Optional[datetime] = None
+
+
+class SubstitutePipelineResponse(BaseModel):
+    source_run_id: UUID
+    run_id: UUID
+    project_key: str
+    project_name: str
+    version: str
+    parent_version: str
+    lineage_kind: str
+    status: str
+    spec: dict[str, Any]
+    model: Optional[str] = None
+    phanton_improvement: Optional[PhantonImprovementRead] = None
