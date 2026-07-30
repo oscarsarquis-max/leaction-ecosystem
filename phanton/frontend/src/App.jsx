@@ -16,6 +16,7 @@ import {
 import CopyableBlock from './components/CopyableBlock'
 import FixedTextField from './components/FixedTextField'
 import PhaseCard from './components/PhaseCard'
+import PipelineGraph from './components/dag/PipelineGraph'
 import PipelineStatusBar from './components/PipelineStatusBar'
 import RequirementsDraftPanel from './components/RequirementsDraftPanel'
 import AcceptedProjectsPanel from './components/AcceptedProjectsPanel'
@@ -93,11 +94,21 @@ function App() {
   const [accepting, setAccepting] = useState(false)
   const [pendingSubstituteRunId, setPendingSubstituteRunId] = useState(null)
   const [acceptedPanelKey, setAcceptedPanelKey] = useState(0)
+  const [phasesView, setPhasesView] = useState('graph') // 'graph' | 'list'
 
   const sufficiency = useMemo(
     () => analyzePromptSufficiency(naturalPrompt),
     [naturalPrompt],
   )
+
+  const parsedSpec = useMemo(() => {
+    try {
+      const spec = JSON.parse(specText)
+      return spec && typeof spec === 'object' ? spec : null
+    } catch {
+      return null
+    }
+  }, [specText])
 
   const contextWarnings = useMemo(
     () => warningsFromSpecText(specText),
@@ -817,44 +828,88 @@ function App() {
 
         {/* Plano Geral */}
         <section className="rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-sm backdrop-blur">
-          <div className="mb-6 text-left">
-            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Plano Geral
-            </p>
-            <h2 className="font-display mt-1 text-2xl font-semibold text-slate-950">
-              Fases do Pipeline
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm text-slate-500">
-              Resultados de cada fase são persistidos no banco. Selecione um item do
-              histórico para recuperar artefatos anteriores, ou acompanhe o run ativo.
-              {immutable
-                ? ' Esta versão foi aceita e está imutável.'
-                : ''}
-            </p>
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="text-left">
+              <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Plano Geral
+              </p>
+              <h2 className="font-display mt-1 text-2xl font-semibold text-slate-950">
+                Fases do Pipeline
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-slate-500">
+                Topologia DAG (paralelismo e dependências) ou lista detalhada com
+                artefatos e aprovação.
+                {immutable ? ' Esta versão foi aceita e está imutável.' : ''}
+              </p>
+            </div>
+            <div
+              className="inline-flex shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-1"
+              role="tablist"
+              aria-label="Visualização das fases"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={phasesView === 'graph'}
+                onClick={() => setPhasesView('graph')}
+                className={`rounded-lg px-3.5 py-2 font-display text-xs font-semibold transition ${
+                  phasesView === 'graph'
+                    ? 'bg-white text-slate-950 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Grafo DAG
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={phasesView === 'list'}
+                onClick={() => setPhasesView('list')}
+                className={`rounded-lg px-3.5 py-2 font-display text-xs font-semibold transition ${
+                  phasesView === 'list'
+                    ? 'bg-white text-slate-950 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Detalhes
+              </button>
+            </div>
           </div>
 
-          <div className="max-w-3xl">
-            {planPhases.map((phase, index) => (
-              <PhaseCard
-                key={`${runId || pendingSubstituteRunId || 'draft'}-${phase.phase_id}`}
-                phaseId={phase.phase_id}
-                name={phase.name}
-                status={phase.status}
-                artifactData={phase.artifact_data}
-                taskToken={immutable ? null : phase.task_token}
-                approver={phase.approver}
-                isLast={index === planPhases.length - 1}
-                approving={approvingToken === phase.task_token}
-                onApprove={immutable ? undefined : handleApprove}
-                canDeliverModules={Boolean(runId) && !immutable}
-                deliveringModulo={deliveringModulo}
-                onDeliverModule={(modulo) => handleDeliverModule(phase.phase_id, modulo)}
-                autoApproveEnabled={autoApprove}
-                reopening={reopeningPhaseId === phase.phase_id}
-                onReopen={immutable ? undefined : handleReopen}
-              />
-            ))}
-          </div>
+          {phasesView === 'graph' ? (
+            <PipelineGraph
+              spec={parsedSpec}
+              phases={planPhases}
+              onApprove={immutable ? undefined : handleApprove}
+              approvingToken={approvingToken}
+              immutable={immutable}
+              runId={runId}
+              apiBase={API_BASE}
+            />
+          ) : (
+            <div className="max-w-3xl">
+              {planPhases.map((phase, index) => (
+                <PhaseCard
+                  key={`${runId || pendingSubstituteRunId || 'draft'}-${phase.phase_id}`}
+                  phaseId={phase.phase_id}
+                  name={phase.name}
+                  status={phase.status}
+                  artifactData={phase.artifact_data}
+                  taskToken={immutable ? null : phase.task_token}
+                  approver={phase.approver}
+                  isLast={index === planPhases.length - 1}
+                  approving={approvingToken === phase.task_token}
+                  onApprove={immutable ? undefined : handleApprove}
+                  canDeliverModules={Boolean(runId) && !immutable}
+                  deliveringModulo={deliveringModulo}
+                  onDeliverModule={(modulo) => handleDeliverModule(phase.phase_id, modulo)}
+                  autoApproveEnabled={autoApprove}
+                  reopening={reopeningPhaseId === phase.phase_id}
+                  onReopen={immutable ? undefined : handleReopen}
+                />
+              ))}
+            </div>
+          )}
         </section>
       </main>
     </div>

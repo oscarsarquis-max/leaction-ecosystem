@@ -14,7 +14,6 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
-from google.genai import types
 from sqlalchemy.orm import Session
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -25,7 +24,8 @@ for _path in (str(_ROOT), str(_BACKEND)):
 
 from database import SessionLocal  # noqa: E402
 from services.build_order import normalize_build_order  # noqa: E402
-from services.gemini_client import extract_json_payload, generate_content  # noqa: E402
+from services.llm.json_utils import extract_json_payload  # noqa: E402
+from services.llm.runtime import generate_content  # noqa: E402
 from services.phase_context import (  # noqa: E402
     load_dependency_artifacts,
     phase_cfg,
@@ -43,53 +43,53 @@ logger = logging.getLogger(__name__)
 _PRD_INPUT_CHARS = 12_000
 _SDD_MARKDOWN_MAX = 24_000
 
-_BUILD_ORDER_ITEM_SCHEMA = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "modulo": types.Schema(type=types.Type.STRING),
-        "depende_de": types.Schema(
-            type=types.Type.ARRAY,
-            items=types.Schema(type=types.Type.STRING),
-        ),
-        "escopo": types.Schema(type=types.Type.STRING),
-        "camada": types.Schema(
-            type=types.Type.STRING,
-            enum=["backend", "frontend", "shared"],
-        ),
+_BUILD_ORDER_ITEM_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "modulo": {"type": "STRING"},
+        "depende_de": {
+            "type": "ARRAY",
+            "items": {"type": "STRING"},
+        },
+        "escopo": {"type": "STRING"},
+        "camada": {
+            "type": "STRING",
+            "enum": ["backend", "frontend", "shared"],
+        },
     },
-    required=["modulo", "depende_de", "escopo", "camada"],
-)
+    "required": ["modulo", "depende_de", "escopo", "camada"],
+}
 
-SDD_RESPONSE_SCHEMA = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "sdd_markdown": types.Schema(type=types.Type.STRING),
-        "build_order": types.Schema(
-            type=types.Type.ARRAY,
-            items=_BUILD_ORDER_ITEM_SCHEMA,
-        ),
+SDD_RESPONSE_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "sdd_markdown": {"type": "STRING"},
+        "build_order": {
+            "type": "ARRAY",
+            "items": _BUILD_ORDER_ITEM_SCHEMA,
+        },
     },
-    required=["sdd_markdown", "build_order"],
-)
+    "required": ["sdd_markdown", "build_order"],
+}
 
-BUILD_ORDER_ONLY_SCHEMA = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "build_order": types.Schema(
-            type=types.Type.ARRAY,
-            items=_BUILD_ORDER_ITEM_SCHEMA,
-        ),
+BUILD_ORDER_ONLY_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "build_order": {
+            "type": "ARRAY",
+            "items": _BUILD_ORDER_ITEM_SCHEMA,
+        },
     },
-    required=["build_order"],
-)
+    "required": ["build_order"],
+}
 
-SDD_NARRATIVE_ONLY_SCHEMA = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "sdd_markdown": types.Schema(type=types.Type.STRING),
+SDD_NARRATIVE_ONLY_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "sdd_markdown": {"type": "STRING"},
     },
-    required=["sdd_markdown"],
-)
+    "required": ["sdd_markdown"],
+}
 
 
 def _extract_prd_markdown(inputs: dict[str, Any]) -> tuple[str, Optional[str]]:

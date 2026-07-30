@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -47,7 +47,7 @@ def test_fallback_result_matches_artifact_contract():
     _assert_contract_hits(data["context7_hits"])
 
 
-def test_mock_provider_contract_with_stubbed_gemini():
+def test_mock_provider_contract_with_stubbed_llm():
     fake_json = """
     {
       "search_keywords": ["SaaS", "educacao"],
@@ -58,19 +58,15 @@ def test_mock_provider_contract_with_stubbed_gemini():
     }
     """
 
-    with patch(
-        "services.context7.provider_mock.generate_content",
-        return_value=(fake_json, {"model": "stub"}),
-    ), patch(
-        "services.context7.provider_mock.extract_json_payload",
-        return_value={
-            "search_keywords": ["SaaS", "educacao"],
-            "context7_hits": [
-                {"titulo": "PRD X", "tipo": "PRD", "resumo": "regras", "score": 0.9},
-                {"titulo": "SDD Y", "tipo": "SDD", "resumo": "arch", "score": 0.85},
-            ],
-        },
-    ):
+    from services.llm.base_provider import LLMResult
+    from services.llm.factory import LLMFactory
+
+    mock_provider = AsyncMock()
+    mock_provider.generate = AsyncMock(
+        return_value=LLMResult(text=fake_json, meta={"model": "stub", "provider": "mock"})
+    )
+
+    with patch.object(LLMFactory, "get_provider", return_value=mock_provider):
         result = MockContext7Provider().search(
             ["SaaS"], top_k=2, challenge="app educacao"
         )

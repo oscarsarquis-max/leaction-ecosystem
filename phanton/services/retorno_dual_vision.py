@@ -153,7 +153,7 @@ def extract_phanton_improvement_with_llm(full_retorno: str) -> Optional[dict[str
         return None
 
     try:
-        from services.gemini_client import generate_content
+        from services.llm.runtime import generate_content
     except Exception:
         return None
 

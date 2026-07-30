@@ -8,7 +8,7 @@ Ferramenta de Orquestração de Pipeline Multi-Modelo.
 phanton/
 ├── frontend/    # Interface da aplicação
 ├── backend/     # API e lógica de orquestração
-├── services/    # Serviços auxiliares / workers
+├── services/    # Serviços auxiliares / workers (inclui services/llm/)
 └── database/    # PostgreSQL local (Docker) e schema
 ```
 
@@ -35,7 +35,7 @@ O script `01_init.sql` é aplicado automaticamente na primeira inicialização d
 Em bases já existentes, atualize o schema:
 
 ```powershell
-cd C:\Projetos\leaction-ecosystem\phanton\database
+cd C:\Projetos\phanton\database
 .\apply-schema.ps1
 ```
 
@@ -44,7 +44,7 @@ cd C:\Projetos\leaction-ecosystem\phanton\database
 Na **origem** (esta máquina, antes de ir embora):
 
 ```powershell
-cd C:\Projetos\leaction-ecosystem\infra
+cd C:\Projetos\infra
 .\open-leaction-db-lan.ps1
 cd ..\phanton\database
 .\open-phanton-db-lan.ps1
@@ -53,16 +53,48 @@ cd ..\phanton\database
 No **destino** (outra máquina amanhã):
 
 ```powershell
-cd C:\Projetos\leaction-ecosystem
+cd C:\Projetos
 .\sync-db-from-lan.ps1 -SourceHost <IP-LAN-da-origem> -Force
 ```
 
-## Gemini (Fase L2 — Grounding)
+## Provedor de IA (LLM plugável)
 
-1. Em `backend/.env`, defina `GEMINI_API_KEY` (há um placeholder em `.env.example`).
-2. Modelo padrão: `gemini-3.5-flash` (suporta Google Search Grounding). Opcional: `GEMINI_MODEL`.
+O motor de inferência é agnóstico de vendor (`services/llm/`). Handlers usam
+`LLMFactory` — você troca Google Gemini ↔ Ollama só com variáveis de ambiente.
 
-A fase L2 deixa de usar mock e chama o Gemini com `tools=[google_search]`.
+Configure em `backend/.env` (veja `.env.example`):
+
+| Variável | Default | Descrição |
+|----------|---------|-----------|
+| `LLM_PROVIDER` | `google` | `google` (Gemini) ou `ollama` (local/soberano) |
+| `LLM_MODEL` | conforme provider | Ex.: `gemini-3.5-flash`, `llama3`, `llama3.1` |
+| `LLM_BASE_URL` | *(vazio)* | Base do Ollama, ex. `http://127.0.0.1:11434` |
+| `GEMINI_API_KEY` | — | Obrigatório se `LLM_PROVIDER=google` |
+| `GEMINI_MODEL` | — | Alias legado; usado se `LLM_MODEL` estiver vazio no Google |
+
+Aliases aceitos em `LLM_PROVIDER`: `gemini` → google; `local` → ollama.
+
+Com Google, a fase de pesquisa (`research` / L2) pode usar **Google Search Grounding**.
+No Ollama, web search é degradado com `web_search_unsupported` no `meta` (o DAG não quebra).
+
+### Modo soberano / 100% local (Ollama)
+
+1. Instale o [Ollama](https://ollama.com) e baixe um modelo:
+
+```powershell
+ollama pull llama3.1
+ollama run llama3.1
+```
+
+2. Em `backend/.env`:
+
+```env
+LLM_PROVIDER=ollama
+LLM_MODEL=llama3.1
+LLM_BASE_URL=http://127.0.0.1:11434
+```
+
+3. Suba o orquestrador normalmente (backend + frontend). Nenhuma chamada sai para a nuvem de LLM.
 
 ## Backend (FastAPI)
 

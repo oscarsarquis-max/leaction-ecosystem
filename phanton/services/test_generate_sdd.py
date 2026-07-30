@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from services.gemini_client import extract_json_payload  # noqa: E402
+from services.llm.json_utils import extract_json_payload  # noqa: E402
 from services.phase_sdd import (  # noqa: E402
     _fallback_sdd,
     _generate_sdd_safe,
@@ -112,13 +112,18 @@ def test_generate_sdd_safe_uses_schema_and_returns_build_order():
         ],
     }
 
-    with patch(
-        "services.phase_sdd.generate_content",
-        return_value=(
-            __import__("json").dumps(fake_json),
-            {"model": "stub", "finish_reason": "STOP"},
-        ),
-    ):
+    from services.llm.base_provider import LLMResult
+    from services.llm.factory import LLMFactory
+
+    mock_provider = AsyncMock()
+    mock_provider.generate = AsyncMock(
+        return_value=LLMResult(
+            text=__import__("json").dumps(fake_json),
+            meta={"model": "stub", "finish_reason": "STOP", "provider": "mock"},
+        )
+    )
+
+    with patch.object(LLMFactory, "get_provider", return_value=mock_provider):
         result, meta = _generate_sdd_safe(
             {"generate_prd": {"prd_markdown": "# PRD\nPagamentos PIX e ledger"}},
             {"name": "fin", "user_prompt": "SaaS financeiro com PIX"},

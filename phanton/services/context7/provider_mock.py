@@ -14,7 +14,8 @@ from services.context7.provider_base import (
     Hit,
     hit_from_mapping,
 )
-from services.gemini_client import extract_json_payload, generate_content
+from services.llm.json_utils import extract_json_payload
+from services.llm.runtime import generate_content
 
 
 def _build_keywords_prompt(challenge: str, *, phase_hint: str = "") -> str:

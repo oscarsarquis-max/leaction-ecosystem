@@ -33,8 +33,9 @@ class PipelineSpec(BaseModel):
     `phases` é um dicionário: chave = id livre da fase (ex.: "pesquisa_casos"),
     valor = configuração (name, type, order, descricao, depends_on…).
     Types: methodology | research | context7_search | synthesize | generate_prd |
-    generate_sdd | security_guidelines | prompt_cursor | prompt (aliases: context7,
-    prd, sdd, security, delivery, html, ide_prompt).
+    generate_sdd | security_guidelines | prompt_cursor | task_breakdown | prompt
+    (aliases: context7, prd, sdd, security, delivery, html, ide_prompt,
+    linear_export, jira_export).
     """
 
     model_config = ConfigDict(extra="allow")
@@ -329,3 +330,16 @@ class SubstitutePipelineResponse(BaseModel):
     spec: dict[str, Any]
     model: Optional[str] = None
     phanton_improvement: Optional[PhantonImprovementRead] = None
+
+
+class LinearExportResponse(BaseModel):
+    """Resumo da exportação task_breakdown → Linear."""
+
+    run_id: UUID
+    phase_id: str
+    summary: str
+    project: dict[str, Any] = Field(default_factory=dict)
+    issues_created: int = 0
+    epics_count: int = 0
+    issues: list[dict[str, Any]] = Field(default_factory=list)
+    failures: list[dict[str, Any]] = Field(default_factory=list)

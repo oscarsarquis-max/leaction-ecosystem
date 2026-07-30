@@ -21,7 +21,8 @@ from services.build_order import (  # noqa: E402
     extract_build_order_from_inputs,
     normalize_build_order,
 )
-from services.gemini_client import extract_json_payload, generate_content  # noqa: E402
+from services.llm.json_utils import extract_json_payload  # noqa: E402
+from services.llm.runtime import generate_content  # noqa: E402
 from services.phase_context import (  # noqa: E402
     load_dependency_artifacts,
     phase_cfg,

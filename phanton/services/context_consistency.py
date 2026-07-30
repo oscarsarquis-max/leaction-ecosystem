@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any, Optional
 
-from services.gemini_client import extract_json_payload, generate_content
+from services.llm.json_utils import extract_json_payload
+from services.llm.runtime import generate_content
 from services.structured_requirements import normalize_structured_requirements
 
 # Termos proibidos quando contexto_de_uso.tipo == single_tenant.

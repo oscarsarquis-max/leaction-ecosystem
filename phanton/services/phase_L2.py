@@ -7,7 +7,8 @@ from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
-from services.gemini_client import extract_json_payload, generate_content
+from services.llm.json_utils import extract_json_payload
+from services.llm.runtime import generate_content
 from services.phase_context import phase_cfg, phase_description, pipeline_label
 
 

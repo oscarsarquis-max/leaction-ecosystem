@@ -18,7 +18,8 @@ for _path in (str(_ROOT), str(_BACKEND)):
         sys.path.insert(0, _path)
 
 from database import SessionLocal  # noqa: E402
-from services.gemini_client import extract_json_payload, generate_content  # noqa: E402
+from services.llm.json_utils import extract_json_payload  # noqa: E402
+from services.llm.runtime import generate_content  # noqa: E402
 from services.phase_context import (  # noqa: E402
     load_dependency_artifacts,
     phase_cfg,
@@ -706,9 +707,9 @@ def _generate_delivery_safe(
 
 def resolve_model_safe() -> str:
     try:
-        from services.gemini_client import resolve_model
+        from services.llm.google_provider import resolve_google_model
 
-        return resolve_model()
+        return resolve_google_model()
     except Exception:
         return "unknown"
 

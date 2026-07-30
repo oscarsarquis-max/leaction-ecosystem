@@ -48,6 +48,10 @@ _PHASE_ID_EXACT: dict[str, str] = {
     "prompt_cursor": "prompt_cursor",
     "ide_prompt": "prompt_cursor",
     "cursor_prompt": "prompt_cursor",
+    "task_breakdown": "task_breakdown",
+    "tasks_breakdown": "task_breakdown",
+    "linear_export": "task_breakdown",
+    "jira_export": "task_breakdown",
 }
 
 # Substrings no phase_id (ordem importa: mais específico primeiro).
@@ -61,6 +65,9 @@ _PHASE_ID_SUBSTRINGS: tuple[tuple[str, str], ...] = (
     ("context7", "context7_search"),
     ("generate_prd", "generate_prd"),
     ("generate_sdd", "generate_sdd"),
+    ("task_breakdown", "task_breakdown"),
+    ("linear_export", "task_breakdown"),
+    ("jira_export", "task_breakdown"),
 )
 
 
@@ -81,6 +88,8 @@ def resolve_capability_from_phase_id(phase_id: str) -> str | None:
         return "generate_prd"
     if pid.startswith("sdd_") or pid.endswith("_sdd"):
         return "generate_sdd"
+    if pid.startswith("task_breakdown") or pid.endswith("_task_breakdown"):
+        return "task_breakdown"
     return None
 
 
@@ -126,6 +135,10 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
         "prompt_cursor": "prompt_cursor",
         "ide_prompt": "prompt_cursor",
         "cursor_prompt": "prompt_cursor",
+        "task_breakdown": "task_breakdown",
+        "tasks_breakdown": "task_breakdown",
+        "linear_export": "task_breakdown",
+        "jira_export": "task_breakdown",
         "prompt": "prompt",
         "delivery": "prompt",
         "html": "prompt",
@@ -168,6 +181,7 @@ def normalize_phase_type(raw: Any, phase_id: str = "") -> str:
             6: "generate_sdd",
             7: "prompt_cursor",
             8: "context7_search",
+            9: "task_breakdown",
         }.get(level, "research")
     return "research"
 

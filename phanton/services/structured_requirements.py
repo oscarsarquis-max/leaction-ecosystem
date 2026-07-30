@@ -5,60 +5,59 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-from google.genai import types
-
-from services.gemini_client import extract_json_payload, generate_content
+from services.llm.json_utils import extract_json_payload
+from services.llm.runtime import generate_content
 
 PERFIL_SOFTWARE = "software_saas"
 PERFIL_ARTEFATO = "artefato"
 CONTEXTO_TIPOS = frozenset({"single_tenant", "multi_tenant", "indefinido"})
 
-_STAKEHOLDER_SCHEMA = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "papel": types.Schema(type=types.Type.STRING),
-        "descricao": types.Schema(type=types.Type.STRING),
+_STAKEHOLDER_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "papel": {"type": "STRING"},
+        "descricao": {"type": "STRING"},
     },
-    required=["papel", "descricao"],
-)
+    "required": ["papel", "descricao"],
+}
 
-_CONTEXTO_SCHEMA = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "tipo": types.Schema(type=types.Type.STRING),
-        "justificativa": types.Schema(type=types.Type.STRING),
+_CONTEXTO_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "tipo": {"type": "STRING"},
+        "justificativa": {"type": "STRING"},
     },
-    required=["tipo", "justificativa"],
-)
+    "required": ["tipo", "justificativa"],
+}
 
-STRUCTURED_REQUIREMENTS_SCHEMA = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "perfil_sugerido": types.Schema(type=types.Type.STRING),
-        "proposito_escopo": types.Schema(type=types.Type.STRING),
+STRUCTURED_REQUIREMENTS_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "perfil_sugerido": {"type": "STRING"},
+        "proposito_escopo": {"type": "STRING"},
         "contexto_de_uso": _CONTEXTO_SCHEMA,
-        "partes_interessadas": types.Schema(
-            type=types.Type.ARRAY,
-            items=_STAKEHOLDER_SCHEMA,
-        ),
-        "requisitos_funcionais": types.Schema(
-            type=types.Type.ARRAY,
-            items=types.Schema(type=types.Type.STRING),
-        ),
-        "requisitos_nao_funcionais": types.Schema(
-            type=types.Type.ARRAY,
-            items=types.Schema(type=types.Type.STRING),
-        ),
-        "restricoes_premissas": types.Schema(
-            type=types.Type.ARRAY,
-            items=types.Schema(type=types.Type.STRING),
-        ),
-        "interfaces_integracoes": types.Schema(
-            type=types.Type.ARRAY,
-            items=types.Schema(type=types.Type.STRING),
-        ),
+        "partes_interessadas": {
+            "type": "ARRAY",
+            "items": _STAKEHOLDER_SCHEMA,
+        },
+        "requisitos_funcionais": {
+            "type": "ARRAY",
+            "items": {"type": "STRING"},
+        },
+        "requisitos_nao_funcionais": {
+            "type": "ARRAY",
+            "items": {"type": "STRING"},
+        },
+        "restricoes_premissas": {
+            "type": "ARRAY",
+            "items": {"type": "STRING"},
+        },
+        "interfaces_integracoes": {
+            "type": "ARRAY",
+            "items": {"type": "STRING"},
+        },
     },
-    required=[
+    "required": [
         "perfil_sugerido",
         "proposito_escopo",
         "contexto_de_uso",
@@ -68,7 +67,8 @@ STRUCTURED_REQUIREMENTS_SCHEMA = types.Schema(
         "restricoes_premissas",
         "interfaces_integracoes",
     ],
-)
+}
+
 
 _DRAFT_PROMPT = """
 Atue como analista de requisitos (ISO/IEC/IEEE 29148, forma simplificada).

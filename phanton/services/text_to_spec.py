@@ -5,10 +5,9 @@ from __future__ import annotations
 import re
 from typing import Any, Optional
 
-from google.genai import types
-
 from services.context_warnings import normalize_warnings
-from services.gemini_client import extract_json_payload, generate_content
+from services.llm.json_utils import extract_json_payload
+from services.llm.runtime import generate_content
 from services.phase_context import normalize_phase_type
 from services.security_domain import is_sensitive_domain
 from services.state_engine import normalize_spec_phases
@@ -43,6 +42,9 @@ TOPOLOGIA PADRÃO — construção de SOFTWARE / aplicação / sistema / platafo
    segurança dentro do prompt_cursor)
 7. Uma fase final prompt_cursor dependendo do SDD (e de security_guidelines quando
    houver)
+8. Se o usuário pedir backlog/tarefas/épicos ou exportação Linear/Jira: fase
+   type=task_breakdown no FIM do DAG, dependendo de generate_sdd (e generate_prd
+   como contexto), que fatia o projeto em Epics/Issues com micro-prompts
 Mapeie IDs e depends_on corretamente para formar o grafo lógico.
 
 TOPOLOGIA — entrega de ARTEFATO (HTML interativo, apresentação, playbook,
@@ -68,14 +70,15 @@ O JSON deve ter:
 - "phases": dicionário de fases. Cada fase:
   - "name": título curto amigável
   - "type": methodology | research | context7_search | synthesize | generate_prd
-    | generate_sdd | security_guidelines | prompt_cursor | prompt
+    | generate_sdd | security_guidelines | prompt_cursor | task_breakdown | prompt
     (aliases: generate, grounding, evaluate, context7, prd, sdd, security,
-    ide_prompt, delivery, html)
+    ide_prompt, linear_export, jira_export, delivery, html)
   - "order": número sequencial (1, 2, 3...)
   - "descricao": escopo detalhado DESTA fase (o que o modelo deve fazer)
   - "depends_on": lista de ids de fases cujos artefatos alimentam esta fase
     (obrigatório em synthesize, generate_prd, generate_sdd, security_guidelines,
-    prompt_cursor e prompt; omitir ou [] nas fases iniciais incluindo context7_search)
+    prompt_cursor, task_breakdown e prompt; omitir ou [] nas fases iniciais
+    incluindo context7_search)
 
 Capabilities:
 - methodology: alinhamento metodológico / princípios
@@ -89,36 +92,39 @@ Capabilities:
   do prompt_cursor; só para domínio sensível/regulado
 - prompt_cursor: gera prompt executável curto para QUALQUER IDE/agente de código
   (lê PRD.md/SDD.md); texto agnóstico — sem citar Cursor ou outro produto
+- task_breakdown: fatia PRD+SDD em Epics/Issues (JSON) com description_micro_prompt
+  copiável para o agente de código; todo texto em PT-BR (exceto nomes técnicos
+  literais); preparar export Linear/Jira
 - prompt: GERA A ENTREGA FINAL solicitada (HTML/doc/artefato) — NÃO é prompt de IDE
 
 Retorne APENAS o JSON válido, sem markdown e sem comentários.
 """.strip()
 
-_WARNING_ITEM_SCHEMA = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "campo": types.Schema(type=types.Type.STRING),
-        "descricao": types.Schema(type=types.Type.STRING),
-        "impacto": types.Schema(type=types.Type.STRING),
+_WARNING_ITEM_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "campo": {"type": "STRING"},
+        "descricao": {"type": "STRING"},
+        "impacto": {"type": "STRING"},
     },
-    required=["campo", "descricao", "impacto"],
-)
+    "required": ["campo", "descricao", "impacto"],
+}
 
 # phases fica como OBJECT livre (IDs dinâmicos); warnings é array obrigatório.
-SPEC_RESPONSE_SCHEMA = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "runId": types.Schema(type=types.Type.STRING),
-        "description": types.Schema(type=types.Type.STRING),
-        "version": types.Schema(type=types.Type.STRING),
-        "warnings": types.Schema(
-            type=types.Type.ARRAY,
-            items=_WARNING_ITEM_SCHEMA,
-        ),
-        "phases": types.Schema(type=types.Type.OBJECT),
+SPEC_RESPONSE_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "runId": {"type": "STRING"},
+        "description": {"type": "STRING"},
+        "version": {"type": "STRING"},
+        "warnings": {
+            "type": "ARRAY",
+            "items": _WARNING_ITEM_SCHEMA,
+        },
+        "phases": {"type": "OBJECT"},
     },
-    required=["warnings", "phases"],
-)
+    "required": ["warnings", "phases"],
+}
 
 _PROMPT_DESCRICAO = (
     "Produzir a ENTREGA FINAL pedida pelo usuário (o artefato concreto: "
@@ -151,6 +157,16 @@ _CURSOR_DESCRICAO = (
     "O texto do prompt deve ser agnostico de produto (nao citar nomes de IDEs)."
 )
 
+_TASK_BREAKDOWN_DESCRICAO = (
+    "Ler PRD e SDD e fatiar o MVP em Epics e Issues atômicas (JSON). Cada issue "
+    "deve ter description_micro_prompt: micro-prompt técnico copiável para o "
+    "agente de código (stack, camada, contratos, critério de pronto). "
+    "REGRA DE IDIOMA: títulos, descrições e micro-prompts ESTRITAMENTE em "
+    "Português do Brasil (PT-BR); só nomes literais de tecnologias/variáveis "
+    "podem ficar no original. Nunca gerar texto em inglês. "
+    "Preparar exportação futura para Linear/Jira."
+)
+
 _SECURITY_DESCRICAO = (
     "Gerar diretrizes de segurança gerais e por módulo com base em padrões de "
     "mercado aplicáveis ao domínio (ex.: OWASP ASVS 5.0 Level 3, FAPI 2.0, "
@@ -175,6 +191,19 @@ _ARTIFACT_DELIVERY_RE = re.compile(
     re.I,
 )
 
+_TASK_BREAKDOWN_RE = re.compile(
+    r"\b("
+    r"linear|jira|backlog|"
+    r"[eé]picos?|epics?|issues?|"
+    r"tarefas?|task[\s_-]?break(?:down)?|"
+    r"quebra(?:r)?(?:\s+o?\s*projeto)?(?:\s+em)?\s+tarefas|"
+    r"fatiar|work[\s_-]?items?|"
+    r"exportar(?:\s+para)?\s+(?:o\s+)?(?:linear|jira)|"
+    r"preparar(?:\s+para)?\s+(?:o\s+)?(?:linear|jira)"
+    r")\b",
+    re.I,
+)
+
 
 def _wants_software_build(user_prompt: str) -> bool:
     """True quando o pedido é construir software (PRD→SDD→prompt IDE)."""
@@ -189,6 +218,11 @@ def _wants_software_build(user_prompt: str) -> bool:
     ):
         return False
     return True
+
+
+def _wants_task_breakdown(user_prompt: str) -> bool:
+    """True quando o pedido pede backlog/épicos/tarefas ou Linear/Jira."""
+    return bool(_TASK_BREAKDOWN_RE.search(user_prompt or ""))
 
 
 def _slugify(value: str) -> str:
@@ -508,6 +542,73 @@ def _ensure_software_topology(phases: dict[str, Any], user_prompt: str = "") -> 
     # Em fluxo de software, não forçar fase type=prompt (entrega HTML)
     # a menos que o modelo já a tenha criado de propósito.
 
+    _ensure_task_breakdown_phase(
+        phases,
+        user_prompt=user_prompt or "",
+        prd_ids=prd_ids,
+        sdd_ids=sdd_ids,
+    )
+
+
+def _ensure_task_breakdown_phase(
+    phases: dict[str, Any],
+    *,
+    user_prompt: str,
+    prd_ids: list[str],
+    sdd_ids: list[str],
+) -> None:
+    """Inclui task_breakdown no fim do DAG quando pedido (Linear/Jira/tarefas)."""
+    existing = _find_phase_ids_by_capability(phases, "task_breakdown")
+    if not existing and not _wants_task_breakdown(user_prompt):
+        return
+
+    sdd_id = sdd_ids[-1] if sdd_ids else None
+    prd_id = prd_ids[-1] if prd_ids else None
+    if not sdd_id:
+        return
+
+    deps = [sdd_id]
+    if prd_id and prd_id not in deps:
+        deps.insert(0, prd_id)
+
+    if not existing:
+        phases["task_breakdown"] = {
+            "name": "Task Breakdown (Epics / Issues)",
+            "type": "task_breakdown",
+            "order": _max_order(phases) + 1,
+            "descricao": (
+                f"{_TASK_BREAKDOWN_DESCRICAO} Pedido: "
+                f"{(user_prompt or '').strip()[:300]}"
+            ),
+            "depends_on": deps,
+        }
+        return
+
+    for pid in existing:
+        cfg = phases[pid]
+        if not isinstance(cfg, dict):
+            continue
+        cfg["type"] = "task_breakdown"
+        if not cfg.get("depends_on"):
+            cfg["depends_on"] = list(deps)
+        else:
+            # Garante SDD (+PRD) nas deps sem apagar outras
+            merged = list(cfg.get("depends_on") or [])
+            for d in deps:
+                if d not in merged:
+                    merged.append(d)
+            cfg["depends_on"] = merged
+        if not cfg.get("descricao"):
+            cfg["descricao"] = _TASK_BREAKDOWN_DESCRICAO
+        # Empurra para o fim se order ficou antes do SDD
+        try:
+            sdd_order = int(phases[sdd_id].get("order") or 0)
+            cur_order = int(cfg.get("order") or 0)
+        except (TypeError, ValueError, KeyError):
+            continue
+        if cur_order <= sdd_order:
+            cfg["order"] = _max_order(phases) + 1
+
 
 def _normalize_generated_spec(
     raw: dict[str, Any],
@@ -584,6 +685,7 @@ def _normalize_generated_spec(
         "generate_sdd",
         "security_guidelines",
         "prompt_cursor",
+        "task_breakdown",
         "prompt",
     }
     for phase_id in ordered_ids:

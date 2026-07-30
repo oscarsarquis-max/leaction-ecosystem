@@ -82,6 +82,17 @@ def _missing_required_fields(
         need("build_order")
     elif ptype == "generate_prd":
         need("prd_markdown")
+    elif ptype == "task_breakdown":
+        need("epics")
+        epics = content.get("epics")
+        if isinstance(epics, list) and epics:
+            first = epics[0] if isinstance(epics[0], dict) else {}
+            issues = first.get("issues") if isinstance(first, dict) else None
+            if not _is_present(issues):
+                missing.append("epics[0].issues")
+            elif isinstance(issues, list) and issues and isinstance(issues[0], dict):
+                if not _is_present(issues[0].get("description_micro_prompt")):
+                    missing.append("epics[0].issues[0].description_micro_prompt")
     elif ptype == "security_guidelines":
         need("standards_aplicados")
         need("diretrizes_gerais")

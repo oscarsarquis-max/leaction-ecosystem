@@ -37,6 +37,7 @@ from services.phase_sdd import execute_phase_sdd  # noqa: E402
 from services.phase_security_guidelines import (  # noqa: E402
     execute_phase_security_guidelines,
 )
+from services.phase_task_breakdown import execute_phase_task_breakdown  # noqa: E402
 from services.quality_score import (  # noqa: E402
     AUTO_APPROVE_THRESHOLD,
     attach_quality_score,
@@ -68,6 +69,7 @@ CAPABILITY_HANDLERS: dict[str, PhaseHandler] = {
     "generate_sdd": execute_phase_sdd,
     "security_guidelines": execute_phase_security_guidelines,
     "prompt_cursor": execute_phase_prompt_cursor,
+    "task_breakdown": execute_phase_task_breakdown,
     # Entrega do artefato pedido (HTML/doc) — NÃO é prompt de IDE
     "prompt": execute_phase_L4,
 }
@@ -88,6 +90,7 @@ PHASE_HANDLERS: dict[str, PhaseHandler] = {
     "generate_sdd": execute_phase_sdd,
     "security_guidelines": execute_phase_security_guidelines,
     "prompt_cursor": execute_phase_prompt_cursor,
+    "task_breakdown": execute_phase_task_breakdown,
 }
 
 STATUS_RUNNING = "RUNNING"
@@ -202,10 +205,10 @@ def _resolve_handler(phase_id: str, spec: dict[str, Any] | None) -> PhaseHandler
         f"Nenhum handler registrado para a fase: {phase_id} "
         f"(type/capability='{capability}'). "
         f"Use type methodology|research|context7_search|synthesize|generate_prd|"
-        f"generate_sdd|security_guidelines|prompt_cursor|prompt "
+        f"generate_sdd|security_guidelines|prompt_cursor|task_breakdown|prompt "
         f"(ou IDs L1/L2/L3/L4 / nomes metodologia, pesquisa, context7_search, "
         f"sintese, generate_prd, generate_sdd, security_guidelines, "
-        f"prompt_cursor, entrega_final)."
+        f"prompt_cursor, task_breakdown, entrega_final)."
     )
 
 

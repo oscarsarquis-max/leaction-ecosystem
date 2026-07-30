@@ -32,6 +32,7 @@ from schemas import (
     GenerateSpecRequest,
     GenerateSpecResponse,
     HealthResponse,
+    LinearExportResponse,
     PhaseStatusRead,
     PhantonImprovementDecisionRequest,
     PhantonImprovementDecisionResponse,
@@ -73,6 +74,11 @@ from services.structured_requirements import (
     draft_structured_requirements,
 )
 from services.text_to_spec import generate_pipeline_spec
+from services.linear_export_helpers import (
+    find_task_breakdown_artifact,
+    resolve_spec_title,
+)
+from services.linear_exporter import LinearExporter, LinearExporterError
 
 # Rótulos só como fallback; preferir sempre phase.name da Spec.
 PHASE_LABELS = {
@@ -84,6 +90,7 @@ PHASE_LABELS = {
     "generate_sdd": "SDD — Design",
     "security_guidelines": "Diretrizes de Segurança",
     "prompt_cursor": "Prompt para IDE",
+    "task_breakdown": "Task Breakdown",
     "entrega_final": "Entrega final",
     "L1": "Metodologia",
     "L2": "Grounding",
@@ -600,6 +607,55 @@ def accept_pipeline_project(
         status=result["status"],
         acceptance_status=result["acceptance_status"],
         accepted_at=result.get("accepted_at"),
+    )
+
+
+@app.post(
+    "/api/pipeline/{run_id}/export/linear",
+    response_model=LinearExportResponse,
+)
+async def export_pipeline_to_linear(
+    run_id: UUID,
+    db: Session = Depends(get_db),
+) -> LinearExportResponse:
+    """Exporta o artefato `task_breakdown` do run para um Project + Issues no Linear."""
+    run = db.get(PipelineRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run não encontrado")
+
+    spec = run.spec if isinstance(run.spec, dict) else {}
+    try:
+        artifact, phase_id = find_task_breakdown_artifact(db, run_id, spec)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    title = resolve_spec_title(run)
+    try:
+        exporter = LinearExporter()
+        result = await exporter.export_task_breakdown(
+            title,
+            artifact,
+            project_description=(
+                f"Phanton run `{run_id}` · fase `{phase_id}` · "
+                f"v{getattr(run, 'version', None) or spec.get('version') or '1.0'}"
+            ),
+        )
+    except LinearExporterError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Falha ao exportar para o Linear: {exc}"
+        ) from exc
+
+    return LinearExportResponse(
+        run_id=run_id,
+        phase_id=phase_id,
+        summary=str(result.get("summary") or ""),
+        project=result.get("project") or {},
+        issues_created=int(result.get("issues_created") or 0),
+        epics_count=int(result.get("epics_count") or 0),
+        issues=list(result.get("issues") or []),
+        failures=list(result.get("failures") or []),
     )
 
 
