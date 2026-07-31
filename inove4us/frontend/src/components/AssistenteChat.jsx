@@ -1,7 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
+import { NINA_AVATAR_SRC } from '../lib/ninaAvatar'
 import UpgradeCreditsModal from './UpgradeCreditsModal'
+
+function NinaAvatar({ className = 'h-7 w-7', alt = '' }) {
+  return (
+    <span
+      aria-hidden={!alt}
+      className={`inline-flex shrink-0 overflow-hidden rounded-full bg-[#4a3428] ring-2 ring-white/40 ${className}`}
+    >
+      <img
+        src={NINA_AVATAR_SRC}
+        alt={alt}
+        className="h-full w-full object-contain object-top"
+      />
+    </span>
+  )
+}
 
 /**
  * Assistente por árvore de decisão + campo de sugestão (Programa de Co-criação).
@@ -93,12 +109,7 @@ export default function AssistenteChat() {
         className="fixed bottom-5 right-4 z-40 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/30 transition hover:scale-[1.03] hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 sm:bottom-8 sm:right-8"
         aria-label="Abrir assistente Nina"
       >
-        <span
-          aria-hidden
-          className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-sm font-bold"
-        >
-          {avatarName.slice(0, 1)}
-        </span>
+        <NinaAvatar className="h-8 w-8" />
         Assistente
       </button>
 
@@ -115,9 +126,7 @@ export default function AssistenteChat() {
           <div className="flex max-h-[min(88vh,640px)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-amber-200/80 bg-gradient-to-b from-amber-50 via-white to-rose-50/50 shadow-soft">
             <header className="flex items-start justify-between gap-3 border-b border-amber-100/80 px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-rose-500 text-lg font-bold text-white shadow-sm">
-                  {avatarName.slice(0, 1)}
-                </div>
+                <NinaAvatar className="h-11 w-11 shadow-sm" alt={avatarName} />
                 <div>
                   <h2
                     id="assistente-title"

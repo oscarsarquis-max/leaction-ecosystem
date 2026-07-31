@@ -17,6 +17,22 @@ from botocore.config import Config
 from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor
 
+from core.catalogo_metodologias_dia import (
+    ETIQUETA_AGILIDADE,
+    ETIQUETA_CONTEXTUAIS,
+    ETIQUETA_DEDUTIVAS,
+    ETIQUETA_INDUTIVAS,
+    etiqueta_publica,
+    ids_catalogo_por_etiqueta,
+    resolver_entrada_catalogo,
+)
+from core.tom_pedagogico import (
+    LIMITE_GANCHO,
+    LIMITE_HIPOTESE,
+    completar_frase,
+    dinamica_em_sala,
+    justificar_para_professor,
+)
 from core.metodologias_db import (
     aplicar_ganchos,
     duracao_total_cards,
@@ -24,6 +40,7 @@ from core.metodologias_db import (
     get_metodologia_por_nome,
     resolve_metodologia_id,
 )
+from services.methodology_service import get_dinamica_by_id
 from db import consumir_credito_ia, get_conn, get_creditos_ia
 from prompts.inov_ativas import LISTA_FLAT, build_estruturar_system_prompt
 from wizard_qualidade import (
@@ -82,11 +99,13 @@ BEDROCK_MODEL_ID = os.environ.get(
 )
 BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
 # Arquitetura híbrida: 1 chamada curta (roteador A/B/C + ganchos). Cards vêm do DB.
-BEDROCK_MAX_TOKENS = int(os.environ.get("BEDROCK_MAX_TOKENS", "2000"))
+# Espaço para causas/ganchos completos (evitar JSON cortado no meio da frase).
+BEDROCK_MAX_TOKENS = int(os.environ.get("BEDROCK_MAX_TOKENS", "4096"))
 WIZARD_REF_LIMIT = int(os.environ.get("WIZARD_REF_LIMIT", "2"))
 # Vazio = BEDROCK_MODEL_ID.
 WIZARD_BEDROCK_MODEL_ID = os.environ.get("WIZARD_BEDROCK_MODEL_ID", "").strip()
-_DEFAULT_METODOLOGIA_ID = "criativa_rotacao_estacoes"
+# Fallback canônico no catálogo das 39 (não inventar fora da lista)
+_DEFAULT_METODOLOGIA_ID = "criativa_narrativas_transmidia"
 
 
 def _invoke_estruturar_bedrock(
@@ -488,6 +507,10 @@ def _plano_padrao(
     }
 
 
+_IDS_RANKING = ("A", "B", "C")
+_TIPOS_RANKING = ("encaixe_direto", "encaixe_alternativo", "adaptacao_hibrida")
+
+
 def _fallback_payload(
     problema: str,
     contexto: str,
@@ -499,119 +522,50 @@ def _fallback_payload(
     corpus = corpus_refs if corpus_refs is not None else _carregar_corpus_referencia_completo()
     causas = causas_somente_do_relato(problema, contexto, corpus)
 
-    caminho_a = {
-        "id": "A",
-        "tipo_ranking": "encaixe_direto",
-        "titulo": "Design Thinking Express na dor da turma",
-        "metodologia": "Design Thinking Express",
-        "quadrante": "criativas",
-        "resumo": (
-            f"Encaixe direto: empatizar, idear e prototipar uma resposta rápida "
-            f"ao desafio «{trecho}» em um ciclo de aula."
-        ),
-        "por_que_usar": (
-            "Quando o problema é concreto e a turma precisa gerar soluções próprias, "
-            "o Design Thinking Express acelera empatia → ideia → protótipo sem perder foco."
-        ),
-        "dinamica_sala": (
-            "Times mapeiam a dor em 5 min, geram 5 ideias, escolhem 1 e prototipam "
-            "um micro-roteiro de intervenção; fecham com pitch de 60s."
-        ),
-        "hipotese_teste": (
-            f"Se aplicarmos Design Thinking Express a partir de «{trecho}», "
-            f"os alunos aprenderão a transformar empatia em protótipo acionável "
-            f"em um timebox de 50 minutos."
-        ),
-        "trecho_relato_usado": trecho,
-        "inspiracao_caso": None,
-        "ancoragem_de_para": None,
-        "plano_eduscrum": _plano_from_db(
-            "Design Thinking Express",
-            f"Missão: prototipar uma resposta ativa a «{problema[:80]}».",
-            problema,
-            contexto,
-        ),
-    }
+    # Fallback local: 3 famílias distintas, IDs fora do trio habitual da IA
+    fb_ids = [
+        _pick_metodologia_diversa(set(), preferred_id=None, slot=i, seed=problema or contexto or "")
+        for i in range(3)
+    ]
+    # Garante unicidade mesmo se o seed colapsar
+    used_fb: set[str] = set()
+    fb_ids_unique: list[str] = []
+    for i, mid in enumerate(fb_ids):
+        mid = _pick_metodologia_diversa(
+            used_fb, preferred_id=mid, slot=i, seed=problema or contexto or ""
+        )
+        used_fb.add(mid)
+        fb_ids_unique.append(mid)
 
-    caminho_b = {
-        "id": "B",
-        "tipo_ranking": "encaixe_alternativo",
-        "titulo": "Diagnóstico Coletivo antes da ação",
-        "metodologia": "Diagnóstico Coletivo",
-        "quadrante": "analiticas",
-        "resumo": (
-            "Mudança de dinâmica: primeiro evidência coletiva, depois decisão "
-            f"de intervenção sobre «{trecho}»."
-        ),
-        "por_que_usar": (
-            "Quando há sintomas difusos, o Diagnóstico Coletivo (quadrante analítico) "
-            "evita saltar para soluções e alinha a turma em fatos compartilhados."
-        ),
-        "dinamica_sala": (
-            "Cada time coleta 3 sinais observáveis, cruza no mural coletivo, "
-            "prioriza 1 causa e define um micro-teste para a próxima ação."
-        ),
-        "hipotese_teste": (
-            f"Se rodarmos Diagnóstico Coletivo a partir de «{trecho}», "
-            f"os alunos aprenderão a decidir com evidência compartilhada "
-            f"antes de propor a intervenção."
-        ),
-        "trecho_relato_usado": trecho,
-        "inspiracao_caso": None,
-        "ancoragem_de_para": None,
-        "plano_eduscrum": _plano_from_db(
-            "Diagnóstico Coletivo",
-            f"Missão: diagnosticar coletivamente «{problema[:80]}».",
-            problema,
-            contexto,
-        ),
-    }
-
-    caminho_c = {
-        "id": "C",
-        "tipo_ranking": "adaptacao_hibrida",
-        "titulo": "Elevator Pitch com inspiração de pitch público",
-        "metodologia": "Elevator Pitch",
-        "quadrante": "ageis",
-        "resumo": (
-            "Híbrido: fôrma Ágil (Elevator Pitch) + prática de síntese pública "
-            "para forçar clareza sobre o problema e a solução proposta."
-        ),
-        "por_que_usar": (
-            "Quando a turma precisa comunicar a proposta com precisão e tempo curto, "
-            "o Elevator Pitch treina síntese, persuasão e foco na aprendizagem."
-        ),
-        "dinamica_sala": (
-            "Times preparam pitch de 60–90s (problema → insight → proposta → pedido), "
-            "apresentam em rodada rápida e recebem feedback com rubrica curta."
-        ),
-        "hipotese_teste": (
-            f"Se os alunos sintetizarem «{trecho}» em Elevator Pitch, "
-            f"aprenderão a comunicar a proposta com clareza e a validar se o "
-            f"público entende o valor em menos de 90 segundos."
-        ),
-        "trecho_relato_usado": trecho,
-        "inspiracao_caso": (
-            "Formatos públicos de pitch curto em feiras de inovação escolar e "
-            "hackathons educacionais, onde times defendem soluções em 1 minuto."
-        ),
-        "ancoragem_de_para": (
-            "De: pitch de 60s em feira/hackathon educacional (Mundo Real) / "
-            "Para: Metodologia Ágil Elevator Pitch (Nossa Teoria)"
-        ),
-        "plano_eduscrum": _plano_from_db(
-            "Elevator Pitch",
-            f"Missão: pitchar a solução para «{problema[:80]}».",
-            problema,
-            contexto,
-        ),
-    }
+    caminhos_fb = []
+    for i, mid in enumerate(fb_ids_unique):
+        caminhos_fb.append(
+            _montar_caminho_hibrido(
+                _IDS_RANKING[i],
+                _TIPOS_RANKING[i],
+                {
+                    "id_metodologia": mid,
+                    "gancho_adaptacao": (
+                        f"Adaptação de catálogo ao trecho «{trecho}»."
+                    ),
+                    "hipotese_teste": "",
+                    "trecho_relato_usado": trecho,
+                },
+                problema=problema,
+                contexto=contexto,
+                trecho_relato=trecho,
+                refs_no_prompt=refs,
+                forced_mid=mid,
+            )
+        )
+    caminho_a, caminho_b, caminho_c = caminhos_fb
 
     return {
         "resumo_analise": (
-            f"Pelo que você descreveu, a turma precisa de uma abordagem mais ativa. "
-            f"Sugerimos três caminhos metodológicos para aplicar em sala — "
-            f"escolha o que melhor se encaixa na sua realidade."
+            f"Pelo que você descreveu, a turma se beneficia de uma aprendizagem mais ativa, "
+            f"com prática mediada e evidência clara do que foi aprendido. "
+            f"Abaixo estão três caminhos metodológicos para a sua aula — "
+            f"escolha o que melhor combina com o seu objetivo e com o tempo disponível."
         ),
         "causas_raiz": causas,
         "caminhos": [caminho_a, caminho_b, caminho_c],
@@ -633,10 +587,6 @@ def _fallback_payload(
     }
 
 
-_IDS_RANKING = ("A", "B", "C")
-_TIPOS_RANKING = ("encaixe_direto", "encaixe_alternativo", "adaptacao_hibrida")
-
-
 def _normalizar_payload(
     raw: dict,
     problema: str,
@@ -651,7 +601,7 @@ def _normalizar_payload(
 
     resumo = raw.get("resumo_analise")
     if isinstance(resumo, str) and resumo.strip():
-        base["resumo_analise"] = resumo.strip()[:600]
+        base["resumo_analise"] = resumo.strip()
 
     # NUNCA aceitar causas_raiz cruas do modelo/legado sem sanitizar
     base["causas_raiz"] = sanitizar_causas_ia(
@@ -662,63 +612,47 @@ def _normalizar_payload(
         corpus_refs=corpus,
     )
 
+    # Preferir costura híbrida (catálogo) em vez de aceitar por_que_usar da IA
+    # (que frequentemente copia o texto do desafio).
     caminhos_in = raw.get("caminhos") or []
     caminhos_out = []
     trecho = extrair_trecho_relato(problema)
+    used_mids: set[str] = set()
     for i, c in enumerate(caminhos_in[:3]):
         if not isinstance(c, dict):
             continue
-        fallback = base["caminhos"][i] if i < len(base["caminhos"]) else base["caminhos"][0]
-        plano = c.get("plano_eduscrum") or fallback["plano_eduscrum"]
-        if not isinstance(plano, dict):
-            plano = fallback["plano_eduscrum"]
-        passos = plano.get("dinamica_passo_a_passo") or c.get("dinamica_passo_a_passo")
-        tarefas = (
-            passos
-            if isinstance(passos, list) and passos
-            else plano.get("tarefas_kanban") or fallback["plano_eduscrum"]["tarefas_kanban"]
+        preferred = _resolve_catalog_id(
+            c.get("id_metodologia") or c.get("metodologia")
         )
-        missao = plano.get("missao") or fallback["plano_eduscrum"]["missao"]
-        papeis = plano.get("papeis") if isinstance(plano.get("papeis"), dict) else None
-        if isinstance(tarefas, list) and tarefas:
-            plano = _plano_padrao(
-                missao,
-                tarefas,
-                contexto_execucao=plano.get("contexto_execucao")
-                or c.get("contexto_execucao"),
-                duracao_total_estimada_min=plano.get("duracao_total_estimada_min")
-                or c.get("duracao_total_estimada_min"),
-            )
-            if papeis:
-                plano["papeis"] = papeis
-        else:
-            plano = fallback["plano_eduscrum"]
-
-        hip = str(c.get("hipotese_teste") or fallback.get("hipotese_teste") or "")
-        if similaridade_texto(hip, str((refs[0] or {}).get("desc_prob") or "") if refs else "") >= 0.42:
-            hip = fallback.get("hipotese_teste") or hip
+        mid = _pick_metodologia_diversa(
+            used_mids,
+            preferred_id=preferred,
+            slot=i,
+            seed=problema or contexto or "",
+        )
+        used_mids.add(mid)
+        gancho = str(
+            c.get("gancho_adaptacao")
+            or c.get("resumo")
+            or c.get("por_que_usar")
+            or ""
+        ).strip()
         caminhos_out.append(
-            {
-                "id": str(c.get("id") or _IDS_RANKING[i]),
-                "tipo_ranking": c.get("tipo_ranking") or _TIPOS_RANKING[i],
-                "titulo": c.get("titulo") or fallback["titulo"],
-                "metodologia": _normalizar_nome_metodologia(
-                    c.get("metodologia") or fallback.get("metodologia")
-                ),
-                "quadrante": c.get("quadrante") or fallback.get("quadrante"),
-                "resumo": c.get("resumo") or fallback["resumo"],
-                "por_que_usar": c.get("por_que_usar") or fallback.get("por_que_usar"),
-                "dinamica_sala": c.get("dinamica_sala") or fallback.get("dinamica_sala"),
-                "hipotese_teste": hip,
-                "trecho_relato_usado": trecho,
-                "inspiracao_caso": c.get("inspiracao_caso")
-                if c.get("inspiracao_caso") is not None
-                else fallback.get("inspiracao_caso"),
-                "ancoragem_de_para": c.get("ancoragem_de_para")
-                if c.get("ancoragem_de_para") is not None
-                else fallback.get("ancoragem_de_para"),
-                "plano_eduscrum": plano,
-            }
+            _montar_caminho_hibrido(
+                str(c.get("id") or _IDS_RANKING[i]),
+                c.get("tipo_ranking") or _TIPOS_RANKING[i],
+                {
+                    "id_metodologia": mid,
+                    "gancho_adaptacao": gancho,
+                    "hipotese_teste": c.get("hipotese_teste") or "",
+                    "trecho_relato_usado": trecho,
+                },
+                problema=problema,
+                contexto=contexto,
+                trecho_relato=trecho,
+                refs_no_prompt=refs,
+                forced_mid=mid,
+            )
         )
 
     if len(caminhos_out) < 3:
@@ -732,16 +666,171 @@ def _normalizar_payload(
 
 
 def _categoria_para_quadrante(categoria: str | None) -> str:
-    cat = str(categoria or "").strip().upper()
-    if cat.startswith("ÁG") or cat.startswith("AG"):
-        return "ageis"
-    if cat.startswith("CRI"):
-        return "criativas"
-    if cat.startswith("IMER"):
-        return "imersivas"
-    if cat.startswith("ANAL"):
-        return "analiticas"
-    return "criativas"
+    """Rótulo público (mesma reformulação do Dia a Dia)."""
+    return etiqueta_publica(categoria)
+
+
+def _mecanica_curta_catalogo(db_data: dict) -> str:
+    focos: list[str] = []
+    for card in db_data.get("cards") or []:
+        if not isinstance(card, dict):
+            continue
+        f = str(card.get("foco_da_metodologia_escolhida") or "").strip()
+        if f and f not in focos:
+            focos.append(f)
+        if len(focos) >= 2:
+            break
+    if focos:
+        return "; ".join(focos)
+    desc = str(db_data.get("descricao_curta") or "").strip()
+    return desc or "prática ativa, mediação clara e evidência de aprendizagem"
+
+
+def _por_que_usar_do_catalogo(
+    db_data: dict,
+    *,
+    etiqueta: str | None = None,
+    gancho: str = "",
+    trecho: str = "",
+) -> str:
+    """Justificativa completa para o professor — sem cortar a ideia no meio."""
+    nome = str(db_data.get("nome") or "esta dinâmica").strip()
+    familia = etiqueta or etiqueta_publica(
+        db_data.get("etiqueta") or db_data.get("categoria")
+    )
+    adapt = str(gancho or "").strip()
+    # Evita colar o desafio inteiro como justificativa
+    if adapt and trecho and similaridade_texto(adapt, trecho) >= 0.72:
+        adapt = ""
+    return justificar_para_professor(
+        nome=nome,
+        etiqueta=familia,
+        mecanica=_mecanica_curta_catalogo(db_data),
+        gancho=adapt,
+        trecho=str(trecho or "").strip(),
+    )
+
+
+def _dinamica_sala_do_catalogo(db_data: dict) -> str:
+    """Como conduzir em sala — texto completo, linguagem pedagógica."""
+    nome = str(db_data.get("nome") or "a dinâmica").strip()
+    cards = db_data.get("cards") or []
+    if not cards or not isinstance(cards[0], dict):
+        return dinamica_em_sala(
+            nome=nome,
+            descricao=str(db_data.get("descricao_curta") or "").strip(),
+        )
+    c0 = cards[0]
+    obj = str(c0.get("objetivo") or "").strip()
+    mec = str(
+        c0.get("mecanica_passo_a_passo") or c0.get("como_executar_detalhado") or ""
+    ).strip()
+    # Remove eventual gancho já injetado em reprocessamentos
+    mec = re.sub(
+        r"(?is)^\*\*💡\s*Adaptando para sua aula:\*\*[^\n]*\n+",
+        "",
+        mec,
+    ).strip()
+    return dinamica_em_sala(nome=nome, objetivo=obj, mecanica=mec)
+
+
+# Fallbacks A/B/C — preferir IDs com mecânica em METODOLOGIAS_DB
+_FALLBACK_IDS_DIVERSOS = (
+    "criativa_narrativas_transmidia",
+    "analitica_learning_analytics",
+    "agil_minute_paper",
+)
+
+_FAMILY_ETIQUETAS = (
+    ETIQUETA_INDUTIVAS,
+    ETIQUETA_DEDUTIVAS,
+    ETIQUETA_AGILIDADE,
+    ETIQUETA_CONTEXTUAIS,
+)
+
+# Trio habitual da IA — rotacionamos dentro da mesma família na maioria dos casos
+_OVERUSED_IDS = frozenset(
+    {
+        "criativa_design_thinking_express",
+        "analitica_diagnostico_coletivo",
+        "agil_elevator_pitch",
+    }
+)
+
+
+def _resolve_catalog_id(nome_ou_id: str | None) -> str | None:
+    """Resolve para id canônico das 39 (nunca inventa fora do catálogo)."""
+    entrada = resolver_entrada_catalogo(nome_ou_id)
+    if entrada:
+        return entrada["id"]
+    # legado: id do DB de 16 que ainda mapeia no catálogo via alias/id_db
+    mid_db = resolve_metodologia_id(nome_ou_id)
+    if mid_db:
+        entrada = resolver_entrada_catalogo(mid_db)
+        if entrada:
+            return entrada["id"]
+    return None
+
+
+def _familia_de(mid: str | None) -> str:
+    """Família pública (etiqueta) do id no catálogo das 39."""
+    entrada = resolver_entrada_catalogo(mid)
+    if entrada:
+        return str(entrada.get("etiqueta") or "")
+    return ""
+
+
+def _ids_da_familia(etiqueta: str) -> list[str]:
+    return ids_catalogo_por_etiqueta(etiqueta)
+
+
+def _pick_metodologia_diversa(
+    used: set[str],
+    *,
+    preferred_id: str | None = None,
+    slot: int = 0,
+    seed: str = "",
+) -> str:
+    """Escolhe entre as 39: IDs distintos + famílias distintas; rotaciona na família."""
+    preferred = _resolve_catalog_id(preferred_id)
+    used_families = {_familia_de(m) for m in used if _familia_de(m)}
+    pref_fam = _familia_de(preferred) if preferred else ""
+    rot = abs(hash((seed or "", slot))) if seed else slot
+
+    if (
+        preferred
+        and preferred not in used
+        and (not pref_fam or pref_fam not in used_families)
+    ):
+        if preferred in _OVERUSED_IDS and rot % 3 != 0 and pref_fam:
+            alts = [
+                m
+                for m in _ids_da_familia(pref_fam)
+                if m not in used and m not in _OVERUSED_IDS
+            ]
+            if alts:
+                return alts[rot % len(alts)]
+        return preferred
+
+    ordered = [_FAMILY_ETIQUETAS[slot % len(_FAMILY_ETIQUETAS)]] + [
+        f for i, f in enumerate(_FAMILY_ETIQUETAS) if i != slot % len(_FAMILY_ETIQUETAS)
+    ]
+
+    for etq in ordered:
+        if etq in used_families:
+            continue
+        candidatos = [m for m in _ids_da_familia(etq) if m not in used]
+        if candidatos:
+            preferidos = [m for m in candidatos if m not in _OVERUSED_IDS] or candidatos
+            return preferidos[rot % len(preferidos)]
+
+    # Qualquer uma das 39 ainda livre
+    from core.catalogo_metodologias_dia import entradas_catalogo_dia
+
+    livres = [e["id"] for e in entradas_catalogo_dia() if e["id"] not in used]
+    if livres:
+        return livres[rot % len(livres)]
+    return _FALLBACK_IDS_DIVERSOS[slot % len(_FALLBACK_IDS_DIVERSOS)]
 
 
 def _injetar_gancho_primeiro_card(cards: list, gancho: str) -> list:
@@ -761,6 +850,323 @@ def _injetar_gancho_primeiro_card(cards: list, gancho: str) -> list:
     return cards
 
 
+def _sinais_complexidade_projeto(problema: str, contexto: str = "") -> dict:
+    """Lê o relato do professor e estima complexidade pedagógica do projeto."""
+    blob = f"{problema or ''} {contexto or ''}".lower()
+    interdisciplinar = bool(
+        re.search(
+            r"interdiscipl|matem[aá]tica|estat[ií]stica|sociologia|geografia|"
+            r"l[ií]ngua\s+portuguesa|hist[oó]ria|ci[eê]ncias|v[aá]rias\s+disciplinas",
+            blob,
+        )
+    )
+    multi_aula = bool(
+        re.search(
+            r"projeto|semanas?|meses?|cronograma|sequ[eê]ncia|ciclo|"
+            r"v[aá]rias\s+aulas|plurais?\s+encontros?",
+            blob,
+        )
+    )
+    campo_comunidade = bool(
+        re.search(
+            r"bairro|comunidade|associa[cç][aã]o|moradores|poder\s+p[uú]blico|"
+            r"of[ií]cio|campo|coleta\s+de\s+dados|pesquisa\s+de\s+campo|"
+            r"sa[ií]da|territ[oó]rio",
+            blob,
+        )
+    )
+    etico_sensivel = bool(
+        re.search(
+            r"viol[eê]ncia|inseguran[cç]a|criminalidade|abuso|trauma|"
+            r"[eé]tico|sens[ií]vel|privacidade|exposição",
+            blob,
+        )
+    )
+    comunicacao_publica = bool(
+        re.search(
+            r"apresenta[cç][aã]o|audi[eê]ncia|pitch|of[ií]cio|redação|"
+            r"argumenta[cç][aã]o|p[uú]blico|feira|mostra",
+            blob,
+        )
+    )
+    score = sum(
+        [
+            2 if interdisciplinar else 0,
+            2 if multi_aula else 0,
+            2 if campo_comunidade else 0,
+            1 if etico_sensivel else 0,
+            1 if comunicacao_publica else 0,
+        ]
+    )
+    return {
+        "interdisciplinar": interdisciplinar,
+        "multi_aula": multi_aula,
+        "campo_comunidade": campo_comunidade,
+        "etico_sensivel": etico_sensivel,
+        "comunicacao_publica": comunicacao_publica,
+        "score": score,
+        "complexo": score >= 3,
+    }
+
+
+def _cards_plano_pedagogico(
+    *,
+    nome: str,
+    etiqueta: str,
+    desc_curta: str,
+    problema: str,
+    contexto: str,
+    trecho: str,
+    gancho: str,
+) -> tuple[list[dict], str, int]:
+    """
+    Plano de 5–7 cards para metodologias sem mecânica em METODOLOGIAS_DB.
+    Mantém o nome do catálogo; densifica conforme a complexidade do relato.
+    """
+    sinais = _sinais_complexidade_projeto(problema, contexto)
+    tema = trecho or frase_tema_do_relato(problema)
+    ctx = contexto_seguro_para_ui(contexto, problema)
+    mec_base = desc_curta or (
+        f"prática ativa com «{nome}» (grupo {etiqueta}), "
+        f"com mediação do professor e evidência de aprendizagem"
+    )
+    adapt = gancho or (
+        f"Conecte a dinâmica ao que a turma enfrenta em torno de «{tema}»."
+    )
+
+    cards: list[dict] = [
+        {
+            "titulo_do_card": "Abrir a missão com a turma",
+            "objetivo": (
+                f"Deixar claro o objetivo de aprendizagem e o papel de «{nome}» "
+                f"no desafio «{tema}»."
+            ),
+            "mecanica_passo_a_passo": (
+                f"Apresente a missão em 5–8 minutos, cite o trecho do desafio "
+                f"(«{tema}») e explique por que «{nome}» (grupo {etiqueta}) "
+                f"ajuda a turma neste ponto. Combine critérios de sucesso da aula "
+                f"e combine o tempo. Adaptação: {adapt}"
+            ),
+            "dica_de_facilitacao": (
+                "Escreva a missão no quadro e peça a um estudante para reformular "
+                "com as próprias palavras."
+            ),
+            "foco_da_metodologia_escolhida": f"abertura e contrato didático com {nome}",
+            "duracao_minutos": 10,
+        },
+        {
+            "titulo_do_card": "Organizar times e papéis",
+            "objetivo": (
+                "Formar equipes com papéis claros (líder, guardião do tempo, "
+                "relator) para sustentar a prática."
+            ),
+            "mecanica_passo_a_passo": (
+                f"Divida a turma em times de 3–5. Cada time define papéis e "
+                f"registra o que já sabe sobre «{tema}» em 1 cartão coletivo. "
+                f"No cenário de {ctx}, alinhe quem fala, quem anota e quem "
+                f"apresenta. Use a lógica de «{nome}»: {mec_base}."
+            ),
+            "dica_de_facilitacao": (
+                "Se houver turmas ou disciplinas diferentes, misture perfis "
+                "para forçar articulação."
+            ),
+            "foco_da_metodologia_escolhida": f"organização colaborativa em {nome}",
+            "duracao_minutos": 10,
+        },
+        {
+            "titulo_do_card": f"Praticar a mecânica de {nome}",
+            "objetivo": (
+                f"Colocar a turma em atividade com a mecânica própria de «{nome}», "
+                f"amarrada ao desafio real."
+            ),
+            "mecanica_passo_a_passo": (
+                f"Conduza o núcleo de «{nome}». Peça que cada time produza uma "
+                f"evidência parcial ligada a «{tema}» (mapa, lista, protótipo, "
+                f"hipótese ou texto curto). Você circula, faz perguntas e "
+                f"redireciona quando o grupo sair do foco. {adapt}"
+            ),
+            "dica_de_facilitacao": (
+                "Intervenha com perguntas de mediação, não com respostas prontas."
+            ),
+            "foco_da_metodologia_escolhida": mec_base,
+            "duracao_minutos": 20 if not sinais["complexo"] else 25,
+        },
+    ]
+
+    if sinais["interdisciplinar"]:
+        cards.append(
+            {
+                "titulo_do_card": "Articular saberes das áreas",
+                "objetivo": (
+                    "Fazer a turma conectar contribuições de diferentes áreas "
+                    "em uma produção coerente."
+                ),
+                "mecanica_passo_a_passo": (
+                    f"Peça que cada time nomeie o que vem de cada disciplina "
+                    f"envolvida no desafio «{tema}» e onde essas peças se encontram. "
+                    f"Monte um mural De/Para (área → contribuição → entrega comum). "
+                    f"Com «{nome}», a articulação precisa aparecer na evidência "
+                    f"parcial, não só na fala."
+                ),
+                "dica_de_facilitacao": (
+                    "Exija pelo menos uma ponte explícita entre duas áreas "
+                    "antes de avançar."
+                ),
+                "foco_da_metodologia_escolhida": "integração interdisciplinar",
+                "duracao_minutos": 15,
+            }
+        )
+
+    if sinais["etico_sensivel"] or sinais["campo_comunidade"]:
+        cards.append(
+            {
+                "titulo_do_card": "Cuidar da ética e do contexto real",
+                "objetivo": (
+                    "Preparar coleta, linguagem e exposição de dados com "
+                    "cuidado ético e respeito à comunidade."
+                ),
+                "mecanica_passo_a_passo": (
+                    f"Antes de qualquer coleta ou publicação ligada a «{tema}», "
+                    f"combine com a turma: o que pode ser compartilhado, o que "
+                    f"fica anônimo, como falar com moradores/instituições e "
+                    f"como registrar evidências sem expor pessoas. Registre "
+                    f"um mini-protocolo ético do time."
+                ),
+                "dica_de_facilitacao": (
+                    "Use casos hipotéticos se o tema for sensível demais "
+                    "para relatos pessoais."
+                ),
+                "foco_da_metodologia_escolhida": "ética e responsabilidade social",
+                "duracao_minutos": 12,
+            }
+        )
+
+    cards.append(
+        {
+            "titulo_do_card": "Consolidar evidência e feedback",
+            "objetivo": (
+                "Tornar visível o que a turma aprendeu e o que ainda precisa "
+                "avançar no projeto."
+            ),
+            "mecanica_passo_a_passo": (
+                f"Cada time apresenta em 60–90s a evidência parcial de «{tema}». "
+                f"Os pares dão feedback com rubrica curta (clareza, vínculo com "
+                f"o desafio, próximo passo). Você registra 1 avanço e 1 lacuna "
+                f"por time — isso alimenta a próxima aula."
+            ),
+            "dica_de_facilitacao": (
+                "Peça evidência observável (foto, trecho, dado, rascunho), "
+                "não só opinião."
+            ),
+            "foco_da_metodologia_escolhida": "avaliação formativa",
+            "duracao_minutos": 12,
+        }
+    )
+
+    if sinais["comunicacao_publica"] or sinais["campo_comunidade"]:
+        cards.append(
+            {
+                "titulo_do_card": "Preparar entrega para o mundo real",
+                "objetivo": (
+                    "Ensaiar a comunicação formal da entrega (ofício, pitch, "
+                    "apresentação à comunidade)."
+                ),
+                "mecanica_passo_a_passo": (
+                    f"Com base em «{nome}», cada time estrutura a fala/texto "
+                    f"para o público externo ligado a «{tema}»: problema, "
+                    f"evidência, proposta e pedido. Ensaie 1 minuto e ajuste "
+                    f"vocabulário para clareza cívica."
+                ),
+                "dica_de_facilitacao": (
+                    "Separe linguagem escolar de linguagem pública; cobrem "
+                    "precisão sem perder respeito."
+                ),
+                "foco_da_metodologia_escolhida": "comunicação e engajamento cívico",
+                "duracao_minutos": 15,
+            }
+        )
+
+    fechamento = {
+        "titulo_do_card": "Fechar e planejar o próximo passo",
+        "objetivo": (
+            "Fechar a aula com checkout e um compromisso concreto "
+            "para a continuidade do projeto."
+        ),
+        "mecanica_passo_a_passo": (
+            f"Checkout rápido: cada estudante completa «Hoje aprendi… / "
+            f"Ainda preciso… / Próximo passo…» ligado a «{tema}». "
+            f"O líder de cada time anuncia a tarefa até o próximo encontro. "
+            f"Você confirma o que entra no Kanban do desafio."
+        ),
+        "dica_de_facilitacao": (
+            "Deixe o próximo passo escrito e visível antes de liberar a turma."
+        ),
+        "foco_da_metodologia_escolhida": "metacognição e continuidade",
+        "duracao_minutos": 8,
+    }
+
+    # Limite EduScrum: até 7 cards — fechamento sempre por último
+    if len(cards) >= 7:
+        cards = cards[:6]
+    cards.append(fechamento)
+    total = sum(int(c.get("duracao_minutos") or 0) for c in cards)
+    if sinais["complexo"] and total < 90:
+        # Projetos densos pedem mais tempo (multi-aula / campo)
+        extra = 90 - total
+        cards[2]["duracao_minutos"] = int(cards[2].get("duracao_minutos") or 20) + extra
+        total = sum(int(c.get("duracao_minutos") or 0) for c in cards)
+    ctx_exec = "misto" if sinais["campo_comunidade"] else ("sala" if total <= 70 else "misto")
+    return cards, ctx_exec, total
+
+
+def _enriquecer_cards_com_complexidade(
+    cards: list,
+    *,
+    problema: str,
+    contexto: str,
+    trecho: str,
+    nome: str,
+) -> list:
+    """Se o DB trouxe poucos cards num projeto complexo, completa com fases pedagógicas."""
+    sinais = _sinais_complexidade_projeto(problema, contexto)
+    if not sinais["complexo"] or len(cards) >= 5:
+        return cards
+    tema = trecho or frase_tema_do_relato(problema)
+    extras: list[dict] = []
+    if sinais["interdisciplinar"] and len(cards) < 6:
+        extras.append(
+            {
+                "titulo_do_card": "Articular saberes das áreas",
+                "objetivo": (
+                    "Conectar contribuições das disciplinas em uma produção coerente."
+                ),
+                "mecanica_passo_a_passo": (
+                    f"Com «{nome}», peça que o time explicite o que cada área "
+                    f"aporta a «{tema}» e onde essas peças se encontram na entrega."
+                ),
+                "dica_de_facilitacao": "Exija pelo menos uma ponte entre duas áreas.",
+                "foco_da_metodologia_escolhida": "integração interdisciplinar",
+                "duracao_minutos": 12,
+            }
+        )
+    if (sinais["etico_sensivel"] or sinais["campo_comunidade"]) and len(cards) + len(extras) < 7:
+        extras.append(
+            {
+                "titulo_do_card": "Protocolo ético e de campo",
+                "objetivo": "Definir o que pode ser coletado, dito e publicado.",
+                "mecanica_passo_a_passo": (
+                    f"Antes de avançar em «{tema}», combine anonimato, consentimento "
+                    f"e linguagem respeitosa com a comunidade."
+                ),
+                "dica_de_facilitacao": "Prefira casos hipotéticos se o tema for sensível.",
+                "foco_da_metodologia_escolhida": "ética e responsabilidade social",
+                "duracao_minutos": 10,
+            }
+        )
+    out = list(cards) + extras
+    return out[:7]
+
+
 def _montar_caminho_hibrido(
     letra: str,
     tipo_ranking: str,
@@ -770,28 +1176,81 @@ def _montar_caminho_hibrido(
     contexto: str,
     trecho_relato: str,
     refs_no_prompt: list[dict] | None = None,
+    forced_mid: str | None = None,
 ) -> dict:
-    """Costura: id_metodologia + gancho/hipótese LLM → caminho com cards do DB."""
-    mid = resolve_metodologia_id(opt.get("id_metodologia"))
-    db_data = get_metodologia(mid) if mid else None
-    if not db_data or not db_data.get("cards"):
+    """Costura: id do catálogo 39 + gancho/hipótese LLM → cards do id_db (se houver)."""
+    mid = forced_mid or _resolve_catalog_id(opt.get("id_metodologia"))
+    entrada = resolver_entrada_catalogo(mid)
+    if not entrada:
         print(
-            f"[wizard] metodologia ausente ({opt.get('id_metodologia')!r}) "
+            f"[wizard] id fora do catálogo 39 ({opt.get('id_metodologia')!r}) "
             f"— fallback {_DEFAULT_METODOLOGIA_ID}",
             file=sys.stderr,
         )
-        db_data = get_metodologia(_DEFAULT_METODOLOGIA_ID) or {}
+        mid = _DEFAULT_METODOLOGIA_ID
+        entrada = resolver_entrada_catalogo(mid) or {
+            "id": mid,
+            "nome": "Narrativas Transmídia em Rotação por Estações",
+            "etiqueta": ETIQUETA_INDUTIVAS,
+            "id_db": "criativa_narrativas_transmidia",
+        }
+
+    nome = str(entrada.get("nome") or "Metodologia Inov-Ativa").strip()
+    etiqueta = etiqueta_publica(entrada.get("etiqueta"))
+    id_db = entrada.get("id_db")
+    pub = get_dinamica_by_id(entrada["id"]) or {}
+    desc_curta = str(pub.get("descricao_curta") or "").strip()
 
     gancho = str(opt.get("gancho_adaptacao") or "").strip()
-    cards = copy.deepcopy(db_data.get("cards") or [])
-    cards = _injetar_gancho_primeiro_card(cards, gancho)
-
-    nome = str(db_data.get("nome") or "Metodologia Inov-Ativa").strip()
-    categoria = str(db_data.get("categoria") or "").strip()
-    quadrante = _categoria_para_quadrante(categoria)
     trecho = trecho_relato or extrair_trecho_relato(problema)
 
-    # Hipótese: preferir a da IA se ancorada no relato e sem vazamento de desc_prob
+    # Cards densos: preferir METODOLOGIAS_DB; senão plano pedagógico 5–7 etapas
+    # amarrado ao relato (nunca 1 card genérico).
+    db_data = get_metodologia(id_db) if id_db else None
+    duracao_forcada: int | None = None
+    if db_data and db_data.get("cards"):
+        fonte = "metodologias_db"
+        cards_src = db_data
+        cards = copy.deepcopy(cards_src.get("cards") or [])
+        cards = _enriquecer_cards_com_complexidade(
+            cards,
+            problema=problema,
+            contexto=contexto,
+            trecho=trecho,
+            nome=nome,
+        )
+        ctx_exec = str(cards_src.get("contexto_execucao") or "sala")
+    else:
+        fonte = "catalogo_39_plano_pedagogico"
+        cards, ctx_exec, duracao_forcada = _cards_plano_pedagogico(
+            nome=nome,
+            etiqueta=etiqueta,
+            desc_curta=desc_curta,
+            problema=problema,
+            contexto=contexto,
+            trecho=trecho,
+            gancho=gancho,
+        )
+        cards_src = {
+            "nome": nome,
+            "categoria": etiqueta,
+            "etiqueta": etiqueta,
+            "descricao_curta": desc_curta,
+            "cards": cards,
+            "contexto_execucao": ctx_exec,
+        }
+
+    cards = _injetar_gancho_primeiro_card(cards, gancho)
+
+    # Justificativa = mecânica do catálogo + encaixe no relato (gancho da IA)
+    por_que = _por_que_usar_do_catalogo(
+        cards_src,
+        etiqueta=etiqueta,
+        gancho=gancho,
+        trecho=trecho,
+    )
+    dinamica = _dinamica_sala_do_catalogo(cards_src)
+
     hip_ia = str(opt.get("hipotese_teste") or "").strip()
     refs = refs_no_prompt or []
     hip_ok = False
@@ -801,53 +1260,76 @@ def _montar_caminho_hibrido(
         ligada = vinculo_minimo_com_relato(hip_ia, problema)
         hip_ok = (not vaza) and ligada
     if hip_ok:
-        hipotese = hip_ia[:420]
+        hipotese = completar_frase(hip_ia, LIMITE_HIPOTESE)
     else:
         tema = frase_tema_do_relato(problema)
         ctx_safe = contexto_seguro_para_ui(contexto, problema)
         hipotese = (
-            f"Se aplicarmos {nome} ao desafio em torno de {tema}, "
-            f"os alunos aprenderão com a mecânica desta metodologia "
-            f"no cenário de {ctx_safe}."
+            f"Se você conduzir {nome} com a turma em torno de {tema}, "
+            f"os estudantes praticam a aprendizagem de forma ativa "
+            f"e você observa evidência do progresso em {ctx_safe}."
         )
 
-    gancho_resumo = gancho[:360] if gancho else (
-        f"Aplicação de {nome} ao desafio «{trecho}»."
+    gancho_resumo = (
+        completar_frase(gancho, LIMITE_GANCHO)
+        if gancho
+        else f"Adapte {nome} ao que a sua turma precisa praticar nesta aula."
     )
 
-    missao = f"Missão: aplicar {nome} a «{trecho[:80]}»."
+    sinais = _sinais_complexidade_projeto(problema, contexto)
+    missao = (
+        f"Missão: conduzir «{nome}» para enfrentar «{trecho[:120]}»"
+        f"{' em um projeto interdisciplinar e com entrega no mundo real' if sinais['complexo'] else ''}."
+    )
+    total_cards = duracao_forcada or (
+        duracao_total_cards(cards) if cards else 50
+    )
     plano = _plano_padrao(
         missao,
         cards,
-        contexto_execucao=db_data.get("contexto_execucao"),
-        duracao_total_estimada_min=duracao_total_cards(cards),
+        contexto_execucao=ctx_exec or cards_src.get("contexto_execucao") or "sala",
+        duracao_total_estimada_min=total_cards,
     )
-    plano["fonte_cards"] = "metodologias_db"
-    plano["id_metodologia"] = mid or _DEFAULT_METODOLOGIA_ID
+    plano["fonte_cards"] = fonte
+    plano["id_metodologia"] = entrada["id"]
+    plano["complexidade_projeto"] = {
+        k: sinais[k]
+        for k in (
+            "interdisciplinar",
+            "multi_aula",
+            "campo_comunidade",
+            "etico_sensivel",
+            "comunicacao_publica",
+            "complexo",
+            "score",
+        )
+    }
 
     caminho: dict = {
         "id": letra,
         "tipo_ranking": tipo_ranking,
         "titulo": f"{nome} no desafio da turma",
         "metodologia": nome,
-        "quadrante": quadrante,
-        "id_metodologia": mid or _DEFAULT_METODOLOGIA_ID,
+        "quadrante": etiqueta,
+        "etiqueta": etiqueta,
+        "id_metodologia": entrada["id"],
         "resumo": gancho_resumo,
-        "por_que_usar": gancho_resumo,
-        "dinamica_sala": gancho_resumo,
+        "por_que_usar": por_que,
+        "dinamica_sala": dinamica,
+        "gancho_adaptacao": gancho_resumo,
         "hipotese_teste": hipotese,
         "trecho_relato_usado": trecho,
         "inspiracao_caso": None,
         "ancoragem_de_para": None,
         "plano_eduscrum": plano,
         "nome": nome,
-        "categoria": categoria,
+        "categoria": etiqueta,
         "cards": cards,
     }
     if tipo_ranking == "adaptacao_hibrida":
         caminho["inspiracao_caso"] = gancho_resumo[:220]
         caminho["ancoragem_de_para"] = (
-            f"[De: desafio do professor] -> [Para: {nome} ({mid or _DEFAULT_METODOLOGIA_ID})]"
+            f"[De: desafio do professor] -> [Para: {nome} ({entrada['id']})]"
         )
     return caminho
 
@@ -860,8 +1342,8 @@ def _stitch_ranking_hibrido(
     corpus_refs: list[str] | None = None,
 ) -> dict:
     """
-    Costura o JSON curto do LLM (A/B/C) com cards imutáveis do METODOLOGIAS_DB.
-    Causas/hipóteses ancoradas no relato; telemetria de vazamento sem IA extra.
+    Costura o JSON curto do LLM (A/B/C) com o catálogo canônico de 39.
+    Sempre devolve plano com vários cards (DB ou plano pedagógico denso).
     """
     corpus = corpus_refs if corpus_refs is not None else _carregar_corpus_referencia_completo()
     base = _fallback_payload(problema, contexto, refs, corpus)
@@ -878,6 +1360,7 @@ def _stitch_ranking_hibrido(
         trecho = extrair_trecho_relato(problema)
 
     caminhos_out = []
+    used_mids: set[str] = set()
     for i, letra in enumerate(_IDS_RANKING):
         opt = raw.get(letra)
         if not isinstance(opt, dict):
@@ -888,6 +1371,14 @@ def _stitch_ranking_hibrido(
             if trecho_opt and jaccard_words(trecho_opt, problema) >= 0.12
             else trecho
         )
+        preferred = _resolve_catalog_id(opt.get("id_metodologia"))
+        mid = _pick_metodologia_diversa(
+            used_mids,
+            preferred_id=preferred,
+            slot=i,
+            seed=problema or contexto or "",
+        )
+        used_mids.add(mid)
         caminhos_out.append(
             _montar_caminho_hibrido(
                 letra,
@@ -897,6 +1388,7 @@ def _stitch_ranking_hibrido(
                 contexto=contexto,
                 trecho_relato=trecho_uso,
                 refs_no_prompt=refs,
+                forced_mid=mid,
             )
         )
 
@@ -947,7 +1439,7 @@ def _stitch_ranking_hibrido(
         "Analisamos o seu relato e sugerimos três caminhos metodológicos "
         "para a turma. Cada opção parte do que você descreveu — "
         "escolha a que melhor se encaixa no seu contexto."
-    )[:600]
+    )
     base["causas_raiz"] = causas
     base["caminhos"] = caminhos_out
     base["trecho_relato_usado"] = qualidade.get("trecho_relato_usado") or trecho

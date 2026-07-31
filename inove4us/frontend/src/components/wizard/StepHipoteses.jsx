@@ -90,8 +90,10 @@ export default function StepHipoteses({
               {caminho.metodologia ? (
                 <p className="mt-3 text-xs font-semibold text-bordo">
                   {caminho.metodologia}
-                  {caminho.quadrante ? (
-                    <span className="font-normal text-bordo-soft"> · {caminho.quadrante}</span>
+                  {(caminho.etiqueta || caminho.quadrante) ? (
+                    <span className="font-normal text-bordo-soft">
+                      {" "}· {caminho.etiqueta || caminho.quadrante}
+                    </span>
                   ) : null}
                 </p>
               ) : null}
@@ -99,20 +101,27 @@ export default function StepHipoteses({
               <h2 className="mt-2 font-display text-lg font-bold text-bordo-deep">
                 {caminho.titulo}
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-bordo-soft">
-                {caminho.por_que_usar || caminho.resumo}
-              </p>
+
+              {caminho.por_que_usar ? (
+                <p className="mt-2 text-sm leading-relaxed text-bordo-deep">
+                  {caminho.por_que_usar}
+                </p>
+              ) : caminho.resumo || caminho.gancho_adaptacao ? (
+                <p className="mt-2 text-sm leading-relaxed text-bordo-deep">
+                  {caminho.resumo || caminho.gancho_adaptacao}
+                </p>
+              ) : null}
 
               {trechoCard ? (
                 <p className="mt-3 rounded-lg bg-brand-50/80 px-2.5 py-2 text-xs leading-relaxed text-bordo">
-                  <span className="font-semibold">Baseado no que você descreveu: </span>
+                  <span className="font-semibold">Do seu relato: </span>
                   «{trechoCard}»
                 </p>
               ) : null}
 
               {caminho.dinamica_sala ? (
-                <p className="mt-3 border-t border-brand-100 pt-3 text-xs leading-relaxed text-bordo-soft">
-                  <span className="font-semibold text-bordo">Em sala: </span>
+                <p className="mt-3 border-t border-brand-100 pt-3 text-sm leading-relaxed text-bordo-soft">
+                  <span className="font-semibold text-bordo">Como conduzir: </span>
                   {caminho.dinamica_sala}
                 </p>
               ) : null}

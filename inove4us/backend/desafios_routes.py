@@ -148,9 +148,225 @@ def _ensure_desafios_schema(conn) -> None:
                 ON public.inove_desafio_colaboradores (token_convite);
             CREATE INDEX IF NOT EXISTS idx_inove_desafio_colab_desafio
                 ON public.inove_desafio_colaboradores (desafio_id, status);
+
+            ALTER TABLE public.inove_desafio_colaboradores
+                ADD COLUMN IF NOT EXISTS card_id VARCHAR(64);
+            ALTER TABLE public.inove_desafio_colaboradores
+                ADD COLUMN IF NOT EXISTS card_titulo VARCHAR(200);
+            ALTER TABLE public.inove_desafio_colaboradores
+                ADD COLUMN IF NOT EXISTS card_descricao TEXT;
+            ALTER TABLE public.inove_desafio_colaboradores
+                ADD COLUMN IF NOT EXISTS desafio_descricao TEXT;
+            CREATE INDEX IF NOT EXISTS idx_inove_desafio_colab_card
+                ON public.inove_desafio_colaboradores (desafio_id, card_id)
+                WHERE card_id IS NOT NULL;
             """
         )
     _ensured = True
+
+
+def _tarefas_do_desafio(desafio: dict) -> list[dict]:
+    plan = _json_field(desafio.get("plan_data")) or {}
+    if not isinstance(plan, dict):
+        plan = {}
+    plano = plan.get("plano") or plan.get("plano_eduscrum") or {}
+    if isinstance(plano, dict) and isinstance(plano.get("tarefas_kanban"), list):
+        return [t for t in plano["tarefas_kanban"] if isinstance(t, dict)]
+    return []
+
+
+def _resolver_card(desafio: dict, card_id: str) -> dict | None:
+    wanted = str(card_id or "").strip()
+    if not wanted:
+        return None
+    for t in _tarefas_do_desafio(desafio):
+        if str(t.get("id") or "").strip() == wanted:
+            return t
+    return None
+
+
+def _descricao_card(card: dict | None) -> str:
+    if not card:
+        return ""
+    parts = []
+    titulo = str(card.get("titulo") or "").strip()
+    if titulo:
+        parts.append(titulo)
+    objetivo = str(card.get("objetivo") or card.get("descricao") or "").strip()
+    if objetivo:
+        parts.append(objetivo)
+    return "\n".join(parts)
+
+
+def _descricao_desafio(desafio: dict) -> str:
+    parts = []
+    titulo = str(desafio.get("titulo") or "").strip()
+    if titulo:
+        parts.append(titulo)
+    tema = str(desafio.get("tema") or "").strip()
+    if tema:
+        parts.append(f"Tema: {tema}")
+    problema = str(desafio.get("problema") or "").strip()
+    if problema:
+        parts.append(problema)
+    hipotese = str(desafio.get("hipotese") or "").strip()
+    if hipotese:
+        parts.append(f"Hipótese: {hipotese}")
+    return "\n\n".join(parts) if parts else "Desafio multidisciplinar"
+
+
+def _kanban_somente_card(desafio: dict, card: dict) -> dict:
+    base = _fresh_kanban_from_plan(_json_field(desafio.get("plan_data")) or {})
+    tid = str(card.get("id") or "").strip()
+    tarefas = []
+    for t in base.get("tarefas") or []:
+        if str(t.get("id") or "").strip() == tid:
+            item = dict(t)
+            item["coluna"] = "para_fazer"
+            item["historico"] = []
+            item["ultima_observacao"] = None
+            tarefas.append(item)
+            break
+    if not tarefas:
+        item = dict(card)
+        item["coluna"] = "para_fazer"
+        item["historico"] = []
+        item["ultima_observacao"] = None
+        tarefas = [item]
+    return {"tarefas": tarefas}
+
+
+def _criar_seed_grafo_convidado(
+    cur,
+    *,
+    desafio: dict,
+    colab: dict,
+    id_clie_convidado: int,
+) -> dict:
+    """
+    Acrescenta o desafio no grafo do convidado (1 evento seed).
+    Ele planeja as próprias aulas depois — isolado do dono.
+    """
+    desafio_id = str(desafio["id"])
+    cur.execute(
+        f"""
+        SELECT {SELECT_EVENTO}
+          FROM public.inove_agenda_eventos
+         WHERE desafio_id = %s
+           AND id_clie = %s
+           AND tipo = 'aula_eduscrum'
+         ORDER BY id_evento ASC
+         LIMIT 1
+        """,
+        (desafio_id, id_clie_convidado),
+    )
+    existing = cur.fetchone()
+    if existing:
+        return _serialize_evento(dict(existing))
+
+    card_id = str(colab.get("card_id") or "").strip()
+    card = _resolver_card(desafio, card_id) if card_id else None
+    if not card and card_id:
+        card = {
+            "id": card_id,
+            "titulo": colab.get("card_titulo") or "Card colaborativo",
+            "objetivo": colab.get("card_descricao") or "",
+        }
+    if not card:
+        # fallback: primeiro card do plano
+        tarefas = _tarefas_do_desafio(desafio)
+        card = tarefas[0] if tarefas else {"id": "card-colab", "titulo": "Parte colaborativa"}
+
+    plan_data = _json_field(desafio.get("plan_data")) or {}
+    if not isinstance(plan_data, dict):
+        plan_data = {}
+    plan_data = copy.deepcopy(plan_data)
+    nova_session = str(uuid.uuid4())
+    plan_data["plano_session"] = nova_session
+    plan_data["hipotese"] = desafio.get("hipotese") or plan_data.get("hipotese") or ""
+    plan_data["problema"] = desafio.get("problema") or plan_data.get("problema") or ""
+    if desafio.get("causas") is not None:
+        plan_data["causas"] = _json_field(desafio.get("causas"))
+
+    kanban_state = _kanban_somente_card(desafio, card)
+    card_titulo = str(card.get("titulo") or colab.get("card_titulo") or "Card")[:120]
+    titulo_desafio = str(desafio.get("titulo") or "Desafio")[:80]
+    titulo = f"{titulo_desafio} · {card_titulo}"[:200]
+
+    from datetime import date
+
+    hoje = date.today().isoformat()
+    data_evento = f"{hoje}T{TURNO_HORA['manha']}"
+    turma = "A planejar"
+    # evita conflito raro no mesmo dia
+    cur.execute(
+        """
+        SELECT 1 FROM public.inove_agenda_eventos
+         WHERE id_clie = %s
+           AND tipo = 'aula_eduscrum'
+           AND data_evento::date = %s::date
+           AND lower(trim(turma)) = lower(trim(%s))
+           AND lower(trim(turno)) = 'manha'
+         LIMIT 1
+        """,
+        (id_clie_convidado, hoje, turma),
+    )
+    if cur.fetchone():
+        turma = f"A planejar · {str(card.get('id') or '')[:8]}"
+
+    meta_final = {
+        "desafio_id": desafio_id,
+        "card_id": str(card.get("id") or ""),
+        "card_titulo": card_titulo,
+        "execucao_colaborador": True,
+        "origem_convite": True,
+        "precisa_registrar_aulas": True,
+        "hipotese": plan_data.get("hipotese"),
+        "problema": (plan_data.get("problema") or "")[:500],
+        "tema": desafio.get("tema"),
+    }
+    if plan_data.get("causas") is not None:
+        meta_final["causas"] = plan_data["causas"]
+
+    nota = "\n".join(
+        [
+            "Desafio recebido por convite multidisciplinar.",
+            "Planeje suas aulas — o outro professor não vê este planejamento.",
+            f"Card: {card_titulo}",
+            f"Desafio: {titulo_desafio}",
+        ]
+    )
+
+    cur.execute(
+        f"""
+        INSERT INTO public.inove_agenda_eventos
+            (id_clie, data_evento, titulo, nota_texto, status, tipo,
+             meta_json, plano_session, plan_data, kanban_state,
+             turma, turno, modo_execucao, id_evento_pai,
+             disciplina_id, origem, tema, desafio_id, id_clie_responsavel)
+        VALUES (%s, %s, %s, %s, 'planejado', 'aula_eduscrum',
+                %s::jsonb, %s, %s::jsonb, %s::jsonb,
+                %s, 'manha', 'reinicio', NULL,
+                %s, 'convite_colaborador', %s, %s, %s)
+        RETURNING {SELECT_EVENTO}
+        """,
+        (
+            id_clie_convidado,
+            data_evento,
+            titulo,
+            nota,
+            json.dumps(meta_final, ensure_ascii=False),
+            nova_session,
+            json.dumps(plan_data, ensure_ascii=False),
+            json.dumps(kanban_state, ensure_ascii=False),
+            turma[:120],
+            desafio.get("disciplina_id"),
+            (desafio.get("tema") or None),
+            desafio_id,
+            id_clie_convidado,
+        ),
+    )
+    return _serialize_evento(dict(cur.fetchone()))
 
 
 def _papel_acesso_desafio(cur, desafio_id: str, id_clie: int) -> tuple[str | None, dict | None]:
@@ -557,16 +773,20 @@ def listar_execucoes(desafio_id: str):
                 if papel is None or not desafio:
                     return jsonify({"success": False, "error": "Desafio não encontrado"}), 404
 
-                # Todas as aulas do desafio (dono + colaboradores)
+                # Só a própria execução — um professor não vê o planejamento do outro
                 cur.execute(
                     f"""
                     SELECT {SELECT_EVENTO}
                       FROM public.inove_agenda_eventos
                      WHERE desafio_id = %s
                        AND tipo = 'aula_eduscrum'
+                       AND (
+                            id_clie = %s
+                            OR id_clie_responsavel = %s
+                       )
                      ORDER BY data_evento ASC, id_evento ASC
                     """,
-                    (desafio_id,),
+                    (desafio_id, id_clie, id_clie),
                 )
                 rows = [_serialize_evento(dict(r)) for r in cur.fetchall()]
 
@@ -590,10 +810,9 @@ def listar_execucoes(desafio_id: str):
                     resp_id = _responsavel_evento(anchor) or _responsavel_evento(eventos[0])
                     resp = _cliente_resumo(cur, resp_id)
                     eh_dono_desafio = resp_id is not None and int(resp_id) == int(desafio["id_clie"])
-                    eh_minha = resp_id is not None and int(resp_id) == int(id_clie)
-                    # Dono abre qualquer; colaborador só a própria
-                    pode_abrir = eh_minha or papel == "dono"
-                    pode_editar = eh_minha
+                    eh_minha = True
+                    pode_abrir = True
+                    pode_editar = True
                     prog = _progresso_eventos(eventos)
 
                     aulas_out = []
@@ -903,7 +1122,7 @@ def replicar_desafio(desafio_id: str):
 
 @desafios_bp.post("/api/desafios/<desafio_id>/convidar")
 def convidar_colaborador(desafio_id: str):
-    """Dono convida professor por e-mail para este desafio (pontual, sem IA)."""
+    """Dono convida professor por e-mail + card (multidisciplinar, sem IA)."""
     user = _require_user()
     if not user:
         return jsonify({"success": False, "error": "Não autenticado"}), 401
@@ -914,9 +1133,17 @@ def convidar_colaborador(desafio_id: str):
 
     data = request.get_json(silent=True) or {}
     email = str(data.get("email") or "").strip().lower()
+    card_id = str(data.get("card_id") or data.get("cardId") or "").strip()
     papel = str(data.get("papel_ou_parte") or data.get("papel") or "").strip()[:200] or None
     if not email or "@" not in email:
-        return jsonify({"success": False, "error": "Informe um e-mail válido."}), 400
+        return jsonify({"success": False, "error": "Informe o e-mail do professor convidado."}), 400
+    if not card_id:
+        return jsonify(
+            {
+                "success": False,
+                "error": "Escolha o card que o professor convidado vai realizar neste desafio.",
+            }
+        ), 400
 
     id_clie = user["id_clie"]
     if (user.get("mail_clie") or "").strip().lower() == email:
@@ -929,6 +1156,18 @@ def convidar_colaborador(desafio_id: str):
                 papel_acesso, desafio = _papel_acesso_desafio(cur, desafio_id, id_clie)
                 if papel_acesso != "dono" or not desafio:
                     return jsonify({"success": False, "error": "Desafio não encontrado"}), 404
+
+                card = _resolver_card(desafio, card_id)
+                if not card:
+                    return jsonify(
+                        {"success": False, "error": "Card não encontrado neste desafio."}
+                    ), 400
+
+                card_titulo = str(card.get("titulo") or "Card")[:200]
+                card_descricao = _descricao_card(card)
+                desafio_descricao = _descricao_desafio(desafio)
+                if not papel:
+                    papel = card_titulo[:200]
 
                 # Já aceito?
                 cur.execute(
@@ -965,12 +1204,25 @@ def convidar_colaborador(desafio_id: str):
                         UPDATE public.inove_desafio_colaboradores
                            SET token_convite = %s,
                                papel_ou_parte = %s,
+                               card_id = %s,
+                               card_titulo = %s,
+                               card_descricao = %s,
+                               desafio_descricao = %s,
                                convidado_por = %s,
                                criado_em = CURRENT_TIMESTAMP
                          WHERE id = %s
                      RETURNING *
                         """,
-                        (token, papel, id_clie, pendente["id"]),
+                        (
+                            token,
+                            papel,
+                            card_id,
+                            card_titulo,
+                            card_descricao,
+                            desafio_descricao,
+                            id_clie,
+                            pendente["id"],
+                        ),
                     )
                     colab = dict(cur.fetchone())
                 else:
@@ -978,11 +1230,22 @@ def convidar_colaborador(desafio_id: str):
                         """
                         INSERT INTO public.inove_desafio_colaboradores
                             (desafio_id, email_convidado, papel_ou_parte, token_convite,
-                             status, convidado_por)
-                        VALUES (%s, %s, %s, %s, 'pendente', %s)
+                             status, convidado_por, card_id, card_titulo,
+                             card_descricao, desafio_descricao)
+                        VALUES (%s, %s, %s, %s, 'pendente', %s, %s, %s, %s, %s)
                         RETURNING *
                         """,
-                        (desafio_id, email, papel, token, id_clie),
+                        (
+                            desafio_id,
+                            email,
+                            papel,
+                            token,
+                            id_clie,
+                            card_id,
+                            card_titulo,
+                            card_descricao,
+                            desafio_descricao,
+                        ),
                     )
                     colab = dict(cur.fetchone())
 
@@ -992,6 +1255,9 @@ def convidar_colaborador(desafio_id: str):
             recipient=email,
             convidado_por_nome=user.get("nome_clie") or "Um professor",
             desafio_titulo=desafio.get("titulo") or "Desafio",
+            desafio_descricao=desafio_descricao,
+            card_titulo=card_titulo,
+            card_descricao=card_descricao,
             papel_ou_parte=papel,
             convite_url=convite_url,
         )
@@ -1002,6 +1268,8 @@ def convidar_colaborador(desafio_id: str):
                     "id": colab["id"],
                     "email_convidado": colab["email_convidado"],
                     "papel_ou_parte": colab.get("papel_ou_parte"),
+                    "card_id": colab.get("card_id"),
+                    "card_titulo": colab.get("card_titulo"),
                     "status": colab["status"],
                     "token_convite": colab["token_convite"],
                 },
@@ -1034,7 +1302,7 @@ def listar_colaboradores(desafio_id: str):
                 cur.execute(
                     """
                     SELECT id, email_convidado, id_clie_convidado, papel_ou_parte,
-                           status, criado_em, aceito_em
+                           card_id, card_titulo, status, criado_em, aceito_em
                       FROM public.inove_desafio_colaboradores
                      WHERE desafio_id = %s
                      ORDER BY criado_em DESC
@@ -1090,6 +1358,18 @@ def get_convite(token: str):
                 row.get("email_convidado") or ""
             ).strip().lower()
 
+        desafio_descricao = (row.get("desafio_descricao") or "").strip() or _descricao_desafio(
+            {
+                "titulo": row.get("desafio_titulo"),
+                "tema": row.get("tema"),
+                "problema": row.get("problema"),
+                "hipotese": row.get("hipotese"),
+            }
+        )
+        card_descricao = (row.get("card_descricao") or "").strip()
+        if not card_descricao and row.get("card_titulo"):
+            card_descricao = str(row.get("card_titulo"))
+
         return jsonify(
             {
                 "success": True,
@@ -1097,6 +1377,10 @@ def get_convite(token: str):
                     "status": row["status"],
                     "email_convidado": row["email_convidado"],
                     "papel_ou_parte": row.get("papel_ou_parte"),
+                    "card_id": row.get("card_id"),
+                    "card_titulo": row.get("card_titulo"),
+                    "card_descricao": card_descricao,
+                    "desafio_descricao": desafio_descricao,
                     "desafio_id": str(row["desafio_id"]),
                     "desafio": {
                         "id": str(row["desafio_id"]),
@@ -1106,6 +1390,7 @@ def get_convite(token: str):
                         "tema": row.get("tema"),
                         "problema": row.get("problema"),
                         "dono_nome": row.get("dono_nome"),
+                        "descricao": desafio_descricao,
                     },
                     "requer_login": user is None,
                     "email_bate": email_match if user else None,
@@ -1147,11 +1432,27 @@ def aceitar_convite(token: str):
                 colab = dict(colab)
                 if colab["status"] == "aceito":
                     if colab.get("id_clie_convidado") == user["id_clie"]:
+                        cur.execute(
+                            "SELECT * FROM public.inove_desafios WHERE id = %s",
+                            (colab["desafio_id"],),
+                        )
+                        desafio_row = cur.fetchone()
+                        seed = None
+                        if desafio_row:
+                            seed = _criar_seed_grafo_convidado(
+                                cur,
+                                desafio=dict(desafio_row),
+                                colab=colab,
+                                id_clie_convidado=int(user["id_clie"]),
+                            )
                         return jsonify(
                             {
                                 "success": True,
                                 "ja_aceito": True,
                                 "desafio_id": str(colab["desafio_id"]),
+                                "id_evento": seed.get("id_evento") if seed else None,
+                                "evento": seed,
+                                "proximo_passo": "planejar_aulas",
                             }
                         ), 200
                     return jsonify({"success": False, "error": "Convite já utilizado."}), 409
@@ -1183,17 +1484,37 @@ def aceitar_convite(token: str):
                 )
                 updated = dict(cur.fetchone())
 
+                cur.execute(
+                    "SELECT * FROM public.inove_desafios WHERE id = %s",
+                    (updated["desafio_id"],),
+                )
+                desafio_row = cur.fetchone()
+                if not desafio_row:
+                    return jsonify({"success": False, "error": "Desafio não encontrado"}), 404
+
+                # 1 clique: desafio entra no grafo do convidado (seed isolado)
+                seed = _criar_seed_grafo_convidado(
+                    cur,
+                    desafio=dict(desafio_row),
+                    colab=updated,
+                    id_clie_convidado=int(user["id_clie"]),
+                )
+
         return jsonify(
             {
                 "success": True,
                 "desafio_id": str(updated["desafio_id"]),
+                "id_evento": seed.get("id_evento"),
+                "evento": seed,
                 "colaborador": {
                     "id": updated["id"],
                     "status": updated["status"],
                     "papel_ou_parte": updated.get("papel_ou_parte"),
+                    "card_id": updated.get("card_id"),
+                    "card_titulo": updated.get("card_titulo"),
                 },
                 "ia_chamada": False,
-                "proximo_passo": "criar_execucao",
+                "proximo_passo": "planejar_aulas",
             }
         ), 200
     except Exception as exc:

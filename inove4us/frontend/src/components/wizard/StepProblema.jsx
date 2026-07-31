@@ -1,4 +1,5 @@
 import DictationField from '../DictationField'
+import FieldHelp from '../FieldHelp'
 import VinculoPedagogicoSelector from '../VinculoPedagogicoSelector'
 
 const EXEMPLO_CONTEXTO =
@@ -78,9 +79,10 @@ export default function StepProblema({
             value={problema}
             onChange={onProblemaChange}
           />
-          <p className="mt-1.5 text-xs text-bordo-soft">
-            Estrutura sugerida: Contexto → Desafio da Turma → Dor do Professor.
-          </p>
+          <FieldHelp tip="Qual é o problema real que os alunos precisam resolver? Ex: 'Turma do 1º ano muito dispersa'.">
+            Qual é o problema real que os alunos precisam resolver? Ex: &apos;Turma do 1º ano
+            muito dispersa&apos;. Estrutura: Contexto → Desafio da Turma → Dor do Professor.
+          </FieldHelp>
         </div>
 
         <div>

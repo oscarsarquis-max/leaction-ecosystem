@@ -254,7 +254,7 @@ san_ia = sanitizar_causas_ia(
 )
 assert len(san_ia) == 3
 for orig, got in zip(ia_diversa, san_ia):
-    assert got["descricao"] == orig["descricao"][:320], (orig["titulo"], got["descricao"])
+    assert got["descricao"] == orig["descricao"], (orig["titulo"], got["descricao"])
     assert got["origem"] == "ia_relato"
     assert got.get("precisa_complemento") is False
 
@@ -289,7 +289,7 @@ apos_barreira = aplicar_barreira_final_payload(
 )
 assert (apos_barreira.get("qualidade") or {}).get("barreira_final_bloqueios", 0) == 0
 for orig, got in zip(ia_diversa, apos_barreira["causas_raiz"]):
-    assert got["descricao"] == orig["descricao"][:320], got["descricao"]
+    assert got["descricao"] == orig["descricao"], got["descricao"]
     assert "fio condutor" not in got["descricao"].lower()
     assert "pad_deterministico" != got.get("origem")
 # Ângulos distintos preservados

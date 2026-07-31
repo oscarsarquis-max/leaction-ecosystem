@@ -5,6 +5,7 @@ import {
   listarInstituicoes,
   listarPeriodos,
 } from '../services/instituicoesService'
+import FieldHelp from './FieldHelp'
 
 /**
  * Seletor opcional: instituição → período → curso → disciplina.
@@ -232,7 +233,7 @@ export default function VinculoPedagogicoSelector({
       </p>
       <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="field-label text-xs">Instituição</span>
+          <span className="field-label text-xs">Instituição / Escola</span>
           <select
             className="field-input mt-1 min-h-10 text-sm"
             value={instId}
@@ -253,6 +254,9 @@ export default function VinculoPedagogicoSelector({
               </option>
             ))}
           </select>
+          <FieldHelp tip="Vincular a uma escola ajuda a organizar seus planejamentos e futuros relatórios.">
+            Vincular a uma escola ajuda a organizar seus planejamentos e futuros relatórios.
+          </FieldHelp>
         </label>
         <label className="block">
           <span className="field-label text-xs">Período letivo</span>

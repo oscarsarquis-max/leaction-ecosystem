@@ -5,6 +5,7 @@ import DailyCycleKanban, {
   buildCycleTasks,
   cycleKanbanPayload,
 } from '../components/DailyCycleKanban'
+import FieldHelp from '../components/FieldHelp'
 import VinculoPedagogicoSelector from '../components/VinculoPedagogicoSelector'
 import {
   atualizarAula,
@@ -291,7 +292,12 @@ export default function DailyPlanner() {
     setPickerError('')
     setPickerLoading(true)
     try {
-      const data = await sugerirDinamicas('')
+      const data = await sugerirDinamicas('', {
+        tema: form.tema_aula.trim(),
+        objetivo: form.objetivo_aprendizagem.trim(),
+        conteudo: form.conteudo_essencial.trim(),
+        limit: 12,
+      })
       setCatalogoDinamicas(Array.isArray(data?.dinamicas) ? data.dinamicas : [])
     } catch (err) {
       if (isSchemaPendingError(err)) {
@@ -316,7 +322,12 @@ export default function DailyPlanner() {
   }
 
   function selectDinamica(item) {
-    const texto = `${item.nome}\n\n${item.descricao_curta || ''}`.trim().slice(0, LIMITS.dinamica_texto)
+    const partes = [
+      item.nome,
+      item.motivo || '',
+      item.descricao_curta || '',
+    ].filter(Boolean)
+    const texto = [...new Set(partes)].join('\n\n').trim().slice(0, LIMITS.dinamica_texto)
     setForm((prev) => ({
       ...prev,
       dinamica_ativa_id: item.id,
@@ -470,10 +481,13 @@ export default function DailyPlanner() {
                   className="field-input mt-1 min-h-11"
                   value={form.tema_aula}
                   onChange={(e) => setField('tema_aula', e.target.value.slice(0, LIMITS.tema_aula))}
-                  placeholder="Ex.: Frações equivalentes"
+                  placeholder="Ex.: Termodinâmica"
                   required
                   maxLength={LIMITS.tema_aula}
                 />
+                <FieldHelp tip="Seja específico. Ex: 'Termodinâmica' em vez de 'Física'.">
+                  Seja específico. Ex: &apos;Termodinâmica&apos; em vez de &apos;Física&apos;.
+                </FieldHelp>
                 <CharHint value={form.tema_aula} max={LIMITS.tema_aula} />
               </label>
               <label className="block">
@@ -534,6 +548,9 @@ export default function DailyPlanner() {
                 placeholder="Stand-up curto: conectar o grupo e lembrar a meta do dia"
                 maxLength={LIMITS.acolhida}
               />
+              <FieldHelp tip="Como você vai fisgar a atenção nos primeiros 5 minutos?">
+                Como você vai fisgar a atenção nos primeiros 5 minutos?
+              </FieldHelp>
               <CharHint value={form.acolhida} max={LIMITS.acolhida} />
             </label>
 
@@ -667,7 +684,9 @@ export default function DailyPlanner() {
               Dinâmicas rápidas
             </h2>
             <p className="mt-1 text-sm text-bordo-soft">
-              Catálogo completo de dinâmicas (por nome). Digite para filtrar; limpe para ver tudo de novo.
+              {form.tema_aula.trim()
+                ? `Sugestões para a sua aula sobre «${form.tema_aula.trim()}», com explicação pedagógica de cada escolha. Filtre por nome se quiser ver outras.`
+                : 'Informe o tema da aula para receber sugestões alinhadas ao seu objetivo. Sem tema, mostramos todas as dinâmicas disponíveis.'}
             </p>
 
             <div className="mt-4 flex gap-2">
@@ -719,9 +738,16 @@ export default function DailyPlanner() {
                     <p className="mt-0.5 font-display text-base font-bold text-bordo-deep">
                       {d.nome}
                     </p>
-                    <p className="mt-1 text-sm leading-relaxed text-bordo-soft">
-                      {d.descricao_curta}
-                    </p>
+                    {d.motivo ? (
+                      <p className="mt-1 text-sm leading-relaxed text-bordo-deep">
+                        {d.motivo}
+                      </p>
+                    ) : null}
+                    {d.descricao_curta && d.descricao_curta !== d.motivo ? (
+                      <p className="mt-1 text-xs leading-relaxed text-bordo-soft">
+                        {d.descricao_curta}
+                      </p>
+                    ) : null}
                   </button>
                 </li>
               ))}

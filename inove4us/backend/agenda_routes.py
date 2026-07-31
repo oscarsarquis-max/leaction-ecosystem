@@ -127,11 +127,10 @@ def _ensure_table(conn):
 def _can_access_evento(cur, user_id_clie: int, ev: dict) -> tuple[bool, bool]:
     """
     Retorna (pode_ler, pode_editar).
-    Editar = responsável da execução (id_clie_responsavel ou id_clie).
-    Ler = editar OU dono do desafio OU colaborador aceito (só se for a própria execução
-          para colaborador — dono lê qualquer).
+    Isolamento multidisciplinar: um professor só lê/edita a própria execução.
+    Compartilham o desafio (conteúdo), não o planejamento de aulas do outro.
     """
-    from desafios_routes import _papel_acesso_desafio, _responsavel_evento
+    from desafios_routes import _responsavel_evento
 
     resp = _responsavel_evento(ev)
     pode_editar = resp is not None and int(resp) == int(user_id_clie)
@@ -139,16 +138,6 @@ def _can_access_evento(cur, user_id_clie: int, ev: dict) -> tuple[bool, bool]:
         return True, True
     if int(ev.get("id_clie") or 0) == int(user_id_clie):
         return True, True
-
-    desafio_id = ev.get("desafio_id")
-    if not desafio_id:
-        return False, False
-    papel, _desafio = _papel_acesso_desafio(cur, str(desafio_id), user_id_clie)
-    if papel == "dono":
-        return True, False
-    if papel == "colaborador":
-        # colaborador só lê a própria execução
-        return False, False
     return False, False
 
 
@@ -231,8 +220,241 @@ def _stamp_aula_id_on_tarefas(tarefas, aula_id):
                 item["aula_id"] = int(raw)
             except (TypeError, ValueError):
                 item["aula_id"] = aid
+        # Mantém aula_ids coerente com aula_id
+        aids = []
+        for x in item.get("aula_ids") or []:
+            try:
+                aids.append(int(x))
+            except (TypeError, ValueError):
+                continue
+        if item.get("aula_id") is not None and int(item["aula_id"]) not in aids:
+            aids.insert(0, int(item["aula_id"]))
+        item["aula_ids"] = aids
         out.append(item)
     return out
+
+
+def _merge_tarefas_by_card_id(tarefas: list) -> list:
+    """Fund e cards com o mesmo id (mesmo card em várias turmas/aulas)."""
+    rank = {"para_fazer": 0, "fazendo": 1, "pronto": 2}
+    by_id: dict[str, dict] = {}
+    orphans: list[dict] = []
+    for t in tarefas or []:
+        if not isinstance(t, dict):
+            continue
+        tid = str(t.get("id") or "").strip()
+        if not tid:
+            orphans.append(dict(t))
+            continue
+        if tid not in by_id:
+            item = dict(t)
+            aids: list[int] = []
+            for x in item.get("aula_ids") or []:
+                try:
+                    aids.append(int(x))
+                except (TypeError, ValueError):
+                    pass
+            if item.get("aula_id") is not None:
+                try:
+                    aid0 = int(item["aula_id"])
+                    if aid0 not in aids:
+                        aids.insert(0, aid0)
+                except (TypeError, ValueError):
+                    pass
+            item["aula_ids"] = aids
+            if aids and item.get("aula_id") is None:
+                item["aula_id"] = aids[0]
+            escopos = []
+            for esc in item.get("escopos_turma") or []:
+                if isinstance(esc, dict) and str(esc.get("nota") or "").strip():
+                    escopos.append(dict(esc))
+            item["escopos_turma"] = escopos
+            by_id[tid] = item
+            continue
+        cur = by_id[tid]
+        try:
+            aid = int(t["aula_id"]) if t.get("aula_id") is not None else None
+        except (TypeError, ValueError):
+            aid = None
+        if aid is not None and aid not in cur["aula_ids"]:
+            cur["aula_ids"].append(aid)
+        for esc in t.get("escopos_turma") or []:
+            if not isinstance(esc, dict):
+                continue
+            eaid = esc.get("aula_id")
+            try:
+                eaid_i = int(eaid) if eaid is not None else None
+            except (TypeError, ValueError):
+                eaid_i = None
+            already = any(
+                int(x.get("aula_id")) == eaid_i
+                for x in cur["escopos_turma"]
+                if x.get("aula_id") is not None and eaid_i is not None
+            )
+            if not already and str(esc.get("nota") or "").strip():
+                cur["escopos_turma"].append(dict(esc))
+        if rank.get(str(t.get("coluna") or ""), 0) > rank.get(str(cur.get("coluna") or ""), 0):
+            cur["coluna"] = t.get("coluna")
+            if t.get("historico"):
+                cur["historico"] = t.get("historico")
+            if t.get("ultima_observacao"):
+                cur["ultima_observacao"] = t.get("ultima_observacao")
+    return list(by_id.values()) + orphans
+
+
+def _kanban_para_aula_com_cards(
+    *,
+    plan_data_obj,
+    kanban_base_obj,
+    card_ids: list[str],
+    aula_id: int,
+    turma: str,
+    escopos_by_card: dict[str, str],
+) -> dict:
+    """Monta kanban da aula só com os cards associados + escopo da turma."""
+    base = _fresh_kanban_from_plan(plan_data_obj, kanban_base_obj)
+    tarefas_src = _tarefas_from_kanban(base)
+    wanted = {str(c).strip() for c in card_ids if str(c).strip()}
+    out = []
+    for t in tarefas_src:
+        tid = str(t.get("id") or "").strip()
+        if tid not in wanted:
+            continue
+        nota = str(escopos_by_card.get(tid) or "").strip()
+        item = dict(t)
+        item["coluna"] = "para_fazer"
+        item["historico"] = []
+        item["ultima_observacao"] = None
+        item["aula_id"] = int(aula_id)
+        item["aula_ids"] = [int(aula_id)]
+        item["escopos_turma"] = [
+            {
+                "aula_id": int(aula_id),
+                "turma": turma,
+                "nota": nota,
+            }
+        ]
+        out.append(item)
+    return {"tarefas": out}
+
+
+def _kanban_continuidade_com_cards(
+    *,
+    prev_kanban,
+    plan_data_obj,
+    kanban_base_obj,
+    card_ids: list[str],
+    aula_id: int,
+    turma: str,
+    escopos_by_card: dict[str, str],
+) -> dict:
+    """Prosseguimento: mantém progresso dos cards escolhidos e carimba escopo da nova aula."""
+    prev_map = {
+        str(t.get("id") or "").strip(): dict(t)
+        for t in _tarefas_from_kanban(prev_kanban)
+        if str(t.get("id") or "").strip()
+    }
+    fresh = _kanban_para_aula_com_cards(
+        plan_data_obj=plan_data_obj,
+        kanban_base_obj=kanban_base_obj,
+        card_ids=card_ids,
+        aula_id=aula_id,
+        turma=turma,
+        escopos_by_card=escopos_by_card,
+    )
+    out = []
+    for t in _tarefas_from_kanban(fresh):
+        tid = str(t.get("id") or "").strip()
+        item = dict(t)
+        prev = prev_map.get(tid)
+        if prev:
+            item["coluna"] = prev.get("coluna") or "para_fazer"
+            item["historico"] = list(prev.get("historico") or [])
+            item["ultima_observacao"] = prev.get("ultima_observacao")
+        out.append(item)
+    return {"tarefas": out}
+
+
+def _aula_ids_do_card(task: dict) -> list[int]:
+    aids: list[int] = []
+    for x in task.get("aula_ids") or []:
+        try:
+            aids.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    if task.get("aula_id") is not None:
+        try:
+            aid0 = int(task["aula_id"])
+            if aid0 not in aids:
+                aids.insert(0, aid0)
+        except (TypeError, ValueError):
+            pass
+    return aids
+
+
+def _expand_aula_ids_do_card_no_desafio(cur, id_clie: int, task: dict, anchor_evento: dict) -> list[int]:
+    """Inclui todas as aulas do desafio que possuem o mesmo card_id."""
+    aids = _aula_ids_do_card(task)
+    tid = str(task.get("id") or "").strip()
+    if not tid:
+        return aids
+    plano_session = (anchor_evento.get("plano_session") or "").strip() or None
+    owner = int(anchor_evento.get("id_clie") or id_clie)
+    if plano_session:
+        cur.execute(
+            f"""
+            SELECT id_evento, kanban_state
+              FROM public.inove_agenda_eventos
+             WHERE id_clie = %s
+               AND plano_session = %s
+               AND tipo = 'aula_eduscrum'
+            """,
+            (owner, plano_session),
+        )
+        for row in cur.fetchall():
+            for t in _tarefas_from_kanban(_json_field(row.get("kanban_state"))):
+                if str(t.get("id") or "").strip() == tid:
+                    try:
+                        aid = int(row["id_evento"])
+                    except (TypeError, ValueError):
+                        continue
+                    if aid not in aids:
+                        aids.append(aid)
+                    break
+    return aids
+
+
+def _card_pode_mover(cur, id_clie: int, task: dict, anchor_evento: dict | None = None):
+    """Kanban só move se todas as aulas vinculadas ao card estiverem concluídas."""
+    aids = _aula_ids_do_card(task)
+    if anchor_evento is not None:
+        aids = _expand_aula_ids_do_card_no_desafio(cur, id_clie, task, anchor_evento)
+    if not aids:
+        return (
+            False,
+            "Card sem aula associada. Associe o card a uma aula (com escopo) antes de mover.",
+        )
+    cur.execute(
+        """
+        SELECT id_evento, status
+          FROM public.inove_agenda_eventos
+         WHERE id_clie = %s
+           AND id_evento = ANY(%s)
+        """,
+        (id_clie, aids),
+    )
+    rows = {int(r["id_evento"]): r for r in cur.fetchall()}
+    for aid in aids:
+        row = rows.get(aid)
+        if not row:
+            return False, f"Aula #{aid} vinculada ao card não foi encontrada."
+        if str(row.get("status") or "") != "concluido":
+            return (
+                False,
+                "Só é possível movimentar o card depois que todas as aulas vinculadas "
+                "estiverem realizadas (relato concluído).",
+            )
+    return True, None
 
 
 def _normalize_kanban_state(kanban_state, aula_id=None):
@@ -453,12 +675,19 @@ def grafo_realizacoes():
             tema_col = r.get("tema") if isinstance(r.get("tema"), str) else None
             tema_meta = meta.get("tema") if isinstance(meta.get("tema"), str) else None
             tema = (tema_col or tema_meta or "").strip() or None
+            status_ev = r.get("status") or "planejado"
+            tarefas_kb = _tarefas_from_kanban(r.get("kanban_state"))
+            cards_prontos = bool(tarefas_kb) and all(
+                str(t.get("coluna") or "") == "pronto" for t in tarefas_kb
+            )
+            # Passado: relato concluído e/ou todos os cards da aula em Pronto
+            no_passado = status_ev == "concluido" or cards_prontos
             node = {
                 "id": r["id_evento"],
                 "titulo": r["titulo"],
                 "data": r.get("data_evento"),
                 "data_evento": r.get("data_evento"),
-                "status": r.get("status") or "planejado",
+                "status": status_ev,
                 "tipo": r.get("tipo") or "geral",
                 "id_evento_pai": r.get("id_evento_pai"),
                 "disciplina_id": r.get("disciplina_id"),
@@ -479,6 +708,8 @@ def grafo_realizacoes():
                 "tem_plano": tem_plano,
                 "aula_simples_id": meta.get("aula_simples_id"),
                 "origem": r.get("origem"),
+                "cards_prontos": cards_prontos,
+                "no_passado": no_passado,
             }
             nodes.append(node)
             id_set.add(r["id_evento"])
@@ -784,8 +1015,72 @@ def registrar_aulas():
                     "error": f"Duplicado na lista: {dia} · {turma} · {_turno_label(turno)}.",
                 }
             ), 400
+        # Cards obrigatórios: o que cada turma realiza neste slot
+        card_ids_raw = raw.get("card_ids") or raw.get("cards") or []
+        if isinstance(card_ids_raw, str):
+            card_ids_raw = [card_ids_raw]
+        if not isinstance(card_ids_raw, list):
+            return jsonify(
+                {"success": False, "error": "card_ids deve ser uma lista de ids de cards."}
+            ), 400
+        card_ids: list[str] = []
+        seen_cards: set[str] = set()
+        for c in card_ids_raw:
+            cid = str(c or "").strip()
+            if not cid or cid in seen_cards:
+                continue
+            seen_cards.add(cid)
+            card_ids.append(cid)
+        if not card_ids:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": (
+                        f"Aula {turma} ({dia}): associe ao menos um card do plano. "
+                        "Sem card vinculado a aula não tem o que realizar."
+                    ),
+                }
+            ), 400
+
+        escopos_by_card: dict[str, str] = {}
+        escopos_raw = raw.get("escopos") or raw.get("escopos_turma") or {}
+        if isinstance(escopos_raw, dict):
+            for cid, nota in escopos_raw.items():
+                escopos_by_card[str(cid).strip()] = str(nota or "").strip()
+        elif isinstance(escopos_raw, list):
+            for esc in escopos_raw:
+                if not isinstance(esc, dict):
+                    continue
+                cid = str(esc.get("card_id") or esc.get("id") or "").strip()
+                if not cid:
+                    continue
+                escopos_by_card[cid] = str(esc.get("nota") or esc.get("escopo") or "").strip()
+
+        for cid in card_ids:
+            nota = escopos_by_card.get(cid) or ""
+            if not nota:
+                return jsonify(
+                    {
+                        "success": False,
+                        "error": (
+                            f"Aula {turma} ({dia}): declare o que a turma vai realizar "
+                            f"no card «{cid}» (escopo obrigatório). "
+                            "O mesmo card pode ir a duas turmas — cada uma com seu escopo."
+                        ),
+                    }
+                ), 400
+
         seen.add(key)
-        slots.append({"data": dia, "turma": turma[:120], "turno": turno, "modo_execucao": modo})
+        slots.append(
+            {
+                "data": dia,
+                "turma": turma[:120],
+                "turno": turno,
+                "modo_execucao": modo,
+                "card_ids": card_ids,
+                "escopos_by_card": {c: escopos_by_card[c] for c in card_ids},
+            }
+        )
 
     criados = []
     desafio_id_criado = None
@@ -882,6 +1177,8 @@ def registrar_aulas():
                             409,
                         )
 
+                    id_pai = None
+                    prev_kanban = None
                     if modo == "continuidade":
                         cur.execute(
                             f"""
@@ -898,19 +1195,13 @@ def registrar_aulas():
                         )
                         prev = cur.fetchone()
                         if prev and prev.get("kanban_state") is not None:
-                            kanban_state = _json_field(prev.get("kanban_state"))
-                        else:
-                            kanban_state = (
-                                kanban_base_obj
-                                if isinstance(kanban_base_obj, (dict, list))
-                                else _fresh_kanban_from_plan(plan_data_obj, kanban_base_obj)
-                            )
-                        if isinstance(kanban_state, list):
-                            kanban_state = {"tarefas": kanban_state}
+                            prev_kanban = _json_field(prev.get("kanban_state"))
+                            if isinstance(prev_kanban, list):
+                                prev_kanban = {"tarefas": prev_kanban}
                         id_pai = prev["id_evento"] if prev else None
-                    else:
-                        kanban_state = _fresh_kanban_from_plan(plan_data_obj, kanban_base_obj)
-                        id_pai = None
+
+                    # Placeholder — kanban definitivo após INSERT (precisa do id_evento)
+                    kanban_state = {"tarefas": []}
 
                     titulo = f"{titulo_base} · {turma} · {_turno_label(turno)}"[:200]
                     nota_parts = [
@@ -918,6 +1209,7 @@ def registrar_aulas():
                         f"Turma: {turma}",
                         f"Turno: {_turno_label(turno)}",
                         f"Modo: {_modo_label(modo)}",
+                        f"Cards: {', '.join(slot['card_ids'])}",
                     ]
                     nota_final = "\n".join(p for p in nota_parts if p)
 
@@ -927,6 +1219,8 @@ def registrar_aulas():
                         "turno": turno,
                         "modo_execucao": modo,
                         "modo_label": _modo_label(modo),
+                        "card_ids": slot["card_ids"],
+                        "escopos_by_card": slot["escopos_by_card"],
                     }
 
                     cur.execute(
@@ -952,9 +1246,7 @@ def registrar_aulas():
                             json.dumps(plan_data_obj, ensure_ascii=False)
                             if plan_data_obj is not None
                             else None,
-                            json.dumps(kanban_state, ensure_ascii=False)
-                            if kanban_state is not None
-                            else None,
+                            json.dumps(kanban_state, ensure_ascii=False),
                             turma,
                             turno,
                             modo,
@@ -962,6 +1254,42 @@ def registrar_aulas():
                             disciplina_id,
                             tema_obj,
                             desafio_id_criado,
+                            user["id_clie"],
+                        ),
+                    )
+                    row_ins = dict(cur.fetchone())
+                    aula_id_novo = int(row_ins["id_evento"])
+
+                    if modo == "continuidade" and prev_kanban is not None:
+                        kanban_state = _kanban_continuidade_com_cards(
+                            prev_kanban=prev_kanban,
+                            plan_data_obj=plan_data_obj,
+                            kanban_base_obj=kanban_base_obj,
+                            card_ids=slot["card_ids"],
+                            aula_id=aula_id_novo,
+                            turma=turma,
+                            escopos_by_card=slot["escopos_by_card"],
+                        )
+                    else:
+                        kanban_state = _kanban_para_aula_com_cards(
+                            plan_data_obj=plan_data_obj,
+                            kanban_base_obj=kanban_base_obj,
+                            card_ids=slot["card_ids"],
+                            aula_id=aula_id_novo,
+                            turma=turma,
+                            escopos_by_card=slot["escopos_by_card"],
+                        )
+
+                    cur.execute(
+                        f"""
+                        UPDATE public.inove_agenda_eventos
+                           SET kanban_state = %s::jsonb
+                         WHERE id_evento = %s AND id_clie = %s
+                        RETURNING {SELECT_COLS}
+                        """,
+                        (
+                            json.dumps(kanban_state, ensure_ascii=False),
+                            aula_id_novo,
                             user["id_clie"],
                         ),
                     )
@@ -1080,10 +1408,13 @@ def listar_kanban_desafio(id_evento: int):
                 t
                 for t in tarefas_all
                 if t.get("aula_id") == aula_filtro
+                or aula_filtro in _aula_ids_do_card(t)
                 or (t.get("aula_id") is None and aula_filtro == id_evento)
             ]
             visao = "aula"
         else:
+            # Mesmo card em várias turmas → um card com aula_ids + escopos_turma
+            tarefas_all = _merge_tarefas_by_card_id(tarefas_all)
             visao = "todas"
 
         return jsonify(
@@ -1163,6 +1494,28 @@ def atualizar_estado(id_evento: int):
                             }
                         ), 403
                     return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+
+                # Bloqueia mudança de coluna se aulas vinculadas não estiverem concluídas
+                if "kanban_state" in data and isinstance(kanban_state, dict):
+                    prev_tarefas = {
+                        str(t.get("id") or "").strip(): t
+                        for t in _tarefas_from_kanban(_json_field(atual.get("kanban_state")))
+                        if str(t.get("id") or "").strip()
+                    }
+                    for t_new in _tarefas_from_kanban(kanban_state):
+                        tid = str(t_new.get("id") or "").strip()
+                        if not tid:
+                            continue
+                        prev = prev_tarefas.get(tid) or {}
+                        col_old = str(prev.get("coluna") or "para_fazer")
+                        col_new = str(t_new.get("coluna") or "para_fazer")
+                        if col_old == col_new:
+                            continue
+                        ok_move, err_move = _card_pode_mover(
+                            cur, int(atual["id_clie"]), t_new, dict(atual)
+                        )
+                        if not ok_move:
+                            return jsonify({"success": False, "error": err_move}), 400
 
                 sets = []
                 params = []

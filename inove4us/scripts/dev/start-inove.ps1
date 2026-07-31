@@ -8,7 +8,7 @@
 #
 # Portas tipicas:
 #   Hub FE :4000 | Gateway :4001 | Marketplace :4012
-#   inove API :5011 | inove FE :5174
+#   inove API :5010 (default app.py; override com FLASK_PORT) | inove FE :5174
 
 param(
     [switch]$SkipHub,
@@ -182,7 +182,7 @@ if (-not $SkipFrontend) {
 Write-Host ''
 Write-InoveOk 'inove4us pronto (com Action Hub).'
 Write-Host '  inove FE:    http://localhost:5174/acesso'
-Write-Host '  inove API:   http://127.0.0.1:5011/api/health'
+Write-Host '  inove API:   http://127.0.0.1:5010/api/health'
 Write-Host '  Hub FE:      http://localhost:4000'
 Write-Host '  Gateway:     http://127.0.0.1:4001/health'
 Write-Host '  Marketplace: http://127.0.0.1:4012/api/marketplace/health'

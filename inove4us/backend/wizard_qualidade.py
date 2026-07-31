@@ -256,21 +256,45 @@ def expressoes_do_relato(problema: str, *, limite: int = 8) -> list[str]:
     return out[:limite]
 
 
+def _ancora_legivel(texto: str, *, max_chars: int = 56, max_words: int = 8) -> str | None:
+    """
+    Âncora curta para UI/perguntas. Rejeita cláusulas longas do relato
+    (ex.: «Fomos escolhidos para a realização de um projeto…»).
+    """
+    e = " ".join(str(texto or "").split()).strip(" .,;:-«»\"'")
+    if len(e) < 4:
+        return None
+    words = e.split()
+    if len(words) > max_words or len(e) > max_chars:
+        return None
+    # Verbos/cláusulas de abertura — não são entidades
+    if re.match(
+        r"(?i)^(fomos|somos|temos|quero|queremos|precisamos|preciso|"
+        r"n[oó]s|eu|eles|elas|foi|ser[aá]|estamos|estamos)\b",
+        e,
+    ):
+        return None
+    return e
+
+
 def frase_tema_do_relato(problema: str) -> str:
     """Frase curta e legível — expressões completas, nunca lista de tokens."""
     exprs = expressoes_do_relato(problema, limite=3)
-    if exprs:
-        if len(exprs) == 1:
-            return exprs[0]
-        if len(exprs) == 2:
-            return f"{exprs[0]} e {exprs[1]}"
-        # Preferir 2 expressões fortes a três tokens
-        return f"{exprs[0]} e {exprs[1]}"
-    tit = extrair_titulo_sugerido(problema)
+    curtas = [e for e in (_ancora_legivel(x) for x in exprs) if e]
+    if curtas:
+        if len(curtas) == 1:
+            return curtas[0]
+        return f"{curtas[0]} e {curtas[1]}"
+    tit = _ancora_legivel(extrair_titulo_sugerido(problema) or "", max_chars=72, max_words=10)
     if tit:
-        return _cortar_em_limite_legivel(tit, 110).rstrip(".")
-    trecho = extrair_trecho_relato(problema, 90)
-    return trecho.rstrip(".") if trecho else "o desafio que você descreveu"
+        return tit
+    # Sem entidade nomeada: tema genérico (não ecoar 1ª frase inteira do relato)
+    corpo = texto_professor_limpo(problema).lower()
+    if re.search(r"(?i)ambient|sustent|c[oó]rrego|lixo|esgoto|campo", corpo):
+        return "o desafio ambiental do relato"
+    if re.search(r"(?i)turma|ano|aluno", corpo):
+        return "o desafio da turma"
+    return "o desafio que você descreveu"
 
 
 def termos_concretos_do_relato(problema: str, *, limite: int = 12) -> list[str]:
@@ -565,24 +589,47 @@ def causas_somente_do_relato(
     ambientais = [
         e
         for e in exprs
-        if re.search(
-            r"(?i)esgoto|bueiro|coleta|lixo|c[oó]rrego|cheiro|água|agua",
+        if _ancora_legivel(e)
+        and re.search(
+            r"(?i)esgoto|bueiro|coleta|lixo|c[oó]rrego|cheiro|água|agua|"
+            r"ambient|sustent|campo|diagn[oó]stico",
             e,
         )
     ]
     turmas = [
-        e for e in exprs if re.search(r"(?i)\d+[ºoª]\s*ano|turma|ensino", e)
+        e
+        for e in exprs
+        if _ancora_legivel(e) and re.search(r"(?i)\d+[ºoª]\s*ano|turma|ensino", e)
     ]
     prazo = [
-        e for e in exprs if re.search(r"(?i)concurso|prazo|sustent[aá]vel|dossi", e)
+        e
+        for e in exprs
+        if _ancora_legivel(e)
+        and re.search(r"(?i)concurso|prazo|sustent[aá]vel|dossi", e)
     ]
-    e_amb = ambientais[0] if ambientais else (exprs[0] if exprs else tema)
-    e_turma = (
-        ", ".join(turmas[:2])
-        if turmas
-        else (exprs[1] if len(exprs) > 1 else "as turmas envolvidas")
+    e_amb = ambientais[0] if ambientais else tema
+    e_turma = ", ".join(turmas[:2]) if turmas else "as turmas envolvidas"
+    e_prazo = prazo[0] if prazo else tema
+    # Focos curtos só — nunca embutir frase inteira do relato na pergunta.
+    # Temas genéricos («o desafio ambiental…») não entram na pergunta.
+    _tema_generico = re.compile(
+        r"(?i)^o desafio\b|que voc[eê] descreveu"
     )
-    e_prazo = prazo[0] if prazo else (exprs[2] if len(exprs) > 2 else tema)
+    foco_a = _ancora_legivel(e_amb)
+    if foco_a and _tema_generico.search(foco_a):
+        foco_a = None
+    foco_t = _ancora_legivel(e_turma) if turmas else None
+    focos = [f for f in (foco_a, foco_t) if f]
+    if focos:
+        pergunta_comp = (
+            f"Qual evidência de campo sobre {' / '.join(focos)} "
+            f"você já tem ou quer coletar primeiro com as turmas?"
+        )
+    else:
+        pergunta_comp = (
+            "Qual evidência de campo você já tem — ou quer que as turmas "
+            "coletem primeiro — para tornar essa hipótese testável?"
+        )
 
     detalhe_amb = ""
     if re.search(r"(?i)esgoto|bueiro|coleta\s+irregular|lixo", problema or ""):
@@ -598,7 +645,7 @@ def causas_somente_do_relato(
                 f"O relato aponta hipóteses testáveis em torno de {e_amb}"
                 f"{detalhe_amb}: vale estruturar evidências para descartar "
                 f"ou confirmar cada linha com as turmas."
-            )[:320],
+            ),
             "origem": "pad_deterministico",
             "precisa_complemento": False,
         },
@@ -608,7 +655,7 @@ def causas_somente_do_relato(
                 f"No cenário de {ctx}, o fio entre {e_turma} precisa estar "
                 f"articulado (diagnóstico → intervenção → dossiê), senão o "
                 f"trabalho em cadeia sobre {tema} se desconecta."
-            )[:320],
+            ),
             "origem": "pad_deterministico",
             "precisa_complemento": False,
         },
@@ -618,13 +665,10 @@ def causas_somente_do_relato(
                 f"Para o prazo de {e_prazo}, falta tornar testável a hipótese "
                 f"que a turma priorizar — com um detalhe observável a mais "
                 f"(o que medir, onde, com qual turma), o plano fica concreto."
-            )[:320],
+            ),
             "origem": "pad_deterministico",
             "precisa_complemento": True,
-            "pergunta_complemento": (
-                f"Qual evidência de campo (ligada a {e_amb} ou a {e_turma}) "
-                f"você já tem ou quer que as turmas coletem primeiro?"
-            )[:240],
+            "pergunta_complemento": pergunta_comp,
         },
     ]
 
@@ -712,7 +756,9 @@ def sanitizar_causas_ia(
     for item in raw_causas[:5]:
         if not isinstance(item, dict):
             continue
-        titulo = str(item.get("titulo") or "Causa").strip()[:80]
+        titulo = str(item.get("titulo") or "Causa").strip()
+        if len(titulo) > 120:
+            titulo = titulo[:120].rsplit(" ", 1)[0].strip() or titulo[:120]
         desc = str(item.get("descricao") or item.get("texto") or "").strip()
         if not causa_passa_checagens(
             titulo, desc, problema=problema, corpus=corpus
@@ -721,7 +767,8 @@ def sanitizar_causas_ia(
         out.append(
             {
                 "titulo": titulo or "Causa",
-                "descricao": desc[:320],
+                # Texto pedagógico completo — NÃO cortar no meio da frase.
+                "descricao": desc,
                 "origem": "ia_relato",
                 "precisa_complemento": False,
             }
@@ -813,9 +860,10 @@ def forcar_ancoragem_payload(
         if not hip_ok:
             nome = c2.get("metodologia") or "esta metodologia"
             c2["hipotese_teste"] = (
-                f"Se aplicarmos {nome} ao desafio em torno de {tema}, "
-                f"os alunos produzirão evidências e entregas ligadas a esse caso concreto."
-            )[:420]
+                f"Se você conduzir {nome} com a turma em torno de {tema}, "
+                f"os estudantes praticam a aprendizagem de forma ativa "
+                f"e você observa evidências concretas do progresso."
+            )
         # Trecho: só substitui se vazio/debug; senão preserva o da IA (limpo)
         trecho_card = str(c2.get("trecho_relato_usado") or "").strip()
         if not trecho_card or parece_texto_debug_ui(trecho_card):
@@ -829,7 +877,7 @@ def forcar_ancoragem_payload(
                 c2[campo] = (
                     f"Aplicação de {c2.get('metodologia') or 'metodologia'} "
                     f"ao desafio {tema}."
-                )[:360]
+                )
         caminhos.append(c2)
     if caminhos:
         payload["caminhos"] = caminhos
@@ -906,16 +954,17 @@ def aplicar_barreira_final_payload(
                 if campo == "hipotese_teste":
                     nome = c2.get("metodologia") or "esta metodologia"
                     c2[campo] = (
-                        f"Se aplicarmos {nome} ao desafio em torno de {tema}, "
-                        f"os alunos produzirão evidências ligadas a esse caso concreto."
-                    )[:420]
+                        f"Se você conduzir {nome} com a turma em torno de {tema}, "
+                        f"os estudantes praticam a aprendizagem de forma ativa "
+                        f"e você observa evidências concretas do progresso."
+                    )
                 elif campo == "trecho_relato_usado":
                     c2[campo] = extrair_trecho_relato(problema)
                 else:
                     c2[campo] = (
                         f"Aplicação de {c2.get('metodologia') or 'metodologia'} "
                         f"ao desafio {tema}."
-                    )[:360]
+                    )
         caminhos.append(c2)
     if caminhos:
         payload["caminhos"] = caminhos

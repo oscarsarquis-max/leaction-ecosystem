@@ -35,9 +35,13 @@ export function excluirAula(id) {
   })
 }
 
-export function sugerirDinamicas(termo = '') {
+export function sugerirDinamicas(termo = '', contexto = {}) {
   const q = new URLSearchParams()
   if (termo) q.set('q', termo)
+  if (contexto?.tema) q.set('tema', contexto.tema)
+  if (contexto?.objetivo) q.set('objetivo', contexto.objetivo)
+  if (contexto?.conteudo) q.set('conteudo', contexto.conteudo)
+  if (contexto?.limit) q.set('limit', String(contexto.limit))
   const qs = q.toString()
   return request(`/api/daily/sugerir-dinamicas${qs ? `?${qs}` : ''}`)
 }

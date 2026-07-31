@@ -16,6 +16,7 @@ from core.catalogo_metodologias_dia import (
     etiqueta_publica,
 )
 from core.metodologias_db import METODOLOGIAS_DB
+from core.tom_pedagogico import motivo_sugestao_dia
 
 CACHE_VERSION = "2026-07-23.v6"
 
@@ -65,7 +66,10 @@ def _descricao_para_entrada(entrada: dict[str, Any]) -> str:
         if _norm(meta.get("nome") or "") in alvos or _norm(mid) in alvos:
             return _descricao_curta_db(meta)
 
-    return "Dinâmica da base de metodologias — use na estação em campo do ciclo."
+    return (
+        "Dinâmica ativa para mediar a prática da turma em um tempo de aula, "
+        "com objetivo claro e fechamento que mostre o que foi aprendido."
+    )
 
 
 def _build_catalog() -> dict[str, dict[str, Any]]:
@@ -134,6 +138,152 @@ def buscar_dinamicas_rapidas(termo_busca: str = "") -> list[dict[str, Any]]:
             hits.append(_public_item(item))
     hits.sort(key=lambda x: _norm(x.get("nome") or ""))
     return hits
+
+
+_STOPWORDS = frozenset(
+    {
+        "a",
+        "o",
+        "e",
+        "de",
+        "da",
+        "do",
+        "das",
+        "dos",
+        "em",
+        "na",
+        "no",
+        "nas",
+        "nos",
+        "um",
+        "uma",
+        "para",
+        "com",
+        "por",
+        "que",
+        "se",
+        "ao",
+        "os",
+        "as",
+        "aula",
+        "aluno",
+        "alunos",
+        "estudante",
+        "estudantes",
+        "turma",
+        "tema",
+        "grupo",
+        "grupos",
+        "sobre",
+        "mais",
+        "como",
+        "esta",
+        "esse",
+        "essa",
+        "isso",
+        "fazer",
+        "usando",
+    }
+)
+
+
+def _tokens(texto: str) -> list[str]:
+    return [
+        t
+        for t in _norm(texto).replace("-", " ").split()
+        if len(t) >= 3 and t not in _STOPWORDS
+    ]
+
+
+def sugerir_dinamicas_para_contexto(
+    *,
+    tema: str = "",
+    objetivo: str = "",
+    conteudo: str = "",
+    termo: str = "",
+    limite: int = 8,
+) -> list[dict[str, Any]]:
+    """
+    Ranqueia as 39 dinâmicas pelo contexto da aula (sem inventar nomes).
+    Devolve motivo contextual — o professor precisa ver por que a sugestão existe.
+    """
+    base = buscar_dinamicas_rapidas(termo) if termo else listar_dinamicas_rapidas()
+    ctx_tokens = _tokens(" ".join([tema or "", objetivo or "", conteudo or ""]))
+    tema_limpo = " ".join((tema or "").split())[:80]
+
+    if not ctx_tokens:
+        out = []
+        for item in base[: max(limite, 1)]:
+            row = dict(item)
+            row["motivo"] = motivo_sugestao_dia(
+                nome=str(item.get("nome") or ""),
+                etiqueta=str(item.get("etiqueta") or ETIQUETA_INDUTIVAS),
+                descricao=str(item.get("descricao_curta") or ""),
+                tema=tema_limpo,
+            )
+            row["score"] = 0
+            out.append(row)
+        return out
+
+    scored: list[tuple[int, dict[str, Any]]] = []
+    for item in base:
+        blob = _norm(
+            " ".join(
+                [
+                    str(item.get("nome") or ""),
+                    str(item.get("descricao_curta") or ""),
+                    str(item.get("etiqueta") or ""),
+                    " ".join(str(a) for a in (item.get("aliases") or [])),
+                ]
+            )
+        )
+        hits = [t for t in ctx_tokens if t in blob]
+        score = len(hits) * 3
+        # bônus se o nome da dinâmica ecoa o tema
+        nome_n = _norm(item.get("nome") or "")
+        for t in ctx_tokens[:6]:
+            if t in nome_n:
+                score += 2
+        if score <= 0:
+            continue
+        row = dict(item)
+        row["motivo"] = motivo_sugestao_dia(
+            nome=str(item.get("nome") or ""),
+            etiqueta=str(item.get("etiqueta") or ETIQUETA_INDUTIVAS),
+            descricao=str(item.get("descricao_curta") or ""),
+            tema=tema_limpo,
+            elos=hits[:5],
+        )
+        row["score"] = score
+        scored.append((score, row))
+
+    scored.sort(key=lambda x: (-x[0], _norm(x[1].get("nome") or "")))
+    out = [row for _, row in scored]
+    used = {row["id"] for row in out}
+
+    # Completa até o limite com outras do catálogo (motivo contextual, sem inventar)
+    if len(out) < max(limite, 1):
+        for item in base:
+            if item["id"] in used:
+                continue
+            row = dict(item)
+            row["motivo"] = motivo_sugestao_dia(
+                nome=str(item.get("nome") or ""),
+                etiqueta=str(item.get("etiqueta") or ETIQUETA_INDUTIVAS),
+                descricao=str(item.get("descricao_curta") or ""),
+                tema=tema_limpo,
+                alternativa=True,
+            )
+            row["score"] = 0
+            out.append(row)
+            used.add(item["id"])
+            if len(out) >= max(limite, 1):
+                break
+
+    if out:
+        return out[: max(limite, 1)]
+
+    return []
 
 
 def get_dinamica_by_id(dinamica_id: str) -> dict[str, Any] | None:

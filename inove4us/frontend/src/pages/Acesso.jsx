@@ -5,6 +5,8 @@ import { useAuth } from '../lib/auth'
 import BrandLogo from '../components/BrandLogo'
 import DictationField from '../components/DictationField'
 
+const CMS_CACHE_KEY = 'i4_acesso_cms_v1'
+
 function safeNextPath(raw) {
   if (!raw || typeof raw !== 'string') return null
   const t = raw.trim()
@@ -12,6 +14,7 @@ function safeNextPath(raw) {
   if (t.startsWith('/acesso')) return null
   return t
 }
+
 function columnVisible(col) {
   if (!col || typeof col !== 'object') return false
   if (col.visibility === false || col.visible === false) return false
@@ -20,7 +23,56 @@ function columnVisible(col) {
   return Boolean(title || desc || col.image_url || col.image_path)
 }
 
-function CmsSideColumn({ column, side }) {
+function readCmsCache() {
+  try {
+    const raw = sessionStorage.getItem(CMS_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeCmsCache(left, right, heroLine) {
+  try {
+    sessionStorage.setItem(
+      CMS_CACHE_KEY,
+      JSON.stringify({
+        left: left || null,
+        right: right || null,
+        heroLine: heroLine || '',
+        savedAt: Date.now(),
+      }),
+    )
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function CmsSideColumn({ column, side, loading }) {
+  if (loading && !columnVisible(column)) {
+    return (
+      <aside
+        className={`hidden w-[min(100%,17.5rem)] shrink-0 lg:block ${
+          side === 'left' ? 'order-1' : 'order-3'
+        }`}
+        aria-hidden="true"
+      >
+        <div className="flex h-full min-h-[28rem] flex-col overflow-hidden rounded-3xl border border-brand-100/60 bg-brand-50/80 shadow-soft">
+          <div className="h-36 shrink-0 animate-pulse bg-brand-100" />
+          <div className="flex flex-1 flex-col gap-3 p-5">
+            <div className="h-3 w-16 animate-pulse rounded bg-brand-200" />
+            <div className="h-5 w-3/4 animate-pulse rounded bg-brand-200" />
+            <div className="h-3 w-full animate-pulse rounded bg-brand-100" />
+            <div className="h-3 w-5/6 animate-pulse rounded bg-brand-100" />
+          </div>
+        </div>
+      </aside>
+    )
+  }
+
   if (!columnVisible(column)) return null
 
   const title = String(column.title || '').trim()
@@ -40,7 +92,7 @@ function CmsSideColumn({ column, side }) {
 
   return (
     <aside
-      className={`hidden w-[min(100%,17.5rem)] shrink-0 xl:block ${
+      className={`hidden w-[min(100%,17.5rem)] shrink-0 lg:block ${
         side === 'left' ? 'order-1' : 'order-3'
       }`}
       aria-label={side === 'left' ? 'Conteúdo institucional' : 'Como começar'}
@@ -106,9 +158,14 @@ export default function Acesso() {
   const [hint, setHint] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [leftCol, setLeftCol] = useState(null)
-  const [rightCol, setRightCol] = useState(null)
-  const [heroLine, setHeroLine] = useState('')
+
+  const cached = readCmsCache()
+  const [leftCol, setLeftCol] = useState(() => cached?.left || null)
+  const [rightCol, setRightCol] = useState(() => cached?.right || null)
+  const [heroLine, setHeroLine] = useState(() => cached?.heroLine || '')
+  const [cmsLoading, setCmsLoading] = useState(
+    () => !(columnVisible(cached?.left) || columnVisible(cached?.right)),
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -119,16 +176,23 @@ export default function Acesso() {
         const landing = data?.landing_page_data || {}
         const columns = Array.isArray(landing.columns) ? landing.columns : []
         const col1 = landing.coluna1 && typeof landing.coluna1 === 'object' ? landing.coluna1 : null
-        setLeftCol(col1 || columns[0] || null)
-        setRightCol(columns[1] || null)
+        const nextLeft = col1 || columns[0] || null
+        const nextRight = columns[1] || null
         const hero = landing.hero && typeof landing.hero === 'object' ? landing.hero : {}
         const line = String(hero.description || hero.subtitle || '').trim()
-        setHeroLine(line)
-      } catch {
-        if (!cancelled) {
-          setLeftCol(null)
-          setRightCol(null)
+
+        const hasContent = columnVisible(nextLeft) || columnVisible(nextRight)
+        if (hasContent) {
+          setLeftCol(nextLeft)
+          setRightCol(nextRight)
+          setHeroLine(line)
+          writeCmsCache(nextLeft, nextRight, line)
         }
+        // Falha/vazio: mantém cache anterior — evita sumir/aparecer as colunas
+      } catch {
+        // mantém cache / estado atual
+      } finally {
+        if (!cancelled) setCmsLoading(false)
       }
     })()
     return () => {
@@ -207,7 +271,10 @@ export default function Acesso() {
         : 'Digite o código que enviamos para o seu e-mail.'
 
   const salaImg = encodeURI('/imagens/sala de aula inove4us.jpeg')
-  const showSides = columnVisible(leftCol) || columnVisible(rightCol)
+  const hasLeft = columnVisible(leftCol)
+  const hasRight = columnVisible(rightCol)
+  // Layout estável em lg: reserva laterais enquanto carrega ou se houver conteúdo
+  const showSides = cmsLoading || hasLeft || hasRight
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-6 sm:py-14">
@@ -216,10 +283,10 @@ export default function Acesso() {
           showSides ? 'max-w-6xl justify-center' : 'max-w-4xl'
         }`}
       >
-        <CmsSideColumn column={leftCol} side="left" />
+        <CmsSideColumn column={leftCol} side="left" loading={cmsLoading} />
 
-        {/* Foto de atmosfera (quando não há coluna CMS esquerda) */}
-        {!columnVisible(leftCol) ? (
+        {/* Foto de atmosfera só quando já sabemos que não há coluna esquerda */}
+        {!cmsLoading && !hasLeft ? (
           <div
             className="pointer-events-none relative z-0 hidden w-[46%] shrink-0 overflow-hidden rounded-l-[1.75rem] md:block"
             aria-hidden="true"
@@ -257,7 +324,7 @@ export default function Acesso() {
 
         <div
           className={`relative z-10 order-2 w-full rounded-3xl border border-brand-100 bg-white/92 p-8 shadow-soft backdrop-blur-sm md:max-w-lg md:bg-white/88 ${
-            !columnVisible(leftCol) ? 'md:-ml-16' : ''
+            !cmsLoading && !hasLeft ? 'md:-ml-16' : ''
           }`}
         >
           <div className="mb-6 flex flex-col items-center text-center">
@@ -440,7 +507,7 @@ export default function Acesso() {
           ) : null}
         </div>
 
-        <CmsSideColumn column={rightCol} side="right" />
+        <CmsSideColumn column={rightCol} side="right" loading={cmsLoading} />
       </div>
     </main>
   )

@@ -3,6 +3,7 @@ import { AuthBalanceSync, AuthProvider, useAuth } from './lib/auth'
 import BrandLogo from './components/BrandLogo'
 import AssistenteChat from './components/AssistenteChat'
 import CrmPageTracker from './components/CrmPageTracker'
+import NinaOnboarding from './components/NinaOnboarding'
 import Acesso from './pages/Acesso'
 import PaymentFailurePage from './pages/billing/PaymentFailurePage'
 import PaymentPendingPage from './pages/billing/PaymentPendingPage'
@@ -47,6 +48,7 @@ function ProtectedRoute({ children }) {
   return (
     <>
       {children}
+      <NinaOnboarding />
       <AssistenteChat />
     </>
   )

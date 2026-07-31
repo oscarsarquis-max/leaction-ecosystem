@@ -3,10 +3,10 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import BrandLogo from '../components/BrandLogo'
-import ReplicarDesafioModal from '../components/ReplicarDesafioModal'
 
 /**
- * Aceite de convite pontual — reusa login /acesso?next=…
+ * Aceite de convite multidisciplinar — 1 clique adiciona o desafio ao grafo do convidado.
+ * Depois ele planeja as próprias aulas (isolado do outro professor).
  */
 export default function ConvitePage() {
   const { token } = useParams()
@@ -18,11 +18,11 @@ export default function ConvitePage() {
   const [erro, setErro] = useState('')
   const [convite, setConvite] = useState(null)
   const [busy, setBusy] = useState(false)
-  const [showCriar, setShowCriar] = useState(false)
+  const [aceitoMsg, setAceitoMsg] = useState('')
   const autoAceitar = searchParams.get('aceitar') === '1'
 
   const nextLogin = useMemo(
-    () => `/acesso?next=${encodeURIComponent(`/convite/${token}`)}`,
+    () => `/acesso?next=${encodeURIComponent(`/convite/${token}?aceitar=1`)}`,
     [token],
   )
 
@@ -55,13 +55,22 @@ export default function ConvitePage() {
   async function handleAceitar() {
     setBusy(true)
     setErro('')
+    setAceitoMsg('')
     try {
       const data = await api.aceitarConvite(token)
-      setShowCriar(true)
       await load()
-      if (data.desafio_id) {
-        /* modal abre com desafio */
+      const idEvento = data.id_evento || data.evento?.id_evento
+      setAceitoMsg(
+        'Desafio adicionado ao seu mapa. Agora planeje as suas aulas — o outro professor não vê este planejamento.',
+      )
+      if (idEvento) {
+        navigate(`/execucao/${idEvento}`, {
+          replace: true,
+          state: { fromConvite: true },
+        })
+        return
       }
+      navigate('/mesa-do-inovador', { replace: true })
     } catch (err) {
       setErro(err.message || 'Não foi possível aceitar.')
     } finally {
@@ -100,15 +109,20 @@ export default function ConvitePage() {
         </div>
         <div className="rounded-2xl border border-brand-200 bg-white p-6 shadow-soft">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600">
-            Convite pontual · sem nova IA
+            Convite multidisciplinar · sem nova IA
           </p>
           <h1 className="mt-1 font-display text-2xl font-bold text-bordo-deep">
-            Colaborar neste desafio
+            Entrar neste desafio
           </h1>
 
           {erro ? (
             <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-800">
               {erro}
+            </p>
+          ) : null}
+          {aceitoMsg ? (
+            <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900">
+              {aceitoMsg}
             </p>
           ) : null}
 
@@ -118,43 +132,40 @@ export default function ConvitePage() {
             <>
               <p className="mt-3 text-sm text-bordo-soft">
                 <span className="font-semibold text-bordo">{d?.dono_nome || 'Um professor'}</span>{' '}
-                convidou você para uma parte deste desafio.
+                convidou{' '}
+                <span className="font-semibold text-bordo">{convite.email_convidado}</span> para
+                uma parte deste desafio.
               </p>
-              {convite.papel_ou_parte ? (
-                <p className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-sm font-semibold text-bordo">
-                  Parte sugerida: {convite.papel_ou_parte}
-                </p>
-              ) : null}
 
               <div className="mt-5 space-y-3 rounded-xl border border-brand-100 bg-brand-50/40 p-4">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-bordo-soft">
-                  Conteúdo do desafio (somente leitura)
+                  Desafio
                 </p>
-                <h2 className="font-display text-lg font-bold text-bordo-deep">
-                  {d?.titulo || 'Desafio'}
-                </h2>
-                {d?.tema ? (
-                  <p className="text-xs text-bordo-soft">
-                    Tema: <span className="font-semibold text-bordo">{d.tema}</span>
+                <p className="whitespace-pre-wrap text-sm text-bordo">
+                  {convite.desafio_descricao || d?.descricao || d?.titulo || 'Desafio'}
+                </p>
+              </div>
+
+              <div className="mt-3 space-y-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-900">
+                  Card associado
+                </p>
+                <p className="font-display text-base font-bold text-bordo-deep">
+                  {convite.card_titulo || convite.papel_ou_parte || 'Card colaborativo'}
+                </p>
+                {convite.card_descricao ? (
+                  <p className="whitespace-pre-wrap text-sm text-bordo">
+                    {convite.card_descricao}
                   </p>
-                ) : null}
-                {d?.hipotese ? (
-                  <p className="text-sm text-bordo">
-                    <span className="font-bold">Hipótese:</span> {d.hipotese}
-                  </p>
-                ) : null}
-                {Array.isArray(d?.causas) && d.causas.length ? (
-                  <ul className="list-disc space-y-1 pl-5 text-xs text-bordo-soft">
-                    {d.causas.map((c, i) => (
-                      <li key={i}>
-                        {typeof c === 'string' ? c : c?.titulo || c?.descricao || JSON.stringify(c)}
-                      </li>
-                    ))}
-                  </ul>
                 ) : null}
               </div>
 
-              <p className="mt-3 text-[11px] text-bordo-soft">
+              <p className="mt-3 text-[11px] leading-snug text-bordo-soft">
+                Com um clique o desafio entra no seu mapa. Em seguida você registra as suas aulas.
+                O planejamento de cada professor fica isolado.
+              </p>
+
+              <p className="mt-2 text-[11px] text-bordo-soft">
                 Status: <strong>{convite.status}</strong>
                 {convite.email_convidado ? ` · ${convite.email_convidado}` : ''}
               </p>
@@ -162,7 +173,7 @@ export default function ConvitePage() {
               {!user ? (
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link to={nextLogin} className="btn-primary !px-4 !py-2 text-sm">
-                    Entrar para aceitar
+                    Entrar e aceitar
                   </Link>
                   <Link to="/acesso" className="btn-ghost !px-4 !py-2 text-sm">
                     Ir ao login
@@ -176,7 +187,7 @@ export default function ConvitePage() {
                     disabled={busy}
                     onClick={handleAceitar}
                   >
-                    {busy ? 'Aceitando…' : 'Aceitar e criar minha parte'}
+                    {busy ? 'Adicionando…' : 'Aceitar e adicionar ao meu mapa'}
                   </button>
                   <button
                     type="button"
@@ -194,13 +205,15 @@ export default function ConvitePage() {
                 </p>
               ) : convite.status === 'aceito' ? (
                 <div className="mt-5 space-y-3">
-                  <p className="text-sm font-semibold text-emerald-800">Convite aceito.</p>
+                  <p className="text-sm font-semibold text-emerald-800">
+                    Convite aceito — desafio no seu mapa.
+                  </p>
                   <button
                     type="button"
                     className="btn-primary !px-4 !py-2 text-sm"
-                    onClick={() => setShowCriar(true)}
+                    onClick={() => handleAceitar()}
                   >
-                    Criar minha execução
+                    Abrir minha execução
                   </button>
                 </div>
               ) : convite.status === 'recusado' ? (
@@ -216,19 +229,6 @@ export default function ConvitePage() {
           </div>
         </div>
       </div>
-
-      <ReplicarDesafioModal
-        open={showCriar}
-        onClose={() => setShowCriar(false)}
-        desafioId={convite?.desafio_id}
-        sourceEventoId={null}
-        suggestFromDesafio
-        onDone={(data) => {
-          const first = data?.eventos?.[0]
-          if (first?.id_evento) navigate(`/execucao/${first.id_evento}`)
-          else navigate('/mesa-do-inovador')
-        }}
-      />
     </div>
   )
 }

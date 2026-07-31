@@ -23,6 +23,7 @@ from services.methodology_service import (
     CACHE_VERSION,
     buscar_dinamicas_rapidas,
     get_dinamica_by_id,
+    sugerir_dinamicas_para_contexto,
 )
 
 daily_bp = Blueprint("daily", __name__)
@@ -414,13 +415,36 @@ def sugerir_dinamicas():
         return jsonify({"success": False, "error": "Não autenticado"}), 401
 
     termo = str(request.args.get("q") or request.args.get("termo") or "").strip()
-    items = buscar_dinamicas_rapidas(termo)
+    tema = str(request.args.get("tema") or "").strip()
+    objetivo = str(request.args.get("objetivo") or "").strip()
+    conteudo = str(request.args.get("conteudo") or "").strip()
+    try:
+        limite = int(request.args.get("limit") or "12")
+    except (TypeError, ValueError):
+        limite = 12
+    limite = max(3, min(limite, 39))
+
+    # Com contexto da aula: ranqueia as 39 + motivo. Sem contexto + filtro: lista filtrada.
+    if tema or objetivo or conteudo:
+        items = sugerir_dinamicas_para_contexto(
+            tema=tema,
+            objetivo=objetivo,
+            conteudo=conteudo,
+            termo=termo,
+            limite=limite,
+        )
+        fonte = "catalogo_39_contextual"
+    else:
+        items = buscar_dinamicas_rapidas(termo)
+        fonte = "cache_local_versionado"
+
     return jsonify(
         {
             "success": True,
             "cache_version": CACHE_VERSION,
-            "fonte": "cache_local_versionado",
+            "fonte": fonte,
             "termo": termo,
+            "tema": tema,
             "dinamicas": items,
             "total": len(items),
         }

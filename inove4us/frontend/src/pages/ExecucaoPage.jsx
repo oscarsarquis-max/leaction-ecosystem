@@ -40,7 +40,7 @@ export default function ExecucaoPage() {
   const [showReplicar, setShowReplicar] = useState(false)
   const [showConvidar, setShowConvidar] = useState(false)
   const [conviteEmail, setConviteEmail] = useState('')
-  const [convitePapel, setConvitePapel] = useState('')
+  const [conviteCardId, setConviteCardId] = useState('')
   const [conviteBusy, setConviteBusy] = useState(false)
   const [conviteMsg, setConviteMsg] = useState('')
   const [conviteErro, setConviteErro] = useState('')
@@ -184,16 +184,37 @@ export default function ExecucaoPage() {
     }
   }
 
+  const cardsParaConvite = useMemo(() => {
+    const fontes = hydrated?.plano?.tarefas_kanban || []
+    const seen = new Set()
+    const out = []
+    for (const t of fontes) {
+      const id = String(t?.id || '').trim()
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      out.push({
+        id,
+        titulo: (t.titulo || 'Card').trim() || 'Card',
+        objetivo: (t.objetivo || t.descricao || '').trim(),
+      })
+    }
+    return out
+  }, [hydrated?.plano?.tarefas_kanban])
+
   async function handleConvidar(e) {
     e?.preventDefault?.()
     if (!desafio?.id) return
     setConviteErro('')
     setConviteMsg('')
+    if (!conviteCardId) {
+      setConviteErro('Escolha o card que o professor convidado vai realizar.')
+      return
+    }
     setConviteBusy(true)
     try {
       const data = await api.convidarColaborador(desafio.id, {
         email: conviteEmail.trim(),
-        papel_ou_parte: convitePapel.trim() || undefined,
+        card_id: conviteCardId,
       })
       setConviteMsg(
         data.email?.channel === 'dev_log'
@@ -201,7 +222,7 @@ export default function ExecucaoPage() {
           : `Convite enviado para ${conviteEmail.trim()}.`,
       )
       setConviteEmail('')
-      setConvitePapel('')
+      setConviteCardId('')
       const col = await api.listDesafioColaboradores(desafio.id)
       setColaboradores(col.colaboradores || [])
     } catch (err) {
@@ -368,6 +389,7 @@ export default function ExecucaoPage() {
               causas={hydrated.causas}
               user={user}
               planoSession={hydrated.planoSession}
+              desafioId={hydrated.desafioId || desafio?.id || null}
               initialEventoId={hydrated.initialEventoId}
               initialKanbanState={hydrated.initialKanbanState}
               resumeMode
@@ -383,13 +405,18 @@ export default function ExecucaoPage() {
       {showConvidar && desafio?.sou_dono ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center">
           <div className="w-full max-w-md rounded-2xl border border-brand-200 bg-white p-5 shadow-xl">
-            <h2 className="font-display text-xl font-bold text-bordo-deep">Convidar colaborador</h2>
+            <h2 className="font-display text-xl font-bold text-bordo-deep">
+              Convidar professor
+            </h2>
             <p className="mt-1 text-xs text-bordo-soft">
-              Convite pontual só para este desafio — sem rede permanente. Sem custo de IA.
+              Multidisciplinar: o e-mail leva a descrição do desafio e do card. Ao aceitar, o
+              desafio entra no mapa dele; cada um planeja as próprias aulas sem ver o do outro.
             </p>
             <form onSubmit={handleConvidar} className="mt-4 space-y-3">
               <label className="block">
-                <span className="text-[10px] font-bold uppercase text-bordo">E-mail</span>
+                <span className="text-[10px] font-bold uppercase text-bordo">
+                  E-mail do professor
+                </span>
                 <input
                   type="email"
                   className="field-input mt-1"
@@ -401,14 +428,21 @@ export default function ExecucaoPage() {
               </label>
               <label className="block">
                 <span className="text-[10px] font-bold uppercase text-bordo">
-                  Papel / parte (opcional)
+                  Card que ele vai realizar
                 </span>
-                <input
+                <select
                   className="field-input mt-1"
-                  value={convitePapel}
-                  onChange={(e) => setConvitePapel(e.target.value)}
-                  placeholder="Ex.: Geografia — mapeamento do córrego"
-                />
+                  required
+                  value={conviteCardId}
+                  onChange={(e) => setConviteCardId(e.target.value)}
+                >
+                  <option value="">Selecione…</option>
+                  {cardsParaConvite.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.titulo}
+                    </option>
+                  ))}
+                </select>
               </label>
               {conviteErro ? (
                 <p className="text-xs font-semibold text-rose-700">{conviteErro}</p>
@@ -421,7 +455,7 @@ export default function ExecucaoPage() {
                   {colaboradores.map((c) => (
                     <li key={c.id}>
                       {c.email_convidado} · {c.status}
-                      {c.papel_ou_parte ? ` · ${c.papel_ou_parte}` : ''}
+                      {c.card_titulo ? ` · ${c.card_titulo}` : c.papel_ou_parte ? ` · ${c.papel_ou_parte}` : ''}
                     </li>
                   ))}
                 </ul>

@@ -8,6 +8,9 @@ const ACCENT_SOFT = 'rgba(225, 29, 72, 0.08)'
 const ACCENT_BORDER = 'rgba(225, 29, 72, 0.45)'
 const NEUTRAL_CARD = '#f8fafc'
 const NEUTRAL_BORDER = '#e2e8f0'
+const PAST_CARD = '#ecfdf5'
+const PAST_BORDER = '#6ee7b7'
+const PAST_ACCENT = '#059669'
 const TRACK_NONE = '__none__'
 
 const LABEL_W = 168
@@ -706,6 +709,7 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
                   {/* cards (aulas) — pais de cápsula ficam de fora da lista visual */}
                   {layout.visibleCards.map((n) => {
                     const active = selectedId === n.id
+                    const passado = n.status === 'concluido' || n.no_passado || n.cards_prontos
                     return (
                       <g
                         key={n.id}
@@ -713,7 +717,9 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
                         className="cursor-pointer"
                         role="button"
                         tabIndex={0}
-                        aria-label={`${n.titulo || 'Evento'} — ${formatDia(n.data || n.data_evento)}`}
+                        aria-label={`${n.titulo || 'Evento'} — ${formatDia(n.data || n.data_evento)}${
+                          passado ? ' — realizada (passado)' : ''
+                        }`}
                         onClick={(e) => {
                           e.stopPropagation()
                           handleSelectNode(n, { preferEditModal: true })
@@ -726,15 +732,20 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
                           }
                         }}
                       >
-                        <title>{`${n.titulo}\n${formatDia(n.data || n.data_evento)}`}</title>
+                        <title>
+                          {`${n.titulo}\n${formatDia(n.data || n.data_evento)}${
+                            passado ? '\nRealizada — no passado' : ''
+                          }`}
+                        </title>
                         <rect
                           width={CARD_W}
                           height={CARD_H}
                           rx={8}
                           ry={8}
-                          fill={NEUTRAL_CARD}
-                          stroke={active ? ACCENT : NEUTRAL_BORDER}
+                          fill={passado ? PAST_CARD : NEUTRAL_CARD}
+                          stroke={active ? ACCENT : passado ? PAST_BORDER : NEUTRAL_BORDER}
                           strokeWidth={active ? 2 : 1}
+                          opacity={passado ? 0.88 : 1}
                         />
                         <rect
                           x={0}
@@ -742,13 +753,17 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
                           width={3}
                           height={CARD_H}
                           rx={2}
-                          fill={ACCENT}
-                          opacity={0.35}
+                          fill={passado ? PAST_ACCENT : ACCENT}
+                          opacity={passado ? 0.85 : 0.35}
                         />
                         <text
                           x={10}
                           y={18}
-                          style={{ fontSize: 10, fontWeight: 700, fill: '#450a0a' }}
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            fill: passado ? '#064e3b' : '#450a0a',
+                          }}
                         >
                           {(n.titulo || 'Evento').slice(0, 16)}
                           {(n.titulo || '').length > 16 ? '…' : ''}
@@ -756,9 +771,15 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
                         <text
                           x={10}
                           y={34}
-                          style={{ fontSize: 9, fill: '#64748b', fontWeight: 600 }}
+                          style={{
+                            fontSize: 9,
+                            fill: passado ? PAST_ACCENT : '#64748b',
+                            fontWeight: 600,
+                          }}
                         >
-                          {formatDia(n.data || n.data_evento)}
+                          {passado
+                            ? `✓ ${formatDia(n.data || n.data_evento)}`
+                            : formatDia(n.data || n.data_evento)}
                         </text>
                       </g>
                     )

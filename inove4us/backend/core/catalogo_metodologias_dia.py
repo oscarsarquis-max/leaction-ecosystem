@@ -312,3 +312,74 @@ def entradas_catalogo_dia() -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+_ENTRADAS_CACHE: list[dict[str, Any]] | None = None
+_INDEX_CACHE: dict[str, dict[str, Any]] | None = None
+
+
+def _entradas_cached() -> list[dict[str, Any]]:
+    global _ENTRADAS_CACHE
+    if _ENTRADAS_CACHE is None:
+        _ENTRADAS_CACHE = entradas_catalogo_dia()
+    return _ENTRADAS_CACHE
+
+
+def _index_catalogo() -> dict[str, dict[str, Any]]:
+    """Índice por id, id_db, nome e aliases (chave normalizada)."""
+    global _INDEX_CACHE
+    if _INDEX_CACHE is not None:
+        return _INDEX_CACHE
+    idx: dict[str, dict[str, Any]] = {}
+    for entrada in _entradas_cached():
+        keys = {
+            entrada["id"],
+            _norm(entrada["id"]),
+            _norm(entrada["nome"]),
+        }
+        id_db = entrada.get("id_db")
+        if id_db:
+            keys.add(str(id_db))
+            keys.add(_norm(str(id_db)))
+        for alias in entrada.get("aliases") or []:
+            keys.add(str(alias))
+            keys.add(_norm(str(alias)))
+        for k in keys:
+            if k and k not in idx:
+                idx[k] = entrada
+    _INDEX_CACHE = idx
+    return idx
+
+
+def resolver_entrada_catalogo(nome_ou_id: str | None) -> dict[str, Any] | None:
+    """Resolve nome, alias ou id para uma das 39 entradas do catálogo canônico."""
+    if not nome_ou_id:
+        return None
+    raw = str(nome_ou_id).strip()
+    if not raw:
+        return None
+    idx = _index_catalogo()
+    hit = idx.get(raw) or idx.get(_norm(raw))
+    if hit:
+        return hit
+    # match parcial só em nomes/aliases longos (≥ 8) para evitar colisões
+    key = _norm(raw)
+    if len(key) < 8:
+        return None
+    for entrada in _entradas_cached():
+        candidatos = [_norm(entrada["nome"])] + [
+            _norm(a) for a in (entrada.get("aliases") or [])
+        ]
+        for c in candidatos:
+            if len(c) >= 8 and (key in c or c in key):
+                return entrada
+    return None
+
+
+def ids_catalogo_por_etiqueta(etiqueta: str) -> list[str]:
+    alvo = etiqueta_publica(etiqueta)
+    return [e["id"] for e in _entradas_cached() if e.get("etiqueta") == alvo]
+
+
+def total_metodologias_catalogo() -> int:
+    return len(_entradas_cached())

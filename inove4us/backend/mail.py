@@ -128,26 +128,35 @@ def send_desafio_convite_email(
     desafio_titulo: str,
     papel_ou_parte: str | None,
     convite_url: str,
+    desafio_descricao: str | None = None,
+    card_titulo: str | None = None,
+    card_descricao: str | None = None,
 ) -> dict:
-    """Convite pontual para colaborar em um desafio — reusa SES / EMAIL_DEV_MODE."""
+    """Convite pontual multidisciplinar — e-mail começa pelo desafio e pelo card."""
     recipient = (recipient or "").strip().lower()
     convidado_por_nome = (convidado_por_nome or "Um professor").strip()
     desafio_titulo = (desafio_titulo or "Desafio").strip()
-    papel = (papel_ou_parte or "").strip()
+    desafio_desc = (desafio_descricao or desafio_titulo).strip()
+    card_tit = (card_titulo or "").strip()
+    card_desc = (card_descricao or card_tit).strip()
+    papel = (papel_ou_parte or card_tit).strip()
     frontend = os.environ.get("FRONTEND_ORIGIN", "http://localhost:5174").rstrip("/")
     logo_url = f"{frontend}/imagens/logosombra3.png"
 
-    papel_line = f"Parte sugerida: {papel}\n" if papel else ""
-    subject = f"Convite para colaborar — {desafio_titulo[:80]} | inove4us"
+    subject = f"Convite multidisciplinar — {desafio_titulo[:80]} | inove4us"
     body_text = textwrap.dedent(
         f"""\
         Olá!
 
-        {convidado_por_nome} convidou você para colaborar no desafio:
+        === DESAFIO ===
+        {desafio_desc}
 
-        «{desafio_titulo}»
-        {papel_line}
-        Este é um convite pontual para este desafio (não cria uma rede permanente).
+        === CARD ASSOCIADO ===
+        {card_desc or "(card a combinar)"}
+
+        {convidado_por_nome} convidou você (e-mail: {recipient}) para colaborar neste desafio multidisciplinar.
+        Ao aceitar com um clique, o desafio entra no seu mapa de realizações.
+        Depois você planeja as suas aulas — o outro professor não vê o seu planejamento.
 
         Aceite pelo link (faça login com este e-mail se ainda não tiver sessão):
         {convite_url}
@@ -159,14 +168,26 @@ def send_desafio_convite_email(
         """
     ).strip()
 
+    def _esc(s: str) -> str:
+        return (
+            (s or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\n", "<br/>")
+        )
+
     body_html = f"""<!DOCTYPE html>
 <html lang="pt-BR"><body style="font-family:Segoe UI,system-ui,sans-serif;color:#1c1917;line-height:1.5">
   <p><img src="{logo_url}" alt="inove4us" height="48"/></p>
-  <p><strong>{convidado_por_nome}</strong> convidou você para colaborar no desafio:</p>
-  <p style="font-size:1.15rem"><em>«{desafio_titulo}»</em></p>
-  {"<p>Parte sugerida: <strong>" + papel + "</strong></p>" if papel else ""}
-  <p>Convite pontual — só para este desafio.</p>
-  <p><a href="{convite_url}" style="display:inline-block;background:#9f1239;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:700">Ver convite e aceitar</a></p>
+  <h2 style="margin:0 0 8px;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:#9f1239">Desafio</h2>
+  <p style="margin:0 0 16px;white-space:pre-wrap">{_esc(desafio_desc)}</p>
+  <h2 style="margin:0 0 8px;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:#9f1239">Card associado</h2>
+  <p style="margin:0 0 16px;white-space:pre-wrap">{_esc(card_desc or card_tit or "Card a combinar")}</p>
+  <p><strong>{_esc(convidado_por_nome)}</strong> convidou <strong>{_esc(recipient)}</strong> para este desafio multidisciplinar.</p>
+  <p>Com um clique o desafio entra no seu mapa. Depois você planeja as suas aulas — o planejamento de cada professor fica isolado.</p>
+  {"<p>Parte: <strong>" + _esc(papel) + "</strong></p>" if papel else ""}
+  <p><a href="{convite_url}" style="display:inline-block;background:#9f1239;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:700">Aceitar e adicionar ao meu mapa</a></p>
   <p style="font-size:12px;color:#78716c">Se o botão não funcionar: {convite_url}</p>
 </body></html>"""
 
