@@ -48,6 +48,16 @@ export const api = {
       body: JSON.stringify({ email, code }),
     }),
   logout: () => request('/api/auth/logout', { method: 'POST', body: '{}' }),
+  completeNinaOnboarding: () =>
+    request('/api/auth/nina-onboarding', {
+      method: 'POST',
+      body: JSON.stringify({ done: true }),
+    }),
+  resetNinaOnboarding: () =>
+    request('/api/auth/nina-onboarding', {
+      method: 'POST',
+      body: JSON.stringify({ reset: true }),
+    }),
   dismissNotice: (id) =>
     request(`/api/notices/${id}/dismiss`, {
       method: 'POST',
@@ -91,7 +101,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getAgendaEvento: (id) => request(`/api/agenda-eventos/${id}`),
-  /** Kanban do desafio (cadeia + plano_session), opcionalmente filtrado por aula_id. */
+  /** mesa do desafio (cadeia + plano_session), opcionalmente filtrado por aula_id. */
   getAgendaKanban: (id, aulaId = null) => {
     const q = new URLSearchParams()
     if (aulaId != null && aulaId !== '') q.set('aula_id', String(aulaId))
@@ -100,6 +110,14 @@ export const api = {
   },
   getDesafioDoEvento: (idEvento) => request(`/api/agenda-eventos/${idEvento}/desafio`),
   getDesafio: (desafioId) => request(`/api/desafios/${desafioId}`),
+  listDesafios: ({ q, limit } = {}) => {
+    const params = new URLSearchParams()
+    if (q) params.set('q', q)
+    if (limit != null) params.set('limit', String(limit))
+    const qs = params.toString()
+    return request(`/api/desafios${qs ? `?${qs}` : ''}`)
+  },
+  getDesafioMesa: (desafioId) => request(`/api/desafios/${desafioId}/mesa`),
   listDesafioExecucoes: (desafioId) => request(`/api/desafios/${desafioId}/execucoes`),
   replicarDesafio: (desafioId, payload) =>
     request(`/api/desafios/${desafioId}/replicar`, {
@@ -126,6 +144,11 @@ export const api = {
     }),
   concluirAula: (id, payload) =>
     request(`/api/agenda-eventos/${id}/concluir-aula`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  enviarFeedbackAula: (id, payload) =>
+    request(`/api/agenda-eventos/${id}/feedback`, {
       method: 'POST',
       body: JSON.stringify(payload),
     }),

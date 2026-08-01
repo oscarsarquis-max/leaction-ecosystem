@@ -1277,8 +1277,13 @@ def _montar_caminho_hibrido(
     )
 
     sinais = _sinais_complexidade_projeto(problema, contexto)
+    # Missão completa — nunca cortar o relato no meio da palavra/ideia.
+    enfrentamento = completar_frase(
+        (problema or trecho or "").strip() or "o desafio da turma",
+        LIMITE_HIPOTESE,
+    )
     missao = (
-        f"Missão: conduzir «{nome}» para enfrentar «{trecho[:120]}»"
+        f"Missão: conduzir «{nome}» para enfrentar «{enfrentamento}»"
         f"{' em um projeto interdisciplinar e com entrega no mundo real' if sinais['complexo'] else ''}."
     )
     total_cards = duracao_forcada or (

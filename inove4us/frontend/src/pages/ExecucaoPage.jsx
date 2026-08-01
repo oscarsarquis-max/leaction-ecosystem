@@ -34,6 +34,7 @@ export default function ExecucaoPage() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [infoAula, setInfoAula] = useState('')
   const [evento, setEvento] = useState(null)
   const [desafio, setDesafio] = useState(null)
   const [execucoes, setExecucoes] = useState([])
@@ -44,6 +45,8 @@ export default function ExecucaoPage() {
   const [conviteBusy, setConviteBusy] = useState(false)
   const [conviteMsg, setConviteMsg] = useState('')
   const [conviteErro, setConviteErro] = useState('')
+  const [conviteUrl, setConviteUrl] = useState('')
+  const [conviteDevMail, setConviteDevMail] = useState(false)
   const [colaboradores, setColaboradores] = useState([])
 
   useEffect(() => {
@@ -76,14 +79,22 @@ export default function ExecucaoPage() {
           return
         }
         if (ev.status === 'concluido') {
-          setError('Esta aula já foi concluída. Veja o relato no mapa de realizações.')
+          // Pós-relato: Kanban continua editável para movimentar cards.
+          setError('')
+          setInfoAula(
+            'Aula concluída neste quadro. Você já pode movimentar os cards da sua mesa (visão isolada de cada professor).',
+          )
           setEvento(ev)
-          // ainda tenta carregar desafio para irmãos
         } else if (!hasPlanData(ev.plan_data)) {
-          setError('Este evento ainda não tem plano EduScrum. Inicie um novo Desafio.')
+          setError('Este evento ainda não tem plano do método inove4us. Inicie um novo Desafio.')
+          setInfoAula('')
           setEvento(null)
           return
         } else {
+          setError('')
+          setInfoAula(
+            'Para mover um card nesta mesa, conclua a(s) aula(s) deste quadro com «Registrar e concluir aula» (relato). Em andamento você edita o plano; arrastar entre colunas só após a realização. Cada professor move só no próprio quadro.',
+          )
           setEvento(ev)
         }
 
@@ -216,9 +227,13 @@ export default function ExecucaoPage() {
         email: conviteEmail.trim(),
         card_id: conviteCardId,
       })
+      const url = data.convite_url || ''
+      const isDev = data.email?.channel === 'dev_log'
+      setConviteUrl(url)
+      setConviteDevMail(isDev)
       setConviteMsg(
-        data.email?.channel === 'dev_log'
-          ? `Convite criado (dev): ${data.convite_url}`
+        isDev
+          ? `Convite criado para ${conviteEmail.trim()}. Em ambiente local o e-mail NÃO é enviado — copie o link abaixo e envie ao convidado.`
           : `Convite enviado para ${conviteEmail.trim()}.`,
       )
       setConviteEmail('')
@@ -296,6 +311,12 @@ export default function ExecucaoPage() {
           </div>
         ) : hydrated ? (
           <>
+            {infoAula ? (
+              <div className="mx-auto mb-4 max-w-6xl rounded-xl border border-brand-200 bg-brand-50/90 px-4 py-3 text-xs text-bordo print:hidden">
+                {infoAula}
+              </div>
+            ) : null}
+
             {multiExecucao ? (
               <div className="mx-auto mb-4 max-w-6xl rounded-2xl border border-brand-200 bg-white/95 p-4 shadow-soft print:hidden">
                 <label className="block text-[10px] font-bold uppercase tracking-wide text-bordo">
@@ -338,7 +359,7 @@ export default function ExecucaoPage() {
                               className="font-bold text-brand-700 hover:underline"
                               onClick={() => navigate(`/execucao/${ex.id_evento_ancora}`)}
                             >
-                              ver Kanban
+                              ver mesa
                             </button>
                           </>
                         ) : null}
@@ -351,7 +372,7 @@ export default function ExecucaoPage() {
             {hydrated.somenteLeitura ? (
               <div className="mx-auto mb-4 max-w-6xl rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-800 print:hidden">
                 <strong>Modo leitura</strong> — esta execução é de outro professor. Você vê o
-                progresso, mas não edita o Kanban.
+                progresso, mas não edita a mesa.
               </div>
             ) : null}
 
@@ -394,6 +415,7 @@ export default function ExecucaoPage() {
               initialKanbanState={hydrated.initialKanbanState}
               resumeMode
               readOnly={hydrated.somenteLeitura}
+              colaboradores={colaboradores}
               onVoltar={() => navigate('/mesa-do-inovador')}
               onAgendaChanged={() => navigate('/mesa-do-inovador')}
               onReplicar={desafio?.id && !hydrated.somenteLeitura ? () => setShowReplicar(true) : undefined}
@@ -448,7 +470,30 @@ export default function ExecucaoPage() {
                 <p className="text-xs font-semibold text-rose-700">{conviteErro}</p>
               ) : null}
               {conviteMsg ? (
-                <p className="break-all text-xs font-semibold text-emerald-800">{conviteMsg}</p>
+                <p className="text-xs font-semibold text-emerald-800">{conviteMsg}</p>
+              ) : null}
+              {conviteUrl ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                  {conviteDevMail ? (
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-amber-900">
+                      Link do convite (local — sem SES)
+                    </p>
+                  ) : (
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-amber-900">
+                      Link do convite
+                    </p>
+                  )}
+                  <p className="mt-1 break-all text-[11px] text-bordo-deep">{conviteUrl}</p>
+                  <button
+                    type="button"
+                    className="btn-ghost mt-2 !px-2 !py-1 text-[11px]"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(conviteUrl)
+                    }}
+                  >
+                    Copiar link
+                  </button>
+                </div>
               ) : null}
               {colaboradores.length ? (
                 <ul className="max-h-28 space-y-1 overflow-y-auto text-[11px] text-bordo-soft">

@@ -17,7 +17,7 @@ from flask import Blueprint, jsonify, request, session
 from psycopg2 import errors as pg_errors
 from psycopg2.extras import RealDictCursor
 
-from aulas_simples_models import FONTES, STATUSES, ensure_aulas_simples_table
+from aulas_simples_models import FONTES, ensure_aulas_simples_table, normalize_status
 from db import get_conn
 from services.methodology_service import (
     CACHE_VERSION,
@@ -34,8 +34,82 @@ TURMA_LIMIT = 120
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
 
-# Status que permitem exclusão
+# Status que permitem exclusão (não apagar aula em andamento/realizada)
 DELETABLE_STATUSES = frozenset({"draft", "planejado"})
+
+ESTACOES_IDS = (
+    "est_alinhamento",
+    "est_entrega",
+    "est_campo",
+    "est_retro",
+)
+
+ESTACOES_TITULOS = {
+    "est_alinhamento": "1 · Acolhida",
+    "est_entrega": "2 · Conteúdo",
+    "est_campo": "3 · Dinâmica",
+    "est_retro": "4 · Fechamento",
+}
+
+
+def _agenda_status_from_aula(aula_status: str) -> str:
+    """Mapeia status da aula simples → status do evento na agenda."""
+    s = normalize_status(aula_status) or "planejado"
+    if s == "em_execucao":
+        return "em_execucao"
+    if s == "realizado":
+        return "concluido"
+    return "planejado"
+
+
+def _move_all_cards(kanban: dict | None, *, to_coluna: str, nota: str) -> dict:
+    """Move todas as estações do ciclo para a coluna alvo (lote)."""
+    base = _normalize_kanban_state(kanban) or {"tarefas": []}
+    tarefas = list(base.get("tarefas") or [])
+    by_id = {
+        str(t.get("id") or "").strip(): dict(t)
+        for t in tarefas
+        if isinstance(t, dict) and str(t.get("id") or "").strip()
+    }
+    agora = datetime.utcnow().isoformat() + "Z"
+    out = []
+    for est_id in ESTACOES_IDS:
+        prev = by_id.get(est_id) or {
+            "id": est_id,
+            "titulo": ESTACOES_TITULOS.get(est_id, est_id),
+        }
+        from_col = str(prev.get("coluna") or "para_fazer")
+        item = dict(prev)
+        item["titulo"] = item.get("titulo") or ESTACOES_TITULOS.get(est_id, est_id)
+        if from_col != to_coluna:
+            entrada = {
+                "de": from_col,
+                "para": to_coluna,
+                "nota": nota,
+                "em": agora,
+            }
+            hist = list(item.get("historico") or [])
+            hist.append(entrada)
+            item["historico"] = hist
+            item["ultima_observacao"] = nota
+        item["coluna"] = to_coluna
+        item["id"] = est_id
+        out.append(item)
+        by_id.pop(est_id, None)
+    # preserva cards extras se houver
+    for _tid, t in by_id.items():
+        item = dict(t)
+        from_col = str(item.get("coluna") or "para_fazer")
+        if from_col != to_coluna:
+            hist = list(item.get("historico") or [])
+            hist.append(
+                {"de": from_col, "para": to_coluna, "nota": nota, "em": agora}
+            )
+            item["historico"] = hist
+            item["ultima_observacao"] = nota
+        item["coluna"] = to_coluna
+        out.append(item)
+    return {"tarefas": out}
 
 
 def _is_prod() -> bool:
@@ -94,6 +168,11 @@ def _serialize(row: dict) -> dict:
         "kanban_state": row.get("kanban_state")
         if isinstance(row.get("kanban_state"), (dict, list))
         else (_parse_json_field(row.get("kanban_state")) if row.get("kanban_state") else None),
+        "data_inicio": _iso(row.get("data_inicio")),
+        "data_conclusao": _iso(row.get("data_conclusao")),
+        "feedback_json": _parse_json_field(row.get("feedback_json"))
+        if row.get("feedback_json") is not None
+        else None,
         "created_at": _iso(row.get("created_at")),
         "updated_at": _iso(row.get("updated_at")),
     }
@@ -186,6 +265,7 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
     id_evento = row.get("id_evento_agenda")
     kanban = _normalize_kanban_state(row.get("kanban_state"))
     kanban_json = json.dumps(kanban or {"tarefas": []}, ensure_ascii=False)
+    agenda_status = _agenda_status_from_aula(str(row.get("status") or "planejado"))
 
     disciplina_id = row.get("disciplina_id")
     origem_aula = _parse_origem(row.get("origem"), default="manual")
@@ -197,10 +277,7 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
                SET data_evento = %s,
                    titulo = %s,
                    nota_texto = %s,
-                   status = CASE
-                       WHEN status = 'concluido' THEN status
-                       ELSE 'planejado'
-                   END,
+                   status = %s,
                    tipo = 'aula_dia',
                    meta_json = %s::jsonb,
                    turma = %s,
@@ -214,6 +291,7 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
                 data_evento,
                 titulo,
                 nota,
+                agenda_status,
                 meta,
                 turma,
                 kanban_json,
@@ -232,7 +310,7 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
         INSERT INTO public.inove_agenda_eventos
             (id_clie, data_evento, titulo, nota_texto, status, tipo, meta_json,
              turma, kanban_state, disciplina_id, origem)
-        VALUES (%s, %s, %s, %s, 'planejado', 'aula_dia', %s::jsonb,
+        VALUES (%s, %s, %s, %s, %s, 'aula_dia', %s::jsonb,
                 %s, %s::jsonb, %s, %s)
         RETURNING id_evento
         """,
@@ -241,6 +319,7 @@ def _sync_agenda_evento(cur, row: dict) -> int | None:
             data_evento,
             titulo,
             nota,
+            agenda_status,
             meta,
             turma,
             kanban_json,
@@ -718,7 +797,8 @@ def detalhe_aula(aula_id: int):
 def atualizar_aula(aula_id: int):
     """
     Atualiza campos de texto / dinâmica / fechamento.
-    Permite status draft | planejado | realizado.
+    Permite status draft | planejado | em_execucao | realizado
+    (aliases: in_progress → em_execucao, completed → realizado).
     """
     user = _require_user()
     if not user:
@@ -812,14 +892,15 @@ def atualizar_aula(aula_id: int):
                     params.append(fonte)
 
                 if "status" in data:
-                    status = str(data.get("status") or "").strip().lower()
-                    if status not in STATUSES:
+                    status = normalize_status(data.get("status"))
+                    if not status:
                         return (
                             jsonify(
                                 {
                                     "success": False,
                                     "error": (
-                                        "status inválido — use draft, planejado ou realizado"
+                                        "status inválido — use draft, planejado, "
+                                        "em_execucao (in_progress) ou realizado (completed)"
                                     ),
                                 }
                             ),
@@ -936,3 +1017,263 @@ def excluir_aula(aula_id: int):
         return jsonify({"success": False, "error": "Falha ao excluir aula"}), 500
 
     return jsonify({"success": True, "deleted_id": int(aula_id)})
+
+
+@daily_bp.post("/api/daily/<int:aula_id>/iniciar")
+def iniciar_aula(aula_id: int):
+    """
+    Modo Aula — Iniciar: status em_execucao + data_inicio + 4 cards → Fazendo.
+    Idempotente se já estiver em_execucao (tolerante a fechar o notebook).
+    """
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+
+    id_clie = int(user["id_clie"])
+    try:
+        with get_conn() as conn:
+            _prepare_conn(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                existing = _fetch_aula_row(cur, aula_id)
+                denied = _authorize_owner(existing, id_clie)
+                if denied:
+                    return denied
+
+                status = normalize_status(existing.get("status")) or "draft"
+                if status == "realizado":
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Aula já encerrada — não é possível reiniciar",
+                                "status": status,
+                            }
+                        ),
+                        409,
+                    )
+
+                kanban = _move_all_cards(
+                    existing.get("kanban_state"),
+                    to_coluna="fazendo",
+                    nota="Início da aula (lote)",
+                )
+                kanban_json = json.dumps(kanban, ensure_ascii=False)
+
+                # Se já está em execução, só garante cards em Fazendo (sem resetar data_inicio)
+                if status == "em_execucao":
+                    cur.execute(
+                        """
+                        UPDATE public.inove_aulas_simples
+                           SET kanban_state = %s::jsonb,
+                               updated_at = CURRENT_TIMESTAMP
+                         WHERE id = %s AND id_clie = %s
+                     RETURNING *
+                        """,
+                        (kanban_json, int(aula_id), id_clie),
+                    )
+                else:
+                    # draft | planejado → em_execucao (tolerante a rascunho já salvo)
+                    cur.execute(
+                        """
+                        UPDATE public.inove_aulas_simples
+                           SET status = 'em_execucao',
+                               data_inicio = COALESCE(data_inicio, CURRENT_TIMESTAMP),
+                               kanban_state = %s::jsonb,
+                               updated_at = CURRENT_TIMESTAMP
+                         WHERE id = %s AND id_clie = %s
+                     RETURNING *
+                        """,
+                        (kanban_json, int(aula_id), id_clie),
+                    )
+                row = cur.fetchone()
+                if row:
+                    row = dict(row)
+                    evento_id = _sync_agenda_evento(cur, row)
+                    if evento_id:
+                        row["id_evento_agenda"] = evento_id
+                        cur.execute(
+                            """
+                            UPDATE public.inove_aulas_simples
+                               SET id_evento_agenda = %s
+                             WHERE id = %s AND id_clie = %s
+                            """,
+                            (evento_id, int(aula_id), id_clie),
+                        )
+                        row["id_evento_agenda"] = evento_id
+    except pg_errors.UndefinedTable:
+        return _table_missing_response()
+    except Exception as exc:
+        print(f"[daily] iniciar: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao iniciar aula"}), 500
+
+    if not row:
+        return jsonify({"success": False, "error": "Aula não encontrada"}), 404
+    return jsonify({"success": True, "aula": _serialize(row)})
+
+
+@daily_bp.post("/api/daily/<int:aula_id>/encerrar")
+def encerrar_aula(aula_id: int):
+    """
+    Modo Aula — Encerrar: cards → Pronto, data_conclusao = agora, status realizado.
+    Pode ser chamado horas/dias depois se o professor esqueceu de encerrar.
+    """
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+
+    id_clie = int(user["id_clie"])
+    try:
+        with get_conn() as conn:
+            _prepare_conn(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                existing = _fetch_aula_row(cur, aula_id)
+                denied = _authorize_owner(existing, id_clie)
+                if denied:
+                    return denied
+
+                status = normalize_status(existing.get("status")) or "draft"
+                if status == "realizado":
+                    # Idempotente: devolve a aula já encerrada (FE abre feedback se preciso)
+                    return jsonify({"success": True, "aula": _serialize(dict(existing))})
+                if status != "em_execucao":
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Só é possível encerrar uma aula em execução",
+                                "status": status,
+                            }
+                        ),
+                        409,
+                    )
+
+                kanban = _move_all_cards(
+                    existing.get("kanban_state"),
+                    to_coluna="pronto",
+                    nota="Encerramento da aula (lote)",
+                )
+                kanban_json = json.dumps(kanban, ensure_ascii=False)
+
+                cur.execute(
+                    """
+                    UPDATE public.inove_aulas_simples
+                       SET status = 'realizado',
+                           data_conclusao = CURRENT_TIMESTAMP,
+                           kanban_state = %s::jsonb,
+                           updated_at = CURRENT_TIMESTAMP
+                     WHERE id = %s AND id_clie = %s
+                 RETURNING *
+                    """,
+                    (kanban_json, int(aula_id), id_clie),
+                )
+                row = cur.fetchone()
+                if row:
+                    row = dict(row)
+                    evento_id = _sync_agenda_evento(cur, row)
+                    if evento_id:
+                        row["id_evento_agenda"] = evento_id
+                        cur.execute(
+                            """
+                            UPDATE public.inove_aulas_simples
+                               SET id_evento_agenda = %s
+                             WHERE id = %s AND id_clie = %s
+                            """,
+                            (evento_id, int(aula_id), id_clie),
+                        )
+                        row["id_evento_agenda"] = evento_id
+    except pg_errors.UndefinedTable:
+        return _table_missing_response()
+    except Exception as exc:
+        print(f"[daily] encerrar: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao encerrar aula"}), 500
+
+    if not row:
+        return jsonify({"success": False, "error": "Aula não encontrada"}), 404
+    return jsonify({"success": True, "aula": _serialize(row)})
+
+
+@daily_bp.post("/api/daily/<int:aula_id>/feedback")
+def feedback_aula(aula_id: int):
+    """Retroalimentação pós-aula (Modo Aula / ClassFeedbackModal)."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+
+    data = request.get_json(silent=True)
+    if data is None or not isinstance(data, dict):
+        return jsonify({"success": False, "error": "JSON inválido no body"}), 400
+
+    id_clie = int(user["id_clie"])
+    metodologia_ok = data.get("metodologia_ok")
+    engajamento = str(data.get("engajamento") or "").strip().lower()
+    estrutura_ok = data.get("estrutura_ok")
+    observacoes = _clip(data.get("observacoes"), TEXT_LIMIT)
+
+    if metodologia_ok is None or not isinstance(metodologia_ok, bool):
+        return (
+            jsonify({"success": False, "error": "metodologia_ok deve ser boolean"}),
+            400,
+        )
+    if engajamento not in ("alto", "medio", "baixo"):
+        return (
+            jsonify(
+                {"success": False, "error": "engajamento deve ser alto, medio ou baixo"}
+            ),
+            400,
+        )
+    if estrutura_ok is None or not isinstance(estrutura_ok, bool):
+        return (
+            jsonify({"success": False, "error": "estrutura_ok deve ser boolean"}),
+            400,
+        )
+
+    feedback = {
+        "metodologia_ok": metodologia_ok,
+        "engajamento": engajamento,
+        "estrutura_ok": estrutura_ok,
+        "observacoes": observacoes,
+        "registrado_em": datetime.utcnow().isoformat() + "Z",
+    }
+
+    try:
+        with get_conn() as conn:
+            _prepare_conn(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                existing = _fetch_aula_row(cur, aula_id)
+                denied = _authorize_owner(existing, id_clie)
+                if denied:
+                    return denied
+
+                status = normalize_status(existing.get("status")) or "draft"
+                if status != "realizado":
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Feedback só após encerrar a aula",
+                                "status": status,
+                            }
+                        ),
+                        409,
+                    )
+
+                cur.execute(
+                    """
+                    UPDATE public.inove_aulas_simples
+                       SET feedback_json = %s::jsonb,
+                           updated_at = CURRENT_TIMESTAMP
+                     WHERE id = %s AND id_clie = %s
+                 RETURNING *
+                    """,
+                    (json.dumps(feedback, ensure_ascii=False), int(aula_id), id_clie),
+                )
+                row = cur.fetchone()
+    except pg_errors.UndefinedTable:
+        return _table_missing_response()
+    except Exception as exc:
+        print(f"[daily] feedback: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao salvar feedback"}), 500
+
+    if not row:
+        return jsonify({"success": False, "error": "Aula não encontrada"}), 404
+    return jsonify({"success": True, "aula": _serialize(dict(row))})

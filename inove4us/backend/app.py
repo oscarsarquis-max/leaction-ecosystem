@@ -12,7 +12,8 @@ from flask_cors import CORS
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 load_dotenv(os.path.join(ROOT, ".env"))
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+# backend/.env prevalece (EMAIL_SENDER / SES_REGION / EMAIL_DEV_MODE locais).
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=True)
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -24,6 +25,7 @@ from db import (  # noqa: E402
     find_cliente_by_email,
     get_creditos_ia,
     list_active_hub_notices,
+    set_nina_onboarding_done,
     upsert_access_code,
     verify_access_code,
 )
@@ -76,6 +78,7 @@ def _session_user(cliente: dict) -> dict:
         "empresa_clie": cliente.get("empresa_clie") or "",
         "creditos_ia": int(cliente.get("creditos_ia") or 0),
         "plan_tier": str(cliente.get("plan_tier") or "starter"),
+        "nina_onboarding_done": bool(cliente.get("nina_onboarding_done")),
         "aulas_mes": quota,
     }
 
@@ -291,6 +294,35 @@ def create_app() -> Flask:
     def logout():
         session.clear()
         return jsonify({"ok": True})
+
+    @app.post("/api/auth/nina-onboarding")
+    def nina_onboarding():
+        """Marca ou reinicia o onboarding da Nina (fonte da verdade no DB)."""
+        user = session.get("user")
+        if not user or not user.get("id_clie"):
+            return jsonify({"error": "Não autenticado"}), 401
+
+        data = request.get_json(silent=True) or {}
+        reset = bool(data.get("reset"))
+        done = False if reset else bool(data.get("done", True))
+
+        try:
+            ok = set_nina_onboarding_done(int(user["id_clie"]), done)
+        except Exception as exc:
+            print(f"[inove4us] nina-onboarding: {exc}", file=sys.stderr)
+            return jsonify({"error": "Falha ao gravar onboarding."}), 500
+
+        if not ok:
+            return jsonify({"error": "Cliente não encontrado."}), 404
+
+        session["user"] = {**user, "nina_onboarding_done": done}
+        return jsonify(
+            {
+                "ok": True,
+                "nina_onboarding_done": done,
+                "user": session["user"],
+            }
+        )
 
     @app.get("/imagens/<path:filename>")
     def serve_imagens(filename: str):

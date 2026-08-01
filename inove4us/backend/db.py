@@ -36,6 +36,7 @@ def get_conn():
 
 
 _creditos_ensured = False
+_nina_onboarding_ensured = False
 
 # Freemium Starter: 1 desafio IA. Aulas simples: 5/mês (ver plan_limits).
 CREDITO_IA_FREEMIUM_DEFAULT = 1
@@ -87,6 +88,24 @@ def ensure_creditos_ia_column() -> None:
                 """
             )
     _creditos_ensured = True
+    ensure_nina_onboarding_column()
+
+
+def ensure_nina_onboarding_column() -> None:
+    """Garante coluna nina_onboarding_done em ctdi_clie."""
+    global _nina_onboarding_ensured
+    if _nina_onboarding_ensured:
+        return
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                ALTER TABLE public.ctdi_clie
+                    ADD COLUMN IF NOT EXISTS nina_onboarding_done
+                    BOOLEAN NOT NULL DEFAULT FALSE
+                """
+            )
+    _nina_onboarding_ensured = True
 
 
 def find_cliente_by_email(email: str) -> dict | None:
@@ -100,7 +119,8 @@ def find_cliente_by_email(email: str) -> dict | None:
             cur.execute(
                 """
                 SELECT id_clie, nome_clie, mail_clie, empresa_clie,
-                       init_role, has_active_project, creditos_ia, plan_tier
+                       init_role, has_active_project, creditos_ia, plan_tier,
+                       COALESCE(nina_onboarding_done, FALSE) AS nina_onboarding_done
                 FROM public.ctdi_clie
                 WHERE mail_clie IS NOT NULL
                   AND LOWER(TRIM(mail_clie)) = %s
@@ -128,11 +148,13 @@ def create_lead_solicitacao(*, nome: str, email: str, empresa: str) -> dict:
                 """
                 INSERT INTO public.ctdi_clie (
                     nome_clie, mail_clie, empresa_clie, init_role,
-                    has_active_project, justificativa_solo, creditos_ia, plan_tier
+                    has_active_project, justificativa_solo, creditos_ia, plan_tier,
+                    nina_onboarding_done
                 )
-                VALUES (%s, %s, %s, 'GENERAL', false, %s, %s, 'starter')
+                VALUES (%s, %s, %s, 'GENERAL', false, %s, %s, 'starter', FALSE)
                 RETURNING id_clie, nome_clie, mail_clie, empresa_clie,
-                          init_role, has_active_project, creditos_ia, plan_tier
+                          init_role, has_active_project, creditos_ia, plan_tier,
+                          COALESCE(nina_onboarding_done, FALSE) AS nina_onboarding_done
                 """,
                 (
                     nome,
@@ -155,6 +177,22 @@ def create_lead_solicitacao(*, nome: str, email: str, empresa: str) -> dict:
             matu = cur.fetchone()
             cliente["id_matu"] = matu["id_matu"] if matu else None
             return cliente
+
+
+def set_nina_onboarding_done(id_clie: int, done: bool = True) -> bool:
+    """Marca (ou limpa) a conclusão do onboarding da Nina."""
+    ensure_nina_onboarding_column()
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE public.ctdi_clie
+                   SET nina_onboarding_done = %s
+                 WHERE id_clie = %s
+                """,
+                (bool(done), int(id_clie)),
+            )
+            return cur.rowcount > 0
 
 
 def get_creditos_ia(id_clie: int) -> int:
@@ -447,7 +485,9 @@ def verify_access_code(email: str, code: str) -> dict | None:
             cur.execute(
                 """
                 SELECT c.id_clie, c.nome_clie, c.mail_clie, c.empresa_clie,
-                       c.init_role, c.has_active_project, c.creditos_ia, a.access_code
+                       c.init_role, c.has_active_project, c.creditos_ia, c.plan_tier,
+                       COALESCE(c.nina_onboarding_done, FALSE) AS nina_onboarding_done,
+                       a.access_code
                 FROM public.ctdi_clie c
                 JOIN public.ctdi_lead_access a ON a.id_clie = c.id_clie
                 WHERE LOWER(TRIM(c.mail_clie)) = %s

@@ -269,7 +269,7 @@ export default function ReplicarDesafioModal({
               Replicar para outra turma
             </h2>
             <p className="mt-1 text-xs text-bordo-soft">
-              Copia hipótese, causas e tema. Cria aulas e Kanban novos, independentes.
+              Copia hipótese, causas e tema. Cria aulas e mesa novas, independentes.
             </p>
           </div>
           <button type="button" className="btn-ghost !px-2 !py-1 text-xs" onClick={onClose}>

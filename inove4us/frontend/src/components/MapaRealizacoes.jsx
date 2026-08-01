@@ -902,14 +902,14 @@ export function destinoAtividadeDoNo(n) {
   if (!n) return null
   if (n.tipo === 'aula_dia') {
     const aulaId = n.aula_simples_id || n.meta_json?.aula_simples_id
-    if (aulaId) return { path: `/dia-a-dia/${aulaId}#kanban`, label: 'Ir para o Kanban do ciclo' }
+    if (aulaId) return { path: `/dia-a-dia/${aulaId}#kanban`, label: 'Ir para a mesa do ciclo' }
     return { path: '/dia-a-dia', label: 'Abrir Dia a Dia' }
   }
   if (n.tipo === 'aula_eduscrum' || n.tem_plano) {
     if (n.status === 'concluido') {
       return { path: null, label: 'Aula concluída — veja o dia na agenda', agendaOnly: true }
     }
-    return { path: `/execucao/${n.id}`, label: 'Ir para o Kanban da aula' }
+    return { path: `/execucao/${n.id}`, label: 'Ir para a mesa da aula' }
   }
   return { path: null, label: 'Ver este dia na agenda', agendaOnly: true }
 }

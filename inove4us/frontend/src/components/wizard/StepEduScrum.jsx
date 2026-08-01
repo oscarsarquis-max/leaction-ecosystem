@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import BrandLogo from '../BrandLogo'
 import RelatoAulaModal from '../RelatoAulaModal'
+import ClassFeedbackModal from '../ClassFeedbackModal'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
 import KanbanMoveModal from './KanbanMoveModal'
@@ -142,6 +144,7 @@ export default function StepEduScrum({
   initialKanbanState = null,
   resumeMode = false,
   readOnly = false,
+  colaboradores = [],
 }) {
   const [tasks, setTasks] = useState(() =>
     tasksFromKanbanState(initialKanbanState, plano?.tarefas_kanban || []),
@@ -187,6 +190,15 @@ export default function StepEduScrum({
   const [conviteErro, setConviteErro] = useState('')
 
   useEffect(() => {
+    if (!showRegistro) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [showRegistro])
+
+  useEffect(() => {
     if (desafioIdProp) setDesafioIdLocal(desafioIdProp)
   }, [desafioIdProp])
 
@@ -201,12 +213,12 @@ export default function StepEduScrum({
     {
       id: 'continuidade',
       label: 'Prosseguimento',
-      hint: 'Mesma turma / mesmo problema — retoma o Kanban de onde parou',
+      hint: 'Mesma turma / mesmo problema — retoma a mesa de onde parou',
     },
     {
       id: 'reinicio',
       label: 'Começar do início',
-      hint: 'Outra turma (ou reset) — mesmo problema, Kanban zerado',
+      hint: 'Outra turma (ou reset) — mesmo problema, mesa zerada',
     },
   ]
 
@@ -279,6 +291,9 @@ export default function StepEduScrum({
   const [acaoErro, setAcaoErro] = useState('')
   const [showRelato, setShowRelato] = useState(false)
   const [relatoBusy, setRelatoBusy] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [feedbackAula, setFeedbackAula] = useState(null)
+  const [feedbackBusy, setFeedbackBusy] = useState(false)
   const [saveStatus, setSaveStatus] = useState('idle') // idle | saving | saved | error
   const [novaTarefaTitulo, setNovaTarefaTitulo] = useState('')
 
@@ -626,7 +641,7 @@ export default function StepEduScrum({
     return aulasExecutaveis.some((a) => a.id_evento === Number(aulaAlvoCriacao))
   }, [readOnly, aulasExecutaveis, multiAula, podeExecutar, aulaConcluida, aulaAlvoCriacao])
 
-  /** Board editável na execução e também após relato — aí o Kanban pode avançar. */
+  /** Board editável na execução e também após relato — aí a mesa pode avançar. */
   const boardEditavel = useMemo(() => {
     if (readOnly) return false
     if (!aulas.length) return false
@@ -649,7 +664,7 @@ export default function StepEduScrum({
       .map((aid) => aulas.find((x) => x.id_evento === aid))
       .filter(Boolean)
     if (!linked.length) return false
-    // Pós-aula: todas concluídas → pode mover no Kanban
+    // Execução OU pós-relato: card editável se aula está em andamento ou concluída
     if (linked.every((a) => a.status === 'concluido')) return true
     return linked.some(aulaExecutavel)
   }
@@ -665,7 +680,19 @@ export default function StepEduScrum({
       .join(' · ')
   }
 
-  function cardPodeMover(task) {
+  function colabDoCard(task) {
+    const cardId = String(task?.id || '').trim()
+    if (!cardId || !Array.isArray(colaboradores) || !colaboradores.length) return null
+    return (
+      colaboradores.find(
+        (c) =>
+          String(c.card_id || '').trim() === cardId &&
+          ['pendente', 'aceito'].includes(String(c.status || '').toLowerCase()),
+      ) || null
+    )
+  }
+
+  function cardPodeMover(task, toColuna) {
     const aids = aulaIdsDoCard(task)
     if (!aids.length) {
       return {
@@ -673,37 +700,44 @@ export default function StepEduScrum({
         msg: 'Card sem aula associada. Ao registrar a aula, vincule o card e declare o escopo da turma.',
       }
     }
-    // Também considera outras aulas do desafio que tenham o mesmo card
-    const relacionadas = aulas.filter((a) => {
-      if (aids.includes(Number(a.id_evento))) return true
-      return false
-    })
-    // Se o card aparece em mais de uma turma no board (aula_ids), exige todas concluídas
+    const dest = String(toColuna || '').trim()
+    // Execução: Para Fazer ↔ Fazendo livre
+    if (dest && dest !== 'pronto') {
+      return { ok: true }
+    }
+    // Finalização (Pronto): DoD — aulas desta turma concluídas
     for (const aid of aids) {
-      const a = aulas.find((x) => x.id_evento === aid) || relacionadas.find((x) => x.id_evento === aid)
+      const a = aulas.find((x) => x.id_evento === aid)
       if (!a || a.status !== 'concluido') {
         return {
           ok: false,
-          msg: 'Só é possível mover o card depois que todas as aulas vinculadas estiverem realizadas (com relato).',
+          msg: 'Para mover para Pronto, conclua a(s) aula(s) desta turma com o relato. Na execução, mova livremente entre Para Fazer e Fazendo.',
         }
       }
     }
     return { ok: true }
   }
 
-  const tituloAula = useMemo(() => {
-    const missao = (plano?.missao || 'Aula EduScrum').trim()
-    return missao.length > 180 ? `${missao.slice(0, 177)}…` : missao
+  const missaoCompleta = useMemo(() => {
+    return (plano?.missao || 'Aula · método inove4us').trim()
   }, [plano])
+
+  /** Só para campos VARCHAR curtos da agenda — a UI mostra a missão completa. */
+  const tituloAgendaCurto = useMemo(() => {
+    const base = `Método inove4us · ${missaoCompleta}`
+    return base.length > 200 ? `${base.slice(0, 197)}…` : base
+  }, [missaoCompleta])
 
   function requestMove(taskId, toColuna) {
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
     if (!taskEditavel(task)) {
-      setAcaoErro('Esta aula não está em execução — não é possível mover o card.')
+      setAcaoErro(
+        'Este card não está editável agora. Registre/selecione a aula em execução ou conclua o relato para liberar a mesa.',
+      )
       return
     }
-    const gate = cardPodeMover(task)
+    const gate = cardPodeMover(task, toColuna)
     if (!gate.ok) {
       setAcaoErro(gate.msg)
       return
@@ -827,7 +861,7 @@ export default function StepEduScrum({
     e?.preventDefault?.()
     setRegistroErro('')
     if (!cardsCatalogo.length) {
-      setRegistroErro('Não há cards no plano para associar. Gere o plano EduScrum antes.')
+      setRegistroErro('Não há cards no plano para associar. Gere o plano do método inove4us antes.')
       return
     }
     const aulas = slotsRegistro.map((s) => ({
@@ -882,7 +916,7 @@ export default function StepEduScrum({
       const planData = buildPlanData({ plano, hipotese, problema, planoSession, causas })
       const data = await api.registrarAulas({
         aulas,
-        titulo: `EduScrum · ${tituloAula}`,
+        titulo: tituloAgendaCurto,
         nota_texto: [
           hipotese ? `Hipótese: ${hipotese}` : null,
           problema ? `Problema: ${problema}` : null,
@@ -924,8 +958,8 @@ export default function StepEduScrum({
           })
           setConviteMsg(
             inv.email?.channel === 'dev_log'
-              ? `Convite criado (dev): ${inv.convite_url}`
-              : `Convite enviado para ${emailConv}.`,
+              ? `Convite criado para ${emailConv}. Em local o e-mail NÃO é enviado — use o link: ${inv.convite_url}`
+              : `Convite enviado para ${emailConv}. Link: ${inv.convite_url}`,
           )
           setConviteEmail('')
           setConviteCardId('')
@@ -967,8 +1001,8 @@ export default function StepEduScrum({
       })
       setConviteMsg(
         inv.email?.channel === 'dev_log'
-          ? `Convite criado (dev): ${inv.convite_url}`
-          : `Convite enviado para ${email}.`,
+          ? `Convite criado para ${email}. Em local o e-mail NÃO é enviado — use o link: ${inv.convite_url}`
+          : `Convite enviado para ${email}. Link: ${inv.convite_url}`,
       )
       setConviteEmail('')
       setConviteCardId('')
@@ -992,6 +1026,27 @@ export default function StepEduScrum({
           titulo: aulaAtiva.titulo,
           status: 'em_execucao',
         })
+        // Execução: cards vinculados sobem para Fazendo
+        const aid = Number(aulaAtiva.id_evento)
+        setTasks((prev) => {
+          let changed = false
+          const next = prev.map((t) => {
+            const linked = aulaIdsDoCard(t).some((id) => Number(id) === aid)
+            if (!linked) return t
+            if ((t.coluna || 'para_fazer') !== 'para_fazer') return t
+            changed = true
+            const entrada = {
+              de: 'para_fazer',
+              para: 'fazendo',
+              nota: 'Aula em execução',
+              em: new Date().toISOString(),
+            }
+            const historico = Array.isArray(t.historico) ? [...t.historico, entrada] : [entrada]
+            return { ...t, coluna: 'fazendo', historico }
+          })
+          if (changed) queueBoardSave(next)
+          return changed ? next : prev
+        })
         await loadAulas()
         onAgendaChanged?.()
       } catch (err) {
@@ -1011,6 +1066,7 @@ export default function StepEduScrum({
     if (!aulaAtiva) return
     setRelatoBusy(true)
     setAcaoErro('')
+    const aulaParaFeedback = aulaAtiva
     try {
       // garante último estado do board antes de concluir
       saveBoardStateDebounced.cancel()
@@ -1024,11 +1080,35 @@ export default function StepEduScrum({
       setShowRelato(false)
       await loadAulas()
       onAgendaChanged?.()
+      // Fase final: Feedback Loop
+      setFeedbackAula(aulaParaFeedback)
+      setShowFeedback(true)
     } catch (err) {
       setAcaoErro(err.message || 'Falha ao concluir a aula na agenda.')
     } finally {
       setRelatoBusy(false)
     }
+  }
+
+  async function handleSubmitFeedback(payload) {
+    if (!feedbackAula?.id_evento) return
+    setFeedbackBusy(true)
+    setAcaoErro('')
+    try {
+      await api.enviarFeedbackAula(feedbackAula.id_evento, payload)
+      setShowFeedback(false)
+      setFeedbackAula(null)
+    } catch (err) {
+      setAcaoErro(err.message || 'Falha ao salvar o feedback da aula.')
+    } finally {
+      setFeedbackBusy(false)
+    }
+  }
+
+  function closeFeedback() {
+    if (feedbackBusy) return
+    setShowFeedback(false)
+    setFeedbackAula(null)
   }
 
   function handlePrint() {
@@ -1050,14 +1130,14 @@ export default function StepEduScrum({
           Etapa 4
         </p>
         <h1 className="font-display text-3xl font-bold text-bordo-deep sm:text-4xl">
-          Aula EduScrum
+          Aula · método inove4us
         </h1>
         <p className="mt-2 text-sm text-bordo-soft print:hidden">
           {resumeMode
-            ? 'Retomada da aula — o Kanban e o plano foram restaurados da agenda.'
+            ? 'Retomada da aula — a mesa e o plano foram restaurados da agenda.'
             : temPlanejamento
               ? 'Plano de aula interativo — arraste os cards e registre o progresso.'
-              : 'Pré-visualização do plano completo. Leia os cards para planejar; registre a aula na agenda para executar no Kanban.'}
+              : 'Pré-visualização do plano completo. Leia os cards para planejar; registre a aula na agenda para executar na mesa.'}
         </p>
       </div>
 
@@ -1074,7 +1154,7 @@ export default function StepEduScrum({
             </h2>
             <p className="mt-1 text-xs text-bordo-soft">
               Você já pode ler e usar este plano para preparar a aula. Para arrastar
-              cards e registrar progresso no Kanban, agende o dia no calendário.
+              cards e registrar progresso na mesa, agende o dia no calendário.
             </p>
           </div>
           <button
@@ -1148,7 +1228,7 @@ export default function StepEduScrum({
         {!boardEditavel && !readOnly ? (
           <div className="col-span-full rounded-xl border border-brand-200 bg-brand-50/90 px-3 py-2 text-xs font-semibold text-bordo print:hidden">
             Pré-visualização do plano — os cards abaixo são o roteiro da aula.
-            Registre a(s) aula(s) acima para liberar a execução no Kanban.
+            Registre a(s) aula(s) acima para liberar a execução na mesa.
           </div>
         ) : null}
 
@@ -1157,7 +1237,7 @@ export default function StepEduScrum({
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-600">
               Missão da Aula
             </p>
-            <h2 className="mt-2 font-display text-xl font-bold leading-snug text-bordo-deep sm:text-2xl">
+            <h2 className="mt-2 whitespace-pre-wrap font-display text-base font-semibold leading-relaxed text-bordo-deep sm:text-lg">
               {plano?.missao || 'Missão a definir'}
             </h2>
             {hipotese && (
@@ -1197,7 +1277,7 @@ export default function StepEduScrum({
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-bordo">
-                  Quadro Kanban
+                  Mesa
                 </p>
                 <p className="mt-0.5 text-[11px] text-bordo-soft print:hidden">
                   Arraste o card. Observação de implementação é obrigatória. Auto-save ativo.
@@ -1305,8 +1385,8 @@ export default function StepEduScrum({
               </form>
             ) : aulas.length && !aulasExecutaveis.length ? (
               <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800 print:hidden">
-                Aulas realizadas: agora você pode movimentar os cards no Kanban (escopo já
-                executado em sala).
+                Aulas realizadas: agora você pode finalizar na mesa movendo cards para Pronto
+                (DoD cumprido).
               </p>
             ) : null}
 
@@ -1346,8 +1426,9 @@ export default function StepEduScrum({
                     <ul className="space-y-2">
                       {cards.map((task) => {
                         const editavel = taskEditavel(task)
-                        const moveGate = cardPodeMover(task)
-                        const podeArrastar = editavel && moveGate.ok
+                        const hasAula = aulaIdsDoCard(task).length > 0
+                        const podeArrastar = editavel && hasAula
+                        const colabCard = colabDoCard(task)
                         const escopos = Array.isArray(task.escopos_turma)
                           ? task.escopos_turma.filter((e) => String(e?.nota || '').trim())
                           : []
@@ -1358,7 +1439,11 @@ export default function StepEduScrum({
                           onDragStart={(e) => {
                             if (!podeArrastar) {
                               e.preventDefault()
-                              if (editavel && !moveGate.ok) setAcaoErro(moveGate.msg)
+                              if (editavel && !hasAula) {
+                                setAcaoErro(
+                                  'Card sem aula associada. Ao registrar a aula, vincule o card e declare o escopo da turma.',
+                                )
+                              }
                               return
                             }
                             e.dataTransfer.setData('text/plain', String(task.id))
@@ -1407,9 +1492,16 @@ export default function StepEduScrum({
                               ))}
                             </ul>
                           ) : null}
-                          {editavel && !moveGate.ok ? (
+                          {editavel && hasAula && (task.coluna || 'para_fazer') !== 'pronto' && !cardPodeMover(task, 'pronto').ok ? (
                             <p className="mt-1.5 text-[10px] font-semibold leading-snug text-amber-900/90">
-                              Bloqueado até as aulas vinculadas serem realizadas.
+                              Pronto só após o relato da(s) aula(s) desta turma. Em execução:
+                              mova livremente entre Para Fazer e Fazendo.
+                            </p>
+                          ) : null}
+                          {colabCard ? (
+                            <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-bordo/70">
+                              Atribuição: {colabCard.email_convidado} · {colabCard.status}{' '}
+                              (visão isolada)
                             </p>
                           ) : null}
                           {task.objetivo ? (
@@ -1576,9 +1668,18 @@ export default function StepEduScrum({
               Registrar e concluir aula
             </button>
           ) : null}
+          {podeExecutar && !aulaConcluida ? (
+            <p className="mt-2 text-[10px] leading-snug text-bordo-soft print:hidden">
+              Na execução os cards já estão em <strong className="text-bordo">Fazendo</strong> e
+              você move livremente entre Para Fazer e Fazendo. O relato conclui a aula e libera a
+              finalização para <strong className="text-bordo">Pronto</strong>. Depois vem o
+              Feedback Loop. Cada professor tem visão isolada.
+            </p>
+          ) : null}
           {aulaConcluida ? (
             <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-center text-[11px] font-bold text-emerald-800 print:hidden">
-              Realização registrada — aparece no mapa do início.
+              Realização registrada — cards desta turma liberados para Pronto. Em seguida, o
+              feedback pós-aula.
             </p>
           ) : null}
         </aside>
@@ -1637,7 +1738,7 @@ export default function StepEduScrum({
       {showRelato ? (
         <RelatoAulaModal
           aula={aulaAtiva}
-          missao={tituloAula}
+          missao={missaoCompleta}
           busy={relatoBusy}
           onCancel={() => {
             if (!relatoBusy) setShowRelato(false)
@@ -1646,19 +1747,31 @@ export default function StepEduScrum({
         />
       ) : null}
 
-      {showRegistro ? (
-        <div
-          className="fixed inset-0 z-[85] flex items-end justify-center bg-bordo-deep/45 p-4 sm:items-center"
-          role="dialog"
-          aria-modal="true"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowRegistro(false)
-          }}
-        >
-          <form
-            onSubmit={handleRegistrarAulas}
-            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-brand-200 bg-white p-5 shadow-soft"
-          >
+      {showFeedback && feedbackAula ? (
+        <ClassFeedbackModal
+          aula={feedbackAula}
+          busy={feedbackBusy}
+          onCancel={closeFeedback}
+          onSkip={closeFeedback}
+          onSubmit={handleSubmitFeedback}
+        />
+      ) : null}
+
+      {showRegistro
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-bordo-deep/55 p-3 sm:p-6"
+              role="dialog"
+              aria-modal="true"
+              onClick={(e) => {
+                if (e.target === e.currentTarget && !registroBusy) setShowRegistro(false)
+              }}
+            >
+              <form
+                onSubmit={handleRegistrarAulas}
+                className="my-2 w-full max-w-2xl rounded-2xl border border-brand-200 bg-white p-5 shadow-soft sm:my-4 sm:p-6"
+                style={{ maxHeight: 'min(92vh, 920px)', overflowY: 'auto' }}
+              >
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600">
               Agenda executiva
             </p>
@@ -1667,12 +1780,11 @@ export default function StepEduScrum({
             </h3>
             <p className="mt-2 text-sm text-bordo-soft">
               Para cada aula: data, turma, turno e os cards que serão realizados. Em cada card,
-              declare o escopo desta turma. O mesmo card pode ir a duas turmas — cada uma com o
-              seu «o que vamos fazer». O Kanban só move depois que as aulas vinculadas estiverem
-              realizadas.
+              declare o escopo desta turma. Ao registrar, os cards entram em Fazendo (execução).
+              Mover para Pronto exige as aulas da turma concluídas (relato).
             </p>
             <p className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-xs text-bordo">
-              <strong>Missão:</strong> {tituloAula}
+              <strong>Missão:</strong> {missaoCompleta}
             </p>
 
             <ul className="mt-4 space-y-3">
@@ -1761,7 +1873,7 @@ export default function StepEduScrum({
                     </p>
                     {!cardsCatalogo.length ? (
                       <p className="mt-2 text-xs font-semibold text-rose-700">
-                        Nenhum card no plano — volte e gere o EduScrum com os cards.
+                        Nenhum card no plano — volte e gere o método inove4us com os cards.
                       </p>
                     ) : (
                       <ul className="mt-2 space-y-2">
@@ -1917,9 +2029,11 @@ export default function StepEduScrum({
                 {registroBusy ? 'Salvando…' : 'Salvar na agenda'}
               </button>
             </div>
-          </form>
-        </div>
-      ) : null}
+              </form>
+            </div>,
+            document.body,
+          )
+        : null}
     </section>
   )
 }

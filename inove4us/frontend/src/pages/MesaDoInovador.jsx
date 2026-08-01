@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import BrandLogo from '../components/BrandLogo'
 import MapaRealizacoes from '../components/MapaRealizacoes'
 import AgendaExecutiva from '../components/AgendaExecutiva'
+import DesafioSeletor from '../components/DesafioSeletor'
 import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 
 /**
@@ -91,9 +92,10 @@ export default function MesaDoInovador() {
             Sua prática inovadora
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-bordo-soft">
-            Acompanhe realizações, agenda e desdobramentos. Para um ciclo rápido de ~50 min na
-            agenda, use <strong>Dia a Dia</strong>. Para investigar um problema e montar um plano
-            EduScrum completo, use <strong>+ Desafio</strong>.
+            Comece pelos seus desafios (criados ou aceitos). Na mesa do desafio você vê a execução
+            completa; o grafo e a agenda do período ficam abaixo. Para um ciclo rápido de ~50 min,
+            use <strong>Dia a Dia</strong>. Para investigar um problema novo, use{' '}
+            <strong>+ Desafio</strong>.
           </p>
           {paidReturn ? (
             <p className="mt-3 text-sm font-medium text-bordo">
@@ -127,6 +129,8 @@ export default function MesaDoInovador() {
             </div>
           ) : null}
         </div>
+
+        <DesafioSeletor className="mb-8" />
 
         <MapaRealizacoes
           refreshKey={refreshKey}

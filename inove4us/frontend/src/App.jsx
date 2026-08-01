@@ -1,9 +1,12 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { AuthBalanceSync, AuthProvider, useAuth } from './lib/auth'
+import { api } from './lib/api'
 import BrandLogo from './components/BrandLogo'
 import AssistenteChat from './components/AssistenteChat'
 import CrmPageTracker from './components/CrmPageTracker'
 import NinaOnboarding from './components/NinaOnboarding'
+import { requestNinaOnboardingReplay } from './lib/ninaOnboarding'
 import Acesso from './pages/Acesso'
 import PaymentFailurePage from './pages/billing/PaymentFailurePage'
 import PaymentPendingPage from './pages/billing/PaymentPendingPage'
@@ -16,6 +19,7 @@ import ConvitePage from './pages/ConvitePage'
 import ImportacoesPage from './pages/ImportacoesPage'
 import InstituicoesPage from './pages/InstituicoesPage'
 import MesaDoInovador from './pages/MesaDoInovador'
+import MesaDoDesafioPage from './pages/MesaDoDesafioPage'
 
 function LoadingScreen({ label = 'Carregando…' }) {
   return (
@@ -54,6 +58,54 @@ function ProtectedRoute({ children }) {
   )
 }
 
+/** Já logado em /acesso — preserva ?reset_onboarding=1 para a Nina. */
+function AlreadyAuthedRedirect({ user, nextPath }) {
+  const location = useLocation()
+  const { setUser } = useAuth()
+  const [ready, setReady] = useState(false)
+  const target = nextPath || '/mesa-do-inovador'
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const sp = new URLSearchParams(location.search)
+        if (sp.get('reset_onboarding') === '1' && user?.id_clie) {
+          requestNinaOnboardingReplay(user.id_clie)
+          try {
+            const data = await api.resetNinaOnboarding()
+            if (!cancelled) {
+              setUser((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      ...(data?.user || {}),
+                      nina_onboarding_done: false,
+                    }
+                  : prev,
+              )
+            }
+          } catch {
+            if (!cancelled) {
+              setUser((prev) =>
+                prev ? { ...prev, nina_onboarding_done: false } : prev,
+              )
+            }
+          }
+        }
+      } finally {
+        if (!cancelled) setReady(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [location.search, user?.id_clie, setUser])
+
+  if (!ready) return <LoadingScreen label="Preparando…" />
+  return <Navigate to={target} replace />
+}
+
 function AppRoutes() {
   const { user, loading } = useAuth()
   const location = useLocation()
@@ -67,7 +119,7 @@ function AppRoutes() {
         path="/acesso"
         element={
           user ? (
-            <Navigate to={nextParam || '/mesa-do-inovador'} replace />
+            <AlreadyAuthedRedirect user={user} nextPath={nextParam} />
           ) : (
             <Acesso />
           )
@@ -79,6 +131,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MesaDoInovador />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/desafios/:desafioId"
+        element={
+          <ProtectedRoute>
+            <MesaDoDesafioPage />
           </ProtectedRoute>
         }
       />

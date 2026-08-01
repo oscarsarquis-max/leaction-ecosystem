@@ -65,7 +65,7 @@ const TIPO_CARD = {
     card: 'border-amber-300 bg-amber-50 hover:border-amber-400 hover:bg-amber-100/80',
     label: 'text-amber-800',
     chip: 'bg-amber-200/80 text-amber-950',
-    nome: 'Desafio · EduScrum',
+    nome: 'Desafio · método inove4us',
   },
   aula_dia: {
     card: 'border-emerald-300 bg-emerald-50 hover:border-emerald-400 hover:bg-emerald-100/80',

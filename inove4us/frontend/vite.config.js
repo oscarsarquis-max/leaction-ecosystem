@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Proxy alinhado ao default do backend (app.py → FLASK_PORT/PORT, padrão 5010).
+// Proxy alinhado ao backend local (FLASK_PORT no backend/.env — tipicamente 5011).
 const apiTarget =
-  process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:5010'
+  process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:5011'
 
 export default defineConfig({
   plugins: [react()],

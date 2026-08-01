@@ -4,10 +4,16 @@ from __future__ import annotations
 
 from typing import Literal, TypedDict
 
-AulaSimplesStatus = Literal["draft", "planejado", "realizado"]
+AulaSimplesStatus = Literal["draft", "planejado", "em_execucao", "realizado"]
 DinamicaFonte = Literal["mativas", "inove_local", "livre"]
 
-STATUSES: frozenset[str] = frozenset({"draft", "planejado", "realizado"})
+STATUSES: frozenset[str] = frozenset({"draft", "planejado", "em_execucao", "realizado"})
+# Aliases da especificação UX (in_progress / completed)
+STATUS_ALIASES: dict[str, str] = {
+    "in_progress": "em_execucao",
+    "completed": "realizado",
+    "complete": "realizado",
+}
 FONTES: frozenset[str] = frozenset({"mativas", "inove_local", "livre"})
 
 _ensured = False
@@ -27,17 +33,27 @@ class AulaSimplesRow(TypedDict, total=False):
     fechamento_checkout: str
     status: AulaSimplesStatus
     id_evento_agenda: int | None
+    data_inicio: str | None
+    data_conclusao: str | None
+    feedback_json: dict | None
     created_at: str
     updated_at: str
+
+
+def normalize_status(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    value = str(raw).strip().lower()
+    value = STATUS_ALIASES.get(value, value)
+    return value if value in STATUSES else None
 
 
 def ensure_aulas_simples_table(conn) -> None:
     """
     Idempotente — espelha o padrão de inove_user_feedbacks.
 
-    ATENÇÃO: em produção, preferir aplicar 007_inove_aulas_simples.sql
-    explicitamente após o cutover financeiro. Este ensure existe para
-    ambientes locais / pós-liberação do vetor Dia a Dia.
+    ATENÇÃO: em produção, preferir aplicar migrations explicitamente.
+    Este ensure existe para ambientes locais / pós-liberação do vetor Dia a Dia.
     """
     global _ensured
     if _ensured:
@@ -61,10 +77,11 @@ def ensure_aulas_simples_table(conn) -> None:
                 status                VARCHAR(32) NOT NULL DEFAULT 'draft',
                 id_evento_agenda      INTEGER,
                 kanban_state          JSONB,
+                data_inicio           TIMESTAMPTZ,
+                data_conclusao        TIMESTAMPTZ,
+                feedback_json         JSONB,
                 created_at            TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at            TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                CONSTRAINT chk_inove_aulas_simples_status
-                    CHECK (status IN ('draft', 'planejado', 'realizado')),
                 CONSTRAINT chk_inove_aulas_simples_fonte
                     CHECK (dinamica_ativa_fonte IN ('mativas', 'inove_local', 'livre'))
             );
@@ -72,6 +89,17 @@ def ensure_aulas_simples_table(conn) -> None:
                 ADD COLUMN IF NOT EXISTS id_evento_agenda INTEGER;
             ALTER TABLE public.inove_aulas_simples
                 ADD COLUMN IF NOT EXISTS kanban_state JSONB;
+            ALTER TABLE public.inove_aulas_simples
+                ADD COLUMN IF NOT EXISTS data_inicio TIMESTAMPTZ;
+            ALTER TABLE public.inove_aulas_simples
+                ADD COLUMN IF NOT EXISTS data_conclusao TIMESTAMPTZ;
+            ALTER TABLE public.inove_aulas_simples
+                ADD COLUMN IF NOT EXISTS feedback_json JSONB;
+            ALTER TABLE public.inove_aulas_simples
+                DROP CONSTRAINT IF EXISTS chk_inove_aulas_simples_status;
+            ALTER TABLE public.inove_aulas_simples
+                ADD CONSTRAINT chk_inove_aulas_simples_status
+                CHECK (status IN ('draft', 'planejado', 'em_execucao', 'realizado'));
             CREATE INDEX IF NOT EXISTS idx_inove_aulas_simples_clie_data
                 ON public.inove_aulas_simples (id_clie, data_planejada DESC);
             CREATE INDEX IF NOT EXISTS idx_inove_aulas_simples_status
@@ -82,7 +110,6 @@ def ensure_aulas_simples_table(conn) -> None:
             CREATE INDEX IF NOT EXISTS idx_inove_aulas_simples_evento
                 ON public.inove_aulas_simples (id_evento_agenda)
                 WHERE id_evento_agenda IS NOT NULL;
-            -- Etapa 3: vínculo pedagógico opcional + origem
             ALTER TABLE public.inove_aulas_simples
                 ADD COLUMN IF NOT EXISTS disciplina_id BIGINT;
             ALTER TABLE public.inove_aulas_simples

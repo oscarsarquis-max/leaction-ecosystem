@@ -311,7 +311,11 @@ def _kanban_para_aula_com_cards(
     turma: str,
     escopos_by_card: dict[str, str],
 ) -> dict:
-    """Monta kanban da aula só com os cards associados + escopo da turma."""
+    """Monta kanban da aula só com os cards associados + escopo da turma.
+
+    Ao registrar a aula, os cards entram em «Fazendo» (execução). O DoD
+    (aulas concluídas) só bloqueia a migração para «Pronto».
+    """
     base = _fresh_kanban_from_plan(plan_data_obj, kanban_base_obj)
     tarefas_src = _tarefas_from_kanban(base)
     wanted = {str(c).strip() for c in card_ids if str(c).strip()}
@@ -322,8 +326,15 @@ def _kanban_para_aula_com_cards(
             continue
         nota = str(escopos_by_card.get(tid) or "").strip()
         item = dict(t)
-        item["coluna"] = "para_fazer"
-        item["historico"] = []
+        item["coluna"] = "fazendo"
+        item["historico"] = [
+            {
+                "de": "para_fazer",
+                "para": "fazendo",
+                "nota": "Aula registrada — em execução",
+                "em": None,
+            }
+        ]
         item["ultima_observacao"] = None
         item["aula_id"] = int(aula_id)
         item["aula_ids"] = [int(aula_id)]
@@ -393,17 +404,18 @@ def _aula_ids_do_card(task: dict) -> list[int]:
 
 
 def _expand_aula_ids_do_card_no_desafio(cur, id_clie: int, task: dict, anchor_evento: dict) -> list[int]:
-    """Inclui todas as aulas do desafio que possuem o mesmo card_id."""
+    """Inclui aulas do desafio/turma que possuem o mesmo card_id (DoD de finalização)."""
     aids = _aula_ids_do_card(task)
     tid = str(task.get("id") or "").strip()
     if not tid:
         return aids
     plano_session = (anchor_evento.get("plano_session") or "").strip() or None
     owner = int(anchor_evento.get("id_clie") or id_clie)
+    turma_anchor = (anchor_evento.get("turma") or "").strip().lower()
     if plano_session:
         cur.execute(
-            f"""
-            SELECT id_evento, kanban_state
+            """
+            SELECT id_evento, kanban_state, turma
               FROM public.inove_agenda_eventos
              WHERE id_clie = %s
                AND plano_session = %s
@@ -412,6 +424,10 @@ def _expand_aula_ids_do_card_no_desafio(cur, id_clie: int, task: dict, anchor_ev
             (owner, plano_session),
         )
         for row in cur.fetchall():
+            if turma_anchor:
+                row_turma = (row.get("turma") or "").strip().lower()
+                if row_turma and row_turma != turma_anchor:
+                    continue
             for t in _tarefas_from_kanban(_json_field(row.get("kanban_state"))):
                 if str(t.get("id") or "").strip() == tid:
                     try:
@@ -424,16 +440,30 @@ def _expand_aula_ids_do_card_no_desafio(cur, id_clie: int, task: dict, anchor_ev
     return aids
 
 
-def _card_pode_mover(cur, id_clie: int, task: dict, anchor_evento: dict | None = None):
-    """Kanban só move se todas as aulas vinculadas ao card estiverem concluídas."""
+def _card_pode_mover(
+    cur,
+    id_clie: int,
+    task: dict,
+    anchor_evento: dict | None = None,
+    to_coluna: str | None = None,
+):
+    """Gate de coluna do Kanban.
+
+    - Para Fazer ↔ Fazendo: livre na execução (card precisa ter aula vinculada).
+    - Pronto: DoD — todas as aulas da turma vinculadas ao card concluídas.
+    """
     aids = _aula_ids_do_card(task)
-    if anchor_evento is not None:
-        aids = _expand_aula_ids_do_card_no_desafio(cur, id_clie, task, anchor_evento)
+    dest = str(to_coluna or "").strip().lower()
     if not aids:
         return (
             False,
             "Card sem aula associada. Associe o card a uma aula (com escopo) antes de mover.",
         )
+    # Execução: qualquer destino que não seja Pronto
+    if dest and dest != "pronto":
+        return True, None
+    if anchor_evento is not None:
+        aids = _expand_aula_ids_do_card_no_desafio(cur, id_clie, task, anchor_evento)
     cur.execute(
         """
         SELECT id_evento, status
@@ -451,8 +481,8 @@ def _card_pode_mover(cur, id_clie: int, task: dict, anchor_evento: dict | None =
         if str(row.get("status") or "") != "concluido":
             return (
                 False,
-                "Só é possível movimentar o card depois que todas as aulas vinculadas "
-                "estiverem realizadas (relato concluído).",
+                "Para mover para Pronto, conclua a(s) aula(s) desta turma (relato). "
+                "Durante a execução você pode mover entre Para Fazer e Fazendo.",
             )
     return True, None
 
@@ -936,6 +966,7 @@ def registrar_aulas():
     titulo_base = (data.get("titulo") or "Aula EduScrum").strip()[:140]
     nota_texto = (data.get("nota_texto") or "").strip() or None
     plano_session = (data.get("plano_session") or "").strip() or None
+    desafio_id_req = str(data.get("desafio_id") or "").strip() or None
     disciplina_raw = data.get("disciplina_id")
     if disciplina_raw in ("", None):
         disciplina_raw = None
@@ -1115,8 +1146,12 @@ def registrar_aulas():
                             {"success": False, "error": "Disciplina não encontrada ou sem permissão"}
                         ), 404
 
-                # Cria registro canônico do desafio (hipótese/causas/tema) — sem IA
-                from desafios_routes import create_desafio_row
+                # Desafio: reutiliza o informado (acrescentar/ratificar) ou cria um novo
+                from desafios_routes import (
+                    _ensure_desafios_schema,
+                    _papel_acesso_desafio,
+                    create_desafio_row,
+                )
 
                 hipotese_val = None
                 problema_val = None
@@ -1127,19 +1162,53 @@ def registrar_aulas():
                     hipotese_val = meta_obj.get("hipotese")
                 if not problema_val:
                     problema_val = meta_obj.get("problema")
-                desafio_row = create_desafio_row(
-                    cur,
-                    id_clie=user["id_clie"],
-                    titulo=titulo_base,
-                    problema=problema_val,
-                    hipotese=hipotese_val,
-                    causas=causas_obj,
-                    tema=tema_obj,
-                    plan_data=plan_data_obj,
-                    meta_json=meta_obj,
-                    disciplina_id=disciplina_id,
-                )
-                desafio_id_criado = str(desafio_row["id"])
+
+                if desafio_id_req:
+                    _ensure_desafios_schema(conn)
+                    papel, desafio_row = _papel_acesso_desafio(
+                        cur, desafio_id_req, user["id_clie"]
+                    )
+                    if papel is None or not desafio_row:
+                        return jsonify({"success": False, "error": "Desafio não encontrado"}), 404
+                    desafio_id_criado = str(desafio_row["id"])
+                    if plan_data_obj is None:
+                        plan_data_obj = _json_field(desafio_row.get("plan_data"))
+                    if not plano_session:
+                        cur.execute(
+                            """
+                            SELECT plano_session
+                              FROM public.inove_agenda_eventos
+                             WHERE desafio_id = %s
+                               AND id_clie = %s
+                               AND plano_session IS NOT NULL
+                               AND trim(plano_session) <> ''
+                             ORDER BY id_evento ASC
+                             LIMIT 1
+                            """,
+                            (desafio_id_criado, user["id_clie"]),
+                        )
+                        ps_row = cur.fetchone()
+                        if ps_row and ps_row.get("plano_session"):
+                            plano_session = str(ps_row["plano_session"]).strip()
+                    if not titulo_base or titulo_base == "Aula EduScrum":
+                        titulo_base = (desafio_row.get("titulo") or titulo_base)[:140]
+                    if not tema_obj and desafio_row.get("tema"):
+                        tema_obj = str(desafio_row["tema"]).strip() or None
+                else:
+                    desafio_row = create_desafio_row(
+                        cur,
+                        id_clie=user["id_clie"],
+                        titulo=titulo_base,
+                        problema=problema_val,
+                        hipotese=hipotese_val,
+                        causas=causas_obj,
+                        tema=tema_obj,
+                        plan_data=plan_data_obj,
+                        meta_json=meta_obj,
+                        disciplina_id=disciplina_id,
+                    )
+                    desafio_id_criado = str(desafio_row["id"])
+
                 meta_obj = {**meta_obj, "desafio_id": desafio_id_criado}
 
                 for slot in slots:
@@ -1188,10 +1257,18 @@ def registrar_aulas():
                               AND tipo = 'aula_eduscrum'
                               AND lower(trim(turma)) = lower(trim(%s))
                               AND (%s::text IS NULL OR plano_session = %s)
+                              AND (%s::uuid IS NULL OR desafio_id = %s::uuid)
                             ORDER BY data_evento DESC, id_evento DESC
                             LIMIT 1
                             """,
-                            (user["id_clie"], turma, plano_session, plano_session),
+                            (
+                                user["id_clie"],
+                                turma,
+                                plano_session,
+                                plano_session,
+                                desafio_id_criado,
+                                desafio_id_criado,
+                            ),
                         )
                         prev = cur.fetchone()
                         if prev and prev.get("kanban_state") is not None:
@@ -1512,7 +1589,11 @@ def atualizar_estado(id_evento: int):
                         if col_old == col_new:
                             continue
                         ok_move, err_move = _card_pode_mover(
-                            cur, int(atual["id_clie"]), t_new, dict(atual)
+                            cur,
+                            int(atual["id_clie"]),
+                            t_new,
+                            dict(atual),
+                            to_coluna=col_new,
                         )
                         if not ok_move:
                             return jsonify({"success": False, "error": err_move}), 400
@@ -1630,6 +1711,140 @@ def concluir_aula(id_evento: int):
     except Exception as exc:
         print(f"⚠️ agenda concluir-aula: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao concluir a aula"}), 500
+
+
+ENGAJAMENTO_OK = frozenset({"alto", "medio", "baixo"})
+MAX_OBS_FEEDBACK = 8000
+_feedback_ensured = False
+
+
+def _ensure_aulas_feedback(conn) -> None:
+    global _feedback_ensured
+    if _feedback_ensured:
+        return
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS public.inove_aulas_feedback (
+                id                SERIAL PRIMARY KEY,
+                id_evento         INTEGER NOT NULL
+                    REFERENCES public.inove_agenda_eventos (id_evento) ON DELETE CASCADE,
+                id_clie           INTEGER NOT NULL
+                    REFERENCES public.ctdi_clie (id_clie) ON DELETE CASCADE,
+                desafio_id        UUID,
+                metodologia_ok    BOOLEAN NOT NULL,
+                engajamento       VARCHAR(16) NOT NULL,
+                estrutura_ok      BOOLEAN NOT NULL,
+                observacoes       TEXT,
+                criado_em         TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_inove_aulas_feedback_evento
+                ON public.inove_aulas_feedback (id_evento)
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_inove_aulas_feedback_clie
+                ON public.inove_aulas_feedback (id_clie, criado_em DESC)
+            """
+        )
+    _feedback_ensured = True
+
+
+@agenda_bp.post("/api/agenda-eventos/<int:id_evento>/feedback")
+def salvar_feedback_aula(id_evento: int):
+    """Retroalimentação pós-aula (Feedback Loop) — dados estruturados + observações."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+
+    data = request.get_json(silent=True) or {}
+    if "metodologia_ok" not in data:
+        return jsonify({"success": False, "error": "Informe se a sugestão metodológica funcionou."}), 400
+    if "estrutura_ok" not in data:
+        return jsonify({"success": False, "error": "Informe se a estrutura acomodou a sugestão."}), 400
+
+    metodologia_ok = bool(data.get("metodologia_ok"))
+    estrutura_ok = bool(data.get("estrutura_ok"))
+    engajamento = str(data.get("engajamento") or "").strip().lower()
+    if engajamento not in ENGAJAMENTO_OK:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Engajamento inválido. Use: alto, medio ou baixo.",
+                }
+            ),
+            400,
+        )
+    observacoes = (data.get("observacoes") or "").strip()
+    if len(observacoes) > MAX_OBS_FEEDBACK:
+        observacoes = observacoes[:MAX_OBS_FEEDBACK]
+
+    try:
+        with get_conn() as conn:
+            _ensure_table(conn)
+            _ensure_aulas_feedback(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    f"""
+                    SELECT {SELECT_COLS}
+                    FROM public.inove_agenda_eventos
+                    WHERE id_evento = %s AND id_clie = %s
+                    """,
+                    (id_evento, user["id_clie"]),
+                )
+                atual = cur.fetchone()
+                if not atual:
+                    return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+
+                pode_ler, pode_editar = _can_access_evento(cur, user["id_clie"], dict(atual))
+                if not pode_editar:
+                    if pode_ler:
+                        return (
+                            jsonify(
+                                {
+                                    "success": False,
+                                    "error": "Somente o responsável pela execução pode registrar o feedback.",
+                                }
+                            ),
+                            403,
+                        )
+                    return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+
+                desafio_id = atual.get("desafio_id")
+                cur.execute(
+                    """
+                    INSERT INTO public.inove_aulas_feedback
+                        (id_evento, id_clie, desafio_id, metodologia_ok,
+                         engajamento, estrutura_ok, observacoes)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id, id_evento, id_clie, desafio_id, metodologia_ok,
+                              engajamento, estrutura_ok, observacoes, criado_em
+                    """,
+                    (
+                        id_evento,
+                        user["id_clie"],
+                        desafio_id,
+                        metodologia_ok,
+                        engajamento,
+                        estrutura_ok,
+                        observacoes or None,
+                    ),
+                )
+                row = dict(cur.fetchone())
+                if row.get("desafio_id") is not None:
+                    row["desafio_id"] = str(row["desafio_id"])
+                if row.get("criado_em") is not None:
+                    row["criado_em"] = row["criado_em"].isoformat()
+                return jsonify({"success": True, "feedback": row})
+    except Exception as exc:
+        print(f"⚠️ agenda feedback-aula: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao salvar o feedback da aula"}), 500
 
 
 @agenda_bp.route("/api/agenda-eventos/<int:id_evento>", methods=["GET", "PUT", "DELETE"])

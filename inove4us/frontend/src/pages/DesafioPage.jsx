@@ -25,7 +25,7 @@ function parseDisciplinaId(raw) {
 }
 
 /**
- * Fluxo de investigação do problema → plano EduScrum (página própria).
+ * Fluxo de investigação do problema → plano do método inove4us (página própria).
  */
 export default function DesafioPage() {
   const { user, logout, applyCredits, refresh } = useAuth()

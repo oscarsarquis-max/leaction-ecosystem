@@ -103,7 +103,12 @@ def _slug(nome: str) -> str:
 # `aliases`: nomes/ids alternativos pesquisáveis e resolvíveis.
 CATALOGO_METODOLOGIAS_DIA: tuple[dict[str, Any], ...] = (
     # --- Indutivas (ex-CRIATIVAS) ---
-    {"nome": "Abordagem Problematizadora", "etiqueta": ETIQUETA_INDUTIVAS},
+    {
+        "nome": "Abordagem Problematizadora",
+        "etiqueta": ETIQUETA_INDUTIVAS,
+        "id": "criativa_abordagem_problematizadora",
+        "id_db": "criativa_abordagem_problematizadora",
+    },
     {
         "nome": "Aprendizagem Baseada em Casos",
         "etiqueta": ETIQUETA_INDUTIVAS,
@@ -114,15 +119,34 @@ CATALOGO_METODOLOGIAS_DIA: tuple[dict[str, Any], ...] = (
         "nome": "Aprendizagem Baseada em Equipes",
         "etiqueta": ETIQUETA_INDUTIVAS,
         "aliases": ["Team-Based Learning", "TBL"],
+        "id": "criativa_aprendizagem_equipes",
+        "id_db": "criativa_aprendizagem_equipes",
     },
     {
         "nome": "Aprendizagem Baseada em Problemas",
         "etiqueta": ETIQUETA_INDUTIVAS,
         "aliases": ["PBL", "ABP", "Aprendizagem Baseada em Problemas (PBL)"],
+        "id": "criativa_pbl_problemas",
+        "id_db": "criativa_pbl_problemas",
     },
-    {"nome": "Aprendizagem Baseada em Projetos", "etiqueta": ETIQUETA_INDUTIVAS},
-    {"nome": "Aprendizagem Maker", "etiqueta": ETIQUETA_INDUTIVAS},
-    {"nome": "Coaching Reverso", "etiqueta": ETIQUETA_INDUTIVAS},
+    {
+        "nome": "Aprendizagem Baseada em Projetos",
+        "etiqueta": ETIQUETA_INDUTIVAS,
+        "id": "criativa_pbl_projetos",
+        "id_db": "criativa_pbl_projetos",
+    },
+    {
+        "nome": "Aprendizagem Maker",
+        "etiqueta": ETIQUETA_INDUTIVAS,
+        "id": "criativa_aprendizagem_maker",
+        "id_db": "criativa_aprendizagem_maker",
+    },
+    {
+        "nome": "Coaching Reverso",
+        "etiqueta": ETIQUETA_INDUTIVAS,
+        "id": "criativa_coaching_reverso",
+        "id_db": "criativa_coaching_reverso",
+    },
     {
         "nome": "Design Thinking",
         "etiqueta": ETIQUETA_INDUTIVAS,
@@ -130,7 +154,12 @@ CATALOGO_METODOLOGIAS_DIA: tuple[dict[str, Any], ...] = (
         "id": "criativa_design_thinking_express",
         "id_db": "criativa_design_thinking_express",
     },
-    {"nome": "Mapa de Polaridades", "etiqueta": ETIQUETA_INDUTIVAS},
+    {
+        "nome": "Mapa de Polaridades",
+        "etiqueta": ETIQUETA_INDUTIVAS,
+        "id": "criativa_mapa_polaridades",
+        "id_db": "criativa_mapa_polaridades",
+    },
     {
         "nome": "Narrativas Transmídia em Rotação por Estações",
         "etiqueta": ETIQUETA_INDUTIVAS,
@@ -150,19 +179,33 @@ CATALOGO_METODOLOGIAS_DIA: tuple[dict[str, Any], ...] = (
         "id": "criativa_painel_diversidade",
         "id_db": "criativa_painel_diversidade",
     },
-    {"nome": "Rotina Veja-Pense-Pergunte-Crie", "etiqueta": ETIQUETA_INDUTIVAS},
+    {
+        "nome": "Rotina Veja-Pense-Pergunte-Crie",
+        "etiqueta": ETIQUETA_INDUTIVAS,
+        "id": "criativa_veja_pense_pergunte_crie",
+        "id_db": "criativa_veja_pense_pergunte_crie",
+    },
     {
         "nome": "Sala de Aula Invertida",
         "etiqueta": ETIQUETA_INDUTIVAS,
         "aliases": ["Flipped Classroom"],
+        "id": "criativa_sala_invertida",
+        "id_db": "criativa_sala_invertida",
     },
     {
         "nome": "World Café",
         "etiqueta": ETIQUETA_INDUTIVAS,
         "aliases": ["World Cafe"],
+        "id": "criativa_world_cafe",
+        "id_db": "criativa_world_cafe",
     },
     # --- Agilidade (ex-ÁGEIS) ---
-    {"nome": "Canvas Mania", "etiqueta": ETIQUETA_AGILIDADE},
+    {
+        "nome": "Canvas Mania",
+        "etiqueta": ETIQUETA_AGILIDADE,
+        "id": "agil_canvas_mania",
+        "id_db": "agil_canvas_mania",
+    },
     {
         "nome": "Discurso de Elevador",
         "etiqueta": ETIQUETA_AGILIDADE,
@@ -170,16 +213,25 @@ CATALOGO_METODOLOGIAS_DIA: tuple[dict[str, Any], ...] = (
         "id": "agil_elevator_pitch",
         "id_db": "agil_elevator_pitch",
     },
-    {"nome": "EduScrum", "etiqueta": ETIQUETA_AGILIDADE},
+    {
+        "nome": "EduScrum",
+        "etiqueta": ETIQUETA_AGILIDADE,
+        "id": "agil_eduscrum",
+        "id_db": "agil_eduscrum",
+    },
     {
         "nome": "Hackathons",
         "etiqueta": ETIQUETA_AGILIDADE,
         "aliases": ["Hackathon"],
+        "id": "agil_hackathons",
+        "id_db": "agil_hackathons",
     },
     {
         "nome": "Mapeamento mental",
         "etiqueta": ETIQUETA_AGILIDADE,
         "aliases": ["Mapeamento Mental"],
+        "id": "agil_mapeamento_mental",
+        "id_db": "agil_mapeamento_mental",
     },
     {
         "nome": "Minute Paper",
@@ -195,9 +247,19 @@ CATALOGO_METODOLOGIAS_DIA: tuple[dict[str, Any], ...] = (
         "id": "agil_pecha_kucha",
         "id_db": "agil_pecha_kucha",
     },
-    {"nome": "Pedagogia Extrema", "etiqueta": ETIQUETA_AGILIDADE},
+    {
+        "nome": "Pedagogia Extrema",
+        "etiqueta": ETIQUETA_AGILIDADE,
+        "id": "agil_pedagogia_extrema",
+        "id_db": "agil_pedagogia_extrema",
+    },
     # --- Contextuais (ex-IMERSIVAS) ---
-    {"nome": "Aprendizagem Baseada em Jogos", "etiqueta": ETIQUETA_CONTEXTUAIS},
+    {
+        "nome": "Aprendizagem Baseada em Jogos",
+        "etiqueta": ETIQUETA_CONTEXTUAIS,
+        "id": "imersiva_aprendizagem_jogos",
+        "id_db": "imersiva_aprendizagem_jogos",
+    },
     {
         "nome": "Escape Room",
         "etiqueta": ETIQUETA_CONTEXTUAIS,
@@ -235,17 +297,23 @@ CATALOGO_METODOLOGIAS_DIA: tuple[dict[str, Any], ...] = (
         "nome": "Simulações",
         "etiqueta": ETIQUETA_CONTEXTUAIS,
         "aliases": ["Simulação"],
+        "id": "imersiva_simulacoes",
+        "id_db": "imersiva_simulacoes",
     },
     {
         "nome": "Vivência Metodologia imersiva Multissensorial",
         "etiqueta": ETIQUETA_CONTEXTUAIS,
         "aliases": ["Vivência Imersiva Multissensorial"],
+        "id": "imersiva_vivencia_multissensorial",
+        "id_db": "imersiva_vivencia_multissensorial",
     },
     # --- Dedutivas (ex-ANALÍTICAS) ---
     {
         "nome": "Chatbots",
         "etiqueta": ETIQUETA_DEDUTIVAS,
         "aliases": ["Bots personalizáveis"],
+        "id": "analitica_chatbots",
+        "id_db": "analitica_chatbots",
     },
     {
         "nome": "Diagnóstico Coletivo",
@@ -258,18 +326,29 @@ CATALOGO_METODOLOGIAS_DIA: tuple[dict[str, Any], ...] = (
         "nome": "Dog or Cat: Reconhecimento de Imagens",
         "etiqueta": ETIQUETA_DEDUTIVAS,
         "aliases": ["Dog or Cat"],
+        "id": "analitica_dog_or_cat",
+        "id_db": "analitica_dog_or_cat",
     },
     {
         "nome": "Extrato de Participação",
         "etiqueta": ETIQUETA_DEDUTIVAS,
         "aliases": ["Extrato de Participações"],
+        "id": "analitica_extrato_participacao",
+        "id_db": "analitica_extrato_participacao",
     },
     {
         "nome": "Inteligência Artificial Generativa",
         "etiqueta": ETIQUETA_DEDUTIVAS,
         "aliases": ["IA Generativa"],
+        "id": "analitica_ia_generativa",
+        "id_db": "analitica_ia_generativa",
     },
-    {"nome": "Mapa de Calor", "etiqueta": ETIQUETA_DEDUTIVAS},
+    {
+        "nome": "Mapa de Calor",
+        "etiqueta": ETIQUETA_DEDUTIVAS,
+        "id": "analitica_mapa_calor",
+        "id_db": "analitica_mapa_calor",
+    },
     {
         "nome": "Metodologia analítica da Aprendizagem",
         "etiqueta": ETIQUETA_DEDUTIVAS,
@@ -277,7 +356,12 @@ CATALOGO_METODOLOGIAS_DIA: tuple[dict[str, Any], ...] = (
         "id": "analitica_learning_analytics",
         "id_db": "analitica_learning_analytics",
     },
-    {"nome": "RAG", "etiqueta": ETIQUETA_DEDUTIVAS},
+    {
+        "nome": "RAG",
+        "etiqueta": ETIQUETA_DEDUTIVAS,
+        "id": "analitica_rag",
+        "id_db": "analitica_rag",
+    },
     {
         "nome": "Trilhas de Aprendizagem",
         "etiqueta": ETIQUETA_DEDUTIVAS,

@@ -1,36 +1,21 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { NINA_AVATAR_SRC } from '../lib/ninaAvatar'
+import {
+  clearNinaOnboardingLocal,
+  consumeNinaOnboardingReplay,
+  writeNinaOnboardingDone,
+} from '../lib/ninaOnboarding'
 import {
   criarCurso,
   criarDisciplina,
   criarInstituicao,
   criarPeriodo,
   isSchemaPendingError,
-  listarInstituicoes,
   marcarPeriodoEmCurso,
 } from '../services/instituicoesService'
-
-function storageKey(userId) {
-  return `i4_has_completed_onboarding_${userId || 'anon'}`
-}
-
-function readDone(userId) {
-  try {
-    return localStorage.getItem(storageKey(userId)) === '1'
-  } catch {
-    return false
-  }
-}
-
-function writeDone(userId) {
-  try {
-    localStorage.setItem(storageKey(userId), '1')
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
 
 function defaultPeriodoPayload() {
   const year = new Date().getFullYear()
@@ -49,11 +34,12 @@ function defaultPeriodoPayload() {
   }
 }
 
-const STEPS = [
+/** Passos do cadastro escolar (só se o professor optar por cadastrar agora). */
+const SCHOOL_STEPS = [
   {
     key: 'instituicao',
     title: 'Onde você dá aula?',
-    text: 'Olá, Professor(a)! Sou a Nina. Para eu organizar sua mesa de trabalho, onde você dá aula hoje?',
+    text: 'Beleza. Qual é o nome da instituição? Depois você pode cadastrar outras em Instituições — e o vínculo com escola nas aulas e desafios continua opcional.',
     label: 'Instituição',
     placeholder: 'Ex.: Escola Municipal Dom Pedro II',
     field: 'instituicao',
@@ -61,7 +47,7 @@ const STEPS = [
   {
     key: 'curso',
     title: 'Curso ou programa',
-    text: 'Legal! E nessa instituição, qual é o curso ou programa?',
+    text: 'Nessa instituição, qual é o curso ou programa?',
     label: 'Curso / Contexto',
     placeholder: 'Ex.: 1º ano do Ensino Médio',
     field: 'curso',
@@ -69,7 +55,7 @@ const STEPS = [
   {
     key: 'disciplina',
     title: 'Sua disciplina',
-    text: 'Para fechar, qual disciplina você ensina lá?',
+    text: 'Para fechar este primeiro cadastro, qual disciplina você ensina lá?',
     label: 'Disciplina',
     placeholder: 'Ex.: Física · Termodinâmica',
     field: 'disciplina',
@@ -78,17 +64,21 @@ const STEPS = [
 
 /**
  * Onboarding guiado da Nina — primeiro acesso do professor.
- * Não fecha por clique fora; só ao concluir os 3 passos.
+ * Escopo do produto → convite (opcional) a cadastrar escola → Mesa.
+ * Não fecha por clique fora; conclui ao pular ou ao salvar o cadastro.
  */
 export default function NinaOnboarding() {
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
   const navigate = useNavigate()
   const titleId = useId()
   const userId = user?.id_clie
+  const serverDone = Boolean(user?.nina_onboarding_done)
 
   const [open, setOpen] = useState(false)
   const [checking, setChecking] = useState(true)
-  const [step, setStep] = useState(0)
+  /** welcome | ask_escola | school (índice em SCHOOL_STEPS) */
+  const [phase, setPhase] = useState('welcome')
+  const [schoolStep, setSchoolStep] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({
@@ -108,40 +98,52 @@ export default function NinaOnboarding() {
     ;(async () => {
       setChecking(true)
 
-      // ?reset_onboarding=1 limpa o flag local (útil em homologação).
-      try {
-        const sp = new URLSearchParams(window.location.search)
-        if (sp.get('reset_onboarding') === '1') {
-          localStorage.removeItem(storageKey(userId))
-        }
-      } catch {
-        /* ignore */
-      }
-
-      // Se já tem instituição ativa, não força o tour de novo.
-      try {
-        const data = await listarInstituicoes()
-        const list = Array.isArray(data?.instituicoes) ? data.instituicoes : []
-        if (list.length > 0) {
-          writeDone(userId)
-          if (!cancelled) {
-            setOpen(false)
-            setChecking(false)
+      // ?reset_onboarding=1 ou pedido pós-login — limpa DB + reabre.
+      const forceReplay = consumeNinaOnboardingReplay(userId)
+      if (forceReplay) {
+        try {
+          const data = await api.resetNinaOnboarding()
+          if (!cancelled && data?.user) {
+            setUser((prev) =>
+              prev
+                ? { ...prev, ...data.user, nina_onboarding_done: false }
+                : { ...data.user, nina_onboarding_done: false },
+            )
+          } else if (!cancelled) {
+            setUser((prev) =>
+              prev ? { ...prev, nina_onboarding_done: false } : prev,
+            )
           }
-          return
+        } catch {
+          if (!cancelled) {
+            setUser((prev) =>
+              prev ? { ...prev, nina_onboarding_done: false } : prev,
+            )
+          }
         }
-      } catch {
-        /* schema pendente ou rede — ainda assim oferecemos o onboarding */
+        if (!cancelled) {
+          clearNinaOnboardingLocal(userId)
+          setPhase('welcome')
+          setSchoolStep(0)
+          setOpen(true)
+          setChecking(false)
+        }
+        return
       }
 
-      // Sem instituição: reabre o onboarding mesmo com flag antiga no localStorage.
-      try {
-        localStorage.removeItem(storageKey(userId))
-      } catch {
-        /* ignore */
+      // Fonte da verdade: servidor (auth/me).
+      if (serverDone) {
+        writeNinaOnboardingDone(userId)
+        if (!cancelled) {
+          setOpen(false)
+          setChecking(false)
+        }
+        return
       }
 
       if (!cancelled) {
+        setPhase('welcome')
+        setSchoolStep(0)
         setOpen(true)
         setChecking(false)
       }
@@ -150,38 +152,89 @@ export default function NinaOnboarding() {
     return () => {
       cancelled = true
     }
-  }, [userId])
+  }, [userId, serverDone, setUser])
 
-  const current = STEPS[step]
-  const value = form[current.field]
-  const canAdvance = value.trim().length >= 2
+  const schoolCurrent = SCHOOL_STEPS[schoolStep]
+  const schoolValue = schoolCurrent ? form[schoolCurrent.field] : ''
+  const canAdvanceSchool = schoolValue.trim().length >= 2
 
-  const progress = useMemo(
-    () => ((step + 1) / STEPS.length) * 100,
-    [step],
-  )
+  const progress = useMemo(() => {
+    if (phase === 'welcome') return 20
+    if (phase === 'ask_escola') return 40
+    return 40 + ((schoolStep + 1) / SCHOOL_STEPS.length) * 60
+  }, [phase, schoolStep])
+
+  const stepLabel = useMemo(() => {
+    if (phase === 'welcome') return 'Boas-vindas'
+    if (phase === 'ask_escola') return 'Primeiro passo'
+    return `Cadastro ${schoolStep + 1} de ${SCHOOL_STEPS.length}`
+  }, [phase, schoolStep])
 
   function setField(field, next) {
     setForm((prev) => ({ ...prev, [field]: next }))
     setError('')
   }
 
-  function handleBack() {
-    if (step === 0 || busy) return
-    setStep((s) => Math.max(0, s - 1))
+  async function completeAndGo() {
+    setBusy(true)
     setError('')
+    try {
+      const data = await api.completeNinaOnboarding()
+      writeNinaOnboardingDone(userId)
+      if (data?.user) {
+        setUser((prev) =>
+          prev
+            ? { ...prev, ...data.user, nina_onboarding_done: true }
+            : { ...data.user, nina_onboarding_done: true },
+        )
+      } else {
+        setUser((prev) =>
+          prev ? { ...prev, nina_onboarding_done: true } : prev,
+        )
+      }
+      setOpen(false)
+      navigate('/mesa-do-inovador', { replace: true })
+    } catch (err) {
+      setError(
+        err?.message ||
+          'Não foi possível concluir o onboarding. Tente de novo.',
+      )
+    } finally {
+      setBusy(false)
+    }
   }
 
-  async function handleNext() {
-    if (!canAdvance || busy) return
-    if (step < STEPS.length - 1) {
-      setStep((s) => s + 1)
+  function handleSkipSchool() {
+    if (busy) return
+    void completeAndGo()
+  }
+
+  function handleBack() {
+    if (busy) return
+    setError('')
+    if (phase === 'ask_escola') {
+      setPhase('welcome')
       return
     }
-    await finish()
+    if (phase === 'school') {
+      if (schoolStep === 0) {
+        setPhase('ask_escola')
+        return
+      }
+      setSchoolStep((s) => Math.max(0, s - 1))
+    }
   }
 
-  async function finish() {
+  async function handleSchoolNext() {
+    if (!canAdvanceSchool || busy) return
+    if (schoolStep < SCHOOL_STEPS.length - 1) {
+      setSchoolStep((s) => s + 1)
+      return
+    }
+    await finishWithSchool()
+  }
+
+  async function finishWithSchool() {
     setBusy(true)
     setError('')
     try {
@@ -225,17 +278,13 @@ export default function NinaOnboarding() {
         ementa: '',
       })
 
-      writeDone(userId)
-      setOpen(false)
-      navigate('/mesa-do-inovador', { replace: true })
+      await completeAndGo()
     } catch (err) {
       if (isSchemaPendingError(err)) {
         setError(
           'O cadastro escolar ainda está sendo preparado. Você pode continuar pela Mesa e voltar em Instituições.',
         )
-        writeDone(userId)
-        setOpen(false)
-        navigate('/mesa-do-inovador', { replace: true })
+        await completeAndGo()
       } else {
         setError(err?.message || 'Não foi possível salvar. Tente de novo.')
       }
@@ -246,7 +295,7 @@ export default function NinaOnboarding() {
 
   if (checking || !open || !userId) return null
 
-  const isLast = step === STEPS.length - 1
+  const isLastSchool = phase === 'school' && schoolStep === SCHOOL_STEPS.length - 1
 
   return (
     <div
@@ -281,37 +330,116 @@ export default function NinaOnboarding() {
               </div>
             </div>
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-brand-600">
-              Passo {step + 1} de {STEPS.length}
+              {stepLabel}
             </p>
-            <h2
-              id={titleId}
-              className="mt-1 font-display text-2xl font-bold text-bordo-deep"
-            >
-              {current.title}
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-bordo-soft">
-              {current.text}
-            </p>
+
+            {phase === 'welcome' ? (
+              <>
+                <h2
+                  id={titleId}
+                  className="mt-1 font-display text-2xl font-bold text-bordo-deep"
+                >
+                  Olá! Eu sou a Nina
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-bordo-soft">
+                  Estou aqui para te acompanhar no dia a dia pedagógico. O escopo
+                  principal do inove4us é:
+                </p>
+                <ul className="mt-4 w-full space-y-2.5 text-left text-sm text-bordo-deep">
+                  <li className="rounded-2xl bg-brand-50/80 px-3.5 py-2.5 leading-snug">
+                    <span className="font-semibold text-bordo">Cadastro</span>
+                    <span className="text-bordo-soft">
+                      {' '}
+                      — instituição, períodos, cursos e disciplinas, quando fizer sentido.
+                    </span>
+                  </li>
+                  <li className="rounded-2xl bg-brand-50/80 px-3.5 py-2.5 leading-snug">
+                    <span className="font-semibold text-bordo">Planejamento</span>
+                    <span className="text-bordo-soft">
+                      {' '}
+                      — organizar o que vem pela frente na sua mesa.
+                    </span>
+                  </li>
+                  <li className="rounded-2xl bg-brand-50/80 px-3.5 py-2.5 leading-snug">
+                    <span className="font-semibold text-bordo">Dia a dia</span>
+                    <span className="text-bordo-soft">
+                      {' '}
+                      — registrar o trabalho pedagógico das aulas.
+                    </span>
+                  </li>
+                  <li className="rounded-2xl bg-brand-50/80 px-3.5 py-2.5 leading-snug">
+                    <span className="font-semibold text-bordo">Desafio</span>
+                    <span className="text-bordo-soft">
+                      {' '}
+                      — planejar e acompanhar desafios de aprendizagem.
+                    </span>
+                  </li>
+                </ul>
+              </>
+            ) : null}
+
+            {phase === 'ask_escola' ? (
+              <>
+                <h2
+                  id={titleId}
+                  className="mt-1 font-display text-2xl font-bold text-bordo-deep"
+                >
+                  Quer começar pela escola?
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-bordo-soft">
+                  Cadastrar uma instituição agora ajuda a organizar o contexto —
+                  e você pode repetir esse passo depois, em Instituições, quando
+                  quiser. Isso{' '}
+                  <strong className="font-semibold text-bordo-deep">
+                    não obriga
+                  </strong>{' '}
+                  vincular cada aula ou desafio a essa escola: o vínculo continua
+                  opcional.
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-bordo-soft">
+                  Prefere explorar a Mesa primeiro? Sem problema — pulamos o
+                  cadastro por agora.
+                </p>
+              </>
+            ) : null}
+
+            {phase === 'school' && schoolCurrent ? (
+              <>
+                <h2
+                  id={titleId}
+                  className="mt-1 font-display text-2xl font-bold text-bordo-deep"
+                >
+                  {schoolCurrent.title}
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-bordo-soft">
+                  {schoolCurrent.text}
+                </p>
+              </>
+            ) : null}
           </div>
 
-          <label className="mt-6 block text-left">
-            <span className="field-label">{current.label}</span>
-            <input
-              className="field-input mt-1 min-h-12"
-              value={value}
-              onChange={(e) => setField(current.field, e.target.value.slice(0, 160))}
-              placeholder={current.placeholder}
-              autoFocus
-              disabled={busy}
-              maxLength={160}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  void handleNext()
+          {phase === 'school' && schoolCurrent ? (
+            <label className="mt-6 block text-left">
+              <span className="field-label">{schoolCurrent.label}</span>
+              <input
+                className="field-input mt-1 min-h-12"
+                value={schoolValue}
+                onChange={(e) =>
+                  setField(schoolCurrent.field, e.target.value.slice(0, 160))
                 }
-              }}
-            />
-          </label>
+                placeholder={schoolCurrent.placeholder}
+                autoFocus
+                disabled={busy}
+                maxLength={160}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void handleSchoolNext()
+                  }
+                }}
+              />
+            </label>
+          ) : null}
 
           {error ? (
             <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left text-sm text-amber-950">
@@ -320,31 +448,92 @@ export default function NinaOnboarding() {
           ) : null}
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              className="btn-ghost min-h-11 !px-4 text-sm disabled:opacity-40"
-              onClick={handleBack}
-              disabled={step === 0 || busy}
-            >
-              Voltar
-            </button>
-            <button
-              type="button"
-              className="btn-primary min-h-11 flex-1 sm:flex-none sm:min-w-[200px]"
-              onClick={() => void handleNext()}
-              disabled={!canAdvance || busy}
-            >
-              {busy ? (
-                <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Organizando…
-                </>
-              ) : isLast ? (
-                'Pronto! Ir para minha Mesa.'
-              ) : (
-                'Continuar'
-              )}
-            </button>
+            {phase === 'welcome' ? (
+              <button
+                type="button"
+                className="btn-primary min-h-11 w-full"
+                onClick={() => setPhase('ask_escola')}
+              >
+                Continuar
+              </button>
+            ) : null}
+
+            {phase === 'ask_escola' ? (
+              <>
+                <button
+                  type="button"
+                  className="btn-ghost min-h-11 !px-4 text-sm"
+                  onClick={handleBack}
+                  disabled={busy}
+                >
+                  Voltar
+                </button>
+                <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:min-w-[220px]">
+                  <button
+                    type="button"
+                    className="btn-primary min-h-11 w-full"
+                    onClick={() => {
+                      setSchoolStep(0)
+                      setPhase('school')
+                      setError('')
+                    }}
+                    disabled={busy}
+                  >
+                    Cadastrar instituição agora
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost min-h-11 w-full text-sm"
+                    onClick={handleSkipSchool}
+                    disabled={busy}
+                  >
+                    Agora não — ir para a Mesa
+                  </button>
+                </div>
+              </>
+            ) : null}
+
+            {phase === 'school' ? (
+              <>
+                <button
+                  type="button"
+                  className="btn-ghost min-h-11 !px-4 text-sm disabled:opacity-40"
+                  onClick={handleBack}
+                  disabled={busy}
+                >
+                  Voltar
+                </button>
+                <div className="flex flex-1 flex-col gap-2 sm:flex-none sm:min-w-[200px]">
+                  <button
+                    type="button"
+                    className="btn-primary min-h-11 w-full"
+                    onClick={() => void handleSchoolNext()}
+                    disabled={!canAdvanceSchool || busy}
+                  >
+                    {busy ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        Organizando…
+                      </>
+                    ) : isLastSchool ? (
+                      'Pronto! Ir para minha Mesa.'
+                    ) : (
+                      'Continuar'
+                    )}
+                  </button>
+                  {schoolStep === 0 ? (
+                    <button
+                      type="button"
+                      className="btn-ghost min-h-10 w-full text-sm"
+                      onClick={handleSkipSchool}
+                      disabled={busy}
+                    >
+                      Prefiro pular o cadastro
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       </div>

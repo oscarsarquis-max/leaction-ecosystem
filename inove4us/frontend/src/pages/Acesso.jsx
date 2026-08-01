@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { requestNinaOnboardingReplay } from '../lib/ninaOnboarding'
 import BrandLogo from '../components/BrandLogo'
 import DictationField from '../components/DictationField'
 
@@ -202,6 +203,14 @@ export default function Acesso() {
 
   function enterSession(user) {
     setUser(user)
+    try {
+      const sp = new URLSearchParams(window.location.search)
+      if (sp.get('reset_onboarding') === '1' && user?.id_clie) {
+        requestNinaOnboardingReplay(user.id_clie)
+      }
+    } catch {
+      /* ignore */
+    }
     navigate(nextPath || '/mesa-do-inovador', { replace: true })
   }
 

@@ -9,6 +9,7 @@ import secrets
 import sys
 import uuid
 from collections import defaultdict
+from datetime import datetime
 
 from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor
@@ -670,6 +671,502 @@ def create_desafio_row(
         ),
     )
     return dict(cur.fetchone())
+
+
+def _parse_data_evento(value):
+    if value is None:
+        return None
+    if hasattr(value, "date"):
+        return value
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        # ISO: 2026-08-01T08:00:00
+        return datetime.fromisoformat(text.replace("Z", "+00:00").replace(" ", "T")[:19])
+    except Exception:
+        try:
+            return datetime.strptime(text[:10], "%Y-%m-%d")
+        except Exception:
+            return None
+
+
+def _tarefas_de_kanban(ks) -> list[dict]:
+    if isinstance(ks, dict) and isinstance(ks.get("tarefas"), list):
+        return [t for t in ks["tarefas"] if isinstance(t, dict)]
+    if isinstance(ks, list):
+        return [t for t in ks if isinstance(t, dict)]
+    return []
+
+
+_COLUNA_RANK = {"para_fazer": 0, "fazendo": 1, "pronto": 2}
+
+
+def _coluna_menos_avancada(cols: list[str]) -> str:
+    if not cols:
+        return "para_fazer"
+    best = min((_COLUNA_RANK.get(c, 0) for c in cols), default=0)
+    for name, rank in _COLUNA_RANK.items():
+        if rank == best:
+            return name
+    return "para_fazer"
+
+
+def _resumo_tempo_desafio(eventos: list[dict], cards: list[dict], meta: dict | None) -> dict:
+    """Prazo pelo calendário das aulas + minutos restantes dos cards não prontos."""
+    datas = []
+    for e in eventos:
+        dt = _parse_data_evento(e.get("data_evento"))
+        if dt:
+            datas.append(dt)
+    data_inicio = min(datas).isoformat() if datas else None
+    data_fim = max(datas).isoformat() if datas else None
+    hoje = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    dias_restantes = None
+    atrasado = False
+    if datas:
+        fim = max(datas).replace(hour=0, minute=0, second=0, microsecond=0)
+        dias_restantes = (fim - hoje).days
+        atrasado = dias_restantes < 0
+
+    meta = meta if isinstance(meta, dict) else {}
+    timebox = meta.get("duracao_total_estimada_min") or meta.get("timebox_min")
+    try:
+        timebox = int(timebox) if timebox is not None else None
+    except (TypeError, ValueError):
+        timebox = None
+
+    minutos_cards = 0
+    minutos_restantes = 0
+    for c in cards:
+        try:
+            m = int(c.get("duracao_minutos") or 10)
+        except (TypeError, ValueError):
+            m = 10
+        if m <= 0:
+            m = 10
+        minutos_cards += m
+        if str(c.get("coluna") or "") != "pronto":
+            minutos_restantes += m
+
+    return {
+        "data_inicio": data_inicio,
+        "data_fim": data_fim,
+        "dias_restantes": dias_restantes,
+        "atrasado": atrasado,
+        "minutos_estimados": timebox if timebox is not None else minutos_cards,
+        "minutos_restantes": minutos_restantes,
+        "minutos_cards": minutos_cards,
+    }
+
+
+def _montar_cards_mesa(desafio: dict, eventos: list[dict]) -> list[dict]:
+    by_id: dict[str, dict] = {}
+    for t in _tarefas_do_desafio(desafio):
+        tid = str(t.get("id") or "").strip()
+        if not tid:
+            continue
+        try:
+            dur = int(t.get("duracao_minutos") or 10)
+        except (TypeError, ValueError):
+            dur = 10
+        by_id[tid] = {
+            "id": tid,
+            "titulo": t.get("titulo") or f"Card {tid}",
+            "objetivo": t.get("objetivo") or t.get("descricao"),
+            "como_executar": t.get("como_executar_detalhado")
+            or t.get("mecanica_passo_a_passo")
+            or t.get("descricao"),
+            "cor": t.get("cor"),
+            "duracao_minutos": dur if dur > 0 else 10,
+            "coluna": "para_fazer",
+            "estados": [],
+        }
+
+    for e in eventos:
+        resp = _responsavel_evento(e)
+        for t in _tarefas_de_kanban(e.get("kanban_state")):
+            tid = str(t.get("id") or "").strip()
+            if not tid:
+                continue
+            if tid not in by_id:
+                try:
+                    dur = int(t.get("duracao_minutos") or 10)
+                except (TypeError, ValueError):
+                    dur = 10
+                by_id[tid] = {
+                    "id": tid,
+                    "titulo": t.get("titulo") or f"Card {tid}",
+                    "objetivo": t.get("objetivo") or t.get("descricao"),
+                    "como_executar": t.get("como_executar_detalhado")
+                    or t.get("mecanica_passo_a_passo")
+                    or t.get("descricao"),
+                    "cor": t.get("cor"),
+                    "duracao_minutos": dur if dur > 0 else 10,
+                    "coluna": "para_fazer",
+                    "estados": [],
+                }
+            else:
+                if not by_id[tid].get("objetivo"):
+                    by_id[tid]["objetivo"] = t.get("objetivo") or t.get("descricao")
+                if not by_id[tid].get("cor") and t.get("cor"):
+                    by_id[tid]["cor"] = t.get("cor")
+                if not by_id[tid].get("como_executar"):
+                    by_id[tid]["como_executar"] = (
+                        t.get("como_executar_detalhado")
+                        or t.get("mecanica_passo_a_passo")
+                        or t.get("descricao")
+                    )
+            col = str(t.get("coluna") or "para_fazer").strip() or "para_fazer"
+            by_id[tid]["estados"].append(
+                {
+                    "id_evento": e.get("id_evento"),
+                    "turma": e.get("turma"),
+                    "turno": e.get("turno"),
+                    "status_aula": e.get("status"),
+                    "coluna": col,
+                    "id_clie_responsavel": resp,
+                    "escopos_turma": t.get("escopos_turma") or [],
+                }
+            )
+
+    out = []
+    for card in by_id.values():
+        cols = [st["coluna"] for st in card["estados"]] or [card["coluna"]]
+        card["coluna"] = _coluna_menos_avancada(cols)
+        out.append(card)
+    out.sort(key=lambda c: (str(c.get("titulo") or "").lower(), str(c.get("id"))))
+    return out
+
+
+def _agrupar_execucoes_mesa(cur, desafio: dict, eventos: list[dict], id_clie: int) -> list[dict]:
+    by_session: dict[str, list] = defaultdict(list)
+    for ev in eventos:
+        key = (ev.get("plano_session") or "").strip() or f"evt-{ev['id_evento']}"
+        by_session[key].append(ev)
+
+    execucoes = []
+    dono_id = int(desafio["id_clie"])
+    for session_key, evs in by_session.items():
+        turmas = sorted(
+            {(e.get("turma") or "").strip() for e in evs if (e.get("turma") or "").strip()}
+        )
+        turnos = sorted(
+            {(e.get("turno") or "").strip() for e in evs if (e.get("turno") or "").strip()}
+        )
+        anchor = next(
+            (e for e in evs if e.get("status") in ("em_execucao", "planejado")),
+            evs[0],
+        )
+        resp_id = _responsavel_evento(anchor) or _responsavel_evento(evs[0])
+        resp = _cliente_resumo(cur, resp_id)
+        eh_dono_desafio = resp_id is not None and int(resp_id) == dono_id
+        eh_minha = resp_id is not None and int(resp_id) == int(id_clie)
+        prog = _progresso_eventos(evs)
+        aulas_out = []
+        for e in evs:
+            aulas_out.append(
+                {
+                    "id_evento": e["id_evento"],
+                    "titulo": e.get("titulo"),
+                    "data_evento": e.get("data_evento"),
+                    "turma": e.get("turma"),
+                    "turno": e.get("turno"),
+                    "status": e.get("status"),
+                    "modo_execucao": e.get("modo_execucao"),
+                    "id_clie_responsavel": _responsavel_evento(e),
+                }
+            )
+        execucoes.append(
+            {
+                "plano_session": session_key if not session_key.startswith("evt-") else None,
+                "execucao_key": session_key,
+                "origem": "interna" if eh_dono_desafio else "externa",
+                "turma": turmas[0] if len(turmas) == 1 else (", ".join(turmas) if turmas else None),
+                "turmas": turmas,
+                "turno": turnos[0] if len(turnos) == 1 else None,
+                "turnos": turnos,
+                "id_evento_ancora": anchor["id_evento"],
+                "aulas": aulas_out,
+                "responsavel": resp,
+                "eh_dono_desafio": eh_dono_desafio,
+                "eh_colaborador": not eh_dono_desafio,
+                "eh_minha": eh_minha,
+                "pode_abrir_kanban": eh_minha,
+                "pode_editar": eh_minha,
+                **prog,
+            }
+        )
+
+    execucoes.sort(
+        key=lambda x: (
+            (x.get("aulas") or [{}])[0].get("data_evento") if x.get("aulas") else ""
+        )
+        or ""
+    )
+    return execucoes
+
+
+@desafios_bp.get("/api/desafios")
+def listar_desafios():
+    """Lista desafios do professor (próprios + aceitos como colaborador)."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+
+    id_clie = int(user["id_clie"])
+    q = str(request.args.get("q") or "").strip()
+    limit = request.args.get("limit", 50)
+    try:
+        limit = max(1, min(100, int(limit)))
+    except (TypeError, ValueError):
+        limit = 50
+
+    try:
+        with get_conn() as conn:
+            _ensure_desafios_schema(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT mail_clie FROM public.ctdi_clie WHERE id_clie = %s",
+                    (id_clie,),
+                )
+                me = cur.fetchone()
+                email = ((me["mail_clie"] if me else "") or "").strip().lower()
+
+                sql = """
+                    SELECT d.*,
+                           c.nome_clie AS dono_nome,
+                           c.mail_clie AS dono_email,
+                           CASE WHEN d.id_clie = %s THEN 'dono' ELSE 'colaborador' END
+                             AS papel_usuario
+                      FROM public.inove_desafios d
+                      LEFT JOIN public.ctdi_clie c ON c.id_clie = d.id_clie
+                     WHERE d.id_clie = %s
+                        OR d.id IN (
+                            SELECT col.desafio_id
+                              FROM public.inove_desafio_colaboradores col
+                             WHERE col.status = 'aceito'
+                               AND (
+                                    col.id_clie_convidado = %s
+                                    OR lower(trim(col.email_convidado)) = %s
+                               )
+                        )
+                """
+                params = [id_clie, id_clie, id_clie, email]
+                if q:
+                    sql += """
+                       AND (
+                            d.titulo ILIKE %s
+                            OR COALESCE(d.tema, '') ILIKE %s
+                            OR COALESCE(d.problema, '') ILIKE %s
+                            OR COALESCE(d.hipotese, '') ILIKE %s
+                       )
+                    """
+                    like = f"%{q}%"
+                    params.extend([like, like, like, like])
+                sql += " ORDER BY d.criado_em DESC LIMIT %s"
+                params.append(limit)
+
+                cur.execute(sql, params)
+                rows = [dict(r) for r in cur.fetchall()]
+
+                out = []
+                for row in rows:
+                    did = str(row["id"])
+                    cur.execute(
+                        f"""
+                        SELECT {SELECT_EVENTO}
+                          FROM public.inove_agenda_eventos
+                         WHERE desafio_id = %s
+                           AND tipo = 'aula_eduscrum'
+                         ORDER BY data_evento ASC, id_evento ASC
+                        """,
+                        (did,),
+                    )
+                    eventos = [_serialize_evento(dict(r)) for r in cur.fetchall()]
+                    prog = _progresso_eventos(eventos)
+                    cards = _montar_cards_mesa(row, eventos)
+                    tempo = _resumo_tempo_desafio(
+                        eventos, cards, _json_field(row.get("meta_json"))
+                    )
+                    turmas = sorted(
+                        {
+                            (e.get("turma") or "").strip()
+                            for e in eventos
+                            if (e.get("turma") or "").strip()
+                        }
+                    )
+                    item = _serialize_desafio(row)
+                    item["papel_usuario"] = row["papel_usuario"]
+                    item["sou_dono"] = row["papel_usuario"] == "dono"
+                    item["dono_nome"] = row.get("dono_nome")
+                    item["dono_email"] = row.get("dono_email")
+                    item["turmas"] = turmas
+                    item["resumo"] = {
+                        **prog,
+                        **tempo,
+                        "n_cards": len(cards),
+                        "n_cards_pronto": sum(
+                            1 for c in cards if c.get("coluna") == "pronto"
+                        ),
+                    }
+                    ancora = None
+                    for e in eventos:
+                        rid = _responsavel_evento(e)
+                        if rid == id_clie or int(e.get("id_clie") or 0) == id_clie:
+                            if e.get("status") in ("em_execucao", "planejado"):
+                                ancora = e["id_evento"]
+                                break
+                            if ancora is None:
+                                ancora = e["id_evento"]
+                    if ancora is None and eventos:
+                        ancora = eventos[0]["id_evento"]
+                    item["id_evento_ancora"] = ancora
+                    out.append(item)
+
+        return jsonify({"success": True, "desafios": out, "q": q or None}), 200
+    except Exception as exc:
+        print(f"⚠️ desafios list: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao listar desafios"}), 500
+
+
+@desafios_bp.get("/api/desafios/<desafio_id>/mesa")
+def mesa_do_desafio(desafio_id: str):
+    """Visão geral da execução do desafio (interna + externa)."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+    try:
+        uuid.UUID(str(desafio_id))
+    except ValueError:
+        return jsonify({"success": False, "error": "desafio_id inválido"}), 400
+
+    id_clie = int(user["id_clie"])
+    try:
+        with get_conn() as conn:
+            _ensure_desafios_schema(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                papel, desafio = _papel_acesso_desafio(cur, desafio_id, id_clie)
+                if papel is None or not desafio:
+                    return jsonify({"success": False, "error": "Desafio não encontrado"}), 404
+
+                cur.execute(
+                    f"""
+                    SELECT {SELECT_EVENTO}
+                      FROM public.inove_agenda_eventos
+                     WHERE desafio_id = %s
+                       AND tipo = 'aula_eduscrum'
+                     ORDER BY data_evento ASC, id_evento ASC
+                    """,
+                    (desafio_id,),
+                )
+                eventos = [_serialize_evento(dict(r)) for r in cur.fetchall()]
+
+                cur.execute(
+                    """
+                    SELECT id, email_convidado, id_clie_convidado, papel_ou_parte,
+                           status, card_id, card_titulo, criado_em, aceito_em
+                      FROM public.inove_desafio_colaboradores
+                     WHERE desafio_id = %s
+                     ORDER BY criado_em ASC
+                    """,
+                    (desafio_id,),
+                )
+                colaboradores = []
+                for r in cur.fetchall():
+                    row = dict(r)
+                    if row.get("criado_em"):
+                        row["criado_em"] = row["criado_em"].isoformat()
+                    if row.get("aceito_em"):
+                        row["aceito_em"] = row["aceito_em"].isoformat()
+                    colaboradores.append(row)
+
+                cards = _montar_cards_mesa(desafio, eventos)
+                execucoes = _agrupar_execucoes_mesa(cur, desafio, eventos, id_clie)
+                prog = _progresso_eventos(eventos)
+                cards_pronto = sum(1 for c in cards if c.get("coluna") == "pronto")
+                cards_total = len(cards)
+                if cards_total:
+                    prog["cards_total"] = cards_total
+                    prog["cards_pronto"] = cards_pronto
+                    prog["progresso_pct"] = int(round(100 * cards_pronto / cards_total))
+
+                tempo = _resumo_tempo_desafio(
+                    eventos, cards, _json_field(desafio.get("meta_json"))
+                )
+
+                aulas_executadas = []
+                aulas_por_executar = []
+                dono_id = int(desafio["id_clie"])
+                for e in eventos:
+                    rid = _responsavel_evento(e)
+                    item = {
+                        "id_evento": e["id_evento"],
+                        "titulo": e.get("titulo"),
+                        "data_evento": e.get("data_evento"),
+                        "turma": e.get("turma"),
+                        "turno": e.get("turno"),
+                        "status": e.get("status"),
+                        "origem": "interna" if rid == dono_id else "externa",
+                        "id_clie_responsavel": rid,
+                        "eh_minha": rid == id_clie or int(e.get("id_clie") or 0) == id_clie,
+                    }
+                    if e.get("status") == "concluido":
+                        aulas_executadas.append(item)
+                    else:
+                        aulas_por_executar.append(item)
+
+                minha_ancora = None
+                for e in eventos:
+                    if int(e.get("id_clie") or 0) == id_clie or _responsavel_evento(e) == id_clie:
+                        if e.get("status") in ("em_execucao", "planejado"):
+                            minha_ancora = e["id_evento"]
+                            break
+                        if minha_ancora is None:
+                            minha_ancora = e["id_evento"]
+
+                d_out = _serialize_desafio(dict(desafio))
+                d_out["papel_usuario"] = papel
+                d_out["sou_dono"] = papel == "dono"
+
+                colabs_out = (
+                    colaboradores
+                    if papel == "dono"
+                    else [c for c in colaboradores if c.get("status") == "aceito"]
+                )
+
+                plano_session_mesa = None
+                for e in eventos:
+                    if int(e.get("id_clie") or 0) == id_clie or _responsavel_evento(e) == id_clie:
+                        ps = (e.get("plano_session") or "").strip()
+                        if ps:
+                            plano_session_mesa = ps
+                            break
+                if not plano_session_mesa:
+                    for e in eventos:
+                        ps = (e.get("plano_session") or "").strip()
+                        if ps:
+                            plano_session_mesa = ps
+                            break
+
+        return jsonify(
+            {
+                "success": True,
+                "desafio": d_out,
+                "cards": cards,
+                "execucoes": execucoes,
+                "colaboradores": colabs_out,
+                "aulas_executadas": aulas_executadas,
+                "aulas_por_executar": aulas_por_executar,
+                "progresso": prog,
+                "tempo": tempo,
+                "id_evento_ancora": minha_ancora,
+                "plano_session": plano_session_mesa,
+            }
+        ), 200
+    except Exception as exc:
+        print(f"⚠️ desafios mesa: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao carregar a mesa do desafio"}), 500
 
 
 @desafios_bp.get("/api/desafios/<desafio_id>")

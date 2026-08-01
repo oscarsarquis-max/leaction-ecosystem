@@ -35,6 +35,30 @@ export function excluirAula(id) {
   })
 }
 
+/** Modo Aula — move 4 cards → Fazendo e persiste status em_execucao + data_inicio */
+export function iniciarAula(id) {
+  return request(`/api/daily/${encodeURIComponent(id)}/iniciar`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+/** Modo Aula — move 4 cards → Pronto, data_conclusao e status realizado */
+export function encerrarAula(id) {
+  return request(`/api/daily/${encodeURIComponent(id)}/encerrar`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+/** Retroalimentação pós-aula (ClassFeedbackModal) */
+export function enviarFeedbackAula(id, payload) {
+  return request(`/api/daily/${encodeURIComponent(id)}/feedback`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export function sugerirDinamicas(termo = '', contexto = {}) {
   const q = new URLSearchParams()
   if (termo) q.set('q', termo)

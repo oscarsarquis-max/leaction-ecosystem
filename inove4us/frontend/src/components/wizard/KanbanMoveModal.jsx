@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import DictationField from '../DictationField'
 
 /**
- * Modal de observação obrigatória ao mover card no Kanban (padrão Chamelleon).
+ * Modal de observação obrigatória ao mover card na mesa (padrão Chamelleon).
  * Só confirma a migração se a observação estiver preenchida.
  */
 export default function KanbanMoveModal({ pending, onConfirm, onCancel }) {
@@ -14,7 +15,16 @@ export default function KanbanMoveModal({ pending, onConfirm, onCancel }) {
     setError('')
   }, [pending])
 
-  if (!pending) return null
+  useEffect(() => {
+    if (!pending) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [pending])
+
+  if (!pending || typeof document === 'undefined') return null
 
   const { task, fromLabel, toLabel } = pending
 
@@ -28,9 +38,9 @@ export default function KanbanMoveModal({ pending, onConfirm, onCancel }) {
     onConfirm?.(texto)
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-bordo-deep/45 p-4 sm:items-center"
+      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-bordo-deep/55 p-3 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="kanban-move-title"
@@ -40,10 +50,11 @@ export default function KanbanMoveModal({ pending, onConfirm, onCancel }) {
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl border border-brand-200 bg-white p-5 shadow-soft animate-fade-in"
+        className="my-2 w-full max-w-md rounded-2xl border border-brand-200 bg-white p-5 shadow-soft sm:my-4"
+        style={{ maxHeight: 'min(92vh, 720px)', overflowY: 'auto' }}
       >
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600">
-          Movimentação no Kanban
+          Movimentação na mesa
         </p>
         <h2 id="kanban-move-title" className="mt-1 font-display text-xl font-bold text-bordo-deep">
           Observação de implementação
@@ -81,6 +92,7 @@ export default function KanbanMoveModal({ pending, onConfirm, onCancel }) {
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   )
 }

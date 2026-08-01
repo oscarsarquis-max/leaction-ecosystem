@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import DictationField from './DictationField'
 
 function hojeISO() {
@@ -27,7 +28,16 @@ export default function RelatoAulaModal({ aula, missao, onCancel, onSubmit, busy
     setError('')
   }, [aula, missao])
 
-  if (!aula) return null
+  useEffect(() => {
+    if (!aula) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [aula])
+
+  if (!aula || typeof document === 'undefined') return null
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -52,9 +62,9 @@ export default function RelatoAulaModal({ aula, missao, onCancel, onSubmit, busy
     })
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-end justify-center bg-bordo-deep/50 p-4 sm:items-center"
+      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-bordo-deep/55 p-3 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="relato-aula-title"
@@ -64,7 +74,8 @@ export default function RelatoAulaModal({ aula, missao, onCancel, onSubmit, busy
     >
       <form
         onSubmit={handleSubmit}
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-brand-200 bg-white p-5 shadow-soft"
+        className="my-2 w-full max-w-lg rounded-2xl border border-brand-200 bg-white p-5 shadow-soft sm:my-4"
+        style={{ maxHeight: 'min(92vh, 920px)', overflowY: 'auto' }}
       >
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600">
           Encerramento da aula
@@ -162,6 +173,7 @@ export default function RelatoAulaModal({ aula, missao, onCancel, onSubmit, busy
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   )
 }

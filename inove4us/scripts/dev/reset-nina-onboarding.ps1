@@ -107,6 +107,10 @@ if ($WhatIf) {
 $resetSql = @"
 BEGIN;
 
+UPDATE public.ctdi_clie
+   SET nina_onboarding_done = FALSE
+ WHERE id_clie = $idClie;
+
 UPDATE public.inove_disciplinas d
    SET ativo = FALSE
   FROM public.inove_cursos c
@@ -148,11 +152,10 @@ COMMIT;
 Write-Info 'Aplicando soft-delete...'
 Write-Host (Invoke-InoveSql $resetSql)
 
-$lsKey = "i4_has_completed_onboarding_$idClie"
+$lsKey = "i4_nina_onboarding_v3_$idClie"
 Write-Host ''
-Write-Ok 'Onboarding resetado no banco.'
-Write-Host "  localStorage key: $lsKey"
-Write-Host '  Limpar no browser (DevTools → Application → Local Storage) ou abra:'
-Write-Host "  http://localhost:5174/acesso?reset_onboarding=1"
-Write-Host '  (com o FE atual, sem instituicao ativa a Nina reabre sozinha apos hard refresh)'
+Write-Ok 'Onboarding resetado no banco (nina_onboarding_done=false + soft-delete).'
+Write-Host "  localStorage key (cache): $lsKey"
+Write-Host '  Fonte da verdade: coluna ctdi_clie.nina_onboarding_done'
+Write-Host '  Para reabrir a Nina: http://localhost:5174/mesa-do-inovador?reset_onboarding=1'
 Write-Host ''

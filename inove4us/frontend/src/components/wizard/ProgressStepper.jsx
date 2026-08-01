@@ -4,7 +4,7 @@ const STEPS = [
   { id: 1, label: 'Problema' },
   { id: 2, label: 'Estruturação' },
   { id: 3, label: 'Hipóteses' },
-  { id: 4, label: 'EduScrum' },
+  { id: 4, label: 'Método inove4us' },
 ]
 
 export default function ProgressStepper({ currentStep }) {

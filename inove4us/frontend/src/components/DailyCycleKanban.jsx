@@ -11,25 +11,25 @@ export const ESTACOES_CICLO = [
   {
     id: 'est_alinhamento',
     campo: 'acolhida',
-    titulo: '1 · Alinhamento',
+    titulo: '1 · Acolhida',
     cor: '#FDE68A',
   },
   {
     id: 'est_entrega',
     campo: 'conteudo_essencial',
-    titulo: '2 · Entrega do dia',
+    titulo: '2 · Conteúdo',
     cor: '#BBF7D0',
   },
   {
     id: 'est_campo',
     campo: 'dinamica_texto',
-    titulo: '3 · Atividade em campo',
+    titulo: '3 · Dinâmica',
     cor: '#A5F3FC',
   },
   {
     id: 'est_retro',
     campo: 'fechamento_checkout',
-    titulo: '4 · Retro do ciclo',
+    titulo: '4 · Fechamento',
     cor: '#DDD6FE',
   },
 ]
@@ -38,10 +38,10 @@ function colunaLabel(id) {
   return COLUNAS.find((c) => c.id === id)?.label || id
 }
 
-function previewOf(text) {
+function previewOf(text, { max = 120 } = {}) {
   const t = String(text || '').trim()
   if (!t) return 'Ainda sem conteúdo no formulário'
-  return t.length > 120 ? `${t.slice(0, 117)}…` : t
+  return t.length > max ? `${t.slice(0, max - 3)}…` : t
 }
 
 /**
@@ -57,13 +57,23 @@ export function buildCycleTasks(form, kanbanState) {
 
   return ESTACOES_CICLO.map((est) => {
     const prev = byId[est.id] || {}
+    const full = String(form?.[est.campo] || '').trim()
+    const isDin = est.campo === 'dinamica_texto'
+    const passos = isDin && Array.isArray(form?.dinamica_passos) ? form.dinamica_passos : []
+    const nomeDin = isDin ? String(form?.dinamica_nome || '').trim() : ''
+    const resumoDin = nomeDin
+      ? `${nomeDin}${passos.length ? ` · ${passos.length} passos` : ''} (diretriz)`
+      : previewOf(full, { max: 180 })
     return {
       id: est.id,
       titulo: est.titulo,
       campo: est.campo,
       cor: est.cor,
       coluna: prev.coluna || 'para_fazer',
-      resumo: previewOf(form?.[est.campo]),
+      resumo: isDin ? resumoDin : previewOf(full, { max: 180 }),
+      conteudo: full,
+      passos: isDin ? passos : undefined,
+      dinamica_nome: isDin ? nomeDin : undefined,
       historico: Array.isArray(prev.historico) ? prev.historico : [],
       ultima_observacao: prev.ultima_observacao || '',
     }
@@ -75,9 +85,15 @@ export function cycleKanbanPayload(tasks) {
 }
 
 /**
- * Kanban do ciclo Dia a Dia — 4 estações como cards; migração exige modal.
+ * mesa do ciclo Dia a Dia — 4 estações como cards; migração exige modal.
+ * focusMode: roteiro de voo (só cards em evidência).
  */
-export default function DailyCycleKanban({ tasks, onTasksChange, enabled = true }) {
+export default function DailyCycleKanban({
+  tasks,
+  onTasksChange,
+  enabled = true,
+  focusMode = false,
+}) {
   const [draggingId, setDraggingId] = useState(null)
   const [dropTarget, setDropTarget] = useState(null)
   const [pendingMove, setPendingMove] = useState(null)
@@ -119,14 +135,95 @@ export default function DailyCycleKanban({ tasks, onTasksChange, enabled = true 
     setPendingMove(null)
   }
 
+  if (focusMode) {
+    const ordered = ESTACOES_CICLO.map((est) => tasks.find((t) => t.id === est.id)).filter(
+      Boolean,
+    )
+    return (
+      <section className="rounded-2xl border border-amber-300 bg-gradient-to-b from-amber-50/80 to-white p-4 shadow-soft sm:p-6">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-800">
+          Modo Aula · roteiro
+        </p>
+        <h2 className="mt-1 font-display text-2xl font-bold text-bordo-deep">
+          Os 4 momentos
+        </h2>
+        <p className="mt-1 text-sm text-bordo-soft">
+          Siga o roteiro. Pode fechar o notebook — a aula continua em execução até você
+          encerrar.
+        </p>
+        <ol className="mt-5 grid gap-3 sm:grid-cols-2">
+          {ordered.map((task, idx) => {
+            const passos = Array.isArray(task.passos) ? task.passos : []
+            const isDinamica = task.campo === 'dinamica_texto' && passos.length > 0
+            return (
+              <li
+                key={task.id}
+                className={`rounded-xl border border-black/5 p-4 shadow-sm ${
+                  isDinamica ? 'sm:col-span-2' : ''
+                }`}
+                style={{ backgroundColor: task.cor || '#fff' }}
+              >
+                <p className="text-[10px] font-bold uppercase tracking-wide text-bordo-soft">
+                  Momento {idx + 1}
+                </p>
+                <p className="mt-1 font-display text-lg font-bold text-bordo-deep">
+                  {task.titulo}
+                  {task.dinamica_nome ? (
+                    <span className="ml-2 text-sm font-semibold text-bordo-soft">
+                      · {task.dinamica_nome}
+                    </span>
+                  ) : null}
+                </p>
+                {isDinamica ? (
+                  <ol className="mt-3 space-y-2">
+                    {passos.map((p, i) => (
+                      <li
+                        key={`${p.ordem || i}-${p.titulo || i}`}
+                        className="rounded-lg border border-black/5 bg-white/70 px-3 py-2"
+                      >
+                        <p className="text-sm font-bold text-bordo-deep">
+                          {p.ordem || i + 1}. {p.titulo}
+                          {p.duracao_minutos ? (
+                            <span className="ml-2 text-[11px] font-semibold text-bordo-soft">
+                              ~{p.duracao_minutos} min
+                            </span>
+                          ) : null}
+                        </p>
+                        {p.como_executar ? (
+                          <p className="mt-1 text-[12px] leading-relaxed text-bordo">
+                            {p.como_executar}
+                          </p>
+                        ) : null}
+                        {p.dica_de_facilitacao ? (
+                          <p className="mt-1 text-[11px] italic text-amber-900">
+                            Facilitação: {p.dica_de_facilitacao}
+                          </p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-bordo">
+                    {String(task.conteudo || task.resumo || '').trim() || '—'}
+                  </p>
+                )}
+              </li>
+            )
+          })}
+        </ol>
+      </section>
+    )
+  }
+
   return (
     <section className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-4 shadow-soft sm:p-5">
       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-800">
         Board do ciclo
       </p>
-      <h2 className="mt-1 font-display text-xl font-bold text-bordo-deep">Kanban · 50 min</h2>
+      <h2 className="mt-1 font-display text-xl font-bold text-bordo-deep">Mesa · 50 min</h2>
       <p className="mt-1 text-xs text-bordo-soft">
-        Arraste as estações 1–4 entre as colunas. Toda migração pede uma observação obrigatória.
+        Arraste Acolhida, Conteúdo, Dinâmica e Fechamento entre as colunas. Toda migração
+        pede uma observação obrigatória.
       </p>
       {!enabled ? (
         <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900">

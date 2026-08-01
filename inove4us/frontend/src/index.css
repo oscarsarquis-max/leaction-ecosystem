@@ -48,7 +48,8 @@ body {
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    /* transform: none — se ficar translateY(0), position:fixed dos modais prende no meio da página */
+    transform: none;
   }
 }
 

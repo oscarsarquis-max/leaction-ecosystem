@@ -764,6 +764,1235 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
             ),
         ],
     },
+    # ==========================================
+    # EXPANSÃO DIA A DIA — 24 mecânicas faltantes
+    # ==========================================
+    "criativa_abordagem_problematizadora": {
+        "nome": "Abordagem Problematizadora",
+        "categoria": "CRIATIVAS",
+        "contexto_execucao": "misto",
+        "cards": [
+            _card(
+                "Observação da Realidade",
+                "Conduzir a turma a observar um recorte da realidade e identificar um problema.",
+                "O professor conduz a turma a observar um recorte da realidade e identificar "
+                "um problema social, ambiental ou técnico.",
+                "Escolha um recorte concreto e próximo da turma — evite problemas abstratos demais.",
+                "Problema real observado no contexto",
+                10,
+            ),
+            _card(
+                "Levantamento de Pontos-Chave",
+                "Filtrar as variáveis principais que causam o problema.",
+                "Os alunos debatem e filtram as variáveis principais que causam esse problema.",
+                "Peça evidência para cada variável — corte opiniões sem lastro.",
+                "Causas-chave do problema",
+                10,
+            ),
+            _card(
+                "Teorização",
+                "Buscar fundamentação teórica para entender o problema a fundo.",
+                "Os alunos buscam fundamentação teórica (pesquisa em livros, internet, entrevistas) "
+                "para entender o problema a fundo.",
+                "Defina fontes mínimas e tempo de pesquisa — evita deriva infinita.",
+                "Fundamentação teórica do problema",
+                12,
+            ),
+            _card(
+                "Hipóteses de Solução",
+                "Criar alternativas viáveis para resolver ou mitigar o problema.",
+                "Criação de alternativas viáveis para resolver ou mitigar o problema encontrado.",
+                "Exija critérios de viabilidade (tempo, custo, alcance) em cada hipótese.",
+                "Alternativas viáveis de intervenção",
+                10,
+            ),
+            _card(
+                "Aplicação à Realidade",
+                "Executar uma intervenção real para modificar a realidade observada.",
+                "Execução de uma intervenção real (campanha, ofício, protótipo) "
+                "para modificar a realidade observada.",
+                "Prefira intervenções pequenas e entregáveis na aula ou no ciclo curto.",
+                "Intervenção real no contexto",
+                12,
+            ),
+        ],
+    },
+    "criativa_aprendizagem_equipes": {
+        "nome": "Aprendizagem Baseada em Equipes",
+        "categoria": "CRIATIVAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Estudo Prévio",
+                "Garantir preparo individual antes da aula.",
+                "Os alunos recebem e estudam o material base antes da aula.",
+                "Envie material curto e objetivo — o TBL falha se o pré-estudo for inviável.",
+                "Preparação individual pré-aula",
+                0,
+            ),
+            _card(
+                "Teste Individual (iRAT)",
+                "Verificar o preparo individual com questionário rápido.",
+                "Aplicação de um questionário rápido de múltipla escolha "
+                "para verificar o preparo individual.",
+                "Mantenha 5–10 itens; o foco é diagnóstico, não punição.",
+                "Checagem individual de preparo",
+                8,
+            ),
+            _card(
+                "Teste em Equipe (tRAT)",
+                "Chegar a consenso em equipe sobre as mesmas questões.",
+                "Os alunos se reúnem em grupos e respondem ao mesmo questionário, "
+                "debatendo até chegar a um consenso.",
+                "Force consenso explícito — um porta-voz justifica a resposta do grupo.",
+                "Consenso coletivo no mesmo teste",
+                12,
+            ),
+            _card(
+                "Apelação",
+                "Contestar respostas com fundamentação na literatura.",
+                "Os grupos podem contestar respostas consideradas incorretas, "
+                "fundamentando a defesa com a literatura.",
+                "Só aceite apelação com citação/fonte — evita reclamação vazia.",
+                "Contestação fundamentada",
+                8,
+            ),
+            _card(
+                "Aplicação Prática",
+                "Usar a teoria consolidada em um caso complexo.",
+                "O professor lança um caso complexo e os grupos usam a teoria consolidada "
+                "para propor uma solução simultaneamente.",
+                "Peça entrega simultânea (mesmo prazo) para comparar estratégias.",
+                "Caso complexo com solução em equipe",
+                15,
+            ),
+        ],
+    },
+    "criativa_pbl_problemas": {
+        "nome": "Aprendizagem Baseada em Problemas",
+        "categoria": "CRIATIVAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Apresentação do Cenário",
+                "Apresentar um caso complexo sem solução óbvia.",
+                "O professor apresenta um caso ou problema complexo e sem solução óbvia.",
+                "Não entregue a resposta — o problema precisa gerar lacuna real de conhecimento.",
+                "Cenário-problema aberto",
+                8,
+            ),
+            _card(
+                "Tempestade de Ideias",
+                "Listar o que já se sabe e o que ainda falta descobrir.",
+                "Os alunos listam o que já sabem sobre o caso e o que ainda precisam descobrir.",
+                "Separe em duas colunas no quadro: 'Sabemos' × 'Precisamos saber'.",
+                "Mapa de saberes e lacunas",
+                10,
+            ),
+            _card(
+                "Estudo Autônomo",
+                "Pesquisar independentemente as lacunas de conhecimento.",
+                "Os alunos dividem tarefas e pesquisam independentemente "
+                "as lacunas de conhecimento.",
+                "Defina tempo e produto mínimo por lacuna (3 bullets + fonte).",
+                "Pesquisa das lacunas",
+                12,
+            ),
+            _card(
+                "Socialização",
+                "Compartilhar achados e debater no grupo.",
+                "O grupo se reúne novamente para compartilhar o que aprendeu "
+                "e debater os achados.",
+                "Cada membro fala só da sua lacuna — evita monopolização.",
+                "Compartilhamento dos achados",
+                10,
+            ),
+            _card(
+                "Síntese e Resolução",
+                "Resolver o problema inicial com os novos conhecimentos.",
+                "Aplicação dos novos conhecimentos para resolver o problema inicial "
+                "e apresentar a conclusão.",
+                "Exija conclusão explícita ligada às lacunas pesquisadas.",
+                "Resolução fundamentada do caso",
+                12,
+            ),
+        ],
+    },
+    "criativa_pbl_projetos": {
+        "nome": "Aprendizagem Baseada em Projetos",
+        "categoria": "CRIATIVAS",
+        "contexto_execucao": "misto",
+        "cards": [
+            _card(
+                "Questão Motriz",
+                "Apresentar um desafio engajador que exige produto ou solução final.",
+                "Apresentação de um desafio engajador que exige a criação "
+                "de um produto ou solução final.",
+                "A questão motriz deve ser aberta e pública — não um exercício fechado.",
+                "Desafio com produto final",
+                8,
+            ),
+            _card(
+                "Planejamento",
+                "Definir escopo, papéis e cronograma do projeto.",
+                "Os alunos definem o escopo do projeto, dividem papéis e criam um cronograma.",
+                "Limite o escopo ao tempo real disponível — corte ambição sem entrega.",
+                "Escopo, papéis e cronograma",
+                10,
+            ),
+            _card(
+                "Investigação e Desenvolvimento",
+                "Pesquisar e construir as primeiras versões do projeto.",
+                "Fase de \"mão na massa\", pesquisa profunda e construção "
+                "das primeiras versões do projeto.",
+                "Peça evidência de progresso a cada bloco de tempo (foto, rascunho, log).",
+                "Construção mão na massa",
+                15,
+            ),
+            _card(
+                "Crítica e Revisão",
+                "Receber feedback de pares e professor sobre rascunho/protótipo.",
+                "Apresentação de um rascunho/protótipo para receber feedback "
+                "dos pares e do professor.",
+                "Use critérios públicos (clareza, viabilidade, impacto) — evita opinião vaga.",
+                "Feedback sobre protótipo",
+                10,
+            ),
+            _card(
+                "Exibição Pública",
+                "Apresentar o produto final a uma audiência real.",
+                "Apresentação do produto final validado para uma audiência real "
+                "(comunidade, outros professores, pais).",
+                "Mesmo uma audiência pequena (outra turma) eleva a qualidade da entrega.",
+                "Apresentação a audiência real",
+                12,
+            ),
+        ],
+    },
+    "criativa_aprendizagem_maker": {
+        "nome": "Aprendizagem Maker",
+        "categoria": "CRIATIVAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Identificação do Desafio",
+                "Definir o artefato a construir e sua finalidade.",
+                "Definição de um objeto, mecanismo ou artefato que precisa ser construído "
+                "para uma finalidade específica.",
+                "Amarre a finalidade a um usuário real (quem usa? para quê?).",
+                "Artefato com finalidade clara",
+                8,
+            ),
+            _card(
+                "Design e Esboço",
+                "Desenhar como o projeto funcionará.",
+                "Desenho da planta, diagrama ou rascunho visual de como o projeto funcionará.",
+                "Não libere materiais antes do esboço aprovado em 2 minutos de checagem.",
+                "Planta/diagrama do artefato",
+                10,
+            ),
+            _card(
+                "Prototipagem",
+                "Construir o protótipo físico ou digital.",
+                "Construção física ou digital utilizando sucatas, impressoras 3D, "
+                "marcenaria ou softwares.",
+                "Priorize materiais baratos e rápidos na primeira versão.",
+                "Construção do protótipo",
+                15,
+            ),
+            _card(
+                "Testes de Estresse",
+                "Colocar o protótipo à prova para ver onde falha.",
+                "Colocar o protótipo à prova para ver onde ele falha ou quebra.",
+                "Peça registro do ponto de falha — falha sem registro não ensina.",
+                "Teste até o ponto de falha",
+                10,
+            ),
+            _card(
+                "Iteração",
+                "Corrigir erros do teste e finalizar o artefato.",
+                "Correção dos erros encontrados no teste e finalização do artefato.",
+                "Limite a 1–2 correções críticas — evita perfeccionismo sem entrega.",
+                "Correção e finalização",
+                10,
+            ),
+        ],
+    },
+    "criativa_coaching_reverso": {
+        "nome": "Coaching Reverso",
+        "categoria": "CRIATIVAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Inversão de Papéis",
+                "Selecionar tema em que os alunos têm maior fluência.",
+                "O professor seleciona um tema onde os alunos possuem maior fluência "
+                "(ex: tendências de redes sociais, novos aplicativos).",
+                "Escolha tema real de domínio dos alunos — senão a inversão é teatral.",
+                "Tema de fluência dos alunos",
+                5,
+            ),
+            _card(
+                "Preparação do Mentor",
+                "Estruturar como ensinar o conceito a um adulto.",
+                "Os alunos estruturam como vão ensinar esse conceito para um adulto "
+                "(professor ou membro da gestão).",
+                "Peça roteiro de 3 passos + 1 demonstração prática.",
+                "Roteiro de mentoria do aluno",
+                10,
+            ),
+            _card(
+                "Sessão de Tutoria",
+                "Aluno conduz; professor assume postura de aprendiz.",
+                "O aluno conduz a aula/mentoria, enquanto o professor assume a postura "
+                "de aprendiz, fazendo perguntas.",
+                "Faça perguntas genuínas de iniciante — não \"teste\" o aluno.",
+                "Mentoria aluno → professor",
+                15,
+            ),
+            _card(
+                "Aplicação Conjunta",
+                "Professor-aprendiz executa tarefa com a ferramenta ensinada.",
+                "O professor-aprendiz tenta executar uma tarefa usando a ferramenta "
+                "recém-ensinada pelo aluno.",
+                "Peça ao aluno que observe e corrija a execução em tempo real.",
+                "Prática supervisionada pelo aluno",
+                12,
+            ),
+            _card(
+                "Feedback Mútuo",
+                "Refletir o que o professor aprendeu e como o aluno liderou.",
+                "Reflexão sobre a experiência: o que o professor aprendeu e como "
+                "o aluno se sentiu no papel de liderança.",
+                "Registre 1 aprendizado de cada lado no quadro.",
+                "Reflexão mútua da inversão",
+                8,
+            ),
+        ],
+    },
+    "criativa_mapa_polaridades": {
+        "nome": "Mapa de Polaridades",
+        "categoria": "CRIATIVAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Identificação do Dilema",
+                "Escolher um conflito com duas forças complementares.",
+                "Escolha de um conflito que não tem resposta única, mas duas forças "
+                "complementares (ex: Tradição vs. Inovação; Liberdade vs. Disciplina).",
+                "Evite dilemas do tipo \"certo × errado\" — precisa ser polaridade real.",
+                "Dilema em duas forças",
+                8,
+            ),
+            _card(
+                "Mapeamento dos Lados Positivos",
+                "Listar benefícios de focar no Polo A e no Polo B.",
+                "A turma lista os benefícios de focar exclusivamente no Polo A e, "
+                "em seguida, no Polo B.",
+                "Use post-its por polo — facilita mover e comparar depois.",
+                "Benefícios de cada polo",
+                10,
+            ),
+            _card(
+                "Mapeamento dos Lados Negativos",
+                "Listar prejuízos e excessos de cada polo.",
+                "A turma lista os prejuízos e excessos que ocorrem quando se foca "
+                "demais no Polo A ou no Polo B.",
+                "Peça exemplos concretos da escola/turma — evita generalidade.",
+                "Excessos de cada polo",
+                10,
+            ),
+            _card(
+                "Sinais de Alerta",
+                "Definir indicadores de queda para o lado negativo.",
+                "Definição de indicadores de que a situação está caindo "
+                "para o lado negativo de uma das polaridades.",
+                "Transforme sinais em observáveis (o que se vê/ouve na sala).",
+                "Indicadores de desequilíbrio",
+                10,
+            ),
+            _card(
+                "Plano de Equilíbrio",
+                "Criar estratégias para obter benefícios dos dois polos.",
+                "Criação de estratégias práticas para obter os benefícios "
+                "de ambos os polos simultaneamente.",
+                "Cada estratégia deve dizer quem faz o quê e quando.",
+                "Estratégias de equilíbrio",
+                12,
+            ),
+        ],
+    },
+    "criativa_veja_pense_pergunte_crie": {
+        "nome": "Rotina Veja-Pense-Pergunte-Crie",
+        "categoria": "CRIATIVAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Veja",
+                "Listar fatos literais do estímulo, sem julgamentos.",
+                "Exposição de um estímulo visual (obra de arte, gráfico, vídeo curto). "
+                "O aluno lista apenas fatos literais do que está vendo, sem julgamentos.",
+                "Interrompa adjetivos (bonito/feio) — só o que é observável.",
+                "Observação literal do estímulo",
+                8,
+            ),
+            _card(
+                "Pense",
+                "Elaborar hipóteses sobre significado e intenção.",
+                "O aluno elabora hipóteses sobre o que a imagem significa, "
+                "quem a fez e qual a intenção por trás dela.",
+                "Peça \"eu penso que… porque…\" — amarra hipótese à evidência.",
+                "Hipóteses sobre o estímulo",
+                10,
+            ),
+            _card(
+                "Pergunte",
+                "Levantar dúvidas despertadas pela observação.",
+                "Levantamento de dúvidas e questionamentos que a observação despertou "
+                "(\"O que eu gostaria de saber sobre isso?\").",
+                "Selecione 2–3 perguntas poderosas da turma para a etapa Crie.",
+                "Perguntas geradas pela observação",
+                10,
+            ),
+            _card(
+                "Crie",
+                "Elaborar resposta criativa baseada nas três etapas anteriores.",
+                "Elaboração de uma resposta criativa (um parágrafo, um desenho, "
+                "uma pergunta de pesquisa) baseada nas três etapas anteriores.",
+                "A criação deve citar algo do Veja/Pense/Pergunte — senão vira desconectado.",
+                "Produção criativa ancorada",
+                15,
+            ),
+        ],
+    },
+    "criativa_sala_invertida": {
+        "nome": "Sala de Aula Invertida",
+        "categoria": "CRIATIVAS",
+        "contexto_execucao": "misto",
+        "cards": [
+            _card(
+                "Curadoria",
+                "Disponibilizar conteúdo expositivo antes da aula.",
+                "O professor disponibiliza o conteúdo expositivo "
+                "(vídeo, podcast, texto curto) no ambiente virtual antes da aula.",
+                "Limite a 10–15 minutos de consumo — material longo vira abandono.",
+                "Material prévio curto e claro",
+                0,
+            ),
+            _card(
+                "Consumo Autônomo",
+                "Estudar o material no próprio ritmo, anotando dúvidas.",
+                "O aluno estuda o material no seu próprio ritmo, em casa, anotando dúvidas.",
+                "Peça 1 dúvida escrita como ingresso da aula presencial.",
+                "Estudo prévio com dúvidas anotadas",
+                0,
+            ),
+            _card(
+                "Checagem de Compreensão",
+                "Quiz rápido nos primeiros minutos da aula presencial.",
+                "Nos primeiros 5 minutos da aula presencial, aplicação de um quiz rápido "
+                "para checar quem absorveu o conceito.",
+                "Use o quiz para agrupar quem precisa de reforço imediato.",
+                "Quiz de entrada (5 min)",
+                5,
+            ),
+            _card(
+                "Atividade de Alto Nível",
+                "Usar o tempo da aula para problemas, debates e projetos.",
+                "O tempo da aula é usado para resolução de problemas complexos, "
+                "debates e projetos com mediação do professor.",
+                "Proíba retomar a exposição longa — a aula é para prática mediada.",
+                "Prática complexa em sala",
+                30,
+            ),
+            _card(
+                "Fechamento",
+                "Compilar erros comuns e reforçar conceitos.",
+                "O professor compila os erros mais comuns vistos na atividade prática "
+                "e reforça os conceitos.",
+                "Mostre padrões de erro, não nomes de alunos.",
+                "Reforço pelos erros da prática",
+                10,
+            ),
+        ],
+    },
+    "criativa_world_cafe": {
+        "nome": "World Café",
+        "categoria": "CRIATIVAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Preparação do Ambiente",
+                "Organizar mesas pequenas com folha grande e canetas.",
+                "Organização da sala em pequenos grupos (4 a 5 alunos), como mesas de um café, "
+                "cada uma com uma folha grande e canetas.",
+                "Ambiente informal ajuda — música baixa e mesas espalhadas funcionam.",
+                "Mesas de café prontas",
+                5,
+            ),
+            _card(
+                "Primeira Rodada",
+                "Debater a pergunta geradora e registrar na folha.",
+                "O professor lança uma pergunta geradora e os grupos debatem e "
+                "desenham/escrevem suas ideias na folha por 15 minutos.",
+                "Uma pergunta clara por rodada — múltiplas perguntas dispersam.",
+                "Debate e registro na mesa",
+                15,
+            ),
+            _card(
+                "Troca de Mesas (Polinização)",
+                "Anfitrião fica; demais migram para outras mesas.",
+                "Um aluno (o \"anfitrião\") fica na mesa. Os demais mudam para mesas diferentes.",
+                "Escolha anfitriões que sintetizam bem — treine o resumo em 1 minuto.",
+                "Rotação com anfitrião fixo",
+                5,
+            ),
+            _card(
+                "Segunda Rodada",
+                "Anfitrião resume e novos membros acrescentam ideias.",
+                "O anfitrião resume o que foi falado na rodada anterior e os novos membros "
+                "adicionam novas ideias sobrepostas às antigas.",
+                "Ideias novas vão em outra cor — mostra a polinização visualmente.",
+                "Sobreposição de ideias",
+                15,
+            ),
+            _card(
+                "Colheita",
+                "Plenária com insights mais poderosos de cada mesa.",
+                "Plenária final onde cada anfitrião compartilha os insights "
+                "mais poderosos que surgiram em sua mesa.",
+                "Limite a 2 insights por mesa — força síntese.",
+                "Plenária de insights",
+                10,
+            ),
+        ],
+    },
+    "agil_canvas_mania": {
+        "nome": "Canvas Mania",
+        "categoria": "ÁGEIS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Seleção do Framework",
+                "Escolher o modelo visual adequado ao objetivo.",
+                "Escolha do modelo visual adequado "
+                "(Canvas de Projeto, Business Model Canvas, Mapa de Empatia).",
+                "Mostre o canvas em branco primeiro e explique cada bloco em 30s.",
+                "Canvas certo para o objetivo",
+                5,
+            ),
+            _card(
+                "Divisão de Equipes",
+                "Agrupar alunos em torno do Canvas impresso ou projetado.",
+                "Alunos se agrupam em torno do Canvas impresso em tamanho A3 "
+                "ou projetado em quadro branco.",
+                "3–5 por canvas — grupos maiores travam o preenchimento.",
+                "Equipes no canvas",
+                5,
+            ),
+            _card(
+                "Preenchimento Iterativo",
+                "Preencher blocos com post-its (uma ideia por post-it).",
+                "Uso de post-its para preencher os blocos do Canvas. A regra é: "
+                "uma ideia por post-it, para facilitar a mudança.",
+                "Proíba textos longos no post-it — só palavras-chave.",
+                "Post-its móveis por bloco",
+                20,
+            ),
+            _card(
+                "Análise Sistêmica",
+                "Analisar conexões entre blocos do canvas.",
+                "O professor guia a turma para analisar as conexões "
+                "(\"Se mudarmos esse post-it aqui, como afeta o resto do quadro?\").",
+                "Faça a pergunta de impacto em voz alta a cada mudança relevante.",
+                "Conexões entre blocos",
+                12,
+            ),
+            _card(
+                "Defesa do Modelo",
+                "Apresentar a estrutura lógica criada pelo grupo.",
+                "Apresentação da estrutura lógica criada pelo grupo para a sala.",
+                "Peça 90 segundos: problema → solução → evidência no canvas.",
+                "Pitch do canvas",
+                10,
+            ),
+        ],
+    },
+    "agil_eduscrum": {
+        "nome": "EduScrum",
+        "categoria": "ÁGEIS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Formação de Equipes",
+                "Criar grupos autogerenciáveis com Scrum Master aluno.",
+                "Criação de grupos autogerenciáveis, com definição do papel do Scrum Master "
+                "(aluno líder facilitador).",
+                "Scrum Master facilita — não manda. Deixe isso explícito.",
+                "Times com Scrum Master",
+                8,
+            ),
+            _card(
+                "Planejamento do Sprint",
+                "Selecionar do Backlog o que será feito na aula.",
+                "A equipe analisa o Backlog (lista de tarefas do projeto) "
+                "e seleciona o que será feito na aula atual.",
+                "Limite o sprint ao tempo da aula — corte o que não cabe.",
+                "Backlog → compromisso do sprint",
+                10,
+            ),
+            _card(
+                "Atualização do Quadro (Kanban)",
+                "Posicionar cards em Para Fazer / Fazendo / Feito.",
+                "Posicionamento dos post-its ou cards nas colunas: "
+                "\"Para Fazer\", \"Fazendo\", \"Feito\".",
+                "Só 1 card \"Fazendo\" por pessoa — reduz multitarefa.",
+                "Quadro Kanban visível",
+                7,
+            ),
+            _card(
+                "Reunião em Pé (Stand-up)",
+                "Checagem rápida do progresso e dos bloqueios.",
+                "No início da aula, perguntas rápidas: O que fiz ontem? "
+                "O que farei hoje? O que está me travando?",
+                "Cronometre 60–90s por pessoa — stand-up não é reunião longa.",
+                "Stand-up de 3 perguntas",
+                10,
+            ),
+            _card(
+                "Retrospectiva",
+                "Avaliar o processo de trabalho da equipe.",
+                "Ao fim de um ciclo, avaliação do processo de trabalho da equipe "
+                "(o que funcionou bem e o que precisa melhorar).",
+                "Exija 1 ação de melhoria para o próximo sprint.",
+                "Retro com ação concreta",
+                10,
+            ),
+        ],
+    },
+    "agil_hackathons": {
+        "nome": "Hackathons",
+        "categoria": "ÁGEIS",
+        "contexto_execucao": "misto",
+        "cards": [
+            _card(
+                "Lançamento do Desafio",
+                "Apresentar problema urgente com prazo estrito.",
+                "Apresentação de um problema urgente da escola ou comunidade, "
+                "com prazo estrito (ex: 4 horas ou 2 dias).",
+                "O prazo é parte da pedagogia — torne-o visível (cronômetro).",
+                "Desafio urgente com deadline",
+                10,
+            ),
+            _card(
+                "Ideação",
+                "Brainstorm rápido e divisão de tarefas no grupo.",
+                "Brainstorming rápido para desenhar a solução base e divisão de tarefas "
+                "no grupo (design, pesquisa, apresentação).",
+                "Feche a ideação com 1 ideia escolhida — não deixe 5 ideias pela metade.",
+                "Ideia única e papéis",
+                15,
+            ),
+            _card(
+                "Maratona de Desenvolvimento",
+                "Construir o protótipo em foco total.",
+                "Tempo de foco total onde os alunos constroem o protótipo "
+                "da solução (digital ou físico).",
+                "Proíba reabrir o briefing — a maratona é construir, não redesenhar o problema.",
+                "Construção sob pressão de tempo",
+                90,
+            ),
+            _card(
+                "Mentoria Volante",
+                "Professores circulam para destravar ideias técnicas.",
+                "Professores atuam como consultores, circulando entre os grupos "
+                "para destravar ideias técnicas.",
+                "Limite a 3 minutos por mesa — mentoria volante, não aula particular.",
+                "Consultoria rápida nas mesas",
+                20,
+            ),
+            _card(
+                "Pitch",
+                "Apresentar a solução em 3 a 5 minutos para banca.",
+                "Apresentação cronometrada (3 a 5 minutos) da solução "
+                "para uma banca avaliadora.",
+                "Critérios públicos na parede: problema, solução, evidência, próximo passo.",
+                "Pitch cronometrado para banca",
+                20,
+            ),
+        ],
+    },
+    "agil_mapeamento_mental": {
+        "nome": "Mapeamento Mental",
+        "categoria": "ÁGEIS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Núcleo",
+                "Colocar o tema central no meio da página.",
+                "Escrever ou desenhar o tema central no exato meio de uma página "
+                "em branco (papel ou software).",
+                "Tema em 1–3 palavras — núcleo longo vira parágrafo, não mapa.",
+                "Tema central no meio",
+                5,
+            ),
+            _card(
+                "Ramos Principais",
+                "Criar categorias/grandes tópicos a partir do centro.",
+                "Puxar linhas grossas a partir do centro para representar as categorias "
+                "ou grandes tópicos do assunto.",
+                "Comece com 4–6 ramos — demais fragmenta a visão.",
+                "Categorias principais",
+                10,
+            ),
+            _card(
+                "Ramos Secundários",
+                "Detalhar palavras-chave a partir dos ramos principais.",
+                "Adicionar linhas mais finas saindo dos ramos principais, "
+                "contendo palavras-chave e detalhes específicos.",
+                "Só palavras-chave — frase completa mata o mapa.",
+                "Detalhes em palavras-chave",
+                15,
+            ),
+            _card(
+                "Conexões Visuais",
+                "Ligar conceitos com setas, cores e ícones.",
+                "Uso de setas, cores e ícones para ligar conceitos que se relacionam "
+                "de lados opostos do mapa.",
+                "Peça pelo menos 2 conexões cruzadas explícitas.",
+                "Ligações entre ramos",
+                10,
+            ),
+            _card(
+                "Revisão",
+                "Usar o mapa para testar retenção e revisar depois.",
+                "Leitura do mapa mental para testar a retenção do conteúdo "
+                "e facilitar revisões futuras.",
+                "Peça que um colega explique o mapa do outro em 60s.",
+                "Retenção via mapa",
+                10,
+            ),
+        ],
+    },
+    "agil_pedagogia_extrema": {
+        "nome": "Pedagogia Extrema",
+        "categoria": "ÁGEIS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Trabalho em Pares",
+                "Um executa (piloto) e o outro revisa (navegador).",
+                "Dois alunos dividem uma única tarefa, caderno ou computador. "
+                "Um executa (\"piloto\") e o outro revisa criticamente (\"navegador\").",
+                "Troque piloto/navegador a cada ciclo — evita hierarquia fixa.",
+                "Par piloto–navegador",
+                8,
+            ),
+            _card(
+                "Teste Primeiro (Test-Driven)",
+                "Definir critérios de avaliação antes de executar.",
+                "Antes de iniciar a atividade, os alunos definem ou recebem "
+                "os critérios exatos de como o trabalho será avaliado.",
+                "Critérios visíveis na mesa — sem critério, o ciclo curto não funciona.",
+                "Critérios antes da execução",
+                7,
+            ),
+            _card(
+                "Ciclos Curtos",
+                "Quebrar o trabalho em entregas de 15–20 minutos.",
+                "O trabalho é quebrado em entregas muito pequenas "
+                "(a cada 15 ou 20 minutos).",
+                "Toque o sino/cronômetro — o ritual do ciclo é pedagógico.",
+                "Entregas em timebox curto",
+                20,
+            ),
+            _card(
+                "Feedback Imediato",
+                "Avaliar a entrega curta na hora.",
+                "O professor avalia a entrega curta na hora, impedindo que o aluno "
+                "acumule erros estruturais.",
+                "Feedback em 1 minuto por dupla: manter / cortar / corrigir.",
+                "Avaliação imediata da entrega",
+                10,
+            ),
+            _card(
+                "Refatoração",
+                "Melhorar o trabalho antes do próximo ciclo.",
+                "O aluno melhora o trabalho imediatamente baseado no feedback "
+                "antes de seguir para o próximo ciclo.",
+                "Não avance de ciclo sem a correção mínima aplicada.",
+                "Correção imediata pós-feedback",
+                10,
+            ),
+        ],
+    },
+    "imersiva_aprendizagem_jogos": {
+        "nome": "Aprendizagem Baseada em Jogos",
+        "categoria": "IMERSIVAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Seleção e Alinhamento",
+                "Escolher jogo cuja mecânica simule o conteúdo.",
+                "O professor escolhe um jogo (tabuleiro, cartas ou digital) "
+                "cuja mecânica simule o conteúdo a ser aprendido.",
+                "Se a mecânica não espelha o conteúdo, é só recreação — troque o jogo.",
+                "Jogo alinhado ao conteúdo",
+                5,
+            ),
+            _card(
+                "Explicação das Regras",
+                "Deixar claras regras de pontuar, vencer e interagir.",
+                "Regras claras de como pontuar, vencer e interagir durante o jogo.",
+                "Faça 1 rodada de exemplo em 2 minutos antes do jogo real.",
+                "Regras explícitas",
+                8,
+            ),
+            _card(
+                "Imersão no Gameplay",
+                "Jogar com decisões autônomas e consequências.",
+                "Os alunos jogam ativamente, tomando decisões autônomas "
+                "e lidando com as consequências dentro do jogo.",
+                "Resista a interromper — anote pontos para o debriefing.",
+                "Gameplay ativo",
+                20,
+            ),
+            _card(
+                "Debriefing (Descompressão)",
+                "Pausar para analisar estratégias que funcionaram.",
+                "O passo mais importante. Pausa no jogo para perguntar: "
+                "\"Quais estratégias funcionaram? Por quê?\".",
+                "Sem debriefing, o jogo não vira aprendizagem — proteja este tempo.",
+                "Análise das estratégias",
+                12,
+            ),
+            _card(
+                "Conexão Teórica",
+                "Ligar a experiência do jogo aos conceitos da disciplina.",
+                "O professor faz a ponte entre a experiência vivida no jogo "
+                "e os conceitos formais da disciplina.",
+                "Escreva no quadro: jogada → conceito correspondente.",
+                "Ponte jogo → teoria",
+                10,
+            ),
+        ],
+    },
+    "imersiva_simulacoes": {
+        "nome": "Simulações",
+        "categoria": "IMERSIVAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Construção do Cenário",
+                "Criar ambiente fictício ou histórico rico em detalhes.",
+                "Criação de um ambiente fictício ou histórico rico em detalhes "
+                "(ex: Assembleia da ONU, mercado financeiro).",
+                "Entregue 1 página de briefing por cenário — demais vira sobrecarga.",
+                "Cenário detalhado",
+                8,
+            ),
+            _card(
+                "Distribuição de Papéis",
+                "Dar a cada aluno personagem com objetivos e limites.",
+                "Cada aluno recebe um personagem com objetivos, limites "
+                "e interesses específicos.",
+                "Objetivos secretos aumentam o realismo — use com cuidado ético.",
+                "Papéis com interesses claros",
+                7,
+            ),
+            _card(
+                "Interação e Negociação",
+                "Agir no papel para alcançar objetivos.",
+                "Os alunos agem dentro de seus papéis, interagindo uns com os outros "
+                "para alcançar seus objetivos.",
+                "Circule e anote decisões-chave para a avaliação crítica.",
+                "Negociação em papel",
+                20,
+            ),
+            _card(
+                "Fatores Surpresa",
+                "Inserir crises que forçam adaptação rápida.",
+                "O professor insere \"crises\" ou novas variáveis no meio da simulação "
+                "para forçar adaptação rápida.",
+                "1–2 surpresas bastam — excesso vira caos sem aprendizagem.",
+                "Crises controladas",
+                8,
+            ),
+            _card(
+                "Avaliação Crítica",
+                "Sair do personagem e analisar decisões à luz da teoria.",
+                "Os alunos saem de seus personagens e analisam as decisões tomadas "
+                "à luz da teoria da disciplina.",
+                "Ritual explícito de \"sair do papel\" antes da análise.",
+                "Análise pós-personagem",
+                12,
+            ),
+        ],
+    },
+    "imersiva_vivencia_multissensorial": {
+        "nome": "Vivência Metodologia Imersiva Multissensorial",
+        "categoria": "IMERSIVAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Design do Ambiente",
+                "Preparar estímulos intencionais no espaço físico.",
+                "O professor prepara o espaço físico com estímulos intencionais: "
+                "trilha sonora, iluminação, aromas e objetos táteis.",
+                "Todo estímulo deve ter intenção pedagógica — corte o decorativo vazio.",
+                "Ambiente sensorial intencional",
+                5,
+            ),
+            _card(
+                "Quebra de Padrão",
+                "Entrar no ambiente com percepção maximizada.",
+                "Os alunos entram no ambiente em silêncio ou com os olhos vendados "
+                "para maximizar a percepção sensorial.",
+                "Combine regras de segurança e consentimento antes de vendas/silêncio.",
+                "Entrada com percepção ampliada",
+                8,
+            ),
+            _card(
+                "Condução Narrativa",
+                "Guiar a experiência por história, leitura ou exploração tátil.",
+                "O professor guia a experiência através de contação de histórias, "
+                "leitura imersiva ou exploração tátil.",
+                "Fale pouco e pause — o ambiente também \"fala\".",
+                "Narrativa/condução sensorial",
+                15,
+            ),
+            _card(
+                "Registro Sensível",
+                "Registrar emoções e sensações provocadas.",
+                "O aluno escreve, desenha ou relata as emoções e sensações físicas "
+                "que a experiência provocou.",
+                "Aceite desenho/áudio — nem todo registro precisa ser texto.",
+                "Registro das sensações",
+                12,
+            ),
+            _card(
+                "Ancoragem",
+                "Ligar o sentido físico ao conteúdo curricular.",
+                "Conexão lógica entre o que foi sentido fisicamente "
+                "e o conteúdo curricular abordado.",
+                "Peça a frase: \"Senti X → isso ilustra o conceito Y\".",
+                "Ponte senso → currículo",
+                10,
+            ),
+        ],
+    },
+    "analitica_chatbots": {
+        "nome": "Chatbots",
+        "categoria": "ANALÍTICAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Definição de Persona",
+                "Definir a identidade do bot.",
+                "Os alunos definem a identidade do bot "
+                "(ex: Um bot de Machado de Assis, ou um bot de fórmulas matemáticas).",
+                "Persona clara evita respostas genéricas depois.",
+                "Persona do bot",
+                8,
+            ),
+            _card(
+                "Árvore de Decisão",
+                "Mapear perguntas prováveis e respostas programadas.",
+                "Mapeamento visual das perguntas prováveis dos usuários "
+                "e das respostas programadas do bot.",
+                "Comece com 8–12 caminhos — árvore gigante não fecha na aula.",
+                "Fluxo de perguntas e respostas",
+                12,
+            ),
+            _card(
+                "Programação ou Simulação",
+                "Construir o bot em No-Code ou simular em papel.",
+                "Construção do bot em plataformas No-Code (sem código) "
+                "ou simulação do fluxo em papel.",
+                "Se não houver ferramenta digital, o fluxo em papel vale como protótipo.",
+                "Build do fluxo do bot",
+                15,
+            ),
+            _card(
+                "Teste de Estresse (Turing)",
+                "Outros grupos tentam achar furos nas respostas.",
+                "Alunos de outros grupos tentam usar o bot criado "
+                "para encontrar \"furos\" ou respostas erradas.",
+                "Peça que os testadores anotem a pergunta que quebrou o bot.",
+                "Teste adversarial do bot",
+                10,
+            ),
+            _card(
+                "Refinamento",
+                "Ajustar a base para cobrir perguntas falhas.",
+                "Ajuste da base de conhecimento do bot para cobrir "
+                "as perguntas que ele não soube responder.",
+                "Refinamento mínimo: 3 furos corrigidos e retestados.",
+                "Correção da base de conhecimento",
+                10,
+            ),
+        ],
+    },
+    "analitica_dog_or_cat": {
+        "nome": "Dog or Cat: Reconhecimento de Imagens",
+        "categoria": "ANALÍTICAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Coleta de Dados",
+                "Reunir fotos em duas categorias para treino.",
+                "Os alunos reúnem dezenas de fotos divididas em duas categorias "
+                "(ex: folhas saudáveis vs. folhas com praga).",
+                "Equilibre quantidade por categoria — dataset torto enviesa o modelo.",
+                "Dataset em duas categorias",
+                10,
+            ),
+            _card(
+                "Treinamento do Modelo",
+                "Treinar o algoritmo em plataforma educativa de IA.",
+                "Inserção das imagens em uma plataforma de IA educativa "
+                "(como Teachable Machine) para treinar o algoritmo.",
+                "Demonstre 1 treino completo antes de liberar as equipes.",
+                "Treino do classificador",
+                12,
+            ),
+            _card(
+                "Teste de Acurácia",
+                "Testar com imagens inéditas.",
+                "Os alunos apresentam imagens inéditas para a câmera/sistema "
+                "para ver se a IA acerta a categoria.",
+                "Separe imagens de teste que NÃO entraram no treino.",
+                "Validação com imagens novas",
+                10,
+            ),
+            _card(
+                "Análise de Viés",
+                "Discutir erros da máquina e causas no dataset.",
+                "Discussão sobre os erros da máquina "
+                "(ex: \"Ela errou porque todas as folhas saudáveis que usamos tinham fundo branco\").",
+                "Force a pergunta: o erro é do modelo ou dos dados?",
+                "Viés e erros do modelo",
+                10,
+            ),
+            _card(
+                "Debate Ético",
+                "Refletir sobre decisões algorítmicas na vida real.",
+                "Reflexão sobre como algoritmos tomam decisões na vida real "
+                "e os perigos de dados enviesados.",
+                "Traga 1 caso real curto (crédito, recrutamento, saúde) para ancorar.",
+                "Ética de dados e algoritmos",
+                10,
+            ),
+        ],
+    },
+    "analitica_extrato_participacao": {
+        "nome": "Extrato de Participação",
+        "categoria": "ANALÍTICAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Estabelecimento da Economia",
+                "Definir atitudes que geram pontos/moedas.",
+                "Definição clara de quais atitudes (fazer perguntas, ajudar colega, "
+                "entregar no prazo) geram \"moedas\" ou \"pontos\".",
+                "Publique a tabela de pontuação — economia invisível não engaja.",
+                "Regras da economia de participação",
+                8,
+            ),
+            _card(
+                "Registro Contínuo",
+                "Anotar pontuação durante as aulas de forma visível.",
+                "O professor (ou um aluno líder) anota a pontuação durante as aulas "
+                "usando planilhas, apps ou um quadro visível.",
+                "Registre na hora — pós-aula a memória falha e gera contestação.",
+                "Registro visível e contínuo",
+                10,
+            ),
+            _card(
+                "Emissão do Extrato",
+                "Entregar relatório de ganhos e perdas ao aluno.",
+                "Entrega de um relatório quinzenal/mensal para que o aluno veja "
+                "onde ganhou e onde perdeu pontos.",
+                "Extrato individual privado — ranking público pode humilhar.",
+                "Extrato individual",
+                8,
+            ),
+            _card(
+                "Feedback Direcionado",
+                "Usar o extrato para apontar comportamentos a melhorar.",
+                "O professor usa o extrato para mostrar ao aluno exatamente "
+                "quais comportamentos precisam melhorar.",
+                "1 comportamento prioritário por conversa — evita lista acusatória.",
+                "Feedback comportamental baseado em dados",
+                12,
+            ),
+            _card(
+                "Recompensas",
+                "Trocar pontos por benefícios acadêmicos claros.",
+                "Troca dos pontos por benefícios acadêmicos "
+                "(dica em prova, prorrogação de prazo, escolha de tema de trabalho).",
+                "Recompensas devem ser pedagógicas, não só brindes.",
+                "Troca por benefícios acadêmicos",
+                8,
+            ),
+        ],
+    },
+    "analitica_ia_generativa": {
+        "nome": "Inteligência Artificial Generativa",
+        "categoria": "ANALÍTICAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Estruturação do Prompt",
+                "Ensinar comandos detalhados (Papel, Tarefa, Contexto, Formato).",
+                "Ensino de como criar comandos detalhados "
+                "(Papel, Tarefa, Contexto e Formato) para a IA (ex: ChatGPT).",
+                "Modele 1 prompt ruim × 1 bom no quadro antes da prática.",
+                "Prompt estruturado",
+                10,
+            ),
+            _card(
+                "Geração e Iteração",
+                "Gerar e ajustar o comando se o resultado for superficial.",
+                "O aluno pede para a IA gerar um texto, código ou imagem "
+                "e ajusta o comando se o resultado for superficial.",
+                "Exija pelo menos 2 iterações documentadas do mesmo pedido.",
+                "Iteração do prompt",
+                12,
+            ),
+            _card(
+                "Curadoria Crítica",
+                "Marcar alucinações, vieses e clichês no resultado.",
+                "O aluno analisa o resultado gerado, marcando alucinações (erros), "
+                "vieses ou clichês.",
+                "Use destaque colorido: erro / viés / clichê.",
+                "Crítica do output da IA",
+                10,
+            ),
+            _card(
+                "Edição Humana",
+                "Reescrever com voz própria e validar fontes.",
+                "O aluno reescreve e melhora o conteúdo gerado, "
+                "adicionando voz própria e validando fontes.",
+                "Sem edição humana, a entrega não conta como aprendizagem.",
+                "Reescrita autoral",
+                12,
+            ),
+            _card(
+                "Entrega Transparente",
+                "Entregar histórico: prompt, geração e alterações humanas.",
+                "Apresentação do trabalho final contendo o histórico: "
+                "\"Qual foi o prompt\", \"O que a IA gerou\" e \"Como o aluno alterou\".",
+                "Torne a transparência critério de avaliação, não opcional.",
+                "Rastreabilidade prompt → edição",
+                8,
+            ),
+        ],
+    },
+    "analitica_mapa_calor": {
+        "nome": "Mapa de Calor",
+        "categoria": "ANALÍTICAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Coleta de Indicadores",
+                "Levantar dados quantitativos do contexto analisado.",
+                "Levantamento de dados quantitativos "
+                "(notas em exames, evasão, ocorrências disciplinares em áreas da escola).",
+                "Defina 1 pergunta analítica antes de coletar — dado sem pergunta vira ruído.",
+                "Dados quantitativos do contexto",
+                10,
+            ),
+            _card(
+                "Definição de Escala Cromática",
+                "Associar valores a cores (ex.: verde × vermelho).",
+                "Associação de valores a cores "
+                "(ex: Verde para alto desempenho, Vermelho para zonas críticas).",
+                "A escala deve ser compartilhada e fixa antes da plotagem.",
+                "Legenda cromática",
+                8,
+            ),
+            _card(
+                "Plotagem dos Dados",
+                "Aplicar cores sobre o espaço/planilha analisada.",
+                "Aplicação das cores sobre o espaço analisado "
+                "(pode ser uma planilha de notas ou a planta baixa da escola).",
+                "Faça a plotagem em silêncio primeiro — depois interpreta.",
+                "Visualização colorida dos dados",
+                12,
+            ),
+            _card(
+                "Análise Espacial/Visual",
+                "Identificar padrões nas zonas coloridas.",
+                "Identificação imediata de padrões: "
+                "\"Por que as notas estão todas vermelhas neste tópico específico da matéria?\".",
+                "Peça hipóteses escritas antes de discutir — evita opinião precipitada.",
+                "Padrões nas zonas críticas",
+                12,
+            ),
+            _card(
+                "Intervenção Focada",
+                "Direcionar recursos às zonas vermelhas.",
+                "Direcionamento de recursos ou aulas de revisão exclusivamente "
+                "para as \"zonas vermelhas\" identificadas no mapa.",
+                "Feche com 1 ação concreta por zona vermelha.",
+                "Ação nas zonas críticas",
+                10,
+            ),
+        ],
+    },
+    "analitica_rag": {
+        "nome": "RAG",
+        "categoria": "ANALÍTICAS",
+        "contexto_execucao": "sala",
+        "cards": [
+            _card(
+                "Construção da Base (Retrieval)",
+                "Separar repositório fechado de fontes confiáveis.",
+                "O professor ou os alunos separam um repositório fechado de PDFs, "
+                "artigos e apostilas confiáveis sobre o tema.",
+                "Qualidade da base > quantidade — 3–5 fontes boas bastam na aula.",
+                "Base fechada de documentos",
+                10,
+            ),
+            _card(
+                "Indexação",
+                "Carregar documentos em ferramenta de IA com leitura restrita.",
+                "Os documentos são carregados em uma ferramenta de IA "
+                "que permite leitura de arquivos fechados.",
+                "Confirme que a ferramenta está limitada aos arquivos carregados.",
+                "Indexação dos documentos",
+                8,
+            ),
+            _card(
+                "Interrogação Restrita",
+                "Perguntar à IA só com base nos documentos fornecidos.",
+                "Os alunos fazem perguntas complexas para a IA com a regra estrita "
+                "de buscar a resposta apenas nos documentos fornecidos.",
+                "Se a IA inventar fora da base, marque como falha do processo.",
+                "Perguntas restritas à base",
+                12,
+            ),
+            _card(
+                "Verificação de Lastro",
+                "Cruzar citações com página/parágrafo do PDF original.",
+                "O aluno verifica as citações geradas pela IA cruzando "
+                "com a página e o parágrafo do PDF original.",
+                "Sem lastro verificado, a resposta não entra no relatório final.",
+                "Auditoria das citações",
+                12,
+            ),
+            _card(
+                "Síntese Autoral",
+                "Produzir texto humano com informações validadas pela base RAG.",
+                "Produção de um artigo ou relatório humano usando as informações "
+                "mastigadas e validadas pela base de conhecimento RAG.",
+                "A síntese deve citar documento + página — não só \"a IA disse\".",
+                "Relatório autoral com lastro",
+                12,
+            ),
+        ],
+    },
 }
 
 

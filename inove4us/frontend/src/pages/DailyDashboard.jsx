@@ -11,13 +11,19 @@ import {
 const STATUS_LABEL = {
   draft: 'Rascunho',
   planejado: 'Planejado',
+  em_execucao: 'Em aula',
+  in_progress: 'Em aula',
   realizado: 'Realizado',
+  completed: 'Realizado',
 }
 
 const STATUS_TONE = {
   draft: 'bg-stone-100 text-stone-700',
   planejado: 'bg-emerald-50 text-emerald-800',
+  em_execucao: 'bg-amber-100 text-amber-900',
+  in_progress: 'bg-amber-100 text-amber-900',
   realizado: 'bg-brand-50 text-bordo',
+  completed: 'bg-brand-50 text-bordo',
 }
 
 function formatDate(iso) {
@@ -65,7 +71,7 @@ export default function DailyDashboard() {
 
   async function handleDelete(aula) {
     if (!aula?.id) return
-    if (aula.status === 'realizado') return
+    if (aula.status === 'realizado' || aula.status === 'em_execucao') return
     const ok = window.confirm(`Excluir a aula “${aula.tema_aula || 'sem tema'}”?`)
     if (!ok) return
     setBusyId(aula.id)
@@ -121,7 +127,7 @@ export default function DailyDashboard() {
           Vetor Dia a Dia
         </p>
         <h1 className="font-display text-3xl font-bold text-bordo-deep sm:text-4xl">
-          Sprint de uma aula
+          Atividade de uma aula
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-bordo-soft">
           Ciclo rápido de ~50 min na agenda: alinhamento → entrega do dia → atividade em campo →
@@ -219,9 +225,9 @@ export default function DailyDashboard() {
                       to={`/dia-a-dia/${aula.id}`}
                       className="btn-primary inline-flex min-h-11 min-w-[5.5rem] items-center justify-center !px-4 !py-2.5 text-sm"
                     >
-                      Abrir
+                      {status === 'em_execucao' ? 'Continuar aula' : 'Abrir'}
                     </Link>
-                    {status !== 'realizado' ? (
+                    {status !== 'realizado' && status !== 'em_execucao' ? (
                       <button
                         type="button"
                         disabled={busyId === aula.id}
