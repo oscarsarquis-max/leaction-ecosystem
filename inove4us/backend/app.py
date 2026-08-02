@@ -46,6 +46,7 @@ from assistente_chat_routes import assistente_chat_bp  # noqa: E402
 from instituicoes_routes import instituicoes_bp  # noqa: E402
 from cursos_disciplinas_routes import cursos_disciplinas_bp  # noqa: E402
 from importacoes_routes import importacoes_bp  # noqa: E402
+from kanban_pei_routes import kanban_pei_bp  # noqa: E402
 
 
 EMAIL_RE = re.compile(
@@ -153,6 +154,8 @@ def create_app() -> Flask:
     app.register_blueprint(instituicoes_bp)
     app.register_blueprint(cursos_disciplinas_bp)
     app.register_blueprint(importacoes_bp)
+    # Adaptação Inclusiva (PEI) — subcards do Kanban via IA
+    app.register_blueprint(kanban_pei_bp)
     # Gatekeeper (lock/unlock/bypass) — mesmo contrato mudaedu/PanelDX
     register_gatekeeper(app)
 
@@ -292,8 +295,22 @@ def create_app() -> Flask:
 
     @app.post("/api/auth/logout")
     def logout():
+        """Encerra a sessão e expira o cookie (evita /auth/me reautenticar)."""
         session.clear()
-        return jsonify({"ok": True})
+        session.modified = True
+        resp = jsonify({"ok": True, "authenticated": False})
+        cookie_name = app.config.get("SESSION_COOKIE_NAME", "inove4us_session")
+        resp.set_cookie(
+            cookie_name,
+            "",
+            expires=0,
+            max_age=0,
+            httponly=True,
+            samesite=app.config.get("SESSION_COOKIE_SAMESITE", "Lax"),
+            secure=bool(app.config.get("SESSION_COOKIE_SECURE")),
+            path="/",
+        )
+        return resp
 
     @app.post("/api/auth/nina-onboarding")
     def nina_onboarding():

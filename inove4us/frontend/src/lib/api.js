@@ -157,6 +157,12 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
+  /** Adaptação Inclusiva (PEI) — gera subcard via IA. */
+  adaptarPei: (payload) =>
+    request('/api/kanban/adaptar-pei', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   updateAgendaEvento: (id, payload) =>
     request(`/api/agenda-eventos/${id}`, {
       method: 'PUT',

@@ -73,8 +73,12 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try {
       await api.logout()
+    } catch {
+      /* sessão pode já ter expirado — segue limpando o cliente */
     } finally {
       setUser(null)
+      // Hard redirect: garante cookie limpo + UI em /acesso (sem race com /auth/me)
+      window.location.assign('/acesso')
     }
   }, [])
 

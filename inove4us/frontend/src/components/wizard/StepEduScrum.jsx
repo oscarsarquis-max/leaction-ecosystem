@@ -6,6 +6,7 @@ import ClassFeedbackModal from '../ClassFeedbackModal'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
 import KanbanMoveModal from './KanbanMoveModal'
+import KanbanPeiMenu, { isPeiSubcard, orderColumnCards } from './KanbanPeiMenu'
 
 const COLUNAS = [
   { id: 'para_fazer', label: 'Para Fazer', tone: 'border-brand-200 bg-brand-50/60' },
@@ -188,6 +189,7 @@ export default function StepEduScrum({
   const [conviteBusy, setConviteBusy] = useState(false)
   const [conviteMsg, setConviteMsg] = useState('')
   const [conviteErro, setConviteErro] = useState('')
+  const [peiBusyId, setPeiBusyId] = useState(null)
 
   useEffect(() => {
     if (!showRegistro) return
@@ -776,6 +778,93 @@ export default function StepEduScrum({
       // Card concluído: aulas já estão no passado (relato) — refresca o grafo
       onAgendaChanged?.()
     }
+  }
+
+  async function handleAdaptarPei(task, perfilSelecionado) {
+    if (!task?.id || !perfilSelecionado || peiBusyId) return
+    if (isPeiSubcard(task)) return
+    const idEvento =
+      Number(task.aula_id) ||
+      aulaIdsDoCard(task)[0] ||
+      (visaoKanban !== 'todas' ? Number(visaoKanban) : null) ||
+      Number(aulaAtivaId) ||
+      null
+    setPeiBusyId(task.id)
+    setAcaoErro('')
+    try {
+      const data = await api.adaptarPei({
+        card_id: String(task.id),
+        titulo_card: task.titulo || task.titulo_do_card || 'Card',
+        descricao_card:
+          task.como_executar_detalhado ||
+          task.mecanica_passo_a_passo ||
+          task.descricao ||
+          task.objetivo ||
+          '',
+        perfil_selecionado: perfilSelecionado,
+        id_evento: idEvento || undefined,
+        desafio_id: desafioIdLocal || undefined,
+      })
+      const kt = data?.kanban_task
+      const sub = data?.subcard
+      const newTask = {
+        id: kt?.id || sub?.card_key,
+        titulo: kt?.titulo || sub?.titulo || `Adaptação PEI: ${task.titulo || ''}`,
+        descricao: kt?.descricao || sub?.descricao || '',
+        como_executar_detalhado: kt?.descricao || sub?.descricao || '',
+        coluna: kt?.coluna || sub?.coluna || task.coluna || 'para_fazer',
+        parent_card_id: kt?.parent_card_id || String(task.id),
+        perfil_inclusao: kt?.perfil_inclusao || perfilSelecionado,
+        cor: kt?.cor || '#FDE68A',
+        historico: [],
+        ultima_observacao: `Adaptação PEI · ${perfilSelecionado}`,
+        aula_id: task.aula_id ?? idEvento,
+        aula_ids: Array.isArray(task.aula_ids) && task.aula_ids.length
+          ? task.aula_ids
+          : idEvento
+            ? [idEvento]
+            : [],
+        pei_concluido: false,
+        db_id: sub?.id,
+      }
+      if (!newTask.id) throw new Error('Subcard PEI sem id')
+      setTasks((prev) => {
+        if (prev.some((t) => String(t.id) === String(newTask.id))) return prev
+        // Subcard nasce na mesma coluna do pai para aparecer aninhado
+        const next = [
+          ...prev,
+          { ...newTask, coluna: task.coluna || 'para_fazer' },
+        ]
+        queueBoardSave(next, { syncPlan: true })
+        return next
+      })
+      if (typeof data?.creditos_ia === 'number') {
+        // saldo atualizado no backend; UI de créditos pode refrescar no hub
+      }
+    } catch (err) {
+      setAcaoErro(err?.message || 'Falha ao gerar adaptação PEI.')
+    } finally {
+      setPeiBusyId(null)
+    }
+  }
+
+  function togglePeiConcluido(task) {
+    if (!isPeiSubcard(task) || !taskEditavel(task)) return
+    const done = Boolean(task.pei_concluido)
+    setTasks((prev) => {
+      const next = prev.map((t) => {
+        if (t.id !== task.id) return t
+        return {
+          ...t,
+          pei_concluido: !done,
+          ultima_observacao: !done
+            ? 'Adaptação PEI concluída'
+            : 'Adaptação PEI reaberta',
+        }
+      })
+      queueBoardSave(next)
+      return next
+    })
   }
 
   function handleAddTask(e) {
@@ -1393,6 +1482,7 @@ export default function StepEduScrum({
             <div className="grid gap-3 md:grid-cols-3">
               {COLUNAS.map((col) => {
                 const cards = tasks.filter((t) => (t.coluna || 'para_fazer') === col.id)
+                const ordered = orderColumnCards(cards)
                 const isTarget = dropTarget === col.id
                 return (
                   <div
@@ -1424,7 +1514,7 @@ export default function StepEduScrum({
                       </span>
                     </div>
                     <ul className="space-y-2">
-                      {cards.map((task) => {
+                      {ordered.map(({ task, depth }) => {
                         const editavel = taskEditavel(task)
                         const hasAula = aulaIdsDoCard(task).length > 0
                         const podeArrastar = editavel && hasAula
@@ -1432,6 +1522,9 @@ export default function StepEduScrum({
                         const escopos = Array.isArray(task.escopos_turma)
                           ? task.escopos_turma.filter((e) => String(e?.nota || '').trim())
                           : []
+                        const pei = isPeiSubcard(task)
+                        const peiDone = Boolean(task.pei_concluido)
+                        const peiLoading = peiBusyId === task.id
                         return (
                         <li
                           key={task.id}
@@ -1454,17 +1547,28 @@ export default function StepEduScrum({
                             setDraggingId(null)
                             setDropTarget(null)
                           }}
-                          className={`rounded-lg border border-black/5 p-3 text-sm font-medium text-bordo-deep shadow-sm print:cursor-default ${
+                          className={[
+                            'rounded-lg border p-3 text-sm font-medium text-bordo-deep shadow-sm print:cursor-default',
+                            pei
+                              ? 'ml-4 border-l-4 border-l-yellow-400 border-amber-200/80 bg-amber-50 sm:ml-6'
+                              : 'border-black/5',
                             podeArrastar
                               ? 'cursor-grab active:cursor-grabbing'
-                              : 'cursor-default'
-                          } ${draggingId === task.id ? 'opacity-50' : ''} ${
-                            task.coluna === 'pronto' ? 'ring-1 ring-emerald-400/70' : ''
-                          }`}
-                          style={{
-                            backgroundColor: task.cor || '#FDE68A',
-                            transform: `rotate(${(String(task.id).charCodeAt(1) % 3) - 1}deg)`,
-                          }}
+                              : 'cursor-default',
+                            draggingId === task.id ? 'opacity-50' : '',
+                            !pei && task.coluna === 'pronto'
+                              ? 'ring-1 ring-emerald-400/70'
+                              : '',
+                            pei && peiDone ? 'opacity-80' : '',
+                          ].join(' ')}
+                          style={
+                            pei
+                              ? undefined
+                              : {
+                                  backgroundColor: task.cor || '#FDE68A',
+                                  transform: `rotate(${(String(task.id).charCodeAt(1) % 3) - 1}deg)`,
+                                }
+                          }
                         >
                           {multiAula && visaoKanban === 'todas' ? (
                             <p className="mb-1.5 inline-block rounded bg-white/75 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-bordo/80">
@@ -1472,11 +1576,61 @@ export default function StepEduScrum({
                             </p>
                           ) : null}
                           <div className="flex items-start justify-between gap-2">
-                            <p className="font-semibold leading-snug">{task.titulo}</p>
-                            <span className="shrink-0 rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-bordo">
-                              {cardMinutes(task)}′
-                            </span>
+                            <div className="flex min-w-0 flex-1 items-start gap-2">
+                              {pei ? (
+                                <label
+                                  className="mt-0.5 flex shrink-0 cursor-pointer items-center"
+                                  title="Concluir adaptação (independente do card pai)"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-amber-400 text-amber-700 focus:ring-amber-400"
+                                    checked={peiDone}
+                                    disabled={!editavel}
+                                    onChange={() => togglePeiConcluido(task)}
+                                  />
+                                  <span className="sr-only">Concluir adaptação PEI</span>
+                                </label>
+                              ) : null}
+                              <div className="min-w-0">
+                                {pei ? (
+                                  <p className="mb-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800">
+                                    PEI · {task.perfil_inclusao || 'Adaptação'}
+                                    {depth > 0 ? ' · subcard' : ''}
+                                  </p>
+                                ) : null}
+                                <p
+                                  className={`font-semibold leading-snug ${
+                                    pei && peiDone ? 'line-through decoration-amber-700/50' : ''
+                                  }`}
+                                >
+                                  {task.titulo}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-start gap-1">
+                              {!pei && !readOnly ? (
+                                <KanbanPeiMenu
+                                  disabled={Boolean(peiBusyId)}
+                                  busy={peiLoading}
+                                  onSelectPerfil={(perfil) =>
+                                    void handleAdaptarPei(task, perfil)
+                                  }
+                                />
+                              ) : null}
+                              {!pei ? (
+                                <span className="rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-bordo">
+                                  {cardMinutes(task)}′
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
+                          {peiLoading ? (
+                            <p className="mt-2 text-[11px] font-semibold text-amber-900">
+                              Carregando adaptação inclusiva…
+                            </p>
+                          ) : null}
                           {escopos.length ? (
                             <ul className="mt-1.5 space-y-1">
                               {escopos.map((esc, i) => (
@@ -1504,7 +1658,7 @@ export default function StepEduScrum({
                               (visão isolada)
                             </p>
                           ) : null}
-                          {task.objetivo ? (
+                          {task.objetivo && !pei ? (
                             <p className="mt-1.5 text-[10px] font-normal leading-snug text-bordo/90">
                               <span className="font-bold">Objetivo: </span>
                               {task.objetivo}
@@ -1514,13 +1668,15 @@ export default function StepEduScrum({
                           || task.mecanica_passo_a_passo
                           || task.descricao ? (
                             <p className="mt-1.5 text-[10px] font-normal leading-snug text-bordo/85">
-                              <span className="font-bold">Como fazer: </span>
+                              <span className="font-bold">
+                                {pei ? 'Adaptação: ' : 'Como fazer: '}
+                              </span>
                               {task.como_executar_detalhado
                                 || task.mecanica_passo_a_passo
                                 || task.descricao}
                             </p>
                           ) : null}
-                          {task.dica_de_facilitacao ? (
+                          {task.dica_de_facilitacao && !pei ? (
                             <p className="mt-1.5 text-[10px] font-normal leading-snug text-bordo/80">
                               <i className="fa-solid fa-lightbulb mr-1 opacity-70" />
                               <span className="font-bold">Dica: </span>
