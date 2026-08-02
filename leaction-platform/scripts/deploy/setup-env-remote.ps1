@@ -140,6 +140,18 @@ if (-not $crmTrackingSecret) {
     Write-Host '[!] CRM_TRACKING_SECRET ausente no .env local - gerado para este deploy (salve no .env local).' -ForegroundColor Yellow
 }
 
+$cmsBucket = Read-DotenvValue $localEnv 'CMS_S3_BUCKET'
+if (-not $cmsBucket) { $cmsBucket = 'paneldx-cms-assets-2026' }
+$cmsPrefix = Read-DotenvValue $localEnv 'CMS_S3_PREFIX'
+if (-not $cmsPrefix) { $cmsPrefix = 'cms' }
+$cmsRegion = Read-DotenvValue $localEnv 'CMS_S3_REGION'
+if (-not $cmsRegion) { $cmsRegion = 'us-east-2' }
+$cmsPublicUrl = Read-DotenvValue $localEnv 'CMS_S3_PUBLIC_URL'
+$awsKey = Read-DotenvValue $localEnv 'AWS_ACCESS_KEY_ID'
+$awsSecret = Read-DotenvValue $localEnv 'AWS_SECRET_ACCESS_KEY'
+if (-not $awsKey) { $awsKey = $env:AWS_ACCESS_KEY_ID }
+if (-not $awsSecret) { $awsSecret = $env:AWS_SECRET_ACCESS_KEY }
+
 $nl = [Environment]::NewLine
 $rootLines = @(
     "DATABASE_URL=$dbUrl",
@@ -162,8 +174,14 @@ $rootLines = @(
     "CRM_TRACKING_SECRET=$crmTrackingSecret",
     'MARKETPLACE_PORT=4012',
     "ML_PUBLIC_BASE_URL=$mlPublicBase",
-    'ML_TOKENS_FILE=/var/lib/leaction-platform/.ml_tokens.json'
+    'ML_TOKENS_FILE=/var/lib/leaction-platform/.ml_tokens.json',
+    "CMS_S3_BUCKET=$cmsBucket",
+    "CMS_S3_PREFIX=$cmsPrefix",
+    "CMS_S3_REGION=$cmsRegion"
 )
+if ($cmsPublicUrl) { $rootLines += "CMS_S3_PUBLIC_URL=$cmsPublicUrl" }
+if ($awsKey) { $rootLines += "AWS_ACCESS_KEY_ID=$awsKey" }
+if ($awsSecret) { $rootLines += "AWS_SECRET_ACCESS_KEY=$awsSecret" }
 if ($mlAppId) { $rootLines += "ML_APP_ID=$mlAppId" }
 if ($mlSecret) { $rootLines += "ML_SECRET_KEY=$mlSecret" }
 $rootEnv = ($rootLines -join $nl)
