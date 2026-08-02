@@ -62,8 +62,10 @@ Scripts locais:
 
 ### CMS (headless + site)
 - Posts: `/api/cms/posts` (público + admin).
-- Site config: `/api/public/cms`, `/api/admin/cms`.
+- Site config: `/api/public/cms`, `/api/admin/cms` (`config_key=default|inove4us`).
 - Upload: `/admin/cms/upload` (S3/local).
+- **Persistência:** Postgres operacional + snapshot S3 `/{prefix}/site/{config_key}.json` quando `CMS_S3_BUCKET` está definido. PUT admin grava DB+S3; no boot o gateway reidrata do S3. Deploy de app **não** apaga o S3.
+- Bootstrap one-shot: `node scripts/push-cms-site-to-s3.js [--key=inove4us]`
 - UI: `/dashboard/cms/*`.
 
 ### CRM (Action-Sponge)

@@ -4,6 +4,13 @@
  * Micro-CMS migrado do PanelDX (ctdi_cms_config → cms_site_config no Hub).
  * APIs: GET /api/public/cms · GET/PUT /api/admin/cms
  * Query/body: config_key=default|inove4us (default = landing PanelDX).
+ *
+ * Persistência:
+ * - Postgres = leitura rápida / operacional
+ * - S3 (CMS_S3_BUCKET) = snapshot durável por config_key
+ *   Em todo PUT admin, grava DB + S3.
+ *   No boot (e se o DB estiver vazio), reidrata do S3.
+ * Deploy de app NÃO deve apagar o S3 — conteúdo de CMS sobrevive.
  */
 
 const { createRequireAdminAuth } = require('../admin/auth');
@@ -16,6 +23,7 @@ const {
   applyBlogPostsToLanding,
   stripBlogColumnsFromLanding,
 } = require('./cms-blog-sync');
+const cmsS3 = require('../lib/cms-s3-storage');
 
 const ALLOWED_CONFIG_KEYS = new Set(['default', 'inove4us']);
 
@@ -37,6 +45,22 @@ async function ensureTable(pool) {
   `);
 }
 
+async function upsertSiteRow(pool, configKey, landing, instructions) {
+  await pool.query(
+    `INSERT INTO cms_site_config (config_key, landing_page_data, instructions_data, updated_at)
+     VALUES ($1, $2::jsonb, $3, CURRENT_TIMESTAMP)
+     ON CONFLICT (config_key) DO UPDATE
+       SET landing_page_data = EXCLUDED.landing_page_data,
+           instructions_data = EXCLUDED.instructions_data,
+           updated_at = CURRENT_TIMESTAMP`,
+    [
+      configKey,
+      JSON.stringify(landing ?? {}),
+      instructions == null ? null : String(instructions),
+    ]
+  );
+}
+
 async function seedConfigIfNeeded(pool, configKey) {
   const existing = await pool.query(
     `SELECT id_cms FROM cms_site_config WHERE config_key = $1 LIMIT 1`,
@@ -52,6 +76,46 @@ async function seedConfigIfNeeded(pool, configKey) {
   );
 }
 
+/**
+ * Se existir snapshot no S3, aplica no Postgres (S3 vence).
+ * @returns {boolean} true se reidratou
+ */
+async function hydrateSiteConfigFromS3(pool, configKey) {
+  if (!cmsS3.isCmsS3Enabled()) return false;
+  try {
+    const snap = await cmsS3.getCmsSiteConfig(configKey);
+    if (!snap) return false;
+    const { landing: defaultLanding } = defaultsForConfigKey(configKey);
+    let landing = normalizeCmsLanding(snap.landing_page_data || {}, defaultLanding);
+    if (configKey === 'default') {
+      landing = stripBlogColumnsFromLanding(landing);
+    }
+    await upsertSiteRow(pool, configKey, landing, snap.instructions_data);
+    console.log(`[cms-site] Reidratado config_key=${configKey} a partir do S3`);
+    return true;
+  } catch (err) {
+    console.warn(`[cms-site] Falha ao ler S3 (${configKey}):`, err.message);
+    return false;
+  }
+}
+
+async function persistSiteConfigToS3(configKey, landing, instructions) {
+  if (!cmsS3.isCmsS3Enabled()) return null;
+  try {
+    const saved = await cmsS3.putCmsSiteConfig(configKey, {
+      landing_page_data: landing,
+      instructions_data: instructions,
+    });
+    console.log(
+      `[cms-site] Snapshot S3 ok config_key=${configKey} key=${saved.objectKey}`
+    );
+    return saved;
+  } catch (err) {
+    console.error(`[cms-site] Falha ao gravar S3 (${configKey}):`, err.message);
+    throw err;
+  }
+}
+
 async function fetchRow(pool, configKey = 'default') {
   await ensureTable(pool);
   await seedConfigIfNeeded(pool, configKey);
@@ -63,6 +127,23 @@ async function fetchRow(pool, configKey = 'default') {
     [configKey]
   );
   return result.rows[0] || null;
+}
+
+/**
+ * No boot: garante tabela + tenta puxar S3 para cada key conhecida.
+ * Assim um deploy/restart não “esquece” o conteúdo de produção.
+ */
+async function hydrateAllSiteConfigsFromS3(pool) {
+  if (!cmsS3.isCmsS3Enabled()) {
+    console.log(
+      '[cms-site] CMS_S3_BUCKET ausente — snapshots de site config desativados (só Postgres).'
+    );
+    return;
+  }
+  await ensureTable(pool);
+  for (const key of ALLOWED_CONFIG_KEYS) {
+    await hydrateSiteConfigFromS3(pool, key);
+  }
 }
 
 /**
@@ -91,7 +172,18 @@ function registerCmsSiteConfigRoutes(app, pool, options = {}) {
       });
     }
     try {
-      const row = await fetchRow(pool, configKey);
+      let row = await fetchRow(pool, configKey);
+      // Se o seed default ainda está “vazio” e há S3, tenta reidratar sob demanda.
+      if (cmsS3.isCmsS3Enabled()) {
+        const landing = row?.landing_page_data;
+        const emptyish =
+          !landing ||
+          (typeof landing === 'object' && Object.keys(landing).length === 0);
+        if (emptyish) {
+          const ok = await hydrateSiteConfigFromS3(pool, configKey);
+          if (ok) row = await fetchRow(pool, configKey);
+        }
+      }
       return res.status(200).json({ success: true, ...(await serializeWithBlog(row, configKey)) });
     } catch (err) {
       console.error('[cms-site] GET /api/public/cms', err.message);
@@ -185,9 +277,32 @@ function registerCmsSiteConfigRoutes(app, pool, options = {}) {
         );
       }
 
+      const savedRow = result.rows[0];
+      // Snapshot durável — falha no S3 não descarta o save no DB, mas avisa.
+      let s3Meta = null;
+      if (cmsS3.isCmsS3Enabled()) {
+        try {
+          s3Meta = await persistSiteConfigToS3(
+            configKey,
+            savedRow.landing_page_data,
+            savedRow.instructions_data
+          );
+        } catch (s3err) {
+          console.error(
+            '[cms-site] Conteúdo salvo no Postgres, mas snapshot S3 falhou:',
+            s3err.message
+          );
+        }
+      }
+
       return res.status(200).json({
         success: true,
-        ...serializeCmsRow(result.rows[0], configKey),
+        ...serializeCmsRow(savedRow, configKey),
+        s3_snapshot: s3Meta
+          ? { ok: true, objectKey: s3Meta.objectKey, updated_at: s3Meta.updated_at }
+          : cmsS3.isCmsS3Enabled()
+            ? { ok: false }
+            : { ok: false, skipped: true },
       });
     } catch (err) {
       console.error('[cms-site] PUT /api/admin/cms', err.message);
@@ -195,8 +310,14 @@ function registerCmsSiteConfigRoutes(app, pool, options = {}) {
     }
   });
 
+  // Boot async — não bloqueia o listen do gateway.
+  void hydrateAllSiteConfigsFromS3(pool).catch((err) => {
+    console.warn('[cms-site] hydrate boot:', err.message);
+  });
+
   console.log(
-    '📰 [cms] Micro-CMS site (/api/public/cms + /api/admin/cms) registrado — keys: default, inove4us'
+    '📰 [cms] Micro-CMS site (/api/public/cms + /api/admin/cms) registrado — keys: default, inove4us' +
+      (cmsS3.isCmsS3Enabled() ? ' · S3 snapshot ON' : ' · S3 snapshot OFF')
   );
 }
 
@@ -206,4 +327,6 @@ module.exports = {
   fetchRow,
   resolveConfigKey,
   ALLOWED_CONFIG_KEYS,
+  hydrateAllSiteConfigsFromS3,
+  persistSiteConfigToS3,
 };
