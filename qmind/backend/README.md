@@ -30,6 +30,17 @@ uvicorn app.main:app --reload --port 8008
 
 `AUTH_MODE=dev` é **proibido** com `ENVIRONMENT=prod` (falha na carga de settings). Em local: headers `X-Dev-User-Sub`, `X-Dev-User-Email`; rotas tenant exigem `X-Organization-Id` validado contra Membership ativa.
 
+## Evidências (ADR-007)
+
+- Adaptador: `STORAGE_BACKEND=memory|s3` (`app/storage/`)
+- Produção: bucket **privado dedicado** em `us-east-2` (`S3_BUCKET`), chaves `org/{organization_id}/evidence/{evidence_id}/v{n}`
+- `authorize` emite URL pré-assinada; `receive` confirma via **HEAD** + hash (não confia no cliente)
+- `ALLOW_SIMULATED_SECURITY_PASS` pode ser `true` fora de prod até existir worker de quarentena; **proibido** com `ENVIRONMENT=prod`
+
+```powershell
+alembic upgrade head   # inclui upload_expires_at
+```
+
 ## Testes
 
 ```powershell
@@ -37,3 +48,5 @@ pytest -q
 # Gate completo DDL:
 .\scripts\gate_phase0.ps1
 ```
+
+Integração S3 real (opcional, desmarcada por padrão): ver `docs/S3_INTEGRATION_TESTS.md`.

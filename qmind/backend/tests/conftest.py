@@ -28,6 +28,17 @@ APP_URL = os.environ.setdefault(
 )
 os.environ.setdefault("AUTH_MODE", "dev")
 os.environ.setdefault("ENVIRONMENT", "local")
+os.environ.setdefault("STORAGE_BACKEND", "memory")
+os.environ.setdefault("ALLOW_SIMULATED_SECURITY_PASS", "true")
+
+
+@pytest.fixture(autouse=True)
+def _reset_memory_storage():
+    from app.storage.memory import InMemoryObjectStorage
+
+    InMemoryObjectStorage.reset()
+    yield
+    InMemoryObjectStorage.reset()
 
 
 @pytest.fixture(scope="session")

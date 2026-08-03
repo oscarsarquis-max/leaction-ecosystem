@@ -10,16 +10,20 @@ from pydantic import BaseModel, Field
 class AuthorizeUploadIn(BaseModel):
     assessment_id: UUID
     classification: Literal["public", "internal", "confidential", "restricted"] = "confidential"
-    content_type: str = Field(default="application/octet-stream", max_length=200)
-    declared_byte_size: int | None = Field(default=None, ge=1, le=100_000_000)
+    content_type: str = Field(..., max_length=200)
+    declared_byte_size: int = Field(..., ge=1, le=100_000_000)
 
 
-class ReceiveUploadIn(BaseModel):
-    """Simulates binary receipt before real S3 integration."""
+class AuthorizeUploadOut(BaseModel):
+    evidence: "EvidenceOut"
+    upload: "PresignedUploadOut"
 
-    content_hash: str = Field(min_length=8, max_length=128)
-    content_type: str = Field(default="application/octet-stream", max_length=200)
-    byte_size: int = Field(ge=1, le=100_000_000)
+
+class PresignedUploadOut(BaseModel):
+    url: str
+    method: str
+    headers: dict[str, str]
+    expires_in_seconds: int
 
 
 class EvidenceOut(BaseModel):
@@ -34,6 +38,7 @@ class EvidenceOut(BaseModel):
     storage_key: str | None
     version_no: int
     legal_hold: bool
+    upload_expires_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -43,3 +48,12 @@ class EvidenceTransitionResult(BaseModel):
     from_status: str
     to_status: str
     event: str
+
+
+class DownloadUrlOut(BaseModel):
+    url: str
+    expires_in_seconds: int
+
+
+class CleanupResult(BaseModel):
+    disposed_count: int

@@ -72,6 +72,36 @@ def test_dev_auth_forbidden_when_environment_prod():
         )
 
 
+def test_prod_forbids_simulated_security_pass_and_memory_storage():
+    import os
+
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    base = dict(
+        environment="prod",
+        auth_mode="cognito",
+        cognito_user_pool_id="pool",
+        cognito_app_client_id="client",
+        database_url_admin=os.environ["DATABASE_URL_ADMIN"],
+        database_url_app=os.environ["DATABASE_URL_APP"],
+        storage_backend="s3",
+        s3_bucket="qmind-evidences-example",
+        allow_simulated_security_pass=True,
+    )
+    with pytest.raises(ValidationError):
+        Settings(**base)
+    with pytest.raises(ValidationError):
+        Settings(
+            **{
+                **base,
+                "allow_simulated_security_pass": False,
+                "storage_backend": "memory",
+            }
+        )
+
+
 def test_foreign_org_context_forbidden(client: TestClient):
     sub = f"dev-{uuid.uuid4()}"
     headers = {"X-Dev-User-Sub": sub, "X-Dev-User-Email": f"{sub}@example.com"}

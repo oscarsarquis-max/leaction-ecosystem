@@ -403,6 +403,7 @@ CREATE TABLE evidences (
   legal_hold_at timestamptz,
   legal_hold_by uuid,
   uploaded_by uuid,
+  upload_expires_at timestamptz,
   disposed_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
