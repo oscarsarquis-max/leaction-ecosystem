@@ -27,5 +27,6 @@ Workspace documental do QMind, plataforma inteligente de apoio à consultoria, a
 - Emenda implementação: `04_Docs/007_Domain_Docs_Amendment_001.md` (Alembic, porta 5433).
 - **DDL v0 + Alembic:** `03_Database/003_DDL_v0.md` → `qmind/backend/` (database `qmind` no cluster `leaction_db`).
 - **Gate Fase 0:** `04_Docs/008_Phase0_Technical_Gate.md` — veredito **APROVADO**.
-- **API foundation:** FastAPI em `qmind/backend/app/` — health, Cognito/dev auth, Organization/Membership.
+- **Gate MVP E2E:** `04_Docs/009_MVP_End_to_End_Gate.md` — veredito **APROVADO** (domínio completo + isolamento 2 orgs).
+- **API foundation:** FastAPI em `qmind/backend/app/` — health, Cognito/dev auth, Organization/Membership; módulos Evidence→Report.
 
