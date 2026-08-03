@@ -10,6 +10,8 @@ from app.modules.assessments.schemas import (
     AssessmentCreate,
     AssessmentOut,
     AssessmentTransitionResult,
+    CloseIn,
+    ReopenIn,
     ScopeItemIn,
     ScopeOut,
     TeamMemberIn,
@@ -96,3 +98,28 @@ def begin_analysis(assessment_id: UUID, ctx: OrgContextDep) -> AssessmentTransit
 @router.post("/{assessment_id}/transitions/open_actions", response_model=AssessmentTransitionResult)
 def open_actions(assessment_id: UUID, ctx: OrgContextDep) -> AssessmentTransitionResult:
     return service.transition_open_actions(ctx, assessment_id)
+
+
+@router.post("/{assessment_id}/transitions/begin_report", response_model=AssessmentTransitionResult)
+def begin_report(assessment_id: UUID, ctx: OrgContextDep) -> AssessmentTransitionResult:
+    return service.transition_begin_report(ctx, assessment_id)
+
+
+@router.post("/{assessment_id}/transitions/close", response_model=AssessmentTransitionResult)
+def close_assessment(
+    assessment_id: UUID,
+    ctx: OrgContextDep,
+    payload: CloseIn | None = None,
+) -> AssessmentTransitionResult:
+    return service.transition_close(
+        ctx,
+        assessment_id,
+        waiver_reason=payload.waiver_reason if payload else None,
+    )
+
+
+@router.post("/{assessment_id}/transitions/reopen", response_model=AssessmentTransitionResult)
+def reopen_assessment(
+    assessment_id: UUID, payload: ReopenIn, ctx: OrgContextDep
+) -> AssessmentTransitionResult:
+    return service.transition_reopen(ctx, assessment_id, payload.reason)

@@ -47,6 +47,14 @@ class AssessmentTransitionResult(BaseModel):
     event: str
 
 
+class CloseIn(BaseModel):
+    waiver_reason: str | None = Field(default=None, max_length=2000)
+
+
+class ReopenIn(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=2000)
+
+
 # Backward-compatible alias used by earlier tests/imports
 AssessmentPlanResult = AssessmentTransitionResult
 

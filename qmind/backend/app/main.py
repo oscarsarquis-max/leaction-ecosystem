@@ -15,6 +15,7 @@ from app.modules.evidence.router import router as evidence_router
 from app.modules.findings.router import router as findings_router
 from app.modules.maturity.router import router as maturity_router
 from app.modules.orgs.router import router as orgs_router
+from app.modules.reports.router import router as reports_router
 
 
 @asynccontextmanager
@@ -41,6 +42,7 @@ app.include_router(evidence_router, prefix=settings.api_prefix)
 app.include_router(findings_router, prefix=settings.api_prefix)
 app.include_router(actions_router, prefix=settings.api_prefix)
 app.include_router(maturity_router, prefix=settings.api_prefix)
+app.include_router(reports_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

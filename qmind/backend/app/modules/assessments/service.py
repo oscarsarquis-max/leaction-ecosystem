@@ -475,6 +475,9 @@ def _set_status(
     event: str,
     *,
     set_started: bool = False,
+    set_closed: bool = False,
+    close_waiver_reason: str | None = None,
+    audit_metadata: dict | None = None,
 ) -> AssessmentOut:
     sql = """
         UPDATE assessments
@@ -482,22 +485,26 @@ def _set_status(
     """
     if set_started:
         sql += ", started_at = COALESCE(started_at, now())"
+    if set_closed:
+        sql += ", closed_at = COALESCE(closed_at, now())"
+    if close_waiver_reason is not None:
+        sql += ", close_waiver_reason = :waiver"
     sql += """
         WHERE id = :id AND organization_id = :org AND status = :from_s
         RETURNING id, organization_id, assessment_model_id, standard_version_id,
                   maturity_model_id, type, status, lead_membership_id, started_at,
                   created_at, updated_at
     """
-    updated = conn.execute(
-        text(sql),
-        {
-            "to_s": to_status,
-            "user": ctx.principal.user_id,
-            "id": assessment_id,
-            "org": ctx.organization_id,
-            "from_s": from_status,
-        },
-    ).first()
+    params = {
+        "to_s": to_status,
+        "user": ctx.principal.user_id,
+        "id": assessment_id,
+        "org": ctx.organization_id,
+        "from_s": from_status,
+    }
+    if close_waiver_reason is not None:
+        params["waiver"] = close_waiver_reason
+    updated = conn.execute(text(sql), params).first()
     if updated is None:
         raise AppError("invalid_transition", "Transition race or invalid state", status_code=409)
     write_audit(
@@ -511,6 +518,7 @@ def _set_status(
         resource_id=assessment_id,
         from_status=from_status,
         to_status=to_status,
+        metadata=audit_metadata or {},
     )
     return _row_to_out(updated)
 
@@ -694,4 +702,175 @@ def transition_open_actions(ctx: OrgContext, assessment_id: UUID) -> AssessmentT
         conn.commit()
     return AssessmentTransitionResult(
         assessment=updated, from_status="analysis", to_status="actions", event="open_actions"
+    )
+
+
+def transition_begin_report(ctx: OrgContext, assessment_id: UUID) -> AssessmentTransitionResult:
+    require_role(ctx, *_MUTATE_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = _lock_assessment(conn, ctx.organization_id, assessment_id)
+        if row.status != "actions":
+            raise AppError(
+                "invalid_transition",
+                f"begin_report requires actions (current={row.status})",
+                status_code=409,
+            )
+        plans = conn.execute(
+            text(
+                """
+                SELECT count(*) FROM action_plans
+                WHERE assessment_id = :id AND organization_id = :org
+                  AND status IN ('draft', 'active', 'completed', 'cancelled')
+                """
+            ),
+            {"id": assessment_id, "org": ctx.organization_id},
+        ).scalar_one()
+        if plans < 1:
+            raise AppError(
+                "begin_report_guard",
+                "Requires an ActionPlan (or empty plan with rationale) before report",
+                status_code=422,
+            )
+        updated = _set_status(conn, ctx, assessment_id, "actions", "report", "begin_report")
+        conn.commit()
+    return AssessmentTransitionResult(
+        assessment=updated, from_status="actions", to_status="report", event="begin_report"
+    )
+
+
+def transition_close(
+    ctx: OrgContext,
+    assessment_id: UUID,
+    *,
+    waiver_reason: str | None = None,
+) -> AssessmentTransitionResult:
+    require_role(ctx, *_CANCEL_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = _lock_assessment(conn, ctx.organization_id, assessment_id)
+        if row.status != "report":
+            raise AppError(
+                "invalid_transition",
+                f"close requires report (current={row.status})",
+                status_code=409,
+            )
+        published = conn.execute(
+            text(
+                """
+                SELECT count(*) FROM reports
+                WHERE assessment_id = :id AND organization_id = :org
+                  AND status = 'published'
+                """
+            ),
+            {"id": assessment_id, "org": ctx.organization_id},
+        ).scalar_one()
+        waiver = (waiver_reason or "").strip() or None
+        if published < 1:
+            # Formal waiver path: non-empty reason + QM/admin only
+            if not set(ctx.roles).intersection(("org_admin", "quality_manager")):
+                raise AppError(
+                    "forbidden",
+                    "close without published Report requires org_admin or quality_manager",
+                    status_code=403,
+                )
+            if not waiver:
+                raise AppError(
+                    "close_waiver_required",
+                    "close_waiver_reason is required and must be non-empty "
+                    "when no published Report exists",
+                    status_code=422,
+                )
+        updated = _set_status(
+            conn,
+            ctx,
+            assessment_id,
+            "report",
+            "closed",
+            "close",
+            set_closed=True,
+            close_waiver_reason=waiver,
+            audit_metadata={
+                "published_reports": int(published),
+                "waiver": bool(waiver),
+                "close_waiver_reason": waiver,
+            },
+        )
+        conn.commit()
+    return AssessmentTransitionResult(
+        assessment=updated, from_status="report", to_status="closed", event="close"
+    )
+
+
+def transition_reopen(ctx: OrgContext, assessment_id: UUID, reason: str) -> AssessmentTransitionResult:
+    require_role(ctx, "org_admin", "quality_manager")
+    reason = reason.strip()
+    if not reason:
+        raise AppError("reason_required", "reopen requires reason", status_code=422)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = _lock_assessment(conn, ctx.organization_id, assessment_id)
+        if row.status != "closed":
+            raise AppError(
+                "invalid_transition",
+                f"reopen requires closed (current={row.status})",
+                status_code=409,
+            )
+        updated = conn.execute(
+            text(
+                """
+                UPDATE assessments
+                SET status = 'report',
+                    closed_at = NULL,
+                    updated_at = now(),
+                    updated_by = :user
+                WHERE id = :id AND organization_id = :org AND status = 'closed'
+                RETURNING id, organization_id, assessment_model_id, standard_version_id,
+                          maturity_model_id, type, status, lead_membership_id, started_at,
+                          created_at, updated_at
+                """
+            ),
+            {
+                "user": ctx.principal.user_id,
+                "id": assessment_id,
+                "org": ctx.organization_id,
+            },
+        ).first()
+        if updated is None:
+            raise AppError("conflict", "Concurrent status change", status_code=409)
+        published_ids = [
+            str(r.id)
+            for r in conn.execute(
+                text(
+                    """
+                    SELECT id FROM reports
+                    WHERE assessment_id = :aid AND organization_id = :org
+                      AND status IN ('published', 'archived', 'superseded')
+                    ORDER BY version_no
+                    """
+                ),
+                {"aid": assessment_id, "org": ctx.organization_id},
+            ).all()
+        ]
+        write_audit(
+            conn,
+            organization_id=ctx.organization_id,
+            actor_type="user",
+            actor_user_id=ctx.principal.user_id,
+            actor_membership_id=ctx.membership_id,
+            action="assessment.reopen",
+            resource_type="assessment",
+            resource_id=assessment_id,
+            from_status="closed",
+            to_status="report",
+            metadata={
+                "reason": reason,
+                "reinforced": True,
+                "preserved_report_ids": published_ids,
+                "note": "Published/archived/superseded reports remain immutable",
+            },
+        )
+        conn.commit()
+    return AssessmentTransitionResult(
+        assessment=_row_to_out(updated),
+        from_status="closed",
+        to_status="report",
+        event="reopen",
     )
