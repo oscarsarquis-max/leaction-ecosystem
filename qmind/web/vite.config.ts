@@ -29,5 +29,9 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     globals: false,
+    // Cap parallelism: unrestricted forks OOMs on Windows / CI runners.
+    pool: "threads",
+    maxWorkers: 2,
+    fileParallelism: true,
   },
 });

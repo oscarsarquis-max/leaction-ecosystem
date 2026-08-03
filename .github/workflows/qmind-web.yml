@@ -1,0 +1,36 @@
+name: qmind-web
+
+on:
+  push:
+    paths:
+      - "qmind/web/**"
+      - "qmind/packages/api-client/**"
+      - "qmind/package.json"
+      - "qmind/package-lock.json"
+      - ".github/workflows/qmind-web.yml"
+  pull_request:
+    paths:
+      - "qmind/web/**"
+      - "qmind/packages/api-client/**"
+      - "qmind/package.json"
+      - "qmind/package-lock.json"
+      - ".github/workflows/qmind-web.yml"
+
+jobs:
+  web-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: qmind
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: qmind/package-lock.json
+      - name: Install JS workspaces
+        run: npm ci
+      - name: Web unit/UI tests (capped workers)
+        working-directory: qmind/web
+        run: npm test

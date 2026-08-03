@@ -222,9 +222,17 @@ describe("findings analysis UI", () => {
     expect(screen.getByTestId("finding-sod-banner").textContent).toMatch(/SoD/i);
   });
 
+  /**
+   * Conflict/stale transition contract (409/422):
+   * 1) UI shows ApiErrorBanner with correlation_id (finding-transition-error)
+   * 2) hook invalidates org-scoped findings query
+   * 3) list resource is refetched (GET /findings increases after submit)
+   * Do not assert only on banner timing — gate on submit POST + refetch counters.
+   */
   it("surfaces correlation_id on transition conflict and reloads list", async () => {
     const user = userEvent.setup();
     let listCalls = 0;
+    let submitCalls = 0;
     const finding = {
       id: FID,
       organization_id: ORG,
@@ -283,7 +291,11 @@ describe("findings analysis UI", () => {
           listCalls += 1;
           return json([finding]);
         }
-        if (url.includes("/transitions/submit") && method === "POST") {
+        if (
+          url.includes(`/findings/${FID}/transitions/submit`) &&
+          method === "POST"
+        ) {
+          submitCalls += 1;
           return json(
             {
               code: "evidence_base_required",
@@ -332,11 +344,18 @@ describe("findings analysis UI", () => {
     );
 
     await waitFor(() => expect(screen.getByTestId(`finding-select-${FID}`)).toBeInTheDocument());
-    const before = listCalls;
     await user.click(screen.getByTestId(`finding-select-${FID}`));
-    await user.click(screen.getByTestId("finding-submit"));
-    await waitFor(() => expect(screen.getByTestId("api-error")).toBeInTheDocument());
-    expect(screen.getByTestId("api-error").textContent).toMatch(/corr-conflict-9/);
-    await waitFor(() => expect(listCalls).toBeGreaterThan(before));
+    const submitBtn = await screen.findByTestId("finding-submit");
+    const listCallsBeforeSubmit = listCalls;
+
+    await user.click(submitBtn);
+
+    await waitFor(() => expect(submitCalls).toBe(1));
+    const transitionError = await screen.findByTestId("finding-transition-error");
+    expect(transitionError).toBeInTheDocument();
+    expect(screen.getByTestId("api-error-correlation")).toHaveTextContent("corr-conflict-9");
+    expect(screen.getByTestId("api-error-code")).toHaveTextContent("evidence_base_required");
+
+    await waitFor(() => expect(listCalls).toBeGreaterThan(listCallsBeforeSubmit));
   });
 });

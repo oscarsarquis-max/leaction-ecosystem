@@ -605,7 +605,7 @@ function FindingEditor({
           ) : null}
 
           {transition.isError ? (
-            <div className="mt-2">
+            <div className="mt-2" data-testid="finding-transition-error">
               <ApiErrorBanner title="Falha na transição" error={transition.error} />
             </div>
           ) : null}

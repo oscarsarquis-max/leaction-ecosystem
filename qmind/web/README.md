@@ -11,6 +11,18 @@ npm run test:web
 npm run build:web
 ```
 
+Vitest is constrained to `--pool=threads --maxWorkers=2` (also in `vite.config.ts`) to avoid worker OOM on Windows/CI. Prefer `npm test` / `npm run test:web` over bare `vitest run`.
+
+### Findings conflict / stale transition contract
+
+On finding transition `409`/`422`, the UI must:
+
+1. Show `ApiErrorBanner` under `finding-transition-error` with `correlation_id`
+2. Invalidate the org-scoped findings React Query cache
+3. Refetch the findings list (resource reload)
+
+Covered by `src/pages/findingsAnalysis.test.tsx` (assert submit POST + correlation + list refetch — not banner timing alone).
+
 ## Environment
 
 Copy `.env.example` → `.env.local`.
