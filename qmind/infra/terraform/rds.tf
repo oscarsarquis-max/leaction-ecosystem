@@ -10,15 +10,18 @@ resource "aws_db_subnet_group" "main" {
 
 resource "aws_security_group" "rds" {
   name        = "${var.name_prefix}-rds"
-  description = "QMind RDS — only private app access"
+  description = "QMind RDS — ingress only from ECS tasks (see security.tf)"
   vpc_id      = var.vpc_id
 
-  # Ingress from app SG will be attached when ECS module lands.
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.name_prefix}-rds"
   }
 }
 

@@ -1,19 +1,48 @@
-aws_region   = "us-east-2"
-environment  = "homolog"
-name_prefix  = "qmind-homolog"
+# Copie para terraform.tfvars (gitignored). NÃO coloque secrets aqui —
+# apenas ARNs, IDs de rede e valores não sensíveis.
+
+aws_region  = "us-east-2"
+environment = "homolog"
+name_prefix = "qmind-homolog"
 
 vpc_id             = "vpc-xxxxxxxx"
-private_subnet_ids = ["subnet-aaaa", "subnet-bbbb"]
-public_subnet_ids  = ["subnet-cccc", "subnet-dddd"]
+private_subnet_ids = ["subnet-priv-a", "subnet-priv-b"]
+public_subnet_ids  = ["subnet-pub-a", "subnet-pub-b"]
+
+domain_name = "api.homolog.example.com"
+# Preferir certificado já validado na mesma região do ALB:
+certificate_arn = "arn:aws:acm:us-east-2:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# certificate_sans = ["www.homolog.example.com"]  # só se certificate_arn == ""
+
+cors_origins = "https://app.homolog.example.com"
+
+cognito_callback_urls = [
+  "https://app.homolog.example.com/auth/callback"
+]
+cognito_logout_urls = [
+  "https://app.homolog.example.com/"
+]
+
+# Imagem: tag imutável (baseline ou sha). URI completa opcional.
+api_image_tag = "mvp-fullstack-v0"
+# api_container_image = "123456789012.dkr.ecr.us-east-2.amazonaws.com/qmind-homolog-api:mvp-fullstack-v0"
+
+container_port = 8008
+cpu            = 512
+memory         = 1024
+desired_count  = 1
+min_capacity   = 1
+max_capacity   = 2
+
+alb_health_check_path     = "/health"
+container_readiness_path  = "/ready"
+log_retention_days        = 30
+alb_deletion_protection   = false
+enable_ecs_exec           = false
 
 db_instance_class    = "db.t4g.micro"
 db_allocated_storage = 20
 db_name              = "qmind"
 db_master_username   = "qmind_admin"
 
-cognito_callback_urls = [
-  "https://homolog.example.com/auth/callback"
-]
-cognito_logout_urls = [
-  "https://homolog.example.com/"
-]
+# alarm_sns_topic_arn = "arn:aws:sns:us-east-2:123456789012:ops-alerts"

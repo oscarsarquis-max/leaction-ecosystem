@@ -26,16 +26,16 @@
 |---|---|---|---|
 | H1 | Conta/ambiente isolado de produção | Conta ou prefixo `qmind-homolog`; tags `Project=qmind` `Environment=homolog` | PENDENTE |
 | H2 | Rede (VPC, subnets públicas/privadas, NAT) | Diagrama + IDs no Terraform/`DEPLOY.md` | PENDENTE |
-| H3 | ECR + imagens API/web/worker | Repositórios + push imutável por tag git | PENDENTE |
-| H4 | ECS Fargate + ALB (HTTPS/ACM) | Serviço estável, health `/health` `/ready` | PENDENTE |
-| H5 | RDS PostgreSQL dedicado | Instância privada; SG só tasks; backup automático | PENDENTE |
-| H6 | Bucket S3 privado (evidências) | Block Public Access; KMS opcional; chaves `org/.../evidence/...` | PENDENTE |
-| H7 | Cognito User Pool + App Client | OIDC; MFA admin; callbacks do domínio homolog | PENDENTE |
-| H8 | Secrets Manager | `DATABASE_URL_ADMIN`, `DATABASE_URL_APP`, Cognito, S3 — sem plain text em task def | PENDENTE |
-| H9 | Logs (CloudWatch) | Log groups API/worker/ALB access; `correlation_id` | PENDENTE |
-| H10 | Métricas e alarmes | 5xx ALB, CPU/mem ECS, conexões RDS, idade de jobs falhos | PENDENTE |
+| H3 | ECR + imagens API/web/worker | Repositórios Terraform + push imutável por tag git | PASS (repo TF); push imagem PENDENTE |
+| H4 | ECS Fargate + ALB (HTTPS/ACM) | Módulo TF: privados + TG `ip` + HTTPS + circuit breaker; apply/health PENDENTE | PASS (módulo TF); runtime PENDENTE |
+| H5 | RDS PostgreSQL dedicado | Módulo TF privado + backup 7d; apply PENDENTE | PASS (módulo TF); runtime PENDENTE |
+| H6 | Bucket S3 privado (evidências) | Módulo TF Block Public Access + versioning; apply PENDENTE | PASS (módulo TF); runtime PENDENTE |
+| H7 | Cognito User Pool + App Client | Módulo TF OIDC + MFA opcional; apply PENDENTE | PASS (módulo TF); runtime PENDENTE |
+| H8 | Secrets Manager | Secret JSON via TF; task injeta só `DATABASE_URL_APP`; tfvars sem secrets | PASS (módulo TF); rotação `qmind_app` PENDENTE |
+| H9 | Logs (CloudWatch) | Log groups API/worker retenção configurável | PASS (módulo TF); apply PENDENTE |
+| H10 | Métricas e alarmes | Alarmes ALB 5xx/unhealthy/latência, ECS tasks/CPU/mem, RDS CPU/storage/conn → SNS | PASS (módulo TF); apply PENDENTE |
 
-Scaffold inicial: `../../infra/` (Terraform ECR/Cognito/S3/RDS/Secrets + `DEPLOY.md`) — **ainda sem `terraform apply` na conta**. ECS/ALB/alarmas = próximo incremento.
+Scaffold Terraform: `../../infra/` — ECR, Cognito, S3, RDS, Secrets, **ECS Fargate + ALB HTTPS + ACM + autoscaling + alarmes** (`DEPLOY.md`). **Ainda sem `terraform apply`**. Próximo: `tfvars` local → `fmt`/`validate`/tfsec → `plan` completo → custo → apply por etapas.
 
 ## 3. Checklist — migrações e seeds (identidade separada)
 

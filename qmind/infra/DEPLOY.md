@@ -47,17 +47,57 @@ terraform plan -out=homolog.tfplan
 terraform apply homolog.tfplan
 ```
 
-Módulos previstos (scaffold inicial):
+Módulos neste scaffold:
 
-- ECR
+- ECR (api / web / worker)
 - Cognito User Pool + client
-- S3 evidências (privado)
-- Secrets (placeholders / random)
-- RDS PostgreSQL
-- Security groups
-- (próximo incremento) ALB + ECS + CloudWatch alarms
+- S3 evidências (privado, versionado)
+- Secrets Manager (ARN nos outputs; valores não vão para tfvars)
+- RDS PostgreSQL + SG
+- Security groups: ALB → ECS → RDS
+- ACM (ARN existente em `us-east-2` **ou** certificado DNS criado pelo Terraform)
+- ALB público: HTTP→HTTPS, TG `target_type=ip`, health `/health`
+- ECS Fargate em subnets privadas (`awsvpc`), circuit breaker + rollback
+- Task **execution** role (ECR/logs/secrets) ≠ task role (S3 evidências)
+- CloudWatch Logs (retenção configurável)
+- Autoscaling conservador (default min 1 / max 2)
+- Alarmes ALB/ECS/RDS → SNS
 
 State remoto: configurar backend S3 após o primeiro bucket de state do ecossistema (não commitar `*.tfstate`).
+
+## Antes do primeiro apply (obrigatório)
+
+```powershell
+cd C:\Projetos\qmind\infra\terraform
+copy terraform.tfvars.example terraform.tfvars
+# edite apenas IDs/ARNs/não-sensíveis
+
+terraform fmt -recursive
+terraform init
+terraform validate
+# análise de segurança (escolha uma):
+#   docker run --rm -v ${PWD}:/tf aquasec/tfsec /tf
+#   docker run --rm -v ${PWD}:/tf bridgecrew/checkov -d /tf
+
+terraform plan -out=homolog.tfplan
+# revisar plano + estimar custo (AWS Pricing / Infracost)
+```
+
+### Apply por etapas (persistentes primeiro)
+
+1. `terraform apply -target=...` ECR, S3, Cognito, Secrets, RDS (dados)
+2. Validar ACM (DNS) se criado pelo Terraform
+3. Push imagem `api_image_tag` para ECR
+4. Apply ALB + ECS + autoscaling + alarms
+5. DNS alias → `alb_dns_name` / `alb_zone_id`
+6. Migrar/seed com admin; rotacionar `DATABASE_URL_APP` no secret
+7. Validar itens no gate `011_Homologation_Readiness_Gate.md`
+
+### Rollback de deployment
+
+- Circuit breaker ECS com `rollback = true` em falha de health.
+- Redeploy tag anterior (ex. `mvp-fullstack-v0`) via nova task definition / `force-new-deployment`.
+- Ver output `rollback_hints`.
 
 ## Migração e seed (admin)
 
