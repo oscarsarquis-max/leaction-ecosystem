@@ -29,3 +29,15 @@ pytest -q tests/test_openapi_contract.py
 - Idempotency: `Idempotency-Key` on create/command ops
 - Paths: `/api/v1/**` plus `/health` and `/ready` only
 - Examples are synthetic — never real customer data
+
+## TypeScript client
+
+Generated package: `qmind/packages/api-client` (`@qmind/api-client`).
+
+```powershell
+cd C:\Projetos\qmind
+npm run generate:api-client
+npm run check:api-client
+```
+
+Do not hand-edit `packages/api-client/src/generated/**`.

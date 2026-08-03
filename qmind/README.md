@@ -6,7 +6,10 @@ Plataforma inteligente de apoio à consultoria, auditoria e gestão de sistemas 
 
 Toda a documentação técnica canônica está em [`architecture/`](./architecture/).
 
-Freeze de domínio: tag git **`domain-docs-v0`**.
+Freeze de domínio: tag git **`domain-docs-v0`**.  
+Backend MVP: **`mvp-backend-v0`**. OpenAPI: **`openapi-v1-initial`**.
+
+Cliente TypeScript gerado: [`packages/api-client`](./packages/api-client) — `npm run generate:api-client`.
 
 Comece por:
 

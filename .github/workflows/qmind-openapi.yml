@@ -4,14 +4,22 @@ on:
   push:
     paths:
       - "qmind/backend/**"
+      - "qmind/packages/api-client/**"
+      - "qmind/package.json"
+      - "qmind/package-lock.json"
+      - "qmind/scripts/generate-api-client.ps1"
       - ".github/workflows/qmind-openapi.yml"
   pull_request:
     paths:
       - "qmind/backend/**"
+      - "qmind/packages/api-client/**"
+      - "qmind/package.json"
+      - "qmind/package-lock.json"
+      - "qmind/scripts/generate-api-client.ps1"
       - ".github/workflows/qmind-openapi.yml"
 
 jobs:
-  contract:
+  openapi-contract:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,7 +29,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install -U pip
           pip install -r requirements.txt
@@ -36,5 +44,23 @@ jobs:
           ALLOW_SIMULATED_SECURITY_PASS: "true"
         run: |
           python scripts/check_openapi_drift.py
-          # Contract unit tests that do not require a live DB for schema generation
           pytest -q tests/test_openapi_contract.py -k "not error_body_runtime"
+
+  api-client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: qmind
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: qmind/package-lock.json
+      - name: Install JS workspaces
+        run: npm ci
+      - name: Generated client drift
+        run: npm run check:api-client
+      - name: Client unit tests
+        run: npm run test:api-client

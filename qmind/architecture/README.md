@@ -30,5 +30,6 @@ Workspace documental do QMind, plataforma inteligente de apoio à consultoria, a
 - **Gate MVP E2E:** `04_Docs/009_MVP_End_to_End_Gate.md` — veredito **APROVADO** (domínio completo + isolamento 2 orgs).
 - **Tag backend:** `mvp-backend-v0`
 - **OpenAPI:** `../backend/openapi/openapi.json` — contrato versionado; freeze `openapi-v1-initial`
+- **Cliente TS:** `../packages/api-client` (`@qmind/api-client`) — gerado do OpenAPI; `npm run generate:api-client`
 - **API foundation:** FastAPI em `qmind/backend/app/` — health, Cognito/dev auth, Organization/Membership; módulos Evidence→Report.
 

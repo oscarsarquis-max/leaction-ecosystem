@@ -1,0 +1,16 @@
+{
+  "name": "qmind",
+  "private": true,
+  "description": "QMind monorepo workspace (backend OpenAPI → generated TS client → web)",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "generate:api-client": "npm run generate -w @qmind/api-client",
+    "check:api-client": "npm run check:drift -w @qmind/api-client",
+    "test:api-client": "npm run test -w @qmind/api-client"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

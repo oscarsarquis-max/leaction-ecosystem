@@ -1,0 +1,8 @@
+node_modules/
+**/dist/
+**/.tmp-generated/
+*.log
+openapi-ts-error-*.log
+.env
+.env.*
+!.env.example
