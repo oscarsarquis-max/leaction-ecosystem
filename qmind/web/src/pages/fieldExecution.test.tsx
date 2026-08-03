@@ -66,7 +66,13 @@ describe("field execution UI", () => {
       if (url.includes(`/assessments/${AID}/questions`)) return json([]);
       if (url.includes(`/assessments/${AID}/interviews`)) return json([]);
       if (url.includes(`/assessments/${AID}/evidences`)) return json([]);
-      if (url.includes("/maturity-assessments") || url.includes("/findings")) return json([]);
+      if (
+        url.includes("/maturity-assessments") ||
+        url.includes("/findings") ||
+        url.includes("/action-plans")
+      ) {
+        return json([]);
+      }
       if (url.includes(`/assessments/${AID}/transitions/start`) && method === "POST") {
         status = "in_progress";
         return json({

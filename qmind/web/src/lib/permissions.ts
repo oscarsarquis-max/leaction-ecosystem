@@ -161,3 +161,56 @@ export function maturityEvidenceHint(level: number | null | undefined): string |
   }
   return null;
 }
+
+const ACTION_PLAN_ROLES = FINDING_CREATE_ROLES;
+const ACTION_VALIDATE_ROLES = new Set(["org_admin", "quality_manager", "process_owner"]);
+const ACTION_EFFICACY_ROLES = new Set(["org_admin", "quality_manager"]);
+
+export function canWorkActionPlansOnAssessment(status: string | undefined): boolean {
+  return status === "analysis" || status === "actions" || status === "report";
+}
+
+export function canManageActionPlans(
+  roles: readonly string[] | undefined,
+  assessmentStatus: string | undefined,
+): boolean {
+  return (
+    (roles ?? []).some((r) => ACTION_PLAN_ROLES.has(r)) &&
+    (assessmentStatus === "analysis" || assessmentStatus === "actions")
+  );
+}
+
+export function canValidateActionItems(roles: readonly string[] | undefined): boolean {
+  return (roles ?? []).some((r) => ACTION_VALIDATE_ROLES.has(r));
+}
+
+export function canConfirmActionEfficacy(roles: readonly string[] | undefined): boolean {
+  return (roles ?? []).some((r) => ACTION_EFFICACY_ROLES.has(r));
+}
+
+/** SoD: validator/confirmer must differ from item owner. */
+export function canActAsActionValidator(
+  roles: readonly string[] | undefined,
+  currentMembershipId: string | null | undefined,
+  ownerMembershipId: string | null | undefined,
+  mode: "validate" | "efficacy",
+): boolean {
+  const roleOk =
+    mode === "validate"
+      ? canValidateActionItems(roles)
+      : canConfirmActionEfficacy(roles);
+  if (!roleOk || !currentMembershipId || !ownerMembershipId) return false;
+  return currentMembershipId !== ownerMembershipId;
+}
+
+/** Client-side overdue hint when backend flag is false but due_at elapsed. */
+export function isActionItemOverdueDisplay(item: {
+  is_overdue?: boolean;
+  due_at?: string;
+  status?: string;
+}): boolean {
+  if (item.is_overdue) return true;
+  const terminal = new Set(["done", "cancelled", "ineffective_closed"]);
+  if (!item.due_at || (item.status && terminal.has(item.status))) return false;
+  return Date.parse(item.due_at) < Date.now();
+}

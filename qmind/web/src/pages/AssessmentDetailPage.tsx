@@ -21,6 +21,7 @@ import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import { FieldExecutionPanel } from "@/components/FieldExecutionPanel";
 import { FindingsAnalysisPanel } from "@/components/FindingsAnalysisPanel";
 import { MaturityAnalysisPanel } from "@/components/MaturityAnalysisPanel";
+import { ActionPlanPanel } from "@/components/ActionPlanPanel";
 import { QmindApiError } from "@/api/qmindApi";
 import { isUuid } from "@/lib/validation";
 
@@ -165,6 +166,15 @@ export function AssessmentDetailPage() {
           membershipId={perms.membershipId}
           roles={perms.roles}
           assessmentStatus={a.status}
+        />
+      ) : null}
+      {perms.canWorkActionPlans ? (
+        <ActionPlanPanel
+          assessmentId={assessmentId}
+          assessmentStatus={a.status}
+          canManage={perms.canManageActionPlans}
+          membershipId={perms.membershipId}
+          roles={perms.roles}
         />
       ) : null}
     </section>

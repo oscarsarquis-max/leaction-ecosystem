@@ -296,6 +296,7 @@ function installApi(store: Store) {
       if (
         url.includes("/maturity-assessments") ||
         url.includes("/findings") ||
+        url.includes("/action-plans") ||
         url.includes("/interviews") ||
         url.includes("/questions") ||
         url.includes("/evidences")

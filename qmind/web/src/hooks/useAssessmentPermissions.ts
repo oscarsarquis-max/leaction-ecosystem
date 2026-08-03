@@ -2,15 +2,19 @@ import { useMemo } from "react";
 import { useOrganization } from "@/org/OrganizationProvider";
 import {
   canCollectEvidence,
+  canConfirmActionEfficacy,
   canCreateFindings,
   canEditAssessmentSetup,
   canEditFieldExecution,
   canElaborateMaturity,
+  canManageActionPlans,
   canMutateAssessments,
   canReadAssessments,
   canReviewFindings,
   canReviewMaturity,
   canStartAssessment,
+  canValidateActionItems,
+  canWorkActionPlansOnAssessment,
   canWorkFindingsOnAssessment,
   canWorkMaturityOnAssessment,
 } from "@/lib/permissions";
@@ -36,6 +40,10 @@ export function useAssessmentPermissions(status?: string) {
       canWorkMaturity: canWorkMaturityOnAssessment(status),
       canElaborateMaturity: canElaborateMaturity(roles, status),
       canReviewMaturity: canReviewMaturity(roles),
+      canWorkActionPlans: canWorkActionPlansOnAssessment(status),
+      canManageActionPlans: canManageActionPlans(roles, status),
+      canValidateActionItems: canValidateActionItems(roles),
+      canConfirmActionEfficacy: canConfirmActionEfficacy(roles),
     }),
     [roles, status, membershipId],
   );
