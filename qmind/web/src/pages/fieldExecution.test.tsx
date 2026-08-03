@@ -69,7 +69,8 @@ describe("field execution UI", () => {
       if (
         url.includes("/maturity-assessments") ||
         url.includes("/findings") ||
-        url.includes("/action-plans")
+        url.includes("/action-plans") ||
+        url.includes("/reports")
       ) {
         return json([]);
       }

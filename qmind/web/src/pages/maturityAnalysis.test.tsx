@@ -156,7 +156,8 @@ describe("maturity analysis UI", () => {
           url.includes("/interviews") ||
           url.includes("/evidences") ||
           url.includes("/findings") ||
-          url.includes("/action-plans")
+          url.includes("/action-plans") ||
+          url.includes("/reports")
         ) {
           return json([]);
         }
@@ -328,7 +329,8 @@ describe("maturity analysis UI", () => {
           url.includes("/interviews") ||
           url.includes("/evidences") ||
           url.includes("/findings") ||
-          url.includes("/action-plans")
+          url.includes("/action-plans") ||
+          url.includes("/reports")
         ) {
           return json([]);
         }

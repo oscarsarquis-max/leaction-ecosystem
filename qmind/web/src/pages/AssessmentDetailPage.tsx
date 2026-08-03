@@ -22,6 +22,7 @@ import { FieldExecutionPanel } from "@/components/FieldExecutionPanel";
 import { FindingsAnalysisPanel } from "@/components/FindingsAnalysisPanel";
 import { MaturityAnalysisPanel } from "@/components/MaturityAnalysisPanel";
 import { ActionPlanPanel } from "@/components/ActionPlanPanel";
+import { ReportPanel } from "@/components/ReportPanel";
 import { QmindApiError } from "@/api/qmindApi";
 import { isUuid } from "@/lib/validation";
 
@@ -173,6 +174,19 @@ export function AssessmentDetailPage() {
           assessmentId={assessmentId}
           assessmentStatus={a.status}
           canManage={perms.canManageActionPlans}
+          membershipId={perms.membershipId}
+          roles={perms.roles}
+        />
+      ) : null}
+      {perms.canWorkReports ? (
+        <ReportPanel
+          assessmentId={assessmentId}
+          assessmentStatus={a.status}
+          canElaborate={perms.canElaborateReports}
+          canReview={perms.canReviewReports}
+          canBeginReport={perms.canBeginReport}
+          canClose={perms.canCloseAssessment}
+          canReopen={perms.canReopenAssessment}
           membershipId={perms.membershipId}
           roles={perms.roles}
         />

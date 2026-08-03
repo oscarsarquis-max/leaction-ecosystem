@@ -154,7 +154,8 @@ describe("action plan UI", () => {
           url.includes("/questions") ||
           url.includes("/interviews") ||
           url.includes("/evidences") ||
-          url.includes("/maturity-assessments")
+          url.includes("/maturity-assessments") ||
+          url.includes("/reports")
         ) {
           return json([]);
         }
@@ -252,7 +253,8 @@ describe("action plan UI", () => {
           url.includes("/questions") ||
           url.includes("/interviews") ||
           url.includes("/evidences") ||
-          url.includes("/maturity-assessments")
+          url.includes("/maturity-assessments") ||
+          url.includes("/reports")
         ) {
           return json([]);
         }
@@ -402,7 +404,8 @@ describe("action plan UI", () => {
           url.includes("/interviews") ||
           url.includes("/evidences") ||
           url.includes("/maturity-assessments") ||
-          url.includes("/findings")
+          url.includes("/findings") ||
+          url.includes("/reports")
         ) {
           return json([]);
         }

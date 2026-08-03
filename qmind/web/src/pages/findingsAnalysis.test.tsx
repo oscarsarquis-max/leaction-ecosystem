@@ -85,7 +85,7 @@ describe("findings analysis UI", () => {
       if (url.includes(`/assessments/${AID}/team`)) return json([]);
       if (url.includes(`/assessments/${AID}/questions`)) return json([]);
       if (url.includes(`/assessments/${AID}/interviews`)) return json([]);
-      if (url.includes("/maturity-assessments") || url.includes("/action-plans")) {
+      if (url.includes("/maturity-assessments") || url.includes("/action-plans") || url.includes("/reports")) {
         return json([]);
       }
       if (url.includes(`/assessments/${AID}/evidences`)) {
@@ -282,7 +282,7 @@ describe("findings analysis UI", () => {
           url.includes("/questions") ||
           url.includes("/interviews") ||
           url.includes("/maturity-assessments") ||
-          url.includes("/action-plans")
+          url.includes("/action-plans") || url.includes("/reports")
         ) {
           return json([]);
         }

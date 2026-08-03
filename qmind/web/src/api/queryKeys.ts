@@ -32,6 +32,10 @@ export const queryKeys = {
     ["org", organizationId, "assessment", assessmentId, "action-plans"] as const,
   actionPlanItems: (organizationId: string, planId: string) =>
     ["org", organizationId, "action-plan", planId, "items"] as const,
+  assessmentReports: (organizationId: string, assessmentId: string) =>
+    ["org", organizationId, "assessment", assessmentId, "reports"] as const,
+  report: (organizationId: string, reportId: string) =>
+    ["org", organizationId, "report", reportId] as const,
   health: ["health"] as const,
 };
 

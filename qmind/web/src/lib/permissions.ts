@@ -214,3 +214,68 @@ export function isActionItemOverdueDisplay(item: {
   if (!item.due_at || (item.status && terminal.has(item.status))) return false;
   return Date.parse(item.due_at) < Date.now();
 }
+
+const REPORT_ELABORATE_ROLES = FINDING_CREATE_ROLES;
+const REPORT_PUBLISH_ROLES = new Set(["org_admin", "quality_manager"]);
+const ASSESSMENT_CLOSE_ROLES = FINDING_CREATE_ROLES;
+const ASSESSMENT_REOPEN_ROLES = new Set(["org_admin", "quality_manager"]);
+
+export function canWorkReportsOnAssessment(status: string | undefined): boolean {
+  return status === "actions" || status === "report" || status === "closed";
+}
+
+export function canElaborateReports(
+  roles: readonly string[] | undefined,
+  assessmentStatus: string | undefined,
+): boolean {
+  return (
+    (roles ?? []).some((r) => REPORT_ELABORATE_ROLES.has(r)) &&
+    (assessmentStatus === "actions" || assessmentStatus === "report")
+  );
+}
+
+export function canReviewReports(roles: readonly string[] | undefined): boolean {
+  return (roles ?? []).some((r) => REPORT_PUBLISH_ROLES.has(r));
+}
+
+/** Soft SoD: publisher must differ from report author. */
+export function canPublishReport(
+  roles: readonly string[] | undefined,
+  currentMembershipId: string | null | undefined,
+  authorMembershipId: string | null | undefined,
+): boolean {
+  if (!canReviewReports(roles) || !currentMembershipId || !authorMembershipId) {
+    return false;
+  }
+  return currentMembershipId !== authorMembershipId;
+}
+
+export function canCloseAssessment(
+  roles: readonly string[] | undefined,
+  assessmentStatus: string | undefined,
+): boolean {
+  return (
+    (roles ?? []).some((r) => ASSESSMENT_CLOSE_ROLES.has(r)) &&
+    assessmentStatus === "report"
+  );
+}
+
+export function canReopenAssessment(
+  roles: readonly string[] | undefined,
+  assessmentStatus: string | undefined,
+): boolean {
+  return (
+    (roles ?? []).some((r) => ASSESSMENT_REOPEN_ROLES.has(r)) &&
+    assessmentStatus === "closed"
+  );
+}
+
+export function canBeginAssessmentReport(
+  roles: readonly string[] | undefined,
+  assessmentStatus: string | undefined,
+): boolean {
+  return (
+    (roles ?? []).some((r) => ASSESSMENT_CLOSE_ROLES.has(r)) &&
+    assessmentStatus === "actions"
+  );
+}
