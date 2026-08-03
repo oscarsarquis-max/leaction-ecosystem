@@ -1,0 +1,19 @@
+aws_region   = "us-east-2"
+environment  = "homolog"
+name_prefix  = "qmind-homolog"
+
+vpc_id             = "vpc-xxxxxxxx"
+private_subnet_ids = ["subnet-aaaa", "subnet-bbbb"]
+public_subnet_ids  = ["subnet-cccc", "subnet-dddd"]
+
+db_instance_class    = "db.t4g.micro"
+db_allocated_storage = 20
+db_name              = "qmind"
+db_master_username   = "qmind_admin"
+
+cognito_callback_urls = [
+  "https://homolog.example.com/auth/callback"
+]
+cognito_logout_urls = [
+  "https://homolog.example.com/"
+]

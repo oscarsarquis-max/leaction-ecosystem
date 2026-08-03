@@ -28,6 +28,10 @@ Workspace documental do QMind, plataforma inteligente de apoio à consultoria, a
 - **DDL v0 + Alembic:** `03_Database/003_DDL_v0.md` → `qmind/backend/` (database `qmind` no cluster `leaction_db`).
 - **Gate Fase 0:** `04_Docs/008_Phase0_Technical_Gate.md` — veredito **APROVADO**.
 - **Gate MVP E2E:** `04_Docs/009_MVP_End_to_End_Gate.md` — veredito **APROVADO** (domínio completo + isolamento 2 orgs).
+- **Gate Web E2E:** `04_Docs/010_MVP_Web_End_to_End_Gate.md` — veredito **APROVADO** (Playwright + build produção).
+- **Baseline fullstack:** tag **`mvp-fullstack-v0`** — marco recuperável; incrementos versionados a partir daqui.
+- **Gate Homologação:** `04_Docs/011_Homologation_Readiness_Gate.md` — veredito **EM ANDAMENTO**.
+- **Infra homolog:** `../infra/` (Terraform scaffold `us-east-2` + `DEPLOY.md`).
 - **Tag backend:** `mvp-backend-v0`
 - **OpenAPI:** `../backend/openapi/openapi.json` — contrato versionado; freeze `openapi-v1-initial`
 - **Cliente TS:** `../packages/api-client` (`@qmind/api-client`) — gerado do OpenAPI; `npm run generate:api-client`
