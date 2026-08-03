@@ -2,6 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
 import { useOrganization } from "@/org/OrganizationProvider";
 import { OrgSelector } from "@/components/OrgSelector";
+import { BrandLogo } from "@/components/BrandLogo";
 import {
   AccessDeniedPanel,
   ErrorPanel,
@@ -23,8 +24,11 @@ export function AppShell() {
   if (auth.status === "anonymous" || auth.status === "invalid_session") {
     return (
       <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-16">
-        <p className="font-display text-4xl tracking-tight text-teal-950">QMind</p>
-        <p className="mt-3 text-teal-950/70">
+        <BrandLogo
+          className="h-16 w-full max-w-md sm:h-20"
+          zoom={2.8}
+        />
+        <p className="mt-8 text-lg text-teal-950/70">
           {auth.status === "invalid_session"
             ? "Sessão inválida ou expirada. Entre novamente."
             : "Entre para acessar avaliações da sua organização."}
@@ -43,13 +47,10 @@ export function AppShell() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-teal-900/10 bg-white/70 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-3">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-2.5">
           <div className="flex items-center gap-6">
-            <NavLink
-              to="/"
-              className="font-display text-2xl tracking-tight text-teal-950"
-            >
-              QMind
+            <NavLink to="/" className="block shrink-0" aria-label="QMind">
+              <BrandLogo className="h-9 w-36 sm:h-10 sm:w-40" alt="" zoom={2.6} />
             </NavLink>
             <nav className="flex gap-3 text-sm font-semibold">
               <NavLink
