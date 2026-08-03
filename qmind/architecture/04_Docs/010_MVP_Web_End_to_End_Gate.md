@@ -58,8 +58,8 @@ Complemento domínio (API): `009_MVP_End_to_End_Gate.md` — SoD, RLS, snapshot 
 | Data/hora | 2026-08-03 (~14:30 -03:00) |
 | Commit base UI (Relatório) | `a7b4c64` — `feat(qmind): add report review publish and export UI` |
 | Commit estabilização Vitest | `8a17041` — `test(qmind): stabilize web suite and constrain Vitest workers` |
-| Commit deste gate (harness + doc) | *(este commit)* |
-| Tag anotada | `mvp-fullstack-v0` |
+| Commit deste gate (harness + doc) | `82e637f` — `test(qmind): add MVP web end-to-end browser gate` |
+| Tag anotada | `mvp-fullstack-v0` → `82e637f` |
 | Frontend | build produção + `vite preview` `127.0.0.1:4178` (proxy `/api`→`:8008`) |
 | Backend | uvicorn `:8008`, `AUTH_MODE=dev`, `ENVIRONMENT=local`, `STORAGE_BACKEND=memory` |
 | Database | `qmind` @ `localhost:5433` (Docker `leaction_db`) |
