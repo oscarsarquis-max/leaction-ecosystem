@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from app.api.health import router as health_router
 from app.config import get_settings
 from app.errors import AppError, app_error_handler
+from app.modules.actions.router import router as actions_router
 from app.modules.assessments.router import router as assessments_router
 from app.modules.evidence.router import router as evidence_router
 from app.modules.findings.router import router as findings_router
@@ -37,6 +38,7 @@ app.include_router(orgs_router, prefix=settings.api_prefix)
 app.include_router(assessments_router, prefix=settings.api_prefix)
 app.include_router(evidence_router, prefix=settings.api_prefix)
 app.include_router(findings_router, prefix=settings.api_prefix)
+app.include_router(actions_router, prefix=settings.api_prefix)
 
 
 @app.get("/")

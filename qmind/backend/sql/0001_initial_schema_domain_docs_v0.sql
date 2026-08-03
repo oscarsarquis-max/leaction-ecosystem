@@ -453,7 +453,9 @@ CREATE TABLE findings (
     )),
   severity text,
   status text NOT NULL DEFAULT 'draft'
-    CHECK (status IN ('draft', 'in_review', 'approved', 'rejected', 'withdrawn')),
+    CHECK (status IN (
+      'draft', 'in_review', 'approved', 'rejected', 'withdrawn', 'discarded'
+    )),
   title text NOT NULL,
   body text NOT NULL,
   insufficient_evidence boolean NOT NULL DEFAULT false,
@@ -463,6 +465,8 @@ CREATE TABLE findings (
   approved_at timestamptz,
   approved_by uuid,
   withdrawn_reason text,
+  discard_reason text,
+  rework_of_finding_id uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT uq_findings_id_org UNIQUE (id, organization_id),
@@ -475,6 +479,9 @@ CREATE TABLE findings (
   CONSTRAINT fk_findings_approver_same_org
     FOREIGN KEY (approved_by, organization_id)
     REFERENCES memberships (id, organization_id),
+  CONSTRAINT fk_findings_rework_of_same_org
+    FOREIGN KEY (rework_of_finding_id, organization_id)
+    REFERENCES findings (id, organization_id),
   CONSTRAINT ck_findings_insufficient_by_type CHECK (
     (
       finding_type IN ('conformity', 'opportunity')
@@ -678,8 +685,12 @@ CREATE TABLE action_items (
     )),
   is_overdue boolean NOT NULL DEFAULT false,
   efficacy_required boolean NOT NULL DEFAULT false,
+  source_finding_withdrawn boolean NOT NULL DEFAULT false,
   validated_by uuid,
   efficacy_confirmed_by uuid,
+  cancel_reason text,
+  reject_reason text,
+  efficacy_fail_reason text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT uq_action_items_id_org UNIQUE (id, organization_id),

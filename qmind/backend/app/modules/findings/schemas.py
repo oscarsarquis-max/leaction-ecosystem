@@ -35,6 +35,9 @@ class FindingOut(BaseModel):
     insufficient_evidence_rationale: str | None
     author_membership_id: UUID
     approved_by: UUID | None = None
+    withdrawn_reason: str | None = None
+    discard_reason: str | None = None
+    rework_of_finding_id: UUID | None = None
     requirement_ids: list[UUID] = Field(default_factory=list)
     evidence_ids: list[UUID] = Field(default_factory=list)
     submitted_at: datetime | None = None
@@ -48,7 +51,16 @@ class FindingTransitionResult(BaseModel):
     from_status: str
     to_status: str
     event: str
+    preserved_finding_id: UUID | None = None  # withdrawn row kept on rework
 
 
 class RejectIn(BaseModel):
     reason: str = Field(..., min_length=1, max_length=2000)
+
+
+class WithdrawIn(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=2000)
+
+
+class DiscardIn(BaseModel):
+    reason: str | None = Field(default=None, max_length=2000)

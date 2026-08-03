@@ -86,3 +86,13 @@ def reopen_draft(assessment_id: UUID, ctx: OrgContextDep) -> AssessmentTransitio
 @router.post("/{assessment_id}/transitions/cancel", response_model=AssessmentTransitionResult)
 def cancel_assessment(assessment_id: UUID, ctx: OrgContextDep) -> AssessmentTransitionResult:
     return service.transition_cancel(ctx, assessment_id)
+
+
+@router.post("/{assessment_id}/transitions/begin_analysis", response_model=AssessmentTransitionResult)
+def begin_analysis(assessment_id: UUID, ctx: OrgContextDep) -> AssessmentTransitionResult:
+    return service.transition_begin_analysis(ctx, assessment_id)
+
+
+@router.post("/{assessment_id}/transitions/open_actions", response_model=AssessmentTransitionResult)
+def open_actions(assessment_id: UUID, ctx: OrgContextDep) -> AssessmentTransitionResult:
+    return service.transition_open_actions(ctx, assessment_id)

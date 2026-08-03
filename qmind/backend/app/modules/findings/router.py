@@ -7,10 +7,12 @@ from fastapi import APIRouter, Query
 from app.auth.deps import OrgContextDep
 from app.modules.findings import service
 from app.modules.findings.schemas import (
+    DiscardIn,
     FindingCreate,
     FindingOut,
     FindingTransitionResult,
     RejectIn,
+    WithdrawIn,
 )
 
 router = APIRouter(prefix="/findings", tags=["findings"])
@@ -25,8 +27,9 @@ def create_finding(payload: FindingCreate, ctx: OrgContextDep) -> FindingOut:
 def list_findings(
     ctx: OrgContextDep,
     assessment_id: UUID | None = Query(default=None),
+    include_discarded: bool = Query(default=False),
 ) -> list[FindingOut]:
-    return service.list_findings(ctx, assessment_id)
+    return service.list_findings(ctx, assessment_id, include_discarded=include_discarded)
 
 
 @router.get("/{finding_id}", response_model=FindingOut)
@@ -49,6 +52,22 @@ def reject_finding(
     finding_id: UUID, payload: RejectIn, ctx: OrgContextDep
 ) -> FindingTransitionResult:
     return service.reject(ctx, finding_id, payload)
+
+
+@router.post("/{finding_id}/transitions/discard", response_model=FindingTransitionResult)
+def discard_finding(
+    finding_id: UUID,
+    ctx: OrgContextDep,
+    payload: DiscardIn | None = None,
+) -> FindingTransitionResult:
+    return service.discard(ctx, finding_id, payload)
+
+
+@router.post("/{finding_id}/transitions/withdraw", response_model=FindingTransitionResult)
+def withdraw_finding(
+    finding_id: UUID, payload: WithdrawIn, ctx: OrgContextDep
+) -> FindingTransitionResult:
+    return service.withdraw(ctx, finding_id, payload)
 
 
 @router.post("/{finding_id}/transitions/rework", response_model=FindingTransitionResult)

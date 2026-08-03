@@ -51,7 +51,7 @@ def _lock_assessment(conn: Connection, org_id: UUID, assessment_id: UUID):
             """
             SELECT id, organization_id, assessment_model_id, standard_version_id,
                    maturity_model_id, type, status, lead_membership_id, started_at,
-                   created_at, updated_at
+                   no_findings_declared, created_at, updated_at
             FROM assessments
             WHERE id = :id AND organization_id = :org
             FOR UPDATE
@@ -621,4 +621,53 @@ def transition_cancel(ctx: OrgContext, assessment_id: UUID) -> AssessmentTransit
         conn.commit()
     return AssessmentTransitionResult(
         assessment=updated, from_status=from_status, to_status="cancelled", event="cancel"
+    )
+
+
+def transition_begin_analysis(ctx: OrgContext, assessment_id: UUID) -> AssessmentTransitionResult:
+    require_role(ctx, *_MUTATE_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = _lock_assessment(conn, ctx.organization_id, assessment_id)
+        if row.status != "in_progress":
+            raise AppError(
+                "invalid_transition",
+                f"begin_analysis requires in_progress (current={row.status})",
+                status_code=409,
+            )
+        scope_n = conn.execute(
+            text("SELECT count(*) FROM assessment_scopes WHERE assessment_id = :id"),
+            {"id": assessment_id},
+        ).scalar_one()
+        if scope_n < 1:
+            raise AppError("analysis_guard_scope", "Scope required", status_code=422)
+        updated = _set_status(
+            conn, ctx, assessment_id, "in_progress", "analysis", "begin_analysis"
+        )
+        conn.commit()
+    return AssessmentTransitionResult(
+        assessment=updated, from_status="in_progress", to_status="analysis", event="begin_analysis"
+    )
+
+
+def transition_open_actions(ctx: OrgContext, assessment_id: UUID) -> AssessmentTransitionResult:
+    require_role(ctx, *_MUTATE_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = _lock_assessment(conn, ctx.organization_id, assessment_id)
+        if row.status != "analysis":
+            raise AppError(
+                "invalid_transition",
+                f"open_actions requires analysis (current={row.status})",
+                status_code=409,
+            )
+        approved = _count_approved_findings(conn, assessment_id)
+        if approved < 1 and not row.no_findings_declared:
+            raise AppError(
+                "open_actions_guard",
+                "Requires ≥1 Finding approved or no_findings_declared",
+                status_code=422,
+            )
+        updated = _set_status(conn, ctx, assessment_id, "analysis", "actions", "open_actions")
+        conn.commit()
+    return AssessmentTransitionResult(
+        assessment=updated, from_status="analysis", to_status="actions", event="open_actions"
     )

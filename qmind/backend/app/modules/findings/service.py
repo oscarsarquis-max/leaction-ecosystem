@@ -12,10 +12,12 @@ from app.auth.context import OrgContext
 from app.db import tenant_connection
 from app.errors import AppError
 from app.modules.findings.schemas import (
+    DiscardIn,
     FindingCreate,
     FindingOut,
     FindingTransitionResult,
     RejectIn,
+    WithdrawIn,
 )
 from app.modules.orgs.service import require_role
 
@@ -23,7 +25,16 @@ _CREATE_ROLES = ("org_admin", "consultant_auditor", "quality_manager")
 _SUBMIT_ROLES = ("org_admin", "consultant_auditor", "quality_manager")
 _REVIEW_ROLES = ("org_admin", "quality_manager")
 _REWORK_ROLES = ("org_admin", "consultant_auditor", "quality_manager")
+_WITHDRAW_ROLES = ("org_admin", "quality_manager")
 _READ_ROLES = _CREATE_ROLES + ("reader", "process_owner")
+
+_FINDING_COLS = """
+    id, organization_id, assessment_id, finding_type, severity, status,
+    title, body, insufficient_evidence, insufficient_evidence_rationale,
+    author_membership_id, submitted_at, approved_at, approved_by,
+    withdrawn_reason, discard_reason, rework_of_finding_id,
+    created_at, updated_at
+"""
 
 
 def _load_links(conn: Connection, finding_id: UUID) -> tuple[list[UUID], list[UUID]]:
@@ -71,6 +82,9 @@ def _row_to_out(conn: Connection, row) -> FindingOut:
         insufficient_evidence_rationale=row.insufficient_evidence_rationale,
         author_membership_id=row.author_membership_id,
         approved_by=row.approved_by,
+        withdrawn_reason=getattr(row, "withdrawn_reason", None),
+        discard_reason=getattr(row, "discard_reason", None),
+        rework_of_finding_id=getattr(row, "rework_of_finding_id", None),
         requirement_ids=reqs,
         evidence_ids=evids,
         submitted_at=row.submitted_at,
@@ -83,11 +97,8 @@ def _row_to_out(conn: Connection, row) -> FindingOut:
 def _lock_finding(conn: Connection, org_id: UUID, finding_id: UUID):
     row = conn.execute(
         text(
-            """
-            SELECT id, organization_id, assessment_id, finding_type, severity, status,
-                   title, body, insufficient_evidence, insufficient_evidence_rationale,
-                   author_membership_id, submitted_at, approved_at, approved_by,
-                   created_at, updated_at
+            f"""
+            SELECT {_FINDING_COLS}
             FROM findings
             WHERE id = :id AND organization_id = :org
             FOR UPDATE
@@ -101,7 +112,6 @@ def _lock_finding(conn: Connection, org_id: UUID, finding_id: UUID):
 
 
 def _assert_base_section_41(conn: Connection, org_id: UUID, finding_id: UUID, row) -> None:
-    """§4.1 — evidence base by finding_type (submit + approve)."""
     req_count = conn.execute(
         text("SELECT count(*) FROM finding_requirements WHERE finding_id = :fid"),
         {"fid": finding_id},
@@ -155,7 +165,6 @@ def _assert_base_section_41(conn: Connection, org_id: UUID, finding_id: UUID, ro
         )
 
     if ftype == "opportunity":
-        # Interview/Answer linkage not yet implemented — require approved evidence for now.
         if approved_count < 1:
             raise AppError(
                 "evidence_base_required",
@@ -197,7 +206,7 @@ def _replace_links(
         ev = conn.execute(
             text(
                 """
-                SELECT id, status FROM evidences
+                SELECT id FROM evidences
                 WHERE id = :id AND organization_id = :org
                 """
             ),
@@ -214,6 +223,29 @@ def _replace_links(
             ),
             {"org": org_id, "fid": finding_id, "eid": eid},
         )
+
+
+def _copy_links(conn: Connection, org_id: UUID, from_id: UUID, to_id: UUID) -> None:
+    conn.execute(
+        text(
+            """
+            INSERT INTO finding_requirements (organization_id, finding_id, requirement_id)
+            SELECT organization_id, :to_id, requirement_id
+            FROM finding_requirements WHERE finding_id = :from_id
+            """
+        ),
+        {"to_id": to_id, "from_id": from_id},
+    )
+    conn.execute(
+        text(
+            """
+            INSERT INTO finding_evidences (organization_id, finding_id, evidence_id)
+            SELECT organization_id, :to_id, evidence_id
+            FROM finding_evidences WHERE finding_id = :from_id
+            """
+        ),
+        {"to_id": to_id, "from_id": from_id},
+    )
 
 
 def create_draft(ctx: OrgContext, payload: FindingCreate) -> FindingOut:
@@ -252,7 +284,7 @@ def create_draft(ctx: OrgContext, payload: FindingCreate) -> FindingOut:
         finding_id = uuid4()
         row = conn.execute(
             text(
-                """
+                f"""
                 INSERT INTO findings (
                   id, organization_id, assessment_id, finding_type, severity, status,
                   title, body, insufficient_evidence, insufficient_evidence_rationale,
@@ -262,10 +294,7 @@ def create_draft(ctx: OrgContext, payload: FindingCreate) -> FindingOut:
                   :title, :body, :insuff, :rationale,
                   :author
                 )
-                RETURNING id, organization_id, assessment_id, finding_type, severity, status,
-                          title, body, insufficient_evidence, insufficient_evidence_rationale,
-                          author_membership_id, submitted_at, approved_at, approved_by,
-                          created_at, updated_at
+                RETURNING {_FINDING_COLS}
                 """
             ),
             {
@@ -319,39 +348,32 @@ def get_finding(ctx: OrgContext, finding_id: UUID) -> FindingOut:
         return _row_to_out(conn, row)
 
 
-def list_findings(ctx: OrgContext, assessment_id: UUID | None = None) -> list[FindingOut]:
+def list_findings(
+    ctx: OrgContext,
+    assessment_id: UUID | None = None,
+    *,
+    include_discarded: bool = False,
+) -> list[FindingOut]:
     require_role(ctx, *_READ_ROLES)
     with tenant_connection(ctx.organization_id) as conn:
+        clauses = ["organization_id = :org"]
+        params: dict = {"org": ctx.organization_id}
         if assessment_id:
-            rows = conn.execute(
-                text(
-                    """
-                    SELECT id, organization_id, assessment_id, finding_type, severity, status,
-                           title, body, insufficient_evidence, insufficient_evidence_rationale,
-                           author_membership_id, submitted_at, approved_at, approved_by,
-                           created_at, updated_at
-                    FROM findings
-                    WHERE organization_id = :org AND assessment_id = :aid
-                    ORDER BY created_at DESC
-                    """
-                ),
-                {"org": ctx.organization_id, "aid": assessment_id},
-            ).all()
-        else:
-            rows = conn.execute(
-                text(
-                    """
-                    SELECT id, organization_id, assessment_id, finding_type, severity, status,
-                           title, body, insufficient_evidence, insufficient_evidence_rationale,
-                           author_membership_id, submitted_at, approved_at, approved_by,
-                           created_at, updated_at
-                    FROM findings
-                    WHERE organization_id = :org
-                    ORDER BY created_at DESC
-                    """
-                ),
-                {"org": ctx.organization_id},
-            ).all()
+            clauses.append("assessment_id = :aid")
+            params["aid"] = assessment_id
+        if not include_discarded:
+            clauses.append("status <> 'discarded'")
+        rows = conn.execute(
+            text(
+                f"""
+                SELECT {_FINDING_COLS}
+                FROM findings
+                WHERE {" AND ".join(clauses)}
+                ORDER BY created_at DESC
+                """
+            ),
+            params,
+        ).all()
         return [_row_to_out(conn, r) for r in rows]
 
 
@@ -371,18 +393,17 @@ def submit(ctx: OrgContext, finding_id: UUID) -> FindingTransitionResult:
         _assert_base_section_41(conn, ctx.organization_id, finding_id, row)
         updated = conn.execute(
             text(
-                """
+                f"""
                 UPDATE findings
                 SET status = 'in_review', submitted_at = now(), updated_at = now()
                 WHERE id = :id AND organization_id = :org AND status = 'draft'
-                RETURNING id, organization_id, assessment_id, finding_type, severity, status,
-                          title, body, insufficient_evidence, insufficient_evidence_rationale,
-                          author_membership_id, submitted_at, approved_at, approved_by,
-                          created_at, updated_at
+                RETURNING {_FINDING_COLS}
                 """
             ),
             {"id": finding_id, "org": ctx.organization_id},
-        ).one()
+        ).first()
+        if updated is None:
+            raise AppError("conflict", "Concurrent status change", status_code=409)
         write_audit(
             conn,
             organization_id=ctx.organization_id,
@@ -432,17 +453,14 @@ def approve(ctx: OrgContext, finding_id: UUID) -> FindingTransitionResult:
         _assert_base_section_41(conn, ctx.organization_id, finding_id, row)
         updated = conn.execute(
             text(
-                """
+                f"""
                 UPDATE findings
                 SET status = 'approved',
                     approved_at = now(),
                     approved_by = :approver,
                     updated_at = now()
                 WHERE id = :id AND organization_id = :org AND status = 'in_review'
-                RETURNING id, organization_id, assessment_id, finding_type, severity, status,
-                          title, body, insufficient_evidence, insufficient_evidence_rationale,
-                          author_membership_id, submitted_at, approved_at, approved_by,
-                          created_at, updated_at
+                RETURNING {_FINDING_COLS}
                 """
             ),
             {
@@ -450,7 +468,9 @@ def approve(ctx: OrgContext, finding_id: UUID) -> FindingTransitionResult:
                 "id": finding_id,
                 "org": ctx.organization_id,
             },
-        ).one()
+        ).first()
+        if updated is None:
+            raise AppError("conflict", "Concurrent status change", status_code=409)
         write_audit(
             conn,
             organization_id=ctx.organization_id,
@@ -472,6 +492,7 @@ def approve(ctx: OrgContext, finding_id: UUID) -> FindingTransitionResult:
 
 def reject(ctx: OrgContext, finding_id: UUID, payload: RejectIn) -> FindingTransitionResult:
     require_role(ctx, *_REVIEW_ROLES)
+    reason = payload.reason.strip()
     with tenant_connection(ctx.organization_id) as conn:
         row = _lock_finding(conn, ctx.organization_id, finding_id)
         if row.status != "in_review":
@@ -482,18 +503,17 @@ def reject(ctx: OrgContext, finding_id: UUID, payload: RejectIn) -> FindingTrans
             )
         updated = conn.execute(
             text(
-                """
+                f"""
                 UPDATE findings
                 SET status = 'rejected', updated_at = now()
                 WHERE id = :id AND organization_id = :org AND status = 'in_review'
-                RETURNING id, organization_id, assessment_id, finding_type, severity, status,
-                          title, body, insufficient_evidence, insufficient_evidence_rationale,
-                          author_membership_id, submitted_at, approved_at, approved_by,
-                          created_at, updated_at
+                RETURNING {_FINDING_COLS}
                 """
             ),
             {"id": finding_id, "org": ctx.organization_id},
-        ).one()
+        ).first()
+        if updated is None:
+            raise AppError("conflict", "Concurrent status change", status_code=409)
         write_audit(
             conn,
             organization_id=ctx.organization_id,
@@ -505,7 +525,7 @@ def reject(ctx: OrgContext, finding_id: UUID, payload: RejectIn) -> FindingTrans
             resource_id=finding_id,
             from_status="in_review",
             to_status="rejected",
-            metadata={"reason": payload.reason.strip()},
+            metadata={"reason": reason},
         )
         out = _row_to_out(conn, updated)
         conn.commit()
@@ -514,49 +534,263 @@ def reject(ctx: OrgContext, finding_id: UUID, payload: RejectIn) -> FindingTrans
     )
 
 
-def rework(ctx: OrgContext, finding_id: UUID) -> FindingTransitionResult:
-    require_role(ctx, *_REWORK_ROLES)
+def discard(ctx: OrgContext, finding_id: UUID, payload: DiscardIn | None = None) -> FindingTransitionResult:
+    """draft → discarded (soft-delete). Author, QM or org_admin."""
+    require_role(ctx, "org_admin", "quality_manager", "consultant_auditor")
+    reason = (payload.reason.strip() if payload and payload.reason else None) or None
     with tenant_connection(ctx.organization_id) as conn:
         row = _lock_finding(conn, ctx.organization_id, finding_id)
-        if row.status not in ("rejected", "withdrawn"):
+        if row.status != "draft":
             raise AppError(
                 "invalid_transition",
-                f"rework requires rejected|withdrawn (current={row.status})",
+                f"discard requires draft (current={row.status})",
                 status_code=409,
             )
-        from_status = row.status
+        if row.approved_at is not None:
+            raise AppError(
+                "discard_guard",
+                "Cannot discard a finding that was approved",
+                status_code=409,
+            )
+        is_author = row.author_membership_id == ctx.membership_id
+        if not is_author and not set(ctx.roles).intersection(("org_admin", "quality_manager")):
+            raise AppError(
+                "forbidden",
+                "Only author, quality_manager or org_admin may discard",
+                status_code=403,
+            )
         updated = conn.execute(
             text(
-                """
+                f"""
                 UPDATE findings
-                SET status = 'draft',
-                    submitted_at = NULL,
-                    approved_at = NULL,
-                    approved_by = NULL,
+                SET status = 'discarded',
+                    discard_reason = :reason,
                     updated_at = now()
-                WHERE id = :id AND organization_id = :org
-                RETURNING id, organization_id, assessment_id, finding_type, severity, status,
-                          title, body, insufficient_evidence, insufficient_evidence_rationale,
-                          author_membership_id, submitted_at, approved_at, approved_by,
-                          created_at, updated_at
+                WHERE id = :id AND organization_id = :org AND status = 'draft'
+                RETURNING {_FINDING_COLS}
                 """
             ),
-            {"id": finding_id, "org": ctx.organization_id},
-        ).one()
+            {"reason": reason, "id": finding_id, "org": ctx.organization_id},
+        ).first()
+        if updated is None:
+            raise AppError("conflict", "Concurrent status change", status_code=409)
         write_audit(
             conn,
             organization_id=ctx.organization_id,
             actor_type="user",
             actor_user_id=ctx.principal.user_id,
             actor_membership_id=ctx.membership_id,
-            action="finding.rework",
+            action="finding.discard",
             resource_type="finding",
             resource_id=finding_id,
-            from_status=from_status,
-            to_status="draft",
+            from_status="draft",
+            to_status="discarded",
+            metadata={"reason": reason} if reason else {},
         )
         out = _row_to_out(conn, updated)
         conn.commit()
     return FindingTransitionResult(
-        finding=out, from_status=from_status, to_status="draft", event="rework"
+        finding=out, from_status="draft", to_status="discarded", event="discard"
     )
+
+
+def withdraw(ctx: OrgContext, finding_id: UUID, payload: WithdrawIn) -> FindingTransitionResult:
+    require_role(ctx, *_WITHDRAW_ROLES)
+    reason = payload.reason.strip()
+    with tenant_connection(ctx.organization_id) as conn:
+        row = _lock_finding(conn, ctx.organization_id, finding_id)
+        if row.status != "approved":
+            raise AppError(
+                "invalid_transition",
+                f"withdraw requires approved (current={row.status})",
+                status_code=409,
+            )
+        assess = conn.execute(
+            text(
+                """
+                SELECT status FROM assessments
+                WHERE id = :id AND organization_id = :org
+                FOR UPDATE
+                """
+            ),
+            {"id": row.assessment_id, "org": ctx.organization_id},
+        ).one()
+        if assess.status == "closed":
+            raise AppError(
+                "assessment_closed",
+                "Cannot withdraw finding while Assessment is closed "
+                "(requires formal reopen closed→report first)",
+                status_code=409,
+            )
+        if assess.status == "cancelled":
+            raise AppError("assessment_cancelled", "Assessment is cancelled", status_code=409)
+
+        updated = conn.execute(
+            text(
+                f"""
+                UPDATE findings
+                SET status = 'withdrawn',
+                    withdrawn_reason = :reason,
+                    updated_at = now()
+                WHERE id = :id AND organization_id = :org AND status = 'approved'
+                RETURNING {_FINDING_COLS}
+                """
+            ),
+            {"reason": reason, "id": finding_id, "org": ctx.organization_id},
+        ).first()
+        if updated is None:
+            raise AppError("conflict", "Concurrent status change", status_code=409)
+
+        signaled = conn.execute(
+            text(
+                """
+                UPDATE action_items
+                SET source_finding_withdrawn = true, updated_at = now()
+                WHERE finding_id = :fid AND organization_id = :org
+                RETURNING id
+                """
+            ),
+            {"fid": finding_id, "org": ctx.organization_id},
+        ).all()
+        write_audit(
+            conn,
+            organization_id=ctx.organization_id,
+            actor_type="user",
+            actor_user_id=ctx.principal.user_id,
+            actor_membership_id=ctx.membership_id,
+            action="finding.withdraw",
+            resource_type="finding",
+            resource_id=finding_id,
+            from_status="approved",
+            to_status="withdrawn",
+            metadata={
+                "reason": reason,
+                "signaled_action_item_ids": [str(r.id) for r in signaled],
+            },
+        )
+        out = _row_to_out(conn, updated)
+        conn.commit()
+    return FindingTransitionResult(
+        finding=out, from_status="approved", to_status="withdrawn", event="withdraw"
+    )
+
+
+def rework(ctx: OrgContext, finding_id: UUID) -> FindingTransitionResult:
+    """rejected → draft in-place; withdrawn → new draft (preserves withdrawn history)."""
+    require_role(ctx, *_REWORK_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = _lock_finding(conn, ctx.organization_id, finding_id)
+        if row.status == "rejected":
+            updated = conn.execute(
+                text(
+                    f"""
+                    UPDATE findings
+                    SET status = 'draft',
+                        submitted_at = NULL,
+                        approved_at = NULL,
+                        approved_by = NULL,
+                        updated_at = now()
+                    WHERE id = :id AND organization_id = :org AND status = 'rejected'
+                    RETURNING {_FINDING_COLS}
+                    """
+                ),
+                {"id": finding_id, "org": ctx.organization_id},
+            ).first()
+            if updated is None:
+                raise AppError("conflict", "Concurrent status change", status_code=409)
+            write_audit(
+                conn,
+                organization_id=ctx.organization_id,
+                actor_type="user",
+                actor_user_id=ctx.principal.user_id,
+                actor_membership_id=ctx.membership_id,
+                action="finding.rework",
+                resource_type="finding",
+                resource_id=finding_id,
+                from_status="rejected",
+                to_status="draft",
+            )
+            out = _row_to_out(conn, updated)
+            conn.commit()
+            return FindingTransitionResult(
+                finding=out, from_status="rejected", to_status="draft", event="rework"
+            )
+
+        if row.status == "withdrawn":
+            # Preserve withdrawn row; open a new draft cycle linked via rework_of_finding_id
+            new_id = uuid4()
+            created = conn.execute(
+                text(
+                    f"""
+                    INSERT INTO findings (
+                      id, organization_id, assessment_id, finding_type, severity, status,
+                      title, body, insufficient_evidence, insufficient_evidence_rationale,
+                      author_membership_id, rework_of_finding_id
+                    ) VALUES (
+                      :id, :org, :assess, :ftype, :sev, 'draft',
+                      :title, :body, :insuff, :rationale,
+                      :author, :prev
+                    )
+                    RETURNING {_FINDING_COLS}
+                    """
+                ),
+                {
+                    "id": new_id,
+                    "org": ctx.organization_id,
+                    "assess": row.assessment_id,
+                    "ftype": row.finding_type,
+                    "sev": row.severity,
+                    "title": row.title,
+                    "body": row.body,
+                    "insuff": row.insufficient_evidence,
+                    "rationale": row.insufficient_evidence_rationale,
+                    "author": ctx.membership_id,
+                    "prev": finding_id,
+                },
+            ).one()
+            _copy_links(conn, ctx.organization_id, finding_id, new_id)
+            write_audit(
+                conn,
+                organization_id=ctx.organization_id,
+                actor_type="user",
+                actor_user_id=ctx.principal.user_id,
+                actor_membership_id=ctx.membership_id,
+                action="finding.rework",
+                resource_type="finding",
+                resource_id=new_id,
+                from_status="withdrawn",
+                to_status="draft",
+                metadata={
+                    "preserved_finding_id": str(finding_id),
+                    "note": "withdrawn version kept immutable",
+                },
+            )
+            # Audit trail on preserved row
+            write_audit(
+                conn,
+                organization_id=ctx.organization_id,
+                actor_type="user",
+                actor_user_id=ctx.principal.user_id,
+                actor_membership_id=ctx.membership_id,
+                action="finding.rework_spawned",
+                resource_type="finding",
+                resource_id=finding_id,
+                from_status="withdrawn",
+                to_status="withdrawn",
+                metadata={"new_draft_finding_id": str(new_id)},
+            )
+            out = _row_to_out(conn, created)
+            conn.commit()
+            return FindingTransitionResult(
+                finding=out,
+                from_status="withdrawn",
+                to_status="draft",
+                event="rework",
+                preserved_finding_id=finding_id,
+            )
+
+        raise AppError(
+            "invalid_transition",
+            f"rework requires rejected|withdrawn (current={row.status})",
+            status_code=409,
+        )
