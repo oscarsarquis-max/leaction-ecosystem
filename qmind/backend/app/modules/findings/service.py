@@ -16,6 +16,7 @@ from app.modules.findings.schemas import (
     FindingCreate,
     FindingOut,
     FindingTransitionResult,
+    FindingUpdate,
     RejectIn,
     WithdrawIn,
 )
@@ -256,18 +257,16 @@ def _copy_links(conn: Connection, org_id: UUID, from_id: UUID, to_id: UUID) -> N
 
 def create_draft(ctx: OrgContext, payload: FindingCreate) -> FindingOut:
     require_role(ctx, *_CREATE_ROLES)
-    if payload.finding_type in ("conformity", "opportunity") and payload.insufficient_evidence:
-        raise AppError(
-            "insufficient_evidence_forbidden",
-            f"insufficient_evidence is forbidden for finding_type={payload.finding_type}",
-            status_code=422,
-        )
-    if payload.insufficient_evidence and not (payload.insufficient_evidence_rationale or "").strip():
-        raise AppError(
-            "rationale_required",
-            "insufficient_evidence requires rationale",
-            status_code=422,
-        )
+    ftype = (
+        payload.finding_type.value
+        if hasattr(payload.finding_type, "value")
+        else str(payload.finding_type)
+    )
+    _validate_insufficiency_flags(
+        ftype,
+        payload.insufficient_evidence,
+        payload.insufficient_evidence_rationale,
+    )
     with tenant_connection(ctx.organization_id) as conn:
         assess = conn.execute(
             text(
@@ -307,7 +306,7 @@ def create_draft(ctx: OrgContext, payload: FindingCreate) -> FindingOut:
                 "id": finding_id,
                 "org": ctx.organization_id,
                 "assess": payload.assessment_id,
-                "ftype": payload.finding_type,
+                "ftype": ftype,
                 "sev": payload.severity,
                 "title": payload.title.strip(),
                 "body": payload.body.strip(),
@@ -339,10 +338,115 @@ def create_draft(ctx: OrgContext, payload: FindingCreate) -> FindingOut:
             to_status="draft",
             metadata={
                 "assessment_id": str(payload.assessment_id),
-                "finding_type": payload.finding_type,
+                "finding_type": ftype,
             },
         )
         out = _row_to_out(conn, row)
+        conn.commit()
+    return out
+
+
+def _assert_draft_editor(ctx: OrgContext, row) -> None:
+    is_author = row.author_membership_id == ctx.membership_id
+    if not is_author and not set(ctx.roles).intersection(("org_admin", "quality_manager")):
+        raise AppError(
+            "forbidden",
+            "Only author, quality_manager or org_admin may edit this finding",
+            status_code=403,
+        )
+
+
+def _validate_insufficiency_flags(
+    finding_type: str,
+    insufficient_evidence: bool,
+    rationale: str | None,
+) -> None:
+    if finding_type in ("conformity", "opportunity") and insufficient_evidence:
+        raise AppError(
+            "insufficient_evidence_forbidden",
+            f"insufficient_evidence is forbidden for finding_type={finding_type}",
+            status_code=422,
+        )
+    if insufficient_evidence and not (rationale or "").strip():
+        raise AppError(
+            "rationale_required",
+            "insufficient_evidence requires rationale",
+            status_code=422,
+        )
+
+
+def update_draft(ctx: OrgContext, finding_id: UUID, payload: FindingUpdate) -> FindingOut:
+    require_role(ctx, *_CREATE_ROLES)
+    ftype = (
+        payload.finding_type.value
+        if hasattr(payload.finding_type, "value")
+        else str(payload.finding_type)
+    )
+    _validate_insufficiency_flags(
+        ftype,
+        payload.insufficient_evidence,
+        payload.insufficient_evidence_rationale,
+    )
+    with tenant_connection(ctx.organization_id) as conn:
+        row = _lock_finding(conn, ctx.organization_id, finding_id)
+        if row.status != "draft":
+            raise AppError(
+                "mutation_blocked",
+                f"Finding edit requires draft (current={row.status})",
+                status_code=409,
+            )
+        _assert_draft_editor(ctx, row)
+        updated = conn.execute(
+            text(
+                f"""
+                UPDATE findings
+                SET finding_type = :ftype,
+                    severity = :sev,
+                    title = :title,
+                    body = :body,
+                    insufficient_evidence = :insuff,
+                    insufficient_evidence_rationale = :rationale,
+                    updated_at = now()
+                WHERE id = :id AND organization_id = :org AND status = 'draft'
+                RETURNING {_FINDING_COLS}
+                """
+            ),
+            {
+                "ftype": ftype,
+                "sev": payload.severity,
+                "title": payload.title.strip(),
+                "body": payload.body.strip(),
+                "insuff": payload.insufficient_evidence,
+                "rationale": (
+                    payload.insufficient_evidence_rationale.strip()
+                    if payload.insufficient_evidence_rationale
+                    else None
+                ),
+                "id": finding_id,
+                "org": ctx.organization_id,
+            },
+        ).first()
+        if updated is None:
+            raise AppError("conflict", "Concurrent status change", status_code=409)
+        _replace_links(
+            conn,
+            ctx.organization_id,
+            finding_id,
+            payload.requirement_ids,
+            payload.evidence_ids,
+        )
+        write_audit(
+            conn,
+            organization_id=ctx.organization_id,
+            actor_type="user",
+            actor_user_id=ctx.principal.user_id,
+            actor_membership_id=ctx.membership_id,
+            action="finding.update",
+            resource_type="finding",
+            resource_id=finding_id,
+            metadata={"finding_type": ftype},
+        )
+        out = _row_to_out(conn, updated)
         conn.commit()
     return out
 

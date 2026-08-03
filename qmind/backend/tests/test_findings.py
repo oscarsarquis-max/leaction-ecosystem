@@ -189,6 +189,75 @@ def test_reject_then_rework(client: TestClient):
     assert reworked.json()["to_status"] == "draft"
 
 
+def test_update_draft_and_conformity_rejects_insufficient_flag(client: TestClient):
+    h, _org, aid, req_id = _setup_in_progress(client)
+    eid = _approved_evidence(client, h, aid)
+    created = client.post(
+        "/api/v1/findings",
+        json={
+            "assessment_id": aid,
+            "finding_type": "observation",
+            "title": "Draft obs",
+            "body": "initial",
+            "requirement_ids": [req_id],
+            "evidence_ids": [],
+            "insufficient_evidence": True,
+            "insufficient_evidence_rationale": "No sample yet",
+        },
+        headers=h,
+    )
+    assert created.status_code == 201, created.text
+    fid = created.json()["id"]
+
+    patched = client.patch(
+        f"/api/v1/findings/{fid}",
+        json={
+            "finding_type": "conformity",
+            "title": "Now conformity",
+            "body": "updated body",
+            "requirement_ids": [req_id],
+            "evidence_ids": [eid],
+            "insufficient_evidence": False,
+        },
+        headers=h,
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["finding_type"] == "conformity"
+    assert patched.json()["evidence_ids"] == [eid]
+    assert "correlation_id" not in patched.json() or patched.status_code == 200
+
+    bad = client.patch(
+        f"/api/v1/findings/{fid}",
+        json={
+            "finding_type": "conformity",
+            "title": "Bad",
+            "body": "body",
+            "requirement_ids": [req_id],
+            "evidence_ids": [eid],
+            "insufficient_evidence": True,
+            "insufficient_evidence_rationale": "not allowed",
+        },
+        headers=h,
+    )
+    assert bad.status_code == 422
+    assert bad.json()["code"] == "insufficient_evidence_forbidden"
+    assert "correlation_id" in bad.json()
+
+    assert client.post(f"/api/v1/findings/{fid}/transitions/submit", headers=h).status_code == 200
+    locked = client.patch(
+        f"/api/v1/findings/{fid}",
+        json={
+            "finding_type": "conformity",
+            "title": "locked",
+            "body": "body",
+            "requirement_ids": [req_id],
+            "evidence_ids": [eid],
+        },
+        headers=h,
+    )
+    assert locked.status_code == 409
+
+
 def test_submit_without_approved_evidence_fails_for_conformity(client: TestClient):
     h, _org, aid, req_id = _setup_in_progress(client)
     # authorize → receive (quarantined) — must not be linkable to Finding

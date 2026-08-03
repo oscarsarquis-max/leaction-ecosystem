@@ -11,6 +11,7 @@ from app.modules.findings.schemas import (
     FindingCreate,
     FindingOut,
     FindingTransitionResult,
+    FindingUpdate,
     RejectIn,
     WithdrawIn,
 )
@@ -67,6 +68,26 @@ def list_findings(
 )
 def get_finding(finding_id: UUID, ctx: OrgContextDep) -> FindingOut:
     return service.get_finding(ctx, finding_id)
+
+
+@router.patch(
+    "/{finding_id}",
+    response_model=FindingOut,
+    operation_id="updateFinding",
+    responses={
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+        409: ERROR_RESPONSES[409],
+        422: ERROR_RESPONSES[422],
+    },
+    summary="Update finding draft (requirements + approved evidence links)",
+)
+def update_finding(
+    finding_id: UUID,
+    payload: FindingUpdate,
+    ctx: OrgContextDep,
+) -> FindingOut:
+    return service.update_draft(ctx, finding_id, payload)
 
 
 @router.post(

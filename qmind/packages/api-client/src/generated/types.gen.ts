@@ -741,6 +741,42 @@ export type FindingTransitionResult = {
 export type FindingType = 'conformity' | 'nonconformity' | 'opportunity' | 'observation';
 
 /**
+ * FindingUpdate
+ * Draft-only edit — assessment_id is immutable.
+ */
+export type FindingUpdate = {
+    /**
+     * Body
+     */
+    body: string;
+    /**
+     * Evidence Ids
+     */
+    evidence_ids?: Array<string>;
+    finding_type: FindingType;
+    /**
+     * Insufficient Evidence
+     */
+    insufficient_evidence?: boolean;
+    /**
+     * Insufficient Evidence Rationale
+     */
+    insufficient_evidence_rationale?: string | null;
+    /**
+     * Requirement Ids
+     */
+    requirement_ids?: Array<string>;
+    /**
+     * Severity
+     */
+    severity?: string | null;
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -5825,6 +5861,82 @@ export type GetFindingResponses = {
 };
 
 export type GetFindingResponse = GetFindingResponses[keyof GetFindingResponses];
+
+export type UpdateFindingData = {
+    body: FindingUpdate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Finding Id
+         */
+        finding_id: string;
+    };
+    query?: never;
+    url: '/api/v1/findings/{finding_id}';
+};
+
+export type UpdateFindingErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type UpdateFindingError = UpdateFindingErrors[keyof UpdateFindingErrors];
+
+export type UpdateFindingResponses = {
+    /**
+     * Successful Response
+     */
+    200: FindingOut;
+};
+
+export type UpdateFindingResponse = UpdateFindingResponses[keyof UpdateFindingResponses];
 
 export type ApproveFindingData = {
     body?: never;

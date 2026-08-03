@@ -12,6 +12,7 @@ __all__ = [
     "FindingType",
     "FindingStatus",
     "FindingCreate",
+    "FindingUpdate",
     "FindingOut",
     "FindingTransitionResult",
     "RejectIn",
@@ -22,6 +23,19 @@ __all__ = [
 
 class FindingCreate(BaseModel):
     assessment_id: UUID
+    finding_type: FindingType
+    title: str = Field(..., min_length=1, max_length=500)
+    body: str = Field(..., min_length=1)
+    severity: str | None = None
+    requirement_ids: list[UUID] = Field(default_factory=list)
+    evidence_ids: list[UUID] = Field(default_factory=list)
+    insufficient_evidence: bool = False
+    insufficient_evidence_rationale: str | None = None
+
+
+class FindingUpdate(BaseModel):
+    """Draft-only edit — assessment_id is immutable."""
+
     finding_type: FindingType
     title: str = Field(..., min_length=1, max_length=500)
     body: str = Field(..., min_length=1)

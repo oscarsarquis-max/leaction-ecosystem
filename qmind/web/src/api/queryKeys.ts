@@ -20,6 +20,10 @@ export const queryKeys = {
     ["org", organizationId, "assessment", assessmentId, "evidences"] as const,
   evidenceLinks: (organizationId: string, evidenceId: string) =>
     ["org", organizationId, "evidence", evidenceId, "links"] as const,
+  assessmentFindings: (organizationId: string, assessmentId: string) =>
+    ["org", organizationId, "assessment", assessmentId, "findings"] as const,
+  finding: (organizationId: string, findingId: string) =>
+    ["org", organizationId, "finding", findingId] as const,
   health: ["health"] as const,
 };
 

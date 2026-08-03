@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  canApproveFinding,
   canCollectEvidence,
+  canCreateFindings,
   canEditAssessmentSetup,
   canEditFieldExecution,
   canMutateAssessments,
   canReadAssessments,
+  canReviewFindings,
   canStartAssessment,
 } from "@/lib/permissions";
 
@@ -29,5 +32,15 @@ describe("assessment permissions", () => {
     expect(canEditFieldExecution(["consultant_auditor"], "in_progress")).toBe(true);
     expect(canCollectEvidence(["quality_manager"], "analysis")).toBe(true);
     expect(canCollectEvidence(["quality_manager"], "planned")).toBe(false);
+  });
+
+  it("enforces finding SoD and create/review roles", () => {
+    expect(canCreateFindings(["consultant_auditor"], "in_progress")).toBe(true);
+    expect(canCreateFindings(["reader"], "in_progress")).toBe(false);
+    expect(canReviewFindings(["quality_manager"])).toBe(true);
+    expect(canReviewFindings(["consultant_auditor"])).toBe(false);
+    const author = "mem-author";
+    expect(canApproveFinding(["quality_manager"], author, author)).toBe(false);
+    expect(canApproveFinding(["quality_manager"], "mem-other", author)).toBe(true);
   });
 });

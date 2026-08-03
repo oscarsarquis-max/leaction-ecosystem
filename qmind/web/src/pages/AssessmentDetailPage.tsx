@@ -19,6 +19,7 @@ import {
 } from "@/components/StatePanels";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import { FieldExecutionPanel } from "@/components/FieldExecutionPanel";
+import { FindingsAnalysisPanel } from "@/components/FindingsAnalysisPanel";
 import { QmindApiError } from "@/api/qmindApi";
 import { isUuid } from "@/lib/validation";
 
@@ -144,6 +145,15 @@ export function AssessmentDetailPage() {
           assessmentId={assessmentId}
           canEditField={perms.canEditField}
           canCollectEvidence={perms.canCollectEvidence}
+        />
+      ) : null}
+      {perms.canWorkFindings ? (
+        <FindingsAnalysisPanel
+          assessmentId={assessmentId}
+          canCreate={perms.canCreateFindings}
+          canReview={perms.canReviewFindings}
+          membershipId={perms.membershipId}
+          roles={perms.roles}
         />
       ) : null}
     </section>
