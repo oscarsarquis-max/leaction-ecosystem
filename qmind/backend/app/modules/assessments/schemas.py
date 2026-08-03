@@ -35,12 +35,38 @@ class AssessmentOut(BaseModel):
     type: str
     status: str
     lead_membership_id: UUID | None
+    started_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
 
-class AssessmentPlanResult(BaseModel):
+class AssessmentTransitionResult(BaseModel):
     assessment: AssessmentOut
     from_status: str
     to_status: str
-    event: str = "plan"
+    event: str
+
+
+# Backward-compatible alias used by earlier tests/imports
+AssessmentPlanResult = AssessmentTransitionResult
+
+
+class ScopeOut(BaseModel):
+    id: UUID
+    assessment_id: UUID
+    org_process_id: UUID | None
+    requirement_id: UUID | None
+    created_at: datetime
+
+
+class TeamMemberIn(BaseModel):
+    membership_id: UUID
+    team_role: str | None = None
+
+
+class TeamMemberOut(BaseModel):
+    id: UUID
+    assessment_id: UUID
+    membership_id: UUID
+    team_role: str | None
+    created_at: datetime
