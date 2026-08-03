@@ -12,7 +12,8 @@
     "test:api-client": "npm run test -w @qmind/api-client",
     "dev:web": "npm run dev -w @qmind/web",
     "test:web": "npm run test -w @qmind/web",
-    "build:web": "npm run build -w @qmind/web"
+    "build:web": "npm run build -w @qmind/web",
+    "test:e2e:web": "npm run test:e2e -w @qmind/web"
   },
   "engines": {
     "node": ">=20"

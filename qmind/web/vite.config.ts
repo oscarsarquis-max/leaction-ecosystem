@@ -25,6 +25,17 @@ export default defineConfig({
       "/ready": { target: apiTarget, changeOrigin: true },
     },
   },
+  // Same proxy for `vite preview` so production-build E2E can hit local API.
+  preview: {
+    host: "0.0.0.0",
+    port: 4178,
+    strictPort: true,
+    proxy: {
+      "/api": { target: apiTarget, changeOrigin: true },
+      "/health": { target: apiTarget, changeOrigin: true },
+      "/ready": { target: apiTarget, changeOrigin: true },
+    },
+  },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
@@ -33,5 +44,6 @@ export default defineConfig({
     pool: "threads",
     maxWorkers: 2,
     fileParallelism: true,
+    exclude: ["**/node_modules/**", "**/e2e/**", "**/dist/**"],
   },
 });
