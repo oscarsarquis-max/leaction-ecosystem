@@ -5,11 +5,17 @@ from fastapi import APIRouter
 from app.config import get_settings
 from app.db import ping_database
 from app.errors import AppError
+from app.schemas.common import ERROR_RESPONSES
 
 router = APIRouter(tags=["health"])
 
 
-@router.get("/health")
+@router.get(
+    "/health",
+    operation_id="getHealth",
+    responses={503: ERROR_RESPONSES[503]},
+    summary="Health check",
+)
 def health() -> dict:
     settings = get_settings()
     try:
@@ -26,7 +32,12 @@ def health() -> dict:
     }
 
 
-@router.get("/ready")
+@router.get(
+    "/ready",
+    operation_id="getReady",
+    responses={503: ERROR_RESPONSES[503]},
+    summary="Readiness probe",
+)
 def ready() -> dict:
     """Liveness/readiness for orchestrators — no config, auth mode, or host details."""
     try:

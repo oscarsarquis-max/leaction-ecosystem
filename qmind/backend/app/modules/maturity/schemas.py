@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
-Applicability = Literal["applicable", "not_applicable", "insufficient_info"]
+from app.schemas.enums import Applicability, MaturityStatus
 
 
 class MaturityPackageCreate(BaseModel):
@@ -37,7 +35,7 @@ class ScoreOut(BaseModel):
     criterion_code: str | None = None
     dimension_id: UUID | None = None
     dimension_code: str | None = None
-    applicability: str
+    applicability: Applicability
     level: int | None
     na_rationale: str | None
     rationale: str | None
@@ -60,7 +58,7 @@ class MaturityPackageOut(BaseModel):
     maturity_model_id: UUID
     model_code: str | None = None
     model_version: str | None = None
-    status: str
+    status: MaturityStatus
     global_score: Decimal | None
     author_membership_id: UUID
     approved_by: UUID | None = None
@@ -73,8 +71,8 @@ class MaturityPackageOut(BaseModel):
 
 class MaturityTransitionResult(BaseModel):
     package: MaturityPackageOut
-    from_status: str
-    to_status: str
+    from_status: MaturityStatus
+    to_status: MaturityStatus
     event: str
     new_package_id: UUID | None = None  # supersede
 

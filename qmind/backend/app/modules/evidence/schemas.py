@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.schemas.enums import EvidenceClassification, EvidenceStatus
+
 
 class AuthorizeUploadIn(BaseModel):
     assessment_id: UUID
-    classification: Literal["public", "internal", "confidential", "restricted"] = "confidential"
+    classification: EvidenceClassification = EvidenceClassification.confidential
     content_type: str = Field(..., max_length=200)
     declared_byte_size: int = Field(..., ge=1, le=100_000_000)
 
@@ -30,8 +31,8 @@ class EvidenceOut(BaseModel):
     id: UUID
     organization_id: UUID
     assessment_id: UUID | None
-    status: str
-    classification: str
+    status: EvidenceStatus
+    classification: EvidenceClassification
     content_type: str | None
     byte_size: int | None
     content_hash: str | None
@@ -45,8 +46,8 @@ class EvidenceOut(BaseModel):
 
 class EvidenceTransitionResult(BaseModel):
     evidence: EvidenceOut
-    from_status: str
-    to_status: str
+    from_status: EvidenceStatus
+    to_status: EvidenceStatus
     event: str
 
 

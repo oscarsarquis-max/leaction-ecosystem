@@ -141,7 +141,11 @@ def authorize_upload(ctx: OrgContext, payload: AuthorizeUploadIn) -> AuthorizeUp
                 "id": evidence_id,
                 "org": ctx.organization_id,
                 "assess": payload.assessment_id,
-                "class": payload.classification,
+                "class": (
+                    payload.classification.value
+                    if hasattr(payload.classification, "value")
+                    else payload.classification
+                ),
                 "ctype": ctype,
                 "size": payload.declared_byte_size,
                 "key": storage_key,

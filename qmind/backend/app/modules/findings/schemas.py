@@ -1,13 +1,23 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.schemas.enums import FindingStatus, FindingType
 
-FindingType = Literal["conformity", "nonconformity", "opportunity", "observation"]
+# Re-export for callers that imported FindingType from this module
+__all__ = [
+    "FindingType",
+    "FindingStatus",
+    "FindingCreate",
+    "FindingOut",
+    "FindingTransitionResult",
+    "RejectIn",
+    "WithdrawIn",
+    "DiscardIn",
+]
 
 
 class FindingCreate(BaseModel):
@@ -26,9 +36,9 @@ class FindingOut(BaseModel):
     id: UUID
     organization_id: UUID
     assessment_id: UUID
-    finding_type: str
+    finding_type: FindingType
     severity: str | None
-    status: str
+    status: FindingStatus
     title: str
     body: str
     insufficient_evidence: bool
@@ -48,8 +58,8 @@ class FindingOut(BaseModel):
 
 class FindingTransitionResult(BaseModel):
     finding: FindingOut
-    from_status: str
-    to_status: str
+    from_status: FindingStatus
+    to_status: FindingStatus
     event: str
     preserved_finding_id: UUID | None = None  # withdrawn row kept on rework
 

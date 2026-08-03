@@ -5,10 +5,17 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.health import router as health_router
 from app.config import get_settings
-from app.errors import AppError, app_error_handler
+from app.errors import (
+    AppError,
+    app_error_handler,
+    http_exception_handler,
+    validation_error_handler,
+)
 from app.modules.actions.router import router as actions_router
 from app.modules.assessments.router import router as assessments_router
 from app.modules.evidence.router import router as evidence_router
@@ -16,6 +23,7 @@ from app.modules.findings.router import router as findings_router
 from app.modules.maturity.router import router as maturity_router
 from app.modules.orgs.router import router as orgs_router
 from app.modules.reports.router import router as reports_router
+from app.openapi_contract import API_DESCRIPTION, API_TITLE, API_VERSION, build_openapi_schema
 
 
 @asynccontextmanager
@@ -28,13 +36,18 @@ async def lifespan(_app: FastAPI):
 settings = get_settings()
 
 app = FastAPI(
-    title=settings.app_name,
-    version="0.1.0",
+    title=API_TITLE,
+    version=API_VERSION,
+    description=API_DESCRIPTION.strip(),
     lifespan=lifespan,
     docs_url="/docs" if settings.environment != "prod" else None,
+    redoc_url="/redoc" if settings.environment != "prod" else None,
 )
 
 app.add_exception_handler(AppError, app_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+
 app.include_router(health_router)
 app.include_router(orgs_router, prefix=settings.api_prefix)
 app.include_router(assessments_router, prefix=settings.api_prefix)
@@ -45,7 +58,7 @@ app.include_router(maturity_router, prefix=settings.api_prefix)
 app.include_router(reports_router, prefix=settings.api_prefix)
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root() -> dict[str, str]:
     return {
         "service": settings.app_name,
@@ -53,3 +66,10 @@ def root() -> dict[str, str]:
         "health": "/health",
         "api": settings.api_prefix,
     }
+
+
+def custom_openapi() -> dict:
+    return build_openapi_schema(app)
+
+
+app.openapi = custom_openapi  # type: ignore[method-assign]

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
+
+from app.schemas.enums import AssessmentStatus, AssessmentType
 
 
 class ScopeItemIn(BaseModel):
@@ -21,7 +22,7 @@ class ScopeItemIn(BaseModel):
 class AssessmentCreate(BaseModel):
     assessment_model_id: UUID
     standard_version_id: UUID
-    type: Literal["diagnosis", "internal_audit", "other"] = "diagnosis"
+    type: AssessmentType = AssessmentType.diagnosis
     maturity_model_id: UUID | None = None
     scope: list[ScopeItemIn] = Field(default_factory=list)
 
@@ -32,8 +33,8 @@ class AssessmentOut(BaseModel):
     assessment_model_id: UUID
     standard_version_id: UUID
     maturity_model_id: UUID | None
-    type: str
-    status: str
+    type: AssessmentType
+    status: AssessmentStatus
     lead_membership_id: UUID | None
     started_at: datetime | None = None
     created_at: datetime
@@ -42,8 +43,8 @@ class AssessmentOut(BaseModel):
 
 class AssessmentTransitionResult(BaseModel):
     assessment: AssessmentOut
-    from_status: str
-    to_status: str
+    from_status: AssessmentStatus
+    to_status: AssessmentStatus
     event: str
 
 

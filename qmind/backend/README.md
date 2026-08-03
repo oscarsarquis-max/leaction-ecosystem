@@ -41,6 +41,13 @@ uvicorn app.main:app --reload --port 8008
 alembic upgrade head   # inclui upload_expires_at
 ```
 
+## Contrato OpenAPI
+
+- Snapshot determinístico: `openapi/openapi.json` (não editar à mão)
+- Export: `python scripts/export_openapi.py`
+- Drift CI: `python scripts/check_openapi_drift.py` ou `pytest tests/test_openapi_contract.py`
+- Freeze: tag **`openapi-v1-initial`** (após aceite deste contrato)
+
 ## Testes
 
 ```powershell

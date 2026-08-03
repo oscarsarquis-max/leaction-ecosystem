@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.schemas.enums import JobStatus, ReportStatus
+
 
 class ReportCreate(BaseModel):
     assessment_id: UUID
@@ -18,7 +20,7 @@ class ReportOut(BaseModel):
     organization_id: UUID
     assessment_id: UUID
     version_no: int
-    status: str
+    status: ReportStatus
     structured_content: dict[str, Any]
     maturity_assessment_id: UUID | None
     export_storage_key: str | None
@@ -33,8 +35,8 @@ class ReportOut(BaseModel):
 
 class ReportTransitionResult(BaseModel):
     report: ReportOut
-    from_status: str
-    to_status: str
+    from_status: ReportStatus
+    to_status: ReportStatus
     event: str
 
 
@@ -50,7 +52,7 @@ class JobOut(BaseModel):
     id: UUID
     organization_id: UUID
     job_type: str
-    status: str
+    status: JobStatus
     idempotency_key: str
     input_ref: dict[str, Any]
     created_at: datetime

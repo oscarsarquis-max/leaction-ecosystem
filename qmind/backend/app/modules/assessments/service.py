@@ -147,7 +147,7 @@ def create_draft(ctx: OrgContext, payload: AssessmentCreate) -> AssessmentOut:
                 "model": payload.assessment_model_id,
                 "sv": payload.standard_version_id,
                 "maturity": payload.maturity_model_id,
-                "type": payload.type,
+                "type": payload.type.value if hasattr(payload.type, "value") else payload.type,
                 "lead": ctx.membership_id,
                 "user": ctx.principal.user_id,
             },

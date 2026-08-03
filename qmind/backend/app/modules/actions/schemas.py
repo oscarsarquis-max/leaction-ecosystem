@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
-ActionKind = Literal["correction", "corrective_action", "improvement"]
+from app.schemas.enums import ActionItemStatus, ActionKind, ActionPlanStatus
 
 
 class ActionPlanCreate(BaseModel):
@@ -19,7 +17,7 @@ class ActionPlanOut(BaseModel):
     id: UUID
     organization_id: UUID
     assessment_id: UUID
-    status: str
+    status: ActionPlanStatus
     empty_plan_rationale: str | None
     created_at: datetime
     updated_at: datetime
@@ -27,8 +25,8 @@ class ActionPlanOut(BaseModel):
 
 class ActionPlanTransitionResult(BaseModel):
     plan: ActionPlanOut
-    from_status: str
-    to_status: str
+    from_status: ActionPlanStatus
+    to_status: ActionPlanStatus
     event: str
 
 
@@ -46,11 +44,11 @@ class ActionItemOut(BaseModel):
     organization_id: UUID
     action_plan_id: UUID
     finding_id: UUID | None
-    action_kind: str
+    action_kind: ActionKind
     description: str
     owner_membership_id: UUID
     due_at: datetime
-    status: str
+    status: ActionItemStatus
     is_overdue: bool
     efficacy_required: bool
     source_finding_withdrawn: bool = False
@@ -65,8 +63,8 @@ class ActionItemOut(BaseModel):
 
 class ActionItemTransitionResult(BaseModel):
     item: ActionItemOut
-    from_status: str
-    to_status: str
+    from_status: ActionItemStatus
+    to_status: ActionItemStatus
     event: str
 
 
