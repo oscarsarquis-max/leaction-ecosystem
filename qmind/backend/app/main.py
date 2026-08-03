@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from app.api.health import router as health_router
 from app.config import get_settings
 from app.errors import AppError, app_error_handler
+from app.modules.assessments.router import router as assessments_router
 from app.modules.orgs.router import router as orgs_router
 
 
@@ -31,6 +32,7 @@ app = FastAPI(
 app.add_exception_handler(AppError, app_error_handler)
 app.include_router(health_router)
 app.include_router(orgs_router, prefix=settings.api_prefix)
+app.include_router(assessments_router, prefix=settings.api_prefix)
 
 
 @app.get("/")
