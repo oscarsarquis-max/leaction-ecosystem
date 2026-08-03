@@ -35,7 +35,7 @@
 | H9 | Logs (CloudWatch) | Log groups API/worker/ALB access; `correlation_id` | PENDENTE |
 | H10 | Métricas e alarmes | 5xx ALB, CPU/mem ECS, conexões RDS, idade de jobs falhos | PENDENTE |
 
-Scaffold inicial: `../../infra/` (Terraform + `DEPLOY.md`) — **ainda sem apply na conta**.
+Scaffold inicial: `../../infra/` (Terraform ECR/Cognito/S3/RDS/Secrets + `DEPLOY.md`) — **ainda sem `terraform apply` na conta**. ECS/ALB/alarmas = próximo incremento.
 
 ## 3. Checklist — migrações e seeds (identidade separada)
 
