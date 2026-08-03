@@ -33,8 +33,11 @@ class ScoreOut(BaseModel):
     id: UUID
     criterion_id: UUID
     criterion_code: str | None = None
+    criterion_title: str | None = None
     dimension_id: UUID | None = None
     dimension_code: str | None = None
+    dimension_title: str | None = None
+    anchor_l3: str | None = None
     applicability: Applicability
     level: int | None
     na_rationale: str | None
@@ -45,6 +48,7 @@ class ScoreOut(BaseModel):
 class DimensionScoreOut(BaseModel):
     dimension_id: UUID
     dimension_code: str
+    dimension_title: str | None = None
     score: Decimal
     applicable_count: int
 

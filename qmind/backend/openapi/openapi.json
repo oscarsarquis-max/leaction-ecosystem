@@ -783,6 +783,17 @@
             "title": "Dimension Id",
             "type": "string"
           },
+          "dimension_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimension Title"
+          },
           "score": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Score",
@@ -2483,6 +2494,17 @@
       },
       "ScoreOut": {
         "properties": {
+          "anchor_l3": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anchor L3"
+          },
           "applicability": {
             "$ref": "#/components/schemas/Applicability"
           },
@@ -2501,6 +2523,17 @@
             "format": "uuid",
             "title": "Criterion Id",
             "type": "string"
+          },
+          "criterion_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Criterion Title"
           },
           "dimension_code": {
             "anyOf": [
@@ -2524,6 +2557,17 @@
               }
             ],
             "title": "Dimension Id"
+          },
+          "dimension_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimension Title"
           },
           "evidence_ids": {
             "items": {

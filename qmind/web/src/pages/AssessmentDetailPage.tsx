@@ -20,6 +20,7 @@ import {
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import { FieldExecutionPanel } from "@/components/FieldExecutionPanel";
 import { FindingsAnalysisPanel } from "@/components/FindingsAnalysisPanel";
+import { MaturityAnalysisPanel } from "@/components/MaturityAnalysisPanel";
 import { QmindApiError } from "@/api/qmindApi";
 import { isUuid } from "@/lib/validation";
 
@@ -154,6 +155,16 @@ export function AssessmentDetailPage() {
           canReview={perms.canReviewFindings}
           membershipId={perms.membershipId}
           roles={perms.roles}
+        />
+      ) : null}
+      {perms.canWorkMaturity ? (
+        <MaturityAnalysisPanel
+          assessmentId={assessmentId}
+          canElaborate={perms.canElaborateMaturity}
+          canReview={perms.canReviewMaturity}
+          membershipId={perms.membershipId}
+          roles={perms.roles}
+          assessmentStatus={a.status}
         />
       ) : null}
     </section>

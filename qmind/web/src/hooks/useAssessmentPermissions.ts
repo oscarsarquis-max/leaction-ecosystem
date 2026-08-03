@@ -5,11 +5,14 @@ import {
   canCreateFindings,
   canEditAssessmentSetup,
   canEditFieldExecution,
+  canElaborateMaturity,
   canMutateAssessments,
   canReadAssessments,
   canReviewFindings,
+  canReviewMaturity,
   canStartAssessment,
   canWorkFindingsOnAssessment,
+  canWorkMaturityOnAssessment,
 } from "@/lib/permissions";
 
 export function useAssessmentPermissions(status?: string) {
@@ -30,6 +33,9 @@ export function useAssessmentPermissions(status?: string) {
       canWorkFindings: canWorkFindingsOnAssessment(status),
       canCreateFindings: canCreateFindings(roles, status),
       canReviewFindings: canReviewFindings(roles),
+      canWorkMaturity: canWorkMaturityOnAssessment(status),
+      canElaborateMaturity: canElaborateMaturity(roles, status),
+      canReviewMaturity: canReviewMaturity(roles),
     }),
     [roles, status, membershipId],
   );

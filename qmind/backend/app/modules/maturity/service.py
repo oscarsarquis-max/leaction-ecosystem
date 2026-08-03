@@ -98,7 +98,8 @@ def _load_package_out(conn: Connection, row) -> MaturityPackageOut:
         text(
             """
             SELECT s.id, s.criterion_id, s.applicability, s.level, s.na_rationale, s.rationale,
-                   c.code AS criterion_code, d.id AS dimension_id, d.code AS dimension_code
+                   c.code AS criterion_code, c.title AS criterion_title, c.anchor_l3,
+                   d.id AS dimension_id, d.code AS dimension_code, d.title AS dimension_title
             FROM maturity_scores s
             JOIN maturity_criteria c ON c.id = s.criterion_id
             JOIN maturity_dimensions d ON d.id = c.maturity_dimension_id
@@ -128,8 +129,11 @@ def _load_package_out(conn: Connection, row) -> MaturityPackageOut:
                 id=s.id,
                 criterion_id=s.criterion_id,
                 criterion_code=s.criterion_code,
+                criterion_title=s.criterion_title,
                 dimension_id=s.dimension_id,
                 dimension_code=s.dimension_code,
+                dimension_title=s.dimension_title,
+                anchor_l3=s.anchor_l3,
                 applicability=s.applicability,
                 level=s.level,
                 na_rationale=s.na_rationale,
@@ -140,7 +144,8 @@ def _load_package_out(conn: Connection, row) -> MaturityPackageOut:
     dim_rows = conn.execute(
         text(
             """
-            SELECT mds.dimension_id, d.code AS dimension_code, mds.score, mds.applicable_count
+            SELECT mds.dimension_id, d.code AS dimension_code, d.title AS dimension_title,
+                   mds.score, mds.applicable_count
             FROM maturity_dimension_scores mds
             JOIN maturity_dimensions d ON d.id = mds.dimension_id
             WHERE mds.maturity_assessment_id = :pid
@@ -168,6 +173,7 @@ def _load_package_out(conn: Connection, row) -> MaturityPackageOut:
             DimensionScoreOut(
                 dimension_id=d.dimension_id,
                 dimension_code=d.dimension_code,
+                dimension_title=d.dimension_title,
                 score=d.score,
                 applicable_count=d.applicable_count,
             )

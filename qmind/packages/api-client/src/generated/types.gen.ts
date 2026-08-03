@@ -419,6 +419,10 @@ export type DimensionScoreOut = {
      */
     dimension_id: string;
     /**
+     * Dimension Title
+     */
+    dimension_title?: string | null;
+    /**
      * Score
      */
     score: string;
@@ -1300,6 +1304,10 @@ export type ScopeOut = {
  * ScoreOut
  */
 export type ScoreOut = {
+    /**
+     * Anchor L3
+     */
+    anchor_l3?: string | null;
     applicability: Applicability;
     /**
      * Criterion Code
@@ -1310,6 +1318,10 @@ export type ScoreOut = {
      */
     criterion_id: string;
     /**
+     * Criterion Title
+     */
+    criterion_title?: string | null;
+    /**
      * Dimension Code
      */
     dimension_code?: string | null;
@@ -1317,6 +1329,10 @@ export type ScoreOut = {
      * Dimension Id
      */
     dimension_id?: string | null;
+    /**
+     * Dimension Title
+     */
+    dimension_title?: string | null;
     /**
      * Evidence Ids
      */

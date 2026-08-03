@@ -293,6 +293,16 @@ function installApi(store: Store) {
         return json(store.assessment);
       }
 
+      if (
+        url.includes("/maturity-assessments") ||
+        url.includes("/findings") ||
+        url.includes("/interviews") ||
+        url.includes("/questions") ||
+        url.includes("/evidences")
+      ) {
+        return json([]);
+      }
+
       return json({ code: "not_found", message: url, correlation_id: "" }, 404);
     }),
   );

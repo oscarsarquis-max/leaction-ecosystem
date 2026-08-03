@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   canApproveFinding,
+  canApproveMaturity,
   canCollectEvidence,
   canCreateFindings,
   canEditAssessmentSetup,
   canEditFieldExecution,
+  canEditMaturityScores,
+  canElaborateMaturity,
   canMutateAssessments,
   canReadAssessments,
   canReviewFindings,
+  canReviewMaturity,
   canStartAssessment,
+  maturityEvidenceHint,
 } from "@/lib/permissions";
 
 describe("assessment permissions", () => {
@@ -42,5 +47,15 @@ describe("assessment permissions", () => {
     const author = "mem-author";
     expect(canApproveFinding(["quality_manager"], author, author)).toBe(false);
     expect(canApproveFinding(["quality_manager"], "mem-other", author)).toBe(true);
+  });
+
+  it("gates maturity elaborate/review and score edit by package status", () => {
+    expect(canElaborateMaturity(["consultant_auditor"], "analysis")).toBe(true);
+    expect(canReviewMaturity(["quality_manager"])).toBe(true);
+    expect(canEditMaturityScores(["org_admin"], "analysis", "draft")).toBe(true);
+    expect(canEditMaturityScores(["org_admin"], "analysis", "approved")).toBe(false);
+    expect(canApproveMaturity(["quality_manager"], "a", "a")).toBe(false);
+    expect(maturityEvidenceHint(3)).toMatch(/approved/i);
+    expect(maturityEvidenceHint(5)).toMatch(/melhoria/i);
   });
 });

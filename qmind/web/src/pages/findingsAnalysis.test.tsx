@@ -85,6 +85,7 @@ describe("findings analysis UI", () => {
       if (url.includes(`/assessments/${AID}/team`)) return json([]);
       if (url.includes(`/assessments/${AID}/questions`)) return json([]);
       if (url.includes(`/assessments/${AID}/interviews`)) return json([]);
+      if (url.includes("/maturity-assessments")) return json([]);
       if (url.includes(`/assessments/${AID}/evidences`)) {
         return json([
           {
@@ -266,7 +267,12 @@ describe("findings analysis UI", () => {
             },
           ]);
         }
-        if (url.includes("/team") || url.includes("/questions") || url.includes("/interviews")) {
+        if (
+          url.includes("/team") ||
+          url.includes("/questions") ||
+          url.includes("/interviews") ||
+          url.includes("/maturity-assessments")
+        ) {
           return json([]);
         }
         if (url.includes("/evidences")) return json([]);

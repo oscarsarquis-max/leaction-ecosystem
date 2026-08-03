@@ -101,3 +101,63 @@ export function isFindingAuthor(
 ): boolean {
   return !!currentMembershipId && currentMembershipId === authorMembershipId;
 }
+
+/** Maturity elaborate roles mirror backend _ELABORATE_ROLES. */
+const MATURITY_ELABORATE_ROLES = FINDING_CREATE_ROLES;
+const MATURITY_REVIEW_ROLES = FINDING_REVIEW_ROLES;
+
+export function canWorkMaturityOnAssessment(status: string | undefined): boolean {
+  return (
+    status === "in_progress" ||
+    status === "analysis" ||
+    status === "actions" ||
+    status === "report"
+  );
+}
+
+export function canElaborateMaturity(
+  roles: readonly string[] | undefined,
+  assessmentStatus: string | undefined,
+): boolean {
+  return (
+    (roles ?? []).some((r) => MATURITY_ELABORATE_ROLES.has(r)) &&
+    canWorkMaturityOnAssessment(assessmentStatus)
+  );
+}
+
+export function canReviewMaturity(roles: readonly string[] | undefined): boolean {
+  return (roles ?? []).some((r) => MATURITY_REVIEW_ROLES.has(r));
+}
+
+export function canApproveMaturity(
+  roles: readonly string[] | undefined,
+  currentMembershipId: string | null | undefined,
+  authorMembershipId: string | null | undefined,
+): boolean {
+  if (!canReviewMaturity(roles)) return false;
+  if (!currentMembershipId || !authorMembershipId) return false;
+  return currentMembershipId !== authorMembershipId;
+}
+
+export function canEditMaturityScores(
+  roles: readonly string[] | undefined,
+  assessmentStatus: string | undefined,
+  packageStatus: string | undefined,
+): boolean {
+  return canElaborateMaturity(roles, assessmentStatus) && packageStatus === "draft";
+}
+
+/** Soft client hints — server still enforces on submit. */
+export function maturityEvidenceHint(level: number | null | undefined): string | null {
+  if (level == null) return null;
+  if (level >= 5) {
+    return "Nível 5: evidência approved + justificativa de ciclo de melhoria.";
+  }
+  if (level >= 4) {
+    return "Nível 4: evidência approved + justificativa de medição/uso de dados.";
+  }
+  if (level >= 3) {
+    return "Nível 3+: ≥1 Evidence approved vinculada (exigido no submit).";
+  }
+  return null;
+}
