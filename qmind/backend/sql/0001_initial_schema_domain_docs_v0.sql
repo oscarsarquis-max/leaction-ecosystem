@@ -294,6 +294,7 @@ CREATE TABLE assessments (
   closed_at timestamptz,
   lead_membership_id uuid,
   no_findings_declared boolean NOT NULL DEFAULT false,
+  close_waiver_reason text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   created_by uuid,

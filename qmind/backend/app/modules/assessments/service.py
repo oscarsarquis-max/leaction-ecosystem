@@ -545,6 +545,30 @@ def transition_plan(ctx: OrgContext, assessment_id: UUID) -> AssessmentTransitio
                 "plan requires minimum team (lead membership)",
                 status_code=422,
             )
+        # Freeze maturity model version at plan (immutable catalog ref)
+        if row.maturity_model_id is None:
+            from app.modules.maturity.service import resolve_active_maturity_model_id
+
+            mid = resolve_active_maturity_model_id()
+            conn.execute(
+                text(
+                    """
+                    UPDATE assessments
+                    SET maturity_model_id = :mid, updated_at = now()
+                    WHERE id = :id AND organization_id = :org AND maturity_model_id IS NULL
+                    """
+                ),
+                {"mid": mid, "id": assessment_id, "org": ctx.organization_id},
+            )
+            write_audit(
+                conn,
+                organization_id=ctx.organization_id,
+                actor_type="system",
+                action="assessment.freeze_maturity_model",
+                resource_type="assessment",
+                resource_id=assessment_id,
+                metadata={"maturity_model_id": str(mid)},
+            )
         updated = _set_status(conn, ctx, assessment_id, "draft", "planned", "plan")
         conn.commit()
     return AssessmentTransitionResult(

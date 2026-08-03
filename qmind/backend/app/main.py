@@ -13,6 +13,7 @@ from app.modules.actions.router import router as actions_router
 from app.modules.assessments.router import router as assessments_router
 from app.modules.evidence.router import router as evidence_router
 from app.modules.findings.router import router as findings_router
+from app.modules.maturity.router import router as maturity_router
 from app.modules.orgs.router import router as orgs_router
 
 
@@ -39,6 +40,7 @@ app.include_router(assessments_router, prefix=settings.api_prefix)
 app.include_router(evidence_router, prefix=settings.api_prefix)
 app.include_router(findings_router, prefix=settings.api_prefix)
 app.include_router(actions_router, prefix=settings.api_prefix)
+app.include_router(maturity_router, prefix=settings.api_prefix)
 
 
 @app.get("/")
