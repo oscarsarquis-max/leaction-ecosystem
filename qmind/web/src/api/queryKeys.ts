@@ -4,6 +4,12 @@ export const queryKeys = {
   memberships: ["memberships"] as const,
   assessments: (organizationId: string) =>
     ["org", organizationId, "assessments"] as const,
+  assessment: (organizationId: string, assessmentId: string) =>
+    ["org", organizationId, "assessment", assessmentId] as const,
+  assessmentScopes: (organizationId: string, assessmentId: string) =>
+    ["org", organizationId, "assessment", assessmentId, "scopes"] as const,
+  assessmentTeam: (organizationId: string, assessmentId: string) =>
+    ["org", organizationId, "assessment", assessmentId, "team"] as const,
   health: ["health"] as const,
 };
 

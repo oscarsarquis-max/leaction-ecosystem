@@ -54,6 +54,8 @@ export function AppShell() {
             <nav className="flex gap-3 text-sm font-semibold">
               <NavLink
                 to="/assessments"
+                end
+                data-testid="nav-assessments"
                 className={({ isActive }) =>
                   isActive
                     ? "text-teal-900 underline decoration-2 underline-offset-4"

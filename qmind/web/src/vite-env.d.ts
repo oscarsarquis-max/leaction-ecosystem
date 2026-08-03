@@ -11,6 +11,9 @@ interface ImportMetaEnv {
   readonly VITE_DEV_USER_SUB?: string;
   readonly VITE_DEV_USER_EMAIL?: string;
   readonly VITE_API_PROXY_TARGET?: string;
+  readonly VITE_DEFAULT_ASSESSMENT_MODEL_ID?: string;
+  readonly VITE_DEFAULT_STANDARD_VERSION_ID?: string;
+  readonly VITE_DEFAULT_REQUIREMENT_ID?: string;
 }
 
 interface ImportMeta {

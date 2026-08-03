@@ -33,3 +33,26 @@ On organization switch the shell:
 5. Refetches memberships + assessments
 
 Local persistence stores only a preferred organization UUID in `sessionStorage` — never tokens or tenant payloads.
+
+## Assessment setup (this slice)
+
+- Create draft (`POST /assessments`) using the **active** org header — never `organization_id` in the body
+- Detail: scope/team editable only in `draft` and only for mutate roles (`org_admin`, `consultant_auditor`, `quality_manager`)
+- Readers see the resource without mutation controls
+- `plan` requires confirmation (locks scope/team); no optimistic cache write; success invalidates org-scoped caches
+- API errors show `code`, `message`, and `correlation_id`
+
+## Assessments (MVP)
+
+- `/assessments` — list for the selected organization
+- `/assessments/new` — create draft (catalog UUIDs; optional env defaults)
+- `/assessments/:id` — manage scope/team while `draft`, then `plan` → `planned`
+
+Optional defaults in `.env.local`:
+
+```
+VITE_DEFAULT_ASSESSMENT_MODEL_ID=
+VITE_DEFAULT_STANDARD_VERSION_ID=
+VITE_DEFAULT_REQUIREMENT_ID=
+```
+

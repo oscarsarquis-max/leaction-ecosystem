@@ -4,6 +4,8 @@ import { AuthProvider } from "@/auth/AuthProvider";
 import { OrganizationProvider } from "@/org/OrganizationProvider";
 import { AppShell } from "@/components/AppShell";
 import { AssessmentsPage } from "@/pages/AssessmentsPage";
+import { NewAssessmentPage } from "@/pages/NewAssessmentPage";
+import { AssessmentDetailPage } from "@/pages/AssessmentDetailPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +27,11 @@ export default function App() {
               <Route element={<AppShell />}>
                 <Route index element={<Navigate to="/assessments" replace />} />
                 <Route path="assessments" element={<AssessmentsPage />} />
+                <Route path="assessments/new" element={<NewAssessmentPage />} />
+                <Route
+                  path="assessments/:assessmentId"
+                  element={<AssessmentDetailPage />}
+                />
               </Route>
               <Route path="*" element={<Navigate to="/assessments" replace />} />
             </Routes>

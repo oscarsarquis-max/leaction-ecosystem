@@ -24,3 +24,9 @@ body {
 #root {
   min-height: 100vh;
 }
+
+@layer components {
+  .field {
+    @apply w-full rounded-md border border-teal-900/20 bg-white px-3 py-2 text-sm text-teal-950 shadow-sm focus:border-teal-700 focus:outline-none focus:ring-1 focus:ring-teal-700;
+  }
+}
