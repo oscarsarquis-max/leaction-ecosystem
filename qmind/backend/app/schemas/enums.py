@@ -55,6 +55,27 @@ class EvidenceClassification(str, Enum):
     restricted = "restricted"
 
 
+class InterviewStatus(str, Enum):
+    planned = "planned"
+    completed = "completed"
+    cancelled = "cancelled"
+
+
+class InterviewMode(str, Enum):
+    onsite = "onsite"
+    remote = "remote"
+    hybrid = "hybrid"
+
+
+class EvidenceLinkTargetType(str, Enum):
+    requirement = "requirement"
+    question = "question"
+    finding = "finding"
+    action_item = "action_item"
+    interview = "interview"
+    answer = "answer"
+
+
 class MaturityStatus(str, Enum):
     draft = "draft"
     in_review = "in_review"

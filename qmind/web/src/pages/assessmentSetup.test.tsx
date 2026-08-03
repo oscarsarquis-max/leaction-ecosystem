@@ -337,6 +337,7 @@ describe("assessment setup and planning UI", () => {
     vi.stubEnv("VITE_API_BASE_URL", "http://localhost:8008");
     vi.stubEnv("VITE_DEFAULT_ASSESSMENT_MODEL_ID", MODEL);
     vi.stubEnv("VITE_DEFAULT_STANDARD_VERSION_ID", SV);
+    vi.stubEnv("VITE_DEFAULT_REQUIREMENT_ID", "");
     resetConfigCache();
     resetQmindClient();
     resetTenantContext();

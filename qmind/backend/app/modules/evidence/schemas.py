@@ -5,7 +5,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.schemas.enums import EvidenceClassification, EvidenceStatus
+from app.schemas.enums import (
+    EvidenceClassification,
+    EvidenceLinkTargetType,
+    EvidenceStatus,
+)
 
 
 class AuthorizeUploadIn(BaseModel):
@@ -58,3 +62,17 @@ class DownloadUrlOut(BaseModel):
 
 class CleanupResult(BaseModel):
     disposed_count: int
+
+
+class EvidenceLinkCreate(BaseModel):
+    target_type: EvidenceLinkTargetType
+    target_id: UUID
+
+
+class EvidenceLinkOut(BaseModel):
+    id: UUID
+    organization_id: UUID
+    evidence_id: UUID
+    target_type: EvidenceLinkTargetType
+    target_id: UUID
+    created_at: datetime

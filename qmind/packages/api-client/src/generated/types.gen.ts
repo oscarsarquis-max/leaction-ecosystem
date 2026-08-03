@@ -191,6 +191,76 @@ export type ActionPlanTransitionResult = {
 };
 
 /**
+ * AnswerCreate
+ */
+export type AnswerCreate = {
+    /**
+     * Body
+     */
+    body: string;
+    /**
+     * Criterion Id
+     */
+    criterion_id?: string | null;
+    /**
+     * Question Id
+     */
+    question_id?: string | null;
+};
+
+/**
+ * AnswerOut
+ */
+export type AnswerOut = {
+    /**
+     * Author Membership Id
+     */
+    author_membership_id: string | null;
+    /**
+     * Body
+     */
+    body: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Criterion Id
+     */
+    criterion_id: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Interview Id
+     */
+    interview_id: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Question Id
+     */
+    question_id: string | null;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * AnswerUpdate
+ */
+export type AnswerUpdate = {
+    /**
+     * Body
+     */
+    body: string;
+};
+
+/**
  * Applicability
  */
 export type Applicability = 'applicable' | 'not_applicable' | 'insufficient_info';
@@ -393,6 +463,49 @@ export type ErrorBody = {
  * EvidenceClassification
  */
 export type EvidenceClassification = 'public' | 'internal' | 'confidential' | 'restricted';
+
+/**
+ * EvidenceLinkCreate
+ */
+export type EvidenceLinkCreate = {
+    /**
+     * Target Id
+     */
+    target_id: string;
+    target_type: EvidenceLinkTargetType;
+};
+
+/**
+ * EvidenceLinkOut
+ */
+export type EvidenceLinkOut = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Evidence Id
+     */
+    evidence_id: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Target Id
+     */
+    target_id: string;
+    target_type: EvidenceLinkTargetType;
+};
+
+/**
+ * EvidenceLinkTargetType
+ */
+export type EvidenceLinkTargetType = 'requirement' | 'question' | 'finding' | 'action_item' | 'interview' | 'answer';
 
 /**
  * EvidenceOut
@@ -638,6 +751,72 @@ export type HttpValidationError = {
 };
 
 /**
+ * InterviewCreate
+ */
+export type InterviewCreate = {
+    /**
+     * Conducted At
+     */
+    conducted_at?: string | null;
+    mode?: InterviewMode | null;
+};
+
+/**
+ * InterviewMode
+ */
+export type InterviewMode = 'onsite' | 'remote' | 'hybrid';
+
+/**
+ * InterviewOut
+ */
+export type InterviewOut = {
+    /**
+     * Assessment Id
+     */
+    assessment_id: string;
+    /**
+     * Conducted At
+     */
+    conducted_at: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Id
+     */
+    id: string;
+    mode: InterviewMode | null;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    status: InterviewStatus;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * InterviewStatus
+ */
+export type InterviewStatus = 'planned' | 'completed' | 'cancelled';
+
+/**
+ * InterviewTransitionResult
+ */
+export type InterviewTransitionResult = {
+    /**
+     * Event
+     */
+    event: string;
+    from_status: InterviewStatus;
+    interview: InterviewOut;
+    to_status: InterviewStatus;
+};
+
+/**
  * JobOut
  */
 export type JobOut = {
@@ -878,6 +1057,36 @@ export type PresignedUploadOut = {
      * Url
      */
     url: string;
+};
+
+/**
+ * QuestionOut
+ */
+export type QuestionOut = {
+    /**
+     * Assessment Model Id
+     */
+    assessment_model_id: string;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Criterion Id
+     */
+    criterion_id: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Prompt Text
+     */
+    prompt_text: string;
+    /**
+     * Sort Order
+     */
+    sort_order: number;
 };
 
 /**
@@ -2616,6 +2825,82 @@ export type CompleteActionPlanResponses = {
 
 export type CompleteActionPlanResponse = CompleteActionPlanResponses[keyof CompleteActionPlanResponses];
 
+export type UpdateAnswerData = {
+    body: AnswerUpdate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Answer Id
+         */
+        answer_id: string;
+    };
+    query?: never;
+    url: '/api/v1/answers/{answer_id}';
+};
+
+export type UpdateAnswerErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type UpdateAnswerError = UpdateAnswerErrors[keyof UpdateAnswerErrors];
+
+export type UpdateAnswerResponses = {
+    /**
+     * Successful Response
+     */
+    200: AnswerOut;
+};
+
+export type UpdateAnswerResponse = UpdateAnswerResponses[keyof UpdateAnswerResponses];
+
 export type ListAssessmentsData = {
     body?: never;
     headers?: {
@@ -2850,6 +3135,313 @@ export type GetAssessmentResponses = {
 };
 
 export type GetAssessmentResponse = GetAssessmentResponses[keyof GetAssessmentResponses];
+
+export type ListAssessmentEvidencesData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/evidences';
+};
+
+export type ListAssessmentEvidencesErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ListAssessmentEvidencesError = ListAssessmentEvidencesErrors[keyof ListAssessmentEvidencesErrors];
+
+export type ListAssessmentEvidencesResponses = {
+    /**
+     * Response Listassessmentevidences
+     * Successful Response
+     */
+    200: Array<EvidenceOut>;
+};
+
+export type ListAssessmentEvidencesResponse = ListAssessmentEvidencesResponses[keyof ListAssessmentEvidencesResponses];
+
+export type ListAssessmentInterviewsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/interviews';
+};
+
+export type ListAssessmentInterviewsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ListAssessmentInterviewsError = ListAssessmentInterviewsErrors[keyof ListAssessmentInterviewsErrors];
+
+export type ListAssessmentInterviewsResponses = {
+    /**
+     * Response Listassessmentinterviews
+     * Successful Response
+     */
+    200: Array<InterviewOut>;
+};
+
+export type ListAssessmentInterviewsResponse = ListAssessmentInterviewsResponses[keyof ListAssessmentInterviewsResponses];
+
+export type CreateInterviewData = {
+    body: InterviewCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/interviews';
+};
+
+export type CreateInterviewErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type CreateInterviewError = CreateInterviewErrors[keyof CreateInterviewErrors];
+
+export type CreateInterviewResponses = {
+    /**
+     * Successful Response
+     */
+    201: InterviewOut;
+};
+
+export type CreateInterviewResponse = CreateInterviewResponses[keyof CreateInterviewResponses];
+
+export type ListAssessmentQuestionsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/questions';
+};
+
+export type ListAssessmentQuestionsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ListAssessmentQuestionsError = ListAssessmentQuestionsErrors[keyof ListAssessmentQuestionsErrors];
+
+export type ListAssessmentQuestionsResponses = {
+    /**
+     * Response Listassessmentquestions
+     * Successful Response
+     */
+    200: Array<QuestionOut>;
+};
+
+export type ListAssessmentQuestionsResponse = ListAssessmentQuestionsResponses[keyof ListAssessmentQuestionsResponses];
 
 export type ListAssessmentScopesData = {
     body?: never;
@@ -4227,6 +4819,156 @@ export type GetEvidenceResponses = {
 
 export type GetEvidenceResponse = GetEvidenceResponses[keyof GetEvidenceResponses];
 
+export type GetEvidenceBytesLocalData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Evidence Id
+         */
+        evidence_id: string;
+    };
+    query?: never;
+    url: '/api/v1/evidences/{evidence_id}/bytes';
+};
+
+export type GetEvidenceBytesLocalErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetEvidenceBytesLocalError = GetEvidenceBytesLocalErrors[keyof GetEvidenceBytesLocalErrors];
+
+export type GetEvidenceBytesLocalResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type PutEvidenceBytesLocalData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Evidence Id
+         */
+        evidence_id: string;
+    };
+    query?: never;
+    url: '/api/v1/evidences/{evidence_id}/bytes';
+};
+
+export type PutEvidenceBytesLocalErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type PutEvidenceBytesLocalError = PutEvidenceBytesLocalErrors[keyof PutEvidenceBytesLocalErrors];
+
+export type PutEvidenceBytesLocalResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type PutEvidenceBytesLocalResponse = PutEvidenceBytesLocalResponses[keyof PutEvidenceBytesLocalResponses];
+
 export type GetEvidenceDownloadUrlData = {
     body?: never;
     headers?: {
@@ -4302,6 +5044,239 @@ export type GetEvidenceDownloadUrlResponses = {
 };
 
 export type GetEvidenceDownloadUrlResponse = GetEvidenceDownloadUrlResponses[keyof GetEvidenceDownloadUrlResponses];
+
+export type ListEvidenceLinksData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Evidence Id
+         */
+        evidence_id: string;
+    };
+    query?: never;
+    url: '/api/v1/evidences/{evidence_id}/links';
+};
+
+export type ListEvidenceLinksErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ListEvidenceLinksError = ListEvidenceLinksErrors[keyof ListEvidenceLinksErrors];
+
+export type ListEvidenceLinksResponses = {
+    /**
+     * Response Listevidencelinks
+     * Successful Response
+     */
+    200: Array<EvidenceLinkOut>;
+};
+
+export type ListEvidenceLinksResponse = ListEvidenceLinksResponses[keyof ListEvidenceLinksResponses];
+
+export type CreateEvidenceLinkData = {
+    body: EvidenceLinkCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Evidence Id
+         */
+        evidence_id: string;
+    };
+    query?: never;
+    url: '/api/v1/evidences/{evidence_id}/links';
+};
+
+export type CreateEvidenceLinkErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type CreateEvidenceLinkError = CreateEvidenceLinkErrors[keyof CreateEvidenceLinkErrors];
+
+export type CreateEvidenceLinkResponses = {
+    /**
+     * Successful Response
+     */
+    201: EvidenceLinkOut;
+};
+
+export type CreateEvidenceLinkResponse = CreateEvidenceLinkResponses[keyof CreateEvidenceLinkResponses];
+
+export type DeleteEvidenceLinkData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Evidence Id
+         */
+        evidence_id: string;
+        /**
+         * Link Id
+         */
+        link_id: string;
+    };
+    query?: never;
+    url: '/api/v1/evidences/{evidence_id}/links/{link_id}';
+};
+
+export type DeleteEvidenceLinkErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type DeleteEvidenceLinkError = DeleteEvidenceLinkErrors[keyof DeleteEvidenceLinkErrors];
+
+export type DeleteEvidenceLinkResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteEvidenceLinkResponse = DeleteEvidenceLinkResponses[keyof DeleteEvidenceLinkResponses];
 
 export type AbandonEvidenceUploadData = {
     body?: never;
@@ -5309,6 +6284,387 @@ export type WithdrawFindingResponses = {
 };
 
 export type WithdrawFindingResponse = WithdrawFindingResponses[keyof WithdrawFindingResponses];
+
+export type GetInterviewData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Interview Id
+         */
+        interview_id: string;
+    };
+    query?: never;
+    url: '/api/v1/interviews/{interview_id}';
+};
+
+export type GetInterviewErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetInterviewError = GetInterviewErrors[keyof GetInterviewErrors];
+
+export type GetInterviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: InterviewOut;
+};
+
+export type GetInterviewResponse = GetInterviewResponses[keyof GetInterviewResponses];
+
+export type ListInterviewAnswersData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Interview Id
+         */
+        interview_id: string;
+    };
+    query?: never;
+    url: '/api/v1/interviews/{interview_id}/answers';
+};
+
+export type ListInterviewAnswersErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ListInterviewAnswersError = ListInterviewAnswersErrors[keyof ListInterviewAnswersErrors];
+
+export type ListInterviewAnswersResponses = {
+    /**
+     * Response Listinterviewanswers
+     * Successful Response
+     */
+    200: Array<AnswerOut>;
+};
+
+export type ListInterviewAnswersResponse = ListInterviewAnswersResponses[keyof ListInterviewAnswersResponses];
+
+export type CreateAnswerData = {
+    body: AnswerCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Interview Id
+         */
+        interview_id: string;
+    };
+    query?: never;
+    url: '/api/v1/interviews/{interview_id}/answers';
+};
+
+export type CreateAnswerErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type CreateAnswerError = CreateAnswerErrors[keyof CreateAnswerErrors];
+
+export type CreateAnswerResponses = {
+    /**
+     * Successful Response
+     */
+    201: AnswerOut;
+};
+
+export type CreateAnswerResponse = CreateAnswerResponses[keyof CreateAnswerResponses];
+
+export type CancelInterviewData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Interview Id
+         */
+        interview_id: string;
+    };
+    query?: never;
+    url: '/api/v1/interviews/{interview_id}/cancel';
+};
+
+export type CancelInterviewErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type CancelInterviewError = CancelInterviewErrors[keyof CancelInterviewErrors];
+
+export type CancelInterviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: InterviewTransitionResult;
+};
+
+export type CancelInterviewResponse = CancelInterviewResponses[keyof CancelInterviewResponses];
+
+export type CompleteInterviewData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Interview Id
+         */
+        interview_id: string;
+    };
+    query?: never;
+    url: '/api/v1/interviews/{interview_id}/complete';
+};
+
+export type CompleteInterviewErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type CompleteInterviewError = CompleteInterviewErrors[keyof CompleteInterviewErrors];
+
+export type CompleteInterviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: InterviewTransitionResult;
+};
+
+export type CompleteInterviewResponse = CompleteInterviewResponses[keyof CompleteInterviewResponses];
 
 export type ListMaturityAssessmentsData = {
     body?: never;

@@ -30,3 +30,29 @@ export function canEditAssessmentSetup(
 ): boolean {
   return canMutateAssessments(roles) && status === "draft";
 }
+
+/** planned → in_progress */
+export function canStartAssessment(
+  roles: readonly string[] | undefined,
+  status: string | undefined,
+): boolean {
+  return canMutateAssessments(roles) && status === "planned";
+}
+
+/** Interviews / answers / evidence collection while assessment is in_progress. */
+export function canEditFieldExecution(
+  roles: readonly string[] | undefined,
+  status: string | undefined,
+): boolean {
+  return canMutateAssessments(roles) && status === "in_progress";
+}
+
+export function canCollectEvidence(
+  roles: readonly string[] | undefined,
+  status: string | undefined,
+): boolean {
+  return (
+    canMutateAssessments(roles) &&
+    (status === "in_progress" || status === "analysis")
+  );
+}

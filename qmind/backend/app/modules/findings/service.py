@@ -206,7 +206,7 @@ def _replace_links(
         ev = conn.execute(
             text(
                 """
-                SELECT id FROM evidences
+                SELECT id, status FROM evidences
                 WHERE id = :id AND organization_id = :org
                 """
             ),
@@ -214,6 +214,12 @@ def _replace_links(
         ).first()
         if ev is None:
             raise AppError("not_found", f"Evidence not found: {eid}", status_code=404)
+        if ev.status != "approved":
+            raise AppError(
+                "evidence_not_approved",
+                "Only approved Evidence may be linked to a Finding",
+                status_code=422,
+            )
         conn.execute(
             text(
                 """

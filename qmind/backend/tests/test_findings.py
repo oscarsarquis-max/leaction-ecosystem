@@ -191,7 +191,7 @@ def test_reject_then_rework(client: TestClient):
 
 def test_submit_without_approved_evidence_fails_for_conformity(client: TestClient):
     h, _org, aid, req_id = _setup_in_progress(client)
-    # authorize but do not approve evidence
+    # authorize → receive (quarantined) — must not be linkable to Finding
     data = b"pending-only"
     auth = client.post(
         "/api/v1/evidences/authorize",
@@ -208,7 +208,7 @@ def test_submit_without_approved_evidence_fails_for_conformity(client: TestClien
     )
     client.post(f"/api/v1/evidences/{eid}/transitions/receive", headers=h)
 
-    fid = client.post(
+    blocked = client.post(
         "/api/v1/findings",
         json={
             "assessment_id": aid,
@@ -217,6 +217,23 @@ def test_submit_without_approved_evidence_fails_for_conformity(client: TestClien
             "body": "body",
             "requirement_ids": [req_id],
             "evidence_ids": [eid],
+        },
+        headers=h,
+    )
+    assert blocked.status_code == 422
+    assert blocked.json()["code"] == "evidence_not_approved"
+    assert "correlation_id" in blocked.json()
+
+    # Finding without evidence_ids can be created; submit still requires approved base
+    fid = client.post(
+        "/api/v1/findings",
+        json={
+            "assessment_id": aid,
+            "finding_type": "conformity",
+            "title": "Premature",
+            "body": "body",
+            "requirement_ids": [req_id],
+            "evidence_ids": [],
         },
         headers=h,
     ).json()["id"]

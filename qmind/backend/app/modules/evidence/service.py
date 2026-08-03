@@ -19,6 +19,8 @@ from app.modules.evidence.schemas import (
     AuthorizeUploadOut,
     CleanupResult,
     DownloadUrlOut,
+    EvidenceLinkCreate,
+    EvidenceLinkOut,
     EvidenceOut,
     EvidenceTransitionResult,
     PresignedUploadOut,
@@ -190,6 +192,69 @@ def authorize_upload(ctx: OrgContext, payload: AuthorizeUploadIn) -> AuthorizeUp
             expires_in_seconds=upload.expires_in_seconds,
         ),
     )
+
+
+def put_bytes_local(ctx: OrgContext, evidence_id: UUID, data: bytes, content_type: str) -> None:
+    """Local/memory storage only — browser cannot PUT to memory:// URLs."""
+    require_role(ctx, *_AUTHORIZE_ROLES)
+    settings = get_settings()
+    if settings.environment == "prod" or settings.storage_backend != "memory":
+        raise AppError(
+            "local_upload_disabled",
+            "Direct byte upload is only available with STORAGE_BACKEND=memory outside prod",
+            status_code=503,
+        )
+    if not data:
+        raise AppError("invalid_object_size", "Empty body", status_code=422)
+    if len(data) > settings.evidence_max_bytes:
+        raise AppError(
+            "file_too_large",
+            f"Body exceeds max {settings.evidence_max_bytes} bytes",
+            status_code=422,
+        )
+    ctype = (content_type or "").split(";")[0].strip().lower()
+    if ctype not in settings.allowed_content_types:
+        raise AppError(
+            "content_type_not_allowed",
+            f"Content type not allowed: {ctype}",
+            status_code=422,
+        )
+    storage = get_storage(settings)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = _lock_evidence(conn, ctx.organization_id, evidence_id)
+        if row.status != "upload_pending":
+            raise AppError(
+                "invalid_transition",
+                f"local put requires upload_pending (current={row.status})",
+                status_code=409,
+            )
+        if row.upload_expires_at and row.upload_expires_at < datetime.now(timezone.utc):
+            raise AppError("upload_expired", "Upload authorization expired", status_code=410)
+        if row.content_type and ctype != row.content_type.lower():
+            raise AppError(
+                "content_type_mismatch",
+                "Content type does not match authorized type",
+                status_code=422,
+            )
+        if row.byte_size is not None and len(data) != row.byte_size:
+            raise AppError(
+                "size_mismatch",
+                "Body size does not match declared size",
+                status_code=422,
+            )
+        storage.put_test_object(row.storage_key, data, ctype)
+        write_audit(
+            conn,
+            organization_id=ctx.organization_id,
+            actor_type="user",
+            actor_user_id=ctx.principal.user_id,
+            actor_membership_id=ctx.membership_id,
+            action="evidence.local_put",
+            resource_type="evidence",
+            resource_id=evidence_id,
+            metadata={"byte_size": len(data), "content_type": ctype},
+        )
+        conn.commit()
 
 
 def receive_upload(ctx: OrgContext, evidence_id: UUID) -> EvidenceTransitionResult:
@@ -399,6 +464,51 @@ def get_evidence(ctx: OrgContext, evidence_id: UUID) -> EvidenceOut:
     return _row_to_out(row)
 
 
+def get_bytes_local(ctx: OrgContext, evidence_id: UUID) -> tuple[bytes, str]:
+    """Local/memory download — browser cannot fetch memory:// URLs."""
+    require_role(ctx, *_READ_ROLES)
+    settings = get_settings()
+    if settings.environment == "prod" or settings.storage_backend != "memory":
+        raise AppError(
+            "local_download_disabled",
+            "Direct byte download is only available with STORAGE_BACKEND=memory outside prod",
+            status_code=503,
+        )
+    storage = get_storage(settings)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = _fetch_evidence(conn, ctx.organization_id, evidence_id)
+        if not row.storage_key:
+            raise AppError("object_missing", "No storage object for evidence", status_code=422)
+        is_operator = bool(set(ctx.roles).intersection(_OPERATOR_ROLES))
+        if row.status == "approved":
+            pass
+        elif row.status == "quarantined" and is_operator:
+            pass
+        else:
+            raise AppError(
+                "download_not_allowed",
+                f"Download not allowed in status {row.status}",
+                status_code=409,
+            )
+        try:
+            data = storage.get_bytes(row.storage_key)
+        except FileNotFoundError as exc:
+            raise AppError("object_missing", "Object not found in storage", status_code=422) from exc
+        write_audit(
+            conn,
+            organization_id=ctx.organization_id,
+            actor_type="user",
+            actor_user_id=ctx.principal.user_id,
+            actor_membership_id=ctx.membership_id,
+            action="evidence.local_download",
+            resource_type="evidence",
+            resource_id=evidence_id,
+            metadata={"byte_size": len(data)},
+        )
+        conn.commit()
+    return data, (row.content_type or "application/octet-stream")
+
+
 def download_url(ctx: OrgContext, evidence_id: UUID) -> DownloadUrlOut:
     require_role(ctx, *_READ_ROLES)
     settings = get_settings()
@@ -536,3 +646,285 @@ def cleanup_expired_uploads() -> CleanupResult:
             disposed += 1
         conn.commit()
     return CleanupResult(disposed_count=disposed)
+
+
+def _link_out(row) -> EvidenceLinkOut:
+    return EvidenceLinkOut(
+        id=row.id,
+        organization_id=row.organization_id,
+        evidence_id=row.evidence_id,
+        target_type=row.target_type,
+        target_id=row.target_id,
+        created_at=row.created_at,
+    )
+
+
+def _assert_link_target(
+    conn: Connection,
+    org_id: UUID,
+    evidence_assessment_id: UUID | None,
+    target_type: str,
+    target_id: UUID,
+) -> None:
+    if target_type == "requirement":
+        row = conn.execute(
+            text("SELECT id FROM requirements WHERE id = :id"),
+            {"id": target_id},
+        ).first()
+        if row is None:
+            raise AppError("not_found", "Requirement not found", status_code=404)
+        return
+
+    if target_type == "question":
+        row = conn.execute(
+            text("SELECT id FROM questions WHERE id = :id"),
+            {"id": target_id},
+        ).first()
+        if row is None:
+            raise AppError("not_found", "Question not found", status_code=404)
+        return
+
+    if target_type == "interview":
+        row = conn.execute(
+            text(
+                """
+                SELECT id, assessment_id FROM interviews
+                WHERE id = :id AND organization_id = :org
+                """
+            ),
+            {"id": target_id, "org": org_id},
+        ).first()
+        if row is None:
+            raise AppError("not_found", "Interview not found", status_code=404)
+        if evidence_assessment_id and row.assessment_id != evidence_assessment_id:
+            raise AppError(
+                "link_assessment_mismatch",
+                "Interview belongs to a different assessment",
+                status_code=422,
+            )
+        return
+
+    if target_type == "answer":
+        row = conn.execute(
+            text(
+                """
+                SELECT a.id, i.assessment_id
+                FROM answers a
+                JOIN interviews i
+                  ON i.id = a.interview_id AND i.organization_id = a.organization_id
+                WHERE a.id = :id AND a.organization_id = :org
+                """
+            ),
+            {"id": target_id, "org": org_id},
+        ).first()
+        if row is None:
+            raise AppError("not_found", "Answer not found", status_code=404)
+        if evidence_assessment_id and row.assessment_id != evidence_assessment_id:
+            raise AppError(
+                "link_assessment_mismatch",
+                "Answer belongs to a different assessment",
+                status_code=422,
+            )
+        return
+
+    if target_type == "finding":
+        row = conn.execute(
+            text(
+                """
+                SELECT id, assessment_id FROM findings
+                WHERE id = :id AND organization_id = :org
+                """
+            ),
+            {"id": target_id, "org": org_id},
+        ).first()
+        if row is None:
+            raise AppError("not_found", "Finding not found", status_code=404)
+        if evidence_assessment_id and row.assessment_id != evidence_assessment_id:
+            raise AppError(
+                "link_assessment_mismatch",
+                "Finding belongs to a different assessment",
+                status_code=422,
+            )
+        return
+
+    if target_type == "action_item":
+        row = conn.execute(
+            text(
+                """
+                SELECT ai.id
+                FROM action_items ai
+                WHERE ai.id = :id AND ai.organization_id = :org
+                """
+            ),
+            {"id": target_id, "org": org_id},
+        ).first()
+        if row is None:
+            raise AppError("not_found", "Action item not found", status_code=404)
+        return
+
+    raise AppError("invalid_target_type", f"Unsupported target_type={target_type}", status_code=422)
+
+
+def list_assessment_evidences(ctx: OrgContext, assessment_id: UUID) -> list[EvidenceOut]:
+    require_role(ctx, *_READ_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        assess = conn.execute(
+            text(
+                "SELECT id FROM assessments WHERE id = :id AND organization_id = :org"
+            ),
+            {"id": assessment_id, "org": ctx.organization_id},
+        ).first()
+        if assess is None:
+            raise AppError("not_found", "Assessment not found", status_code=404)
+        rows = conn.execute(
+            text(
+                f"""
+                SELECT {_EVIDENCE_COLS}
+                FROM evidences
+                WHERE assessment_id = :aid AND organization_id = :org
+                ORDER BY created_at DESC
+                """
+            ),
+            {"aid": assessment_id, "org": ctx.organization_id},
+        ).all()
+    return [_row_to_out(r) for r in rows]
+
+
+def create_evidence_link(
+    ctx: OrgContext, evidence_id: UUID, payload: EvidenceLinkCreate
+) -> EvidenceLinkOut:
+    require_role(ctx, *_OPERATOR_ROLES)
+    target_type = (
+        payload.target_type.value
+        if hasattr(payload.target_type, "value")
+        else str(payload.target_type)
+    )
+    with tenant_connection(ctx.organization_id) as conn:
+        evidence = _fetch_evidence(conn, ctx.organization_id, evidence_id)
+        if evidence.status in ("disposed", "pending_disposal"):
+            raise AppError(
+                "evidence_not_linkable",
+                f"Cannot link Evidence in status {evidence.status}",
+                status_code=409,
+            )
+        _assert_link_target(
+            conn,
+            ctx.organization_id,
+            evidence.assessment_id,
+            target_type,
+            payload.target_id,
+        )
+        existing = conn.execute(
+            text(
+                """
+                SELECT id, organization_id, evidence_id, target_type, target_id, created_at
+                FROM evidence_links
+                WHERE organization_id = :org
+                  AND evidence_id = :eid
+                  AND target_type = :tt
+                  AND target_id = :tid
+                """
+            ),
+            {
+                "org": ctx.organization_id,
+                "eid": evidence_id,
+                "tt": target_type,
+                "tid": payload.target_id,
+            },
+        ).first()
+        if existing is not None:
+            return _link_out(existing)
+
+        row = conn.execute(
+            text(
+                """
+                INSERT INTO evidence_links (
+                  organization_id, evidence_id, target_type, target_id
+                ) VALUES (
+                  :org, :eid, :tt, :tid
+                )
+                RETURNING id, organization_id, evidence_id, target_type, target_id, created_at
+                """
+            ),
+            {
+                "org": ctx.organization_id,
+                "eid": evidence_id,
+                "tt": target_type,
+                "tid": payload.target_id,
+            },
+        ).one()
+        write_audit(
+            conn,
+            organization_id=ctx.organization_id,
+            actor_type="user",
+            actor_user_id=ctx.principal.user_id,
+            actor_membership_id=ctx.membership_id,
+            action="evidence.link",
+            resource_type="evidence",
+            resource_id=evidence_id,
+            metadata={
+                "link_id": str(row.id),
+                "target_type": target_type,
+                "target_id": str(payload.target_id),
+            },
+        )
+        conn.commit()
+    return _link_out(row)
+
+
+def list_evidence_links(ctx: OrgContext, evidence_id: UUID) -> list[EvidenceLinkOut]:
+    require_role(ctx, *_READ_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        _fetch_evidence(conn, ctx.organization_id, evidence_id)
+        rows = conn.execute(
+            text(
+                """
+                SELECT id, organization_id, evidence_id, target_type, target_id, created_at
+                FROM evidence_links
+                WHERE evidence_id = :eid AND organization_id = :org
+                ORDER BY created_at
+                """
+            ),
+            {"eid": evidence_id, "org": ctx.organization_id},
+        ).all()
+    return [_link_out(r) for r in rows]
+
+
+def delete_evidence_link(ctx: OrgContext, evidence_id: UUID, link_id: UUID) -> None:
+    require_role(ctx, *_OPERATOR_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        _fetch_evidence(conn, ctx.organization_id, evidence_id)
+        deleted = conn.execute(
+            text(
+                """
+                DELETE FROM evidence_links
+                WHERE id = :lid
+                  AND evidence_id = :eid
+                  AND organization_id = :org
+                RETURNING id, target_type, target_id
+                """
+            ),
+            {
+                "lid": link_id,
+                "eid": evidence_id,
+                "org": ctx.organization_id,
+            },
+        ).first()
+        if deleted is None:
+            raise AppError("not_found", "Evidence link not found", status_code=404)
+        write_audit(
+            conn,
+            organization_id=ctx.organization_id,
+            actor_type="user",
+            actor_user_id=ctx.principal.user_id,
+            actor_membership_id=ctx.membership_id,
+            action="evidence.unlink",
+            resource_type="evidence",
+            resource_id=evidence_id,
+            metadata={
+                "link_id": str(link_id),
+                "target_type": deleted.target_type,
+                "target_id": str(deleted.target_id),
+            },
+        )
+        conn.commit()

@@ -43,3 +43,21 @@ VALUES
   ('c1000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000011'),
   ('c1000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000012')
 ON CONFLICT DO NOTHING;
+
+INSERT INTO questions (id, assessment_model_id, code, prompt_text, sort_order)
+VALUES
+  (
+    'c1000000-0000-4000-8000-000000000101',
+    'c1000000-0000-4000-8000-000000000001',
+    'Q-CTX-01',
+    'How does the organization determine external and internal issues that are relevant to its purpose?',
+    10
+  ),
+  (
+    'c1000000-0000-4000-8000-000000000102',
+    'c1000000-0000-4000-8000-000000000001',
+    'Q-LDR-01',
+    'How does top management demonstrate leadership and commitment with respect to the quality management system?',
+    20
+  )
+ON CONFLICT (assessment_model_id, code) DO NOTHING;

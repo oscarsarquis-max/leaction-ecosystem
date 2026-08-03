@@ -10,6 +10,7 @@ import {
   usePlanAssessment,
   useRemoveTeamMember,
 } from "@/hooks/useAssessmentDetail";
+import { useStartAssessment } from "@/hooks/useFieldExecution";
 import { useAssessmentPermissions } from "@/hooks/useAssessmentPermissions";
 import {
   AccessDeniedPanel,
@@ -17,6 +18,7 @@ import {
   LoadingPanel,
 } from "@/components/StatePanels";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
+import { FieldExecutionPanel } from "@/components/FieldExecutionPanel";
 import { QmindApiError } from "@/api/qmindApi";
 import { isUuid } from "@/lib/validation";
 
@@ -132,6 +134,18 @@ export function AssessmentDetailPage() {
         teamCount={team.data?.length ?? 0}
         hasLead={!!a.lead_membership_id}
       />
+      <StartSection
+        assessmentId={assessmentId}
+        canStart={perms.canStart}
+        isPlanned={a.status === "planned"}
+      />
+      {a.status === "in_progress" || a.status === "analysis" ? (
+        <FieldExecutionPanel
+          assessmentId={assessmentId}
+          canEditField={perms.canEditField}
+          canCollectEvidence={perms.canCollectEvidence}
+        />
+      ) : null}
     </section>
   );
 }
@@ -494,6 +508,109 @@ function PlanSection({
       {plan.isError ? (
         <div className="mt-3">
           <ApiErrorBanner title="Falha na transição plan" error={plan.error} />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function StartSection({
+  assessmentId,
+  canStart,
+  isPlanned,
+}: {
+  assessmentId: string;
+  canStart: boolean;
+  isPlanned: boolean;
+}) {
+  const start = useStartAssessment(assessmentId);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const busyRef = useRef(false);
+
+  if (!isPlanned) {
+    return null;
+  }
+
+  if (!canStart) {
+    return (
+      <section
+        className="rounded-lg border border-teal-900/10 bg-white/40 px-4 py-3 text-sm text-teal-950/70"
+        data-testid="start-locked"
+      >
+        Avaliação `planned` — início (`start`) disponível apenas para papéis com mutação.
+      </section>
+    );
+  }
+
+  async function confirmStart() {
+    if (busyRef.current || start.isPending) return;
+    busyRef.current = true;
+    try {
+      await start.mutateAsync();
+      setConfirmOpen(false);
+    } catch {
+      // banner
+    } finally {
+      busyRef.current = false;
+    }
+  }
+
+  return (
+    <section className="rounded-lg border border-teal-900/10 bg-white/70 p-4">
+      <h2 className="font-display text-xl text-teal-950">Iniciar execução</h2>
+      <p className="mt-1 text-sm text-teal-950/70">
+        Transição `planned` → `in_progress`. Abre coleta de entrevistas e evidências.
+      </p>
+
+      {!confirmOpen ? (
+        <button
+          type="button"
+          disabled={start.isPending}
+          onClick={() => setConfirmOpen(true)}
+          className="mt-4 rounded-md bg-teal-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          data-testid="start-open-confirm"
+        >
+          Iniciar avaliação…
+        </button>
+      ) : (
+        <div
+          className="mt-4 rounded-md border border-amber-300/70 bg-amber-50/90 p-4"
+          data-testid="start-confirm"
+          role="dialog"
+          aria-labelledby="start-confirm-title"
+        >
+          <h3 id="start-confirm-title" className="font-semibold text-amber-950">
+            Confirmar início?
+          </h3>
+          <p className="mt-2 text-sm text-amber-950/90">
+            Após `start`, a avaliação entra em execução de campo. Sem atualização otimista —
+            a tela recarrega o estado do servidor.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={start.isPending}
+              onClick={() => void confirmStart()}
+              className="rounded-md bg-teal-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+              data-testid="start-confirm-submit"
+            >
+              {start.isPending ? "Iniciando…" : "Confirmar start"}
+            </button>
+            <button
+              type="button"
+              disabled={start.isPending}
+              onClick={() => setConfirmOpen(false)}
+              className="rounded-md border border-teal-900/20 bg-white px-3 py-1.5 text-sm font-semibold text-teal-950"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {start.isError ? (
+        <div className="mt-3">
+          <ApiErrorBanner title="Falha na transição start" error={start.error} />
         </div>
       ) : null}
     </section>
