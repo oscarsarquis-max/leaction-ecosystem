@@ -15,7 +15,7 @@ O pacote Aceito em `domain-docs-v0` permanece imutável. Esta emenda registra de
 |---|---|---|---|---|
 | 1 | ADR-005 | Migrações SQL `NNN_*.sql` + `.down.sql` estilo inove | **Alembic** + SQL versionado em `qmind/backend/sql/` | Pedido explícito de produto para Alembic na entrega DDL v0 |
 | 2 | ADR-005 | Porta host do `leaction_db` citada como 5434 | Ambiente vigente: **`leaction_db` em `localhost:5433`** (`paneldx_db` usa 5434) | Estado real do compose/runtime na data da implementação |
-| 3 | ADR-005 | “base logicamente pertencentes ao QMind” | Base PostgreSQL **`qmind`** no mesmo container `leaction_db` | Isolamento lógico por database; alinhado ao aceite pós-confronto |
+| 3 | ADR-005 | “base logicamente pertencentes ao QMind” | **Database** PostgreSQL `qmind` (lógica dedicada). **`leaction_db`** = serviço/cluster Postgres compartilhado do ecossistema — **não** é nome de schema nem base misturada com outras apps | Isolamento por *database* no cluster; coerente com ADR-005 |
 | 4 | Dicionário | `Report`/`MaturityAssessment` etc. | Tabelas físicas criadas; seeds de catálogo **fora** da migração | Separação migração × seed exigida |
 
 ## 3. Artefatos físicos

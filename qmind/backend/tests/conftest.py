@@ -3,18 +3,31 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
+
+# Prefer this backend over other monorepo `app` packages on PYTHONPATH.
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) in sys.path:
+    sys.path.remove(str(_ROOT))
+sys.path.insert(0, str(_ROOT))
 
 import pytest
 from sqlalchemy import create_engine, text
 
-ADMIN_URL = os.getenv(
-    "QMIND_DB_ADMIN_URL",
+# Local Docker defaults for leaction_db — tests only; production uses real env/.env.
+ADMIN_URL = os.environ.setdefault(
+    "DATABASE_URL_ADMIN",
     "postgresql+psycopg://admin:password123@localhost:5433/qmind",
 )
-APP_URL = os.getenv(
+os.environ.setdefault("DATABASE_URL", ADMIN_URL)
+os.environ.setdefault("QMIND_DB_ADMIN_URL", ADMIN_URL)
+APP_URL = os.environ.setdefault(
     "DATABASE_URL_APP",
     "postgresql+psycopg://qmind_app:qmind_app_dev@localhost:5433/qmind",
 )
+os.environ.setdefault("AUTH_MODE", "dev")
+os.environ.setdefault("ENVIRONMENT", "local")
 
 
 @pytest.fixture(scope="session")

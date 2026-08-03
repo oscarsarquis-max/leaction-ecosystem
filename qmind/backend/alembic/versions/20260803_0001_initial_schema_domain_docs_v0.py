@@ -35,6 +35,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Destructive rollback for empty/dev DBs. See 008_Phase0_Technical_Gate.md §3."""
     op.execute(text("DROP SCHEMA IF EXISTS qmind_app CASCADE"))
     tables = [
         "break_glass_sessions",
@@ -78,4 +79,16 @@ def downgrade() -> None:
     ]
     for t in tables:
         op.execute(text(f"DROP TABLE IF EXISTS {t} CASCADE"))
+
+    # Role is cluster-wide; revoke dependents before DROP ROLE.
+    op.execute(text("REVOKE ALL ON SCHEMA public FROM qmind_app"))
+    op.execute(text("REVOKE ALL ON ALL TABLES IN SCHEMA public FROM qmind_app"))
+    op.execute(text("REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM qmind_app"))
+    op.execute(
+        text(
+            "ALTER DEFAULT PRIVILEGES FOR ROLE admin IN SCHEMA public "
+            "REVOKE ALL ON TABLES FROM qmind_app"
+        )
+    )
+    op.execute(text("REVOKE ALL ON DATABASE qmind FROM qmind_app"))
     op.execute(text("DROP ROLE IF EXISTS qmind_app"))
