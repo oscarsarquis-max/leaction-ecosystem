@@ -8,3 +8,4 @@ SELECT 'CREATE DATABASE inove4us' WHERE NOT EXISTS (SELECT FROM pg_database WHER
 SELECT 'CREATE DATABASE prodinx' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'prodinx')\gexec
 SELECT 'CREATE DATABASE "LASim"' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'LASim')\gexec
 SELECT 'CREATE DATABASE "diario-obra"' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'diario-obra')\gexec
+SELECT 'CREATE DATABASE qmind' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'qmind')\gexec

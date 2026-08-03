@@ -23,8 +23,8 @@ Workspace documental do QMind, plataforma inteligente de apoio à consultoria, a
 ## Estado atual
 
 - ADRs 001–009 Aceitos — `04_Docs/005_Monorepo_Confrontation.md`.
-- Domínio documental **Aceito** e congelado: **`domain-docs-v0`** (2026-08-03) — `04_Docs/006_Domain_Acceptance_Checklist.md`.
-- Pacote: modelos `000`–`003`, dicionário, ER lógico, glossário.
-- **DDL v0:** liberado para elaboração; ainda não produzido.
-- Sem código de aplicação ainda.
+- Domínio documental **Aceito** e congelado: **`domain-docs-v0`** — `04_Docs/006_Domain_Acceptance_Checklist.md`.
+- Emenda implementação: `04_Docs/007_Domain_Docs_Amendment_001.md` (Alembic, porta 5433).
+- **DDL v0 + Alembic:** `03_Database/003_DDL_v0.md` → `qmind/backend/` (base `qmind`, seeds, testes de isolamento).
+- API de aplicação ainda não iniciada.
 
