@@ -160,6 +160,28 @@ def _handle_methodology_override(payload: dict) -> dict:
     }
 
 
+def _handle_pei_override(payload: dict) -> dict:
+    """PEI_OVERRIDE_UPDATED — adaptação oficial PEI×metodologia da escola."""
+    instituicao_id = payload.get("instituicao_id")
+    pei_aluno_id = payload.get("pei_aluno_id")
+    metodologia_nome = payload.get("metodologia_nome")
+    passos = payload.get("passos_customizados")
+    _log(
+        f"PEI_OVERRIDE_UPDATED instituicao={instituicao_id} "
+        f"pei={pei_aluno_id} metodologia={metodologia_nome!r} "
+        f"passos_len={len(str(passos or ''))}"
+    )
+    return {
+        "handled": True,
+        "event": "PEI_OVERRIDE_UPDATED",
+        "instituicao_id": instituicao_id,
+        "pei_aluno_id": pei_aluno_id,
+        "metodologia_nome": metodologia_nome,
+        "override_applied": False,
+        "note": "receiver stub — apply PEI passos in teacher layer next",
+    }
+
+
 def _handle_teacher_allocated(payload: dict) -> dict:
     """
     TEACHER_ALLOCATED → cria compromisso em inove_agenda_eventos para o professor.
@@ -291,6 +313,8 @@ def school_webhook():
     try:
         if event_type == "METHODOLOGY_OVERRIDE_UPDATED":
             result = _handle_methodology_override(payload)
+        elif event_type == "PEI_OVERRIDE_UPDATED":
+            result = _handle_pei_override(payload)
         elif event_type == "TEACHER_ALLOCATED":
             result = _handle_teacher_allocated(payload)
         else:

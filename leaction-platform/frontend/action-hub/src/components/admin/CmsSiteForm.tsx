@@ -203,7 +203,10 @@ export function CmsSiteForm() {
   const [landing, setLanding] = useState<Record<string, unknown>>({});
   const [instructions, setInstructions] = useState('');
 
-  const isInove = configKey === 'inove4us';
+  /** Satélites /acesso (2 colunas) — distinto do Micro-CMS PanelDX (default). */
+  const isAcessoSatellite =
+    configKey === 'inove4us' || configKey === 'inove4us-school';
+  const isSchool = configKey === 'inove4us-school';
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -236,10 +239,40 @@ export function CmsSiteForm() {
   }
 
   function patchColuna1(patch: Record<string, unknown>) {
-    setLanding((prev) => ({
-      ...prev,
-      coluna1: { ...asRecord(prev.coluna1), ...patch },
-    }));
+    setLanding((prev) => {
+      const nextColuna1 = { ...asRecord(prev.coluna1), ...patch };
+      const columns = Array.isArray(prev.columns) ? [...prev.columns] : [{}, {}, {}, {}];
+      while (columns.length < 4) columns.push({});
+      // Espelha coluna esquerda em columns[0] (School/inove4us leem coluna1 || columns[0]).
+      columns[0] = {
+        ...asRecord(columns[0]),
+        visible: nextColuna1.visibility !== false,
+        visibility: nextColuna1.visibility !== false,
+        image_url: nextColuna1.image_path || nextColuna1.image_url || '',
+        image_path: nextColuna1.image_path || '',
+        title: nextColuna1.title || '',
+        description: nextColuna1.subtitle || '',
+        subtitle: nextColuna1.subtitle || '',
+        pill_text: nextColuna1.pill_text || '',
+        badge_text: nextColuna1.pill_text || '',
+        cta_text: nextColuna1.cta_text || '',
+        cta_url: nextColuna1.cta_url || '',
+        button_text: nextColuna1.cta_text || '',
+        button_url: nextColuna1.cta_url || '',
+        bg_color_start: nextColuna1.bg_color_start,
+        bg_color_end: nextColuna1.bg_color_end,
+        border_color: nextColuna1.border_color,
+        title_color: nextColuna1.title_color,
+        subtitle_color: nextColuna1.subtitle_color,
+        pill_bg_color: nextColuna1.pill_bg_color,
+        pill_text_color: nextColuna1.pill_text_color,
+        accent_color: nextColuna1.accent_color,
+        button_bg_color: nextColuna1.button_bg_color,
+        button_text_color: nextColuna1.button_text_color,
+        button_shadow_color: nextColuna1.button_shadow_color,
+      };
+      return { ...prev, coluna1: nextColuna1, columns };
+    });
   }
 
   function patchColumn1(patch: Record<string, unknown>) {
@@ -275,8 +308,10 @@ export function CmsSiteForm() {
       setLanding(asRecord(saved.landing_page_data));
       setInstructions(String(saved.instructions_data || ''));
       setOkMsg(
-        isInove
-          ? 'Micro-CMS inove4us salvo — colunas de /acesso atualizadas.'
+        isAcessoSatellite
+          ? isSchool
+            ? 'Micro-CMS School salvo — colunas de /acesso atualizadas.'
+            : 'Micro-CMS inove4us salvo — colunas de /acesso atualizadas.'
           : 'Micro-CMS salvo no Action Hub.'
       );
     } catch (err) {
@@ -318,11 +353,15 @@ export function CmsSiteForm() {
             Voltar aos posts
           </Link>
           <h1 className="text-xl font-bold text-stone-900">
-            {isInove ? 'Micro-CMS — inove4us (/acesso)' : 'Micro-CMS (estrutura PanelDX)'}
+            {isSchool
+              ? 'Micro-CMS — inove4us School (/acesso)'
+              : isAcessoSatellite
+                ? 'Micro-CMS — inove4us (/acesso)'
+                : 'Micro-CMS (estrutura PanelDX)'}
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-stone-500">
-            {isInove
-              ? 'Colunas laterais da página de acesso do satélite. O inove4us só lê — sem gestão local.'
+            {isAcessoSatellite
+              ? 'Colunas laterais da página de acesso do satélite. O satélite só lê — sem gestão local.'
               : 'Landing + instruções migradas para o Hub. O PanelDX continua ativo até autorização explícita de cutover.'}
           </p>
           <label className="mt-3 block max-w-sm space-y-1">
@@ -337,6 +376,7 @@ export function CmsSiteForm() {
             >
               <option value="default">PanelDX (default)</option>
               <option value="inove4us">inove4us — página /acesso</option>
+              <option value="inove4us-school">inove4us School — página /acesso</option>
             </select>
           </label>
         </div>
@@ -494,7 +534,7 @@ export function CmsSiteForm() {
 
           <section className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-bold text-stone-900">
-              {isInove
+              {isAcessoSatellite
                 ? 'Coluna esquerda — conceito (/acesso)'
                 : 'Coluna 1 — Mesa / banner'}
             </h2>
@@ -590,7 +630,7 @@ export function CmsSiteForm() {
 
           <section className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-bold text-stone-900">
-              {isInove
+              {isAcessoSatellite
                 ? 'Coluna direita — como começar (/acesso)'
                 : 'Coluna 2 — YouTube / metodologia'}
             </h2>
@@ -603,14 +643,46 @@ export function CmsSiteForm() {
               Visível
             </label>
             <div className="grid gap-3 md:grid-cols-2">
-              <label className="block space-y-1 md:col-span-2">
-                <span className="text-xs font-semibold text-stone-500">URL do YouTube</span>
-                <input
-                  className={field}
-                  value={str(col2.video_url)}
-                  onChange={(e) => patchColumn1({ video_url: e.target.value })}
-                />
-              </label>
+              {isAcessoSatellite ? (
+                <>
+                  <label className="block space-y-1">
+                    <span className="text-xs font-semibold text-stone-500">Pill</span>
+                    <input
+                      className={field}
+                      value={str(col2.pill_text || col2.badge_text)}
+                      onChange={(e) =>
+                        patchColumn1({
+                          pill_text: e.target.value,
+                          badge_text: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs font-semibold text-stone-500">CTA — texto</span>
+                    <input
+                      className={field}
+                      value={str(col2.cta_text || col2.button_text || col2.link_text)}
+                      onChange={(e) =>
+                        patchColumn1({
+                          cta_text: e.target.value,
+                          button_text: e.target.value,
+                          link_text: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                </>
+              ) : (
+                <label className="block space-y-1 md:col-span-2">
+                  <span className="text-xs font-semibold text-stone-500">URL do YouTube</span>
+                  <input
+                    className={field}
+                    value={str(col2.video_url)}
+                    onChange={(e) => patchColumn1({ video_url: e.target.value })}
+                  />
+                </label>
+              )}
               <label className="block space-y-1 md:col-span-2">
                 <span className="text-xs font-semibold text-stone-500">Título</span>
                 <input
@@ -620,16 +692,83 @@ export function CmsSiteForm() {
                 />
               </label>
               <label className="block space-y-1 md:col-span-2">
-                <span className="text-xs font-semibold text-stone-500">Descrição</span>
+                <span className="text-xs font-semibold text-stone-500">
+                  {isAcessoSatellite ? 'Subtítulo / descrição' : 'Descrição'}
+                </span>
                 <textarea
                   className={`${field} min-h-[72px]`}
-                  value={str(col2.description)}
-                  onChange={(e) => patchColumn1({ description: e.target.value })}
+                  value={str(col2.description || col2.subtitle)}
+                  onChange={(e) =>
+                    patchColumn1({
+                      description: e.target.value,
+                      subtitle: e.target.value,
+                    })
+                  }
                 />
               </label>
+              {isAcessoSatellite ? (
+                <>
+                  <label className="block space-y-1 md:col-span-2">
+                    <span className="text-xs font-semibold text-stone-500">CTA — URL</span>
+                    <input
+                      className={field}
+                      value={str(col2.cta_url || col2.button_url || col2.link_url)}
+                      onChange={(e) =>
+                        patchColumn1({
+                          cta_url: e.target.value,
+                          button_url: e.target.value,
+                          link_url: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <div className="md:col-span-2">
+                    <CmsImageUploadField
+                      label="Imagem da coluna direita"
+                      value={str(col2.image_url || col2.image_path)}
+                      onChange={(url) =>
+                        patchColumn1({ image_url: url, image_path: url })
+                      }
+                      token={token}
+                      preferPublicUrl={false}
+                    />
+                  </div>
+                </>
+              ) : null}
             </div>
+            {isAcessoSatellite ? (
+              <div className="space-y-3 border-t border-stone-100 pt-4">
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <h3 className="text-sm font-bold text-stone-900">Cores da coluna</h3>
+                  <p className="text-xs text-stone-500">
+                    Gradiente, pill e CTA da coluna direita em /acesso.
+                  </p>
+                </div>
+                <BannerColorPreview
+                  data={col2}
+                  pillText={str(col2.pill_text || col2.badge_text)}
+                  title={str(col2.title)}
+                  subtitle={str(col2.description || col2.subtitle)}
+                  ctaText={str(col2.cta_text || col2.button_text)}
+                />
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {COLUNA1_COLOR_FIELDS.map((item) => (
+                    <ColorField
+                      key={item.key}
+                      label={item.label}
+                      value={col2[item.key]}
+                      fallback={item.fallback}
+                      allowRgba={item.allowRgba}
+                      fieldClass={field}
+                      onChange={(next) => patchColumn1({ [item.key]: next })}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </section>
 
+          {!isAcessoSatellite ? (
           <section className="space-y-3 rounded-2xl border border-orange-100 bg-orange-50/50 p-4 shadow-sm">
             <h2 className="text-sm font-bold text-stone-900">
               Destaques do blog (fixos — 3 cards)
@@ -671,6 +810,7 @@ export function CmsSiteForm() {
               })}
             </div>
           </section>
+          ) : null}
 
           <section className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-bold text-stone-900">Insights (3 cards)</h2>

@@ -11,13 +11,31 @@ function hojeISO() {
 /**
  * Pós-execução da aula: relato, participantes e opcional desdobramento vinculado.
  */
-export default function RelatoAulaModal({ aula, missao, onCancel, onSubmit, busy }) {
+export default function RelatoAulaModal({
+  aula,
+  missao,
+  onCancel,
+  onSubmit,
+  busy,
+  temAlunosPei: temAlunosPeiProp,
+}) {
   const [relato, setRelato] = useState('')
   const [participantes, setParticipantes] = useState('')
   const [criarProximo, setCriarProximo] = useState(false)
   const [dataProximo, setDataProximo] = useState(hojeISO())
   const [tituloProximo, setTituloProximo] = useState('')
+  const [adaptouMetodologia, setAdaptouMetodologia] = useState(false)
+  const [adaptacaoTexto, setAdaptacaoTexto] = useState('')
+  const [adaptouPei, setAdaptouPei] = useState(false)
+  const [peiAdaptacaoTexto, setPeiAdaptacaoTexto] = useState('')
   const [error, setError] = useState('')
+
+  const temAlunosPei = Boolean(
+    temAlunosPeiProp ??
+      aula?.tem_alunos_pei ??
+      aula?.meta_json?.tem_alunos_pei ??
+      (Array.isArray(aula?.kanban_pei) && aula.kanban_pei.length > 0),
+  )
 
   useEffect(() => {
     setRelato('')
@@ -25,6 +43,10 @@ export default function RelatoAulaModal({ aula, missao, onCancel, onSubmit, busy
     setCriarProximo(false)
     setDataProximo(hojeISO())
     setTituloProximo(missao ? `Continuidade · ${missao}`.slice(0, 180) : '')
+    setAdaptouMetodologia(false)
+    setAdaptacaoTexto('')
+    setAdaptouPei(false)
+    setPeiAdaptacaoTexto('')
     setError('')
   }, [aula, missao])
 
@@ -53,12 +75,24 @@ export default function RelatoAulaModal({ aula, missao, onCancel, onSubmit, busy
       setError('Informe a data do próximo evento.')
       return
     }
+    if (adaptouMetodologia && !adaptacaoTexto.trim()) {
+      setError('Descreva a modificação feita na metodologia.')
+      return
+    }
+    if (adaptouPei && !peiAdaptacaoTexto.trim()) {
+      setError('Descreva o que funcionou melhor no PEI nesta metodologia.')
+      return
+    }
     onSubmit?.({
       relato_sala: relato.trim(),
       participantes: participantes.trim(),
       criar_proximo: criarProximo,
       data_proximo: criarProximo ? dataProximo : undefined,
       titulo_proximo: criarProximo ? (tituloProximo || '').trim() : undefined,
+      has_teacher_adaptations: adaptouMetodologia,
+      teacher_adaptation_text: adaptouMetodologia ? adaptacaoTexto.trim() : undefined,
+      has_pei_adaptations: adaptouPei,
+      pei_adaptation_text: adaptouPei ? peiAdaptacaoTexto.trim() : undefined,
     })
   }
 
@@ -115,6 +149,85 @@ export default function RelatoAulaModal({ aula, missao, onCancel, onSubmit, busy
             placeholder="Nomes, turmas, papéis (líder, guardião…)…"
           />
         </div>
+
+        <label className="mt-4 flex cursor-pointer items-start gap-2 rounded-xl border border-brand-100 bg-brand-50/50 px-3 py-3">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={adaptouMetodologia}
+            onChange={(e) => {
+              setAdaptouMetodologia(e.target.checked)
+              if (!e.target.checked) setAdaptacaoTexto('')
+            }}
+          />
+          <span className="text-sm text-bordo">
+            <span className="font-bold">
+              Adaptei a metodologia original da escola nesta aula.
+            </span>
+            <span className="mt-0.5 block text-xs text-bordo-soft">
+              Envia a sugestão para a curadoria pedagógica da escola (bottom-up).
+            </span>
+          </span>
+        </label>
+
+        {adaptouMetodologia ? (
+          <div className="mt-3">
+            <label className="block text-xs font-bold uppercase tracking-wide text-bordo">
+              Descreva a modificação
+            </label>
+            <div className="mt-1.5">
+              <DictationField
+                as="textarea"
+                rows={3}
+                className="field-input min-h-[90px] resize-y"
+                value={adaptacaoTexto}
+                onChange={setAdaptacaoTexto}
+                placeholder="Ex.: Mudei o tempo do ciclo PBL, adicionei uma etapa visual…"
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {temAlunosPei ? (
+          <>
+            <label className="mt-4 flex cursor-pointer items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-3">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={adaptouPei}
+                onChange={(e) => {
+                  setAdaptouPei(e.target.checked)
+                  if (!e.target.checked) setPeiAdaptacaoTexto('')
+                }}
+              />
+              <span className="text-sm text-bordo">
+                <span className="font-bold">
+                  Adaptei a execução do PEI para o(s) aluno(s)
+                </span>
+                <span className="mt-0.5 block text-xs text-bordo-soft">
+                  Envia feedback de trincheira para a curadoria do PEI na escola.
+                </span>
+              </span>
+            </label>
+            {adaptouPei ? (
+              <div className="mt-3">
+                <label className="block text-xs font-bold uppercase tracking-wide text-bordo">
+                  O que funcionou melhor para o aluno nesta metodologia?
+                </label>
+                <div className="mt-1.5">
+                  <DictationField
+                    as="textarea"
+                    rows={3}
+                    className="field-input min-h-[90px] resize-y"
+                    value={peiAdaptacaoTexto}
+                    onChange={setPeiAdaptacaoTexto}
+                    placeholder="Ex.: Apoio visual curto + tempo extra na estação de entrega…"
+                  />
+                </div>
+              </div>
+            ) : null}
+          </>
+        ) : null}
 
         <label className="mt-4 flex cursor-pointer items-start gap-2 rounded-xl border border-brand-100 bg-brand-50/50 px-3 py-3">
           <input

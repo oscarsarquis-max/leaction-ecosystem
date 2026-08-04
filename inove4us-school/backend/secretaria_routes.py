@@ -589,3 +589,300 @@ def create_alocacao():
         ),
         201,
     )
+
+
+# ---------------------------------------------------------------------------
+# Comunicações / Mural (push → inove4us B2C)
+# ---------------------------------------------------------------------------
+COM_TIPOS = frozenset({"reuniao_pedagogica", "evento_escolar"})
+COM_PUBLICOS = frozenset({"toda_instituicao", "unidade", "turma", "professores"})
+COM_STATUS = frozenset({"agendado", "publicado", "cancelado"})
+
+COM_TIPO_LABEL = {
+    "reuniao_pedagogica": "Reunião pedagógica",
+    "evento_escolar": "Evento escolar",
+}
+COM_PUBLICO_LABEL = {
+    "toda_instituicao": "Toda a instituição",
+    "unidade": "Unidade",
+    "turma": "Turma",
+    "professores": "Professores",
+}
+COM_STATUS_LABEL = {
+    "agendado": "Agendado",
+    "publicado": "Publicado",
+    "cancelado": "Cancelado",
+}
+
+
+def _parse_dt_local(value: Any, *, required: bool = True):
+    if value is None or str(value).strip() == "":
+        if required:
+            return None
+        return None
+    text = str(value).strip().replace("Z", "+00:00")
+    try:
+        if len(text) == 16:
+            text = text + ":00"
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return False
+
+
+def _serialize_comunicacao(row: dict[str, Any]) -> dict:
+    tipo = row["tipo"]
+    publico = row["publico_alvo"]
+    status = row["status"]
+    return {
+        "id": str(row["id"]),
+        "titulo": row["titulo"],
+        "descricao": row.get("descricao") or "",
+        "tipo": tipo,
+        "tipo_label": COM_TIPO_LABEL.get(tipo, tipo),
+        "publico_alvo": publico,
+        "publico_label": COM_PUBLICO_LABEL.get(publico, publico),
+        "status": status,
+        "status_label": COM_STATUS_LABEL.get(status, status),
+        "data_hora_inicio": row["data_hora_inicio"].isoformat()
+        if row.get("data_hora_inicio")
+        else None,
+        "data_hora_fim": row["data_hora_fim"].isoformat()
+        if row.get("data_hora_fim")
+        else None,
+        "unidade_id": str(row["unidade_id"]) if row.get("unidade_id") else None,
+        "replicado_b2c": bool(row.get("replicado_b2c")),
+        "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
+    }
+
+
+def _resolve_professor_targets(cur, inst: str, publico: str, unidade_id: str | None):
+    """E-mails + id_clie numéricos dos vínculos ativos para o push B2C."""
+    if publico == "unidade" and unidade_id:
+        # Sem vínculo unidade↔professor no schema atual: cai para todos os ativos.
+        pass
+    cur.execute(
+        """
+        SELECT email_convite, professor_b2c_id
+        FROM public.school_professores_vinculo
+        WHERE instituicao_id = %s
+          AND status_vinculo IN ('ativo', 'pendente')
+        """,
+        (inst,),
+    )
+    emails: list[str] = []
+    ids: list[int] = []
+    for r in cur.fetchall():
+        email = str(r.get("email_convite") or "").strip().lower()
+        if email and "@" in email and email not in emails:
+            emails.append(email)
+        raw = str(r.get("professor_b2c_id") or "").strip()
+        if raw.isdigit():
+            n = int(raw)
+            if n not in ids:
+                ids.append(n)
+    return emails, ids
+
+
+def _push_comunicacao_row(cur, row: dict[str, Any], inst: str) -> dict[str, Any]:
+    emails, ids = _resolve_professor_targets(
+        cur, inst, row["publico_alvo"], str(row["unidade_id"]) if row.get("unidade_id") else None
+    )
+    from b2c_integration_service import push_comunicado_to_b2c
+
+    payload = {
+        "origem_comunicado_school_id": str(row["id"]),
+        "instituicao_escola_id": inst,
+        "titulo": row["titulo"],
+        "descricao": row.get("descricao") or "",
+        "tipo": row["tipo"],
+        "data_hora_inicio": row["data_hora_inicio"].isoformat()
+        if row.get("data_hora_inicio")
+        else None,
+        "data_hora_fim": row["data_hora_fim"].isoformat()
+        if row.get("data_hora_fim")
+        else None,
+        "status": row["status"],
+        "professor_emails": emails,
+        "professor_b2c_ids": ids,
+    }
+    return push_comunicado_to_b2c(payload)
+
+
+@bp.get("/api/secretaria/comunicacoes")
+@require_gestor
+def list_comunicacoes():
+    inst = _instituicao_id()
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT *
+                FROM public.school_comunicacoes_eventos
+                WHERE instituicao_id = %s
+                  AND status <> 'cancelado'
+                ORDER BY data_hora_inicio DESC, created_at DESC
+                """,
+                (inst,),
+            )
+            rows = [_serialize_comunicacao(r) for r in cur.fetchall()]
+    return jsonify({"items": rows})
+
+
+@bp.post("/api/secretaria/comunicacoes")
+@require_gestor
+def create_comunicacao():
+    """Cadastro + publicação no mural do professor (B2C)."""
+    inst = _instituicao_id()
+    body = request.get_json(silent=True) or {}
+    titulo = _text(body.get("titulo"))
+    if not titulo:
+        return jsonify({"error": "Título obrigatório"}), 400
+    tipo = _text(body.get("tipo")) or "reuniao_pedagogica"
+    if tipo not in COM_TIPOS:
+        return jsonify({"error": "Tipo inválido"}), 400
+    publico = _text(body.get("publico_alvo")) or "professores"
+    if publico not in COM_PUBLICOS:
+        return jsonify({"error": "Público-alvo inválido"}), 400
+    status = _text(body.get("status")) or "publicado"
+    if status not in COM_STATUS:
+        return jsonify({"error": "Status inválido"}), 400
+
+    inicio = _parse_dt_local(body.get("data_hora_inicio"), required=True)
+    if inicio is False or inicio is None:
+        return jsonify({"error": "data_hora_inicio inválida ou obrigatória"}), 400
+    fim = _parse_dt_local(body.get("data_hora_fim"), required=False)
+    if fim is False:
+        return jsonify({"error": "data_hora_fim inválida"}), 400
+
+    unidade = _parse_uuid(body.get("unidade_id"), "unidade") if body.get("unidade_id") else None
+    if publico == "unidade" and not unidade:
+        return jsonify({"error": "Selecione a unidade"}), 400
+    if publico in ("toda_instituicao", "professores"):
+        unidade = None
+
+    descricao = _text(body.get("descricao")) or None
+    gestor = session.get(SESSION_KEY) or {}
+    gestor_id = _parse_uuid(gestor.get("id"), "gestor")
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                INSERT INTO public.school_comunicacoes_eventos (
+                    instituicao_id, unidade_id, titulo, descricao, tipo,
+                    data_hora_inicio, data_hora_fim, publico_alvo,
+                    status, criado_por_gestor_id
+                ) VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                )
+                RETURNING *
+                """,
+                (
+                    inst,
+                    str(unidade) if unidade else None,
+                    titulo,
+                    descricao,
+                    tipo,
+                    inicio,
+                    fim,
+                    publico,
+                    status,
+                    str(gestor_id) if gestor_id else None,
+                ),
+            )
+            row = cur.fetchone()
+
+    dispatch: dict[str, Any] = {"ok": False, "skipped": True}
+    if status == "publicado":
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                dispatch = _push_comunicacao_row(cur, row, inst)
+                if dispatch.get("ok"):
+                    cur.execute(
+                        """
+                        UPDATE public.school_comunicacoes_eventos
+                        SET replicado_b2c = TRUE,
+                            replicado_b2c_em = CURRENT_TIMESTAMP,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                        RETURNING *
+                        """,
+                        (str(row["id"]),),
+                    )
+                    row = cur.fetchone() or row
+
+    return (
+        jsonify(
+            {
+                "item": _serialize_comunicacao(row),
+                "b2c_dispatch": dispatch,
+                "message": (
+                    "Comunicado publicado no mural dos professores."
+                    if dispatch.get("ok")
+                    else (
+                        "Comunicado salvo."
+                        + (
+                            " Push ao mural pendente."
+                            if status == "publicado"
+                            else ""
+                        )
+                    )
+                ),
+            }
+        ),
+        201,
+    )
+
+
+@bp.patch("/api/secretaria/comunicacoes/<item_id>")
+@require_gestor
+def patch_comunicacao(item_id: str):
+    inst = _instituicao_id()
+    cid = _parse_uuid(item_id, "comunicação")
+    if not cid:
+        return jsonify({"error": "Identificador inválido"}), 400
+    body = request.get_json(silent=True) or {}
+    status = _text(body.get("status"))
+    if status not in COM_STATUS:
+        return jsonify({"error": "Status inválido"}), 400
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                UPDATE public.school_comunicacoes_eventos
+                SET status = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND instituicao_id = %s
+                RETURNING *
+                """,
+                (status, str(cid), inst),
+            )
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"error": "Comunicação não encontrada"}), 404
+
+    dispatch: dict[str, Any] = {"ok": False, "skipped": True}
+    if status in ("publicado", "cancelado"):
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                dispatch = _push_comunicacao_row(cur, row, inst)
+                if dispatch.get("ok") and status == "publicado":
+                    cur.execute(
+                        """
+                        UPDATE public.school_comunicacoes_eventos
+                        SET replicado_b2c = TRUE,
+                            replicado_b2c_em = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                        RETURNING *
+                        """,
+                        (str(cid),),
+                    )
+                    row = cur.fetchone() or row
+
+    return jsonify(
+        {
+            "item": _serialize_comunicacao(row),
+            "b2c_dispatch": dispatch,
+        }
+    )
+

@@ -278,25 +278,51 @@ def upsert_comunicado_school():
         or body.get("publico_alvo_professor_ids")
         or body.get("professores")
     )
-    if body.get("todos_vinculados") and not professor_ids:
+    professor_emails = body.get("professor_emails") or body.get("emails") or []
+    if isinstance(professor_emails, str):
+        professor_emails = [professor_emails]
+    if not isinstance(professor_emails, list):
+        professor_emails = []
+
+    if body.get("todos_vinculados") and not professor_ids and not professor_emails:
         return (
             jsonify(
                 {
                     "error": (
-                        "Envie professor_b2c_ids (id_clie) resolvidos no School; "
+                        "Envie professor_b2c_ids (id_clie) e/ou professor_emails; "
                         "este endpoint não consulta o School."
                     )
                 }
             ),
             400,
         )
-    if not professor_ids and status != "cancelado":
-        return jsonify({"error": "Informe ao menos um professor_b2c_id (id_clie)"}), 400
+    if not professor_ids and not professor_emails and status != "cancelado":
+        return jsonify(
+            {"error": "Informe professor_b2c_ids (id_clie) e/ou professor_emails"}
+        ), 400
 
     try:
         with get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 _ensure_schema(conn)
+
+                # Resolve e-mails → id_clie (mesma chave usada em TEACHER_ALLOCATED).
+                for raw_email in professor_emails:
+                    email = str(raw_email or "").strip().lower()
+                    if not email or "@" not in email:
+                        continue
+                    cur.execute(
+                        """
+                        SELECT id_clie
+                        FROM public.ctdi_clie
+                        WHERE LOWER(TRIM(mail_clie)) = %s
+                        LIMIT 1
+                        """,
+                        (email,),
+                    )
+                    row_email = cur.fetchone()
+                    if row_email and int(row_email["id_clie"]) not in professor_ids:
+                        professor_ids.append(int(row_email["id_clie"]))
 
                 cur.execute(
                     """

@@ -1896,6 +1896,12 @@ export default function StepEduScrum({
           aula={aulaAtiva}
           missao={missaoCompleta}
           busy={relatoBusy}
+          temAlunosPei={tasks.some(
+            (t) =>
+              t?.perfil_inclusao ||
+              (Array.isArray(t?.subcards) &&
+                t.subcards.some((s) => s?.perfil_inclusao)),
+          )}
           onCancel={() => {
             if (!relatoBusy) setShowRelato(false)
           }}

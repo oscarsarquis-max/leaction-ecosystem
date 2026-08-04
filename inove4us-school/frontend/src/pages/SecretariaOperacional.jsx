@@ -11,6 +11,18 @@ const TABS = [
   { id: 'periodos', label: 'Períodos Letivos' },
   { id: 'disciplinas', label: 'Disciplinas' },
   { id: 'alocacao', label: 'Alocação Docente' },
+  { id: 'comunicacoes', label: 'Mural / Comunicações' },
+]
+
+const COM_TIPOS = [
+  { value: 'reuniao_pedagogica', label: 'Reunião pedagógica' },
+  { value: 'evento_escolar', label: 'Evento escolar' },
+]
+
+const COM_PUBLICOS = [
+  { value: 'professores', label: 'Professores' },
+  { value: 'toda_instituicao', label: 'Toda a instituição' },
+  { value: 'unidade', label: 'Unidade' },
 ]
 
 function Modal({ title, open, onClose, children }) {
@@ -88,23 +100,35 @@ export default function SecretariaOperacional() {
     disciplina_id: '',
     professor_id: '',
   })
+  const [comunicacoes, setComunicacoes] = useState([])
+  const [formCom, setFormCom] = useState({
+    titulo: '',
+    descricao: '',
+    tipo: 'reuniao_pedagogica',
+    publico_alvo: 'professores',
+    data_hora_inicio: '',
+    data_hora_fim: '',
+    unidade_id: '',
+  })
 
   const loadAll = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const [u, p, d, a, pr] = await Promise.all([
+      const [u, p, d, a, pr, co] = await Promise.all([
         fetch('/api/secretaria/unidades', { credentials: 'include' }),
         fetch('/api/secretaria/periodos', { credentials: 'include' }),
         fetch('/api/secretaria/disciplinas', { credentials: 'include' }),
         fetch('/api/secretaria/alocacoes', { credentials: 'include' }),
         fetch('/api/secretaria/professores', { credentials: 'include' }),
+        fetch('/api/secretaria/comunicacoes', { credentials: 'include' }),
       ])
       const ju = await u.json().catch(() => ({}))
       const jp = await p.json().catch(() => ({}))
       const jd = await d.json().catch(() => ({}))
       const ja = await a.json().catch(() => ({}))
       const jpr = await pr.json().catch(() => ({}))
+      const jco = await co.json().catch(() => ({}))
       if (!u.ok) throw new Error(ju.error || 'Falha ao carregar unidades')
       if (!p.ok) throw new Error(jp.error || 'Falha ao carregar períodos')
       if (!d.ok) throw new Error(jd.error || 'Falha ao carregar disciplinas')
@@ -115,6 +139,7 @@ export default function SecretariaOperacional() {
       setDisciplinas(jd.items || [])
       setAlocacoes(ja.items || [])
       setProfessores(jpr.items || [])
+      setComunicacoes(co.ok ? jco.items || [] : [])
     } catch (err) {
       setError(err.message || 'Erro ao carregar Secretaria Acadêmica')
     } finally {
@@ -219,6 +244,36 @@ export default function SecretariaOperacional() {
     }
   }
 
+  async function handleCreateComunicacao(e) {
+    e.preventDefault()
+    setBusy(true)
+    setError('')
+    setFeedback('')
+    try {
+      const data = await postJson('/api/secretaria/comunicacoes', {
+        ...formCom,
+        unidade_id: formCom.unidade_id || null,
+        data_hora_fim: formCom.data_hora_fim || null,
+        status: 'publicado',
+      })
+      setFeedback(data.message || 'Comunicado publicado no mural.')
+      setFormCom({
+        titulo: '',
+        descricao: '',
+        tipo: 'reuniao_pedagogica',
+        publico_alvo: 'professores',
+        data_hora_inicio: '',
+        data_hora_fim: '',
+        unidade_id: '',
+      })
+      await loadAll()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const escola = useMemo(
     () => user?.instituicao_nome || user?.nome || 'Instituição',
     [user],
@@ -231,8 +286,8 @@ export default function SecretariaOperacional() {
           Secretaria Acadêmica
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Unidades, períodos, disciplinas e alocação docente — {escola}. O
-          casamento professor×disciplina notifica o inove4us do professor.
+          Unidades, períodos, disciplinas, alocação e mural de comunicações —{' '}
+          {escola}. Publicações vão para o mural do professor no inove4us.
         </p>
       </div>
 
@@ -519,6 +574,149 @@ export default function SecretariaOperacional() {
               </tbody>
             </table>
           </div>
+        </section>
+      ) : null}
+
+      {!loading && tab === 'comunicacoes' ? (
+        <section className="space-y-4">
+          <p className="text-sm text-muted">
+            Publique avisos e eventos no mural da página inicial logada do
+            inove4us (professores vinculados).
+          </p>
+          <form
+            onSubmit={handleCreateComunicacao}
+            className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-panel sm:grid-cols-2"
+          >
+            <Field label="Título">
+              <input
+                required
+                className={inputCls}
+                value={formCom.titulo}
+                onChange={(e) => setFormCom({ ...formCom, titulo: e.target.value })}
+              />
+            </Field>
+            <Field label="Tipo">
+              <select
+                className={inputCls}
+                value={formCom.tipo}
+                onChange={(e) => setFormCom({ ...formCom, tipo: e.target.value })}
+              >
+                {COM_TIPOS.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <label className="block text-sm sm:col-span-2">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted">
+                Descrição
+              </span>
+              <textarea
+                rows={3}
+                className={inputCls}
+                value={formCom.descricao}
+                onChange={(e) => setFormCom({ ...formCom, descricao: e.target.value })}
+              />
+            </label>
+            <Field label="Público">
+              <select
+                className={inputCls}
+                value={formCom.publico_alvo}
+                onChange={(e) =>
+                  setFormCom({ ...formCom, publico_alvo: e.target.value })
+                }
+              >
+                {COM_PUBLICOS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {formCom.publico_alvo === 'unidade' ? (
+              <Field label="Unidade">
+                <select
+                  required
+                  className={inputCls}
+                  value={formCom.unidade_id}
+                  onChange={(e) =>
+                    setFormCom({ ...formCom, unidade_id: e.target.value })
+                  }
+                >
+                  <option value="">Selecione…</option>
+                  {unidades.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nome}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            ) : (
+              <div />
+            )}
+            <Field label="Início">
+              <input
+                required
+                type="datetime-local"
+                className={inputCls}
+                value={formCom.data_hora_inicio}
+                onChange={(e) =>
+                  setFormCom({ ...formCom, data_hora_inicio: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="Fim (opcional)">
+              <input
+                type="datetime-local"
+                className={inputCls}
+                value={formCom.data_hora_fim}
+                onChange={(e) =>
+                  setFormCom({ ...formCom, data_hora_fim: e.target.value })
+                }
+              />
+            </Field>
+            <div className="sm:col-span-2">
+              <button
+                type="submit"
+                disabled={busy}
+                className="rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-school-600 disabled:opacity-60"
+              >
+                {busy ? 'Publicando…' : 'Publicar no mural'}
+              </button>
+            </div>
+          </form>
+
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel">
+            {comunicacoes.length === 0 ? (
+              <li className="px-4 py-8 text-center text-sm text-muted">
+                Nenhum comunicado ainda.
+              </li>
+            ) : (
+              comunicacoes.map((item) => (
+                <li key={item.id} className="px-4 py-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-ink">{item.titulo}</p>
+                      <p className="text-xs text-muted">
+                        {item.tipo_label} · {item.publico_label} ·{' '}
+                        {item.status_label}
+                        {item.replicado_b2c ? ' · No mural B2C' : ''}
+                      </p>
+                      {item.descricao ? (
+                        <p className="mt-1 text-sm text-muted">{item.descricao}</p>
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-muted">
+                      {item.data_hora_inicio
+                        ? new Date(item.data_hora_inicio).toLocaleString('pt-BR')
+                        : '—'}
+                    </p>
+                  </div>
+                </li>
+              ))
+            )}
+          </ul>
         </section>
       ) : null}
 

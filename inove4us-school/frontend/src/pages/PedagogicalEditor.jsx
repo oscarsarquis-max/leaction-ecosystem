@@ -98,23 +98,138 @@ function RoteiroReferencia({ passos }) {
           <li key={idx} className="leading-snug">
             <span className="font-semibold">{p.titulo || `Etapa ${idx + 1}`}</span>
             {p.objetivo ? <span className="block text-muted">{p.objetivo}</span> : null}
-            <span className="block text-slate-600">
-              {p.mecanica_passo_a_passo || p.como_executar_detalhado || '—'}
-            </span>
-            {p.dica_de_facilitacao ? (
-              <span className="mt-0.5 block text-xs text-slate-500">
-                Dica de facilitação: {p.dica_de_facilitacao}
-              </span>
-            ) : null}
-            {p.duracao_minutos != null ? (
-              <span className="mt-0.5 block text-xs tabular-nums text-slate-400">
-                Cerca de {p.duracao_minutos} min
+            {(p.mecanica_passo_a_passo || p.como_executar_detalhado) ? (
+              <span className="block text-muted">
+                {p.mecanica_passo_a_passo || p.como_executar_detalhado}
               </span>
             ) : null}
           </li>
         )
       })}
     </ol>
+  )
+}
+
+/**
+ * Caixa de entrada bottom-up: adaptações do professor pendentes de curadoria.
+ */
+function SugestoesTrincheira({ metodologiaNome, onToast }) {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      setError('')
+      try {
+        const q = encodeURIComponent(metodologiaNome || '')
+        const res = await fetch(
+          `/api/pedagogico/curadoria/pendentes?metodologia_nome=${q}`,
+          { credentials: 'include' },
+        )
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(body.error || 'Falha ao carregar sugestões')
+        if (!cancelled) setItems(body.items || [])
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || 'Erro ao carregar curadoria')
+          setItems([])
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [metodologiaNome])
+
+  async function agir(id, acao) {
+    setBusyId(id)
+    setError('')
+    try {
+      const res = await fetch(`/api/pedagogico/curadoria/${id}/${acao}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Não foi possível concluir a ação')
+      setItems((prev) => prev.filter((it) => it.id !== id))
+      onToast?.(
+        body.message ||
+          (acao === 'incorporar'
+            ? 'Sugestão incorporada à metodologia da escola.'
+            : 'Sugestão mantida apenas na aula.'),
+      )
+    } catch (err) {
+      setError(err.message || 'Erro na curadoria')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="mt-4 rounded-lg border border-dashed border-amber-200 bg-amber-50/40 p-3 text-xs text-amber-900">
+        Carregando sugestões da trincheira…
+      </div>
+    )
+  }
+
+  if (!items.length && !error) return null
+
+  return (
+    <section className="mt-4 space-y-3 rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
+          Sugestões da Trincheira (Pendentes)
+        </p>
+        <p className="mt-0.5 text-xs text-amber-800/80">
+          Adaptações enviadas pelos professores ao concluir a aula.
+        </p>
+      </div>
+      {error ? (
+        <p className="text-xs font-semibold text-red-700" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <ul className="space-y-3">
+        {items.map((item) => (
+          <li
+            key={item.id}
+            className="rounded-lg border border-amber-100 bg-white p-3 shadow-sm"
+          >
+            <p className="text-sm leading-relaxed text-ink">
+              {item.teacher_adaptation_text ||
+                '— (sem texto; revise o payload da aula)'}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busyId === item.id}
+                onClick={() => agir(item.id, 'incorporar')}
+                className="rounded-lg bg-school-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-school-600 disabled:opacity-60"
+              >
+                {busyId === item.id ? '…' : 'Incorporar à Metodologia da Escola'}
+              </button>
+              <button
+                type="button"
+                disabled={busyId === item.id}
+                onClick={() => agir(item.id, 'rejeitar')}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Manter apenas na aula atual
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
@@ -648,6 +763,11 @@ export default function PedagogicalEditor() {
                       passos={row.roteiro_referencia || row.passos_execucao}
                     />
                   </div>
+
+                  <SugestoesTrincheira
+                    metodologiaNome={row.nome}
+                    onToast={(msg) => setFeedback(msg)}
+                  />
 
                   <label className="mt-4 block">
                     <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">

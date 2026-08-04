@@ -377,12 +377,33 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
             plano_id = str(plano["id"]) if plano else None
 
             curadoria_id = None
+            curadoria_pei_id = None
+            has_pei_adapt = False
             if has_adapt and plano_id:
+                teacher_text = str(
+                    payload.get("teacher_adaptation_text")
+                    or mesa.get("teacher_adaptation_text")
+                    or ""
+                ).strip() or None
+                adaptations = (
+                    payload.get("adaptations")
+                    or mesa.get("adaptations")
+                    or mesa.get("teacher_adaptations")
+                )
+                if teacher_text and not adaptations:
+                    adaptations = {"texto": teacher_text}
+                met_usada = str(
+                    payload.get("metodologia_usada")
+                    or payload.get("metodologia_nome")
+                    or mesa.get("metodologia_nome")
+                    or met_nome
+                    or ""
+                ).strip()
                 sugestao = {
                     "mesa": mesa,
-                    "adaptations": payload.get("adaptations")
-                    or mesa.get("adaptations")
-                    or mesa.get("teacher_adaptations"),
+                    "metodologia_usada": met_usada,
+                    "teacher_adaptation_text": teacher_text,
+                    "adaptations": adaptations,
                     "synced_at": datetime.utcnow().isoformat() + "Z",
                 }
                 cur.execute(
@@ -425,10 +446,101 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
                 cur_row = cur.fetchone()
                 curadoria_id = str(cur_row["id"]) if cur_row else None
 
+            # --- Curadoria PEI (trincheira) ---
+            has_pei_adapt = _truthy(
+                payload.get("has_pei_adaptations")
+                or mesa.get("has_pei_adaptations")
+            )
+            if has_pei_adapt and plano_id:
+                pei_text = str(
+                    payload.get("pei_adaptation_text")
+                    or mesa.get("pei_adaptation_text")
+                    or ""
+                ).strip()
+                pei_aluno = _as_uuid(
+                    payload.get("pei_aluno_id")
+                    or payload.get("pei_individualizado_id")
+                    or mesa.get("pei_aluno_id")
+                )
+                # Se não veio ID, tenta match por nome do aluno no payload.
+                if not pei_aluno:
+                    aluno_nome = str(
+                        payload.get("aluno_nome")
+                        or mesa.get("aluno_nome")
+                        or ""
+                    ).strip()
+                    if aluno_nome:
+                        cur.execute(
+                            """
+                            SELECT p.id
+                            FROM public.school_pei_individualizado p
+                            JOIN public.school_alunos a ON a.id = p.aluno_id
+                            WHERE a.instituicao_id = %s
+                              AND LOWER(TRIM(a.nome)) = LOWER(TRIM(%s))
+                              AND p.ativo = TRUE
+                            LIMIT 1
+                            """,
+                            (instituicao_id, aluno_nome),
+                        )
+                        hit = cur.fetchone()
+                        if hit:
+                            pei_aluno = str(hit["id"])
+
+                # Garante tabela (idempotente se migration ainda não rodou).
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS public.school_curadoria_pei (
+                        id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        instituicao_id          UUID NOT NULL
+                            REFERENCES public.school_instituicoes (id) ON DELETE CASCADE,
+                        pei_aluno_id            UUID
+                            REFERENCES public.school_pei_individualizado (id)
+                            ON DELETE SET NULL,
+                        metodologia_nome        TEXT NOT NULL DEFAULT '',
+                        sugestao_professor_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+                        status_analise          VARCHAR(32) NOT NULL DEFAULT 'pendente',
+                        plano_espelhado_id      UUID
+                            REFERENCES public.school_planos_aula_espelhados (id)
+                            ON DELETE SET NULL,
+                        created_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+                sug_pei = {
+                    "pei_adaptation_text": pei_text,
+                    "metodologia_nome": met_nome,
+                    "mesa": mesa,
+                    "synced_at": datetime.utcnow().isoformat() + "Z",
+                }
+                cur.execute(
+                    """
+                    INSERT INTO public.school_curadoria_pei (
+                        instituicao_id,
+                        pei_aluno_id,
+                        metodologia_nome,
+                        sugestao_professor_json,
+                        status_analise,
+                        plano_espelhado_id
+                    )
+                    VALUES (%s, %s, %s, %s, 'pendente', %s)
+                    RETURNING id
+                    """,
+                    (
+                        instituicao_id,
+                        pei_aluno,
+                        met_nome,
+                        Json(sug_pei),
+                        plano_id,
+                    ),
+                )
+                pei_row = cur.fetchone()
+                curadoria_pei_id = str(pei_row["id"]) if pei_row else None
+
     _log(
         f"LESSON_RECORD_SYNC instituicao={instituicao_id} "
         f"plano={plano_id} origem={origem} curadoria={curadoria_id} "
-        f"adapt={has_adapt}"
+        f"curadoria_pei={curadoria_pei_id} adapt={has_adapt} pei_adapt={has_pei_adapt}"
     )
     return {
         "handled": True,
@@ -436,7 +548,9 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
         "plano_espelhado_id": plano_id,
         "origem_plano_b2c_id": origem,
         "curadoria_id": curadoria_id,
+        "curadoria_pei_id": curadoria_pei_id,
         "has_teacher_adaptations": has_adapt,
+        "has_pei_adaptations": bool(has_pei_adapt),
     }
 
 

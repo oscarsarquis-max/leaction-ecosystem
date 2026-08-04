@@ -1649,6 +1649,34 @@ def concluir_aula(id_evento: int):
     criar_proximo = bool(data.get("criar_proximo"))
     data_proximo = (data.get("data_proximo") or "").strip()
     titulo_proximo = (data.get("titulo_proximo") or "").strip()
+    has_teacher_adaptations = bool(data.get("has_teacher_adaptations"))
+    teacher_adaptation_text = (data.get("teacher_adaptation_text") or "").strip()
+    metodologia_usada = (data.get("metodologia_usada") or "").strip() or None
+    has_pei_adaptations = bool(data.get("has_pei_adaptations"))
+    pei_adaptation_text = (data.get("pei_adaptation_text") or "").strip()
+    pei_aluno_id = (data.get("pei_aluno_id") or "").strip() or None
+    aluno_nome = (data.get("aluno_nome") or "").strip() or None
+
+    if has_teacher_adaptations and not teacher_adaptation_text:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Descreva a modificação feita na metodologia.",
+                }
+            ),
+            400,
+        )
+    if has_pei_adaptations and not pei_adaptation_text:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Descreva o que funcionou melhor no PEI.",
+                }
+            ),
+            400,
+        )
 
     if criar_proximo and not data_proximo:
         return jsonify({"success": False, "error": "Informe a data do próximo evento."}), 400
@@ -1671,6 +1699,8 @@ def concluir_aula(id_evento: int):
 
                 nota = atual.get("nota_texto") or ""
                 stamp = f"Concluída com relato em sala."
+                if has_teacher_adaptations:
+                    stamp += " Adaptação de metodologia registrada."
                 nota_final = f"{nota}\n{stamp}".strip() if nota else stamp
 
                 cur.execute(
@@ -1714,7 +1744,34 @@ def concluir_aula(id_evento: int):
                     )
                     filho = _serialize(dict(cur.fetchone()))
 
-        return jsonify({"success": True, "evento": concluido, "proximo": filho})
+        # Fora da transação — falha de rede não desfaz a conclusão.
+        school_sync = {"ok": False, "skipped": True}
+        try:
+            from school_outbound import dispatch_lesson_record_sync
+
+            school_sync = dispatch_lesson_record_sync(
+                id_clie=int(user["id_clie"]),
+                evento=concluido,
+                has_teacher_adaptations=has_teacher_adaptations,
+                teacher_adaptation_text=teacher_adaptation_text or None,
+                metodologia_usada=metodologia_usada,
+                has_pei_adaptations=has_pei_adaptations,
+                pei_adaptation_text=pei_adaptation_text or None,
+                pei_aluno_id=pei_aluno_id,
+                aluno_nome=aluno_nome,
+            )
+        except Exception as sync_exc:
+            print(f"⚠️ agenda LESSON_RECORD_SYNC: {sync_exc}", file=sys.stderr)
+            school_sync = {"ok": False, "error": str(sync_exc)}
+
+        return jsonify(
+            {
+                "success": True,
+                "evento": concluido,
+                "proximo": filho,
+                "school_sync": school_sync,
+            }
+        )
     except Exception as exc:
         print(f"⚠️ agenda concluir-aula: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha ao concluir a aula"}), 500

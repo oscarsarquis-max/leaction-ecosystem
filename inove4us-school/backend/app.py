@@ -51,6 +51,8 @@ def create_app() -> Flask:
     from webhook_actionhub_routes import bp as actionhub_webhook_bp
     from webhook_b2c_routes import bp as b2c_webhook_bp
     from billing_routes import billing_bp
+    from curadoria_routes import bp as curadoria_bp
+    from pei_ciclo_routes import bp as pei_ciclo_bp
 
     app.register_blueprint(metodologias_bp)
     app.register_blueprint(dashboard_bp)
@@ -63,6 +65,10 @@ def create_app() -> Flask:
     # Secretaria Acadêmica — CRUD flat + alocação (TEACHER_ALLOCATED)
     app.register_blueprint(secretaria_academica_bp)
     app.register_blueprint(billing_bp)
+    # Curadoria bottom-up (professor → pedagogo)
+    app.register_blueprint(curadoria_bp)
+    # Ciclo Vivo do PEI (adaptação × metodologia + curadoria PEI)
+    app.register_blueprint(pei_ciclo_bp)
     # S2S Outbox — sem sessão de gestor / RBAC
     app.register_blueprint(actionhub_webhook_bp)
     # Ponte interna School ← B2C (JWT HS256)

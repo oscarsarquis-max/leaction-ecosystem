@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import AlunoPEI from './AlunoPEI'
 
 const INSTITUICAO_ID =
   import.meta.env.VITE_INSTITUICAO_ID || 'a1111111-1111-4111-8111-111111111111'
@@ -57,6 +58,7 @@ function Field({ label, hint, children }) {
  * Pilar 2 do Editor Pedagógico — planos gerais de PEI (neuropedagoga).
  */
 export default function PeiEditorTab() {
+  const [modo, setModo] = useState('planos') // planos | ciclo
   const [lista, setLista] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [detail, setDetail] = useState(null)
@@ -70,6 +72,7 @@ export default function PeiEditorTab() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
+
 
   async function carregarLista() {
     const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/pei/planos-gerais`)
@@ -328,6 +331,35 @@ export default function PeiEditorTab() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+        {[
+          { id: 'planos', label: 'Planos gerais' },
+          { id: 'ciclo', label: 'Ciclo Vivo (Alunos)' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => {
+              setModo(t.id)
+              setFeedback('')
+              setError('')
+            }}
+            className={[
+              'rounded-lg px-3 py-2 text-sm font-semibold transition',
+              modo === t.id
+                ? 'bg-school-500 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+            ].join(' ')}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {modo === 'ciclo' ? <AlunoPEI /> : null}
+
+      {modo === 'planos' ? (
+      <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm text-muted">
@@ -781,6 +813,8 @@ export default function PeiEditorTab() {
           )}
         </div>
       )}
+      </>
+      ) : null}
     </div>
   )
 }

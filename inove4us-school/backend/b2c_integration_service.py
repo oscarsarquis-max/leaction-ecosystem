@@ -88,3 +88,75 @@ def dispatch_methodology_override_updated(
 def dispatch_teacher_allocated(payload: dict[str, Any]) -> dict[str, Any]:
     """Atalho tipado para o despertar do professor no B2C."""
     return dispatch_event_to_b2c("TEACHER_ALLOCATED", payload or {})
+
+
+def dispatch_pei_override_updated(
+    *,
+    instituicao_id: str,
+    pei_aluno_id: str,
+    metodologia_nome: str,
+    passos_customizados: str | None,
+    aluno_nome: str = "",
+    tipo_neurodivergencia: str = "",
+) -> dict[str, Any]:
+    """School → B2C: adaptação PEI×metodologia oficial da escola."""
+    return dispatch_event_to_b2c(
+        "PEI_OVERRIDE_UPDATED",
+        {
+            "instituicao_id": str(instituicao_id),
+            "pei_aluno_id": str(pei_aluno_id),
+            "aluno_nome": str(aluno_nome or "").strip(),
+            "metodologia_nome": str(metodologia_nome or "").strip(),
+            "passos_customizados": passos_customizados,
+            "tipo_neurodivergencia": str(tipo_neurodivergencia or "").strip(),
+        },
+    )
+
+
+def b2c_api_base() -> str:
+    return (
+        os.getenv("INOVE4US_B2C_API_URL")
+        or "http://127.0.0.1:5011"
+    ).rstrip("/")
+
+
+def school_integration_api_key() -> str:
+    return (
+        os.getenv("SCHOOL_INTEGRATION_API_KEY")
+        or os.getenv("INOVE4US_SCHOOL_API_KEY")
+        or ""
+    ).strip()
+
+
+def push_comunicado_to_b2c(payload: dict[str, Any]) -> dict[str, Any]:
+    """POST /api/integracoes/school/comunicados (API key) → mural + agenda no B2C."""
+    key = school_integration_api_key()
+    if not key:
+        return {"ok": False, "error": "SCHOOL_INTEGRATION_API_KEY não configurada"}
+
+    url = f"{b2c_api_base()}/api/integracoes/school/comunicados"
+    headers = {
+        "Content-Type": "application/json",
+        "X-School-Api-Key": key,
+    }
+    body = payload if isinstance(payload, dict) else {}
+    try:
+        res = requests.post(url, json=body, headers=headers, timeout=6.0)
+        ok = 200 <= res.status_code < 300
+        print(
+            f"[school→b2c] COMUNICADO → {url} http={res.status_code}",
+            flush=True,
+        )
+        parsed: Any = None
+        try:
+            parsed = res.json()
+        except Exception:
+            parsed = (res.text or "")[:300]
+        return {
+            "ok": ok,
+            "status_code": res.status_code,
+            "response": parsed,
+        }
+    except requests.RequestException as exc:
+        print(f"[school→b2c] falha de rede COMUNICADO: {exc}", file=sys.stderr, flush=True)
+        return {"ok": False, "error": str(exc)}
