@@ -1,0 +1,877 @@
+-- inove4us School — Etapa 4b: catálogo completo (39) + override de passos + metodologias da escola
+-- Pré-requisitos: 004, 005
+BEGIN;
+
+ALTER TABLE public.school_metodologias_catalogo
+    ADD COLUMN IF NOT EXISTS codigo TEXT,
+    ADD COLUMN IF NOT EXISTS categoria TEXT NOT NULL DEFAULT 'Indutivas',
+    ADD COLUMN IF NOT EXISTS origem VARCHAR(16) NOT NULL DEFAULT 'padrao',
+    ADD COLUMN IF NOT EXISTS instituicao_origem_id UUID
+        REFERENCES public.school_instituicoes (id) ON DELETE CASCADE;
+
+ALTER TABLE public.school_metodologias_catalogo
+    DROP CONSTRAINT IF EXISTS chk_school_metodologias_catalogo_origem;
+ALTER TABLE public.school_metodologias_catalogo
+    ADD CONSTRAINT chk_school_metodologias_catalogo_origem
+        CHECK (origem IN ('padrao', 'escola'));
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_school_metodologias_catalogo_codigo
+    ON public.school_metodologias_catalogo (codigo)
+    WHERE codigo IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_school_metodologias_catalogo_categoria
+    ON public.school_metodologias_catalogo (categoria);
+
+CREATE INDEX IF NOT EXISTS idx_school_metodologias_catalogo_origem_inst
+    ON public.school_metodologias_catalogo (instituicao_origem_id)
+    WHERE origem = 'escola';
+
+-- Nome único no padrão global; escolas podem repetir nomes entre si, não contra o padrão.
+ALTER TABLE public.school_metodologias_catalogo
+    DROP CONSTRAINT IF EXISTS uq_school_metodologias_catalogo_nome;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_school_metodologias_catalogo_nome_padrao
+    ON public.school_metodologias_catalogo (nome)
+    WHERE origem = 'padrao';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_school_metodologias_catalogo_nome_escola
+    ON public.school_metodologias_catalogo (instituicao_origem_id, nome)
+    WHERE origem = 'escola';
+
+ALTER TABLE public.school_metodologia_config
+    ADD COLUMN IF NOT EXISTS passos_customizados JSONB;
+
+COMMENT ON COLUMN public.school_metodologias_catalogo.origem IS
+  'padrao = catálogo ouro (imutável pela escola); escola = criada pela instituição.';
+COMMENT ON COLUMN public.school_metodologia_config.passos_customizados IS
+  'NULL = usa passos_execucao do catálogo. Preenchido = override da escola; padrão permanece intacto.';
+
+-- Remove placeholders da seed parcial (3) e qualquer padrão antigo antes do reload.
+
+-- Remove placeholders da seed parcial (3) e qualquer padrão antigo antes do reload.
+DELETE FROM public.school_metodologia_config
+WHERE metodologia_catalogo_id IN (
+    SELECT id FROM public.school_metodologias_catalogo WHERE origem = 'padrao'
+);
+DELETE FROM public.school_metodologias_catalogo WHERE origem = 'padrao';
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_abordagem_problematizadora',
+    'Abordagem Problematizadora',
+    'Indutivas',
+    'misto — Conduzir a turma a observar um recorte da realidade e identificar um problema.',
+    '[{"titulo": "Observação da Realidade", "objetivo": "Conduzir a turma a observar um recorte da realidade e identificar um problema.", "mecanica_passo_a_passo": "O professor conduz a turma a observar um recorte da realidade e identificar um problema social, ambiental ou técnico.", "como_executar_detalhado": "O professor conduz a turma a observar um recorte da realidade e identificar um problema social, ambiental ou técnico.", "dica_de_facilitacao": "Escolha um recorte concreto e próximo da turma — evite problemas abstratos demais.", "duracao_minutos": 10}, {"titulo": "Levantamento de Pontos-Chave", "objetivo": "Filtrar as variáveis principais que causam o problema.", "mecanica_passo_a_passo": "Os alunos debatem e filtram as variáveis principais que causam esse problema.", "como_executar_detalhado": "Os alunos debatem e filtram as variáveis principais que causam esse problema.", "dica_de_facilitacao": "Peça evidência para cada variável — corte opiniões sem lastro.", "duracao_minutos": 10}, {"titulo": "Teorização", "objetivo": "Buscar fundamentação teórica para entender o problema a fundo.", "mecanica_passo_a_passo": "Os alunos buscam fundamentação teórica (pesquisa em livros, internet, entrevistas) para entender o problema a fundo.", "como_executar_detalhado": "Os alunos buscam fundamentação teórica (pesquisa em livros, internet, entrevistas) para entender o problema a fundo.", "dica_de_facilitacao": "Defina fontes mínimas e tempo de pesquisa — evita deriva infinita.", "duracao_minutos": 12}, {"titulo": "Hipóteses de Solução", "objetivo": "Criar alternativas viáveis para resolver ou mitigar o problema.", "mecanica_passo_a_passo": "Criação de alternativas viáveis para resolver ou mitigar o problema encontrado.", "como_executar_detalhado": "Criação de alternativas viáveis para resolver ou mitigar o problema encontrado.", "dica_de_facilitacao": "Exija critérios de viabilidade (tempo, custo, alcance) em cada hipótese.", "duracao_minutos": 10}, {"titulo": "Aplicação à Realidade", "objetivo": "Executar uma intervenção real para modificar a realidade observada.", "mecanica_passo_a_passo": "Execução de uma intervenção real (campanha, ofício, protótipo) para modificar a realidade observada.", "como_executar_detalhado": "Execução de uma intervenção real (campanha, ofício, protótipo) para modificar a realidade observada.", "dica_de_facilitacao": "Prefira intervenções pequenas e entregáveis na aula ou no ciclo curto.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'aprendizagem_baseada_em_casos',
+    'Aprendizagem Baseada em Casos',
+    'Indutivas',
+    'sala — Apresentar um caso humano concreto (não abstrato).',
+    '[{"titulo": "Caso Vivo", "objetivo": "Apresentar um caso humano concreto (não abstrato).", "mecanica_passo_a_passo": "Entregue um caso de 1 página: personagem, contexto, tensão ética/prática, dados incompletos. Leitura individual 5 min + marcação de emoções e fatos.", "como_executar_detalhado": "Entregue um caso de 1 página: personagem, contexto, tensão ética/prática, dados incompletos. Leitura individual 5 min + marcação de emoções e fatos.", "dica_de_facilitacao": "Casos genéricos matam empatia. Use nomes, idades e detalhes sensoriais.", "duracao_minutos": 10}, {"titulo": "Mapa de Empatia", "objetivo": "Separar o que a pessoa diz, faz, pensa e sente.", "mecanica_passo_a_passo": "Em grupos, preencham o mapa: Diz / Faz / Pensa / Sente + dores e ganhos. Usem só evidências do texto; o que for inferência vai em cor diferente.", "como_executar_detalhado": "Em grupos, preencham o mapa: Diz / Faz / Pensa / Sente + dores e ganhos. Usem só evidências do texto; o que for inferência vai em cor diferente.", "dica_de_facilitacao": "Force a distinção evidência vs. inferência — evita ''achar que sabe''.", "duracao_minutos": 15}, {"titulo": "Decisão sob Tensão", "objetivo": "Tomar uma decisão pedagógica/prática que respeite a pessoa do caso.", "mecanica_passo_a_passo": "O grupo escolhe 1 ação recomendada e lista trade-offs. Simulam a conversa com a personagem (2 min) e ajustam a proposta.", "como_executar_detalhado": "O grupo escolhe 1 ação recomendada e lista trade-offs. Simulam a conversa com a personagem (2 min) e ajustam a proposta.", "dica_de_facilitacao": "Peça que digam em voz alta o que a personagem pode sentir ao ouvir a proposta.", "duracao_minutos": 15}, {"titulo": "Debrief Ético", "objetivo": "Generalizar o aprendizado sem perder o humano do caso.", "mecanica_passo_a_passo": "Plenária: ''O que quase ignoramos?'' ''Que viés apareceu?'' Cada grupo entrega 1 princípio de ação para o problema da turma.", "como_executar_detalhado": "Plenária: ''O que quase ignoramos?'' ''Que viés apareceu?'' Cada grupo entrega 1 princípio de ação para o problema da turma.", "dica_de_facilitacao": "Feche com princípios, não com ''solução mágica'' — o caso é lente, não receita.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_aprendizagem_equipes',
+    'Aprendizagem Baseada em Equipes',
+    'Indutivas',
+    'sala — Garantir preparo individual antes da aula.',
+    '[{"titulo": "Estudo Prévio", "objetivo": "Garantir preparo individual antes da aula.", "mecanica_passo_a_passo": "Os alunos recebem e estudam o material base antes da aula.", "como_executar_detalhado": "Os alunos recebem e estudam o material base antes da aula.", "dica_de_facilitacao": "Envie material curto e objetivo — o TBL falha se o pré-estudo for inviável.", "duracao_minutos": 0}, {"titulo": "Teste Individual (iRAT)", "objetivo": "Verificar o preparo individual com questionário rápido.", "mecanica_passo_a_passo": "Aplicação de um questionário rápido de múltipla escolha para verificar o preparo individual.", "como_executar_detalhado": "Aplicação de um questionário rápido de múltipla escolha para verificar o preparo individual.", "dica_de_facilitacao": "Mantenha 5–10 itens; o foco é diagnóstico, não punição.", "duracao_minutos": 8}, {"titulo": "Teste em Equipe (tRAT)", "objetivo": "Chegar a consenso em equipe sobre as mesmas questões.", "mecanica_passo_a_passo": "Os alunos se reúnem em grupos e respondem ao mesmo questionário, debatendo até chegar a um consenso.", "como_executar_detalhado": "Os alunos se reúnem em grupos e respondem ao mesmo questionário, debatendo até chegar a um consenso.", "dica_de_facilitacao": "Force consenso explícito — um porta-voz justifica a resposta do grupo.", "duracao_minutos": 12}, {"titulo": "Apelação", "objetivo": "Contestar respostas com fundamentação na literatura.", "mecanica_passo_a_passo": "Os grupos podem contestar respostas consideradas incorretas, fundamentando a defesa com a literatura.", "como_executar_detalhado": "Os grupos podem contestar respostas consideradas incorretas, fundamentando a defesa com a literatura.", "dica_de_facilitacao": "Só aceite apelação com citação/fonte — evita reclamação vazia.", "duracao_minutos": 8}, {"titulo": "Aplicação Prática", "objetivo": "Usar a teoria consolidada em um caso complexo.", "mecanica_passo_a_passo": "O professor lança um caso complexo e os grupos usam a teoria consolidada para propor uma solução simultaneamente.", "como_executar_detalhado": "O professor lança um caso complexo e os grupos usam a teoria consolidada para propor uma solução simultaneamente.", "dica_de_facilitacao": "Peça entrega simultânea (mesmo prazo) para comparar estratégias.", "duracao_minutos": 15}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_pbl_problemas',
+    'Aprendizagem Baseada em Problemas',
+    'Indutivas',
+    'sala — Apresentar um caso complexo sem solução óbvia.',
+    '[{"titulo": "Apresentação do Cenário", "objetivo": "Apresentar um caso complexo sem solução óbvia.", "mecanica_passo_a_passo": "O professor apresenta um caso ou problema complexo e sem solução óbvia.", "como_executar_detalhado": "O professor apresenta um caso ou problema complexo e sem solução óbvia.", "dica_de_facilitacao": "Não entregue a resposta — o problema precisa gerar lacuna real de conhecimento.", "duracao_minutos": 8}, {"titulo": "Tempestade de Ideias", "objetivo": "Listar o que já se sabe e o que ainda falta descobrir.", "mecanica_passo_a_passo": "Os alunos listam o que já sabem sobre o caso e o que ainda precisam descobrir.", "como_executar_detalhado": "Os alunos listam o que já sabem sobre o caso e o que ainda precisam descobrir.", "dica_de_facilitacao": "Separe em duas colunas no quadro: ''Sabemos'' × ''Precisamos saber''.", "duracao_minutos": 10}, {"titulo": "Estudo Autônomo", "objetivo": "Pesquisar independentemente as lacunas de conhecimento.", "mecanica_passo_a_passo": "Os alunos dividem tarefas e pesquisam independentemente as lacunas de conhecimento.", "como_executar_detalhado": "Os alunos dividem tarefas e pesquisam independentemente as lacunas de conhecimento.", "dica_de_facilitacao": "Defina tempo e produto mínimo por lacuna (3 bullets + fonte).", "duracao_minutos": 12}, {"titulo": "Socialização", "objetivo": "Compartilhar achados e debater no grupo.", "mecanica_passo_a_passo": "O grupo se reúne novamente para compartilhar o que aprendeu e debater os achados.", "como_executar_detalhado": "O grupo se reúne novamente para compartilhar o que aprendeu e debater os achados.", "dica_de_facilitacao": "Cada membro fala só da sua lacuna — evita monopolização.", "duracao_minutos": 10}, {"titulo": "Síntese e Resolução", "objetivo": "Resolver o problema inicial com os novos conhecimentos.", "mecanica_passo_a_passo": "Aplicação dos novos conhecimentos para resolver o problema inicial e apresentar a conclusão.", "como_executar_detalhado": "Aplicação dos novos conhecimentos para resolver o problema inicial e apresentar a conclusão.", "dica_de_facilitacao": "Exija conclusão explícita ligada às lacunas pesquisadas.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_pbl_projetos',
+    'Aprendizagem Baseada em Projetos',
+    'Indutivas',
+    'misto — Apresentar um desafio engajador que exige produto ou solução final.',
+    '[{"titulo": "Questão Motriz", "objetivo": "Apresentar um desafio engajador que exige produto ou solução final.", "mecanica_passo_a_passo": "Apresentação de um desafio engajador que exige a criação de um produto ou solução final.", "como_executar_detalhado": "Apresentação de um desafio engajador que exige a criação de um produto ou solução final.", "dica_de_facilitacao": "A questão motriz deve ser aberta e pública — não um exercício fechado.", "duracao_minutos": 8}, {"titulo": "Planejamento", "objetivo": "Definir escopo, papéis e cronograma do projeto.", "mecanica_passo_a_passo": "Os alunos definem o escopo do projeto, dividem papéis e criam um cronograma.", "como_executar_detalhado": "Os alunos definem o escopo do projeto, dividem papéis e criam um cronograma.", "dica_de_facilitacao": "Limite o escopo ao tempo real disponível — corte ambição sem entrega.", "duracao_minutos": 10}, {"titulo": "Investigação e Desenvolvimento", "objetivo": "Pesquisar e construir as primeiras versões do projeto.", "mecanica_passo_a_passo": "Fase de \"mão na massa\", pesquisa profunda e construção das primeiras versões do projeto.", "como_executar_detalhado": "Fase de \"mão na massa\", pesquisa profunda e construção das primeiras versões do projeto.", "dica_de_facilitacao": "Peça evidência de progresso a cada bloco de tempo (foto, rascunho, log).", "duracao_minutos": 15}, {"titulo": "Crítica e Revisão", "objetivo": "Receber feedback de pares e professor sobre rascunho/protótipo.", "mecanica_passo_a_passo": "Apresentação de um rascunho/protótipo para receber feedback dos pares e do professor.", "como_executar_detalhado": "Apresentação de um rascunho/protótipo para receber feedback dos pares e do professor.", "dica_de_facilitacao": "Use critérios públicos (clareza, viabilidade, impacto) — evita opinião vaga.", "duracao_minutos": 10}, {"titulo": "Exibição Pública", "objetivo": "Apresentar o produto final a uma audiência real.", "mecanica_passo_a_passo": "Apresentação do produto final validado para uma audiência real (comunidade, outros professores, pais).", "como_executar_detalhado": "Apresentação do produto final validado para uma audiência real (comunidade, outros professores, pais).", "dica_de_facilitacao": "Mesmo uma audiência pequena (outra turma) eleva a qualidade da entrega.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_aprendizagem_maker',
+    'Aprendizagem Maker',
+    'Indutivas',
+    'sala — Definir o artefato a construir e sua finalidade.',
+    '[{"titulo": "Identificação do Desafio", "objetivo": "Definir o artefato a construir e sua finalidade.", "mecanica_passo_a_passo": "Definição de um objeto, mecanismo ou artefato que precisa ser construído para uma finalidade específica.", "como_executar_detalhado": "Definição de um objeto, mecanismo ou artefato que precisa ser construído para uma finalidade específica.", "dica_de_facilitacao": "Amarre a finalidade a um usuário real (quem usa? para quê?).", "duracao_minutos": 8}, {"titulo": "Design e Esboço", "objetivo": "Desenhar como o projeto funcionará.", "mecanica_passo_a_passo": "Desenho da planta, diagrama ou rascunho visual de como o projeto funcionará.", "como_executar_detalhado": "Desenho da planta, diagrama ou rascunho visual de como o projeto funcionará.", "dica_de_facilitacao": "Não libere materiais antes do esboço aprovado em 2 minutos de checagem.", "duracao_minutos": 10}, {"titulo": "Prototipagem", "objetivo": "Construir o protótipo físico ou digital.", "mecanica_passo_a_passo": "Construção física ou digital utilizando sucatas, impressoras 3D, marcenaria ou softwares.", "como_executar_detalhado": "Construção física ou digital utilizando sucatas, impressoras 3D, marcenaria ou softwares.", "dica_de_facilitacao": "Priorize materiais baratos e rápidos na primeira versão.", "duracao_minutos": 15}, {"titulo": "Testes de Estresse", "objetivo": "Colocar o protótipo à prova para ver onde falha.", "mecanica_passo_a_passo": "Colocar o protótipo à prova para ver onde ele falha ou quebra.", "como_executar_detalhado": "Colocar o protótipo à prova para ver onde ele falha ou quebra.", "dica_de_facilitacao": "Peça registro do ponto de falha — falha sem registro não ensina.", "duracao_minutos": 10}, {"titulo": "Iteração", "objetivo": "Corrigir erros do teste e finalizar o artefato.", "mecanica_passo_a_passo": "Correção dos erros encontrados no teste e finalização do artefato.", "como_executar_detalhado": "Correção dos erros encontrados no teste e finalização do artefato.", "dica_de_facilitacao": "Limite a 1–2 correções críticas — evita perfeccionismo sem entrega.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_coaching_reverso',
+    'Coaching Reverso',
+    'Indutivas',
+    'sala — Selecionar tema em que os alunos têm maior fluência.',
+    '[{"titulo": "Inversão de Papéis", "objetivo": "Selecionar tema em que os alunos têm maior fluência.", "mecanica_passo_a_passo": "O professor seleciona um tema onde os alunos possuem maior fluência (ex: tendências de redes sociais, novos aplicativos).", "como_executar_detalhado": "O professor seleciona um tema onde os alunos possuem maior fluência (ex: tendências de redes sociais, novos aplicativos).", "dica_de_facilitacao": "Escolha tema real de domínio dos alunos — senão a inversão é teatral.", "duracao_minutos": 5}, {"titulo": "Preparação do Mentor", "objetivo": "Estruturar como ensinar o conceito a um adulto.", "mecanica_passo_a_passo": "Os alunos estruturam como vão ensinar esse conceito para um adulto (professor ou membro da gestão).", "como_executar_detalhado": "Os alunos estruturam como vão ensinar esse conceito para um adulto (professor ou membro da gestão).", "dica_de_facilitacao": "Peça roteiro de 3 passos + 1 demonstração prática.", "duracao_minutos": 10}, {"titulo": "Sessão de Tutoria", "objetivo": "Aluno conduz; professor assume postura de aprendiz.", "mecanica_passo_a_passo": "O aluno conduz a aula/mentoria, enquanto o professor assume a postura de aprendiz, fazendo perguntas.", "como_executar_detalhado": "O aluno conduz a aula/mentoria, enquanto o professor assume a postura de aprendiz, fazendo perguntas.", "dica_de_facilitacao": "Faça perguntas genuínas de iniciante — não \"teste\" o aluno.", "duracao_minutos": 15}, {"titulo": "Aplicação Conjunta", "objetivo": "Professor-aprendiz executa tarefa com a ferramenta ensinada.", "mecanica_passo_a_passo": "O professor-aprendiz tenta executar uma tarefa usando a ferramenta recém-ensinada pelo aluno.", "como_executar_detalhado": "O professor-aprendiz tenta executar uma tarefa usando a ferramenta recém-ensinada pelo aluno.", "dica_de_facilitacao": "Peça ao aluno que observe e corrija a execução em tempo real.", "duracao_minutos": 12}, {"titulo": "Feedback Mútuo", "objetivo": "Refletir o que o professor aprendeu e como o aluno liderou.", "mecanica_passo_a_passo": "Reflexão sobre a experiência: o que o professor aprendeu e como o aluno se sentiu no papel de liderança.", "como_executar_detalhado": "Reflexão sobre a experiência: o que o professor aprendeu e como o aluno se sentiu no papel de liderança.", "dica_de_facilitacao": "Registre 1 aprendizado de cada lado no quadro.", "duracao_minutos": 8}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_design_thinking_express',
+    'Design Thinking',
+    'Indutivas',
+    'sala — Coletar dores reais em tempo curto.',
+    '[{"titulo": "Empatia Relâmpago", "objetivo": "Coletar dores reais em tempo curto.", "mecanica_passo_a_passo": "Duplas: 4 min de entrevista (2+2). Perguntas: quando o problema piora? o que já tentaram? o que importa de verdade? Anotem citações literais.", "como_executar_detalhado": "Duplas: 4 min de entrevista (2+2). Perguntas: quando o problema piora? o que já tentaram? o que importa de verdade? Anotem citações literais.", "dica_de_facilitacao": "Proíba soluções nesta fase — só escuta e citações.", "duracao_minutos": 10}, {"titulo": "Definir o Ponto de Vista", "objetivo": "Transformar achados em um POV acionável.", "mecanica_passo_a_passo": "Fórmula no quadro: [Usuário] precisa [necessidade] porque [insight]. Cada grupo escolhe 1 POV e cola no centro da mesa.", "como_executar_detalhado": "Fórmula no quadro: [Usuário] precisa [necessidade] porque [insight]. Cada grupo escolhe 1 POV e cola no centro da mesa.", "dica_de_facilitacao": "Se o POV couber em qualquer tema, está genérico — peça um detalhe observável.", "duracao_minutos": 10}, {"titulo": "Ideação Quente", "objetivo": "Gerar volume de ideias sem julgamento.", "mecanica_passo_a_passo": "8 minutos de brainstorming silencioso + 4 de cluster. Meta: 15 ideias mínimas. Depois votam com 3 stickers cada.", "como_executar_detalhado": "8 minutos de brainstorming silencioso + 4 de cluster. Meta: 15 ideias mínimas. Depois votam com 3 stickers cada.", "dica_de_facilitacao": "Use regra ''sim, e…'' se alguém começar a criticar cedo.", "duracao_minutos": 12}, {"titulo": "Protótipo de Baixa Fidelidade", "objetivo": "Tornar a ideia testável em papel.", "mecanica_passo_a_passo": "Em 12 minutos, prototipem com papel, fita, massinha ou storyboard de 6 quadros. Precisa ser tocável/explicável em 60 segundos.", "como_executar_detalhado": "Em 12 minutos, prototipem com papel, fita, massinha ou storyboard de 6 quadros. Precisa ser tocável/explicável em 60 segundos.", "dica_de_facilitacao": "Protótipo bonito demais é sinal de que não testaram o essencial.", "duracao_minutos": 12}, {"titulo": "Teste e Ajuste", "objetivo": "Validar com outro grupo e iterar 1 mudança.", "mecanica_passo_a_passo": "Troca entre grupos: 3 min de teste, 2 de feedback (gostei / confuso / faltou). Autores fazem 1 ajuste visível e apresentam o antes/depois em 1 minuto.", "como_executar_detalhado": "Troca entre grupos: 3 min de teste, 2 de feedback (gostei / confuso / faltou). Autores fazem 1 ajuste visível e apresentam o antes/depois em 1 minuto.", "dica_de_facilitacao": "Exija exatamente 1 mudança — evita redesign completo sem aprendizado.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_mapa_polaridades',
+    'Mapa de Polaridades',
+    'Indutivas',
+    'sala — Escolher um conflito com duas forças complementares.',
+    '[{"titulo": "Identificação do Dilema", "objetivo": "Escolher um conflito com duas forças complementares.", "mecanica_passo_a_passo": "Escolha de um conflito que não tem resposta única, mas duas forças complementares (ex: Tradição vs. Inovação; Liberdade vs. Disciplina).", "como_executar_detalhado": "Escolha de um conflito que não tem resposta única, mas duas forças complementares (ex: Tradição vs. Inovação; Liberdade vs. Disciplina).", "dica_de_facilitacao": "Evite dilemas do tipo \"certo × errado\" — precisa ser polaridade real.", "duracao_minutos": 8}, {"titulo": "Mapeamento dos Lados Positivos", "objetivo": "Listar benefícios de focar no Polo A e no Polo B.", "mecanica_passo_a_passo": "A turma lista os benefícios de focar exclusivamente no Polo A e, em seguida, no Polo B.", "como_executar_detalhado": "A turma lista os benefícios de focar exclusivamente no Polo A e, em seguida, no Polo B.", "dica_de_facilitacao": "Use post-its por polo — facilita mover e comparar depois.", "duracao_minutos": 10}, {"titulo": "Mapeamento dos Lados Negativos", "objetivo": "Listar prejuízos e excessos de cada polo.", "mecanica_passo_a_passo": "A turma lista os prejuízos e excessos que ocorrem quando se foca demais no Polo A ou no Polo B.", "como_executar_detalhado": "A turma lista os prejuízos e excessos que ocorrem quando se foca demais no Polo A ou no Polo B.", "dica_de_facilitacao": "Peça exemplos concretos da escola/turma — evita generalidade.", "duracao_minutos": 10}, {"titulo": "Sinais de Alerta", "objetivo": "Definir indicadores de queda para o lado negativo.", "mecanica_passo_a_passo": "Definição de indicadores de que a situação está caindo para o lado negativo de uma das polaridades.", "como_executar_detalhado": "Definição de indicadores de que a situação está caindo para o lado negativo de uma das polaridades.", "dica_de_facilitacao": "Transforme sinais em observáveis (o que se vê/ouve na sala).", "duracao_minutos": 10}, {"titulo": "Plano de Equilíbrio", "objetivo": "Criar estratégias para obter benefícios dos dois polos.", "mecanica_passo_a_passo": "Criação de estratégias práticas para obter os benefícios de ambos os polos simultaneamente.", "como_executar_detalhado": "Criação de estratégias práticas para obter os benefícios de ambos os polos simultaneamente.", "dica_de_facilitacao": "Cada estratégia deve dizer quem faz o quê e quando.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_narrativas_transmidia',
+    'Narrativas Transmídia em Rotação por Estações',
+    'Indutivas',
+    'misto — Definir o mundo da história e o problema central a ser contado.',
+    '[{"titulo": "Universo Narrativo", "objetivo": "Definir o mundo da história e o problema central a ser contado.", "mecanica_passo_a_passo": "Em grupos, criem o ''bíblia do universo'': personagens, conflito, regra do mundo e o problema real da turma traduzido em trama. Entrega: 1 página A3 com mapa do universo.", "como_executar_detalhado": "Em grupos, criem o ''bíblia do universo'': personagens, conflito, regra do mundo e o problema real da turma traduzido em trama. Entrega: 1 página A3 com mapa do universo.", "dica_de_facilitacao": "Exija que o conflito narrativo espelhe o problema pedagógico — senão vira fanfic.", "duracao_minutos": 15}, {"titulo": "Fragmentação por Mídia", "objetivo": "Distribuir a história em canais complementares (não repetitivos).", "mecanica_passo_a_passo": "Cada grupo escolhe 3 mídias (ex.: podcast 90s, post Instagram, cartaz, QR com vídeo). Regra transmídia: cada canal revela uma peça nova; nenhum repete o mesmo texto.", "como_executar_detalhado": "Cada grupo escolhe 3 mídias (ex.: podcast 90s, post Instagram, cartaz, QR com vídeo). Regra transmídia: cada canal revela uma peça nova; nenhum repete o mesmo texto.", "dica_de_facilitacao": "Mostre um exemplo ruim (mesmo texto em 3 mídias) versus um bom (peças complementares).", "duracao_minutos": 20}, {"titulo": "Produção das Peças", "objetivo": "Materializar os fragmentos com papéis claros na equipe.", "mecanica_passo_a_passo": "Papéis: Roteirista, Designer, Editor de áudio/vídeo, Guardião da coerência. Produzam as 3 peças mínimas viáveis. Checklist: gancho, evidência do conteúdo, CTA.", "como_executar_detalhado": "Papéis: Roteirista, Designer, Editor de áudio/vídeo, Guardião da coerência. Produzam as 3 peças mínimas viáveis. Checklist: gancho, evidência do conteúdo, CTA.", "dica_de_facilitacao": "Limite o perfeccionismo: MVP em 20 min vale mais que 1 peça perfeita.", "duracao_minutos": 25}, {"titulo": "Trilha do Público", "objetivo": "Testar se a narrativa guia o público entre as mídias.", "mecanica_passo_a_passo": "Troca entre grupos: cada um consome a trilha do outro na ordem indicada. Anotam: o que ficou claro, o que faltou, se quiseram ir à próxima mídia. Autores ajustam 1 transição (ex.: cliffhanger + QR).", "como_executar_detalhado": "Troca entre grupos: cada um consome a trilha do outro na ordem indicada. Anotam: o que ficou claro, o que faltou, se quiseram ir à próxima mídia. Autores ajustam 1 transição (ex.: cliffhanger + QR).", "dica_de_facilitacao": "Peça feedback sobre a transição entre mídias — o coração da transmídia.", "duracao_minutos": 15}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_painel_diversidade',
+    'Painel da Diversidade de Perspectivas',
+    'Indutivas',
+    'sala — Tornar visíveis os pontos de vista presentes (e ausentes) na turma.',
+    '[{"titulo": "Mapeamento de Perspectivas", "objetivo": "Tornar visíveis os pontos de vista presentes (e ausentes) na turma.", "mecanica_passo_a_passo": "No quadro, colunas: Eu / Minha família / Minha rua / Outro contexto. Cada aluno cola 1 post-it por coluna sobre o tema. Leitura silenciosa de 3 minutos para ver padrões e lacunas.", "como_executar_detalhado": "No quadro, colunas: Eu / Minha família / Minha rua / Outro contexto. Cada aluno cola 1 post-it por coluna sobre o tema. Leitura silenciosa de 3 minutos para ver padrões e lacunas.", "dica_de_facilitacao": "Proíba julgamento na fase de mapeamento — só coleta.", "duracao_minutos": 12}, {"titulo": "Constituição do Painel", "objetivo": "Montar um painel com vozes deliberadamente diferentes.", "mecanica_passo_a_passo": "Forme painéis de 4: cada membro assume uma lente (ex.: estudante, responsável, vizinho, gestor público). Em 8 minutos, cada lente escreve 3 argumentos.", "como_executar_detalhado": "Forme painéis de 4: cada membro assume uma lente (ex.: estudante, responsável, vizinho, gestor público). Em 8 minutos, cada lente escreve 3 argumentos.", "dica_de_facilitacao": "Se a turma for homogênea, use cartas de persona para forçar diversidade de olhar.", "duracao_minutos": 15}, {"titulo": "Rodada de Escuta Ativa", "objetivo": "Praticar escuta antes do debate.", "mecanica_passo_a_passo": "Cada lente fala 90 segundos. Os outros só podem anotar perguntas esclarecedoras (proibido rebater). Depois, 1 pergunta por lente, respondida em 45 segundos.", "como_executar_detalhado": "Cada lente fala 90 segundos. Os outros só podem anotar perguntas esclarecedoras (proibido rebater). Depois, 1 pergunta por lente, respondida em 45 segundos.", "dica_de_facilitacao": "Use um objeto ''microfone'' — só fala quem está com ele.", "duracao_minutos": 15}, {"titulo": "Síntese de Decisão Inclusiva", "objetivo": "Chegar a uma proposta que incorpore ao menos 2 lentes conflitantes.", "mecanica_passo_a_passo": "O painel escreve uma decisão em 5 linhas: o que fazer, quem ganha, quem precisa de salvaguarda, e 1 risco ético. Apresentam em 2 minutos para a turma.", "como_executar_detalhado": "O painel escreve uma decisão em 5 linhas: o que fazer, quem ganha, quem precisa de salvaguarda, e 1 risco ético. Apresentam em 2 minutos para a turma.", "dica_de_facilitacao": "Se a proposta ignorar uma lente, devolva o cartão ''perspectiva invisível''.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_veja_pense_pergunte_crie',
+    'Rotina Veja-Pense-Pergunte-Crie',
+    'Indutivas',
+    'sala — Listar fatos literais do estímulo, sem julgamentos.',
+    '[{"titulo": "Veja", "objetivo": "Listar fatos literais do estímulo, sem julgamentos.", "mecanica_passo_a_passo": "Exposição de um estímulo visual (obra de arte, gráfico, vídeo curto). O aluno lista apenas fatos literais do que está vendo, sem julgamentos.", "como_executar_detalhado": "Exposição de um estímulo visual (obra de arte, gráfico, vídeo curto). O aluno lista apenas fatos literais do que está vendo, sem julgamentos.", "dica_de_facilitacao": "Interrompa adjetivos (bonito/feio) — só o que é observável.", "duracao_minutos": 8}, {"titulo": "Pense", "objetivo": "Elaborar hipóteses sobre significado e intenção.", "mecanica_passo_a_passo": "O aluno elabora hipóteses sobre o que a imagem significa, quem a fez e qual a intenção por trás dela.", "como_executar_detalhado": "O aluno elabora hipóteses sobre o que a imagem significa, quem a fez e qual a intenção por trás dela.", "dica_de_facilitacao": "Peça \"eu penso que… porque…\" — amarra hipótese à evidência.", "duracao_minutos": 10}, {"titulo": "Pergunte", "objetivo": "Levantar dúvidas despertadas pela observação.", "mecanica_passo_a_passo": "Levantamento de dúvidas e questionamentos que a observação despertou (\"O que eu gostaria de saber sobre isso?\").", "como_executar_detalhado": "Levantamento de dúvidas e questionamentos que a observação despertou (\"O que eu gostaria de saber sobre isso?\").", "dica_de_facilitacao": "Selecione 2–3 perguntas poderosas da turma para a etapa Crie.", "duracao_minutos": 10}, {"titulo": "Crie", "objetivo": "Elaborar resposta criativa baseada nas três etapas anteriores.", "mecanica_passo_a_passo": "Elaboração de uma resposta criativa (um parágrafo, um desenho, uma pergunta de pesquisa) baseada nas três etapas anteriores.", "como_executar_detalhado": "Elaboração de uma resposta criativa (um parágrafo, um desenho, uma pergunta de pesquisa) baseada nas três etapas anteriores.", "dica_de_facilitacao": "A criação deve citar algo do Veja/Pense/Pergunte — senão vira desconectado.", "duracao_minutos": 15}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_sala_invertida',
+    'Sala de Aula Invertida',
+    'Indutivas',
+    'misto — Disponibilizar conteúdo expositivo antes da aula.',
+    '[{"titulo": "Curadoria", "objetivo": "Disponibilizar conteúdo expositivo antes da aula.", "mecanica_passo_a_passo": "O professor disponibiliza o conteúdo expositivo (vídeo, podcast, texto curto) no ambiente virtual antes da aula.", "como_executar_detalhado": "O professor disponibiliza o conteúdo expositivo (vídeo, podcast, texto curto) no ambiente virtual antes da aula.", "dica_de_facilitacao": "Limite a 10–15 minutos de consumo — material longo vira abandono.", "duracao_minutos": 0}, {"titulo": "Consumo Autônomo", "objetivo": "Estudar o material no próprio ritmo, anotando dúvidas.", "mecanica_passo_a_passo": "O aluno estuda o material no seu próprio ritmo, em casa, anotando dúvidas.", "como_executar_detalhado": "O aluno estuda o material no seu próprio ritmo, em casa, anotando dúvidas.", "dica_de_facilitacao": "Peça 1 dúvida escrita como ingresso da aula presencial.", "duracao_minutos": 0}, {"titulo": "Checagem de Compreensão", "objetivo": "Quiz rápido nos primeiros minutos da aula presencial.", "mecanica_passo_a_passo": "Nos primeiros 5 minutos da aula presencial, aplicação de um quiz rápido para checar quem absorveu o conceito.", "como_executar_detalhado": "Nos primeiros 5 minutos da aula presencial, aplicação de um quiz rápido para checar quem absorveu o conceito.", "dica_de_facilitacao": "Use o quiz para agrupar quem precisa de reforço imediato.", "duracao_minutos": 5}, {"titulo": "Atividade de Alto Nível", "objetivo": "Usar o tempo da aula para problemas, debates e projetos.", "mecanica_passo_a_passo": "O tempo da aula é usado para resolução de problemas complexos, debates e projetos com mediação do professor.", "como_executar_detalhado": "O tempo da aula é usado para resolução de problemas complexos, debates e projetos com mediação do professor.", "dica_de_facilitacao": "Proíba retomar a exposição longa — a aula é para prática mediada.", "duracao_minutos": 30}, {"titulo": "Fechamento", "objetivo": "Compilar erros comuns e reforçar conceitos.", "mecanica_passo_a_passo": "O professor compila os erros mais comuns vistos na atividade prática e reforça os conceitos.", "como_executar_detalhado": "O professor compila os erros mais comuns vistos na atividade prática e reforça os conceitos.", "dica_de_facilitacao": "Mostre padrões de erro, não nomes de alunos.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'criativa_world_cafe',
+    'World Café',
+    'Indutivas',
+    'sala — Organizar mesas pequenas com folha grande e canetas.',
+    '[{"titulo": "Preparação do Ambiente", "objetivo": "Organizar mesas pequenas com folha grande e canetas.", "mecanica_passo_a_passo": "Organização da sala em pequenos grupos (4 a 5 alunos), como mesas de um café, cada uma com uma folha grande e canetas.", "como_executar_detalhado": "Organização da sala em pequenos grupos (4 a 5 alunos), como mesas de um café, cada uma com uma folha grande e canetas.", "dica_de_facilitacao": "Ambiente informal ajuda — música baixa e mesas espalhadas funcionam.", "duracao_minutos": 5}, {"titulo": "Primeira Rodada", "objetivo": "Debater a pergunta geradora e registrar na folha.", "mecanica_passo_a_passo": "O professor lança uma pergunta geradora e os grupos debatem e desenham/escrevem suas ideias na folha por 15 minutos.", "como_executar_detalhado": "O professor lança uma pergunta geradora e os grupos debatem e desenham/escrevem suas ideias na folha por 15 minutos.", "dica_de_facilitacao": "Uma pergunta clara por rodada — múltiplas perguntas dispersam.", "duracao_minutos": 15}, {"titulo": "Troca de Mesas (Polinização)", "objetivo": "Anfitrião fica; demais migram para outras mesas.", "mecanica_passo_a_passo": "Um aluno (o \"anfitrião\") fica na mesa. Os demais mudam para mesas diferentes.", "como_executar_detalhado": "Um aluno (o \"anfitrião\") fica na mesa. Os demais mudam para mesas diferentes.", "dica_de_facilitacao": "Escolha anfitriões que sintetizam bem — treine o resumo em 1 minuto.", "duracao_minutos": 5}, {"titulo": "Segunda Rodada", "objetivo": "Anfitrião resume e novos membros acrescentam ideias.", "mecanica_passo_a_passo": "O anfitrião resume o que foi falado na rodada anterior e os novos membros adicionam novas ideias sobrepostas às antigas.", "como_executar_detalhado": "O anfitrião resume o que foi falado na rodada anterior e os novos membros adicionam novas ideias sobrepostas às antigas.", "dica_de_facilitacao": "Ideias novas vão em outra cor — mostra a polinização visualmente.", "duracao_minutos": 15}, {"titulo": "Colheita", "objetivo": "Plenária com insights mais poderosos de cada mesa.", "mecanica_passo_a_passo": "Plenária final onde cada anfitrião compartilha os insights mais poderosos que surgiram em sua mesa.", "como_executar_detalhado": "Plenária final onde cada anfitrião compartilha os insights mais poderosos que surgiram em sua mesa.", "dica_de_facilitacao": "Limite a 2 insights por mesa — força síntese.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'agil_canvas_mania',
+    'Canvas Mania',
+    'Agilidade',
+    'sala — Escolher o modelo visual adequado ao objetivo.',
+    '[{"titulo": "Seleção do Framework", "objetivo": "Escolher o modelo visual adequado ao objetivo.", "mecanica_passo_a_passo": "Escolha do modelo visual adequado (Canvas de Projeto, Business Model Canvas, Mapa de Empatia).", "como_executar_detalhado": "Escolha do modelo visual adequado (Canvas de Projeto, Business Model Canvas, Mapa de Empatia).", "dica_de_facilitacao": "Mostre o canvas em branco primeiro e explique cada bloco em 30s.", "duracao_minutos": 5}, {"titulo": "Divisão de Equipes", "objetivo": "Agrupar alunos em torno do Canvas impresso ou projetado.", "mecanica_passo_a_passo": "Alunos se agrupam em torno do Canvas impresso em tamanho A3 ou projetado em quadro branco.", "como_executar_detalhado": "Alunos se agrupam em torno do Canvas impresso em tamanho A3 ou projetado em quadro branco.", "dica_de_facilitacao": "3–5 por canvas — grupos maiores travam o preenchimento.", "duracao_minutos": 5}, {"titulo": "Preenchimento Iterativo", "objetivo": "Preencher blocos com post-its (uma ideia por post-it).", "mecanica_passo_a_passo": "Uso de post-its para preencher os blocos do Canvas. A regra é: uma ideia por post-it, para facilitar a mudança.", "como_executar_detalhado": "Uso de post-its para preencher os blocos do Canvas. A regra é: uma ideia por post-it, para facilitar a mudança.", "dica_de_facilitacao": "Proíba textos longos no post-it — só palavras-chave.", "duracao_minutos": 20}, {"titulo": "Análise Sistêmica", "objetivo": "Analisar conexões entre blocos do canvas.", "mecanica_passo_a_passo": "O professor guia a turma para analisar as conexões (\"Se mudarmos esse post-it aqui, como afeta o resto do quadro?\").", "como_executar_detalhado": "O professor guia a turma para analisar as conexões (\"Se mudarmos esse post-it aqui, como afeta o resto do quadro?\").", "dica_de_facilitacao": "Faça a pergunta de impacto em voz alta a cada mudança relevante.", "duracao_minutos": 12}, {"titulo": "Defesa do Modelo", "objetivo": "Apresentar a estrutura lógica criada pelo grupo.", "mecanica_passo_a_passo": "Apresentação da estrutura lógica criada pelo grupo para a sala.", "como_executar_detalhado": "Apresentação da estrutura lógica criada pelo grupo para a sala.", "dica_de_facilitacao": "Peça 90 segundos: problema → solução → evidência no canvas.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'agil_elevator_pitch',
+    'Discurso de Elevador',
+    'Agilidade',
+    'sala — Alinhar os 4 pilares do Pitch: Gancho, Problema, Solução e Pedido.',
+    '[{"titulo": "Estruturando a Ideia Base", "objetivo": "Alinhar os 4 pilares do Pitch: Gancho, Problema, Solução e Pedido.", "mecanica_passo_a_passo": "Distribua uma folha dividida em 4 quadrantes para cada grupo. Dê 10 minutos para preencherem: 1) O Gancho (frase de impacto/dado); 2) O Problema (a dor real); 3) A Solução (o que criaram); 4) O Pedido (o que precisam da banca). Só tópicos em post-its — sem textos longos.", "como_executar_detalhado": "Distribua uma folha dividida em 4 quadrantes para cada grupo. Dê 10 minutos para preencherem: 1) O Gancho (frase de impacto/dado); 2) O Problema (a dor real); 3) A Solução (o que criaram); 4) O Pedido (o que precisam da banca). Só tópicos em post-its — sem textos longos.", "dica_de_facilitacao": "Proíba slides ou computadores nesta etapa. O foco é o roteiro mental e o papel.", "duracao_minutos": 12}, {"titulo": "A Regra dos 60 Segundos", "objetivo": "Treinar síntese e oratória sob pressão do tempo.", "mecanica_passo_a_passo": "Cada equipe escolhe um Comunicador. Projete um cronômetro de 1 minuto. Ao sinal, o comunicador vende a ideia aos colegas sem ler. Se passar de 60s, apite e pare. Os colegas anotam o que ficou confuso; refazem o teste mais duas vezes.", "como_executar_detalhado": "Cada equipe escolhe um Comunicador. Projete um cronômetro de 1 minuto. Ao sinal, o comunicador vende a ideia aos colegas sem ler. Se passar de 60s, apite e pare. Os colegas anotam o que ficou confuso; refazem o teste mais duas vezes.", "dica_de_facilitacao": "Seja implacável com o cronômetro. O corte abrupto gera risadas e mostra a necessidade de síntese.", "duracao_minutos": 15}, {"titulo": "Arena de Pitches — Rodada Eliminatória", "objetivo": "Apresentação oficial com feedback imediato (peer review).", "mecanica_passo_a_passo": "Sala em formato de U. Você (e convidados) no centro como Banca. Cada grupo faz o pitch de 60 segundos. A turma avalia Clareza, Inovação e Postura (plaquinhas ou fichas). No fim, debatam quem seria ''financiado''.", "como_executar_detalhado": "Sala em formato de U. Você (e convidados) no centro como Banca. Cada grupo faz o pitch de 60 segundos. A turma avalia Clareza, Inovação e Postura (plaquinhas ou fichas). No fim, debatam quem seria ''financiado''.", "dica_de_facilitacao": "A nota dos ouvintes deve compor a avaliação da equipe — evita dispersão.", "duracao_minutos": 18}, {"titulo": "Pitch Final + Decisão da Banca", "objetivo": "Consolidar a melhor versão e fechar com feedback acionável.", "mecanica_passo_a_passo": "Os 2–3 pitches mais bem avaliados refazem a versão final (ainda em 60s). A banca entrega um veredicto em 3 bullets: manter, cortar, reforçar. Cada grupo registra o ''contrato de melhoria'' em 1 frase no quadro.", "como_executar_detalhado": "Os 2–3 pitches mais bem avaliados refazem a versão final (ainda em 60s). A banca entrega um veredicto em 3 bullets: manter, cortar, reforçar. Cada grupo registra o ''contrato de melhoria'' em 1 frase no quadro.", "dica_de_facilitacao": "Force 1 frase de melhoria por grupo — evita feedback empático vazio.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'agil_eduscrum',
+    'EduScrum',
+    'Agilidade',
+    'sala — Criar grupos autogerenciáveis com Scrum Master aluno.',
+    '[{"titulo": "Formação de Equipes", "objetivo": "Criar grupos autogerenciáveis com Scrum Master aluno.", "mecanica_passo_a_passo": "Criação de grupos autogerenciáveis, com definição do papel do Scrum Master (aluno líder facilitador).", "como_executar_detalhado": "Criação de grupos autogerenciáveis, com definição do papel do Scrum Master (aluno líder facilitador).", "dica_de_facilitacao": "Scrum Master facilita — não manda. Deixe isso explícito.", "duracao_minutos": 8}, {"titulo": "Planejamento do Sprint", "objetivo": "Selecionar do Backlog o que será feito na aula.", "mecanica_passo_a_passo": "A equipe analisa o Backlog (lista de tarefas do projeto) e seleciona o que será feito na aula atual.", "como_executar_detalhado": "A equipe analisa o Backlog (lista de tarefas do projeto) e seleciona o que será feito na aula atual.", "dica_de_facilitacao": "Limite o sprint ao tempo da aula — corte o que não cabe.", "duracao_minutos": 10}, {"titulo": "Atualização do Quadro (Kanban)", "objetivo": "Posicionar cards em Para Fazer / Fazendo / Feito.", "mecanica_passo_a_passo": "Posicionamento dos post-its ou cards nas colunas: \"Para Fazer\", \"Fazendo\", \"Feito\".", "como_executar_detalhado": "Posicionamento dos post-its ou cards nas colunas: \"Para Fazer\", \"Fazendo\", \"Feito\".", "dica_de_facilitacao": "Só 1 card \"Fazendo\" por pessoa — reduz multitarefa.", "duracao_minutos": 7}, {"titulo": "Reunião em Pé (Stand-up)", "objetivo": "Checagem rápida do progresso e dos bloqueios.", "mecanica_passo_a_passo": "No início da aula, perguntas rápidas: O que fiz ontem? O que farei hoje? O que está me travando?", "como_executar_detalhado": "No início da aula, perguntas rápidas: O que fiz ontem? O que farei hoje? O que está me travando?", "dica_de_facilitacao": "Cronometre 60–90s por pessoa — stand-up não é reunião longa.", "duracao_minutos": 10}, {"titulo": "Retrospectiva", "objetivo": "Avaliar o processo de trabalho da equipe.", "mecanica_passo_a_passo": "Ao fim de um ciclo, avaliação do processo de trabalho da equipe (o que funcionou bem e o que precisa melhorar).", "como_executar_detalhado": "Ao fim de um ciclo, avaliação do processo de trabalho da equipe (o que funcionou bem e o que precisa melhorar).", "dica_de_facilitacao": "Exija 1 ação de melhoria para o próximo sprint.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'agil_hackathons',
+    'Hackathons',
+    'Agilidade',
+    'misto — Apresentar problema urgente com prazo estrito.',
+    '[{"titulo": "Lançamento do Desafio", "objetivo": "Apresentar problema urgente com prazo estrito.", "mecanica_passo_a_passo": "Apresentação de um problema urgente da escola ou comunidade, com prazo estrito (ex: 4 horas ou 2 dias).", "como_executar_detalhado": "Apresentação de um problema urgente da escola ou comunidade, com prazo estrito (ex: 4 horas ou 2 dias).", "dica_de_facilitacao": "O prazo é parte da pedagogia — torne-o visível (cronômetro).", "duracao_minutos": 10}, {"titulo": "Ideação", "objetivo": "Brainstorm rápido e divisão de tarefas no grupo.", "mecanica_passo_a_passo": "Brainstorming rápido para desenhar a solução base e divisão de tarefas no grupo (design, pesquisa, apresentação).", "como_executar_detalhado": "Brainstorming rápido para desenhar a solução base e divisão de tarefas no grupo (design, pesquisa, apresentação).", "dica_de_facilitacao": "Feche a ideação com 1 ideia escolhida — não deixe 5 ideias pela metade.", "duracao_minutos": 15}, {"titulo": "Maratona de Desenvolvimento", "objetivo": "Construir o protótipo em foco total.", "mecanica_passo_a_passo": "Tempo de foco total onde os alunos constroem o protótipo da solução (digital ou físico).", "como_executar_detalhado": "Tempo de foco total onde os alunos constroem o protótipo da solução (digital ou físico).", "dica_de_facilitacao": "Proíba reabrir o briefing — a maratona é construir, não redesenhar o problema.", "duracao_minutos": 90}, {"titulo": "Mentoria Volante", "objetivo": "Professores circulam para destravar ideias técnicas.", "mecanica_passo_a_passo": "Professores atuam como consultores, circulando entre os grupos para destravar ideias técnicas.", "como_executar_detalhado": "Professores atuam como consultores, circulando entre os grupos para destravar ideias técnicas.", "dica_de_facilitacao": "Limite a 3 minutos por mesa — mentoria volante, não aula particular.", "duracao_minutos": 20}, {"titulo": "Pitch", "objetivo": "Apresentar a solução em 3 a 5 minutos para banca.", "mecanica_passo_a_passo": "Apresentação cronometrada (3 a 5 minutos) da solução para uma banca avaliadora.", "como_executar_detalhado": "Apresentação cronometrada (3 a 5 minutos) da solução para uma banca avaliadora.", "dica_de_facilitacao": "Critérios públicos na parede: problema, solução, evidência, próximo passo.", "duracao_minutos": 20}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'agil_mapeamento_mental',
+    'Mapeamento mental',
+    'Agilidade',
+    'sala — Colocar o tema central no meio da página.',
+    '[{"titulo": "Núcleo", "objetivo": "Colocar o tema central no meio da página.", "mecanica_passo_a_passo": "Escrever ou desenhar o tema central no exato meio de uma página em branco (papel ou software).", "como_executar_detalhado": "Escrever ou desenhar o tema central no exato meio de uma página em branco (papel ou software).", "dica_de_facilitacao": "Tema em 1–3 palavras — núcleo longo vira parágrafo, não mapa.", "duracao_minutos": 5}, {"titulo": "Ramos Principais", "objetivo": "Criar categorias/grandes tópicos a partir do centro.", "mecanica_passo_a_passo": "Puxar linhas grossas a partir do centro para representar as categorias ou grandes tópicos do assunto.", "como_executar_detalhado": "Puxar linhas grossas a partir do centro para representar as categorias ou grandes tópicos do assunto.", "dica_de_facilitacao": "Comece com 4–6 ramos — demais fragmenta a visão.", "duracao_minutos": 10}, {"titulo": "Ramos Secundários", "objetivo": "Detalhar palavras-chave a partir dos ramos principais.", "mecanica_passo_a_passo": "Adicionar linhas mais finas saindo dos ramos principais, contendo palavras-chave e detalhes específicos.", "como_executar_detalhado": "Adicionar linhas mais finas saindo dos ramos principais, contendo palavras-chave e detalhes específicos.", "dica_de_facilitacao": "Só palavras-chave — frase completa mata o mapa.", "duracao_minutos": 15}, {"titulo": "Conexões Visuais", "objetivo": "Ligar conceitos com setas, cores e ícones.", "mecanica_passo_a_passo": "Uso de setas, cores e ícones para ligar conceitos que se relacionam de lados opostos do mapa.", "como_executar_detalhado": "Uso de setas, cores e ícones para ligar conceitos que se relacionam de lados opostos do mapa.", "dica_de_facilitacao": "Peça pelo menos 2 conexões cruzadas explícitas.", "duracao_minutos": 10}, {"titulo": "Revisão", "objetivo": "Usar o mapa para testar retenção e revisar depois.", "mecanica_passo_a_passo": "Leitura do mapa mental para testar a retenção do conteúdo e facilitar revisões futuras.", "como_executar_detalhado": "Leitura do mapa mental para testar a retenção do conteúdo e facilitar revisões futuras.", "dica_de_facilitacao": "Peça que um colega explique o mapa do outro em 60s.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'agil_minute_paper',
+    'Minute Paper',
+    'Agilidade',
+    'sala — Focar a turma em 1–2 perguntas de alto valor cognitivo.',
+    '[{"titulo": "Pergunta-Gatilho", "objetivo": "Focar a turma em 1–2 perguntas de alto valor cognitivo.", "mecanica_passo_a_passo": "Projete duas perguntas no quadro: 1) ''Qual foi a ideia mais importante de hoje?'' 2) ''Qual dúvida ainda te impede de aplicar isso?''. Explique: respostas em 1 minuto, no máximo 3 linhas, sem consulta.", "como_executar_detalhado": "Projete duas perguntas no quadro: 1) ''Qual foi a ideia mais importante de hoje?'' 2) ''Qual dúvida ainda te impede de aplicar isso?''. Explique: respostas em 1 minuto, no máximo 3 linhas, sem consulta.", "dica_de_facilitacao": "Perguntas vagas geram respostas vagas. Torne-as específicas ao conteúdo da aula.", "duracao_minutos": 5}, {"titulo": "Escrita Relâmpago", "objetivo": "Capturar evidência individual de aprendizagem sem pressão de exposição.", "mecanica_passo_a_passo": "Cronômetro de 60–90 segundos. Alunos escrevem em papel ou formulário digital. Silêncio total. Quem terminar cedo revisa se a resposta é específica (nomeia conceito/exemplo).", "como_executar_detalhado": "Cronômetro de 60–90 segundos. Alunos escrevem em papel ou formulário digital. Silêncio total. Quem terminar cedo revisa se a resposta é específica (nomeia conceito/exemplo).", "dica_de_facilitacao": "Não circule lendo em voz alta durante a escrita — quebra a concentração.", "duracao_minutos": 8}, {"titulo": "Triagem Rápida do Professor", "objetivo": "Identificar padrões de entendimento e lacunas em minutos.", "mecanica_passo_a_passo": "Colete 8–12 papéis aleatórios (ou leia o feed digital). Classifique mentalmente em 3 pilhas: claro / parcial / confuso. Anote 2 padrões no quadro sem expor nomes.", "como_executar_detalhado": "Colete 8–12 papéis aleatórios (ou leia o feed digital). Classifique mentalmente em 3 pilhas: claro / parcial / confuso. Anote 2 padrões no quadro sem expor nomes.", "dica_de_facilitacao": "Mostre padrões, não ''erros de alunos''. Protege a segurança psicológica.", "duracao_minutos": 10}, {"titulo": "Retorno Coletivo", "objetivo": "Fechar a lacuna mais frequente com micro-explicação e próxima ação.", "mecanica_passo_a_passo": "Compartilhe 1 insight forte e 1 dúvida recorrente. Peça a 2 alunos que completem a resposta correta em 20 segundos cada. Termine com um ''próximo passo'' (tarefa de 5 min ou pergunta para a próxima aula).", "como_executar_detalhado": "Compartilhe 1 insight forte e 1 dúvida recorrente. Peça a 2 alunos que completem a resposta correta em 20 segundos cada. Termine com um ''próximo passo'' (tarefa de 5 min ou pergunta para a próxima aula).", "dica_de_facilitacao": "Se a dúvida for profunda, não improvise aula inteira — marque um mini-clínica depois.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'agil_pecha_kucha',
+    'Pecha Kucha',
+    'Agilidade',
+    'sala — Forçar estrutura visual: 20 slides × 20 segundos cada.',
+    '[{"titulo": "Roteiro 20×20", "objetivo": "Forçar estrutura visual: 20 slides × 20 segundos cada.", "mecanica_passo_a_passo": "Explique a regra Pecha Kucha: exatamente 20 slides, 20 segundos cada (6m40s). Cada grupo define o arco: gancho → problema → evidência → proposta → chamada à ação. Proíba mais de 8 palavras por slide.", "como_executar_detalhado": "Explique a regra Pecha Kucha: exatamente 20 slides, 20 segundos cada (6m40s). Cada grupo define o arco: gancho → problema → evidência → proposta → chamada à ação. Proíba mais de 8 palavras por slide.", "dica_de_facilitacao": "Use um template com 20 slots numerados — reduz ansiedade de ''por onde começar''.", "duracao_minutos": 12}, {"titulo": "Montagem Visual Express", "objetivo": "Traduzir conteúdo em imagens e palavras-chave.", "mecanica_passo_a_passo": "Grupos produzem os 20 slides (Canva/PPT/papel A5). Regra: se precisa ler o slide, está errado. Ensaiem a fala sincronizada com avanço automático ou clique a cada 20s.", "como_executar_detalhado": "Grupos produzem os 20 slides (Canva/PPT/papel A5). Regra: se precisa ler o slide, está errado. Ensaiem a fala sincronizada com avanço automático ou clique a cada 20s.", "dica_de_facilitacao": "Nomeie um ''Guardião do Tempo'' por grupo só para o ensaio.", "duracao_minutos": 20}, {"titulo": "Ensaio Cronometrado", "objetivo": "Ajustar ritmo e eliminar enrolação.", "mecanica_passo_a_passo": "Cada grupo apresenta para si mesmo 1 vez completa com cronômetro. Colegas marcam slides ''mortos'' (fala vazia) e slides ''ricos''. Cortam 1 ideia fraca e reforçam 1 metáfora forte.", "como_executar_detalhado": "Cada grupo apresenta para si mesmo 1 vez completa com cronômetro. Colegas marcam slides ''mortos'' (fala vazia) e slides ''ricos''. Cortam 1 ideia fraca e reforçam 1 metáfora forte.", "dica_de_facilitacao": "Grave o ensaio no celular se possível — o aluno se ouve e acelera a correção.", "duracao_minutos": 12}, {"titulo": "Apresentação Oficial + Feedback 3×3", "objetivo": "Expor a ideia e receber feedback estruturado.", "mecanica_passo_a_passo": "Apresentações oficiais. Audiência usa cartão 3×3: 3 pontos fortes, 3 perguntas, 3 melhorias. Após cada grupo, 90 segundos de feedback oral do cartão mais claro.", "como_executar_detalhado": "Apresentações oficiais. Audiência usa cartão 3×3: 3 pontos fortes, 3 perguntas, 3 melhorias. Após cada grupo, 90 segundos de feedback oral do cartão mais claro.", "dica_de_facilitacao": "Interrompa aplausos longos — o tempo do Pecha Kucha é o ritual de disciplina.", "duracao_minutos": 20}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'agil_pedagogia_extrema',
+    'Pedagogia Extrema',
+    'Agilidade',
+    'sala — Um executa (piloto) e o outro revisa (navegador).',
+    '[{"titulo": "Trabalho em Pares", "objetivo": "Um executa (piloto) e o outro revisa (navegador).", "mecanica_passo_a_passo": "Dois alunos dividem uma única tarefa, caderno ou computador. Um executa (\"piloto\") e o outro revisa criticamente (\"navegador\").", "como_executar_detalhado": "Dois alunos dividem uma única tarefa, caderno ou computador. Um executa (\"piloto\") e o outro revisa criticamente (\"navegador\").", "dica_de_facilitacao": "Troque piloto/navegador a cada ciclo — evita hierarquia fixa.", "duracao_minutos": 8}, {"titulo": "Teste Primeiro (Test-Driven)", "objetivo": "Definir critérios de avaliação antes de executar.", "mecanica_passo_a_passo": "Antes de iniciar a atividade, os alunos definem ou recebem os critérios exatos de como o trabalho será avaliado.", "como_executar_detalhado": "Antes de iniciar a atividade, os alunos definem ou recebem os critérios exatos de como o trabalho será avaliado.", "dica_de_facilitacao": "Critérios visíveis na mesa — sem critério, o ciclo curto não funciona.", "duracao_minutos": 7}, {"titulo": "Ciclos Curtos", "objetivo": "Quebrar o trabalho em entregas de 15–20 minutos.", "mecanica_passo_a_passo": "O trabalho é quebrado em entregas muito pequenas (a cada 15 ou 20 minutos).", "como_executar_detalhado": "O trabalho é quebrado em entregas muito pequenas (a cada 15 ou 20 minutos).", "dica_de_facilitacao": "Toque o sino/cronômetro — o ritual do ciclo é pedagógico.", "duracao_minutos": 20}, {"titulo": "Feedback Imediato", "objetivo": "Avaliar a entrega curta na hora.", "mecanica_passo_a_passo": "O professor avalia a entrega curta na hora, impedindo que o aluno acumule erros estruturais.", "como_executar_detalhado": "O professor avalia a entrega curta na hora, impedindo que o aluno acumule erros estruturais.", "dica_de_facilitacao": "Feedback em 1 minuto por dupla: manter / cortar / corrigir.", "duracao_minutos": 10}, {"titulo": "Refatoração", "objetivo": "Melhorar o trabalho antes do próximo ciclo.", "mecanica_passo_a_passo": "O aluno melhora o trabalho imediatamente baseado no feedback antes de seguir para o próximo ciclo.", "como_executar_detalhado": "O aluno melhora o trabalho imediatamente baseado no feedback antes de seguir para o próximo ciclo.", "dica_de_facilitacao": "Não avance de ciclo sem a correção mínima aplicada.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'imersiva_aprendizagem_jogos',
+    'Aprendizagem Baseada em Jogos',
+    'Contextuais',
+    'sala — Escolher jogo cuja mecânica simule o conteúdo.',
+    '[{"titulo": "Seleção e Alinhamento", "objetivo": "Escolher jogo cuja mecânica simule o conteúdo.", "mecanica_passo_a_passo": "O professor escolhe um jogo (tabuleiro, cartas ou digital) cuja mecânica simule o conteúdo a ser aprendido.", "como_executar_detalhado": "O professor escolhe um jogo (tabuleiro, cartas ou digital) cuja mecânica simule o conteúdo a ser aprendido.", "dica_de_facilitacao": "Se a mecânica não espelha o conteúdo, é só recreação — troque o jogo.", "duracao_minutos": 5}, {"titulo": "Explicação das Regras", "objetivo": "Deixar claras regras de pontuar, vencer e interagir.", "mecanica_passo_a_passo": "Regras claras de como pontuar, vencer e interagir durante o jogo.", "como_executar_detalhado": "Regras claras de como pontuar, vencer e interagir durante o jogo.", "dica_de_facilitacao": "Faça 1 rodada de exemplo em 2 minutos antes do jogo real.", "duracao_minutos": 8}, {"titulo": "Imersão no Gameplay", "objetivo": "Jogar com decisões autônomas e consequências.", "mecanica_passo_a_passo": "Os alunos jogam ativamente, tomando decisões autônomas e lidando com as consequências dentro do jogo.", "como_executar_detalhado": "Os alunos jogam ativamente, tomando decisões autônomas e lidando com as consequências dentro do jogo.", "dica_de_facilitacao": "Resista a interromper — anote pontos para o debriefing.", "duracao_minutos": 20}, {"titulo": "Debriefing (Descompressão)", "objetivo": "Pausar para analisar estratégias que funcionaram.", "mecanica_passo_a_passo": "O passo mais importante. Pausa no jogo para perguntar: \"Quais estratégias funcionaram? Por quê?\".", "como_executar_detalhado": "O passo mais importante. Pausa no jogo para perguntar: \"Quais estratégias funcionaram? Por quê?\".", "dica_de_facilitacao": "Sem debriefing, o jogo não vira aprendizagem — proteja este tempo.", "duracao_minutos": 12}, {"titulo": "Conexão Teórica", "objetivo": "Ligar a experiência do jogo aos conceitos da disciplina.", "mecanica_passo_a_passo": "O professor faz a ponte entre a experiência vivida no jogo e os conceitos formais da disciplina.", "como_executar_detalhado": "O professor faz a ponte entre a experiência vivida no jogo e os conceitos formais da disciplina.", "dica_de_facilitacao": "Escreva no quadro: jogada → conceito correspondente.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'imersiva_escape_room',
+    'Escape Room',
+    'Contextuais',
+    'sala — Engajar a turma com uma missão em que são protagonistas.',
+    '[{"titulo": "O Enredo Narrativo", "objetivo": "Engajar a turma com uma missão em que são protagonistas.", "mecanica_passo_a_passo": "Inicie com clima (música/portas). Apresente o Caso Base e a regra: ''Vocês estão trancados. Para escapar, resolvam 3 enigmas do conteúdo em 40 minutos''.", "como_executar_detalhado": "Inicie com clima (música/portas). Apresente o Caso Base e a regra: ''Vocês estão trancados. Para escapar, resolvam 3 enigmas do conteúdo em 40 minutos''.", "dica_de_facilitacao": "Você é o Game Master (ou vilão). Teatralize — quebra o gelo.", "duracao_minutos": 8}, {"titulo": "A Caça aos Enigmas", "objetivo": "Resolver problemas aplicando conhecimento de forma colaborativa.", "mecanica_passo_a_passo": "Espalhe envelopes pela sala. Resposta do Enigma 1 revela o Enigma 2; o Enigma 3 revela a senha do cadeado/PDF com o ''antídoto''.", "como_executar_detalhado": "Espalhe envelopes pela sala. Resposta do Enigma 1 revela o Enigma 2; o Enigma 3 revela a senha do cadeado/PDF com o ''antídoto''.", "dica_de_facilitacao": "Sistema de ''Dicas Pagas'': pedir dica custa 3 minutos no tempo final.", "duracao_minutos": 30}, {"titulo": "Checkpoint do Game Master", "objetivo": "Recalibrar grupos travados sem matar a imersão.", "mecanica_passo_a_passo": "Aos 20 minutos, anuncie um ''evento do mundo'' (pista coletiva no quadro). Grupos que já avançaram podem trocar 1 dica com outro grupo (negociação de 60s).", "como_executar_detalhado": "Aos 20 minutos, anuncie um ''evento do mundo'' (pista coletiva no quadro). Grupos que já avançaram podem trocar 1 dica com outro grupo (negociação de 60s).", "dica_de_facilitacao": "Não entregue a resposta — entregue um caminho de raciocínio.", "duracao_minutos": 8}, {"titulo": "Debriefing (Descompressão)", "objetivo": "Transformar a adrenalina do jogo em consolidação teórica.", "mecanica_passo_a_passo": "Roda final: ''Qual enigma foi mais difícil? Por que a teoria X era a chave?'' Conecte cadeados ao objetivo de aprendizagem do currículo.", "como_executar_detalhado": "Roda final: ''Qual enigma foi mais difícil? Por que a teoria X era a chave?'' Conecte cadeados ao objetivo de aprendizagem do currículo.", "dica_de_facilitacao": "Alunos querem falar do tempo; puxe gentilmente para a lógica do conteúdo.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'gamificacao_de_conteudo',
+    'Gamificação de Conteúdo',
+    'Contextuais',
+    'sala — Tornar explícitos objetivos, XP, vidas e condições de vitória.',
+    '[{"titulo": "Regras do Jogo e Missão", "objetivo": "Tornar explícitos objetivos, XP, vidas e condições de vitória.", "mecanica_passo_a_passo": "Apresente o tabuleiro/quadro de missões: missões principais (conteúdo), side-quests (colaboração) e boss final (desafio integrador). Distribua fichas de XP e explique como se sobe de nível.", "como_executar_detalhado": "Apresente o tabuleiro/quadro de missões: missões principais (conteúdo), side-quests (colaboração) e boss final (desafio integrador). Distribua fichas de XP e explique como se sobe de nível.", "dica_de_facilitacao": "Gamificação sem regra clara vira premiinho aleatório — escreva as regras no quadro.", "duracao_minutos": 10}, {"titulo": "Missões em Ciclos Curtos", "objetivo": "Executar desafios de conteúdo com feedback imediato de XP.", "mecanica_passo_a_passo": "Ciclos de 8–10 minutos: grupo completa missão → valida com checklist → ganha XP/badge. Missões falhas podem ser retentadas com custo (perda de 1 vida).", "como_executar_detalhado": "Ciclos de 8–10 minutos: grupo completa missão → valida com checklist → ganha XP/badge. Missões falhas podem ser retentadas com custo (perda de 1 vida).", "dica_de_facilitacao": "Valide por evidência de aprendizagem, não por ''esforço bonito''.", "duracao_minutos": 25}, {"titulo": "Boss Challenge", "objetivo": "Integrar o conteúdo num desafio final sob regras do jogo.", "mecanica_passo_a_passo": "O boss exige combinar 2–3 habilidades das missões anteriores. Tempo limitado. Grupos podem gastar XP para ''power-ups'' (dica, tempo extra, consulta).", "como_executar_detalhado": "O boss exige combinar 2–3 habilidades das missões anteriores. Tempo limitado. Grupos podem gastar XP para ''power-ups'' (dica, tempo extra, consulta).", "dica_de_facilitacao": "Power-ups caros ensinam priorização — não doe dicas de graça.", "duracao_minutos": 15}, {"titulo": "Placar e Retrospectiva do Jogador", "objetivo": "Refletir o que o jogo ensinou além da pontuação.", "mecanica_passo_a_passo": "Atualize o placar. Cada grupo escreve: 1 skill desbloqueada, 1 falha útil, 1 estratégia para a próxima partida/aula.", "como_executar_detalhado": "Atualize o placar. Cada grupo escreve: 1 skill desbloqueada, 1 falha útil, 1 estratégia para a próxima partida/aula.", "dica_de_facilitacao": "Celebre a falha útil — senão a gamificação reforça só vencedores.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'gamificacao_estrutural',
+    'Gamificação Estrutural',
+    'Contextuais',
+    'sala — Tornar explícitos objetivos, XP, vidas e condições de vitória.',
+    '[{"titulo": "Regras do Jogo e Missão", "objetivo": "Tornar explícitos objetivos, XP, vidas e condições de vitória.", "mecanica_passo_a_passo": "Apresente o tabuleiro/quadro de missões: missões principais (conteúdo), side-quests (colaboração) e boss final (desafio integrador). Distribua fichas de XP e explique como se sobe de nível.", "como_executar_detalhado": "Apresente o tabuleiro/quadro de missões: missões principais (conteúdo), side-quests (colaboração) e boss final (desafio integrador). Distribua fichas de XP e explique como se sobe de nível.", "dica_de_facilitacao": "Gamificação sem regra clara vira premiinho aleatório — escreva as regras no quadro.", "duracao_minutos": 10}, {"titulo": "Missões em Ciclos Curtos", "objetivo": "Executar desafios de conteúdo com feedback imediato de XP.", "mecanica_passo_a_passo": "Ciclos de 8–10 minutos: grupo completa missão → valida com checklist → ganha XP/badge. Missões falhas podem ser retentadas com custo (perda de 1 vida).", "como_executar_detalhado": "Ciclos de 8–10 minutos: grupo completa missão → valida com checklist → ganha XP/badge. Missões falhas podem ser retentadas com custo (perda de 1 vida).", "dica_de_facilitacao": "Valide por evidência de aprendizagem, não por ''esforço bonito''.", "duracao_minutos": 25}, {"titulo": "Boss Challenge", "objetivo": "Integrar o conteúdo num desafio final sob regras do jogo.", "mecanica_passo_a_passo": "O boss exige combinar 2–3 habilidades das missões anteriores. Tempo limitado. Grupos podem gastar XP para ''power-ups'' (dica, tempo extra, consulta).", "como_executar_detalhado": "O boss exige combinar 2–3 habilidades das missões anteriores. Tempo limitado. Grupos podem gastar XP para ''power-ups'' (dica, tempo extra, consulta).", "dica_de_facilitacao": "Power-ups caros ensinam priorização — não doe dicas de graça.", "duracao_minutos": 15}, {"titulo": "Placar e Retrospectiva do Jogador", "objetivo": "Refletir o que o jogo ensinou além da pontuação.", "mecanica_passo_a_passo": "Atualize o placar. Cada grupo escreve: 1 skill desbloqueada, 1 falha útil, 1 estratégia para a próxima partida/aula.", "como_executar_detalhado": "Atualize o placar. Cada grupo escreve: 1 skill desbloqueada, 1 falha útil, 1 estratégia para a próxima partida/aula.", "dica_de_facilitacao": "Celebre a falha útil — senão a gamificação reforça só vencedores.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'imersiva_jogos_serios_3d',
+    'Jogos Sérios com Blocos 3D',
+    'Contextuais',
+    'sala — Alinhar objetivo de aprendizagem e regras de uso do ambiente 3D.',
+    '[{"titulo": "Contrato do Jogador", "objetivo": "Alinhar objetivo de aprendizagem e regras de uso do ambiente 3D.", "mecanica_passo_a_passo": "Antes de logar: objetivo da sessão, o que conta como evidência, tempo de tela, e papéis (piloto, copiloto, analista). Combinem sinais de pausa.", "como_executar_detalhado": "Antes de logar: objetivo da sessão, o que conta como evidência, tempo de tela, e papéis (piloto, copiloto, analista). Combinem sinais de pausa.", "dica_de_facilitacao": "Sem contrato, vira só gameplay. Escreva o objetivo no quadro.", "duracao_minutos": 8}, {"titulo": "Missão no Ambiente 3D", "objetivo": "Explorar o cenário cumprindo objetivos de conteúdo.", "mecanica_passo_a_passo": "Ciclo de 15–20 min no ambiente (simulador/jogo sério). Analista anota decisões, erros e descobertas em checklist alinhado ao currículo.", "como_executar_detalhado": "Ciclo de 15–20 min no ambiente (simulador/jogo sério). Analista anota decisões, erros e descobertas em checklist alinhado ao currículo.", "dica_de_facilitacao": "Alterne piloto a cada 5 minutos para não concentrar o controle.", "duracao_minutos": 20}, {"titulo": "Pausa Metacognitiva", "objetivo": "Sair do jogo para explicitar estratégias.", "mecanica_passo_a_passo": "Pause o mundo 3D. Em 5 minutos: o que funcionou, o que foi tentativa cega, qual conceito escolar explica o resultado. Ajustem a estratégia antes de voltar.", "como_executar_detalhado": "Pause o mundo 3D. Em 5 minutos: o que funcionou, o que foi tentativa cega, qual conceito escolar explica o resultado. Ajustem a estratégia antes de voltar.", "dica_de_facilitacao": "Essa pausa é ouro — não pule para ''mais um nível''.", "duracao_minutos": 8}, {"titulo": "Transferência para o Mundo Real", "objetivo": "Traduzir decisões do jogo em plano de ação fora da tela.", "mecanica_passo_a_passo": "Cada grupo entrega um plano de 5 linhas: situação real análoga, decisão recomendada, risco, evidência observada no jogo. Apresentação de 90 segundos.", "como_executar_detalhado": "Cada grupo entrega um plano de 5 linhas: situação real análoga, decisão recomendada, risco, evidência observada no jogo. Apresentação de 90 segundos.", "dica_de_facilitacao": "Se não houver analogia real, a missão 3D estava desalinhada — anote para redesenhar.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'imersiva_roleplaying',
+    'Roleplay',
+    'Contextuais',
+    'sala — Distribuir papéis com objetivos conflitantes e claros.',
+    '[{"titulo": "Briefing de Papéis", "objetivo": "Distribuir papéis com objetivos conflitantes e claros.", "mecanica_passo_a_passo": "Entregue cartas seladas: papel, objetivo secreto, 2 restrições, 1 recurso. Leitura individual 4 min. Proibido revelar o objetivo secreto ainda.", "como_executar_detalhado": "Entregue cartas seladas: papel, objetivo secreto, 2 restrições, 1 recurso. Leitura individual 4 min. Proibido revelar o objetivo secreto ainda.", "dica_de_facilitacao": "Papéis sem conflito real geram teatro vazio — desenhe tensões.", "duracao_minutos": 10}, {"titulo": "Aquecimento em Personagem", "objetivo": "Entrar no papel com linguagem e postura.", "mecanica_passo_a_passo": "Em círculo, cada um se apresenta em 20 segundos no personagem. Depois, 2 minutos de improviso livre em duplas sobre o cenário.", "como_executar_detalhado": "Em círculo, cada um se apresenta em 20 segundos no personagem. Depois, 2 minutos de improviso livre em duplas sobre o cenário.", "dica_de_facilitacao": "Se alguém sair do personagem, use um sinal combinado (ex.: tocar a mesa).", "duracao_minutos": 8}, {"titulo": "Cena Principal", "objetivo": "Negociar/decidir sob pressão do cenário.", "mecanica_passo_a_passo": "Rode a cena de 15–20 minutos com um evento detonador no meio (nova informação, prazo, visita inesperada). Observadores externos anotam estratégias e vieses.", "como_executar_detalhado": "Rode a cena de 15–20 minutos com um evento detonador no meio (nova informação, prazo, visita inesperada). Observadores externos anotam estratégias e vieses.", "dica_de_facilitacao": "Um facilitador-relógio anuncia eventos — você não ''julga'' a cena durante.", "duracao_minutos": 20}, {"titulo": "Hot Seat + Debrief", "objetivo": "Sair do papel e analisar decisões.", "mecanica_passo_a_passo": "2 personagens vão ao ''hot seat'' e respondem perguntas da turma ainda no papel (3 min), depois fora do papel. Debrief: o que o papel revelou sobre o problema real?", "como_executar_detalhado": "2 personagens vão ao ''hot seat'' e respondem perguntas da turma ainda no papel (3 min), depois fora do papel. Debrief: o que o papel revelou sobre o problema real?", "dica_de_facilitacao": "Separe claramente ''no papel'' e ''fora do papel'' para evitar constrangimento.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'imersiva_simulacoes',
+    'Simulações',
+    'Contextuais',
+    'sala — Criar ambiente fictício ou histórico rico em detalhes.',
+    '[{"titulo": "Construção do Cenário", "objetivo": "Criar ambiente fictício ou histórico rico em detalhes.", "mecanica_passo_a_passo": "Criação de um ambiente fictício ou histórico rico em detalhes (ex: Assembleia da ONU, mercado financeiro).", "como_executar_detalhado": "Criação de um ambiente fictício ou histórico rico em detalhes (ex: Assembleia da ONU, mercado financeiro).", "dica_de_facilitacao": "Entregue 1 página de briefing por cenário — demais vira sobrecarga.", "duracao_minutos": 8}, {"titulo": "Distribuição de Papéis", "objetivo": "Dar a cada aluno personagem com objetivos e limites.", "mecanica_passo_a_passo": "Cada aluno recebe um personagem com objetivos, limites e interesses específicos.", "como_executar_detalhado": "Cada aluno recebe um personagem com objetivos, limites e interesses específicos.", "dica_de_facilitacao": "Objetivos secretos aumentam o realismo — use com cuidado ético.", "duracao_minutos": 7}, {"titulo": "Interação e Negociação", "objetivo": "Agir no papel para alcançar objetivos.", "mecanica_passo_a_passo": "Os alunos agem dentro de seus papéis, interagindo uns com os outros para alcançar seus objetivos.", "como_executar_detalhado": "Os alunos agem dentro de seus papéis, interagindo uns com os outros para alcançar seus objetivos.", "dica_de_facilitacao": "Circule e anote decisões-chave para a avaliação crítica.", "duracao_minutos": 20}, {"titulo": "Fatores Surpresa", "objetivo": "Inserir crises que forçam adaptação rápida.", "mecanica_passo_a_passo": "O professor insere \"crises\" ou novas variáveis no meio da simulação para forçar adaptação rápida.", "como_executar_detalhado": "O professor insere \"crises\" ou novas variáveis no meio da simulação para forçar adaptação rápida.", "dica_de_facilitacao": "1–2 surpresas bastam — excesso vira caos sem aprendizagem.", "duracao_minutos": 8}, {"titulo": "Avaliação Crítica", "objetivo": "Sair do personagem e analisar decisões à luz da teoria.", "mecanica_passo_a_passo": "Os alunos saem de seus personagens e analisam as decisões tomadas à luz da teoria da disciplina.", "como_executar_detalhado": "Os alunos saem de seus personagens e analisam as decisões tomadas à luz da teoria da disciplina.", "dica_de_facilitacao": "Ritual explícito de \"sair do papel\" antes da análise.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'imersiva_vivencia_multissensorial',
+    'Vivência Metodologia imersiva Multissensorial',
+    'Contextuais',
+    'sala — Preparar estímulos intencionais no espaço físico.',
+    '[{"titulo": "Design do Ambiente", "objetivo": "Preparar estímulos intencionais no espaço físico.", "mecanica_passo_a_passo": "O professor prepara o espaço físico com estímulos intencionais: trilha sonora, iluminação, aromas e objetos táteis.", "como_executar_detalhado": "O professor prepara o espaço físico com estímulos intencionais: trilha sonora, iluminação, aromas e objetos táteis.", "dica_de_facilitacao": "Todo estímulo deve ter intenção pedagógica — corte o decorativo vazio.", "duracao_minutos": 5}, {"titulo": "Quebra de Padrão", "objetivo": "Entrar no ambiente com percepção maximizada.", "mecanica_passo_a_passo": "Os alunos entram no ambiente em silêncio ou com os olhos vendados para maximizar a percepção sensorial.", "como_executar_detalhado": "Os alunos entram no ambiente em silêncio ou com os olhos vendados para maximizar a percepção sensorial.", "dica_de_facilitacao": "Combine regras de segurança e consentimento antes de vendas/silêncio.", "duracao_minutos": 8}, {"titulo": "Condução Narrativa", "objetivo": "Guiar a experiência por história, leitura ou exploração tátil.", "mecanica_passo_a_passo": "O professor guia a experiência através de contação de histórias, leitura imersiva ou exploração tátil.", "como_executar_detalhado": "O professor guia a experiência através de contação de histórias, leitura imersiva ou exploração tátil.", "dica_de_facilitacao": "Fale pouco e pause — o ambiente também \"fala\".", "duracao_minutos": 15}, {"titulo": "Registro Sensível", "objetivo": "Registrar emoções e sensações provocadas.", "mecanica_passo_a_passo": "O aluno escreve, desenha ou relata as emoções e sensações físicas que a experiência provocou.", "como_executar_detalhado": "O aluno escreve, desenha ou relata as emoções e sensações físicas que a experiência provocou.", "dica_de_facilitacao": "Aceite desenho/áudio — nem todo registro precisa ser texto.", "duracao_minutos": 12}, {"titulo": "Ancoragem", "objetivo": "Ligar o sentido físico ao conteúdo curricular.", "mecanica_passo_a_passo": "Conexão lógica entre o que foi sentido fisicamente e o conteúdo curricular abordado.", "como_executar_detalhado": "Conexão lógica entre o que foi sentido fisicamente e o conteúdo curricular abordado.", "dica_de_facilitacao": "Peça a frase: \"Senti X → isso ilustra o conceito Y\".", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'analitica_chatbots',
+    'Chatbots',
+    'Dedutivas',
+    'sala — Definir a identidade do bot.',
+    '[{"titulo": "Definição de Persona", "objetivo": "Definir a identidade do bot.", "mecanica_passo_a_passo": "Os alunos definem a identidade do bot (ex: Um bot de Machado de Assis, ou um bot de fórmulas matemáticas).", "como_executar_detalhado": "Os alunos definem a identidade do bot (ex: Um bot de Machado de Assis, ou um bot de fórmulas matemáticas).", "dica_de_facilitacao": "Persona clara evita respostas genéricas depois.", "duracao_minutos": 8}, {"titulo": "Árvore de Decisão", "objetivo": "Mapear perguntas prováveis e respostas programadas.", "mecanica_passo_a_passo": "Mapeamento visual das perguntas prováveis dos usuários e das respostas programadas do bot.", "como_executar_detalhado": "Mapeamento visual das perguntas prováveis dos usuários e das respostas programadas do bot.", "dica_de_facilitacao": "Comece com 8–12 caminhos — árvore gigante não fecha na aula.", "duracao_minutos": 12}, {"titulo": "Programação ou Simulação", "objetivo": "Construir o bot em No-Code ou simular em papel.", "mecanica_passo_a_passo": "Construção do bot em plataformas No-Code (sem código) ou simulação do fluxo em papel.", "como_executar_detalhado": "Construção do bot em plataformas No-Code (sem código) ou simulação do fluxo em papel.", "dica_de_facilitacao": "Se não houver ferramenta digital, o fluxo em papel vale como protótipo.", "duracao_minutos": 15}, {"titulo": "Teste de Estresse (Turing)", "objetivo": "Outros grupos tentam achar furos nas respostas.", "mecanica_passo_a_passo": "Alunos de outros grupos tentam usar o bot criado para encontrar \"furos\" ou respostas erradas.", "como_executar_detalhado": "Alunos de outros grupos tentam usar o bot criado para encontrar \"furos\" ou respostas erradas.", "dica_de_facilitacao": "Peça que os testadores anotem a pergunta que quebrou o bot.", "duracao_minutos": 10}, {"titulo": "Refinamento", "objetivo": "Ajustar a base para cobrir perguntas falhas.", "mecanica_passo_a_passo": "Ajuste da base de conhecimento do bot para cobrir as perguntas que ele não soube responder.", "como_executar_detalhado": "Ajuste da base de conhecimento do bot para cobrir as perguntas que ele não soube responder.", "dica_de_facilitacao": "Refinamento mínimo: 3 furos corrigidos e retestados.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'analitica_diagnostico_coletivo',
+    'Diagnóstico Coletivo',
+    'Dedutivas',
+    'sala — Externalizar sintomas sem buscar culpados.',
+    '[{"titulo": "Sintomas no Quadro", "objetivo": "Externalizar sintomas sem buscar culpados.", "mecanica_passo_a_passo": "Tempestade de sintomas em post-its (1 sintoma por nota). Agrupem por afinidade. Proibido escrever nomes de pessoas como causa.", "como_executar_detalhado": "Tempestade de sintomas em post-its (1 sintoma por nota). Agrupem por afinidade. Proibido escrever nomes de pessoas como causa.", "dica_de_facilitacao": "Separe sintoma de causa desde o início — senão o diagnóstico vicia.", "duracao_minutos": 10}, {"titulo": "Cinco Porquês em Grupos", "objetivo": "Aprofundar até causas raiz plausíveis.", "mecanica_passo_a_passo": "Cada grupo pega 1 cluster de sintomas e aplica 5 Porquês. Param quando chegarem a uma causa acionável na escola/turma.", "como_executar_detalhado": "Cada grupo pega 1 cluster de sintomas e aplica 5 Porquês. Param quando chegarem a uma causa acionável na escola/turma.", "dica_de_facilitacao": "Se o 5º porquê for ''porque os alunos são assim'', force um nível sistêmico.", "duracao_minutos": 15}, {"titulo": "Matriz Impacto × Controle", "objetivo": "Priorizar o que a turma realmente pode mexer.", "mecanica_passo_a_passo": "Plotem causas em Impacto (baixo/alto) × Controle da turma (baixo/alto). Escolhem 1 causa do quadrante alto-alto para atacar.", "como_executar_detalhado": "Plotem causas em Impacto (baixo/alto) × Controle da turma (baixo/alto). Escolhem 1 causa do quadrante alto-alto para atacar.", "dica_de_facilitacao": "Celebre descartar o que está fora de controle — foca energia.", "duracao_minutos": 12}, {"titulo": "Hipótese de Intervenção", "objetivo": "Converter diagnóstico em hipótese testável.", "mecanica_passo_a_passo": "Fórmula: Se fizermos X por Y tempo, esperamos Z evidência. Cada grupo cola a hipótese e define 1 sinal de que deu certo/errado.", "como_executar_detalhado": "Fórmula: Se fizermos X por Y tempo, esperamos Z evidência. Cada grupo cola a hipótese e define 1 sinal de que deu certo/errado.", "dica_de_facilitacao": "Exija prazo e evidência — senão vira desejo, não hipótese.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'analitica_dog_or_cat',
+    'Dog or Cat: Reconhecimento de Imagens',
+    'Dedutivas',
+    'sala — Reunir fotos em duas categorias para treino.',
+    '[{"titulo": "Coleta de Dados", "objetivo": "Reunir fotos em duas categorias para treino.", "mecanica_passo_a_passo": "Os alunos reúnem dezenas de fotos divididas em duas categorias (ex: folhas saudáveis vs. folhas com praga).", "como_executar_detalhado": "Os alunos reúnem dezenas de fotos divididas em duas categorias (ex: folhas saudáveis vs. folhas com praga).", "dica_de_facilitacao": "Equilibre quantidade por categoria — dataset torto enviesa o modelo.", "duracao_minutos": 10}, {"titulo": "Treinamento do Modelo", "objetivo": "Treinar o algoritmo em plataforma educativa de IA.", "mecanica_passo_a_passo": "Inserção das imagens em uma plataforma de IA educativa (como Teachable Machine) para treinar o algoritmo.", "como_executar_detalhado": "Inserção das imagens em uma plataforma de IA educativa (como Teachable Machine) para treinar o algoritmo.", "dica_de_facilitacao": "Demonstre 1 treino completo antes de liberar as equipes.", "duracao_minutos": 12}, {"titulo": "Teste de Acurácia", "objetivo": "Testar com imagens inéditas.", "mecanica_passo_a_passo": "Os alunos apresentam imagens inéditas para a câmera/sistema para ver se a IA acerta a categoria.", "como_executar_detalhado": "Os alunos apresentam imagens inéditas para a câmera/sistema para ver se a IA acerta a categoria.", "dica_de_facilitacao": "Separe imagens de teste que NÃO entraram no treino.", "duracao_minutos": 10}, {"titulo": "Análise de Viés", "objetivo": "Discutir erros da máquina e causas no dataset.", "mecanica_passo_a_passo": "Discussão sobre os erros da máquina (ex: \"Ela errou porque todas as folhas saudáveis que usamos tinham fundo branco\").", "como_executar_detalhado": "Discussão sobre os erros da máquina (ex: \"Ela errou porque todas as folhas saudáveis que usamos tinham fundo branco\").", "dica_de_facilitacao": "Force a pergunta: o erro é do modelo ou dos dados?", "duracao_minutos": 10}, {"titulo": "Debate Ético", "objetivo": "Refletir sobre decisões algorítmicas na vida real.", "mecanica_passo_a_passo": "Reflexão sobre como algoritmos tomam decisões na vida real e os perigos de dados enviesados.", "como_executar_detalhado": "Reflexão sobre como algoritmos tomam decisões na vida real e os perigos de dados enviesados.", "dica_de_facilitacao": "Traga 1 caso real curto (crédito, recrutamento, saúde) para ancorar.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'analitica_extrato_participacao',
+    'Extrato de Participação',
+    'Dedutivas',
+    'sala — Definir atitudes que geram pontos/moedas.',
+    '[{"titulo": "Estabelecimento da Economia", "objetivo": "Definir atitudes que geram pontos/moedas.", "mecanica_passo_a_passo": "Definição clara de quais atitudes (fazer perguntas, ajudar colega, entregar no prazo) geram \"moedas\" ou \"pontos\".", "como_executar_detalhado": "Definição clara de quais atitudes (fazer perguntas, ajudar colega, entregar no prazo) geram \"moedas\" ou \"pontos\".", "dica_de_facilitacao": "Publique a tabela de pontuação — economia invisível não engaja.", "duracao_minutos": 8}, {"titulo": "Registro Contínuo", "objetivo": "Anotar pontuação durante as aulas de forma visível.", "mecanica_passo_a_passo": "O professor (ou um aluno líder) anota a pontuação durante as aulas usando planilhas, apps ou um quadro visível.", "como_executar_detalhado": "O professor (ou um aluno líder) anota a pontuação durante as aulas usando planilhas, apps ou um quadro visível.", "dica_de_facilitacao": "Registre na hora — pós-aula a memória falha e gera contestação.", "duracao_minutos": 10}, {"titulo": "Emissão do Extrato", "objetivo": "Entregar relatório de ganhos e perdas ao aluno.", "mecanica_passo_a_passo": "Entrega de um relatório quinzenal/mensal para que o aluno veja onde ganhou e onde perdeu pontos.", "como_executar_detalhado": "Entrega de um relatório quinzenal/mensal para que o aluno veja onde ganhou e onde perdeu pontos.", "dica_de_facilitacao": "Extrato individual privado — ranking público pode humilhar.", "duracao_minutos": 8}, {"titulo": "Feedback Direcionado", "objetivo": "Usar o extrato para apontar comportamentos a melhorar.", "mecanica_passo_a_passo": "O professor usa o extrato para mostrar ao aluno exatamente quais comportamentos precisam melhorar.", "como_executar_detalhado": "O professor usa o extrato para mostrar ao aluno exatamente quais comportamentos precisam melhorar.", "dica_de_facilitacao": "1 comportamento prioritário por conversa — evita lista acusatória.", "duracao_minutos": 12}, {"titulo": "Recompensas", "objetivo": "Trocar pontos por benefícios acadêmicos claros.", "mecanica_passo_a_passo": "Troca dos pontos por benefícios acadêmicos (dica em prova, prorrogação de prazo, escolha de tema de trabalho).", "como_executar_detalhado": "Troca dos pontos por benefícios acadêmicos (dica em prova, prorrogação de prazo, escolha de tema de trabalho).", "dica_de_facilitacao": "Recompensas devem ser pedagógicas, não só brindes.", "duracao_minutos": 8}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'analitica_ia_generativa',
+    'Inteligência Artificial Generativa',
+    'Dedutivas',
+    'sala — Ensinar comandos detalhados (Papel, Tarefa, Contexto, Formato).',
+    '[{"titulo": "Estruturação do Prompt", "objetivo": "Ensinar comandos detalhados (Papel, Tarefa, Contexto, Formato).", "mecanica_passo_a_passo": "Ensino de como criar comandos detalhados (Papel, Tarefa, Contexto e Formato) para a IA (ex: ChatGPT).", "como_executar_detalhado": "Ensino de como criar comandos detalhados (Papel, Tarefa, Contexto e Formato) para a IA (ex: ChatGPT).", "dica_de_facilitacao": "Modele 1 prompt ruim × 1 bom no quadro antes da prática.", "duracao_minutos": 10}, {"titulo": "Geração e Iteração", "objetivo": "Gerar e ajustar o comando se o resultado for superficial.", "mecanica_passo_a_passo": "O aluno pede para a IA gerar um texto, código ou imagem e ajusta o comando se o resultado for superficial.", "como_executar_detalhado": "O aluno pede para a IA gerar um texto, código ou imagem e ajusta o comando se o resultado for superficial.", "dica_de_facilitacao": "Exija pelo menos 2 iterações documentadas do mesmo pedido.", "duracao_minutos": 12}, {"titulo": "Curadoria Crítica", "objetivo": "Marcar alucinações, vieses e clichês no resultado.", "mecanica_passo_a_passo": "O aluno analisa o resultado gerado, marcando alucinações (erros), vieses ou clichês.", "como_executar_detalhado": "O aluno analisa o resultado gerado, marcando alucinações (erros), vieses ou clichês.", "dica_de_facilitacao": "Use destaque colorido: erro / viés / clichê.", "duracao_minutos": 10}, {"titulo": "Edição Humana", "objetivo": "Reescrever com voz própria e validar fontes.", "mecanica_passo_a_passo": "O aluno reescreve e melhora o conteúdo gerado, adicionando voz própria e validando fontes.", "como_executar_detalhado": "O aluno reescreve e melhora o conteúdo gerado, adicionando voz própria e validando fontes.", "dica_de_facilitacao": "Sem edição humana, a entrega não conta como aprendizagem.", "duracao_minutos": 12}, {"titulo": "Entrega Transparente", "objetivo": "Entregar histórico: prompt, geração e alterações humanas.", "mecanica_passo_a_passo": "Apresentação do trabalho final contendo o histórico: \"Qual foi o prompt\", \"O que a IA gerou\" e \"Como o aluno alterou\".", "como_executar_detalhado": "Apresentação do trabalho final contendo o histórico: \"Qual foi o prompt\", \"O que a IA gerou\" e \"Como o aluno alterou\".", "dica_de_facilitacao": "Torne a transparência critério de avaliação, não opcional.", "duracao_minutos": 8}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'analitica_mapa_calor',
+    'Mapa de Calor',
+    'Dedutivas',
+    'sala — Levantar dados quantitativos do contexto analisado.',
+    '[{"titulo": "Coleta de Indicadores", "objetivo": "Levantar dados quantitativos do contexto analisado.", "mecanica_passo_a_passo": "Levantamento de dados quantitativos (notas em exames, evasão, ocorrências disciplinares em áreas da escola).", "como_executar_detalhado": "Levantamento de dados quantitativos (notas em exames, evasão, ocorrências disciplinares em áreas da escola).", "dica_de_facilitacao": "Defina 1 pergunta analítica antes de coletar — dado sem pergunta vira ruído.", "duracao_minutos": 10}, {"titulo": "Definição de Escala Cromática", "objetivo": "Associar valores a cores (ex.: verde × vermelho).", "mecanica_passo_a_passo": "Associação de valores a cores (ex: Verde para alto desempenho, Vermelho para zonas críticas).", "como_executar_detalhado": "Associação de valores a cores (ex: Verde para alto desempenho, Vermelho para zonas críticas).", "dica_de_facilitacao": "A escala deve ser compartilhada e fixa antes da plotagem.", "duracao_minutos": 8}, {"titulo": "Plotagem dos Dados", "objetivo": "Aplicar cores sobre o espaço/planilha analisada.", "mecanica_passo_a_passo": "Aplicação das cores sobre o espaço analisado (pode ser uma planilha de notas ou a planta baixa da escola).", "como_executar_detalhado": "Aplicação das cores sobre o espaço analisado (pode ser uma planilha de notas ou a planta baixa da escola).", "dica_de_facilitacao": "Faça a plotagem em silêncio primeiro — depois interpreta.", "duracao_minutos": 12}, {"titulo": "Análise Espacial/Visual", "objetivo": "Identificar padrões nas zonas coloridas.", "mecanica_passo_a_passo": "Identificação imediata de padrões: \"Por que as notas estão todas vermelhas neste tópico específico da matéria?\".", "como_executar_detalhado": "Identificação imediata de padrões: \"Por que as notas estão todas vermelhas neste tópico específico da matéria?\".", "dica_de_facilitacao": "Peça hipóteses escritas antes de discutir — evita opinião precipitada.", "duracao_minutos": 12}, {"titulo": "Intervenção Focada", "objetivo": "Direcionar recursos às zonas vermelhas.", "mecanica_passo_a_passo": "Direcionamento de recursos ou aulas de revisão exclusivamente para as \"zonas vermelhas\" identificadas no mapa.", "como_executar_detalhado": "Direcionamento de recursos ou aulas de revisão exclusivamente para as \"zonas vermelhas\" identificadas no mapa.", "dica_de_facilitacao": "Feche com 1 ação concreta por zona vermelha.", "duracao_minutos": 10}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'analitica_learning_analytics',
+    'Metodologia analítica da Aprendizagem',
+    'Dedutivas',
+    'sala — Definir que decisão pedagógica os dados vão informar.',
+    '[{"titulo": "Pergunta Analítica", "objetivo": "Definir que decisão pedagógica os dados vão informar.", "mecanica_passo_a_passo": "No quadro: ''Que decisão queremos tomar com evidência?'' Grupos escolhem 1 pergunta mensurável (ex.: quem trava em qual etapa?).", "como_executar_detalhado": "No quadro: ''Que decisão queremos tomar com evidência?'' Grupos escolhem 1 pergunta mensurável (ex.: quem trava em qual etapa?).", "dica_de_facilitacao": "Sem pergunta, dashboard vira distração colorida.", "duracao_minutos": 8}, {"titulo": "Coleta Ética de Sinais", "objetivo": "Levantar dados leves com consentimento e propósito claro.", "mecanica_passo_a_passo": "Coletem sinais: autoavaliação 1–5, tempo por tarefa, erros comuns, check de saída. Explique o que NÃO será usado para punir.", "como_executar_detalhado": "Coletem sinais: autoavaliação 1–5, tempo por tarefa, erros comuns, check de saída. Explique o que NÃO será usado para punir.", "dica_de_facilitacao": "Diga em voz alta o uso ético — reduz resistência a se expor.", "duracao_minutos": 12}, {"titulo": "Leitura de Padrões", "objetivo": "Transformar números/respostas em padrões acionáveis.", "mecanica_passo_a_passo": "Montem um mini-painel (tabela/post-its): distribuição, outliers, gargalos. Formulem 2 hipóteses (''parece que… porque…'').", "como_executar_detalhado": "Montem um mini-painel (tabela/post-its): distribuição, outliers, gargalos. Formulem 2 hipóteses (''parece que… porque…'').", "dica_de_facilitacao": "Force hipóteses falsificáveis — evita achismo disfarçado de dado.", "duracao_minutos": 15}, {"titulo": "Intervenção Orientada por Dados", "objetivo": "Escolher 1 ação pedagógica e um indicador de sucesso.", "mecanica_passo_a_passo": "Cada grupo propõe 1 intervenção para a próxima aula + métrica de sucesso e plano B se o indicador não melhorar. Compartilham em 2 minutos.", "como_executar_detalhado": "Cada grupo propõe 1 intervenção para a próxima aula + métrica de sucesso e plano B se o indicador não melhorar. Compartilham em 2 minutos.", "dica_de_facilitacao": "Uma intervenção bem medida vale mais que cinco ideias sem indicador.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'analitica_rag',
+    'RAG',
+    'Dedutivas',
+    'sala — Separar repositório fechado de fontes confiáveis.',
+    '[{"titulo": "Construção da Base (Retrieval)", "objetivo": "Separar repositório fechado de fontes confiáveis.", "mecanica_passo_a_passo": "O professor ou os alunos separam um repositório fechado de PDFs, artigos e apostilas confiáveis sobre o tema.", "como_executar_detalhado": "O professor ou os alunos separam um repositório fechado de PDFs, artigos e apostilas confiáveis sobre o tema.", "dica_de_facilitacao": "Qualidade da base > quantidade — 3–5 fontes boas bastam na aula.", "duracao_minutos": 10}, {"titulo": "Indexação", "objetivo": "Carregar documentos em ferramenta de IA com leitura restrita.", "mecanica_passo_a_passo": "Os documentos são carregados em uma ferramenta de IA que permite leitura de arquivos fechados.", "como_executar_detalhado": "Os documentos são carregados em uma ferramenta de IA que permite leitura de arquivos fechados.", "dica_de_facilitacao": "Confirme que a ferramenta está limitada aos arquivos carregados.", "duracao_minutos": 8}, {"titulo": "Interrogação Restrita", "objetivo": "Perguntar à IA só com base nos documentos fornecidos.", "mecanica_passo_a_passo": "Os alunos fazem perguntas complexas para a IA com a regra estrita de buscar a resposta apenas nos documentos fornecidos.", "como_executar_detalhado": "Os alunos fazem perguntas complexas para a IA com a regra estrita de buscar a resposta apenas nos documentos fornecidos.", "dica_de_facilitacao": "Se a IA inventar fora da base, marque como falha do processo.", "duracao_minutos": 12}, {"titulo": "Verificação de Lastro", "objetivo": "Cruzar citações com página/parágrafo do PDF original.", "mecanica_passo_a_passo": "O aluno verifica as citações geradas pela IA cruzando com a página e o parágrafo do PDF original.", "como_executar_detalhado": "O aluno verifica as citações geradas pela IA cruzando com a página e o parágrafo do PDF original.", "dica_de_facilitacao": "Sem lastro verificado, a resposta não entra no relatório final.", "duracao_minutos": 12}, {"titulo": "Síntese Autoral", "objetivo": "Produzir texto humano com informações validadas pela base RAG.", "mecanica_passo_a_passo": "Produção de um artigo ou relatório humano usando as informações mastigadas e validadas pela base de conhecimento RAG.", "como_executar_detalhado": "Produção de um artigo ou relatório humano usando as informações mastigadas e validadas pela base de conhecimento RAG.", "dica_de_facilitacao": "A síntese deve citar documento + página — não só \"a IA disse\".", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.school_metodologias_catalogo (
+    codigo, nome, categoria, descricao, passos_execucao, ativo, origem
+) VALUES (
+    'analitica_trilhas_adaptativas',
+    'Trilhas de Aprendizagem',
+    'Dedutivas',
+    'sala — Posicionar cada aluno/grupo em um nível inicial sem estigma.',
+    '[{"titulo": "Diagnóstico de Partida", "objetivo": "Posicionar cada aluno/grupo em um nível inicial sem estigma.", "mecanica_passo_a_passo": "Quiz curto ou estação de checagem com 3 níveis (A/B/C). Resultado aponta trilha inicial. Explique: trilhas são caminhos, não rótulos fixos.", "como_executar_detalhado": "Quiz curto ou estação de checagem com 3 níveis (A/B/C). Resultado aponta trilha inicial. Explique: trilhas são caminhos, não rótulos fixos.", "dica_de_facilitacao": "Use linguagem de ''rota'', nunca de ''fracos/fortes''.", "duracao_minutos": 10}, {"titulo": "Trilhas Paralelas", "objetivo": "Oferecer percursos distintos com o mesmo objetivo de chegada.", "mecanica_passo_a_passo": "Monte 3 trilhas: reforço guiado, prática padrão, desafio avançado. Materiais em mesas/folders coloridos. Alunos trabalham 20 min na trilha.", "como_executar_detalhado": "Monte 3 trilhas: reforço guiado, prática padrão, desafio avançado. Materiais em mesas/folders coloridos. Alunos trabalham 20 min na trilha.", "dica_de_facilitacao": "O objetivo final deve ser o mesmo — muda o andaime, não a ambição.", "duracao_minutos": 20}, {"titulo": "Checkpoints de Re-roteamento", "objetivo": "Permitir mudança de trilha com base em evidência.", "mecanica_passo_a_passo": "Aos 10 e 20 minutos, checkpoint rápido (1 questão ou mostra do produto). Quem demonstra domínio sobe; quem trava recebe suporte ou desce de andaime.", "como_executar_detalhado": "Aos 10 e 20 minutos, checkpoint rápido (1 questão ou mostra do produto). Quem demonstra domínio sobe; quem trava recebe suporte ou desce de andaime.", "dica_de_facilitacao": "Normalize a mudança de trilha — é o coração do adaptativo.", "duracao_minutos": 10}, {"titulo": "Convergência Final", "objetivo": "Reunir todas as trilhas num produto comum.", "mecanica_passo_a_passo": "Todos convergem para a mesma entrega (mapa, pitch, resolução). Grupos mistos (ex-trilhas diferentes) explicam o que cada rota ensinou.", "como_executar_detalhado": "Todos convergem para a mesma entrega (mapa, pitch, resolução). Grupos mistos (ex-trilhas diferentes) explicam o que cada rota ensinou.", "dica_de_facilitacao": "Misture as trilhas no fim — evita bolhas permanentes.", "duracao_minutos": 12}]'::jsonb,
+    TRUE,
+    'padrao'
+)
+ON CONFLICT (nome) WHERE (origem = 'padrao') DO UPDATE SET
+    codigo = EXCLUDED.codigo,
+    categoria = EXCLUDED.categoria,
+    descricao = EXCLUDED.descricao,
+    passos_execucao = EXCLUDED.passos_execucao,
+    ativo = TRUE,
+    origem = 'padrao',
+    instituicao_origem_id = NULL,
+    updated_at = CURRENT_TIMESTAMP;
+
+COMMIT;
