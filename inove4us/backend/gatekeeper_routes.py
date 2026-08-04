@@ -46,6 +46,8 @@ def _is_exempt(path: str) -> bool:
         return True
     if path.startswith("/api/webhooks/"):
         return True
+    if path.startswith("/api/integracoes/school/"):
+        return True
     # Action-Sponge sensor (proxy → Hub) mesmo com site em manutenção
     if path.startswith("/api/tracking/"):
         return True

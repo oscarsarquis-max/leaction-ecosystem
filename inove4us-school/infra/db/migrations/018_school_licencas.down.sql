@@ -1,0 +1,3 @@
+BEGIN;
+DROP TABLE IF EXISTS public.school_licencas CASCADE;
+COMMIT;

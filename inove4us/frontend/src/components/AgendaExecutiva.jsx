@@ -59,7 +59,7 @@ const STATUS_LABEL = {
   concluido: 'Concluído',
 }
 
-/** Separação visual: Desafio (âmbar) × Dia a Dia (verde) × geral (neutro). */
+/** Separação visual: Desafio (âmbar) × Dia a Dia (verde) × geral (neutro) × comunicado escola (teal). */
 const TIPO_CARD = {
   aula_eduscrum: {
     card: 'border-amber-300 bg-amber-50 hover:border-amber-400 hover:bg-amber-100/80',
@@ -79,10 +79,37 @@ const TIPO_CARD = {
     chip: 'bg-brand-100 text-bordo',
     nome: 'Compromisso',
   },
+  comunicado_escola: {
+    card: 'border-teal-300 bg-teal-50 hover:border-teal-400 hover:bg-teal-100/70',
+    label: 'text-teal-900',
+    chip: 'bg-teal-700 text-white',
+    nome: 'Comunicado da Escola',
+  },
+  alocacao_escola: {
+    card: 'border-blue-300 bg-blue-50 hover:border-blue-400 hover:bg-blue-100/70 ring-1 ring-blue-200',
+    label: 'text-blue-900',
+    chip: 'bg-blue-700 text-white',
+    nome: 'Alocação da Escola',
+  },
 }
 
-function tipoVisual(tipo) {
+function tipoVisual(tipo, origem, isFromSchool) {
+  if (origem === 'alocacao_escola' || isFromSchool) return TIPO_CARD.alocacao_escola
+  if (origem === 'comunicado_escola') return TIPO_CARD.comunicado_escola
   return TIPO_CARD[tipo] || TIPO_CARD.geral
+}
+
+function isComunicadoEscola(ev) {
+  return ev?.origem === 'comunicado_escola' || Boolean(ev?.meta_json?.comunicado_escola)
+}
+
+function isAlocacaoEscola(ev) {
+  return (
+    ev?.origem === 'alocacao_escola' ||
+    Boolean(ev?.is_from_school) ||
+    Boolean(ev?.meta_json?.alocacao_escola) ||
+    Boolean(ev?.meta_json?.is_from_school)
+  )
 }
 
 const TURNO_LABEL = { manha: 'Manhã', tarde: 'Tarde', noite: 'Noite' }
@@ -250,10 +277,11 @@ export default function AgendaExecutiva({
       const d = diaDeEvento(ev.data_evento)
       if (!d) return
       if (!map[d]) {
-        map[d] = { done: true, desafio: false, dia: false, geral: false }
+        map[d] = { done: true, desafio: false, dia: false, geral: false, comunicado: false }
       }
       if (ev.status !== 'concluido') map[d].done = false
-      if (ev.tipo === 'aula_eduscrum') map[d].desafio = true
+      if (isComunicadoEscola(ev)) map[d].comunicado = true
+      else if (ev.tipo === 'aula_eduscrum') map[d].desafio = true
       else if (ev.tipo === 'aula_dia') map[d].dia = true
       else map[d].geral = true
     })
@@ -327,6 +355,18 @@ export default function AgendaExecutiva({
    */
   function handleEventClick(ev) {
     if (!ev) return
+    if (isComunicadoEscola(ev)) {
+      // Somente leitura — abre visualização sem edição
+      setModal({
+        mode: 'view_comunicado',
+        id_evento: ev.id_evento,
+        titulo: ev.titulo || '',
+        data_evento: diaDeEvento(ev.data_evento),
+        nota_texto: ev.nota_texto || '',
+        tipo_label: ev.meta_json?.tipo_label || 'Comunicado da Escola',
+      })
+      return
+    }
     if (ev.status === 'concluido') {
       openEdit(ev)
       return
@@ -489,6 +529,7 @@ export default function AgendaExecutiva({
                 if (highlightBusyDays && hasEv && !isSelected) {
                   if (dayInfo.desafio) busyTone = 'bg-amber-200 text-amber-950 ring-2 ring-amber-400'
                   else if (dayInfo.dia) busyTone = 'bg-emerald-200 text-emerald-950 ring-2 ring-emerald-400'
+                  else if (dayInfo.comunicado) busyTone = 'bg-teal-200 text-teal-950 ring-2 ring-teal-400'
                   else busyTone = 'bg-brand-200 text-bordo-deep ring-2 ring-brand-400'
                 }
                 return (
@@ -532,6 +573,14 @@ export default function AgendaExecutiva({
                               isSelected ? 'bg-white' : 'bg-brand-600'
                             }`}
                             title="Compromisso"
+                          />
+                        ) : null}
+                        {dayInfo.comunicado ? (
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              isSelected ? 'bg-teal-100' : 'bg-teal-600'
+                            }`}
+                            title="Comunicado da Escola"
                           />
                         ) : null}
                       </span>
@@ -578,9 +627,11 @@ export default function AgendaExecutiva({
               <ul className="flex-1 space-y-2 overflow-y-auto">
                 {eventosDoDia.map((ev) => {
                   const retomavel = ev.status !== 'concluido' && hasPlanData(ev.plan_data)
-                  const visual = tipoVisual(ev.tipo)
+                  const alocacao = isAlocacaoEscola(ev)
+                  const visual = tipoVisual(ev.tipo, ev.origem, alocacao)
                   const fromMap =
                     focusEventId != null && String(focusEventId) === String(ev.id_evento)
+                  const comunicado = isComunicadoEscola(ev)
                   return (
                   <li key={ev.id_evento}>
                     <button
@@ -594,13 +645,22 @@ export default function AgendaExecutiva({
                         <p className="text-sm font-bold text-bordo-deep">{ev.titulo}</p>
                         <span
                           className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
-                            STATUS_STYLE[ev.status] || STATUS_STYLE.planejado
+                            alocacao || comunicado
+                              ? visual.chip
+                              : STATUS_STYLE[ev.status] || STATUS_STYLE.planejado
                           }`}
                         >
-                          {STATUS_LABEL[ev.status] || ev.status || 'Planejado'}
+                          {alocacao
+                            ? 'Alocação da Escola'
+                            : comunicado
+                              ? 'Escola'
+                              : STATUS_LABEL[ev.status] || ev.status || 'Planejado'}
                         </span>
                       </div>
-                      {ev.tipo === 'aula_eduscrum' || ev.tipo === 'aula_dia' ? (
+                      {alocacao ||
+                      comunicado ||
+                      ev.tipo === 'aula_eduscrum' ||
+                      ev.tipo === 'aula_dia' ? (
                         <p
                           className={`mt-1 text-[10px] font-semibold uppercase tracking-wide ${visual.label}`}
                         >
@@ -653,6 +713,28 @@ export default function AgendaExecutiva({
             if (e.target === e.currentTarget) setModal(null)
           }}
         >
+          {modal.mode === 'view_comunicado' ? (
+            <div className="w-full max-w-md rounded-2xl border border-teal-200 bg-white p-5 shadow-soft">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-teal-800">
+                {modal.tipo_label || 'Comunicado da Escola'}
+              </p>
+              <h3 className="mt-1 font-display text-lg font-bold text-bordo-deep">{modal.titulo}</h3>
+              <p className="mt-2 text-xs text-bordo-soft">
+                {modal.data_evento
+                  ? new Date(`${modal.data_evento}T12:00:00`).toLocaleDateString('pt-BR')
+                  : '—'}
+              </p>
+              {modal.nota_texto ? (
+                <p className="mt-3 text-sm leading-relaxed text-bordo">{modal.nota_texto}</p>
+              ) : null}
+              <p className="mt-4 text-xs text-bordo-soft">Somente leitura — publicado pela escola.</p>
+              <div className="mt-5 flex justify-end">
+                <button type="button" className="btn-primary !px-4 !py-2 text-sm" onClick={() => setModal(null)}>
+                  Fechar
+                </button>
+              </div>
+            </div>
+          ) : (
           <form
             onSubmit={saveModal}
             className="w-full max-w-md rounded-2xl border border-brand-200 bg-white p-5 shadow-soft"
@@ -734,6 +816,7 @@ export default function AgendaExecutiva({
               </div>
             </div>
           </form>
+          )}
         </div>
       ) : null}
     </section>

@@ -89,6 +89,7 @@ def ensure_creditos_ia_column() -> None:
             )
     _creditos_ensured = True
     ensure_nina_onboarding_column()
+    ensure_instituicao_b2b_columns()
 
 
 def ensure_nina_onboarding_column() -> None:
@@ -108,6 +109,31 @@ def ensure_nina_onboarding_column() -> None:
     _nina_onboarding_ensured = True
 
 
+_instituicao_b2b_ensured = False
+
+
+def ensure_instituicao_b2b_columns() -> None:
+    """Garante instituicao_b2b_id + institutional_name em ctdi_clie (Chave Mestra)."""
+    global _instituicao_b2b_ensured
+    if _instituicao_b2b_ensured:
+        return
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                ALTER TABLE public.ctdi_clie
+                    ADD COLUMN IF NOT EXISTS instituicao_b2b_id UUID
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE public.ctdi_clie
+                    ADD COLUMN IF NOT EXISTS institutional_name TEXT
+                """
+            )
+    _instituicao_b2b_ensured = True
+
+
 def find_cliente_by_email(email: str) -> dict | None:
     """Consulta solicitações (ctdi_clie) pelo e-mail — case-insensitive."""
     normalized = (email or "").strip().lower()
@@ -120,7 +146,9 @@ def find_cliente_by_email(email: str) -> dict | None:
                 """
                 SELECT id_clie, nome_clie, mail_clie, empresa_clie,
                        init_role, has_active_project, creditos_ia, plan_tier,
-                       COALESCE(nina_onboarding_done, FALSE) AS nina_onboarding_done
+                       COALESCE(nina_onboarding_done, FALSE) AS nina_onboarding_done,
+                       instituicao_b2b_id,
+                       institutional_name
                 FROM public.ctdi_clie
                 WHERE mail_clie IS NOT NULL
                   AND LOWER(TRIM(mail_clie)) = %s

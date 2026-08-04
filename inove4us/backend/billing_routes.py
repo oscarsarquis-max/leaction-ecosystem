@@ -32,6 +32,23 @@ def require_session(view):
     return wrapped
 
 
+def _reject_institutional_billing():
+    """Professores institucionais não compram no Hub (licença da escola)."""
+    user = session.get("user") or {}
+    if user.get("is_institutional") or user.get("instituicao_b2b_id"):
+        return (
+            jsonify(
+                {
+                    "error": "Conta institucional: planos e créditos são geridos pela escola.",
+                    "code": "INSTITUTIONAL_BILLING_BLOCKED",
+                    "is_institutional": True,
+                }
+            ),
+            403,
+        )
+    return None
+
+
 def _hub_secret() -> str:
     return (
         os.environ.get("ACTIONHUB_WEBHOOK_SECRET")
@@ -80,6 +97,9 @@ def plans_checkout_url():
     URL da vitrine intermediária no Action Hub (/checkout/inove4us),
     no mesmo padrão PanelDX — escolha de plano antes do Brick.
     """
+    blocked = _reject_institutional_billing()
+    if blocked:
+        return blocked
     user = session["user"]
     email = str(user.get("mail_clie") or "").strip().lower()
     frontend = _frontend_origin()
@@ -101,6 +121,9 @@ def plans_checkout_url():
 @billing_bp.post("/api/billing/checkout")
 @require_session
 def create_checkout():
+    blocked = _reject_institutional_billing()
+    if blocked:
+        return blocked
     user = session["user"]
     subject_id = str(user.get("mail_clie") or "").strip().lower()
     body = request.get_json(silent=True) or {}

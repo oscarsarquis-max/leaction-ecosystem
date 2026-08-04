@@ -130,12 +130,27 @@ function createContractService(pool) {
 
       // --- webhook_outbox ---
       const hasCredits = items.some((i) => i.item_type === 'credit_pack');
-      const eventType = hasCredits ? 'CREDITS_GRANTED' : 'CONTRACT_ACTIVATED';
+      const hasSeats = items.some((i) => i.item_type === 'seat');
+      const eventType = hasCredits
+        ? 'CREDITS_GRANTED'
+        : hasSeats
+          ? 'LICENSES_GRANTED'
+          : 'CONTRACT_ACTIVATED';
       const idempotencyKey = `order_${orderId}_activation`;
       // Delta desta compra (não o saldo acumulado do snapshot — satélites fazem += )
       const creditsAdded = items
         .filter((i) => i.item_type === 'credit_pack')
         .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+      const licensesAdded =
+        Number(
+          hubPayload?.licenses_granted ??
+            hubPayload?.seats ??
+            hubPayload?.quantidade ??
+            0
+        ) ||
+        items
+          .filter((i) => i.item_type === 'seat' || i.item_type === 'addon')
+          .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
       const direitos =
         hubPayload?.direitos ||
         hubPayload?.entitlements ||
@@ -151,6 +166,9 @@ function createContractService(pool) {
       const outboxPayload = {
         subject_type: subjectType,
         subject_id: subjectId,
+        instituicao_id:
+          hubPayload?.instituicao_id ||
+          (subjectType === 'instituicao' ? subjectId : null),
         contract_id: contract.id,
         order_id: orderId,
         event_type: eventType,
@@ -160,6 +178,11 @@ function createContractService(pool) {
         credits_added: creditsAdded,
         creditos_saldo: snap.payload.credits ?? 0,
         credits_balance: snap.payload.credits ?? 0,
+        licenses_granted: licensesAdded,
+        licenses: licensesAdded,
+        licencas: licensesAdded,
+        seats: licensesAdded,
+        seats_balance: snap.payload.seats ?? licensesAdded,
         plan: snap.payload.plan || null,
         premium: Boolean(snap.payload.premium),
         sku: hubPayload?.sku || null,
@@ -498,13 +521,19 @@ function buildContractItems(order, hubPayload) {
     ];
   }
 
-  // Assento explícito
+  // Assento explícito (ex.: inove4us-school school-starter-50)
   if (declaredType === 'seat') {
     return [
       {
         item_type: 'seat',
         sku,
-        quantity: Number(hubPayload?.quantidade || hubPayload?.seats || 1) || 1,
+        quantity:
+          Number(
+            hubPayload?.licenses_granted ||
+              hubPayload?.quantidade ||
+              hubPayload?.seats ||
+              1
+          ) || 1,
         unit_label: 'seats',
         meta_json: { hub_payload: hubPayload },
       },

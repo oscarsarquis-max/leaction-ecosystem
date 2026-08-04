@@ -526,11 +526,141 @@ function normalizeCmsLanding(landing, defaultsSource = null) {
   };
 }
 
+function defaultInove4usSchoolLanding() {
+  return {
+    hero: {
+      leaction_title: 'inove4us School',
+      paneldx_title: 'Torre de Controle',
+      subtitle: 'Governança pedagógica da escola',
+      description:
+        'Metodologias, PEI e calendário em um só lugar — para gestores, secretaria e neuropedagogas.',
+    },
+    columns: [
+      {
+        image_url: '',
+        title: 'O que é o inove4us School',
+        description:
+          'Torre de Controle B2B: a escola governa o método; os professores executam no inove4us.',
+        visible: true,
+        layout: 'premium_banner',
+      },
+      {
+        video_url: '',
+        image_url: '',
+        title: 'Como entrar',
+        description:
+          'Acesso com e-mail e senha do gestor. Zonas administrativo, operacional e pedagógico conforme o perfil.',
+        visible: true,
+        link_url: '',
+        link_text: '',
+      },
+      {
+        image_url: '',
+        title: '',
+        description: '',
+        link_url: '',
+        link_text: 'Leia mais →',
+        source: 'blog',
+      },
+      {
+        image_url: '',
+        title: '',
+        description: '',
+        link_url: '',
+        link_text: 'Leia mais →',
+        source: 'blog',
+      },
+      {
+        image_url: '',
+        title: '',
+        description: '',
+        link_url: '',
+        link_text: 'Leia mais →',
+        source: 'blog',
+      },
+    ],
+    app_version: defaultAppVersion(),
+    hero_cta: {
+      ...defaultHeroCta(),
+      visible: false,
+      badge_text: 'B2B',
+      title: 'Entre na Torre de Controle',
+      subtitle: 'Acesso institucional com zonas por perfil.',
+      button_text: 'Entrar',
+      button_url: '/acesso',
+      bg_color_start: '#062e28',
+      bg_color_end: '#0f6b5c',
+      pill_bg_color: '#0c574b',
+      button_bg_color: '#0f6b5c',
+      button_shadow_color: '#062e28',
+    },
+    coluna1: {
+      ...defaultColuna1(),
+      pill_text: 'Instituição',
+      title: 'O que é o inove4us School',
+      subtitle:
+        'Torre de Controle B2B: a escola governa o método; os professores executam no inove4us.',
+      cta_text: '',
+      cta_url: '',
+      bg_color_start: '#062e28',
+      bg_color_end: '#0f6b5c',
+      border_color: 'rgba(15, 107, 92, 0.35)',
+      pill_bg_color: '#0c574b',
+      accent_color: '#0f6b5c',
+      button_bg_color: '#0f6b5c',
+      button_shadow_color: '#062e28',
+    },
+    cta_consultor: {
+      title: 'Entre na Torre de Controle',
+      button_text: 'Entrar',
+      visible: false,
+    },
+    insights_section: {
+      title: 'Para a escola',
+      subtitle: 'Três zonas de acesso, um login.',
+    },
+    insights: [
+      {
+        title: 'Pedagógico',
+        summary: 'Editor de metodologias, plano geral de PEI e calendário de auditoria.',
+        link_url: '',
+        link_text: '',
+      },
+      {
+        title: 'Operacional',
+        summary: 'Secretaria: turmas, alunos, calendário letivo e comunicações.',
+        link_url: '',
+        link_text: '',
+      },
+      {
+        title: 'Administrativo',
+        summary: 'Licenças, plano e gestão da equipe gestora.',
+        link_url: '',
+        link_text: '',
+      },
+    ],
+  };
+}
+
+function defaultInove4usSchoolInstructions() {
+  return (
+    '<h2>inove4us School — página de acesso</h2>' +
+    '<p>Colunas e hero do Micro-CMS alimentam <code>/acesso</code> no satélite inove4us-school. ' +
+    'Edite em Action Hub → CMS → config_key <code>inove4us-school</code>.</p>'
+  );
+}
+
 function defaultsForConfigKey(configKey) {
   if (configKey === 'inove4us') {
     return {
       landing: defaultInove4usLanding(),
       instructions: defaultInove4usInstructions(),
+    };
+  }
+  if (configKey === 'inove4us-school') {
+    return {
+      landing: defaultInove4usSchoolLanding(),
+      instructions: defaultInove4usSchoolInstructions(),
     };
   }
   return {
@@ -577,6 +707,8 @@ module.exports = {
   defaultCmsInstructions,
   defaultInove4usLanding,
   defaultInove4usInstructions,
+  defaultInove4usSchoolLanding,
+  defaultInove4usSchoolInstructions,
   defaultsForConfigKey,
   normalizeCmsLanding,
   serializeCmsRow,

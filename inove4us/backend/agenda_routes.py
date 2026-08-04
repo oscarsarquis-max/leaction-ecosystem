@@ -32,10 +32,12 @@ SELECT_COLS = """
     plan_data, kanban_state,
     turma, turno, modo_execucao,
     disciplina_id, origem, id_externo_importacao, tema, desafio_id,
-    id_clie_responsavel
+    id_clie_responsavel, comunicado_escola_id, is_from_school
 """
 
-ORIGENS = frozenset({"manual", "wizard_ia", "importacao"})
+ORIGENS = frozenset(
+    {"manual", "wizard_ia", "importacao", "comunicado_escola", "alocacao_escola"}
+)
 
 
 def _require_user():
@@ -95,6 +97,8 @@ def _ensure_table(conn):
                 ADD COLUMN IF NOT EXISTS origem VARCHAR(20) NOT NULL DEFAULT 'manual';
             ALTER TABLE public.inove_agenda_eventos
                 ADD COLUMN IF NOT EXISTS id_externo_importacao VARCHAR(160);
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS is_from_school BOOLEAN NOT NULL DEFAULT FALSE;
 
             CREATE INDEX IF NOT EXISTS idx_inove_agenda_eventos_session
                 ON public.inove_agenda_eventos (id_clie, plano_session);
@@ -560,7 +564,8 @@ def list_eventos():
                            e.id_evento_pai, e.relato_sala, e.participantes,
                            e.plan_data, e.kanban_state,
                            e.turma, e.turno, e.modo_execucao,
-                           e.disciplina_id, e.origem, e.id_externo_importacao
+                           e.disciplina_id, e.origem, e.id_externo_importacao,
+                           e.is_from_school, e.tema
                     FROM public.inove_agenda_eventos e
                     LEFT JOIN public.inove_disciplinas d ON d.id = e.disciplina_id
                     LEFT JOIN public.inove_cursos c ON c.id = d.curso_id
@@ -669,6 +674,8 @@ def grafo_realizacoes():
                       LEFT JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
                       LEFT JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
                      WHERE e.id_clie = %s
+                       AND COALESCE(e.origem, 'manual') <> 'comunicado_escola'
+                       AND COALESCE(e.origem, 'manual') <> 'alocacao_escola'
                 """
                 params: list = [id_clie]
                 if periodo_meta is not None:
@@ -1889,6 +1896,16 @@ def evento_detail(id_evento: int):
                     row = cur.fetchone()
                     if not row:
                         return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+                    if (row.get("origem") or "") == "comunicado_escola":
+                        return (
+                            jsonify(
+                                {
+                                    "success": False,
+                                    "error": "Comunicado da escola é somente leitura.",
+                                }
+                            ),
+                            403,
+                        )
                     _pl, pode_editar = _can_access_evento(cur, user["id_clie"], dict(row))
                     if not pode_editar:
                         return jsonify({"success": False, "error": "Evento não encontrado"}), 404
@@ -1915,6 +1932,16 @@ def evento_detail(id_evento: int):
                 atual = cur.fetchone()
                 if not atual:
                     return jsonify({"success": False, "error": "Evento não encontrado"}), 404
+                if (atual.get("origem") or "") == "comunicado_escola":
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Comunicado da escola é somente leitura.",
+                            }
+                        ),
+                        403,
+                    )
                 _pl, pode_editar = _can_access_evento(cur, user["id_clie"], dict(atual))
                 if not pode_editar:
                     return jsonify(

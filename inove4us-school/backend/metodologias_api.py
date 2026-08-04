@@ -531,4 +531,19 @@ def upsert_instituicao_metodologia(instituicao_id: str, metodologia_catalogo_id:
 
     if not row:
         return jsonify({"error": "Não foi possível confirmar o salvamento"}), 500
-    return jsonify(_row_merged(row))
+
+    merged = _row_merged(row)
+    # Top-down S2S: coordenador editou metodologia → B2C sobrescreve canônico na IA.
+    try:
+        from b2c_integration_service import dispatch_methodology_override_updated
+
+        dispatch_methodology_override_updated(
+            instituicao_id=str(parsed_inst),
+            metodologia_nome=str(merged.get("nome") or ""),
+            diretriz_customizada=merged.get("diretriz_customizada"),
+        )
+    except Exception as exc:
+        # Falha de ponte não bloqueia o save local do Editor Pedagógico.
+        print(f"[metodologias] dispatch B2C falhou: {exc}", flush=True)
+
+    return jsonify(merged)

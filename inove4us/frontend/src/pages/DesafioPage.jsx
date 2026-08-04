@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import { CrmEvents, trackEvent } from '../lib/tracking'
 import FloatingDictation from '../components/FloatingDictation'
 import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
+import InstitutionalPlanBadge from '../components/InstitutionalPlanBadge'
 import ProgressStepper from '../components/wizard/ProgressStepper'
 import StepProblema from '../components/wizard/StepProblema'
 import StepEstruturacao from '../components/wizard/StepEstruturacao'
@@ -120,8 +121,14 @@ export default function DesafioPage() {
         setError('')
         applyCredits(0)
         void refresh()
-        setUpgradeExhausted(true)
-        setShowUpgradeModal(true)
+        if (!user?.is_institutional) {
+          setUpgradeExhausted(true)
+          setShowUpgradeModal(true)
+        } else {
+          setError(
+            'Sua licença é institucional. Se precisar de mais capacidade, fale com a coordenação da escola.',
+          )
+        }
         return
       }
       setError(err.message || 'Não foi possível estruturar o problema.')
@@ -188,30 +195,36 @@ export default function DesafioPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {user?.creditos_ia != null ? (
-            <button
-              type="button"
-              onClick={() => {
-                setUpgradeExhausted(false)
-                setShowUpgradeModal(true)
-              }}
-              className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo hover:bg-brand-100"
-              title="Ver planos e desafios disponíveis"
-            >
-              {Number(user.creditos_ia)} desafio
-              {Number(user.creditos_ia) === 1 ? '' : 's'}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => {
-              setUpgradeExhausted(false)
-              setShowUpgradeModal(true)
-            }}
-            className="btn-primary !px-3 !py-1.5 text-xs"
-          >
-            Ver planos
-          </button>
+          {user?.is_institutional ? (
+            <InstitutionalPlanBadge institutionalName={user?.institutional_name} />
+          ) : (
+            <>
+              {user?.creditos_ia != null ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUpgradeExhausted(false)
+                    setShowUpgradeModal(true)
+                  }}
+                  className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo hover:bg-brand-100"
+                  title="Ver planos e desafios disponíveis"
+                >
+                  {Number(user.creditos_ia)} desafio
+                  {Number(user.creditos_ia) === 1 ? '' : 's'}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setUpgradeExhausted(false)
+                  setShowUpgradeModal(true)
+                }}
+                className="btn-primary !px-3 !py-1.5 text-xs"
+              >
+                Ver planos
+              </button>
+            </>
+          )}
           <button type="button" onClick={logout} className="btn-ghost !px-3 !py-1.5 text-xs">
             Sair
           </button>
@@ -287,7 +300,7 @@ export default function DesafioPage() {
       />
 
       <UpgradeCreditsModal
-        open={showUpgradeModal}
+        open={!user?.is_institutional && showUpgradeModal}
         exhausted={upgradeExhausted}
         onClose={() => {
           setShowUpgradeModal(false)

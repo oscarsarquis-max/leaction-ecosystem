@@ -35,6 +35,8 @@ from wizard_routes import wizard_bp  # noqa: E402
 from agenda_routes import agenda_bp  # noqa: E402
 from desafios_routes import desafios_bp  # noqa: E402
 from webhook_routes import webhook_bp  # noqa: E402
+from webhook_school_routes import webhook_school_bp  # noqa: E402
+from school_integracao_routes import school_integracao_bp  # noqa: E402
 from feedback_routes import feedback_bp  # noqa: E402
 from version_info import version_payload  # noqa: E402
 from billing_routes import billing_bp  # noqa: E402
@@ -72,6 +74,11 @@ def _session_user(cliente: dict) -> dict:
         quota = aulas_simples_quota(int(id_clie))
     except Exception:
         quota = None
+    inst_raw = cliente.get("instituicao_b2b_id")
+    inst_id = str(inst_raw).strip() if inst_raw else None
+    if inst_id in ("", "None", "null"):
+        inst_id = None
+    inst_name = str(cliente.get("institutional_name") or "").strip() or None
     return {
         "id_clie": id_clie,
         "nome_clie": cliente.get("nome_clie") or "",
@@ -81,6 +88,10 @@ def _session_user(cliente: dict) -> dict:
         "plan_tier": str(cliente.get("plan_tier") or "starter"),
         "nina_onboarding_done": bool(cliente.get("nina_onboarding_done")),
         "aulas_mes": quota,
+        # Chave Mestra UX: solo vs institucional (School B2B)
+        "is_institutional": bool(inst_id),
+        "instituicao_b2b_id": inst_id,
+        "institutional_name": inst_name,
     }
 
 
@@ -139,6 +150,10 @@ def create_app() -> Flask:
     app.register_blueprint(desafios_bp)
     # Action Hub — webhooks S2S (sem login de sessão)
     app.register_blueprint(webhook_bp)
+    # Ponte interna School → B2C (JWT HS256 / METHODOLOGY_OVERRIDE_UPDATED)
+    app.register_blueprint(webhook_school_bp)
+    # School → B2C (comunicados / mural)
+    app.register_blueprint(school_integracao_bp)
     # Billing — proxy S2S checkout (secret fica só no backend)
     app.register_blueprint(billing_bp)
     # Programa de Co-criação — ideias / bugs / melhorias

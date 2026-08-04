@@ -20,6 +20,7 @@ import ImportacoesPage from './pages/ImportacoesPage'
 import InstituicoesPage from './pages/InstituicoesPage'
 import MesaDoInovador from './pages/MesaDoInovador'
 import MesaDoDesafioPage from './pages/MesaDoDesafioPage'
+import PlanosPage from './pages/PlanosPage'
 
 function LoadingScreen({ label = 'Carregando…' }) {
   return (
@@ -131,6 +132,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MesaDoInovador />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/planos"
+        element={
+          <ProtectedRoute>
+            <PlanosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/plans"
+        element={
+          <ProtectedRoute>
+            <PlanosPage />
           </ProtectedRoute>
         }
       />

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { NINA_AVATAR_SRC } from '../lib/ninaAvatar'
 import UpgradeCreditsModal from './UpgradeCreditsModal'
 
@@ -26,6 +27,7 @@ function NinaAvatar({ className = 'h-7 w-7', alt = '' }) {
  */
 export default function AssistenteChat() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [tree, setTree] = useState(null)
   const [nodeId, setNodeId] = useState('inicio')
@@ -35,6 +37,7 @@ export default function AssistenteChat() {
   const [toast, setToast] = useState('')
   const [upgradeHint, setUpgradeHint] = useState(false)
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const isInstitutional = Boolean(user?.is_institutional)
 
   const loadTree = useCallback(async () => {
     setLoadError('')
@@ -70,6 +73,13 @@ export default function AssistenteChat() {
   function handleOption(opt) {
     if (!opt) return
     if (opt.action === 'open_upgrade') {
+      if (isInstitutional) {
+        const school =
+          (user?.institutional_name && String(user.institutional_name).trim()) ||
+          'sua escola'
+        setToast(`Licença patrocinada por ${school}. Planos do Hub não se aplicam.`)
+        return
+      }
       setUpgradeHint(true)
       setShowUpgrade(true)
       return
@@ -201,7 +211,7 @@ export default function AssistenteChat() {
                 </div>
               ) : null}
 
-              {upgradeHint ? (
+              {upgradeHint && !isInstitutional ? (
                 <p className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs text-bordo">
                   Se o modal de planos não abriu, use <strong>Ver planos</strong> no topo da
                   tela.
@@ -235,7 +245,7 @@ export default function AssistenteChat() {
       ) : null}
 
       <UpgradeCreditsModal
-        open={showUpgrade}
+        open={!isInstitutional && showUpgrade}
         onClose={() => setShowUpgrade(false)}
       />
     </>

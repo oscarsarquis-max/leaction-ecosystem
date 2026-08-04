@@ -45,9 +45,29 @@ function serializePublicPlan(row) {
     currency: row.currency || 'BRL',
     features: Array.isArray(row.features) ? row.features : [],
     credits: credits > 0 ? credits : null,
+    licenses_granted:
+      Number(
+        meta.licenses_granted ??
+          meta.seats ??
+          direitos?.licenses_granted ??
+          direitos?.seats ??
+          0
+      ) || null,
     meta_json: {
       creditos: meta.creditos ?? meta.credits ?? direitos?.creditos ?? direitos?.credits ?? undefined,
       credits: credits > 0 ? credits : undefined,
+      licenses_granted:
+        Number(
+          meta.licenses_granted ??
+            meta.seats ??
+            direitos?.licenses_granted ??
+            direitos?.seats ??
+            0
+        ) || undefined,
+      seats:
+        Number(
+          meta.seats ?? meta.licenses_granted ?? direitos?.seats ?? direitos?.licenses_granted ?? 0
+        ) || undefined,
       period_months: meta.period_months ?? meta.meses ?? undefined,
       periodicidade: meta.periodicidade || undefined,
       display_order:

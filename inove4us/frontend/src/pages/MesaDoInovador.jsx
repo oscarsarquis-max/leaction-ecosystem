@@ -7,6 +7,8 @@ import MapaRealizacoes from '../components/MapaRealizacoes'
 import AgendaExecutiva from '../components/AgendaExecutiva'
 import DesafioSeletor from '../components/DesafioSeletor'
 import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
+import InstitutionalPlanBadge from '../components/InstitutionalPlanBadge'
+import MuralEscola from '../components/MuralEscola'
 
 /**
  * Página inicial — realizações + agenda. O fluxo de investigação fica em /desafio.
@@ -22,6 +24,7 @@ export default function MesaDoInovador() {
   const origemFiltro = (searchParams.get('origem') || '').trim() || null
   const mesFiltro = (searchParams.get('mes') || '').trim() // YYYY-MM
   const notices = Array.isArray(user?.hub_notices) ? user.hub_notices : []
+  const isInstitutional = Boolean(user?.is_institutional)
 
   async function dismissNotice(id) {
     try {
@@ -46,24 +49,30 @@ export default function MesaDoInovador() {
             <p className="hidden text-sm text-bordo-soft sm:block">
               Olá, <span className="font-semibold text-bordo">{user?.nome_clie || 'professor'}</span>
             </p>
-            {user?.creditos_ia != null ? (
-              <button
-                type="button"
-                onClick={() => setShowUpgradeModal(true)}
-                className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo hover:bg-brand-100"
-                title="Ver planos e desafios disponíveis"
-              >
-                {Number(user.creditos_ia)} desafio
-                {Number(user.creditos_ia) === 1 ? '' : 's'}
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setShowUpgradeModal(true)}
-              className="btn-ghost !px-3 !py-1.5 text-xs font-semibold"
-            >
-              Ver planos
-            </button>
+            {isInstitutional ? (
+              <InstitutionalPlanBadge institutionalName={user?.institutional_name} />
+            ) : (
+              <>
+                {user?.creditos_ia != null ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-bordo hover:bg-brand-100"
+                    title="Ver planos e desafios disponíveis"
+                  >
+                    {Number(user.creditos_ia)} desafio
+                    {Number(user.creditos_ia) === 1 ? '' : 's'}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="btn-ghost !px-3 !py-1.5 text-xs font-semibold"
+                >
+                  Ver planos
+                </button>
+              </>
+            )}
             <Link to="/instituicoes" className="btn-ghost !px-3 !py-1.5 text-xs font-semibold">
               Instituições
             </Link>
@@ -130,6 +139,8 @@ export default function MesaDoInovador() {
           ) : null}
         </div>
 
+        <MuralEscola />
+
         <DesafioSeletor className="mb-8" />
 
         <MapaRealizacoes
@@ -171,7 +182,7 @@ export default function MesaDoInovador() {
       </main>
 
       <UpgradeCreditsModal
-        open={showUpgradeModal}
+        open={!isInstitutional && showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
       />
     </div>

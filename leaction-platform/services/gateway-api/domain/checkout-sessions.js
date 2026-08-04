@@ -204,6 +204,28 @@ function registerCheckoutSessionsRoutes(app, pool) {
         });
       }
 
+      const direitosMeta =
+        (meta.direitos && typeof meta.direitos === 'object' ? meta.direitos : null) ||
+        (meta.entitlements && typeof meta.entitlements === 'object' ? meta.entitlements : null) ||
+        {};
+      const licensesGranted = Math.floor(
+        Number(
+          meta.licenses_granted ??
+            meta.seats ??
+            meta.quantidade ??
+            direitosMeta.licenses_granted ??
+            direitosMeta.seats ??
+            0
+        ) || 0
+      );
+      if ((planType === 'seat' || planType === 'addon') && licensesGranted <= 0) {
+        return res.status(422).json({
+          error:
+            'Plano de assentos sem meta_json.licenses_granted (ou seats / direitos.licenses_granted)',
+          sku: plan.sku,
+        });
+      }
+
       const subjectLooksLikeEmail = subjectId.includes('@');
       const payerEmail = subjectLooksLikeEmail
         ? subjectId.toLowerCase()
@@ -229,7 +251,10 @@ function registerCheckoutSessionsRoutes(app, pool) {
       const hubPayload = {
         app_id: appId,
         subject_id: subjectId,
-        subject_type: subjectLooksLikeEmail ? 'email' : String(body.subject_type || 'email'),
+        subject_type: subjectLooksLikeEmail
+          ? 'email'
+          : String(body.subject_type || 'instituicao'),
+        instituicao_id: !subjectLooksLikeEmail ? subjectId : body.instituicao_id || undefined,
         sku: plan.sku,
         catalog_plan_id: plan.id,
         catalog_type: planType,
@@ -238,6 +263,9 @@ function registerCheckoutSessionsRoutes(app, pool) {
         valor_negociado: price,
         currency: plan.currency || 'BRL',
         credits: credits > 0 ? credits : undefined,
+        licenses_granted: licensesGranted > 0 ? licensesGranted : undefined,
+        seats: licensesGranted > 0 ? licensesGranted : undefined,
+        quantidade: licensesGranted > 0 ? licensesGranted : undefined,
         period_months: Number(meta.period_months || meta.meses || 0) || undefined,
         periodicidade: meta.periodicidade || undefined,
         entitlements: meta.direitos || meta.entitlements || undefined,

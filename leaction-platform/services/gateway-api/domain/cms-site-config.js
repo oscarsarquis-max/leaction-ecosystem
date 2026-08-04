@@ -3,7 +3,7 @@
 /**
  * Micro-CMS migrado do PanelDX (ctdi_cms_config → cms_site_config no Hub).
  * APIs: GET /api/public/cms · GET/PUT /api/admin/cms
- * Query/body: config_key=default|inove4us (default = landing PanelDX).
+ * Query/body: config_key=default|inove4us|inove4us-school (default = landing PanelDX).
  *
  * Persistência:
  * - Postgres = leitura rápida / operacional
@@ -25,7 +25,7 @@ const {
 } = require('./cms-blog-sync');
 const cmsS3 = require('../lib/cms-s3-storage');
 
-const ALLOWED_CONFIG_KEYS = new Set(['default', 'inove4us']);
+const ALLOWED_CONFIG_KEYS = new Set(['default', 'inove4us', 'inove4us-school']);
 
 function resolveConfigKey(raw) {
   const key = String(raw || 'default').trim().toLowerCase() || 'default';
@@ -316,7 +316,7 @@ function registerCmsSiteConfigRoutes(app, pool, options = {}) {
   });
 
   console.log(
-    '📰 [cms] Micro-CMS site (/api/public/cms + /api/admin/cms) registrado — keys: default, inove4us' +
+    '📰 [cms] Micro-CMS site (/api/public/cms + /api/admin/cms) registrado — keys: default, inove4us, inove4us-school' +
       (cmsS3.isCmsS3Enabled() ? ' · S3 snapshot ON' : ' · S3 snapshot OFF')
   );
 }

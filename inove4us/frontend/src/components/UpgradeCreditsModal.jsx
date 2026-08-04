@@ -18,6 +18,7 @@ export default function UpgradeCreditsModal({ open, onClose, exhausted = false }
   const [isLoading, setIsLoading] = useState(false)
   const [toast, setToast] = useState('')
 
+  const isInstitutional = Boolean(user?.is_institutional)
   const saldo = Number(user?.creditos_ia)
   const semCreditos =
     exhausted || (Number.isFinite(saldo) && saldo <= 0)
@@ -30,10 +31,18 @@ export default function UpgradeCreditsModal({ open, onClose, exhausted = false }
   }, [open])
 
   useEffect(() => {
+    if (open && isInstitutional) {
+      onClose?.()
+    }
+  }, [open, isInstitutional, onClose])
+
+  useEffect(() => {
     if (!toast) return undefined
     const t = window.setTimeout(() => setToast(''), 4500)
     return () => window.clearTimeout(t)
   }, [toast])
+
+  if (!open || isInstitutional) return null
 
   async function handleUpgrade() {
     if (isLoading) return
@@ -64,8 +73,6 @@ export default function UpgradeCreditsModal({ open, onClose, exhausted = false }
       setToast(ERROR_TOAST)
     }
   }
-
-  if (!open) return null
 
   return (
     <>

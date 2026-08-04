@@ -63,6 +63,12 @@ export const api = {
       method: 'POST',
       body: '{}',
     }),
+  getMural: (includeLidos = false) => {
+    const q = includeLidos ? '?include_lidos=1' : ''
+    return request(`/api/mural${q}`)
+  },
+  marcarCienciaMural: (id) =>
+    request(`/api/mural/${id}/ciencia`, { method: 'POST' }),
   estruturarWizard: (payload) =>
     request('/api/wizard/estruturar', {
       method: 'POST',

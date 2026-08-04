@@ -26,6 +26,11 @@ def _version() -> str:
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-school-secret")
+    app.config["ACTIONHUB_WEBHOOK_SECRET"] = (
+        os.getenv("ACTIONHUB_WEBHOOK_SECRET")
+        or os.getenv("ACTION_HUB_APP_SECRET")
+        or ""
+    ).strip()
 
     origins = [
         o.strip()
@@ -37,10 +42,31 @@ def create_app() -> Flask:
     from metodologias_api import bp as metodologias_bp
     from dashboard_api import bp as dashboard_bp
     from pei_api import bp as pei_bp
+    from cms_api import bp as cms_bp
+    from auth_api import bp as auth_bp
+    from equipe_api import bp as equipe_bp
+    from comunicacoes_api import bp as comunicacoes_bp
+    from secretaria_api import bp as secretaria_bp
+    from secretaria_routes import bp as secretaria_academica_bp
+    from webhook_actionhub_routes import bp as actionhub_webhook_bp
+    from webhook_b2c_routes import bp as b2c_webhook_bp
+    from billing_routes import billing_bp
 
     app.register_blueprint(metodologias_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(pei_bp)
+    app.register_blueprint(cms_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(equipe_bp)
+    app.register_blueprint(comunicacoes_bp)
+    app.register_blueprint(secretaria_bp)
+    # Secretaria Acadêmica — CRUD flat + alocação (TEACHER_ALLOCATED)
+    app.register_blueprint(secretaria_academica_bp)
+    app.register_blueprint(billing_bp)
+    # S2S Outbox — sem sessão de gestor / RBAC
+    app.register_blueprint(actionhub_webhook_bp)
+    # Ponte interna School ← B2C (JWT HS256)
+    app.register_blueprint(b2c_webhook_bp)
 
     @app.get("/api/health")
     def health():
