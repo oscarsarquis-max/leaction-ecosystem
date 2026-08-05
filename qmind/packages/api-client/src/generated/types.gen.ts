@@ -191,6 +191,287 @@ export type ActionPlanTransitionResult = {
 };
 
 /**
+ * AgendaBoardOut
+ */
+export type AgendaBoardOut = {
+    /**
+     * In Progress Assessments
+     */
+    in_progress_assessments: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Month Markers
+     */
+    month_markers: Array<AgendaDaySummary>;
+    next_up: AgendaEventOut | null;
+    /**
+     * Overdue
+     */
+    overdue: Array<AgendaEventOut>;
+    /**
+     * Selected Date
+     */
+    selected_date: string;
+    /**
+     * Selected Day
+     */
+    selected_day: Array<AgendaEventOut>;
+    /**
+     * Timezone
+     */
+    timezone: string;
+    /**
+     * Today
+     */
+    today: Array<AgendaEventOut>;
+};
+
+/**
+ * AgendaDaySummary
+ */
+export type AgendaDaySummary = {
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * Has Overdue
+     */
+    has_overdue?: boolean;
+};
+
+/**
+ * AgendaEventCreate
+ */
+export type AgendaEventCreate = {
+    /**
+     * Assessment Id
+     */
+    assessment_id?: string | null;
+    /**
+     * Description
+     */
+    description?: string;
+    /**
+     * Ends At
+     */
+    ends_at?: string | null;
+    /**
+     * Event Type
+     */
+    event_type: 'interview' | 'meeting' | 'visit' | 'reminder' | 'milestone' | 'deadline' | 'other';
+    /**
+     * Guidance
+     */
+    guidance?: string;
+    /**
+     * Location Or Link
+     */
+    location_or_link?: string;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Participant Membership Ids
+     */
+    participant_membership_ids?: Array<string>;
+    /**
+     * Related Action
+     */
+    related_action?: string;
+    /**
+     * Starts At
+     */
+    starts_at: string;
+    /**
+     * Timezone
+     */
+    timezone?: string;
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
+ * AgendaEventOut
+ */
+export type AgendaEventOut = {
+    /**
+     * Assessment Id
+     */
+    assessment_id: string | null;
+    /**
+     * Assessment Label
+     */
+    assessment_label?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Ends At
+     */
+    ends_at: string | null;
+    /**
+     * Event Type
+     */
+    event_type: 'interview' | 'meeting' | 'visit' | 'reminder' | 'milestone' | 'deadline' | 'other';
+    /**
+     * Guidance
+     */
+    guidance: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Is Auto
+     */
+    is_auto: boolean;
+    /**
+     * Is Overdue
+     */
+    is_overdue?: boolean;
+    /**
+     * Location Or Link
+     */
+    location_or_link: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Owner Label
+     */
+    owner_label?: string | null;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id: string | null;
+    /**
+     * Participant Membership Ids
+     */
+    participant_membership_ids: Array<string>;
+    /**
+     * Preparation
+     */
+    preparation: string;
+    /**
+     * Primary Action Href
+     */
+    primary_action_href?: string | null;
+    /**
+     * Primary Action Label
+     */
+    primary_action_label: string;
+    /**
+     * Related Action
+     */
+    related_action: string;
+    /**
+     * Source Id
+     */
+    source_id?: string | null;
+    /**
+     * Source Kind
+     */
+    source_kind?: string | null;
+    /**
+     * Starts At
+     */
+    starts_at: string;
+    /**
+     * Status
+     */
+    status: 'scheduled' | 'completed' | 'cancelled';
+    /**
+     * Timezone
+     */
+    timezone: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    /**
+     * Why It Matters
+     */
+    why_it_matters: string;
+};
+
+/**
+ * AgendaEventUpdate
+ */
+export type AgendaEventUpdate = {
+    /**
+     * Assessment Id
+     */
+    assessment_id?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Ends At
+     */
+    ends_at?: string | null;
+    /**
+     * Event Type
+     */
+    event_type?: ('interview' | 'meeting' | 'visit' | 'reminder' | 'milestone' | 'deadline' | 'other') | null;
+    /**
+     * Guidance
+     */
+    guidance?: string | null;
+    /**
+     * Location Or Link
+     */
+    location_or_link?: string | null;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Participant Membership Ids
+     */
+    participant_membership_ids?: Array<string> | null;
+    /**
+     * Related Action
+     */
+    related_action?: string | null;
+    /**
+     * Starts At
+     */
+    starts_at?: string | null;
+    /**
+     * Status
+     */
+    status?: ('scheduled' | 'completed' | 'cancelled') | null;
+    /**
+     * Timezone
+     */
+    timezone?: string | null;
+    /**
+     * Title
+     */
+    title?: string | null;
+};
+
+/**
  * AnswerCreate
  */
 export type AnswerCreate = {
@@ -353,7 +634,7 @@ export type AssessmentTransitionResult = {
 /**
  * AssessmentType
  */
-export type AssessmentType = 'diagnosis' | 'internal_audit' | 'other';
+export type AssessmentType = 'diagnosis' | 'internal_audit' | 'external_audit' | 'certification_prep' | 'other';
 
 /**
  * AuthorizeUploadIn
@@ -781,6 +1062,180 @@ export type FindingUpdate = {
 };
 
 /**
+ * GuidedAnswerOut
+ */
+export type GuidedAnswerOut = {
+    /**
+     * Answer Value
+     */
+    answer_value?: ('yes' | 'partial' | 'no' | 'unknown' | 'not_applicable') | null;
+    /**
+     * Description
+     */
+    description?: string;
+    /**
+     * Evidence Ids
+     */
+    evidence_ids?: Array<string>;
+    /**
+     * Evidence Mode
+     */
+    evidence_mode?: 'none' | 'attach' | 'link_existing' | 'describe' | 'provide_later';
+    /**
+     * Evidence Note
+     */
+    evidence_note?: string;
+    /**
+     * Na Justification
+     */
+    na_justification?: string;
+    /**
+     * Provide Later
+     */
+    provide_later?: boolean;
+    /**
+     * Question Id
+     */
+    question_id: string;
+    /**
+     * Question Version
+     */
+    question_version: string;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * GuidedAnswerUpsert
+ */
+export type GuidedAnswerUpsert = {
+    /**
+     * Answer Value
+     */
+    answer_value?: ('yes' | 'partial' | 'no' | 'unknown' | 'not_applicable') | null;
+    /**
+     * Description
+     */
+    description?: string;
+    /**
+     * Evidence Ids
+     */
+    evidence_ids?: Array<string>;
+    /**
+     * Evidence Mode
+     */
+    evidence_mode?: 'none' | 'attach' | 'link_existing' | 'describe' | 'provide_later';
+    /**
+     * Evidence Note
+     */
+    evidence_note?: string;
+    /**
+     * Na Justification
+     */
+    na_justification?: string;
+    /**
+     * Provide Later
+     */
+    provide_later?: boolean;
+    /**
+     * Question Version
+     */
+    question_version: string;
+};
+
+/**
+ * GuidedContextPatch
+ */
+export type GuidedContextPatch = {
+    /**
+     * Context
+     */
+    context?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Current Question Id
+     */
+    current_question_id?: string | null;
+    /**
+     * Current Step
+     */
+    current_step?: ('organization' | 'qms_scope' | 'products_services' | 'sites' | 'processes' | 'stakeholders' | 'route' | 'review') | null;
+};
+
+/**
+ * GuidedPositionPatch
+ */
+export type GuidedPositionPatch = {
+    /**
+     * Current Question Id
+     */
+    current_question_id?: string | null;
+    /**
+     * Current Step
+     */
+    current_step: 'organization' | 'qms_scope' | 'products_services' | 'sites' | 'processes' | 'stakeholders' | 'route' | 'review';
+};
+
+/**
+ * GuidedSessionOut
+ */
+export type GuidedSessionOut = {
+    /**
+     * Answered Count
+     */
+    answered_count?: number;
+    /**
+     * Answers
+     */
+    answers?: Array<GuidedAnswerOut>;
+    /**
+     * Assessment Id
+     */
+    assessment_id: string;
+    /**
+     * Catalog Version
+     */
+    catalog_version: string;
+    /**
+     * Context
+     */
+    context?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Current Question Id
+     */
+    current_question_id?: string | null;
+    /**
+     * Current Step
+     */
+    current_step: 'organization' | 'qms_scope' | 'products_services' | 'sites' | 'processes' | 'stakeholders' | 'route' | 'review';
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Question Count
+     */
+    question_count?: number;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -861,9 +1316,25 @@ export type InterviewTransitionResult = {
  */
 export type JobOut = {
     /**
+     * Attempt Count
+     */
+    attempt_count?: number;
+    /**
      * Created At
      */
     created_at: string;
+    /**
+     * Error Code
+     */
+    error_code?: string | null;
+    /**
+     * Error Safe Message
+     */
+    error_safe_message?: string | null;
+    /**
+     * Finished At
+     */
+    finished_at?: string | null;
     /**
      * Id
      */
@@ -883,9 +1354,23 @@ export type JobOut = {
      */
     job_type: string;
     /**
+     * Max Attempts
+     */
+    max_attempts?: number;
+    /**
      * Organization Id
      */
     organization_id: string;
+    /**
+     * Output Ref
+     */
+    output_ref?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Started At
+     */
+    started_at?: string | null;
     status: JobStatus;
 };
 
@@ -1024,6 +1509,29 @@ export type MembershipOut = {
  * MembershipStatus
  */
 export type MembershipStatus = 'invited' | 'active' | 'revoked' | 'expired';
+
+/**
+ * OrgMemberOut
+ */
+export type OrgMemberOut = {
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Membership Id
+     */
+    membership_id: string;
+    /**
+     * Roles
+     */
+    roles: Array<string>;
+    status: MembershipStatus;
+};
 
 /**
  * OrganizationCreate
@@ -1275,6 +1783,28 @@ export type ScopeItemIn = {
 };
 
 /**
+ * ScopeOptionOut
+ */
+export type ScopeOptionOut = {
+    /**
+     * Already In Scope
+     */
+    already_in_scope?: boolean;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Target Id
+     */
+    target_id: string;
+};
+
+/**
  * ScopeOut
  */
 export type ScopeOut = {
@@ -1291,7 +1821,7 @@ export type ScopeOut = {
      */
     id: string;
     /**
-     * Human label for UI (optional; never show raw UUID alone)
+     * Label
      */
     label?: string | null;
     /**
@@ -1436,6 +1966,10 @@ export type TeamMemberOut = {
      * Id
      */
     id: string;
+    /**
+     * Label
+     */
+    label?: string | null;
     /**
      * Membership Id
      */
@@ -2881,6 +3415,462 @@ export type CompleteActionPlanResponses = {
 
 export type CompleteActionPlanResponse = CompleteActionPlanResponses[keyof CompleteActionPlanResponses];
 
+export type GetAgendaBoardData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Selected Date
+         */
+        selected_date?: string | null;
+    };
+    url: '/api/v1/agenda/board';
+};
+
+export type GetAgendaBoardErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetAgendaBoardError = GetAgendaBoardErrors[keyof GetAgendaBoardErrors];
+
+export type GetAgendaBoardResponses = {
+    /**
+     * Successful Response
+     */
+    200: AgendaBoardOut;
+};
+
+export type GetAgendaBoardResponse = GetAgendaBoardResponses[keyof GetAgendaBoardResponses];
+
+export type ListAgendaEventsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query: {
+        /**
+         * Day
+         * Day in organization timezone (YYYY-MM-DD)
+         */
+        day: string;
+    };
+    url: '/api/v1/agenda/events';
+};
+
+export type ListAgendaEventsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ListAgendaEventsError = ListAgendaEventsErrors[keyof ListAgendaEventsErrors];
+
+export type ListAgendaEventsResponses = {
+    /**
+     * Response Listagendaevents
+     * Successful Response
+     */
+    200: Array<AgendaEventOut>;
+};
+
+export type ListAgendaEventsResponse = ListAgendaEventsResponses[keyof ListAgendaEventsResponses];
+
+export type CreateAgendaEventData = {
+    body: AgendaEventCreate;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/agenda/events';
+};
+
+export type CreateAgendaEventErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type CreateAgendaEventError = CreateAgendaEventErrors[keyof CreateAgendaEventErrors];
+
+export type CreateAgendaEventResponses = {
+    /**
+     * Successful Response
+     */
+    201: AgendaEventOut;
+};
+
+export type CreateAgendaEventResponse = CreateAgendaEventResponses[keyof CreateAgendaEventResponses];
+
+export type GetAgendaEventData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Event Id
+         */
+        event_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agenda/events/{event_id}';
+};
+
+export type GetAgendaEventErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetAgendaEventError = GetAgendaEventErrors[keyof GetAgendaEventErrors];
+
+export type GetAgendaEventResponses = {
+    /**
+     * Successful Response
+     */
+    200: AgendaEventOut;
+};
+
+export type GetAgendaEventResponse = GetAgendaEventResponses[keyof GetAgendaEventResponses];
+
+export type UpdateAgendaEventData = {
+    body: AgendaEventUpdate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Event Id
+         */
+        event_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agenda/events/{event_id}';
+};
+
+export type UpdateAgendaEventErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type UpdateAgendaEventError = UpdateAgendaEventErrors[keyof UpdateAgendaEventErrors];
+
+export type UpdateAgendaEventResponses = {
+    /**
+     * Successful Response
+     */
+    200: AgendaEventOut;
+};
+
+export type UpdateAgendaEventResponse = UpdateAgendaEventResponses[keyof UpdateAgendaEventResponses];
+
+export type SyncAgendaAutoEventsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/agenda/sync';
+};
+
+export type SyncAgendaAutoEventsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type SyncAgendaAutoEventsError = SyncAgendaAutoEventsErrors[keyof SyncAgendaAutoEventsErrors];
+
+export type SyncAgendaAutoEventsResponses = {
+    /**
+     * Response Syncagendaautoevents
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SyncAgendaAutoEventsResponse = SyncAgendaAutoEventsResponses[keyof SyncAgendaAutoEventsResponses];
+
 export type UpdateAnswerData = {
     body: AnswerUpdate;
     headers?: {
@@ -3269,6 +4259,314 @@ export type ListAssessmentEvidencesResponses = {
 
 export type ListAssessmentEvidencesResponse = ListAssessmentEvidencesResponses[keyof ListAssessmentEvidencesResponses];
 
+export type GetOrCreateGuidedSessionData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/guided';
+};
+
+export type GetOrCreateGuidedSessionErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetOrCreateGuidedSessionError = GetOrCreateGuidedSessionErrors[keyof GetOrCreateGuidedSessionErrors];
+
+export type GetOrCreateGuidedSessionResponses = {
+    /**
+     * Successful Response
+     */
+    200: GuidedSessionOut;
+};
+
+export type GetOrCreateGuidedSessionResponse = GetOrCreateGuidedSessionResponses[keyof GetOrCreateGuidedSessionResponses];
+
+export type PatchGuidedSessionData = {
+    body: GuidedContextPatch;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/guided';
+};
+
+export type PatchGuidedSessionErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type PatchGuidedSessionError = PatchGuidedSessionErrors[keyof PatchGuidedSessionErrors];
+
+export type PatchGuidedSessionResponses = {
+    /**
+     * Successful Response
+     */
+    200: GuidedSessionOut;
+};
+
+export type PatchGuidedSessionResponse = PatchGuidedSessionResponses[keyof PatchGuidedSessionResponses];
+
+export type UpsertGuidedAnswerData = {
+    body: GuidedAnswerUpsert;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+        /**
+         * Question Id
+         */
+        question_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/guided/answers/{question_id}';
+};
+
+export type UpsertGuidedAnswerErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type UpsertGuidedAnswerError = UpsertGuidedAnswerErrors[keyof UpsertGuidedAnswerErrors];
+
+export type UpsertGuidedAnswerResponses = {
+    /**
+     * Successful Response
+     */
+    200: GuidedSessionOut;
+};
+
+export type UpsertGuidedAnswerResponse = UpsertGuidedAnswerResponses[keyof UpsertGuidedAnswerResponses];
+
+export type PatchGuidedPositionData = {
+    body: GuidedPositionPatch;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/guided/position';
+};
+
+export type PatchGuidedPositionErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type PatchGuidedPositionError = PatchGuidedPositionErrors[keyof PatchGuidedPositionErrors];
+
+export type PatchGuidedPositionResponses = {
+    /**
+     * Successful Response
+     */
+    200: GuidedSessionOut;
+};
+
+export type PatchGuidedPositionResponse = PatchGuidedPositionResponses[keyof PatchGuidedPositionResponses];
+
 export type ListAssessmentInterviewsData = {
     body?: never;
     headers?: {
@@ -3499,6 +4797,83 @@ export type ListAssessmentQuestionsResponses = {
 
 export type ListAssessmentQuestionsResponse = ListAssessmentQuestionsResponses[keyof ListAssessmentQuestionsResponses];
 
+export type ListAssessmentScopeOptionsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/scope-options';
+};
+
+export type ListAssessmentScopeOptionsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ListAssessmentScopeOptionsError = ListAssessmentScopeOptionsErrors[keyof ListAssessmentScopeOptionsErrors];
+
+export type ListAssessmentScopeOptionsResponses = {
+    /**
+     * Response Listassessmentscopeoptions
+     * Successful Response
+     */
+    200: Array<ScopeOptionOut>;
+};
+
+export type ListAssessmentScopeOptionsResponse = ListAssessmentScopeOptionsResponses[keyof ListAssessmentScopeOptionsResponses];
+
 export type ListAssessmentScopesData = {
     body?: never;
     headers?: {
@@ -3651,6 +5026,83 @@ export type AddAssessmentScopeResponses = {
 };
 
 export type AddAssessmentScopeResponse = AddAssessmentScopeResponses[keyof AddAssessmentScopeResponses];
+
+export type EnsureAssessmentScopesData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/scopes/ensure';
+};
+
+export type EnsureAssessmentScopesErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type EnsureAssessmentScopesError = EnsureAssessmentScopesErrors[keyof EnsureAssessmentScopesErrors];
+
+export type EnsureAssessmentScopesResponses = {
+    /**
+     * Response Ensureassessmentscopes
+     * Successful Response
+     */
+    200: Array<ScopeOut>;
+};
+
+export type EnsureAssessmentScopesResponse = EnsureAssessmentScopesResponses[keyof EnsureAssessmentScopesResponses];
 
 export type DeleteAssessmentScopeData = {
     body?: never;
@@ -6417,6 +7869,80 @@ export type WithdrawFindingResponses = {
 
 export type WithdrawFindingResponse = WithdrawFindingResponses[keyof WithdrawFindingResponses];
 
+export type GetGuidedCatalogData = {
+    body?: never;
+    headers: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+        /**
+         * Active organization context (Membership required).
+         */
+        'X-Organization-Id': string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/guided/catalog';
+};
+
+export type GetGuidedCatalogErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetGuidedCatalogError = GetGuidedCatalogErrors[keyof GetGuidedCatalogErrors];
+
+export type GetGuidedCatalogResponses = {
+    /**
+     * Response Getguidedcatalog
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type GetGuidedCatalogResponse = GetGuidedCatalogResponses[keyof GetGuidedCatalogResponses];
+
 export type GetInterviewData = {
     body?: never;
     headers?: {
@@ -6797,6 +8323,82 @@ export type CompleteInterviewResponses = {
 };
 
 export type CompleteInterviewResponse = CompleteInterviewResponses[keyof CompleteInterviewResponses];
+
+export type GetJobData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/v1/jobs/{job_id}';
+};
+
+export type GetJobErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetJobError = GetJobErrors[keyof GetJobErrors];
+
+export type GetJobResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobOut;
+};
+
+export type GetJobResponse = GetJobResponses[keyof GetJobResponses];
 
 export type ListMaturityAssessmentsData = {
     body?: never;
@@ -7716,6 +9318,78 @@ export type GetCurrentOrganizationResponses = {
 
 export type GetCurrentOrganizationResponse = GetCurrentOrganizationResponses[keyof GetCurrentOrganizationResponses];
 
+export type ListCurrentOrganizationMembersData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/organizations/current/members';
+};
+
+export type ListCurrentOrganizationMembersErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ListCurrentOrganizationMembersError = ListCurrentOrganizationMembersErrors[keyof ListCurrentOrganizationMembersErrors];
+
+export type ListCurrentOrganizationMembersResponses = {
+    /**
+     * Response Listcurrentorganizationmembers
+     * Successful Response
+     */
+    200: Array<OrgMemberOut>;
+};
+
+export type ListCurrentOrganizationMembersResponse = ListCurrentOrganizationMembersResponses[keyof ListCurrentOrganizationMembersResponses];
+
 export type ListMyMembershipsData = {
     body?: never;
     headers?: {
@@ -8104,6 +9778,82 @@ export type ExportReportPdfResponses = {
 };
 
 export type ExportReportPdfResponse = ExportReportPdfResponses[keyof ExportReportPdfResponses];
+
+export type GetReportPdfDownloadUrlData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Report Id
+         */
+        report_id: string;
+    };
+    query?: never;
+    url: '/api/v1/reports/{report_id}/export-pdf/download-url';
+};
+
+export type GetReportPdfDownloadUrlErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetReportPdfDownloadUrlError = GetReportPdfDownloadUrlErrors[keyof GetReportPdfDownloadUrlErrors];
+
+export type GetReportPdfDownloadUrlResponses = {
+    /**
+     * Successful Response
+     */
+    200: DownloadUrlOut;
+};
+
+export type GetReportPdfDownloadUrlResponse = GetReportPdfDownloadUrlResponses[keyof GetReportPdfDownloadUrlResponses];
 
 export type RefreshReportSnapshotData = {
     body?: never;

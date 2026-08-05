@@ -9,6 +9,7 @@ import { OrganizationProvider, useOrganization } from "@/org/OrganizationProvide
 import { AppShell } from "@/components/AppShell";
 import { AssessmentsPage } from "@/pages/AssessmentsPage";
 import { resetQmindClient } from "@/api/qmindApi";
+import { enterApp } from "@/test/enterApp";
 import { resetConfigCache } from "@/config/env";
 import {
   assertNoSensitiveLocalPersistence,
@@ -44,10 +45,14 @@ const memberships: MembershipJson[] = [
   },
 ];
 
+function assessmentIdFor(orgId: string) {
+  return `assessment-${orgId.slice(0, 4)}`;
+}
+
 function assessmentsFor(orgId: string) {
   return [
     {
-      id: `assessment-${orgId.slice(0, 4)}`,
+      id: assessmentIdFor(orgId),
       organization_id: orgId,
       status: "draft",
       type: "diagnosis",
@@ -59,6 +64,26 @@ function assessmentsFor(orgId: string) {
       updated_at: "2026-01-01T00:00:00Z",
     },
   ];
+}
+
+function emptyAgendaBoard() {
+  return {
+    timezone: "America/Sao_Paulo",
+    selected_date: "2026-01-01",
+    next_up: null,
+    today: [],
+    selected_day: [],
+    overdue: [],
+    in_progress_assessments: [],
+    month_markers: [],
+  };
+}
+
+function expectAssessmentListed(orgId: string) {
+  const id = assessmentIdFor(orgId);
+  expect(
+    screen.getByRole("link", { name: /Diagnóstico inicial/i }).getAttribute("href"),
+  ).toContain(`/assessments/${id}`);
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -102,6 +127,10 @@ function installFetchMock(opts?: {
 
     if (url.includes("/memberships")) {
       return jsonResponse(memberships);
+    }
+
+    if (url.includes("/api/v1/agenda/board")) {
+      return jsonResponse(emptyAgendaBoard());
     }
 
     if (url.includes("/api/v1/assessments")) {
@@ -202,11 +231,12 @@ describe("tenant switch gate", () => {
       </Harness>,
     );
 
+    await enterApp(user);
     await waitFor(() => {
       expect(screen.getByTestId("current-org").textContent).toBe(ORG_A);
     });
     await waitFor(() => {
-      expect(screen.getByText(`assessment-${ORG_A.slice(0, 4)}`)).toBeInTheDocument();
+      expectAssessmentListed(ORG_A);
     });
 
     await user.click(screen.getByRole("button", { name: "Switch B" }));
@@ -214,9 +244,13 @@ describe("tenant switch gate", () => {
       expect(screen.getByTestId("current-org").textContent).toBe(ORG_B);
     });
     await waitFor(() => {
-      expect(screen.getByText(`assessment-${ORG_B.slice(0, 4)}`)).toBeInTheDocument();
+      expectAssessmentListed(ORG_B);
     });
-    expect(screen.queryByText(`assessment-${ORG_A.slice(0, 4)}`)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", {
+        name: /Diagnóstico inicial/i,
+      })?.getAttribute("href"),
+    ).not.toContain(`/assessments/${assessmentIdFor(ORG_A)}`);
     expect(readPreferredOrganizationId()).toBe(ORG_B);
 
     await user.click(screen.getByRole("button", { name: "Switch A" }));
@@ -224,7 +258,7 @@ describe("tenant switch gate", () => {
       expect(screen.getByTestId("current-org").textContent).toBe(ORG_A);
     });
     await waitFor(() => {
-      expect(screen.getByText(`assessment-${ORG_A.slice(0, 4)}`)).toBeInTheDocument();
+      expectAssessmentListed(ORG_A);
     });
     expect(readPreferredOrganizationId()).toBe(ORG_A);
     assertNoSensitiveLocalPersistence();
@@ -247,6 +281,9 @@ describe("tenant switch gate", () => {
 
       if (url.includes("memberships")) {
         return jsonResponse(memberships);
+      }
+      if (url.includes("/api/v1/agenda/board")) {
+        return jsonResponse(emptyAgendaBoard());
       }
       if (url.includes("/api/v1/assessments")) {
         if (orgHeader === ORG_A) {
@@ -274,6 +311,7 @@ describe("tenant switch gate", () => {
       </Harness>,
     );
 
+    await enterApp(user);
     await waitFor(() => {
       expect(screen.getByTestId("current-org").textContent).toBe(ORG_A);
     });
@@ -289,9 +327,13 @@ describe("tenant switch gate", () => {
     resolveSlow?.();
 
     await waitFor(() => {
-      expect(screen.getByText(`assessment-${ORG_B.slice(0, 4)}`)).toBeInTheDocument();
+      expectAssessmentListed(ORG_B);
     });
-    expect(screen.queryByText(`assessment-${ORG_A.slice(0, 4)}`)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", {
+        name: /Diagnóstico inicial/i,
+      })?.getAttribute("href"),
+    ).not.toContain(`/assessments/${assessmentIdFor(ORG_A)}`);
   });
 
   it("logout during request clears preference and does not keep tenant data", async () => {
@@ -304,6 +346,7 @@ describe("tenant switch gate", () => {
       </Harness>,
     );
 
+    await enterApp(user);
     await waitFor(() => {
       expect(screen.getByTestId("current-org").textContent).toBe(ORG_A);
     });

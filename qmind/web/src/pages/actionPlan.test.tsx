@@ -10,6 +10,7 @@ import { AssessmentDetailPage } from "@/pages/AssessmentDetailPage";
 import { resetQmindClient } from "@/api/qmindApi";
 import { resetConfigCache } from "@/config/env";
 import { resetTenantContext } from "@/api/tenantContext";
+import { enterApp } from "@/test/enterApp";
 
 const ORG = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const AID = "44444444-4444-4444-8444-444444444444";
@@ -210,6 +211,7 @@ describe("action plan UI", () => {
     );
 
     renderPage();
+    await enterApp(user);
 
     await waitFor(() => expect(screen.getByTestId("action-plan")).toBeInTheDocument());
     await waitFor(() => expect(screen.getByTestId("action-plan-workspace")).toBeInTheDocument());
@@ -346,6 +348,7 @@ describe("action plan UI", () => {
     );
 
     renderPage();
+    await enterApp(user);
     await waitFor(() => expect(screen.getByTestId("action-create-plan")).toBeInTheDocument());
     await user.click(screen.getByTestId("action-create-plan"));
     await waitFor(() => expect(screen.getByTestId("action-create-item-form")).toBeInTheDocument());
@@ -362,7 +365,7 @@ describe("action plan UI", () => {
     const activate = screen.getByTestId("action-activate");
     await Promise.all([user.click(activate), user.click(activate)]);
     await waitFor(() =>
-      expect(screen.getByTestId("action-plan-status")).toHaveTextContent("ativo"),
+      expect(screen.getByTestId("action-plan-status")).toHaveTextContent(/ativo/i),
     );
     expect(activateCalls).toBe(1);
     expect(listPlanCalls).toBeGreaterThan(1);
@@ -447,6 +450,7 @@ describe("action plan UI", () => {
     );
 
     renderPage();
+    await enterApp(user);
     await waitFor(() => expect(screen.getByTestId("action-open-actions")).toBeInTheDocument());
     await user.click(screen.getByTestId("action-open-actions"));
     await waitFor(() => expect(openCalls).toBe(1));
@@ -459,7 +463,7 @@ describe("action plan UI", () => {
     expect(confirm).not.toBeDisabled();
     await Promise.all([user.click(confirm), user.click(confirm)]);
     await waitFor(() =>
-      expect(screen.getByTestId("action-item-status")).toHaveTextContent("concluída"),
+      expect(screen.getByTestId("action-item-status")).toHaveTextContent(/concluíd/i),
     );
     expect(efficacyCalls).toBe(1);
   });

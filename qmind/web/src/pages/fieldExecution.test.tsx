@@ -10,6 +10,7 @@ import { AssessmentDetailPage } from "@/pages/AssessmentDetailPage";
 import { resetQmindClient } from "@/api/qmindApi";
 import { resetConfigCache } from "@/config/env";
 import { resetTenantContext } from "@/api/tenantContext";
+import { enterApp } from "@/test/enterApp";
 
 const ORG = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const AID = "44444444-4444-4444-8444-444444444444";
@@ -132,17 +133,21 @@ describe("field execution UI", () => {
       </QueryClientProvider>,
     );
 
-    await waitFor(() => expect(screen.getByTestId("assessment-status")).toHaveTextContent("planejada"));
+    await enterApp(user);
+    await waitFor(() =>
+      expect(screen.getByTestId("assessment-status")).toHaveTextContent(/planejada/i),
+    );
     await user.click(screen.getByTestId("start-open-confirm"));
     expect(screen.getByTestId("start-confirm")).toBeInTheDocument();
     await user.click(screen.getByTestId("start-confirm-submit"));
     await waitFor(() =>
-      expect(screen.getByTestId("assessment-status")).toHaveTextContent("em execução"),
+      expect(screen.getByTestId("assessment-status")).toHaveTextContent(/em andamento/i),
     );
     expect(screen.getByTestId("field-execution")).toBeInTheDocument();
   });
 
   it("blocks start UI for reader on planned assessment", async () => {
+    const user = userEvent.setup();
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = urlOf(input);
       if (url.includes("/memberships") || url.includes("/me/memberships")) {
@@ -195,6 +200,7 @@ describe("field execution UI", () => {
       </QueryClientProvider>,
     );
 
+    await enterApp(user);
     await waitFor(() => expect(screen.getByTestId("start-locked")).toBeInTheDocument());
     expect(screen.queryByTestId("start-open-confirm")).toBeNull();
   });

@@ -10,6 +10,7 @@ import { AssessmentDetailPage } from "@/pages/AssessmentDetailPage";
 import { resetQmindClient } from "@/api/qmindApi";
 import { resetConfigCache } from "@/config/env";
 import { resetTenantContext } from "@/api/tenantContext";
+import { enterApp } from "@/test/enterApp";
 
 const ORG = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const AID = "44444444-4444-4444-8444-444444444444";
@@ -169,10 +170,13 @@ describe("report panel UI", () => {
     );
 
     renderPage();
+    await enterApp(user);
     await waitFor(() => expect(screen.getByTestId("report-panel")).toBeInTheDocument());
     await waitFor(() => expect(screen.getByTestId("report-meta")).toBeInTheDocument());
     expect(screen.getByTestId("report-version")).toHaveTextContent("v1");
-    expect(screen.getByTestId("report-snapshot-summary").textContent).toMatch(/1 finding/);
+    expect(screen.getByTestId("report-snapshot-summary").textContent).toMatch(
+      /1 constatação/,
+    );
     expect(screen.getByTestId("report-snapshot-summary").textContent).toMatch(/imutável/);
     expect(screen.getByTestId("report-sod-banner")).toBeInTheDocument();
 
@@ -279,19 +283,20 @@ describe("report panel UI", () => {
     );
 
     renderPage();
+    await enterApp(user);
     await waitFor(() => expect(screen.getByTestId("report-publish")).toBeInTheDocument());
     expect(screen.queryByTestId("report-sod-banner")).toBeNull();
 
     const publish = screen.getByTestId("report-publish");
     await Promise.all([user.click(publish), user.click(publish)]);
     await waitFor(() =>
-      expect(screen.getByTestId("report-status")).toHaveTextContent("publicado"),
+      expect(screen.getByTestId("report-status")).toHaveTextContent(/publicado/i),
     );
     expect(publishCalls).toBe(1);
 
     await user.click(screen.getByTestId("report-export-pdf"));
     await waitFor(() => expect(screen.getByTestId("report-export-job")).toBeInTheDocument());
-    expect(screen.getByTestId("report-export-status")).toHaveTextContent("queued");
+    expect(screen.getByTestId("report-export-status")).toHaveTextContent(/fila|queued/i);
     expect(exportCalls).toBe(1);
 
     await user.click(screen.getByTestId("report-create"));
@@ -367,6 +372,7 @@ describe("report panel UI", () => {
     );
 
     renderPage();
+    await enterApp(user);
     await waitFor(() => expect(screen.getByTestId("report-begin")).toBeInTheDocument());
     await user.click(screen.getByTestId("report-begin"));
     await waitFor(() => expect(beginCalls).toBe(1));
@@ -380,7 +386,7 @@ describe("report panel UI", () => {
     await user.click(screen.getByTestId("assessment-reopen"));
     await waitFor(() => expect(reopenCalls).toBe(1));
     await waitFor(() =>
-      expect(screen.getByTestId("assessment-status")).toHaveTextContent("report"),
+      expect(screen.getByTestId("assessment-status")).toHaveTextContent(/relatório/i),
     );
   });
 });

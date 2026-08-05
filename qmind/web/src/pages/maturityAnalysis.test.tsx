@@ -10,6 +10,7 @@ import { AssessmentDetailPage } from "@/pages/AssessmentDetailPage";
 import { resetQmindClient } from "@/api/qmindApi";
 import { resetConfigCache } from "@/config/env";
 import { resetTenantContext } from "@/api/tenantContext";
+import { enterApp } from "@/test/enterApp";
 
 const ORG = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const AID = "44444444-4444-4444-8444-444444444444";
@@ -247,6 +248,7 @@ describe("maturity analysis UI", () => {
       </QueryClientProvider>,
     );
 
+    await enterApp(user);
     await waitFor(() => expect(screen.getByTestId("maturity-analysis")).toBeInTheDocument());
     await user.click(screen.getByTestId("maturity-open"));
     await waitFor(() => expect(screen.getByTestId("maturity-package-meta")).toBeInTheDocument());
@@ -260,7 +262,7 @@ describe("maturity analysis UI", () => {
     await user.click(screen.getByTestId("maturity-criterion-D1.C1"));
     const editor = screen.getByTestId("maturity-criterion-editor");
     expect(screen.getByTestId("maturity-level-3")).toBeInTheDocument();
-    expect(editor.textContent).toMatch(/3 — managed/);
+    expect(editor.textContent).toMatch(/3 — gerenciado/);
 
     const submitBtn = screen.getByTestId("maturity-submit");
     await Promise.all([user.click(submitBtn), user.click(submitBtn)]);
@@ -277,7 +279,7 @@ describe("maturity analysis UI", () => {
 
     await user.click(screen.getByTestId("maturity-submit"));
     await waitFor(() =>
-      expect(screen.getByTestId("maturity-status")).toHaveTextContent("in_review"),
+      expect(screen.getByTestId("maturity-status")).toHaveTextContent(/em revisão/i),
     );
     expect(screen.getByTestId("maturity-approve")).toBeDisabled();
     expect(screen.getByTestId("maturity-sod").textContent).toMatch(/SoD/i);
@@ -364,8 +366,9 @@ describe("maturity analysis UI", () => {
       </QueryClientProvider>,
     );
 
+    await enterApp(user);
     await waitFor(() => expect(screen.getByTestId("maturity-immutable")).toBeInTheDocument());
-    expect(screen.getByTestId("maturity-status")).toHaveTextContent("approved");
+    expect(screen.getByTestId("maturity-status")).toHaveTextContent(/aprovada/i);
     expect(screen.queryByTestId("maturity-save")).toBeNull();
     expect(screen.getByTestId("maturity-supersede")).toBeInTheDocument();
   });
