@@ -10,6 +10,6 @@ Não misturar dados de cliente/demonstração com catálogos.
 Aplicar **após** `alembic upgrade head`, como admin:
 
 ```powershell
-Get-Content seeds\001_maturity_catalog_v0.sql -Raw | docker exec -i leaction_db psql -U admin -d qmind
-Get-Content seeds\002_assessment_model_stub.sql -Raw | docker exec -i leaction_db psql -U admin -d qmind
+Get-Content seeds\001_maturity_catalog_v0.sql -Raw | docker exec -i leaction_db psql -U admin -d qmind_dev
+Get-Content seeds\002_assessment_model_stub.sql -Raw | docker exec -i leaction_db psql -U admin -d qmind_dev
 ```

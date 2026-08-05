@@ -697,9 +697,9 @@ def test_mvp_prod_config_forbids_dev_auth_and_simulated_security():
         )
 
 
-def test_mvp_alembic_head_is_0005():
+def test_mvp_alembic_head_is_0006():
     eng = create_engine(ADMIN_URL)
     with eng.connect() as conn:
         ver = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
     eng.dispose()
-    assert ver == "20260803_0005"
+    assert ver == "20260804_0006"

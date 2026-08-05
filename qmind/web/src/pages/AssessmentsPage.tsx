@@ -2,13 +2,23 @@ import { Link } from "react-router-dom";
 import { useAssessments } from "@/hooks/useAssessments";
 import { useOrganization } from "@/org/OrganizationProvider";
 import { useAssessmentPermissions } from "@/hooks/useAssessmentPermissions";
+import { AccessDeniedPanel, LoadingPanel } from "@/components/StatePanels";
 import {
-  AccessDeniedPanel,
-  EmptyPanel,
-  LoadingPanel,
-} from "@/components/StatePanels";
+  ContextualHelp,
+  GuidedEmptyState,
+  PageHeader,
+  StatusBadge,
+  toneForAssessmentStatus,
+} from "@/components/qm";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import { QmindApiError } from "@/api/qmindApi";
+import { labelAssessmentStatus, labelAssessmentType } from "@/lib/labels";
+import {
+  JOURNEY_PHASES,
+  continueHref,
+  phaseForStatus,
+} from "@/lib/auditJourney";
+import { OrgAgenda } from "@/components/OrgAgenda";
 
 export function AssessmentsPage() {
   const org = useOrganization();
@@ -17,15 +27,17 @@ export function AssessmentsPage() {
 
   if (!org.currentOrganizationId) {
     return (
-      <EmptyPanel
-        title="Selecione uma organização"
-        message="Escolha uma organização ativa no cabeçalho para ver as avaliações."
+      <GuidedEmptyState
+        title="Escolha uma organização para começar"
+        why="Cada organização tem suas próprias avaliações. O progresso não se mistura entre elas."
+        example="Se você participa de duas empresas, selecione no topo a que deseja trabalhar agora."
+        howToStart="Use o seletor “Organização” no cabeçalho."
       />
     );
   }
 
   if (query.isLoading) {
-    return <LoadingPanel title="Carregando avaliações…" />;
+    return <LoadingPanel title="Carregando suas avaliações…" />;
   }
 
   if (query.isError) {
@@ -35,7 +47,7 @@ export function AssessmentsPage() {
     }
     return (
       <ApiErrorBanner
-        title="Erro ao carregar avaliações"
+        title="Não foi possível carregar as avaliações"
         error={err}
         onRetry={() => void query.refetch()}
       />
@@ -43,55 +55,87 @@ export function AssessmentsPage() {
   }
 
   const items = query.data ?? [];
+  const orgName =
+    org.currentOrganization?.organizationName ?? "organização selecionada";
 
   return (
-    <section>
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl tracking-tight text-teal-950">
-            Avaliações
-          </h1>
-          <p className="mt-1 text-sm text-teal-950/70">
-            {org.currentOrganization?.organizationName ?? org.currentOrganizationId}
-          </p>
-        </div>
-        {perms.canMutate ? (
-          <Link
-            to="/assessments/new"
-            className="rounded-md bg-teal-900 px-3 py-2 text-sm font-semibold text-white"
-            data-testid="new-assessment"
-          >
-            Nova avaliação
-          </Link>
-        ) : null}
-      </header>
+    <section className="space-y-6">
+      <PageHeader
+        title="Minhas avaliações"
+        explanation={`Você está em ${orgName}. Aqui ficam os trabalhos em andamento e concluídos. Abra um item para ver o mapa do percurso, ou inicie um novo.`}
+        expectedResult="Uma avaliação aberta com fase clara e próxima ação evidente."
+        nextStep={
+          items.length === 0
+            ? "Criar a primeira avaliação"
+            : "Abrir a avaliação em que deseja continuar"
+        }
+        actions={
+          perms.canMutate ? (
+            <Link
+              to="/assessments/new"
+              className="qm-btn-primary shrink-0"
+              data-testid="new-assessment"
+            >
+              Nova avaliação
+            </Link>
+          ) : undefined
+        }
+      />
+
+      <ContextualHelp
+        term="avaliação"
+        example="“Diagnóstico inicial — Em preparação” significa: ainda estamos conhecendo a organização."
+      >
+        É o ciclo guiado de trabalho da qualidade — da preparação ao relatório. Não
+        precisa conhecer ISO 9001 para começar: o QMind explica cada etapa.
+      </ContextualHelp>
+
+      <OrgAgenda />
 
       {items.length === 0 ? (
-        <EmptyPanel
-          title="Nenhuma avaliação"
-          message="Esta organização ainda não possui avaliações."
+        <GuidedEmptyState
+          title="Nenhuma avaliação ainda"
+          why="Este é o ponto de partida do trabalho nesta organização."
+          example="Uma avaliação nova começa pela preparação: conhecer a organização e responder a um roteiro em linguagem de negócio."
+          howToStart="Toque em “Criar primeira avaliação”. Em seguida o mapa mostra o percurso completo."
+          action={
+            perms.canMutate
+              ? { label: "Criar primeira avaliação", to: "/assessments/new" }
+              : undefined
+          }
         />
       ) : (
-        <ul
-          className="divide-y divide-teal-900/10 rounded-lg border border-teal-900/10 bg-white/70"
-          data-testid="assessments-list"
-        >
-          {items.map((a) => (
-            <li key={a.id}>
-              <Link
-                to={`/assessments/${a.id}`}
-                className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 hover:bg-teal-50/60"
-              >
-                <div>
-                  <p className="font-semibold text-teal-950">{a.type}</p>
-                  <p className="font-mono text-xs text-teal-950/50">{a.id}</p>
-                </div>
-                <span className="rounded-md bg-teal-900/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-teal-900">
-                  {a.status}
-                </span>
-              </Link>
-            </li>
-          ))}
+        <ul className="audit-list" data-testid="assessments-list">
+          {items.map((a) => {
+            const phase = JOURNEY_PHASES.find(
+              (p) => p.id === phaseForStatus(a.status),
+            );
+            const next = continueHref(a.id, a.status);
+            return (
+              <li key={a.id}>
+                <Link to={`/assessments/${a.id}`} className="audit-list__row">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[var(--qm-ink)]">
+                      {labelAssessmentType(a.type)}
+                    </p>
+                    <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                      <StatusBadge
+                        label={labelAssessmentStatus(a.status)}
+                        tone={toneForAssessmentStatus(a.status)}
+                      />
+                      <span className="text-[var(--qm-muted)]">
+                        Fase: {phase?.label ?? "—"}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--qm-accent)]">
+                      Próxima etapa: {next.label}
+                    </p>
+                  </div>
+                  <span className="audit-list__phase">{phase?.label ?? "—"}</span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

@@ -88,6 +88,11 @@ function harness(initial: string) {
   return { App, qc };
 }
 
+async function enterApp(user: ReturnType<typeof userEvent.setup>) {
+  await waitFor(() => expect(screen.getByTestId("login-cta")).toBeInTheDocument());
+  await user.click(screen.getByTestId("login-cta"));
+}
+
 type AssessmentRow = {
   id: string;
   organization_id: string;
@@ -124,7 +129,8 @@ type Store = {
   listByOrg: Record<string, AssessmentRow[]>;
 };
 
-function installApi(store: Store) {
+function installApi(store: Store, opts?: { ensureFills?: boolean }) {
+  const ensureFills = opts?.ensureFills !== false;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -134,6 +140,25 @@ function installApi(store: Store) {
         (input instanceof Request ? input.method : "GET")
       ).toUpperCase();
       const org = orgHeader(input, init);
+
+      if (url.includes("/organizations/current/members")) {
+        return json([
+          {
+            membership_id: MEMBERSHIP,
+            email: "lead@example.com",
+            display_name: "Líder",
+            roles: store.roles,
+            status: "active",
+          },
+          {
+            membership_id: EXTRA_MEMBER,
+            email: "extra@example.com",
+            display_name: "Colega Extra",
+            roles: store.roles,
+            status: "active",
+          },
+        ]);
+      }
 
       if (url.includes("/memberships")) {
         return json([
@@ -186,11 +211,46 @@ function installApi(store: Store) {
         return json(store.assessment, 201);
       }
 
-      if (url.includes(`/api/v1/assessments/${AID}/scopes`) && method === "GET") {
+      if (url.includes(`/api/v1/assessments/${AID}/scope-options`) && method === "GET") {
+        return json([
+          {
+            kind: "requirement",
+            target_id: REQ,
+            label: "Requisito 4 — Context",
+            already_in_scope: store.scopes.some((s) => s.requirement_id === REQ),
+          },
+        ]);
+      }
+
+      if (url.includes(`/api/v1/assessments/${AID}/scopes/ensure`) && method === "POST") {
+        if (ensureFills && store.scopes.length === 0) {
+          store.scopes = [
+            {
+              id: SCOPE_ID,
+              assessment_id: AID,
+              org_process_id: null,
+              requirement_id: REQ,
+              created_at: "2026-01-01T00:00:00Z",
+              label: "Requisito 4 — Context",
+            } as Store["scopes"][number],
+          ];
+        }
         return json(store.scopes);
       }
 
-      if (url.includes(`/api/v1/assessments/${AID}/scopes`) && method === "POST") {
+      if (
+        url.includes(`/api/v1/assessments/${AID}/scopes`) &&
+        method === "GET" &&
+        !url.includes("scope-options")
+      ) {
+        return json(store.scopes);
+      }
+
+      if (
+        url.includes(`/api/v1/assessments/${AID}/scopes`) &&
+        method === "POST" &&
+        !url.includes("/ensure")
+      ) {
         if (store.assessment.status !== "draft") {
           return json(
             {
@@ -211,6 +271,7 @@ function installApi(store: Store) {
           org_process_id: body.org_process_id ?? null,
           requirement_id: body.requirement_id ?? null,
           created_at: "2026-01-01T00:00:00Z",
+          label: body.requirement_id ? "Requisito 4 — Context" : "Processo",
         };
         store.scopes = [...store.scopes, row];
         return json(row, 201);
@@ -283,7 +344,11 @@ function installApi(store: Store) {
         });
       }
 
-      if (url.includes(`/api/v1/assessments/${AID}`) && method === "GET") {
+      if (
+        method === "GET" &&
+        (url.endsWith(`/api/v1/assessments/${AID}`) ||
+          url.endsWith(`/api/v1/assessments/${AID}/`))
+      ) {
         if (org && org !== store.assessment.organization_id) {
           return json(
             { code: "not_found", message: "not found", correlation_id: "corr-404" },
@@ -291,6 +356,13 @@ function installApi(store: Store) {
           );
         }
         return json(store.assessment);
+      }
+
+      if (url.includes("/guided")) {
+        return json(
+          { code: "not_found", message: "guided absent", correlation_id: "" },
+          404,
+        );
       }
 
       if (
@@ -367,17 +439,15 @@ describe("assessment setup and planning UI", () => {
     installApi(store);
     const { App } = harness("/assessments/new");
     render(<App />);
+    await enterApp(user);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Criar rascunho/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Criar e ver o mapa/i })).toBeInTheDocument();
     });
-    await user.click(screen.getByRole("radio", { name: "Requirement" }));
-    await user.type(screen.getByPlaceholderText(/requirement_id/i), REQ);
-    await user.click(screen.getByRole("button", { name: /Criar rascunho/i }));
+    await user.click(screen.getByRole("button", { name: /Criar e ver o mapa/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("assessment-status")).toHaveTextContent("draft");
-      expect(screen.getByText(`requirement:${REQ}`)).toBeInTheDocument();
+      expect(screen.getByTestId("assessment-status")).toHaveTextContent(/preparação/i);
     });
     expect(store.createCalls).toBe(1);
   });
@@ -392,37 +462,42 @@ describe("assessment setup and planning UI", () => {
         org_process_id: null,
         requirement_id: REQ,
         created_at: "2026-01-01T00:00:00Z",
-      },
+        label: "Requisito 4 — Context",
+      } as Store["scopes"][number],
     ];
     installApi(store);
     const { App } = harness(`/assessments/${AID}`);
     render(<App />);
+    await enterApp(user);
 
     await waitFor(() => expect(screen.getByTestId("team-list")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("team-member-select")).toBeInTheDocument());
 
-    await user.type(screen.getByLabelText("membership_id"), EXTRA_MEMBER);
+    await user.selectOptions(screen.getByTestId("team-member-select"), EXTRA_MEMBER);
     await user.click(screen.getByTestId("team-add"));
     await waitFor(() => {
-      expect(screen.getByText(EXTRA_MEMBER)).toBeInTheDocument();
+      expect(screen.getByText("Colega Extra")).toBeInTheDocument();
     });
 
     await user.click(screen.getByTestId("plan-open-confirm"));
     await user.click(screen.getByTestId("plan-confirm-submit"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("assessment-status")).toHaveTextContent("planned");
+      expect(screen.getByTestId("assessment-status")).toHaveTextContent(/planejada/i);
       expect(screen.getByTestId("plan-locked")).toBeInTheDocument();
     });
-    expect(screen.queryByLabelText("Valor do escopo")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("membership_id")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("scope-add")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("team-member-select")).not.toBeInTheDocument();
   });
 
   it("shows plan guards when scope/team incomplete", async () => {
+    const user = userEvent.setup();
     const store = baseStore();
     store.scopes = [];
-    installApi(store);
+    installApi(store, { ensureFills: false });
     const { App } = harness(`/assessments/${AID}`);
     render(<App />);
+    await enterApp(user);
 
     await waitFor(() => {
       expect(screen.getByTestId("plan-guard-scope")).toHaveTextContent(/faltando/i);
@@ -431,6 +506,7 @@ describe("assessment setup and planning UI", () => {
   });
 
   it("reader sees detail without mutation controls", async () => {
+    const user = userEvent.setup();
     const store = baseStore(["reader"]);
     store.scopes = [
       {
@@ -439,18 +515,20 @@ describe("assessment setup and planning UI", () => {
         org_process_id: null,
         requirement_id: REQ,
         created_at: "2026-01-01T00:00:00Z",
-      },
+        label: "Requisito 4 — Context",
+      } as Store["scopes"][number],
     ];
     installApi(store);
     const { App } = harness(`/assessments/${AID}`);
     render(<App />);
+    await enterApp(user);
 
     await waitFor(() => {
       expect(screen.getByTestId("reader-notice")).toBeInTheDocument();
-      expect(screen.getByText(`requirement:${REQ}`)).toBeInTheDocument();
+      expect(screen.getByText("Requisito 4 — Context")).toBeInTheDocument();
     });
     expect(screen.queryByTestId("plan-open-confirm")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Valor do escopo")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("scope-add")).not.toBeInTheDocument();
     expect(screen.queryByTestId("new-assessment")).not.toBeInTheDocument();
   });
 
@@ -476,6 +554,7 @@ describe("assessment setup and planning UI", () => {
     installApi(store);
     const { App } = harness(`/assessments/${AID}`);
     render(<App />);
+    await enterApp(user);
 
     await waitFor(() => expect(screen.getByTestId("plan-open-confirm")).toBeEnabled());
     await user.click(screen.getByTestId("plan-open-confirm"));
@@ -497,8 +576,9 @@ describe("assessment setup and planning UI", () => {
     installApi(createStore);
     const { App: CreateApp } = harness("/assessments/new");
     const { unmount } = render(<CreateApp />);
-    await waitFor(() => screen.getByRole("button", { name: /Criar rascunho/i }));
-    const createBtn = screen.getByRole("button", { name: /Criar rascunho/i });
+    await enterApp(user);
+    await waitFor(() => screen.getByRole("button", { name: /Criar e ver o mapa/i }));
+    const createBtn = screen.getByRole("button", { name: /Criar e ver o mapa/i });
     await user.dblClick(createBtn);
     await waitFor(() => expect(createStore.createCalls).toBeGreaterThanOrEqual(1));
     expect(createStore.createCalls).toBe(1);
@@ -521,6 +601,7 @@ describe("assessment setup and planning UI", () => {
     installApi(planStore);
     const { App: DetailApp } = harness(`/assessments/${AID}`);
     render(<DetailApp />);
+    await enterApp(user);
     await waitFor(() => expect(screen.getByTestId("plan-open-confirm")).toBeEnabled());
     await user.click(screen.getByTestId("plan-open-confirm"));
     const confirm = screen.getByTestId("plan-confirm-submit");
@@ -539,15 +620,17 @@ describe("assessment setup and planning UI", () => {
         org_process_id: null,
         requirement_id: REQ,
         created_at: "2026-01-01T00:00:00Z",
-      },
+        label: "Requisito 4 — Context",
+      } as Store["scopes"][number],
     ];
     store.listByOrg[ORG_B] = [];
     installApi(store);
     const { App } = harness(`/assessments/${AID}`);
     render(<App />);
+    await enterApp(user);
 
     await waitFor(() => {
-      expect(screen.getByText(`requirement:${REQ}`)).toBeInTheDocument();
+      expect(screen.getByText("Requisito 4 — Context")).toBeInTheDocument();
     });
 
     await user.selectOptions(
@@ -559,7 +642,7 @@ describe("assessment setup and planning UI", () => {
       // Detail for AID under org B → not found / error, not stale Org A content as success
       const status = screen.queryByTestId("assessment-status");
       if (status) {
-        expect(status).not.toHaveTextContent("draft");
+        expect(status).not.toHaveTextContent("rascunho");
       } else {
         expect(screen.getByTestId("api-error")).toBeInTheDocument();
       }
@@ -581,19 +664,20 @@ describe("assessment setup and planning UI", () => {
     installApi(store);
     const { App } = harness(`/assessments/${AID}`);
     render(<App />);
+    await enterApp(user);
 
     await waitFor(() => expect(screen.getByTestId("plan-open-confirm")).toBeEnabled());
     await user.click(screen.getByTestId("plan-open-confirm"));
     await user.click(screen.getByTestId("plan-confirm-submit"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("assessment-status")).toHaveTextContent("planned");
+      expect(screen.getByTestId("assessment-status")).toHaveTextContent(/planejada/i);
     });
 
     await user.click(screen.getByTestId("nav-assessments"));
     await waitFor(() => {
       const list = screen.getByTestId("assessments-list");
-      expect(within(list).getByText("planned")).toBeInTheDocument();
+      expect(within(list).getByText(/planejada/i)).toBeInTheDocument();
     });
   });
 });

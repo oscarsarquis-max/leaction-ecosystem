@@ -35,6 +35,11 @@ function methodOf(input: RequestInfo | URL, init?: RequestInit) {
   return (init?.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
 }
 
+async function enterApp(user: ReturnType<typeof userEvent.setup>) {
+  await waitFor(() => expect(screen.getByTestId("login-cta")).toBeInTheDocument());
+  await user.click(screen.getByTestId("login-cta"));
+}
+
 describe("findings analysis UI", () => {
   beforeEach(() => {
     resetConfigCache();
@@ -60,6 +65,17 @@ describe("findings analysis UI", () => {
       const url = urlOf(input);
       const method = methodOf(input, init);
 
+      if (url.includes("/organizations/current/members")) {
+        return json([
+          {
+            membership_id: MEMBERSHIP,
+            email: "lead@example.com",
+            display_name: "Líder",
+            roles: ["org_admin"],
+            status: "active",
+          },
+        ]);
+      }
       if (url.includes("/memberships")) {
         return json([
           {
@@ -79,6 +95,7 @@ describe("findings analysis UI", () => {
             requirement_id: REQ,
             org_process_id: null,
             created_at: "2026-01-01T00:00:00Z",
+            label: "Requisito 4 — Context of the organization (ref)",
           },
         ]);
       }
@@ -198,6 +215,7 @@ describe("findings analysis UI", () => {
       </QueryClientProvider>,
     );
 
+    await enterApp(user);
     await waitFor(() => expect(screen.getByTestId("findings-analysis")).toBeInTheDocument());
 
     await user.selectOptions(screen.getByTestId("finding-type"), "conformity");
@@ -255,6 +273,17 @@ describe("findings analysis UI", () => {
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = urlOf(input);
         const method = methodOf(input, init);
+        if (url.includes("/organizations/current/members")) {
+          return json([
+            {
+              membership_id: MEMBERSHIP,
+              email: "auditor@example.com",
+              display_name: "Auditor",
+              roles: ["consultant_auditor"],
+              status: "active",
+            },
+          ]);
+        }
         if (url.includes("/memberships")) {
           return json([
             {
@@ -274,6 +303,7 @@ describe("findings analysis UI", () => {
               requirement_id: REQ,
               org_process_id: null,
               created_at: "2026-01-01T00:00:00Z",
+              label: "Requisito 4 — Context of the organization (ref)",
             },
           ]);
         }
@@ -343,6 +373,7 @@ describe("findings analysis UI", () => {
       </QueryClientProvider>,
     );
 
+    await enterApp(user);
     await waitFor(() => expect(screen.getByTestId(`finding-select-${FID}`)).toBeInTheDocument());
     await user.click(screen.getByTestId(`finding-select-${FID}`));
     const submitBtn = await screen.findByTestId("finding-submit");

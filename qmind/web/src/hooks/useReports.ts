@@ -178,6 +178,21 @@ export function useReportTransition(assessmentId: string) {
   });
 }
 
+export type ReportPdfJob = {
+  id: string;
+  organization_id: string;
+  job_type: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled" | string;
+  idempotency_key: string;
+  input_ref?: Record<string, unknown>;
+  attempt_count?: number;
+  max_attempts?: number;
+  error_code?: string | null;
+  error_safe_message?: string | null;
+  output_ref?: Record<string, unknown>;
+  created_at?: string;
+};
+
 export function useExportReportPdf(assessmentId: string) {
   const { currentOrganizationId } = useOrganization();
   const qc = useQueryClient();
@@ -189,13 +204,37 @@ export function useExportReportPdf(assessmentId: string) {
           path: { report_id: reportId },
           headers: { "Idempotency-Key": newIdempotencyKey("report-pdf") },
         });
-        return res.data!;
+        return res.data! as ReportPdfJob;
       });
     },
     onSuccess: async (_data, reportId) => {
       if (!currentOrganizationId) return;
       await invalidateReports(qc, currentOrganizationId, assessmentId, reportId);
     },
+  });
+}
+
+export async function fetchReportPdfJob(jobId: string): Promise<ReportPdfJob> {
+  const client = getQmindClient();
+  return guardTenant(async () => {
+    const res = await client.raw.get({
+      url: `/api/v1/jobs/${jobId}`,
+      security: [{ scheme: "bearer", type: "http" }],
+    });
+    return res.data as ReportPdfJob;
+  });
+}
+
+export async function fetchReportPdfDownloadUrl(
+  reportId: string,
+): Promise<{ url: string; expires_in_seconds: number }> {
+  const client = getQmindClient();
+  return guardTenant(async () => {
+    const res = await client.raw.get({
+      url: `/api/v1/reports/${reportId}/export-pdf/download-url`,
+      security: [{ scheme: "bearer", type: "http" }],
+    });
+    return res.data as { url: string; expires_in_seconds: number };
   });
 }
 

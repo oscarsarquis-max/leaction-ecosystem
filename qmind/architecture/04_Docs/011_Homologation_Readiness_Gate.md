@@ -1,118 +1,146 @@
 # QMind — Gate de prontidão para homologação
 
-- Status: **EM ANDAMENTO** (aberto 2026-08-03)
-- Baseline recuperável: tag **`mvp-fullstack-v0`** (`82e637f`)
-- Pré-requisitos concluídos:
-  - Domínio API: `009_MVP_End_to_End_Gate.md` (**APROVADO**)
-  - Frontend browser: `010_MVP_Web_End_to_End_Gate.md` (**APROVADO**)
-  - OpenAPI + `@qmind/api-client` versionados
-- Região alvo: **AWS `us-east-2`** (ADR-009)
-- Forma alvo: ECS Fargate + ALB + RDS PostgreSQL + S3 privado + Cognito + Secrets Manager
-- Incrementos: a partir deste ciclo, mudanças entram **versionadas sobre** `mvp-fullstack-v0` (não reescrever o marco)
+- Status: **LIBERADO PARA PILOTO** (observação 7d em paralelo; produção ampla **não** autorizada)
+- Aberto: 2026-08-03 · Lightsail: 2026-08-04 · Baseline observação: 2026-08-04
+- Baseline produto: tag **`mvp-fullstack-v0`**
+- Região: **AWS `us-east-2`**
+- Domínio zona: **`qmind.com.br`** (Route 53)
+  - **Piloto:** `https://qmind.com.br` + `https://api.qmind.com.br` (+ `www` → apex)
+  - **Testes:** `*.homolog.qmind.com.br` (exclusivo)
+- Forma: **Lightsail** + Compose + Caddy + Postgres no host + S3 + Cognito (**ADR-010**)
+- Forma futura: `infra/terraform-enterprise/` (ECS/ALB/RDS) — **não apply**
+- Produto: `012` + ADR-011; descoberta/piloto: `013`
+
+## 0. Decisão atual (2026-08-04)
+
+| Dimensão | Estado |
+|---|---|
+| Homologação funcional | **Aprovada** |
+| Homologação técnica | **Aprovada** |
+| Piloto controlado | **Ativo no domínio principal** |
+| Observação de sete dias | **Monitoramento pós-liberação** — **não bloqueante** |
+| Produção ampla | **Não autorizada** |
+
+Acesso do piloto: https://qmind.com.br/ (API https://api.qmind.com.br)  
+Homolog (testes): https://app.homolog.qmind.com.br/  
+Ativação: `infra/terraform-lightsail/PILOT_DOMAIN_20260804.md`  
+Observação: `infra/terraform-lightsail/OBSERVATION_7D_20260804.md`  
+Fechamento definitivo do gate 011: ao completar 7 dias sem gatilho crítico aberto (ou dispensa formal).
 
 ## 1. Política de baseline
 
 | Regra | Detalhe |
 |---|---|
-| Baseline | `git checkout mvp-fullstack-v0` restaura o MVP fullstack validado |
-| Incrementos | commits/tags `homolog-*` / `qmind-homolog-v*` sobre `main` após o baseline |
-| Não misturar | homologação não usa `AUTH_MODE=dev` nem `STORAGE_BACKEND=memory` |
-| Identidades DB | migrações/seeds = **admin**; runtime API/worker = **`qmind_app`** (FORCE RLS) |
-| Dados | homologação sem dados reais de cliente por padrão (ADR-009) |
+| Baseline | `mvp-fullstack-v0` recuperável |
+| Perfil TF | só `infra/terraform-lightsail/` |
+| Auth / storage | Cognito + S3 reais; sem `AUTH_MODE=dev` / `STORAGE_BACKEND=memory` |
+| DB | migrações admin; runtime `qmind_app` |
+| Budget | `qmind-homolog-monthly-30` (US$ 30) |
+| Piloto | poucos usuários; orgs fictícias / dados não sensíveis; limite de evidências |
 
-## 2. Checklist — provisionamento AWS (`us-east-2`)
+## 2. Checklist — provisionamento
 
-| # | Critério | Evidência esperada | Resultado |
+| # | Critério | Evidência | Resultado |
 |---|---|---|---|
-| H1 | Conta/ambiente isolado de produção | Conta ou prefixo `qmind-homolog`; tags `Project=qmind` `Environment=homolog` | PENDENTE |
-| H2 | Rede (VPC, subnets públicas/privadas, NAT) | Diagrama + IDs no Terraform/`DEPLOY.md` | PENDENTE |
-| H3 | ECR + imagens API/web/worker | Repositórios Terraform + push imutável por tag git | PASS (repo TF); push imagem PENDENTE |
-| H4 | ECS Fargate + ALB (HTTPS/ACM) | Módulo TF: privados + TG `ip` + HTTPS + circuit breaker; apply/health PENDENTE | PASS (módulo TF); runtime PENDENTE |
-| H5 | RDS PostgreSQL dedicado | Módulo TF privado + backup 7d; apply PENDENTE | PASS (módulo TF); runtime PENDENTE |
-| H6 | Bucket S3 privado (evidências) | Módulo TF Block Public Access + versioning; apply PENDENTE | PASS (módulo TF); runtime PENDENTE |
-| H7 | Cognito User Pool + App Client | Módulo TF OIDC + MFA opcional; apply PENDENTE | PASS (módulo TF); runtime PENDENTE |
-| H8 | Secrets Manager | Secret JSON via TF; task injeta só `DATABASE_URL_APP`; tfvars sem secrets | PASS (módulo TF); rotação `qmind_app` PENDENTE |
-| H9 | Logs (CloudWatch) | Log groups API/worker retenção configurável | PASS (módulo TF); apply PENDENTE |
-| H10 | Métricas e alarmes | Alarmes ALB 5xx/unhealthy/latência, ECS tasks/CPU/mem, RDS CPU/storage/conn → SNS | PASS (módulo TF); apply PENDENTE |
+| H0 | Budget US$ 30 + alertas e-mail | Budget `qmind-homolog-monthly-30` → gestao@leaction.com.br | **PASS** |
+| H1 | Tags / isolamento homolog | `Project=qmind` `Environment=homolog` `Profile=lightsail` | **PASS** |
+| H2 | DNS homolog + piloto | `*.homolog` + apex/`www`/`api.qmind.com.br` → `3.20.155.196` | **PASS** |
+| H3 | Imagens tagadas | tag git imutável no deploy | PENDENTE (não bloqueia piloto) |
+| H4 | Lightsail Ubuntu + IP estático | `qmind-homolog-app`; só 80/443; SSH fechado | **PASS** |
+| H5 | Postgres Compose sem porta pública | + `pg_dump` → S3 | **PASS** |
+| H6 | S3 evidências | privado BPA + versioning | **PASS** |
+| H7 | Cognito | pool `us-east-2_ewD6ck5PM`; `deletion_protection=ACTIVE` | **PASS** |
+| H8 | Credenciais split + 0600 | keys só em `/opt/qmind/secrets/*.env` | **PASS** |
+| H9 | HTTPS Caddy / Let's Encrypt | homolog + piloto (apex/api/www) | **PASS** |
+| H10 | Snapshot + alarmes | AutoSnapshot; LS alarms; backup CW **OK** | **PASS** |
+| H11 | S3 backups isolados | bucket privado + policy deny delete servidor | **PASS** |
+| H12 | Backup operacional | cron + restore V2 testado | **PASS** |
 
-Scaffold Terraform: `../../infra/` — ECR, Cognito, S3, RDS, Secrets, **ECS Fargate + ALB HTTPS + ACM + autoscaling + alarmes** (`DEPLOY.md`). **Ainda sem `terraform apply`**. Próximo: `tfvars` local → `fmt`/`validate`/tfsec → `plan` completo → custo → apply por etapas.
+**Fora de escopo desta fase:** ALB, ECS, RDS, NAT, API Gateway, ACM servidor, autoscaling, VPC complexa, produção ampla (apex piloto ≠ produção).
 
-## 3. Checklist — migrações e seeds (identidade separada)
+## 3. Migrações e seeds
 
-| # | Critério | Evidência esperada | Resultado |
-|---|---|---|---|
-| M1 | Migrações via role admin (Alembic) | `alembic upgrade head` com `DATABASE_URL_ADMIN` | PENDENTE |
-| M2 | Seeds de catálogo (não cliente) | `seeds/001_*.sql` + `002_*.sql` aplicados como admin | PENDENTE |
-| M3 | Runtime nunca usa admin URL | Task ECS só `DATABASE_URL_APP` → `qmind_app` | PENDENTE |
-| M4 | Script documentado | `infra/scripts/migrate-and-seed-homolog.ps1` (recusa URL `qmind_app`) | PASS (scaffold; execução no RDS homolog ainda pendente) |
-
-## 4. Checklist — validação de homologação
-
-| # | Critério | Evidência esperada | Resultado |
-|---|---|---|---|
-| V1 | FORCE RLS | SQL: `relrowsecurity` + `relforcerowsecurity` nas tabelas tenant; cross-org 404 | PENDENTE |
-| V2 | Backup e restauração | Snapshot RDS + restore exercise documentado (RPO/RTO provisórios) | PENDENTE |
-| V3 | HTTPS, CORS, headers | ACM no ALB; CORS allowlist do front; HSTS/security headers | PENDENTE |
-| V4 | Cognito real | Login browser homolog; refresh/logout; sem `AUTH_MODE=dev` | PENDENTE |
-| V5 | S3 real + quarentena | authorize→PUT→receive→security_pass; objetos só no bucket privado | PENDENTE |
-| V6 | Exportação PDF | Job `queued`→worker→`export_storage_key` ou falha observável | PENDENTE |
-| V7 | Observabilidade | Alarme de smoke disparado e resolvido; log com `correlation_id` | PENDENTE |
-| V8 | Rollback de implantação | Redeploy tag anterior `mvp-fullstack-v0` (imagem) com health OK | PENDENTE |
-
-## 5. Checklist — preparação do piloto controlado
-
-| # | Critério | Evidência esperada | Resultado |
-|---|---|---|---|
-| P1 | Organização piloto | Org criada em homolog; sem dados de produção | PENDENTE |
-| P2 | Usuários e papéis | Mínimo: org_admin, quality_manager, consultant_auditor, process_owner, reader | PENDENTE |
-| P3 | Escopo ISO 9001:2015 autorizado | Catálogo seed + escopo acordado no termo do piloto | PENDENTE |
-| P4 | Termo de uso e privacidade | Documento aprovado (link/versão no gate) | PENDENTE |
-| P5 | Roteiro de avaliação | Passo a passo Assessment→Report alinhado ao MVP | PENDENTE |
-| P6 | Canal de suporte | Canal + SLA piloto (ex.: e-mail/Slack) | PENDENTE |
-| P7 | Métricas | Produtividade, qualidade, aceitação — baseline e forma de coleta | PENDENTE |
-
-### 5.1 Métricas mínimas do piloto (definição inicial)
-
-| Área | Métrica | Como medir |
+| # | Critério | Resultado |
 |---|---|---|
-| Produtividade | Tempo médio draft→published (Report) | timestamps em `assessments` / `reports` + audit |
-| Produtividade | Evidências aprovadas / Assessment | contagens por org |
-| Qualidade | Taxa SoD bloqueada vs aprovada | audit `sod_violation` vs approve/publish |
-| Qualidade | Rework de findings/reports | contagens reject/request_changes |
-| Aceitação | Conclusão do roteiro sem bloqueio P0 | checklist do facilitador |
-| Aceitação | NPS/CSAT piloto (opcional) | pesquisa pós-sessão |
+| M1–M3 | Admin migrate/seed; runtime só `qmind_app` | **PASS** |
+| M4 | `migrate-and-seed-homolog.ps1` / exec no host | **PASS** |
 
-## 6. Ordem de execução recomendada
+## 4. Validação
 
-```
-1. Preencher infra/terraform/*.tfvars (homolog) + VPC/ACM/domínio
-2. terraform apply (ECR, Cognito, S3, Secrets, RDS, ECS/ALB)
-3. migrate-and-seed com DATABASE_URL_ADMIN
-4. Deploy imagens tagadas (preferir tag git ≠ latest)
-5. Validar V1–V8
-6. Preparar P1–P7
-7. Fechar este gate como APROVADO → tag homolog-ready-v0 (sugerida)
-```
+| # | Critério | Resultado |
+|---|---|---|
+| V1 | FORCE RLS | **PASS** |
+| V2 | Snapshot Lightsail + restore `pg_dump` | **PASS** — `RESTORE_V2_20260804T124851Z.md` |
+| V3 | HTTPS/CORS em homolog.qmind.com.br | **PASS** |
+| V3b | HTTPS/CORS no domínio piloto | **PASS** — `PILOT_DOMAIN_20260804.md` |
+| V4 | Cognito E2E | **PASS** — `COGNITO_E2E_V4_20260804.md` |
+| V4b | Cognito E2E no domínio piloto | **PASS** — `PILOT_COGNITO_E2E_evidence.json` |
+| V5 | Isolamento 2 orgs | **PASS** — `ISOLATION_S3_V5V6_20260804.md` |
+| V6 | S3 evidências reais | **PASS** — mesmo artefato V5/V6 |
+| V6b | Isolamento + S3 no domínio piloto | **PASS** — `PILOT_ISOLATION_S3_evidence.json` |
+| V7 | Jornada completa | **PASS** — `JOURNEY_V7_20260804.md` |
+| V7b | Worker PDF real | **PASS** — `WORKER_PDF_V7b_20260804.md` |
+| V7c | Worker PDF no domínio piloto | **PASS** — `PILOT_WORKER_PDF_evidence.json` |
+| V8 | Observabilidade/custo 7 dias | **EM ANDAMENTO** (pós-liberação; não bloqueia piloto) — `OBSERVATION_7D_20260804.md` |
 
-## 7. Ambiente / artefatos
+## 5. Piloto controlado (autorizado)
+
+Alinha a `013_Discovery_and_Pilot_Plan.md`, com restrições operacionais:
+
+- Poucos usuários **convidados** (Cognito `allow_admin_create_user_only`); organizações fictícias ou dados **não sensíveis**
+- Limite claro de volume/tamanho de evidências
+- Sem dados reais de cliente de produção / PII desnecessário
+- Sem conteúdo normativo sem licença
+- Piloto: `qmind.com.br` / `api.qmind.com.br`; testes: `*.homolog.qmind.com.br`
+- Canal único de incidentes; respeitar gatilhos de interrupção (abaixo)
+
+## 6. Observação 7 dias (paralela)
 
 | Item | Valor |
 |---|---|
-| Baseline tag | `mvp-fullstack-v0` |
-| Scaffold infra | `qmind/infra/` |
-| Deploy guide | `qmind/infra/DEPLOY.md` |
-| Conta AWS apply | **ainda não executado** nesta abertura do gate |
-| Domínio homolog | a definir (ex.: `homolog.qmind.…`) |
+| Início | 2026-08-04 (baseline dia 0) |
+| Fim previsto | 2026-08-11 |
+| Scripts | `observe-homolog-host.sh` (cron host) + `observe-homolog-daily.ps1` |
+| Artefatos | `infra/terraform-lightsail/observe/` |
 
-## 8. Veredito
+### Gatilhos de interrupção do piloto
 
-**EM ANDAMENTO** — ciclo de homologação aberto formalmente.
+- Backup ausente ou restauração comprometida  
+- Isolamento entre organizações violado  
+- Exposição de segredo ou evidência  
+- Custo projetado do QMind acima de **US$ 30/mês**  
+- Disco acima de **80%**  
+- Indisponibilidade recorrente  
+- Jobs presos ou crescimento contínuo da fila  
 
-Não há aprovação para piloto com dados reais até H1–H10, M1–M4, V1–V8 e P1–P7 estarem **PASS**.
+Detalhamento: `OBSERVATION_7D_20260804.md`.
 
-## 9. Como atualizar este gate
+## 7. Ordem de execução
 
-1. Executar o item (provisionar / validar / documentar evidência).
-2. Atualizar a coluna **Resultado** (`PASS` / `PASS*` / `FALHA` / `PENDENTE`).
-3. Registrar commit/tag do incremento e data na §7.
-4. Quando completo: mudar Status para **APROVADO** e criar tag anotada sugerida `homolog-ready-v0`.
+```
+1–10. Provision + E2E + worker PDF     ← feito (V2–V7b PASS)
+11. Baseline observação 7d + cron      ← aberto (paralelo ao piloto)
+12. Piloto no domínio principal        ← ativo (qmind.com.br)
+13. Fechar gate 011 após 7d            ← pendente
+14. Produção ampla                     ← NÃO autorizada
+```
+
+Runbook: `../../infra/terraform-lightsail/PROVISIONING_RUNBOOK.md`.
+
+## 8. Ambiente / artefatos
+
+| Item | Valor |
+|---|---|
+| TF ativo | `qmind/infra/terraform-lightsail/` |
+| Hosts | `api.homolog.qmind.com.br`, `app.homolog.qmind.com.br` |
+| Zone | `Z10252021E8KYKLG3TEOS` |
+| Bundle | `small_3_0` |
+| Budget | US$ 30 / gestao@leaction.com.br |
+| Conta | `253137917703` |
+| IP | `3.20.155.196` |
+
+## 9. Veredito
+
+**Homologação funcional e técnica aprovadas. Piloto controlado autorizado.**  
+Observação de sete dias corre **em paralelo** como monitoramento pós-liberação.  
+**Produção ampla não autorizada** até fechar V8 e decisão explícita de go-live.

@@ -1,0 +1,35 @@
+# Copie para terraform.tfvars (gitignored). NÃO coloque secrets —
+# apenas IDs de rede, domínio e URLs Cognito.
+
+aws_region  = "us-east-2"
+environment = "homolog"
+name_prefix = "qmind-homolog"
+
+vpc_id           = "vpc-xxxxxxxx"
+public_subnet_id = "subnet-xxxxxxxx"
+
+# ARM (recomendado se imagens multi-arch):
+instance_type    = "t4g.small"
+ami_architecture = "arm64"
+# x86 fallback:
+# instance_type    = "t3.small"
+# ami_architecture = "x86_64"
+
+root_volume_gb = 40
+
+domain_name     = "homolog.example.com"
+route53_zone_id = "" # ou "Z0123456789ABCDEF"
+
+# Preferir SSM; deixe admin_ssh_cidr vazio e key_name vazio.
+enable_ssm      = true
+admin_ssh_cidr  = "" # ex.: "203.0.113.10/32" se precisar SSH
+key_name        = ""
+
+cognito_callback_urls = [
+  "https://homolog.example.com/auth/callback"
+]
+cognito_logout_urls = [
+  "https://homolog.example.com/"
+]
+
+# alarm_sns_topic_arn = "arn:aws:sns:us-east-2:123456789012:ops-alerts"

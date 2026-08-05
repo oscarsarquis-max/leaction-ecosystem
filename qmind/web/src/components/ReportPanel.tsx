@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import {
+  fetchReportPdfDownloadUrl,
+  fetchReportPdfJob,
   useAssessmentReports,
   useBeginAssessmentReport,
   useCloseAssessment,
@@ -9,17 +11,10 @@ import {
   useRefreshReportSnapshot,
   useReopenAssessment,
   useReportTransition,
+  type ReportPdfJob,
 } from "@/hooks/useReports";
 import { canPublishReport } from "@/lib/permissions";
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "rascunho",
-  in_review: "em revisão",
-  published: "publicado",
-  archived: "arquivado",
-  superseded: "substituído",
-  discarded: "descartado",
-};
+import { labelWorkflowStatus } from "@/lib/labels";
 
 type ReportRow = {
   id: string;
@@ -37,12 +32,7 @@ type ReportRow = {
   updated_at?: string;
 };
 
-type ExportJob = {
-  id: string;
-  job_type: string;
-  status: string;
-  idempotency_key?: string;
-};
+type ExportJob = ReportPdfJob;
 
 function snapshotSummary(content: Record<string, unknown> | null | undefined) {
   if (!content) return { findings: 0, hasMaturity: false, hasPlan: false };
@@ -89,6 +79,8 @@ export function ReportPanel({
   const [reason, setReason] = useState("");
   const [waiver, setWaiver] = useState("");
   const [lastJob, setLastJob] = useState<ExportJob | null>(null);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const list = (reports.data as ReportRow[] | undefined) ?? [];
   const active =
@@ -97,6 +89,29 @@ export function ReportPanel({
     list.find((r) => r.status === "published") ??
     list[0] ??
     null;
+
+  useEffect(() => {
+    if (!lastJob?.id) return;
+    if (lastJob.status === "succeeded" || lastJob.status === "failed") return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const next = await fetchReportPdfJob(lastJob.id);
+        if (!cancelled) setLastJob(next);
+        if (next.status === "succeeded") {
+          void reports.refetch();
+        }
+      } catch {
+        /* keep last known status; next poll retries */
+      }
+    };
+    const id = window.setInterval(() => void tick(), 2000);
+    void tick();
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [lastJob?.id, lastJob?.status, reports]);
 
   useEffect(() => {
     if (active && active.id !== activeId) setActiveId(active.id);
@@ -135,7 +150,7 @@ export function ReportPanel({
         <h2 className="font-display text-2xl text-teal-950">Relatório</h2>
         <p className="mt-1 text-sm text-teal-950/70">
           Snapshot imutável após submissão · revisão · publicação com SoD · versionamento ·
-          exportação PDF assíncrona · fechamento/reabertura da Assessment.
+          exportação PDF assíncrona · fechamento/reabertura da avaliação.
         </p>
       </header>
 
@@ -144,7 +159,7 @@ export function ReportPanel({
           className="rounded-md border border-amber-300/70 bg-amber-50/90 px-3 py-2 text-sm text-amber-950"
           data-testid="report-begin-phase"
         >
-          Assessment em <span className="font-semibold">actions</span>. Abra a fase de relatório
+          Avaliação em <span className="font-semibold">ações</span>. Abra a fase de relatório
           para criar snapshots.
           <button
             type="button"
@@ -153,13 +168,13 @@ export function ReportPanel({
             data-testid="report-begin"
             onClick={() => void runOnce(() => beginReport.mutateAsync())}
           >
-            Abrir fase report
+            Abrir fase de relatório
           </button>
         </div>
       ) : null}
 
       {beginReport.isError ? (
-        <ApiErrorBanner title="Erro ao abrir fase report" error={beginReport.error} />
+        <ApiErrorBanner title="Erro ao abrir fase de relatório" error={beginReport.error} />
       ) : null}
       {createReport.isError ? (
         <ApiErrorBanner title="Erro ao criar relatório" error={createReport.error} />
@@ -176,10 +191,10 @@ export function ReportPanel({
         <ApiErrorBanner title="Erro ao enfileirar exportação" error={exportPdf.error} />
       ) : null}
       {closeAssessment.isError ? (
-        <ApiErrorBanner title="Erro ao fechar assessment" error={closeAssessment.error} />
+        <ApiErrorBanner title="Erro ao fechar avaliação" error={closeAssessment.error} />
       ) : null}
       {reopenAssessment.isError ? (
-        <ApiErrorBanner title="Erro ao reabrir assessment" error={reopenAssessment.error} />
+        <ApiErrorBanner title="Erro ao reabrir avaliação" error={reopenAssessment.error} />
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,14rem)_1fr]">
@@ -214,7 +229,7 @@ export function ReportPanel({
                     <span data-testid={`report-version-${r.id}`}>v{r.version_no}</span>
                     {" · "}
                     <span data-testid={`report-status-${r.id}`}>
-                      {STATUS_LABELS[r.status] ?? r.status}
+                      {labelWorkflowStatus(r.status)}
                     </span>
                   </button>
                 </li>
@@ -258,7 +273,7 @@ export function ReportPanel({
                   })
                 }
               >
-                Criar draft (snapshot)
+                Criar rascunho (snapshot)
               </button>
             </div>
           ) : null}
@@ -281,9 +296,9 @@ export function ReportPanel({
                     <dd data-testid="report-version">v{active.version_no}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs uppercase tracking-wide text-teal-950/50">Status</dt>
+                    <dt className="text-xs uppercase tracking-wide text-teal-950/50">Situação</dt>
                     <dd data-testid="report-status">
-                      {STATUS_LABELS[active.status] ?? active.status}
+                      {labelWorkflowStatus(active.status)}
                       <span className="ml-2 font-mono text-xs text-teal-950/50">
                         ({active.status})
                       </span>
@@ -309,7 +324,7 @@ export function ReportPanel({
                   className="mt-3 rounded-md border border-teal-900/10 bg-teal-50/40 px-3 py-2 text-sm"
                   data-testid="report-snapshot-summary"
                 >
-                  Snapshot: {snap.findings} finding(s) aprovada(s)
+                  Snapshot: {snap.findings} constatação(ões) aprovada(s)
                   {snap.hasMaturity ? " · maturidade" : " · sem maturidade"}
                   {snap.hasPlan ? " · plano de ação" : " · sem plano"}
                   {active.status !== "draft" ? (
@@ -359,7 +374,7 @@ export function ReportPanel({
                         )
                       }
                     >
-                      Submeter para revisão
+                      Enviar para revisão
                     </button>
                     <button
                       type="button"
@@ -505,13 +520,49 @@ export function ReportPanel({
                   data-testid="report-export-job"
                   role="status"
                 >
-                  Exportação enfileirada: job{" "}
+                  Exportação PDF: job{" "}
                   <span className="font-mono text-xs">{lastJob.id}</span> · status{" "}
                   <strong data-testid="report-export-status">{lastJob.status}</strong>
-                  <span className="mt-1 block text-xs text-teal-950/60">
-                    Download assíncrono — worker/download ainda não expostos; acompanhe o job
-                    enfileirado.
-                  </span>
+                  {lastJob.attempt_count != null ? (
+                    <span className="text-xs text-teal-950/60">
+                      {" "}
+                      · tentativa {lastJob.attempt_count}/{lastJob.max_attempts ?? "?"}
+                    </span>
+                  ) : null}
+                  {lastJob.status === "failed" && lastJob.error_safe_message ? (
+                    <span className="mt-1 block text-xs text-qmind-semantic-danger" data-testid="report-export-error">
+                      {lastJob.error_safe_message}
+                    </span>
+                  ) : null}
+                  {(lastJob.status === "succeeded" || !!active.export_storage_key) && (
+                    <button
+                      type="button"
+                      className="mt-2 rounded-md bg-teal-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      data-testid="report-pdf-download"
+                      disabled={downloadBusy}
+                      onClick={() =>
+                        void runOnce(async () => {
+                          setDownloadBusy(true);
+                          setDownloadError(null);
+                          try {
+                            const { url } = await fetchReportPdfDownloadUrl(active.id);
+                            window.open(url, "_blank", "noopener,noreferrer");
+                          } catch (err) {
+                            setDownloadError(
+                              err instanceof Error ? err.message : "Falha ao obter download",
+                            );
+                          } finally {
+                            setDownloadBusy(false);
+                          }
+                        })
+                      }
+                    >
+                      Baixar PDF
+                    </button>
+                  )}
+                  {downloadError ? (
+                    <span className="mt-1 block text-xs text-qmind-semantic-danger">{downloadError}</span>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -520,13 +571,13 @@ export function ReportPanel({
                   className="rounded-lg border border-teal-900/10 bg-white/70 p-4"
                   data-testid="assessment-close-box"
                 >
-                  <h3 className="font-display text-lg text-teal-950">Fechar Assessment</h3>
+                  <h3 className="font-display text-lg text-teal-950">Fechar avaliação</h3>
                   <p className="mt-1 text-xs text-teal-950/70">
                     `report` → `closed`. Normalmente exige relatório publicado; waiver só para
                     QM/admin.
                   </p>
                   <label className="mt-2 block text-xs text-teal-950/70">
-                    Waiver (opcional)
+                    Dispensa (opcional)
                     <input
                       className="mt-1 w-full rounded border border-teal-900/20 bg-white px-2 py-1.5 text-sm"
                       value={waiver}
@@ -545,7 +596,7 @@ export function ReportPanel({
                       )
                     }
                   >
-                    Fechar assessment
+                    Fechar avaliação
                   </button>
                 </div>
               ) : null}
@@ -555,7 +606,7 @@ export function ReportPanel({
                   className="rounded-lg border border-teal-900/10 bg-white/70 p-4"
                   data-testid="assessment-reopen-box"
                 >
-                  <h3 className="font-display text-lg text-teal-950">Reabrir Assessment</h3>
+                  <h3 className="font-display text-lg text-teal-950">Reabrir avaliação</h3>
                   <p className="mt-1 text-xs text-teal-950/70">
                     `closed` → `report`. Histórico publicado permanece imutável.
                   </p>

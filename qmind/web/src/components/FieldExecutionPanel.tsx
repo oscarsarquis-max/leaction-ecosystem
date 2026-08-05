@@ -17,11 +17,16 @@ import {
 } from "@/hooks/useFieldExecution";
 import type { EvidenceUploadPhase } from "@/lib/evidenceUpload";
 import { validateEvidenceFile } from "@/lib/evidenceConstraints";
+import {
+  INTERVIEW_MODE_OPTIONS,
+  labelInterviewMode,
+  labelWorkflowStatus,
+} from "@/lib/labels";
 
 const STATUS_HINT: Record<string, string> = {
-  upload_pending: "Aguardando PUT + receive",
+  upload_pending: "Em revisão de envio",
   quarantined: "Em verificação (quarentena)",
-  approved: "Aprovada — disponível para Finding",
+  approved: "Aprovada — disponível para constatação",
   rejected: "Rejeitada na verificação",
   disposed: "Descartada / expirada",
   superseded: "Substituída",
@@ -33,9 +38,9 @@ function phaseLabel(phase: EvidenceUploadPhase): string {
     case "authorizing":
       return "Autorizando…";
     case "uploading":
-      return "Enviando objeto…";
+      return "Enviando evidência…";
     case "confirming":
-      return "Confirmando receive…";
+      return "Confirmando recebimento…";
     case "done":
       return "Recebida (quarentena)";
     case "failed":
@@ -64,7 +69,7 @@ export function FieldExecutionPanel({
       <header>
         <h2 className="font-display text-2xl text-teal-950">Execução em campo</h2>
         <p className="mt-1 text-sm text-teal-950/70">
-          Entrevistas, observações e evidências. Evidência só fica utilizável em Finding após{" "}
+          Entrevistas, observações e evidências. Evidência só fica utilizável em constatação após{" "}
           <span className="font-semibold">approved</span>.
         </p>
       </header>
@@ -121,7 +126,7 @@ function InterviewsBlock({
     <section className="rounded-lg border border-teal-900/10 bg-white/70 p-4">
       <h3 className="font-display text-xl text-teal-950">Entrevistas</h3>
       <p className="mt-1 text-sm text-teal-950/70">
-        Respostas editáveis apenas com entrevista `planned` e avaliação `in_progress`.
+        Respostas editáveis apenas com entrevista planejada e avaliação em execução.
       </p>
 
       {canEdit ? (
@@ -134,9 +139,11 @@ function InterviewsBlock({
               onChange={(e) => setMode(e.target.value as typeof mode)}
               data-testid="interview-mode"
             >
-              <option value="onsite">onsite</option>
-              <option value="remote">remote</option>
-              <option value="hybrid">hybrid</option>
+              {INTERVIEW_MODE_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
             </select>
           </label>
           <button
@@ -185,8 +192,10 @@ function InterviewsBlock({
               >
                 <span className="font-mono text-xs">{i.id.slice(0, 8)}…</span>
                 {" · "}
-                <span className="uppercase tracking-wide">{i.status}</span>
-                {i.mode ? ` · ${i.mode}` : ""}
+                <span className="tracking-wide">
+                  {labelWorkflowStatus(i.status)}
+                  {i.mode ? ` · ${labelInterviewMode(i.mode)}` : ""}
+                </span>
               </button>
             </li>
           ))}
@@ -471,13 +480,13 @@ function EvidencesBlock({
                 <p className="font-mono text-xs">{ev.id}</p>
                 <p className="mt-0.5">
                   <span
-                    className="rounded bg-teal-900/10 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-teal-900"
+                    className="rounded bg-teal-900/10 px-1.5 py-0.5 text-xs font-semibold tracking-wide text-teal-900"
                     data-testid={`evidence-status-${ev.id}`}
                   >
-                    {ev.status}
+                    {labelWorkflowStatus(ev.status)}
                   </span>
                   <span className="ml-2 text-teal-950/60">
-                    {STATUS_HINT[ev.status] ?? ev.status}
+                    {STATUS_HINT[ev.status] ?? labelWorkflowStatus(ev.status)}
                   </span>
                 </p>
                 <p className="mt-1 text-xs text-teal-950/50">
@@ -493,7 +502,7 @@ function EvidencesBlock({
                     onClick={() => void preview.mutateAsync(ev.id)}
                     data-testid={`evidence-preview-${ev.id}`}
                   >
-                    Preview
+                    Visualizar
                   </button>
                 ) : null}
                 {ev.status === "upload_pending" && canCollect ? (
@@ -518,7 +527,7 @@ function EvidencesBlock({
                     </button>
                     <button
                       type="button"
-                      className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-semibold text-red-900"
+                      className="rounded border border-qmind-semantic-danger/30 bg-qmind-semantic-future px-2 py-1 text-xs font-semibold text-qmind-semantic-danger"
                       onClick={() => void fail.mutateAsync(ev.id)}
                       data-testid={`evidence-fail-${ev.id}`}
                     >
@@ -528,7 +537,7 @@ function EvidencesBlock({
                 ) : null}
                 {ev.status === "quarantined" && canCollect && !allowSimulatedPass ? (
                   <span className="text-xs text-amber-900">
-                    security_pass simulado indisponível em produção
+                    Aprovação simulada indisponível em produção
                   </span>
                 ) : null}
               </div>

@@ -13,6 +13,12 @@ describe("env config", () => {
     expect(() => getConfig()).toThrow(/forbidden/i);
   });
 
+  it("blocks AUTH_MODE=dev when ENVIRONMENT=homolog", () => {
+    vi.stubEnv("VITE_ENVIRONMENT", "homolog");
+    vi.stubEnv("VITE_AUTH_MODE", "dev");
+    expect(() => getConfig()).toThrow(/forbidden/i);
+  });
+
   it("allows local + dev", () => {
     vi.stubEnv("VITE_ENVIRONMENT", "local");
     vi.stubEnv("VITE_AUTH_MODE", "dev");

@@ -19,6 +19,8 @@ class AssessmentStatus(str, Enum):
 class AssessmentType(str, Enum):
     diagnosis = "diagnosis"
     internal_audit = "internal_audit"
+    external_audit = "external_audit"
+    certification_prep = "certification_prep"
     other = "other"
 
 

@@ -22,7 +22,7 @@ Workspace documental do QMind, plataforma inteligente de apoio à consultoria, a
 
 ## Estado atual
 
-- ADRs 001–009 Aceitos — `04_Docs/005_Monorepo_Confrontation.md`.
+- ADRs **001–011** Aceitos (009+010 hospedagem; **011** consultancy-led).
 - Domínio documental **Aceito** e congelado: **`domain-docs-v0`** — `04_Docs/006_Domain_Acceptance_Checklist.md`.
 - Emenda implementação: `04_Docs/007_Domain_Docs_Amendment_001.md` (Alembic, porta 5433).
 - **DDL v0 + Alembic:** `03_Database/003_DDL_v0.md` → `qmind/backend/` (database `qmind` no cluster `leaction_db`).
@@ -30,8 +30,10 @@ Workspace documental do QMind, plataforma inteligente de apoio à consultoria, a
 - **Gate MVP E2E:** `04_Docs/009_MVP_End_to_End_Gate.md` — veredito **APROVADO** (domínio completo + isolamento 2 orgs).
 - **Gate Web E2E:** `04_Docs/010_MVP_Web_End_to_End_Gate.md` — veredito **APROVADO** (Playwright + build produção).
 - **Baseline fullstack:** tag **`mvp-fullstack-v0`** — marco recuperável; incrementos versionados a partir daqui.
-- **Gate Homologação:** `04_Docs/011_Homologation_Readiness_Gate.md` — veredito **EM ANDAMENTO**.
-- **Infra homolog:** `../infra/` (Terraform scaffold `us-east-2` + `DEPLOY.md`).
+- **Modelo de negócio:** `04_Docs/012_Business_Model_and_Product_Focus.md` — consultancy-led B2B2B (**Aceito**).
+- **Descoberta / piloto:** `04_Docs/013_Discovery_and_Pilot_Plan.md` — **Em andamento** (sem código de workspace de consultoria até evidência).
+- **Gate Homologação:** `04_Docs/011_Homologation_Readiness_Gate.md` — **EM ANDAMENTO** (Lightsail, ADR-010; domínio `qmind.com.br`).
+- **Infra homolog:** `../infra/terraform-lightsail/` + `DEPLOY.md`; futuro `terraform-enterprise/`.
 - **Tag backend:** `mvp-backend-v0`
 - **OpenAPI:** `../backend/openapi/openapi.json` — contrato versionado; freeze `openapi-v1-initial`
 - **Cliente TS:** `../packages/api-client` (`@qmind/api-client`) — gerado do OpenAPI; `npm run generate:api-client`

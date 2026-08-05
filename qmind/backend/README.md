@@ -1,6 +1,6 @@
 # QMind backend
 
-- **Database lógico:** `qmind`
+- **Database lógico:** `qmind_dev`
 - **Cluster/serviço:** `leaction_db` (`localhost:5433`)
 - Freeze de domínio: **`domain-docs-v0`**
 - Gate Fase 0: `scripts/gate_phase0.ps1` → `../architecture/04_Docs/008_Phase0_Technical_Gate.md`
@@ -23,8 +23,8 @@ python -m venv .venv
 pip install -r requirements.txt
 $env:DATABASE_URL = $env:DATABASE_URL_ADMIN
 alembic upgrade head
-Get-Content seeds\001_maturity_catalog_v0.sql -Raw | docker exec -i leaction_db psql -U admin -d qmind
-Get-Content seeds\002_assessment_model_stub.sql -Raw | docker exec -i leaction_db psql -U admin -d qmind
+Get-Content seeds\001_maturity_catalog_v0.sql -Raw | docker exec -i leaction_db psql -U admin -d qmind_dev
+Get-Content seeds\002_assessment_model_stub.sql -Raw | docker exec -i leaction_db psql -U admin -d qmind_dev
 uvicorn app.main:app --reload --port 8008
 ```
 

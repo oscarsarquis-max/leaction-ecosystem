@@ -27,6 +27,18 @@ class ObjectHead:
 class ObjectStorage(Protocol):
     def generate_key(self, organization_id: str, evidence_id: str, version_no: int = 1) -> str: ...
 
+    def generate_report_pdf_key(
+        self, organization_id: str, report_id: str, version_no: int
+    ) -> str: ...
+
+    def put_bytes(
+        self,
+        key: str,
+        data: bytes,
+        *,
+        content_type: str,
+    ) -> None: ...
+
     def presign_upload(
         self,
         key: str,

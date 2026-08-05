@@ -29,6 +29,14 @@ class MembershipOut(BaseModel):
     status: MembershipStatus
 
 
+class OrgMemberOut(BaseModel):
+    membership_id: UUID
+    email: str
+    display_name: str | None = None
+    roles: list[str]
+    status: MembershipStatus
+
+
 class OrganizationDetailOut(BaseModel):
     organization: OrganizationOut
     membership: MembershipOut

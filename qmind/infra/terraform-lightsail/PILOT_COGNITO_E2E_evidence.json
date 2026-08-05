@@ -1,0 +1,116 @@
+﻿{
+    "gate":  "011-V4-cognito-e2e",
+    "started_at":  "2026-08-04T14:39:35.1275855Z",
+    "api_base":  "https://api.qmind.com.br",
+    "app_base":  "https://qmind.com.br",
+    "pool_id":  "us-east-2_ewD6ck5PM",
+    "client_id":  "306r2id1f5gm9vk733v3rlbda6",
+    "checks":  [
+                   {
+                       "id":  "health_auth_mode",
+                       "status":  "PASS",
+                       "detail":  "environment=homolog auth_mode=cognito"
+                   },
+                   {
+                       "id":  "auth_mode_dev_rejected",
+                       "status":  "PASS",
+                       "detail":  "X-Dev-* without Bearer -\u003e 401"
+                   },
+                   {
+                       "id":  "token_missing",
+                       "status":  "PASS",
+                       "detail":  "status=401"
+                   },
+                   {
+                       "id":  "access_token_claims",
+                       "status":  "PASS",
+                       "detail":  "sub=a15b8550-8051-7025-7e84-90d79183b165 token_use=access client_id=ok iss=ok access=eyJraW...kwUw (len=1067)"
+                   },
+                   {
+                       "id":  "login_api_create_org",
+                       "status":  "PASS",
+                       "detail":  "org_a=1220326c-e06a-4c88-9af1-4f542ed77cbc status=201"
+                   },
+                   {
+                       "id":  "memberships_list",
+                       "status":  "PASS",
+                       "detail":  "count=1"
+                   },
+                   {
+                       "id":  "org_via_membership",
+                       "status":  "PASS",
+                       "detail":  "current org ok with membership name=Homolog Gate Org A"
+                   },
+                   {
+                       "id":  "org_header_alone",
+                       "status":  "PASS",
+                       "detail":  "no bearer -\u003e 401"
+                   },
+                   {
+                       "id":  "second_org",
+                       "status":  "PASS",
+                       "detail":  "org_b=4a2670a4-edac-47f5-897c-79db93df4ab1 sub_b=016bd5e0-f0b1-70e2-a175-d54756d81e0a"
+                   },
+                   {
+                       "id":  "cross_org",
+                       "status":  "PASS",
+                       "detail":  "status=403 no org name leak"
+                   },
+                   {
+                       "id":  "token_tampered",
+                       "status":  "PASS",
+                       "detail":  "status=401"
+                   },
+                   {
+                       "id":  "token_wrong_issuer",
+                       "status":  "PASS",
+                       "detail":  "status=401"
+                   },
+                   {
+                       "id":  "token_adulterated",
+                       "status":  "PASS",
+                       "detail":  "status=401"
+                   },
+                   {
+                       "id":  "token_expired_or_bad_sig",
+                       "status":  "PASS",
+                       "detail":  "status=401"
+                   },
+                   {
+                       "id":  "session_refresh",
+                       "status":  "PASS",
+                       "detail":  "new_access=eyJraW...RFpw (len=1067) memberships_ok count=1"
+                   },
+                   {
+                       "id":  "logout_refresh_revoked",
+                       "status":  "PASS",
+                       "detail":  "refresh rejected after GlobalSignOut"
+                   },
+                   {
+                       "id":  "logout_access_note",
+                       "status":  "PASS",
+                       "detail":  "post-signout access status=200 (access JWT may live until exp; refresh revoked; UI clears local session)"
+                   },
+                   {
+                       "id":  "ui_shell_loads",
+                       "status":  "PASS",
+                       "detail":  "app HTML loads; password not embedded"
+                   },
+                   {
+                       "id":  "ui_hosted_login",
+                       "status":  "PASS",
+                       "detail":  "hosted UI status=200"
+                   }
+               ],
+    "finished_at":  "2026-08-04T14:40:01.9250599Z",
+    "verdict":  "PASS",
+    "user_a_email":  "qmind.homolog.gate.a+c0498d97@leaction.com.br",
+    "user_b_email":  "qmind.homolog.gate.b+07b6c8cd@leaction.com.br",
+    "user_a_sub":  "a15b8550-8051-7025-7e84-90d79183b165",
+    "user_b_sub":  "016bd5e0-f0b1-70e2-a175-d54756d81e0a",
+    "org_a_id":  "1220326c-e06a-4c88-9af1-4f542ed77cbc",
+    "org_b_id":  "4a2670a4-edac-47f5-897c-79db93df4ab1",
+    "temp_users_created":  true,
+    "deployed_git":  "d61e463",
+    "image_tag":  "qmind-api:mvp-fullstack-v0 / qmind-web:mvp-fullstack-v0"
+}

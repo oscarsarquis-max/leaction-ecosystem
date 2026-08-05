@@ -16,6 +16,7 @@ import {
   canActAsActionValidator,
   isActionItemOverdueDisplay,
 } from "@/lib/permissions";
+import { labelFindingType, labelWorkflowStatus } from "@/lib/labels";
 
 const ACTION_KINDS: ActionKind[] = [
   "correction",
@@ -27,20 +28,6 @@ const KIND_LABELS: Record<ActionKind, string> = {
   correction: "Correção",
   corrective_action: "Ação corretiva",
   improvement: "Melhoria",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "rascunho",
-  active: "ativo",
-  completed: "concluído",
-  cancelled: "cancelado",
-  open: "aberta",
-  in_progress: "em execução",
-  implemented: "implementada",
-  validated: "validada (eficácia pendente)",
-  done: "concluída",
-  ineffective: "ineficaz",
-  ineffective_closed: "ineficaz (fechada)",
 };
 
 type PlanRow = {
@@ -129,8 +116,8 @@ export function ActionPlanPanel({
       <header>
         <h2 className="font-display text-2xl text-teal-950">Plano de ação</h2>
         <p className="mt-1 text-sm text-teal-950/70">
-          Plano draft → ativo → itens (execução → validação → eficácia). SoD: dono da ação
-          não valida nem confirma eficácia. Scores/agregados não se aplicam aqui — o backend
+          Plano rascunho → ativo → itens (execução → validação → eficácia). SoD: responsável da ação
+          não valida nem confirma eficácia. Nível de maturidade não se aplica aqui — o servidor
           é a autoridade das transições.
         </p>
       </header>
@@ -140,7 +127,7 @@ export function ActionPlanPanel({
           className="rounded-md border border-amber-300/70 bg-amber-50/90 px-3 py-2 text-sm text-amber-950"
           data-testid="action-open-phase"
         >
-          Assessment ainda em <span className="font-semibold">analysis</span>. Abra a fase de
+          Avaliação ainda em <span className="font-semibold">análise</span>. Abra a fase de
           ações para alinhar o ciclo de vida.
           <button
             type="button"
@@ -149,13 +136,13 @@ export function ActionPlanPanel({
             data-testid="action-open-actions"
             onClick={() => void runOnce(() => openActions.mutateAsync())}
           >
-            Abrir fase actions
+            Abrir fase de ações
           </button>
         </div>
       ) : null}
 
       {openActions.isError ? (
-        <ApiErrorBanner title="Erro ao abrir fase actions" error={openActions.error} />
+        <ApiErrorBanner title="Erro ao abrir fase de ações" error={openActions.error} />
       ) : null}
       {createPlan.isError ? (
         <ApiErrorBanner title="Erro ao criar plano" error={createPlan.error} />
@@ -195,7 +182,7 @@ export function ActionPlanPanel({
                   >
                     <span className="block font-mono text-[11px]">{p.id.slice(0, 8)}…</span>
                     <span data-testid={`action-plan-status-${p.id}`}>
-                      {STATUS_LABELS[p.status] ?? p.status}
+                      {labelWorkflowStatus(p.status)}
                     </span>
                   </button>
                 </li>
@@ -337,7 +324,7 @@ function PlanWorkspace({
         <span className="text-sm text-teal-950">
           Status:{" "}
           <strong data-testid="action-plan-status">
-            {STATUS_LABELS[plan.status] ?? plan.status}
+            {labelWorkflowStatus(plan.status)}
           </strong>
         </span>
         {plan.empty_plan_rationale ? (
@@ -436,7 +423,7 @@ function PlanWorkspace({
                     >
                       <span className="block">
                         {KIND_LABELS[item.action_kind]} ·{" "}
-                        {STATUS_LABELS[item.status] ?? item.status}
+                        {labelWorkflowStatus(item.status)}
                       </span>
                       <span className="block truncate text-xs text-teal-950/70">
                         {item.description}
@@ -454,7 +441,7 @@ function PlanWorkspace({
                           className="mt-1 ml-2 inline-block text-xs font-semibold uppercase tracking-wide text-amber-900"
                           data-testid={`action-item-withdrawn-${item.id}`}
                         >
-                          Finding origem retirada
+                          Constatação de origem retirada
                         </span>
                       ) : null}
                     </button>
@@ -540,9 +527,9 @@ function CreateItemForm({
       className="space-y-3 rounded-lg border border-teal-900/10 bg-white/70 p-4"
       data-testid="action-create-item-form"
     >
-      <h3 className="font-display text-lg text-teal-950">Novo item (plano draft)</h3>
+      <h3 className="font-display text-lg text-teal-950">Novo item (plano em rascunho)</h3>
       <label className="block text-xs text-teal-950/70">
-        Finding vinculada (aprovada)
+        Constatação vinculada (aprovada)
         <select
           className="mt-1 w-full rounded border border-teal-900/20 bg-white px-2 py-1.5 text-sm"
           value={findingId}
@@ -554,7 +541,7 @@ function CreateItemForm({
             .filter((f) => f.status === "approved")
             .map((f) => (
               <option key={f.id} value={f.id}>
-                {f.finding_type ?? "finding"} · {f.title}
+                {labelFindingType(f.finding_type)} · {f.title}
               </option>
             ))}
         </select>
@@ -569,7 +556,7 @@ function CreateItemForm({
         >
           {ACTION_KINDS.map((k) => (
             <option key={k} value={k}>
-              {KIND_LABELS[k]} ({k})
+              {KIND_LABELS[k]}
             </option>
           ))}
         </select>
@@ -586,7 +573,7 @@ function CreateItemForm({
         />
       </label>
       <label className="block text-xs text-teal-950/70">
-        Responsável (owner)
+        Responsável
         <select
           className="mt-1 w-full rounded border border-teal-900/20 bg-white px-2 py-1.5 text-sm"
           required
@@ -704,7 +691,7 @@ function ItemDetail({
         <div>
           <dt className="text-xs uppercase tracking-wide text-teal-950/50">Status</dt>
           <dd data-testid="action-item-status">
-            {STATUS_LABELS[item.status] ?? item.status}
+            {labelWorkflowStatus(item.status)}
             <span className="ml-2 font-mono text-xs text-teal-950/50">({item.status})</span>
           </dd>
         </div>
@@ -720,11 +707,11 @@ function ItemDetail({
           <dd>{item.description}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-teal-950/50">Finding</dt>
+          <dt className="text-xs uppercase tracking-wide text-teal-950/50">Constatação</dt>
           <dd data-testid="action-item-finding-label">{findingTitle}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-teal-950/50">Owner</dt>
+          <dt className="text-xs uppercase tracking-wide text-teal-950/50">Responsável</dt>
           <dd className="font-mono text-xs" data-testid="action-item-owner-id">
             {item.owner_membership_id}
           </dd>
@@ -759,7 +746,7 @@ function ItemDetail({
           data-testid="action-withdrawn-banner"
           role="status"
         >
-          A finding de origem foi retirada. O item permanece no fluxo — revise se a ação ainda
+          A constatação de origem foi retirada. O item permanece no fluxo — revise se a ação ainda
           faz sentido.
         </div>
       ) : null}
@@ -770,7 +757,7 @@ function ItemDetail({
           data-testid="action-sod-banner"
           role="status"
         >
-          Separação de funções (SoD): você é o owner deste item e não pode{" "}
+          Separação de funções (SoD): você é o responsável deste item e não pode{" "}
           {sodBlocksValidate ? "validar a implementação" : "confirmar a eficácia"}. Peça a outro
           revisor com papel adequado.
         </div>
@@ -820,7 +807,7 @@ function ItemDetail({
                 data-testid="action-item-validate"
                 title={
                   !canValidate
-                    ? "SoD ou papel insuficiente — owner não valida"
+                    ? "SoD ou papel insuficiente — responsável não valida"
                     : "Validar implementação"
                 }
                 onClick={() => onTransition({ kind: "validate" })}
@@ -852,7 +839,7 @@ function ItemDetail({
                 data-testid="action-item-confirm-efficacy"
                 title={
                   !canEfficacy
-                    ? "SoD ou papel insuficiente — owner não confirma eficácia"
+                    ? "SoD ou papel insuficiente — responsável não confirma eficácia"
                     : "Confirmar eficácia"
                 }
                 onClick={() => onTransition({ kind: "confirm_efficacy" })}

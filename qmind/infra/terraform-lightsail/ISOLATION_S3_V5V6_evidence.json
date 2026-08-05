@@ -1,0 +1,82 @@
+﻿{
+    "gate":  "011-V5-V6-isolation-s3",
+    "started_at":  "2026-08-04T13:30:12.3678241Z",
+    "api_base":  "https://api.homolog.qmind.com.br",
+    "checks":  [
+                   {
+                       "id":  "two_orgs",
+                       "status":  "PASS",
+                       "detail":  "org_a=7e5ad514-cb46-4a62-a1d5-79a2527b1561 org_b=e9843158-e13a-4ae1-93da-fe2bda893918"
+                   },
+                   {
+                       "id":  "assessments_created",
+                       "status":  "PASS",
+                       "detail":  "aid_a=f908500f-78d1-48da-99c5-452ab350ac93 aid_b=c8bb92df-4ce3-49b1-8e4b-1e1fe8cab8c1"
+                   },
+                   {
+                       "id":  "list_isolation",
+                       "status":  "PASS",
+                       "detail":  "A lists only own assessments"
+                   },
+                   {
+                       "id":  "get_cross_assessment",
+                       "status":  "PASS",
+                       "detail":  "status=404"
+                   },
+                   {
+                       "id":  "header_org_without_membership",
+                       "status":  "PASS",
+                       "detail":  "A+OrgB header -\u003e 403"
+                   },
+                   {
+                       "id":  "org_switch_no_cache_leak",
+                       "status":  "PASS",
+                       "detail":  "B sees B; A re-list still isolated"
+                   },
+                   {
+                       "id":  "s3_authorize",
+                       "status":  "PASS",
+                       "detail":  "evidence=32c0ad49-7b45-477a-82f7-84f41b8dd853 upload_host=qmind-homolog-evidence-20260804120548933000000002.s3.us-east-2.amazonaws.com expires=900"
+                   },
+                   {
+                       "id":  "s3_put",
+                       "status":  "PASS",
+                       "detail":  "status=200"
+                   },
+                   {
+                       "id":  "s3_receive_hash_size",
+                       "status":  "PASS",
+                       "detail":  "status=quarantined size=47 hash_prefix=sha256:db74da4e... type=application/pdf"
+                   },
+                   {
+                       "id":  "s3_security_pass",
+                       "status":  "PASS",
+                       "detail":  "to=approved"
+                   },
+                   {
+                       "id":  "s3_download",
+                       "status":  "PASS",
+                       "detail":  "bytes=47 host=qmind-homolog-evidence-20260804120548933000000002.s3.us-east-2.amazonaws.com expires=300"
+                   },
+                   {
+                       "id":  "s3_cross_org",
+                       "status":  "PASS",
+                       "detail":  "get=404 download=404 no hash/url leak"
+                   },
+                   {
+                       "id":  "s3_reject_mismatch",
+                       "status":  "PASS",
+                       "detail":  "receive mismatch status=422"
+                   }
+               ],
+    "finished_at":  "2026-08-04T13:30:38.0831368Z",
+    "verdict":  "PASS",
+    "user_a_email":  "qmind.homolog.iso.a+e83a631f@leaction.com.br",
+    "user_b_email":  "qmind.homolog.iso.b+e5228e1a@leaction.com.br",
+    "org_a_id":  "7e5ad514-cb46-4a62-a1d5-79a2527b1561",
+    "org_b_id":  "e9843158-e13a-4ae1-93da-fe2bda893918",
+    "assessment_a_id":  "f908500f-78d1-48da-99c5-452ab350ac93",
+    "assessment_b_id":  "c8bb92df-4ce3-49b1-8e4b-1e1fe8cab8c1",
+    "evidence_a_id":  "32c0ad49-7b45-477a-82f7-84f41b8dd853",
+    "deployed_git":  "d61e463"
+}

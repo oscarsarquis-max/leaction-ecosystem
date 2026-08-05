@@ -14,17 +14,34 @@ class S3ObjectStorage:
         if not settings.s3_bucket:
             raise ValueError("S3_BUCKET is required when STORAGE_BACKEND=s3")
         self._bucket = settings.s3_bucket
+        # Regional endpoint avoids TemporaryRedirect (307) on presigned PUT/GET
+        # when the default global host s3.amazonaws.com is used for non-us-east-1.
+        endpoint = settings.s3_endpoint_url or f"https://s3.{settings.s3_region}.amazonaws.com"
         self._client = boto3.client(
             "s3",
             region_name=settings.s3_region,
             aws_access_key_id=settings.aws_access_key_id or None,
             aws_secret_access_key=settings.aws_secret_access_key or None,
-            endpoint_url=settings.s3_endpoint_url or None,
-            config=Config(signature_version="s3v4"),
+            endpoint_url=endpoint,
+            config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
         )
 
     def generate_key(self, organization_id: str, evidence_id: str, version_no: int = 1) -> str:
         return f"org/{organization_id}/evidence/{evidence_id}/v{version_no}"
+
+    def generate_report_pdf_key(
+        self, organization_id: str, report_id: str, version_no: int
+    ) -> str:
+        return f"org/{organization_id}/reports/{report_id}/v{version_no}.pdf"
+
+    def put_bytes(self, key: str, data: bytes, *, content_type: str) -> None:
+        self._client.put_object(
+            Bucket=self._bucket,
+            Key=key,
+            Body=data,
+            ContentType=content_type,
+            ServerSideEncryption="AES256",
+        )
 
     def presign_upload(
         self,

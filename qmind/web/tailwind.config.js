@@ -4,20 +4,43 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: {
-          50: "#f4f7f6",
-          100: "#e3ebe8",
-          700: "#1f3d36",
-          900: "#10241f",
-        },
-        accent: {
-          500: "#0f766e",
-          600: "#0d9488",
+        qmind: {
+          app: "var(--qmind-bg-app)",
+          surface: "var(--qmind-bg-surface)",
+          main: "var(--qmind-text-main)",
+          muted: "var(--qmind-text-muted)",
+          "text-main": "var(--qmind-text-main)",
+          "text-muted": "var(--qmind-text-muted)",
+          success: "var(--qmind-semantic-success)",
+          warning: "var(--qmind-semantic-warning)",
+          danger: "var(--qmind-semantic-danger)",
+          info: "var(--qmind-semantic-info)",
+          future: "var(--qmind-semantic-future)",
+          current: "var(--qmind-semantic-current)",
+          disabled: "var(--qmind-semantic-disabled)",
+          semantic: {
+            success: "var(--qmind-semantic-success)",
+            warning: "var(--qmind-semantic-warning)",
+            danger: "var(--qmind-semantic-danger)",
+            info: "var(--qmind-semantic-info)",
+            future: "var(--qmind-semantic-future)",
+            current: "var(--qmind-semantic-current)",
+            disabled: "var(--qmind-semantic-disabled)",
+          },
         },
       },
       fontFamily: {
-        sans: ["\"Source Sans 3\"", "Segoe UI", "sans-serif"],
-        display: ["\"Fraunces\"", "Georgia", "serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        display: ["Inter", "system-ui", "sans-serif"],
+      },
+      borderRadius: {
+        qmind: "var(--qmind-radius-md)",
+        "qmind-sm": "var(--qmind-radius-sm)",
+        "qmind-md": "var(--qmind-radius-md)",
+      },
+      boxShadow: {
+        qmind: "var(--qmind-shadow-card)",
+        "qmind-card": "var(--qmind-shadow-card)",
       },
     },
   },

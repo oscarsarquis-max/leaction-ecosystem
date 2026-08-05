@@ -1,0 +1,68 @@
+/* src/styles/qmind-design-system.css */
+:root {
+  /* Cores de Marca & Superfície */
+  --qmind-bg-app: #F8FAFC;
+  --qmind-bg-surface: #FFFFFF;
+  --qmind-text-main: #1E293B;
+  --qmind-text-muted: #64748B;
+
+  /* Cores Semânticas — escala de verdes (info azul permanece) */
+  --qmind-semantic-success: #22C55E; /* Verde médio / concluído */
+  --qmind-semantic-current: #14532D; /* Verde escuro / passo atual */
+  --qmind-semantic-future: #DCFCE7; /* Verde claro / passos futuros */
+  --qmind-semantic-danger: #3F6212; /* Verde musgo / bloqueios (substitui vermelho) */
+  --qmind-semantic-warning: #84CC16; /* Verde limão / alertas */
+  --qmind-semantic-info: #3B82F6; /* Azul / informação */
+  --qmind-semantic-disabled: #CBD5E1; /* Indisponível */
+
+  /* Tipografia & Escala */
+  --qmind-font-family: "Inter", system-ui, sans-serif;
+  --qmind-radius-sm: 4px;
+  --qmind-radius-md: 8px;
+
+  /* Sombras e Transições */
+  --qmind-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --qmind-transition-subtle: all 0.2s ease-in-out;
+
+  /* Alias --qm-* (telas legadas) */
+  --qmind-line: var(--qmind-semantic-future);
+  --qmind-line-strong: var(--qmind-semantic-disabled);
+  --qmind-bg-soft: #F0FDF4;
+  --qmind-focus: var(--qmind-semantic-current);
+  --qmind-accent: var(--qmind-semantic-current);
+
+  --qm-ink: var(--qmind-text-main);
+  --qm-muted: var(--qmind-text-muted);
+  --qm-line: var(--qmind-line);
+  --qm-line-strong: var(--qmind-line-strong);
+  --qm-surface: var(--qmind-bg-surface);
+  --qm-surface-soft: var(--qmind-bg-soft);
+  --qm-accent: var(--qmind-accent);
+  --qm-focus: var(--qmind-focus);
+  --qm-page: var(--qmind-bg-app);
+  --qm-success: var(--qmind-semantic-success);
+  --qm-success-soft: #DCFCE7;
+  --qm-attention: var(--qmind-semantic-warning);
+  --qm-attention-soft: #ECFCCB;
+  --qm-risk: var(--qmind-semantic-danger);
+  --qm-risk-soft: #ECFCCB;
+  --qm-info: var(--qmind-semantic-info);
+  --qm-info-soft: #EFF6FF;
+  --qm-future: var(--qmind-semantic-future);
+  --qm-unavailable: var(--qmind-semantic-disabled);
+  --qm-radius: var(--qmind-radius-sm);
+  --qm-radius-lg: var(--qmind-radius-md);
+  --qm-shadow: var(--qmind-shadow-card);
+  --qm-transition: 0.2s ease-in-out;
+  --qm-font-sans: var(--qmind-font-family);
+  --qm-font-display: var(--qmind-font-family);
+}
+
+/* Utilitários do JourneyBar */
+.qmind-scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.qmind-scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

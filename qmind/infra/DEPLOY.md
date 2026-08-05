@@ -1,136 +1,57 @@
 # Deploy AWS — QMind homologação (`us-east-2`)
 
-Baseline de produto: tag **`mvp-fullstack-v0`**.  
-Infraestrutura **própria** do QMind (não reutilizar RDS/S3/Cognito do Hub nem do inove4us).
+Baseline: **`mvp-fullstack-v0`**.  
+Fase: **ADR-010** — Amazon **Lightsail** + S3 + Cognito.  
+Domínio: **`qmind.com.br`** (Route 53 `Z10252021E8KYKLG3TEOS`).  
+Enterprise ECS/RDS: `terraform-enterprise/` — **não apply agora**.
 
 Gate: `../architecture/04_Docs/011_Homologation_Readiness_Gate.md`.
 
-## Arquitetura alvo
+## Arquitetura
 
 ```
-Internet → Route 53 (domínio homolog)
-        → ALB (HTTPS / ACM)
-        → ECS Fargate (API) + worker (jobs PDF)
-        → RDS PostgreSQL (database lógico qmind)
-        → S3 privado (evidências)
-        → Cognito (OIDC)
-        → Secrets Manager
+Route 53
+  api.homolog.qmind.com.br ──┐
+  app.homolog.qmind.com.br ──┼→ IP estático Lightsail
+                             ▼
+Lightsail Ubuntu (small_3_0 ~2 GB)
+  ├── Caddy (HTTPS Let's Encrypt)
+  ├── React / FastAPI / Worker
+  └── PostgreSQL (Compose, sem porta pública)
+         └── pg_dump → S3 backups
+
+S3 evidências · Cognito
 ```
 
-Região: **`us-east-2`** (ADR-009).
+Budget: `qmind-homolog-monthly-30` (US$ 30 → `gestao@leaction.com.br`).
 
-## Identidades de banco (obrigatório)
-
-| Papel | Uso | URL |
-|---|---|---|
-| Admin / migração | Alembic + seeds de catálogo | `DATABASE_URL_ADMIN` |
-| Runtime | API e worker | `DATABASE_URL_APP` → role **`qmind_app`** (FORCE RLS) |
-
-Nunca colocar a URL admin na task definition da API.
-
-## Pré-requisitos (uma vez)
-
-1. Conta ou isolamento de tags para `Environment=homolog`.
-2. VPC com subnets públicas (ALB) e privadas (tasks + RDS) + NAT.
-3. Hosted zone + certificado ACM em `us-east-2` para o hostname homolog.
-4. AWS CLI autenticado com permissão para ECR/ECS/RDS/S3/Cognito/Secrets/IAM.
-
-## Terraform
+## Terraform Lightsail
 
 ```powershell
-cd C:\Projetos\qmind\infra\terraform
+cd C:\Projetos\qmind\infra\terraform-lightsail
 copy terraform.tfvars.example terraform.tfvars
-# preencha vpc, subnets, domain, certificate_arn, etc.
-
 terraform init
-terraform plan -out=homolog.tfplan
-terraform apply homolog.tfplan
-```
-
-Módulos neste scaffold:
-
-- ECR (api / web / worker)
-- Cognito User Pool + client
-- S3 evidências (privado, versionado)
-- Secrets Manager (ARN nos outputs; valores não vão para tfvars)
-- RDS PostgreSQL + SG
-- Security groups: ALB → ECS → RDS
-- ACM (ARN existente em `us-east-2` **ou** certificado DNS criado pelo Terraform)
-- ALB público: HTTP→HTTPS, TG `target_type=ip`, health `/health`
-- ECS Fargate em subnets privadas (`awsvpc`), circuit breaker + rollback
-- Task **execution** role (ECR/logs/secrets) ≠ task role (S3 evidências)
-- CloudWatch Logs (retenção configurável)
-- Autoscaling conservador (default min 1 / max 2)
-- Alarmes ALB/ECS/RDS → SNS
-
-State remoto: configurar backend S3 após o primeiro bucket de state do ecossistema (não commitar `*.tfstate`).
-
-## Antes do primeiro apply (obrigatório)
-
-```powershell
-cd C:\Projetos\qmind\infra\terraform
-copy terraform.tfvars.example terraform.tfvars
-# edite apenas IDs/ARNs/não-sensíveis
-
 terraform fmt -recursive
-terraform init
 terraform validate
-# análise de segurança (escolha uma):
-#   docker run --rm -v ${PWD}:/tf aquasec/tfsec /tf
-#   docker run --rm -v ${PWD}:/tf bridgecrew/checkov -d /tf
-
 terraform plan -out=homolog.tfplan
-# revisar plano + estimar custo (AWS Pricing / Infracost)
+# revisar; apply só após OK explícito
 ```
 
-### Apply por etapas (persistentes primeiro)
+Após apply:
 
-1. `terraform apply -target=...` ECR, S3, Cognito, Secrets, RDS (dados)
-2. Validar ACM (DNS) se criado pelo Terraform
-3. Push imagem `api_image_tag` para ECR
-4. Apply ALB + ECS + autoscaling + alarms
-5. DNS alias → `alb_dns_name` / `alb_zone_id`
-6. Migrar/seed com admin; rotacionar `DATABASE_URL_APP` no secret
-7. Validar itens no gate `011_Homologation_Readiness_Gate.md`
+1. Criar access keys **fora do TF** (`CREDENTIALS.md`): app-evidence e backup-uploader → `/opt/qmind/secrets/*.env` modo `0600`.
+2. Compose + Caddy; migrate/seed (admin).
+3. Instalar cron de backup (`scripts/install-backup-cron.sh`) antes de dados reais / piloto.
+4. Exercício de restore (`scripts/RESTORE_HOMOLOG.md`) — gate V2.
+5. SSH: `admin_ssh_cidrs = []` no apply inicial; se abrir, só IP `/32` (nunca `0.0.0.0/0`).
+6. AutoSnapshot Lightsail já habilitado no módulo (06:00 UTC default).
+7. Confirmar **dois** e-mails em `gestao@leaction.com.br`: assinatura SNS + contato Lightsail.
+8. Alarme de backup fica em ALARM até o primeiro `backup-pg-homolog.sh` bem-sucedido (`treat_missing_data=breaching`).
 
-### Rollback de deployment
+## Não criar agora
 
-- Circuit breaker ECS com `rollback = true` em falha de health.
-- Redeploy tag anterior (ex. `mvp-fullstack-v0`) via nova task definition / `force-new-deployment`.
-- Ver output `rollback_hints`.
+ALB, ECS/Fargate, RDS, NAT, API Gateway, ACM no ALB, autoscaling.
 
-## Migração e seed (admin)
+## Custo
 
-Com RDS acessível (bastion / VPN / task one-shot):
-
-```powershell
-cd C:\Projetos\qmind\infra\scripts
-.\migrate-and-seed-homolog.ps1 -AdminDatabaseUrl $env:DATABASE_URL_ADMIN
-```
-
-Equivale a:
-
-1. `alembic upgrade head` (admin)
-2. aplicar `backend/seeds/001_maturity_catalog_v0.sql`
-3. aplicar `backend/seeds/002_assessment_model_stub.sql`
-
-## Build e push
-
-Imagens devem ser tagadas com o **hash/tag git** (ex.: `mvp-fullstack-v0`, `82e637f`), nunca só `latest` em homolog.
-
-```powershell
-# incremento futuro: infra/scripts/build-and-push.ps1
-```
-
-## Rollback
-
-1. Redeploy da imagem correspondente a `mvp-fullstack-v0` (ou tag homolog anterior conhecida).
-2. Confirmar `/health` e `/ready`.
-3. Não reverter migrações destrutivas sem plano; preferir forward-fix.
-
-## Segurança
-
-- `AUTH_MODE=cognito` e `ENVIRONMENT` ≠ uso de headers dev.
-- `STORAGE_BACKEND=s3` com bucket dedicado.
-- `ALLOW_SIMULATED_SECURITY_PASS=false` em homolog/prod.
-- CORS restrito ao origin do front homolog.
+Ver `COST_ESTIMATE_HOMOLOG.md` — típico **~US$ 15–25/mês**; alerta em **US$ 30**.

@@ -15,16 +15,16 @@ sys.path.insert(0, str(_ROOT))
 import pytest
 from sqlalchemy import create_engine, text
 
-# Local Docker defaults for leaction_db — tests only; production uses real env/.env.
+# Local Docker defaults (cluster leaction_db / db qmind_dev) — tests only.
 ADMIN_URL = os.environ.setdefault(
     "DATABASE_URL_ADMIN",
-    "postgresql+psycopg://admin:password123@localhost:5433/qmind",
+    "postgresql+psycopg://admin:password123@localhost:5433/qmind_dev",
 )
 os.environ.setdefault("DATABASE_URL", ADMIN_URL)
 os.environ.setdefault("QMIND_DB_ADMIN_URL", ADMIN_URL)
 APP_URL = os.environ.setdefault(
     "DATABASE_URL_APP",
-    "postgresql+psycopg://qmind_app:qmind_app_dev@localhost:5433/qmind",
+    "postgresql+psycopg://qmind_app:qmind_app_dev@localhost:5433/qmind_dev",
 )
 os.environ.setdefault("AUTH_MODE", "dev")
 os.environ.setdefault("ENVIRONMENT", "local")

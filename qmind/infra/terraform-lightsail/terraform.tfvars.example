@@ -1,0 +1,36 @@
+# Copie para terraform.tfvars (gitignored). Sem secrets / sem access keys.
+
+aws_region        = "us-east-2"
+environment       = "homolog"
+name_prefix       = "qmind-homolog"
+availability_zone = "us-east-2a"
+blueprint_id      = "ubuntu_24_04"
+bundle_id         = "small_3_0"
+
+api_hostname    = "api.homolog.qmind.com.br"
+app_hostname    = "app.homolog.qmind.com.br"
+pilot_api_hostname = "api.qmind.com.br"
+pilot_app_hostname = "qmind.com.br"
+pilot_www_hostname = "www.qmind.com.br"
+route53_zone_id = "Z10252021E8KYKLG3TEOS"
+
+# Apply inicial: SSH fechado. Para abrir, use IP admin /32 — nunca 0.0.0.0/0.
+admin_ssh_cidrs = []
+# admin_ssh_cidrs = ["203.0.113.10/32"]
+
+backup_prefix                     = "pgdump/"
+backup_current_expiration_days    = 35
+backup_noncurrent_expiration_days = 14
+evidence_noncurrent_expiration_days = 90
+abort_multipart_days              = 7
+autosnapshot_time_utc             = "06:00"
+alarm_email                       = "gestao@leaction.com.br"
+
+cognito_callback_urls = [
+  "https://app.homolog.qmind.com.br/auth/callback",
+  "https://qmind.com.br/auth/callback",
+]
+cognito_logout_urls = [
+  "https://app.homolog.qmind.com.br/",
+  "https://qmind.com.br/",
+]

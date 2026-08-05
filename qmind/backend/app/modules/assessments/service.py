@@ -16,6 +16,7 @@ from app.modules.assessments.schemas import (
     AssessmentOut,
     AssessmentTransitionResult,
     ScopeItemIn,
+    ScopeOptionOut,
     ScopeOut,
     TeamMemberIn,
     TeamMemberOut,
@@ -230,6 +231,22 @@ def get_assessment(ctx: OrgContext, assessment_id: UUID) -> AssessmentOut:
 # --- Scope CRUD (draft only) ---
 
 
+def _scope_label(requirement_code, requirement_title, process_name) -> str:
+    if requirement_code or requirement_title:
+        code = (requirement_code or "").strip()
+        title = (requirement_title or "").strip()
+        if code and title:
+            return f"Requisito {code} — {title}"
+        if title:
+            return title
+        if code:
+            return f"Requisito {code}"
+        return "Requisito"
+    if process_name:
+        return f"Processo — {process_name}"
+    return "Item de escopo"
+
+
 def list_scopes(ctx: OrgContext, assessment_id: UUID) -> list[ScopeOut]:
     require_role(ctx, *_READ_ROLES)
     with tenant_connection(ctx.organization_id) as conn:
@@ -237,10 +254,14 @@ def list_scopes(ctx: OrgContext, assessment_id: UUID) -> list[ScopeOut]:
         rows = conn.execute(
             text(
                 """
-                SELECT id, assessment_id, org_process_id, requirement_id, created_at
-                FROM assessment_scopes
-                WHERE assessment_id = :id
-                ORDER BY created_at
+                SELECT s.id, s.assessment_id, s.org_process_id, s.requirement_id, s.created_at,
+                       r.code AS requirement_code, r.title_authorized AS requirement_title,
+                       p.name AS process_name
+                FROM assessment_scopes s
+                LEFT JOIN requirements r ON r.id = s.requirement_id
+                LEFT JOIN org_processes p ON p.id = s.org_process_id
+                WHERE s.assessment_id = :id
+                ORDER BY s.created_at
                 """
             ),
             {"id": assessment_id},
@@ -252,9 +273,227 @@ def list_scopes(ctx: OrgContext, assessment_id: UUID) -> list[ScopeOut]:
             org_process_id=r.org_process_id,
             requirement_id=r.requirement_id,
             created_at=r.created_at,
+            label=_scope_label(r.requirement_code, r.requirement_title, r.process_name),
         )
         for r in rows
     ]
+
+
+def list_scope_options(ctx: OrgContext, assessment_id: UUID) -> list[ScopeOptionOut]:
+    """Opções humanas para montar escopo (requisitos do modelo + processos da org/guided)."""
+    require_role(ctx, *_READ_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        assess = _lock_assessment(conn, ctx.organization_id, assessment_id)
+        existing = conn.execute(
+            text(
+                """
+                SELECT requirement_id, org_process_id
+                FROM assessment_scopes WHERE assessment_id = :id
+                """
+            ),
+            {"id": assessment_id},
+        ).all()
+        existing_reqs = {r.requirement_id for r in existing if r.requirement_id}
+        existing_procs = {r.org_process_id for r in existing if r.org_process_id}
+
+        reqs = conn.execute(
+            text(
+                """
+                SELECT r.id, r.code, r.title_authorized
+                FROM assessment_model_requirements amr
+                JOIN requirements r ON r.id = amr.requirement_id
+                WHERE amr.assessment_model_id = :mid
+                  AND r.status = 'active'
+                ORDER BY r.sort_order, r.code
+                """
+            ),
+            {"mid": assess.assessment_model_id},
+        ).all()
+
+        procs = conn.execute(
+            text(
+                """
+                SELECT id, name FROM org_processes
+                WHERE organization_id = :org AND status = 'active'
+                ORDER BY name
+                """
+            ),
+            {"org": ctx.organization_id},
+        ).all()
+
+    options: list[ScopeOptionOut] = []
+    for r in reqs:
+        options.append(
+            ScopeOptionOut(
+                kind="requirement",
+                target_id=r.id,
+                label=_scope_label(r.code, r.title_authorized, None),
+                already_in_scope=r.id in existing_reqs,
+            )
+        )
+    for p in procs:
+        options.append(
+            ScopeOptionOut(
+                kind="process",
+                target_id=p.id,
+                label=_scope_label(None, None, p.name),
+                already_in_scope=p.id in existing_procs,
+            )
+        )
+    return options
+
+
+def ensure_scopes(ctx: OrgContext, assessment_id: UUID) -> list[ScopeOut]:
+    """
+    Recupera/gera escopo sem o usuário digitar UUID:
+    - requisitos do modelo de avaliação (se ainda não houver escopo)
+    - processos informados na preparação guided (cria org_process se preciso)
+    """
+    require_role(ctx, *_MUTATE_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        assess = _lock_assessment(conn, ctx.organization_id, assessment_id)
+        _require_editable(assess.status, _SCOPE_EDITABLE, "Scope")
+
+        existing = conn.execute(
+            text(
+                """
+                SELECT requirement_id, org_process_id
+                FROM assessment_scopes WHERE assessment_id = :id
+                """
+            ),
+            {"id": assessment_id},
+        ).all()
+        existing_reqs = {r.requirement_id for r in existing if r.requirement_id}
+        existing_procs = {r.org_process_id for r in existing if r.org_process_id}
+
+        # 1) Requisitos do modelo — só auto-inclui se ainda não houver nenhum escopo.
+        if not existing:
+            reqs = conn.execute(
+                text(
+                    """
+                    SELECT r.id
+                    FROM assessment_model_requirements amr
+                    JOIN requirements r ON r.id = amr.requirement_id
+                    WHERE amr.assessment_model_id = :mid
+                      AND r.status = 'active'
+                    ORDER BY r.sort_order, r.code
+                    """
+                ),
+                {"mid": assess.assessment_model_id},
+            ).all()
+            for r in reqs:
+                if r.id in existing_reqs:
+                    continue
+                _insert_scope(
+                    conn,
+                    ctx,
+                    assessment_id,
+                    ScopeItemIn(requirement_id=r.id),
+                )
+                existing_reqs.add(r.id)
+
+        # 2) Processos da preparação guided → org_processes + escopo
+        guided = conn.execute(
+            text(
+                """
+                SELECT context FROM guided_sessions
+                WHERE assessment_id = :id
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """
+            ),
+            {"id": assessment_id},
+        ).first()
+        processes = []
+        if guided and guided.context is not None:
+            ctx_json = guided.context
+            if isinstance(ctx_json, str):
+                import json
+
+                ctx_json = json.loads(ctx_json)
+            if isinstance(ctx_json, dict):
+                raw = ctx_json.get("processes") or []
+                if isinstance(raw, list):
+                    processes = raw
+
+        for item in processes:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "").strip()
+            if not name:
+                continue
+            proc = conn.execute(
+                text(
+                    """
+                    SELECT id FROM org_processes
+                    WHERE organization_id = :org
+                      AND lower(name) = lower(:name)
+                      AND status = 'active'
+                    LIMIT 1
+                    """
+                ),
+                {"org": ctx.organization_id, "name": name},
+            ).first()
+            if proc is None:
+                proc = conn.execute(
+                    text(
+                        """
+                        INSERT INTO org_processes (organization_id, name, status)
+                        VALUES (:org, :name, 'active')
+                        RETURNING id
+                        """
+                    ),
+                    {"org": ctx.organization_id, "name": name},
+                ).one()
+            if proc.id in existing_procs:
+                continue
+            _insert_scope(
+                conn,
+                ctx,
+                assessment_id,
+                ScopeItemIn(org_process_id=proc.id),
+            )
+            existing_procs.add(proc.id)
+
+        # Se ainda vazio (modelo sem requisitos e sem processos), usa 1º requisito da norma
+        still = conn.execute(
+            text("SELECT count(*) FROM assessment_scopes WHERE assessment_id = :id"),
+            {"id": assessment_id},
+        ).scalar()
+        if not still:
+            fallback = conn.execute(
+                text(
+                    """
+                    SELECT id FROM requirements
+                    WHERE standard_version_id = :sv AND status = 'active'
+                    ORDER BY sort_order, code
+                    LIMIT 1
+                    """
+                ),
+                {"sv": assess.standard_version_id},
+            ).first()
+            if fallback:
+                _insert_scope(
+                    conn,
+                    ctx,
+                    assessment_id,
+                    ScopeItemIn(requirement_id=fallback.id),
+                )
+
+        write_audit(
+            conn,
+            organization_id=ctx.organization_id,
+            actor_type="user",
+            actor_user_id=ctx.principal.user_id,
+            actor_membership_id=ctx.membership_id,
+            action="assessment.scope_ensure",
+            resource_type="assessment",
+            resource_id=assessment_id,
+            metadata={},
+        )
+        conn.commit()
+
+    return list_scopes(ctx, assessment_id)
 
 
 def add_scope(ctx: OrgContext, assessment_id: UUID, item: ScopeItemIn) -> ScopeOut:
@@ -263,15 +502,6 @@ def add_scope(ctx: OrgContext, assessment_id: UUID, item: ScopeItemIn) -> ScopeO
         assess = _lock_assessment(conn, ctx.organization_id, assessment_id)
         _require_editable(assess.status, _SCOPE_EDITABLE, "Scope")
         scope_id = _insert_scope(conn, ctx, assessment_id, item)
-        row = conn.execute(
-            text(
-                """
-                SELECT id, assessment_id, org_process_id, requirement_id, created_at
-                FROM assessment_scopes WHERE id = :id
-                """
-            ),
-            {"id": scope_id},
-        ).one()
         write_audit(
             conn,
             organization_id=ctx.organization_id,
@@ -288,13 +518,11 @@ def add_scope(ctx: OrgContext, assessment_id: UUID, item: ScopeItemIn) -> ScopeO
             },
         )
         conn.commit()
-    return ScopeOut(
-        id=row.id,
-        assessment_id=row.assessment_id,
-        org_process_id=row.org_process_id,
-        requirement_id=row.requirement_id,
-        created_at=row.created_at,
-    )
+    scopes = list_scopes(ctx, assessment_id)
+    for s in scopes:
+        if s.id == scope_id:
+            return s
+    raise AppError("not_found", "Scope item not found after insert", status_code=404)
 
 
 def delete_scope(ctx: OrgContext, assessment_id: UUID, scope_id: UUID) -> None:
@@ -338,10 +566,13 @@ def list_team(ctx: OrgContext, assessment_id: UUID) -> list[TeamMemberOut]:
         rows = conn.execute(
             text(
                 """
-                SELECT id, assessment_id, membership_id, team_role, created_at
-                FROM assessment_team_members
-                WHERE assessment_id = :id
-                ORDER BY created_at
+                SELECT t.id, t.assessment_id, t.membership_id, t.team_role, t.created_at,
+                       u.email AS user_email, u.display_name AS user_name
+                FROM assessment_team_members t
+                LEFT JOIN memberships m ON m.id = t.membership_id
+                LEFT JOIN users u ON u.id = m.user_id
+                WHERE t.assessment_id = :id
+                ORDER BY t.created_at
                 """
             ),
             {"id": assessment_id},
@@ -353,6 +584,7 @@ def list_team(ctx: OrgContext, assessment_id: UUID) -> list[TeamMemberOut]:
             membership_id=r.membership_id,
             team_role=r.team_role,
             created_at=r.created_at,
+            label=(r.user_name or r.user_email or str(r.membership_id)),
         )
         for r in rows
     ]

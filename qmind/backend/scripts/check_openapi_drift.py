@@ -14,11 +14,11 @@ sys.path.insert(0, str(ROOT))
 
 os.environ.setdefault(
     "DATABASE_URL_ADMIN",
-    "postgresql+psycopg://admin:password123@localhost:5433/qmind",
+    "postgresql+psycopg://admin:password123@localhost:5433/qmind_dev",
 )
 os.environ.setdefault(
     "DATABASE_URL_APP",
-    "postgresql+psycopg://qmind_app:qmind_app_dev@localhost:5433/qmind",
+    "postgresql+psycopg://qmind_app:qmind_app_dev@localhost:5433/qmind_dev",
 )
 os.environ.setdefault("AUTH_MODE", "dev")
 os.environ.setdefault("ENVIRONMENT", "local")

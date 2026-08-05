@@ -1,32 +1,49 @@
 # Estimativa de custo — QMind homolog (`us-east-2`)
 
-**Status:** estimativa **pré-`terraform plan` / pré-apply**, com defaults do scaffold (`db.t4g.micro`, Fargate 0.5 vCPU / 1 GB, desired 1–2).  
-Substituir por Infracost ou AWS Pricing Calculator após o primeiro `plan` com `tfvars` reais.
+**Status:** ADR-010 emenda **Lightsail** (2026-08-04).  
+Perfil ativo: `infra/terraform-lightsail/`.  
+Enterprise ECS/RDS: **não** aplicar (`infra/terraform-enterprise/`).
 
-| Recurso | Config default | Ordem de grandeza (USD/mês) | Notas |
+## Controle financeiro
+
+| Item | Valor |
+|---|---|
+| Budget AWS | `qmind-homolog-monthly-30` |
+| Limite | **US$ 30 / mês** (custo da conta) |
+| Alertas reais | 50%, 80%, 100% |
+| Alertas previstos | 80%, 100% |
+| E-mail | `gestao@leaction.com.br` |
+| Monitoramento Budgets | gratuito |
+
+> Nota: o budget atual é da **conta** (não só tag QMind). Em 2026-08-04 o spend calculado da conta já podia ultrapassar US$ 30 por outros workloads — os alertas ajudam a perceber isso. Filtrar por tag `Project=qmind` é evolução opcional após ativar cost allocation tags.
+
+## Perfil ativo — Lightsail (~US$ 15–25/mês típico)
+
+| Recurso | Config | Ordem (USD/mês) | Notas |
 |---|---|---|---|
-| RDS PostgreSQL | `db.t4g.micro`, 20 GB gp3, single-AZ, backup 7d | ~15–25 | Persistente; aplicar primeiro |
-| ALB | 1 ALB + LCU leve | ~16–25 | Tráfego homolog baixo |
-| ECS Fargate API | 0.5 vCPU / 1 GB × 1 task (24×7) | ~15–20 | Sobe com `max_capacity=2` |
-| NAT Gateway | 1 NAT (se VPC usar NAT) | ~32 + dados | Cost driver; fora do módulo se já existir |
-| S3 evidências | GB baixos + PUT/GET | <5 | Quarentena + PDF |
-| ECR | armazenamento imagens | <5 | Tags imutáveis |
-| Cognito | MAU baixos | free tier / <5 | |
-| Secrets Manager | 1 secret | ~0.40 | |
-| CloudWatch Logs | retenção 30d | 2–10 | Depende de volume |
-| CloudWatch Alarms | ~10 alarmes | <5 | |
-| SNS | notificações | <1 | |
-| **Subtotal app (sem NAT)** | | **~55–95** | |
-| **Com 1 NAT dedicado** | | **~90–130** | |
+| Lightsail | `small_3_0` (2 GB, 2 vCPU, 60 GB, 3 TB xfer) | **~12** | IPv4 incluído no plano |
+| IP estático | associado à instância | **0** | cobrança só se desassociado ocioso |
+| S3 evidências | baixo volume | <3 | |
+| S3 backups | `pg_dump` + lifecycle 35d | <2 | |
+| Cognito | MAU baixos | free / <2 | |
+| Route 53 | zona já existente `qmind.com.br` | ~0,50 + queries | zona já na conta |
+| Logs / misc | leve | 1–3 | |
+| **Total típico QMind homolog** | | **~15–25** | sob teto do budget 30 |
 
-## Ordem de gasto no apply por etapas
+DNS: `api.homolog.qmind.com.br` + `app.homolog.qmind.com.br` → mesmo IP estático.
 
-1. ECR / S3 / Cognito / Secrets — baixo  
-2. RDS — médio contínuo  
-3. ALB + ECS — médio contínuo  
-4. NAT (se criado nesta conta) — alto contínuo  
+HTTPS: **Caddy / Let's Encrypt** — sem ACM/ALB.
 
-## Rollback e custo
+## Não criar nesta fase
 
-Rollback de **deployment** (imagem/`task_definition`) não remove RDS/S3.  
-`terraform destroy` em homolog só após backup e aprovação explícita.
+ALB, ECS/Fargate, RDS, NAT, API Gateway, ACM para o servidor, autoscaling, VPC complexa.
+
+## Anexo — enterprise (futuro)
+
+ECS+ALB+RDS: ~55–95 sem NAT; ~90–130 com NAT. Só quando receita/uso justificarem.
+
+## Antes do apply
+
+1. Revisar `terraform plan` em `terraform-lightsail/`.
+2. Confirmar preço do bundle na região ([Lightsail pricing](https://aws.amazon.com/lightsail/pricing/)).
+3. Apply só com aprovação explícita.

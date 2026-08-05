@@ -10,8 +10,16 @@ import {
 import { queryKeys } from "@/api/queryKeys";
 import { newIdempotencyKey } from "@/lib/idempotency";
 import { buildScopeItem, isUuid, type ScopeKind } from "@/lib/validation";
+import {
+  ensureAssessmentScopes,
+  listOrgMembers,
+  listScopeOptions,
+} from "@/api/scopeTeamApi";
 
-type AssessmentType = NonNullable<AssessmentCreate["type"]>;
+type AssessmentType =
+  | NonNullable<AssessmentCreate["type"]>
+  | "external_audit"
+  | "certification_prep";
 type ScopeItem = NonNullable<AssessmentCreate["scope"]>[number];
 
 async function guardTenant<T>(fn: () => Promise<T>): Promise<T> {
@@ -53,6 +61,15 @@ export function useAssessment(assessmentId: string | undefined) {
   });
 }
 
+export type AssessmentScopeRow = {
+  id: string;
+  assessment_id: string;
+  org_process_id: string | null;
+  requirement_id: string | null;
+  created_at: string;
+  label?: string | null;
+};
+
 export function useAssessmentScopes(assessmentId: string | undefined) {
   const { currentOrganizationId } = useOrganization();
 
@@ -62,13 +79,15 @@ export function useAssessmentScopes(assessmentId: string | undefined) {
         ? queryKeys.assessmentScopes(currentOrganizationId, assessmentId)
         : ["org", "none", "scopes"],
     enabled: !!currentOrganizationId && !!assessmentId,
-    queryFn: async () => {
+    queryFn: async (): Promise<AssessmentScopeRow[]> => {
       const client = getQmindClient();
       return guardTenant(async () => {
-        const res = await client.api.listAssessmentScopes({
-          path: { assessment_id: assessmentId! },
+        // raw: preserva `label` humano (cliente OpenAPI gerado ainda não tipa o campo).
+        const res = await client.raw.get({
+          url: `/api/v1/assessments/${assessmentId}/scopes`,
+          security: [{ scheme: "bearer", type: "http" }],
         });
-        return res.data ?? [];
+        return (res.data as AssessmentScopeRow[]) ?? [];
       });
     },
   });
@@ -128,19 +147,19 @@ export function validateCreateAssessmentInput(
   input: CreateAssessmentInput,
 ): string | null {
   if (!isUuid(input.assessment_model_id)) {
-    return "assessment_model_id must be a UUID";
+    return "O ID do modelo de avaliação deve ser um UUID";
   }
   if (!isUuid(input.standard_version_id)) {
-    return "standard_version_id must be a UUID";
+    return "O ID da versão da norma deve ser um UUID";
   }
   if (input.requirement_id && input.org_process_id) {
-    return "Provide exactly one of requirement_id or org_process_id";
+    return "Informe exatamente um: requisito ou processo";
   }
   if (input.requirement_id && !isUuid(input.requirement_id)) {
-    return "requirement_id must be a UUID";
+    return "O ID do requisito deve ser um UUID";
   }
   if (input.org_process_id && !isUuid(input.org_process_id)) {
-    return "org_process_id must be a UUID";
+    return "O ID do processo deve ser um UUID";
   }
   return null;
 }
@@ -151,7 +170,7 @@ export function useCreateAssessment() {
 
   return useMutation({
     mutationFn: async (input: CreateAssessmentInput) => {
-      if (!currentOrganizationId) throw new Error("No organization selected");
+      if (!currentOrganizationId) throw new Error("Nenhuma organização selecionada");
       const validationError = validateCreateAssessmentInput(input);
       if (validationError) {
         throw new QmindApiError(422, {
@@ -173,7 +192,8 @@ export function useCreateAssessment() {
           body: {
             assessment_model_id: input.assessment_model_id,
             standard_version_id: input.standard_version_id,
-            type: input.type,
+            // Novos tipos (external_audit / certification_prep) até regenerar OpenAPI.
+            type: input.type as AssessmentCreate["type"],
             scope,
           },
           headers: { "Idempotency-Key": newIdempotencyKey("assess-create") },
@@ -190,6 +210,49 @@ export function useCreateAssessment() {
   });
 }
 
+export function useScopeOptions(assessmentId: string | undefined) {
+  const { currentOrganizationId } = useOrganization();
+  return useQuery({
+    queryKey:
+      currentOrganizationId && assessmentId
+        ? queryKeys.assessmentScopeOptions(currentOrganizationId, assessmentId)
+        : ["org", "none", "scope-options"],
+    enabled: !!currentOrganizationId && !!assessmentId,
+    queryFn: () => listScopeOptions(assessmentId!),
+  });
+}
+
+export function useOrgMembers() {
+  const { currentOrganizationId } = useOrganization();
+  return useQuery({
+    queryKey: currentOrganizationId
+      ? queryKeys.orgMembers(currentOrganizationId)
+      : ["org", "none", "members"],
+    enabled: !!currentOrganizationId,
+    queryFn: () => listOrgMembers(),
+  });
+}
+
+export function useEnsureScopes(assessmentId: string) {
+  const { currentOrganizationId } = useOrganization();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => ensureAssessmentScopes(assessmentId),
+    onSuccess: async () => {
+      if (!currentOrganizationId) return;
+      await qc.invalidateQueries({
+        queryKey: queryKeys.assessmentScopes(currentOrganizationId, assessmentId),
+      });
+      await qc.invalidateQueries({
+        queryKey: queryKeys.assessmentScopeOptions(
+          currentOrganizationId,
+          assessmentId,
+        ),
+      });
+    },
+  });
+}
+
 export function useAddScope(assessmentId: string) {
   const { currentOrganizationId } = useOrganization();
   const qc = useQueryClient();
@@ -200,7 +263,7 @@ export function useAddScope(assessmentId: string) {
       if (!item) {
         throw new QmindApiError(422, {
           code: "validation_error",
-          message: "Scope target must be a single valid UUID",
+          message: "Não foi possível identificar o item de escopo. Escolha uma opção da lista.",
           correlation_id: "",
         });
       }
@@ -217,6 +280,12 @@ export function useAddScope(assessmentId: string) {
       if (!currentOrganizationId) return;
       await qc.invalidateQueries({
         queryKey: queryKeys.assessmentScopes(currentOrganizationId, assessmentId),
+      });
+      await qc.invalidateQueries({
+        queryKey: queryKeys.assessmentScopeOptions(
+          currentOrganizationId,
+          assessmentId,
+        ),
       });
     },
     onError: async (error) => {

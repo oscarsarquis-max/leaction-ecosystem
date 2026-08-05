@@ -13,6 +13,7 @@ from app.modules.assessments.schemas import (
     CloseIn,
     ReopenIn,
     ScopeItemIn,
+    ScopeOptionOut,
     ScopeOut,
     TeamMemberIn,
     TeamMemberOut,
@@ -75,6 +76,27 @@ def get_assessment(assessment_id: UUID, ctx: OrgContextDep) -> AssessmentOut:
 )
 def list_scopes(assessment_id: UUID, ctx: OrgContextDep) -> list[ScopeOut]:
     return service.list_scopes(ctx, assessment_id)
+
+
+@router.get(
+    "/{assessment_id}/scope-options",
+    response_model=list[ScopeOptionOut],
+    operation_id="listAssessmentScopeOptions",
+    summary="Human-readable scope options (no UUID typing)",
+)
+def list_scope_options(assessment_id: UUID, ctx: OrgContextDep) -> list[ScopeOptionOut]:
+    return service.list_scope_options(ctx, assessment_id)
+
+
+@router.post(
+    "/{assessment_id}/scopes/ensure",
+    response_model=list[ScopeOut],
+    operation_id="ensureAssessmentScopes",
+    summary="Auto-fill scope from model + guided preparation",
+    responses={409: ERROR_RESPONSES[409]},
+)
+def ensure_scopes(assessment_id: UUID, ctx: OrgContextDep) -> list[ScopeOut]:
+    return service.ensure_scopes(ctx, assessment_id)
 
 
 @router.post(

@@ -1,0 +1,56 @@
+# Spider — diretrizes do projeto (Cursor)
+
+## Missão
+
+Spider é o **orquestrador de contexto** entre canais/produtos e sistemas legados
+internos (cadastro, crédito, etc.). Traduz payloads, sequencia/paraleliza passos,
+aplica resiliência e registra trace técnico.
+
+**Não é** sistema de registro de cliente, ERP, CRM nem motor de crédito.
+
+## Stack
+
+| Camada | Tecnologia |
+|--------|------------|
+| Backend | Java 21 · Spring Boot 3.x · **WebFlux (não-bloqueante)** · JPA técnico · WebClient · Resilience4j · jjwt · OpenAPI 3 |
+| Frontend | React · Vite · TypeScript (painel operacional) |
+| DB técnico | PostgreSQL 16 via Docker Compose |
+| Mocks | Node/Express em `services/mock-sistema-*` |
+
+## Persistência (obrigatório)
+
+Persistir **somente**:
+1. rotas / definição de produto
+2. chaves de idempotência
+3. audit/trace da orquestração
+
+Proibido transformar o Spider em SoR de dados de negócio.
+
+## Layout de pacotes (`br.com.banco.spider`)
+
+- `config` — WebClient (timeouts), Jackson, CORS, OpenAPI, JWT
+- `model` — entidades JPA técnicas (`tb_product_routes`, `tb_audit_trace`)
+- `repository` — Spring Data JPA
+- `domain` — contratos de payload contextual (não-persistidos como SoR)
+- `engine` — clientes legados (Mono), mappers, resiliência
+- `orchestrator` — sequenciamento reativo (JPA em boundedElastic)
+- `web` — endpoints WebFlux + webhooks
+
+## Regras de implementação
+
+1. Toda mutação de entrada exige `Idempotency-Key` (ou equivalente).
+2. Falha parcial deve ser observável no trace (status por step).
+3. Integração outbound via WebClient + Circuit Breaker (Resilience4j).
+4. Desenvolvimento local usa mocks em `services/` — não depender de legado real.
+5. Frontend é painel interno (rotas, traces, teste) — não UX bancária final.
+6. Sem secrets no git; usar `.env` / variáveis de ambiente.
+7. SQL de bootstrap em `database/init.sql`; evoluções em `database/migrations/`.
+8. Escopo do agente: apenas `spider/**` enquanto este projeto estiver em foco.
+
+## Comandos de referência
+
+```powershell
+docker compose up -d
+cd backend; mvn -DskipTests package
+cd frontend; npm install; npm run build
+```

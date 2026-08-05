@@ -55,7 +55,7 @@ describe("assessment permissions", () => {
     expect(canEditMaturityScores(["org_admin"], "analysis", "draft")).toBe(true);
     expect(canEditMaturityScores(["org_admin"], "analysis", "approved")).toBe(false);
     expect(canApproveMaturity(["quality_manager"], "a", "a")).toBe(false);
-    expect(maturityEvidenceHint(3)).toMatch(/approved/i);
+    expect(maturityEvidenceHint(3)).toMatch(/aprovada/i);
     expect(maturityEvidenceHint(5)).toMatch(/melhoria/i);
   });
 });

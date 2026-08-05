@@ -1,61 +1,96 @@
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
+
+type Action =
+  | { label: string; onClick: () => void }
+  | { label: string; to: string };
+
 type Props = {
   title: string;
   message?: string;
-  action?: { label: string; onClick: () => void };
+  example?: string;
+  action?: Action;
+  children?: ReactNode;
 };
 
 export function LoadingPanel({ title = "Carregando…" }: { title?: string }) {
   return (
     <div
-      className="flex min-h-[12rem] items-center justify-center rounded-lg border border-teal-900/10 bg-white/60 px-6 py-10"
+      className="qm-panel qm-panel--soft flex min-h-[12rem] items-center justify-center px-6 py-10"
       role="status"
       aria-live="polite"
     >
-      <p className="text-sm font-semibold text-teal-950/70">{title}</p>
+      <p className="text-sm font-semibold text-[var(--qm-muted)]">{title}</p>
     </div>
   );
 }
 
-export function EmptyPanel({ title, message }: Props) {
+export function EmptyPanel({ title, message, example, action }: Props) {
   return (
-    <div className="rounded-lg border border-dashed border-teal-900/20 bg-white/40 px-6 py-10 text-center">
-      <h2 className="font-display text-xl text-teal-950">{title}</h2>
-      {message ? <p className="mt-2 text-sm text-teal-950/70">{message}</p> : null}
+    <div className="qm-panel qm-panel--dashed px-6 py-10 text-center">
+      <h2 className="font-display text-xl text-[var(--qm-ink)]">{title}</h2>
+      {message ? (
+        <p className="mx-auto mt-2 max-w-md text-sm text-[var(--qm-muted)]">
+          {message}
+        </p>
+      ) : null}
+      {example ? (
+        <p className="mx-auto mt-3 max-w-md text-sm text-[var(--qm-muted)]">
+          <span className="font-semibold text-[var(--qm-ink)]">Exemplo: </span>
+          {example}
+        </p>
+      ) : null}
+      {action ? <ActionButton action={action} /> : null}
     </div>
   );
 }
 
 export function ErrorPanel({ title, message, action }: Props) {
   return (
-    <div
-      className="rounded-lg border border-rose-300/60 bg-rose-50/80 px-6 py-8"
-      role="alert"
-    >
-      <h2 className="font-display text-xl text-rose-950">{title}</h2>
-      {message ? <p className="mt-2 text-sm text-rose-900/80">{message}</p> : null}
-      {action ? (
-        <button
-          type="button"
-          onClick={action.onClick}
-          className="mt-4 rounded-md bg-rose-900 px-3 py-1.5 text-sm font-semibold text-white"
-        >
-          {action.label}
-        </button>
+    <div className="qm-panel qm-panel--danger px-6 py-8" role="alert">
+      <h2 className="font-display text-xl text-[var(--qm-ink)]">{title}</h2>
+      {message ? (
+        <p className="mt-2 text-sm text-[var(--qm-muted)]">{message}</p>
       ) : null}
+      {action ? <ActionButton action={action} /> : null}
     </div>
   );
 }
 
+function friendlyAccessMessage(message?: string): string {
+  if (!message) {
+    return "Sua conta não pode ver este conteúdo nesta organização. Peça acesso a quem administra a organização ou troque de organização no topo da página.";
+  }
+  const technical = /\b(403|401|forbidden|unauthorized|STATUS_)\b/i.test(message);
+  if (technical) {
+    return "Você não tem permissão para acessar este conteúdo nesta organização.";
+  }
+  return message;
+}
+
 export function AccessDeniedPanel({ message }: { message?: string }) {
   return (
-    <div
-      className="rounded-lg border border-amber-300/70 bg-amber-50/90 px-6 py-8"
-      role="alert"
-    >
-      <h2 className="font-display text-xl text-amber-950">Acesso negado</h2>
-      <p className="mt-2 text-sm text-amber-950/80">
-        {message ?? "Você não tem permissão para este contexto."}
+    <div className="qm-panel qm-panel--warn px-6 py-8" role="alert">
+      <h2 className="font-display text-xl text-[var(--qm-ink)]">Sem permissão aqui</h2>
+      <p className="mt-2 text-sm text-[var(--qm-muted)]">{friendlyAccessMessage(message)}</p>
+      <p className="mt-3 text-sm text-[var(--qm-muted)]">
+        Próxima etapa: escolha outra organização no seletor do cabeçalho, ou fale com o administrador.
       </p>
     </div>
+  );
+}
+
+function ActionButton({ action }: { action: Action }) {
+  if ("to" in action) {
+    return (
+      <Link to={action.to} className="qm-btn-primary mt-5 inline-flex">
+        {action.label}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={action.onClick} className="qm-btn-primary mt-5">
+      {action.label}
+    </button>
   );
 }

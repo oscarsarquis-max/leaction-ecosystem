@@ -1,0 +1,22 @@
+services:
+  spider-db:
+    image: postgres:16-alpine
+    container_name: spider-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: spider_orchestrator
+      POSTGRES_USER: spider_user
+      POSTGRES_PASSWORD: spider_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - spider_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spider_user -d spider_orchestrator"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  spider_pgdata:

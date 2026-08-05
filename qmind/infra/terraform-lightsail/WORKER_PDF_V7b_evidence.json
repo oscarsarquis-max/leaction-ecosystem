@@ -1,0 +1,50 @@
+﻿{
+    "gate":  "011-V7b-worker-pdf",
+    "started_at":  "2026-08-04T14:05:39.4733765Z",
+    "api_base":  "https://api.homolog.qmind.com.br",
+    "checks":  [
+                   {
+                       "id":  "report_published",
+                       "status":  "PASS",
+                       "detail":  "rid=0366619b-a016-4090-b786-992c1b885fb2"
+                   },
+                   {
+                       "id":  "enqueue_idempotent",
+                       "status":  "PASS",
+                       "detail":  "job=3916b543-4941-424c-a37b-5c708c4431a5"
+                   },
+                   {
+                       "id":  "worker_process",
+                       "status":  "PASS",
+                       "detail":  "status=succeeded attempts=1 bytes=2283"
+                   },
+                   {
+                       "id":  "storage_key",
+                       "status":  "PASS",
+                       "detail":  "key=org/9484dc46-6ea5-4cb2-a509-07842773263b/reports/0366619b-a016-4090-b786-992c1b885fb2/v1.pdf"
+                   },
+                   {
+                       "id":  "pdf_download_valid",
+                       "status":  "PASS",
+                       "detail":  "http=200 size=2283 pdf_header_ok"
+                   },
+                   {
+                       "id":  "cross_org",
+                       "status":  "PASS",
+                       "detail":  "download=404 job=404 no_leak"
+                   },
+                   {
+                       "id":  "audit_no_secrets",
+                       "status":  "PASS",
+                       "detail":  "secret_hits=0"
+                   }
+               ],
+    "finished_at":  "2026-08-04T14:06:46.4502909Z",
+    "verdict":  "PASS",
+    "org_a_id":  "9484dc46-6ea5-4cb2-a509-07842773263b",
+    "org_b_id":  "e0fdbbf8-9406-4922-9f31-34c3bca25b21",
+    "report_id":  "0366619b-a016-4090-b786-992c1b885fb2",
+    "job_id":  "3916b543-4941-424c-a37b-5c708c4431a5",
+    "export_storage_key":  "org/9484dc46-6ea5-4cb2-a509-07842773263b/reports/0366619b-a016-4090-b786-992c1b885fb2/v1.pdf",
+    "pdf_bytes":  2283
+}

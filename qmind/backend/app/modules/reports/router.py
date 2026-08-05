@@ -8,6 +8,7 @@ from app.auth.deps import OrgContextDep
 from app.modules.reports import service
 from app.modules.reports.schemas import (
     DiscardIn,
+    DownloadUrlOut,
     JobOut,
     ReasonIn,
     ReportCreate,
@@ -149,3 +150,18 @@ def export_pdf(
     _idempotency_key: IdempotencyKeyHeader = None,
 ) -> JobOut:
     return service.enqueue_pdf_export(ctx, report_id)
+
+
+@router.get(
+    "/{report_id}/export-pdf/download-url",
+    response_model=DownloadUrlOut,
+    operation_id="getReportPdfDownloadUrl",
+    responses={
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+        409: ERROR_RESPONSES[409],
+    },
+    summary="Presigned PDF download (membership + RLS; URL not audited)",
+)
+def export_pdf_download_url(report_id: UUID, ctx: OrgContextDep) -> DownloadUrlOut:
+    return service.export_pdf_download_url(ctx, report_id)

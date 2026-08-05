@@ -38,6 +38,17 @@ class InMemoryObjectStorage:
     def generate_key(self, organization_id: str, evidence_id: str, version_no: int = 1) -> str:
         return f"org/{organization_id}/evidence/{evidence_id}/v{version_no}"
 
+    def generate_report_pdf_key(
+        self, organization_id: str, report_id: str, version_no: int
+    ) -> str:
+        return f"org/{organization_id}/reports/{report_id}/v{version_no}.pdf"
+
+    def put_bytes(self, key: str, data: bytes, *, content_type: str) -> None:
+        self._objects[key] = _Obj(data=data, content_type=content_type, committed=True)
+
+    def put_test_object(self, key: str, data: bytes, content_type: str) -> None:
+        self.put_bytes(key, data, content_type=content_type)
+
     def presign_upload(
         self,
         key: str,
@@ -55,9 +66,6 @@ class InMemoryObjectStorage:
             headers={"Content-Type": content_type},
             expires_in_seconds=expires_in,
         )
-
-    def put_test_object(self, key: str, data: bytes, content_type: str) -> None:
-        self._objects[key] = _Obj(data=data, content_type=content_type, committed=True)
 
     def presign_download(self, key: str, *, expires_in: int) -> str:
         return f"memory://download/{quote(key, safe='/')}?exp={expires_in}"

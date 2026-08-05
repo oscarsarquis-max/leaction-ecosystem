@@ -66,6 +66,14 @@ class ScopeOut(BaseModel):
     org_process_id: UUID | None
     requirement_id: UUID | None
     created_at: datetime
+    label: str | None = None
+
+
+class ScopeOptionOut(BaseModel):
+    kind: str
+    target_id: UUID
+    label: str
+    already_in_scope: bool = False
 
 
 class TeamMemberIn(BaseModel):
@@ -79,3 +87,4 @@ class TeamMemberOut(BaseModel):
     membership_id: UUID
     team_role: str | None
     created_at: datetime
+    label: str | None = None

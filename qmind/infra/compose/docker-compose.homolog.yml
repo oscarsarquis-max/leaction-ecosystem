@@ -1,0 +1,140 @@
+# Stack Lightsail — homolog (testes) + piloto (qmind.com.br) no mesmo host.
+# Postgres NÃO publica porta no host público.
+# Secrets: .env.homolog + /opt/qmind/secrets/*.env (nunca no git).
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      QMIND_API_HOST: ${QMIND_API_HOST:-api.homolog.qmind.com.br}
+      QMIND_APP_HOST: ${QMIND_APP_HOST:-app.homolog.qmind.com.br}
+      QMIND_PILOT_API_HOST: ${QMIND_PILOT_API_HOST:-api.qmind.com.br}
+      QMIND_PILOT_APP_HOST: ${QMIND_PILOT_APP_HOST:-qmind.com.br}
+      QMIND_PILOT_WWW_HOST: ${QMIND_PILOT_WWW_HOST:-www.qmind.com.br}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+      - web_homolog
+
+  # Piloto — https://qmind.com.br → https://api.qmind.com.br
+  web:
+    image: ${QMIND_WEB_PILOT_IMAGE:-qmind-web:pilot-v0}
+    build:
+      context: ../..
+      dockerfile: web/Dockerfile
+      args:
+        VITE_ENVIRONMENT: homolog
+        VITE_AUTH_MODE: cognito
+        VITE_API_BASE_URL: https://${QMIND_PILOT_API_HOST:-api.qmind.com.br}
+        VITE_COGNITO_AUTHORITY: ${VITE_COGNITO_AUTHORITY}
+        VITE_COGNITO_CLIENT_ID: ${VITE_COGNITO_CLIENT_ID}
+        VITE_COGNITO_REDIRECT_URI: https://${QMIND_PILOT_APP_HOST:-qmind.com.br}/auth/callback
+        VITE_COGNITO_LOGOUT_URI: https://${QMIND_PILOT_APP_HOST:-qmind.com.br}/
+    restart: unless-stopped
+
+  # Homolog — testes exclusivos em *.homolog.qmind.com.br
+  web_homolog:
+    image: ${QMIND_WEB_IMAGE:-qmind-web:mvp-fullstack-v0}
+    build:
+      context: ../..
+      dockerfile: web/Dockerfile
+      args:
+        VITE_ENVIRONMENT: homolog
+        VITE_AUTH_MODE: cognito
+        VITE_API_BASE_URL: https://${QMIND_API_HOST:-api.homolog.qmind.com.br}
+        VITE_COGNITO_AUTHORITY: ${VITE_COGNITO_AUTHORITY}
+        VITE_COGNITO_CLIENT_ID: ${VITE_COGNITO_CLIENT_ID}
+        VITE_COGNITO_REDIRECT_URI: https://${QMIND_APP_HOST:-app.homolog.qmind.com.br}/auth/callback
+        VITE_COGNITO_LOGOUT_URI: https://${QMIND_APP_HOST:-app.homolog.qmind.com.br}/
+    restart: unless-stopped
+
+  api:
+    image: ${QMIND_API_IMAGE:-qmind-api:mvp-fullstack-v0}
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.homolog
+      - /opt/qmind/secrets/app-evidence.env
+    environment:
+      ENVIRONMENT: homolog
+      AUTH_MODE: cognito
+      STORAGE_BACKEND: s3
+      S3_REGION: ${QMIND_AWS_REGION:-us-east-2}
+      S3_BUCKET: ${QMIND_EVIDENCE_BUCKET}
+      ALLOW_SIMULATED_SECURITY_PASS: "true"
+      COGNITO_REGION: ${QMIND_AWS_REGION:-us-east-2}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
+      COGNITO_APP_CLIENT_ID: ${COGNITO_APP_CLIENT_ID}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://qmind.com.br,https://www.qmind.com.br,https://app.homolog.qmind.com.br}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    image: ${QMIND_WORKER_IMAGE:-qmind-api:mvp-fullstack-v0}
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker"]
+    env_file:
+      - .env.homolog
+      - /opt/qmind/secrets/app-evidence.env
+    environment:
+      ENVIRONMENT: homolog
+      AUTH_MODE: cognito
+      STORAGE_BACKEND: s3
+      S3_REGION: ${QMIND_AWS_REGION:-us-east-2}
+      S3_BUCKET: ${QMIND_EVIDENCE_BUCKET}
+      ALLOW_SIMULATED_SECURITY_PASS: "true"
+      COGNITO_REGION: ${QMIND_AWS_REGION:-us-east-2}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
+      COGNITO_APP_CLIENT_ID: ${COGNITO_APP_CLIENT_ID}
+      WORKER_POLL_INTERVAL_SECONDS: "2"
+      WORKER_LEASE_SECONDS: "300"
+      WORKER_MAX_ATTEMPTS: "5"
+      WORKER_BACKOFF_BASE_SECONDS: "5"
+      WORKER_HEALTH_PORT: "8010"
+    mem_limit: 384m
+    cpus: "0.50"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8010/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-qmind}
+      POSTGRES_USER: ${POSTGRES_USER:-qmind_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

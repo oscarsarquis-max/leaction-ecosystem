@@ -28,7 +28,7 @@ def health() -> dict:
         "environment": settings.environment,
         "auth_mode": settings.auth_mode,
         "database": db["database"],
-        "cluster_note": "logical database qmind on shared Postgres service leaction_db",
+        "cluster_note": "logical database qmind_dev on shared Postgres service leaction_db",
     }
 
 

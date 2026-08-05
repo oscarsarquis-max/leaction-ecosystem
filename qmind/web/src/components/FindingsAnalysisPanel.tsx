@@ -14,13 +14,11 @@ import {
   canApproveFinding,
   isFindingAuthor,
 } from "@/lib/permissions";
-
-const TYPES: FindingType[] = [
-  "conformity",
-  "nonconformity",
-  "opportunity",
-  "observation",
-];
+import {
+  FINDING_TYPE_OPTIONS,
+  labelFindingType,
+  labelWorkflowStatus,
+} from "@/lib/labels";
 
 type FindingRow = {
   id: string;
@@ -72,8 +70,18 @@ export function FindingsAnalysisPanel({
 
   const requirementOptions = (scopes.data ?? [])
     .filter((s) => s.requirement_id)
-    .map((s) => s.requirement_id as string);
+    .map((s) => ({
+      id: s.requirement_id as string,
+      label: s.label?.trim() || "Requisito da norma",
+    }));
   const approvedEvidence = (evidences.data ?? []).filter((e) => e.status === "approved");
+  const approvedEvidenceOptions = approvedEvidence.map((e, i) => {
+    const row = e as Record<string, unknown>;
+    const human = ["title", "summary", "description", "filename", "original_filename"]
+      .map((k) => row[k])
+      .find((v): v is string => typeof v === "string" && v.trim().length > 0);
+    return { id: e.id, label: human?.trim() || `Evidência ${i + 1}` };
+  });
 
   const selected =
     (findings.data as FindingRow[] | undefined)?.find((f) => f.id === selectedId) ?? null;
@@ -81,11 +89,11 @@ export function FindingsAnalysisPanel({
   return (
     <section className="space-y-6" data-testid="findings-analysis">
       <header>
-        <h2 className="font-display text-2xl text-teal-950">Findings (análise)</h2>
+        <h2 className="font-display text-2xl text-teal-950">Constatações (análise)</h2>
         <p className="mt-1 text-sm text-teal-950/70">
-          Rascunho → revisão → aprovado|rejeitado. Conformidade exige Evidence{" "}
-          <span className="font-semibold">approved</span>; evidência insuficiente é bloqueada
-          para conformity/opportunity. SoD: autor não aprova a própria Finding.
+          Rascunho → revisão → aprovada|rejeitada. Conformidade exige evidência{" "}
+          <span className="font-semibold">aprovada</span>; evidência insuficiente é bloqueada
+          para conformidade/oportunidade. Separação de funções (SoD): o autor não aprova a própria constatação.
         </p>
       </header>
 
@@ -97,14 +105,14 @@ export function FindingsAnalysisPanel({
           ) : findings.isError ? (
             <div className="mt-3">
               <ApiErrorBanner
-                title="Erro ao listar findings"
+                title="Erro ao listar constatações"
                 error={findings.error}
                 onRetry={() => void findings.refetch()}
               />
             </div>
           ) : (findings.data?.length ?? 0) === 0 ? (
             <p className="mt-3 text-sm text-teal-950/60" data-testid="findings-empty">
-              Nenhuma finding.
+              Nenhuma constatação.
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-teal-900/10" data-testid="findings-list">
@@ -118,9 +126,9 @@ export function FindingsAnalysisPanel({
                     }`}
                     data-testid={`finding-select-${f.id}`}
                   >
-                    <span className="uppercase tracking-wide">{f.status}</span>
+                    <span className="tracking-wide">{labelWorkflowStatus(f.status)}</span>
                     {" · "}
-                    {f.finding_type}
+                    {labelFindingType(f.finding_type)}
                     {" · "}
                     {f.title}
                   </button>
@@ -138,7 +146,7 @@ export function FindingsAnalysisPanel({
           roles={roles}
           selected={selected}
           requirementOptions={requirementOptions}
-          approvedEvidenceIds={approvedEvidence.map((e) => e.id)}
+          approvedEvidenceOptions={approvedEvidenceOptions}
           onCreated={(id) => setSelectedId(id)}
           onCleared={() => setSelectedId(null)}
         />
@@ -146,6 +154,8 @@ export function FindingsAnalysisPanel({
     </section>
   );
 }
+
+type LabeledId = { id: string; label: string };
 
 function FindingEditor({
   assessmentId,
@@ -155,7 +165,7 @@ function FindingEditor({
   roles,
   selected,
   requirementOptions,
-  approvedEvidenceIds,
+  approvedEvidenceOptions,
   onCreated,
   onCleared,
 }: {
@@ -165,8 +175,8 @@ function FindingEditor({
   membershipId: string | null;
   roles: readonly string[];
   selected: FindingRow | null;
-  requirementOptions: string[];
-  approvedEvidenceIds: string[];
+  requirementOptions: LabeledId[];
+  approvedEvidenceOptions: LabeledId[];
   onCreated: (id: string) => void;
   onCleared: () => void;
 }) {
@@ -175,7 +185,7 @@ function FindingEditor({
   const transition = useFindingTransition(assessmentId);
   const busyRef = useRef(false);
   const [draft, setDraft] = useState<FindingDraftInput>(() =>
-    emptyDraft(requirementOptions[0]),
+    emptyDraft(requirementOptions[0]?.id),
   );
   const [reason, setReason] = useState("");
   const [mode, setMode] = useState<"create" | "edit">("create");
@@ -183,7 +193,7 @@ function FindingEditor({
   useEffect(() => {
     if (!selected) {
       setMode("create");
-      setDraft(emptyDraft(requirementOptions[0]));
+      setDraft(emptyDraft(requirementOptions[0]?.id));
       return;
     }
     setMode("edit");
@@ -261,7 +271,7 @@ function FindingEditor({
     <section className="rounded-lg border border-teal-900/10 bg-white/70 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-display text-xl text-teal-950">
-          {selected ? "Detalhe / edição" : "Nova finding"}
+          {selected ? "Detalhe / edição" : "Nova constatação"}
         </h3>
         {selected ? (
           <button
@@ -280,7 +290,7 @@ function FindingEditor({
           Autor: <span className="font-mono">{selected.author_membership_id}</span>
           {author ? " (você)" : ""}
           {sodBlocksApprove
-            ? " — SoD: você não pode aprovar finding da qual é autor."
+            ? " — SoD: você não pode aprovar a constatação da qual é autor."
             : null}
         </p>
       ) : null}
@@ -305,9 +315,9 @@ function FindingEditor({
             }}
             data-testid="finding-type"
           >
-            {TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
+            {FINDING_TYPE_OPTIONS.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
               </option>
             ))}
           </select>
@@ -341,17 +351,17 @@ function FindingEditor({
         <fieldset className="space-y-1">
           <legend className="text-sm font-semibold text-teal-950">Requisitos</legend>
           {requirementOptions.length === 0 ? (
-            <p className="text-xs text-amber-900">Nenhum requirement no escopo.</p>
+            <p className="text-xs text-amber-900">Nenhum requisito no escopo.</p>
           ) : (
-            requirementOptions.map((rid) => (
-              <label key={rid} className="flex items-center gap-2 text-xs font-mono">
+            requirementOptions.map((opt) => (
+              <label key={opt.id} className="flex items-center gap-2 text-sm text-teal-950">
                 <input
                   type="checkbox"
                   disabled={!editable}
-                  checked={draft.requirement_ids.includes(rid)}
-                  onChange={() => toggleReq(rid)}
+                  checked={draft.requirement_ids.includes(opt.id)}
+                  onChange={() => toggleReq(opt.id)}
                 />
-                {rid}
+                {opt.label}
               </label>
             ))
           )}
@@ -359,23 +369,23 @@ function FindingEditor({
 
         <fieldset className="space-y-1">
           <legend className="text-sm font-semibold text-teal-950">
-            Evidências approved
+            Evidências aprovadas
           </legend>
-          {approvedEvidenceIds.length === 0 ? (
+          {approvedEvidenceOptions.length === 0 ? (
             <p className="text-xs text-amber-900" data-testid="finding-no-approved-evidence">
-              Nenhuma Evidence approved — conformidade não poderá ser submetida.
+              Nenhuma evidência aprovada — conformidade não poderá ser submetida.
             </p>
           ) : (
-            approvedEvidenceIds.map((eid) => (
-              <label key={eid} className="flex items-center gap-2 text-xs font-mono">
+            approvedEvidenceOptions.map((opt) => (
+              <label key={opt.id} className="flex items-center gap-2 text-sm text-teal-950">
                 <input
                   type="checkbox"
                   disabled={!editable}
-                  checked={draft.evidence_ids.includes(eid)}
-                  onChange={() => toggleEv(eid)}
-                  data-testid={`finding-evidence-${eid}`}
+                  checked={draft.evidence_ids.includes(opt.id)}
+                  onChange={() => toggleEv(opt.id)}
+                  data-testid={`finding-evidence-${opt.id}`}
                 />
-                {eid}
+                {opt.label}
               </label>
             ))
           )}
@@ -415,7 +425,7 @@ function FindingEditor({
           </label>
         ) : (
           <p className="text-xs text-teal-950/60" data-testid="finding-insuff-forbidden">
-            Para `{draft.finding_type}`, evidência insuficiente não é permitida.
+            Para {labelFindingType(draft.finding_type)}, evidência insuficiente não é permitida.
           </p>
         )}
 
@@ -429,8 +439,8 @@ function FindingEditor({
             {create.isPending || update.isPending
               ? "Salvando…"
               : mode === "create"
-                ? "Criar draft"
-                : "Salvar draft"}
+                ? "Criar rascunho"
+                : "Salvar rascunho"}
           </button>
         ) : null}
       </form>
@@ -466,7 +476,7 @@ function FindingEditor({
                     })
                   }
                 >
-                  Submeter
+                  Enviar para revisão
                 </button>
                 <button
                   type="button"
@@ -483,7 +493,7 @@ function FindingEditor({
                     })
                   }
                 >
-                  Discard
+                  Descartar
                 </button>
               </>
             ) : null}
@@ -498,7 +508,7 @@ function FindingEditor({
                   title={
                     sodBlocksApprove
                       ? "SoD: autor não pode aprovar"
-                      : "Aprovar finding"
+                      : "Aprovar constatação"
                   }
                   onClick={() =>
                     void runOnce(async () => {
@@ -514,7 +524,7 @@ function FindingEditor({
                 <button
                   type="button"
                   disabled={transition.isPending || !reason.trim()}
-                  className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs font-semibold text-red-900"
+                  className="rounded-md border border-qmind-semantic-danger/30 bg-qmind-semantic-future px-2 py-1 text-xs font-semibold text-qmind-semantic-danger"
                   data-testid="finding-reject"
                   onClick={() =>
                     void runOnce(async () => {
@@ -545,7 +555,7 @@ function FindingEditor({
                   })
                 }
               >
-                Rework → draft
+                Retrabalho → rascunho
               </button>
             ) : null}
 
@@ -564,7 +574,7 @@ function FindingEditor({
                   })
                 }
               >
-                Withdraw
+                Retirar
               </button>
             ) : null}
 
@@ -584,7 +594,7 @@ function FindingEditor({
                   })
                 }
               >
-                Nova versão (draft)
+                Nova versão (rascunho)
               </button>
             ) : null}
           </div>
@@ -594,7 +604,7 @@ function FindingEditor({
             selected.status === "draft") &&
           (canReview || canCreate) ? (
             <label className="mt-2 block text-sm">
-              Motivo (reject / withdraw / discard)
+              Motivo (rejeição / retirada / descarte)
               <input
                 className="field mt-1 w-full"
                 value={reason}

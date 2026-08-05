@@ -36,27 +36,62 @@ export type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function createUserManager(): UserManager | null {
+/** Singleton — StrictMode remount não pode recriar InMemoryWebStorage vazio. */
+let sharedManager: UserManager | null = null;
+/** Dedup do callback OIDC (código de autorização é one-shot). */
+let callbackInFlight: Promise<User> | null = null;
+
+function getOrCreateUserManager(): UserManager | null {
   const cfg = getConfig();
   if (cfg.authMode !== "cognito") return null;
-  // Tokens stay in memory only — never session/localStorage.
-  const memory = new InMemoryWebStorage();
-  return new UserManager({
-    authority: cfg.cognito.authority,
-    client_id: cfg.cognito.clientId,
-    redirect_uri: cfg.cognito.redirectUri,
-    post_logout_redirect_uri: cfg.cognito.logoutUri,
-    response_type: "code",
-    scope: "openid email profile",
-    automaticSilentRenew: true,
-    userStore: new WebStorageStateStore({ store: memory }),
-  });
+  if (!sharedManager) {
+    // Tokens em memória; state/PKCE do redirect fica no sessionStorage (default do oidc-client-ts).
+    const memory = new InMemoryWebStorage();
+    sharedManager = new UserManager({
+      authority: cfg.cognito.authority,
+      client_id: cfg.cognito.clientId,
+      redirect_uri: cfg.cognito.redirectUri,
+      post_logout_redirect_uri: cfg.cognito.logoutUri,
+      response_type: "code",
+      scope: "openid email profile",
+      automaticSilentRenew: true,
+      userStore: new WebStorageStateStore({ store: memory }),
+      // Cognito Managed Login localization (pt-BR).
+      extraQueryParams: { lang: "pt-BR" },
+    });
+  }
+  return sharedManager;
+}
+
+/** Test helper — reset module singletons between Vitest cases if needed. */
+export function __resetAuthManagerForTests(): void {
+  sharedManager = null;
+  callbackInFlight = null;
+}
+
+async function completeRedirectCallback(manager: UserManager): Promise<User> {
+  if (!callbackInFlight) {
+    callbackInFlight = manager.signinRedirectCallback().finally(() => {
+      // Mantém a promise resolvida para remounts StrictMode na mesma URL.
+    });
+  }
+  return callbackInFlight;
+}
+
+function isAuthCallbackPath(): boolean {
+  return window.location.pathname === "/auth/callback";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const cfg = getConfig();
   const managerRef = useRef<UserManager | null>(null);
-  const [status, setStatus] = useState<AuthStatus>("loading");
+  /**
+   * AUTH_MODE=dev: sempre começa anônimo (AccessGate).
+   * Sessão só em memória após "Entrar" — F5 volta ao login (evita ficar preso autenticado).
+   */
+  const [status, setStatus] = useState<AuthStatus>(() =>
+    cfg.authMode === "dev" ? "anonymous" : "loading",
+  );
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -95,54 +130,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    async function boot() {
-      if (cfg.authMode === "dev") {
-        if (cancelled) return;
-        setAccessToken("dev-local-token");
-        setExpiresAt(Date.now() + 8 * 60 * 60 * 1000);
-        setUserEmail(cfg.devAuth.email);
-        setUserSub(cfg.devAuth.sub);
-        setStatus("authenticated");
-        return;
-      }
-
-      const manager = createUserManager();
-      managerRef.current = manager;
-      if (!manager) {
-        setStatus("anonymous");
-        return;
-      }
-
-      manager.events.addUserLoaded((user) => {
-        if (!cancelled) applyUser(user);
-      });
-      manager.events.addUserUnloaded(() => {
-        if (!cancelled) void invalidateSession("invalid");
-      });
-      manager.events.addAccessTokenExpired(() => {
-        if (!cancelled) void invalidateSession("invalid");
-      });
-      manager.events.addSilentRenewError(() => {
-        if (!cancelled) void invalidateSession("invalid");
-      });
-
+    if (cfg.authMode === "dev") {
+      // Estado inicial já é anonymous; login() só altera memória (F5 = AccessGate de novo).
+      // Limpa flags antigas de sessão em sessionStorage (builds anteriores).
       try {
-        if (window.location.pathname === "/auth/callback") {
-          const user = await manager.signinRedirectCallback();
+        for (const k of Object.keys(sessionStorage)) {
+          if (k.startsWith("qmind.dev.authenticated")) sessionStorage.removeItem(k);
+        }
+      } catch {
+        /* ignore */
+      }
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const manager = getOrCreateUserManager();
+    managerRef.current = manager;
+    if (!manager) {
+      setStatus("anonymous");
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const onLoaded = (user: User) => {
+      if (!cancelled) applyUser(user);
+    };
+    const onUnloaded = () => {
+      if (!cancelled) void invalidateSession("invalid");
+    };
+    const onExpired = () => {
+      if (!cancelled) void invalidateSession("invalid");
+    };
+    const onRenewError = () => {
+      if (!cancelled) void invalidateSession("invalid");
+    };
+    manager.events.addUserLoaded(onLoaded);
+    manager.events.addUserUnloaded(onUnloaded);
+    manager.events.addAccessTokenExpired(onExpired);
+    manager.events.addSilentRenewError(onRenewError);
+
+    void (async () => {
+      try {
+        if (isAuthCallbackPath()) {
+          const user = await completeRedirectCallback(manager);
+          if (cancelled) return;
           applyUser(user);
-          window.history.replaceState({}, document.title, "/");
+          // Navegação para /assessments fica a cargo de AuthCallbackPage (React Router).
           return;
         }
         const user = await manager.getUser();
-        applyUser(user);
+        if (!cancelled) applyUser(user);
       } catch {
         if (!cancelled) await invalidateSession("invalid");
       }
-    }
+    })();
 
-    void boot();
     return () => {
       cancelled = true;
+      manager.events.removeUserLoaded(onLoaded);
+      manager.events.removeUserUnloaded(onUnloaded);
+      manager.events.removeAccessTokenExpired(onExpired);
+      manager.events.removeSilentRenewError(onRenewError);
     };
   }, [applyUser, cfg.authMode, cfg.devAuth.email, cfg.devAuth.sub, invalidateSession]);
 
@@ -155,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus("authenticated");
       return;
     }
-    const manager = managerRef.current ?? createUserManager();
+    const manager = getOrCreateUserManager();
     managerRef.current = manager;
     if (!manager) throw new Error("OIDC UserManager unavailable");
     await manager.signinRedirect();
@@ -164,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     await invalidateSession("logout");
     if (cfg.authMode === "cognito") {
-      const manager = managerRef.current;
+      const manager = managerRef.current ?? getOrCreateUserManager();
       if (manager) {
         try {
           await manager.removeUser();

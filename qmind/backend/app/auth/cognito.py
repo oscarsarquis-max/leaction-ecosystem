@@ -41,14 +41,25 @@ def decode_cognito_access_token(token: str, settings: Settings | None = None) ->
     try:
         jwks = _get_jwks_client(settings)
         key = jwks.get_signing_key_from_jwt(token)
-        return jwt.decode(
+        # Cognito access tokens carry `client_id` (not always `aud`); ID tokens use `aud`.
+        claims = jwt.decode(
             token,
             key.key,
             algorithms=["RS256"],
-            audience=settings.cognito_app_client_id,
             issuer=settings.cognito_issuer,
-            options={"require": ["exp", "iss", "sub"]},
+            options={"require": ["exp", "iss", "sub"], "verify_aud": False},
         )
+        token_client = claims.get("client_id") or claims.get("aud")
+        if isinstance(token_client, list):
+            client_ok = settings.cognito_app_client_id in token_client
+        else:
+            client_ok = token_client == settings.cognito_app_client_id
+        if not client_ok:
+            raise AppError("invalid_token", "Invalid or expired access token", status_code=401)
+        token_use = claims.get("token_use")
+        if token_use is not None and token_use not in ("access", "id"):
+            raise AppError("invalid_token", "Invalid or expired access token", status_code=401)
+        return claims
     except AppError:
         raise
     except Exception as exc:

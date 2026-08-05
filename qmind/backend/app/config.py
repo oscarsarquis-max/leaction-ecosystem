@@ -1,4 +1,4 @@
-"""Application settings — database `qmind` on cluster `leaction_db`."""
+"""Application settings — database `qmind_dev` on cluster `leaction_db`."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     app_name: str = "QMind"
     api_prefix: str = "/api/v1"
-    environment: Literal["local", "dev", "prod"] = "local"
+    environment: Literal["local", "dev", "homolog", "prod"] = "local"
 
     database_url_admin: str = Field(..., description="Migrator/bootstrap DSN (table owner)")
     database_url_app: str = Field(..., description="Runtime DSN as qmind_app")
@@ -40,10 +40,24 @@ class Settings(BaseSettings):
     # security_pass without malware worker — forbidden in prod
     allow_simulated_security_pass: bool = True
 
+    # Comma-separated browser origins (pilot + homolog). Empty = CORS middleware off.
+    cors_origins: str = ""
+
+    # PDF export worker (Compose service; ADR-010 Lightsail)
+    worker_id: str = "pdf-worker"
+    worker_poll_interval_seconds: float = 2.0
+    worker_lease_seconds: int = 300
+    worker_max_attempts: int = 5
+    worker_backoff_base_seconds: float = 5.0
+    worker_health_port: int = 8010
+    report_pdf_download_expires_seconds: int = 300
+
     @model_validator(mode="after")
     def forbid_unsafe_prod(self) -> Settings:
-        if self.environment == "prod" and self.auth_mode == "dev":
-            raise ValueError("AUTH_MODE=dev is forbidden when ENVIRONMENT=prod.")
+        if self.environment in ("homolog", "prod") and self.auth_mode == "dev":
+            raise ValueError(
+                f"AUTH_MODE=dev is forbidden when ENVIRONMENT={self.environment}."
+            )
         if self.environment == "prod" and self.allow_simulated_security_pass:
             raise ValueError(
                 "ALLOW_SIMULATED_SECURITY_PASS must be false when ENVIRONMENT=prod "
@@ -56,6 +70,10 @@ class Settings(BaseSettings):
     @property
     def allowed_content_types(self) -> set[str]:
         return {p.strip().lower() for p in self.evidence_allowed_content_types.split(",") if p.strip()}
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [p.strip() for p in self.cors_origins.split(",") if p.strip()]
 
     @property
     def cognito_issuer(self) -> str:

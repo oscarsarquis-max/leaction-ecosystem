@@ -56,3 +56,15 @@ class JobOut(BaseModel):
     idempotency_key: str
     input_ref: dict[str, Any]
     created_at: datetime
+    attempt_count: int = 0
+    max_attempts: int = 5
+    error_code: str | None = None
+    error_safe_message: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    output_ref: dict[str, Any] = Field(default_factory=dict)
+
+
+class DownloadUrlOut(BaseModel):
+    url: str
+    expires_in_seconds: int

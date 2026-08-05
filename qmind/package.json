@@ -17,5 +17,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "overrides": {
+    "typescript": "~6.0.2"
   }
 }

@@ -2,6 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
 import { useOrganization } from "@/org/OrganizationProvider";
 import { OrgSelector } from "@/components/OrgSelector";
+import { AccessGate } from "@/components/AccessGate";
 import { BrandLogo } from "@/components/BrandLogo";
 import {
   AccessDeniedPanel,
@@ -16,41 +17,31 @@ export function AppShell() {
   if (auth.status === "loading") {
     return (
       <div className="mx-auto max-w-5xl px-4 py-16">
-        <LoadingPanel title="Validando sessão…" />
+        <LoadingPanel title="Validando sua sessão…" />
       </div>
     );
   }
 
   if (auth.status === "anonymous" || auth.status === "invalid_session") {
     return (
-      <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-16">
-        <BrandLogo
-          className="h-16 w-full max-w-md sm:h-20"
-          zoom={2.8}
-        />
-        <p className="mt-8 text-lg text-teal-950/70">
-          {auth.status === "invalid_session"
-            ? "Sessão inválida ou expirada. Entre novamente."
-            : "Entre para acessar avaliações da sua organização."}
-        </p>
-        <button
-          type="button"
-          onClick={() => void auth.login()}
-          className="mt-8 w-fit rounded-md bg-teal-900 px-4 py-2 text-sm font-semibold text-white"
-        >
-          Entrar
-        </button>
-      </div>
+      <AccessGate
+        status={auth.status}
+        onLogin={() => void auth.login()}
+      />
     );
   }
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-teal-900/10 bg-white/70 backdrop-blur">
+      <header className="qm-shell-header">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-2.5">
           <div className="flex items-center gap-6">
-            <NavLink to="/" className="block shrink-0" aria-label="QMind">
-              <BrandLogo className="h-9 w-36 sm:h-10 sm:w-40" alt="" zoom={2.6} />
+            <NavLink to="/assessments" className="block shrink-0" aria-label="QMind — início">
+              <BrandLogo
+                mode="full"
+                className="h-9 w-auto max-h-9 max-w-[13rem] object-contain object-left sm:h-10 sm:max-h-10 sm:max-w-[15rem]"
+                alt=""
+              />
             </NavLink>
             <nav className="flex gap-3 text-sm font-semibold">
               <NavLink
@@ -59,23 +50,23 @@ export function AppShell() {
                 data-testid="nav-assessments"
                 className={({ isActive }) =>
                   isActive
-                    ? "text-teal-900 underline decoration-2 underline-offset-4"
-                    : "text-teal-950/60 hover:text-teal-900"
+                    ? "text-[var(--qm-ink)] underline decoration-2 underline-offset-4"
+                    : "text-[var(--qm-muted)] hover:text-[var(--qm-ink)]"
                 }
               >
-                Avaliações
+                Minhas avaliações
               </NavLink>
             </nav>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <OrgSelector />
-            <span className="hidden text-sm text-teal-950/60 sm:inline">
+            <span className="hidden text-sm text-[var(--qm-muted)] sm:inline">
               {auth.userEmail}
             </span>
             <button
               type="button"
               onClick={() => void auth.logout()}
-              className="rounded-md border border-teal-900/20 bg-white px-3 py-1.5 text-sm font-semibold text-teal-950"
+              className="qm-btn-secondary !px-3 !py-1.5"
             >
               Sair
             </button>
@@ -87,7 +78,7 @@ export function AppShell() {
         {org.accessDenied ? (
           <AccessDeniedPanel message={org.error ?? undefined} />
         ) : org.loading && !org.currentOrganizationId ? (
-          <LoadingPanel title="Carregando organizações…" />
+          <LoadingPanel title="Carregando suas organizações…" />
         ) : org.error && !org.currentOrganizationId ? (
           <ErrorPanel
             title="Não foi possível carregar organizações"

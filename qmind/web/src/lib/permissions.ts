@@ -151,13 +151,13 @@ export function canEditMaturityScores(
 export function maturityEvidenceHint(level: number | null | undefined): string | null {
   if (level == null) return null;
   if (level >= 5) {
-    return "Nível 5: evidência approved + justificativa de ciclo de melhoria.";
+    return "Nível 5: evidência aprovada + justificativa de ciclo de melhoria.";
   }
   if (level >= 4) {
-    return "Nível 4: evidência approved + justificativa de medição/uso de dados.";
+    return "Nível 4: evidência aprovada + justificativa de medição/uso de dados.";
   }
   if (level >= 3) {
-    return "Nível 3+: ≥1 Evidence approved vinculada (exigido no submit).";
+    return "Nível 3+: ≥1 evidência aprovada vinculada (exigido no envio).";
   }
   return null;
 }

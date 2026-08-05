@@ -1,0 +1,303 @@
+{
+  "catalog_version": "iso9001-2015-c4c5-v1",
+  "title": "Roteiro orientado — contexto da organização e liderança",
+  "standard_label": "ISO 9001:2015 (cláusulas 4 e 5)",
+  "disclaimer": "Perguntas próprias do QMind em linguagem empresarial. Não reproduzem o texto da norma.",
+  "steps": [
+    "organization",
+    "qms_scope",
+    "products_services",
+    "sites",
+    "processes",
+    "stakeholders",
+    "route",
+    "review"
+  ],
+  "questions": [
+    {
+      "id": "c4-ctx-01",
+      "version": "1",
+      "theme": "Contexto da organização",
+      "clause_ref": "4.1",
+      "question": "A empresa já identificou os fatores externos e internos que mais influenciam a qualidade do que entrega?",
+      "explanation": "Fatores externos podem ser mercado, legislação ou fornecedores. Internos: pessoas, equipamentos, cultura e capacidade.",
+      "practice_examples": [
+        "Reunião periódica de gestão com riscos e oportunidades do negócio",
+        "Mapa simples de fatores que afetam prazos e reclamações"
+      ],
+      "evidence_examples": [
+        "Ata ou registro da análise de contexto",
+        "Apresentação usada em reunião de direção"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-ctx-02",
+      "version": "1",
+      "theme": "Contexto da organização",
+      "clause_ref": "4.1",
+      "question": "Esses fatores são revisados quando o negócio muda (novo produto, novo mercado, mudança relevante)?",
+      "explanation": "O contexto não é estático. Mudanças importantes pedem atualização do entendimento da organização.",
+      "practice_examples": [
+        "Revisão anual ou após mudanças relevantes",
+        "Checklist de mudança de escopo de produto"
+      ],
+      "evidence_examples": [
+        "Registro de revisão com data e responsáveis",
+        "Versão atualizada do documento de contexto"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-int-01",
+      "version": "1",
+      "theme": "Partes interessadas",
+      "clause_ref": "4.2",
+      "question": "A empresa sabe quem são as partes interessadas relevantes para a qualidade (clientes, colaboradores, fornecedores, órgãos reguladores etc.)?",
+      "explanation": "Partes interessadas são pessoas ou grupos que influenciam ou são influenciados pelo sistema de qualidade.",
+      "practice_examples": [
+        "Lista de partes interessadas com necessidades principais",
+        "Matriz simples cliente / fornecedor / colaborador / regulador"
+      ],
+      "evidence_examples": [
+        "Lista ou planilha de partes interessadas",
+        "Registro de requisitos de cliente e legais aplicáveis"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-int-02",
+      "version": "1",
+      "theme": "Partes interessadas",
+      "clause_ref": "4.2",
+      "question": "As necessidades e expectativas dessas partes são acompanhadas na prática (não só documentadas uma vez)?",
+      "explanation": "O importante é saber o que cada parte espera e usar isso nas decisões do dia a dia.",
+      "practice_examples": [
+        "Pesquisa de satisfação e tratamento de reclamações",
+        "Requisitos legais atualizados periodicamente"
+      ],
+      "evidence_examples": [
+        "Indicadores de satisfação",
+        "Registro de reclamações e ações"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-scp-01",
+      "version": "1",
+      "theme": "Escopo do SGQ",
+      "clause_ref": "4.3",
+      "question": "O escopo do sistema de gestão da qualidade está claro: o que está incluído e o que fica de fora?",
+      "explanation": "Escopo define fronteiras: produtos, serviços, unidades e atividades cobertas pelo sistema.",
+      "practice_examples": [
+        "Declaração de escopo em linguagem simples",
+        "Mapa de unidades e linhas de produto cobertas"
+      ],
+      "evidence_examples": [
+        "Documento ou página com o escopo atual",
+        "Comunicação interna do escopo"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-scp-02",
+      "version": "1",
+      "theme": "Escopo do SGQ",
+      "clause_ref": "4.3",
+      "question": "Se algo fica fora do escopo, a empresa consegue explicar o motivo de forma objetiva?",
+      "explanation": "Exclusões precisam fazer sentido para o negócio e não podem esconder atividades críticas à qualidade.",
+      "practice_examples": [
+        "Justificativa registrada para exclusões",
+        "Revisão do escopo quando a operação muda"
+      ],
+      "evidence_examples": [
+        "Registro de exclusões e justificativas",
+        "Histórico de alterações de escopo"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-prc-01",
+      "version": "1",
+      "theme": "Processos",
+      "clause_ref": "4.4",
+      "question": "Os processos principais que entregam o produto ou serviço estão identificados (do pedido à entrega)?",
+      "explanation": "Processos são sequências de atividades que transformam entradas em resultados para o cliente.",
+      "practice_examples": [
+        "Mapa de processos ponta a ponta",
+        "Lista de processos com donos definidos"
+      ],
+      "evidence_examples": [
+        "Mapa ou fluxograma de processos",
+        "Descrição resumida dos processos-chave"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-prc-02",
+      "version": "1",
+      "theme": "Processos",
+      "clause_ref": "4.4",
+      "question": "Para esses processos, está claro quem é responsável, quais entradas/saídas importam e como o desempenho é acompanhado?",
+      "explanation": "Sem dono, critérios e acompanhamento, o processo existe só no papel.",
+      "practice_examples": [
+        "Ficha de processo com responsável e indicadores",
+        "Reuniões de desempenho por processo"
+      ],
+      "evidence_examples": [
+        "Fichas ou procedimentos resumidos",
+        "Painel ou planilha de indicadores"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-prc-03",
+      "version": "1",
+      "theme": "Processos",
+      "clause_ref": "4.4",
+      "question": "Quando um processo falha ou gera reclamação, a empresa analisa a causa e melhora o processo (não só “apaga o incêndio”)?",
+      "explanation": "Melhoria de processo reduz reincidência. Correção pontual sozinha não sustenta qualidade.",
+      "practice_examples": [
+        "Análise de causa em não conformidades",
+        "Ações corretivas com verificação de eficácia"
+      ],
+      "evidence_examples": [
+        "Registros de ação corretiva",
+        "Antes/depois de um indicador após melhoria"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c5-led-01",
+      "version": "1",
+      "theme": "Liderança",
+      "clause_ref": "5.1",
+      "question": "A alta direção demonstra, na prática, compromisso com a qualidade (não apenas declara)?",
+      "explanation": "Compromisso aparece em decisões, recursos, acompanhamento de reclamações e participação em revisões.",
+      "practice_examples": [
+        "Direção participa de revisões de desempenho",
+        "Priorização de ações de qualidade em reuniões executivas"
+      ],
+      "evidence_examples": [
+        "Atas de revisão pela direção",
+        "Comunicados ou decisões com foco em qualidade"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c5-led-02",
+      "version": "1",
+      "theme": "Liderança",
+      "clause_ref": "5.1",
+      "question": "A direção assegura que o foco no cliente está presente nas operações (requisitos, prazos, reclamações)?",
+      "explanation": "Foco no cliente significa conhecer requisitos e tratar falhas que impactam quem compra ou usa o serviço.",
+      "practice_examples": [
+        "Metas ligadas a satisfação e reclamações",
+        "Rotina de acompanhamento de pedidos críticos"
+      ],
+      "evidence_examples": [
+        "Indicadores de cliente",
+        "Tratamento de reclamações com acompanhamento da direção"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c5-pol-01",
+      "version": "1",
+      "theme": "Política da qualidade",
+      "clause_ref": "5.2",
+      "question": "Existe uma política da qualidade conhecida pelas pessoas que influenciam o resultado para o cliente?",
+      "explanation": "Política é o compromisso público da empresa com qualidade — precisa ser entendida, não só pendurada na parede.",
+      "practice_examples": [
+        "Política divulgada e explicada em integrações",
+        "Discussão da política em reuniões de time"
+      ],
+      "evidence_examples": [
+        "Texto da política vigente",
+        "Registro de comunicação/treinamento"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c5-pol-02",
+      "version": "1",
+      "theme": "Política da qualidade",
+      "clause_ref": "5.2",
+      "question": "A política é usada como referência para decisões e objetivos (não é um texto isolado)?",
+      "explanation": "A política ganha valor quando objetivos e prioridades do negócio se conectam a ela.",
+      "practice_examples": [
+        "Objetivos anuais alinhados à política",
+        "Critérios de decisão citando o compromisso com o cliente"
+      ],
+      "evidence_examples": [
+        "Objetivos da qualidade vigentes",
+        "Revisão que relaciona resultados à política"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c5-rol-01",
+      "version": "1",
+      "theme": "Papéis e responsabilidades",
+      "clause_ref": "5.3",
+      "question": "As pessoas sabem quem é responsável pelo quê em qualidade (aprovações, reclamações, liberação, melhorias)?",
+      "explanation": "Papéis claros evitam “todo mundo e ninguém” nas decisões críticas.",
+      "practice_examples": [
+        "Matriz de responsabilidades",
+        "Descrição de cargos com atribuições de qualidade"
+      ],
+      "evidence_examples": [
+        "Organograma ou matriz RACI",
+        "Delegações formais de autoridade"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c5-rol-02",
+      "version": "1",
+      "theme": "Papéis e responsabilidades",
+      "clause_ref": "5.3",
+      "question": "Há alguém com autoridade para reportar o desempenho do sistema de qualidade à direção e propor melhorias?",
+      "explanation": "A direção precisa receber informação confiável sobre o sistema — não só problemas operacionais do dia.",
+      "practice_examples": [
+        "Responsável pela qualidade com acesso à direção",
+        "Rotina de reporte de indicadores e riscos"
+      ],
+      "evidence_examples": [
+        "Designação formal do responsável",
+        "Relatórios periódicos à direção"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    }
+  ]
+}

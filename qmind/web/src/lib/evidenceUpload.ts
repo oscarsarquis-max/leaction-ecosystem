@@ -84,7 +84,7 @@ async function putObject(
     });
     if (!putRes.ok) {
       let code = "upload_put_failed";
-      let message = `Upload PUT failed (${putRes.status})`;
+      let message = `Falha no envio do arquivo (${putRes.status})`;
       let correlation_id = "";
       try {
         const err = (await putRes.json()) as {
@@ -112,7 +112,7 @@ async function putObject(
   if (!putRes.ok) {
     throw new QmindApiError(putRes.status, {
       code: "upload_put_failed",
-      message: `Object storage PUT failed (${putRes.status})`,
+      message: `Falha no armazenamento do objeto (${putRes.status})`,
       correlation_id: "",
     });
   }

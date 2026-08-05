@@ -132,12 +132,12 @@ describe("field execution UI", () => {
       </QueryClientProvider>,
     );
 
-    await waitFor(() => expect(screen.getByTestId("assessment-status")).toHaveTextContent("planned"));
+    await waitFor(() => expect(screen.getByTestId("assessment-status")).toHaveTextContent("planejada"));
     await user.click(screen.getByTestId("start-open-confirm"));
     expect(screen.getByTestId("start-confirm")).toBeInTheDocument();
     await user.click(screen.getByTestId("start-confirm-submit"));
     await waitFor(() =>
-      expect(screen.getByTestId("assessment-status")).toHaveTextContent("in_progress"),
+      expect(screen.getByTestId("assessment-status")).toHaveTextContent("em execução"),
     );
     expect(screen.getByTestId("field-execution")).toBeInTheDocument();
   });

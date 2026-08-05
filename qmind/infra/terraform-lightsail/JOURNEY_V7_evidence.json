@@ -1,0 +1,111 @@
+﻿{
+    "gate":  "011-V7-journey",
+    "started_at":  "2026-08-04T13:43:56.2067896Z",
+    "api_base":  "https://api.homolog.qmind.com.br",
+    "checks":  [
+                   {
+                       "id":  "bootstrap_orgs",
+                       "status":  "PASS",
+                       "detail":  "org_a=030c4af2-2f37-4a90-9d4c-fc2be6138886 org_b=12d92251-e1ae-47a5-9ae9-804ee7826ade"
+                   },
+                   {
+                       "id":  "qm_membership_sql",
+                       "status":  "PASS",
+                       "detail":  "sub_qm=012b0550-6081-70e5-82af-a4a5dd890815 criteria=18"
+                   },
+                   {
+                       "id":  "memberships",
+                       "status":  "PASS",
+                       "detail":  "lead_mid=84ef391a-f46e-4572-a678-6c584fa8450e qm_mid=689f6e17-b0b4-4556-ae37-758f513d1ff7"
+                   },
+                   {
+                       "id":  "assessment_draft",
+                       "status":  "PASS",
+                       "detail":  "aid=49d0b45e-f106-46d3-ada6-a60baf1ba0c7"
+                   },
+                   {
+                       "id":  "assessment_plan_start",
+                       "status":  "PASS",
+                       "detail":  "plan=planned start=in_progress"
+                   },
+                   {
+                       "id":  "interview_answer",
+                       "status":  "PASS",
+                       "detail":  "interview=d00360bc-dee8-4b1e-a9af-60119e12cb63 answer_status=201"
+                   },
+                   {
+                       "id":  "evidence_s3_link",
+                       "status":  "PASS",
+                       "detail":  "eid=7ef06f05-f2b2-48cf-a418-9ceade93b3a9 put=200 recv_idem=409 status=approved"
+                   },
+                   {
+                       "id":  "finding_sod",
+                       "status":  "PASS",
+                       "detail":  "fid=d98c7ebf-edd8-4b96-9d55-0bfd3514d9a8 author_approve=403 code=sod_violation qm_approve=200"
+                   },
+                   {
+                       "id":  "maturity_sod",
+                       "status":  "PASS",
+                       "detail":  "mid=957f6ba9-df98-427c-b364-b020d7581de4 scores=18 sod=sod_violation"
+                   },
+                   {
+                       "id":  "action_efficacy_sod",
+                       "status":  "PASS",
+                       "detail":  "item=a1c16929-b897-4dc6-9cf2-6679838c5133 validate=validated efficacy=done owner_validate=403"
+                   },
+                   {
+                       "id":  "report_publish_sod",
+                       "status":  "PASS",
+                       "detail":  "rid=a7c9ced8-a499-4027-a959-96d9303e21b8 publish=published idem_publish=published author=403"
+                   },
+                   {
+                       "id":  "pdf_export_queued",
+                       "status":  "PASS",
+                       "detail":  "job=d2d1d48c-6db0-4813-9886-2c6a2888ecc9 status=queued idempotent=True (worker placeholder pending)"
+                   },
+                   {
+                       "id":  "close_reopen",
+                       "status":  "PASS",
+                       "detail":  "close=closed reopen=report reason_recorded"
+                   },
+                   {
+                       "id":  "control_org_isolation",
+                       "status":  "PASS",
+                       "detail":  "denied=7/7 no payload leak"
+                   },
+                   {
+                       "id":  "audit_trail",
+                       "status":  "PASS",
+                       "detail":  "required_actions_present secret_hits=0 events=53 corr=53"
+                   }
+               ],
+    "pdf_job":  {
+                    "id":  "d2d1d48c-6db0-4813-9886-2c6a2888ecc9",
+                    "status":  "queued",
+                    "job_type":  "report_pdf_export",
+                    "idempotent_retry":  true,
+                    "worker":  "placeholder_sleep_infinity"
+                },
+    "worker_status":  "placeholder_pending",
+    "audit_raw_summary":  "0 | 53|53 | action_item.confirm_efficacy | action_item.create | action_item.mark_implemented | action_item.start | action_item.validate | action_plan.activate | action_plan.complete | action_plan.create | answer.create | assessment.begin_analysis | assessment.begin_report | assessment.close | assessment.create | assessment.freeze_maturity_model | assessment.open_actions | assessment.plan | assessment.reopen | assessment.start | evidence.authorize_upload | evidence.link | evidence.receive | evidence.security_pass | finding.approve | finding.create | finding.submit | interview.complete | interview.create | maturity.approve | maturity.create | maturity.recalculate | maturity.score_upsert | maturity.submit | report.create | report.export_pdf_enqueue | report.publish | report.submit",
+    "finished_at":  "2026-08-04T13:45:05.0723761Z",
+    "verdict":  "PASS",
+    "org_a_id":  "030c4af2-2f37-4a90-9d4c-fc2be6138886",
+    "org_b_id":  "12d92251-e1ae-47a5-9ae9-804ee7826ade",
+    "assessment_id":  "49d0b45e-f106-46d3-ada6-a60baf1ba0c7",
+    "evidence_id":  "7ef06f05-f2b2-48cf-a418-9ceade93b3a9",
+    "finding_id":  "d98c7ebf-edd8-4b96-9d55-0bfd3514d9a8",
+    "maturity_id":  "957f6ba9-df98-427c-b364-b020d7581de4",
+    "action_plan_id":  "27804bc7-241a-4357-8d32-f4f163dcbbf7",
+    "action_item_id":  "a1c16929-b897-4dc6-9cf2-6679838c5133",
+    "report_id":  "a7c9ced8-a499-4027-a959-96d9303e21b8",
+    "interview_id":  "d00360bc-dee8-4b1e-a9af-60119e12cb63",
+    "user_a_sub":  "419b4530-90f1-702e-759c-7f42e4f0573d",
+    "user_qm_sub":  "012b0550-6081-70e5-82af-a4a5dd890815",
+    "user_b_sub":  "61dbe530-80d1-7037-f457-720d797f3af7",
+    "user_a_email":  "qmind.homolog.journey.a+ed0340ac@leaction.com.br",
+    "user_qm_email":  "qmind.homolog.journey.qm+e7ca013d@leaction.com.br",
+    "user_b_email":  "qmind.homolog.journey.b+071abfef@leaction.com.br",
+    "deployed_git":  "d61e463",
+    "image_tag":  "qmind-api:mvp-fullstack-v0"
+}

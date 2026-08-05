@@ -1291,6 +1291,10 @@ export type ScopeOut = {
      */
     id: string;
     /**
+     * Human label for UI (optional; never show raw UUID alone)
+     */
+    label?: string | null;
+    /**
      * Org Process Id
      */
     org_process_id: string | null;

@@ -1,0 +1,31 @@
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Java / Maven
+backend/target/
+**/.classpath
+**/.project
+**/.settings/
+
+# Local toolchain
+.tools/
+
+# Node
+**/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+services/**/node_modules/
+
+# Logs
+*.log
+logs/

@@ -14,14 +14,17 @@ from app.auth.context import OrgContext
 from app.db import tenant_connection
 from app.errors import AppError
 from app.modules.orgs.service import require_role
+from app.config import get_settings
 from app.modules.reports.schemas import (
     DiscardIn,
+    DownloadUrlOut,
     JobOut,
     ReasonIn,
     ReportCreate,
     ReportOut,
     ReportTransitionResult,
 )
+from app.storage.base import get_storage
 
 _ELABORATE_ROLES = ("org_admin", "consultant_auditor", "quality_manager")
 _PUBLISH_ROLES = ("org_admin", "quality_manager")
@@ -761,13 +764,55 @@ def archive(ctx: OrgContext, report_id: UUID) -> ReportTransitionResult:
     )
 
 
-def enqueue_pdf_export(ctx: OrgContext, report_id: UUID) -> JobOut:
-    """Enqueue PDF export Job (worker generates bytes later).
+_JOB_COLS = """
+    id, organization_id, job_type, status, requested_by, idempotency_key,
+    input_ref, error_code, error_safe_message, started_at, finished_at,
+    attempt_count, max_attempts, locked_at, locked_by, next_run_at, output_ref,
+    created_at, updated_at
+"""
 
-    Future PDF download must re-check Membership + org isolation at access time;
+
+def _job_out(row) -> JobOut:
+    inp = row.input_ref if isinstance(row.input_ref, dict) else json.loads(row.input_ref or "{}")
+    out = row.output_ref if isinstance(row.output_ref, dict) else json.loads(row.output_ref or "{}")
+    return JobOut(
+        id=row.id,
+        organization_id=row.organization_id,
+        job_type=row.job_type,
+        status=row.status,
+        idempotency_key=row.idempotency_key,
+        input_ref=inp,
+        created_at=row.created_at,
+        attempt_count=int(row.attempt_count or 0),
+        max_attempts=int(row.max_attempts or 5),
+        error_code=row.error_code,
+        error_safe_message=row.error_safe_message,
+        started_at=row.started_at,
+        finished_at=row.finished_at,
+        output_ref=out or {},
+    )
+
+
+def get_job(ctx: OrgContext, job_id: UUID) -> JobOut:
+    require_role(ctx, *_READ_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = conn.execute(
+            text(f"SELECT {_JOB_COLS} FROM jobs WHERE id = :id AND organization_id = :org"),
+            {"id": job_id, "org": ctx.organization_id},
+        ).first()
+        if row is None:
+            raise AppError("not_found", "Job not found", status_code=404)
+    return _job_out(row)
+
+
+def enqueue_pdf_export(ctx: OrgContext, report_id: UUID) -> JobOut:
+    """Enqueue PDF export Job (worker generates bytes out-of-band).
+
+    Download must re-check Membership + org isolation at access time;
     knowing a storage key/URL never grants permission by itself.
     """
     require_role(ctx, *_READ_ROLES)
+    settings = get_settings()
     with tenant_connection(ctx.organization_id) as conn:
         row = _lock_report(conn, ctx.organization_id, report_id)
         if row.status not in ("published", "archived", "superseded"):
@@ -779,9 +824,8 @@ def enqueue_pdf_export(ctx: OrgContext, report_id: UUID) -> JobOut:
         idem = f"report_pdf:{ctx.organization_id}:{report_id}:v{row.version_no}"
         existing = conn.execute(
             text(
-                """
-                SELECT id, organization_id, job_type, status, idempotency_key,
-                       input_ref, created_at
+                f"""
+                SELECT {_JOB_COLS}
                 FROM jobs
                 WHERE organization_id = :org AND idempotency_key = :key
                 """
@@ -789,30 +833,19 @@ def enqueue_pdf_export(ctx: OrgContext, report_id: UUID) -> JobOut:
             {"org": ctx.organization_id, "key": idem},
         ).first()
         if existing:
-            return JobOut(
-                id=existing.id,
-                organization_id=existing.organization_id,
-                job_type=existing.job_type,
-                status=existing.status,
-                idempotency_key=existing.idempotency_key,
-                input_ref=existing.input_ref
-                if isinstance(existing.input_ref, dict)
-                else json.loads(existing.input_ref or "{}"),
-                created_at=existing.created_at,
-            )
+            return _job_out(existing)
         job_id = uuid4()
         job = conn.execute(
             text(
-                """
+                f"""
                 INSERT INTO jobs (
                   id, organization_id, job_type, status, requested_by,
-                  idempotency_key, input_ref
+                  idempotency_key, input_ref, max_attempts
                 ) VALUES (
                   :id, :org, 'report_pdf_export', 'queued', :req,
-                  :key, CAST(:inp AS jsonb)
+                  :key, CAST(:inp AS jsonb), :max_attempts
                 )
-                RETURNING id, organization_id, job_type, status, idempotency_key,
-                          input_ref, created_at
+                RETURNING {_JOB_COLS}
                 """
             ),
             {
@@ -820,6 +853,7 @@ def enqueue_pdf_export(ctx: OrgContext, report_id: UUID) -> JobOut:
                 "org": ctx.organization_id,
                 "req": ctx.membership_id,
                 "key": idem,
+                "max_attempts": settings.worker_max_attempts,
                 "inp": json.dumps(
                     {
                         "organization_id": str(ctx.organization_id),
@@ -846,13 +880,66 @@ def enqueue_pdf_export(ctx: OrgContext, report_id: UUID) -> JobOut:
             },
         )
         conn.commit()
-    inp = job.input_ref if isinstance(job.input_ref, dict) else json.loads(job.input_ref or "{}")
-    return JobOut(
-        id=job.id,
-        organization_id=job.organization_id,
-        job_type=job.job_type,
-        status=job.status,
-        idempotency_key=job.idempotency_key,
-        input_ref=inp,
-        created_at=job.created_at,
+    return _job_out(job)
+
+
+def export_pdf_download_url(ctx: OrgContext, report_id: UUID) -> DownloadUrlOut:
+    """Presigned download after membership + RLS; never audit the signed URL."""
+    require_role(ctx, *_READ_ROLES)
+    settings = get_settings()
+    storage = get_storage(settings)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = conn.execute(
+            text(
+                f"""
+                SELECT {_REPORT_COLS}
+                FROM reports
+                WHERE id = :id AND organization_id = :org
+                """
+            ),
+            {"id": report_id, "org": ctx.organization_id},
+        ).first()
+        if row is None:
+            raise AppError("not_found", "Report not found", status_code=404)
+        if row.status not in ("published", "archived", "superseded"):
+            raise AppError(
+                "download_not_allowed",
+                f"PDF download requires published|archived|superseded (current={row.status})",
+                status_code=409,
+            )
+        if not row.export_storage_key:
+            raise AppError(
+                "export_not_ready",
+                "PDF export not ready (worker pending or failed)",
+                status_code=409,
+            )
+        head = storage.head(row.export_storage_key)
+        if not head.exists:
+            raise AppError(
+                "object_missing",
+                "PDF object missing in storage",
+                status_code=409,
+            )
+        url = storage.presign_download(
+            row.export_storage_key,
+            expires_in=settings.report_pdf_download_expires_seconds,
+        )
+        write_audit(
+            conn,
+            organization_id=ctx.organization_id,
+            actor_type="user",
+            actor_user_id=ctx.principal.user_id,
+            actor_membership_id=ctx.membership_id,
+            action="report.export_pdf_download_url",
+            resource_type="report",
+            resource_id=report_id,
+            metadata={
+                "expires_in": settings.report_pdf_download_expires_seconds,
+                "report_version_no": row.version_no,
+            },
+        )
+        conn.commit()
+    return DownloadUrlOut(
+        url=url,
+        expires_in_seconds=settings.report_pdf_download_expires_seconds,
     )

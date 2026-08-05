@@ -1,0 +1,52 @@
+# Homolog (testes) + Piloto (domínio principal) — mesmo Lightsail / mesma API.
+# Certificados Let's Encrypt por hostname.
+
+{$QMIND_API_HOST:api.homolog.qmind.com.br} {
+	encode gzip
+	handle /health {
+		reverse_proxy api:8008
+	}
+	handle /ready {
+		reverse_proxy api:8008
+	}
+	handle {
+		reverse_proxy api:8008
+	}
+}
+
+{$QMIND_APP_HOST:app.homolog.qmind.com.br} {
+	encode gzip
+	handle /api/* {
+		reverse_proxy api:8008
+	}
+	handle {
+		reverse_proxy web_homolog:80
+	}
+}
+
+{$QMIND_PILOT_API_HOST:api.qmind.com.br} {
+	encode gzip
+	handle /health {
+		reverse_proxy api:8008
+	}
+	handle /ready {
+		reverse_proxy api:8008
+	}
+	handle {
+		reverse_proxy api:8008
+	}
+}
+
+{$QMIND_PILOT_APP_HOST:qmind.com.br} {
+	encode gzip
+	handle /api/* {
+		reverse_proxy api:8008
+	}
+	handle {
+		reverse_proxy web:80
+	}
+}
+
+{$QMIND_PILOT_WWW_HOST:www.qmind.com.br} {
+	redir https://{$QMIND_PILOT_APP_HOST:qmind.com.br}{uri} permanent
+}

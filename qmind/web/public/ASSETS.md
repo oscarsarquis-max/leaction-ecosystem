@@ -11,4 +11,4 @@
 | Provenance | First-party brand mark supplied for the QMind product UI (not a third-party stock/library asset) |
 | License | Proprietary — QMind / project owner. Not redistributed under open-source terms of the repo’s code licenses. Do not replace with unlicensed third-party artwork. |
 
-`BrandLogo` crops empty padding via CSS zoom so the chrome stays compact without shipping a second cropped file.
+`BrandLogo` renders the full square lockup with `object-contain` (wordmark is centered in the asset — do not left-crop).

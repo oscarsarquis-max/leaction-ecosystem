@@ -9,6 +9,7 @@ from app.db import admin_connection, tenant_connection
 from app.errors import AppError
 from app.modules.orgs.schemas import (
     MembershipOut,
+    OrgMemberOut,
     OrganizationCreate,
     OrganizationDetailOut,
     OrganizationOut,
@@ -78,6 +79,35 @@ def list_my_memberships(principal: Principal) -> list[MembershipOut]:
             id=r.id,
             organization_id=r.organization_id,
             organization_name=r.organization_name,
+            roles=list(r.roles),
+            status=r.status,
+        )
+        for r in rows
+    ]
+
+
+def list_current_org_members(ctx: OrgContext) -> list[OrgMemberOut]:
+    """Membros ativos da org atual — para equipe sem digitar UUID."""
+    require_role(ctx, "org_admin", "consultant_auditor", "quality_manager", "process_owner", "reader")
+    with admin_connection() as conn:
+        rows = conn.execute(
+            text(
+                """
+                SELECT m.id AS membership_id, u.email, u.display_name, m.roles, m.status
+                FROM memberships m
+                JOIN users u ON u.id = m.user_id
+                WHERE m.organization_id = :org
+                  AND m.status = 'active'
+                ORDER BY coalesce(u.display_name, u.email)
+                """
+            ),
+            {"org": ctx.organization_id},
+        ).all()
+    return [
+        OrgMemberOut(
+            membership_id=r.membership_id,
+            email=r.email,
+            display_name=r.display_name,
             roles=list(r.roles),
             status=r.status,
         )

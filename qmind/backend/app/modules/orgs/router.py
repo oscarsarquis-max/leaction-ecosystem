@@ -6,6 +6,7 @@ from app.auth.deps import OrgContextDep, PrincipalDep
 from app.modules.orgs import service
 from app.modules.orgs.schemas import (
     MembershipOut,
+    OrgMemberOut,
     OrganizationCreate,
     OrganizationDetailOut,
     OrganizationOut,
@@ -51,3 +52,14 @@ def my_memberships(principal: PrincipalDep) -> list[MembershipOut]:
 )
 def current_organization(ctx: OrgContextDep) -> OrganizationOut:
     return service.get_current_organization(ctx)
+
+
+@router.get(
+    "/current/members",
+    response_model=list[OrgMemberOut],
+    operation_id="listCurrentOrganizationMembers",
+    responses={401: ERROR_RESPONSES[401], 403: ERROR_RESPONSES[403]},
+    summary="List active members of current organization (human labels)",
+)
+def current_organization_members(ctx: OrgContextDep) -> list[OrgMemberOut]:
+    return service.list_current_org_members(ctx)

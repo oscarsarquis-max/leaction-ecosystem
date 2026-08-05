@@ -157,9 +157,14 @@ Decisões fechadas após inventário:
 
 - **Nuvem preferencial:** AWS, competência já existente.
 - **Região app/dados:** `us-east-2` (S3, SES, Cognito, RDS/ECS alinhados a inove).
-- **Forma de implantação alvo:** ECS Fargate + ALB + RDS + Secrets Manager (padrão inove), não PM2 do Hub.
+- **Forma de implantação alvo (longo prazo):** ECS Fargate + ALB + RDS + Secrets Manager (padrão inove), não PM2 do Hub.
+- **Homologação / piloto inicial (emenda ADR-010):** perfil **Lightsail** — Ubuntu + Docker Compose + Caddy + Postgres no host + S3 + Cognito; DNS `*.homolog.qmind.com.br`. ECS/ALB/RDS **não** aplicar; ver `infra/terraform-enterprise/`.
 - **Async:** trabalhador do monólito + persistência de jobs no Postgres no MVP; broker gerenciado quando justificado.
 - RPO/RTO numéricos e checklist de produção permanecem obrigatórios antes de dados reais.
+
+## Emenda
+
+Ver **`ADR-010-homologacao-economica-ec2.md`** (aceito 2026-08-04) para a arquitetura mínima de homologação e a separação de perfis Terraform.
 
 ## Referências
 

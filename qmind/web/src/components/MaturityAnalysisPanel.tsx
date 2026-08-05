@@ -14,13 +14,14 @@ import {
   canEditMaturityScores,
   maturityEvidenceHint,
 } from "@/lib/permissions";
+import { labelWorkflowStatus } from "@/lib/labels";
 
 const LEVEL_LABELS: Record<number, string> = {
-  1: "1 — initial",
-  2: "2 — defined",
-  3: "3 — managed",
-  4: "4 — measured",
-  5: "5 — optimizing",
+  1: "1 — inicial",
+  2: "2 — definido",
+  3: "3 — gerenciado",
+  4: "4 — medido",
+  5: "5 — otimizando",
 };
 
 type ScoreRow = {
@@ -121,8 +122,8 @@ export function MaturityAnalysisPanel({
       <header>
         <h2 className="font-display text-2xl text-teal-950">Maturidade</h2>
         <p className="mt-1 text-sm text-teal-950/70">
-          Seis dimensões / 18 critérios. Scores de dimensão e global vêm{" "}
-          <span className="font-semibold">somente do backend</span> (half-up). Níveis
+          Seis dimensões / 18 critérios. Níveis de maturidade de dimensão e global vêm{" "}
+          <span className="font-semibold">somente do servidor</span> (half-up). Níveis
           identificados por texto (não só cor). SoD: autor não aprova.
         </p>
       </header>
@@ -150,7 +151,7 @@ export function MaturityAnalysisPanel({
             >
               {list.map((p) => (
                 <option key={p.id} value={p.id}>
-                  v{p.version_no} · {p.status}
+                  v{p.version_no} · {labelWorkflowStatus(p.status)}
                   {p.global_score != null ? ` · global ${formatScore(p.global_score)}` : ""}
                 </option>
               ))}
@@ -318,8 +319,8 @@ function PackageWorkspace({
             {" · "}
             Pacote <span className="font-semibold">v{pkg.version_no}</span>
             {" · "}
-            <span className="uppercase tracking-wide" data-testid="maturity-status">
-              {pkg.status}
+            <span className="tracking-wide" data-testid="maturity-status">
+              {labelWorkflowStatus(pkg.status)}
             </span>
           </p>
           <p className="mt-1 text-xs text-teal-950/60" data-testid="maturity-sod">
@@ -329,7 +330,9 @@ function PackageWorkspace({
           </p>
         </div>
         <div className="text-right" data-testid="maturity-global-score">
-          <p className="text-xs uppercase tracking-wide text-teal-950/60">Score global</p>
+          <p className="text-xs uppercase tracking-wide text-teal-950/60">
+            Nível de maturidade global
+          </p>
           <p className="font-display text-3xl text-teal-950">
             {formatScore(pkg.global_score)}
           </p>
@@ -438,10 +441,10 @@ function PackageWorkspace({
                 }
                 data-testid="maturity-applicability"
               >
-                <option value="applicable">applicable</option>
-                <option value="not_applicable">not_applicable (exige justificativa)</option>
+                <option value="applicable">aplicável</option>
+                <option value="not_applicable">não aplicável (exige justificativa)</option>
                 <option value="insufficient_info">
-                  insufficient_info (só draft; bloqueia submit)
+                  informação insuficiente (só rascunho; bloqueia envio)
                 </option>
               </select>
             </label>
@@ -515,10 +518,10 @@ function PackageWorkspace({
             (selectedDraft.level ?? 0) >= 3 ? (
               <fieldset className="space-y-1">
                 <legend className="text-sm font-semibold text-teal-950">
-                  Evidências approved
+                  Evidências aprovadas
                 </legend>
                 {approvedEvidenceIds.length === 0 ? (
-                  <p className="text-xs text-amber-900">Nenhuma Evidence approved.</p>
+                  <p className="text-xs text-amber-900">Nenhuma evidência aprovada.</p>
                 ) : (
                   approvedEvidenceIds.map((eid) => (
                     <label key={eid} className="flex items-center gap-2 font-mono text-xs">
@@ -550,11 +553,14 @@ function PackageWorkspace({
                 className="rounded-md bg-teal-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
                 data-testid="maturity-save"
               >
-                {upsert.isPending ? "Salvando…" : "Salvar scores (servidor recalcula)"}
+                {upsert.isPending
+                  ? "Salvando…"
+                  : "Salvar nível de maturidade (servidor recalcula)"}
               </button>
             ) : (
               <p className="text-xs text-amber-900" data-testid="maturity-immutable">
-                Pacote `{pkg.status}` — edição bloqueada (versão aprovada/imóvel).
+                Pacote “{labelWorkflowStatus(pkg.status)}” — edição bloqueada (versão
+                aprovada/imóvel).
               </p>
             )}
           </div>
@@ -562,7 +568,10 @@ function PackageWorkspace({
       </div>
 
       {upsert.isError ? (
-        <ApiErrorBanner title="Falha ao salvar scores" error={upsert.error} />
+        <ApiErrorBanner
+          title="Falha ao salvar nível de maturidade"
+          error={upsert.error}
+        />
       ) : null}
 
       <div className="space-y-2 border-t border-teal-900/10 pt-3">
@@ -583,7 +592,7 @@ function PackageWorkspace({
                 })
               }
             >
-              Submeter
+              Enviar para revisão
             </button>
           ) : null}
 
@@ -609,7 +618,7 @@ function PackageWorkspace({
               <button
                 type="button"
                 disabled={transition.isPending || !reason.trim()}
-                className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs font-semibold text-red-900"
+                className="rounded-md border border-qmind-semantic-danger/30 bg-qmind-semantic-future px-2 py-1 text-xs font-semibold text-qmind-semantic-danger"
                 data-testid="maturity-reject"
                 onClick={() =>
                   void runOnce(async () => {
@@ -640,7 +649,7 @@ function PackageWorkspace({
                 })
               }
             >
-              Rework → draft
+                Retrabalho → rascunho
             </button>
           ) : null}
 
@@ -661,14 +670,14 @@ function PackageWorkspace({
                 })
               }
             >
-              Supersede → nova versão
+              Substituir → nova versão
             </button>
           ) : null}
         </div>
 
         {(pkg.status === "in_review" || pkg.status === "approved") && canReview ? (
           <label className="block text-sm">
-            Motivo (reject / supersede)
+            Motivo (rejeição / substituição)
             <input
               className="field mt-1 w-full"
               value={reason}

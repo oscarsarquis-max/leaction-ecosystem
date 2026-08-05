@@ -1,0 +1,15 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+homolog.tfplan
+homolog-plan.txt
+ssh-open.tfplan
+ssh-close.tfplan
+*.tfplan
+terraform.tfvars
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

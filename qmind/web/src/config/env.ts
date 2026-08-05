@@ -3,7 +3,7 @@
  * Dev auth is blocked when VITE_ENVIRONMENT=prod (mirrors backend Settings).
  */
 
-export type AppEnvironment = "local" | "dev" | "prod";
+export type AppEnvironment = "local" | "dev" | "homolog" | "prod";
 export type AuthMode = "cognito" | "dev";
 
 export type AppConfig = {
@@ -29,7 +29,7 @@ function readEnv(name: string, fallback = ""): string {
 
 function assertConfig(): AppConfig {
   const environment = (readEnv("VITE_ENVIRONMENT", "local") || "local") as AppEnvironment;
-  if (!["local", "dev", "prod"].includes(environment)) {
+  if (!["local", "dev", "homolog", "prod"].includes(environment)) {
     throw new Error(`Invalid VITE_ENVIRONMENT=${environment}`);
   }
 
@@ -38,8 +38,8 @@ function assertConfig(): AppConfig {
     throw new Error(`Invalid VITE_AUTH_MODE=${authMode}`);
   }
 
-  if (environment === "prod" && authMode === "dev") {
-    throw new Error("VITE_AUTH_MODE=dev is forbidden when VITE_ENVIRONMENT=prod.");
+  if ((environment === "prod" || environment === "homolog") && authMode === "dev") {
+    throw new Error(`VITE_AUTH_MODE=dev is forbidden when VITE_ENVIRONMENT=${environment}.`);
   }
 
   // Empty base URL → same-origin (Vite proxy in local).

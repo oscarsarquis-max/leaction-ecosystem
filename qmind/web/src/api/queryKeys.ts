@@ -8,8 +8,12 @@ export const queryKeys = {
     ["org", organizationId, "assessment", assessmentId] as const,
   assessmentScopes: (organizationId: string, assessmentId: string) =>
     ["org", organizationId, "assessment", assessmentId, "scopes"] as const,
+  assessmentScopeOptions: (organizationId: string, assessmentId: string) =>
+    ["org", organizationId, "assessment", assessmentId, "scope-options"] as const,
   assessmentTeam: (organizationId: string, assessmentId: string) =>
     ["org", organizationId, "assessment", assessmentId, "team"] as const,
+  orgMembers: (organizationId: string) =>
+    ["org", organizationId, "members"] as const,
   assessmentQuestions: (organizationId: string, assessmentId: string) =>
     ["org", organizationId, "assessment", assessmentId, "questions"] as const,
   assessmentInterviews: (organizationId: string, assessmentId: string) =>
@@ -36,6 +40,11 @@ export const queryKeys = {
     ["org", organizationId, "assessment", assessmentId, "reports"] as const,
   report: (organizationId: string, reportId: string) =>
     ["org", organizationId, "report", reportId] as const,
+  guidedCatalog: ["guided", "catalog"] as const,
+  guidedSession: (organizationId: string, assessmentId: string) =>
+    ["org", organizationId, "assessment", assessmentId, "guided"] as const,
+  agendaBoard: (organizationId: string, selectedDate: string) =>
+    ["org", organizationId, "agenda", selectedDate] as const,
   health: ["health"] as const,
 };
 

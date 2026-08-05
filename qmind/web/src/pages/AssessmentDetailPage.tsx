@@ -1,5 +1,5 @@
-import { useRef, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   useAddScope,
   useAddTeamMember,
@@ -7,8 +7,11 @@ import {
   useAssessmentScopes,
   useAssessmentTeam,
   useDeleteScope,
+  useEnsureScopes,
+  useOrgMembers,
   usePlanAssessment,
   useRemoveTeamMember,
+  useScopeOptions,
 } from "@/hooks/useAssessmentDetail";
 import { useStartAssessment } from "@/hooks/useFieldExecution";
 import { useAssessmentPermissions } from "@/hooks/useAssessmentPermissions";
@@ -23,11 +26,14 @@ import { FindingsAnalysisPanel } from "@/components/FindingsAnalysisPanel";
 import { MaturityAnalysisPanel } from "@/components/MaturityAnalysisPanel";
 import { ActionPlanPanel } from "@/components/ActionPlanPanel";
 import { ReportPanel } from "@/components/ReportPanel";
+import { BlockingNotice } from "@/components/shared/BlockingNotice";
 import { QmindApiError } from "@/api/qmindApi";
-import { isUuid } from "@/lib/validation";
+import { labelAssessmentStatus, labelAssessmentType } from "@/lib/labels";
+import type { ScopeKind } from "@/lib/validation";
 
 export function AssessmentDetailPage() {
   const { assessmentId } = useParams<{ assessmentId: string }>();
+  const navigate = useNavigate();
   const assessment = useAssessment(assessmentId);
   const scopes = useAssessmentScopes(assessmentId);
   const team = useAssessmentTeam(assessmentId);
@@ -55,28 +61,32 @@ export function AssessmentDetailPage() {
     );
   }
 
-  const a = assessment.data!;
+  if (!assessment.data) {
+    return <LoadingPanel title="Carregando avaliação…" />;
+  }
+
+  const a = assessment.data;
   const canEdit = perms.canEditSetup;
 
   return (
     <section className="space-y-8">
       <header>
         <p className="text-sm text-teal-950/60">
-          <Link to="/assessments" className="hover:underline">
-            Avaliações
+          <Link to={`/assessments/${assessmentId}`} className="hover:underline">
+            Visão geral
           </Link>
           {" / "}
-          <span className="font-mono text-xs">{a.id}</span>
+          Trabalho da fase
         </p>
         <div className="mt-2 flex flex-wrap items-baseline justify-between gap-3">
           <h1 className="font-display text-3xl tracking-tight text-teal-950">
-            {a.type}
+            {labelAssessmentType(a.type)}
           </h1>
           <span
-            className="rounded-md bg-teal-900/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-teal-900"
+            className="rounded-md bg-teal-900/10 px-2 py-0.5 text-xs font-semibold tracking-wide text-teal-900"
             data-testid="assessment-status"
           >
-            {a.status}
+            {labelAssessmentStatus(a.status)}
           </span>
         </div>
         <p className="mt-2 text-sm text-teal-950/60">
@@ -88,22 +98,10 @@ export function AssessmentDetailPage() {
             <span className="ml-2 text-amber-900">(somente leitura)</span>
           ) : null}
         </p>
-        <dl className="mt-3 grid gap-1 text-sm text-teal-950/70 sm:grid-cols-2">
-          <div>
-            <dt className="inline font-semibold text-teal-950">Model: </dt>
-            <dd className="inline font-mono text-xs">{a.assessment_model_id}</dd>
-          </div>
-          <div>
-            <dt className="inline font-semibold text-teal-950">Standard: </dt>
-            <dd className="inline font-mono text-xs">{a.standard_version_id}</dd>
-          </div>
-          <div>
-            <dt className="inline font-semibold text-teal-950">Lead: </dt>
-            <dd className="inline font-mono text-xs">
-              {a.lead_membership_id ?? "—"}
-            </dd>
-          </div>
-        </dl>
+        <p className="mt-3 text-sm text-teal-950/70">
+          Modelo e norma já vinculados automaticamente nesta organização.
+          {a.lead_membership_id ? " Líder da avaliação definido." : ""}
+        </p>
       </header>
 
       {!canEdit && a.status === "draft" && !perms.canMutate ? (
@@ -149,7 +147,31 @@ export function AssessmentDetailPage() {
           canEditField={perms.canEditField}
           canCollectEvidence={perms.canCollectEvidence}
         />
+      ) : a.status === "draft" || a.status === "planned" ? (
+        <BlockingNotice
+          title="Execução em campo bloqueada"
+          reason="A execução em campo só é liberada depois do planejamento da avaliação."
+          missingItem={
+            a.status === "draft"
+              ? "Falta concluir o planejamento (escopo, equipe e marcar como planejada)."
+              : "A avaliação está planejada — inicie a execução quando a equipe estiver pronta."
+          }
+          actionText={
+            a.status === "draft"
+              ? "Voltar para o planejamento"
+              : "Ir para o início da execução"
+          }
+          onResolve={() => {
+            const el = document.querySelector(
+              a.status === "draft"
+                ? "[data-testid='plan-open-confirm'], [data-testid='plan-locked']"
+                : "[data-testid='start-open-confirm'], [data-testid='start-locked']",
+            );
+            el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}
+        />
       ) : null}
+
       {perms.canWorkFindings ? (
         <FindingsAnalysisPanel
           assessmentId={assessmentId}
@@ -158,7 +180,18 @@ export function AssessmentDetailPage() {
           membershipId={perms.membershipId}
           roles={perms.roles}
         />
+      ) : a.status === "draft" || a.status === "planned" ? (
+        <BlockingNotice
+          title="Análise bloqueada"
+          reason="A fase de análise só é liberada após a conclusão da execução em campo."
+          missingItem="Ainda não há execução em campo concluída para gerar constatações e nível de maturidade."
+          actionText="Voltar para a Execução em campo"
+          onResolve={() => {
+            void navigate(`/assessments/${assessmentId}/work`);
+          }}
+        />
       ) : null}
+
       {perms.canWorkMaturity ? (
         <MaturityAnalysisPanel
           assessmentId={assessmentId}
@@ -169,6 +202,7 @@ export function AssessmentDetailPage() {
           assessmentStatus={a.status}
         />
       ) : null}
+
       {perms.canWorkActionPlans ? (
         <ActionPlanPanel
           assessmentId={assessmentId}
@@ -177,7 +211,20 @@ export function AssessmentDetailPage() {
           membershipId={perms.membershipId}
           roles={perms.roles}
         />
+      ) : a.status === "draft" ||
+        a.status === "planned" ||
+        a.status === "in_progress" ? (
+        <BlockingNotice
+          title="Plano de ação bloqueado"
+          reason="O plano de ação só é liberado após a fase de análise."
+          missingItem="Registre e revise as constatações da análise antes de abrir o plano de ação."
+          actionText="Voltar para a Análise"
+          onResolve={() => {
+            void navigate(`/assessments/${assessmentId}/work`);
+          }}
+        />
       ) : null}
+
       {perms.canWorkReports ? (
         <ReportPanel
           assessmentId={assessmentId}
@@ -190,9 +237,34 @@ export function AssessmentDetailPage() {
           membershipId={perms.membershipId}
           roles={perms.roles}
         />
+      ) : a.status === "draft" ||
+        a.status === "planned" ||
+        a.status === "in_progress" ||
+        a.status === "analysis" ? (
+        <BlockingNotice
+          title="Relatório bloqueado"
+          reason="O relatório só é liberado após o plano de ação."
+          missingItem="Conclua análise e plano de ação antes de consolidar o relatório."
+          actionText="Voltar para o Plano de ação"
+          onResolve={() => {
+            void navigate(`/assessments/${assessmentId}/work`);
+          }}
+        />
       ) : null}
     </section>
   );
+}
+
+function scopeLabel(s: {
+  label?: string | null;
+  requirement_id?: string | null;
+  org_process_id?: string | null;
+}): string {
+  const label = s.label?.trim();
+  if (label && !/^[0-9a-f-]{36}$/i.test(label)) return label;
+  if (s.requirement_id) return "Requisito da norma";
+  if (s.org_process_id) return "Processo da organização";
+  return "Item de escopo";
 }
 
 function ScopeSection({
@@ -207,18 +279,43 @@ function ScopeSection({
   onConflictReload: () => void;
 }) {
   const addScope = useAddScope(assessmentId);
+  const ensureScopes = useEnsureScopes(assessmentId);
+  const options = useScopeOptions(canEdit ? assessmentId : undefined);
   const delScope = useDeleteScope(assessmentId);
-  const [kind, setKind] = useState<"requirement" | "process">("requirement");
-  const [value, setValue] = useState("");
+  const [selectedOption, setSelectedOption] = useState("");
   const busyRef = useRef(false);
+  const autoTried = useRef(false);
+
+  useEffect(() => {
+    if (!canEdit || autoTried.current) return;
+    if (scopesQuery.isLoading || scopesQuery.isError) return;
+    if ((scopesQuery.data?.length ?? 0) > 0) return;
+    autoTried.current = true;
+    void ensureScopes.mutateAsync().catch(() => {
+      /* banner via ensureScopes.error */
+    });
+  }, [
+    canEdit,
+    scopesQuery.isLoading,
+    scopesQuery.isError,
+    scopesQuery.data?.length,
+    ensureScopes,
+  ]);
 
   async function onAdd(e: FormEvent) {
     e.preventDefault();
-    if (!canEdit || busyRef.current || addScope.isPending) return;
+    if (!canEdit || busyRef.current || addScope.isPending || !selectedOption) return;
+    const opt = options.data?.find(
+      (o) => `${o.kind}:${o.target_id}` === selectedOption,
+    );
+    if (!opt) return;
     busyRef.current = true;
     try {
-      await addScope.mutateAsync({ kind, value });
-      setValue("");
+      await addScope.mutateAsync({
+        kind: opt.kind as ScopeKind,
+        value: opt.target_id,
+      });
+      setSelectedOption("");
     } catch {
       // surfaced via addScope.error
     } finally {
@@ -226,16 +323,20 @@ function ScopeSection({
     }
   }
 
+  const available =
+    options.data?.filter((o) => !o.already_in_scope) ?? [];
+
   return (
     <section className="rounded-lg border border-teal-900/10 bg-white/70 p-4">
       <h2 className="font-display text-xl text-teal-950">Escopo</h2>
       <p className="mt-1 text-sm text-teal-950/70">
-        Plan exige pelo menos um item (requirement ou processo).
+        O planejamento exige pelo menos um item. O QMind preenche com base no modelo
+        e na preparação — você só confirma ou ajusta.
         {!canEdit ? " Edição bloqueada neste estado/papel." : null}
       </p>
 
-      {scopesQuery.isLoading ? (
-        <p className="mt-3 text-sm text-teal-950/60">Carregando…</p>
+      {scopesQuery.isLoading || ensureScopes.isPending ? (
+        <p className="mt-3 text-sm text-teal-950/60">Montando escopo…</p>
       ) : scopesQuery.isError ? (
         <div className="mt-3">
           <ApiErrorBanner
@@ -245,9 +346,20 @@ function ScopeSection({
           />
         </div>
       ) : (scopesQuery.data?.length ?? 0) === 0 ? (
-        <p className="mt-3 text-sm text-teal-950/60" data-testid="scope-empty">
-          Nenhum item de escopo.
-        </p>
+        <div className="mt-3 space-y-3" data-testid="scope-empty">
+          <p className="text-sm text-teal-950/60">Nenhum item de escopo ainda.</p>
+          {canEdit ? (
+            <button
+              type="button"
+              className="rounded-md bg-teal-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+              disabled={ensureScopes.isPending}
+              data-testid="scope-ensure"
+              onClick={() => void ensureScopes.mutateAsync()}
+            >
+              Preencher escopo automaticamente
+            </button>
+          ) : null}
+        </div>
       ) : (
         <ul className="mt-3 divide-y divide-teal-900/10" data-testid="scope-list">
           {scopesQuery.data!.map((s) => (
@@ -255,10 +367,8 @@ function ScopeSection({
               key={s.id}
               className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
             >
-              <span className="font-mono text-xs">
-                {s.requirement_id
-                  ? `requirement:${s.requirement_id}`
-                  : `process:${s.org_process_id}`}
+              <span className="text-[var(--qm-ink)]">
+                {scopeLabel(s as { label?: string | null; requirement_id?: string | null; org_process_id?: string | null })}
               </span>
               {canEdit ? (
                 <button
@@ -275,34 +385,39 @@ function ScopeSection({
         </ul>
       )}
 
-      {canEdit ? (
+      {canEdit && available.length > 0 ? (
         <form onSubmit={(e) => void onAdd(e)} className="mt-4 flex flex-wrap gap-2">
           <select
-            className="field w-auto"
-            value={kind}
-            onChange={(e) => setKind(e.target.value as "requirement" | "process")}
-            aria-label="Tipo de escopo"
-          >
-            <option value="requirement">requirement_id</option>
-            <option value="process">org_process_id</option>
-          </select>
-          <input
             className="field min-w-[16rem] flex-1"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="UUID"
-            required
-            aria-label="Valor do escopo"
-          />
+            value={selectedOption}
+            onChange={(e) => setSelectedOption(e.target.value)}
+            aria-label="Item de escopo"
+            data-testid="scope-option"
+          >
+            <option value="">Escolher item…</option>
+            {available.map((o) => (
+              <option key={`${o.kind}:${o.target_id}`} value={`${o.kind}:${o.target_id}`}>
+                {o.label}
+              </option>
+            ))}
+          </select>
           <button
             type="submit"
-            disabled={addScope.isPending || !isUuid(value)}
+            disabled={addScope.isPending || !selectedOption}
             className="rounded-md bg-teal-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
             data-testid="scope-add"
           >
-            Adicionar escopo
+            Adicionar ao escopo
           </button>
         </form>
+      ) : null}
+      {ensureScopes.isError ? (
+        <div className="mt-2">
+          <ApiErrorBanner
+            title="Não foi possível montar o escopo"
+            error={ensureScopes.error}
+          />
+        </div>
       ) : null}
       {addScope.isError ? (
         <div className="mt-2">
@@ -335,17 +450,18 @@ function TeamSection({
 }) {
   const addMember = useAddTeamMember(assessmentId);
   const removeMember = useRemoveTeamMember(assessmentId);
+  const orgMembers = useOrgMembers();
   const [membershipId, setMembershipId] = useState("");
   const [teamRole, setTeamRole] = useState("assessor");
   const busyRef = useRef(false);
 
   async function onAdd(e: FormEvent) {
     e.preventDefault();
-    if (!canEdit || busyRef.current || addMember.isPending) return;
+    if (!canEdit || busyRef.current || addMember.isPending || !membershipId) return;
     busyRef.current = true;
     try {
       await addMember.mutateAsync({
-        membership_id: membershipId.trim(),
+        membership_id: membershipId,
         team_role: teamRole.trim() || undefined,
       });
       setMembershipId("");
@@ -356,11 +472,15 @@ function TeamSection({
     }
   }
 
+  const onTeam = new Set((teamQuery.data ?? []).map((m) => m.membership_id));
+  const candidates =
+    orgMembers.data?.filter((m) => !onTeam.has(m.membership_id)) ?? [];
+
   return (
     <section className="rounded-lg border border-teal-900/10 bg-white/70 p-4">
       <h2 className="font-display text-xl text-teal-950">Equipe</h2>
       <p className="mt-1 text-sm text-teal-950/70">
-        Plan exige lead e ao menos um membro (o criador já entra como lead).
+        O planejamento exige um líder e ao menos um membro (o criador já entra como líder).
       </p>
 
       {teamQuery.isLoading ? (
@@ -369,57 +489,74 @@ function TeamSection({
         <p className="mt-3 text-sm text-teal-950/60">Nenhum membro.</p>
       ) : (
         <ul className="mt-3 divide-y divide-teal-900/10" data-testid="team-list">
-          {teamQuery.data!.map((m) => (
-            <li
-              key={m.id}
-              className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
-            >
-              <span>
-                <span className="font-mono text-xs">{m.membership_id}</span>
-                {m.team_role ? (
-                  <span className="ml-2 text-teal-950/60">({m.team_role})</span>
+          {teamQuery.data!.map((m) => {
+            const labeled = m as { label?: string | null };
+            const person =
+              labeled.label?.trim() ||
+              orgMembers.data?.find((x) => x.membership_id === m.membership_id)
+                ?.display_name ||
+              orgMembers.data?.find((x) => x.membership_id === m.membership_id)
+                ?.email ||
+              "Membro da equipe";
+            return (
+              <li
+                key={m.id}
+                className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+              >
+                <span>
+                  <span className="text-[var(--qm-ink)]">{person}</span>
+                  {m.team_role ? (
+                    <span className="ml-2 text-teal-950/60">({m.team_role})</span>
+                  ) : null}
+                  {m.membership_id === leadMembershipId ? (
+                    <span className="ml-2 text-xs font-semibold text-teal-900">
+                      líder
+                    </span>
+                  ) : null}
+                </span>
+                {canEdit && m.membership_id !== leadMembershipId ? (
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-rose-800"
+                    disabled={removeMember.isPending}
+                    onClick={() => void removeMember.mutateAsync(m.id)}
+                  >
+                    Remover
+                  </button>
                 ) : null}
-                {m.membership_id === leadMembershipId ? (
-                  <span className="ml-2 text-xs font-semibold uppercase text-teal-900">
-                    lead
-                  </span>
-                ) : null}
-              </span>
-              {canEdit && m.membership_id !== leadMembershipId ? (
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-rose-800"
-                  disabled={removeMember.isPending}
-                  onClick={() => void removeMember.mutateAsync(m.id)}
-                >
-                  Remover
-                </button>
-              ) : null}
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
 
-      {canEdit ? (
+      {canEdit && candidates.length > 0 ? (
         <form onSubmit={(e) => void onAdd(e)} className="mt-4 flex flex-wrap gap-2">
-          <input
+          <select
             className="field min-w-[16rem] flex-1"
             value={membershipId}
             onChange={(e) => setMembershipId(e.target.value)}
-            placeholder="membership_id (UUID)"
             required
-            aria-label="membership_id"
-          />
+            aria-label="Pessoa da organização"
+            data-testid="team-member-select"
+          >
+            <option value="">Escolher pessoa…</option>
+            {candidates.map((m) => (
+              <option key={m.membership_id} value={m.membership_id}>
+                {m.display_name?.trim() || m.email}
+              </option>
+            ))}
+          </select>
           <input
             className="field w-36"
             value={teamRole}
             onChange={(e) => setTeamRole(e.target.value)}
             placeholder="papel"
-            aria-label="team_role"
+            aria-label="Papel na equipe"
           />
           <button
             type="submit"
-            disabled={addMember.isPending || !isUuid(membershipId)}
+            disabled={addMember.isPending || !membershipId}
             className="rounded-md bg-teal-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
             data-testid="team-add"
           >
@@ -458,20 +595,35 @@ function PlanSection({
 
   if (!isDraft) {
     return (
-      <section
-        className="rounded-lg border border-teal-900/10 bg-teal-50/50 px-4 py-3 text-sm text-teal-950/80"
-        data-testid="plan-locked"
-      >
-        Avaliação já saiu de `draft` — escopo e equipe estão bloqueados para mutação.
-      </section>
+      <div data-testid="plan-locked">
+        <BlockingNotice
+          title="Planejamento concluído"
+          reason="Escopo e equipe ficam imutáveis depois que a avaliação sai da preparação."
+          missingItem="Nenhuma alteração de planejamento é necessária nesta etapa."
+          actionText="Ir para a próxima etapa"
+          onResolve={() => {
+            document
+              .querySelector(
+                "[data-testid='start-open-confirm'], [data-testid='start-locked']",
+              )
+              ?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}
+        />
+      </div>
     );
   }
 
   if (!canEdit) {
     return (
-      <section className="rounded-lg border border-teal-900/10 bg-white/40 px-4 py-3 text-sm text-teal-950/70">
-        Planejamento disponível apenas para papéis com permissão de mutação.
-      </section>
+      <BlockingNotice
+        title="Planejamento bloqueado"
+        reason="Seu papel nesta organização não permite alterar o planejamento."
+        missingItem="É necessário um papel com permissão de edição (ex.: administrador ou gestor da qualidade)."
+        actionText="Voltar ao mapa da avaliação"
+        onResolve={() => {
+          window.history.back();
+        }}
+      />
     );
   }
 
@@ -488,21 +640,48 @@ function PlanSection({
     }
   }
 
+  const missing: string[] = [];
+  if (scopeCount < 1) {
+    missing.push("Inclua pelo menos um item de escopo (requisito ou processo) acima.");
+  }
+  if (teamCount < 1 || !hasLead) {
+    missing.push("Confirme a equipe com um líder definido.");
+  }
+
   return (
     <section className="rounded-lg border border-teal-900/10 bg-white/70 p-4">
-      <h2 className="font-display text-xl text-teal-950">Planejar</h2>
+      <h2 className="font-display text-xl text-teal-950">Confirmar planejamento</h2>
       <p className="mt-1 text-sm text-teal-950/70">
-        Transição `draft` → `planned`. Congela o modelo de maturidade ativo.
+        Quando escopo e equipe estiverem ok, confirme para liberar a execução em campo.
+        Depois disso, escopo e equipe ficam bloqueados para alteração.
       </p>
       <ul className="mt-3 list-inside list-disc text-sm text-teal-950/70">
         <li data-testid="plan-guard-scope">
           Escopo: {scopeCount >= 1 ? "ok" : "faltando (≥ 1 item)"}
         </li>
         <li data-testid="plan-guard-team">
-          Equipe/lead:{" "}
-          {teamCount >= 1 && hasLead ? "ok" : "faltando (lead + membro)"}
+          Equipe/líder:{" "}
+          {teamCount >= 1 && hasLead ? "ok" : "faltando (líder + membro)"}
         </li>
       </ul>
+
+      {!ready ? (
+        <div className="mt-4">
+          <BlockingNotice
+            title="Planejamento ainda incompleto"
+            reason="Não é possível confirmar o planejamento enquanto faltar o essencial abaixo."
+            missingItem={missing.join(" ")}
+            actionText="Ir para o escopo"
+            onResolve={() => {
+              document
+                .querySelector(
+                  "[data-testid='scope-add'], [data-testid='scope-empty'], [data-testid='scope-list']",
+                )
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+          />
+        </div>
+      ) : null}
 
       {!confirmOpen ? (
         <button
@@ -512,7 +691,7 @@ function PlanSection({
           className="mt-4 rounded-md bg-teal-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           data-testid="plan-open-confirm"
         >
-          Marcar como planned…
+          Marcar como planejada…
         </button>
       ) : (
         <div
@@ -525,7 +704,7 @@ function PlanSection({
             Confirmar planejamento?
           </h3>
           <p className="mt-2 text-sm text-amber-950/90">
-            Após `plan`, escopo e equipe ficam bloqueados para alteração. Esta ação
+            Após o planejamento, escopo e equipe ficam bloqueados para alteração. Esta ação
             não usa atualização otimista — a tela recarrega o recurso do servidor.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -536,7 +715,7 @@ function PlanSection({
               className="rounded-md bg-teal-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
               data-testid="plan-confirm-submit"
             >
-              {plan.isPending ? "Planejando…" : "Confirmar plan"}
+              {plan.isPending ? "Planejando…" : "Confirmar planejamento"}
             </button>
             <button
               type="button"
@@ -552,7 +731,7 @@ function PlanSection({
 
       {plan.isError ? (
         <div className="mt-3">
-          <ApiErrorBanner title="Falha na transição plan" error={plan.error} />
+          <ApiErrorBanner title="Falha na transição de planejamento" error={plan.error} />
         </div>
       ) : null}
     </section>
@@ -578,12 +757,17 @@ function StartSection({
 
   if (!canStart) {
     return (
-      <section
-        className="rounded-lg border border-teal-900/10 bg-white/40 px-4 py-3 text-sm text-teal-950/70"
-        data-testid="start-locked"
-      >
-        Avaliação `planned` — início (`start`) disponível apenas para papéis com mutação.
-      </section>
+      <div data-testid="start-locked">
+        <BlockingNotice
+          title="Início da execução bloqueado"
+          reason="A avaliação já está planejada, mas seu papel não permite iniciar a execução em campo."
+          missingItem="Peça a um responsável com permissão de mutação para iniciar a execução."
+          actionText="Voltar ao mapa da avaliação"
+          onResolve={() => {
+            window.history.back();
+          }}
+        />
+      </div>
     );
   }
 
@@ -604,7 +788,7 @@ function StartSection({
     <section className="rounded-lg border border-teal-900/10 bg-white/70 p-4">
       <h2 className="font-display text-xl text-teal-950">Iniciar execução</h2>
       <p className="mt-1 text-sm text-teal-950/70">
-        Transição `planned` → `in_progress`. Abre coleta de entrevistas e evidências.
+        Transição planejada → em execução. Abre coleta de entrevistas e evidências.
       </p>
 
       {!confirmOpen ? (
@@ -628,7 +812,7 @@ function StartSection({
             Confirmar início?
           </h3>
           <p className="mt-2 text-sm text-amber-950/90">
-            Após `start`, a avaliação entra em execução de campo. Sem atualização otimista —
+            Após o início, a avaliação entra em execução de campo. Sem atualização otimista —
             a tela recarrega o estado do servidor.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -639,7 +823,7 @@ function StartSection({
               className="rounded-md bg-teal-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
               data-testid="start-confirm-submit"
             >
-              {start.isPending ? "Iniciando…" : "Confirmar start"}
+              {start.isPending ? "Iniciando…" : "Confirmar início"}
             </button>
             <button
               type="button"
@@ -655,7 +839,7 @@ function StartSection({
 
       {start.isError ? (
         <div className="mt-3">
-          <ApiErrorBanner title="Falha na transição start" error={start.error} />
+          <ApiErrorBanner title="Falha na transição de início" error={start.error} />
         </div>
       ) : null}
     </section>

@@ -139,6 +139,18 @@ Não adotado antes de existir necessidade comprovada, base lícita, conjunto de 
 - Provedor inicial elegível: **AWS Bedrock** (região de inferência tipicamente `us-east-1`, independentemente da app em `us-east-2`).
 - Casos de uso permitidos/proibidos e suite de avaliação serão definidos antes de qualquer integração produtiva.
 
+## Emenda — economia de tokens de modelo (2026-08-04)
+
+Alinhado a `ADR-010`. Para **tokens de IA** (não JWT/OIDC):
+
+- persistir conhecimento em PostgreSQL, S3 e arquivos versionados;
+- prompts curtos; recuperar só trechos necessários; não reenviar conversas inteiras;
+- resumos estruturados persistidos; cache de resultados seguros;
+- modelos menores para classificação/extração; modelo caro só quando necessário;
+- limites de tokens por caso de uso; métricas de custo por organização e operação.
+
+Autenticação continua Cognito (JWT/OIDC) — ver ADR-006 / ADR-010.
+
 ## Referências
 
 - NIST AI Risk Management Framework: https://www.nist.gov/itl/ai-risk-management-framework

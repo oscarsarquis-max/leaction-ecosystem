@@ -1,0 +1,158 @@
+﻿{
+    "gate":  "011-V8-observation",
+    "day_utc":  "2026-08-04",
+    "collected_at":  "2026-08-04T14:20:37.5075017Z",
+    "baseline":  true,
+    "api_base":  "https://api.homolog.qmind.com.br",
+    "availability":  {
+                         "app":  {
+                                     "ok":  true,
+                                     "error":  null,
+                                     "status":  200,
+                                     "ms":  0
+                                 },
+                         "health":  {
+                                        "ok":  true,
+                                        "error":  null,
+                                        "status":  200,
+                                        "ms":  0
+                                    },
+                         "ready":  {
+                                       "ok":  true,
+                                       "error":  null,
+                                       "status":  200,
+                                       "ms":  0
+                                   }
+                     },
+    "https":  {
+                  "app":  {
+                              "days_left":  89,
+                              "subject":  "CN=app.homolog.qmind.com.br",
+                              "not_after":  "2026-11-02T11:35:36.0000000Z"
+                          },
+                  "api":  {
+                              "days_left":  89,
+                              "subject":  "CN=api.homolog.qmind.com.br",
+                              "not_after":  "2026-11-02T11:35:35.0000000Z"
+                          }
+              },
+    "lightsail":  {
+                      "status_check_failed":  {
+                                                  "period_avg":  null,
+                                                  "available":  true,
+                                                  "period_max":  0,
+                                                  "points":  3,
+                                                  "last_maximum":  0.0,
+                                                  "last_average":  null
+                                              },
+                      "instance":  "qmind-homolog-app",
+                      "cpu":  {
+                                  "period_avg":  null,
+                                  "available":  true,
+                                  "period_max":  55.658333333333331,
+                                  "points":  3,
+                                  "last_maximum":  36.722458156382714,
+                                  "last_average":  null
+                              },
+                      "disk":  {
+                                   "error":  "",
+                                   "available":  false
+                               }
+                  },
+    "host_metrics_cw":  {
+                            "disk_used_percent":  {
+                                                      "timestamp":  "2026-08-04T10:20:00-03:00",
+                                                      "average":  9.0,
+                                                      "maximum":  9.0,
+                                                      "available":  true
+                                                  },
+                            "job_stuck_running":  {
+                                                      "timestamp":  "2026-08-04T10:20:00-03:00",
+                                                      "average":  0.0,
+                                                      "maximum":  0.0,
+                                                      "available":  true
+                                                  },
+                            "mem_used_percent":  {
+                                                     "timestamp":  "2026-08-04T10:20:00-03:00",
+                                                     "average":  39.5,
+                                                     "maximum":  39.7,
+                                                     "available":  true
+                                                 },
+                            "job_failed_24h":  {
+                                                   "timestamp":  "2026-08-04T10:20:00-03:00",
+                                                   "average":  0.0,
+                                                   "maximum":  0.0,
+                                                   "available":  true
+                                               },
+                            "job_avg_success_seconds_24h":  {
+                                                                "timestamp":  "2026-08-04T10:20:00-03:00",
+                                                                "average":  0.0,
+                                                                "maximum":  0.0,
+                                                                "available":  true
+                                                            },
+                            "worker_healthy":  {
+                                                   "timestamp":  "2026-08-04T10:20:00-03:00",
+                                                   "average":  0.6666666666666666,
+                                                   "maximum":  1.0,
+                                                   "available":  true
+                                               },
+                            "job_queued":  {
+                                               "timestamp":  "2026-08-04T10:20:00-03:00",
+                                               "average":  0.0,
+                                               "maximum":  0.0,
+                                               "available":  true
+                                           },
+                            "job_running":  {
+                                                "timestamp":  "2026-08-04T10:20:00-03:00",
+                                                "average":  0.0,
+                                                "maximum":  0.0,
+                                                "available":  true
+                                            }
+                        },
+    "cost":  {
+                 "month_to_date_usd":  0,
+                 "projected_month_usd":  0,
+                 "note":  "Cost Explorer can lag 24h; Lightsail may appear under untagged until CUR/tags activate",
+                 "tag":  "Project=qmind",
+                 "available":  true
+             },
+    "backup":  {
+                   "bucket":  "qmind-homolog-pgdump-20260804120548932400000001",
+                   "object_count_listed":  7,
+                   "latest_key":  "pgdump/qmind-20260804T124137Z.sql.enc",
+                   "cw_backup_success":  {
+                                             "timestamp":  "2026-08-03T11:20:00-03:00",
+                                             "average":  1.0,
+                                             "maximum":  1.0,
+                                             "available":  true
+                                         },
+                   "available":  true,
+                   "latest_modified":  "2026-08-04T12:41:40+00:00"
+               },
+    "alarms":  {
+                   "cloudwatch":  [
+                                      {
+                                          "state":  "OK",
+                                          "name":  "qmind-homolog-backup-failed"
+                                      }
+                                  ],
+                   "lightsail":  [
+                                     {
+                                         "state":  "OK",
+                                         "name":  "qmind-homolog-ls-status"
+                                     },
+                                     {
+                                         "state":  "OK",
+                                         "name":  "qmind-homolog-ls-cpu"
+                                     }
+                                 ]
+               },
+    "triggers":  [
+
+                 ],
+    "pilot_interrupt_recommended":  false,
+    "notes":  [
+                  "Observation is post-release monitoring (non-blocking to controlled pilot).",
+                  "Manual/security triggers (isolation breach, secret exposure) are process-owned, not auto-detected here."
+              ]
+}
