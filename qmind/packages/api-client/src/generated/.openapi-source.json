@@ -1,7 +1,7 @@
 {
   "source": "qmind/backend/openapi/openapi.json",
   "freezeTag": "openapi-v1-initial",
-  "sha256": "f7e6b4942577c4aa5f21d4f5af5cf173f80118db4a4e93e036fbe1a82c74c234",
-  "generatedAt": "2026-08-06T13:06:17.702Z",
+  "sha256": "261c057f063f8705a5e1fd816b5e144da84ce1b8928ca23175a66b3bda8c4e43",
+  "generatedAt": "2026-08-06T13:26:59.476Z",
   "generator": "@hey-api/openapi-ts"
 }

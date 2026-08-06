@@ -16,6 +16,7 @@ import {
   useRefreshAuditPlan,
 } from "@/hooks/useAuditPlan";
 import { useAssessmentPermissions } from "@/hooks/useAssessmentPermissions";
+import { AuditPlanScheduleSection } from "@/components/AuditPlanScheduleSection";
 import {
   MODALITY_OPTIONS,
   planStatusLabel,
@@ -129,6 +130,7 @@ function textToProcesses(text: string, prev: AuditPlanProcess[]): AuditPlanProce
         owner: owner || old?.owner || "",
         notes: old?.notes || "",
         from_preparation: old?.from_preparation ?? false,
+        interview_justification: old?.interview_justification || "",
       };
     });
 }
@@ -530,6 +532,18 @@ export function AssessmentAuditPlanPage() {
           </label>
         </div>
       </Block>
+
+      <AuditPlanScheduleSection
+        assessmentId={assessmentId}
+        readOnly={readOnly}
+        processNames={local.processes.map((p) => p.name).filter(Boolean)}
+        leadMembershipId={local.lead_membership_id}
+        teamMembers={(team.data ?? []).map((m) => ({
+          membership_id: m.membership_id,
+          label: m.label,
+          team_role: m.team_role,
+        }))}
+      />
 
       <Block
         title="6. Preparação e cuidados"

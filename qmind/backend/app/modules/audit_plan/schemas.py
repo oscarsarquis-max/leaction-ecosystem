@@ -38,6 +38,8 @@ class AuditPlanProcess(BaseModel):
     owner: str = ""
     notes: str = ""
     from_preparation: bool = False
+    """If set, process needs no interview (justified coverage)."""
+    interview_justification: str = ""
 
 
 class OrgRepresentative(BaseModel):

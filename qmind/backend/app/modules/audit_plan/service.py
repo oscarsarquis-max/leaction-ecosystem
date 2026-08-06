@@ -80,7 +80,53 @@ def _criteria_has_any(c: dict[str, Any]) -> bool:
     return False
 
 
-def compute_readiness(row) -> AuditPlanReadiness:
+def _process_interview_coverage(conn, org_id: UUID, assessment_id: UUID, processes: list) -> bool:
+    """True when every named process has an interview or justification."""
+    if not processes:
+        return True
+    iv_rows = conn.execute(
+        text(
+            """
+            SELECT process_name FROM interviews
+            WHERE organization_id = :org
+              AND assessment_id = :aid
+              AND status <> 'cancelled'
+              AND coalesce(nullif(trim(process_name), ''), '') <> ''
+            """
+        ),
+        {"org": org_id, "aid": assessment_id},
+    ).all()
+    covered = {(r.process_name or "").strip().lower() for r in iv_rows}
+    for p in processes:
+        if not isinstance(p, dict):
+            continue
+        name = (p.get("name") or "").strip()
+        if not name:
+            continue
+        just = (p.get("interview_justification") or "").strip()
+        if name.lower() not in covered and not just:
+            return False
+    return True
+
+
+def _meeting_flags(conn, org_id: UUID, assessment_id: UUID) -> tuple[bool, bool]:
+    rows = conn.execute(
+        text(
+            """
+            SELECT plan_activity_kind FROM agenda_events
+            WHERE organization_id = :org
+              AND assessment_id = :aid
+              AND status <> 'cancelled'
+              AND plan_activity_kind IN ('opening_meeting', 'closing_meeting')
+            """
+        ),
+        {"org": org_id, "aid": assessment_id},
+    ).all()
+    kinds = {r.plan_activity_kind for r in rows}
+    return "opening_meeting" in kinds, "closing_meeting" in kinds
+
+
+def compute_readiness(row, conn=None, org_id: UUID | None = None) -> AuditPlanReadiness:
     criteria = _parse_json(row.criteria, _empty_criteria())
     processes = _parse_json(row.processes, [])
     items = [
@@ -106,7 +152,7 @@ def compute_readiness(row) -> AuditPlanReadiness:
         ),
         ReadinessItem(
             key="lead",
-            label="Escolher auditor líder",
+            label="Escolher auditor responsável",
             done=row.lead_membership_id is not None,
         ),
         ReadinessItem(
@@ -122,6 +168,32 @@ def compute_readiness(row) -> AuditPlanReadiness:
                 key="period_order",
                 label="Corrigir datas (término ≥ início)",
                 done=False,
+            )
+        )
+
+    if conn is not None and org_id is not None:
+        has_opening, has_closing = _meeting_flags(conn, org_id, row.assessment_id)
+        items.append(
+            ReadinessItem(
+                key="opening_meeting",
+                label="Definir reunião de abertura",
+                done=has_opening,
+            )
+        )
+        items.append(
+            ReadinessItem(
+                key="closing_meeting",
+                label="Definir reunião de encerramento",
+                done=has_closing,
+            )
+        )
+        items.append(
+            ReadinessItem(
+                key="process_interviews",
+                label="Processos com entrevistas ou justificativa",
+                done=_process_interview_coverage(
+                    conn, org_id, row.assessment_id, processes
+                ),
             )
         )
 
@@ -161,7 +233,13 @@ def _editable_flags(assessment_status: str, plan_status: str) -> tuple[bool, boo
     return True, False
 
 
-def _row_to_out(row, assessment_status: str) -> AuditPlanOut:
+def _row_to_out(
+    row,
+    assessment_status: str,
+    *,
+    conn=None,
+    org_id: UUID | None = None,
+) -> AuditPlanOut:
     criteria = AuditPlanCriteria.model_validate(_parse_json(row.criteria, _empty_criteria()))
     sites = [AuditPlanSite.model_validate(x) for x in _parse_json(row.sites, [])]
     processes = [AuditPlanProcess.model_validate(x) for x in _parse_json(row.processes, [])]
@@ -170,6 +248,11 @@ def _row_to_out(row, assessment_status: str) -> AuditPlanOut:
     team_ids = list(row.team_membership_ids or [])
     editable, needs_reason = _editable_flags(assessment_status, row.plan_status)
     modality = row.modality or "diagnosis"
+    readiness = compute_readiness(
+        row,
+        conn=conn,
+        org_id=org_id or row.organization_id,
+    )
     return AuditPlanOut(
         id=row.id,
         organization_id=row.organization_id,
@@ -191,7 +274,7 @@ def _row_to_out(row, assessment_status: str) -> AuditPlanOut:
         plan_status=row.plan_status,
         field_sources=sources,
         last_amendment_reason=row.last_amendment_reason or "",
-        readiness=compute_readiness(row),
+        readiness=readiness,
         editable=editable,
         requires_amendment_reason=needs_reason,
         updated_by_user_id=row.updated_by_user_id,
@@ -386,7 +469,9 @@ def get_or_create(ctx: OrgContext, assessment_id: UUID) -> AuditPlanOut:
                 },
             )
             conn.commit()
-        out = _row_to_out(row, assessment.status)
+        out = _row_to_out(
+            row, assessment.status, conn=conn, org_id=ctx.organization_id
+        )
         return out
 
 
@@ -482,7 +567,9 @@ def patch_plan(ctx: OrgContext, assessment_id: UUID, payload: AuditPlanPatch) ->
             sources["team_membership_ids"] = "manual"
 
         if not fields:
-            return _row_to_out(row, assessment.status)
+            return _row_to_out(
+                row, assessment.status, conn=conn, org_id=ctx.organization_id
+            )
 
         start = fields.get("planned_start", row.planned_start)
         end = fields.get("planned_end", row.planned_end)
@@ -559,7 +646,9 @@ def patch_plan(ctx: OrgContext, assessment_id: UUID, payload: AuditPlanPatch) ->
             },
         )
         conn.commit()
-        return _row_to_out(updated, assessment.status)
+        return _row_to_out(
+            updated, assessment.status, conn=conn, org_id=ctx.organization_id
+        )
 
 
 def mark_ready(ctx: OrgContext, assessment_id: UUID, payload: AuditPlanReadyIn) -> AuditPlanOut:
@@ -580,7 +669,9 @@ def mark_ready(ctx: OrgContext, assessment_id: UUID, payload: AuditPlanReadyIn) 
         if row is None:
             raise AppError("not_found", "Plano da auditoria não encontrado", status_code=404)
         _check_concurrency(row, payload.expected_updated_at)
-        readiness = compute_readiness(row)
+        readiness = compute_readiness(
+            row, conn=conn, org_id=ctx.organization_id
+        )
         if not readiness.ready:
             raise AppError(
                 "validation_error",
@@ -617,7 +708,9 @@ def mark_ready(ctx: OrgContext, assessment_id: UUID, payload: AuditPlanReadyIn) 
             metadata={"assessment_id": str(assessment_id)},
         )
         conn.commit()
-        return _row_to_out(updated, assessment.status)
+        return _row_to_out(
+            updated, assessment.status, conn=conn, org_id=ctx.organization_id
+        )
 
 
 def refresh_from_preparation(
@@ -683,7 +776,9 @@ def refresh_from_preparation(
             sources["team_membership_ids"] = "assessment"
 
         if not updates:
-            return _row_to_out(row, assessment.status)
+            return _row_to_out(
+                row, assessment.status, conn=conn, org_id=ctx.organization_id
+            )
 
         sql_sets = []
         for k in updates:
@@ -730,4 +825,6 @@ def refresh_from_preparation(
             metadata={"fields": list(updates.keys())},
         )
         conn.commit()
-        return _row_to_out(updated, assessment.status)
+        return _row_to_out(
+            updated, assessment.status, conn=conn, org_id=ctx.organization_id
+        )

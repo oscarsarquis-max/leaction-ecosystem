@@ -534,6 +534,30 @@
             "title": "Participant Membership Ids",
             "type": "array"
           },
+          "plan_activity_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "opening_meeting",
+                  "closing_meeting",
+                  "additional_meeting",
+                  "milestone_preparation_done",
+                  "milestone_plan_approved",
+                  "milestone_field_start",
+                  "milestone_field_done",
+                  "milestone_analysis_done",
+                  "milestone_report_due",
+                  "milestone_closure_due",
+                  "milestone_custom"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Activity Kind"
+          },
           "related_action": {
             "default": "",
             "maxLength": 200,
@@ -682,6 +706,30 @@
             },
             "title": "Participant Membership Ids",
             "type": "array"
+          },
+          "plan_activity_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "opening_meeting",
+                  "closing_meeting",
+                  "additional_meeting",
+                  "milestone_preparation_done",
+                  "milestone_plan_approved",
+                  "milestone_field_start",
+                  "milestone_field_done",
+                  "milestone_analysis_done",
+                  "milestone_report_due",
+                  "milestone_closure_due",
+                  "milestone_custom"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Activity Kind"
           },
           "preparation": {
             "title": "Preparation",
@@ -895,6 +943,30 @@
               }
             ],
             "title": "Participant Membership Ids"
+          },
+          "plan_activity_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "opening_meeting",
+                  "closing_meeting",
+                  "additional_meeting",
+                  "milestone_preparation_done",
+                  "milestone_plan_approved",
+                  "milestone_field_start",
+                  "milestone_field_done",
+                  "milestone_analysis_done",
+                  "milestone_report_due",
+                  "milestone_closure_due",
+                  "milestone_custom"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Activity Kind"
           },
           "related_action": {
             "anyOf": [
@@ -1716,6 +1788,11 @@
             "title": "From Preparation",
             "type": "boolean"
           },
+          "interview_justification": {
+            "default": "",
+            "title": "Interview Justification",
+            "type": "string"
+          },
           "name": {
             "default": "",
             "title": "Name",
@@ -1810,6 +1887,79 @@
           }
         },
         "title": "AuditPlanRefreshIn",
+        "type": "object"
+      },
+      "AuditPlanScheduleOut": {
+        "properties": {
+          "agenda_href": {
+            "default": "/assessments",
+            "title": "Agenda Href",
+            "type": "string"
+          },
+          "assessment_id": {
+            "format": "uuid",
+            "title": "Assessment Id",
+            "type": "string"
+          },
+          "has_closing_meeting": {
+            "default": false,
+            "title": "Has Closing Meeting",
+            "type": "boolean"
+          },
+          "has_opening_meeting": {
+            "default": false,
+            "title": "Has Opening Meeting",
+            "type": "boolean"
+          },
+          "interviews": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewOut"
+            },
+            "title": "Interviews",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_action": {
+            "default": "",
+            "title": "Next Action",
+            "type": "string"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "overlaps": {
+            "items": {
+              "$ref": "#/components/schemas/OverlapWarning"
+            },
+            "title": "Overlaps",
+            "type": "array"
+          },
+          "pendings": {
+            "items": {
+              "$ref": "#/components/schemas/SchedulePending"
+            },
+            "title": "Pendings",
+            "type": "array"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assessment_id",
+          "organization_id",
+          "timezone"
+        ],
+        "title": "AuditPlanScheduleOut",
         "type": "object"
       },
       "AuditPlanSite": {
@@ -3341,6 +3491,7 @@
         "type": "object"
       },
       "InterviewCreate": {
+        "description": "Create interview — planning fields optional; answers still require in_progress.",
         "properties": {
           "conducted_at": {
             "anyOf": [
@@ -3354,6 +3505,37 @@
             ],
             "title": "Conducted At"
           },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "maximum": 1440.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "interviewer_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interviewer Membership Id"
+          },
+          "location": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Location",
+            "type": "string"
+          },
           "mode": {
             "anyOf": [
               {
@@ -3363,6 +3545,68 @@
                 "type": "null"
               }
             ]
+          },
+          "objective": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Objective",
+            "type": "string"
+          },
+          "org_contact_name": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Org Contact Name",
+            "type": "string"
+          },
+          "outside_period_justification": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Outside Period Justification",
+            "type": "string"
+          },
+          "participant_membership_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Participant Membership Ids",
+            "type": "array"
+          },
+          "preparation": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Preparation",
+            "type": "string"
+          },
+          "process_name": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Process Name",
+            "type": "string"
+          },
+          "remote_link": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Remote Link",
+            "type": "string"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
+          "title": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Title",
+            "type": "string"
           }
         },
         "title": "InterviewCreate",
@@ -3379,6 +3623,18 @@
       },
       "InterviewOut": {
         "properties": {
+          "agenda_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agenda Event Id"
+          },
           "assessment_id": {
             "format": "uuid",
             "title": "Assessment Id",
@@ -3401,9 +3657,37 @@
             "title": "Created At",
             "type": "string"
           },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
+            "type": "string"
+          },
+          "interviewer_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interviewer Membership Id"
+          },
+          "location": {
+            "default": "",
+            "title": "Location",
             "type": "string"
           },
           "mode": {
@@ -3416,13 +3700,70 @@
               }
             ]
           },
+          "objective": {
+            "default": "",
+            "title": "Objective",
+            "type": "string"
+          },
+          "org_contact_name": {
+            "default": "",
+            "title": "Org Contact Name",
+            "type": "string"
+          },
           "organization_id": {
             "format": "uuid",
             "title": "Organization Id",
             "type": "string"
           },
+          "overlap_warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Overlap Warnings",
+            "type": "array"
+          },
+          "participant_membership_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Participant Membership Ids",
+            "type": "array"
+          },
+          "preparation": {
+            "default": "",
+            "title": "Preparation",
+            "type": "string"
+          },
+          "process_name": {
+            "default": "",
+            "title": "Process Name",
+            "type": "string"
+          },
+          "remote_link": {
+            "default": "",
+            "title": "Remote Link",
+            "type": "string"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
           "status": {
             "$ref": "#/components/schemas/InterviewStatus"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
           },
           "updated_at": {
             "format": "date-time",
@@ -3446,6 +3787,8 @@
       "InterviewStatus": {
         "enum": [
           "planned",
+          "confirmed",
+          "in_progress",
           "completed",
           "cancelled"
         ],
@@ -3475,6 +3818,187 @@
           "event"
         ],
         "title": "InterviewTransitionResult",
+        "type": "object"
+      },
+      "InterviewUpdate": {
+        "properties": {
+          "clear_scheduled_at": {
+            "default": false,
+            "title": "Clear Scheduled At",
+            "type": "boolean"
+          },
+          "conducted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conducted At"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "maximum": 1440.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "interviewer_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interviewer Membership Id"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InterviewMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "objective": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective"
+          },
+          "org_contact_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Contact Name"
+          },
+          "outside_period_justification": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outside Period Justification"
+          },
+          "participant_membership_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participant Membership Ids"
+          },
+          "preparation": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preparation"
+          },
+          "process_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Process Name"
+          },
+          "remote_link": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remote Link"
+          },
+          "scheduled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled At"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "InterviewUpdate",
         "type": "object"
       },
       "JobOut": {
@@ -3998,6 +4522,39 @@
         "title": "OrganizationStatus",
         "type": "string"
       },
+      "OverlapWarning": {
+        "properties": {
+          "item_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Item Ids",
+            "type": "array"
+          },
+          "membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Membership Id"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "OverlapWarning",
+        "type": "object"
+      },
       "PresignedUploadOut": {
         "properties": {
           "expires_in_seconds": {
@@ -4351,6 +4908,617 @@
           "event"
         ],
         "title": "ReportTransitionResult",
+        "type": "object"
+      },
+      "ScheduleItemOut": {
+        "properties": {
+          "agenda_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agenda Event Id"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interview Id"
+          },
+          "kind": {
+            "enum": [
+              "interview",
+              "meeting",
+              "milestone"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "location_or_link": {
+            "default": "",
+            "title": "Location Or Link",
+            "type": "string"
+          },
+          "next_action": {
+            "default": "",
+            "title": "Next Action",
+            "type": "string"
+          },
+          "objective": {
+            "default": "",
+            "title": "Objective",
+            "type": "string"
+          },
+          "owner_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Membership Id"
+          },
+          "participant_membership_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Participant Membership Ids",
+            "type": "array"
+          },
+          "plan_activity_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "opening_meeting",
+                  "closing_meeting",
+                  "additional_meeting",
+                  "milestone_preparation_done",
+                  "milestone_plan_approved",
+                  "milestone_field_start",
+                  "milestone_field_done",
+                  "milestone_analysis_done",
+                  "milestone_report_due",
+                  "milestone_closure_due",
+                  "milestone_custom"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Activity Kind"
+          },
+          "preparation": {
+            "default": "",
+            "title": "Preparation",
+            "type": "string"
+          },
+          "primary_action_href": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Action Href"
+          },
+          "primary_action_label": {
+            "default": "",
+            "title": "Primary Action Label",
+            "type": "string"
+          },
+          "process_name": {
+            "default": "",
+            "title": "Process Name",
+            "type": "string"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "timezone": {
+            "default": "America/Sao_Paulo",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "title",
+          "status"
+        ],
+        "title": "ScheduleItemOut",
+        "type": "object"
+      },
+      "ScheduleMeetingCreate": {
+        "properties": {
+          "duration_minutes": {
+            "default": 60,
+            "maximum": 1440.0,
+            "minimum": 1.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "opening_meeting",
+              "closing_meeting",
+              "additional_meeting"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "location_or_link": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Location Or Link",
+            "type": "string"
+          },
+          "objective": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Objective",
+            "type": "string"
+          },
+          "outside_period_justification": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Outside Period Justification",
+            "type": "string"
+          },
+          "owner_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Membership Id"
+          },
+          "participant_membership_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Participant Membership Ids",
+            "type": "array"
+          },
+          "preparation": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Preparation",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "kind",
+          "starts_at"
+        ],
+        "title": "ScheduleMeetingCreate",
+        "type": "object"
+      },
+      "ScheduleMeetingUpdate": {
+        "properties": {
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "maximum": 1440.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "location_or_link": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Or Link"
+          },
+          "objective": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective"
+          },
+          "outside_period_justification": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outside Period Justification"
+          },
+          "owner_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Membership Id"
+          },
+          "participant_membership_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participant Membership Ids"
+          },
+          "preparation": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preparation"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "scheduled",
+                  "completed",
+                  "cancelled"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "ScheduleMeetingUpdate",
+        "type": "object"
+      },
+      "ScheduleMilestoneCreate": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "milestone_preparation_done",
+              "milestone_plan_approved",
+              "milestone_field_start",
+              "milestone_field_done",
+              "milestone_analysis_done",
+              "milestone_report_due",
+              "milestone_closure_due",
+              "milestone_custom"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "occurs_at": {
+            "format": "date-time",
+            "title": "Occurs At",
+            "type": "string"
+          },
+          "outside_period_justification": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Outside Period Justification",
+            "type": "string"
+          },
+          "owner_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Membership Id"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "kind",
+          "occurs_at"
+        ],
+        "title": "ScheduleMilestoneCreate",
+        "type": "object"
+      },
+      "ScheduleMilestoneUpdate": {
+        "properties": {
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "occurs_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurs At"
+          },
+          "outside_period_justification": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outside Period Justification"
+          },
+          "owner_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Membership Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "scheduled",
+                  "completed",
+                  "cancelled"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "ScheduleMilestoneUpdate",
+        "type": "object"
+      },
+      "SchedulePending": {
+        "properties": {
+          "blocking": {
+            "default": true,
+            "title": "Blocking",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "SchedulePending",
         "type": "object"
       },
       "ScopeItemIn": {
@@ -11978,6 +13146,1169 @@
         ]
       }
     },
+    "/api/v1/assessments/{assessment_id}/audit-plan/schedule": {
+      "get": {
+        "operationId": "getAuditPlanSchedule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assessment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPlanScheduleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Programação da auditoria (entrevistas + reuniões + marcos)",
+        "tags": [
+          "audit-plan"
+        ]
+      }
+    },
+    "/api/v1/assessments/{assessment_id}/audit-plan/schedule/meetings": {
+      "post": {
+        "operationId": "createAuditPlanMeeting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assessment Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleMeetingCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPlanScheduleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create Audit Plan Meeting",
+        "tags": [
+          "audit-plan"
+        ]
+      }
+    },
+    "/api/v1/assessments/{assessment_id}/audit-plan/schedule/meetings/{event_id}": {
+      "patch": {
+        "operationId": "updateAuditPlanMeeting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assessment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleMeetingUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPlanScheduleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update Audit Plan Meeting",
+        "tags": [
+          "audit-plan"
+        ]
+      }
+    },
+    "/api/v1/assessments/{assessment_id}/audit-plan/schedule/milestones": {
+      "post": {
+        "operationId": "createAuditPlanMilestone",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assessment Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleMilestoneCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPlanScheduleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create Audit Plan Milestone",
+        "tags": [
+          "audit-plan"
+        ]
+      }
+    },
+    "/api/v1/assessments/{assessment_id}/audit-plan/schedule/milestones/{event_id}": {
+      "patch": {
+        "operationId": "updateAuditPlanMilestone",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assessment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleMilestoneUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPlanScheduleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update Audit Plan Milestone",
+        "tags": [
+          "audit-plan"
+        ]
+      }
+    },
     "/api/v1/assessments/{assessment_id}/evidences": {
       "get": {
         "operationId": "listAssessmentEvidences",
@@ -14672,6 +17003,25 @@
               "format": "uuid",
               "title": "Assessment Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+              "title": "Idempotency-Key"
             }
           },
           {
@@ -24191,6 +26541,241 @@
         "tags": [
           "Interviews"
         ]
+      },
+      "patch": {
+        "operationId": "updateInterview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update Interview",
+        "tags": [
+          "Interviews"
+        ]
       }
     },
     "/api/v1/interviews/{interview_id}/answers": {
@@ -25037,6 +27622,422 @@
           }
         ],
         "summary": "Complete Interview",
+        "tags": [
+          "Interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/confirm": {
+      "post": {
+        "operationId": "confirmInterview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewTransitionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Confirm Interview",
+        "tags": [
+          "Interviews"
+        ]
+      }
+    },
+    "/api/v1/interviews/{interview_id}/start": {
+      "post": {
+        "operationId": "startInterview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewTransitionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Start Interview",
         "tags": [
           "Interviews"
         ]

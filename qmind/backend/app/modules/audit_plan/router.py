@@ -5,7 +5,14 @@ from uuid import UUID
 from fastapi import APIRouter
 
 from app.auth.deps import OrgContextDep
-from app.modules.audit_plan import service
+from app.modules.audit_plan import schedule_service, service
+from app.modules.audit_plan.schedule_schemas import (
+    AuditPlanScheduleOut,
+    ScheduleMeetingCreate,
+    ScheduleMeetingUpdate,
+    ScheduleMilestoneCreate,
+    ScheduleMilestoneUpdate,
+)
 from app.modules.audit_plan.schemas import (
     AuditPlanOut,
     AuditPlanPatch,
@@ -85,3 +92,78 @@ def refresh_audit_plan_from_preparation(
     return service.refresh_from_preparation(
         ctx, assessment_id, payload or AuditPlanRefreshIn()
     )
+
+
+@router.get(
+    "/assessments/{assessment_id}/audit-plan/schedule",
+    response_model=AuditPlanScheduleOut,
+    operation_id="getAuditPlanSchedule",
+    responses={404: ERROR_RESPONSES[404]},
+    summary="Programação da auditoria (entrevistas + reuniões + marcos)",
+)
+def get_audit_plan_schedule(
+    assessment_id: UUID, ctx: OrgContextDep
+) -> AuditPlanScheduleOut:
+    return schedule_service.get_schedule(ctx, assessment_id)
+
+
+@router.post(
+    "/assessments/{assessment_id}/audit-plan/schedule/meetings",
+    response_model=AuditPlanScheduleOut,
+    status_code=201,
+    operation_id="createAuditPlanMeeting",
+    responses={404: ERROR_RESPONSES[404], 422: ERROR_RESPONSES[422]},
+)
+def create_audit_plan_meeting(
+    assessment_id: UUID,
+    payload: ScheduleMeetingCreate,
+    ctx: OrgContextDep,
+    _idempotency_key: IdempotencyKeyHeader = None,
+) -> AuditPlanScheduleOut:
+    return schedule_service.create_meeting(ctx, assessment_id, payload)
+
+
+@router.patch(
+    "/assessments/{assessment_id}/audit-plan/schedule/meetings/{event_id}",
+    response_model=AuditPlanScheduleOut,
+    operation_id="updateAuditPlanMeeting",
+    responses={404: ERROR_RESPONSES[404], 422: ERROR_RESPONSES[422]},
+)
+def update_audit_plan_meeting(
+    assessment_id: UUID,
+    event_id: UUID,
+    payload: ScheduleMeetingUpdate,
+    ctx: OrgContextDep,
+) -> AuditPlanScheduleOut:
+    return schedule_service.update_meeting(ctx, assessment_id, event_id, payload)
+
+
+@router.post(
+    "/assessments/{assessment_id}/audit-plan/schedule/milestones",
+    response_model=AuditPlanScheduleOut,
+    status_code=201,
+    operation_id="createAuditPlanMilestone",
+    responses={404: ERROR_RESPONSES[404], 422: ERROR_RESPONSES[422]},
+)
+def create_audit_plan_milestone(
+    assessment_id: UUID,
+    payload: ScheduleMilestoneCreate,
+    ctx: OrgContextDep,
+    _idempotency_key: IdempotencyKeyHeader = None,
+) -> AuditPlanScheduleOut:
+    return schedule_service.create_milestone(ctx, assessment_id, payload)
+
+
+@router.patch(
+    "/assessments/{assessment_id}/audit-plan/schedule/milestones/{event_id}",
+    response_model=AuditPlanScheduleOut,
+    operation_id="updateAuditPlanMilestone",
+    responses={404: ERROR_RESPONSES[404], 422: ERROR_RESPONSES[422]},
+)
+def update_audit_plan_milestone(
+    assessment_id: UUID,
+    event_id: UUID,
+    payload: ScheduleMilestoneUpdate,
+    ctx: OrgContextDep,
+) -> AuditPlanScheduleOut:
+    return schedule_service.update_milestone(ctx, assessment_id, event_id, payload)

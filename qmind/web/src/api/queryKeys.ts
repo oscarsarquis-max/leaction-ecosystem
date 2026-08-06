@@ -46,6 +46,14 @@ export const queryKeys = {
     ["org", organizationId, "assessment", assessmentId, "guided"] as const,
   auditPlan: (organizationId: string, assessmentId: string) =>
     ["org", organizationId, "assessment", assessmentId, "audit-plan"] as const,
+  auditPlanSchedule: (organizationId: string, assessmentId: string) =>
+    [
+      "org",
+      organizationId,
+      "assessment",
+      assessmentId,
+      "audit-plan-schedule",
+    ] as const,
   guidedAnswerEvidences: (
     organizationId: string,
     assessmentId: string,

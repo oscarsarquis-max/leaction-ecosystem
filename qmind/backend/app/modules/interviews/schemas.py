@@ -9,8 +9,40 @@ from app.schemas.enums import InterviewMode, InterviewStatus
 
 
 class InterviewCreate(BaseModel):
+    """Create interview — planning fields optional; answers still require in_progress."""
+
     mode: InterviewMode | None = None
     conducted_at: datetime | None = None
+    title: str = Field(default="", max_length=200)
+    objective: str = Field(default="", max_length=4000)
+    process_name: str = Field(default="", max_length=200)
+    org_contact_name: str = Field(default="", max_length=200)
+    interviewer_membership_id: UUID | None = None
+    participant_membership_ids: list[UUID] = Field(default_factory=list)
+    scheduled_at: datetime | None = None
+    duration_minutes: int | None = Field(default=None, ge=1, le=24 * 60)
+    location: str = Field(default="", max_length=500)
+    remote_link: str = Field(default="", max_length=500)
+    preparation: str = Field(default="", max_length=4000)
+    outside_period_justification: str = Field(default="", max_length=2000)
+
+
+class InterviewUpdate(BaseModel):
+    mode: InterviewMode | None = None
+    conducted_at: datetime | None = None
+    title: str | None = Field(default=None, max_length=200)
+    objective: str | None = Field(default=None, max_length=4000)
+    process_name: str | None = Field(default=None, max_length=200)
+    org_contact_name: str | None = Field(default=None, max_length=200)
+    interviewer_membership_id: UUID | None = None
+    participant_membership_ids: list[UUID] | None = None
+    scheduled_at: datetime | None = None
+    duration_minutes: int | None = Field(default=None, ge=1, le=24 * 60)
+    location: str | None = Field(default=None, max_length=500)
+    remote_link: str | None = Field(default=None, max_length=500)
+    preparation: str | None = Field(default=None, max_length=4000)
+    outside_period_justification: str | None = Field(default=None, max_length=2000)
+    clear_scheduled_at: bool = False
 
 
 class InterviewOut(BaseModel):
@@ -20,6 +52,19 @@ class InterviewOut(BaseModel):
     conducted_at: datetime | None
     mode: InterviewMode | None
     status: InterviewStatus
+    title: str = ""
+    objective: str = ""
+    process_name: str = ""
+    org_contact_name: str = ""
+    interviewer_membership_id: UUID | None = None
+    participant_membership_ids: list[UUID] = Field(default_factory=list)
+    scheduled_at: datetime | None = None
+    duration_minutes: int | None = None
+    location: str = ""
+    remote_link: str = ""
+    preparation: str = ""
+    agenda_event_id: UUID | None = None
+    overlap_warnings: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

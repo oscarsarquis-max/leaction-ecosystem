@@ -6,6 +6,7 @@ import { queryKeys } from "@/api/queryKeys";
 import { useAssessment, useAssessmentScopes } from "@/hooks/useAssessmentDetail";
 import { useGuidedSession } from "@/hooks/useGuidedAssessment";
 import { useAuditPlan } from "@/hooks/useAuditPlan";
+import { useAuditPlanSchedule } from "@/hooks/useAuditPlanSchedule";
 import {
   consistencyScore,
   continueHref,
@@ -22,6 +23,7 @@ export function useAuditDashboard(assessmentId: string | undefined) {
   // Lê sessão guided quando existir (get_or_create só cria em draft/planned).
   const guided = useGuidedSession(assessmentId);
   const auditPlan = useAuditPlan(assessmentId);
+  const schedule = useAuditPlanSchedule(assessmentId);
 
   const orgId = currentOrganizationId;
   const aid = assessmentId;
@@ -169,6 +171,13 @@ export function useAuditDashboard(assessmentId: string | undefined) {
       auditPlan.data?.plan_status === "amended";
     const planPercent = auditPlan.data?.readiness?.percent ?? 0;
 
+    const scheduleNext = schedule.data?.next_action;
+    const hasOverlap = (schedule.data?.overlaps?.length ?? 0) > 0;
+    const hasOpening = !!schedule.data?.has_opening_meeting;
+    const plannedInterviews = interviews.filter(
+      (i) => i.status === "planned" || i.status === "confirmed",
+    ).length;
+
     const continueAction = aid
       ? continueHref(aid, status, { preparationReady })
       : { href: "/assessments", label: "Voltar" };
@@ -189,6 +198,19 @@ export function useAuditDashboard(assessmentId: string | undefined) {
             : "Elaborar o Plano da Auditoria no Planejamento",
         );
       }
+      if (!hasOpening) {
+        pending.push("Confirmar reunião de abertura");
+      }
+      if (hasOverlap) {
+        pending.push("Resolver conflito de horário");
+      }
+      if (planReady && plannedInterviews === 0) {
+        pending.push("Agendar entrevista");
+      } else if (scheduleNext && planReady) {
+        pending.push(scheduleNext);
+      } else if (!planReady && scheduleNext) {
+        pending.push(`Programação: ${scheduleNext}`);
+      }
       if (scopeItems < 1) {
         pending.push(
           "Escopo formal: inclua pelo menos um item (requisito ou processo) no Planejamento",
@@ -199,7 +221,11 @@ export function useAuditDashboard(assessmentId: string | undefined) {
       }
     }
     if (status === "in_progress" && interviewsDone === 0) {
-      pending.push("Nenhuma entrevista concluída");
+      if (plannedInterviews > 0) {
+        pending.push("Iniciar primeira entrevista");
+      } else {
+        pending.push("Nenhuma entrevista concluída");
+      }
     }
     if (status === "analysis" && findings.length === 0) {
       pending.push("Nenhuma constatação registrada");
@@ -246,14 +272,51 @@ export function useAuditDashboard(assessmentId: string | undefined) {
             href: `/assessments/${aid}/audit-plan`,
             label: "Abrir Plano da Auditoria",
           }
-        : continueAction;
+        : hasOverlap && aid
+          ? {
+              href: `/assessments/${aid}/audit-plan`,
+              label: "Resolver conflito de horário",
+            }
+          : !hasOpening &&
+              (status === "draft" || status === "planned") &&
+              aid
+            ? {
+                href: `/assessments/${aid}/audit-plan`,
+                label: "Confirmar reunião de abertura",
+              }
+            : planReady &&
+                plannedInterviews === 0 &&
+                (status === "draft" || status === "planned") &&
+                aid
+              ? {
+                  href: `/assessments/${aid}/audit-plan`,
+                  label: "Agendar entrevista",
+                }
+              : status === "in_progress" &&
+                  plannedInterviews > 0 &&
+                  interviewsDone === 0 &&
+                  aid
+                ? {
+                    href: `/assessments/${aid}/audit-plan`,
+                    label: "Iniciar primeira entrevista",
+                  }
+                : scheduleNext &&
+                    (status === "draft" || status === "planned") &&
+                    aid &&
+                    !planReady
+                  ? {
+                      href: `/assessments/${aid}/audit-plan`,
+                      label: "Revisar programação",
+                    }
+                  : continueAction;
 
     return {
       loading:
         assessment.isLoading ||
         extras.some((q) => q.isLoading) ||
         (guided.isLoading && !guided.isError) ||
-        (auditPlan.isLoading && !auditPlan.isError),
+        (auditPlan.isLoading && !auditPlan.isError) ||
+        (schedule.isLoading && !schedule.isError),
       assessment: a,
       organizationName:
         currentOrganization?.organizationName ?? currentOrganizationId ?? "—",
@@ -297,6 +360,9 @@ export function useAuditDashboard(assessmentId: string | undefined) {
     auditPlan.data,
     auditPlan.isLoading,
     auditPlan.isError,
+    schedule.data,
+    schedule.isLoading,
+    schedule.isError,
     interviewsQ.data,
     evidencesQ.data,
     findingsQ.data,

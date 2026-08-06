@@ -282,6 +282,10 @@ export type AgendaEventCreate = {
      */
     participant_membership_ids?: Array<string>;
     /**
+     * Plan Activity Kind
+     */
+    plan_activity_kind?: ('opening_meeting' | 'closing_meeting' | 'additional_meeting' | 'milestone_preparation_done' | 'milestone_plan_approved' | 'milestone_field_start' | 'milestone_field_done' | 'milestone_analysis_done' | 'milestone_report_due' | 'milestone_closure_due' | 'milestone_custom') | null;
+    /**
      * Related Action
      */
     related_action?: string;
@@ -363,6 +367,10 @@ export type AgendaEventOut = {
      * Participant Membership Ids
      */
     participant_membership_ids: Array<string>;
+    /**
+     * Plan Activity Kind
+     */
+    plan_activity_kind?: ('opening_meeting' | 'closing_meeting' | 'additional_meeting' | 'milestone_preparation_done' | 'milestone_plan_approved' | 'milestone_field_start' | 'milestone_field_done' | 'milestone_analysis_done' | 'milestone_report_due' | 'milestone_closure_due' | 'milestone_custom') | null;
     /**
      * Preparation
      */
@@ -449,6 +457,10 @@ export type AgendaEventUpdate = {
      * Participant Membership Ids
      */
     participant_membership_ids?: Array<string> | null;
+    /**
+     * Plan Activity Kind
+     */
+    plan_activity_kind?: ('opening_meeting' | 'closing_meeting' | 'additional_meeting' | 'milestone_preparation_done' | 'milestone_plan_approved' | 'milestone_field_start' | 'milestone_field_done' | 'milestone_analysis_done' | 'milestone_report_due' | 'milestone_closure_due' | 'milestone_custom') | null;
     /**
      * Related Action
      */
@@ -840,6 +852,10 @@ export type AuditPlanProcess = {
      */
     from_preparation?: boolean;
     /**
+     * Interview Justification
+     */
+    interview_justification?: string;
+    /**
      * Name
      */
     name?: string;
@@ -906,6 +922,56 @@ export type AuditPlanRefreshIn = {
      * Confirm Overwrite Preparation
      */
     confirm_overwrite_preparation?: boolean;
+};
+
+/**
+ * AuditPlanScheduleOut
+ */
+export type AuditPlanScheduleOut = {
+    /**
+     * Agenda Href
+     */
+    agenda_href?: string;
+    /**
+     * Assessment Id
+     */
+    assessment_id: string;
+    /**
+     * Has Closing Meeting
+     */
+    has_closing_meeting?: boolean;
+    /**
+     * Has Opening Meeting
+     */
+    has_opening_meeting?: boolean;
+    /**
+     * Interviews
+     */
+    interviews?: Array<InterviewOut>;
+    /**
+     * Items
+     */
+    items?: Array<ScheduleItemOut>;
+    /**
+     * Next Action
+     */
+    next_action?: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Overlaps
+     */
+    overlaps?: Array<OverlapWarning>;
+    /**
+     * Pendings
+     */
+    pendings?: Array<SchedulePending>;
+    /**
+     * Timezone
+     */
+    timezone: string;
 };
 
 /**
@@ -1703,13 +1769,62 @@ export type HttpValidationError = {
 
 /**
  * InterviewCreate
+ * Create interview — planning fields optional; answers still require in_progress.
  */
 export type InterviewCreate = {
     /**
      * Conducted At
      */
     conducted_at?: string | null;
+    /**
+     * Duration Minutes
+     */
+    duration_minutes?: number | null;
+    /**
+     * Interviewer Membership Id
+     */
+    interviewer_membership_id?: string | null;
+    /**
+     * Location
+     */
+    location?: string;
     mode?: InterviewMode | null;
+    /**
+     * Objective
+     */
+    objective?: string;
+    /**
+     * Org Contact Name
+     */
+    org_contact_name?: string;
+    /**
+     * Outside Period Justification
+     */
+    outside_period_justification?: string;
+    /**
+     * Participant Membership Ids
+     */
+    participant_membership_ids?: Array<string>;
+    /**
+     * Preparation
+     */
+    preparation?: string;
+    /**
+     * Process Name
+     */
+    process_name?: string;
+    /**
+     * Remote Link
+     */
+    remote_link?: string;
+    /**
+     * Scheduled At
+     */
+    scheduled_at?: string | null;
+    /**
+     * Title
+     */
+    title?: string;
 };
 
 /**
@@ -1721,6 +1836,10 @@ export type InterviewMode = 'onsite' | 'remote' | 'hybrid';
  * InterviewOut
  */
 export type InterviewOut = {
+    /**
+     * Agenda Event Id
+     */
+    agenda_event_id?: string | null;
     /**
      * Assessment Id
      */
@@ -1734,15 +1853,63 @@ export type InterviewOut = {
      */
     created_at: string;
     /**
+     * Duration Minutes
+     */
+    duration_minutes?: number | null;
+    /**
      * Id
      */
     id: string;
+    /**
+     * Interviewer Membership Id
+     */
+    interviewer_membership_id?: string | null;
+    /**
+     * Location
+     */
+    location?: string;
     mode: InterviewMode | null;
+    /**
+     * Objective
+     */
+    objective?: string;
+    /**
+     * Org Contact Name
+     */
+    org_contact_name?: string;
     /**
      * Organization Id
      */
     organization_id: string;
+    /**
+     * Overlap Warnings
+     */
+    overlap_warnings?: Array<string>;
+    /**
+     * Participant Membership Ids
+     */
+    participant_membership_ids?: Array<string>;
+    /**
+     * Preparation
+     */
+    preparation?: string;
+    /**
+     * Process Name
+     */
+    process_name?: string;
+    /**
+     * Remote Link
+     */
+    remote_link?: string;
+    /**
+     * Scheduled At
+     */
+    scheduled_at?: string | null;
     status: InterviewStatus;
+    /**
+     * Title
+     */
+    title?: string;
     /**
      * Updated At
      */
@@ -1752,7 +1919,7 @@ export type InterviewOut = {
 /**
  * InterviewStatus
  */
-export type InterviewStatus = 'planned' | 'completed' | 'cancelled';
+export type InterviewStatus = 'planned' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
 
 /**
  * InterviewTransitionResult
@@ -1765,6 +1932,69 @@ export type InterviewTransitionResult = {
     from_status: InterviewStatus;
     interview: InterviewOut;
     to_status: InterviewStatus;
+};
+
+/**
+ * InterviewUpdate
+ */
+export type InterviewUpdate = {
+    /**
+     * Clear Scheduled At
+     */
+    clear_scheduled_at?: boolean;
+    /**
+     * Conducted At
+     */
+    conducted_at?: string | null;
+    /**
+     * Duration Minutes
+     */
+    duration_minutes?: number | null;
+    /**
+     * Interviewer Membership Id
+     */
+    interviewer_membership_id?: string | null;
+    /**
+     * Location
+     */
+    location?: string | null;
+    mode?: InterviewMode | null;
+    /**
+     * Objective
+     */
+    objective?: string | null;
+    /**
+     * Org Contact Name
+     */
+    org_contact_name?: string | null;
+    /**
+     * Outside Period Justification
+     */
+    outside_period_justification?: string | null;
+    /**
+     * Participant Membership Ids
+     */
+    participant_membership_ids?: Array<string> | null;
+    /**
+     * Preparation
+     */
+    preparation?: string | null;
+    /**
+     * Process Name
+     */
+    process_name?: string | null;
+    /**
+     * Remote Link
+     */
+    remote_link?: string | null;
+    /**
+     * Scheduled At
+     */
+    scheduled_at?: string | null;
+    /**
+     * Title
+     */
+    title?: string | null;
 };
 
 /**
@@ -2058,6 +2288,24 @@ export type OrganizationOut = {
 export type OrganizationStatus = 'active' | 'suspended' | 'closed';
 
 /**
+ * OverlapWarning
+ */
+export type OverlapWarning = {
+    /**
+     * Item Ids
+     */
+    item_ids?: Array<string>;
+    /**
+     * Membership Id
+     */
+    membership_id?: string | null;
+    /**
+     * Message
+     */
+    message: string;
+};
+
+/**
  * PresignedUploadOut
  */
 export type PresignedUploadOut = {
@@ -2262,6 +2510,274 @@ export type ReportTransitionResult = {
     from_status: ReportStatus;
     report: ReportOut;
     to_status: ReportStatus;
+};
+
+/**
+ * ScheduleItemOut
+ */
+export type ScheduleItemOut = {
+    /**
+     * Agenda Event Id
+     */
+    agenda_event_id?: string | null;
+    /**
+     * Ends At
+     */
+    ends_at?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Interview Id
+     */
+    interview_id?: string | null;
+    /**
+     * Kind
+     */
+    kind: 'interview' | 'meeting' | 'milestone';
+    /**
+     * Location Or Link
+     */
+    location_or_link?: string;
+    /**
+     * Next Action
+     */
+    next_action?: string;
+    /**
+     * Objective
+     */
+    objective?: string;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Participant Membership Ids
+     */
+    participant_membership_ids?: Array<string>;
+    /**
+     * Plan Activity Kind
+     */
+    plan_activity_kind?: ('opening_meeting' | 'closing_meeting' | 'additional_meeting' | 'milestone_preparation_done' | 'milestone_plan_approved' | 'milestone_field_start' | 'milestone_field_done' | 'milestone_analysis_done' | 'milestone_report_due' | 'milestone_closure_due' | 'milestone_custom') | null;
+    /**
+     * Preparation
+     */
+    preparation?: string;
+    /**
+     * Primary Action Href
+     */
+    primary_action_href?: string | null;
+    /**
+     * Primary Action Label
+     */
+    primary_action_label?: string;
+    /**
+     * Process Name
+     */
+    process_name?: string;
+    /**
+     * Starts At
+     */
+    starts_at?: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Timezone
+     */
+    timezone?: string;
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
+ * ScheduleMeetingCreate
+ */
+export type ScheduleMeetingCreate = {
+    /**
+     * Duration Minutes
+     */
+    duration_minutes?: number;
+    /**
+     * Kind
+     */
+    kind: 'opening_meeting' | 'closing_meeting' | 'additional_meeting';
+    /**
+     * Location Or Link
+     */
+    location_or_link?: string;
+    /**
+     * Objective
+     */
+    objective?: string;
+    /**
+     * Outside Period Justification
+     */
+    outside_period_justification?: string;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Participant Membership Ids
+     */
+    participant_membership_ids?: Array<string>;
+    /**
+     * Preparation
+     */
+    preparation?: string;
+    /**
+     * Starts At
+     */
+    starts_at: string;
+    /**
+     * Timezone
+     */
+    timezone?: string | null;
+    /**
+     * Title
+     */
+    title?: string | null;
+};
+
+/**
+ * ScheduleMeetingUpdate
+ */
+export type ScheduleMeetingUpdate = {
+    /**
+     * Duration Minutes
+     */
+    duration_minutes?: number | null;
+    /**
+     * Location Or Link
+     */
+    location_or_link?: string | null;
+    /**
+     * Objective
+     */
+    objective?: string | null;
+    /**
+     * Outside Period Justification
+     */
+    outside_period_justification?: string | null;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Participant Membership Ids
+     */
+    participant_membership_ids?: Array<string> | null;
+    /**
+     * Preparation
+     */
+    preparation?: string | null;
+    /**
+     * Starts At
+     */
+    starts_at?: string | null;
+    /**
+     * Status
+     */
+    status?: ('scheduled' | 'completed' | 'cancelled') | null;
+    /**
+     * Timezone
+     */
+    timezone?: string | null;
+    /**
+     * Title
+     */
+    title?: string | null;
+};
+
+/**
+ * ScheduleMilestoneCreate
+ */
+export type ScheduleMilestoneCreate = {
+    /**
+     * Kind
+     */
+    kind: 'milestone_preparation_done' | 'milestone_plan_approved' | 'milestone_field_start' | 'milestone_field_done' | 'milestone_analysis_done' | 'milestone_report_due' | 'milestone_closure_due' | 'milestone_custom';
+    /**
+     * Notes
+     */
+    notes?: string;
+    /**
+     * Occurs At
+     */
+    occurs_at: string;
+    /**
+     * Outside Period Justification
+     */
+    outside_period_justification?: string;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Timezone
+     */
+    timezone?: string | null;
+    /**
+     * Title
+     */
+    title?: string | null;
+};
+
+/**
+ * ScheduleMilestoneUpdate
+ */
+export type ScheduleMilestoneUpdate = {
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Occurs At
+     */
+    occurs_at?: string | null;
+    /**
+     * Outside Period Justification
+     */
+    outside_period_justification?: string | null;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Status
+     */
+    status?: ('scheduled' | 'completed' | 'cancelled') | null;
+    /**
+     * Timezone
+     */
+    timezone?: string | null;
+    /**
+     * Title
+     */
+    title?: string | null;
+};
+
+/**
+ * SchedulePending
+ */
+export type SchedulePending = {
+    /**
+     * Blocking
+     */
+    blocking?: boolean;
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Label
+     */
+    label: string;
 };
 
 /**
@@ -4998,6 +5514,404 @@ export type RefreshAuditPlanFromPreparationResponses = {
 
 export type RefreshAuditPlanFromPreparationResponse = RefreshAuditPlanFromPreparationResponses[keyof RefreshAuditPlanFromPreparationResponses];
 
+export type GetAuditPlanScheduleData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan/schedule';
+};
+
+export type GetAuditPlanScheduleErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetAuditPlanScheduleError = GetAuditPlanScheduleErrors[keyof GetAuditPlanScheduleErrors];
+
+export type GetAuditPlanScheduleResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuditPlanScheduleOut;
+};
+
+export type GetAuditPlanScheduleResponse = GetAuditPlanScheduleResponses[keyof GetAuditPlanScheduleResponses];
+
+export type CreateAuditPlanMeetingData = {
+    body: ScheduleMeetingCreate;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan/schedule/meetings';
+};
+
+export type CreateAuditPlanMeetingErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type CreateAuditPlanMeetingError = CreateAuditPlanMeetingErrors[keyof CreateAuditPlanMeetingErrors];
+
+export type CreateAuditPlanMeetingResponses = {
+    /**
+     * Successful Response
+     */
+    201: AuditPlanScheduleOut;
+};
+
+export type CreateAuditPlanMeetingResponse = CreateAuditPlanMeetingResponses[keyof CreateAuditPlanMeetingResponses];
+
+export type UpdateAuditPlanMeetingData = {
+    body: ScheduleMeetingUpdate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+        /**
+         * Event Id
+         */
+        event_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan/schedule/meetings/{event_id}';
+};
+
+export type UpdateAuditPlanMeetingErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type UpdateAuditPlanMeetingError = UpdateAuditPlanMeetingErrors[keyof UpdateAuditPlanMeetingErrors];
+
+export type UpdateAuditPlanMeetingResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuditPlanScheduleOut;
+};
+
+export type UpdateAuditPlanMeetingResponse = UpdateAuditPlanMeetingResponses[keyof UpdateAuditPlanMeetingResponses];
+
+export type CreateAuditPlanMilestoneData = {
+    body: ScheduleMilestoneCreate;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan/schedule/milestones';
+};
+
+export type CreateAuditPlanMilestoneErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type CreateAuditPlanMilestoneError = CreateAuditPlanMilestoneErrors[keyof CreateAuditPlanMilestoneErrors];
+
+export type CreateAuditPlanMilestoneResponses = {
+    /**
+     * Successful Response
+     */
+    201: AuditPlanScheduleOut;
+};
+
+export type CreateAuditPlanMilestoneResponse = CreateAuditPlanMilestoneResponses[keyof CreateAuditPlanMilestoneResponses];
+
+export type UpdateAuditPlanMilestoneData = {
+    body: ScheduleMilestoneUpdate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+        /**
+         * Event Id
+         */
+        event_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan/schedule/milestones/{event_id}';
+};
+
+export type UpdateAuditPlanMilestoneErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type UpdateAuditPlanMilestoneError = UpdateAuditPlanMilestoneErrors[keyof UpdateAuditPlanMilestoneErrors];
+
+export type UpdateAuditPlanMilestoneResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuditPlanScheduleOut;
+};
+
+export type UpdateAuditPlanMilestoneResponse = UpdateAuditPlanMilestoneResponses[keyof UpdateAuditPlanMilestoneResponses];
+
 export type ListAssessmentEvidencesData = {
     body?: never;
     headers?: {
@@ -5952,6 +6866,11 @@ export type ListAssessmentInterviewsResponse = ListAssessmentInterviewsResponses
 export type CreateInterviewData = {
     body: InterviewCreate;
     headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
         /**
          * X-Organization-Id
          */
@@ -9329,6 +10248,87 @@ export type GetInterviewResponses = {
 
 export type GetInterviewResponse = GetInterviewResponses[keyof GetInterviewResponses];
 
+export type UpdateInterviewData = {
+    body: InterviewUpdate;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Interview Id
+         */
+        interview_id: string;
+    };
+    query?: never;
+    url: '/api/v1/interviews/{interview_id}';
+};
+
+export type UpdateInterviewErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type UpdateInterviewError = UpdateInterviewErrors[keyof UpdateInterviewErrors];
+
+export type UpdateInterviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: InterviewOut;
+};
+
+export type UpdateInterviewResponse = UpdateInterviewResponses[keyof UpdateInterviewResponses];
+
 export type ListInterviewAnswersData = {
     body?: never;
     headers?: {
@@ -9633,6 +10633,158 @@ export type CompleteInterviewResponses = {
 };
 
 export type CompleteInterviewResponse = CompleteInterviewResponses[keyof CompleteInterviewResponses];
+
+export type ConfirmInterviewData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Interview Id
+         */
+        interview_id: string;
+    };
+    query?: never;
+    url: '/api/v1/interviews/{interview_id}/confirm';
+};
+
+export type ConfirmInterviewErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ConfirmInterviewError = ConfirmInterviewErrors[keyof ConfirmInterviewErrors];
+
+export type ConfirmInterviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: InterviewTransitionResult;
+};
+
+export type ConfirmInterviewResponse = ConfirmInterviewResponses[keyof ConfirmInterviewResponses];
+
+export type StartInterviewData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Interview Id
+         */
+        interview_id: string;
+    };
+    query?: never;
+    url: '/api/v1/interviews/{interview_id}/start';
+};
+
+export type StartInterviewErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type StartInterviewError = StartInterviewErrors[keyof StartInterviewErrors];
+
+export type StartInterviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: InterviewTransitionResult;
+};
+
+export type StartInterviewResponse = StartInterviewResponses[keyof StartInterviewResponses];
 
 export type GetJobData = {
     body?: never;

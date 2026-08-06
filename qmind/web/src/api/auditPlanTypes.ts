@@ -27,6 +27,7 @@ export type AuditPlanProcess = {
   owner: string;
   notes: string;
   from_preparation: boolean;
+  interview_justification?: string;
 };
 
 export type OrgRepresentative = {

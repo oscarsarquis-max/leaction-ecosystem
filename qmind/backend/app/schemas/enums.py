@@ -59,6 +59,8 @@ class EvidenceClassification(str, Enum):
 
 class InterviewStatus(str, Enum):
     planned = "planned"
+    confirmed = "confirmed"
+    in_progress = "in_progress"
     completed = "completed"
     cancelled = "cancelled"
 

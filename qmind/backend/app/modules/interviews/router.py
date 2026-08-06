@@ -15,9 +15,10 @@ from app.modules.interviews.schemas import (
     InterviewCreate,
     InterviewOut,
     InterviewTransitionResult,
+    InterviewUpdate,
     QuestionOut,
 )
-from app.schemas.common import ERROR_RESPONSES
+from app.schemas.common import ERROR_RESPONSES, IdempotencyKeyHeader
 
 router = APIRouter(tags=["Interviews"])
 
@@ -46,6 +47,7 @@ def create_interview(
     assessment_id: UUID,
     payload: InterviewCreate,
     ctx: OrgContextDep,
+    _idempotency_key: IdempotencyKeyHeader = None,
 ) -> InterviewOut:
     return service.create_interview(ctx, assessment_id, payload)
 
@@ -71,6 +73,45 @@ def list_interviews(
 )
 def get_interview(interview_id: UUID, ctx: OrgContextDep) -> InterviewOut:
     return service.get_interview(ctx, interview_id)
+
+
+@router.patch(
+    "/interviews/{interview_id}",
+    response_model=InterviewOut,
+    operation_id="updateInterview",
+    responses={404: ERROR_RESPONSES[404], 409: ERROR_RESPONSES[409]},
+)
+def update_interview(
+    interview_id: UUID,
+    payload: InterviewUpdate,
+    ctx: OrgContextDep,
+    _idempotency_key: IdempotencyKeyHeader = None,
+) -> InterviewOut:
+    return service.update_interview(ctx, interview_id, payload)
+
+
+@router.post(
+    "/interviews/{interview_id}/confirm",
+    response_model=InterviewTransitionResult,
+    operation_id="confirmInterview",
+    responses={404: ERROR_RESPONSES[404], 409: ERROR_RESPONSES[409]},
+)
+def confirm_interview(
+    interview_id: UUID, ctx: OrgContextDep
+) -> InterviewTransitionResult:
+    return service.confirm_interview(ctx, interview_id)
+
+
+@router.post(
+    "/interviews/{interview_id}/start",
+    response_model=InterviewTransitionResult,
+    operation_id="startInterview",
+    responses={404: ERROR_RESPONSES[404], 409: ERROR_RESPONSES[409]},
+)
+def start_interview(
+    interview_id: UUID, ctx: OrgContextDep
+) -> InterviewTransitionResult:
+    return service.start_interview(ctx, interview_id)
 
 
 @router.post(

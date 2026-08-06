@@ -97,16 +97,15 @@ def test_create_derived_from_wizard_and_manual_preserved(client: TestClient):
     assert refreshed.json()["objective"] == "Objetivo revisado pela equipe"
 
 
-def test_mark_ready_validation_and_success(client: TestClient):
-    _h0, _org, h, model_id, sv_id, req_id = _org_ctx(client)
-    aid = _create_draft_with_scope(client, h, model_id, sv_id, req_id)
-    _seed_guided(client, h, aid)
-    plan = client.get(f"/api/v1/assessments/{aid}/audit-plan", headers=h).json()
-    assess = client.get(f"/api/v1/assessments/{aid}", headers=h).json()
-
-    bad = client.post(f"/api/v1/assessments/{aid}/audit-plan/ready", headers=h)
-    assert bad.status_code == 422, bad.text
-
+def _complete_plan_for_ready(client: TestClient, h: dict, aid: str, plan: dict, assess: dict) -> dict:
+    """Fill plan + opening/closing meetings + process justifications (no artificial interviews)."""
+    processes = plan.get("processes") or [
+        {"name": "Produção", "owner": "", "notes": "", "from_preparation": False}
+    ]
+    for p in processes:
+        p["interview_justification"] = p.get("interview_justification") or (
+            "Cobertura por observação documental neste ciclo"
+        )
     body = {
         "objective": "Avaliar SGQ da planta",
         "scope_text": plan["scope_text"] or "Escopo completo",
@@ -117,21 +116,46 @@ def test_mark_ready_validation_and_success(client: TestClient):
             "legal_contractual_text": "",
             "additional_text": "",
         },
-        "processes": plan["processes"] or [{"name": "Produção", "owner": "", "notes": "", "from_preparation": False}],
+        "processes": processes,
         "lead_membership_id": assess["lead_membership_id"],
         "planned_start": "2026-09-01",
         "planned_end": "2026-09-05",
         "expected_updated_at": plan["updated_at"],
     }
-    patched = client.patch(
-        f"/api/v1/assessments/{aid}/audit-plan", json=body, headers=h
-    )
+    patched = client.patch(f"/api/v1/assessments/{aid}/audit-plan", json=body, headers=h)
     assert patched.status_code == 200, patched.text
-    assert patched.json()["readiness"]["ready"] is True
+    for kind, day in (("opening_meeting", "2026-09-01T13:00:00Z"), ("closing_meeting", "2026-09-05T17:00:00Z")):
+        m = client.post(
+            f"/api/v1/assessments/{aid}/audit-plan/schedule/meetings",
+            json={
+                "kind": kind,
+                "objective": f"Objetivo {kind}",
+                "starts_at": day,
+                "duration_minutes": 60,
+                "owner_membership_id": assess["lead_membership_id"],
+            },
+            headers=h,
+        )
+        assert m.status_code == 201, m.text
+    plan2 = client.get(f"/api/v1/assessments/{aid}/audit-plan", headers=h).json()
+    assert plan2["readiness"]["ready"] is True, plan2["readiness"]
+    return plan2
 
+
+def test_mark_ready_validation_and_success(client: TestClient):
+    _h0, _org, h, model_id, sv_id, req_id = _org_ctx(client)
+    aid = _create_draft_with_scope(client, h, model_id, sv_id, req_id)
+    _seed_guided(client, h, aid)
+    plan = client.get(f"/api/v1/assessments/{aid}/audit-plan", headers=h).json()
+    assess = client.get(f"/api/v1/assessments/{aid}", headers=h).json()
+
+    bad = client.post(f"/api/v1/assessments/{aid}/audit-plan/ready", headers=h)
+    assert bad.status_code == 422, bad.text
+
+    plan2 = _complete_plan_for_ready(client, h, aid, plan, assess)
     ready = client.post(
         f"/api/v1/assessments/{aid}/audit-plan/ready",
-        json={"expected_updated_at": patched.json()["updated_at"]},
+        json={"expected_updated_at": plan2["updated_at"]},
         headers=h,
     )
     assert ready.status_code == 200, ready.text
@@ -176,24 +200,11 @@ def test_planned_ready_requires_amendment_reason(client: TestClient):
     _seed_guided(client, h, aid)
     plan = client.get(f"/api/v1/assessments/{aid}/audit-plan", headers=h).json()
     assess = client.get(f"/api/v1/assessments/{aid}", headers=h).json()
-    patched = client.patch(
-        f"/api/v1/assessments/{aid}/audit-plan",
-        json={
-            "objective": "Obj",
-            "scope_text": "Escopo",
-            "processes": [{"name": "P1", "owner": "", "notes": "", "from_preparation": False}],
-            "lead_membership_id": assess["lead_membership_id"],
-            "planned_start": "2026-10-01",
-            "planned_end": "2026-10-03",
-            "expected_updated_at": plan["updated_at"],
-        },
-        headers=h,
-    )
-    assert patched.status_code == 200
+    plan2 = _complete_plan_for_ready(client, h, aid, plan, assess)
     assert (
         client.post(
             f"/api/v1/assessments/{aid}/audit-plan/ready",
-            json={"expected_updated_at": patched.json()["updated_at"]},
+            json={"expected_updated_at": plan2["updated_at"]},
             headers=h,
         ).status_code
         == 200

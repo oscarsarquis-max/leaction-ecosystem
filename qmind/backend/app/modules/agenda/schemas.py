@@ -12,6 +12,21 @@ EventType = Literal[
 EventStatus = Literal["scheduled", "completed", "cancelled"]
 
 
+PlanActivityKind = Literal[
+    "opening_meeting",
+    "closing_meeting",
+    "additional_meeting",
+    "milestone_preparation_done",
+    "milestone_plan_approved",
+    "milestone_field_start",
+    "milestone_field_done",
+    "milestone_analysis_done",
+    "milestone_report_due",
+    "milestone_closure_due",
+    "milestone_custom",
+]
+
+
 class AgendaEventCreate(BaseModel):
     assessment_id: UUID | None = None
     title: str = Field(min_length=1, max_length=200)
@@ -25,6 +40,7 @@ class AgendaEventCreate(BaseModel):
     location_or_link: str = Field(default="", max_length=500)
     guidance: str = Field(default="", max_length=2000)
     related_action: str = Field(default="", max_length=200)
+    plan_activity_kind: PlanActivityKind | None = None
 
 
 class AgendaEventUpdate(BaseModel):
@@ -41,6 +57,7 @@ class AgendaEventUpdate(BaseModel):
     guidance: str | None = Field(default=None, max_length=2000)
     related_action: str | None = Field(default=None, max_length=200)
     status: EventStatus | None = None
+    plan_activity_kind: PlanActivityKind | None = None
 
 
 class AgendaEventOut(BaseModel):
@@ -64,6 +81,7 @@ class AgendaEventOut(BaseModel):
     source_kind: str | None = None
     source_id: UUID | None = None
     is_auto: bool
+    plan_activity_kind: PlanActivityKind | None = None
     is_overdue: bool = False
     primary_action_label: str
     primary_action_href: str | None = None

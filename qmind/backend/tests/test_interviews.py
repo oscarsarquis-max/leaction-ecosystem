@@ -149,17 +149,31 @@ def test_interview_answer_and_phase_lock(client: TestClient):
     assert late_patch.status_code == 409
 
 
-def test_interview_blocked_before_start(client: TestClient):
+def test_interview_planning_allowed_before_start_answers_blocked(client: TestClient):
     _headers, _org, h, model_id, sv_id, req_id = _org_ctx(client)
     aid = _create_draft_with_scope(client, h, model_id, sv_id, req_id)
     assert client.post(f"/api/v1/assessments/{aid}/transitions/plan", headers=h).status_code == 200
     r = client.post(
         f"/api/v1/assessments/{aid}/interviews",
-        json={"mode": "remote"},
+        json={
+            "mode": "remote",
+            "title": "Entrevista planejada",
+            "scheduled_at": "2026-09-02T14:00:00Z",
+            "duration_minutes": 45,
+        },
         headers=h,
     )
-    assert r.status_code == 409
-    assert r.json()["code"] == "interview_phase_closed"
+    assert r.status_code == 201, r.text
+    iid = r.json()["id"]
+    assert r.json()["agenda_event_id"] is not None
+    # Answers still require assessment in_progress
+    ans = client.post(
+        f"/api/v1/interviews/{iid}/answers",
+        json={"body": "too early"},
+        headers=h,
+    )
+    assert ans.status_code == 409
+    assert ans.json()["code"] == "interview_phase_closed"
 
 
 def test_interview_isolated_between_orgs(client: TestClient):

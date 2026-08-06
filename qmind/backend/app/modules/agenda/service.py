@@ -96,7 +96,12 @@ def _action_for(event_type: str, status: str, assessment_id: UUID | None, source
     if status == "completed":
         return "Ver detalhes", f"/assessments/{assessment_id}" if assessment_id else "/assessments"
     if event_type == "interview" and source_kind == "interview" and source_id and assessment_id:
-        return "Iniciar entrevista", f"/assessments/{assessment_id}/work"
+        return (
+            "Iniciar entrevista",
+            f"/assessments/{assessment_id}/audit-plan?startInterview={source_id}",
+        )
+    if event_type == "meeting" and assessment_id:
+        return "Ver no plano", f"/assessments/{assessment_id}/audit-plan"
     if event_type == "deadline" and assessment_id:
         return "Revisar pendência", f"/assessments/{assessment_id}/work"
     if event_type == "milestone" and assessment_id:
@@ -206,6 +211,7 @@ def _row_to_out(
         source_kind=row.source_kind,
         source_id=row.source_id,
         is_auto=bool(row.is_auto),
+        plan_activity_kind=getattr(row, "plan_activity_kind", None),
         is_overdue=overdue,
         primary_action_label=action_label if not overdue else f"{action_label} (atrasado)",
         primary_action_href=href,
@@ -232,7 +238,11 @@ def _upsert_auto(
     owner_membership_id: UUID | None,
     guidance: str,
     related_action: str,
-) -> None:
+    status: str = "scheduled",
+    participant_membership_ids: list[UUID] | None = None,
+    location_or_link: str = "",
+    force_status: bool = False,
+) -> UUID | None:
     existing = conn.execute(
         text(
             """
@@ -245,6 +255,7 @@ def _upsert_auto(
         ),
         {"org": ctx.organization_id, "sk": source_kind, "sid": source_id},
     ).first()
+    parts = participant_membership_ids or []
     params = {
         "org": ctx.organization_id,
         "aid": assessment_id,
@@ -255,34 +266,42 @@ def _upsert_auto(
         "ends": ends_at,
         "tz": timezone_name,
         "owner": owner_membership_id,
+        "parts": parts,
+        "loc": location_or_link or "",
         "guidance": guidance,
         "raction": related_action,
         "sk": source_kind,
         "sid": source_id,
+        "status": status,
         "uid": ctx.principal.user_id,
     }
     if existing is None:
-        conn.execute(
+        row = conn.execute(
             text(
                 """
                 INSERT INTO agenda_events (
                   organization_id, assessment_id, title, description, event_type,
-                  starts_at, ends_at, timezone, owner_membership_id, status,
+                  starts_at, ends_at, timezone, owner_membership_id,
+                  participant_membership_ids, location_or_link, status,
                   guidance, related_action, source_kind, source_id, is_auto,
                   created_by_user_id, updated_by_user_id
                 ) VALUES (
                   :org, :aid, :title, :desc, :etype,
-                  :starts, :ends, :tz, :owner, 'scheduled',
+                  :starts, :ends, :tz, :owner,
+                  :parts, :loc, :status,
                   :guidance, :raction, :sk, :sid, true,
                   :uid, :uid
                 )
+                RETURNING id
                 """
             ),
             params,
-        )
-        return
-    if existing.status != "scheduled":
-        return
+        ).one()
+        return row.id
+    # Never silently delete — cancel/complete via status. Structural refresh only
+    # while scheduled, unless force_status (interview cancel/complete sync).
+    if existing.status != "scheduled" and not force_status:
+        return existing.id
     conn.execute(
         text(
             """
@@ -293,14 +312,117 @@ def _upsert_auto(
               ends_at = :ends,
               assessment_id = :aid,
               owner_membership_id = :owner,
+              participant_membership_ids = :parts,
+              location_or_link = :loc,
               guidance = :guidance,
               related_action = :raction,
+              status = CASE
+                WHEN :force THEN :status
+                ELSE status
+              END,
               updated_at = now(),
               updated_by_user_id = :uid
             WHERE id = :id AND organization_id = :org
             """
         ),
-        {**params, "id": existing.id},
+        {**params, "id": existing.id, "force": force_status},
+    )
+    return existing.id
+
+
+def _interview_agenda_status(interview_status: str) -> str:
+    if interview_status == "completed":
+        return "completed"
+    if interview_status == "cancelled":
+        return "cancelled"
+    return "scheduled"
+
+
+def sync_interview_agenda_event(
+    conn: Connection,
+    ctx: OrgContext,
+    interview_row,
+    *,
+    timezone_name: str | None = None,
+) -> UUID | None:
+    """Idempotent Interview → AgendaEvent projection (source_kind=interview)."""
+    starts = interview_row.scheduled_at or interview_row.conducted_at
+    if starts is None:
+        # No reliable datetime yet — cancel prior auto event if any (keep row).
+        existing = conn.execute(
+            text(
+                """
+                SELECT id, status FROM agenda_events
+                WHERE organization_id = :org
+                  AND is_auto = true
+                  AND source_kind = 'interview'
+                  AND source_id = :sid
+                """
+            ),
+            {"org": ctx.organization_id, "sid": interview_row.id},
+        ).first()
+        if existing and existing.status == "scheduled":
+            conn.execute(
+                text(
+                    """
+                    UPDATE agenda_events
+                    SET status = 'cancelled', updated_at = now(),
+                        updated_by_user_id = :uid
+                    WHERE id = :id AND organization_id = :org
+                    """
+                ),
+                {
+                    "id": existing.id,
+                    "org": ctx.organization_id,
+                    "uid": ctx.principal.user_id,
+                },
+            )
+            return existing.id
+        return existing.id if existing else None
+
+    tz_name = timezone_name or _org_timezone(conn, ctx.organization_id)
+    duration = interview_row.duration_minutes or 60
+    ends = starts + timedelta(minutes=int(duration))
+    title = (getattr(interview_row, "title", None) or "").strip() or "Entrevista da avaliação"
+    loc_parts = [
+        (getattr(interview_row, "location", None) or "").strip(),
+        (getattr(interview_row, "remote_link", None) or "").strip(),
+    ]
+    location = " | ".join(p for p in loc_parts if p)
+    prep = (getattr(interview_row, "preparation", None) or "").strip()
+    objective = (getattr(interview_row, "objective", None) or "").strip()
+    process = (getattr(interview_row, "process_name", None) or "").strip()
+    desc_bits = [f"Situação: {interview_row.status}"]
+    if process:
+        desc_bits.insert(0, f"Processo: {process}")
+    if interview_row.mode:
+        desc_bits.append(f"Modo: {interview_row.mode}")
+    why, default_prep, what = _guidance_pack("interview", title)
+    owner = (
+        getattr(interview_row, "interviewer_membership_id", None)
+        or getattr(interview_row, "lead_membership_id", None)
+    )
+    participants = list(getattr(interview_row, "participant_membership_ids", None) or [])
+    agenda_status = _interview_agenda_status(interview_row.status)
+    return _upsert_auto(
+        conn,
+        ctx,
+        source_kind="interview",
+        source_id=interview_row.id,
+        assessment_id=interview_row.assessment_id,
+        title=title[:200],
+        description="; ".join(desc_bits),
+        event_type="interview",
+        starts_at=starts,
+        ends_at=ends,
+        timezone_name=tz_name,
+        owner_membership_id=owner,
+        guidance=f"{what} {(prep or default_prep)} {objective}".strip(),
+        related_action="start_interview",
+        status=agenda_status,
+        participant_membership_ids=participants,
+        location_or_link=location[:500],
+        force_status=True,
     )
 
 
@@ -315,35 +437,25 @@ def sync_auto_events(ctx: OrgContext, *, require_mutate: bool = True) -> int:
         interviews = conn.execute(
             text(
                 """
-                SELECT i.id, i.assessment_id, i.conducted_at, i.status, i.mode,
+                SELECT i.id, i.assessment_id, i.conducted_at, i.scheduled_at,
+                       i.status, i.mode, i.title, i.objective, i.process_name,
+                       i.interviewer_membership_id, i.participant_membership_ids,
+                       i.duration_minutes, i.location, i.remote_link, i.preparation,
                        a.lead_membership_id
                 FROM interviews i
                 JOIN assessments a ON a.id = i.assessment_id
                 WHERE i.organization_id = :org
-                  AND i.conducted_at IS NOT NULL
-                  AND i.status IN ('planned', 'completed')
+                  AND (
+                    i.scheduled_at IS NOT NULL
+                    OR i.conducted_at IS NOT NULL
+                    OR i.status IN ('cancelled', 'completed')
+                  )
                 """
             ),
             {"org": ctx.organization_id},
         ).all()
         for i in interviews:
-            why, prep, what = _guidance_pack("interview", "Entrevista da avaliação")
-            _upsert_auto(
-                conn,
-                ctx,
-                source_kind="interview",
-                source_id=i.id,
-                assessment_id=i.assessment_id,
-                title="Entrevista da avaliação",
-                description=f"Modo: {i.mode}. Situação: {i.status}.",
-                event_type="interview",
-                starts_at=i.conducted_at,
-                ends_at=i.conducted_at + timedelta(hours=1) if i.conducted_at else None,
-                timezone_name=tz_name,
-                owner_membership_id=i.lead_membership_id,
-                guidance=f"{what} {prep}",
-                related_action="complete_interview",
-            )
+            sync_interview_agenda_event(conn, ctx, i, timezone_name=tz_name)
             n += 1
 
         actions = conn.execute(
@@ -692,13 +804,13 @@ def create_event(ctx: OrgContext, payload: AgendaEventCreate) -> AgendaEventOut:
                   organization_id, assessment_id, title, description, event_type,
                   starts_at, ends_at, timezone, owner_membership_id,
                   participant_membership_ids, location_or_link, status,
-                  guidance, related_action, is_auto,
+                  guidance, related_action, plan_activity_kind, is_auto,
                   created_by_user_id, updated_by_user_id
                 ) VALUES (
                   :org, :aid, :title, :desc, :etype,
                   :starts, :ends, :tz, :owner,
                   :parts, :loc, 'scheduled',
-                  :guidance, :raction, false,
+                  :guidance, :raction, :pak, false,
                   :uid, :uid
                 )
                 RETURNING *
@@ -718,6 +830,7 @@ def create_event(ctx: OrgContext, payload: AgendaEventCreate) -> AgendaEventOut:
                 "loc": payload.location_or_link or "",
                 "guidance": payload.guidance or "",
                 "raction": payload.related_action or "",
+                "pak": payload.plan_activity_kind,
                 "uid": ctx.principal.user_id,
             },
         ).one()
@@ -730,7 +843,10 @@ def create_event(ctx: OrgContext, payload: AgendaEventCreate) -> AgendaEventOut:
             action="agenda.event.create",
             resource_type="agenda_event",
             resource_id=row.id,
-            metadata={"event_type": payload.event_type},
+            metadata={
+                "event_type": payload.event_type,
+                "plan_activity_kind": payload.plan_activity_kind,
+            },
         )
         conn.commit()
         tz_name = _org_timezone(conn, ctx.organization_id)
@@ -813,6 +929,11 @@ def update_event(ctx: OrgContext, event_id: UUID, payload: AgendaEventUpdate) ->
                 payload.assessment_id if payload.assessment_id is not None else cur.assessment_id
             ),
             "status": payload.status if payload.status is not None else cur.status,
+            "plan_activity_kind": (
+                payload.plan_activity_kind
+                if payload.plan_activity_kind is not None
+                else getattr(cur, "plan_activity_kind", None)
+            ),
         }
 
         row = conn.execute(
@@ -832,6 +953,7 @@ def update_event(ctx: OrgContext, event_id: UUID, payload: AgendaEventUpdate) ->
                   related_action = :related_action,
                   assessment_id = :assessment_id,
                   status = :status,
+                  plan_activity_kind = :plan_activity_kind,
                   updated_at = now(),
                   updated_by_user_id = :uid
                 WHERE id = :id AND organization_id = :org
