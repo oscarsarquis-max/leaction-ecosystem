@@ -121,7 +121,7 @@ export function useAuditDashboard(assessmentId: string | undefined) {
     const withEvidenceOrLater = answers.filter(
       (x) =>
         x.provide_later ||
-        (x.evidence_ids?.length ?? 0) > 0 ||
+        (x.evidence_links?.length ?? x.evidence_ids?.length ?? 0) > 0 ||
         !!x.evidence_note?.trim() ||
         x.evidence_mode === "describe" ||
         x.evidence_mode === "attach" ||

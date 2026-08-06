@@ -100,6 +100,57 @@ export async function upsertGuidedAnswer(
   });
 }
 
+function answerBase(assessmentId: string, questionId: string): string {
+  return `/api/v1/assessments/${assessmentId}/guided/answers/${encodeURIComponent(questionId)}`;
+}
+
+export async function linkGuidedAnswerEvidence(
+  assessmentId: string,
+  questionId: string,
+  evidenceId: string,
+): Promise<GuidedSession> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.raw.post({
+      url: `${answerBase(assessmentId, questionId)}/evidences/link`,
+      body: { evidence_id: evidenceId },
+      headers: { "Content-Type": "application/json" },
+      security: [{ scheme: "bearer", type: "http" }],
+    });
+    return asSession(res.data);
+  });
+}
+
+export async function unlinkGuidedAnswerEvidence(
+  assessmentId: string,
+  questionId: string,
+  evidenceId: string,
+): Promise<GuidedSession> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.raw.delete({
+      url: `${answerBase(assessmentId, questionId)}/evidences/${evidenceId}`,
+      security: [{ scheme: "bearer", type: "http" }],
+    });
+    return asSession(res.data);
+  });
+}
+
+export async function completeGuidedAnswerEvidenceLink(
+  assessmentId: string,
+  questionId: string,
+  evidenceId: string,
+): Promise<GuidedSession> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.raw.post({
+      url: `${answerBase(assessmentId, questionId)}/evidences/${evidenceId}/complete`,
+      security: [{ scheme: "bearer", type: "http" }],
+    });
+    return asSession(res.data);
+  });
+}
+
 export function isGuidedApiError(err: unknown): err is QmindApiError {
   return err instanceof QmindApiError;
 }

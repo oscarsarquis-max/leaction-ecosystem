@@ -1078,6 +1078,10 @@ export type GuidedAnswerOut = {
      */
     evidence_ids?: Array<string>;
     /**
+     * Evidence Links
+     */
+    evidence_links?: Array<GuidedEvidenceLinkOut>;
+    /**
      * Evidence Mode
      */
     evidence_mode?: 'none' | 'attach' | 'link_existing' | 'describe' | 'provide_later';
@@ -1085,6 +1089,10 @@ export type GuidedAnswerOut = {
      * Evidence Note
      */
     evidence_note?: string;
+    /**
+     * Id
+     */
+    id?: string | null;
     /**
      * Na Justification
      */
@@ -1163,6 +1171,132 @@ export type GuidedContextPatch = {
      * Current Step
      */
     current_step?: ('organization' | 'qms_scope' | 'products_services' | 'sites' | 'processes' | 'stakeholders' | 'route' | 'review') | null;
+};
+
+/**
+ * GuidedEvidenceLinkCreate
+ */
+export type GuidedEvidenceLinkCreate = {
+    /**
+     * Evidence Id
+     */
+    evidence_id: string;
+};
+
+/**
+ * GuidedEvidenceLinkOut
+ */
+export type GuidedEvidenceLinkOut = {
+    /**
+     * Assessment Id
+     */
+    assessment_id: string;
+    /**
+     * Byte Size
+     */
+    byte_size?: number | null;
+    /**
+     * Content Type
+     */
+    content_type?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by?: string | null;
+    /**
+     * Evidence Id
+     */
+    evidence_id: string;
+    /**
+     * Evidence Status
+     */
+    evidence_status?: string | null;
+    /**
+     * Evidence Updated At
+     */
+    evidence_updated_at?: string | null;
+    /**
+     * File Name
+     */
+    file_name?: string | null;
+    /**
+     * Guided Answer Id
+     */
+    guided_answer_id: string;
+    /**
+     * Guided Session Id
+     */
+    guided_session_id: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Link Type
+     */
+    link_type: 'attach' | 'link_existing';
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Question Id
+     */
+    question_id: string;
+    /**
+     * Question Version
+     */
+    question_version: string;
+    /**
+     * Situation
+     */
+    situation?: string;
+};
+
+/**
+ * GuidedEvidenceStatusOut
+ */
+export type GuidedEvidenceStatusOut = {
+    /**
+     * Approved
+     */
+    approved?: number;
+    /**
+     * Awaiting Upload
+     */
+    awaiting_upload?: number;
+    /**
+     * Links
+     */
+    links?: Array<GuidedEvidenceLinkOut>;
+    /**
+     * Processing
+     */
+    processing?: number;
+    /**
+     * Promised Later
+     */
+    promised_later?: number;
+    /**
+     * Provide Later
+     */
+    provide_later?: boolean;
+    /**
+     * Question Id
+     */
+    question_id: string;
+    /**
+     * Rejected
+     */
+    rejected?: number;
+    /**
+     * Related
+     */
+    related?: number;
 };
 
 /**
@@ -4490,6 +4624,495 @@ export type UpsertGuidedAnswerResponses = {
 };
 
 export type UpsertGuidedAnswerResponse = UpsertGuidedAnswerResponses[keyof UpsertGuidedAnswerResponses];
+
+export type ListGuidedAnswerEvidencesData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+        /**
+         * Question Id
+         */
+        question_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/guided/answers/{question_id}/evidences';
+};
+
+export type ListGuidedAnswerEvidencesErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ListGuidedAnswerEvidencesError = ListGuidedAnswerEvidencesErrors[keyof ListGuidedAnswerEvidencesErrors];
+
+export type ListGuidedAnswerEvidencesResponses = {
+    /**
+     * Response Listguidedanswerevidences
+     * Successful Response
+     */
+    200: Array<GuidedEvidenceLinkOut>;
+};
+
+export type ListGuidedAnswerEvidencesResponse = ListGuidedAnswerEvidencesResponses[keyof ListGuidedAnswerEvidencesResponses];
+
+export type AuthorizeGuidedAnswerEvidenceUploadData = {
+    body: AuthorizeUploadIn;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+        /**
+         * Question Id
+         */
+        question_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/guided/answers/{question_id}/evidences/authorize';
+};
+
+export type AuthorizeGuidedAnswerEvidenceUploadErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type AuthorizeGuidedAnswerEvidenceUploadError = AuthorizeGuidedAnswerEvidenceUploadErrors[keyof AuthorizeGuidedAnswerEvidenceUploadErrors];
+
+export type AuthorizeGuidedAnswerEvidenceUploadResponses = {
+    /**
+     * Successful Response
+     */
+    201: AuthorizeUploadOut;
+};
+
+export type AuthorizeGuidedAnswerEvidenceUploadResponse = AuthorizeGuidedAnswerEvidenceUploadResponses[keyof AuthorizeGuidedAnswerEvidenceUploadResponses];
+
+export type LinkGuidedAnswerEvidenceData = {
+    body: GuidedEvidenceLinkCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+        /**
+         * Question Id
+         */
+        question_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/guided/answers/{question_id}/evidences/link';
+};
+
+export type LinkGuidedAnswerEvidenceErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type LinkGuidedAnswerEvidenceError = LinkGuidedAnswerEvidenceErrors[keyof LinkGuidedAnswerEvidenceErrors];
+
+export type LinkGuidedAnswerEvidenceResponses = {
+    /**
+     * Successful Response
+     */
+    200: GuidedSessionOut;
+};
+
+export type LinkGuidedAnswerEvidenceResponse = LinkGuidedAnswerEvidenceResponses[keyof LinkGuidedAnswerEvidenceResponses];
+
+export type GetGuidedAnswerEvidenceStatusData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+        /**
+         * Question Id
+         */
+        question_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/guided/answers/{question_id}/evidences/status';
+};
+
+export type GetGuidedAnswerEvidenceStatusErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetGuidedAnswerEvidenceStatusError = GetGuidedAnswerEvidenceStatusErrors[keyof GetGuidedAnswerEvidenceStatusErrors];
+
+export type GetGuidedAnswerEvidenceStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: GuidedEvidenceStatusOut;
+};
+
+export type GetGuidedAnswerEvidenceStatusResponse = GetGuidedAnswerEvidenceStatusResponses[keyof GetGuidedAnswerEvidenceStatusResponses];
+
+export type UnlinkGuidedAnswerEvidenceData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+        /**
+         * Question Id
+         */
+        question_id: string;
+        /**
+         * Evidence Id
+         */
+        evidence_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/guided/answers/{question_id}/evidences/{evidence_id}';
+};
+
+export type UnlinkGuidedAnswerEvidenceErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type UnlinkGuidedAnswerEvidenceError = UnlinkGuidedAnswerEvidenceErrors[keyof UnlinkGuidedAnswerEvidenceErrors];
+
+export type UnlinkGuidedAnswerEvidenceResponses = {
+    /**
+     * Successful Response
+     */
+    200: GuidedSessionOut;
+};
+
+export type UnlinkGuidedAnswerEvidenceResponse = UnlinkGuidedAnswerEvidenceResponses[keyof UnlinkGuidedAnswerEvidenceResponses];
+
+export type CompleteGuidedAnswerEvidenceLinkData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+        /**
+         * Question Id
+         */
+        question_id: string;
+        /**
+         * Evidence Id
+         */
+        evidence_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/guided/answers/{question_id}/evidences/{evidence_id}/complete';
+};
+
+export type CompleteGuidedAnswerEvidenceLinkErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type CompleteGuidedAnswerEvidenceLinkError = CompleteGuidedAnswerEvidenceLinkErrors[keyof CompleteGuidedAnswerEvidenceLinkErrors];
+
+export type CompleteGuidedAnswerEvidenceLinkResponses = {
+    /**
+     * Successful Response
+     */
+    200: GuidedSessionOut;
+};
+
+export type CompleteGuidedAnswerEvidenceLinkResponse = CompleteGuidedAnswerEvidenceLinkResponses[keyof CompleteGuidedAnswerEvidenceLinkResponses];
 
 export type PatchGuidedPositionData = {
     body: GuidedPositionPatch;

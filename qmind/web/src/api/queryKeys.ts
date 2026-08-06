@@ -44,6 +44,21 @@ export const queryKeys = {
     ["guided", "catalog", version ?? "default"] as const,
   guidedSession: (organizationId: string, assessmentId: string) =>
     ["org", organizationId, "assessment", assessmentId, "guided"] as const,
+  guidedAnswerEvidences: (
+    organizationId: string,
+    assessmentId: string,
+    questionId: string,
+  ) =>
+    [
+      "org",
+      organizationId,
+      "assessment",
+      assessmentId,
+      "guided",
+      "answer",
+      questionId,
+      "evidences",
+    ] as const,
   agendaBoard: (organizationId: string, selectedDate: string) =>
     ["org", organizationId, "agenda", selectedDate] as const,
   health: ["health"] as const,

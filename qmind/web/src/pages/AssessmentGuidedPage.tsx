@@ -29,7 +29,10 @@ import { useAuditDashboard } from "@/hooks/useAuditDashboard";
 import {
   useGuidedCatalog,
   useGuidedSession,
+  useLinkGuidedEvidence,
   usePatchGuidedSession,
+  useRefreshGuidedSession,
+  useUnlinkGuidedEvidence,
   useUpsertGuidedAnswer,
 } from "@/hooks/useGuidedAssessment";
 import { labelAssessmentType } from "@/lib/labels";
@@ -62,6 +65,9 @@ export function AssessmentGuidedPage() {
   const perms = useAssessmentPermissions(assessment.data?.status);
   const patch = usePatchGuidedSession(assessmentId ?? "");
   const upsert = useUpsertGuidedAnswer(assessmentId ?? "");
+  const linkEv = useLinkGuidedEvidence(assessmentId ?? "");
+  const unlinkEv = useUnlinkGuidedEvidence(assessmentId ?? "");
+  const refreshGuided = useRefreshGuidedSession(assessmentId ?? "");
 
   const [localContext, setLocalContext] = useState<GuidedContext | null>(null);
   const [step, setStep] = useState<GuidedStep>("organization");
@@ -214,11 +220,12 @@ export function AssessmentGuidedPage() {
     }
   }
 
-  async function saveAnswer(body: GuidedAnswerUpsert) {
-    if (!currentQuestion || !assessmentId) return;
+  async function saveAnswer(body: GuidedAnswerUpsert, questionId?: string) {
+    const qid = questionId ?? currentQuestion?.id;
+    if (!qid || !assessmentId) return;
     setSaveState("saving");
     try {
-      await upsert.mutateAsync({ questionId: currentQuestion.id, body });
+      await upsert.mutateAsync({ questionId: qid, body });
       setSaveState("saved");
     } catch {
       setSaveState("error");
@@ -477,6 +484,19 @@ export function AssessmentGuidedPage() {
                   saving={upsert.isPending}
                   saveState={saveState}
                   onSave={saveAnswer}
+                  onRefresh={refreshGuided}
+                  onLinkEvidence={async (evidenceId) => {
+                    await linkEv.mutateAsync({
+                      questionId: currentQuestion.id,
+                      evidenceId,
+                    });
+                  }}
+                  onUnlinkEvidence={async (evidenceId) => {
+                    await unlinkEv.mutateAsync({
+                      questionId: currentQuestion.id,
+                      evidenceId,
+                    });
+                  }}
                 />
               ) : null}
 
@@ -501,11 +521,69 @@ export function AssessmentGuidedPage() {
               questions={questions}
               clauseGroups={catalog.data?.clause_groups}
               assessmentId={assessmentId}
+              readOnly={readOnly}
               onGoToClause={(major) => {
                 setStep("route");
                 enterClause(major, false);
               }}
+              onGoToQuestion={(questionId) => {
+                const idx = questions.findIndex((q) => q.id === questionId);
+                if (idx < 0) return;
+                setStep("route");
+                setQuestionIdx(idx);
+                setRoutePhase("question");
+                void goToStep("route", questionId);
+              }}
               onReviewPending={goToFirstPending}
+              onRefresh={refreshGuided}
+              onProvideLater={async (questionId) => {
+                const q = questions.find((x) => x.id === questionId);
+                const a = answerMap.get(questionId);
+                if (!q) return;
+                await saveAnswer(
+                  {
+                    question_version: q.version,
+                    answer_value: a?.answer_value ?? null,
+                    description: a?.description ?? "",
+                    na_justification: a?.na_justification ?? "",
+                    evidence_mode: "provide_later",
+                    evidence_ids:
+                      a?.evidence_links?.map((l) => l.evidence_id) ??
+                      a?.evidence_ids ??
+                      [],
+                    evidence_note: a?.evidence_note ?? "",
+                    provide_later: true,
+                  },
+                  questionId,
+                );
+              }}
+              onDescribe={async (questionId, note) => {
+                const q = questions.find((x) => x.id === questionId);
+                const a = answerMap.get(questionId);
+                if (!q) return;
+                await saveAnswer(
+                  {
+                    question_version: q.version,
+                    answer_value: a?.answer_value ?? null,
+                    description: a?.description ?? "",
+                    na_justification: a?.na_justification ?? "",
+                    evidence_mode: "describe",
+                    evidence_ids:
+                      a?.evidence_links?.map((l) => l.evidence_id) ??
+                      a?.evidence_ids ??
+                      [],
+                    evidence_note: note,
+                    provide_later: false,
+                  },
+                  questionId,
+                );
+              }}
+              onLinkEvidence={async (questionId, evidenceId) => {
+                await linkEv.mutateAsync({ questionId, evidenceId });
+              }}
+              onUnlinkEvidence={async (questionId, evidenceId) => {
+                await unlinkEv.mutateAsync({ questionId, evidenceId });
+              }}
             />
           ) : null}
 

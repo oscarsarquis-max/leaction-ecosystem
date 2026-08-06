@@ -42,6 +42,10 @@ export type NarrativeItem = {
   naJustification: string;
   evidenceNote: string;
   evidenceCount: number;
+  evidenceAwaitingUpload?: number;
+  evidenceProcessing?: number;
+  evidenceApproved?: number;
+  evidenceRejected?: number;
   provideLater: boolean;
 };
 
@@ -96,8 +100,15 @@ export type FinalReviewModel = {
   applicableCount: number;
   evidenceAvailableCount: number;
   evidencePendingCount: number;
+  evidenceRelatedCount: number;
+  evidenceAwaitingUploadCount: number;
+  evidenceProcessingCount: number;
+  evidenceApprovedCount: number;
+  evidenceRejectedCount: number;
+  evidencePromisedLaterCount: number;
   unknownCount: number;
   deepeningThemes: NarrativeItem[];
+  pendingEvidenceItems: NarrativeItem[];
   nextSteps: string[];
   clauses: ClauseNarrative[];
 };
@@ -299,12 +310,41 @@ function businessName(major: string, clauseGroups?: GuidedClauseGroup[]): string
   );
 }
 
+function linkedEvidenceCount(answer: GuidedAnswer | undefined): number {
+  if (answer?.evidence_links?.length) return answer.evidence_links.length;
+  return answer?.evidence_ids?.length ?? 0;
+}
+
+function evidenceBuckets(answer: GuidedAnswer | undefined) {
+  const links = answer?.evidence_links ?? [];
+  let awaitingUpload = 0;
+  let processing = 0;
+  let approved = 0;
+  let rejected = 0;
+  for (const link of links) {
+    const s = link.evidence_status;
+    if (s === "upload_pending") awaitingUpload += 1;
+    else if (s === "approved") approved += 1;
+    else if (s === "rejected") rejected += 1;
+    else if (s) processing += 1;
+  }
+  return {
+    related: linkedEvidenceCount(answer),
+    awaitingUpload,
+    processing,
+    approved,
+    rejected,
+    promisedLater: answer?.provide_later ? 1 : 0,
+  };
+}
+
 function tagsFor(answer: GuidedAnswer | undefined): NeutralTag[] {
   const tags: NeutralTag[] = [];
   const v = answer?.answer_value ?? null;
+  const linked = linkedEvidenceCount(answer);
   if (v === "yes") {
     tags.push("Prática informada");
-    if ((answer?.evidence_ids?.length ?? 0) > 0 || answer?.evidence_note?.trim()) {
+    if (linked > 0 || answer?.evidence_note?.trim()) {
       tags.push("Ponto consistente");
     }
   }
@@ -313,11 +353,10 @@ function tagsFor(answer: GuidedAnswer | undefined): NeutralTag[] {
   if (v === "partial" || v === "unknown" || v === "no") {
     tags.push("Revisão do consultor");
   }
-  const hasLinked = (answer?.evidence_ids?.length ?? 0) > 0;
   const hasDescribed = !!answer?.evidence_note?.trim();
   if (
     answer?.provide_later ||
-    ((v === "yes" || v === "partial") && !hasLinked && !hasDescribed)
+    ((v === "yes" || v === "partial") && linked === 0 && !hasDescribed)
   ) {
     tags.push("Evidência pendente");
   }
@@ -325,6 +364,7 @@ function tagsFor(answer: GuidedAnswer | undefined): NeutralTag[] {
 }
 
 function toItem(q: GuidedQuestion, a: GuidedAnswer | undefined): NarrativeItem {
+  const buckets = evidenceBuckets(a);
   return {
     questionId: q.id,
     theme: q.theme,
@@ -334,7 +374,11 @@ function toItem(q: GuidedQuestion, a: GuidedAnswer | undefined): NarrativeItem {
     description: a?.description?.trim() ?? "",
     naJustification: a?.na_justification?.trim() ?? "",
     evidenceNote: a?.evidence_note?.trim() ?? "",
-    evidenceCount: a?.evidence_ids?.length ?? 0,
+    evidenceCount: buckets.related,
+    evidenceAwaitingUpload: buckets.awaitingUpload,
+    evidenceProcessing: buckets.processing,
+    evidenceApproved: buckets.approved,
+    evidenceRejected: buckets.rejected,
     provideLater: !!a?.provide_later,
   };
 }
@@ -526,11 +570,15 @@ export function buildFinalReview(
       i.provideLater,
   );
 
+  const pendingEvidenceItems = answeredItems.filter(
+    (i) => i.provideLater || i.tags.includes("Evidência pendente"),
+  );
+
   const nextSteps: string[] = [];
   if (answeredCount < applicableCount) {
     nextSteps.push("Revisar pendências do roteiro nas etapas ainda incompletas.");
   }
-  if (answeredItems.some((i) => i.provideLater || i.tags.includes("Evidência pendente"))) {
+  if (pendingEvidenceItems.length > 0) {
     nextSteps.push("Anexar ou descrever as evidências marcadas para depois.");
   }
   if (deepeningThemes.length > 0) {
@@ -544,6 +592,25 @@ export function buildFinalReview(
   nextSteps.push(
     "Este resumo organiza o que foi informado; qualquer conclusão sobre conformidade fica para revisão humana.",
   );
+
+  const related = answeredItems.reduce((n, i) => n + i.evidenceCount, 0);
+  const awaiting = answeredItems.reduce(
+    (n, i) => n + (i.evidenceAwaitingUpload ?? 0),
+    0,
+  );
+  const processing = answeredItems.reduce(
+    (n, i) => n + (i.evidenceProcessing ?? 0),
+    0,
+  );
+  const approved = answeredItems.reduce(
+    (n, i) => n + (i.evidenceApproved ?? 0),
+    0,
+  );
+  const rejected = answeredItems.reduce(
+    (n, i) => n + (i.evidenceRejected ?? 0),
+    0,
+  );
+  const promised = answeredItems.filter((i) => i.provideLater).length;
 
   return {
     profileLines: [
@@ -571,11 +638,16 @@ export function buildFinalReview(
     evidenceAvailableCount: answeredItems.filter(
       (i) => i.evidenceCount > 0 || !!i.evidenceNote,
     ).length,
-    evidencePendingCount: answeredItems.filter(
-      (i) => i.provideLater || i.tags.includes("Evidência pendente"),
-    ).length,
+    evidencePendingCount: pendingEvidenceItems.length,
+    evidenceRelatedCount: related,
+    evidenceAwaitingUploadCount: awaiting,
+    evidenceProcessingCount: processing,
+    evidenceApprovedCount: approved,
+    evidenceRejectedCount: rejected,
+    evidencePromisedLaterCount: promised,
     unknownCount: answeredItems.filter((i) => i.answerValue === "unknown").length,
     deepeningThemes,
+    pendingEvidenceItems,
     nextSteps,
     clauses,
   };

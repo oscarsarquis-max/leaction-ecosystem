@@ -2,11 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOrganization } from "@/org/OrganizationProvider";
 import { queryKeys } from "@/api/queryKeys";
 import {
+  completeGuidedAnswerEvidenceLink,
   fetchGuidedCatalog,
   getOrCreateGuidedSession,
   isGuidedApiError,
+  linkGuidedAnswerEvidence,
   patchGuidedPosition,
   patchGuidedSession,
+  unlinkGuidedAnswerEvidence,
   upsertGuidedAnswer,
 } from "@/api/guidedApi";
 import type {
@@ -82,18 +85,69 @@ export function usePatchGuidedPosition(assessmentId: string) {
   });
 }
 
-export function useUpsertGuidedAnswer(assessmentId: string) {
+function useSetGuidedSession(assessmentId: string) {
   const { currentOrganizationId } = useOrganization();
   const qc = useQueryClient();
+  return (data: unknown) => {
+    if (!currentOrganizationId) return;
+    qc.setQueryData(
+      queryKeys.guidedSession(currentOrganizationId, assessmentId),
+      data,
+    );
+  };
+}
+
+export function useUpsertGuidedAnswer(assessmentId: string) {
+  const setSession = useSetGuidedSession(assessmentId);
   return useMutation({
     mutationFn: (args: { questionId: string; body: GuidedAnswerUpsert }) =>
       upsertGuidedAnswer(assessmentId, args.questionId, args.body),
-    onSuccess: (data) => {
-      if (!currentOrganizationId) return;
-      qc.setQueryData(
-        queryKeys.guidedSession(currentOrganizationId, assessmentId),
-        data,
-      );
-    },
+    onSuccess: setSession,
   });
+}
+
+export function useLinkGuidedEvidence(assessmentId: string) {
+  const setSession = useSetGuidedSession(assessmentId);
+  return useMutation({
+    mutationFn: (args: { questionId: string; evidenceId: string }) =>
+      linkGuidedAnswerEvidence(assessmentId, args.questionId, args.evidenceId),
+    onSuccess: setSession,
+  });
+}
+
+export function useUnlinkGuidedEvidence(assessmentId: string) {
+  const setSession = useSetGuidedSession(assessmentId);
+  return useMutation({
+    mutationFn: (args: { questionId: string; evidenceId: string }) =>
+      unlinkGuidedAnswerEvidence(
+        assessmentId,
+        args.questionId,
+        args.evidenceId,
+      ),
+    onSuccess: setSession,
+  });
+}
+
+export function useCompleteGuidedEvidence(assessmentId: string) {
+  const setSession = useSetGuidedSession(assessmentId);
+  return useMutation({
+    mutationFn: (args: { questionId: string; evidenceId: string }) =>
+      completeGuidedAnswerEvidenceLink(
+        assessmentId,
+        args.questionId,
+        args.evidenceId,
+      ),
+    onSuccess: setSession,
+  });
+}
+
+export function useRefreshGuidedSession(assessmentId: string) {
+  const { currentOrganizationId } = useOrganization();
+  const qc = useQueryClient();
+  return async () => {
+    if (!currentOrganizationId) return;
+    await qc.invalidateQueries({
+      queryKey: queryKeys.guidedSession(currentOrganizationId, assessmentId),
+    });
+  };
 }

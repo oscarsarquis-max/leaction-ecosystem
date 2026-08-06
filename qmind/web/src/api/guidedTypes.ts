@@ -22,14 +22,39 @@ export type EvidenceMode =
   | "describe"
   | "provide_later";
 
+export type GuidedEvidenceLinkType = "attach" | "link_existing";
+
+export type GuidedEvidenceLink = {
+  id: string;
+  organization_id: string;
+  guided_session_id: string;
+  guided_answer_id: string;
+  assessment_id: string;
+  question_id: string;
+  question_version: string;
+  evidence_id: string;
+  link_type: GuidedEvidenceLinkType;
+  created_by?: string | null;
+  created_at: string;
+  evidence_status?: string | null;
+  situation?: string;
+  content_type?: string | null;
+  byte_size?: number | null;
+  file_name?: string | null;
+  evidence_updated_at?: string | null;
+};
+
 export type GuidedAnswer = {
+  id?: string | null;
   question_id: string;
   question_version: string;
   answer_value: AnswerValue | null;
   description: string;
   na_justification: string;
   evidence_mode: EvidenceMode;
+  /** Mirror legado — fonte principal: evidence_links. */
   evidence_ids: string[];
+  evidence_links?: GuidedEvidenceLink[];
   evidence_note: string;
   provide_later: boolean;
   updated_at?: string | null;

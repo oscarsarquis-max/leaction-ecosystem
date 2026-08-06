@@ -122,6 +122,8 @@ export async function uploadEvidenceFile(options: {
   assessmentId: string;
   file: File;
   link?: EvidenceLinkTarget;
+  /** When set, authorize via guided question context and complete typed link after receive. */
+  guidedQuestionId?: string;
   onPhase?: (phase: EvidenceUploadPhase) => void;
 }): Promise<EvidenceUploadResult> {
   const validationError = validateEvidenceFile(options.file);
@@ -142,19 +144,34 @@ export async function uploadEvidenceFile(options: {
 
   try {
     onPhase("authorizing");
-    const auth = await client.api.authorizeEvidenceUpload({
-      body: {
-        assessment_id: options.assessmentId,
-        content_type: options.file.type,
-        declared_byte_size: options.file.size,
-        classification: "confidential",
-      },
-      headers: { "Idempotency-Key": newIdempotencyKey("ev-auth") },
-    });
+    const authBody = {
+      assessment_id: options.assessmentId,
+      content_type: options.file.type,
+      declared_byte_size: options.file.size,
+      classification: "confidential" as const,
+    };
+    const auth = options.guidedQuestionId
+      ? await client.raw.post({
+          url: `/api/v1/assessments/${options.assessmentId}/guided/answers/${encodeURIComponent(options.guidedQuestionId)}/evidences/authorize`,
+          body: authBody,
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": newIdempotencyKey("ev-guided-auth"),
+          },
+          security: [{ scheme: "bearer", type: "http" }],
+        })
+      : await client.api.authorizeEvidenceUpload({
+          body: authBody,
+          headers: { "Idempotency-Key": newIdempotencyKey("ev-auth") },
+        });
     assertTenantFresh(gen, orgId);
 
-    const evidence = auth.data!.evidence;
-    const upload = auth.data!.upload;
+    const authData = auth.data as {
+      evidence: { id: string };
+      upload: { url: string; method: string; headers: Record<string, string> };
+    };
+    const evidence = authData.evidence;
+    const upload = authData.upload;
     // Ephemeral — do not assign upload.url to React state / storage.
     const uploadUrl = upload.url;
     const uploadMethod = upload.method;
@@ -178,7 +195,13 @@ export async function uploadEvidenceFile(options: {
     assertTenantFresh(gen, orgId);
     const status = received.data!.evidence.status;
 
-    if (options.link) {
+    if (options.guidedQuestionId) {
+      await client.raw.post({
+        url: `/api/v1/assessments/${options.assessmentId}/guided/answers/${encodeURIComponent(options.guidedQuestionId)}/evidences/${evidence.id}/complete`,
+        security: [{ scheme: "bearer", type: "http" }],
+      });
+      assertTenantFresh(gen, orgId);
+    } else if (options.link) {
       await client.api.createEvidenceLink({
         path: { evidence_id: evidence.id },
         body: {

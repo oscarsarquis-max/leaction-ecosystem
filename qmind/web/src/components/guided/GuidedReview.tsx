@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import type { GuidedClauseGroup, GuidedQuestion, GuidedSession } from "@/api/guidedTypes";
+import type { GuidedAnswer, GuidedClauseGroup, GuidedQuestion, GuidedSession } from "@/api/guidedTypes";
+import { GuidedEvidencePanel } from "@/components/guided/GuidedEvidencePanel";
 import {
   buildFinalReview,
   type NarrativeItem,
@@ -10,8 +11,15 @@ type Props = {
   questions: GuidedQuestion[];
   clauseGroups?: GuidedClauseGroup[];
   assessmentId: string;
+  readOnly?: boolean;
   onGoToClause: (major: string) => void;
+  onGoToQuestion: (questionId: string) => void;
   onReviewPending: () => void;
+  onRefresh: () => Promise<void>;
+  onProvideLater: (questionId: string) => Promise<void>;
+  onDescribe: (questionId: string, note: string) => Promise<void>;
+  onLinkEvidence: (questionId: string, evidenceId: string) => Promise<void>;
+  onUnlinkEvidence: (questionId: string, evidenceId: string) => Promise<void>;
 };
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -80,10 +88,18 @@ export function GuidedReview({
   questions,
   clauseGroups,
   assessmentId,
+  readOnly,
   onGoToClause,
+  onGoToQuestion,
   onReviewPending,
+  onRefresh,
+  onProvideLater,
+  onDescribe,
+  onLinkEvidence,
+  onUnlinkEvidence,
 }: Props) {
   const model = buildFinalReview(session, questions, clauseGroups);
+  const answerById = new Map(session.answers.map((a) => [a.question_id, a]));
 
   return (
     <div className="space-y-8" data-testid="guided-review">
@@ -153,13 +169,14 @@ export function GuidedReview({
         {[
           ["Respondidas", model.answeredCount],
           ["Aplicáveis", model.applicableCount],
-          ["Evidências disponíveis", model.evidenceAvailableCount],
-          ["Evidências pendentes", model.evidencePendingCount],
+          ["Evidências relacionadas", model.evidenceRelatedCount],
+          ["Aguardando envio", model.evidenceAwaitingUploadCount],
+          ["Em processamento", model.evidenceProcessingCount],
+          ["Aprovadas", model.evidenceApprovedCount],
+          ["Rejeitadas", model.evidenceRejectedCount],
+          ["Prometidas para depois", model.evidencePromisedLaterCount],
           ["Pontos desconhecidos", model.unknownCount],
-          [
-            "Temas para aprofundar",
-            model.deepeningThemes.length,
-          ],
+          ["Temas para aprofundar", model.deepeningThemes.length],
         ].map(([label, value]) => (
           <div
             key={String(label)}
@@ -169,6 +186,66 @@ export function GuidedReview({
             <p className="text-[11px] text-[var(--qm-muted)]">{label}</p>
           </div>
         ))}
+      </section>
+
+      <section
+        className="space-y-4"
+        data-testid="guided-pending-evidences"
+      >
+        <div>
+          <h3 className="font-display text-xl text-[var(--qm-ink)]">
+            Evidências pendentes
+          </h3>
+          <p className="mt-1 text-sm text-[var(--qm-muted)]">
+            Anexar ou vincular aqui atualiza o resumo da pergunta, da cláusula e
+            desta revisão. Ter arquivo não significa conformidade automática.
+          </p>
+        </div>
+        {model.pendingEvidenceItems.length === 0 ? (
+          <p className="text-sm text-[var(--qm-muted)]">
+            Nenhuma evidência pendente neste momento.
+          </p>
+        ) : (
+          <ul className="space-y-6">
+            {model.pendingEvidenceItems.map((item) => {
+              const answer: GuidedAnswer | undefined = answerById.get(
+                item.questionId,
+              );
+              return (
+                <li
+                  key={item.questionId}
+                  className="rounded-md border border-[var(--qm-line)] px-3 py-3"
+                  data-testid={`pending-evidence-${item.questionId}`}
+                >
+                  <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-[var(--qm-ink)]">{item.theme}</p>
+                      <p className="text-sm text-[var(--qm-muted)]">{item.question}</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-[var(--qm-accent)] hover:underline"
+                      onClick={() => onGoToQuestion(item.questionId)}
+                    >
+                      Abrir pergunta
+                    </button>
+                  </div>
+                  <GuidedEvidencePanel
+                    assessmentId={assessmentId}
+                    questionId={item.questionId}
+                    answer={answer}
+                    readOnly={readOnly}
+                    onRefresh={onRefresh}
+                    onProvideLater={() => onProvideLater(item.questionId)}
+                    onDescribe={(note) => onDescribe(item.questionId, note)}
+                    onLinkExisting={(eid) => onLinkEvidence(item.questionId, eid)}
+                    onUnlink={(eid) => onUnlinkEvidence(item.questionId, eid)}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       <ThemeList
@@ -213,10 +290,6 @@ export function GuidedReview({
             Concluir preparação e seguir para execução em campo
           </Link>
         </div>
-        <p className="text-xs text-[var(--qm-muted)]">
-          Para adicionar evidência, volte à pergunta correspondente no roteiro.
-          O progresso permanece salvo automaticamente.
-        </p>
       </section>
     </div>
   );

@@ -24,6 +24,12 @@ from app.modules.guided.schemas import (
 )
 from app.modules.orgs.service import require_role
 
+
+def _evidence_links_mod():
+    from app.modules.guided import evidence_links as mod
+
+    return mod
+
 _MUTATE_ROLES = ("org_admin", "consultant_auditor", "quality_manager")
 _READ_ROLES = _MUTATE_ROLES + ("process_owner", "reader")
 _EDITABLE_ASSESSMENT = frozenset({"draft", "planned", "in_progress"})
@@ -62,7 +68,7 @@ def _answers(conn, org_id: UUID, session_id: UUID) -> list[GuidedAnswerOut]:
     rows = conn.execute(
         text(
             """
-            SELECT question_id, question_version, answer_value, description,
+            SELECT id, question_id, question_version, answer_value, description,
                    na_justification, evidence_mode, evidence_ids, evidence_note,
                    provide_later, updated_at
             FROM guided_answers
@@ -72,17 +78,25 @@ def _answers(conn, org_id: UUID, session_id: UUID) -> list[GuidedAnswerOut]:
         ),
         {"sid": session_id, "org": org_id},
     ).all()
+    el = _evidence_links_mod()
+    by_answer = el.list_links_for_session(conn, org_id, session_id)
+    el.log_legacy_inconsistencies(conn, org_id, session_id)
     out: list[GuidedAnswerOut] = []
     for r in rows:
+        links = by_answer.get(r.id, [])
+        # Typed links are the primary source; legacy array kept as mirror.
+        evidence_ids = [lnk.evidence_id for lnk in links] or list(r.evidence_ids or [])
         out.append(
             GuidedAnswerOut(
+                id=r.id,
                 question_id=r.question_id,
                 question_version=r.question_version,
                 answer_value=r.answer_value,
                 description=r.description or "",
                 na_justification=r.na_justification or "",
                 evidence_mode=r.evidence_mode or "none",
-                evidence_ids=list(r.evidence_ids or []),
+                evidence_ids=evidence_ids,
+                evidence_links=links,
                 evidence_note=r.evidence_note or "",
                 provide_later=bool(r.provide_later),
                 updated_at=r.updated_at,
@@ -352,7 +366,7 @@ def upsert_answer(
                 status_code=422,
             )
 
-        conn.execute(
+        answer_row = conn.execute(
             text(
                 """
                 INSERT INTO guided_answers (
@@ -374,6 +388,7 @@ def upsert_answer(
                   evidence_note = EXCLUDED.evidence_note,
                   provide_later = EXCLUDED.provide_later,
                   updated_at = now()
+                RETURNING id, question_version
                 """
             ),
             {
@@ -391,7 +406,22 @@ def upsert_answer(
                 "enote": payload.evidence_note or "",
                 "later": bool(payload.provide_later),
             },
+        ).one()
+
+        link_type = "attach" if payload.evidence_mode == "attach" else "link_existing"
+        _evidence_links_mod().sync_links_from_evidence_ids(
+            conn,
+            org_id=ctx.organization_id,
+            session_id=session.id,
+            assessment_id=assessment_id,
+            answer_id=answer_row.id,
+            question_id=question_id,
+            question_version=answer_row.question_version,
+            evidence_ids=list(payload.evidence_ids or []),
+            created_by=ctx.principal.user_id,
+            link_type=link_type,
         )
+
         # Advance position to this question when answering in route
         row = conn.execute(
             text(
