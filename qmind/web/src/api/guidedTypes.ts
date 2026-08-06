@@ -142,12 +142,12 @@ export const GUIDED_STEPS: { id: GuidedStep; label: string; hint: string }[] = [
   {
     id: "route",
     label: "Roteiro orientado",
-    hint: "Perguntas guiadas sobre contexto e liderança",
+    hint: "Perguntas guiadas nas cláusulas 4–10, em linguagem de negócio",
   },
   {
     id: "review",
     label: "Revisão",
-    hint: "Resumo do que foi registrado",
+    hint: "Resumo consultivo do que foi informado e próximos passos",
   },
 ];
 

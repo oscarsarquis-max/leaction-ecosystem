@@ -21,10 +21,15 @@ router = APIRouter(tags=["guided"])
 @router.get(
     "/guided/catalog",
     operation_id="getGuidedCatalog",
-    summary="Catálogo versionado do roteiro guiado (cláusulas 4–5)",
+    summary="Catálogo versionado do roteiro guiado (cláusulas 4–10)",
+    responses={404: ERROR_RESPONSES[404]},
 )
-def get_catalog(_principal: PrincipalDep) -> dict[str, Any]:
-    return service.get_catalog()
+def get_catalog(
+    _principal: PrincipalDep,
+    version: str | None = None,
+) -> dict[str, Any]:
+    """Sem `version`, devolve o catálogo padrão (mais recente)."""
+    return service.get_catalog(version)
 
 
 @router.get(

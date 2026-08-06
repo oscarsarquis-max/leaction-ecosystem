@@ -20,11 +20,14 @@ function asSession(data: unknown): GuidedSession {
   };
 }
 
-export async function fetchGuidedCatalog(): Promise<GuidedCatalog> {
+export async function fetchGuidedCatalog(
+  version?: string | null,
+): Promise<GuidedCatalog> {
   const client = getQmindClient();
   return withTenantGeneration(async () => {
     const res = await client.raw.get({
       url: "/api/v1/guided/catalog",
+      query: version ? { version } : {},
       security: [{ scheme: "bearer", type: "http" }],
     });
     return res.data as GuidedCatalog;

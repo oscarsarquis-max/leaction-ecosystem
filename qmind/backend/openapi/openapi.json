@@ -20589,8 +20589,25 @@
     },
     "/api/v1/guided/catalog": {
       "get": {
+        "description": "Sem `version`, devolve o catálogo padrão (mais recente).",
         "operationId": "getGuidedCatalog",
         "parameters": [
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",
@@ -20712,11 +20729,6 @@
           "404": {
             "content": {
               "application/json": {
-                "example": {
-                  "code": "not_found",
-                  "correlation_id": "11111111-2222-4333-8444-555555555555",
-                  "message": "Resource not found"
-                },
                 "schema": {
                   "$ref": "#/components/schemas/ErrorBody"
                 }
@@ -20785,7 +20797,7 @@
             "BearerAuth": []
           }
         ],
-        "summary": "Catálogo versionado do roteiro guiado (cláusulas 4–5)",
+        "summary": "Catálogo versionado do roteiro guiado (cláusulas 4–10)",
         "tags": [
           "guided"
         ]

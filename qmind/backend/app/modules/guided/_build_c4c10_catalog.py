@@ -42,6 +42,10 @@ def when_answer(qid: str, values: list[str]) -> dict:
     return {"answer": qid, "in": values}
 
 
+def when_context_not_empty(path: str) -> dict:
+    return {"context": path, "not_empty": True}
+
+
 NEW: list[dict] = [
     # —— 6 Planejamento ——
     q(
@@ -91,6 +95,36 @@ NEW: list[dict] = [
         ["Checklist de mudança", "Comunicado e treinamento na mudança"],
         ["Registro de mudança planejada", "Evidência de comunicação"],
     ),
+    q(
+        "c6-rsk-03",
+        "Riscos e oportunidades",
+        "6.1",
+        "A empresa revisita riscos e oportunidades quando o contexto muda (novo cliente, novo produto, crise, sazonalidade)?",
+        "Lista estática perde valor. Revisar nos momentos certos evita surpresa operacional.",
+        ["Revisão de riscos na mudança de portfólio", "Pauta fixa de riscos na reunião mensal"],
+        ["Histórico de revisões de risco", "Ata que registra inclusão/baixa de riscos"],
+        when_answer("c6-rsk-01", YES_PARTIAL),
+    ),
+    q(
+        "c6-obj-03",
+        "Objetivos da qualidade",
+        "6.2",
+        "Os objetivos de qualidade são comunicados às pessoas que precisam agir sobre eles?",
+        "Objetivo só na direção não move o chão de fábrica nem o atendimento.",
+        ["Desdobramento de metas por área", "Quadro ou painel visível ao time"],
+        ["Comunicado de metas", "Evidência de alinhamento com equipes"],
+        when_answer("c6-obj-01", YES_PARTIAL),
+    ),
+    q(
+        "c6-chg-02",
+        "Mudanças no sistema",
+        "6.3",
+        "Antes de mudar algo relevante, a empresa avalia impacto em cliente, processos, pessoas e riscos?",
+        "Mudança sem leitura de impacto costuma gerar retrabalho e reclamação.",
+        ["Análise simples de impacto", "Go/no-go com responsáveis do processo"],
+        ["Registro de análise de impacto", "Aprovação da mudança"],
+        when_answer("c6-chg-01", YES_PARTIAL),
+    ),
     # —— 7 Apoio ——
     q(
         "c7-res-01",
@@ -136,6 +170,54 @@ NEW: list[dict] = [
         "O essencial é achar a versão correta na hora certa — e não perder o histórico relevante.",
         ["Controle de documentos e registros", "Pastas ou sistema com versão vigente"],
         ["Lista mestra de documentos", "Exemplos de registros controlados"],
+    ),
+    q(
+        "c7-msr-01",
+        "Medição e calibração",
+        "7.1",
+        "A operação depende de medições ou instrumentos de verificação para decidir se o produto/serviço está ok?",
+        "Pergunta-porta: só faz sentido falar de calibração quando a qualidade depende de medir.",
+        ["Balança, paquímetro, manômetro, sensores", "Checklist com critérios numéricos"],
+        ["Lista de pontos de medição críticos", "Descrição do que é medido na operação"],
+    ),
+    q(
+        "c7-res-02",
+        "Medição e calibração",
+        "7.1",
+        "Esses equipamentos de medição ou verificação estão adequados e confiáveis para a decisão que suportam?",
+        "Medir errado é pior do que não medir: a decisão parece fundamentada, mas não está.",
+        ["Calibração ou verificação periódica", "Critério claro de o que medir e com o quê"],
+        ["Certificados ou registros de verificação", "Lista de instrumentos críticos"],
+        when_answer("c7-msr-01", YES_PARTIAL),
+    ),
+    q(
+        "c7-cmp-02",
+        "Competência",
+        "7.2",
+        "Quando alguém assume função crítica sem a competência completa, há supervisão, treino ou restrição temporária?",
+        "Colocar pessoa nova em posto crítico sem rede de proteção é risco previsível.",
+        ["Período de capacitação com acompanhante", "Liberação formal para operar sozinho"],
+        ["Registro de liberação de função", "Plano de treino on-the-job"],
+        when_answer("c7-cmp-01", YES_PARTIAL),
+    ),
+    q(
+        "c7-knw-01",
+        "Conhecimento da organização",
+        "7.1",
+        "O conhecimento crítico do negócio (como fazer certo o que o cliente valoriza) está acessível — não só na cabeça de poucas pessoas?",
+        "Conhecimento preso em poucas pessoas vira risco de continuidade e de qualidade.",
+        ["Procedimentos vivos ou playbooks", "Handover e lições aprendidas"],
+        ["Base de conhecimento / procedimentos", "Registro de lições aprendidas"],
+    ),
+    q(
+        "c7-doc-02",
+        "Informação documentada",
+        "7.5",
+        "Quando um documento muda, a versão antiga deixa de ser usada no dia a dia?",
+        "Versão velha na bancada é uma das causas clássicas de erro repetido.",
+        ["Retirada ou marca d'água de obsoleto", "Aviso de nova versão aos usuários"],
+        ["Controle de versão com histórico", "Evidência de comunicação da mudança"],
+        when_answer("c7-doc-01", YES_PARTIAL),
     ),
     # —— 8 Operação ——
     q(
@@ -221,6 +303,53 @@ NEW: list[dict] = [
         ["Segregação e decisão sobre o item", "Registro de não conformidade operacional"],
         ["Registros de NC / retrabalho / descarte", "Autorizações de concessão"],
     ),
+    q(
+        "c8-req-02",
+        "Requisitos do cliente",
+        "8.2",
+        "Mudanças de pedido ou de escopo pedidas pelo cliente são registradas e repassadas a quem executa?",
+        "Pedido mudou e a operação não soube: receita clássica de retrabalho e atrito.",
+        ["Controle de alteração de pedido", "Comunicação obrigatória para produção/serviço"],
+        ["Registro de alteração", "Confirmação ao cliente e ao time interno"],
+        when_answer("c8-req-01", YES_PARTIAL),
+    ),
+    q(
+        "c8-prd-02",
+        "Produção e prestação do serviço",
+        "8.5",
+        "Dá para saber, quando preciso, o que foi feito, por quem e com quais insumos (rastreabilidade útil ao negócio)?",
+        "Rastreabilidade boa resolve disputa e acelera contenção quando algo dá errado.",
+        ["Lotes, ordens ou tickets com histórico", "Identificação em processo"],
+        ["Registros de lote/ordem", "Exemplos de rastreio ponta a ponta"],
+    ),
+    q(
+        "c8-prop-01",
+        "Propriedade de cliente ou fornecedor",
+        "8.5",
+        "A empresa recebe bens, materiais ou dados de clientes ou fornecedores para usar na entrega?",
+        "Pergunta-porta: só então faz sentido controlar propriedade de terceiros.",
+        ["Ferramentas ou moldes do cliente", "Arquivos, dados ou amostras fornecidas"],
+        ["Lista do que é recebido de terceiros", "Contrato que menciona bens/dados do cliente"],
+    ),
+    q(
+        "c8-prd-03",
+        "Propriedade de cliente ou fornecedor",
+        "8.5",
+        "Esses bens, materiais ou dados de terceiros são protegidos e tratados com cuidado?",
+        "Perder, danificar ou expor o que é do cliente ou fornecedor destrói confiança rápido.",
+        ["Controle de propriedade do cliente/fornecedor", "Regras de sigilo e guarda"],
+        ["Registro de recebimento/devolução", "Tratativa quando há dano ou perda"],
+        when_answer("c8-prop-01", YES_PARTIAL),
+    ),
+    q(
+        "c8-rel-02",
+        "Liberação e não conformidade",
+        "8.6",
+        "Depois da entrega, a empresa acompanha o que combinou (suporte, garantia, instalação) quando isso faz parte do acordo?",
+        "A qualidade não termina na porta de saída se o contrato inclui pós-entrega.",
+        ["Checklist de pós-venda", "SLA de suporte ou garantia"],
+        ["Registros de atendimento pós-entrega", "Acordo comercial com obrigações claras"],
+    ),
     # —— 9 Avaliação de desempenho ——
     q(
         "c9-mon-01",
@@ -258,6 +387,25 @@ NEW: list[dict] = [
         ["Plano de ações da análise crítica", "Revisão do status na reunião seguinte"],
         ["Lista de ações com status", "Evidência de fechamento"],
         when_answer("c9-mgt-01", YES_PARTIAL),
+    ),
+    q(
+        "c9-sat-01",
+        "Satisfação do cliente",
+        "9.1",
+        "A empresa escuta a satisfação (e a insatisfação) do cliente de forma útil para decidir — não só para arquivar?",
+        "Pesquisa sem uso é teatro. O valor está em agir sobre o que se ouve.",
+        ["Pesquisa, NPS ou entrevistas", "Análise de reclamações e elogios"],
+        ["Resultados de satisfação", "Ações derivadas do feedback"],
+    ),
+    q(
+        "c9-aud-02",
+        "Avaliação interna",
+        "9.2",
+        "Os achados da avaliação interna geram ações com prazo e responsável — e alguém confere se fecharam?",
+        "Relatório sem ação é custo sem retorno.",
+        ["Plano de ações pós-avaliação", "Verificação de fechamento"],
+        ["Lista de achados com status", "Evidência de verificação"],
+        when_answer("c9-aud-01", YES_PARTIAL),
     ),
     # —— 10 Melhoria ——
     q(
@@ -297,17 +445,39 @@ NEW: list[dict] = [
         ["Backlog de melhorias priorizado", "Revisões que mudam processos de propósito"],
         ["Histórico de melhorias implementadas", "Mudanças de processo documentadas"],
     ),
+    q(
+        "c10-capa-03",
+        "Não conformidade e ação corretiva",
+        "10.2",
+        "Problemas parecidos que se repetem em áreas diferentes são tratados como padrão — não como casos isolados?",
+        "Tratar cada ocorrência como única esconde causa sistêmica.",
+        ["Agrupamento de reclamações/NCs por tema", "Ação corretiva de processo, não só de lote"],
+        ["Análise de recorrência", "Ação que muda o processo"],
+        when_answer("c10-capa-01", YES_PARTIAL),
+    ),
+    q(
+        "c10-imp-02",
+        "Melhoria",
+        "10.1",
+        "Ideias e problemas levantados por quem executa chegam a alguém com poder de priorizar melhoria?",
+        "Quem faz o trabalho vê o atrito primeiro. Sem canal, a melhoria fica só no discurso.",
+        ["Canal simples de sugestões/problemas", "Ritual de priorização com a gestão"],
+        ["Registro de sugestões", "Exemplos de melhorias originadas do time"],
+    ),
 ]
 
 
 def main() -> None:
     base = json.loads(SRC.read_text(encoding="utf-8"))
-    # Add a few real conditions on existing c4–c5 follow-ups
+    # Condições reais + follow-ups c4–c5
     for item in base["questions"]:
         if item["id"] == "c4-ctx-02":
             item["show_when"] = when_answer("c4-ctx-01", YES_PARTIAL)
         elif item["id"] == "c4-int-02":
             item["show_when"] = when_answer("c4-int-01", YES_PARTIAL)
+        elif item["id"] == "c4-scp-02":
+            # Justificativa de exclusão só quando há exclusões no contexto.
+            item["show_when"] = when_context_not_empty("qms_scope.exclusions")
         elif item["id"] == "c5-pol-02":
             item["show_when"] = when_answer("c5-pol-01", YES_PARTIAL)
 
@@ -321,13 +491,13 @@ def main() -> None:
         ),
         "steps": base["steps"],
         "clause_groups": [
-            {"id": "4", "label": "Contexto da organização", "refs": ["4.1", "4.2", "4.3", "4.4"]},
-            {"id": "5", "label": "Liderança", "refs": ["5.1", "5.2", "5.3"]},
-            {"id": "6", "label": "Planejamento", "refs": ["6.1", "6.2", "6.3"]},
-            {"id": "7", "label": "Apoio", "refs": ["7.1", "7.2", "7.3", "7.4", "7.5"]},
-            {"id": "8", "label": "Operação", "refs": ["8.1", "8.2", "8.3", "8.4", "8.5", "8.6", "8.7"]},
-            {"id": "9", "label": "Avaliação de desempenho", "refs": ["9.1", "9.2", "9.3"]},
-            {"id": "10", "label": "Melhoria", "refs": ["10.1", "10.2", "10.3"]},
+            {"id": "4", "label": "Compreender a organização", "refs": ["4.1", "4.2", "4.3", "4.4"]},
+            {"id": "5", "label": "Liderança e direção", "refs": ["5.1", "5.2", "5.3"]},
+            {"id": "6", "label": "Planejar resultados", "refs": ["6.1", "6.2", "6.3"]},
+            {"id": "7", "label": "Criar capacidade para entregar", "refs": ["7.1", "7.2", "7.3", "7.4", "7.5"]},
+            {"id": "8", "label": "Entregar ao cliente com controle", "refs": ["8.1", "8.2", "8.3", "8.4", "8.5", "8.6", "8.7"]},
+            {"id": "9", "label": "Medir, analisar e decidir", "refs": ["9.1", "9.2", "9.3"]},
+            {"id": "10", "label": "Corrigir e melhorar", "refs": ["10.1", "10.2", "10.3"]},
         ],
         "questions": base["questions"] + NEW,
     }

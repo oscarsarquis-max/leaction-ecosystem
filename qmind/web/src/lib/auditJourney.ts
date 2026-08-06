@@ -45,7 +45,7 @@ export const JOURNEY_PHASES: JourneyPhaseDef[] = [
     objective: "Conhecer a organização, o escopo e o contexto do sistema de qualidade.",
     activities: [
       "Registrar organização, produtos e processos",
-      "Responder ao roteiro orientado (contexto e liderança)",
+      "Responder ao roteiro orientado (cláusulas 4–10, linguagem de negócio)",
       "Indicar evidências ou deixar para depois",
     ],
     expectedResult: "Contexto claro e respostas iniciais para planejar a avaliação.",

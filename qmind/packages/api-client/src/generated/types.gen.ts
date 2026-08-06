@@ -7890,7 +7890,12 @@ export type GetGuidedCatalogData = {
         'X-Organization-Id': string;
     };
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Version
+         */
+        version?: string | null;
+    };
     url: '/api/v1/guided/catalog';
 };
 

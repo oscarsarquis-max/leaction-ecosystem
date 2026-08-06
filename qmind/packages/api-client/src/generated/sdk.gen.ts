@@ -1333,7 +1333,8 @@ export const withdrawFinding = <ThrowOnError extends boolean = false>(options: O
 };
 
 /**
- * Catálogo versionado do roteiro guiado (cláusulas 4–5)
+ * Catálogo versionado do roteiro guiado (cláusulas 4–10)
+ * Sem `version`, devolve o catálogo padrão (mais recente).
  */
 export const getGuidedCatalog = <ThrowOnError extends boolean = false>(options: Options<GetGuidedCatalogData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).get<GetGuidedCatalogResponses, GetGuidedCatalogErrors, ThrowOnError>({

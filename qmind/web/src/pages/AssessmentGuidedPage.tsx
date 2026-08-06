@@ -13,6 +13,8 @@ import { GuidedContextSteps } from "@/components/guided/GuidedContextSteps";
 import { GuidedProgress } from "@/components/guided/GuidedProgress";
 import { GuidedReview } from "@/components/guided/GuidedReview";
 import { GuidedClauseNav } from "@/components/guided/GuidedClauseNav";
+import { GuidedClauseOpening } from "@/components/guided/GuidedClauseOpening";
+import { GuidedClauseSummary } from "@/components/guided/GuidedClauseSummary";
 import { GuidedRouteStep } from "@/components/guided/GuidedRouteStep";
 import { JourneyBar } from "@/components/navigation/JourneyBar";
 import {
@@ -31,7 +33,14 @@ import {
   useUpsertGuidedAnswer,
 } from "@/hooks/useGuidedAssessment";
 import { labelAssessmentType } from "@/lib/labels";
-import { visibleGuidedQuestions } from "@/lib/guidedShowWhen";
+import {
+  buildClauseNarrative,
+  clauseHasAnswers,
+  firstQuestionIndexForClause,
+  getConsultiveOpening,
+  lastQuestionIndexForClause,
+} from "@/lib/guidedNarrative";
+import { clauseMajor, visibleGuidedQuestions } from "@/lib/guidedShowWhen";
 
 const CONTEXT_STEPS: GuidedStep[] = [
   "organization",
@@ -42,12 +51,14 @@ const CONTEXT_STEPS: GuidedStep[] = [
   "stakeholders",
 ];
 
+type RoutePhase = "opening" | "question" | "summary";
+
 export function AssessmentGuidedPage() {
   const { assessmentId } = useParams<{ assessmentId: string }>();
   const assessment = useAssessment(assessmentId);
   const dash = useAuditDashboard(assessmentId);
-  const catalog = useGuidedCatalog();
   const sessionQ = useGuidedSession(assessmentId);
+  const catalog = useGuidedCatalog(sessionQ.data?.catalog_version);
   const perms = useAssessmentPermissions(assessment.data?.status);
   const patch = usePatchGuidedSession(assessmentId ?? "");
   const upsert = useUpsertGuidedAnswer(assessmentId ?? "");
@@ -55,6 +66,8 @@ export function AssessmentGuidedPage() {
   const [localContext, setLocalContext] = useState<GuidedContext | null>(null);
   const [step, setStep] = useState<GuidedStep>("organization");
   const [questionIdx, setQuestionIdx] = useState(0);
+  const [routePhase, setRoutePhase] = useState<RoutePhase>("opening");
+  const [summaryMajor, setSummaryMajor] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">(
     "idle",
   );
@@ -71,8 +84,9 @@ export function AssessmentGuidedPage() {
       visibleGuidedQuestions(
         catalog.data?.questions ?? [],
         session?.answers,
+        localContext ?? session?.context,
       ),
-    [catalog.data?.questions, session?.answers],
+    [catalog.data?.questions, session?.answers, session?.context, localContext],
   );
 
   useEffect(() => {
@@ -80,29 +94,73 @@ export function AssessmentGuidedPage() {
     hydrated.current = true;
     setLocalContext(session.context);
     setStep(session.current_step);
-    if (session.current_question_id) {
-      const i = questions.findIndex((q) => q.id === session.current_question_id);
-      if (i >= 0) setQuestionIdx(i);
-    } else if (session.answered_count > 0) {
-      const firstOpen = questions.findIndex(
-        (q) => !session.answers.some((a) => a.question_id === q.id && a.answer_value),
-      );
-      if (firstOpen >= 0) setQuestionIdx(firstOpen);
+    if (session.current_step === "route") {
+      if (session.current_question_id) {
+        const i = questions.findIndex((q) => q.id === session.current_question_id);
+        if (i >= 0) {
+          setQuestionIdx(i);
+          setRoutePhase("question");
+          return;
+        }
+      }
+      if (session.answered_count > 0) {
+        const firstOpen = questions.findIndex(
+          (q) =>
+            !session.answers.some((a) => a.question_id === q.id && a.answer_value),
+        );
+        const idx = firstOpen >= 0 ? firstOpen : 0;
+        setQuestionIdx(idx);
+        const major = clauseMajor(questions[idx]?.clause_ref ?? "4");
+        setRoutePhase(
+          clauseHasAnswers(questions, session.answers, major) ? "question" : "opening",
+        );
+        return;
+      }
+      setQuestionIdx(0);
+      setRoutePhase("opening");
     }
   }, [session, questions]);
 
   useEffect(() => {
-    if (questionIdx >= questions.length && questions.length > 0) {
-      setQuestionIdx(questions.length - 1);
+    if (questions.length === 0) return;
+    if (questions[questionIdx]) return;
+    const resumeId = session?.current_question_id;
+    if (resumeId) {
+      const i = questions.findIndex((q) => q.id === resumeId);
+      if (i >= 0) {
+        setQuestionIdx(i);
+        return;
+      }
     }
-  }, [questions.length, questionIdx]);
+    setQuestionIdx(Math.max(0, questions.length - 1));
+  }, [questions, questionIdx, session?.current_question_id]);
 
-  // Reset hydrate when assessment changes
   useEffect(() => {
     hydrated.current = false;
   }, [assessmentId]);
 
   const currentQuestion = questions[questionIdx];
+  const activeMajor =
+    summaryMajor ??
+    (currentQuestion ? clauseMajor(currentQuestion.clause_ref) : "4");
+  const opening = getConsultiveOpening(activeMajor);
+  const clauseNarrative = useMemo(
+    () =>
+      buildClauseNarrative(
+        summaryMajor ?? activeMajor,
+        questions,
+        session?.answers,
+        catalog.data?.clause_groups,
+      ),
+    [
+      summaryMajor,
+      activeMajor,
+      questions,
+      session?.answers,
+      catalog.data?.clause_groups,
+    ],
+  );
+
   const answerMap = useMemo(() => {
     const m = new Map((session?.answers ?? []).map((a) => [a.question_id, a]));
     return m;
@@ -168,6 +226,31 @@ export function AssessmentGuidedPage() {
     }
   }
 
+  function enterClause(major: string, preferOpening: boolean) {
+    const first = firstQuestionIndexForClause(questions, major);
+    if (first < 0) return;
+    setSummaryMajor(null);
+    setQuestionIdx(first);
+    const has = clauseHasAnswers(questions, session?.answers, major);
+    setRoutePhase(preferOpening && !has ? "opening" : "question");
+    void goToStep("route", questions[first]?.id ?? null);
+  }
+
+  function goToFirstPending() {
+    const pendingIdx = questions.findIndex(
+      (q) => !session?.answers.some((a) => a.question_id === q.id && a.answer_value),
+    );
+    if (pendingIdx < 0) {
+      setRoutePhase("question");
+      return;
+    }
+    setSummaryMajor(null);
+    setQuestionIdx(pendingIdx);
+    setRoutePhase("question");
+    setStep("route");
+    void goToStep("route", questions[pendingIdx]?.id ?? null);
+  }
+
   if (!assessmentId) {
     return (
       <GuidedEmptyState
@@ -205,6 +288,9 @@ export function AssessmentGuidedPage() {
   const a = assessment.data!;
   const ctx = localContext ?? session!.context;
   const readOnly = !perms.canMutate;
+  const hideBottomNav =
+    step === "review" ||
+    (step === "route" && (routePhase === "opening" || routePhase === "summary"));
 
   return (
     <section
@@ -236,16 +322,16 @@ export function AssessmentGuidedPage() {
         <PageHeader
           eyebrow="Fase · Preparação"
           title={`${labelAssessmentType(a.type)}`}
-          explanation="Você está na preparação da avaliação. Vamos descrever a organização e responder a um roteiro em linguagem de negócio. Pode sair a qualquer momento: o progresso fica salvo."
-          expectedResult="Contexto claro e roteiro inicial pronto para a próxima fase do mapa."
+          explanation="Você está na preparação da avaliação. Descrevemos a organização e percorremos um roteiro consultivo nas cláusulas 4–10, em linguagem de negócio. Pode sair a qualquer momento: o progresso fica salvo."
+          expectedResult="Contexto claro, etapas compreendidas e roteiro pronto para a execução em campo."
           progress={
             step === "route"
-              ? `Perguntas: ${session!.answered_count} de ${session!.question_count} · percurso geral ${dash.percent}%`
+              ? `Perguntas aplicáveis: ${session!.answered_count} de ${session!.question_count} · percurso geral ${dash.percent}%`
               : `Etapa: ${stepMeta?.label ?? "—"} · percurso geral ${dash.percent}%`
           }
           nextStep={
             step === "review"
-              ? "Revisar o resumo e voltar ao mapa"
+              ? "Revisar o resumo e seguir para o campo"
               : "Preencher e avançar"
           }
         />
@@ -271,7 +357,7 @@ export function AssessmentGuidedPage() {
         ) : null}
 
         <div className="rounded-qmind-md bg-qmind-surface p-6 shadow-qmind-card sm:p-8">
-          {stepMeta ? (
+          {stepMeta && routePhase === "question" ? (
             <header className="mb-6 border-b border-qmind-semantic-future pb-5">
               <SectionIntroduction
                 title={stepMeta.label}
@@ -313,42 +399,100 @@ export function AssessmentGuidedPage() {
             />
           ) : null}
 
-          {step === "route" && currentQuestion ? (
+          {step === "route" ? (
             <div className="space-y-5">
               <GuidedClauseNav
                 questions={questions}
-                currentQuestionId={currentQuestion.id}
+                answers={session?.answers}
+                currentQuestionId={currentQuestion?.id}
                 clauseGroups={catalog.data?.clause_groups}
                 onSelectQuestion={(idx) => {
-                  setQuestionIdx(idx);
-                  void goToStep("route", questions[idx]?.id ?? null);
+                  const major = clauseMajor(questions[idx]?.clause_ref ?? "4");
+                  enterClause(major, true);
                 }}
               />
-              <GuidedRouteStep
-                assessmentId={assessmentId}
-                question={currentQuestion}
-                questionIndex={questionIdx}
-                questionTotal={questions.length}
-                answer={answerMap.get(currentQuestion.id)}
-                readOnly={readOnly}
-                saving={upsert.isPending}
-                saveState={saveState}
-                onSave={saveAnswer}
-              />
-            </div>
-          ) : null}
 
-          {step === "route" && !currentQuestion ? (
-            <GuidedEmptyState
-              title="Roteiro temporariamente indisponível"
-              why="As perguntas desta preparação não carregaram neste momento."
-              example="O roteiro traz perguntas em linguagem de negócio sobre contexto e liderança."
-              howToStart="Volte ao mapa e abra a preparação de novo — o contexto já preenchido permanece salvo."
-              action={{
-                label: "Voltar ao mapa",
-                to: `/assessments/${assessmentId}`,
-              }}
-            />
+              {routePhase === "opening" && opening ? (
+                <GuidedClauseOpening
+                  opening={opening}
+                  onStart={() => {
+                    setRoutePhase("question");
+                    const first = firstQuestionIndexForClause(questions, activeMajor);
+                    if (first >= 0) {
+                      setQuestionIdx(first);
+                      void goToStep("route", questions[first]?.id ?? null);
+                    }
+                  }}
+                />
+              ) : null}
+
+              {routePhase === "summary" ? (
+                <GuidedClauseSummary
+                  narrative={clauseNarrative}
+                  onBackToQuestions={() => {
+                    setSummaryMajor(null);
+                    setRoutePhase("question");
+                  }}
+                  onReviewPending={() => {
+                    const major = clauseNarrative.major;
+                    const pendingIdx = questions.findIndex(
+                      (q) =>
+                        clauseMajor(q.clause_ref) === major &&
+                        !session?.answers.some(
+                          (a) => a.question_id === q.id && a.answer_value,
+                        ),
+                    );
+                    setSummaryMajor(null);
+                    setRoutePhase("question");
+                    if (pendingIdx >= 0) {
+                      setQuestionIdx(pendingIdx);
+                      void goToStep("route", questions[pendingIdx]?.id ?? null);
+                    }
+                  }}
+                  onContinue={() => {
+                    const next = clauseNarrative.nextClauseMajor;
+                    if (!next) {
+                      setCelebration({
+                        title: "Roteiro percorrido",
+                        nextStepText:
+                          "Próxima etapa: revisão final consultiva e seguimento no mapa.",
+                      });
+                      setSummaryMajor(null);
+                      void goToStep("review", null);
+                      return;
+                    }
+                    enterClause(next, true);
+                  }}
+                />
+              ) : null}
+
+              {routePhase === "question" && currentQuestion ? (
+                <GuidedRouteStep
+                  assessmentId={assessmentId}
+                  question={currentQuestion}
+                  questionIndex={questionIdx}
+                  questionTotal={questions.length}
+                  answer={answerMap.get(currentQuestion.id)}
+                  readOnly={readOnly}
+                  saving={upsert.isPending}
+                  saveState={saveState}
+                  onSave={saveAnswer}
+                />
+              ) : null}
+
+              {routePhase === "question" && !currentQuestion ? (
+                <GuidedEmptyState
+                  title="Roteiro temporariamente indisponível"
+                  why="As perguntas desta preparação não carregaram neste momento."
+                  example="O roteiro cobre as cláusulas 4–10 em linguagem de negócio."
+                  howToStart="Volte ao mapa e abra a preparação de novo — o contexto já preenchido permanece salvo."
+                  action={{
+                    label: "Voltar ao mapa",
+                    to: `/assessments/${assessmentId}`,
+                  }}
+                />
+              ) : null}
+            </div>
           ) : null}
 
           {step === "review" ? (
@@ -356,40 +500,52 @@ export function AssessmentGuidedPage() {
               session={session!}
               questions={questions}
               clauseGroups={catalog.data?.clause_groups}
+              assessmentId={assessmentId}
+              onGoToClause={(major) => {
+                setStep("route");
+                enterClause(major, false);
+              }}
+              onReviewPending={goToFirstPending}
             />
           ) : null}
 
-          <nav className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-qmind-semantic-future pt-5">
-            <button
-              type="button"
-              className="qm-btn-secondary"
-              data-testid="guided-back"
-              disabled={step === "organization" && questionIdx === 0}
-              onClick={() => {
-                setCelebration(null);
-                if (step === "route" && questionIdx > 0) {
-                  const nextIdx = questionIdx - 1;
-                  setQuestionIdx(nextIdx);
-                  void goToStep("route", questions[nextIdx]?.id ?? null);
-                  return;
-                }
-                if (step === "route") {
-                  void goToStep("stakeholders");
-                  return;
-                }
-                if (step === "review") {
-                  void goToStep("route", questions[questions.length - 1]?.id ?? null);
-                  setQuestionIdx(Math.max(questions.length - 1, 0));
-                  return;
-                }
-                const i = CONTEXT_STEPS.indexOf(step);
-                if (i > 0) void goToStep(CONTEXT_STEPS[i - 1]!);
-              }}
-            >
-              Voltar
-            </button>
+          {!hideBottomNav ? (
+            <nav className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-qmind-semantic-future pt-5">
+              <button
+                type="button"
+                className="qm-btn-secondary"
+                data-testid="guided-back"
+                disabled={step === "organization" && questionIdx === 0}
+                onClick={() => {
+                  setCelebration(null);
+                  if (step === "route" && questionIdx > 0) {
+                    const prevMajor = clauseMajor(
+                      questions[questionIdx]?.clause_ref ?? "",
+                    );
+                    const nextIdx = questionIdx - 1;
+                    const nextMajor = clauseMajor(
+                      questions[nextIdx]?.clause_ref ?? "",
+                    );
+                    if (nextMajor !== prevMajor) {
+                      setSummaryMajor(prevMajor);
+                      setRoutePhase("summary");
+                      return;
+                    }
+                    setQuestionIdx(nextIdx);
+                    void goToStep("route", questions[nextIdx]?.id ?? null);
+                    return;
+                  }
+                  if (step === "route") {
+                    void goToStep("stakeholders");
+                    return;
+                  }
+                  const i = CONTEXT_STEPS.indexOf(step);
+                  if (i > 0) void goToStep(CONTEXT_STEPS[i - 1]!);
+                }}
+              >
+                Voltar
+              </button>
 
-            {step !== "review" ? (
               <button
                 type="button"
                 className="qm-btn-primary"
@@ -404,14 +560,15 @@ export function AssessmentGuidedPage() {
                     setCelebration({
                       title: "Contexto validado com sucesso",
                       nextStepText:
-                        "Próxima etapa: responder o roteiro em linguagem de negócio.",
+                        "Próxima etapa: roteiro consultivo das cláusulas 4–10.",
                     });
                     setQuestionIdx(0);
+                    setRoutePhase("opening");
                     void goToStep("route", questions[0]?.id ?? null);
                     return;
                   }
-                  if (step === "route") {
-                    const ans = answerMap.get(currentQuestion?.id ?? "");
+                  if (step === "route" && currentQuestion) {
+                    const ans = answerMap.get(currentQuestion.id);
                     const localOk =
                       ans?.answer_value &&
                       (ans.answer_value !== "not_applicable" ||
@@ -420,35 +577,34 @@ export function AssessmentGuidedPage() {
                       setSaveState("error");
                       return;
                     }
-                    if (questionIdx < questions.length - 1) {
-                      const nextIdx = questionIdx + 1;
-                      setQuestionIdx(nextIdx);
-                      void goToStep("route", questions[nextIdx]?.id ?? null);
+                    const major = clauseMajor(currentQuestion.clause_ref);
+                    const lastInClause = lastQuestionIndexForClause(
+                      questions,
+                      major,
+                    );
+                    if (questionIdx >= lastInClause) {
+                      setSummaryMajor(major);
+                      setRoutePhase("summary");
                       return;
                     }
-                    setCelebration({
-                      title: "Roteiro validado com sucesso",
-                      nextStepText:
-                        "Próxima etapa: revisar o resumo e seguir no mapa da avaliação.",
-                    });
-                    void goToStep("review", null);
+                    const nextIdx = questionIdx + 1;
+                    setQuestionIdx(nextIdx);
+                    void goToStep("route", questions[nextIdx]?.id ?? null);
                   }
                 }}
               >
-                {step === "route" && questionIdx >= questions.length - 1
-                  ? "Ir para revisão"
+                {step === "route" &&
+                currentQuestion &&
+                questionIdx >=
+                  lastQuestionIndexForClause(
+                    questions,
+                    clauseMajor(currentQuestion.clause_ref),
+                  )
+                  ? "Ver resumo da etapa"
                   : "Avançar"}
               </button>
-            ) : (
-              <Link
-                to={`/assessments/${assessmentId}/work`}
-                className="qm-btn-primary"
-                data-testid="guided-done"
-              >
-                Concluir preparação e ir ao Planejamento
-              </Link>
-            )}
-          </nav>
+            </nav>
+          ) : null}
         </div>
       </div>
     </section>

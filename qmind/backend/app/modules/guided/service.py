@@ -12,6 +12,7 @@ from app.auth.context import OrgContext
 from app.db import tenant_connection
 from app.errors import AppError
 from app.modules.guided import catalog as catalog_mod
+from app.modules.guided.catalog import UnknownCatalogVersion
 from app.modules.guided.show_when import visible_questions
 from app.modules.guided.schemas import (
     GuidedAnswerOut,
@@ -26,6 +27,7 @@ from app.modules.orgs.service import require_role
 _MUTATE_ROLES = ("org_admin", "consultant_auditor", "quality_manager")
 _READ_ROLES = _MUTATE_ROLES + ("process_owner", "reader")
 _EDITABLE_ASSESSMENT = frozenset({"draft", "planned", "in_progress"})
+_LEGACY_CATALOG = "iso9001-2015-c4c5-v1"
 
 
 def _empty_context() -> dict[str, Any]:
@@ -89,9 +91,28 @@ def _answers(conn, org_id: UUID, session_id: UUID) -> list[GuidedAnswerOut]:
     return out
 
 
+def _questions_for_session(catalog_version: str) -> list[dict[str, Any]]:
+    try:
+        return catalog_mod.list_questions(catalog_version)
+    except UnknownCatalogVersion as exc:
+        raise AppError(
+            "conflict",
+            f"Catálogo da sessão não está disponível: {catalog_version}",
+            status_code=409,
+        ) from exc
+
+
 def _session_out(conn, org_id: UUID, session_row) -> GuidedSessionOut:
     answers = _answers(conn, org_id, session_row.id)
-    visible = visible_questions(catalog_mod.list_questions(), answers)
+    ctx = session_row.context
+    if isinstance(ctx, str):
+        ctx = json.loads(ctx)
+    ctx = ctx or _empty_context()
+    visible = visible_questions(
+        _questions_for_session(session_row.catalog_version),
+        answers,
+        ctx,
+    )
     visible_ids = {q["id"] for q in visible}
     qcount = len(visible)
     answered = sum(
@@ -99,9 +120,6 @@ def _session_out(conn, org_id: UUID, session_row) -> GuidedSessionOut:
         for a in answers
         if a.answer_value is not None and a.question_id in visible_ids
     )
-    ctx = session_row.context
-    if isinstance(ctx, str):
-        ctx = json.loads(ctx)
     return GuidedSessionOut(
         id=session_row.id,
         assessment_id=session_row.assessment_id,
@@ -110,12 +128,56 @@ def _session_out(conn, org_id: UUID, session_row) -> GuidedSessionOut:
         status=session_row.status,
         current_step=session_row.current_step,
         current_question_id=session_row.current_question_id,
-        context=ctx or _empty_context(),
+        context=ctx,
         answers=answers,
         answered_count=answered,
         question_count=qcount,
         updated_at=session_row.updated_at,
     )
+
+
+def _maybe_migrate_draft_session(conn, assessment, session_row):
+    """
+    Upgrade legacy c4c5 → latest only when safe:
+    assessment still draft AND session has zero answers.
+    """
+    if assessment.status != "draft":
+        return session_row
+    if session_row.catalog_version != _LEGACY_CATALOG:
+        return session_row
+    latest = catalog_mod.catalog_version()
+    if session_row.catalog_version == latest:
+        return session_row
+
+    n_answers = conn.execute(
+        text(
+            """
+            SELECT count(*)::int AS n
+            FROM guided_answers
+            WHERE session_id = :sid AND organization_id = :org
+            """
+        ),
+        {"sid": session_row.id, "org": session_row.organization_id},
+    ).one().n
+    if n_answers > 0:
+        return session_row
+
+    return conn.execute(
+        text(
+            """
+            UPDATE guided_sessions
+            SET catalog_version = :cat, updated_at = now()
+            WHERE id = :id AND organization_id = :org
+            RETURNING id, organization_id, assessment_id, catalog_version, status,
+                      current_step, current_question_id, context, updated_at
+            """
+        ),
+        {
+            "cat": latest,
+            "id": session_row.id,
+            "org": session_row.organization_id,
+        },
+    ).one()
 
 
 def get_or_create_session(ctx: OrgContext, assessment_id: UUID) -> GuidedSessionOut:
@@ -169,6 +231,8 @@ def get_or_create_session(ctx: OrgContext, assessment_id: UUID) -> GuidedSession
                     "uid": ctx.principal.user_id,
                 },
             ).one()
+        else:
+            row = _maybe_migrate_draft_session(conn, assessment, row)
 
         out = _session_out(conn, ctx.organization_id, row)
         conn.commit()
@@ -256,22 +320,13 @@ def upsert_answer(
     ctx: OrgContext, assessment_id: UUID, question_id: str, payload: GuidedAnswerUpsert
 ) -> GuidedSessionOut:
     require_role(ctx, *_MUTATE_ROLES)
-    q = catalog_mod.get_question(question_id)
-    if q is None:
-        raise AppError("not_found", "Pergunta não encontrada no catálogo", status_code=404)
-    if payload.answer_value == "not_applicable" and not (payload.na_justification or "").strip():
-        raise AppError(
-            "validation_error",
-            "Justificativa obrigatória quando a resposta é não aplicável",
-            status_code=422,
-        )
 
     with tenant_connection(ctx.organization_id) as conn:
         _assessment_row(conn, ctx.organization_id, assessment_id)
         session = conn.execute(
             text(
                 """
-                SELECT id FROM guided_sessions
+                SELECT id, catalog_version FROM guided_sessions
                 WHERE assessment_id = :aid AND organization_id = :org
                 FOR UPDATE
                 """
@@ -280,6 +335,22 @@ def upsert_answer(
         ).first()
         if session is None:
             raise AppError("not_found", "Sessão do roteiro não encontrada", status_code=404)
+
+        q = catalog_mod.get_question(question_id, session.catalog_version)
+        if q is None:
+            raise AppError(
+                "not_found",
+                "Pergunta não encontrada no catálogo desta sessão",
+                status_code=404,
+            )
+        if payload.answer_value == "not_applicable" and not (
+            payload.na_justification or ""
+        ).strip():
+            raise AppError(
+                "validation_error",
+                "Justificativa obrigatória quando a resposta é não aplicável",
+                status_code=422,
+            )
 
         conn.execute(
             text(
@@ -341,5 +412,12 @@ def upsert_answer(
         return out
 
 
-def get_catalog() -> dict[str, Any]:
-    return catalog_mod.load_catalog()
+def get_catalog(version: str | None = None) -> dict[str, Any]:
+    try:
+        return catalog_mod.load_catalog(version)
+    except UnknownCatalogVersion as exc:
+        raise AppError(
+            "not_found",
+            f"Catálogo não encontrado: {exc.args[0]}",
+            status_code=404,
+        ) from exc

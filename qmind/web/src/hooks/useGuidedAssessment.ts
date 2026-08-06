@@ -15,10 +15,10 @@ import type {
   GuidedStep,
 } from "@/api/guidedTypes";
 
-export function useGuidedCatalog() {
+export function useGuidedCatalog(version?: string | null) {
   return useQuery({
-    queryKey: queryKeys.guidedCatalog,
-    queryFn: fetchGuidedCatalog,
+    queryKey: queryKeys.guidedCatalog(version),
+    queryFn: () => fetchGuidedCatalog(version),
     staleTime: 5 * 60_000,
   });
 }

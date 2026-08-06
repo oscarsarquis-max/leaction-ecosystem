@@ -194,30 +194,41 @@ export function GuidedContextSteps({ step, context, onChange, readOnly }: Props)
             className="qm-field min-h-20"
             value={s.exclusions}
             disabled={readOnly}
-            onChange={(e) =>
+            onChange={(e) => {
+              const exclusions = e.target.value;
               onChange({
                 ...context,
-                qms_scope: { ...s, exclusions: e.target.value },
-              })
-            }
+                qms_scope: {
+                  ...s,
+                  exclusions,
+                  // Sem exclusões, a justificativa some da entrevista (valor antigo permanece salvo).
+                  exclusion_justification: exclusions.trim()
+                    ? s.exclusion_justification
+                    : s.exclusion_justification,
+                },
+              });
+            }}
           />
         </Field>
-        <Field
-          label="Por que fica de fora"
-          hint="Explique o motivo de forma objetiva — sem jargão."
-        >
-          <textarea
-            className="qm-field min-h-20"
-            value={s.exclusion_justification}
-            disabled={readOnly}
-            onChange={(e) =>
-              onChange({
-                ...context,
-                qms_scope: { ...s, exclusion_justification: e.target.value },
-              })
-            }
-          />
-        </Field>
+        {s.exclusions.trim() ? (
+          <Field
+            label="Por que fica de fora"
+            hint="Explique o motivo de forma objetiva — sem jargão. Só pedimos isso quando há exclusões."
+          >
+            <textarea
+              className="qm-field min-h-20"
+              value={s.exclusion_justification}
+              disabled={readOnly}
+              data-testid="exclusion-justification"
+              onChange={(e) =>
+                onChange({
+                  ...context,
+                  qms_scope: { ...s, exclusion_justification: e.target.value },
+                })
+              }
+            />
+          </Field>
+        ) : null}
       </div>
     );
   }

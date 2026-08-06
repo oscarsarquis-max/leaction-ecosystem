@@ -40,7 +40,8 @@ export const queryKeys = {
     ["org", organizationId, "assessment", assessmentId, "reports"] as const,
   report: (organizationId: string, reportId: string) =>
     ["org", organizationId, "report", reportId] as const,
-  guidedCatalog: ["guided", "catalog"] as const,
+  guidedCatalog: (version?: string | null) =>
+    ["guided", "catalog", version ?? "default"] as const,
   guidedSession: (organizationId: string, assessmentId: string) =>
     ["org", organizationId, "assessment", assessmentId, "guided"] as const,
   agendaBoard: (organizationId: string, selectedDate: string) =>

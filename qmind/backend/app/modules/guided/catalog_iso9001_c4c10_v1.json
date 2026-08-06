@@ -16,7 +16,7 @@
   "clause_groups": [
     {
       "id": "4",
-      "label": "Contexto da organização",
+      "label": "Compreender a organização",
       "refs": [
         "4.1",
         "4.2",
@@ -26,7 +26,7 @@
     },
     {
       "id": "5",
-      "label": "Liderança",
+      "label": "Liderança e direção",
       "refs": [
         "5.1",
         "5.2",
@@ -35,7 +35,7 @@
     },
     {
       "id": "6",
-      "label": "Planejamento",
+      "label": "Planejar resultados",
       "refs": [
         "6.1",
         "6.2",
@@ -44,7 +44,7 @@
     },
     {
       "id": "7",
-      "label": "Apoio",
+      "label": "Criar capacidade para entregar",
       "refs": [
         "7.1",
         "7.2",
@@ -55,7 +55,7 @@
     },
     {
       "id": "8",
-      "label": "Operação",
+      "label": "Entregar ao cliente com controle",
       "refs": [
         "8.1",
         "8.2",
@@ -68,7 +68,7 @@
     },
     {
       "id": "9",
-      "label": "Avaliação de desempenho",
+      "label": "Medir, analisar e decidir",
       "refs": [
         "9.1",
         "9.2",
@@ -77,7 +77,7 @@
     },
     {
       "id": "10",
-      "label": "Melhoria",
+      "label": "Corrigir e melhorar",
       "refs": [
         "10.1",
         "10.2",
@@ -210,7 +210,10 @@
       ],
       "answer_type": "choice_with_description",
       "required": true,
-      "show_when": null
+      "show_when": {
+        "context": "qms_scope.exclusions",
+        "not_empty": true
+      }
     },
     {
       "id": "c4-prc-01",
@@ -497,6 +500,81 @@
       "show_when": null
     },
     {
+      "id": "c6-rsk-03",
+      "version": "1",
+      "theme": "Riscos e oportunidades",
+      "clause_ref": "6.1",
+      "question": "A empresa revisita riscos e oportunidades quando o contexto muda (novo cliente, novo produto, crise, sazonalidade)?",
+      "explanation": "Lista estática perde valor. Revisar nos momentos certos evita surpresa operacional.",
+      "practice_examples": [
+        "Revisão de riscos na mudança de portfólio",
+        "Pauta fixa de riscos na reunião mensal"
+      ],
+      "evidence_examples": [
+        "Histórico de revisões de risco",
+        "Ata que registra inclusão/baixa de riscos"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c6-rsk-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c6-obj-03",
+      "version": "1",
+      "theme": "Objetivos da qualidade",
+      "clause_ref": "6.2",
+      "question": "Os objetivos de qualidade são comunicados às pessoas que precisam agir sobre eles?",
+      "explanation": "Objetivo só na direção não move o chão de fábrica nem o atendimento.",
+      "practice_examples": [
+        "Desdobramento de metas por área",
+        "Quadro ou painel visível ao time"
+      ],
+      "evidence_examples": [
+        "Comunicado de metas",
+        "Evidência de alinhamento com equipes"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c6-obj-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c6-chg-02",
+      "version": "1",
+      "theme": "Mudanças no sistema",
+      "clause_ref": "6.3",
+      "question": "Antes de mudar algo relevante, a empresa avalia impacto em cliente, processos, pessoas e riscos?",
+      "explanation": "Mudança sem leitura de impacto costuma gerar retrabalho e reclamação.",
+      "practice_examples": [
+        "Análise simples de impacto",
+        "Go/no-go com responsáveis do processo"
+      ],
+      "evidence_examples": [
+        "Registro de análise de impacto",
+        "Aprovação da mudança"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c6-chg-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
       "id": "c7-res-01",
       "version": "1",
       "theme": "Recursos",
@@ -590,6 +668,119 @@
       "answer_type": "choice_with_description",
       "required": true,
       "show_when": null
+    },
+    {
+      "id": "c7-msr-01",
+      "version": "1",
+      "theme": "Medição e calibração",
+      "clause_ref": "7.1",
+      "question": "A operação depende de medições ou instrumentos de verificação para decidir se o produto/serviço está ok?",
+      "explanation": "Pergunta-porta: só faz sentido falar de calibração quando a qualidade depende de medir.",
+      "practice_examples": [
+        "Balança, paquímetro, manômetro, sensores",
+        "Checklist com critérios numéricos"
+      ],
+      "evidence_examples": [
+        "Lista de pontos de medição críticos",
+        "Descrição do que é medido na operação"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c7-res-02",
+      "version": "1",
+      "theme": "Medição e calibração",
+      "clause_ref": "7.1",
+      "question": "Esses equipamentos de medição ou verificação estão adequados e confiáveis para a decisão que suportam?",
+      "explanation": "Medir errado é pior do que não medir: a decisão parece fundamentada, mas não está.",
+      "practice_examples": [
+        "Calibração ou verificação periódica",
+        "Critério claro de o que medir e com o quê"
+      ],
+      "evidence_examples": [
+        "Certificados ou registros de verificação",
+        "Lista de instrumentos críticos"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c7-msr-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c7-cmp-02",
+      "version": "1",
+      "theme": "Competência",
+      "clause_ref": "7.2",
+      "question": "Quando alguém assume função crítica sem a competência completa, há supervisão, treino ou restrição temporária?",
+      "explanation": "Colocar pessoa nova em posto crítico sem rede de proteção é risco previsível.",
+      "practice_examples": [
+        "Período de capacitação com acompanhante",
+        "Liberação formal para operar sozinho"
+      ],
+      "evidence_examples": [
+        "Registro de liberação de função",
+        "Plano de treino on-the-job"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c7-cmp-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c7-knw-01",
+      "version": "1",
+      "theme": "Conhecimento da organização",
+      "clause_ref": "7.1",
+      "question": "O conhecimento crítico do negócio (como fazer certo o que o cliente valoriza) está acessível — não só na cabeça de poucas pessoas?",
+      "explanation": "Conhecimento preso em poucas pessoas vira risco de continuidade e de qualidade.",
+      "practice_examples": [
+        "Procedimentos vivos ou playbooks",
+        "Handover e lições aprendidas"
+      ],
+      "evidence_examples": [
+        "Base de conhecimento / procedimentos",
+        "Registro de lições aprendidas"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c7-doc-02",
+      "version": "1",
+      "theme": "Informação documentada",
+      "clause_ref": "7.5",
+      "question": "Quando um documento muda, a versão antiga deixa de ser usada no dia a dia?",
+      "explanation": "Versão velha na bancada é uma das causas clássicas de erro repetido.",
+      "practice_examples": [
+        "Retirada ou marca d'água de obsoleto",
+        "Aviso de nova versão aos usuários"
+      ],
+      "evidence_examples": [
+        "Controle de versão com histórico",
+        "Evidência de comunicação da mudança"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c7-doc-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
     },
     {
       "id": "c8-pln-01",
@@ -775,6 +966,113 @@
       "show_when": null
     },
     {
+      "id": "c8-req-02",
+      "version": "1",
+      "theme": "Requisitos do cliente",
+      "clause_ref": "8.2",
+      "question": "Mudanças de pedido ou de escopo pedidas pelo cliente são registradas e repassadas a quem executa?",
+      "explanation": "Pedido mudou e a operação não soube: receita clássica de retrabalho e atrito.",
+      "practice_examples": [
+        "Controle de alteração de pedido",
+        "Comunicação obrigatória para produção/serviço"
+      ],
+      "evidence_examples": [
+        "Registro de alteração",
+        "Confirmação ao cliente e ao time interno"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c8-req-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c8-prd-02",
+      "version": "1",
+      "theme": "Produção e prestação do serviço",
+      "clause_ref": "8.5",
+      "question": "Dá para saber, quando preciso, o que foi feito, por quem e com quais insumos (rastreabilidade útil ao negócio)?",
+      "explanation": "Rastreabilidade boa resolve disputa e acelera contenção quando algo dá errado.",
+      "practice_examples": [
+        "Lotes, ordens ou tickets com histórico",
+        "Identificação em processo"
+      ],
+      "evidence_examples": [
+        "Registros de lote/ordem",
+        "Exemplos de rastreio ponta a ponta"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c8-prop-01",
+      "version": "1",
+      "theme": "Propriedade de cliente ou fornecedor",
+      "clause_ref": "8.5",
+      "question": "A empresa recebe bens, materiais ou dados de clientes ou fornecedores para usar na entrega?",
+      "explanation": "Pergunta-porta: só então faz sentido controlar propriedade de terceiros.",
+      "practice_examples": [
+        "Ferramentas ou moldes do cliente",
+        "Arquivos, dados ou amostras fornecidas"
+      ],
+      "evidence_examples": [
+        "Lista do que é recebido de terceiros",
+        "Contrato que menciona bens/dados do cliente"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c8-prd-03",
+      "version": "1",
+      "theme": "Propriedade de cliente ou fornecedor",
+      "clause_ref": "8.5",
+      "question": "Esses bens, materiais ou dados de terceiros são protegidos e tratados com cuidado?",
+      "explanation": "Perder, danificar ou expor o que é do cliente ou fornecedor destrói confiança rápido.",
+      "practice_examples": [
+        "Controle de propriedade do cliente/fornecedor",
+        "Regras de sigilo e guarda"
+      ],
+      "evidence_examples": [
+        "Registro de recebimento/devolução",
+        "Tratativa quando há dano ou perda"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c8-prop-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c8-rel-02",
+      "version": "1",
+      "theme": "Liberação e não conformidade",
+      "clause_ref": "8.6",
+      "question": "Depois da entrega, a empresa acompanha o que combinou (suporte, garantia, instalação) quando isso faz parte do acordo?",
+      "explanation": "A qualidade não termina na porta de saída se o contrato inclui pós-entrega.",
+      "practice_examples": [
+        "Checklist de pós-venda",
+        "SLA de suporte ou garantia"
+      ],
+      "evidence_examples": [
+        "Registros de atendimento pós-entrega",
+        "Acordo comercial com obrigações claras"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
       "id": "c9-mon-01",
       "version": "1",
       "theme": "Monitoramento e medição",
@@ -850,6 +1148,50 @@
       "required": true,
       "show_when": {
         "answer": "c9-mgt-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c9-sat-01",
+      "version": "1",
+      "theme": "Satisfação do cliente",
+      "clause_ref": "9.1",
+      "question": "A empresa escuta a satisfação (e a insatisfação) do cliente de forma útil para decidir — não só para arquivar?",
+      "explanation": "Pesquisa sem uso é teatro. O valor está em agir sobre o que se ouve.",
+      "practice_examples": [
+        "Pesquisa, NPS ou entrevistas",
+        "Análise de reclamações e elogios"
+      ],
+      "evidence_examples": [
+        "Resultados de satisfação",
+        "Ações derivadas do feedback"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c9-aud-02",
+      "version": "1",
+      "theme": "Avaliação interna",
+      "clause_ref": "9.2",
+      "question": "Os achados da avaliação interna geram ações com prazo e responsável — e alguém confere se fecharam?",
+      "explanation": "Relatório sem ação é custo sem retorno.",
+      "practice_examples": [
+        "Plano de ações pós-avaliação",
+        "Verificação de fechamento"
+      ],
+      "evidence_examples": [
+        "Lista de achados com status",
+        "Evidência de verificação"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c9-aud-01",
         "in": [
           "yes",
           "partial"
@@ -933,6 +1275,50 @@
       "evidence_examples": [
         "Histórico de melhorias implementadas",
         "Mudanças de processo documentadas"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c10-capa-03",
+      "version": "1",
+      "theme": "Não conformidade e ação corretiva",
+      "clause_ref": "10.2",
+      "question": "Problemas parecidos que se repetem em áreas diferentes são tratados como padrão — não como casos isolados?",
+      "explanation": "Tratar cada ocorrência como única esconde causa sistêmica.",
+      "practice_examples": [
+        "Agrupamento de reclamações/NCs por tema",
+        "Ação corretiva de processo, não só de lote"
+      ],
+      "evidence_examples": [
+        "Análise de recorrência",
+        "Ação que muda o processo"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c10-capa-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c10-imp-02",
+      "version": "1",
+      "theme": "Melhoria",
+      "clause_ref": "10.1",
+      "question": "Ideias e problemas levantados por quem executa chegam a alguém com poder de priorizar melhoria?",
+      "explanation": "Quem faz o trabalho vê o atrito primeiro. Sem canal, a melhoria fica só no discurso.",
+      "practice_examples": [
+        "Canal simples de sugestões/problemas",
+        "Ritual de priorização com a gestão"
+      ],
+      "evidence_examples": [
+        "Registro de sugestões",
+        "Exemplos de melhorias originadas do time"
       ],
       "answer_type": "choice_with_description",
       "required": true,
