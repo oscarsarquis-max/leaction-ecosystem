@@ -27,7 +27,7 @@ export function AccessGate({ status, onLogin }: Props) {
         <p className="qmind-login__text">
           {expired
             ? "Sua sessão expirou. Entre de novo para retomar o trabalho na sua organização."
-            : "Entre para acessar as avaliações da sua organização."}
+            : "Consultoria de qualidade para organizações. Padrão de auto-consultoria, gerenciamento e controle da qualidade."}
         </p>
 
         <button
@@ -43,7 +43,7 @@ export function AccessGate({ status, onLogin }: Props) {
         <p className="qmind-login__meta">
           Acesso por convite · sessão segura
           <br />
-          <span className="qmind-login__build">UI access-gate-2026-08-06b</span>
+          <span className="qmind-login__build">UI access-gate-2026-08-06c</span>
         </p>
       </div>
     </div>
