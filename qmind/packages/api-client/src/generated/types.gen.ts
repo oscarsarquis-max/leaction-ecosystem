@@ -653,6 +653,10 @@ export type AuthorizeUploadIn = {
      * Declared Byte Size
      */
     declared_byte_size: number;
+    /**
+     * Supersedes Evidence Id
+     */
+    supersedes_evidence_id?: string | null;
 };
 
 /**
@@ -805,6 +809,22 @@ export type EvidenceOut = {
      */
     byte_size: number | null;
     classification: EvidenceClassification;
+    /**
+     * Collected At
+     */
+    collected_at?: string | null;
+    /**
+     * Collected By
+     */
+    collected_by?: string | null;
+    /**
+     * Collected Phase
+     */
+    collected_phase?: string | null;
+    /**
+     * Collection Origin
+     */
+    collection_origin?: string | null;
     /**
      * Content Hash
      */
@@ -1195,6 +1215,14 @@ export type GuidedEvidenceLinkOut = {
      * Byte Size
      */
     byte_size?: number | null;
+    /**
+     * Collected Phase
+     */
+    collected_phase?: string | null;
+    /**
+     * Collection Origin
+     */
+    collection_origin?: string | null;
     /**
      * Content Type
      */

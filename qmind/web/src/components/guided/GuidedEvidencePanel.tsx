@@ -5,6 +5,7 @@ import { uploadEvidenceFile } from "@/lib/evidenceUpload";
 import {
   formatByteSize,
   formatEvidenceDate,
+  publicCollectionOrigin,
   publicEvidenceSituation,
 } from "@/lib/evidencePublicStatus";
 import { getQmindClient, withTenantGeneration } from "@/api/qmindApi";
@@ -101,6 +102,11 @@ export function GuidedEvidencePanel({
           Só pedimos evidência depois da resposta. Você pode anexar, vincular,
           descrever ou deixar para depois.
         </p>
+        <p className="mt-2 text-sm text-qmind-text-muted" data-testid="evidence-early-hint">
+          Se os documentos já estiverem disponíveis, você pode enviá-los agora.
+          Durante a auditoria, eles ainda serão verificados e poderão exigir
+          complementação.
+        </p>
       </div>
 
       {evidenceExamples.length > 0 ? (
@@ -123,6 +129,10 @@ export function GuidedEvidencePanel({
               link.evidence_status,
               link.situation,
             );
+            const origin = publicCollectionOrigin(
+              link.collected_phase,
+              link.collection_origin,
+            );
             return (
               <li
                 key={link.id}
@@ -136,7 +146,8 @@ export function GuidedEvidencePanel({
                     </p>
                     <p className="text-qmind-text-muted">
                       {link.content_type || "—"} ·{" "}
-                      {formatByteSize(link.byte_size)} · {situation} ·{" "}
+                      {formatByteSize(link.byte_size)} · {situation}
+                      {origin ? ` · ${origin}` : ""} ·{" "}
                       {formatEvidenceDate(
                         link.evidence_updated_at ?? link.created_at,
                       )}

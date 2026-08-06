@@ -14,6 +14,11 @@ from app.auth.context import OrgContext
 from app.config import get_settings
 from app.db import admin_connection, tenant_connection
 from app.errors import AppError
+from app.modules.evidence.collection import (
+    assert_assessment_allows_collection,
+    collected_phase_for_status,
+    public_collection_origin,
+)
 from app.modules.evidence.schemas import (
     AuthorizeUploadIn,
     AuthorizeUploadOut,
@@ -40,6 +45,7 @@ _READ_ROLES = _AUTHORIZE_ROLES + ("reader",)
 
 
 def _row_to_out(row) -> EvidenceOut:
+    phase = getattr(row, "collected_phase", None)
     return EvidenceOut(
         id=row.id,
         organization_id=row.organization_id,
@@ -53,6 +59,10 @@ def _row_to_out(row) -> EvidenceOut:
         version_no=row.version_no,
         legal_hold=row.legal_hold,
         upload_expires_at=getattr(row, "upload_expires_at", None),
+        collected_phase=phase,
+        collected_at=getattr(row, "collected_at", None),
+        collected_by=getattr(row, "collected_by", None),
+        collection_origin=public_collection_origin(phase),
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -61,8 +71,11 @@ def _row_to_out(row) -> EvidenceOut:
 _EVIDENCE_COLS = """
     id, organization_id, assessment_id, status, classification,
     content_type, byte_size, content_hash, storage_key, version_no,
-    legal_hold, upload_expires_at, created_at, updated_at
+    legal_hold, upload_expires_at, collected_phase, collected_at, collected_by,
+    created_at, updated_at
 """
+
+_EVIDENCE_RETURNING = f"RETURNING {_EVIDENCE_COLS}"
 
 
 def _fetch_evidence(conn: Connection, org_id: UUID, evidence_id: UUID, *, for_update: bool = False):
@@ -108,35 +121,62 @@ def authorize_upload(ctx: OrgContext, payload: AuthorizeUploadIn) -> AuthorizeUp
         ).first()
         if assess is None:
             raise AppError("not_found", "Assessment not found", status_code=404)
-        if assess.status in ("closed", "cancelled"):
-            raise AppError("assessment_closed", "Assessment closed/cancelled", status_code=409)
-        if assess.status not in ("in_progress", "analysis"):
-            raise AppError(
-                "assessment_not_collecting",
-                f"Upload not allowed in assessment status {assess.status}",
-                status_code=409,
-            )
+        assert_assessment_allows_collection(assess.status)
+        collected_phase = collected_phase_for_status(assess.status)
+        collected_at = datetime.now(timezone.utc)
+
+        version_no = 1
+        lineage_id = None
+        supersedes_id = payload.supersedes_evidence_id
+        if supersedes_id is not None:
+            prev = conn.execute(
+                text(
+                    """
+                    SELECT id, assessment_id, status, version_no, lineage_id
+                    FROM evidences
+                    WHERE id = :id AND organization_id = :org
+                    FOR UPDATE
+                    """
+                ),
+                {"id": supersedes_id, "org": ctx.organization_id},
+            ).first()
+            if prev is None or prev.assessment_id != payload.assessment_id:
+                raise AppError("not_found", "Evidence not found", status_code=404)
+            if prev.status in ("disposed", "pending_disposal"):
+                raise AppError(
+                    "conflict",
+                    "Cannot supersede disposed evidence",
+                    status_code=409,
+                )
+            version_no = int(prev.version_no or 1) + 1
+            lineage_id = prev.lineage_id or prev.id
 
         evidence_id = uuid4()
-        storage_key = storage.generate_key(str(ctx.organization_id), str(evidence_id), 1)
+        if lineage_id is None:
+            lineage_id = evidence_id
+        storage_key = storage.generate_key(
+            str(ctx.organization_id), str(evidence_id), version_no
+        )
         expires_at = datetime.now(timezone.utc) + timedelta(
             seconds=settings.evidence_upload_expires_seconds
         )
         row = conn.execute(
             text(
-                """
+                f"""
                 INSERT INTO evidences (
                   id, organization_id, assessment_id, status, classification,
                   content_type, byte_size, storage_key, version_no, lineage_id,
-                  legal_hold, uploaded_by, upload_expires_at
+                  supersedes_evidence_id,
+                  legal_hold, uploaded_by, upload_expires_at,
+                  collected_phase, collected_at, collected_by
                 ) VALUES (
                   :id, :org, :assess, 'upload_pending', :class,
-                  :ctype, :size, :key, 1, :id,
-                  false, :uploader, :expires
+                  :ctype, :size, :key, :ver, :lineage,
+                  :supersedes,
+                  false, :uploader, :expires,
+                  :cphase, :cat, :cby
                 )
-                RETURNING id, organization_id, assessment_id, status, classification,
-                          content_type, byte_size, content_hash, storage_key, version_no,
-                          legal_hold, upload_expires_at, created_at, updated_at
+                {_EVIDENCE_RETURNING}
                 """
             ),
             {
@@ -151,8 +191,14 @@ def authorize_upload(ctx: OrgContext, payload: AuthorizeUploadIn) -> AuthorizeUp
                 "ctype": ctype,
                 "size": payload.declared_byte_size,
                 "key": storage_key,
+                "ver": version_no,
+                "lineage": lineage_id,
+                "supersedes": supersedes_id,
                 "uploader": ctx.membership_id,
                 "expires": expires_at,
+                "cphase": collected_phase,
+                "cat": collected_at,
+                "cby": ctx.membership_id,
             },
         ).one()
 
@@ -179,6 +225,8 @@ def authorize_upload(ctx: OrgContext, payload: AuthorizeUploadIn) -> AuthorizeUp
                 "content_type": ctype,
                 "declared_byte_size": payload.declared_byte_size,
                 "upload_expires_at": expires_at.isoformat(),
+                "collected_phase": collected_phase,
+                "supersedes_evidence_id": str(supersedes_id) if supersedes_id else None,
             },
         )
         conn.commit()
@@ -308,6 +356,17 @@ def receive_upload(ctx: OrgContext, evidence_id: UUID) -> EvidenceTransitionResu
             raise AppError("size_mismatch", "Downloaded size mismatch", status_code=422)
         digest = "sha256:" + hashlib.sha256(data).hexdigest()
 
+        prev_id = conn.execute(
+            text(
+                """
+                SELECT supersedes_evidence_id
+                FROM evidences
+                WHERE id = :id AND organization_id = :org
+                """
+            ),
+            {"id": evidence_id, "org": ctx.organization_id},
+        ).scalar_one_or_none()
+
         updated = conn.execute(
             text(
                 """
@@ -320,7 +379,8 @@ def receive_upload(ctx: OrgContext, evidence_id: UUID) -> EvidenceTransitionResu
                 WHERE id = :id AND organization_id = :org AND status = 'upload_pending'
                 RETURNING id, organization_id, assessment_id, status, classification,
                           content_type, byte_size, content_hash, storage_key, version_no,
-                          legal_hold, upload_expires_at, created_at, updated_at
+                          legal_hold, upload_expires_at, collected_phase, collected_at,
+                          collected_by, created_at, updated_at
                 """
             ),
             {
@@ -331,6 +391,20 @@ def receive_upload(ctx: OrgContext, evidence_id: UUID) -> EvidenceTransitionResu
                 "org": ctx.organization_id,
             },
         ).one()
+
+        if prev_id is not None:
+            conn.execute(
+                text(
+                    """
+                    UPDATE evidences
+                    SET status = 'superseded', updated_at = now()
+                    WHERE id = :prev AND organization_id = :org
+                      AND status NOT IN ('disposed', 'pending_disposal', 'superseded')
+                    """
+                ),
+                {"prev": prev_id, "org": ctx.organization_id},
+            )
+
         write_audit(
             conn,
             organization_id=ctx.organization_id,
@@ -345,6 +419,7 @@ def receive_upload(ctx: OrgContext, evidence_id: UUID) -> EvidenceTransitionResu
                 "byte_size": size,
                 "content_type": detected_type,
                 "content_hash": digest,
+                "superseded_evidence_id": str(prev_id) if prev_id else None,
             },
         )
         conn.commit()
@@ -382,7 +457,8 @@ def security_pass(ctx: OrgContext, evidence_id: UUID) -> EvidenceTransitionResul
                 WHERE id = :id AND organization_id = :org AND status = 'quarantined'
                 RETURNING id, organization_id, assessment_id, status, classification,
                           content_type, byte_size, content_hash, storage_key, version_no,
-                          legal_hold, upload_expires_at, created_at, updated_at
+                          legal_hold, upload_expires_at, collected_phase, collected_at,
+                          collected_by, created_at, updated_at
                 """
             ),
             {"id": evidence_id, "org": ctx.organization_id},
@@ -429,7 +505,8 @@ def security_fail(ctx: OrgContext, evidence_id: UUID) -> EvidenceTransitionResul
                 WHERE id = :id AND organization_id = :org AND status = 'quarantined'
                 RETURNING id, organization_id, assessment_id, status, classification,
                           content_type, byte_size, content_hash, storage_key, version_no,
-                          legal_hold, upload_expires_at, created_at, updated_at
+                          legal_hold, upload_expires_at, collected_phase, collected_at,
+                          collected_by, created_at, updated_at
                 """
             ),
             {"id": evidence_id, "org": ctx.organization_id},
@@ -571,7 +648,8 @@ def abandon_upload(ctx: OrgContext, evidence_id: UUID) -> EvidenceTransitionResu
                 WHERE id = :id AND organization_id = :org
                 RETURNING id, organization_id, assessment_id, status, classification,
                           content_type, byte_size, content_hash, storage_key, version_no,
-                          legal_hold, upload_expires_at, created_at, updated_at
+                          legal_hold, upload_expires_at, collected_phase, collected_at,
+                          collected_by, created_at, updated_at
                 """
             ),
             {"id": evidence_id, "org": ctx.organization_id},

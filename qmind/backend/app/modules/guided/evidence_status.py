@@ -5,11 +5,13 @@ Internal EvidenceStatus values must never be shown raw in the UI.
 
 from __future__ import annotations
 
-# Technical → public vocabulary (requirement §4).
+from app.modules.evidence.collection import public_collection_origin
+
+# Technical → public vocabulary.
 _PUBLIC_SITUATION: dict[str, str] = {
     "upload_pending": "Aguardando envio",
     "quarantined": "Em verificação",
-    "rejected": "Rejeitada na verificação",
+    "rejected": "Rejeitada",
     "approved": "Aprovada",
     "superseded": "Substituída",
     "pending_disposal": "Aguardando revisão",
@@ -36,3 +38,7 @@ def situation_bucket(status: str | None) -> str:
     if status in ("superseded", "disposed"):
         return "replaced"
     return "processing"
+
+
+def public_origin_label(collected_phase: str | None) -> str | None:
+    return public_collection_origin(collected_phase)

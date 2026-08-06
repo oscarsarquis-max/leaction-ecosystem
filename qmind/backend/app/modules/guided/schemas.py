@@ -38,6 +38,8 @@ class GuidedEvidenceLinkOut(BaseModel):
     # Denormalized evidence snapshot for Wizard UI (no signed URLs).
     evidence_status: str | None = None
     situation: str = ""
+    collected_phase: str | None = None
+    collection_origin: str | None = None
     content_type: str | None = None
     byte_size: int | None = None
     file_name: str | None = None

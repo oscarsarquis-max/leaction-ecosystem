@@ -1,24 +1,38 @@
-/** Vocabulário público de situação de evidência (Wizard). Sem enums técnicos. */
+/** Vocabulário público de situação/origem de evidência (Wizard). Sem enums técnicos. */
 
-const MAP: Record<string, string> = {
+const SITUATION: Record<string, string> = {
   upload_pending: "Aguardando envio",
   quarantined: "Em verificação",
-  rejected: "Rejeitada na verificação",
+  rejected: "Rejeitada",
   approved: "Aprovada",
   superseded: "Substituída",
   pending_disposal: "Aguardando revisão",
   disposed: "Substituída",
 };
 
-/** “Disponível” = aprovada e utilizável no contexto consultivo (não é certificação). */
+const ORIGIN: Record<string, string> = {
+  preparation: "Disponível antecipadamente",
+  planning: "Disponível antecipadamente",
+  field: "Coletada em campo",
+  analysis: "Complementação da análise",
+};
+
 export function publicEvidenceSituation(
   status: string | null | undefined,
   situationFromApi?: string | null,
 ): string {
   if (situationFromApi?.trim()) return situationFromApi.trim();
   if (!status) return "Aguardando revisão";
-  if (status === "approved") return "Aprovada";
-  return MAP[status] ?? "Aguardando revisão";
+  return SITUATION[status] ?? "Aguardando revisão";
+}
+
+export function publicCollectionOrigin(
+  phase: string | null | undefined,
+  originFromApi?: string | null,
+): string | null {
+  if (originFromApi?.trim()) return originFromApi.trim();
+  if (!phase || phase === "unknown_legacy") return null;
+  return ORIGIN[phase] ?? null;
 }
 
 export function formatByteSize(bytes: number | null | undefined): string {

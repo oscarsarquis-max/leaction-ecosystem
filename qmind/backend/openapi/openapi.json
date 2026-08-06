@@ -1314,6 +1314,18 @@
             "minimum": 1.0,
             "title": "Declared Byte Size",
             "type": "integer"
+          },
+          "supersedes_evidence_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Evidence Id"
           }
         },
         "required": [
@@ -1596,6 +1608,52 @@
           },
           "classification": {
             "$ref": "#/components/schemas/EvidenceClassification"
+          },
+          "collected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collected At"
+          },
+          "collected_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collected By"
+          },
+          "collected_phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collected Phase"
+          },
+          "collection_origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Origin"
           },
           "content_hash": {
             "anyOf": [
@@ -2398,6 +2456,28 @@
               }
             ],
             "title": "Byte Size"
+          },
+          "collected_phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collected Phase"
+          },
+          "collection_origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collection Origin"
           },
           "content_type": {
             "anyOf": [

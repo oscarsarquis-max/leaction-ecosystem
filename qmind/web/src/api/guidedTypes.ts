@@ -38,6 +38,8 @@ export type GuidedEvidenceLink = {
   created_at: string;
   evidence_status?: string | null;
   situation?: string;
+  collected_phase?: string | null;
+  collection_origin?: string | null;
   content_type?: string | null;
   byte_size?: number | null;
   file_name?: string | null;

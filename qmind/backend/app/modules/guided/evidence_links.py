@@ -18,7 +18,12 @@ from app.errors import AppError
 from app.modules.evidence.schemas import AuthorizeUploadIn, AuthorizeUploadOut
 from app.modules.evidence import service as evidence_service
 from app.modules.guided import catalog as catalog_mod
-from app.modules.guided.evidence_status import public_situation, situation_bucket
+from app.modules.evidence.collection import assert_assessment_allows_collection
+from app.modules.guided.evidence_status import (
+    public_origin_label,
+    public_situation,
+    situation_bucket,
+)
 from app.modules.guided.schemas import (
     GuidedEvidenceLinkCreate,
     GuidedEvidenceLinkOut,
@@ -79,6 +84,7 @@ def _answer_row(
 
 
 def _link_row_to_out(row) -> GuidedEvidenceLinkOut:
+    phase = getattr(row, "collected_phase", None)
     return GuidedEvidenceLinkOut(
         id=row.id,
         organization_id=row.organization_id,
@@ -93,6 +99,8 @@ def _link_row_to_out(row) -> GuidedEvidenceLinkOut:
         created_at=row.created_at,
         evidence_status=row.evidence_status,
         situation=public_situation(row.evidence_status),
+        collected_phase=phase,
+        collection_origin=public_origin_label(phase),
         content_type=row.content_type,
         byte_size=row.byte_size,
         file_name=row.file_name,
@@ -105,7 +113,7 @@ _LINK_SELECT = """
            gae.assessment_id, gae.question_id, gae.question_version, gae.evidence_id,
            gae.link_type, gae.created_by_user_id, gae.created_at,
            ev.status AS evidence_status, ev.content_type, ev.byte_size,
-           ev.updated_at AS evidence_updated_at,
+           ev.collected_phase, ev.updated_at AS evidence_updated_at,
            COALESCE(
              NULLIF(regexp_replace(ev.storage_key, '^.*/', ''), ''),
              ev.content_type
@@ -201,7 +209,8 @@ def _insert_link(
     ev = conn.execute(
         text(
             """
-            SELECT id, assessment_id, status, content_type, byte_size, storage_key, updated_at
+            SELECT id, assessment_id, status, content_type, byte_size, storage_key,
+                   collected_phase, updated_at
             FROM evidences
             WHERE id = :eid AND organization_id = :org
             """
@@ -272,6 +281,8 @@ def _insert_link(
         created_at=row.created_at,
         evidence_status=ev.status,
         situation=public_situation(ev.status),
+        collected_phase=ev.collected_phase,
+        collection_origin=public_origin_label(ev.collected_phase),
         content_type=ev.content_type,
         byte_size=ev.byte_size,
         file_name=(
@@ -415,7 +426,10 @@ def link_existing(
 
     require_role(ctx, *_MUTATE_ROLES)
     with tenant_connection(ctx.organization_id) as conn:
-        guided_service._assessment_row(conn, ctx.organization_id, assessment_id)
+        assess = guided_service._assessment_row(
+            conn, ctx.organization_id, assessment_id
+        )
+        assert_assessment_allows_collection(assess.status)
         session = _session_for_assessment(
             conn, ctx.organization_id, assessment_id, for_update=True
         )
@@ -474,7 +488,10 @@ def unlink(
 
     require_role(ctx, *_MUTATE_ROLES)
     with tenant_connection(ctx.organization_id) as conn:
-        guided_service._assessment_row(conn, ctx.organization_id, assessment_id)
+        assess = guided_service._assessment_row(
+            conn, ctx.organization_id, assessment_id
+        )
+        assert_assessment_allows_collection(assess.status)
         session = _session_for_assessment(
             conn, ctx.organization_id, assessment_id, for_update=True
         )
@@ -529,7 +546,10 @@ def authorize_for_question(
             status_code=422,
         )
     with tenant_connection(ctx.organization_id) as conn:
-        guided_service._assessment_row(conn, ctx.organization_id, assessment_id)
+        assess = guided_service._assessment_row(
+            conn, ctx.organization_id, assessment_id
+        )
+        assert_assessment_allows_collection(assess.status)
         session = _session_for_assessment(conn, ctx.organization_id, assessment_id)
         q = catalog_mod.get_question(question_id, session.catalog_version)
         if q is None:
@@ -556,7 +576,10 @@ def complete_after_receive(
 
     require_role(ctx, *_MUTATE_ROLES)
     with tenant_connection(ctx.organization_id) as conn:
-        guided_service._assessment_row(conn, ctx.organization_id, assessment_id)
+        assess = guided_service._assessment_row(
+            conn, ctx.organization_id, assessment_id
+        )
+        assert_assessment_allows_collection(assess.status)
         session = _session_for_assessment(
             conn, ctx.organization_id, assessment_id, for_update=True
         )

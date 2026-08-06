@@ -201,7 +201,8 @@ def test_evidence_reject_path(client: TestClient):
     assert fail.json()["to_status"] == "rejected"
 
 
-def test_authorize_blocked_before_start(client: TestClient):
+def test_authorize_allowed_in_planned(client: TestClient):
+    """Preparation/planning may collect evidence; actions+ remain blocked elsewhere."""
     _headers, _org, h, model_id, sv_id, req_id = _org_ctx(client)
     aid = _create_draft_with_scope(client, h, model_id, sv_id, req_id)
     client.post(f"/api/v1/assessments/{aid}/transitions/plan", headers=h)
@@ -214,8 +215,8 @@ def test_authorize_blocked_before_start(client: TestClient):
         },
         headers=h,
     )
-    assert r.status_code == 409
-    assert r.json()["code"] == "assessment_not_collecting"
+    assert r.status_code == 201, r.text
+    assert r.json()["evidence"]["collected_phase"] == "planning"
 
 
 def test_content_type_not_allowed(client: TestClient):

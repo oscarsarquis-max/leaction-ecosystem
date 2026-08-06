@@ -17,6 +17,8 @@ class AuthorizeUploadIn(BaseModel):
     classification: EvidenceClassification = EvidenceClassification.confidential
     content_type: str = Field(..., max_length=200)
     declared_byte_size: int = Field(..., ge=1, le=100_000_000)
+    # Optional: create a new version that will supersede an existing evidence.
+    supersedes_evidence_id: UUID | None = None
 
 
 class AuthorizeUploadOut(BaseModel):
@@ -44,6 +46,10 @@ class EvidenceOut(BaseModel):
     version_no: int
     legal_hold: bool
     upload_expires_at: datetime | None = None
+    collected_phase: str | None = None
+    collected_at: datetime | None = None
+    collected_by: UUID | None = None
+    collection_origin: str | None = None
     created_at: datetime
     updated_at: datetime
 
