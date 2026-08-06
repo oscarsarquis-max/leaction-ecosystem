@@ -637,6 +637,300 @@ export type AssessmentTransitionResult = {
 export type AssessmentType = 'diagnosis' | 'internal_audit' | 'external_audit' | 'certification_prep' | 'other';
 
 /**
+ * AuditPlanCriteria
+ */
+export type AuditPlanCriteria = {
+    /**
+     * Additional Text
+     */
+    additional_text?: string;
+    /**
+     * Internal Processes
+     */
+    internal_processes?: boolean;
+    /**
+     * Iso9001 2015
+     */
+    iso9001_2015?: boolean;
+    /**
+     * Legal Contractual
+     */
+    legal_contractual?: boolean;
+    /**
+     * Legal Contractual Text
+     */
+    legal_contractual_text?: string;
+};
+
+/**
+ * AuditPlanOut
+ */
+export type AuditPlanOut = {
+    /**
+     * Assessment Id
+     */
+    assessment_id: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    criteria?: AuditPlanCriteria;
+    /**
+     * Editable
+     */
+    editable?: boolean;
+    /**
+     * Field Sources
+     */
+    field_sources?: {
+        [key: string]: string;
+    };
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Last Amendment Reason
+     */
+    last_amendment_reason?: string;
+    /**
+     * Lead Membership Id
+     */
+    lead_membership_id?: string | null;
+    /**
+     * Modality
+     */
+    modality?: 'diagnosis' | 'internal_audit' | 'external_audit' | 'certification_prep' | 'other';
+    /**
+     * Modality Label
+     */
+    modality_label?: string;
+    /**
+     * Objective
+     */
+    objective?: string;
+    /**
+     * Org Representatives
+     */
+    org_representatives?: Array<OrgRepresentative>;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Plan Status
+     */
+    plan_status?: 'draft' | 'ready' | 'amended';
+    /**
+     * Planned End
+     */
+    planned_end?: string | null;
+    /**
+     * Planned Start
+     */
+    planned_start?: string | null;
+    /**
+     * Preparation Notes
+     */
+    preparation_notes?: string;
+    /**
+     * Processes
+     */
+    processes?: Array<AuditPlanProcess>;
+    readiness: AuditPlanReadiness;
+    /**
+     * Requires Amendment Reason
+     */
+    requires_amendment_reason?: boolean;
+    /**
+     * Risks Notes
+     */
+    risks_notes?: string;
+    /**
+     * Scope Text
+     */
+    scope_text?: string;
+    /**
+     * Sites
+     */
+    sites?: Array<AuditPlanSite>;
+    /**
+     * Team Membership Ids
+     */
+    team_membership_ids?: Array<string>;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    /**
+     * Updated By User Id
+     */
+    updated_by_user_id?: string | null;
+};
+
+/**
+ * AuditPlanPatch
+ */
+export type AuditPlanPatch = {
+    /**
+     * Amendment Reason
+     */
+    amendment_reason?: string | null;
+    criteria?: AuditPlanCriteria | null;
+    /**
+     * Expected Updated At
+     */
+    expected_updated_at?: string | null;
+    /**
+     * Lead Membership Id
+     */
+    lead_membership_id?: string | null;
+    /**
+     * Modality
+     */
+    modality?: ('diagnosis' | 'internal_audit' | 'external_audit' | 'certification_prep' | 'other') | null;
+    /**
+     * Objective
+     */
+    objective?: string | null;
+    /**
+     * Org Representatives
+     */
+    org_representatives?: Array<OrgRepresentative> | null;
+    /**
+     * Planned End
+     */
+    planned_end?: string | null;
+    /**
+     * Planned Start
+     */
+    planned_start?: string | null;
+    /**
+     * Preparation Notes
+     */
+    preparation_notes?: string | null;
+    /**
+     * Processes
+     */
+    processes?: Array<AuditPlanProcess> | null;
+    /**
+     * Risks Notes
+     */
+    risks_notes?: string | null;
+    /**
+     * Scope Text
+     */
+    scope_text?: string | null;
+    /**
+     * Sites
+     */
+    sites?: Array<AuditPlanSite> | null;
+    /**
+     * Team Membership Ids
+     */
+    team_membership_ids?: Array<string> | null;
+};
+
+/**
+ * AuditPlanProcess
+ */
+export type AuditPlanProcess = {
+    /**
+     * From Preparation
+     */
+    from_preparation?: boolean;
+    /**
+     * Name
+     */
+    name?: string;
+    /**
+     * Notes
+     */
+    notes?: string;
+    /**
+     * Owner
+     */
+    owner?: string;
+};
+
+/**
+ * AuditPlanReadiness
+ */
+export type AuditPlanReadiness = {
+    /**
+     * Blockers
+     */
+    blockers?: Array<string>;
+    /**
+     * Completed Count
+     */
+    completed_count: number;
+    /**
+     * Items
+     */
+    items?: Array<ReadinessItem>;
+    /**
+     * Next Action
+     */
+    next_action?: string;
+    /**
+     * Pending Count
+     */
+    pending_count: number;
+    /**
+     * Percent
+     */
+    percent: number;
+    /**
+     * Ready
+     */
+    ready: boolean;
+};
+
+/**
+ * AuditPlanReadyIn
+ */
+export type AuditPlanReadyIn = {
+    /**
+     * Expected Updated At
+     */
+    expected_updated_at?: string | null;
+};
+
+/**
+ * AuditPlanRefreshIn
+ * Fill empty fields from Wizard/preparation. Never overwrites manual fields.
+ */
+export type AuditPlanRefreshIn = {
+    /**
+     * Confirm Overwrite Preparation
+     */
+    confirm_overwrite_preparation?: boolean;
+};
+
+/**
+ * AuditPlanSite
+ */
+export type AuditPlanSite = {
+    /**
+     * From Preparation
+     */
+    from_preparation?: boolean;
+    /**
+     * Location
+     */
+    location?: string;
+    /**
+     * Name
+     */
+    name?: string;
+    /**
+     * Notes
+     */
+    notes?: string;
+};
+
+/**
  * AuthorizeUploadIn
  */
 export type AuthorizeUploadIn = {
@@ -1696,6 +1990,24 @@ export type OrgMemberOut = {
 };
 
 /**
+ * OrgRepresentative
+ */
+export type OrgRepresentative = {
+    /**
+     * Name
+     */
+    name?: string;
+    /**
+     * Notes
+     */
+    notes?: string;
+    /**
+     * Role
+     */
+    role?: string;
+};
+
+/**
  * OrganizationCreate
  */
 export type OrganizationCreate = {
@@ -1797,6 +2109,28 @@ export type QuestionOut = {
      * Sort Order
      */
     sort_order: number;
+};
+
+/**
+ * ReadinessItem
+ */
+export type ReadinessItem = {
+    /**
+     * Blocking
+     */
+    blocking?: boolean;
+    /**
+     * Done
+     */
+    done: boolean;
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Label
+     */
+    label: string;
 };
 
 /**
@@ -4343,6 +4677,326 @@ export type GetAssessmentResponses = {
 };
 
 export type GetAssessmentResponse = GetAssessmentResponses[keyof GetAssessmentResponses];
+
+export type GetOrCreateAuditPlanData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan';
+};
+
+export type GetOrCreateAuditPlanErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetOrCreateAuditPlanError = GetOrCreateAuditPlanErrors[keyof GetOrCreateAuditPlanErrors];
+
+export type GetOrCreateAuditPlanResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuditPlanOut;
+};
+
+export type GetOrCreateAuditPlanResponse = GetOrCreateAuditPlanResponses[keyof GetOrCreateAuditPlanResponses];
+
+export type PatchAuditPlanData = {
+    body: AuditPlanPatch;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan';
+};
+
+export type PatchAuditPlanErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type PatchAuditPlanError = PatchAuditPlanErrors[keyof PatchAuditPlanErrors];
+
+export type PatchAuditPlanResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuditPlanOut;
+};
+
+export type PatchAuditPlanResponse = PatchAuditPlanResponses[keyof PatchAuditPlanResponses];
+
+export type MarkAuditPlanReadyData = {
+    /**
+     * Payload
+     */
+    body?: AuditPlanReadyIn | null;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan/ready';
+};
+
+export type MarkAuditPlanReadyErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type MarkAuditPlanReadyError = MarkAuditPlanReadyErrors[keyof MarkAuditPlanReadyErrors];
+
+export type MarkAuditPlanReadyResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuditPlanOut;
+};
+
+export type MarkAuditPlanReadyResponse = MarkAuditPlanReadyResponses[keyof MarkAuditPlanReadyResponses];
+
+export type RefreshAuditPlanFromPreparationData = {
+    /**
+     * Payload
+     */
+    body?: AuditPlanRefreshIn | null;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan/refresh-from-preparation';
+};
+
+export type RefreshAuditPlanFromPreparationErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type RefreshAuditPlanFromPreparationError = RefreshAuditPlanFromPreparationErrors[keyof RefreshAuditPlanFromPreparationErrors];
+
+export type RefreshAuditPlanFromPreparationResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuditPlanOut;
+};
+
+export type RefreshAuditPlanFromPreparationResponse = RefreshAuditPlanFromPreparationResponses[keyof RefreshAuditPlanFromPreparationResponses];
 
 export type ListAssessmentEvidencesData = {
     body?: never;

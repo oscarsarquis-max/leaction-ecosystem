@@ -5,6 +5,7 @@ import { getQmindClient, withTenantGeneration } from "@/api/qmindApi";
 import { queryKeys } from "@/api/queryKeys";
 import { useAssessment, useAssessmentScopes } from "@/hooks/useAssessmentDetail";
 import { useGuidedSession } from "@/hooks/useGuidedAssessment";
+import { useAuditPlan } from "@/hooks/useAuditPlan";
 import {
   consistencyScore,
   continueHref,
@@ -20,6 +21,7 @@ export function useAuditDashboard(assessmentId: string | undefined) {
   const scopes = useAssessmentScopes(assessmentId);
   // Lê sessão guided quando existir (get_or_create só cria em draft/planned).
   const guided = useGuidedSession(assessmentId);
+  const auditPlan = useAuditPlan(assessmentId);
 
   const orgId = currentOrganizationId;
   const aid = assessmentId;
@@ -162,6 +164,10 @@ export function useAuditDashboard(assessmentId: string | undefined) {
 
     const scopeItems = (scopes.data ?? []).length;
     const hasLead = !!a?.lead_membership_id;
+    const planReady =
+      auditPlan.data?.plan_status === "ready" ||
+      auditPlan.data?.plan_status === "amended";
+    const planPercent = auditPlan.data?.readiness?.percent ?? 0;
 
     const continueAction = aid
       ? continueHref(aid, status, { preparationReady })
@@ -171,7 +177,18 @@ export function useAuditDashboard(assessmentId: string | undefined) {
     if (status === "draft" && !preparationReady) {
       checklist.filter((c) => !c.done).forEach((c) => pending.push(c.label));
     }
-    if (status === "draft" && preparationReady) {
+    if (
+      (status === "draft" && preparationReady) ||
+      status === "planned"
+    ) {
+      if (!planReady) {
+        const next = auditPlan.data?.readiness?.next_action;
+        pending.push(
+          next
+            ? `Plano da Auditoria: ${next}`
+            : "Elaborar o Plano da Auditoria no Planejamento",
+        );
+      }
       if (scopeItems < 1) {
         pending.push(
           "Escopo formal: inclua pelo menos um item (requisito ou processo) no Planejamento",
@@ -204,12 +221,17 @@ export function useAuditDashboard(assessmentId: string | undefined) {
           }
         : status === "draft" && preparationReady
           ? {
-              title: "Ir para o Planejamento",
-              description:
-                scopeItems < 1 || !hasLead
-                  ? "Preparação concluída. No Planejamento, confirme escopo formal e equipe — o que faltar aparece marcado na tela."
-                  : "Preparação concluída. Confirme o plano e marque a avaliação como planejada para liberar a execução em campo.",
-              actionText: "Ir para o Planejamento",
+              title: !planReady
+                ? "Elaborar o Plano da Auditoria"
+                : "Ir para o Planejamento",
+              description: !planReady
+                ? "Preparação concluída. Monte o plano operacional (propósito, processos, pessoas e período) antes de confirmar o planejamento."
+                : scopeItems < 1 || !hasLead
+                  ? "Plano em andamento. Confirme escopo formal e equipe — o que faltar aparece marcado na tela."
+                  : "Plano pronto. Confirme o planejamento da avaliação para liberar a execução em campo (o plano ready não inicia o campo sozinho).",
+              actionText: !planReady
+                ? "Abrir Plano da Auditoria"
+                : "Ir para o Planejamento",
             }
           : {
               title: "Continuar a avaliação",
@@ -218,11 +240,20 @@ export function useAuditDashboard(assessmentId: string | undefined) {
               actionText: continueAction.label,
             };
 
+    const continueActionResolved =
+      status === "draft" && preparationReady && !planReady && aid
+        ? {
+            href: `/assessments/${aid}/audit-plan`,
+            label: "Abrir Plano da Auditoria",
+          }
+        : continueAction;
+
     return {
       loading:
         assessment.isLoading ||
         extras.some((q) => q.isLoading) ||
-        (guided.isLoading && !guided.isError),
+        (guided.isLoading && !guided.isError) ||
+        (auditPlan.isLoading && !auditPlan.isError),
       assessment: a,
       organizationName:
         currentOrganization?.organizationName ?? currentOrganizationId ?? "—",
@@ -230,8 +261,10 @@ export function useAuditDashboard(assessmentId: string | undefined) {
       status,
       statusIndex: statusIndex(status),
       percent,
-      continueAction,
+      continueAction: continueActionResolved,
       preparationReady,
+      auditPlanReady: planReady,
+      auditPlanPercent: planPercent,
       nextBest,
       checklist,
       consistency: consistencyScore({
@@ -260,6 +293,10 @@ export function useAuditDashboard(assessmentId: string | undefined) {
     assessment.isLoading,
     guided.data,
     guided.isLoading,
+    guided.isError,
+    auditPlan.data,
+    auditPlan.isLoading,
+    auditPlan.isError,
     interviewsQ.data,
     evidencesQ.data,
     findingsQ.data,

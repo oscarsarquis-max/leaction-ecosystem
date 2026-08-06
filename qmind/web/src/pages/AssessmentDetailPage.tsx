@@ -128,6 +128,23 @@ export function AssessmentDetailPage() {
         teamQuery={team}
         leadMembershipId={a.lead_membership_id}
       />
+      <section
+        className="rounded-lg border border-teal-900/10 bg-white/70 p-4"
+        data-testid="audit-plan-entry"
+      >
+        <h2 className="font-display text-xl text-teal-950">Plano da Auditoria</h2>
+        <p className="mt-1 text-sm text-teal-950/70">
+          Organize propósito, processos, pessoas e período em linguagem clara —
+          com preenchimento a partir da preparação.
+        </p>
+        <Link
+          to={`/assessments/${assessmentId}/audit-plan`}
+          className="qm-btn-primary mt-3 inline-flex"
+          data-testid="open-audit-plan"
+        >
+          Abrir Plano da Auditoria
+        </Link>
+      </section>
       <PlanSection
         assessmentId={assessmentId}
         canEdit={canEdit}

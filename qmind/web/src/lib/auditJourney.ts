@@ -58,12 +58,12 @@ export const JOURNEY_PHASES: JourneyPhaseDef[] = [
     status: "planned",
     objective: "Definir equipe, escopo formal e como a avaliação será conduzida.",
     activities: [
-      "Confirmar escopo e equipe",
-      "Planejar entrevistas e amostragem",
+      "Elaborar o Plano da Auditoria (propósito, processos, pessoas e período)",
+      "Confirmar escopo formal e equipe",
       "Preparar a execução em campo",
     ],
-    expectedResult: "Plano pronto para iniciar a coleta em campo.",
-    advanceCriteria: "Avaliação planejada e equipe definida.",
+    expectedResult: "Plano operacional pronto — sem iniciar campo automaticamente.",
+    advanceCriteria: "Plano da auditoria revisado; avaliação planejada e equipe definida.",
     effortHint: "cerca de 30–60 minutos",
   },
   {

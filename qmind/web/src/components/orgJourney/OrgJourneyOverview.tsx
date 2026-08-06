@@ -64,6 +64,8 @@ export function OrgJourneyOverview({ assessments }: Props) {
               checklist: dash.checklist,
               counts: dash.counts,
               hasLead: !!dash.assessment?.lead_membership_id,
+              auditPlanReady: dash.auditPlanReady,
+              auditPlanPercent: dash.auditPlanPercent,
             }
           : null,
       ),

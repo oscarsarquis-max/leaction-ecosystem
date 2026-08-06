@@ -23,6 +23,7 @@ from app.modules.assessments.router import router as assessments_router
 from app.modules.evidence.router import router as evidence_router
 from app.modules.findings.router import router as findings_router
 from app.modules.guided.router import router as guided_router
+from app.modules.audit_plan.router import router as audit_plan_router
 from app.modules.interviews.router import router as interviews_router
 from app.modules.jobs.router import router as jobs_router
 from app.modules.maturity.router import router as maturity_router
@@ -75,6 +76,7 @@ app.include_router(orgs_router, prefix=settings.api_prefix)
 app.include_router(agenda_router, prefix=settings.api_prefix)
 app.include_router(assessments_router, prefix=settings.api_prefix)
 app.include_router(guided_router, prefix=settings.api_prefix)
+app.include_router(audit_plan_router, prefix=settings.api_prefix)
 app.include_router(interviews_router, prefix=settings.api_prefix)
 app.include_router(evidence_router, prefix=settings.api_prefix)
 app.include_router(findings_router, prefix=settings.api_prefix)

@@ -72,6 +72,8 @@ type DashSlice = {
     scopeItems: number;
   };
   hasLead: boolean;
+  auditPlanReady?: boolean;
+  auditPlanPercent?: number;
 };
 
 /**
@@ -114,11 +116,16 @@ export function buildOrgPhaseCards(dash: DashSlice | null): OrgPhaseCard[] {
         );
       }
     } else if (phase.id === "planning" && isCurrent) {
+      if (dash.auditPlanReady) doneHints.push("Plano da Auditoria pronto");
+      else pendingHints.push("Elaborar Plano da Auditoria");
       if (dash.counts.scopeItems >= 1) doneHints.push("Escopo formal iniciado");
       else pendingHints.push("Incluir item de escopo");
       if (dash.hasLead) doneHints.push("Líder da avaliação definido");
       else pendingHints.push("Confirmar líder da avaliação");
       pendingCount = pendingHints.length;
+      if (typeof dash.auditPlanPercent === "number") {
+        reliablePercent = dash.auditPlanPercent;
+      }
     } else if (phase.id === "field" && (isCurrent || visual === "completed")) {
       if (dash.counts.interviewsDone > 0) {
         doneHints.push(
