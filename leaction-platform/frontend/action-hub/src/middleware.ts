@@ -27,6 +27,8 @@ const EXEMPT_PREFIXES = [
   // Marketplace (vitrine, offers, proxy de imagem CDN)
   '/marketplace-api/',
   '/marketplace/',
+  // Micro-CMS imagens (rewrite → gateway); satélites e preview do admin
+  '/images/',
 ];
 
 function isExempt(pathname: string, searchParams: URLSearchParams): boolean {

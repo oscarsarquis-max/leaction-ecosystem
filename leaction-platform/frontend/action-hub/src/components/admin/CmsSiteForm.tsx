@@ -241,6 +241,11 @@ export function CmsSiteForm() {
   function patchColuna1(patch: Record<string, unknown>) {
     setLanding((prev) => {
       const nextColuna1 = { ...asRecord(prev.coluna1), ...patch };
+      const media = String(
+        nextColuna1.image_path || nextColuna1.image_url || ''
+      ).trim();
+      nextColuna1.image_path = media;
+      nextColuna1.image_url = media;
       const columns = Array.isArray(prev.columns) ? [...prev.columns] : [{}, {}, {}, {}];
       while (columns.length < 4) columns.push({});
       // Espelha coluna esquerda em columns[0] (School/inove4us leem coluna1 || columns[0]).
@@ -248,8 +253,8 @@ export function CmsSiteForm() {
         ...asRecord(columns[0]),
         visible: nextColuna1.visibility !== false,
         visibility: nextColuna1.visibility !== false,
-        image_url: nextColuna1.image_path || nextColuna1.image_url || '',
-        image_path: nextColuna1.image_path || '',
+        image_url: media,
+        image_path: media,
         title: nextColuna1.title || '',
         description: nextColuna1.subtitle || '',
         subtitle: nextColuna1.subtitle || '',
@@ -590,10 +595,17 @@ export function CmsSiteForm() {
               <div className="md:col-span-2">
                 <CmsImageUploadField
                   label="Imagem da coluna 1"
-                  value={str(coluna1.image_path)}
-                  onChange={(url) => patchColuna1({ image_path: url })}
+                  value={str(coluna1.image_path || coluna1.image_url)}
+                  onChange={(url) =>
+                    patchColuna1({ image_path: url, image_url: url })
+                  }
                   token={token}
-                  preferPublicUrl={false}
+                  preferPublicUrl={isAcessoSatellite}
+                  helpText={
+                    isAcessoSatellite
+                      ? 'URL pública do Hub (satélites leem em outra origem).'
+                      : undefined
+                  }
                 />
               </div>
             </div>
@@ -730,7 +742,7 @@ export function CmsSiteForm() {
                         patchColumn1({ image_url: url, image_path: url })
                       }
                       token={token}
-                      preferPublicUrl={false}
+                      preferPublicUrl={isAcessoSatellite}
                     />
                   </div>
                 </>

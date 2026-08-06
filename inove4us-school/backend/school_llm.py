@@ -107,3 +107,85 @@ def gerar_adaptacao_metodologia_pei(
     except Exception as exc:
         print(f"[school-llm] falha gerar PEI×metodologia: {exc}", file=sys.stderr, flush=True)
         raise
+
+
+def mesclar_metodologia_com_sugestao(
+    *,
+    texto_canonico: str,
+    sugestao_professor: str,
+) -> str:
+    """Mescla canônico + sugestão do professor em texto unificado (curadoria IA)."""
+    canonico = (texto_canonico or "").strip() or "(metodologia padrão vazia)"
+    sugestao = (sugestao_professor or "").strip() or "(sem sugestão)"
+    if os.environ.get("PEI_LLM_STUB", "").strip().lower() in ("1", "true", "yes"):
+        return (
+            f"{canonico}\n\n"
+            f"— Adaptação da escola (rascunho IA) —\n"
+            f"{sugestao}"
+        )
+    system = (
+        "Aja como um pedagogo. Mescle a metodologia padrão a seguir com a "
+        "sugestão de melhoria do professor, criando um texto unificado, claro "
+        "e prático. Responda em português, sem prefácio longo — apenas o texto "
+        "final pronto para uso pelos professores."
+    )
+    user = (
+        f"[Canônico]\n{canonico}\n\n"
+        f"[Sugestão]\n{sugestao}"
+    )
+    try:
+        return invoke_text(system_prompt=system, user_content=user, max_tokens=2048)
+    except Exception as exc:
+        print(f"[school-llm] falha mesclar metodologia: {exc}", file=sys.stderr, flush=True)
+        raise
+
+
+def adaptar_pei_metodologia_com_ia(
+    *,
+    metodologia_canonica: str,
+    aee_texto_escola: str = "",
+    aee_campos_experiencia: str = "",
+    pei_experiencias_individuais: str = "",
+    sugestao_professor: str = "",
+    condicao_categoria: str = "",
+    # retrocompat
+    matriz_pei_ativa: str = "",
+) -> str:
+    """Cruza metodologia + AEE (texto + campos) + PEI individual + sugestão → adaptação."""
+    canonico = (metodologia_canonica or "").strip() or "(metodologia vazia)"
+    aee_txt = (aee_texto_escola or matriz_pei_ativa or "").strip() or "(diretriz AEE ausente)"
+    aee_campos = (aee_campos_experiencia or "").strip() or "(campos de experiência ausentes)"
+    pei_exp = (pei_experiencias_individuais or "").strip() or "(sem adaptação individual informada)"
+    sugestao = (sugestao_professor or "").strip() or "(sem sugestão)"
+    cond = (condicao_categoria or "").strip() or "condição não especificada"
+
+    if os.environ.get("PEI_LLM_STUB", "").strip().lower() in ("1", "true", "yes"):
+        return (
+            f"Adaptação de plano de aula (rascunho IA) — {cond}\n\n"
+            f"Diretriz AEE:\n{aee_txt[:300]}\n\n"
+            f"Campos de experiência AEE:\n{aee_campos[:300]}\n\n"
+            f"PEI — experiências individuais:\n{pei_exp[:300]}\n\n"
+            f"Metodologia:\n{canonico[:300]}\n\n"
+            f"Sugestão do professor:\n{sugestao}"
+        )
+
+    system = (
+        "Aja como psicopedagogo. Cruze a Metodologia Canônica com a diretriz da "
+        "escola para a condição (texto AEE + campos de experiência metodológica). "
+        "Aplique as necessidades do aluno (experiências adaptadas individuais do PEI). "
+        "Incorpore a sugestão do professor para criar a adaptação final do plano de aula. "
+        "Responda em português, objetivo e acionável, sem prefácio longo."
+    )
+    user = (
+        f"[Metodologia Canônica]\n{canonico}\n\n"
+        f"[Condição / AEE]\n{cond}\n\n"
+        f"[AEE.texto_escola]\n{aee_txt}\n\n"
+        f"[AEE.campos_experiencia_metodologica]\n{aee_campos}\n\n"
+        f"[PEI.experiencias_adaptadas_individuais]\n{pei_exp}\n\n"
+        f"[Sugestao.texto]\n{sugestao}"
+    )
+    try:
+        return invoke_text(system_prompt=system, user_content=user, max_tokens=2048)
+    except Exception as exc:
+        print(f"[school-llm] falha adaptar PEI×metodologia: {exc}", file=sys.stderr, flush=True)
+        raise

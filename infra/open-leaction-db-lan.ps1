@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   Bancos típicos neste container: leaction_hub, MAtivas, chamelleon, inove4us,
-  prodinx, LASim, diario-obra.
+  inove4us_school, prodinx, LASim, diario-obra.
 
   Para o Phanton (porta 5435, container separado), rode também:
     ..\phanton\database\open-phanton-db-lan.ps1

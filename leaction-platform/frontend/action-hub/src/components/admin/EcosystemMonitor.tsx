@@ -31,11 +31,11 @@ const POLL_MS = 30_000;
 function mitigationFor(
   name: string
 ): { service: MitigateService; label: string } | null {
-  if (name === 'Marketplace API') {
+  if (name === 'API do Marketplace') {
     return { service: 'marketplace', label: 'Reiniciar Marketplace' };
   }
-  if (name === 'Action Pay' || name === 'Plan Management') {
-    return { service: 'gateway', label: 'Reiniciar Gateway' };
+  if (name === 'Action Pay' || name === 'Gestão de Planos') {
+    return { service: 'gateway', label: 'Reiniciar gateway' };
   }
   return null;
 }
@@ -63,7 +63,7 @@ function StatusBadge({ status }: { status: ServiceStatus }) {
           <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400 opacity-60" />
           <span className="relative inline-flex size-2 animate-pulse rounded-full bg-green-500" />
         </span>
-        UP
+        No ar
       </span>
     );
   }
@@ -71,14 +71,14 @@ function StatusBadge({ status }: { status: ServiceStatus }) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">
         <Timer className="size-3.5" aria-hidden />
-        Timeout
+        Sem resposta
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-2.5 py-1 text-xs font-semibold text-white">
       <span className="size-2 rounded-full bg-white/90" aria-hidden />
-      DOWN
+      Fora
     </span>
   );
 }
@@ -119,7 +119,7 @@ function ServiceCard({
             ) : (
               <p className="mt-0.5 flex items-center gap-1 text-xs text-stone-500">
                 <Server className="size-3" aria-hidden />
-                Healthcheck
+                Verificação de saúde
               </p>
             )}
           </div>
@@ -206,10 +206,10 @@ export function EcosystemMonitor() {
         if (!auth) {
           setServices([
             fallbackDown('Action Pay', 'Sessão admin ausente'),
-            fallbackDown('Plan Management', 'Sessão admin ausente'),
-            fallbackDown('Marketplace API', 'Sessão admin ausente'),
+            fallbackDown('Gestão de Planos', 'Sessão admin ausente'),
+            fallbackDown('API do Marketplace', 'Sessão admin ausente'),
             fallbackDown('PostgreSQL', 'Sessão admin ausente'),
-            fallbackDown('ActionHub Frontend', 'Sessão admin ausente'),
+            fallbackDown('Frontend do Action Hub', 'Sessão admin ausente'),
           ]);
           setError('Faça login como admin para ver o status.');
           return;
@@ -267,10 +267,10 @@ export function EcosystemMonitor() {
               }))
             : [
                 fallbackDown('Action Pay', message),
-                fallbackDown('Plan Management', message),
-                fallbackDown('Marketplace API', message),
+                fallbackDown('Gestão de Planos', message),
+                fallbackDown('API do Marketplace', message),
                 fallbackDown('PostgreSQL', message),
-                fallbackDown('ActionHub Frontend', message),
+                fallbackDown('Frontend do Action Hub', message),
               ]
         );
       } finally {

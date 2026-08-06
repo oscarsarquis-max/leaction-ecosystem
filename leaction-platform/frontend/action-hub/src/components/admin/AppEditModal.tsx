@@ -43,7 +43,7 @@ export function AppEditModal({ open, token, app, onClose, onSuccess }: Props) {
         active,
       });
       onSuccess?.(
-        `Aplicação ${targetId} atualizada. Webhook e status sincronizados.`
+        `Aplicação ${targetId} atualizada. Notificação e situação sincronizadas.`
       );
       onClose();
     } catch (err: unknown) {
@@ -110,7 +110,7 @@ export function AppEditModal({ open, token, app, onClose, onSuccess }: Props) {
 
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-                Webhook URL (créditos / avisos)
+                URL de notificação (créditos / avisos)
               </span>
               <input
                 type="url"
@@ -133,7 +133,7 @@ export function AppEditModal({ open, token, app, onClose, onSuccess }: Props) {
                 onChange={(e) => setActive(e.target.checked)}
                 className="size-4 rounded border-stone-300 text-orange-600 focus:ring-orange-500"
               />
-              Aplicação ativa (aceita checkout e webhooks)
+              Aplicação ativa (aceita checkout e notificações)
             </label>
 
             {error ? (

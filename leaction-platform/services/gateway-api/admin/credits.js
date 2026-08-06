@@ -33,7 +33,7 @@ function registerAdminCreditsRoutes(app, pool, { requireAdmin }) {
 
       return res.status(200).json({
         success: true,
-        message: 'Créditos injetados com sucesso. Evento CREDITS_GRANTED enfileirado.',
+        message: 'Créditos injetados com sucesso. Notificação para a aplicação enfileirada.',
         ...result,
       });
     } catch (err) {

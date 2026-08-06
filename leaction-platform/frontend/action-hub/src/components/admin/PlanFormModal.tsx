@@ -86,7 +86,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
     try {
       const priceNum = Number(String(price).replace(',', '.'));
       if (!name.trim() || !sku.trim()) {
-        throw new Error('Nome e SKU são obrigatórios.');
+        throw new Error('Nome e código do plano são obrigatórios.');
       }
       if (!Number.isFinite(priceNum) || priceNum < 0) {
         throw new Error('Preço inválido.');
@@ -169,7 +169,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
               </label>
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-                  SKU
+                  Código do plano
                 </span>
                 <input
                   value={sku}
@@ -177,8 +177,11 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
                   required
                   disabled={editing}
                   className="w-full rounded-xl border border-stone-200 px-3 py-2.5 font-mono text-sm outline-none ring-orange-200 focus:ring-2 disabled:bg-stone-50"
-                  placeholder="INOVE4US_CREDITS_100"
+                  placeholder="INOVE4US_CREDITOS_100"
                 />
+                <p className="text-[11px] text-stone-500">
+                  Identificador interno imutável após criar (exceção técnica).
+                </p>
               </label>
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
@@ -198,7 +201,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
               </label>
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-                  Preço (BRL)
+                  Preço (R$)
                 </span>
                 <input
                   type="number"
@@ -230,7 +233,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
                 onChange={(e) => setBullets(e.target.value)}
                 rows={3}
                 className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
-                placeholder={'Acesso premium\nSuporte prioritário'}
+                placeholder={'Acesso completo\nSuporte prioritário'}
               />
             </label>
 

@@ -29,6 +29,11 @@ const nextConfig: NextConfig = {
         source: "/webhooks/:path*",
         destination: `${gatewayInternal}/webhooks/:path*`,
       },
+      // Micro-CMS uploads (relativo /images/...) — Hub FE e satélites via PUBLIC_URL
+      {
+        source: "/images/:path*",
+        destination: `${gatewayInternal}/images/:path*`,
+      },
       // marketplace-api/* → route handlers Next.js (offers, image). Não reescrever para Flask.
     ];
 

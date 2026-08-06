@@ -57,7 +57,7 @@ INSERT INTO catalog_plans (
 )
 VALUES (
   'inove4us',
-  'Pacote GoLive 50',
+  'Pacote Intensivo 50',
   'credit_pack',
   'INOVE4US_CREDITS_50',
   3.00,

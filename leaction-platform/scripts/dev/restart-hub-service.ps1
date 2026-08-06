@@ -111,6 +111,9 @@ try {
                 ML_PUBLIC_BASE_URL         = 'http://127.0.0.1:4000'
                 FLASK_DEBUG                = '1'
                 MARKETPLACE_USE_RELOADER   = '0'
+                ML_REQUEST_TIMEOUT_S       = '12'
+                ML_LISTING_ENRICH_MAX      = '0'
+                MARKETPLACE_LIVE_BUDGET_S  = '18'
             }
 
         $healthOk = Wait-HttpOk -Url 'http://127.0.0.1:4012/api/marketplace/health' -TimeoutSec 45 -RequestTimeoutSec 5

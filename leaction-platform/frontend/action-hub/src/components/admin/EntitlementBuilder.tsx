@@ -92,6 +92,10 @@ export function direitoLabel(key: string): string {
     assinatura: 'assinatura',
     aulas_simples: 'aulas simples',
     desafios_ativos: 'desafios ativos',
+    licenses_granted: 'licenças concedidas',
+    seats: 'vagas',
+    licencas: 'licenças',
+    vagas: 'vagas',
   };
   return labels[k] || k.replace(/_/g, ' ');
 }
@@ -120,7 +124,7 @@ export function EntitlementBuilder({ rows, onChange }: Props) {
         <div>
           <p className="text-sm font-semibold text-stone-800">Direitos do plano</p>
           <p className="text-xs text-stone-500">
-            Defina o que o plano entrega (ex.: creditos, nivel, assinatura).
+            Defina o que o plano entrega (ex.: créditos, nível, assinatura).
           </p>
         </div>
         <button
@@ -144,7 +148,7 @@ export function EntitlementBuilder({ rows, onChange }: Props) {
             <input
               value={row.key}
               onChange={(e) => updateRow(index, { key: e.target.value })}
-              placeholder="chave (ex: creditos)"
+              placeholder="chave (ex.: creditos)"
               className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none ring-orange-200 focus:ring-2"
             />
             <select

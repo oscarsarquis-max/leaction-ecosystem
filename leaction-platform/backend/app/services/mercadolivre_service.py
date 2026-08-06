@@ -21,9 +21,10 @@ DEFAULT_LIMIT = 12
 MAX_LIMIT = 24
 # Antes forçava 20 resultados e enriquecia listing 1-a-1 (N+1). Agora respeita o limit.
 API_SEARCH_MIN_LIMIT = int(os.getenv("ML_API_SEARCH_MIN_LIMIT", "6"))
-REQUEST_TIMEOUT_S = float(os.getenv("ML_REQUEST_TIMEOUT_S", "3"))
-# Quantos produtos recebem GET /items (preço/link real). 0 = só catálogo (mais rápido).
-LISTING_ENRICH_MAX = int(os.getenv("ML_LISTING_ENRICH_MAX", "4"))
+# 3s era insuficiente — /products/search costuma levar 4–6s e a vitrine caía em fallback sem foto.
+REQUEST_TIMEOUT_S = float(os.getenv("ML_REQUEST_TIMEOUT_S", "12"))
+# Enrich /products/{id}/items costuma 404 e só atrasa; catálogo já traz picture.
+LISTING_ENRICH_MAX = int(os.getenv("ML_LISTING_ENRICH_MAX", "0"))
 LISTING_ENRICH_WORKERS = int(os.getenv("ML_LISTING_ENRICH_WORKERS", "4"))
 
 BROWSER_USER_AGENT = (

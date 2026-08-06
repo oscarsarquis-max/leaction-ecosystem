@@ -16,30 +16,31 @@ INSERT INTO app_registry (
 )
 VALUES (
     'inove4us-school',
-    'Inove4us School B2B',
+    'Inove4us School (B2B)',
     'http://localhost:5012/api/webhooks/actionhub',
     'sk_test_school_webhook_secret_999',
     ARRAY['http://localhost:5175', 'http://127.0.0.1:5175']::TEXT[],
     TRUE
 )
 ON CONFLICT (app_id) DO UPDATE SET
+    name = EXCLUDED.name,
     active = TRUE,
     return_origins = EXCLUDED.return_origins;
 
--- School Starter — 50 licenças de professor
+-- Escola Inicial — 50 licenças de professor
 INSERT INTO catalog_plans (
     app_id, name, type, sku, price, currency, features, meta_json, active
 )
 VALUES (
     'inove4us-school',
-    'School Starter',
+    'Escola Inicial',
     'seat',
     'school-starter-50',
     297.00,
     'BRL',
     '[
       "50 licenças de professor",
-      "Torre de Controle B2B",
+      "Torre de Controle institucional",
       "Espelho pedagógico e curadoria",
       "Suporte padrão"
     ]'::jsonb,
@@ -63,20 +64,20 @@ ON CONFLICT (app_id, sku) DO UPDATE SET
     active = TRUE,
     updated_at = CURRENT_TIMESTAMP;
 
--- School Growth — 100 licenças de professor
+-- Escola Crescimento — 100 licenças de professor
 INSERT INTO catalog_plans (
     app_id, name, type, sku, price, currency, features, meta_json, active
 )
 VALUES (
     'inove4us-school',
-    'School Growth',
+    'Escola Crescimento',
     'seat',
     'school-growth-100',
     497.00,
     'BRL',
     '[
       "100 licenças de professor",
-      "Torre de Controle B2B",
+      "Torre de Controle institucional",
       "Espelho pedagógico e curadoria",
       "Prioridade de suporte"
     ]'::jsonb,

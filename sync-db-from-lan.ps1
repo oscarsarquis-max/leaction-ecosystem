@@ -3,7 +3,8 @@
   Atalho na raiz: sync LAN dos bancos de TODAS as aplicacoes do ecossistema.
 
 .DESCRIPTION
-  1) Bancos no leaction_db (hub, MAtivas, chamelleon, inove4us, prodinx, LASim, diario-obra)
+  1) Bancos no leaction_db (hub, MAtivas, chamelleon, inove4us, inove4us_school,
+     prodinx, LASim, diario-obra)
      via infra\sync-ecosystem-db-from-lan.ps1 (porta 5433)
   2) Banco Phanton (orquestrador) via phanton\database\sync-phanton-db-from-lan.ps1 (porta 5435)
 
@@ -96,11 +97,20 @@ Write-Host " Sync Phanton (orquestrador :$PhantonPort)" -ForegroundColor Cyan
 Write-Host "############################################`n" -ForegroundColor Cyan
 
 if ($CompareOnly) {
-    $tnc = Test-NetConnection -ComputerName $SourceHost -Port $PhantonPort -WarningAction SilentlyContinue
-    if ($tnc.TcpTestSucceeded) {
-        Write-Host "Phanton origem ${SourceHost}:${PhantonPort} alcancavel (CompareOnly - sem restore)." -ForegroundColor Green
-    } else {
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    try {
+        $iar = $tcp.BeginConnect($SourceHost, $PhantonPort, $null, $null)
+        $ok = $iar.AsyncWaitHandle.WaitOne(8000, $false)
+        if ($ok -and $tcp.Connected) {
+            $tcp.EndConnect($iar) | Out-Null
+            Write-Host "Phanton origem ${SourceHost}:${PhantonPort} alcancavel (CompareOnly - sem restore)." -ForegroundColor Green
+        } else {
+            Write-Host "Phanton origem ${SourceHost}:${PhantonPort} inacessivel. Na origem: .\phanton\database\open-phanton-db-lan.ps1" -ForegroundColor Yellow
+        }
+    } catch {
         Write-Host "Phanton origem ${SourceHost}:${PhantonPort} inacessivel. Na origem: .\phanton\database\open-phanton-db-lan.ps1" -ForegroundColor Yellow
+    } finally {
+        $tcp.Close()
     }
     return
 }

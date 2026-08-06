@@ -25,7 +25,8 @@ CACHE_TTL_S = float(os.getenv("MARKETPLACE_CACHE_TTL_S", "300"))
 CACHE_STALE_S = float(os.getenv("MARKETPLACE_CACHE_STALE_S", "1800"))
 CIRCUIT_FAIL_THRESHOLD = int(os.getenv("MARKETPLACE_CIRCUIT_FAILS", "3"))
 CIRCUIT_OPEN_S = float(os.getenv("MARKETPLACE_CIRCUIT_OPEN_S", "60"))
-LIVE_BUDGET_S = float(os.getenv("MARKETPLACE_LIVE_BUDGET_S", "4"))
+# Vitrine monta 3 prateleiras em paralelo (~5s cada). Budget 4s forçava fallback sem imagens ML.
+LIVE_BUDGET_S = float(os.getenv("MARKETPLACE_LIVE_BUDGET_S", "18"))
 
 _refresh_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="mkt-swr")
 

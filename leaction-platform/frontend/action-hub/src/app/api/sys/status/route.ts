@@ -30,7 +30,7 @@ function marketplaceBase(): string {
   );
 }
 
-/** Apps do catálogo de planos (Plan Management atende Inove4us e PanelDX). */
+/** Apps do catálogo de planos (Gestão de Planos atende Inove4us e PanelDX). */
 function planProbeAppIds(): string[] {
   const fromEnv = (
     process.env.STATUS_PROBE_APP_IDS ||
@@ -61,16 +61,16 @@ function mergePlanProbes(
 
   if (timedOut.length) {
     return {
-      name: 'Plan Management',
+      name: 'Gestão de Planos',
       status: 'TIMEOUT',
       latency,
       lastChecked,
-      detail: `Timeout no catálogo (${timedOut.map((p) => p.appId).join(', ')})`,
+      detail: `Sem resposta no catálogo (${timedOut.map((p) => p.appId).join(', ')})`,
     };
   }
   if (down.length) {
     return {
-      name: 'Plan Management',
+      name: 'Gestão de Planos',
       status: 'DOWN',
       latency,
       lastChecked,
@@ -79,7 +79,7 @@ function mergePlanProbes(
   }
 
   return {
-    name: 'Plan Management',
+    name: 'Gestão de Planos',
     status: 'UP',
     latency,
     lastChecked,
@@ -178,7 +178,7 @@ function marketplaceVitrineOk(res: Response): boolean {
 async function probeMarketplace(): Promise<ServiceStatusItem> {
   const base = marketplaceBase();
   const health = await probeService(
-    'Marketplace API',
+    'API do Marketplace',
     `${base}/api/marketplace/health`,
     marketplaceOk
   );
@@ -205,14 +205,14 @@ async function probeMarketplace(): Promise<ServiceStatusItem> {
 
   const [offers, vitrine] = await Promise.all([
     probeService(
-      'Marketplace offers',
+      'Ofertas do Marketplace',
       `${base}/api/marketplace/offers`,
       marketplaceOffersOk,
       {},
       MARKETPLACE_FUNCTIONAL_PROBE_TIMEOUT_MS
     ),
     probeService(
-      'Marketplace vitrine',
+      'Vitrine do Marketplace',
       `${base}/api/marketplace/vitrine`,
       marketplaceVitrineOk,
       {},
@@ -235,7 +235,7 @@ async function probeMarketplace(): Promise<ServiceStatusItem> {
       parts.push(`/vitrine ${vitrine.status}${vitrine.detail ? ` (${vitrine.detail})` : ''}`);
     }
     return {
-      name: 'Marketplace API',
+      name: 'API do Marketplace',
       status: offers.status === 'TIMEOUT' || vitrine.status === 'TIMEOUT' ? 'TIMEOUT' : 'DOWN',
       latency,
       lastChecked: new Date().toISOString(),
@@ -245,12 +245,14 @@ async function probeMarketplace(): Promise<ServiceStatusItem> {
 
   const mlReady = healthBody?.ml_tokens_ready === true;
   const detailParts = [
-    'Plugin · health + offers + vitrine',
-    mlReady ? 'ML tokens OK' : 'ml_tokens_ready=false (busca live ML limitada; fallback pode valer)',
+    'Plugin · health + ofertas + vitrine',
+    mlReady
+      ? 'Tokens Mercado Livre OK'
+      : 'Tokens ML ausentes (busca ao vivo limitada; vitrine curada pode valer)',
   ];
 
   return {
-    name: 'Marketplace API',
+    name: 'API do Marketplace',
     status: 'UP',
     latency,
     lastChecked: new Date().toISOString(),
@@ -292,7 +294,7 @@ export async function GET(request: Request) {
     Promise.all(
       planAppIds.map(async (appId) => {
         const item = await probeService(
-          `Plan Management (${appId})`,
+          `Gestão de Planos (${appId})`,
           `${gw}/admin/plans?app_id=${encodeURIComponent(appId)}`,
           plansOk,
           authHeaders
@@ -301,12 +303,12 @@ export async function GET(request: Request) {
       })
     ),
     probeMarketplace(),
-    probeService('ActionHub Frontend', `${origin}/api/health`, frontendOk),
+    probeService('Frontend do Action Hub', `${origin}/api/health`, frontendOk),
   ]);
 
   const planManagement = mergePlanProbes(planProbes);
 
-  // Postgres é exercitado de verdade pelo Plan Management (catalog_plans).
+  // Postgres é exercitado de verdade pela Gestão de Planos (catalog_plans).
   const lastChecked = new Date().toISOString();
   const dbProbe = planManagement.status === 'UP' ? planManagement : actionPay;
   const postgres: ServiceStatusItem =
@@ -316,14 +318,14 @@ export async function GET(request: Request) {
           status: 'UP',
           latency: planManagement.latency,
           lastChecked,
-          detail: 'Inferido via Plan Management (catalog_plans)',
+          detail: 'Inferido via Gestão de Planos (catalog_plans)',
         }
       : {
           name: 'PostgreSQL',
           status: planManagement.status === 'TIMEOUT' ? 'TIMEOUT' : 'DOWN',
           latency: dbProbe.latency,
           lastChecked,
-          detail: 'Indisponível — Plan Management sem resposta no banco',
+          detail: 'Indisponível — Gestão de Planos sem resposta no banco',
         };
 
   const services: ServiceStatusItem[] = [

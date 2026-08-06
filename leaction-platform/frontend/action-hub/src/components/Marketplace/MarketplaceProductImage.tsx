@@ -80,7 +80,8 @@ function buildLiveImageAttemptQueue(src?: string | null): string[] {
  * Slot de imagem do marketplace.
  * - Preenche o container com absolute inset-0 (pai deve ter altura explícita)
  * - Não rejeita SVG via naturalWidth (quebrava placeholders)
- * - Cadeia: src/proxy → default.svg → ícone laranja
+ * - Cadeia: src/proxy → default.svg → ícone laranja (só após falha total)
+ * - Nunca empilha o fallback laranja atrás da foto (object-contain vazava o fundo)
  */
 export function MarketplaceProductImage({
   src,
@@ -133,15 +134,25 @@ export function MarketplaceProductImage({
   }
 
   return (
-    <div className="relative h-full w-full min-h-[11rem]">
-      {/* Fallback por baixo — visível se o <img> falhar visualmente */}
-      <MarketplaceOrangeFallback title={title} />
+    <div className="relative h-full w-full min-h-[11rem] bg-orange-50/50">
+      {/* Skeleton neutro só enquanto carrega — nunca empilha o fallback sob a foto */}
+      {!loaded ? (
+        <div
+          className="absolute inset-0 animate-pulse bg-gradient-to-br from-stone-100 to-stone-50"
+          aria-hidden
+        />
+      ) : null}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         key={currentSrc}
         src={currentSrc}
         alt={title || 'Produto'}
-        className={`absolute inset-0 z-[1] h-full w-full ${fitClass} ${className}`}
+        className={[
+          'absolute inset-0 z-[1] h-full w-full transition-opacity duration-200',
+          fitClass,
+          className,
+          loaded ? 'opacity-100' : 'opacity-0',
+        ].join(' ')}
         referrerPolicy="no-referrer"
         loading="eager"
         decoding="async"

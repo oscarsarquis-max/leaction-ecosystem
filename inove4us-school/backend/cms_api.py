@@ -1,6 +1,9 @@
 """GET /api/cms/site — Micro-CMS do Action Hub (colunas da página /acesso)."""
 from __future__ import annotations
 
+import os
+from typing import Any
+
 from flask import Blueprint, jsonify, request
 
 from hub_cms_cache import fetch_site_cms
@@ -61,6 +64,58 @@ _LOCAL_FALLBACK_LANDING = {
 }
 
 
+def _hub_media_base() -> str:
+    """Origem pública das imagens CMS (/images/...). Preferir Hub FE (com rewrite) ou gateway."""
+    return (
+        os.environ.get("ACTION_HUB_MEDIA_BASE_URL")
+        or os.environ.get("ACTION_HUB_PUBLIC_URL")
+        or os.environ.get("ACTION_HUB_API_URL")
+        or os.environ.get("HUB_API_URL")
+        or "http://127.0.0.1:4001"
+    ).strip().rstrip("/")
+
+
+def _absolutize_cms_media_url(url: Any) -> str:
+    raw = str(url or "").strip()
+    if not raw:
+        return ""
+    if raw.startswith(("http://", "https://", "data:")):
+        return raw
+    if raw.startswith("/images/"):
+        return f"{_hub_media_base()}{raw}"
+    if raw.startswith("images/"):
+        return f"{_hub_media_base()}/{raw}"
+    return raw
+
+
+def _rewrite_block_media(block: Any) -> Any:
+    if not isinstance(block, dict):
+        return block
+    out = dict(block)
+    for key in ("image_url", "image_path"):
+        if key in out:
+            out[key] = _absolutize_cms_media_url(out.get(key))
+    # Garante que FE (image_url || image_path) ache a URL absoluta.
+    media = _absolutize_cms_media_url(out.get("image_url") or out.get("image_path"))
+    if media:
+        out["image_url"] = media
+        out["image_path"] = media
+    return out
+
+
+def absolutize_landing_media(landing: dict[str, Any]) -> dict[str, Any]:
+    """Converte /images/... relativo do Hub em URL absoluta para o browser do School."""
+    out = dict(landing)
+    if "coluna1" in out:
+        out["coluna1"] = _rewrite_block_media(out.get("coluna1"))
+    if "hero_cta" in out:
+        out["hero_cta"] = _rewrite_block_media(out.get("hero_cta"))
+    columns = out.get("columns")
+    if isinstance(columns, list):
+        out["columns"] = [_rewrite_block_media(col) for col in columns]
+    return out
+
+
 @bp.get("/api/cms/site")
 def get_site_cms():
     """Landing Micro-CMS do Hub. Sem gestão local no School."""
@@ -73,6 +128,7 @@ def get_site_cms():
     if not landing:
         landing = dict(_LOCAL_FALLBACK_LANDING)
         source = "fallback"
+    landing = absolutize_landing_media(landing)
     return (
         jsonify(
             {

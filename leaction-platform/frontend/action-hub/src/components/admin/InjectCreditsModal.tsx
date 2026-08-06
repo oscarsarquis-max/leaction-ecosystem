@@ -8,9 +8,9 @@ import {
 } from '@/lib/admin-api';
 
 const REASON_OPTIONS = [
-  'Feedback de Produto',
-  'Reporte de Bug',
-  'Cortesia Comercial',
+  'Retorno de produto',
+  'Relato de falha',
+  'Cortesia comercial',
   'Outros',
 ] as const;
 
@@ -51,7 +51,7 @@ export function InjectCreditsModal({
     setError(null);
     setEmail('');
     setAmount('3');
-    setReasonOption('Cortesia Comercial');
+    setReasonOption('Cortesia comercial');
     setReasonOther('');
     const preferred =
       lockedAppId ||
@@ -101,7 +101,7 @@ export function InjectCreditsModal({
       });
 
       onSuccess?.(
-        'Créditos injetados com sucesso! O webhook foi enfileirado.'
+        'Créditos injetados com sucesso! A notificação para a aplicação foi enfileirada.'
       );
       onClose();
     } catch (err: unknown) {
@@ -136,10 +136,10 @@ export function InjectCreditsModal({
               id="inject-credits-title"
               className="text-lg font-bold text-stone-900"
             >
-              Injeção Manual de Créditos (Bounty/Cortesia)
+              Injeção manual de créditos (cortesia)
             </h2>
             <p className="mt-0.5 text-xs text-stone-500">
-              Soma créditos no Hub e enfileira CREDITS_GRANTED para a app.
+              Soma créditos no Hub e notifica a aplicação satélite.
             </p>
           </div>
           <button

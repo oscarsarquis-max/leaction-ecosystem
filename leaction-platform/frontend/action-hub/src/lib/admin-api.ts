@@ -243,7 +243,7 @@ export function planTypeLabel(type: string): string {
     case 'addon':
       return 'Complemento';
     case 'seat':
-      return 'Assento';
+      return 'Licença (vaga)';
     default:
       return type;
   }

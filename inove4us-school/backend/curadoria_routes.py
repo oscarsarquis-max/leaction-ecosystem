@@ -4,9 +4,8 @@ GET  /api/pedagogico/curadoria/pendentes
 POST /api/pedagogico/curadoria/<id>/incorporar
 POST /api/pedagogico/curadoria/<id>/rejeitar
 
-Nota de schema: a tabela histórica school_editor_pedagogico foi substituída por
-school_metodologia_config (migration 004). Incorporar atualiza diretriz_customizada
-nessa config e dispara METHODOLOGY_OVERRIDE_UPDATED ao B2C.
+Nota de schema: especialização por instituição em school_metodologias_org
+(migration 022). school_metodologia_config permanece como espelho legado.
 """
 from __future__ import annotations
 
@@ -33,9 +32,12 @@ def require_gestor(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
         user = session.get(SESSION_KEY)
-        if not user or not user.get("instituicao_id"):
-            return jsonify({"error": "Não autenticado"}), 401
-        return view(*args, **kwargs)
+        if user and user.get("instituicao_id"):
+            return view(*args, **kwargs)
+        # Dev local: permite leitura/escrita pedagógica com DEV_INSTITUICAO_ID
+        if os.getenv("DEV_INSTITUICAO_ID") or os.getenv("FLASK_ENV") == "development":
+            return view(*args, **kwargs)
+        return jsonify({"error": "Não autenticado"}), 401
 
     return wrapped
 
@@ -45,7 +47,7 @@ def _instituicao_id() -> str:
     return str(
         user.get("instituicao_id")
         or os.getenv("DEV_INSTITUICAO_ID")
-        or ""
+        or "a1111111-1111-4111-8111-111111111111"
     ).strip()
 
 
@@ -91,7 +93,12 @@ def _ensure_curadoria_schema(conn) -> None:
 def _extract_teacher_text(sugestao: Any) -> str:
     if not isinstance(sugestao, dict):
         return ""
-    direct = str(sugestao.get("teacher_adaptation_text") or "").strip()
+    direct = str(
+        sugestao.get("teacher_adaptation_text")
+        or sugestao.get("texto_sugestao")
+        or sugestao.get("texto")
+        or ""
+    ).strip()
     if direct:
         return direct
     adaptations = sugestao.get("adaptations")
@@ -106,10 +113,59 @@ def _extract_teacher_text(sugestao: Any) -> str:
     return str(mesa.get("teacher_adaptation_text") or "").strip()
 
 
+def _extract_professor_nome(sugestao: Any) -> str:
+    if not isinstance(sugestao, dict):
+        return ""
+    for key in (
+        "professor_nome",
+        "nome_professor",
+        "teacher_name",
+        "professor",
+        "autor",
+    ):
+        val = str(sugestao.get(key) or "").strip()
+        if val:
+            return val
+    mesa = sugestao.get("mesa") if isinstance(sugestao.get("mesa"), dict) else {}
+    for key in ("professor_nome", "teacher_name", "professor"):
+        val = str(mesa.get(key) or "").strip()
+        if val:
+            return val
+    return ""
+
+
+def _extract_aula_contexto(sugestao: Any) -> str:
+    if not isinstance(sugestao, dict):
+        return ""
+    for key in (
+        "aula_contexto",
+        "contexto_aula",
+        "aula",
+        "disciplina",
+        "lesson_context",
+    ):
+        val = str(sugestao.get(key) or "").strip()
+        if val:
+            return val
+    # Monta a partir de peças comuns do payload B2C
+    disc = str(sugestao.get("disciplina") or sugestao.get("materia") or "").strip()
+    tema = str(sugestao.get("tema") or sugestao.get("titulo_aula") or "").strip()
+    turma = str(sugestao.get("turma") or sugestao.get("ano") or "").strip()
+    parts = [p for p in (disc, tema, turma) if p]
+    if parts:
+        if len(parts) >= 2:
+            return f"{parts[0]}: {parts[1]}" + (f" ({parts[2]})" if len(parts) > 2 else "")
+        return parts[0]
+    mesa = sugestao.get("mesa") if isinstance(sugestao.get("mesa"), dict) else {}
+    return str(mesa.get("aula_contexto") or mesa.get("titulo") or "").strip()
+
+
 def _serialize_item(row: dict[str, Any]) -> dict[str, Any]:
     sugestao = row.get("sugestao_professor_json") or {}
     if not isinstance(sugestao, dict):
         sugestao = {}
+    professor = _extract_professor_nome(sugestao)
+    aula = _extract_aula_contexto(sugestao)
     return {
         "id": str(row["id"]),
         "instituicao_id": str(row["instituicao_id"]),
@@ -119,6 +175,8 @@ def _serialize_item(row: dict[str, Any]) -> dict[str, Any]:
         else None,
         "status_analise": row["status_analise"],
         "teacher_adaptation_text": _extract_teacher_text(sugestao),
+        "professor_nome": professor,
+        "aula_contexto": aula,
         "metodologia_usada": str(
             sugestao.get("metodologia_usada") or row["metodologia_nome"] or ""
         ).strip(),
@@ -278,6 +336,27 @@ def incorporar(item_id: str):
                 (inst, str(met["metodologia_catalogo_id"]), nova_diretriz),
             )
             cfg = cur.fetchone()
+
+            # Espelho na especialização da organização (Editor Pedagógico)
+            cur.execute(
+                """
+                INSERT INTO public.school_metodologias_org (
+                    instituicao_id,
+                    metodologia_id_canonica,
+                    passos_customizados,
+                    ativo_dia_a_dia,
+                    ativo_desafio,
+                    uso_estrelas,
+                    is_active
+                )
+                VALUES (%s, %s, %s, TRUE, TRUE, 1, TRUE)
+                ON CONFLICT (instituicao_id, metodologia_id_canonica)
+                DO UPDATE SET
+                    passos_customizados = EXCLUDED.passos_customizados,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (inst, str(met["metodologia_catalogo_id"]), nova_diretriz),
+            )
 
             cur.execute(
                 """

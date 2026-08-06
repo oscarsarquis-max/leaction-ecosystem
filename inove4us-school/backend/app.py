@@ -53,6 +53,7 @@ def create_app() -> Flask:
     from billing_routes import billing_bp
     from curadoria_routes import bp as curadoria_bp
     from pei_ciclo_routes import bp as pei_ciclo_bp
+    from pei_documental_routes import bp as pei_documental_bp
 
     app.register_blueprint(metodologias_bp)
     app.register_blueprint(dashboard_bp)
@@ -69,6 +70,8 @@ def create_app() -> Flask:
     app.register_blueprint(curadoria_bp)
     # Ciclo Vivo do PEI (adaptação × metodologia + curadoria PEI)
     app.register_blueprint(pei_ciclo_bp)
+    # PEI Documental (matriz versionada) + adaptações metodológicas institucionais
+    app.register_blueprint(pei_documental_bp)
     # S2S Outbox — sem sessão de gestor / RBAC
     app.register_blueprint(actionhub_webhook_bp)
     # Ponte interna School ← B2C (JWT HS256)

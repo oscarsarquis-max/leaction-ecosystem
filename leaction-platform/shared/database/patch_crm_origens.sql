@@ -13,5 +13,10 @@ CREATE TABLE IF NOT EXISTS crm_origens (
 INSERT INTO crm_origens (slug, nome, descricao)
 VALUES
     ('paneldx', 'PanelDX', 'Transformação Digital Educacional'),
-    ('inove4us', 'inove4us', 'Mesa do Inovador (freemium)')
-ON CONFLICT (slug) DO NOTHING;
+    ('inove4us', 'inove4us', 'Mesa do Inovador (freemium)'),
+    ('inove4us-school', 'inove4us School', 'B2B escolar — Editor Pedagógico, AEE/PEI e operação')
+ON CONFLICT (slug) DO UPDATE SET
+    nome = EXCLUDED.nome,
+    descricao = COALESCE(EXCLUDED.descricao, crm_origens.descricao),
+    ativo = TRUE,
+    atualizado_em = CURRENT_TIMESTAMP;

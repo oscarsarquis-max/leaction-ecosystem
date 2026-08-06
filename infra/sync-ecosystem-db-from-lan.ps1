@@ -79,6 +79,7 @@ $DefaultDatabases = @(
     'MAtivas',
     'chamelleon',
     'inove4us',
+    'inove4us_school',
     'prodinx',
     'LASim',
     'diario-obra'

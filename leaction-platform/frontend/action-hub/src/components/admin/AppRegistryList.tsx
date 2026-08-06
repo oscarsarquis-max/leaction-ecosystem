@@ -95,11 +95,11 @@ export function AppRegistryList() {
         <table className="min-w-full text-left text-sm">
           <thead className="bg-stone-50 text-xs font-semibold uppercase tracking-wide text-stone-500">
             <tr>
-              <th className="px-4 py-3">ID</th>
+              <th className="px-4 py-3">Identificador</th>
               <th className="px-4 py-3">Nome</th>
-              <th className="px-4 py-3">Webhook</th>
-              <th className="px-4 py-3">Secret</th>
-              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">URL de notificação</th>
+              <th className="px-4 py-3">Segredo</th>
+              <th className="px-4 py-3">Situação</th>
               <th className="px-4 py-3 text-right">Ações</th>
             </tr>
           </thead>

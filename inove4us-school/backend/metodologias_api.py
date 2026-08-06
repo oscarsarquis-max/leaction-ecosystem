@@ -1,31 +1,28 @@
 """Editor Pedagógico — metodologias alinhadas ao inove4us do professor.
 
-Dicotomia pública (mesmo léxico do B2C):
-  • Dia a Dia · ciclo rápido
-  • Desafio · método inove4us
+Especialização por instituição: school_metodologias_org
+  • Versão da Escola (passos_customizados TEXT)
+  • ativo_dia_a_dia / ativo_desafio
+  • uso_estrelas (1–3)
 
-A escola adapta sem alterar a referência inove4us.
 Auth real ainda não existe: instituicao_id na URL (interino).
 """
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 import uuid
 from typing import Any
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import Json, RealDictCursor
 
 from db import get_conn
 
 bp = Blueprint("metodologias", __name__)
 
-# Famílias públicas — mesmas etiquetas do app do professor.
 FAMILIAS = ("Indutivas", "Agilidade", "Contextuais", "Dedutivas")
-
-VETOR_DIA = "dia_a_dia"
-VETOR_DESAFIO = "desafio"
 
 
 def _parse_uuid(value: str, label: str):
@@ -50,11 +47,35 @@ def _instituicao_exists(cur: Any, instituicao_id: uuid.UUID) -> bool:
     return cur.fetchone() is not None
 
 
+def _dev_instituicao_id() -> str:
+    user = session.get("school_gestor") or {}
+    return str(
+        user.get("instituicao_id")
+        or os.getenv("DEV_INSTITUICAO_ID")
+        or "a1111111-1111-4111-8111-111111111111"
+    ).strip()
+
+
 def _normalize_passos(raw: Any) -> list[Any] | None:
     if raw is None:
         return None
+    if isinstance(raw, str):
+        lines = [l.strip() for l in raw.split("\n") if l.strip()]
+        if not lines:
+            return None
+        return [
+            {
+                "titulo": line[:120],
+                "objetivo": "",
+                "mecanica_passo_a_passo": line,
+                "como_executar_detalhado": line,
+                "dica_de_facilitacao": "",
+                "duracao_minutos": None,
+            }
+            for line in lines
+        ]
     if not isinstance(raw, list):
-        raise ValueError("O roteiro deve ser uma lista de etapas")
+        raise ValueError("O roteiro deve ser um texto ou uma lista de etapas")
     out: list[Any] = []
     for item in raw:
         if isinstance(item, str):
@@ -94,7 +115,47 @@ def _normalize_passos(raw: Any) -> list[Any] | None:
             )
         else:
             raise ValueError("Cada etapa do roteiro deve ser um texto ou um bloco completo")
-    return out
+    return out or None
+
+
+def _passos_to_text(passos: Any) -> str:
+    if passos is None:
+        return ""
+    if isinstance(passos, str):
+        return passos.strip()
+    if not isinstance(passos, list):
+        return str(passos).strip()
+    lines: list[str] = []
+    for p in passos:
+        if isinstance(p, str):
+            t = p.strip()
+            if t:
+                lines.append(t)
+            continue
+        if not isinstance(p, dict):
+            continue
+        titulo = str(p.get("titulo") or "").strip()
+        mec = str(
+            p.get("mecanica_passo_a_passo") or p.get("como_executar_detalhado") or ""
+        ).strip()
+        if titulo and mec and titulo != mec:
+            lines.append(f"{titulo}: {mec}")
+        else:
+            line = titulo or mec
+            if line:
+                lines.append(line)
+    return "\n".join(lines)
+
+
+def _estrelas_from_count(n: Any) -> int:
+    """0 sugestões → 0; 1 → 1; 2 → 2; 3+ → 3."""
+    try:
+        count = int(n or 0)
+    except (TypeError, ValueError):
+        count = 0
+    if count <= 0:
+        return 0
+    return min(3, count)
 
 
 def _fonte_publica(origem: str | None) -> str:
@@ -103,8 +164,9 @@ def _fonte_publica(origem: str | None) -> str:
 
 def _row_merged(row: dict[str, Any]) -> dict[str, Any]:
     passos_ref = row.get("passos_execucao") or []
-    passos_adapt = row.get("passos_customizados")
+    versao = (row.get("passos_customizados") or "").strip() or None
     origem = row.get("origem") or "padrao"
+    texto_canonico = _passos_to_text(passos_ref)
     return {
         "metodologia_id": str(row["metodologia_catalogo_id"]),
         "metodologia_catalogo_id": str(row["metodologia_catalogo_id"]),
@@ -121,16 +183,21 @@ def _row_merged(row: dict[str, Any]) -> dict[str, Any]:
         },
         "roteiro_referencia": passos_ref,
         "passos_execucao": passos_ref,
-        "roteiro_adaptado": passos_adapt,
-        "passos_customizados": passos_adapt,
-        "roteiro_em_uso": passos_adapt if passos_adapt is not None else passos_ref,
-        "passos_efetivos": passos_adapt if passos_adapt is not None else passos_ref,
-        "orientacao_coordenacao": row.get("diretriz_customizada"),
-        "diretriz_customizada": row.get("diretriz_customizada"),
+        "texto_canonico": texto_canonico,
+        "versao_escola": versao,
+        "passos_customizados": versao,
+        "roteiro_adaptado": versao,
+        "roteiro_em_uso": versao if versao else texto_canonico,
         "disponivel_dia_a_dia": bool(row["disponivel_dia_a_dia"]),
         "disponivel_desafio": bool(row["disponivel_desafio"]),
+        "ativo_dia_a_dia": bool(row["disponivel_dia_a_dia"]),
+        "ativo_desafio": bool(row["disponivel_desafio"]),
+        # Dinâmico: engajamento dos professores (curadoria), não o valor estático da org.
+        "uso_estrelas": _estrelas_from_count(row.get("sugestoes_count")),
+        "sugestoes_count": int(row.get("sugestoes_count") or 0),
         "is_active": bool(row["is_active"]),
-        "adaptada_pela_escola": bool(row["tem_override"]),
+        "adaptada_pela_escola": bool(versao),
+        "tem_override_org": bool(row.get("tem_override")),
     }
 
 
@@ -145,16 +212,28 @@ SELECT
     c.passos_execucao,
     COALESCE(c.vetor_dia_a_dia, TRUE) AS vetor_dia_a_dia,
     COALESCE(c.vetor_desafio, TRUE) AS vetor_desafio,
-    cfg.passos_customizados,
-    cfg.diretriz_customizada,
-    COALESCE(cfg.is_active, TRUE) AS is_active,
-    COALESCE(cfg.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
-    COALESCE(cfg.ativo_desafio, TRUE) AS disponivel_desafio,
-    (cfg.id IS NOT NULL) AS tem_override
+    org.passos_customizados,
+    COALESCE(org.is_active, TRUE) AS is_active,
+    COALESCE(org.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
+    COALESCE(org.ativo_desafio, TRUE) AS disponivel_desafio,
+    COALESCE(cur.sugestoes_count, 0) AS sugestoes_count,
+    (org.id IS NOT NULL) AS tem_override
 FROM public.school_metodologias_catalogo c
-LEFT JOIN public.school_metodologia_config cfg
-    ON cfg.metodologia_catalogo_id = c.id
-   AND cfg.instituicao_id = %s
+LEFT JOIN public.school_metodologias_org org
+    ON org.metodologia_id_canonica = c.id
+   AND org.instituicao_id = %s
+LEFT JOIN (
+    SELECT
+        LOWER(TRIM(metodologia_nome)) AS nome_key,
+        COUNT(*)::int AS sugestoes_count
+    FROM public.school_curadoria_metodologias
+    WHERE instituicao_id = %s
+      AND status_analise IN (
+          'pendente', 'em_analise', 'incorporada', 'incorporado'
+      )
+    GROUP BY LOWER(TRIM(metodologia_nome))
+) cur
+    ON cur.nome_key = LOWER(TRIM(c.nome))
 WHERE c.ativo = TRUE
   AND (
         c.origem = 'padrao'
@@ -163,10 +242,123 @@ WHERE c.ativo = TRUE
 ORDER BY c.categoria, c.nome
 """
 
-_ONE_SQL = _LIST_SQL.replace(
-    "ORDER BY c.categoria, c.nome",
-    "AND c.id = %s\nORDER BY c.categoria, c.nome",
-)
+_ONE_SQL = """
+SELECT
+    c.id AS metodologia_catalogo_id,
+    c.codigo,
+    c.nome,
+    c.categoria,
+    c.descricao,
+    c.origem,
+    c.passos_execucao,
+    COALESCE(c.vetor_dia_a_dia, TRUE) AS vetor_dia_a_dia,
+    COALESCE(c.vetor_desafio, TRUE) AS vetor_desafio,
+    org.passos_customizados,
+    COALESCE(org.is_active, TRUE) AS is_active,
+    COALESCE(org.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
+    COALESCE(org.ativo_desafio, TRUE) AS disponivel_desafio,
+    COALESCE(cur.sugestoes_count, 0) AS sugestoes_count,
+    (org.id IS NOT NULL) AS tem_override
+FROM public.school_metodologias_catalogo c
+LEFT JOIN public.school_metodologias_org org
+    ON org.metodologia_id_canonica = c.id
+   AND org.instituicao_id = %s
+LEFT JOIN (
+    SELECT
+        LOWER(TRIM(metodologia_nome)) AS nome_key,
+        COUNT(*)::int AS sugestoes_count
+    FROM public.school_curadoria_metodologias
+    WHERE instituicao_id = %s
+      AND status_analise IN (
+          'pendente', 'em_analise', 'incorporada', 'incorporado'
+      )
+    GROUP BY LOWER(TRIM(metodologia_nome))
+) cur
+    ON cur.nome_key = LOWER(TRIM(c.nome))
+WHERE c.ativo = TRUE
+  AND c.id = %s
+  AND (
+        c.origem = 'padrao'
+        OR (c.origem = 'escola' AND c.instituicao_origem_id = %s)
+      )
+"""
+
+
+def _upsert_org(
+    cur: Any,
+    *,
+    instituicao_id: str,
+    metodologia_id: str,
+    versao_escola: str | None,
+    ativo_dia: bool,
+    ativo_des: bool,
+    is_active: bool,
+    uso_estrelas: int,
+) -> None:
+    cur.execute(
+        """
+        INSERT INTO public.school_metodologias_org (
+            instituicao_id,
+            metodologia_id_canonica,
+            passos_customizados,
+            ativo_dia_a_dia,
+            ativo_desafio,
+            uso_estrelas,
+            is_active
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (instituicao_id, metodologia_id_canonica)
+        DO UPDATE SET
+            passos_customizados = EXCLUDED.passos_customizados,
+            ativo_dia_a_dia = EXCLUDED.ativo_dia_a_dia,
+            ativo_desafio = EXCLUDED.ativo_desafio,
+            uso_estrelas = EXCLUDED.uso_estrelas,
+            is_active = EXCLUDED.is_active,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            instituicao_id,
+            metodologia_id,
+            versao_escola,
+            ativo_dia,
+            ativo_des,
+            uso_estrelas,
+            is_active,
+        ),
+    )
+    # Espelho legado (curadoria / B2C ainda leem school_metodologia_config)
+    passos_json = _normalize_passos(versao_escola) if versao_escola else None
+    cur.execute(
+        """
+        INSERT INTO public.school_metodologia_config (
+            instituicao_id,
+            metodologia_catalogo_id,
+            diretriz_customizada,
+            passos_customizados,
+            is_active,
+            ativo_dia_a_dia,
+            ativo_desafio
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (instituicao_id, metodologia_catalogo_id)
+        DO UPDATE SET
+            diretriz_customizada = EXCLUDED.diretriz_customizada,
+            passos_customizados = EXCLUDED.passos_customizados,
+            is_active = EXCLUDED.is_active,
+            ativo_dia_a_dia = EXCLUDED.ativo_dia_a_dia,
+            ativo_desafio = EXCLUDED.ativo_desafio,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (
+            instituicao_id,
+            metodologia_id,
+            versao_escola,
+            Json(passos_json) if passos_json is not None else None,
+            is_active,
+            ativo_dia,
+            ativo_des,
+        ),
+    )
 
 
 @bp.get("/api/metodologias-catalogo")
@@ -194,6 +386,7 @@ def list_catalogo():
                 "descricao": r.get("descricao"),
                 "roteiro_referencia": r.get("passos_execucao") or [],
                 "passos_execucao": r.get("passos_execucao") or [],
+                "texto_canonico": _passos_to_text(r.get("passos_execucao")),
                 "ativo": bool(r["ativo"]),
                 "fonte": "referencia_inove4us",
                 "vetores": {
@@ -216,9 +409,15 @@ def list_instituicao_metodologias(instituicao_id: str):
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             if not _instituicao_exists(cur, parsed):
                 return jsonify({"error": "Instituição não encontrada"}), 404
-            cur.execute(_LIST_SQL, (str(parsed), str(parsed)))
+            cur.execute(_LIST_SQL, (str(parsed), str(parsed), str(parsed)))
             rows = cur.fetchall()
     return jsonify([_row_merged(r) for r in rows])
+
+
+@bp.get("/api/pedagogico/metodologias")
+def list_pedagogico_metodologias():
+    """Alias do Editor Pedagógico — usa instituição da sessão / DEV."""
+    return list_instituicao_metodologias(_dev_instituicao_id())
 
 
 @bp.post("/api/instituicoes/<instituicao_id>/metodologias")
@@ -248,6 +447,7 @@ def create_instituicao_metodologia(instituicao_id: str):
             body.get("passos_execucao")
             or body.get("roteiro")
             or body.get("passos")
+            or body.get("versao_escola")
             or []
         )
     except ValueError as exc:
@@ -263,6 +463,7 @@ def create_instituicao_metodologia(instituicao_id: str):
         ), 400
 
     codigo = f"escola_{_slug(nome)}_{uuid.uuid4().hex[:8]}"
+    versao_txt = _passos_to_text(passos)
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -321,18 +522,21 @@ def create_instituicao_metodologia(instituicao_id: str):
             )
             new_id = cur.fetchone()["id"]
 
-            cur.execute(
-                """
-                INSERT INTO public.school_metodologia_config (
-                    instituicao_id, metodologia_catalogo_id,
-                    is_active, ativo_dia_a_dia, ativo_desafio
-                )
-                VALUES (%s, %s, TRUE, %s, %s)
-                """,
-                (str(parsed), str(new_id), ativo_dia, ativo_des),
+            _upsert_org(
+                cur,
+                instituicao_id=str(parsed),
+                metodologia_id=str(new_id),
+                versao_escola=versao_txt,
+                ativo_dia=ativo_dia,
+                ativo_des=ativo_des,
+                is_active=True,
+                uso_estrelas=1,
             )
 
-            cur.execute(_ONE_SQL, (str(parsed), str(parsed), str(new_id)))
+            cur.execute(
+                _ONE_SQL,
+                (str(parsed), str(parsed), str(new_id), str(parsed)),
+            )
             row = cur.fetchone()
 
     return jsonify(_row_merged(row)), 201
@@ -352,21 +556,23 @@ def upsert_instituicao_metodologia(instituicao_id: str, metodologia_catalogo_id:
         return jsonify({"error": "Dados inválidos"}), 400
 
     keys = (
-        "diretriz_customizada",
-        "orientacao_coordenacao",
-        "is_active",
+        "versao_escola",
         "passos_customizados",
         "roteiro_adaptado",
+        "is_active",
         "disponivel_dia_a_dia",
         "disponivel_desafio",
         "ativo_dia_a_dia",
         "ativo_desafio",
+        "uso_estrelas",
+        "diretriz_customizada",
+        "orientacao_coordenacao",
     )
     if not any(k in body for k in keys):
         return jsonify(
             {
-                "error": "Informe orientação, roteiro adaptado, disponibilidade "
-                "no Dia a Dia / Desafio ou ativação na escola"
+                "error": "Informe versão da escola, disponibilidade "
+                "no Dia a Dia / Desafio ou ativação"
             }
         ), 400
 
@@ -381,25 +587,6 @@ def upsert_instituicao_metodologia(instituicao_id: str, metodologia_catalogo_id:
     ):
         if k in body and not isinstance(body[k], bool):
             return jsonify({"error": f"{k} deve ser sim ou não"}), 400
-
-    if "diretriz_customizada" in body or "orientacao_coordenacao" in body:
-        d = body.get("orientacao_coordenacao", body.get("diretriz_customizada"))
-        if d is not None and not isinstance(d, str):
-            return jsonify({"error": "A orientação deve ser um texto"}), 400
-
-    passos_custom = None
-    has_passos = "passos_customizados" in body or "roteiro_adaptado" in body
-    if has_passos:
-        raw_passos = body.get("roteiro_adaptado", body.get("passos_customizados"))
-        try:
-            if raw_passos is None:
-                passos_custom = None
-            else:
-                passos_custom = _normalize_passos(raw_passos)
-                if passos_custom is not None and len(passos_custom) == 0:
-                    passos_custom = None
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -426,24 +613,52 @@ def upsert_instituicao_metodologia(instituicao_id: str, metodologia_catalogo_id:
 
             cur.execute(
                 """
-                SELECT diretriz_customizada, is_active, passos_customizados,
-                       ativo_dia_a_dia, ativo_desafio
-                FROM public.school_metodologia_config
-                WHERE instituicao_id = %s AND metodologia_catalogo_id = %s
+                SELECT passos_customizados, is_active, ativo_dia_a_dia, ativo_desafio,
+                       uso_estrelas
+                FROM public.school_metodologias_org
+                WHERE instituicao_id = %s AND metodologia_id_canonica = %s
                 """,
                 (str(parsed_inst), str(parsed_met)),
             )
             existing = cur.fetchone()
 
-            if "orientacao_coordenacao" in body:
-                diretriz_in = body["orientacao_coordenacao"]
-            elif "diretriz_customizada" in body:
-                diretriz_in = body["diretriz_customizada"]
-            else:
-                diretriz_in = None
-            has_diretriz = (
-                "orientacao_coordenacao" in body or "diretriz_customizada" in body
+            has_versao = any(
+                k in body
+                for k in (
+                    "versao_escola",
+                    "passos_customizados",
+                    "roteiro_adaptado",
+                    "diretriz_customizada",
+                    "orientacao_coordenacao",
+                )
             )
+            if has_versao:
+                raw_v = body.get(
+                    "versao_escola",
+                    body.get(
+                        "passos_customizados",
+                        body.get(
+                            "roteiro_adaptado",
+                            body.get(
+                                "orientacao_coordenacao",
+                                body.get("diretriz_customizada"),
+                            ),
+                        ),
+                    ),
+                )
+                if raw_v is None:
+                    versao = None
+                elif isinstance(raw_v, str):
+                    versao = raw_v.strip() or None
+                else:
+                    try:
+                        versao = _passos_to_text(_normalize_passos(raw_v)) or None
+                    except ValueError as exc:
+                        return jsonify({"error": str(exc)}), 400
+            else:
+                versao = (
+                    (existing["passos_customizados"] or None) if existing else None
+                )
 
             if "disponivel_dia_a_dia" in body:
                 dia_in = body["disponivel_dia_a_dia"]
@@ -462,58 +677,29 @@ def upsert_instituicao_metodologia(instituicao_id: str, metodologia_catalogo_id:
             has_des = "disponivel_desafio" in body or "ativo_desafio" in body
 
             if existing:
-                diretriz = (
-                    diretriz_in if has_diretriz else existing["diretriz_customizada"]
-                )
                 is_active = (
                     body["is_active"] if "is_active" in body else bool(existing["is_active"])
                 )
-                passos_val = passos_custom if has_passos else existing["passos_customizados"]
                 ativo_dia = dia_in if has_dia else bool(existing["ativo_dia_a_dia"])
                 ativo_des = des_in if has_des else bool(existing["ativo_desafio"])
             else:
-                diretriz = diretriz_in if has_diretriz else None
                 is_active = body["is_active"] if "is_active" in body else True
-                passos_val = passos_custom if has_passos else None
                 ativo_dia = dia_in if has_dia else True
                 ativo_des = des_in if has_des else True
 
-            if isinstance(diretriz, str):
-                diretriz = diretriz.strip() or None
-
-            cur.execute(
-                """
-                INSERT INTO public.school_metodologia_config (
-                    instituicao_id,
-                    metodologia_catalogo_id,
-                    diretriz_customizada,
-                    passos_customizados,
-                    is_active,
-                    ativo_dia_a_dia,
-                    ativo_desafio
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (instituicao_id, metodologia_catalogo_id)
-                DO UPDATE SET
-                    diretriz_customizada = EXCLUDED.diretriz_customizada,
-                    passos_customizados = EXCLUDED.passos_customizados,
-                    is_active = EXCLUDED.is_active,
-                    ativo_dia_a_dia = EXCLUDED.ativo_dia_a_dia,
-                    ativo_desafio = EXCLUDED.ativo_desafio,
-                    updated_at = CURRENT_TIMESTAMP
-                """,
-                (
-                    str(parsed_inst),
-                    str(parsed_met),
-                    diretriz,
-                    Json(passos_val) if passos_val is not None else None,
-                    is_active,
-                    ativo_dia,
-                    ativo_des,
-                ),
+            _upsert_org(
+                cur,
+                instituicao_id=str(parsed_inst),
+                metodologia_id=str(parsed_met),
+                versao_escola=versao,
+                ativo_dia=ativo_dia,
+                ativo_des=ativo_des,
+                is_active=is_active,
+                uso_estrelas=1,
             )
 
-            if cat["origem"] == "escola" and has_passos and passos_custom is not None:
+            if cat["origem"] == "escola" and has_versao and versao:
+                passos_json = _normalize_passos(versao)
                 cur.execute(
                     """
                     UPDATE public.school_metodologias_catalogo
@@ -523,27 +709,94 @@ def upsert_instituicao_metodologia(instituicao_id: str, metodologia_catalogo_id:
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s AND origem = 'escola'
                     """,
-                    (Json(passos_custom), ativo_dia, ativo_des, str(parsed_met)),
+                    (Json(passos_json), ativo_dia, ativo_des, str(parsed_met)),
                 )
 
-            cur.execute(_ONE_SQL, (str(parsed_inst), str(parsed_inst), str(parsed_met)))
+            cur.execute(
+                _ONE_SQL,
+                (str(parsed_inst), str(parsed_inst), str(parsed_met), str(parsed_inst)),
+            )
             row = cur.fetchone()
 
     if not row:
         return jsonify({"error": "Não foi possível confirmar o salvamento"}), 500
 
     merged = _row_merged(row)
-    # Top-down S2S: coordenador editou metodologia → B2C sobrescreve canônico na IA.
     try:
         from b2c_integration_service import dispatch_methodology_override_updated
 
         dispatch_methodology_override_updated(
             instituicao_id=str(parsed_inst),
             metodologia_nome=str(merged.get("nome") or ""),
-            diretriz_customizada=merged.get("diretriz_customizada"),
+            diretriz_customizada=merged.get("versao_escola"),
         )
     except Exception as exc:
-        # Falha de ponte não bloqueia o save local do Editor Pedagógico.
         print(f"[metodologias] dispatch B2C falhou: {exc}", flush=True)
 
     return jsonify(merged)
+
+
+@bp.post("/api/pedagogico/metodologia/<metodologia_id>/adaptar-ia")
+def adaptar_metodologia_ia(metodologia_id: str):
+    """Mescla texto canônico + sugestão do professor via LLM → Versão da Escola."""
+    parsed_met = _parse_uuid(metodologia_id, "metodologia")
+    if not isinstance(parsed_met, uuid.UUID):
+        return parsed_met
+
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return jsonify({"error": "Dados inválidos"}), 400
+
+    inst_raw = (
+        body.get("instituicao_id")
+        or request.args.get("instituicao_id")
+        or _dev_instituicao_id()
+    )
+    parsed_inst = _parse_uuid(str(inst_raw), "instituição")
+    if not isinstance(parsed_inst, uuid.UUID):
+        return parsed_inst
+
+    sugestao = str(body.get("sugestao") or body.get("sugestao_professor") or "").strip()
+    if not sugestao:
+        return jsonify({"error": "Informe a sugestão do professor"}), 400
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if not _instituicao_exists(cur, parsed_inst):
+                return jsonify({"error": "Instituição não encontrada"}), 404
+            cur.execute(
+                """
+                SELECT id, nome, passos_execucao
+                FROM public.school_metodologias_catalogo
+                WHERE id = %s AND ativo = TRUE
+                """,
+                (str(parsed_met),),
+            )
+            cat = cur.fetchone()
+            if not cat:
+                return jsonify({"error": "Metodologia não encontrada"}), 404
+
+    canonico = str(body.get("texto_canonico") or "").strip() or _passos_to_text(
+        cat.get("passos_execucao")
+    )
+
+    try:
+        from school_llm import mesclar_metodologia_com_sugestao
+
+        versao = mesclar_metodologia_com_sugestao(
+            texto_canonico=canonico,
+            sugestao_professor=sugestao,
+        )
+    except Exception as exc:
+        return jsonify({"error": f"Falha na IA: {exc}"}), 502
+
+    return jsonify(
+        {
+            "success": True,
+            "metodologia_id": str(parsed_met),
+            "metodologia_nome": cat["nome"],
+            "versao_escola": versao,
+            "texto_canonico": canonico,
+            "sugestao": sugestao,
+        }
+    )
