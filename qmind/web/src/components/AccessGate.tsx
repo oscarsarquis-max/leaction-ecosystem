@@ -4,8 +4,8 @@ type Props = {
 };
 
 /**
- * Primeira tela do produto — obrigatória antes de qualquer conteúdo da organização.
- * Linguagem pt-BR; marca dominante; CTA único.
+ * Primeira tela do produto — obrigatória antes de qualquer conteúdo.
+ * Só identidade + CTA. Sem tutorial de jornada (isso fica depois do login).
  */
 export function AccessGate({ status, onLogin }: Props) {
   const expired = status === "invalid_session";
@@ -26,15 +26,9 @@ export function AccessGate({ status, onLogin }: Props) {
 
         <p className="qmind-login__text">
           {expired
-            ? "Sua sessão expirou. Entre de novo para retomar as avaliações da sua organização."
-            : "Espaço da consultoria e da organização cliente. O QMind conduz o percurso da preparação ao relatório — sem misturar dados entre empresas."}
+            ? "Sua sessão expirou. Entre de novo para retomar o trabalho na sua organização."
+            : "Entre para acessar as avaliações da sua organização."}
         </p>
-
-        <ul className="qmind-login__points" aria-label="O que acontece depois de entrar">
-          <li>Escolher a organização ativa</li>
-          <li>Ver o mapa do percurso e a próxima ação</li>
-          <li>Continuar a avaliação em linguagem de negócio</li>
-        </ul>
 
         <button
           type="button"
@@ -49,7 +43,7 @@ export function AccessGate({ status, onLogin }: Props) {
         <p className="qmind-login__meta">
           Acesso por convite · sessão segura
           <br />
-          <span className="qmind-login__build">UI access-gate-2026-08-06a</span>
+          <span className="qmind-login__build">UI access-gate-2026-08-06b</span>
         </p>
       </div>
     </div>

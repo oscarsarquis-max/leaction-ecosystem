@@ -364,19 +364,6 @@ body {
     text-align: left;
   }
 
-  .qmind-login__points {
-    margin: 1.1rem 0 0;
-    padding-left: 1.2rem;
-    text-align: left;
-    font-size: 0.92rem;
-    line-height: 1.5;
-    color: var(--qmind-text-main);
-  }
-
-  .qmind-login__points li + li {
-    margin-top: 0.35rem;
-  }
-
   .qmind-login__build {
     display: inline-block;
     margin-top: 0.35rem;
