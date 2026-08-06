@@ -82,6 +82,46 @@ function isAuthCallbackPath(): boolean {
   return window.location.pathname === "/auth/callback";
 }
 
+/** Força AccessGate: /?sair=1 ou /?login=1 (útil quando o browser restaura sessão/BFCache). */
+function wantsForcedLoginScreen(): boolean {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    return q.get("sair") === "1" || q.get("login") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function stripForcedLoginParams(): void {
+  try {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("sair") && !url.searchParams.has("login")) return;
+    url.searchParams.delete("sair");
+    url.searchParams.delete("login");
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState(null, "", next || "/");
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Remove resíduos de builds antigos que gravavam o user OIDC no sessionStorage. */
+function clearStaleOidcUserStorage(): void {
+  if (isAuthCallbackPath()) return;
+  try {
+    for (const k of Object.keys(sessionStorage)) {
+      if (
+        k.startsWith("oidc.user:") ||
+        k.startsWith("qmind.dev.authenticated")
+      ) {
+        sessionStorage.removeItem(k);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const cfg = getConfig();
   const managerRef = useRef<UserManager | null>(null);
@@ -119,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getQmindClient().invalidateTenant();
     setActiveOrganizationId(null);
     clearAllLocalPersistence();
+    clearStaleOidcUserStorage();
     setAccessToken(null);
     setExpiresAt(null);
     setUserEmail(null);
@@ -127,19 +168,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus(reason === "logout" ? "anonymous" : "invalid_session");
   }, []);
 
+  const dropUserManager = useCallback(() => {
+    sharedManager = null;
+    managerRef.current = null;
+    callbackInFlight = null;
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
+    clearStaleOidcUserStorage();
+
+    if (wantsForcedLoginScreen()) {
+      stripForcedLoginParams();
+      dropUserManager();
+      void invalidateSession("logout");
+      return () => {
+        cancelled = true;
+      };
+    }
+
     if (cfg.authMode === "dev") {
-      // Estado inicial já é anonymous; login() só altera memória (F5 = AccessGate de novo).
-      // Limpa flags antigas de sessão em sessionStorage (builds anteriores).
-      try {
-        for (const k of Object.keys(sessionStorage)) {
-          if (k.startsWith("qmind.dev.authenticated")) sessionStorage.removeItem(k);
-        }
-      } catch {
-        /* ignore */
-      }
+      // Sessão só em memória; documento novo = AccessGate.
+      // BFCache/HMR: pageshow abaixo também revalida.
       return () => {
         cancelled = true;
       };
@@ -194,7 +245,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       manager.events.removeAccessTokenExpired(onExpired);
       manager.events.removeSilentRenewError(onRenewError);
     };
-  }, [applyUser, cfg.authMode, cfg.devAuth.email, cfg.devAuth.sub, invalidateSession]);
+  }, [
+    applyUser,
+    cfg.authMode,
+    cfg.devAuth.email,
+    cfg.devAuth.sub,
+    dropUserManager,
+    invalidateSession,
+  ]);
+
+  // BFCache: o browser pode restaurar JS+React já autenticados sem remount.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      if (cfg.authMode === "dev" || wantsForcedLoginScreen()) {
+        dropUserManager();
+        void invalidateSession("logout");
+        stripForcedLoginParams();
+        return;
+      }
+      const manager = managerRef.current ?? getOrCreateUserManager();
+      if (!manager) {
+        void invalidateSession("logout");
+        return;
+      }
+      void manager.getUser().then((user) => {
+        if (!user || user.expired) {
+          dropUserManager();
+          void invalidateSession("logout");
+        } else applyUser(user);
+      });
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [applyUser, cfg.authMode, dropUserManager, invalidateSession]);
 
   const login = useCallback(async () => {
     if (cfg.authMode === "dev") {
@@ -212,9 +296,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [cfg.authMode, cfg.devAuth.email, cfg.devAuth.sub]);
 
   const logout = useCallback(async () => {
-    await invalidateSession("logout");
     if (cfg.authMode === "cognito") {
       const manager = managerRef.current ?? getOrCreateUserManager();
+      await invalidateSession("logout");
       if (manager) {
         try {
           await manager.removeUser();
@@ -223,13 +307,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // already cleared locally — AccessGate permanece via status anonymous
         }
       }
+      dropUserManager();
       return;
     }
+    await invalidateSession("logout");
+    dropUserManager();
     // AUTH_MODE=dev: garante AccessGate visível sem depender de F5 / HMR.
     if (typeof window !== "undefined" && window.location.pathname !== "/") {
       window.history.replaceState(null, "", "/");
     }
-  }, [cfg.authMode, invalidateSession]);
+  }, [cfg.authMode, dropUserManager, invalidateSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
