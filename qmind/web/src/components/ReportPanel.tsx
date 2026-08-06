@@ -299,9 +299,6 @@ export function ReportPanel({
                     <dt className="text-xs uppercase tracking-wide text-teal-950/50">Situação</dt>
                     <dd data-testid="report-status">
                       {labelWorkflowStatus(active.status)}
-                      <span className="ml-2 font-mono text-xs text-teal-950/50">
-                        ({active.status})
-                      </span>
                     </dd>
                   </div>
                   <div>

@@ -7,12 +7,16 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-_CATALOG_PATH = Path(__file__).with_name("catalog_iso9001_c4c5_v1.json")
+_CATALOG_PATH = Path(__file__).with_name("catalog_iso9001_c4c10_v1.json")
 
 
 @lru_cache(maxsize=1)
 def load_catalog() -> dict[str, Any]:
     return json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))
+
+
+def clear_catalog_cache() -> None:
+    load_catalog.cache_clear()
 
 
 def catalog_version() -> str:

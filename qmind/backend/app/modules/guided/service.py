@@ -12,6 +12,7 @@ from app.auth.context import OrgContext
 from app.db import tenant_connection
 from app.errors import AppError
 from app.modules.guided import catalog as catalog_mod
+from app.modules.guided.show_when import visible_questions
 from app.modules.guided.schemas import (
     GuidedAnswerOut,
     GuidedAnswerUpsert,
@@ -90,8 +91,14 @@ def _answers(conn, org_id: UUID, session_id: UUID) -> list[GuidedAnswerOut]:
 
 def _session_out(conn, org_id: UUID, session_row) -> GuidedSessionOut:
     answers = _answers(conn, org_id, session_row.id)
-    qcount = len(catalog_mod.list_questions())
-    answered = sum(1 for a in answers if a.answer_value is not None)
+    visible = visible_questions(catalog_mod.list_questions(), answers)
+    visible_ids = {q["id"] for q in visible}
+    qcount = len(visible)
+    answered = sum(
+        1
+        for a in answers
+        if a.answer_value is not None and a.question_id in visible_ids
+    )
     ctx = session_row.context
     if isinstance(ctx, str):
         ctx = json.loads(ctx)

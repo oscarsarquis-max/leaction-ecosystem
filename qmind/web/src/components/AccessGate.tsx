@@ -4,14 +4,11 @@ type Props = {
 };
 
 /**
- * Login limpo (design system): fundo #F8FAFC, card branco, logo PNG centralizada, CTA largo.
- * Sem gradientes. Marcador de build no rodapé para confirmar deploy.
+ * Primeira tela do produto — obrigatória antes de qualquer conteúdo da organização.
+ * Linguagem pt-BR; marca dominante; CTA único.
  */
 export function AccessGate({ status, onLogin }: Props) {
-  const line =
-    status === "invalid_session"
-      ? "Sua sessão expirou. Entre novamente para retomar de onde parou."
-      : "Entre para acessar as avaliações da sua organização. O QMind conduz o percurso passo a passo.";
+  const expired = status === "invalid_session";
 
   return (
     <div className="qmind-login" data-testid="access-gate">
@@ -25,13 +22,26 @@ export function AccessGate({ status, onLogin }: Props) {
           className="qmind-login__logo"
         />
 
-        <p className="qmind-login__text">{line}</p>
+        <h1 className="qmind-login__title">Entrar no QMind</h1>
+
+        <p className="qmind-login__text">
+          {expired
+            ? "Sua sessão expirou. Entre de novo para retomar as avaliações da sua organização."
+            : "Espaço da consultoria e da organização cliente. O QMind conduz o percurso da preparação ao relatório — sem misturar dados entre empresas."}
+        </p>
+
+        <ul className="qmind-login__points" aria-label="O que acontece depois de entrar">
+          <li>Escolher a organização ativa</li>
+          <li>Ver o mapa do percurso e a próxima ação</li>
+          <li>Continuar a avaliação em linguagem de negócio</li>
+        </ul>
 
         <button
           type="button"
           onClick={onLogin}
           className="qmind-login__cta"
           data-testid="login-cta"
+          autoFocus
         >
           Entrar
         </button>
@@ -39,7 +49,7 @@ export function AccessGate({ status, onLogin }: Props) {
         <p className="qmind-login__meta">
           Acesso por convite · sessão segura
           <br />
-          <span className="qmind-login__build">UI access-gate-2026-08-05c</span>
+          <span className="qmind-login__build">UI access-gate-2026-08-06a</span>
         </p>
       </div>
     </div>

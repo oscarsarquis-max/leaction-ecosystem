@@ -12,6 +12,7 @@ import { AccessDeniedPanel, LoadingPanel } from "@/components/StatePanels";
 import { GuidedContextSteps } from "@/components/guided/GuidedContextSteps";
 import { GuidedProgress } from "@/components/guided/GuidedProgress";
 import { GuidedReview } from "@/components/guided/GuidedReview";
+import { GuidedClauseNav } from "@/components/guided/GuidedClauseNav";
 import { GuidedRouteStep } from "@/components/guided/GuidedRouteStep";
 import { JourneyBar } from "@/components/navigation/JourneyBar";
 import {
@@ -30,6 +31,7 @@ import {
   useUpsertGuidedAnswer,
 } from "@/hooks/useGuidedAssessment";
 import { labelAssessmentType } from "@/lib/labels";
+import { visibleGuidedQuestions } from "@/lib/guidedShowWhen";
 
 const CONTEXT_STEPS: GuidedStep[] = [
   "organization",
@@ -63,8 +65,15 @@ export function AssessmentGuidedPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydrated = useRef(false);
 
-  const questions = catalog.data?.questions ?? [];
   const session = sessionQ.data;
+  const questions = useMemo(
+    () =>
+      visibleGuidedQuestions(
+        catalog.data?.questions ?? [],
+        session?.answers,
+      ),
+    [catalog.data?.questions, session?.answers],
+  );
 
   useEffect(() => {
     if (!session || hydrated.current) return;
@@ -81,6 +90,12 @@ export function AssessmentGuidedPage() {
       if (firstOpen >= 0) setQuestionIdx(firstOpen);
     }
   }, [session, questions]);
+
+  useEffect(() => {
+    if (questionIdx >= questions.length && questions.length > 0) {
+      setQuestionIdx(questions.length - 1);
+    }
+  }, [questions.length, questionIdx]);
 
   // Reset hydrate when assessment changes
   useEffect(() => {
@@ -299,17 +314,28 @@ export function AssessmentGuidedPage() {
           ) : null}
 
           {step === "route" && currentQuestion ? (
-            <GuidedRouteStep
-              assessmentId={assessmentId}
-              question={currentQuestion}
-              questionIndex={questionIdx}
-              questionTotal={questions.length}
-              answer={answerMap.get(currentQuestion.id)}
-              readOnly={readOnly}
-              saving={upsert.isPending}
-              saveState={saveState}
-              onSave={saveAnswer}
-            />
+            <div className="space-y-5">
+              <GuidedClauseNav
+                questions={questions}
+                currentQuestionId={currentQuestion.id}
+                clauseGroups={catalog.data?.clause_groups}
+                onSelectQuestion={(idx) => {
+                  setQuestionIdx(idx);
+                  void goToStep("route", questions[idx]?.id ?? null);
+                }}
+              />
+              <GuidedRouteStep
+                assessmentId={assessmentId}
+                question={currentQuestion}
+                questionIndex={questionIdx}
+                questionTotal={questions.length}
+                answer={answerMap.get(currentQuestion.id)}
+                readOnly={readOnly}
+                saving={upsert.isPending}
+                saveState={saveState}
+                onSave={saveAnswer}
+              />
+            </div>
           ) : null}
 
           {step === "route" && !currentQuestion ? (
@@ -326,7 +352,11 @@ export function AssessmentGuidedPage() {
           ) : null}
 
           {step === "review" ? (
-            <GuidedReview session={session!} questions={questions} />
+            <GuidedReview
+              session={session!}
+              questions={questions}
+              clauseGroups={catalog.data?.clause_groups}
+            />
           ) : null}
 
           <nav className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-qmind-semantic-future pt-5">

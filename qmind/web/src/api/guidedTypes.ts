@@ -81,12 +81,19 @@ export type GuidedQuestion = {
   show_when: null | Record<string, unknown>;
 };
 
+export type GuidedClauseGroup = {
+  id: string;
+  label: string;
+  refs: string[];
+};
+
 export type GuidedCatalog = {
   catalog_version: string;
   title: string;
   standard_label: string;
   disclaimer: string;
   steps: GuidedStep[];
+  clause_groups?: GuidedClauseGroup[];
   questions: GuidedQuestion[];
 };
 

@@ -35,6 +35,32 @@ _TYPE_LABEL = {
     "other": "Compromisso",
 }
 
+_ASSESSMENT_TYPE_LABEL = {
+    "diagnosis": "Diagnóstico",
+    "internal_audit": "Avaliação interna",
+    "external_audit": "Avaliação externa",
+    "certification_prep": "Preparação para certificação",
+    "other": "Avaliação",
+}
+
+_ASSESSMENT_STATUS_LABEL = {
+    "draft": "Em preparação",
+    "planned": "Planejada",
+    "in_progress": "Em andamento",
+    "analysis": "Em análise",
+    "actions": "Plano de ação",
+    "report": "Relatório",
+    "closed": "Concluída",
+    "cancelled": "Cancelada",
+}
+
+
+def _assessment_public_label(assessment_type: str, status: str) -> str:
+    """Rótulo pt-BR para UI — nunca expor enum cru da API."""
+    tipo = _ASSESSMENT_TYPE_LABEL.get(assessment_type, "Avaliação")
+    situacao = _ASSESSMENT_STATUS_LABEL.get(status, status.replace("_", " "))
+    return f"{tipo} · {situacao}"
+
 
 def _tz(name: str) -> ZoneInfo:
     try:
@@ -501,15 +527,8 @@ def _enrich(ctx: OrgContext, rows: list[Row], tz_name: str) -> list[AgendaEventO
                 ),
                 {"org": ctx.organization_id, "ids": assessment_ids},
             ).all()
-            type_map = {
-                "diagnosis": "Diagnóstico",
-                "internal_audit": "Avaliação interna",
-                "external_audit": "Avaliação externa",
-                "certification_prep": "Preparação certificação",
-                "other": "Avaliação",
-            }
             for a in arows:
-                labels[a.id] = f"{type_map.get(a.type, 'Avaliação')} · {a.status}"
+                labels[a.id] = _assessment_public_label(a.type, a.status)
 
     owner_ids = list({r.owner_membership_id for r in rows if r.owner_membership_id})
     owners = _member_labels(ctx.organization_id, owner_ids)
@@ -603,13 +622,6 @@ def get_board(ctx: OrgContext, selected: date | None = None) -> AgendaBoardOut:
     )
     next_up = upcoming[0] if upcoming else None
 
-    type_map = {
-        "diagnosis": "Diagnóstico",
-        "internal_audit": "Avaliação interna",
-        "external_audit": "Avaliação externa",
-        "certification_prep": "Preparação certificação",
-        "other": "Avaliação",
-    }
     return AgendaBoardOut(
         timezone=tz_name,
         selected_date=sel.isoformat(),
@@ -620,7 +632,7 @@ def get_board(ctx: OrgContext, selected: date | None = None) -> AgendaBoardOut:
         in_progress_assessments=[
             {
                 "id": str(a.id),
-                "label": f"{type_map.get(a.type, 'Avaliação')} · {a.status}",
+                "label": _assessment_public_label(a.type, a.status),
                 "href": f"/assessments/{a.id}",
             }
             for a in in_progress

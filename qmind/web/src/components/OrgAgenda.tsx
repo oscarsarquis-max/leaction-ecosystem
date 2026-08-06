@@ -149,7 +149,7 @@ function EventRow({
               }
               tone={event.is_overdue ? "risk" : "neutral"}
             />
-            {event.is_auto ? <span aria-label="Automático">· Auto</span> : null}
+            {event.is_auto ? <span>· Automático</span> : null}
           </span>
         </span>
       </button>

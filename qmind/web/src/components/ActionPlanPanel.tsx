@@ -692,15 +692,11 @@ function ItemDetail({
           <dt className="text-xs uppercase tracking-wide text-teal-950/50">Status</dt>
           <dd data-testid="action-item-status">
             {labelWorkflowStatus(item.status)}
-            <span className="ml-2 font-mono text-xs text-teal-950/50">({item.status})</span>
           </dd>
         </div>
         <div>
           <dt className="text-xs uppercase tracking-wide text-teal-950/50">Tipo</dt>
-          <dd>
-            {KIND_LABELS[item.action_kind]}{" "}
-            <span className="font-mono text-xs">({item.action_kind})</span>
-          </dd>
+          <dd>{KIND_LABELS[item.action_kind] ?? item.action_kind}</dd>
         </div>
         <div>
           <dt className="text-xs uppercase tracking-wide text-teal-950/50">Descrição</dt>

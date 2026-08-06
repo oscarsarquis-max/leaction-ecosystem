@@ -1,0 +1,942 @@
+{
+  "catalog_version": "iso9001-2015-c4c10-v1",
+  "title": "Roteiro orientado — da organização à melhoria",
+  "standard_label": "ISO 9001:2015 (cláusulas 4 a 10)",
+  "disclaimer": "Perguntas próprias do QMind em linguagem empresarial. Não reproduzem o texto da norma e não geram conformidade automática.",
+  "steps": [
+    "organization",
+    "qms_scope",
+    "products_services",
+    "sites",
+    "processes",
+    "stakeholders",
+    "route",
+    "review"
+  ],
+  "clause_groups": [
+    {
+      "id": "4",
+      "label": "Contexto da organização",
+      "refs": [
+        "4.1",
+        "4.2",
+        "4.3",
+        "4.4"
+      ]
+    },
+    {
+      "id": "5",
+      "label": "Liderança",
+      "refs": [
+        "5.1",
+        "5.2",
+        "5.3"
+      ]
+    },
+    {
+      "id": "6",
+      "label": "Planejamento",
+      "refs": [
+        "6.1",
+        "6.2",
+        "6.3"
+      ]
+    },
+    {
+      "id": "7",
+      "label": "Apoio",
+      "refs": [
+        "7.1",
+        "7.2",
+        "7.3",
+        "7.4",
+        "7.5"
+      ]
+    },
+    {
+      "id": "8",
+      "label": "Operação",
+      "refs": [
+        "8.1",
+        "8.2",
+        "8.3",
+        "8.4",
+        "8.5",
+        "8.6",
+        "8.7"
+      ]
+    },
+    {
+      "id": "9",
+      "label": "Avaliação de desempenho",
+      "refs": [
+        "9.1",
+        "9.2",
+        "9.3"
+      ]
+    },
+    {
+      "id": "10",
+      "label": "Melhoria",
+      "refs": [
+        "10.1",
+        "10.2",
+        "10.3"
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "c4-ctx-01",
+      "version": "1",
+      "theme": "Contexto da organização",
+      "clause_ref": "4.1",
+      "question": "A empresa já identificou os fatores externos e internos que mais influenciam a qualidade do que entrega?",
+      "explanation": "Fatores externos podem ser mercado, legislação ou fornecedores. Internos: pessoas, equipamentos, cultura e capacidade.",
+      "practice_examples": [
+        "Reunião periódica de gestão com riscos e oportunidades do negócio",
+        "Mapa simples de fatores que afetam prazos e reclamações"
+      ],
+      "evidence_examples": [
+        "Ata ou registro da análise de contexto",
+        "Apresentação usada em reunião de direção"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-ctx-02",
+      "version": "1",
+      "theme": "Contexto da organização",
+      "clause_ref": "4.1",
+      "question": "Esses fatores são revisados quando o negócio muda (novo produto, novo mercado, mudança relevante)?",
+      "explanation": "O contexto não é estático. Mudanças importantes pedem atualização do entendimento da organização.",
+      "practice_examples": [
+        "Revisão anual ou após mudanças relevantes",
+        "Checklist de mudança de escopo de produto"
+      ],
+      "evidence_examples": [
+        "Registro de revisão com data e responsáveis",
+        "Versão atualizada do documento de contexto"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c4-ctx-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c4-int-01",
+      "version": "1",
+      "theme": "Partes interessadas",
+      "clause_ref": "4.2",
+      "question": "A empresa sabe quem são as partes interessadas relevantes para a qualidade (clientes, colaboradores, fornecedores, órgãos reguladores etc.)?",
+      "explanation": "Partes interessadas são pessoas ou grupos que influenciam ou são influenciados pelo sistema de qualidade.",
+      "practice_examples": [
+        "Lista de partes interessadas com necessidades principais",
+        "Matriz simples cliente / fornecedor / colaborador / regulador"
+      ],
+      "evidence_examples": [
+        "Lista ou planilha de partes interessadas",
+        "Registro de requisitos de cliente e legais aplicáveis"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-int-02",
+      "version": "1",
+      "theme": "Partes interessadas",
+      "clause_ref": "4.2",
+      "question": "As necessidades e expectativas dessas partes são acompanhadas na prática (não só documentadas uma vez)?",
+      "explanation": "O importante é saber o que cada parte espera e usar isso nas decisões do dia a dia.",
+      "practice_examples": [
+        "Pesquisa de satisfação e tratamento de reclamações",
+        "Requisitos legais atualizados periodicamente"
+      ],
+      "evidence_examples": [
+        "Indicadores de satisfação",
+        "Registro de reclamações e ações"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c4-int-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c4-scp-01",
+      "version": "1",
+      "theme": "Escopo do SGQ",
+      "clause_ref": "4.3",
+      "question": "O escopo do sistema de gestão da qualidade está claro: o que está incluído e o que fica de fora?",
+      "explanation": "Escopo define fronteiras: produtos, serviços, unidades e atividades cobertas pelo sistema.",
+      "practice_examples": [
+        "Declaração de escopo em linguagem simples",
+        "Mapa de unidades e linhas de produto cobertas"
+      ],
+      "evidence_examples": [
+        "Documento ou página com o escopo atual",
+        "Comunicação interna do escopo"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-scp-02",
+      "version": "1",
+      "theme": "Escopo do SGQ",
+      "clause_ref": "4.3",
+      "question": "Se algo fica fora do escopo, a empresa consegue explicar o motivo de forma objetiva?",
+      "explanation": "Exclusões precisam fazer sentido para o negócio e não podem esconder atividades críticas à qualidade.",
+      "practice_examples": [
+        "Justificativa registrada para exclusões",
+        "Revisão do escopo quando a operação muda"
+      ],
+      "evidence_examples": [
+        "Registro de exclusões e justificativas",
+        "Histórico de alterações de escopo"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-prc-01",
+      "version": "1",
+      "theme": "Processos",
+      "clause_ref": "4.4",
+      "question": "Os processos principais que entregam o produto ou serviço estão identificados (do pedido à entrega)?",
+      "explanation": "Processos são sequências de atividades que transformam entradas em resultados para o cliente.",
+      "practice_examples": [
+        "Mapa de processos ponta a ponta",
+        "Lista de processos com donos definidos"
+      ],
+      "evidence_examples": [
+        "Mapa ou fluxograma de processos",
+        "Descrição resumida dos processos-chave"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-prc-02",
+      "version": "1",
+      "theme": "Processos",
+      "clause_ref": "4.4",
+      "question": "Para esses processos, está claro quem é responsável, quais entradas/saídas importam e como o desempenho é acompanhado?",
+      "explanation": "Sem dono, critérios e acompanhamento, o processo existe só no papel.",
+      "practice_examples": [
+        "Ficha de processo com responsável e indicadores",
+        "Reuniões de desempenho por processo"
+      ],
+      "evidence_examples": [
+        "Fichas ou procedimentos resumidos",
+        "Painel ou planilha de indicadores"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c4-prc-03",
+      "version": "1",
+      "theme": "Processos",
+      "clause_ref": "4.4",
+      "question": "Quando um processo falha ou gera reclamação, a empresa analisa a causa e melhora o processo (não só “apaga o incêndio”)?",
+      "explanation": "Melhoria de processo reduz reincidência. Correção pontual sozinha não sustenta qualidade.",
+      "practice_examples": [
+        "Análise de causa em não conformidades",
+        "Ações corretivas com verificação de eficácia"
+      ],
+      "evidence_examples": [
+        "Registros de ação corretiva",
+        "Antes/depois de um indicador após melhoria"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c5-led-01",
+      "version": "1",
+      "theme": "Liderança",
+      "clause_ref": "5.1",
+      "question": "A alta direção demonstra, na prática, compromisso com a qualidade (não apenas declara)?",
+      "explanation": "Compromisso aparece em decisões, recursos, acompanhamento de reclamações e participação em revisões.",
+      "practice_examples": [
+        "Direção participa de revisões de desempenho",
+        "Priorização de ações de qualidade em reuniões executivas"
+      ],
+      "evidence_examples": [
+        "Atas de revisão pela direção",
+        "Comunicados ou decisões com foco em qualidade"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c5-led-02",
+      "version": "1",
+      "theme": "Liderança",
+      "clause_ref": "5.1",
+      "question": "A direção assegura que o foco no cliente está presente nas operações (requisitos, prazos, reclamações)?",
+      "explanation": "Foco no cliente significa conhecer requisitos e tratar falhas que impactam quem compra ou usa o serviço.",
+      "practice_examples": [
+        "Metas ligadas a satisfação e reclamações",
+        "Rotina de acompanhamento de pedidos críticos"
+      ],
+      "evidence_examples": [
+        "Indicadores de cliente",
+        "Tratamento de reclamações com acompanhamento da direção"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c5-pol-01",
+      "version": "1",
+      "theme": "Política da qualidade",
+      "clause_ref": "5.2",
+      "question": "Existe uma política da qualidade conhecida pelas pessoas que influenciam o resultado para o cliente?",
+      "explanation": "Política é o compromisso público da empresa com qualidade — precisa ser entendida, não só pendurada na parede.",
+      "practice_examples": [
+        "Política divulgada e explicada em integrações",
+        "Discussão da política em reuniões de time"
+      ],
+      "evidence_examples": [
+        "Texto da política vigente",
+        "Registro de comunicação/treinamento"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c5-pol-02",
+      "version": "1",
+      "theme": "Política da qualidade",
+      "clause_ref": "5.2",
+      "question": "A política é usada como referência para decisões e objetivos (não é um texto isolado)?",
+      "explanation": "A política ganha valor quando objetivos e prioridades do negócio se conectam a ela.",
+      "practice_examples": [
+        "Objetivos anuais alinhados à política",
+        "Critérios de decisão citando o compromisso com o cliente"
+      ],
+      "evidence_examples": [
+        "Objetivos da qualidade vigentes",
+        "Revisão que relaciona resultados à política"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c5-pol-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c5-rol-01",
+      "version": "1",
+      "theme": "Papéis e responsabilidades",
+      "clause_ref": "5.3",
+      "question": "As pessoas sabem quem é responsável pelo quê em qualidade (aprovações, reclamações, liberação, melhorias)?",
+      "explanation": "Papéis claros evitam “todo mundo e ninguém” nas decisões críticas.",
+      "practice_examples": [
+        "Matriz de responsabilidades",
+        "Descrição de cargos com atribuições de qualidade"
+      ],
+      "evidence_examples": [
+        "Organograma ou matriz RACI",
+        "Delegações formais de autoridade"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c5-rol-02",
+      "version": "1",
+      "theme": "Papéis e responsabilidades",
+      "clause_ref": "5.3",
+      "question": "Há alguém com autoridade para reportar o desempenho do sistema de qualidade à direção e propor melhorias?",
+      "explanation": "A direção precisa receber informação confiável sobre o sistema — não só problemas operacionais do dia.",
+      "practice_examples": [
+        "Responsável pela qualidade com acesso à direção",
+        "Rotina de reporte de indicadores e riscos"
+      ],
+      "evidence_examples": [
+        "Designação formal do responsável",
+        "Relatórios periódicos à direção"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c6-rsk-01",
+      "version": "1",
+      "theme": "Riscos e oportunidades",
+      "clause_ref": "6.1",
+      "question": "A empresa identifica riscos e oportunidades que afetam a qualidade do que entrega?",
+      "explanation": "Riscos e oportunidades orientam o que prevenir, melhorar ou explorar — não são só uma lista formal.",
+      "practice_examples": [
+        "Mapa de riscos do negócio e da qualidade",
+        "Discussão de riscos em reuniões de gestão"
+      ],
+      "evidence_examples": [
+        "Registro de riscos e oportunidades vigentes",
+        "Ata que decide tratamentos"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c6-rsk-02",
+      "version": "1",
+      "theme": "Riscos e oportunidades",
+      "clause_ref": "6.1",
+      "question": "Esses riscos e oportunidades geram ações concretas (tratar, monitorar ou aproveitar), e não ficam só documentados?",
+      "explanation": "O valor está no tratamento: quem faz o quê, até quando, e como se sabe se funcionou.",
+      "practice_examples": [
+        "Plano de tratamento com responsáveis e prazos",
+        "Acompanhamento em painel ou reunião"
+      ],
+      "evidence_examples": [
+        "Plano de ação vinculado aos riscos",
+        "Evidência de acompanhamento"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c6-rsk-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c6-obj-01",
+      "version": "1",
+      "theme": "Objetivos da qualidade",
+      "clause_ref": "6.2",
+      "question": "Existem objetivos de qualidade mensuráveis, alinhados ao que a empresa promete ao cliente?",
+      "explanation": "Objetivos bons são específicos, acompanháveis e ligados ao negócio — não slogans genéricos.",
+      "practice_examples": [
+        "Metas anuais de qualidade e prazo",
+        "Indicadores por processo crítico"
+      ],
+      "evidence_examples": [
+        "Lista de objetivos vigentes",
+        "Painel ou relatório de acompanhamento"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c6-obj-02",
+      "version": "1",
+      "theme": "Objetivos da qualidade",
+      "clause_ref": "6.2",
+      "question": "Há um plano claro para alcançar esses objetivos (recursos, responsáveis e prazos)?",
+      "explanation": "Objetivo sem plano vira desejo. O plano mostra como a organização pretende chegar lá.",
+      "practice_examples": [
+        "Plano por objetivo com marcos",
+        "Orçamento ou capacidade alocada"
+      ],
+      "evidence_examples": [
+        "Planos de ação dos objetivos",
+        "Revisão periódica de progresso"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c6-obj-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c6-chg-01",
+      "version": "1",
+      "theme": "Mudanças no sistema",
+      "clause_ref": "6.3",
+      "question": "Quando o sistema de qualidade muda (novo processo, novo produto, nova estrutura), a mudança é planejada e comunicada?",
+      "explanation": "Mudança descontrolada gera falha. Planejar reduz surpresa para equipe e cliente.",
+      "practice_examples": [
+        "Checklist de mudança",
+        "Comunicado e treinamento na mudança"
+      ],
+      "evidence_examples": [
+        "Registro de mudança planejada",
+        "Evidência de comunicação"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c7-res-01",
+      "version": "1",
+      "theme": "Recursos",
+      "clause_ref": "7.1",
+      "question": "A empresa disponibiliza pessoas, infraestrutura e ambiente adequados para entregar com qualidade?",
+      "explanation": "Sem capacidade adequada, processos e objetivos não se sustentam no dia a dia.",
+      "practice_examples": [
+        "Planejamento de capacidade",
+        "Manutenção de equipamentos e ambiente de trabalho"
+      ],
+      "evidence_examples": [
+        "Plano de recursos",
+        "Registros de manutenção ou adequação"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c7-cmp-01",
+      "version": "1",
+      "theme": "Competência",
+      "clause_ref": "7.2",
+      "question": "As pessoas que afetam a qualidade têm a competência necessária (e isso é verificado)?",
+      "explanation": "Competência é combinação de educação, treinamento e experiência — e precisa ser comprovável onde importa.",
+      "practice_examples": [
+        "Matriz de competências",
+        "Treinamentos ligados a funções críticas"
+      ],
+      "evidence_examples": [
+        "Registros de capacitação",
+        "Avaliação de eficácia do treinamento"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c7-awr-01",
+      "version": "1",
+      "theme": "Conscientização",
+      "clause_ref": "7.3",
+      "question": "As pessoas entendem a política, os objetivos relevantes e o impacto do seu trabalho na qualidade?",
+      "explanation": "Conscientização não é cartaz na parede: é a pessoa saber por que seu trabalho importa.",
+      "practice_examples": [
+        "Integração de novos colaboradores",
+        "Conversas de time sobre qualidade"
+      ],
+      "evidence_examples": [
+        "Registro de integração",
+        "Evidência de comunicação da política"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c7-com-01",
+      "version": "1",
+      "theme": "Comunicação",
+      "clause_ref": "7.4",
+      "question": "Há comunicação interna e externa definida sobre assuntos de qualidade (o que, quando, para quem)?",
+      "explanation": "Comunicação confusa gera retrabalho e risco com cliente e órgãos.",
+      "practice_examples": [
+        "Matriz de comunicação",
+        "Canais e rotinas de reporte"
+      ],
+      "evidence_examples": [
+        "Procedimento ou matriz de comunicação",
+        "Exemplos de comunicados"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c7-doc-01",
+      "version": "1",
+      "theme": "Informação documentada",
+      "clause_ref": "7.5",
+      "question": "Documentos e registros necessários estão controlados (versão, acesso, retenção) na prática?",
+      "explanation": "O essencial é achar a versão correta na hora certa — e não perder o histórico relevante.",
+      "practice_examples": [
+        "Controle de documentos e registros",
+        "Pastas ou sistema com versão vigente"
+      ],
+      "evidence_examples": [
+        "Lista mestra de documentos",
+        "Exemplos de registros controlados"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c8-pln-01",
+      "version": "1",
+      "theme": "Planejamento operacional",
+      "clause_ref": "8.1",
+      "question": "A entrega ao cliente é planejada (critérios, controles e recursos) antes de executar?",
+      "explanation": "Planejar a operação evita improvisar qualidade na última hora.",
+      "practice_examples": [
+        "Plano de produção ou prestação de serviço",
+        "Critérios de aceitação definidos"
+      ],
+      "evidence_examples": [
+        "Ordens/planos de trabalho",
+        "Critérios de qualidade do pedido"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c8-req-01",
+      "version": "1",
+      "theme": "Requisitos do cliente",
+      "clause_ref": "8.2",
+      "question": "Os requisitos do cliente (e legais aplicáveis) são entendidos e confirmados antes de aceitar o pedido?",
+      "explanation": "Aceitar o que não se entende gera não conformidade e conflito.",
+      "practice_examples": [
+        "Revisão de pedido / contrato",
+        "Checklist de requisitos antes da aceitação"
+      ],
+      "evidence_examples": [
+        "Registro de revisão de pedido",
+        "Confirmação ao cliente"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c8-des-01",
+      "version": "1",
+      "theme": "Projeto e desenvolvimento",
+      "clause_ref": "8.3",
+      "question": "A empresa projeta ou desenvolve produtos/serviços (ou partes deles)?",
+      "explanation": "Pergunta-porta: se não há projeto, as perguntas seguintes de desenvolvimento não se aplicam.",
+      "practice_examples": [
+        "Equipe de desenvolvimento",
+        "Ciclo de criação de produto/serviço"
+      ],
+      "evidence_examples": [
+        "Portfólio de projetos",
+        "Descrição do processo de desenvolvimento"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c8-des-02",
+      "version": "1",
+      "theme": "Projeto e desenvolvimento",
+      "clause_ref": "8.3",
+      "question": "O desenvolvimento segue etapas com revisões, verificações e validações adequadas?",
+      "explanation": "Etapas e controles evitam descobrir falha só na entrega ao cliente.",
+      "practice_examples": [
+        "Fases de projeto com gates",
+        "Testes e validação com usuário/cliente"
+      ],
+      "evidence_examples": [
+        "Planos de projeto",
+        "Registros de revisão/verificação/validação"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c8-des-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c8-ext-01",
+      "version": "1",
+      "theme": "Fornecedores externos",
+      "clause_ref": "8.4",
+      "question": "A empresa usa fornecedores ou parceiros externos que afetam a qualidade do que entrega?",
+      "explanation": "Pergunta-porta para controle de fornecedores externos.",
+      "practice_examples": [
+        "Lista de fornecedores críticos",
+        "Contratos com requisitos de qualidade"
+      ],
+      "evidence_examples": [
+        "Cadastro de fornecedores",
+        "Contratos ou pedidos com requisitos"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c8-ext-02",
+      "version": "1",
+      "theme": "Fornecedores externos",
+      "clause_ref": "8.4",
+      "question": "Esses fornecedores são selecionados, avaliados e acompanhados com critérios claros?",
+      "explanation": "Dependência externa sem critério vira risco invisível.",
+      "practice_examples": [
+        "Critérios de homologação",
+        "Avaliação periódica de desempenho"
+      ],
+      "evidence_examples": [
+        "Registros de avaliação de fornecedor",
+        "Ações com fornecedores críticos"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c8-ext-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c8-prd-01",
+      "version": "1",
+      "theme": "Produção e prestação do serviço",
+      "clause_ref": "8.5",
+      "question": "A execução (produção ou serviço) tem controles suficientes para manter a qualidade combinada?",
+      "explanation": "Controles no chão de fábrica ou na operação do serviço são o que o cliente sente.",
+      "practice_examples": [
+        "Instruções de trabalho",
+        "Pontos de verificação na operação"
+      ],
+      "evidence_examples": [
+        "Registros de produção/serviço",
+        "Controles e inspeções"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c8-rel-01",
+      "version": "1",
+      "theme": "Liberação e não conformidade",
+      "clause_ref": "8.6",
+      "question": "Só se libera para o cliente o que atende aos critérios acordados?",
+      "explanation": "Liberação sem critério vira entrega arriscada.",
+      "practice_examples": [
+        "Inspeção final / checklist de liberação",
+        "Autoridade clara para liberar"
+      ],
+      "evidence_examples": [
+        "Registros de liberação",
+        "Critérios de aceitação usados"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c8-nc-01",
+      "version": "1",
+      "theme": "Saídas não conformes",
+      "clause_ref": "8.7",
+      "question": "Quando algo sai fora do padrão, isso é identificado, tratado e registrado (incluindo o que fazer com o item)?",
+      "explanation": "Tratar não conformidade operacional evita que o problema chegue — ou volte — ao cliente.",
+      "practice_examples": [
+        "Segregação e decisão sobre o item",
+        "Registro de não conformidade operacional"
+      ],
+      "evidence_examples": [
+        "Registros de NC / retrabalho / descarte",
+        "Autorizações de concessão"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c9-mon-01",
+      "version": "1",
+      "theme": "Monitoramento e medição",
+      "clause_ref": "9.1",
+      "question": "A empresa monitora indicadores que mostram se a qualidade e a satisfação do cliente estão sob controle?",
+      "explanation": "Sem medição útil, a gestão opera no escuro.",
+      "practice_examples": [
+        "Indicadores de processo e de cliente",
+        "Pesquisa ou feedback de satisfação"
+      ],
+      "evidence_examples": [
+        "Painéis ou relatórios de indicadores",
+        "Registros de satisfação/reclamações"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c9-aud-01",
+      "version": "1",
+      "theme": "Avaliação interna",
+      "clause_ref": "9.2",
+      "question": "Há avaliações internas planejadas que verificam se o sistema funciona de verdade?",
+      "explanation": "Avaliação interna bem feita revela gaps antes que o cliente ou um avaliador externo os veja.",
+      "practice_examples": [
+        "Programa anual de avaliação interna",
+        "Equipe treinada e imparcial o suficiente"
+      ],
+      "evidence_examples": [
+        "Programa e relatórios de avaliação interna",
+        "Ações decorrentes"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c9-mgt-01",
+      "version": "1",
+      "theme": "Análise crítica da direção",
+      "clause_ref": "9.3",
+      "question": "A direção analisa periodicamente o desempenho do sistema de qualidade e decide o que mudar?",
+      "explanation": "A análise crítica é o momento em que a direção governa o sistema — não só a operação.",
+      "practice_examples": [
+        "Reunião periódica de análise crítica",
+        "Pauta com dados, riscos e melhorias"
+      ],
+      "evidence_examples": [
+        "Atas de análise crítica",
+        "Decisões e ações da direção"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c9-mgt-02",
+      "version": "1",
+      "theme": "Análise crítica da direção",
+      "clause_ref": "9.3",
+      "question": "As decisões dessa análise viram ações acompanhadas (não ficam só na ata)?",
+      "explanation": "Decisão sem acompanhamento não melhora o sistema.",
+      "practice_examples": [
+        "Plano de ações da análise crítica",
+        "Revisão do status na reunião seguinte"
+      ],
+      "evidence_examples": [
+        "Lista de ações com status",
+        "Evidência de fechamento"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c9-mgt-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c10-imp-01",
+      "version": "1",
+      "theme": "Melhoria",
+      "clause_ref": "10.1",
+      "question": "A empresa busca melhorar produtos, serviços e o próprio sistema de qualidade de forma deliberada?",
+      "explanation": "Melhoria contínua não é slogan: é hábito de aprender com o que os dados e as pessoas mostram.",
+      "practice_examples": [
+        "Programa de melhorias",
+        "Kaizen / projetos priorizados"
+      ],
+      "evidence_examples": [
+        "Registro de melhorias",
+        "Resultados antes/depois"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c10-capa-01",
+      "version": "1",
+      "theme": "Não conformidade e ação corretiva",
+      "clause_ref": "10.2",
+      "question": "Quando um problema relevante ocorre, há correção imediata e investigação da causa para não repetir?",
+      "explanation": "Corrigir o sintoma sem tratar a causa faz o problema voltar.",
+      "practice_examples": [
+        "Fluxo de ação corretiva",
+        "Análise de causa com evidência"
+      ],
+      "evidence_examples": [
+        "Registros de ação corretiva",
+        "Verificação de eficácia"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    },
+    {
+      "id": "c10-capa-02",
+      "version": "1",
+      "theme": "Não conformidade e ação corretiva",
+      "clause_ref": "10.2",
+      "question": "A eficácia das ações corretivas é verificada depois — e não só “fechada no papel”?",
+      "explanation": "Fechar ação sem verificar é autoengano. A eficácia mostra se o risco realmente caiu.",
+      "practice_examples": [
+        "Prazo de verificação de eficácia",
+        "Critério claro de “resolveu”"
+      ],
+      "evidence_examples": [
+        "Registros de verificação de eficácia",
+        "Reabertura quando não resolveu"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": {
+        "answer": "c10-capa-01",
+        "in": [
+          "yes",
+          "partial"
+        ]
+      }
+    },
+    {
+      "id": "c10-ci-01",
+      "version": "1",
+      "theme": "Melhoria contínua",
+      "clause_ref": "10.3",
+      "question": "Há evidência de que o sistema de qualidade evolui com o tempo (não só reage a crises)?",
+      "explanation": "Evolução deliberada diferencia organização madura de organização apagando incêndio.",
+      "practice_examples": [
+        "Backlog de melhorias priorizado",
+        "Revisões que mudam processos de propósito"
+      ],
+      "evidence_examples": [
+        "Histórico de melhorias implementadas",
+        "Mudanças de processo documentadas"
+      ],
+      "answer_type": "choice_with_description",
+      "required": true,
+      "show_when": null
+    }
+  ]
+}

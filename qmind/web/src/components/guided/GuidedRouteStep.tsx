@@ -158,14 +158,14 @@ export function GuidedRouteStep({
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-qmind-text-muted">
             Pergunta {questionIndex + 1} de {questionTotal}
-          </p>
-          <p className="mt-2 text-sm text-qmind-text-muted">
-            Tema: {question.theme}
             <span className="mx-2 text-qmind-semantic-disabled">·</span>
-            Referência: cláusula {question.clause_ref}
-            <span className="ml-1 text-qmind-text-muted">
-              (orientação interna, não é texto da norma)
-            </span>
+            Cláusula {question.clause_ref}
+          </p>
+          <p className="mt-2 text-sm font-semibold text-qmind-main">
+            {question.theme}
+          </p>
+          <p className="mt-1 text-xs text-qmind-text-muted">
+            Referência interna de orientação — não é o texto da norma.
           </p>
         </div>
         <AutosaveFeedback saveState={saveState} saving={saving} />

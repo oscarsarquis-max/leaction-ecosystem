@@ -19,6 +19,7 @@ import {
   phaseForStatus,
 } from "@/lib/auditJourney";
 import { OrgAgenda } from "@/components/OrgAgenda";
+import { OrgJourneyOverview } from "@/components/orgJourney/OrgJourneyOverview";
 
 export function AssessmentsPage() {
   const org = useOrganization();
@@ -89,6 +90,8 @@ export function AssessmentsPage() {
         É o ciclo guiado de trabalho da qualidade — da preparação ao relatório. Não
         precisa conhecer ISO 9001 para começar: o QMind explica cada etapa.
       </ContextualHelp>
+
+      <OrgJourneyOverview assessments={items} />
 
       <OrgAgenda />
 

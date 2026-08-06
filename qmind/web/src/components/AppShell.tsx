@@ -67,6 +67,7 @@ export function AppShell() {
               type="button"
               onClick={() => void auth.logout()}
               className="qm-btn-secondary !px-3 !py-1.5"
+              data-testid="logout-cta"
             >
               Sair
             </button>

@@ -220,9 +220,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await manager.removeUser();
           await manager.signoutRedirect();
         } catch {
-          // already cleared locally
+          // already cleared locally — AccessGate permanece via status anonymous
         }
       }
+      return;
+    }
+    // AUTH_MODE=dev: garante AccessGate visível sem depender de F5 / HMR.
+    if (typeof window !== "undefined" && window.location.pathname !== "/") {
+      window.history.replaceState(null, "", "/");
     }
   }, [cfg.authMode, invalidateSession]);
 
