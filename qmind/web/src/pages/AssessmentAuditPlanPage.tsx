@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import { AccessDeniedPanel, LoadingPanel } from "@/components/StatePanels";
 import { JourneyBar } from "@/components/navigation/JourneyBar";
+import { AssessmentSectionNav } from "@/components/navigation/AssessmentSectionNav";
 import { PageHeader } from "@/components/qm";
 import {
   useAssessment,
@@ -242,17 +243,15 @@ export function AssessmentAuditPlanPage() {
         preparationReady={dash.preparationReady}
       />
 
+      <AssessmentSectionNav assessmentId={assessmentId} />
+
       <p className="text-sm text-[var(--qm-muted)]">
         <Link to="/assessments" className="hover:underline">
           Minhas avaliações
         </Link>
         {" / "}
         <Link to={`/assessments/${assessmentId}`} className="hover:underline">
-          Mapa
-        </Link>
-        {" / "}
-        <Link to={`/assessments/${assessmentId}/work`} className="hover:underline">
-          Planejamento
+          Visão geral
         </Link>
         {" / "}
         Plano da Auditoria

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAgendaBoard, useAgendaMutations } from "@/hooks/useAgendaBoard";
 import { useAssessments } from "@/hooks/useAssessments";
 import { useAssessmentPermissions } from "@/hooks/useAssessmentPermissions";
@@ -186,14 +186,33 @@ function EventRow({
   );
 }
 
+function isIsoDay(value: string | null): value is string {
+  return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 export function OrgAgenda() {
   const perms = useAssessmentPermissions();
   const assessments = useAssessments();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dayFromUrl = searchParams.get("day");
   const [selectedDate, setSelectedDate] = useState(() =>
-    todayIsoInTz("America/Sao_Paulo"),
+    isIsoDay(dayFromUrl) ? dayFromUrl : todayIsoInTz("America/Sao_Paulo"),
   );
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [detail, setDetail] = useState<AgendaEvent | null>(null);
+
+  useEffect(() => {
+    if (isIsoDay(dayFromUrl) && dayFromUrl !== selectedDate) {
+      setSelectedDate(dayFromUrl);
+    }
+  }, [dayFromUrl, selectedDate]);
+
+  function selectDay(date: string) {
+    setSelectedDate(date);
+    const next = new URLSearchParams(searchParams);
+    next.set("day", date);
+    setSearchParams(next, { replace: true });
+  }
 
   const boardQuery = useAgendaBoard(selectedDate);
   const { create, setStatus } = useAgendaMutations(selectedDate);
@@ -294,7 +313,7 @@ export function OrgAgenda() {
             <button
               type="button"
               className="qm-btn-secondary text-sm"
-              onClick={() => setSelectedDate((d) => shiftMonth(d, -1))}
+              onClick={() => selectDay(shiftMonth(selectedDate, -1))}
               aria-label="Mês anterior"
             >
               ←
@@ -305,7 +324,7 @@ export function OrgAgenda() {
             <button
               type="button"
               className="qm-btn-secondary text-sm"
-              onClick={() => setSelectedDate((d) => shiftMonth(d, 1))}
+              onClick={() => selectDay(shiftMonth(selectedDate, 1))}
               aria-label="Próximo mês"
             >
               →
@@ -338,7 +357,7 @@ export function OrgAgenda() {
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  onClick={() => setSelectedDate(cell.date)}
+                  onClick={() => selectDay(cell.date)}
                 >
                   <span>{Number(cell.date.slice(-2))}</span>
                   {marker ? (

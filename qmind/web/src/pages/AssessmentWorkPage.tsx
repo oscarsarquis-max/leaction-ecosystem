@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { AssessmentDetailPage } from "@/pages/AssessmentDetailPage";
 import { PageHeader } from "@/components/qm";
 import { JourneyBar } from "@/components/navigation/JourneyBar";
+import { AssessmentSectionNav } from "@/components/navigation/AssessmentSectionNav";
 import { useAuditDashboard } from "@/hooks/useAuditDashboard";
 import { JOURNEY_PHASES, phaseForStatus } from "@/lib/auditJourney";
 import { LoadingPanel } from "@/components/StatePanels";
@@ -35,13 +36,15 @@ export function AssessmentWorkPage() {
         preparationReady={dash.preparationReady}
       />
 
+      <AssessmentSectionNav assessmentId={assessmentId} />
+
       <p className="text-sm text-[var(--qm-muted)]">
         <Link to="/assessments" className="hover:underline">
           Minhas avaliações
         </Link>
         {" / "}
         <Link to={`/assessments/${assessmentId}`} className="hover:underline">
-          Mapa
+          Visão geral
         </Link>
         {" / "}
         {phase.label}

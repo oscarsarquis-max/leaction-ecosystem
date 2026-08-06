@@ -85,6 +85,31 @@ export function AuditPlanScheduleSection({
 
   const schedule = scheduleQ.data;
   const tz = schedule?.timezone || "America/Sao_Paulo";
+  const agendaDay = useMemo(() => {
+    const withTime = (schedule?.items ?? []).find((i) => i.starts_at);
+    if (!withTime?.starts_at) {
+      try {
+        return new Intl.DateTimeFormat("en-CA", {
+          timeZone: tz,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(new Date());
+      } catch {
+        return new Date().toISOString().slice(0, 10);
+      }
+    }
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: withTime.timezone || tz,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(withTime.starts_at));
+    } catch {
+      return withTime.starts_at.slice(0, 10);
+    }
+  }, [schedule?.items, tz]);
 
   const startInterviewId = searchParams.get("startInterview");
   useEffect(() => {
@@ -192,7 +217,11 @@ export function AuditPlanScheduleSection({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/assessments" className="qm-btn-secondary text-sm">
+          <Link
+            to={`/assessments?day=${encodeURIComponent(agendaDay)}`}
+            className="qm-btn-secondary text-sm"
+            data-testid="audit-plan-see-agenda"
+          >
             Ver na agenda
           </Link>
           {!readOnly ? (

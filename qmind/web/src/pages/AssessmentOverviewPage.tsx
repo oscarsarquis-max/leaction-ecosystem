@@ -5,6 +5,7 @@ import {
   GuidedChecklist,
   ProgressSummary,
 } from "@/components/qm";
+import { AssessmentSectionNav } from "@/components/navigation/AssessmentSectionNav";
 import { AssessmentLobby } from "@/pages/AssessmentLobby";
 import { useAuditDashboard } from "@/hooks/useAuditDashboard";
 import { JOURNEY_PHASES, phaseForStatus } from "@/lib/auditJourney";
@@ -54,6 +55,7 @@ export function AssessmentOverviewPage() {
 
   return (
     <div className="space-y-6">
+      <AssessmentSectionNav assessmentId={assessmentId} />
       <AssessmentLobby
         status={a.status}
         preparationReady={dash.preparationReady}
@@ -67,7 +69,7 @@ export function AssessmentOverviewPage() {
         progressLabel={`${dash.percent}% do percurso · fase: ${phase.label}`}
         nextTitle={dash.nextBest.title}
         nextDescription={dash.nextBest.description}
-        nextActionText={dash.nextBest.actionText}
+        nextActionText={dash.continueAction.label || dash.nextBest.actionText}
         blockers={prepBlockers}
         onContinue={() => {
           void navigate(dash.continueAction.href);

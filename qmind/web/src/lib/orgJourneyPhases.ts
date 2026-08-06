@@ -232,23 +232,29 @@ export function homeNextAction(input: {
   }
 
   if (status === "draft" && preparationReady) {
+    // Prefer continueHref/label from dashboard (Plano da Auditoria discovery).
+    const label = input.continueLabel || "Abrir Plano da Auditoria";
+    const href =
+      input.continueHref || `/assessments/${assessmentId}/audit-plan`;
     return {
       title: "Organize o planejamento",
       description:
-        "Confirme escopo formal e equipe para liberar a execução em campo.",
-      reason: pending[0] ?? "Preparação pronta — falta marcar o plano.",
-      actionText: "Ir para o Planejamento",
-      href: `/assessments/${assessmentId}/work`,
+        "Abra o Plano da Auditoria para definir propósito, programação e pessoas.",
+      reason: pending[0] ?? "Preparação pronta — elabore o Plano da Auditoria.",
+      actionText: label,
+      href,
     };
   }
 
   if (status === "planned") {
+    const label = input.continueLabel || "Iniciar execução em campo";
+    const href = input.continueHref || `/assessments/${assessmentId}/work`;
     return {
       title: "Inicie a execução em campo",
       description: "Com o plano pronto, abra entrevistas e evidências.",
       reason: pending[0] ?? "Avaliação planejada — pronta para começar em campo.",
-      actionText: "Iniciar execução em campo",
-      href: `/assessments/${assessmentId}/work`,
+      actionText: label,
+      href,
     };
   }
 

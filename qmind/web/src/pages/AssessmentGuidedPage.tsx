@@ -17,6 +17,7 @@ import { GuidedClauseOpening } from "@/components/guided/GuidedClauseOpening";
 import { GuidedClauseSummary } from "@/components/guided/GuidedClauseSummary";
 import { GuidedRouteStep } from "@/components/guided/GuidedRouteStep";
 import { JourneyBar } from "@/components/navigation/JourneyBar";
+import { AssessmentSectionNav } from "@/components/navigation/AssessmentSectionNav";
 import {
   GuidedEmptyState,
   PageHeader,
@@ -314,13 +315,14 @@ export function AssessmentGuidedPage() {
       />
 
       <div className="mx-auto max-w-5xl space-y-6 px-4 sm:px-6">
+        <AssessmentSectionNav assessmentId={assessmentId} />
         <p className="text-sm text-qmind-text-muted">
           <Link to="/assessments" className="hover:underline">
             Minhas avaliações
           </Link>
           {" / "}
           <Link to={`/assessments/${assessmentId}`} className="hover:underline">
-            Mapa
+            Visão geral
           </Link>
           {" / "}
           Preparação

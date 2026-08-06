@@ -15,6 +15,11 @@ import {
   preparationChecklist,
   statusIndex,
 } from "@/lib/auditJourney";
+import {
+  auditPlanDiscoveryAction,
+  auditPlanDiscoveryLabel,
+  auditPlanDiscoveryState,
+} from "@/lib/auditPlanDiscovery";
 
 export function useAuditDashboard(assessmentId: string | undefined) {
   const { currentOrganizationId, currentOrganization } = useOrganization();
@@ -237,6 +242,38 @@ export function useAuditDashboard(assessmentId: string | undefined) {
       pending.push("Relatório ainda não publicado");
     }
 
+    const planDiscovery = aid
+      ? auditPlanDiscoveryAction(aid, auditPlan.data, status)
+      : null;
+    const planState = auditPlanDiscoveryState(auditPlan.data);
+
+    const continueActionResolved = (() => {
+      if (!aid) return continueAction;
+      if (hasOverlap) {
+        return {
+          href: `/assessments/${aid}/audit-plan`,
+          label: "Resolver conflito de horário",
+        };
+      }
+      if (
+        (status === "draft" && preparationReady) ||
+        status === "planned"
+      ) {
+        if (planDiscovery) return planDiscovery;
+      }
+      if (
+        status === "in_progress" &&
+        plannedInterviews > 0 &&
+        interviewsDone === 0
+      ) {
+        return {
+          href: `/assessments/${aid}/audit-plan`,
+          label: "Iniciar primeira entrevista",
+        };
+      }
+      return continueAction;
+    })();
+
     const nextBest =
       status === "draft" && !preparationReady
         ? {
@@ -247,68 +284,34 @@ export function useAuditDashboard(assessmentId: string | undefined) {
           }
         : status === "draft" && preparationReady
           ? {
-              title: !planReady
-                ? "Elaborar o Plano da Auditoria"
-                : "Ir para o Planejamento",
-              description: !planReady
-                ? "Preparação concluída. Monte o plano operacional (propósito, processos, pessoas e período) antes de confirmar o planejamento."
-                : scopeItems < 1 || !hasLead
-                  ? "Plano em andamento. Confirme escopo formal e equipe — o que faltar aparece marcado na tela."
-                  : "Plano pronto. Confirme o planejamento da avaliação para liberar a execução em campo (o plano ready não inicia o campo sozinho).",
-              actionText: !planReady
-                ? "Abrir Plano da Auditoria"
-                : "Ir para o Planejamento",
-            }
-          : {
-              title: "Continuar a avaliação",
+              title:
+                planState === "not_started"
+                  ? "Criar o Plano da Auditoria"
+                  : planState === "in_progress"
+                    ? "Continuar o Plano da Auditoria"
+                    : "Revisar a programação",
               description:
-                "Siga na etapa atual do mapa. Se algo estiver bloqueado, o motivo aparece na tela.",
-              actionText: continueAction.label,
-            };
-
-    const continueActionResolved =
-      status === "draft" && preparationReady && !planReady && aid
-        ? {
-            href: `/assessments/${aid}/audit-plan`,
-            label: "Abrir Plano da Auditoria",
-          }
-        : hasOverlap && aid
-          ? {
-              href: `/assessments/${aid}/audit-plan`,
-              label: "Resolver conflito de horário",
+                planState === "ready" || planState === "amended"
+                  ? "Plano pronto. Revise a programação ou confirme o planejamento para liberar a execução em campo."
+                  : "Monte o plano operacional (propósito, processos, pessoas, período e programação) antes de ir a campo.",
+              actionText: continueActionResolved.label,
             }
-          : !hasOpening &&
-              (status === "draft" || status === "planned") &&
-              aid
+          : status === "planned"
             ? {
-                href: `/assessments/${aid}/audit-plan`,
-                label: "Confirmar reunião de abertura",
+                title: planReady
+                  ? "Iniciar execução em campo"
+                  : "Continuar o Plano da Auditoria",
+                description: planReady
+                  ? "Com o plano pronto, abra a execução em campo quando a equipe estiver preparada."
+                  : "Ainda há pendências no Plano da Auditoria antes de iniciar o campo.",
+                actionText: continueActionResolved.label,
               }
-            : planReady &&
-                plannedInterviews === 0 &&
-                (status === "draft" || status === "planned") &&
-                aid
-              ? {
-                  href: `/assessments/${aid}/audit-plan`,
-                  label: "Agendar entrevista",
-                }
-              : status === "in_progress" &&
-                  plannedInterviews > 0 &&
-                  interviewsDone === 0 &&
-                  aid
-                ? {
-                    href: `/assessments/${aid}/audit-plan`,
-                    label: "Iniciar primeira entrevista",
-                  }
-                : scheduleNext &&
-                    (status === "draft" || status === "planned") &&
-                    aid &&
-                    !planReady
-                  ? {
-                      href: `/assessments/${aid}/audit-plan`,
-                      label: "Revisar programação",
-                    }
-                  : continueAction;
+            : {
+                title: "Continuar a avaliação",
+                description:
+                  "Siga na etapa atual do mapa. Se algo estiver bloqueado, o motivo aparece na tela.",
+                actionText: continueActionResolved.label,
+              };
 
     return {
       loading:
@@ -328,6 +331,7 @@ export function useAuditDashboard(assessmentId: string | undefined) {
       preparationReady,
       auditPlanReady: planReady,
       auditPlanPercent: planPercent,
+      auditPlanDiscoveryLabel: auditPlanDiscoveryLabel(auditPlan.data),
       nextBest,
       checklist,
       consistency: consistencyScore({

@@ -49,10 +49,22 @@ export function PhaseDetails({
   const badge = stateLabel(phase, status, opts);
   const state = visualStateForPhase(phase, status, opts);
   const block = blockReason(phase, status, opts);
-  const action =
-    assessmentId && (state === "current" || state === "available")
-      ? continueHref(assessmentId, status, { preparationReady })
+  // Planejamento: CTA de descoberta sempre aponta ao Plano da Auditoria.
+  const planningAction =
+    assessmentId && phase.id === "planning"
+      ? {
+          href: `/assessments/${assessmentId}/audit-plan`,
+          label: "Abrir Plano da Auditoria",
+        }
       : null;
+  const action =
+    planningAction ??
+    (assessmentId && (state === "current" || state === "available")
+      ? continueHref(assessmentId, status, { preparationReady })
+      : null);
+  const actionLabel =
+    planningAction?.label ??
+    (state === "current" ? "Continuar avaliação" : `Ir para ${phase.label}`);
 
   return (
     <div
@@ -135,15 +147,15 @@ export function PhaseDetails({
         ) : null}
 
         {action ? (
-          <div className="mt-5">
+          <div className="mt-5" data-testid="journey-phase-primary-cta">
             <NextBestAction
               href={action.href}
-              label={
-                state === "current"
-                  ? "Continuar avaliação"
-                  : `Ir para ${phase.label}`
+              label={actionLabel}
+              hint={
+                phase.id === "planning"
+                  ? "Abra o Plano da Auditoria para programar a avaliação"
+                  : "Ação recomendada para esta fase"
               }
-              hint="Ação recomendada para esta fase"
             />
           </div>
         ) : null}
