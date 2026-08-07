@@ -74,7 +74,10 @@ function Ensure-CognitoUser {
 function Get-AccessToken {
   param([string]$Email, [string]$Password)
   $tmp = Join-Path $env:TEMP ("partners-auth-" + [guid]::NewGuid().ToString("N") + ".json")
-  @{ USERNAME = $Email; PASSWORD = $Password } | ConvertTo-Json | Set-Content -Path $tmp -Encoding ascii
+  # Avoid ConvertTo-Json quirks with special chars in passwords
+  $escaped = $Password.Replace('\', '\\').Replace('"', '\"')
+  $json = "{`"USERNAME`":`"$Email`",`"PASSWORD`":`"$escaped`"}"
+  [IO.File]::WriteAllText($tmp, $json)
   try {
     $raw = aws cognito-idp admin-initiate-auth `
       --user-pool-id $UserPoolId `
@@ -83,7 +86,11 @@ function Get-AccessToken {
       --auth-parameters "file://$tmp" `
       --region $Region `
       --output json | ConvertFrom-Json
-    return $raw.AuthenticationResult.AccessToken
+    $token = $raw.AuthenticationResult.AccessToken
+    if (-not $token) {
+      throw "admin-initiate-auth returned no AccessToken for $Email"
+    }
+    return $token
   } finally {
     Remove-Item -Force $tmp -ErrorAction SilentlyContinue
   }
@@ -102,13 +109,17 @@ foreach ($email in $PartnerEmails) {
 
 $adminEmail = $PartnerEmails[0]
 $token = Get-AccessToken -Email $adminEmail -Password $password
+if ([string]::IsNullOrWhiteSpace($token)) {
+  throw "Failed to obtain access token for $adminEmail"
+}
 $hdr = @{
   Authorization = "Bearer $token"
   "Content-Type" = "application/json"
 }
 
 # List memberships; create org if needed
-$mems = Invoke-RestMethod -Method GET -Uri "$ApiBase/api/v1/organizations/me/memberships" -Headers $hdr
+$memsRaw = Invoke-RestMethod -Method GET -Uri "$ApiBase/api/v1/organizations/me/memberships" -Headers $hdr
+$mems = @($memsRaw)
 $org = $mems | Where-Object { $_.organization_name -eq $OrgName } | Select-Object -First 1
 if (-not $org) {
   $created = Invoke-RestMethod -Method POST -Uri "$ApiBase/api/v1/organizations" `
