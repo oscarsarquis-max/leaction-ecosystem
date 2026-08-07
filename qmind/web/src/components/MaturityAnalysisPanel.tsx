@@ -326,7 +326,7 @@ function PackageWorkspace({
           <p className="mt-1 text-xs text-teal-950/60" data-testid="maturity-sod">
             {author ? "Autor: você" : "Autor: outro membro da equipe"}
             {sodBlocks
-              ? " — Você não pode aprovar este pacote (segregação de funções)."
+              ? " — Você não pode aprovar este pacote (SoD / segregação de funções)."
               : null}
           </p>
         </div>

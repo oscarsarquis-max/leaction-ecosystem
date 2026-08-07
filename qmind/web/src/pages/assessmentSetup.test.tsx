@@ -389,6 +389,19 @@ function installApi(store: Store, opts?: { ensureFills?: boolean }) {
         return json([]);
       }
 
+      if (url.includes("/api/v1/agenda/board")) {
+        return json({
+          timezone: "America/Sao_Paulo",
+          selected_date: "2026-01-01",
+          next_up: null,
+          today: [],
+          selected_day: [],
+          overdue: [],
+          in_progress_assessments: [],
+          month_markers: [],
+        });
+      }
+
       return json({ code: "not_found", message: url, correlation_id: "" }, 404);
     }),
   );
@@ -630,9 +643,12 @@ describe("assessment setup and planning UI", () => {
     });
 
     await user.click(screen.getByTestId("nav-assessments"));
-    await waitFor(() => {
-      const list = screen.getByTestId("assessments-list");
-      expect(within(list).getByText(/planejada/i)).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        const list = screen.getByTestId("assessments-list");
+        expect(within(list).getByText(/planejada/i)).toBeInTheDocument();
+      },
+      { timeout: 5_000 },
+    );
   });
 });

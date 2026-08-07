@@ -83,14 +83,15 @@ export function NewAssessmentPage() {
     try {
       const created = await create.mutateAsync(payload);
       navigate(`/assessments/${created.id}`);
+      // Mantém o latch após sucesso — evita segundo POST em double-click
+      // antes da navegação desmontar o formulário.
     } catch (err) {
+      submittingRef.current = false;
       if (err instanceof StaleTenantResponseError) {
         setClientError(
           "A organização mudou enquanto você criava. Confirme o seletor no topo e tente de novo.",
         );
       }
-    } finally {
-      submittingRef.current = false;
     }
   }
 

@@ -256,7 +256,10 @@ describe("maturity analysis UI", () => {
       /qmind_maturity_iso9001@0\.1\.0/,
     );
     expect(screen.getByTestId("maturity-global-score").textContent).toMatch(/3\.00/);
-    expect(screen.getByTestId("maturity-global-score").textContent).toMatch(/half-up/);
+    expect(screen.getByTestId("maturity-global-score").textContent).toMatch(
+      /calculado pelo servidor/i,
+    );
+    expect(screen.getByTestId("maturity-analysis").textContent).toMatch(/half-up/i);
 
     // levels shown as text labels, not color-only
     await user.click(screen.getByTestId("maturity-criterion-D1.C1"));
