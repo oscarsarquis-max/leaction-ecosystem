@@ -354,7 +354,11 @@ describe("tenant switch gate", () => {
     await user.click(screen.getByRole("button", { name: "Sair" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Entrar" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", {
+          name: /Entrar como usuário de desenvolvimento/i,
+        }),
+      ).toBeInTheDocument();
     });
     expect(readPreferredOrganizationId()).toBeNull();
     assertNoSensitiveLocalPersistence();
