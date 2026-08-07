@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import ModalHistoricoVersoes from '../components/ModalHistoricoVersoes'
+import { tabClassName } from '../lib/tabs'
+import {
+  BTN_PRIMARY,
+  BTN_PRIMARY_BOLD,
+  BTN_PRIMARY_FULL,
+  CHECKBOX_CLASS,
+} from '../lib/buttons'
 
 const INSTITUICAO_ID =
   import.meta.env.VITE_INSTITUICAO_ID || 'a1111111-1111-4111-8111-111111111111'
@@ -369,7 +376,7 @@ function DiretrizesAeePanel({ onToast }) {
                     type="button"
                     disabled={Boolean(busy)}
                     onClick={enviarAprovacao}
-                    className="rounded-xl bg-school-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-school-700 disabled:opacity-60"
+                    className={BTN_PRIMARY_BOLD}
                   >
                     {busy === 'enviar' ? 'Enviando…' : 'Enviar para aprovação'}
                   </button>
@@ -412,7 +419,7 @@ function DiretrizesAeePanel({ onToast }) {
                   type="button"
                   disabled={Boolean(busy) || aguardando.assinado_coordenador}
                   onClick={() => assinar('coordenador')}
-                  className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+                  className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-50"
                 >
                   {aguardando.assinado_coordenador
                     ? 'Coordenador já assinou'
@@ -422,7 +429,7 @@ function DiretrizesAeePanel({ onToast }) {
                   type="button"
                   disabled={Boolean(busy) || aguardando.assinado_psicopedagogo}
                   onClick={() => assinar('psicopedagogo')}
-                  className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-50"
+                  className={BTN_PRIMARY_BOLD}
                 >
                   {aguardando.assinado_psicopedagogo
                     ? 'Psicopedagogo já assinou'
@@ -625,7 +632,7 @@ function PeisIndividuaisPanel({ onToast }) {
         <button
           type="button"
           onClick={abrirNovo}
-          className="rounded-xl bg-school-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-school-700"
+          className={BTN_PRIMARY_BOLD}
         >
           Novo PEI individual
         </button>
@@ -741,7 +748,7 @@ function PeisIndividuaisPanel({ onToast }) {
             <button
               type="submit"
               disabled={Boolean(busy)}
-              className="rounded-xl bg-school-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+              className={BTN_PRIMARY_BOLD}
             >
               {busy === 'salvar' ? 'Salvando…' : 'Salvar PEI'}
             </button>
@@ -846,10 +853,125 @@ function PeisIndividuaisPanel({ onToast }) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Aba 3 — Adaptações Metodológicas (mesma UX da aba Metodologias)            */
+/* Aba 3 — Adaptações Metodológicas na Prática (por condição AEE)             */
 /* -------------------------------------------------------------------------- */
 
 const FAMILIAS_PEI = ['Indutivas', 'Agilidade', 'Contextuais', 'Dedutivas']
+
+function formatDataModificacaoPei(iso) {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) {
+    const [y, m, day] = String(iso).slice(0, 10).split('-')
+    if (y && m && day) return `${day}/${m}/${y}`
+    return null
+  }
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
+}
+
+function limparRoteiroPei(raw) {
+  const text = String(raw || '').trim()
+  if (!text) return ''
+  const ban =
+    /adaptação pei|observações da coordenação|sugestões dos professores|texto integrado|campos de experiência|metodologia original|dados de entrada:|\[canônico|\[sugestões/i
+  const lines = text.split('\n')
+  const out = []
+  let skipping = false
+  for (const ln of lines) {
+    const low = ln.trim().toLowerCase()
+    if (ban.test(low) || /^—\s*.+\s*—\s*$/.test(ln.trim())) {
+      skipping = true
+      continue
+    }
+    if (skipping) {
+      if (!ln.trim()) skipping = false
+      continue
+    }
+    out.push(ln)
+  }
+  const cleaned = out.join('\n').trim()
+  return cleaned || text
+}
+
+function IconeCadeadoPei({ className = 'h-4 w-4' }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path
+        d="M8 11V8a4 4 0 0 1 8 0v3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <rect
+        x="5"
+        y="11"
+        width="14"
+        height="10"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <circle cx="12" cy="16" r="1.4" fill="currentColor" />
+    </svg>
+  )
+}
+
+/** Modal: metodologia canônica + campos de experiência AEE (somente leitura). */
+function ModalBaseAdaptacao({ open, onClose, textoCanonico, camposExperiencia, condicao }) {
+  if (!open) return null
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Base de adaptação"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-ink">Base de Adaptação</h2>
+            <p className="mt-1 text-sm italic text-slate-500">
+              Fonte de referência para a condição {condicao || '—'}. Estes textos não são
+              editados aqui.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+          >
+            Fechar
+          </button>
+        </div>
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              1. Texto Canônico Original da Metodologia
+            </p>
+            <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink">
+              {textoCanonico || '—'}
+            </pre>
+          </section>
+          <section className="rounded-lg border border-violet-200 bg-violet-50/50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-violet-800">
+              2. Campos de Experiência (AEE — {condicao || 'condição'})
+            </p>
+            <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink">
+              {camposExperiencia || '—'}
+            </pre>
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function descricaoCurtaPei(row) {
   const d = String(row.descricao || '').trim()
@@ -860,7 +982,7 @@ function descricaoCurtaPei(row) {
   return line.length > 140 ? `${line.slice(0, 137)}…` : line
 }
 
-function SugestaoCard({ item, busy, onAdaptar }) {
+function SugestaoCard({ item, busy, incorporada, onIncorporar }) {
   const texto = item.teacher_adaptation_text || item.texto || '— (sem texto)'
   const professor = rotuloProfessor(item.professor_nome)
   const contexto =
@@ -869,7 +991,12 @@ function SugestaoCard({ item, busy, onAdaptar }) {
     'Aula sem contexto informado'
 
   return (
-    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <article
+      className={[
+        'overflow-hidden rounded-xl border bg-white shadow-sm',
+        incorporada ? 'border-school-300 ring-1 ring-school-100' : 'border-slate-200',
+      ].join(' ')}
+    >
       <header className="flex items-center gap-3 border-b border-slate-100 px-3 py-2.5">
         <span
           className="flex size-9 shrink-0 items-center justify-center rounded-full bg-school-100 text-xs font-bold text-school-800"
@@ -877,10 +1004,15 @@ function SugestaoCard({ item, busy, onAdaptar }) {
         >
           {iniciaisNome(item.professor_nome || 'P')}
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-ink">{professor}</p>
           <p className="truncate text-xs text-slate-500">Aula: {contexto}</p>
         </div>
+        {incorporada ? (
+          <span className="shrink-0 rounded-md bg-school-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-school-700">
+            Incorporada
+          </span>
+        ) : null}
       </header>
       <div className="bg-slate-50/80 px-3 py-3">
         <p className="text-sm italic leading-relaxed text-slate-700">
@@ -890,11 +1022,14 @@ function SugestaoCard({ item, busy, onAdaptar }) {
       <footer className="border-t border-slate-100 px-3 py-2.5">
         <button
           type="button"
-          disabled={busy}
-          onClick={() => onAdaptar(item)}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-school-500 px-3 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-95 disabled:opacity-60"
+          disabled={busy || incorporada}
+          onClick={() => onIncorporar(item)}
+          className={[
+            BTN_PRIMARY_FULL,
+            incorporada ? 'bg-slate-400 hover:bg-slate-400' : '',
+          ].join(' ')}
         >
-          {busy ? 'Adaptando…' : '🤖 Adaptar PEI com IA'}
+          {busy ? 'Incorporando…' : incorporada ? 'Já incorporada' : 'Incorporar'}
         </button>
       </footer>
     </article>
@@ -902,34 +1037,70 @@ function SugestaoCard({ item, busy, onAdaptar }) {
 }
 
 /**
- * Painel expandido — espelha AccordionBody da aba Metodologias.
+ * Painel expandido — UX limpa da aba Metodologias, persistência por condição AEE.
  */
-function MetBody({ row, draft, onDraft, onSaved, onToast, peiAlunoId, condicao }) {
+function MetBody({
+  row,
+  draft,
+  onDraft,
+  onSaved,
+  onToast,
+  aeeId,
+  condicao,
+  camposExperiencia,
+}) {
   const id = row.metodologia_id
-  const canon = row.texto_canonico || ''
+  const nomeMet = row.nome || ''
+  const canonCatalogo = row.texto_canonico || ''
+  const campos = camposExperiencia || row.campos_experiencia_aee || ''
+  const isCustomizado = Boolean(row.is_customizado ?? draft.is_customizado)
+  const dataMod = formatDataModificacaoPei(row.updated_at || draft.updated_at)
+
   const [sugestoes, setSugestoes] = useState([])
   const [loadingSug, setLoadingSug] = useState(true)
   const [busyId, setBusyId] = useState(null)
+  const [generating, setGenerating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const [incorporadas, setIncorporadas] = useState([])
+  const [modalBase, setModalBase] = useState(false)
+
+  useEffect(() => {
+    setIncorporadas([])
+    setErr('')
+  }, [id, aeeId])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       setLoadingSug(true)
-      setErr('')
+      setSugestoes([])
+      setIncorporadas([])
       try {
-        const q = encodeURIComponent(row.nome || '')
+        if (!nomeMet) {
+          if (!cancelled) {
+            setSugestoes([])
+            setLoadingSug(false)
+          }
+          return
+        }
+        const q = encodeURIComponent(nomeMet)
         const res = await fetch(`/api/pei/curadoria?metodologia_nome=${q}`, {
           credentials: 'include',
         })
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.error || 'Falha ao carregar sugestões')
-        if (!cancelled) setSugestoes(body.items || [])
+        const items = Array.isArray(body.items) ? body.items : []
+        const daMetodologia = items.filter((it) => {
+          const nome = it.metodologia_nome || ''
+          if (!String(nome).trim()) return true
+          return String(nome).trim().toLowerCase() === nomeMet.toLowerCase()
+        })
+        if (!cancelled) setSugestoes(daMetodologia)
       } catch (e) {
         if (!cancelled) {
-          setErr(e.message || 'Erro ao carregar sugestões')
           setSugestoes([])
+          setErr(e.message || 'Não foi possível carregar as sugestões desta metodologia')
         }
       } finally {
         if (!cancelled) setLoadingSug(false)
@@ -938,52 +1109,101 @@ function MetBody({ row, draft, onDraft, onSaved, onToast, peiAlunoId, condicao }
     return () => {
       cancelled = true
     }
-  }, [row.nome])
+  }, [nomeMet])
 
-  async function adaptarComIa(item) {
+  async function incorporarSugestao(item) {
+    if (incorporadas.some((s) => s.id === item.id)) return
     setBusyId(item.id)
     setErr('')
     try {
-      const textoSug = item.teacher_adaptation_text || item.texto || ''
-      const res = await fetch(`/api/pei/metodologia/${id}/adaptar-ia`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          texto_canonico: canon,
-          sugestao: textoSug,
-          pei_aluno_id: peiAlunoId || undefined,
-          condicao_categoria: condicao || undefined,
-        }),
-      })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(body.error || 'Falha na adaptação com IA')
-      onDraft({ versao_pei: body.versao_pei || '', gerado_por_ia: true })
-      onToast?.('Rascunho gerado pela IA — revise e salve a adaptação PEI.')
+      if (!item.smoke && !String(item.id).startsWith('smoke-')) {
+        const res = await fetch(`/api/pei/curadoria/${item.id}/incorporar`, {
+          method: 'POST',
+          credentials: 'include',
+        })
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(body.error || 'Falha ao incorporar sugestão')
+      }
+      setIncorporadas((prev) => [...prev, item])
+      onToast?.(
+        'Sugestão marcada. Use “Gerar adaptação integrada” para a IA compor o texto.',
+      )
     } catch (e) {
-      setErr(e.message || 'Erro na IA')
+      setErr(e.message || 'Erro ao incorporar')
     } finally {
       setBusyId(null)
     }
   }
 
-  async function salvarVersao() {
+  async function gerarAdaptacaoIntegrada() {
+    if (!aeeId) {
+      setErr('Selecione uma condição AEE antes de gerar.')
+      return
+    }
+    setGenerating(true)
+    setErr('')
+    try {
+      const sugestoesTxt = incorporadas
+        .map((s) => s.teacher_adaptation_text || s.texto || '')
+        .map((t) => String(t).trim())
+        .filter(Boolean)
+      const res = await fetch(
+        `/api/aee/${aeeId}/metodologia/${encodeURIComponent(nomeMet)}/adaptar-ia`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            texto_canonico: canonCatalogo,
+            campos_experiencia_aee: campos,
+            sugestoes: sugestoesTxt,
+          }),
+        },
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Falha na síntese com IA')
+      const texto = limparRoteiroPei(body.versao_escola || '')
+      if (!texto) throw new Error('A IA não retornou um roteiro utilizável')
+      onDraft({ versao_escola: texto })
+      onToast?.('Roteiro gerado. Revise e salve a versão da instituição.')
+    } catch (e) {
+      setErr(e.message || 'Erro ao gerar')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  async function salvarVersaoInstituicao() {
+    const texto = (draft.versao_escola || '').trim()
+    if (!texto) {
+      setErr('Informe o texto da Versão da Escola antes de salvar.')
+      return
+    }
+    if (!aeeId) {
+      setErr('Selecione uma condição AEE antes de salvar.')
+      return
+    }
     setSaving(true)
     setErr('')
     try {
-      const res = await fetch(`/api/pei/metodologia/${id}/versao`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          versao_pei: (draft.versao_pei || '').trim() || null,
-          gerado_por_ia: Boolean(draft.gerado_por_ia),
-        }),
-      })
+      const res = await fetch(
+        `/api/aee/${aeeId}/metodologias/${encodeURIComponent(nomeMet)}`,
+        {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ versao_escola: texto }),
+        },
+      )
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Não foi possível salvar')
+      onDraft({
+        versao_escola: body.versao_escola || texto,
+        is_customizado: body.is_customizado !== false,
+        updated_at: body.updated_at || new Date().toISOString(),
+      })
       onSaved?.(body)
-      onToast?.(`Adaptação PEI salva para “${row.nome}”.`)
+      onToast?.(`Versão da instituição salva para “${nomeMet}” (${condicao}).`)
     } catch (e) {
       setErr(e.message || 'Erro ao salvar')
     } finally {
@@ -991,79 +1211,121 @@ function MetBody({ row, draft, onDraft, onSaved, onToast, peiAlunoId, condicao }
     }
   }
 
+  const idsIncorporados = useMemo(
+    () => new Set(incorporadas.map((s) => s.id)),
+    [incorporadas],
+  )
+
   return (
     <div className="border-t border-slate-100 bg-white px-4 py-4 sm:px-5">
-      <div className="grid gap-4 lg:grid-cols-[1fr_minmax(17rem,24rem)]">
-        <div className="space-y-4">
-          <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Texto canônico (somente leitura)
+      <div className="space-y-4">
+        <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Versão da Escola para {condicao || '—'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setModalBase(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:border-school-300 hover:bg-school-50 hover:text-school-700"
+                >
+                  <IconeCadeadoPei className="h-3.5 w-3.5" />
+                  Ver Base de Adaptação
+                </button>
+              </div>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Texto oficial desta metodologia para a condição. A base (canônico + campos
+                AEE) fica no cadeado.
+              </p>
+            </div>
+            <p className="shrink-0 text-xs text-slate-500">
+              {isCustomizado && dataMod
+                ? `Última modificação: ${dataMod}`
+                : 'Usando Padrão Gerado'}
             </p>
-            <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink">
-              {canon || '—'}
-            </pre>
-          </section>
-
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">
-              Adaptação PEI da Escola
-            </span>
-            <textarea
-              value={draft.versao_pei || ''}
-              onChange={(e) =>
-                onDraft({
-                  versao_pei: e.target.value,
-                  gerado_por_ia: draft.gerado_por_ia,
-                })
-              }
-              rows={10}
-              placeholder="Passo a passo adaptado — gere com IA a partir de uma sugestão ou escreva manualmente."
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-school-500 focus:ring-2 focus:ring-school-100"
-            />
-          </label>
-
-          <div className="flex justify-end">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void salvarVersao()}
-              className="rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-school-600 disabled:opacity-60"
-            >
-              {saving ? 'Salvando…' : 'Salvar Adaptação PEI'}
-            </button>
           </div>
+        </section>
+
+        <div className="grid gap-4 lg:grid-cols-[1fr_minmax(17rem,24rem)] lg:items-stretch">
+          <div className="flex min-h-[22rem] flex-col">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">
+              Versão da Escola para {condicao || '—'}
+            </span>
+            <p className="mb-1.5 text-[11px] italic text-slate-500">
+              Compose com IA a partir da base de adaptação + sugestões; depois revise e
+              salve.
+            </p>
+            <textarea
+              value={draft.versao_escola || ''}
+              onChange={(e) => onDraft({ versao_escola: e.target.value })}
+              rows={12}
+              placeholder="Texto da escola para esta condição — gere com IA ou escreva manualmente."
+              className="min-h-0 w-full flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-school-500 focus:ring-2 focus:ring-school-100"
+            />
+          </div>
+
+          <aside className="flex min-h-[22rem] flex-col">
+            <div className="mb-2 shrink-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Sugestões dos Professores
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Marque com Incorporar. Depois gere o texto integrado.
+                {incorporadas.length
+                  ? ` (${incorporadas.length} selecionada${incorporadas.length > 1 ? 's' : ''})`
+                  : ''}
+              </p>
+            </div>
+
+            {loadingSug ? <p className="text-xs text-muted">Carregando…</p> : null}
+
+            {!loadingSug && !sugestoes.length ? (
+              <p className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-muted">
+                Nenhuma sugestão pendente para esta metodologia.
+              </p>
+            ) : null}
+
+            <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5">
+              {sugestoes.map((item) => (
+                <li key={item.id}>
+                  <SugestaoCard
+                    item={item}
+                    busy={busyId === item.id}
+                    incorporada={idsIncorporados.has(item.id)}
+                    onIncorporar={(it) => void incorporarSugestao(it)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </aside>
         </div>
 
-        <aside className="space-y-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Sugestões dos Professores
-            </p>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Cada card traz o contexto da aula e o relato do professor (curadoria PEI).
-            </p>
+        <div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <button
+              type="button"
+              disabled={generating || !aeeId}
+              onClick={() => void gerarAdaptacaoIntegrada()}
+              className={BTN_PRIMARY}
+            >
+              {generating ? 'Gerando…' : 'Gerar adaptação integrada'}
+            </button>
+            <button
+              type="button"
+              disabled={saving || !(draft.versao_escola || '').trim() || !aeeId}
+              onClick={() => void salvarVersaoInstituicao()}
+              className={BTN_PRIMARY}
+            >
+              {saving ? 'Salvando…' : 'Salvar Versão da Instituição'}
+            </button>
           </div>
-
-          {loadingSug ? <p className="text-xs text-muted">Carregando…</p> : null}
-
-          {!loadingSug && !sugestoes.length ? (
-            <p className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-muted">
-              Nenhuma sugestão pendente.
-            </p>
-          ) : null}
-
-          <ul className="max-h-[28rem] space-y-3 overflow-y-auto pr-0.5">
-            {sugestoes.map((item) => (
-              <li key={item.id}>
-                <SugestaoCard
-                  item={item}
-                  busy={busyId === item.id}
-                  onAdaptar={(it) => void adaptarComIa(it)}
-                />
-              </li>
-            ))}
-          </ul>
-        </aside>
+          <p className="mt-2 text-[11px] italic leading-relaxed text-slate-500">
+            Ao salvar, você ratifica a adaptação oficial desta metodologia para a condição{' '}
+            {condicao || 'selecionada'}.
+          </p>
+        </div>
       </div>
 
       {err ? (
@@ -1071,56 +1333,94 @@ function MetBody({ row, draft, onDraft, onSaved, onToast, peiAlunoId, condicao }
           {err}
         </p>
       ) : null}
+
+      <ModalBaseAdaptacao
+        open={modalBase}
+        onClose={() => setModalBase(false)}
+        textoCanonico={canonCatalogo}
+        camposExperiencia={campos}
+        condicao={condicao}
+      />
     </div>
   )
 }
 
 function AdaptacoesPraticaPanel({ onToast }) {
+  const [condicoes, setCondicoes] = useState([])
+  const [condicao, setCondicao] = useState('TEA')
+  const [aeeId, setAeeId] = useState('')
+  const [camposAee, setCamposAee] = useState('')
   const [lista, setLista] = useState([])
-  const [peis, setPeis] = useState([])
   const [drafts, setDrafts] = useState({})
   const [expandedId, setExpandedId] = useState(null)
   const [filtro, setFiltro] = useState('')
   const [familiaFiltro, setFamiliaFiltro] = useState('Todas')
-  const [peiAlunoId, setPeiAlunoId] = useState('')
-  const [condicao, setCondicao] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [togglingId, setTogglingId] = useState(null)
 
   useEffect(() => {
     ;(async () => {
-      setLoading(true)
-      setError('')
       try {
-        const [resM, resP] = await Promise.all([
-          fetch('/api/pei/metodologias', { credentials: 'include' }),
-          fetch('/api/pei/alunos', { credentials: 'include' }),
-        ])
-        const bodyM = await resM.json().catch(() => [])
-        const bodyP = await resP.json().catch(() => [])
-        if (!resM.ok) throw new Error(bodyM.error || 'Falha ao carregar metodologias')
-        const rows = Array.isArray(bodyM) ? bodyM : []
-        setLista(rows)
-        const d = {}
-        rows.forEach((r) => {
-          d[r.metodologia_id] = {
-            versao_pei: r.versao_pei || '',
-            gerado_por_ia: Boolean(r.gerado_por_ia),
-            disponivel_dia_a_dia: r.disponivel_dia_a_dia !== false,
-            disponivel_desafio: r.disponivel_desafio !== false,
-            uso_estrelas: r.uso_estrelas || 0,
-          }
-        })
-        setDrafts(d)
-        setPeis(Array.isArray(bodyP) ? bodyP : [])
-      } catch (e) {
-        setError(e.message || 'Erro ao carregar metodologias')
-      } finally {
-        setLoading(false)
+        const res = await fetch('/api/aee/condicoes', { credentials: 'include' })
+        const body = await res.json().catch(() => [])
+        if (res.ok && Array.isArray(body) && body.length) {
+          setCondicoes(body.map((c) => c.condicao_categoria))
+          setCondicao(body[0].condicao_categoria)
+        }
+      } catch {
+        setCondicoes(['TEA', 'TDAH', 'DI', 'Dislexia'])
       }
     })()
   }, [])
+
+  const carregar = useCallback(async (cond) => {
+    setLoading(true)
+    setError('')
+    setExpandedId(null)
+    try {
+      const q = encodeURIComponent(cond)
+      const resM = await fetch(`/api/aee/matriz?condicao=${q}`, {
+        credentials: 'include',
+      })
+      const bodyM = await resM.json().catch(() => ({}))
+      if (!resM.ok) throw new Error(bodyM.error || 'Falha ao carregar matriz AEE')
+      const matriz = bodyM.editavel || bodyM.ativa || bodyM.atual
+      if (!matriz?.id) throw new Error('Nenhuma matriz AEE disponível para esta condição')
+      setAeeId(matriz.id)
+      setCamposAee(matriz.campos_experiencia_metodologica || '')
+
+      const res = await fetch(`/api/aee/${matriz.id}/metodologias`, {
+        credentials: 'include',
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Falha ao carregar metodologias')
+      const rows = Array.isArray(body.items) ? body.items : []
+      setLista(rows)
+      setCamposAee(body.campos_experiencia_aee || matriz.campos_experiencia_metodologica || '')
+      const d = {}
+      rows.forEach((r) => {
+        d[r.metodologia_id] = {
+          versao_escola: r.versao_escola || '',
+          is_customizado: Boolean(r.is_customizado),
+          updated_at: r.updated_at || null,
+          disponivel_dia_a_dia: r.disponivel_dia_a_dia !== false,
+          disponivel_desafio: r.disponivel_desafio !== false,
+        }
+      })
+      setDrafts(d)
+    } catch (e) {
+      setError(e.message || 'Erro ao carregar')
+      setLista([])
+      setAeeId('')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (condicao) void carregar(condicao)
+  }, [condicao, carregar])
 
   const filtered = useMemo(() => {
     const q = filtro.trim().toLowerCase()
@@ -1181,60 +1481,34 @@ function AdaptacoesPraticaPanel({ onToast }) {
     }
   }
 
-  const peiSel = peis.find((p) => p.id === peiAlunoId)
-
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-xl text-sm text-muted">
-          Defina se a adaptação PEI vale no Dia a Dia e/ou no Desafio — os mesmos
-          interruptores da aba Metodologias.
-        </p>
-        {!loading ? (
-          <p className="text-xs text-muted">
-            {filtered.length} de {lista.length} metodologia(s)
-          </p>
-        ) : null}
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
-          Contexto para a IA (opcional)
-        </p>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <label className="block min-w-0 flex-1">
-            <span className="mb-1.5 block text-xs text-slate-500">PEI do aluno</span>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-[12rem]">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">
+              Condição AEE
+            </span>
             <select
+              value={condicao}
+              onChange={(e) => setCondicao(e.target.value)}
               className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-school-500 focus:ring-2 focus:ring-school-100"
-              value={peiAlunoId}
-              onChange={(e) => {
-                setPeiAlunoId(e.target.value)
-                const p = peis.find((x) => x.id === e.target.value)
-                if (p) setCondicao(p.condicao_categoria || '')
-              }}
             >
-              <option value="">— Sem PEI específico (usa AEE ativa) —</option>
-              {peis.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome_completo} ({p.condicao_categoria})
+              {(condicoes.length ? condicoes : ['TEA']).map((c) => (
+                <option key={c} value={c}>
+                  {c}
                 </option>
               ))}
             </select>
           </label>
-          <label className="block min-w-0 flex-1">
-            <span className="mb-1.5 block text-xs text-slate-500">Ou condição AEE</span>
-            <input
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-school-500 focus:ring-2 focus:ring-school-100 disabled:bg-slate-50"
-              placeholder="Ex: TEA"
-              value={condicao}
-              disabled={Boolean(peiAlunoId)}
-              onChange={(e) => setCondicao(e.target.value)}
-            />
-          </label>
         </div>
-        {peiSel ? (
-          <p className="mt-2 text-xs text-school-700">
-            IA usará as experiências individuais de {peiSel.nome_completo}.
+        <p className="max-w-xl flex-1 text-sm text-muted">
+          Adaptação por condição — a versão salva vale para esta matriz AEE (
+          {condicao}).
+        </p>
+        {!loading ? (
+          <p className="text-xs text-muted">
+            {filtered.length} de {lista.length} metodologia(s)
           </p>
         ) : null}
       </div>
@@ -1277,11 +1551,10 @@ function AdaptacoesPraticaPanel({ onToast }) {
         {filtered.map((row) => {
           const id = row.metodologia_id
           const draft = drafts[id] || {
-            versao_pei: '',
-            gerado_por_ia: false,
+            versao_escola: '',
+            is_customizado: false,
             disponivel_dia_a_dia: true,
             disponivel_desafio: true,
-            uso_estrelas: 0,
           }
           const open = expandedId === id
           const busyToggle = togglingId === id
@@ -1319,7 +1592,7 @@ function AdaptacoesPraticaPanel({ onToast }) {
                       onChange={(e) =>
                         void toggleVetor(id, 'disponivel_dia_a_dia', e.target.checked)
                       }
-                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      className={CHECKBOX_CLASS}
                     />
                     Habilitar no Dia a Dia
                   </label>
@@ -1331,7 +1604,7 @@ function AdaptacoesPraticaPanel({ onToast }) {
                       onChange={(e) =>
                         void toggleVetor(id, 'disponivel_desafio', e.target.checked)
                       }
-                      className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                      className={CHECKBOX_CLASS}
                     />
                     Habilitar no Desafio
                   </label>
@@ -1344,23 +1617,26 @@ function AdaptacoesPraticaPanel({ onToast }) {
                   draft={draft}
                   onDraft={(patch) => patchDraft(id, patch)}
                   onToast={onToast}
-                  peiAlunoId={peiAlunoId}
+                  aeeId={aeeId}
                   condicao={condicao}
+                  camposExperiencia={camposAee}
                   onSaved={(body) => {
                     setLista((prev) =>
                       prev.map((r) =>
                         r.metodologia_id === id
                           ? {
                               ...r,
-                              versao_pei: body.versao_pei || '',
-                              gerado_por_ia: Boolean(body.gerado_por_ia),
+                              versao_escola: body.versao_escola || '',
+                              is_customizado: body.is_customizado !== false,
+                              updated_at: body.updated_at || r.updated_at,
                             }
                           : r,
                       ),
                     )
                     patchDraft(id, {
-                      versao_pei: body.versao_pei || '',
-                      gerado_por_ia: Boolean(body.gerado_por_ia),
+                      versao_escola: body.versao_escola || '',
+                      is_customizado: body.is_customizado !== false,
+                      updated_at: body.updated_at || null,
                     })
                   }}
                 />
@@ -1379,6 +1655,9 @@ function AdaptacoesPraticaPanel({ onToast }) {
   )
 }
 
+/**
+ * Aba Inclusão do Editor Pedagógico — AEE + PEI + adaptações práticas.
+ */
 /**
  * Aba Inclusão do Editor Pedagógico — AEE + PEI + adaptações práticas.
  */
@@ -1408,12 +1687,7 @@ export default function PeiEditorTab() {
               key={s.id}
               type="button"
               onClick={() => setSub(s.id)}
-              className={[
-                '-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition',
-                active
-                  ? 'border-school-500 text-school-800'
-                  : 'border-transparent text-muted hover:text-ink',
-              ].join(' ')}
+              className={tabClassName(active)}
             >
               {s.label}
             </button>

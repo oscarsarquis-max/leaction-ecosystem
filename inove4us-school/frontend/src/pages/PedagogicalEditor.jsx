@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import PeiEditorTab from './PeiEditorTab'
+import { tabClassName } from '../lib/tabs'
+import { BTN_PRIMARY, BTN_PRIMARY_FULL, CHECKBOX_CLASS } from '../lib/buttons'
 
 /** Interino até auth real — instituição de desenvolvimento. */
 const INSTITUICAO_ID =
@@ -7,7 +9,7 @@ const INSTITUICAO_ID =
 
 const PILARES = [
   { id: 'metodologias', label: 'Metodologias' },
-  { id: 'pei', label: 'AEE e PEI (Inclusão)' },
+  { id: 'pei', label: 'PEI (Adaptações)' },
 ]
 
 const FAMILIAS = ['Indutivas', 'Agilidade', 'Contextuais', 'Dedutivas']
@@ -59,8 +61,9 @@ function rotuloProfessor(nome) {
 
 /**
  * Card rico de sugestão do professor (curadoria).
+ * Sinalizador: Incorporar → alimenta a síntese da versão da escola (IA).
  */
-function SugestaoCard({ item, busy, onAdaptar }) {
+function SugestaoCard({ item, busy, incorporada, onIncorporar }) {
   const texto =
     item.teacher_adaptation_text || item.texto || '— (sem texto)'
   const professor = rotuloProfessor(item.professor_nome)
@@ -70,7 +73,12 @@ function SugestaoCard({ item, busy, onAdaptar }) {
     'Aula sem contexto informado'
 
   return (
-    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <article
+      className={[
+        'overflow-hidden rounded-xl border bg-white shadow-sm',
+        incorporada ? 'border-school-300 ring-1 ring-school-100' : 'border-slate-200',
+      ].join(' ')}
+    >
       <header className="flex items-center gap-3 border-b border-slate-100 px-3 py-2.5">
         <span
           className="flex size-9 shrink-0 items-center justify-center rounded-full bg-school-100 text-xs font-bold text-school-800"
@@ -78,10 +86,15 @@ function SugestaoCard({ item, busy, onAdaptar }) {
         >
           {iniciaisNome(item.professor_nome || 'P')}
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-ink">{professor}</p>
           <p className="truncate text-xs text-slate-500">Aula: {contexto}</p>
         </div>
+        {incorporada ? (
+          <span className="shrink-0 rounded-md bg-school-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-school-700">
+            Incorporada
+          </span>
+        ) : null}
       </header>
       <div className="bg-slate-50/80 px-3 py-3">
         <p className="text-sm italic leading-relaxed text-slate-700">
@@ -91,11 +104,14 @@ function SugestaoCard({ item, busy, onAdaptar }) {
       <footer className="border-t border-slate-100 px-3 py-2.5">
         <button
           type="button"
-          disabled={busy}
-          onClick={() => onAdaptar(item)}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-school-500 px-3 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-95 disabled:opacity-60"
+          disabled={busy || incorporada}
+          onClick={() => onIncorporar(item)}
+          className={[
+            BTN_PRIMARY_FULL,
+            incorporada ? 'bg-slate-400 hover:bg-slate-400' : '',
+          ].join(' ')}
         >
-          {busy ? 'Adaptando…' : '🤖 Adaptar com IA'}
+          {busy ? 'Incorporando…' : incorporada ? 'Já incorporada' : 'Incorporar'}
         </button>
       </footer>
     </article>
@@ -118,6 +134,31 @@ function textoCanonico(row) {
     .join('\n')
 }
 
+/** Aceita só o roteiro unificado da IA — descarta blocos fragmentados legados. */
+function limparRoteiroIntegrado(raw) {
+  const text = String(raw || '').trim()
+  if (!text) return ''
+  const ban =
+    /observações da coordenação|sugestões dos professores|texto integrado da escola\s*\(rascunho|\[canônico|\[observações|\[sugestões|dados de entrada:/i
+  const lines = text.split('\n')
+  const out = []
+  let skipping = false
+  for (const ln of lines) {
+    const low = ln.trim().toLowerCase()
+    if (ban.test(low) || /^—\s*.+\s*—\s*$/.test(ln.trim())) {
+      skipping = true
+      continue
+    }
+    if (skipping) {
+      if (!ln.trim()) skipping = false
+      continue
+    }
+    out.push(ln)
+  }
+  const cleaned = out.join('\n').trim()
+  return cleaned || text
+}
+
 function descricaoCurta(row) {
   const d = String(row.descricao || '').trim()
   if (d) return d
@@ -136,36 +177,157 @@ const emptyCreate = {
   disponivel_desafio: true,
 }
 
+function formatDataModificacao(iso) {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) {
+    const [y, m, day] = String(iso).slice(0, 10).split('-')
+    if (y && m && day) return `${day}/${m}/${y}`
+    return null
+  }
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
+}
+
+function IconeCadeado({ className = 'h-4 w-4' }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path
+        d="M8 11V8a4 4 0 0 1 8 0v3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <rect
+        x="5"
+        y="11"
+        width="14"
+        height="10"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <circle cx="12" cy="16" r="1.4" fill="currentColor" />
+    </svg>
+  )
+}
+
+function ModalPadraoCanonico({ open, onClose, texto }) {
+  if (!open) return null
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Padrão original inove4us"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-ink">Padrão Original inove4us</h2>
+            <p className="mt-1 text-sm italic text-slate-500">
+              Este é o modelo original mantido pelo inove4us. Ele não é alterado para
+              garantir sua referência pedagógica.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+          >
+            Fechar
+          </button>
+        </div>
+        <pre className="flex-1 overflow-y-auto whitespace-pre-wrap bg-slate-50 px-5 py-4 font-sans text-sm leading-relaxed text-ink">
+          {texto || '—'}
+        </pre>
+      </div>
+    </div>
+  )
+}
+
 /**
- * Painel expandido: canônico + sugestões + Versão da Escola (IA).
+ * Painel expandido:
+ * - Versão da Escola no lugar do canônico (padrão original só no modal)
+ * - Coordenação + sugestões editáveis
+ * - Toda composição parte do texto atual da escola
  */
 function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
   const id = row.metodologia_id || row.metodologia_catalogo_id
-  const canon = textoCanonico(row)
+  const canonCatalogo = textoCanonico(row)
+  const isCustomizado = Boolean(row.is_customizado ?? draft.is_customizado)
+  const dataMod = formatDataModificacao(row.updated_at || draft.updated_at)
+
   const [sugestoes, setSugestoes] = useState([])
   const [loadingSug, setLoadingSug] = useState(true)
   const [busyId, setBusyId] = useState(null)
+  const [generating, setGenerating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const [incorporadas, setIncorporadas] = useState([])
+  const [modalCanon, setModalCanon] = useState(false)
+
+  /** Base da IA = texto atual da escola (já nasce como canônico). */
+  const baseComposicao = useMemo(
+    () => (draft.versao_escola || '').trim() || canonCatalogo,
+    [draft.versao_escola, canonCatalogo],
+  )
+
+  useEffect(() => {
+    setIncorporadas([])
+    setErr('')
+    if (!(draft.versao_escola || '').trim() && canonCatalogo) {
+      onDraft({ versao_escola: canonCatalogo })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao trocar metodologia
+  }, [id])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       setLoadingSug(true)
-      setErr('')
+      setSugestoes([])
+      setIncorporadas([])
       try {
-        const q = encodeURIComponent(row.nome || '')
+        const nomeMet = String(row.nome || '').trim()
+        if (!nomeMet) {
+          if (!cancelled) {
+            setSugestoes([])
+            setLoadingSug(false)
+          }
+          return
+        }
+        const q = encodeURIComponent(nomeMet)
         const res = await fetch(
           `/api/pedagogico/curadoria/pendentes?metodologia_nome=${q}`,
           { credentials: 'include' },
         )
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.error || 'Falha ao carregar sugestões')
-        if (!cancelled) setSugestoes(body.items || [])
+        const items = Array.isArray(body.items) ? body.items : []
+        // Só sugestões desta metodologia (filtro defensivo no cliente)
+        const daMetodologia = items.filter((it) => {
+          const nome =
+            it.metodologia_nome ||
+            it.metodologia_usada ||
+            it.sugestao_professor_json?.metodologia_nome ||
+            ''
+          if (!String(nome).trim()) return true // API já filtrou por query
+          return (
+            String(nome).trim().toLowerCase() === nomeMet.toLowerCase()
+          )
+        })
+        if (!cancelled) setSugestoes(daMetodologia)
       } catch (e) {
         if (!cancelled) {
-          setErr(e.message || 'Erro ao carregar sugestões')
           setSugestoes([])
+          setErr(e.message || 'Não foi possível carregar as sugestões desta metodologia')
         }
       } finally {
         if (!cancelled) setLoadingSug(false)
@@ -176,34 +338,72 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
     }
   }, [row.nome])
 
-  async function adaptarComIa(item) {
+  async function incorporarSugestao(item) {
+    if (incorporadas.some((s) => s.id === item.id)) return
     setBusyId(item.id)
     setErr('')
     try {
-      const textoSug =
-        item.teacher_adaptation_text || item.texto || ''
+      if (!item.smoke && !String(item.id).startsWith('smoke-')) {
+        const res = await fetch(`/api/pedagogico/curadoria/${item.id}/incorporar`, {
+          method: 'POST',
+          credentials: 'include',
+        })
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(body.error || 'Falha ao incorporar sugestão')
+      }
+      setIncorporadas((prev) => [...prev, item])
+      onToast?.(
+        'Sugestão marcada. Use “Gerar metodologia integrada” para a IA compor o texto.',
+      )
+    } catch (e) {
+      setErr(e.message || 'Erro ao incorporar')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function gerarMetodologiaIntegrada() {
+    if (!incorporadas.length) {
+      setErr('Incorpore ao menos uma sugestão de professor antes de gerar.')
+      return
+    }
+    setGenerating(true)
+    setErr('')
+    try {
+      const sugestoesTxt = incorporadas
+        .map((s) => s.teacher_adaptation_text || s.texto || '')
+        .map((t) => String(t).trim())
+        .filter(Boolean)
       const res = await fetch(`/api/pedagogico/metodologia/${id}/adaptar-ia`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           instituicao_id: INSTITUICAO_ID,
-          texto_canonico: canon,
-          sugestao: textoSug,
+          texto_canonico: baseComposicao,
+          observacoes_coordenacao: (draft.observacoes_coordenacao || '').trim(),
+          sugestoes: sugestoesTxt,
         }),
       })
       const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(body.error || 'Falha na adaptação com IA')
-      onDraft({ versao_escola: body.versao_escola || '' })
-      onToast?.('Rascunho gerado pela IA — revise e salve a versão da instituição.')
+      if (!res.ok) throw new Error(body.error || 'Falha na síntese com IA')
+      const texto = limparRoteiroIntegrado(body.versao_escola || '')
+      if (!texto) throw new Error('A IA não retornou um roteiro utilizável')
+      onDraft({ versao_escola: texto })
+      onToast?.('Roteiro gerado. Revise e salve a versão da instituição.')
     } catch (e) {
-      setErr(e.message || 'Erro na IA')
+      setErr(e.message || 'Erro ao gerar')
     } finally {
-      setBusyId(null)
+      setGenerating(false)
     }
   }
 
-  async function salvarVersao() {
+  async function salvarVersaoInstituicao() {
+    const texto = (draft.versao_escola || '').trim()
+    if (!texto) {
+      setErr('Informe o texto da Versão da Escola antes de salvar.')
+      return
+    }
     setSaving(true)
     setErr('')
     try {
@@ -213,7 +413,7 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            versao_escola: (draft.versao_escola || '').trim() || null,
+            versao_escola: texto,
             disponivel_dia_a_dia: draft.disponivel_dia_a_dia,
             disponivel_desafio: draft.disponivel_desafio,
           }),
@@ -221,8 +421,13 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
       )
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Não foi possível salvar')
+      onDraft({
+        versao_escola: body.passos_customizados || body.versao_escola || texto,
+        is_customizado: body.is_customizado !== false,
+        updated_at: body.updated_at || new Date().toISOString(),
+      })
       onSaved?.(body)
-      onToast?.(`Versão da instituição salva para “${body.nome}”.`)
+      onToast?.(`Versão da instituição salva para “${body.nome || row.nome}”.`)
     } catch (e) {
       setErr(e.message || 'Erro ao salvar')
     } finally {
@@ -230,76 +435,136 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
     }
   }
 
+  const idsIncorporados = useMemo(
+    () => new Set(incorporadas.map((s) => s.id)),
+    [incorporadas],
+  )
+
   return (
     <div className="border-t border-slate-100 bg-white px-4 py-4 sm:px-5">
-      <div className="grid gap-4 lg:grid-cols-[1fr_minmax(17rem,24rem)]">
-        <div className="space-y-4">
-          <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Texto canônico (somente leitura)
+      <div className="space-y-4">
+        {/* Onde era o canônico: Versão da Escola */}
+        <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Versão da Escola
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setModalCanon(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:border-school-300 hover:bg-school-50 hover:text-school-700"
+                >
+                  <IconeCadeado className="h-3.5 w-3.5" />
+                  Ver Padrão Original inove4us
+                </button>
+              </div>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Texto oficial da metodologia nesta escola. O padrão original inove4us fica no
+                cadeado ao lado.
+              </p>
+            </div>
+            <p className="shrink-0 text-xs text-slate-500">
+              {isCustomizado && dataMod
+                ? `Última modificação: ${dataMod}`
+                : 'Usando Padrão Inove4us'}
             </p>
-            <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink">
-              {canon || '—'}
-            </pre>
-          </section>
+          </div>
+        </section>
 
-          <label className="block">
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">
+            Observações da coordenação
+          </span>
+          <textarea
+            value={draft.observacoes_coordenacao || ''}
+            onChange={(e) => onDraft({ observacoes_coordenacao: e.target.value })}
+            rows={3}
+            placeholder="Orientações institucionais que devem entrar na síntese da versão da escola."
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-school-500 focus:ring-2 focus:ring-school-100"
+          />
+        </label>
+
+        <div className="grid gap-4 lg:grid-cols-[1fr_minmax(17rem,24rem)] lg:items-stretch">
+          <div className="flex min-h-[22rem] flex-col">
             <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">
-              Versão da Escola
+              Texto integrado (editável)
             </span>
+            <p className="mb-1.5 text-[11px] italic text-slate-500">
+              Compose com IA a partir deste texto + coordenação + sugestões; depois revise e salve.
+            </p>
             <textarea
               value={draft.versao_escola || ''}
               onChange={(e) => onDraft({ versao_escola: e.target.value })}
-              rows={10}
-              placeholder="Texto unificado da instituição — gere com IA a partir de uma sugestão ou escreva manualmente."
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-school-500 focus:ring-2 focus:ring-school-100"
+              rows={12}
+              placeholder="Texto da escola — incorpore sugestões e gere a composição."
+              className="min-h-0 w-full flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-school-500 focus:ring-2 focus:ring-school-100"
             />
-          </label>
+          </div>
 
-          <div className="flex justify-end">
+          <aside className="flex min-h-[22rem] flex-col">
+            <div className="mb-2 shrink-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Sugestões dos Professores
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Marque com Incorporar. Depois gere o texto integrado.
+                {incorporadas.length
+                  ? ` (${incorporadas.length} selecionada${incorporadas.length > 1 ? 's' : ''})`
+                  : ''}
+              </p>
+            </div>
+
+            {loadingSug ? (
+              <p className="text-xs text-muted">Carregando…</p>
+            ) : null}
+
+            {!loadingSug && !sugestoes.length ? (
+              <p className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-muted">
+                Nenhuma sugestão pendente para esta metodologia.
+              </p>
+            ) : null}
+
+            <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5">
+              {sugestoes.map((item) => (
+                <li key={item.id}>
+                  <SugestaoCard
+                    item={item}
+                    busy={busyId === item.id}
+                    incorporada={idsIncorporados.has(item.id)}
+                    onIncorporar={(it) => void incorporarSugestao(it)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </aside>
+        </div>
+
+        <div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button
               type="button"
-              disabled={saving}
-              onClick={() => void salvarVersao()}
-              className="rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-school-600 disabled:opacity-60"
+              disabled={generating || !incorporadas.length}
+              onClick={() => void gerarMetodologiaIntegrada()}
+              className={BTN_PRIMARY}
+            >
+              {generating ? 'Gerando…' : 'Gerar metodologia integrada'}
+            </button>
+            <button
+              type="button"
+              disabled={saving || !(draft.versao_escola || '').trim()}
+              onClick={() => void salvarVersaoInstituicao()}
+              className={BTN_PRIMARY}
             >
               {saving ? 'Salvando…' : 'Salvar Versão da Instituição'}
             </button>
           </div>
+          <p className="mt-2 text-[11px] italic leading-relaxed text-slate-500">
+            Ao salvar, você ratifica a versão oficial desta metodologia na escola. Na
+            integração, o professor verá este texto.
+          </p>
         </div>
-
-        <aside className="space-y-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Sugestões dos Professores
-            </p>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Cada card traz o contexto da aula e o relato do professor.
-            </p>
-          </div>
-
-          {loadingSug ? (
-            <p className="text-xs text-muted">Carregando…</p>
-          ) : null}
-
-          {!loadingSug && !sugestoes.length ? (
-            <p className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-muted">
-              Nenhuma sugestão pendente.
-            </p>
-          ) : null}
-
-          <ul className="max-h-[28rem] space-y-3 overflow-y-auto pr-0.5">
-            {sugestoes.map((item) => (
-              <li key={item.id}>
-                <SugestaoCard
-                  item={item}
-                  busy={busyId === item.id}
-                  onAdaptar={(it) => void adaptarComIa(it)}
-                />
-              </li>
-            ))}
-          </ul>
-        </aside>
       </div>
 
       {err ? (
@@ -307,6 +572,12 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
           {err}
         </p>
       ) : null}
+
+      <ModalPadraoCanonico
+        open={modalCanon}
+        onClose={() => setModalCanon(false)}
+        texto={canonCatalogo}
+      />
     </div>
   )
 }
@@ -331,8 +602,15 @@ export default function PedagogicalEditor() {
     const next = {}
     for (const row of data) {
       const id = row.metodologia_id || row.metodologia_catalogo_id
+      const customizado = Boolean(row.is_customizado)
+      const salvo = (row.passos_customizados || row.versao_escola || '').trim()
+      // Por padrão, o primeiro texto da escola é o canônico (até gravar uma versão).
+      const inicial = customizado ? salvo : salvo || textoCanonico(row)
       next[id] = {
-        versao_escola: row.versao_escola || row.passos_customizados || '',
+        versao_escola: inicial,
+        observacoes_coordenacao: row.observacoes_coordenacao || '',
+        is_customizado: customizado,
+        updated_at: row.updated_at || null,
         disponivel_dia_a_dia: row.disponivel_dia_a_dia !== false,
         disponivel_desafio: row.disponivel_desafio !== false,
         uso_estrelas: row.uso_estrelas || 1,
@@ -484,12 +762,7 @@ export default function PedagogicalEditor() {
                 setError('')
                 setFeedback('')
               }}
-              className={[
-                '-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition',
-                active
-                  ? 'border-school-500 text-school-800'
-                  : 'border-transparent text-muted hover:text-ink',
-              ].join(' ')}
+              className={tabClassName(active)}
             >
               {p.label}
             </button>
@@ -505,7 +778,7 @@ export default function PedagogicalEditor() {
             <button
               type="button"
               onClick={() => setCreateOpen((v) => !v)}
-              className="rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-school-600"
+              className={BTN_PRIMARY}
             >
               {createOpen ? 'Fechar formulário' : 'Criar Metodologia da Escola'}
             </button>
@@ -594,7 +867,7 @@ export default function PedagogicalEditor() {
                         disponivel_dia_a_dia: e.target.checked,
                       }))
                     }
-                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    className={CHECKBOX_CLASS}
                   />
                   Habilitar no Dia a Dia
                 </label>
@@ -608,7 +881,7 @@ export default function PedagogicalEditor() {
                         disponivel_desafio: e.target.checked,
                       }))
                     }
-                    className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                    className={CHECKBOX_CLASS}
                   />
                   Habilitar no Desafio
                 </label>
@@ -617,7 +890,7 @@ export default function PedagogicalEditor() {
                 <button
                   type="submit"
                   disabled={creating}
-                  className="rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-school-600 disabled:opacity-60"
+                  className={BTN_PRIMARY}
                 >
                   {creating ? 'Criando…' : 'Criar metodologia'}
                 </button>
@@ -670,6 +943,9 @@ export default function PedagogicalEditor() {
               const id = row.metodologia_id || row.metodologia_catalogo_id
               const draft = drafts[id] || {
                 versao_escola: '',
+                observacoes_coordenacao: '',
+                is_customizado: false,
+                updated_at: null,
                 disponivel_dia_a_dia: true,
                 disponivel_desafio: true,
                 uso_estrelas: 1,
@@ -713,7 +989,7 @@ export default function PedagogicalEditor() {
                           onChange={(e) =>
                             void toggleVetor(id, 'disponivel_dia_a_dia', e.target.checked)
                           }
-                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                          className={CHECKBOX_CLASS}
                         />
                         Habilitar no Dia a Dia
                       </label>
@@ -725,7 +1001,7 @@ export default function PedagogicalEditor() {
                           onChange={(e) =>
                             void toggleVetor(id, 'disponivel_desafio', e.target.checked)
                           }
-                          className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                          className={CHECKBOX_CLASS}
                         />
                         Habilitar no Desafio
                       </label>
@@ -742,11 +1018,14 @@ export default function PedagogicalEditor() {
                         setItems((prev) =>
                           prev.map((r) => {
                             const rid = r.metodologia_id || r.metodologia_catalogo_id
-                            return rid === id ? body : r
+                            return rid === id ? { ...r, ...body } : r
                           }),
                         )
                         patchDraft(id, {
-                          versao_escola: body.versao_escola || '',
+                          versao_escola:
+                            body.passos_customizados || body.versao_escola || '',
+                          is_customizado: body.is_customizado !== false,
+                          updated_at: body.updated_at || null,
                           disponivel_dia_a_dia: body.disponivel_dia_a_dia !== false,
                           disponivel_desafio: body.disponivel_desafio !== false,
                           uso_estrelas: body.uso_estrelas || 1,

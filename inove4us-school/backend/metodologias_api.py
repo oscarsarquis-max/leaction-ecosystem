@@ -164,9 +164,17 @@ def _fonte_publica(origem: str | None) -> str:
 
 def _row_merged(row: dict[str, Any]) -> dict[str, Any]:
     passos_ref = row.get("passos_execucao") or []
-    versao = (row.get("passos_customizados") or "").strip() or None
+    raw_custom = row.get("passos_customizados")
+    versao = (raw_custom or "").strip() if raw_custom is not None else ""
+    tem_override = bool(row.get("tem_override"))
+    is_customizado = bool(tem_override and versao)
     origem = row.get("origem") or "padrao"
     texto_canonico = _passos_to_text(passos_ref)
+    updated_at = row.get("org_updated_at") or row.get("updated_at")
+    if hasattr(updated_at, "isoformat"):
+        updated_at_iso = updated_at.isoformat()
+    else:
+        updated_at_iso = str(updated_at) if updated_at else None
     return {
         "metodologia_id": str(row["metodologia_catalogo_id"]),
         "metodologia_catalogo_id": str(row["metodologia_catalogo_id"]),
@@ -184,10 +192,13 @@ def _row_merged(row: dict[str, Any]) -> dict[str, Any]:
         "roteiro_referencia": passos_ref,
         "passos_execucao": passos_ref,
         "texto_canonico": texto_canonico,
-        "versao_escola": versao,
-        "passos_customizados": versao,
-        "roteiro_adaptado": versao,
-        "roteiro_em_uso": versao if versao else texto_canonico,
+        # Persistência org: vazio se a escola ainda não adaptou
+        "versao_escola": versao if is_customizado else "",
+        "passos_customizados": versao if is_customizado else "",
+        "roteiro_adaptado": versao if is_customizado else "",
+        "roteiro_em_uso": versao if is_customizado else texto_canonico,
+        "is_customizado": is_customizado,
+        "updated_at": updated_at_iso if is_customizado else None,
         "disponivel_dia_a_dia": bool(row["disponivel_dia_a_dia"]),
         "disponivel_desafio": bool(row["disponivel_desafio"]),
         "ativo_dia_a_dia": bool(row["disponivel_dia_a_dia"]),
@@ -196,8 +207,8 @@ def _row_merged(row: dict[str, Any]) -> dict[str, Any]:
         "uso_estrelas": _estrelas_from_count(row.get("sugestoes_count")),
         "sugestoes_count": int(row.get("sugestoes_count") or 0),
         "is_active": bool(row["is_active"]),
-        "adaptada_pela_escola": bool(versao),
-        "tem_override_org": bool(row.get("tem_override")),
+        "adaptada_pela_escola": is_customizado,
+        "tem_override_org": tem_override,
     }
 
 
@@ -213,6 +224,7 @@ SELECT
     COALESCE(c.vetor_dia_a_dia, TRUE) AS vetor_dia_a_dia,
     COALESCE(c.vetor_desafio, TRUE) AS vetor_desafio,
     org.passos_customizados,
+    org.updated_at AS org_updated_at,
     COALESCE(org.is_active, TRUE) AS is_active,
     COALESCE(org.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
     COALESCE(org.ativo_desafio, TRUE) AS disponivel_desafio,
@@ -254,6 +266,7 @@ SELECT
     COALESCE(c.vetor_dia_a_dia, TRUE) AS vetor_dia_a_dia,
     COALESCE(c.vetor_desafio, TRUE) AS vetor_desafio,
     org.passos_customizados,
+    org.updated_at AS org_updated_at,
     COALESCE(org.is_active, TRUE) AS is_active,
     COALESCE(org.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
     COALESCE(org.ativo_desafio, TRUE) AS disponivel_desafio,
@@ -736,6 +749,23 @@ def upsert_instituicao_metodologia(instituicao_id: str, metodologia_catalogo_id:
     return jsonify(merged)
 
 
+def _canonico_chave_esperada() -> str:
+    return (os.getenv("SCHOOL_CANONICO_CHAVE") or "pedagogia").strip()
+
+
+@bp.post("/api/pedagogico/desbloquear-canonico")
+def desbloquear_canonico():
+    """Valida palavra-chave para liberar edição do texto canônico (base da escola)."""
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        return jsonify({"error": "Dados inválidos"}), 400
+    chave = str(body.get("chave") or body.get("palavra_chave") or "").strip()
+    esperada = _canonico_chave_esperada()
+    if not esperada or chave != esperada:
+        return jsonify({"error": "Palavra-chave incorreta"}), 403
+    return jsonify({"ok": True, "message": "Edição do texto canônico liberada."})
+
+
 @bp.post("/api/pedagogico/metodologia/<metodologia_id>/adaptar-ia")
 def adaptar_metodologia_ia(metodologia_id: str):
     """Mescla texto canônico + sugestão do professor via LLM → Versão da Escola."""
@@ -757,8 +787,24 @@ def adaptar_metodologia_ia(metodologia_id: str):
         return parsed_inst
 
     sugestao = str(body.get("sugestao") or body.get("sugestao_professor") or "").strip()
-    if not sugestao:
-        return jsonify({"error": "Informe a sugestão do professor"}), 400
+    sugestoes_raw = body.get("sugestoes") or body.get("sugestoes_aceitas") or []
+    if isinstance(sugestoes_raw, str):
+        sugestoes_lista = [sugestoes_raw.strip()] if sugestoes_raw.strip() else []
+    elif isinstance(sugestoes_raw, list):
+        sugestoes_lista = [str(s).strip() for s in sugestoes_raw if str(s or "").strip()]
+    else:
+        sugestoes_lista = []
+    if sugestao and sugestao not in sugestoes_lista:
+        sugestoes_lista.append(sugestao)
+    if not sugestoes_lista:
+        return jsonify({"error": "Informe ao menos uma sugestão do professor"}), 400
+
+    observacoes = str(
+        body.get("observacoes_coordenacao")
+        or body.get("observacao_coordenacao")
+        or body.get("coordenacao")
+        or ""
+    ).strip()
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -781,11 +827,12 @@ def adaptar_metodologia_ia(metodologia_id: str):
     )
 
     try:
-        from school_llm import mesclar_metodologia_com_sugestao
+        from school_llm import sintetizar_versao_escola
 
-        versao = mesclar_metodologia_com_sugestao(
+        versao = sintetizar_versao_escola(
             texto_canonico=canonico,
-            sugestao_professor=sugestao,
+            observacoes_coordenacao=observacoes,
+            sugestoes_aceitas=sugestoes_lista,
         )
     except Exception as exc:
         return jsonify({"error": f"Falha na IA: {exc}"}), 502
@@ -797,6 +844,8 @@ def adaptar_metodologia_ia(metodologia_id: str):
             "metodologia_nome": cat["nome"],
             "versao_escola": versao,
             "texto_canonico": canonico,
-            "sugestao": sugestao,
+            "observacoes_coordenacao": observacoes,
+            "sugestoes_aceitas": sugestoes_lista,
+            "sugestao": sugestoes_lista[-1] if sugestoes_lista else sugestao,
         }
     )

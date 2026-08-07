@@ -283,7 +283,7 @@ export default function ModalHistoricoVersoes({ tipo, titulo, fetchUrl, onClose 
                       <button
                         type="button"
                         onClick={() => setDoc(v)}
-                        className="rounded-xl bg-school-600 px-3 py-2 text-sm font-bold text-white hover:bg-school-700"
+                        className="rounded-xl bg-violet-600 px-3 py-2 text-sm font-bold text-white hover:bg-violet-700"
                       >
                         Visualizar Documento
                       </button>

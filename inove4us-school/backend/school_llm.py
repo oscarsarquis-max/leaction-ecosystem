@@ -115,28 +115,147 @@ def mesclar_metodologia_com_sugestao(
     sugestao_professor: str,
 ) -> str:
     """Mescla canônico + sugestão do professor em texto unificado (curadoria IA)."""
-    canonico = (texto_canonico or "").strip() or "(metodologia padrão vazia)"
-    sugestao = (sugestao_professor or "").strip() or "(sem sugestão)"
-    if os.environ.get("PEI_LLM_STUB", "").strip().lower() in ("1", "true", "yes"):
-        return (
-            f"{canonico}\n\n"
-            f"— Adaptação da escola (rascunho IA) —\n"
-            f"{sugestao}"
-        )
-    system = (
-        "Aja como um pedagogo. Mescle a metodologia padrão a seguir com a "
-        "sugestão de melhoria do professor, criando um texto unificado, claro "
-        "e prático. Responda em português, sem prefácio longo — apenas o texto "
-        "final pronto para uso pelos professores."
+    return sintetizar_versao_escola(
+        texto_canonico=texto_canonico,
+        observacoes_coordenacao="",
+        sugestoes_aceitas=[sugestao_professor] if sugestao_professor else [],
     )
+
+
+_SYSTEM_ROTEIRO_INTEGRADO = (
+    "Você é um Designer Pedagógico Sênior. Sua tarefa é criar um roteiro de aula "
+    "ÚNICO, fluido e coerente, mesclando a base metodológica com as regras da escola "
+    "e as dicas dos professores.\n"
+    "NÃO crie seções separadas como 'Observações da coordenação' ou 'Sugestões'. "
+    "Em vez disso, embuta organicamente essas diretrizes dentro dos passos da metodologia.\n\n"
+    "DIRETRIZES DE SAÍDA:\n"
+    "1. Retorne APENAS o roteiro passo a passo consolidado.\n"
+    "2. Formate em Markdown usando bullet points ou listas numeradas.\n"
+    "3. Se houver uma regra da coordenação (ex: 'todos devem falar'), insira-a no "
+    "passo correspondente (ex: no passo de Apresentação).\n"
+    "4. Se houver uma dica prática (ex: 'checagem em duplas'), insira-a como uma "
+    "'Dica:' ou 'Nota:' no passo onde ela faz mais sentido.\n"
+    "5. O texto deve ser direto, acionável e fácil de ler durante uma aula.\n"
+    "6. Não use títulos de bloco como 'Canônico', 'Coordenação', 'Sugestões', "
+    "'Texto integrado' ou separadores '— … —'."
+)
+
+
+def _format_sugestoes_para_prompt(sugestoes: list[str]) -> str:
+    if not sugestoes:
+        return "(nenhuma dica da trincheira informada)"
+    return "\n".join(f"- {s}" for s in sugestoes)
+
+
+def _stub_roteiro_unificado(
+    *,
+    canonico: str,
+    coord: str,
+    sugestoes: list[str],
+) -> str:
+    """Rascunho local fluido (PEI_LLM_STUB) — sem seções fragmentadas."""
+    linhas_base = [ln.strip() for ln in canonico.splitlines() if ln.strip()]
+    if not linhas_base:
+        linhas_base = [
+            "Abrir a aula com o propósito da metodologia",
+            "Desenvolver a atividade principal",
+            "Fechar e registrar evidências de aprendizagem",
+        ]
+
+    passos: list[str] = []
+    for i, linha in enumerate(linhas_base):
+        if ": " in linha and len(linha.split(": ", 1)[0]) < 80:
+            titulo, resto = linha.split(": ", 1)
+            bloco = f"{i + 1}. **{titulo.strip()}** — {resto.strip()}"
+        else:
+            bloco = f"{i + 1}. {linha}"
+        notas: list[str] = []
+        if coord and i == 0:
+            notas.append(f"   - Nota: {coord}")
+        if i < len(sugestoes) and i < len(linhas_base) - 1:
+            notas.append(f"   - Dica: {sugestoes[i]}")
+        if i == len(linhas_base) - 1:
+            for tip in sugestoes[max(0, len(linhas_base) - 1) :]:
+                notas.append(f"   - Dica: {tip}")
+        if notas:
+            bloco = f"{bloco}\n" + "\n".join(notas)
+        passos.append(bloco)
+
+    return "\n\n".join(passos)
+
+
+def _limpar_roteiro_ia(texto: str) -> str:
+    """Remove prefácios/seções acidentais; devolve só o roteiro fluido."""
+    raw = (texto or "").strip()
+    if not raw:
+        return ""
+    # Corta blocos de cabeçalho fragmentado se o modelo (ou stub antigo) ainda emitir
+    ban = (
+        "— observações da coordenação —",
+        "— sugestões dos professores",
+        "— texto integrado da escola",
+        "[canônico",
+        "[observações da coordenação]",
+        "[sugestões dos professores",
+        "dados de entrada:",
+    )
+    lines = raw.splitlines()
+    out: list[str] = []
+    skip_until_blank = False
+    for ln in lines:
+        low = ln.strip().lower()
+        if any(low.startswith(b) or b in low for b in ban):
+            skip_until_blank = True
+            continue
+        if skip_until_blank:
+            if not ln.strip():
+                skip_until_blank = False
+            continue
+        out.append(ln)
+    cleaned = "\n".join(out).strip()
+    return cleaned or raw
+
+
+def sintetizar_versao_escola(
+    *,
+    texto_canonico: str,
+    observacoes_coordenacao: str = "",
+    sugestoes_aceitas: list[str] | None = None,
+) -> str:
+    """Roteiro único fluido: canônico + coordenação + dicas embutidas nos passos."""
+    canonico = (texto_canonico or "").strip() or "(metodologia padrão vazia)"
+    coord = (observacoes_coordenacao or "").strip()
+    sugestoes = [
+        str(s).strip()
+        for s in (sugestoes_aceitas or [])
+        if str(s or "").strip()
+    ]
+
+    if os.environ.get("PEI_LLM_STUB", "").strip().lower() in ("1", "true", "yes"):
+        return _limpar_roteiro_ia(
+            _stub_roteiro_unificado(
+                canonico=canonico,
+                coord=coord,
+                sugestoes=sugestoes,
+            )
+        )
+
     user = (
-        f"[Canônico]\n{canonico}\n\n"
-        f"[Sugestão]\n{sugestao}"
+        "DADOS DE ENTRADA:\n"
+        f"- Metodologia Base (Canônica): {canonico}\n"
+        f"- Regras da Coordenação: {coord or '(nenhuma regra adicional)'}\n"
+        f"- Dicas da Trincheira (Professores): {_format_sugestoes_para_prompt(sugestoes)}\n\n"
+        "Gere agora o roteiro consolidado conforme as diretrizes."
     )
     try:
-        return invoke_text(system_prompt=system, user_content=user, max_tokens=2048)
+        bruto = invoke_text(
+            system_prompt=_SYSTEM_ROTEIRO_INTEGRADO,
+            user_content=user,
+            max_tokens=2048,
+        )
+        return _limpar_roteiro_ia(bruto)
     except Exception as exc:
-        print(f"[school-llm] falha mesclar metodologia: {exc}", file=sys.stderr, flush=True)
+        print(f"[school-llm] falha sintetizar versão escola: {exc}", file=sys.stderr, flush=True)
         raise
 
 
@@ -147,45 +266,125 @@ def adaptar_pei_metodologia_com_ia(
     aee_campos_experiencia: str = "",
     pei_experiencias_individuais: str = "",
     sugestao_professor: str = "",
+    sugestoes_aceitas: list[str] | None = None,
+    adaptacao_pei_escola: str = "",
     condicao_categoria: str = "",
     # retrocompat
     matriz_pei_ativa: str = "",
 ) -> str:
-    """Cruza metodologia + AEE (texto + campos) + PEI individual + sugestão → adaptação."""
+    """Cruza base + AEE + PEI + Adaptação PEI da Escola + sugestões → roteiro único."""
     canonico = (metodologia_canonica or "").strip() or "(metodologia vazia)"
     aee_txt = (aee_texto_escola or matriz_pei_ativa or "").strip() or "(diretriz AEE ausente)"
     aee_campos = (aee_campos_experiencia or "").strip() or "(campos de experiência ausentes)"
     pei_exp = (pei_experiencias_individuais or "").strip() or "(sem adaptação individual informada)"
-    sugestao = (sugestao_professor or "").strip() or "(sem sugestão)"
+    adaptacao = (adaptacao_pei_escola or "").strip()
+    sugestoes = [str(s).strip() for s in (sugestoes_aceitas or []) if str(s or "").strip()]
+    if sugestao_professor and str(sugestao_professor).strip():
+        t = str(sugestao_professor).strip()
+        if t not in sugestoes:
+            sugestoes.append(t)
+    if not sugestoes:
+        sugestoes = ["(sem sugestão)"]
     cond = (condicao_categoria or "").strip() or "condição não especificada"
 
     if os.environ.get("PEI_LLM_STUB", "").strip().lower() in ("1", "true", "yes"):
-        return (
-            f"Adaptação de plano de aula (rascunho IA) — {cond}\n\n"
-            f"Diretriz AEE:\n{aee_txt[:300]}\n\n"
-            f"Campos de experiência AEE:\n{aee_campos[:300]}\n\n"
-            f"PEI — experiências individuais:\n{pei_exp[:300]}\n\n"
-            f"Metodologia:\n{canonico[:300]}\n\n"
-            f"Sugestão do professor:\n{sugestao}"
-        )
+        blocos = [
+            f"Adaptação de plano de aula (rascunho IA) — {cond}",
+            f"Base metodológica:\n{canonico[:400]}",
+            f"Adaptação PEI da Escola:\n{adaptacao[:300] or '(nenhuma)'}",
+            f"Diretriz AEE:\n{aee_txt[:300]}",
+            f"Campos de experiência AEE:\n{aee_campos[:300]}",
+            f"PEI — experiências individuais:\n{pei_exp[:300]}",
+            "Sugestões dos professores:\n"
+            + "\n---\n".join(s[:300] for s in sugestoes),
+        ]
+        return _limpar_roteiro_ia("\n\n".join(blocos))
 
     system = (
-        "Aja como psicopedagogo. Cruze a Metodologia Canônica com a diretriz da "
-        "escola para a condição (texto AEE + campos de experiência metodológica). "
-        "Aplique as necessidades do aluno (experiências adaptadas individuais do PEI). "
-        "Incorpore a sugestão do professor para criar a adaptação final do plano de aula. "
-        "Responda em português, objetivo e acionável, sem prefácio longo."
+        "Aja como psicopedagogo. Produza UM único roteiro fluido de adaptação "
+        "metodológica na prática (Markdown), em português, objetivo e acionável. "
+        "Parta da metodologia base, aplique a Adaptação PEI da Escola, cruze com "
+        "a diretriz AEE (texto + campos de experiência) e as necessidades do aluno "
+        "(experiências adaptadas individuais). Embutir as dicas dos professores "
+        "nos passos — não liste seções separadas como 'sugestões' ou 'canônico'. "
+        "Sem prefácio longo."
     )
     user = (
-        f"[Metodologia Canônica]\n{canonico}\n\n"
-        f"[Condição / AEE]\n{cond}\n\n"
-        f"[AEE.texto_escola]\n{aee_txt}\n\n"
-        f"[AEE.campos_experiencia_metodologica]\n{aee_campos}\n\n"
-        f"[PEI.experiencias_adaptadas_individuais]\n{pei_exp}\n\n"
-        f"[Sugestao.texto]\n{sugestao}"
+        "DADOS DE ENTRADA:\n"
+        f"- Metodologia Base: {canonico}\n"
+        f"- Adaptação PEI da Escola: {adaptacao or '(nenhuma orientação adicional)'}\n"
+        f"- Condição / AEE: {cond}\n"
+        f"- AEE.texto_escola: {aee_txt}\n"
+        f"- AEE.campos_experiencia_metodologica: {aee_campos}\n"
+        f"- PEI.experiencias_adaptadas_individuais: {pei_exp}\n"
+        f"- Dicas da Trincheira (Professores): {_format_sugestoes_para_prompt(sugestoes)}\n\n"
+        "Gere agora o roteiro consolidado conforme as diretrizes."
     )
     try:
-        return invoke_text(system_prompt=system, user_content=user, max_tokens=2048)
+        bruto = invoke_text(system_prompt=system, user_content=user, max_tokens=2048)
+        return _limpar_roteiro_ia(bruto)
     except Exception as exc:
         print(f"[school-llm] falha adaptar PEI×metodologia: {exc}", file=sys.stderr, flush=True)
+        raise
+
+
+_SYSTEM_AEE_METODOLOGIA = (
+    "Você é um Psicopedagogo Sênior. Crie um roteiro de aula ÚNICO e passo a passo, "
+    "adaptando uma metodologia para uma deficiência específica.\n"
+    "DIRETRIZ:\n"
+    "Mescle tudo organicamente. Se o AEE pede rotinas visuais, insira isso nos passos. "
+    "Se o professor deu uma dica, coloque como 'Dica Prática' no passo adequado. "
+    "Não crie cabeçalhos isolados para sugestões. O retorno deve ser exclusivamente "
+    "o texto final em Markdown."
+)
+
+
+def sintetizar_adaptacao_aee_metodologia(
+    *,
+    texto_canonico_metodologia: str,
+    texto_campos_experiencia_aee: str,
+    sugestoes_professores: list[str] | None = None,
+    condicao_categoria: str = "",
+) -> str:
+    """Roteiro único: metodologia canônica + campos AEE + sugestões (por condição)."""
+    canonico = (texto_canonico_metodologia or "").strip() or "(metodologia vazia)"
+    campos = (texto_campos_experiencia_aee or "").strip() or "(campos de experiência ausentes)"
+    sugestoes = [
+        str(s).strip() for s in (sugestoes_professores or []) if str(s or "").strip()
+    ]
+    cond = (condicao_categoria or "").strip() or "condição não especificada"
+
+    if os.environ.get("PEI_LLM_STUB", "").strip().lower() in ("1", "true", "yes"):
+        blocos = [
+            f"Roteiro adaptado — {cond}",
+            canonico[:500],
+            f"Aplicando campos de experiência: {campos[:400]}",
+        ]
+        if sugestoes:
+            blocos.append(
+                "Dica Prática: " + " | ".join(s[:200] for s in sugestoes[:3])
+            )
+        return _limpar_roteiro_ia("\n\n".join(blocos))
+
+    user = (
+        "ENTRADAS:\n"
+        f"- Metodologia Original: {canonico}\n"
+        f"- Diretrizes e Campos de Experiência da Deficiência ({cond}): {campos}\n"
+        f"- Sugestões dos Professores (se houver): "
+        f"{_format_sugestoes_para_prompt(sugestoes) if sugestoes else '(nenhuma)'}\n\n"
+        "Gere agora exclusivamente o texto final do roteiro em Markdown."
+    )
+    try:
+        bruto = invoke_text(
+            system_prompt=_SYSTEM_AEE_METODOLOGIA,
+            user_content=user,
+            max_tokens=2048,
+        )
+        return _limpar_roteiro_ia(bruto)
+    except Exception as exc:
+        print(
+            f"[school-llm] falha sintetizar adaptação AEE×metodologia: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
         raise

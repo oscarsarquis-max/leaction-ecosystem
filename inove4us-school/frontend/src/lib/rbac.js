@@ -14,7 +14,7 @@ export const ZONA_LABEL = {
 
 /** Itens de navegação: exige ao menos uma das zonas listadas. */
 export const NAV_ITEMS = [
-  { to: '/', label: 'Dashboard', end: true, zonas: [ZONAS.pedagogico] },
+  { to: '/', label: 'Radar Pedagógico', end: true, zonas: [ZONAS.pedagogico] },
   { to: '/equipe', label: 'Minha Equipe', zonas: [ZONAS.administrativo] },
   { to: '/secretaria', label: 'Secretaria Acadêmica', zonas: [ZONAS.operacional] },
   {

@@ -43,7 +43,7 @@ export default function AdminLayout({
                   [
                     'rounded-lg px-3 py-2.5 text-sm font-medium transition',
                     isActive
-                      ? 'bg-school-50 text-school-700'
+                      ? 'bg-school-700 text-white'
                       : 'text-muted hover:bg-slate-50 hover:text-ink',
                   ].join(' ')
                 }
@@ -55,7 +55,7 @@ export default function AdminLayout({
         </nav>
 
         <div className="border-t border-slate-200 px-4 py-3 text-xs text-muted">
-          B2B · gestores institucionais
+          Área institucional · gestores
         </div>
       </aside>
 

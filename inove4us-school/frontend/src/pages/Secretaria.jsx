@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
+import { tabClassNameCompact } from '../lib/tabs'
 
 const FALLBACK_INSTITUICAO_ID =
   import.meta.env.VITE_INSTITUICAO_ID || 'a1111111-1111-4111-8111-111111111111'
@@ -236,12 +237,7 @@ export default function Secretaria() {
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={[
-              '-mb-px border-b-2 px-3 py-2 text-sm font-medium transition',
-              tab === t.id
-                ? 'border-school-500 text-school-700'
-                : 'border-transparent text-muted hover:text-ink',
-            ].join(' ')}
+            className={tabClassNameCompact(tab === t.id)}
           >
             {t.label}
           </button>
@@ -292,7 +288,7 @@ export default function Secretaria() {
               <input className={inputCls} maxLength={2} value={uniForm.uf} onChange={(e) => setUniForm({ ...uniForm, uf: e.target.value.toUpperCase() })} />
             </label>
             <div>
-              <button type="submit" disabled={busy} className="rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              <button type="submit" disabled={busy} className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60">
                 Nova unidade
               </button>
             </div>
@@ -375,7 +371,7 @@ export default function Secretaria() {
               </select>
             </label>
             <div className="flex items-end">
-              <button type="submit" disabled={busy} className="rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              <button type="submit" disabled={busy} className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60">
                 Novo período
               </button>
             </div>
@@ -442,7 +438,7 @@ export default function Secretaria() {
               <input className={inputCls} value={curForm.turma_turno} onChange={(e) => setCurForm({ ...curForm, turma_turno: e.target.value })} placeholder="Manhã" />
             </label>
             <div>
-              <button type="submit" disabled={busy || !periodoId} className="rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              <button type="submit" disabled={busy || !periodoId} className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60">
                 Novo curso
               </button>
             </div>
@@ -505,7 +501,7 @@ export default function Secretaria() {
               <textarea rows={4} className={inputCls} value={discForm.ementa} onChange={(e) => setDiscForm({ ...discForm, ementa: e.target.value })} placeholder="Ementa da disciplina neste curso" />
             </label>
             <div>
-              <button type="submit" disabled={busy || !cursoId} className="rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              <button type="submit" disabled={busy || !cursoId} className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60">
                 Nova disciplina
               </button>
             </div>
@@ -579,7 +575,7 @@ export default function Secretaria() {
               <input type="date" className={inputCls} value={calForm.data_fim} onChange={(e) => setCalForm({ ...calForm, data_fim: e.target.value })} />
             </label>
             <div>
-              <button type="submit" disabled={busy} className="rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              <button type="submit" disabled={busy} className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60">
                 Novo evento
               </button>
             </div>
@@ -654,7 +650,7 @@ export default function Secretaria() {
               <input type="datetime-local" className={inputCls} value={comForm.data_hora_fim} onChange={(e) => setComForm({ ...comForm, data_hora_fim: e.target.value })} />
             </label>
             <div className="sm:col-span-2">
-              <button type="submit" disabled={busy} className="rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              <button type="submit" disabled={busy} className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60">
                 Salvar comunicação
               </button>
             </div>

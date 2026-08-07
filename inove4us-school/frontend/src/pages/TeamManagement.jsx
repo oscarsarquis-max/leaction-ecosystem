@@ -97,6 +97,17 @@ function formatMoney(value, currency = 'BRL') {
   }
 }
 
+/** Nomes comerciais exibidos ao gestor (nunca códigos internos). */
+const PACOTES_LICENCA = {
+  'school-starter-50': 'Escola Inicial (50 licenças)',
+  'school-growth-100': 'Escola Crescimento (100 licenças)',
+}
+
+function nomePacoteLicenca(codigo) {
+  if (!codigo) return null
+  return PACOTES_LICENCA[codigo] || null
+}
+
 function BillingModal({ open, onClose, onPaidHint }) {
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(false)
@@ -136,13 +147,13 @@ function BillingModal({ open, onClose, onPaidHint }) {
         body: JSON.stringify({ sku_id: sku, sku }),
       })
       const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(body.error || 'Falha ao iniciar checkout')
+      if (!res.ok) throw new Error(body.error || 'Falha ao iniciar o pagamento')
       const url = body.checkout_url || body.url
-      if (!url) throw new Error('Hub não retornou URL de pagamento')
+      if (!url) throw new Error('O Action Hub não retornou o link de pagamento')
       onPaidHint?.()
       window.location.href = url
     } catch (err) {
-      setError(err.message || 'Erro no checkout')
+      setError(err.message || 'Erro ao iniciar o pagamento')
       setBuyingSku('')
     }
   }
@@ -165,8 +176,8 @@ function BillingModal({ open, onClose, onPaidHint }) {
           <div>
             <h2 className="text-lg font-semibold text-ink">Faturamento · Licenças</h2>
             <p className="mt-1 text-sm text-muted">
-              Pacotes comerciais do Action Hub para a instituição. O pagamento é processado no Hub;
-              as licenças chegam via webhook S2S.
+              Pacotes comerciais do Action Hub para a instituição. Após o pagamento, as licenças
+              são creditadas automaticamente.
             </p>
           </div>
           <button
@@ -187,7 +198,7 @@ function BillingModal({ open, onClose, onPaidHint }) {
 
         {!loading && plans.length === 0 && !error ? (
           <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-muted">
-            Nenhum plano ativo para <code>inove4us-school</code> no Hub.
+            Nenhum plano ativo no Action Hub para esta instituição.
           </p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -207,7 +218,7 @@ function BillingModal({ open, onClose, onPaidHint }) {
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <h3 className="font-semibold text-ink">{plan.name}</h3>
                     {plan.recommended ? (
-                      <span className="rounded bg-school-500 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+                      <span className="rounded bg-violet-600 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
                         Recomendado
                       </span>
                     ) : null}
@@ -227,7 +238,7 @@ function BillingModal({ open, onClose, onPaidHint }) {
                     type="button"
                     disabled={Boolean(buyingSku) || !sku}
                     onClick={() => handleBuy(sku)}
-                    className="mt-4 rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-school-600 disabled:opacity-60"
+                    className="mt-4 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
                   >
                     {buyingSku === sku ? 'Redirecionando…' : 'Comprar licenças'}
                   </button>
@@ -304,7 +315,7 @@ export default function TeamManagement() {
           { credentials: 'include' },
         )
         const body = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(body.error || 'Falha ao carregar radiografia')
+        if (!res.ok) throw new Error(body.error || 'Falha ao carregar o status pedagógico')
         setRadio(body)
       } catch (err) {
         setRadioError(err.message || 'Erro')
@@ -425,8 +436,8 @@ export default function TeamManagement() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-ink">Minha Equipe</h1>
         <p className="mt-1 text-sm text-muted">
-          Licenças, convites e radiografia do professor: recursos, entrega, metodologias,
-          disciplinas e desempenho declarado.
+          Licenças, convites e status pedagógico do professor: recursos, entrega,
+          metodologias, disciplinas e desempenho declarado.
         </p>
       </div>
 
@@ -444,15 +455,17 @@ export default function TeamManagement() {
         <div>
           <p className="text-sm font-semibold text-ink">Faturamento · Licenças</p>
           <p className="mt-0.5 text-xs text-muted">
-            Compre pacotes School Starter (50) ou Growth (100) via Action Hub. As licenças
-            entram automaticamente após o pagamento.
-            {licencas?.sku_ultimo ? ` Último SKU: ${licencas.sku_ultimo}.` : ''}
+            Compre os pacotes Escola Inicial (50) ou Escola Crescimento (100) pelo Action Hub.
+            As licenças entram automaticamente após o pagamento.
+            {licencas?.sku_ultimo
+              ? ` Último pacote: ${nomePacoteLicenca(licencas.sku_ultimo) || 'contratado'}.`
+              : ''}
           </p>
         </div>
         <button
           type="button"
           onClick={() => setBillingOpen(true)}
-          className="inline-flex shrink-0 items-center justify-center rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-school-600"
+          className="inline-flex shrink-0 items-center justify-center rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700"
         >
           Comprar licenças
         </button>
@@ -462,7 +475,7 @@ export default function TeamManagement() {
         open={billingOpen}
         onClose={() => setBillingOpen(false)}
         onPaidHint={() =>
-          setFeedback('Abrindo checkout no Action Hub… Ao retornar, as licenças serão atualizadas.')
+          setFeedback('Abrindo pagamento no Action Hub… Ao retornar, as licenças serão atualizadas.')
         }
       />
 
@@ -486,7 +499,7 @@ export default function TeamManagement() {
         <button
           type="submit"
           disabled={busy || atLimit}
-          className="shrink-0 rounded-lg bg-school-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-school-600 disabled:opacity-60"
+          className="shrink-0 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
         >
           Convidar Professor
         </button>
@@ -499,29 +512,29 @@ export default function TeamManagement() {
         </p>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_minmax(320px,420px)]">
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel">
+      {/* Empilha até xl: sidebar admin (320px) + tabela larga + painel conflitam em lg */}
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
+        <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="w-full min-w-[32rem] text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3">E-mail</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Status pedagógico</th>
                   <th className="px-4 py-3">Convite</th>
-                  <th className="px-4 py-3 text-right">Ações</th>
+                  <th className="px-4 py-3">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted">
+                    <td colSpan={4} className="px-4 py-8 text-center text-muted">
                       Carregando…
                     </td>
                   </tr>
                 ) : ordered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted">
+                    <td colSpan={4} className="px-4 py-8 text-center text-muted">
                       Nenhum professor vinculado ainda.
                     </td>
                   </tr>
@@ -538,20 +551,17 @@ export default function TeamManagement() {
                       <td className="px-4 py-3">
                         <StatusBadge status={row.status} />
                       </td>
-                      <td className="px-4 py-3">
-                        <PedagogicoBadge ped={row.status_pedagogico} />
-                      </td>
                       <td className="px-4 py-3 tabular-nums text-muted">
                         {formatDate(row.convidadoEm)}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
                           <button
                             type="button"
                             onClick={() => setSelectedId(row.id)}
-                            className="rounded-md border border-school-200 bg-school-50 px-2.5 py-1.5 text-xs font-semibold text-school-700 hover:bg-school-100"
+                            className="rounded-md border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100"
                           >
-                            Radiografia
+                            Status pedagógico
                           </button>
                           <button
                             type="button"
@@ -571,25 +581,56 @@ export default function TeamManagement() {
           </div>
         </div>
 
-        <aside className="rounded-xl border border-slate-200 bg-white p-4 shadow-panel">
+        <aside className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-panel xl:sticky xl:top-4 xl:self-start">
           {!selectedId ? (
             <p className="text-sm text-muted">
-              Selecione <span className="font-medium text-ink">Radiografia</span> em um professor
-              para ver recursos, entrega e desempenho.
+              Selecione <span className="font-medium text-ink">Status pedagógico</span> em um
+              professor para ver o detalhe.
             </p>
           ) : radioLoading ? (
-            <p className="text-sm text-muted">Carregando radiografia…</p>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Status pedagógico
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-ink">
+                  {selected?.email || 'Professor'}
+                </h2>
+                <div className="mt-2">
+                  <PedagogicoBadge ped={selected?.status_pedagogico} />
+                </div>
+              </div>
+              <p className="text-sm text-muted">Carregando detalhes…</p>
+            </div>
           ) : radioError ? (
-            <p className="text-sm text-red-700">{radioError}</p>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Status pedagógico
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-ink">
+                  {selected?.email || 'Professor'}
+                </h2>
+                <div className="mt-2">
+                  <PedagogicoBadge ped={selected?.status_pedagogico} />
+                </div>
+              </div>
+              <p className="text-sm text-red-700">{radioError}</p>
+            </div>
           ) : radio ? (
             <div className="space-y-5">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  Radiografia
+                  Status pedagógico
                 </p>
                 <h2 className="mt-1 text-lg font-semibold text-ink">
                   {selected?.email || radio.professor?.email || 'Professor'}
                 </h2>
+                <div className="mt-2">
+                  <PedagogicoBadge
+                    ped={selected?.status_pedagogico || radio.status_pedagogico}
+                  />
+                </div>
               </div>
 
               <section>
@@ -716,7 +757,7 @@ export default function TeamManagement() {
                   <button
                     type="submit"
                     disabled={busy}
-                    className="rounded-lg bg-school-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-school-600 disabled:opacity-60"
+                    className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
                   >
                     Salvar avaliação
                   </button>
@@ -728,7 +769,7 @@ export default function TeamManagement() {
                   Execuções na metodologia da escola
                 </h3>
                 <p className="mt-0.5 text-[11px] text-muted">
-                  Planos espelhados do B2C usando o repertório institucional.
+                  Planos espelhados da plataforma do professor usando o repertório institucional.
                 </p>
                 <ul className="mt-2 max-h-56 space-y-2 overflow-y-auto">
                   {(radio.execucoes || []).length === 0 ? (

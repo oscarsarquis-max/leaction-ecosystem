@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { TAB_ACTIVE, TAB_INACTIVE } from '../lib/tabs'
 
 const INSTITUICAO_ID =
   import.meta.env.VITE_INSTITUICAO_ID || 'a1111111-1111-4111-8111-111111111111'
@@ -568,7 +569,7 @@ function AgendaCalendario({ planos, showUnidade, viewYear, viewMonth, onShiftMon
                 className={[
                   'relative aspect-square rounded-lg text-xs font-semibold transition',
                   isSelected
-                    ? 'bg-school-500 text-white shadow-sm ring-2 ring-school-700'
+                    ? 'bg-school-700 text-white shadow-sm ring-2 ring-school-700'
                     : isToday
                       ? 'bg-school-100 text-school-800'
                       : 'bg-white text-ink hover:bg-school-50',
@@ -792,7 +793,7 @@ export default function Dashboard() {
     <div className="mx-auto max-w-[90rem] space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-ink">
-          Calendário pedagógico
+          Radar Pedagógico
         </h1>
         <p className="mt-1 text-sm text-muted">
           Para onde a escola está indo agora — Dia a Dia e Desafio, por unidade.
@@ -921,7 +922,7 @@ export default function Dashboard() {
             ? 'Grafo do período selecionado'
             : 'Calendário · planos do dia selecionado'}
         </p>
-        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+        <div className="inline-flex gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
           {[
             { id: 'grafo', label: 'Grafo' },
             { id: 'agenda', label: 'Agenda' },
@@ -932,9 +933,7 @@ export default function Dashboard() {
               onClick={() => setModo(m.id)}
               className={[
                 'rounded-md px-3 py-1.5 text-sm font-semibold transition',
-                modo === m.id
-                  ? 'bg-school-500 text-white'
-                  : 'text-muted hover:text-ink',
+                modo === m.id ? TAB_ACTIVE : TAB_INACTIVE,
               ].join(' ')}
             >
               {m.label}

@@ -17,8 +17,13 @@ POST     /api/pei/alunos/<id>/assinar/coordenador|psicopedagogo
 
 GET  /api/pei/metodologias
 GET  /api/pei/curadoria?metodologia_nome=
+POST /api/pei/curadoria/<id>/incorporar
 POST /api/pei/metodologia/<id>/adaptar-ia
 PUT  /api/pei/metodologia/<id>/versao
+
+GET  /api/aee/<aee_id>/metodologias
+PUT  /api/aee/<aee_id>/metodologias/<metodologia_nome>
+POST /api/aee/<aee_id>/metodologia/<metodologia_nome>/adaptar-ia
 """
 from __future__ import annotations
 
@@ -220,6 +225,43 @@ def _passos_to_text(passos: Any) -> str:
             if line:
                 lines.append(line)
     return "\n".join(lines)
+
+
+def _ensure_aee_met_org_schema(conn) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS public.school_aee_metodologias_org (
+                id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                aee_matriz_id        UUID NOT NULL
+                    REFERENCES public.school_aee_matrizes (id) ON DELETE CASCADE,
+                metodologia_nome     VARCHAR(255) NOT NULL,
+                passos_customizados  TEXT NOT NULL DEFAULT '',
+                updated_at           TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                created_at           TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT uq_school_aee_metodologias_org_matriz_met
+                    UNIQUE (aee_matriz_id, metodologia_nome)
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_school_aee_metodologias_org_matriz
+                ON public.school_aee_metodologias_org (aee_matriz_id)
+            """
+        )
+
+
+def _get_aee_matriz(cur, aee_id: uuid.UUID, inst: str) -> dict[str, Any] | None:
+    cur.execute(
+        """
+        SELECT * FROM public.school_aee_matrizes
+        WHERE id = %s AND instituicao_id = %s
+        LIMIT 1
+        """,
+        (str(aee_id), inst),
+    )
+    return cur.fetchone()
 
 
 # ---------------------------------------------------------------------------
@@ -1053,7 +1095,247 @@ def assinar_pei_psicopedagogo(pei_id: str):
 
 
 # ---------------------------------------------------------------------------
-# Adaptações metodológicas (prática)
+# AEE × Metodologias (adaptações na prática — por condição)
+# ---------------------------------------------------------------------------
+
+
+@bp.get("/api/aee/<aee_id>/metodologias")
+def list_aee_metodologias(aee_id: str):
+    aid = _parse_uuid(aee_id)
+    if not aid:
+        return jsonify({"error": "Identificador AEE inválido"}), 400
+    inst = _instituicao_id()
+    with get_conn() as conn:
+        _ensure_aee_met_org_schema(conn)
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            matriz = _get_aee_matriz(cur, aid, inst)
+            if not matriz:
+                return jsonify({"error": "Matriz AEE não encontrada"}), 404
+            campos = (matriz.get("campos_experiencia_metodologica") or "").strip()
+            condicao = matriz.get("condicao_categoria") or ""
+
+            cur.execute(
+                """
+                SELECT
+                    c.id AS metodologia_catalogo_id,
+                    c.nome,
+                    c.categoria,
+                    c.descricao,
+                    c.passos_execucao,
+                    org.passos_customizados AS versao_escola,
+                    org.updated_at AS org_updated_at,
+                    COALESCE(vet.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
+                    COALESCE(vet.ativo_desafio, TRUE) AS disponivel_desafio,
+                    COALESCE(cur.sugestoes_count, 0) AS sugestoes_count
+                FROM public.school_metodologias_catalogo c
+                LEFT JOIN public.school_aee_metodologias_org org
+                    ON org.aee_matriz_id = %s
+                   AND LOWER(TRIM(org.metodologia_nome)) = LOWER(TRIM(c.nome))
+                LEFT JOIN public.school_metodologias_org vet
+                    ON vet.metodologia_id_canonica = c.id
+                   AND vet.instituicao_id = %s
+                LEFT JOIN (
+                    SELECT
+                        LOWER(TRIM(metodologia_nome)) AS nome_key,
+                        COUNT(*)::int AS sugestoes_count
+                    FROM public.school_curadoria_pei
+                    WHERE instituicao_id = %s
+                      AND status_analise IN ('pendente', 'incorporado')
+                    GROUP BY LOWER(TRIM(metodologia_nome))
+                ) cur ON cur.nome_key = LOWER(TRIM(c.nome))
+                WHERE c.ativo = TRUE AND c.origem = 'padrao'
+                ORDER BY c.categoria, c.nome
+                """,
+                (str(aid), inst, inst),
+            )
+            rows = cur.fetchall()
+
+    out = []
+    for r in rows:
+        texto = _passos_to_text(r.get("passos_execucao"))
+        versao = (r.get("versao_escola") or "").strip()
+        is_custom = bool(versao)
+        updated = r.get("org_updated_at")
+        count = int(r.get("sugestoes_count") or 0)
+        out.append(
+            {
+                "metodologia_id": str(r["metodologia_catalogo_id"]),
+                "nome": r["nome"],
+                "familia": r.get("categoria"),
+                "descricao": r.get("descricao"),
+                "texto_canonico": texto,
+                "campos_experiencia_aee": campos,
+                "condicao_categoria": condicao,
+                "aee_matriz_id": str(aid),
+                "versao_escola": versao,
+                "is_customizado": is_custom,
+                "updated_at": updated.isoformat() if updated else None,
+                "disponivel_dia_a_dia": bool(r.get("disponivel_dia_a_dia", True)),
+                "disponivel_desafio": bool(r.get("disponivel_desafio", True)),
+                "uso_estrelas": 0 if count <= 0 else min(3, count),
+                "sugestoes_count": count,
+            }
+        )
+    return jsonify(
+        {
+            "aee_matriz_id": str(aid),
+            "condicao_categoria": condicao,
+            "campos_experiencia_aee": campos,
+            "items": out,
+        }
+    )
+
+
+@bp.put("/api/aee/<aee_id>/metodologias/<path:metodologia_nome>")
+def salvar_aee_metodologia(aee_id: str, metodologia_nome: str):
+    aid = _parse_uuid(aee_id)
+    if not aid:
+        return jsonify({"error": "Identificador AEE inválido"}), 400
+    nome = str(metodologia_nome or "").strip()
+    if not nome:
+        return jsonify({"error": "Nome da metodologia obrigatório"}), 400
+    body = request.get_json(silent=True) or {}
+    texto = str(
+        body.get("passos_customizados")
+        or body.get("versao_escola")
+        or body.get("versao_pei")
+        or ""
+    ).strip()
+    inst = _instituicao_id()
+
+    with get_conn() as conn:
+        _ensure_aee_met_org_schema(conn)
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            matriz = _get_aee_matriz(cur, aid, inst)
+            if not matriz:
+                return jsonify({"error": "Matriz AEE não encontrada"}), 404
+
+            cur.execute(
+                """
+                SELECT id, nome FROM public.school_metodologias_catalogo
+                WHERE LOWER(TRIM(nome)) = LOWER(TRIM(%s))
+                  AND ativo = TRUE
+                LIMIT 1
+                """,
+                (nome,),
+            )
+            cat = cur.fetchone()
+            if not cat:
+                return jsonify({"error": "Metodologia não encontrada no catálogo"}), 404
+            nome_canon = cat["nome"]
+
+            cur.execute(
+                """
+                INSERT INTO public.school_aee_metodologias_org (
+                    aee_matriz_id, metodologia_nome, passos_customizados, updated_at
+                )
+                VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (aee_matriz_id, metodologia_nome)
+                DO UPDATE SET
+                    passos_customizados = EXCLUDED.passos_customizados,
+                    updated_at = CURRENT_TIMESTAMP
+                RETURNING *
+                """,
+                (str(aid), nome_canon, texto),
+            )
+            row = cur.fetchone()
+
+    return jsonify(
+        {
+            "aee_matriz_id": str(aid),
+            "metodologia_id": str(cat["id"]),
+            "metodologia_nome": nome_canon,
+            "versao_escola": row.get("passos_customizados") or "",
+            "passos_customizados": row.get("passos_customizados") or "",
+            "is_customizado": bool((row.get("passos_customizados") or "").strip()),
+            "updated_at": _iso(row.get("updated_at")),
+            "condicao_categoria": matriz.get("condicao_categoria") or "",
+        }
+    )
+
+
+@bp.post("/api/aee/<aee_id>/metodologia/<path:metodologia_nome>/adaptar-ia")
+def adaptar_aee_metodologia_ia(aee_id: str, metodologia_nome: str):
+    aid = _parse_uuid(aee_id)
+    if not aid:
+        return jsonify({"error": "Identificador AEE inválido"}), 400
+    nome = str(metodologia_nome or "").strip()
+    if not nome:
+        return jsonify({"error": "Nome da metodologia obrigatório"}), 400
+    body = request.get_json(silent=True) or {}
+    inst = _instituicao_id()
+
+    sugestao = str(body.get("sugestao") or body.get("sugestao_professor") or "").strip()
+    sugestoes_raw = body.get("sugestoes") or body.get("sugestoes_aceitas") or []
+    if isinstance(sugestoes_raw, str):
+        sugestoes_lista = [sugestoes_raw.strip()] if sugestoes_raw.strip() else []
+    elif isinstance(sugestoes_raw, list):
+        sugestoes_lista = [str(s).strip() for s in sugestoes_raw if str(s or "").strip()]
+    else:
+        sugestoes_lista = []
+    if sugestao and sugestao not in sugestoes_lista:
+        sugestoes_lista.append(sugestao)
+
+    with get_conn() as conn:
+        _ensure_aee_met_org_schema(conn)
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            matriz = _get_aee_matriz(cur, aid, inst)
+            if not matriz:
+                return jsonify({"error": "Matriz AEE não encontrada"}), 404
+            cur.execute(
+                """
+                SELECT id, nome, passos_execucao
+                FROM public.school_metodologias_catalogo
+                WHERE LOWER(TRIM(nome)) = LOWER(TRIM(%s))
+                  AND ativo = TRUE
+                LIMIT 1
+                """,
+                (nome,),
+            )
+            cat = cur.fetchone()
+            if not cat:
+                return jsonify({"error": "Metodologia não encontrada"}), 404
+
+    canonico = str(body.get("texto_canonico") or "").strip() or _passos_to_text(
+        cat.get("passos_execucao")
+    )
+    campos = str(
+        body.get("campos_experiencia_aee")
+        or body.get("texto_campos_experiencia_aee")
+        or matriz.get("campos_experiencia_metodologica")
+        or ""
+    ).strip()
+    condicao = matriz.get("condicao_categoria") or ""
+
+    try:
+        from school_llm import sintetizar_adaptacao_aee_metodologia
+
+        versao = sintetizar_adaptacao_aee_metodologia(
+            texto_canonico_metodologia=canonico,
+            texto_campos_experiencia_aee=campos,
+            sugestoes_professores=sugestoes_lista,
+            condicao_categoria=condicao,
+        )
+    except Exception as exc:
+        return jsonify({"error": f"Falha na IA: {exc}"}), 502
+
+    return jsonify(
+        {
+            "success": True,
+            "aee_matriz_id": str(aid),
+            "metodologia_id": str(cat["id"]),
+            "metodologia_nome": cat["nome"],
+            "condicao_categoria": condicao,
+            "versao_escola": versao,
+            "texto_canonico": canonico,
+            "campos_experiencia_aee": campos,
+            "sugestoes_aceitas": sugestoes_lista,
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Adaptações metodológicas (prática) — legado /api/pei/*
 # ---------------------------------------------------------------------------
 
 
@@ -1072,6 +1354,7 @@ def list_pei_metodologias():
                     c.passos_execucao,
                     ad.passos_customizados AS versao_pei,
                     ad.gerado_por_ia,
+                    ad.updated_at AS adaptacao_updated_at,
                     COALESCE(org.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
                     COALESCE(org.ativo_desafio, TRUE) AS disponivel_desafio,
                     COALESCE(cur.sugestoes_count, 0) AS sugestoes_count
@@ -1104,6 +1387,9 @@ def list_pei_metodologias():
         texto = _passos_to_text(r.get("passos_execucao"))
         count = int(r.get("sugestoes_count") or 0)
         estrelas = 0 if count <= 0 else min(3, count)
+        versao = (r.get("versao_pei") or "").strip()
+        is_custom = bool(versao)
+        updated = r.get("adaptacao_updated_at")
         out.append(
             {
                 "metodologia_id": str(r["metodologia_catalogo_id"]),
@@ -1111,7 +1397,9 @@ def list_pei_metodologias():
                 "familia": r.get("categoria"),
                 "descricao": r.get("descricao"),
                 "texto_canonico": texto,
-                "versao_pei": r.get("versao_pei") or "",
+                "versao_pei": versao,
+                "is_customizado": is_custom,
+                "updated_at": updated.isoformat() if updated else None,
                 "gerado_por_ia": bool(r.get("gerado_por_ia")),
                 "disponivel_dia_a_dia": bool(r.get("disponivel_dia_a_dia", True)),
                 "disponivel_desafio": bool(r.get("disponivel_desafio", True)),
@@ -1185,6 +1473,68 @@ def list_curadoria_pei():
     return jsonify({"count": len(items), "items": items})
 
 
+@bp.post("/api/pei/curadoria/<item_id>/incorporar")
+def incorporar_curadoria_pei_pratica(item_id: str):
+    """Marca sugestão PEI como incorporada (síntese via IA no front — espelho Metodologias)."""
+    cid = _parse_uuid(item_id)
+    if not cid:
+        return jsonify({"error": "Identificador inválido"}), 400
+    inst = _instituicao_id()
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, status_analise, sugestao_professor_json, metodologia_nome
+                FROM public.school_curadoria_pei
+                WHERE id = %s AND instituicao_id = %s
+                LIMIT 1
+                """,
+                (str(cid), inst),
+            )
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"error": "Sugestão não encontrada"}), 404
+            if row["status_analise"] != "pendente":
+                return jsonify(
+                    {
+                        "error": "Sugestão já analisada",
+                        "status_analise": row["status_analise"],
+                    }
+                ), 409
+            sug = row.get("sugestao_professor_json") or {}
+            if not isinstance(sug, dict):
+                sug = {}
+            texto = str(
+                sug.get("teacher_adaptation_text")
+                or sug.get("pei_adaptation_text")
+                or sug.get("texto_sugestao")
+                or sug.get("texto")
+                or ""
+            ).strip()
+            if not texto:
+                return jsonify({"error": "Sugestão sem texto do professor"}), 400
+            cur.execute(
+                """
+                UPDATE public.school_curadoria_pei
+                SET status_analise = 'incorporado',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                RETURNING id, status_analise
+                """,
+                (str(cid),),
+            )
+            updated = cur.fetchone()
+    return jsonify(
+        {
+            "item": {
+                "id": str(updated["id"]),
+                "status_analise": updated["status_analise"],
+            },
+            "message": "Sugestão marcada. Use “Gerar adaptação PEI integrada” para a IA compor o texto.",
+        }
+    )
+
+
 @bp.post("/api/pei/metodologia/<metodologia_id>/adaptar-ia")
 def adaptar_pei_metodologia_ia(metodologia_id: str):
     mid = _parse_uuid(metodologia_id)
@@ -1192,9 +1542,26 @@ def adaptar_pei_metodologia_ia(metodologia_id: str):
         return jsonify({"error": "Identificador inválido"}), 400
     inst = _instituicao_id()
     body = request.get_json(silent=True) or {}
+
     sugestao = str(body.get("sugestao") or body.get("sugestao_professor") or "").strip()
-    if not sugestao:
-        return jsonify({"error": "Informe a sugestão do professor"}), 400
+    sugestoes_raw = body.get("sugestoes") or body.get("sugestoes_aceitas") or []
+    if isinstance(sugestoes_raw, str):
+        sugestoes_lista = [sugestoes_raw.strip()] if sugestoes_raw.strip() else []
+    elif isinstance(sugestoes_raw, list):
+        sugestoes_lista = [str(s).strip() for s in sugestoes_raw if str(s or "").strip()]
+    else:
+        sugestoes_lista = []
+    if sugestao and sugestao not in sugestoes_lista:
+        sugestoes_lista.append(sugestao)
+    if not sugestoes_lista:
+        return jsonify({"error": "Informe ao menos uma sugestão do professor"}), 400
+
+    adaptacao_pei = str(
+        body.get("adaptacao_pei_escola")
+        or body.get("observacoes_coordenacao")
+        or body.get("adaptacao_pei")
+        or ""
+    ).strip()
 
     pei_id = _parse_uuid(body.get("pei_aluno_id") or body.get("pei_id"))
     condicao = str(body.get("condicao_categoria") or body.get("condicao") or "").strip()
@@ -1259,7 +1626,8 @@ def adaptar_pei_metodologia_ia(metodologia_id: str):
             aee_texto_escola=aee_texto,
             aee_campos_experiencia=aee_campos,
             pei_experiencias_individuais=pei_exp,
-            sugestao_professor=sugestao,
+            sugestoes_aceitas=sugestoes_lista,
+            adaptacao_pei_escola=adaptacao_pei,
             condicao_categoria=(aee_row or {}).get("condicao_categoria") or condicao,
         )
     except Exception as exc:
@@ -1272,6 +1640,8 @@ def adaptar_pei_metodologia_ia(metodologia_id: str):
             "metodologia_nome": cat["nome"],
             "versao_pei": versao,
             "texto_canonico": canonico,
+            "adaptacao_pei_escola": adaptacao_pei,
+            "sugestoes_aceitas": sugestoes_lista,
             "contexto": {
                 "condicao_categoria": (aee_row or {}).get("condicao_categoria")
                 or condicao
@@ -1344,12 +1714,15 @@ def salvar_versao_pei_metodologia(metodologia_id: str):
                 )
             row = cur.fetchone()
 
+    updated = row.get("updated_at")
     return jsonify(
         {
             "metodologia_id": str(mid),
             "metodologia_nome": cat["nome"],
             "versao_pei": row.get("passos_customizados") or "",
             "gerado_por_ia": bool(row.get("gerado_por_ia")),
+            "is_customizado": bool((row.get("passos_customizados") or "").strip()),
+            "updated_at": updated.isoformat() if updated else None,
         }
     )
 

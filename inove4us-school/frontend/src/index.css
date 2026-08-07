@@ -13,3 +13,20 @@
     @apply m-0 bg-panel font-sans text-ink antialiased;
   }
 }
+
+/* Checkbox lilás — appearance custom (Windows ignora accent/text no nativo). */
+@layer components {
+  .checkbox-school {
+    @apply h-4 w-4 shrink-0 cursor-pointer appearance-none rounded border-2 border-slate-300 bg-white;
+    @apply checked:border-violet-600 checked:bg-violet-600;
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500;
+    @apply disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .checkbox-school:checked {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 0 1 0 1.414l-5 5a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L6.5 9.086l4.293-4.293a1 1 0 0 1 1.414 0z'/%3E%3C/svg%3E");
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+}
