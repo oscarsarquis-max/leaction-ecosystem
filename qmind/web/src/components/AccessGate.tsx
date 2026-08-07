@@ -27,7 +27,7 @@ export function AccessGate({ status, onLogin }: Props) {
         <p className="qmind-login__text">
           {expired
             ? "Sua sessão expirou. Entre de novo para retomar o trabalho na sua organização."
-            : "Consultoria de qualidade para organizações. Padrão de auto-consultoria, gerenciamento e controle da qualidade."}
+            : "Plataforma de autoavaliação assistida. Prepare contexto, evidências e prioridades antes da auditoria formal."}
         </p>
 
         <button

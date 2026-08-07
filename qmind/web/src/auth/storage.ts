@@ -2,7 +2,11 @@
  * Local persistence policy:
  * - NEVER persist tokens or tenant payloads (assessments, memberships, etc.)
  * - Preferred organization id may live in sessionStorage only (UUID preference)
+ * - Return URL e etapa do tour guiado (paths curtos) também em sessionStorage
  */
+
+import { clearGuidedTour } from "@/lib/guidedTour";
+import { clearReturnUrl } from "@/lib/returnUrl";
 
 const PREFERRED_ORG_KEY = "qmind.preferredOrganizationId";
 
@@ -40,6 +44,8 @@ export function clearAllLocalPersistence(): void {
   } catch {
     // ignore
   }
+  clearGuidedTour();
+  clearReturnUrl();
   // Defense: ensure we never left tokens under qmind.* keys
   try {
     const keys: string[] = [];

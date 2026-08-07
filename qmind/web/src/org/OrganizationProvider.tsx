@@ -29,6 +29,7 @@ import {
   getRequestGeneration,
   setActiveOrganizationId,
 } from "@/api/tenantContext";
+import { clearGuidedTour } from "@/lib/guidedTour";
 
 export type Membership = {
   id: string;
@@ -174,6 +175,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       await clearOrgCaches();
       const gen = bumpRequestGeneration();
       setRequestGeneration(gen);
+
+      // Tour guiado é por organização — limpa ao trocar.
+      clearGuidedTour();
 
       writePreferredOrganizationId(organizationId);
       setActiveOrganizationId(organizationId);
