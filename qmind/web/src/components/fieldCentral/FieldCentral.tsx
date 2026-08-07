@@ -167,14 +167,6 @@ export function FieldCentral({
       {model.closingPrep.show || focus === "closing" ? (
         <ClosingPrepBlock model={model} assessmentId={assessmentId} />
       ) : null}
-
-      <pre
-        className="hidden"
-        data-testid="field-assistant-context"
-        aria-hidden
-      >
-        {JSON.stringify(model.assistantContext)}
-      </pre>
     </div>
   );
 }

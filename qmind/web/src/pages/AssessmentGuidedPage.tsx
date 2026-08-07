@@ -49,6 +49,10 @@ import {
   lastQuestionIndexForClause,
 } from "@/lib/guidedNarrative";
 import { clauseMajor, visibleGuidedQuestions } from "@/lib/guidedShowWhen";
+import { useOrganization } from "@/org/OrganizationProvider";
+import { useRegisterAssistantContext } from "@/assistant/AssistantProvider";
+import { baseAssessmentContext } from "@/assistant/contextBuilders";
+import type { AssistantContext } from "@/assistant/types";
 
 const CONTEXT_STEPS: GuidedStep[] = [
   "organization",
@@ -68,6 +72,7 @@ export function AssessmentGuidedPage() {
   const sessionQ = useGuidedSession(assessmentId);
   const catalog = useGuidedCatalog(sessionQ.data?.catalog_version);
   const perms = useAssessmentPermissions(assessment.data?.status);
+  const org = useOrganization();
   const patch = usePatchGuidedSession(assessmentId ?? "");
   const upsert = useUpsertGuidedAnswer(assessmentId ?? "");
   const linkEv = useLinkGuidedEvidence(assessmentId ?? "");
@@ -178,6 +183,85 @@ export function AssessmentGuidedPage() {
   }, [session?.answers]);
 
   const stepMeta = GUIDED_STEPS.find((s) => s.id === step);
+
+  const assistantCtx = useMemo((): AssistantContext | null => {
+    if (!assessmentId || !assessment.data || !org.currentOrganizationId) return null;
+    const a = assessment.data;
+    const q = currentQuestion;
+    const openingHint = opening?.whyItMatters;
+    return {
+      ...baseAssessmentContext({
+        organizationId: org.currentOrganizationId,
+        organizationName:
+          org.currentOrganization?.organizationName || "Organização",
+        assessmentId,
+        assessmentType: a.type,
+        status: a.status,
+        roles: org.currentOrganization?.roles ?? [],
+        canMutate: perms.canMutate,
+        route: `/assessments/${assessmentId}/guided`,
+        page: "wizard",
+        preparationReady: false,
+        stage_title: "Wizard de preparação",
+        stage_explanation:
+          "Roteiro consultivo em linguagem de negócio. Responda com a realidade da organização — o assistente explica, mas não escolhe a resposta.",
+        next_action: {
+          label:
+            step === "review"
+              ? "Revisar e seguir no mapa"
+              : q
+                ? "Responder a pergunta atual"
+                : stepMeta?.label || "Continuar a preparação",
+          hint:
+            step === "review"
+              ? "Confira o resumo antes de avançar no percurso."
+              : q?.explanation ||
+                stepMeta?.hint ||
+                "Preencha a etapa e avance.",
+          href: `/assessments/${assessmentId}/guided`,
+          mutates: perms.canMutate,
+        },
+        pendencies: (dash.pending ?? []).slice(0, 5).map((p, i) => ({
+          key: `wiz-${i}`,
+          problem: p,
+          impact: "A preparação fica incompleta",
+          actionLabel: "Continuar no Wizard",
+          href: `/assessments/${assessmentId}/guided`,
+        })),
+        blockers: [],
+        progress_summary:
+          step === "route" && session
+            ? `Perguntas: ${session.answered_count} de ${session.question_count}`
+            : `Etapa: ${stepMeta?.label ?? step}`,
+      }),
+      wizard: q
+        ? {
+            questionTheme: q.theme || `Cláusula ${clauseMajor(q.clause_ref)}`,
+            questionText: q.question,
+            explanation: q.explanation,
+            practiceExamples: q.practice_examples ?? [],
+            evidenceExamples: q.evidence_examples ?? [],
+            whyNeeded:
+              openingHint ||
+              "A resposta alimenta o plano e reduz improvisação no campo.",
+          }
+        : null,
+    };
+  }, [
+    assessmentId,
+    assessment.data,
+    org.currentOrganizationId,
+    org.currentOrganization,
+    perms.canMutate,
+    currentQuestion,
+    opening,
+    step,
+    stepMeta,
+    dash.pending,
+    session,
+  ]);
+
+  useRegisterAssistantContext(assistantCtx);
 
   async function persistContext(
     next: GuidedContext,

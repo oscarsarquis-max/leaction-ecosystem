@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useMemo } from "react";
 import { useAssessments } from "@/hooks/useAssessments";
 import { useOrganization } from "@/org/OrganizationProvider";
 import { useAssessmentPermissions } from "@/hooks/useAssessmentPermissions";
@@ -20,11 +21,81 @@ import {
 } from "@/lib/auditJourney";
 import { OrgAgenda } from "@/components/OrgAgenda";
 import { OrgJourneyOverview } from "@/components/orgJourney/OrgJourneyOverview";
+import { useRegisterAssistantContext } from "@/assistant/AssistantProvider";
+import type { AssistantContext } from "@/assistant/types";
 
 export function AssessmentsPage() {
   const org = useOrganization();
   const perms = useAssessmentPermissions();
   const query = useAssessments();
+
+  const items = query.data ?? [];
+  const orgName =
+    org.currentOrganization?.organizationName ?? "organização selecionada";
+
+  const assistantCtx = useMemo((): AssistantContext | null => {
+    if (!org.currentOrganizationId) return null;
+    const empty = items.length === 0;
+    return {
+      organization_id: org.currentOrganizationId,
+      organization_name: orgName,
+      assessment_id: null,
+      assessment_label: null,
+      route: "/assessments",
+      page: "org_home",
+      phase_label: null,
+      assessment_status: null,
+      user_roles: org.currentOrganization?.roles ?? [],
+      can_mutate: perms.canMutate,
+      next_action: empty
+        ? {
+            label: perms.canMutate
+              ? "Criar a primeira avaliação"
+              : "Aguardar uma avaliação na organização",
+            hint: perms.canMutate
+              ? "Sem avaliação ainda — comece pela preparação guiada."
+              : "Seu papel não cria avaliações; peça a um editor.",
+            href: perms.canMutate ? "/assessments/new" : "/assessments",
+            mutates: perms.canMutate,
+          }
+        : {
+            label: "Abrir uma avaliação da lista",
+            hint: "Escolha o trabalho em andamento para ver o mapa e a próxima ação.",
+            href: `/assessments/${items[0]!.id}`,
+          },
+      pendencies: empty
+        ? [
+            {
+              key: "no-assessment",
+              problem: "Nenhuma avaliação nesta organização",
+              impact: "Não há percurso para executar",
+              actionLabel: perms.canMutate ? "Criar avaliação" : "Ver lista",
+              href: perms.canMutate ? "/assessments/new" : "/assessments",
+            },
+          ]
+        : [],
+      blockers: [],
+      progress_summary: empty
+        ? "Nenhuma avaliação"
+        : `${items.length} avaliação(ões) nesta organização`,
+      allowed_links: [
+        "/assessments",
+        "/assessments/new",
+        ...items.slice(0, 20).map((a) => `/assessments/${a.id}`),
+      ],
+      stage_title: "Home da organização",
+      stage_explanation:
+        "Aqui você vê o percurso da organização, a agenda e as avaliações. Abra uma avaliação ou crie uma nova para receber orientação da etapa.",
+    };
+  }, [
+    org.currentOrganizationId,
+    org.currentOrganization?.roles,
+    orgName,
+    items,
+    perms.canMutate,
+  ]);
+
+  useRegisterAssistantContext(assistantCtx);
 
   if (!org.currentOrganizationId) {
     return (
@@ -54,10 +125,6 @@ export function AssessmentsPage() {
       />
     );
   }
-
-  const items = query.data ?? [];
-  const orgName =
-    org.currentOrganization?.organizationName ?? "organização selecionada";
 
   return (
     <section className="space-y-6">

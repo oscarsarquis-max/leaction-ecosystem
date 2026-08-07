@@ -216,8 +216,6 @@ describe("Central de Campo (/work)", () => {
     expect(screen.getByTestId("field-today-agenda")).toBeInTheDocument();
     expect(screen.getByTestId("field-progress")).toBeInTheDocument();
     expect(screen.getByTestId("field-evidence")).toBeInTheDocument();
-    expect(screen.getByTestId("field-assistant-context")).toBeInTheDocument();
-    // UUID pode existir em href/contexto oculto; não nos rótulos visíveis.
     expect(screen.getByTestId("page-header")).toHaveTextContent(/Central de Campo/);
     expect(screen.getByTestId("page-header")).not.toHaveTextContent(AID);
     expect(screen.getByTestId("field-next-action")).not.toHaveTextContent(AID);

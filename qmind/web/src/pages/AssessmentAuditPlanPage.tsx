@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import { AccessDeniedPanel, LoadingPanel } from "@/components/StatePanels";
@@ -30,6 +30,10 @@ import {
 } from "@/api/auditPlanTypes";
 import { QmindApiError } from "@/api/qmindApi";
 import { useAuditPlanSchedule } from "@/hooks/useAuditPlanSchedule";
+import { useOrganization } from "@/org/OrganizationProvider";
+import { useRegisterAssistantContext } from "@/assistant/AssistantProvider";
+import { baseAssessmentContext } from "@/assistant/contextBuilders";
+import type { AssistantContext } from "@/assistant/types";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -147,6 +151,7 @@ export function AssessmentAuditPlanPage() {
   const patch = usePatchAuditPlan(assessmentId ?? "");
   const refresh = useRefreshAuditPlan(assessmentId ?? "");
   const scheduleQ = useAuditPlanSchedule(assessmentId);
+  const org = useOrganization();
 
   const [local, setLocal] = useState<AuditPlan | null>(null);
   const [readyInfo, setReadyInfo] = useState<string | null>(null);
@@ -169,6 +174,71 @@ export function AssessmentAuditPlanPage() {
   const readOnly =
     !perms.canMutate || !local?.editable || assessment.data?.status === "cancelled";
   const needsReason = !!local?.requires_amendment_reason;
+
+  const assistantCtx = useMemo((): AssistantContext | null => {
+    const plan = local ?? planQ.data;
+    if (!assessmentId || !assessment.data || !org.currentOrganizationId || !plan) {
+      return null;
+    }
+    const readiness = plan.readiness;
+    const pendingItems = readiness.items.filter((i) => !i.done);
+    return {
+      ...baseAssessmentContext({
+        organizationId: org.currentOrganizationId,
+        organizationName:
+          org.currentOrganization?.organizationName || "Organização",
+        assessmentId,
+        assessmentType: assessment.data.type,
+        status: assessment.data.status,
+        roles: org.currentOrganization?.roles ?? [],
+        canMutate: perms.canMutate,
+        route: `/assessments/${assessmentId}/audit-plan`,
+        page: "audit_plan",
+        stage_title: "Plano da Auditoria",
+        stage_explanation:
+          "Organize propósito, processos, pessoas e agenda. Plano pronto ≠ campo iniciado.",
+        next_action: {
+          label: readiness.next_action || "Continuar o plano",
+          hint:
+            plan.plan_status === "ready"
+              ? "Plano pronto — conclua o planejamento e a abertura para iniciar o campo."
+              : "Complete o checklist do plano antes do handoff.",
+          href: `/assessments/${assessmentId}/audit-plan`,
+          mutates: perms.canMutate,
+        },
+        pendencies: pendingItems.slice(0, 6).map((i) => ({
+          key: i.key,
+          problem: i.label,
+          impact: i.blocking
+            ? "Bloqueia o plano pronto"
+            : "Deixa o plano incompleto",
+          actionLabel: "Resolver no plano",
+          href: `/assessments/${assessmentId}/audit-plan`,
+        })),
+        blockers: readiness.blockers ?? [],
+        progress_summary: `${readiness.percent}% do checklist · ${planStatusLabel(plan.plan_status)}`,
+      }),
+      plan: {
+        planStatus: plan.plan_status,
+        planReady: plan.plan_status === "ready",
+        assessmentPlanned: assessment.data.status === "planned",
+        needsAmendment: plan.plan_status === "amended",
+        readinessNext: readiness.next_action || null,
+        freezeNote:
+          "Quando o planejamento é concluído, o plano congela para execução; mudanças exigem emenda com motivo.",
+      },
+    };
+  }, [
+    assessmentId,
+    assessment.data,
+    org.currentOrganizationId,
+    org.currentOrganization,
+    local,
+    planQ.data,
+    perms.canMutate,
+  ]);
+
+  useRegisterAssistantContext(assistantCtx);
 
   function scheduleSave(next: AuditPlan, extra?: { amendment_reason?: string }) {
     if (readOnly || !assessmentId) return;

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import { LoadingPanel } from "@/components/StatePanels";
@@ -10,6 +11,11 @@ import { AssessmentLobby } from "@/pages/AssessmentLobby";
 import { useAuditDashboard } from "@/hooks/useAuditDashboard";
 import { JOURNEY_PHASES, phaseForStatus } from "@/lib/auditJourney";
 import { labelAssessmentType } from "@/lib/labels";
+import { useRegisterAssistantContext } from "@/assistant/AssistantProvider";
+import { baseAssessmentContext } from "@/assistant/contextBuilders";
+import type { AssistantContext } from "@/assistant/types";
+import { useOrganization } from "@/org/OrganizationProvider";
+import { useAssessmentPermissions } from "@/hooks/useAssessmentPermissions";
 
 /**
  * Overview: dados reais via hooks existentes; visual via AssessmentLobby + cards.
@@ -19,6 +25,65 @@ export function AssessmentOverviewPage() {
   const { assessmentId } = useParams<{ assessmentId: string }>();
   const navigate = useNavigate();
   const dash = useAuditDashboard(assessmentId);
+  const org = useOrganization();
+  const perms = useAssessmentPermissions(dash.assessment?.status);
+
+  const assistantCtx = useMemo((): AssistantContext | null => {
+    if (!assessmentId || !dash.assessment || !org.currentOrganizationId) {
+      return null;
+    }
+    const a = dash.assessment;
+    const phaseId = phaseForStatus(a.status, {
+      preparationReady: dash.preparationReady,
+    });
+    const phase = JOURNEY_PHASES.find((p) => p.id === phaseId)!;
+    return {
+      ...baseAssessmentContext({
+        organizationId: org.currentOrganizationId,
+        organizationName: dash.organizationName || "Organização",
+        assessmentId,
+        assessmentType: a.type,
+        status: a.status,
+        roles: org.currentOrganization?.roles ?? [],
+        canMutate: perms.canMutate,
+        route: `/assessments/${assessmentId}`,
+        page: "assessment_map",
+        preparationReady: dash.preparationReady,
+        stage_title: "Mapa do Percurso",
+        stage_explanation: `${phase.objective} Você está no mapa: veja a fase atual e a próxima ação sem improvisar.`,
+        next_action: {
+          label: dash.continueAction.label || dash.nextBest.actionText,
+          hint: dash.nextBest.description || phase.expectedResult,
+          href: dash.continueAction.href,
+          mutates: false,
+        },
+        pendencies: dash.pending.slice(0, 8).map((p, i) => ({
+          key: `map-${i}`,
+          problem: p,
+          impact: "Atrasa o avanço no percurso",
+          actionLabel: dash.continueAction.label || "Continuar",
+          href: dash.continueAction.href,
+        })),
+        blockers:
+          a.status === "draft" && !dash.preparationReady ? dash.pending : [],
+        progress_summary: `${dash.percent}% do percurso · fase: ${phase.label}`,
+      }),
+    };
+  }, [
+    assessmentId,
+    dash.assessment,
+    dash.organizationName,
+    dash.preparationReady,
+    dash.continueAction,
+    dash.nextBest,
+    dash.pending,
+    dash.percent,
+    org.currentOrganizationId,
+    org.currentOrganization?.roles,
+    perms.canMutate,
+  ]);
+
+  useRegisterAssistantContext(assistantCtx);
 
   if (!assessmentId) {
     return (
