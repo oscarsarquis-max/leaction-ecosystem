@@ -131,33 +131,66 @@ def claim_next(settings: Settings, *, job_type: str = "report_pdf_export") -> Cl
         if row is None:
             conn.commit()
             return None
-        corr = uuid4()
-        write_audit(
-            conn,
-            organization_id=row.organization_id,
-            actor_type="service",
-            actor_service_id=settings.worker_id,
-            action="job.claim",
-            resource_type="job",
-            resource_id=row.id,
-            from_status="queued",
-            to_status="running",
-            correlation_id=corr,
-            metadata={"attempt_count": row.attempt_count, "job_type": row.job_type},
-        )
-        conn.commit()
-        inp = row.input_ref if isinstance(row.input_ref, dict) else json.loads(row.input_ref or "{}")
-        return ClaimedJob(
-            id=row.id,
-            organization_id=row.organization_id,
-            job_type=row.job_type,
-            status=row.status,
-            idempotency_key=row.idempotency_key,
-            input_ref=inp,
-            attempt_count=row.attempt_count,
-            max_attempts=row.max_attempts,
-            correlation_id=corr,
-        )
+        return _finish_claim(conn, settings=settings, row=row)
+
+
+def claim_job(settings: Settings, job_id: UUID) -> ClaimedJob | None:
+    """Claim a specific queued job by id (used for local inline PDF processing)."""
+    with admin_connection() as conn:
+        row = conn.execute(
+            text(
+                f"""
+                UPDATE jobs
+                SET status = 'running',
+                    started_at = COALESCE(started_at, now()),
+                    locked_at = now(),
+                    locked_by = :worker,
+                    attempt_count = attempt_count + 1,
+                    error_code = NULL,
+                    error_safe_message = NULL,
+                    updated_at = now()
+                WHERE id = :id
+                  AND status = 'queued'
+                  AND (next_run_at IS NULL OR next_run_at <= now())
+                RETURNING {_JOB_COLS}
+                """
+            ),
+            {"id": job_id, "worker": settings.worker_id},
+        ).first()
+        if row is None:
+            conn.commit()
+            return None
+        return _finish_claim(conn, settings=settings, row=row)
+
+
+def _finish_claim(conn: Connection, *, settings: Settings, row: Any) -> ClaimedJob:
+    corr = uuid4()
+    write_audit(
+        conn,
+        organization_id=row.organization_id,
+        actor_type="service",
+        actor_service_id=settings.worker_id,
+        action="job.claim",
+        resource_type="job",
+        resource_id=row.id,
+        from_status="queued",
+        to_status="running",
+        correlation_id=corr,
+        metadata={"attempt_count": row.attempt_count, "job_type": row.job_type},
+    )
+    conn.commit()
+    inp = row.input_ref if isinstance(row.input_ref, dict) else json.loads(row.input_ref or "{}")
+    return ClaimedJob(
+        id=row.id,
+        organization_id=row.organization_id,
+        job_type=row.job_type,
+        status=row.status,
+        idempotency_key=row.idempotency_key,
+        input_ref=inp,
+        attempt_count=row.attempt_count,
+        max_attempts=row.max_attempts,
+        correlation_id=corr,
+    )
 
 
 def mark_succeeded(

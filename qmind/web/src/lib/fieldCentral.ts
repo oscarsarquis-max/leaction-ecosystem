@@ -485,6 +485,7 @@ function buildPendencies(input: {
 function buildNextAction(input: {
   mode: FieldPhaseMode;
   assessmentId: string;
+  assessmentStatus: string;
   plan: AuditPlan | null | undefined;
   opening: ReturnType<typeof openingState>;
   interviews: InterviewLike[];
@@ -492,8 +493,17 @@ function buildNextAction(input: {
   pendencies: FieldPendency[];
   canMutate: boolean;
 }): FieldNextAction {
-  const { mode, assessmentId, plan, opening, interviews, evidences, pendencies, canMutate } =
-    input;
+  const {
+    mode,
+    assessmentId,
+    assessmentStatus,
+    plan,
+    opening,
+    interviews,
+    evidences,
+    pendencies,
+    canMutate,
+  } = input;
 
   if (mode === "draft_redirect") {
     return {
@@ -540,9 +550,33 @@ function buildNextAction(input: {
   }
 
   if (mode === "field_readonly") {
+    if (assessmentStatus === "analysis") {
+      return {
+        kind: "go_analysis",
+        label: "Tratar constatações e maturidade",
+        hint: "O campo encerrou. Registre e revise constatações na fase de análise.",
+        href: `/assessments/${assessmentId}/advanced`,
+      };
+    }
+    if (assessmentStatus === "actions") {
+      return {
+        kind: "go_analysis",
+        label: "Acompanhar plano de ação",
+        hint: "Defina ações, prazos e validação de eficácia.",
+        href: `/assessments/${assessmentId}/advanced`,
+      };
+    }
+    if (assessmentStatus === "report") {
+      return {
+        kind: "go_analysis",
+        label: "Preparar e publicar relatório",
+        hint: "Consolide o relatório e gere o PDF quando estiver pronto.",
+        href: `/assessments/${assessmentId}/advanced`,
+      };
+    }
     return {
       kind: "go_analysis",
-      label: "Ir à fase atual",
+      label: "Ir ao mapa da avaliação",
       hint: "A execução em campo foi encerrada. Continue no mapa da avaliação.",
       href: `/assessments/${assessmentId}`,
     };
@@ -605,10 +639,10 @@ function buildNextAction(input: {
   if (canMutate && interviews.every((i) => i.status === "completed" || i.status === "cancelled")) {
     return {
       kind: "prepare_closing",
-      label: "Preparar encerramento do campo",
-      hint: "Atividades previstas concluídas — revise cobertura e a reunião de encerramento.",
+      label: "Encerrar campo e ir à análise",
+      hint: "Atividades previstas concluídas — revise a cobertura e avance para constatações.",
       localAction: "focus_closing",
-      href: `/assessments/${assessmentId}/audit-plan`,
+      href: `/assessments/${assessmentId}/advanced`,
     };
   }
 
@@ -763,6 +797,7 @@ export function buildFieldCentralModel(
   const nextAction = buildNextAction({
     mode,
     assessmentId: input.assessment.id,
+    assessmentStatus: input.assessment.status,
     plan: input.plan,
     opening,
     interviews: input.interviews,

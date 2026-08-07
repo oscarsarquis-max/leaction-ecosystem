@@ -6,6 +6,8 @@ import {
   StaleTenantResponseError,
   QmindApiError,
 } from "@/api/qmindApi";
+import { getActiveOrganizationId, getRequestGeneration } from "@/api/tenantContext";
+import { getConfig } from "@/config/env";
 import { queryKeys } from "@/api/queryKeys";
 import { newIdempotencyKey } from "@/lib/idempotency";
 
@@ -236,6 +238,43 @@ export async function fetchReportPdfDownloadUrl(
     });
     return res.data as { url: string; expires_in_seconds: number };
   });
+}
+
+/** Open PDF in a new tab; routes memory:// through local bytes endpoint. */
+export async function openReportPdfDownload(reportId: string): Promise<void> {
+  const { url } = await fetchReportPdfDownloadUrl(reportId);
+  if (url.startsWith("memory://")) {
+    const cfg = getConfig();
+    const gen = getRequestGeneration();
+    const orgId = getActiveOrganizationId();
+    const headers: Record<string, string> = {
+      "X-Organization-Id": orgId ?? "",
+    };
+    if (cfg.authMode === "dev") {
+      headers["X-Dev-User-Sub"] = cfg.devAuth.sub;
+      headers["X-Dev-User-Email"] = cfg.devAuth.email;
+    }
+    const origin = cfg.apiBaseUrl || window.location.origin;
+    const res = await fetch(`${origin}/api/v1/reports/${reportId}/export-pdf/bytes`, {
+      headers,
+    });
+    if (getRequestGeneration() !== gen) throw new StaleTenantResponseError();
+    const nextOrg = getActiveOrganizationId();
+    if (orgId && nextOrg && orgId !== nextOrg) throw new StaleTenantResponseError();
+    if (!res.ok) {
+      throw new QmindApiError(res.status, {
+        code: "download_failed",
+        message: "Falha ao obter bytes locais do PDF",
+        correlation_id: "",
+      });
+    }
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    window.open(objectUrl, "_blank", "noopener,noreferrer");
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export function useBeginAssessmentReport(assessmentId: string) {

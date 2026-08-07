@@ -364,14 +364,34 @@ export function AssessmentGuidedPage() {
   }
 
   if (sessionQ.isUnavailableInPhase) {
+    const status = assessment.data?.status;
+    const nextHref =
+      status === "in_progress"
+        ? `/assessments/${assessmentId}/work`
+        : status === "analysis" ||
+            status === "actions" ||
+            status === "report"
+          ? `/assessments/${assessmentId}/advanced`
+          : `/assessments/${assessmentId}`;
+    const nextLabel =
+      status === "in_progress"
+        ? "Ir à Central de Campo"
+        : status === "analysis" || status === "actions" || status === "report"
+          ? "Ir à análise e relatório"
+          : "Voltar ao mapa";
     return (
-      <EmptyPanel
-        title="Roteiro guiado não disponível nesta fase"
-        message={
-          sessionQ.unavailableInPhase?.message ||
-          "Não há sessão de preparação iniciada nesta fase da avaliação. Isso não é um erro — continue pelo mapa ou pela execução em campo."
-        }
-      />
+      <div className="space-y-4" data-testid="guided-unavailable">
+        <EmptyPanel
+          title="Preparação já concluída nesta fase"
+          message={
+            sessionQ.unavailableInPhase?.message ||
+            "O roteiro guiado de preparação não se aplica agora. Isso não é um erro — continue pela próxima etapa do percurso."
+          }
+        />
+        <Link to={nextHref} className="qm-btn-primary inline-flex" data-testid="guided-unavailable-cta">
+          {nextLabel}
+        </Link>
+      </div>
     );
   }
 

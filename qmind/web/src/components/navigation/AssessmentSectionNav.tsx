@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useAuditPlan } from "@/hooks/useAuditPlan";
+import { useAssessment } from "@/hooks/useAssessmentDetail";
 import { auditPlanDiscoveryLabel } from "@/lib/auditPlanDiscovery";
 
 type Props = {
@@ -15,11 +16,28 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
   ].join(" ");
 
 /**
- * Navegação de descoberta da avaliação — Plano da Auditoria sempre visível.
+ * Navegação de descoberta da avaliação — inclui Análise/Relatório após o campo.
  */
 export function AssessmentSectionNav({ assessmentId }: Props) {
   const planQ = useAuditPlan(assessmentId);
+  const assessment = useAssessment(assessmentId);
   const planLabel = auditPlanDiscoveryLabel(planQ.data);
+  const status = assessment.data?.status;
+  const showPhaseWork =
+    status === "in_progress" ||
+    status === "analysis" ||
+    status === "actions" ||
+    status === "report" ||
+    status === "closed";
+
+  const phaseWorkLabel =
+    status === "report" || status === "closed"
+      ? "Relatório"
+      : status === "actions"
+        ? "Plano de ação"
+        : status === "analysis"
+          ? "Análise"
+          : "Análise e relatório";
 
   return (
     <nav
@@ -62,6 +80,15 @@ export function AssessmentSectionNav({ assessmentId }: Props) {
       >
         Execução em campo
       </NavLink>
+      {showPhaseWork ? (
+        <NavLink
+          to={`/assessments/${assessmentId}/advanced`}
+          className={linkClass}
+          data-testid="nav-phase-work"
+        >
+          {phaseWorkLabel}
+        </NavLink>
+      ) : null}
     </nav>
   );
 }

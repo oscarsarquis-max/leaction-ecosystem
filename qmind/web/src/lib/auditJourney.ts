@@ -242,12 +242,24 @@ export function continueHref(
         label: "Continuar Plano da Auditoria",
       };
     case "in_progress":
-    case "analysis":
-    case "actions":
-    case "report":
       return {
         href: `/assessments/${assessmentId}/work`,
-        label: "Continuar avaliação",
+        label: "Abrir Central de Campo",
+      };
+    case "analysis":
+      return {
+        href: `/assessments/${assessmentId}/advanced`,
+        label: "Tratar constatações e maturidade",
+      };
+    case "actions":
+      return {
+        href: `/assessments/${assessmentId}/advanced`,
+        label: "Acompanhar plano de ação",
+      };
+    case "report":
+      return {
+        href: `/assessments/${assessmentId}/advanced`,
+        label: "Preparar e publicar relatório",
       };
     case "closed":
       return {

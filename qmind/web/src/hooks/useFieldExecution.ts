@@ -71,6 +71,31 @@ export function useStartAssessment(assessmentId: string) {
   });
 }
 
+/** in_progress → analysis (após coleta suficiente). */
+export function useBeginAssessmentAnalysis(assessmentId: string) {
+  const { currentOrganizationId } = useOrganization();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const client = getQmindClient();
+      return guardTenant(async () => {
+        const res = await client.api.beginAssessmentAnalysis({
+          path: { assessment_id: assessmentId },
+        });
+        return res.data!;
+      });
+    },
+    onSuccess: async () => {
+      if (!currentOrganizationId) return;
+      await invalidateFieldBundle(qc, currentOrganizationId, assessmentId);
+    },
+    onError: async (error) => {
+      if (!currentOrganizationId || !isConflictOrStale(error)) return;
+      await invalidateFieldBundle(qc, currentOrganizationId, assessmentId);
+    },
+  });
+}
+
 export function useAssessmentQuestions(assessmentId: string | undefined) {
   const { currentOrganizationId } = useOrganization();
   return useQuery({

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import {
-  fetchReportPdfDownloadUrl,
+  openReportPdfDownload,
   fetchReportPdfJob,
   useAssessmentReports,
   useBeginAssessmentReport,
@@ -493,7 +493,7 @@ export function ReportPanel({
                       })
                     }
                   >
-                    Exportar PDF (fila)
+                    Exportar PDF
                   </button>
                 ) : null}
               </div>
@@ -517,15 +517,18 @@ export function ReportPanel({
                   data-testid="report-export-job"
                   role="status"
                 >
-                  Exportação PDF: job{" "}
-                  <span className="font-mono text-xs">{lastJob.id}</span> · status{" "}
-                  <strong data-testid="report-export-status">{lastJob.status}</strong>
-                  {lastJob.attempt_count != null ? (
-                    <span className="text-xs text-teal-950/60">
-                      {" "}
-                      · tentativa {lastJob.attempt_count}/{lastJob.max_attempts ?? "?"}
-                    </span>
-                  ) : null}
+                  Exportação PDF:{" "}
+                  <strong data-testid="report-export-status">
+                    {lastJob.status === "succeeded"
+                      ? "pronta"
+                      : lastJob.status === "queued"
+                        ? "na fila"
+                        : lastJob.status === "running"
+                          ? "gerando…"
+                          : lastJob.status === "failed"
+                            ? "falhou"
+                            : lastJob.status}
+                  </strong>
                   {lastJob.status === "failed" && lastJob.error_safe_message ? (
                     <span className="mt-1 block text-xs text-qmind-semantic-danger" data-testid="report-export-error">
                       {lastJob.error_safe_message}
@@ -542,8 +545,7 @@ export function ReportPanel({
                           setDownloadBusy(true);
                           setDownloadError(null);
                           try {
-                            const { url } = await fetchReportPdfDownloadUrl(active.id);
-                            window.open(url, "_blank", "noopener,noreferrer");
+                            await openReportPdfDownload(active.id);
                           } catch (err) {
                             setDownloadError(
                               err instanceof Error ? err.message : "Falha ao obter download",

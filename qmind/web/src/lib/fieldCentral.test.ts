@@ -172,7 +172,7 @@ describe("buildFieldCentralModel", () => {
     expect(model.nextAction.interviewId).toBe("iv-2");
   });
 
-  it("analysis abre resumo somente leitura", () => {
+  it("analysis aponta para trabalho de fase (/advanced)", () => {
     const model = buildFieldCentralModel({
       organizationId: ORG,
       organizationName: "Org A",
@@ -189,6 +189,7 @@ describe("buildFieldCentralModel", () => {
     });
     expect(model.mode).toBe("field_readonly");
     expect(model.nextAction.kind).toBe("go_analysis");
+    expect(model.nextAction.href).toContain("/advanced");
   });
 
   it("classifica evidência antecipada por fase de coleta", () => {

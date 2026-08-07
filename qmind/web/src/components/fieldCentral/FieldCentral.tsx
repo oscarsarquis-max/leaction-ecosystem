@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import type { FieldCentralModel, FieldNextAction } from "@/lib/fieldCentralTypes";
 import {
   useAssessmentEvidences,
   useAssessmentInterviews,
   useAssessmentQuestions,
+  useBeginAssessmentAnalysis,
   useCancelInterviewMutation,
   useCompleteInterview,
   useCreateAnswer,
@@ -250,12 +251,21 @@ function FieldReadonlySummary({
       <NextActionPanel model={model} />
       <ProgressStrip model={model} />
       {model.pendencies.length > 0 ? <PendenciesList model={model} /> : null}
-      <Link
-        to={`/assessments/${assessmentId}`}
-        className="qm-btn-secondary inline-flex text-sm"
-      >
-        Abrir mapa da avaliação
-      </Link>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          to={model.nextAction.href || `/assessments/${assessmentId}/advanced`}
+          className="qm-btn-primary inline-flex"
+          data-testid="field-readonly-continue"
+        >
+          {model.nextAction.label}
+        </Link>
+        <Link
+          to={`/assessments/${assessmentId}`}
+          className="qm-btn-secondary inline-flex text-sm"
+        >
+          Abrir mapa da avaliação
+        </Link>
+      </div>
     </section>
   );
 }
@@ -1075,6 +1085,11 @@ function ClosingPrepBlock({
   assessmentId: string;
 }) {
   const c = model.closingPrep;
+  const navigate = useNavigate();
+  const beginAnalysis = useBeginAssessmentAnalysis(assessmentId);
+  const [error, setError] = useState<unknown>(null);
+  const canAdvance = model.canMutate;
+
   return (
     <section
       className="space-y-3 rounded-md border border-[var(--qm-line)] bg-[var(--qm-surface)] px-4 py-4"
@@ -1085,10 +1100,11 @@ function ClosingPrepBlock({
           Preparação do encerramento
         </h2>
         <p className="text-sm text-[var(--qm-muted)]">
-          Não avança automaticamente para análise — revise cobertura e a reunião
-          de encerramento.
+          Revise a cobertura. Quando estiver pronto, avance para a análise —
+          o sistema não muda de fase sozinho.
         </p>
       </div>
+      {error ? <ApiErrorBanner error={error} /> : null}
       <ListBlock title="Coberto" items={c.covered} />
       <ListBlock title="Pendente" items={c.pending} />
       <ListBlock title="Evidências aguardadas" items={c.evidencesWaiting} />
@@ -1100,12 +1116,39 @@ function ClosingPrepBlock({
           {c.closingMeetingReady ? "Programada no plano" : "Ainda não preparada"}
         </strong>
       </p>
-      <Link
-        to={`/assessments/${assessmentId}/audit-plan`}
-        className="qm-btn-secondary inline-flex text-sm"
-      >
-        Abrir Plano da Auditoria
-      </Link>
+      <div className="flex flex-wrap gap-2">
+        {canAdvance ? (
+          <button
+            type="button"
+            className="qm-btn-primary text-sm"
+            data-testid="field-begin-analysis"
+            disabled={beginAnalysis.isPending}
+            onClick={() =>
+              void beginAnalysis
+                .mutateAsync()
+                .then(() => {
+                  void navigate(`/assessments/${assessmentId}/advanced`);
+                })
+                .catch(setError)
+            }
+          >
+            Encerrar campo e iniciar análise
+          </button>
+        ) : null}
+        <Link
+          to={`/assessments/${assessmentId}/advanced`}
+          className="qm-btn-secondary inline-flex text-sm"
+          data-testid="field-go-analysis-work"
+        >
+          Ir para constatações
+        </Link>
+        <Link
+          to={`/assessments/${assessmentId}/audit-plan`}
+          className="qm-btn-secondary inline-flex text-sm"
+        >
+          Abrir Plano da Auditoria
+        </Link>
+      </div>
     </section>
   );
 }

@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Query
+from fastapi.responses import Response
 
 from app.auth.deps import OrgContextDep
 from app.modules.reports import service
@@ -165,3 +166,23 @@ def export_pdf(
 )
 def export_pdf_download_url(report_id: UUID, ctx: OrgContextDep) -> DownloadUrlOut:
     return service.export_pdf_download_url(ctx, report_id)
+
+
+@router.get(
+    "/{report_id}/export-pdf/bytes",
+    operation_id="getReportPdfBytesLocal",
+    responses={
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+        409: ERROR_RESPONSES[409],
+        503: ERROR_RESPONSES[503],
+    },
+    summary="Local memory storage GET for PDF (not available in prod/S3)",
+)
+def export_pdf_bytes_local(report_id: UUID, ctx: OrgContextDep) -> Response:
+    data, ctype = service.get_pdf_bytes_local(ctx, report_id)
+    return Response(
+        content=data,
+        media_type=ctype,
+        headers={"Content-Disposition": 'attachment; filename="qmind-report.pdf"'},
+    )

@@ -805,11 +805,92 @@ def get_job(ctx: OrgContext, job_id: UUID) -> JobOut:
     return _job_out(row)
 
 
+def _process_pdf_inline_local_memory(
+    ctx: OrgContext, *, job_id: UUID, report_id: UUID, job_status: str
+) -> JobOut | None:
+    """Process PDF in-API when STORAGE_BACKEND=memory.
+
+    In-memory objects cannot be shared with an external worker process.
+    Also re-queues succeeded jobs whose object vanished (API reload).
+    Returns refreshed JobOut when processed; None when nothing to do.
+    """
+    settings = get_settings()
+    if settings.storage_backend != "memory":
+        return None
+
+    storage = get_storage(settings)
+    needs_process = job_status == "queued"
+    if job_status == "succeeded":
+        with tenant_connection(ctx.organization_id) as conn:
+            row = conn.execute(
+                text(
+                    """
+                    SELECT export_storage_key
+                    FROM reports
+                    WHERE id = :id AND organization_id = :org
+                    """
+                ),
+                {"id": report_id, "org": ctx.organization_id},
+            ).first()
+        key = row.export_storage_key if row else None
+        if not key or not storage.head(key).exists:
+            from app.db import admin_connection
+
+            with admin_connection() as conn:
+                conn.execute(
+                    text(
+                        """
+                        UPDATE jobs
+                        SET status = 'queued',
+                            locked_at = NULL,
+                            locked_by = NULL,
+                            next_run_at = now(),
+                            error_code = NULL,
+                            error_safe_message = NULL,
+                            finished_at = NULL,
+                            updated_at = now()
+                        WHERE id = :id AND organization_id = :org
+                        """
+                    ),
+                    {"id": job_id, "org": ctx.organization_id},
+                )
+                if key:
+                    conn.execute(
+                        text(
+                            """
+                            UPDATE reports
+                            SET export_storage_key = NULL, updated_at = now()
+                            WHERE id = :id AND organization_id = :org
+                            """
+                        ),
+                        {"id": report_id, "org": ctx.organization_id},
+                    )
+                conn.commit()
+            needs_process = True
+
+    if not needs_process:
+        return None
+
+    from app.worker.jobs import claim_job
+    from app.worker.process_pdf import process_report_pdf_export
+
+    claimed = claim_job(settings, job_id)
+    if claimed is None:
+        return None
+    status = process_report_pdf_export(claimed, settings)
+    if status != "succeeded":
+        return get_job(ctx, job_id)
+    return get_job(ctx, job_id)
+
+
 def enqueue_pdf_export(ctx: OrgContext, report_id: UUID) -> JobOut:
     """Enqueue PDF export Job (worker generates bytes out-of-band).
 
     Download must re-check Membership + org isolation at access time;
     knowing a storage key/URL never grants permission by itself.
+
+    Local + memory storage: process inline so PDF bytes live in the API
+    process (separate worker cannot share in-memory objects).
     """
     require_role(ctx, *_READ_ROLES)
     settings = get_settings()
@@ -833,54 +914,120 @@ def enqueue_pdf_export(ctx: OrgContext, report_id: UUID) -> JobOut:
             {"org": ctx.organization_id, "key": idem},
         ).first()
         if existing:
-            return _job_out(existing)
-        job_id = uuid4()
-        job = conn.execute(
+            job_id = existing.id
+            out = _job_out(existing)
+            conn.commit()
+        else:
+            job_id = uuid4()
+            job = conn.execute(
+                text(
+                    f"""
+                    INSERT INTO jobs (
+                      id, organization_id, job_type, status, requested_by,
+                      idempotency_key, input_ref, max_attempts
+                    ) VALUES (
+                      :id, :org, 'report_pdf_export', 'queued', :req,
+                      :key, CAST(:inp AS jsonb), :max_attempts
+                    )
+                    RETURNING {_JOB_COLS}
+                    """
+                ),
+                {
+                    "id": job_id,
+                    "org": ctx.organization_id,
+                    "req": ctx.membership_id,
+                    "key": idem,
+                    "max_attempts": settings.worker_max_attempts,
+                    "inp": json.dumps(
+                        {
+                            "organization_id": str(ctx.organization_id),
+                            "report_id": str(report_id),
+                            "report_version_no": row.version_no,
+                            "assessment_id": str(row.assessment_id),
+                            "requested_by_membership_id": str(ctx.membership_id),
+                        }
+                    ),
+                },
+            ).one()
+            write_audit(
+                conn,
+                organization_id=ctx.organization_id,
+                actor_type="user",
+                actor_user_id=ctx.principal.user_id,
+                actor_membership_id=ctx.membership_id,
+                action="report.export_pdf_enqueue",
+                resource_type="job",
+                resource_id=job_id,
+                metadata={
+                    "report_id": str(report_id),
+                    "report_version_no": row.version_no,
+                },
+            )
+            conn.commit()
+            out = _job_out(job)
+
+    healed = _process_pdf_inline_local_memory(
+        ctx, job_id=job_id, report_id=report_id, job_status=out.status
+    )
+    return healed or out
+
+def get_pdf_bytes_local(ctx: OrgContext, report_id: UUID) -> tuple[bytes, str]:
+    """Local memory GET for PDF bytes (browser cannot fetch memory:// URLs)."""
+    require_role(ctx, *_READ_ROLES)
+    settings = get_settings()
+    if settings.storage_backend != "memory":
+        raise AppError(
+            "local_bytes_unavailable",
+            "Local PDF bytes endpoint only available with STORAGE_BACKEND=memory",
+            status_code=503,
+        )
+    storage = get_storage(settings)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = conn.execute(
             text(
                 f"""
-                INSERT INTO jobs (
-                  id, organization_id, job_type, status, requested_by,
-                  idempotency_key, input_ref, max_attempts
-                ) VALUES (
-                  :id, :org, 'report_pdf_export', 'queued', :req,
-                  :key, CAST(:inp AS jsonb), :max_attempts
-                )
-                RETURNING {_JOB_COLS}
+                SELECT {_REPORT_COLS}
+                FROM reports
+                WHERE id = :id AND organization_id = :org
                 """
             ),
-            {
-                "id": job_id,
-                "org": ctx.organization_id,
-                "req": ctx.membership_id,
-                "key": idem,
-                "max_attempts": settings.worker_max_attempts,
-                "inp": json.dumps(
-                    {
-                        "organization_id": str(ctx.organization_id),
-                        "report_id": str(report_id),
-                        "report_version_no": row.version_no,
-                        "assessment_id": str(row.assessment_id),
-                        "requested_by_membership_id": str(ctx.membership_id),
-                    }
-                ),
-            },
-        ).one()
+            {"id": report_id, "org": ctx.organization_id},
+        ).first()
+        if row is None:
+            raise AppError("not_found", "Report not found", status_code=404)
+        if row.status not in ("published", "archived", "superseded"):
+            raise AppError(
+                "download_not_allowed",
+                f"PDF download requires published|archived|superseded (current={row.status})",
+                status_code=409,
+            )
+        if not row.export_storage_key:
+            raise AppError(
+                "export_not_ready",
+                "PDF export not ready (worker pending or failed)",
+                status_code=409,
+            )
+        key = row.export_storage_key
         write_audit(
             conn,
             organization_id=ctx.organization_id,
             actor_type="user",
             actor_user_id=ctx.principal.user_id,
             actor_membership_id=ctx.membership_id,
-            action="report.export_pdf_enqueue",
-            resource_type="job",
-            resource_id=job_id,
-            metadata={
-                "report_id": str(report_id),
-                "report_version_no": row.version_no,
-            },
+            action="report.export_pdf_bytes_local",
+            resource_type="report",
+            resource_id=report_id,
+            metadata={"byte_path": "local"},
         )
         conn.commit()
-    return _job_out(job)
+    head = storage.head(key)
+    if not head.exists:
+        raise AppError(
+            "object_missing",
+            "PDF object missing in storage",
+            status_code=409,
+        )
+    return storage.get_bytes(key), "application/pdf"
 
 
 def export_pdf_download_url(ctx: OrgContext, report_id: UUID) -> DownloadUrlOut:

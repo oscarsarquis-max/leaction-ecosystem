@@ -267,8 +267,18 @@ export function useAuditDashboard(assessmentId: string | undefined) {
         interviewsDone === 0
       ) {
         return {
-          href: `/assessments/${aid}/audit-plan`,
+          href: `/assessments/${aid}/work`,
           label: "Iniciar primeira entrevista",
+        };
+      }
+      if (
+        status === "in_progress" &&
+        interviewsDone > 0 &&
+        plannedInterviews === 0
+      ) {
+        return {
+          href: `/assessments/${aid}/advanced`,
+          label: "Registrar constatações",
         };
       }
       return continueAction;

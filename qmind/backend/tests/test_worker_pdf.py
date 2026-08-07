@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,7 +12,7 @@ from sqlalchemy import create_engine, text
 from app.config import get_settings
 from app.main import app
 from app.storage.memory import InMemoryObjectStorage
-from app.worker.jobs import claim_next, recover_abandoned
+from app.worker.jobs import claim_job, claim_next, recover_abandoned
 from app.worker.process_pdf import process_report_pdf_export
 from tests.conftest import ADMIN_URL
 from tests.test_assessments import _bootstrap_org, _dev_headers
@@ -21,6 +22,16 @@ from tests.test_reports import _report_ready
 @pytest.fixture()
 def client():
     return TestClient(app)
+
+
+@pytest.fixture()
+def disable_inline_pdf():
+    """Worker tests exercise the out-of-band claim path; disable memory inline."""
+    with patch(
+        "app.modules.reports.service._process_pdf_inline_local_memory",
+        return_value=None,
+    ):
+        yield
 
 
 def _drain_queued_jobs() -> None:
@@ -57,7 +68,9 @@ def _publish_report(client: TestClient):
     return h, org_id, aid, qm, rid
 
 
-def test_worker_pdf_success_idempotent_download_and_cross_org(client: TestClient):
+def test_worker_pdf_success_idempotent_download_and_cross_org(
+    client: TestClient, disable_inline_pdf
+):
     h, org_id, _aid, _qm, rid = _publish_report(client)
     job1 = client.post(f"/api/v1/reports/{rid}/export-pdf", headers=h)
     assert job1.status_code == 202
@@ -124,7 +137,7 @@ def test_worker_pdf_success_idempotent_download_and_cross_org(client: TestClient
     assert deny.status_code in (403, 404)
 
 
-def test_worker_retry_then_fail(client: TestClient, monkeypatch):
+def test_worker_retry_then_fail(client: TestClient, monkeypatch, disable_inline_pdf):
     h, _org_id, _aid, _qm, rid = _publish_report(client)
     job_id = client.post(f"/api/v1/reports/{rid}/export-pdf", headers=h).json()["id"]
 
@@ -165,11 +178,13 @@ def test_worker_retry_then_fail(client: TestClient, monkeypatch):
     assert st2["attempt_count"] == 2
 
 
-def test_recover_abandoned_running_job(client: TestClient):
+def test_recover_abandoned_running_job(client: TestClient, disable_inline_pdf):
     h, _org_id, _aid, _qm, rid = _publish_report(client)
     job_id = client.post(f"/api/v1/reports/{rid}/export-pdf", headers=h).json()["id"]
     settings = get_settings()
-    claimed = claim_next(settings)
+    from uuid import UUID
+
+    claimed = claim_job(settings, UUID(job_id))
     assert claimed is not None
 
     stale = datetime.now(timezone.utc) - timedelta(seconds=settings.worker_lease_seconds + 60)
@@ -192,7 +207,21 @@ def test_recover_abandoned_running_job(client: TestClient):
     row = client.get(f"/api/v1/jobs/{job_id}", headers=h).json()
     assert row["status"] == "queued"
 
-    claimed2 = claim_next(settings)
+    claimed2 = claim_job(settings, UUID(job_id))
     assert claimed2 is not None
     assert str(claimed2.id) == job_id
     assert process_report_pdf_export(claimed2, settings) == "succeeded"
+
+
+def test_export_pdf_inline_memory_materializes_bytes(client: TestClient):
+    """STORAGE_BACKEND=memory must process inline so download works without worker."""
+    h, _org_id, _aid, _qm, rid = _publish_report(client)
+    job = client.post(f"/api/v1/reports/{rid}/export-pdf", headers=h)
+    assert job.status_code == 202, job.text
+    assert job.json()["status"] == "succeeded"
+    dl = client.get(f"/api/v1/reports/{rid}/export-pdf/download-url", headers=h)
+    assert dl.status_code == 200, dl.text
+    assert dl.json()["url"].startswith("memory://")
+    pdf = client.get(f"/api/v1/reports/{rid}/export-pdf/bytes", headers=h)
+    assert pdf.status_code == 200, pdf.text
+    assert pdf.content.startswith(b"%PDF")

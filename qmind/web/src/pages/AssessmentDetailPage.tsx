@@ -24,9 +24,11 @@ import { MaturityAnalysisPanel } from "@/components/MaturityAnalysisPanel";
 import { ActionPlanPanel } from "@/components/ActionPlanPanel";
 import { ReportPanel } from "@/components/ReportPanel";
 import { BlockingNotice } from "@/components/shared/BlockingNotice";
+import { AssessmentSectionNav } from "@/components/navigation/AssessmentSectionNav";
 import { QmindApiError } from "@/api/qmindApi";
 import { labelAssessmentStatus, labelAssessmentType } from "@/lib/labels";
 import type { ScopeKind } from "@/lib/validation";
+import { useBeginAssessmentAnalysis } from "@/hooks/useFieldExecution";
 
 export function AssessmentDetailPage() {
   const { assessmentId } = useParams<{ assessmentId: string }>();
@@ -35,6 +37,8 @@ export function AssessmentDetailPage() {
   const scopes = useAssessmentScopes(assessmentId);
   const team = useAssessmentTeam(assessmentId);
   const perms = useAssessmentPermissions(assessment.data?.status);
+  const beginAnalysis = useBeginAssessmentAnalysis(assessmentId ?? "");
+  const [phaseError, setPhaseError] = useState<unknown>(null);
 
   if (!assessmentId) {
     return <EmptyPanel title="Avaliação inválida" />;
@@ -67,13 +71,14 @@ export function AssessmentDetailPage() {
 
   return (
     <section className="space-y-8">
+      <AssessmentSectionNav assessmentId={assessmentId} />
       <header>
         <p className="text-sm text-teal-950/60">
           <Link to={`/assessments/${assessmentId}`} className="hover:underline">
             Visão geral
           </Link>
           {" / "}
-          Trabalho da fase
+          Análise, ações e relatório
         </p>
         <div className="mt-2 flex flex-wrap items-baseline justify-between gap-3">
           <h1 className="font-display text-3xl tracking-tight text-teal-950">
@@ -87,19 +92,46 @@ export function AssessmentDetailPage() {
           </span>
         </div>
         <p className="mt-2 text-sm text-teal-950/60">
-          Papel:{" "}
-          <span className="font-semibold text-teal-950">
-            {perms.roles.join(", ") || "—"}
-          </span>
           {!perms.canMutate ? (
-            <span className="ml-2 text-amber-900">(somente leitura)</span>
-          ) : null}
+            <span className="text-amber-900">Visualização — sem permissão de edição.</span>
+          ) : (
+            <span>Você pode editar o que a fase atual permitir.</span>
+          )}
         </p>
         <p className="mt-3 text-sm text-teal-950/70">
-          Modelo e norma já vinculados automaticamente nesta organização.
-          {a.lead_membership_id ? " Líder da avaliação definido." : ""}
+          Aqui você registra constatações, maturidade, plano de ação e relatório —
+          na ordem do percurso. O Assistente QMind explica cada bloco.
         </p>
       </header>
+
+      {phaseError ? <ApiErrorBanner error={phaseError} /> : null}
+
+      {a.status === "in_progress" && perms.canMutate ? (
+        <section
+          className="rounded-lg border border-teal-900/15 bg-teal-50/50 p-4"
+          data-testid="begin-analysis-cta"
+        >
+          <h2 className="font-display text-lg text-teal-950">
+            Pronto para a análise?
+          </h2>
+          <p className="mt-1 text-sm text-teal-950/70">
+            Você pode registrar constatações ainda durante o campo. Quando a
+            coleta estiver suficiente, encerre o campo e formalize a fase de
+            análise.
+          </p>
+          <button
+            type="button"
+            className="qm-btn-primary mt-3"
+            disabled={beginAnalysis.isPending}
+            data-testid="begin-analysis-button"
+            onClick={() =>
+              void beginAnalysis.mutateAsync().then(() => setPhaseError(null)).catch(setPhaseError)
+            }
+          >
+            Encerrar campo e iniciar análise
+          </button>
+        </section>
+      ) : null}
 
       {!canEdit && a.status === "draft" && !perms.canMutate ? (
         <p
@@ -165,7 +197,7 @@ export function AssessmentDetailPage() {
           <h2 className="font-display text-xl text-teal-950">Central de Campo</h2>
           <p className="mt-1 text-sm text-teal-950/70">
             Entrevistas, evidências e pendências do dia ficam na Central de Campo —
-            único painel operacional de execução (esta tela avançada não duplica o fluxo).
+            use esta tela para constatações, maturidade, ações e relatório.
           </p>
           <Link
             to={`/assessments/${assessmentId}/work`}
@@ -241,7 +273,7 @@ export function AssessmentDetailPage() {
           missingItem="Registre e revise as constatações da análise antes de abrir o plano de ação."
           actionText="Voltar para a Análise"
           onResolve={() => {
-            void navigate(`/assessments/${assessmentId}/work`);
+            void navigate(`/assessments/${assessmentId}/advanced`);
           }}
         />
       ) : null}
@@ -266,9 +298,9 @@ export function AssessmentDetailPage() {
           title="Relatório bloqueado"
           reason="O relatório só é liberado após o plano de ação."
           missingItem="Conclua análise e plano de ação antes de consolidar o relatório."
-          actionText="Voltar para o Plano de ação"
+          actionText="Continuar nesta tela"
           onResolve={() => {
-            void navigate(`/assessments/${assessmentId}/work`);
+            void navigate(`/assessments/${assessmentId}/advanced`);
           }}
         />
       ) : null}

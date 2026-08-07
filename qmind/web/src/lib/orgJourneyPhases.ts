@@ -279,7 +279,7 @@ export function homeNextAction(input: {
       description: "Transforme o campo em constatações e maturidade.",
       reason: pending[0] ?? "Fase de análise em andamento.",
       actionText: "Tratar constatações",
-      href: `/assessments/${assessmentId}/work`,
+      href: `/assessments/${assessmentId}/advanced`,
     };
   }
 
@@ -289,7 +289,7 @@ export function homeNextAction(input: {
       description: "Defina responsáveis, prazos e validação das ações.",
       reason: pending[0] ?? "Plano de ação em andamento.",
       actionText: "Acompanhar ações",
-      href: `/assessments/${assessmentId}/work`,
+      href: `/assessments/${assessmentId}/advanced`,
     };
   }
 
@@ -299,7 +299,7 @@ export function homeNextAction(input: {
       description: "Consolide, revise e publique o relatório da avaliação.",
       reason: pending[0] ?? "Relatório ainda não publicado.",
       actionText: "Preparar relatório",
-      href: `/assessments/${assessmentId}/work`,
+      href: `/assessments/${assessmentId}/advanced`,
     };
   }
 
