@@ -147,3 +147,55 @@ class MembershipStatus(str, Enum):
     active = "active"
     revoked = "revoked"
     expired = "expired"
+
+
+class EvolutionCategory(str, Enum):
+    direction_governance = "direction_governance"
+    planning_risks = "planning_risks"
+    people_resources = "people_resources"
+    operations_customers = "operations_customers"
+    measurement_decisions = "measurement_decisions"
+    correction_improvement = "correction_improvement"
+
+
+class EvolutionPriority(str, Enum):
+    now = "now"
+    next_cycle = "next_cycle"
+    future = "future"
+    investigate = "investigate"
+
+
+class EvolutionConfidence(str, Enum):
+    high = "high"
+    medium = "medium"
+    low = "low"
+
+
+class EvolutionImpact(str, Enum):
+    high = "high"
+    medium = "medium"
+    low = "low"
+
+
+class EvolutionEffort(str, Enum):
+    high = "high"
+    medium = "medium"
+    low = "low"
+
+
+class EvolutionSuggestionStatus(str, Enum):
+    proposed = "proposed"
+    accepted = "accepted"
+    dismissed = "dismissed"
+    converted_to_action = "converted_to_action"
+    superseded = "superseded"
+
+
+class EvolutionGenerationMode(str, Enum):
+    preliminary = "preliminary"
+    analysis_ready = "analysis_ready"
+
+
+class EvolutionPackageStatus(str, Enum):
+    active = "active"
+    superseded = "superseded"
