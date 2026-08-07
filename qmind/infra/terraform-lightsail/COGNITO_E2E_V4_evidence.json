@@ -1,22 +1,10 @@
 ﻿{
     "gate":  "011-V4-cognito-e2e",
-    "started_at":  "2026-08-04T13:22:19.6908639Z",
-    "finished_at":  "2026-08-04T13:25:20.8035861Z",
+    "started_at":  "2026-08-07T14:19:59.4924184Z",
     "api_base":  "https://api.homolog.qmind.com.br",
     "app_base":  "https://app.homolog.qmind.com.br",
     "pool_id":  "us-east-2_ewD6ck5PM",
     "client_id":  "306r2id1f5gm9vk733v3rlbda6",
-    "verdict":  "PASS",
-    "user_a_email":  "qmind.homolog.gate.a+a9123a1c@leaction.com.br",
-    "user_b_email":  "qmind.homolog.gate.b+04e8a14f@leaction.com.br",
-    "user_a_sub":  "61ab25e0-60e1-70ab-812a-f37985f9d4e3",
-    "user_b_sub":  "b1ebb5e0-f0d1-705a-2d89-0f9cdd86bd9c",
-    "org_a_id":  "8c0c68c8-0d94-4284-8568-e92dfe665d92",
-    "org_b_id":  "ce24cda7-12a6-46e6-8245-8006fa3795ff",
-    "ui_login_email":  "qmind.homolog.ui+8a38f8df@leaction.com.br",
-    "temp_users_created":  true,
-    "deployed_git":  "d61e463",
-    "image_tag":  "qmind-api:mvp-fullstack-v0 / qmind-web:mvp-fullstack-v0",
     "checks":  [
                    {
                        "id":  "health_auth_mode",
@@ -36,12 +24,12 @@
                    {
                        "id":  "access_token_claims",
                        "status":  "PASS",
-                       "detail":  "sub=61ab25e0-60e1-70ab-812a-f37985f9d4e3 token_use=access client_id=ok iss=ok access=eyJraW...bz-A (len=1067)"
+                       "detail":  "sub=a1bb65b0-8081-70ba-3878-9e9372c8062c token_use=access client_id=ok iss=ok access=eyJraW...nTUQ (len=1067)"
                    },
                    {
                        "id":  "login_api_create_org",
                        "status":  "PASS",
-                       "detail":  "org_a=8c0c68c8-0d94-4284-8568-e92dfe665d92 status=201"
+                       "detail":  "org_a=0d1a277e-98fe-475f-a02e-51206ff89a96 status=201"
                    },
                    {
                        "id":  "memberships_list",
@@ -61,7 +49,7 @@
                    {
                        "id":  "second_org",
                        "status":  "PASS",
-                       "detail":  "org_b=ce24cda7-12a6-46e6-8245-8006fa3795ff sub_b=b1ebb5e0-f0d1-705a-2d89-0f9cdd86bd9c"
+                       "detail":  "org_b=331576fe-9ebd-4280-a650-37b4d939fe87 sub_b=e1ab2530-4031-7036-b83c-448a218f775c"
                    },
                    {
                        "id":  "cross_org",
@@ -91,7 +79,7 @@
                    {
                        "id":  "session_refresh",
                        "status":  "PASS",
-                       "detail":  "new_access=eyJraW...QgdQ (len=1067) memberships_ok count=1"
+                       "detail":  "new_access=eyJraW...5mIg (len=1067) memberships_ok count=1"
                    },
                    {
                        "id":  "logout_refresh_revoked",
@@ -112,11 +100,17 @@
                        "id":  "ui_hosted_login",
                        "status":  "PASS",
                        "detail":  "hosted UI status=200"
-                   },
-                   {
-                       "id":  "ui_login_playwright",
-                       "status":  "PASS",
-                       "detail":  "Entrar -\u003e Cognito hosted UI -\u003e callback; user=qmind.homolog.ui+8a38f8df@leaction.com.br; no JWT in web storage"
                    }
-               ]
+               ],
+    "finished_at":  "2026-08-07T14:20:26.6731342Z",
+    "verdict":  "PASS",
+    "user_a_email":  "qmind.homolog.gate.a+2054ca6b@leaction.com.br",
+    "user_b_email":  "qmind.homolog.gate.b+65f50e59@leaction.com.br",
+    "user_a_sub":  "a1bb65b0-8081-70ba-3878-9e9372c8062c",
+    "user_b_sub":  "e1ab2530-4031-7036-b83c-448a218f775c",
+    "org_a_id":  "0d1a277e-98fe-475f-a02e-51206ff89a96",
+    "org_b_id":  "331576fe-9ebd-4280-a650-37b4d939fe87",
+    "temp_users_created":  true,
+    "deployed_git":  "88e599b",
+    "image_tag":  "qmind-api:mvp-fullstack-v0 / qmind-web:mvp-fullstack-v0"
 }
