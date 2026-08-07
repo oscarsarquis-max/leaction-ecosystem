@@ -7,6 +7,10 @@ from sqlalchemy.orm import Session, joinedload
 
 from catalog_service import find_indicador_by_cod
 from colaborador_service import resolve_id_colaborador_from_payload
+from ingestao_pessoas_service import (
+    is_documento_por_pessoa,
+    processar_ingestao_pessoas,
+)
 from medicao_service import (
     CODIGO_NAO_CATALOGADO,
     STATUS_FALHA,
@@ -28,6 +32,9 @@ class IngestionResult:
     medicao: Medicoes | None
     sucesso: bool
     mensagem: str | None = None
+    colaboradores_processados: int = 0
+    medicoes_inseridas: int = 0
+    tipo: str = "indicador_unico"
 
 
 def build_payload_from_raw(raw_content: str) -> dict:
@@ -124,6 +131,34 @@ def process_json_ingestion(
     medicao_id: int | None = None
 
     try:
+        payload_inicial = build_payload_from_raw(raw_content)
+
+        # Relatórios WorkItems_*_por_Pessoa → ETL fatiado (não usa contrato de 1 métrica)
+        if is_documento_por_pessoa(payload_inicial):
+            try:
+                resultado_pessoas = processar_ingestao_pessoas(
+                    engine,
+                    nome_arquivo=nome_arquivo,
+                    documento=payload_inicial,
+                )
+            except Exception as exc:
+                logger.exception("Falha na ingestão por pessoa: %s", nome_arquivo)
+                return IngestionResult(
+                    medicao=None,
+                    sucesso=False,
+                    mensagem=str(exc),
+                    tipo="por_pessoa",
+                )
+
+            return IngestionResult(
+                medicao=None,
+                sucesso=resultado_pessoas.sucesso,
+                mensagem=resultado_pessoas.mensagem,
+                colaboradores_processados=resultado_pessoas.colaboradores_processados,
+                medicoes_inseridas=resultado_pessoas.medicoes_inseridas,
+                tipo="por_pessoa",
+            )
+
         medicao_id = _fase_preparacao(
             engine,
             nome_arquivo=nome_arquivo,

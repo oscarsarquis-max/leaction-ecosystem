@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   CartesianGrid,
   Line,
@@ -11,8 +10,6 @@ import {
 import { BRAND_COLORS } from "../theme/brand";
 import { calcularHistoricoIAPS, calcularIAPS, obterTitulosIaps } from "../utils/metricas";
 import DetalhamentoDimensoes from "./DetalhamentoDimensoes";
-import DemonstrativoCalculo from "./DemonstrativoCalculo";
-import { buildDefinicoesIndicadores } from "./IndicadorNomeComDefinicao";
 
 const DESCRICAO_IAPS = "Índice de Avaliação de Produtividade e Serviços";
 
@@ -146,7 +143,6 @@ function ResumoExecutivo({
   filtros,
   iapsCalculado,
   scoresDimensoes,
-  memoriaCalculo,
   modoColaborador = false,
 }) {
   const iapsLocal = calcularIAPS(metricas);
@@ -157,10 +153,6 @@ function ResumoExecutivo({
   const iapsReferencial =
     iapsCalculado?.iaps_baseline ?? iapsLocal.iapsReferencial;
   const escalaUnitaria = Boolean(iapsCalculado?.id_colaborador);
-  const definicoesIndicadores = useMemo(
-    () => buildDefinicoesIndicadores(metricas),
-    [metricas]
-  );
 
   const semDados = iapsSelecionado === null && iapsReferencial === null;
 
@@ -173,40 +165,32 @@ function ResumoExecutivo({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <CardIaps
-            titulo={tituloSelecionado}
-            valor={iapsSelecionado}
-            escalaUnitaria={escalaUnitaria}
-            corDestaque={BRAND_COLORS.verde}
-            barraCor="bg-brand-verde"
-          />
-          <CardIaps
-            titulo={tituloReferencial}
-            valor={iapsReferencial}
-            escalaUnitaria={escalaUnitaria}
-            corDestaque={BRAND_COLORS.cinza}
-            barraCor="bg-brand-cinza"
-          />
-        </div>
-
-        {modoColaborador && (
-          <DetalhamentoDimensoes
-            scoresDimensoes={scoresDimensoes}
-            colaboradorNome={iapsCalculado?.nome_colaborador}
-          />
-        )}
-
-        <SparklineHistoricoIaps historico={historicoIaps} />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <CardIaps
+          titulo={tituloSelecionado}
+          valor={iapsSelecionado}
+          escalaUnitaria={escalaUnitaria}
+          corDestaque={BRAND_COLORS.verde}
+          barraCor="bg-brand-verde"
+        />
+        <CardIaps
+          titulo={tituloReferencial}
+          valor={iapsReferencial}
+          escalaUnitaria={escalaUnitaria}
+          corDestaque={BRAND_COLORS.cinza}
+          barraCor="bg-brand-cinza"
+        />
       </div>
 
-      <DemonstrativoCalculo
-        memoriaCalculo={memoriaCalculo}
-        iapsCalculado={iapsCalculado}
-        definicoesIndicadores={definicoesIndicadores}
-      />
+      {modoColaborador && (
+        <DetalhamentoDimensoes
+          scoresDimensoes={scoresDimensoes}
+          colaboradorNome={iapsCalculado?.nome_colaborador}
+        />
+      )}
+
+      <SparklineHistoricoIaps historico={historicoIaps} />
     </div>
   );
 }

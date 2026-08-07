@@ -7,7 +7,10 @@ const {
   resolverPesosDimensoesComConfig,
   resolverPesosNiveisComConfig,
 } = require("./config_pesos_db");
-const { calcularScoreIndicador } = require("./indicador_score_engine");
+const {
+  calcularScoreIndicador,
+  calcularScoreIndicadorDetalhado,
+} = require("./indicador_score_engine");
 
 /**
  * Regra estrita: quando uma nota de nível estiver ausente, zera a parcela
@@ -41,6 +44,13 @@ function arredondar(valor, casas = 2) {
 
 function extrairScorePercentual(metrica, campo = "selecionado") {
   return calcularScoreIndicador(metrica, campo);
+}
+
+function extrairDetalheCalculo(metrica, campo = "selecionado") {
+  if (metrica.calculo && campo === "selecionado") {
+    return metrica.calculo;
+  }
+  return calcularScoreIndicadorDetalhado(metrica, campo);
 }
 
 function normalizarNivelAvaliacao(nivel) {
@@ -133,6 +143,7 @@ function agruparIndicadoresPorDimensao(medicoesElegiveis, campoScore = "selecion
     const dimensao = metrica.dimensao;
     const nivel = normalizarNivelAvaliacao(metrica.nivel_avaliacao);
     const score = extrairScorePercentual(metrica, campoScore);
+    const detalhe = campoScore === "selecionado" ? extrairDetalheCalculo(metrica) : null;
 
     if (!porDimensao.has(dimensao)) {
       porDimensao.set(dimensao, { Individual: [], Equipe: [] });
@@ -144,6 +155,13 @@ function agruparIndicadoresPorDimensao(medicoesElegiveis, campoScore = "selecion
       explicacao: metrica.explicacao ?? null,
       importancia: metrica.importancia ?? null,
       score: arredondar(score),
+      formula_normalizada: detalhe?.formula_normalizada ?? metrica.formula_normalizada ?? null,
+      variaveis: detalhe?.variaveis ?? null,
+      expressao_substituida: detalhe?.expressao_substituida ?? null,
+      resultado_bruto: detalhe?.resultado_bruto ?? null,
+      erro: detalhe?.erro ?? null,
+      payload: metrica.payload ?? null,
+      baseline_score: metrica.baseline_score ?? null,
     });
   });
 

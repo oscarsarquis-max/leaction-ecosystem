@@ -68,8 +68,8 @@ function VisaoOrganizacao({ metricas, opcoes }) {
     <section id="visao-organizacao" className="space-y-6">
       <div className="rounded-xl border border-brand-verde/20 bg-brand-verde/5 px-4 py-3 text-sm text-brand-cinza">
         <strong className="text-brand-verde">Visão geral da organização</strong> — métricas
-        consolidadas de todos os setores e colaboradores. Selecione um colaborador nos filtros
-        ou nos atalhos APD para abrir a análise individual, cruzada e insights de IA.
+        consolidadas de todos os setores e colaboradores. Use a busca por nome ou matrícula
+        para abrir a análise individual, cruzada e insights de IA.
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

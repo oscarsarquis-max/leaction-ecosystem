@@ -13,11 +13,18 @@ if (-not (Test-Port 5432)) {
     Write-Host "AVISO: PostgreSQL local (5432) nao detectado." -ForegroundColor Yellow
 }
 
-if (Test-Port 5000) {
-    Write-Host "Flask/watcher ja ativo na porta 5000." -ForegroundColor Green
+# Preferir FLASK_PORT do .env (default 5001 se 5000 estiver ocupada por outra app).
+$flaskPort = 5001
+$envFile = Join-Path $Root ".env"
+if (Test-Path $envFile) {
+    $m = Select-String -Path $envFile -Pattern '^\s*FLASK_PORT\s*=\s*(\d+)' | Select-Object -First 1
+    if ($m) { $flaskPort = [int]$m.Matches[0].Groups[1].Value }
+}
+if (Test-Port $flaskPort) {
+    Write-Host "Flask/watcher ja ativo na porta $flaskPort." -ForegroundColor Green
 } else {
-    Write-Host "A iniciar Flask + watcher JSON (porta 5000)..." -ForegroundColor Cyan
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$Root\servicos'; python app.py"
+    Write-Host "A iniciar Flask + watcher JSON (porta $flaskPort)..." -ForegroundColor Cyan
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:FLASK_PORT='$flaskPort'; cd '$Root\servicos'; python app.py"
     Start-Sleep -Seconds 3
 }
 
@@ -48,8 +55,8 @@ Write-Host ""
 Write-Host "API backend:" -ForegroundColor Green
 Write-Host "  http://127.0.0.1:3002/api/dashboard/metricas" -ForegroundColor White
 Write-Host ""
-Write-Host "Flask ingestao (watcher ativo se porta 5000 estiver UP):" -ForegroundColor Green
-Write-Host "  http://127.0.0.1:5000/health" -ForegroundColor White
+Write-Host "Flask ingestao (watcher ativo se porta $flaskPort estiver UP):" -ForegroundColor Green
+Write-Host "  http://127.0.0.1:$flaskPort/health" -ForegroundColor White
 
 $AppUrl = "http://localhost:5176/"
 Write-Host ""

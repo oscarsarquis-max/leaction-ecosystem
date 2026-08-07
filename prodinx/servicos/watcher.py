@@ -130,25 +130,36 @@ def process_json_file(file_path: Path) -> None:
             logger.warning("Ficheiro removido durante processamento: %s", file_path.name)
             return
 
-        if resultado.sucesso and resultado.medicao.status_import == STATUS_SUCESSO:
+        if resultado.sucesso:
             destination = move_file(file_path, PROCESSED_DIR)
-            indicador = resultado.medicao.indicador
-            logger.info(
-                "Importação concluída: %s -> %s (medicao id=%s, indicador=%s, id_colaborador=%s)",
-                file_path.name,
-                destination.name,
-                resultado.medicao.id,
-                indicador.cod_indicador if indicador else "—",
-                resultado.medicao.id_colaborador,
-            )
+            if resultado.tipo == "por_pessoa":
+                logger.info(
+                    "Importação por pessoa concluída: %s -> %s (%s)",
+                    file_path.name,
+                    destination.name,
+                    resultado.mensagem,
+                )
+            else:
+                indicador = resultado.medicao.indicador if resultado.medicao else None
+                logger.info(
+                    "Importação concluída: %s -> %s (medicao id=%s, indicador=%s, id_colaborador=%s)",
+                    file_path.name,
+                    destination.name,
+                    resultado.medicao.id if resultado.medicao else None,
+                    indicador.cod_indicador if indicador else "—",
+                    resultado.medicao.id_colaborador if resultado.medicao else None,
+                )
             return
 
         destination = move_file(file_path, FAILED_DIR)
+        detalhe = resultado.mensagem
+        if not detalhe and resultado.medicao is not None:
+            detalhe = resultado.medicao.detalhe_status
         logger.error(
             "Falha na importação: %s -> %s | %s",
             file_path.name,
             destination.name,
-            resultado.mensagem or resultado.medicao.detalhe_status,
+            detalhe,
         )
     except Exception as exc:
         logger.exception("Erro não tratado ao processar %s", file_path.name)

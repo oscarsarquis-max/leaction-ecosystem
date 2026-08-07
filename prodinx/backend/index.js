@@ -20,7 +20,13 @@ const {
   salvarConfiguracaoPesos,
 } = require("./services/configuracao_pesos_api");
 const createIndicadoresRouter = require("./routes/indicadores");
-const { calcularScoreIndicador } = require("./services/indicador_score_engine");
+const createIngestaoRouter = require("./routes/ingestao");
+const {
+  calcularScoreIndicadorDetalhado,
+} = require("./services/indicador_score_engine");
+const {
+  obterMetricasPorColaborador,
+} = require("./services/dashboard_metricas_service");
 const {
   gerarAnaliseInteligente,
   montarContextoAnalise,
@@ -58,9 +64,11 @@ app.use(
   })
 );
 
-app.use(express.json());
+// Relatórios Azure DevOps (por pessoa) podem ultrapassar o default 100kb do Express
+app.use(express.json({ limit: "30mb" }));
 
 app.use("/api/indicadores", createIndicadoresRouter(pool));
+app.use("/api/ingestao", createIngestaoRouter(pool));
 
 function normalizeScoreParts(score) {
   if (score === null || score === undefined || Number.isNaN(Number(score))) {
@@ -356,41 +364,29 @@ function resolverBuscaFiltro(filtros) {
 
 function mapDashboardMetrica(row, nivelBaseline = "colaborador") {
   const resumo = row.resumo && typeof row.resumo === "object" ? { ...row.resumo } : {};
-  const score =
-    resumo.score !== undefined && resumo.score !== null
-      ? Number(resumo.score)
-      : row.efficiency_score !== undefined && row.efficiency_score !== null
-        ? Number(row.efficiency_score)
-        : null;
+  const payload = row.payload && typeof row.payload === "object" ? row.payload : null;
 
-  if (score !== null) {
-    const normalized = normalizeScoreParts(score);
-    resumo.score = normalized.score;
-    resumo.score_percentual = normalized.score_percentual;
-  } else if (row.score_percentual !== null && row.score_percentual !== undefined) {
-    const normalized = normalizeScoreParts(Number(row.score_percentual));
-    resumo.score = normalized.score;
-    resumo.score_percentual = normalized.score_percentual;
-  }
-
-  const scoreDinamico = calcularScoreIndicador(
+  const detalhe = calcularScoreIndicadorDetalhado(
     {
       cod_indicador: row.cod_indicador,
       formula_normalizada: row.formula_normalizada,
       parametros_configuraveis: row.parametros_configuraveis,
-      payload: row.payload && typeof row.payload === "object" ? row.payload : null,
+      payload,
       resumo,
       baseline_score: row.baseline_score,
     },
     "selecionado"
   );
 
-  if (scoreDinamico !== null && !Number.isNaN(scoreDinamico)) {
-    const normalizedDinamico = normalizeScoreParts(scoreDinamico);
-    resumo.score = normalizedDinamico.score;
-    resumo.score_percentual = normalizedDinamico.score_percentual;
-    resumo.score_origem = row.formula_normalizada ? "formula_normalizada" : "armazenado";
-  }
+  const normalizedDinamico = normalizeScoreParts(detalhe.score);
+  resumo.score = normalizedDinamico.score;
+  resumo.score_percentual = normalizedDinamico.score_percentual;
+  resumo.score_origem = detalhe.origem;
+  resumo.formula_normalizada = detalhe.formula_normalizada;
+  resumo.variaveis = detalhe.variaveis;
+  resumo.expressao_substituida = detalhe.expressao_substituida;
+  resumo.resultado_bruto = detalhe.resultado_bruto;
+  resumo.erro_calculo = detalhe.erro;
 
   const baselineScore =
     row.baseline_score !== null && row.baseline_score !== undefined
@@ -464,7 +460,7 @@ function mapDashboardMetrica(row, nivelBaseline = "colaborador") {
     subpapeis_aplicaveis: indicador.subpapeis_aplicaveis,
     formula_normalizada: indicador.formula_normalizada,
     parametros_configuraveis: indicador.parametros_configuraveis,
-    payload: row.payload && typeof row.payload === "object" ? row.payload : null,
+    payload,
     explicacao: indicador.explicacao,
     importancia: indicador.importancia,
     data_importacao: medicao.data_importacao,
@@ -474,6 +470,16 @@ function mapDashboardMetrica(row, nivelBaseline = "colaborador") {
     resumo,
     itens_total,
     periodo,
+    calculo: {
+      formula_normalizada: detalhe.formula_normalizada,
+      variaveis: detalhe.variaveis,
+      expressao_substituida: detalhe.expressao_substituida,
+      resultado_bruto: detalhe.resultado_bruto,
+      score_percentual: detalhe.score,
+      origem: detalhe.origem,
+      erro: detalhe.erro,
+      baseline_score: baselineScore,
+    },
   };
 }
 
@@ -632,11 +638,33 @@ app.post("/api/configuracao-pesos", async (req, res, next) => {
   }
 });
 
+/**
+ * GET /api/dashboard/metricas/:id_colaborador
+ * Scores em tempo real via mathjs sobre payloads limpos + IAPS com pesos do subpapel.
+ */
+app.get("/api/dashboard/metricas/:id_colaborador", async (req, res, next) => {
+  try {
+    const resposta = await obterMetricasPorColaborador(
+      pool,
+      req.params.id_colaborador
+    );
+    res.json(resposta);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/dashboard/metricas", async (req, res, next) => {
   try {
     const filtros = parseDashboardQuery(req.query);
     const idColaboradorResolvido = await resolverIdColaboradorFiltro(pool, filtros);
     const idColaboradorFiltro = filtros.idColaborador || idColaboradorResolvido;
+
+    // Colaborador específico → pipeline dinâmico (mathjs + baseline peers + memória)
+    if (filtros.nivel === "colaborador" && idColaboradorFiltro) {
+      const resposta = await obterMetricasPorColaborador(pool, idColaboradorFiltro);
+      return res.json(resposta);
+    }
 
     const { rows } = await pool.query(DASHBOARD_METRICAS_SQL, [
       filtros.nivel,
@@ -710,23 +738,9 @@ app.get("/api/analise-inteligente/:id_colaborador", async (req, res, next) => {
       return res.status(404).json({ erro: "Colaborador não encontrado" });
     }
 
-    const { rows } = await pool.query(DASHBOARD_METRICAS_SQL, [
-      "colaborador",
-      null,
-      null,
-      idColaborador,
-      null,
-      null,
-    ]);
+    const metricasResp = await obterMetricasPorColaborador(pool, idColaborador);
 
-    const metricas = rows.map((row) => mapDashboardMetrica(row, "colaborador"));
-    const resultadoIaps = await calcularIapsColaboradorComPesos(
-      pool,
-      metricas,
-      colaboradorDb
-    );
-
-    if (!resultadoIaps.memoria_calculo?.length) {
+    if (!metricasResp.memoria_calculo?.length) {
       return res.status(404).json({
         erro: "Sem medições elegíveis para análise cruzada deste colaborador",
       });
@@ -734,9 +748,9 @@ app.get("/api/analise-inteligente/:id_colaborador", async (req, res, next) => {
 
     const contexto = montarContextoAnalise({
       colaborador: colaboradorDb,
-      iapsCalculado: resultadoIaps.iaps_calculado,
-      scoresDimensoes: resultadoIaps.scores_dimensoes,
-      memoriaCalculo: resultadoIaps.memoria_calculo,
+      iapsCalculado: metricasResp.iaps_calculado,
+      scoresDimensoes: metricasResp.scores_dimensoes,
+      memoriaCalculo: metricasResp.memoria_calculo,
     });
     const hashContexto = calcularHashContexto(contexto);
 
@@ -761,9 +775,9 @@ app.get("/api/analise-inteligente/:id_colaborador", async (req, res, next) => {
 
     const analise = await gerarAnaliseInteligente({
       colaborador: colaboradorDb,
-      iapsCalculado: resultadoIaps.iaps_calculado,
-      scoresDimensoes: resultadoIaps.scores_dimensoes,
-      memoriaCalculo: resultadoIaps.memoria_calculo,
+      iapsCalculado: metricasResp.iaps_calculado,
+      scoresDimensoes: metricasResp.scores_dimensoes,
+      memoriaCalculo: metricasResp.memoria_calculo,
     });
 
     const persistencia = await salvarAnaliseArmazenada(

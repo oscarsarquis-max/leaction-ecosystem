@@ -183,29 +183,47 @@ function extrairScoreArmazenado(metrica) {
   return numerico;
 }
 
+function montarExpressaoSubstituida(formula, escopo) {
+  if (!formula) {
+    return null;
+  }
+
+  let expressao = String(formula);
+  const chaves = Object.keys(escopo || {}).sort((a, b) => b.length - a.length);
+
+  for (const chave of chaves) {
+    const valor = escopo[chave];
+    if (!isValorNumerico(valor)) {
+      continue;
+    }
+    const re = new RegExp(`\\b${chave.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g");
+    expressao = expressao.replace(re, String(valor));
+  }
+
+  return expressao;
+}
+
 function avaliarFormulaNormalizada(formulaNormalizada, escopo, contextoLog = {}) {
   const formula = String(formulaNormalizada || "").trim();
 
   if (!formula) {
-    return { score: null, escopo: null, erro: null };
+    return { score: null, resultado_bruto: null, escopo: escopo || {}, erro: null };
   }
 
   try {
-    const resultado = math.evaluate(formula, escopo);
-    const score = normalizarScorePercentual(resultado);
+    const resultadoBruto = math.evaluate(formula, escopo);
+    const score = normalizarScorePercentual(resultadoBruto);
 
     if (score === null) {
-      console.warn(
-        "[indicador_score_engine] Resultado inválido para fórmula:",
-        JSON.stringify({
-          cod_indicador: contextoLog.cod_indicador ?? null,
-          formula,
-          resultado,
-        })
-      );
+      return {
+        score: null,
+        resultado_bruto: resultadoBruto ?? null,
+        escopo,
+        erro: "resultado_invalido",
+      };
     }
 
-    return { score, escopo, erro: null };
+    return { score, resultado_bruto: Number(resultadoBruto), escopo, erro: null };
   } catch (error) {
     console.warn(
       "[indicador_score_engine] Falha ao avaliar fórmula:",
@@ -213,22 +231,58 @@ function avaliarFormulaNormalizada(formulaNormalizada, escopo, contextoLog = {})
         cod_indicador: contextoLog.cod_indicador ?? null,
         formula,
         mensagem: error.message,
-        variaveis: Object.keys(escopo),
+        variaveis: Object.keys(escopo || {}),
       })
     );
 
-    return { score: null, escopo, erro: error.message };
+    // Divisão por zero / variável ausente → score nulo (não quebra o IAPS)
+    return {
+      score: null,
+      resultado_bruto: null,
+      escopo,
+      erro: error.message,
+    };
   }
 }
 
-function calcularScoreIndicador(metrica, campoScore = "selecionado") {
+function montarEscopoAvaliacao(metrica) {
+  const payload = metrica.payload ?? null;
+  const parametrosConfiguraveis =
+    metrica.parametros_configuraveis ??
+    metrica.indicador?.parametros_configuraveis ??
+    null;
+  const codIndicador = metrica.cod_indicador ?? metrica.indicador?.cod_indicador ?? null;
+
+  const variaveisPayload = extrairVariaveisPayload(payload);
+  const variaveisComAliases = aplicarAliasesIndicador(variaveisPayload, codIndicador);
+  const escopo = mesclarEscopoFormula(variaveisComAliases, parametrosConfiguraveis);
+
+  return { codIndicador, escopo, payload };
+}
+
+/**
+ * Avalia fórmula mathjs sobre o payload limpo.
+ * Retorna detalhe completo para memória de cálculo / auditoria.
+ */
+function calcularScoreIndicadorDetalhado(metrica, campoScore = "selecionado") {
   if (campoScore === "baseline") {
     const baseline =
       metrica.baseline_score !== null && metrica.baseline_score !== undefined
         ? Number(metrica.baseline_score)
         : null;
+    const score =
+      baseline !== null && !Number.isNaN(baseline) ? baseline : null;
 
-    return baseline !== null && !Number.isNaN(baseline) ? baseline : null;
+    return {
+      score,
+      score_percentual: score,
+      formula_normalizada: null,
+      variaveis: {},
+      expressao_substituida: null,
+      resultado_bruto: score,
+      origem: "baseline",
+      erro: score === null ? "baseline_ausente" : null,
+    };
   }
 
   const formulaNormalizada =
@@ -236,29 +290,39 @@ function calcularScoreIndicador(metrica, campoScore = "selecionado") {
     metrica.indicador?.formula_normalizada ??
     null;
 
-  if (!formulaNormalizada) {
-    return extrairScoreArmazenado(metrica);
+  if (!formulaNormalizada || !String(formulaNormalizada).trim()) {
+    const armazenado = extrairScoreArmazenado(metrica);
+    return {
+      score: armazenado,
+      score_percentual: armazenado,
+      formula_normalizada: null,
+      variaveis: extrairVariaveisPayload(metrica.payload),
+      expressao_substituida: null,
+      resultado_bruto: armazenado,
+      origem: "armazenado",
+      erro: armazenado === null ? "sem_formula_nem_score" : null,
+    };
   }
 
-  const payload = metrica.payload ?? null;
-  const parametrosConfiguraveis =
-    metrica.parametros_configuraveis ??
-    metrica.indicador?.parametros_configuraveis ??
-    null;
-
-  const variaveisPayload = extrairVariaveisPayload(payload);
-  const codIndicador = metrica.cod_indicador ?? metrica.indicador?.cod_indicador ?? null;
-  const variaveisComAliases = aplicarAliasesIndicador(variaveisPayload, codIndicador);
-  const escopo = mesclarEscopoFormula(variaveisComAliases, parametrosConfiguraveis);
-  const { score } = avaliarFormulaNormalizada(formulaNormalizada, escopo, {
+  const { codIndicador, escopo } = montarEscopoAvaliacao(metrica);
+  const avaliacao = avaliarFormulaNormalizada(formulaNormalizada, escopo, {
     cod_indicador: codIndicador,
   });
 
-  if (score !== null) {
-    return score;
-  }
+  return {
+    score: avaliacao.score,
+    score_percentual: avaliacao.score,
+    formula_normalizada: String(formulaNormalizada).trim(),
+    variaveis: escopo,
+    expressao_substituida: montarExpressaoSubstituida(formulaNormalizada, escopo),
+    resultado_bruto: avaliacao.resultado_bruto,
+    origem: "formula_normalizada",
+    erro: avaliacao.erro,
+  };
+}
 
-  return extrairScoreArmazenado(metrica);
+function calcularScoreIndicador(metrica, campoScore = "selecionado") {
+  return calcularScoreIndicadorDetalhado(metrica, campoScore).score;
 }
 
 module.exports = {
@@ -269,5 +333,7 @@ module.exports = {
   mesclarEscopoFormula,
   normalizarScorePercentual,
   avaliarFormulaNormalizada,
+  calcularScoreIndicadorDetalhado,
   calcularScoreIndicador,
+  montarExpressaoSubstituida,
 };

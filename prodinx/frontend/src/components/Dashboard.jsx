@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Link } from "react-router-dom";
 
@@ -22,11 +22,15 @@ import FilterBar from "./FilterBar";
 
 import ResumoExecutivo from "./ResumoExecutivo";
 
+import DemonstrativoCalculo from "./DemonstrativoCalculo";
+
 import VisaoOrganizacao from "./VisaoOrganizacao";
 
 import AnaliseCruzada from "./AnaliseCruzada";
 
 import PainelIndicador from "./PainelIndicador";
+
+import { buildDefinicoesIndicadores } from "./IndicadorNomeComDefinicao";
 
 import { extractPainelIndicadores } from "../utils/metricas";
 
@@ -86,7 +90,7 @@ function Dashboard() {
 
   const [filtrosAplicados, setFiltrosAplicados] = useState(FILTROS_INICIAIS);
 
-  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false); // busca de colaborador fica sempre visível
 
   const [opcoes, setOpcoes] = useState(OPCOES_INICIAIS);
 
@@ -222,7 +226,7 @@ function Dashboard() {
 
       setAvisoFiltro(
 
-        "Selecione um colaborador na lista ou nos atalhos APD para ver a análise individual."
+        "Selecione um colaborador na busca (nome ou matrícula) para ver a análise individual."
 
       );
 
@@ -312,62 +316,6 @@ function Dashboard() {
 
 
 
-  const handleSelectColaboradorTeste = (matricula) => {
-
-    const colaborador = opcoes.colaboradores?.find((item) => item.matricula === matricula);
-
-    if (colaborador) {
-
-      handleSelectColaborador(colaborador);
-
-      return;
-
-    }
-
-
-
-    const novosFiltros = normalizarFiltrosColaborador(
-
-      {
-
-        nivel: "colaborador",
-
-        busca: matricula,
-
-        id_colaborador: null,
-
-      },
-
-      opcoes.colaboradores,
-
-      matricula
-
-    );
-
-
-
-    if (!novosFiltros.id_colaborador) {
-
-      setAvisoFiltro("Colaborador não encontrado. Execute o seed APD ou selecione na lista.");
-
-      return;
-
-    }
-
-
-
-    setAvisoFiltro(null);
-
-    setFiltros(novosFiltros);
-
-    setFiltrosAplicados(novosFiltros);
-
-    setFiltrosAbertos(true);
-
-  };
-
-
-
   const paineisIndicador = extractPainelIndicadores(
 
     metricas,
@@ -375,6 +323,14 @@ function Dashboard() {
     filtrosAplicados,
 
     iapsCalculado
+
+  );
+
+  const definicoesIndicadores = useMemo(
+
+    () => buildDefinicoesIndicadores(metricas),
+
+    [metricas]
 
   );
 
@@ -429,8 +385,6 @@ function Dashboard() {
           onClear={handleClearFiltros}
 
           onRefresh={() => loadMetricas(filtrosAplicados)}
-
-          onSelectColaboradorTeste={handleSelectColaboradorTeste}
 
           onSelectColaborador={handleSelectColaborador}
 
@@ -512,13 +466,27 @@ function Dashboard() {
 
                 scoresDimensoes={scoresDimensoes}
 
-                memoriaCalculo={memoriaCalculo}
-
                 modoColaborador={modoColaborador}
 
               />
 
             </section>
+
+
+
+            {modoColaborador && iapsCalculado?.id_colaborador && memoriaCalculo?.length > 0 && (
+
+              <DemonstrativoCalculo
+
+                memoriaCalculo={memoriaCalculo}
+
+                iapsCalculado={iapsCalculado}
+
+                definicoesIndicadores={definicoesIndicadores}
+
+              />
+
+            )}
 
 
 

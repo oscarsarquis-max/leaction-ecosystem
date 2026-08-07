@@ -3,9 +3,23 @@ import {
   resolverDefinicaoIndicador,
 } from "./IndicadorNomeComDefinicao";
 
+function ehNulo(valor) {
+  return valor === null || valor === undefined || Number.isNaN(Number(valor));
+}
+
+/** Scores da memória vêm em % (0–100); o card IAPS do colaborador usa escala 0–1. */
+function paraEscalaUnitaria(valor) {
+  if (ehNulo(valor)) {
+    return null;
+  }
+
+  const numero = Number(valor);
+  return numero > 1 ? numero / 100 : numero;
+}
+
 function formatarNumero(valor, casas = 2) {
-  if (valor === null || valor === undefined || Number.isNaN(Number(valor))) {
-    return "—";
+  if (ehNulo(valor)) {
+    return null;
   }
 
   return Number(valor).toLocaleString("pt-BR", {
@@ -14,141 +28,101 @@ function formatarNumero(valor, casas = 2) {
   });
 }
 
-function formatarPeso(valor, casas = 2) {
-  if (valor === null || valor === undefined || Number.isNaN(Number(valor))) {
-    return "—";
-  }
-
-  return formatarNumero(Number(valor), casas);
+function TagSemDados() {
+  return (
+    <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 ring-1 ring-inset ring-gray-200">
+      Sem Dados
+    </span>
+  );
 }
 
-function paraEscalaUnitaria(valor) {
-  if (valor === null || valor === undefined || Number.isNaN(Number(valor))) {
-    return null;
+function CelulaScore({ valor }) {
+  const formatado = formatarNumero(valor);
+  if (formatado === null) {
+    return <TagSemDados />;
   }
 
-  const numero = Number(valor);
-  return numero > 1 ? numero / 100 : numero;
+  return (
+    <span className="font-semibold tabular-nums text-brand-verde">{formatado}</span>
+  );
 }
 
 function rotuloIndicador(indicador) {
   if (!indicador) {
-    return { titulo: "—", codigo: null };
+    return { titulo: null, codigo: null };
   }
 
   return {
-    titulo: indicador.nome_indicador || indicador.cod_indicador || "—",
+    titulo: indicador.nome_indicador || indicador.cod_indicador || null,
     codigo: indicador.cod_indicador || null,
   };
 }
 
 function CelulaIndicador({ indicador, definicoesIndicadores }) {
-  const { titulo, codigo } = rotuloIndicador(indicador);
-  const { explicacao, importancia } = resolverDefinicaoIndicador(indicador, definicoesIndicadores);
-
   if (!indicador) {
-    return <span className="text-[11px] sm:text-xs">—</span>;
+    return <TagSemDados />;
+  }
+
+  const { titulo, codigo } = rotuloIndicador(indicador);
+  const { explicacao, importancia } = resolverDefinicaoIndicador(
+    indicador,
+    definicoesIndicadores
+  );
+
+  if (!titulo) {
+    return <TagSemDados />;
   }
 
   return (
-    <>
+    <div className="min-w-[140px]">
       <IndicadorNomeComDefinicao
         nome={titulo}
         explicacao={explicacao}
         importancia={importancia}
-        className="block max-w-[140px] text-[11px] leading-snug sm:max-w-none sm:text-xs"
+        className="block text-[11px] leading-snug sm:text-xs"
       />
       {codigo && (
-        <p className="mt-0.5 font-mono text-[10px] text-brand-cinza/60">{codigo}</p>
+        <p className="mt-0.5 font-mono text-[10px] text-brand-cinza/55">{codigo}</p>
       )}
-    </>
+    </div>
   );
 }
 
-function montarExpressaoDimensao(linha) {
-  const scoreInd = linha.score_individual_unidade ?? paraEscalaUnitaria(linha.score_individual);
-  const scoreEq = linha.score_equipe_unidade ?? paraEscalaUnitaria(linha.score_equipe);
-  const pesoInd = linha.peso_individual;
-  const pesoEq = linha.peso_equipe;
-  const scoreFinal = linha.score_final_unidade ?? paraEscalaUnitaria(linha.score_final);
-
-  if (scoreInd === null && scoreEq === null) {
-    return "—";
-  }
-
-  const partes = [];
-
-  if (scoreInd !== null) {
-    partes.push(`(${formatarNumero(scoreInd)} × ${formatarPeso(pesoInd)})`);
-  }
-
-  if (scoreEq !== null) {
-    partes.push(`(${formatarNumero(scoreEq)} × ${formatarPeso(pesoEq)})`);
-  }
-
-  let expressao = partes.join(" + ");
-
-  if (scoreFinal !== null) {
-    expressao += ` = ${formatarNumero(scoreFinal)}`;
-  }
-
-  return expressao;
-}
-
-function montarExpressaoContribuicao(linha) {
-  const scoreFinal = linha.score_final_unidade ?? paraEscalaUnitaria(linha.score_final);
-  const contribuicao =
-    linha.contribuicao_iaps_unidade ?? paraEscalaUnitaria(linha.contribuicao_iaps);
-
-  if (scoreFinal === null || contribuicao === null || linha.simbolo === null) {
-    return "—";
-  }
-
-  return `${linha.simbolo} × ${formatarPeso(linha.peso_dimensao)} = ${formatarNumero(contribuicao)}`;
-}
-
-function montarExpressaoIaps(memoriaCalculo, totalIapsUnidade) {
-  const termos = memoriaCalculo
-    .filter((linha) => linha.simbolo && linha.peso_dimensao !== null)
-    .map((linha) => `${linha.simbolo} × ${formatarPeso(linha.peso_dimensao)}`);
-
-  if (!termos.length) {
-    return "—";
-  }
-
-  const soma =
-    totalIapsUnidade !== null && totalIapsUnidade !== undefined
-      ? ` = ${formatarNumero(totalIapsUnidade)}`
-      : "";
-
-  return `IAPS = ${termos.join(" + ")}${soma}`;
-}
-
-function DemonstrativoCalculo({ memoriaCalculo, iapsCalculado, definicoesIndicadores = {} }) {
+/**
+ * Tabela APD — memória de cálculo do IAPS a partir de memoria_calculo (mathjs).
+ * Visível apenas no contexto de um colaborador específico.
+ */
+function DemonstrativoCalculo({
+  memoriaCalculo,
+  iapsCalculado,
+  definicoesIndicadores = {},
+}) {
   if (!memoriaCalculo?.length || !iapsCalculado?.id_colaborador) {
     return null;
   }
 
-  const totalIapsUnidade =
-    paraEscalaUnitaria(iapsCalculado.valor) ??
-    memoriaCalculo.reduce(
-      (acumulado, linha) =>
-        acumulado + (linha.contribuicao_iaps_unidade ?? paraEscalaUnitaria(linha.contribuicao_iaps) ?? 0),
-      0
-    );
+  const totalIaps = paraEscalaUnitaria(iapsCalculado.valor);
+  const somaContribuicoes = memoriaCalculo.reduce(
+    (acc, linha) => acc + (paraEscalaUnitaria(linha.contribuicao_iaps) ?? 0),
+    0
+  );
+  const totalExibido = totalIaps ?? somaContribuicoes;
 
   const proporcao = memoriaCalculo[0]?.proporcao_ind_eq || "40/60";
-  const [pesoInd, pesoEq] = proporcao.split("/");
 
   return (
-    <section className="card-panel min-w-0 overflow-hidden p-0">
-      <div className="border-b border-gray-100 px-4 py-4 sm:px-5">
+    <section
+      id="demonstrativo-calculo"
+      className="card-panel min-w-0 overflow-hidden p-0 shadow-sm"
+      aria-label="Demonstrativo de cálculo do IAPS"
+    >
+      <div className="border-b border-gray-100 bg-gradient-to-r from-brand-verde/[0.06] to-transparent px-4 py-4 sm:px-5">
         <h4 className="section-title">Demonstrativo de Cálculo do IAPS</h4>
         <p className="section-subtitle">
-          Memória de cálculo para auditoria · espelha a planilha APD
+          Transparência matemática · planilha APD · scores calculados em tempo real (mathjs)
         </p>
 
-        <div className="mt-3 grid gap-2 text-xs text-brand-cinza sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-brand-cinza">
           <p>
             <span className="font-medium text-brand-cinza/70">Colaborador:</span>{" "}
             {iapsCalculado.nome_colaborador || "—"}
@@ -156,147 +130,116 @@ function DemonstrativoCalculo({ memoriaCalculo, iapsCalculado, definicoesIndicad
           </p>
           <p>
             <span className="font-medium text-brand-cinza/70">Papel / Subpapel:</span>{" "}
-            {[iapsCalculado.papel, iapsCalculado.subpapel].filter(Boolean).join(" · ") || "—"}
+            {[iapsCalculado.papel, iapsCalculado.subpapel].filter(Boolean).join(" · ") ||
+              "—"}
           </p>
           <p>
-            <span className="font-medium text-brand-cinza/70">Peso Individual:</span>{" "}
-            {formatarPeso(pesoInd ? Number(pesoInd) / 100 : memoriaCalculo[0]?.peso_individual)}
-          </p>
-          <p>
-            <span className="font-medium text-brand-cinza/70">Peso Equipe:</span>{" "}
-            {formatarPeso(pesoEq ? Number(pesoEq) / 100 : memoriaCalculo[0]?.peso_equipe)}
+            <span className="font-medium text-brand-cinza/70">Proporção Ind./Eq.:</span>{" "}
+            {proporcao}
           </p>
         </div>
       </div>
 
       <div className="relative min-w-0">
-        <div className="overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
-          <table className="w-max min-w-full border-collapse text-sm text-brand-cinza">
+        <div className="overflow-x-auto [-webkit-overflow-scrolling:touch]">
+          <table className="w-full min-w-[720px] border-collapse text-sm text-brand-cinza">
             <thead>
               <tr className="bg-brand-verde text-left text-[10px] font-semibold uppercase tracking-wide text-white sm:text-xs">
-                <th className="sticky left-0 z-10 border-b border-brand-verde/20 bg-brand-verde px-2 py-2 sm:px-3 sm:py-3">
+                <th className="sticky left-0 z-10 bg-brand-verde px-3 py-3 sm:px-4">
                   Dimensão
                 </th>
-                <th className="border-b border-brand-verde/20 px-2 py-2 sm:px-3 sm:py-3">Subpapel</th>
-                <th className="border-b border-brand-verde/20 px-2 py-2 text-right sm:px-3 sm:py-3">
-                  Peso
-                </th>
-                <th className="border-b border-brand-verde/20 px-2 py-2 sm:px-3 sm:py-3 min-w-[120px]">
-                  Ind. Individual
-                </th>
-                <th className="border-b border-brand-verde/20 px-2 py-2 text-right sm:px-3 sm:py-3">
-                  Sc. Ind.
-                </th>
-                <th className="border-b border-brand-verde/20 px-2 py-2 sm:px-3 sm:py-3 min-w-[120px]">
-                  Ind. Equipe
-                </th>
-                <th className="border-b border-brand-verde/20 px-2 py-2 text-right sm:px-3 sm:py-3">
-                  Sc. Eq.
-                </th>
-                <th className="border-b border-brand-verde/20 px-2 py-2 text-right sm:px-3 sm:py-3">
-                  Sc. Dim.
-                </th>
-                <th className="border-b border-brand-verde/20 px-2 py-2 text-center sm:px-3 sm:py-3">
-                  Var.
-                </th>
-                <th className="border-b border-brand-verde/20 px-2 py-2 sm:px-3 sm:py-3 min-w-[180px]">
-                  Cálculo Dimensão
-                </th>
-                <th className="border-b border-brand-verde/20 px-2 py-2 sm:px-3 sm:py-3 min-w-[130px]">
-                  Contrib. IAPS
+                <th className="px-3 py-3 text-right sm:px-4">Peso da Dimensão</th>
+                <th className="px-3 py-3 sm:px-4">Indicador Individual</th>
+                <th className="px-3 py-3 text-right sm:px-4">Score Ind.</th>
+                <th className="px-3 py-3 sm:px-4">Indicador de Equipe</th>
+                <th className="px-3 py-3 text-right sm:px-4">Score Eq.</th>
+                <th className="px-3 py-3 text-right sm:px-4">
+                  Score Final (Dimensão)
                 </th>
               </tr>
             </thead>
-          <tbody>
-            {memoriaCalculo.map((linha) => {
-              const scoreInd =
-                linha.score_individual_unidade ?? paraEscalaUnitaria(linha.score_individual);
-              const scoreEq =
-                linha.score_equipe_unidade ?? paraEscalaUnitaria(linha.score_equipe);
-              const scoreFinal =
-                linha.score_final_unidade ?? paraEscalaUnitaria(linha.score_final);
-              const contribuicao =
-                linha.contribuicao_iaps_unidade ?? paraEscalaUnitaria(linha.contribuicao_iaps);
 
-              return (
-                <tr
-                  key={linha.dimensao}
-                  className="group border-b border-gray-100 align-top transition hover:bg-brand-verde/[0.03]"
+            <tbody>
+              {memoriaCalculo.map((linha) => {
+                const scoreInd = paraEscalaUnitaria(linha.score_individual);
+                const scoreEq = paraEscalaUnitaria(linha.score_equipe);
+                const scoreFinal = paraEscalaUnitaria(linha.score_final);
+                const temIndicadorInd = Boolean(linha.indicador_individual);
+                const temIndicadorEq = Boolean(linha.indicador_equipe);
+
+                return (
+                  <tr
+                    key={linha.dimensao}
+                    className="group border-b border-gray-100 align-middle transition hover:bg-brand-verde/[0.03]"
+                  >
+                    <td className="sticky left-0 z-10 bg-white px-3 py-3 font-semibold text-brand-cinza group-hover:bg-[#f7faf8] sm:px-4">
+                      <span className="block">{linha.dimensao}</span>
+                      {linha.simbolo && (
+                        <span className="mt-0.5 block font-mono text-[10px] font-normal text-brand-cinza/50">
+                          {linha.simbolo}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums sm:px-4">
+                      {formatarNumero(linha.peso_dimensao) ?? <TagSemDados />}
+                    </td>
+                    <td className="px-3 py-3 sm:px-4">
+                      {temIndicadorInd ? (
+                        <CelulaIndicador
+                          indicador={linha.indicador_individual}
+                          definicoesIndicadores={definicoesIndicadores}
+                        />
+                      ) : (
+                        <TagSemDados />
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-right sm:px-4">
+                      <CelulaScore valor={temIndicadorInd ? scoreInd : null} />
+                    </td>
+                    <td className="px-3 py-3 sm:px-4">
+                      {temIndicadorEq ? (
+                        <CelulaIndicador
+                          indicador={linha.indicador_equipe}
+                          definicoesIndicadores={definicoesIndicadores}
+                        />
+                      ) : (
+                        <TagSemDados />
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-right sm:px-4">
+                      <CelulaScore valor={temIndicadorEq ? scoreEq : null} />
+                    </td>
+                    <td className="px-3 py-3 text-right sm:px-4">
+                      <span className="text-base font-bold tabular-nums text-brand-cinza">
+                        {formatarNumero(scoreFinal) ?? <TagSemDados />}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+
+            <tfoot>
+              <tr className="bg-brand-verde/10 text-brand-cinza">
+                <td
+                  colSpan={6}
+                  className="sticky left-0 z-10 bg-brand-verde/10 px-3 py-4 text-sm font-bold uppercase tracking-wide sm:px-4"
                 >
-                  <td className="sticky left-0 z-10 bg-white px-2 py-2 font-medium group-hover:bg-brand-verde/[0.03] sm:px-3 sm:py-3">
-                    {linha.dimensao}
-                  </td>
-                  <td className="px-2 py-2 text-xs sm:px-3 sm:py-3">{linha.subpapel_linha || "—"}</td>
-                  <td className="px-2 py-2 text-right sm:px-3 sm:py-3">{formatarPeso(linha.peso_dimensao)}</td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3">
-                    <CelulaIndicador
-                      indicador={linha.indicador_individual}
-                      definicoesIndicadores={definicoesIndicadores}
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-right font-semibold text-brand-verde sm:px-3 sm:py-3">
-                    {formatarNumero(scoreInd)}
-                  </td>
-                  <td className="px-2 py-2 sm:px-3 sm:py-3">
-                    <CelulaIndicador
-                      indicador={linha.indicador_equipe}
-                      definicoesIndicadores={definicoesIndicadores}
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-right font-semibold text-brand-verde sm:px-3 sm:py-3">
-                    {formatarNumero(scoreEq)}
-                  </td>
-                  <td className="px-2 py-2 text-right font-bold text-brand-cinza sm:px-3 sm:py-3">
-                    {formatarNumero(scoreFinal)}
-                  </td>
-                  <td className="px-2 py-2 text-center font-mono text-xs font-semibold sm:px-3 sm:py-3">
-                    {linha.simbolo || "—"}
-                  </td>
-                  <td className="px-2 py-2 font-mono text-[10px] leading-relaxed text-brand-cinza/90 sm:px-3 sm:py-3">
-                    {montarExpressaoDimensao(linha)}
-                  </td>
-                  <td className="px-2 py-2 font-mono text-[10px] leading-relaxed sm:px-3 sm:py-3">
-                    <span className="text-brand-cinza/90">{montarExpressaoContribuicao(linha)}</span>
-                    {contribuicao !== null && (
-                      <p className="mt-1 text-right text-sm font-bold text-brand-verde">
-                        {formatarNumero(contribuicao)}
-                      </p>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr className="bg-gray-50 text-brand-cinza">
-              <td className="px-3 py-4 text-xs leading-relaxed" colSpan={10}>
-                <p className="font-semibold text-brand-cinza">Fórmula consolidada</p>
-                <p className="mt-1 font-mono text-[11px] text-brand-cinza/90">
-                  Score Dimensão = (Score Ind. × Peso Ind.) + (Score Eq. × Peso Eq.)
-                </p>
-                <p className="mt-1 font-mono text-[11px] text-brand-cinza/90">
-                  {montarExpressaoIaps(memoriaCalculo, totalIapsUnidade)}
-                </p>
-                <p className="mt-2 text-[10px] text-brand-cinza/60">
-                  Scores em escala 0–1 (conforme planilha de auditoria). Proporção Individual/Equipe:{" "}
-                  {proporcao}.
-                </p>
-              </td>
-              <td className="px-3 py-4 text-right">
-                <p className="text-xs font-medium uppercase tracking-wide text-brand-cinza/70">
-                  IAPS
-                </p>
-                <p className="text-2xl font-bold text-brand-verde">
-                  {formatarNumero(totalIapsUnidade)}
-                </p>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+                  IAPS Total
+                  <span className="mt-1 block text-[10px] font-normal normal-case tracking-normal text-brand-cinza/65">
+                    Soma ponderada das dimensões (contribuições SPACE) · bate com o
+                    índice do resumo
+                  </span>
+                </td>
+                <td className="px-3 py-4 text-right sm:px-4">
+                  <span className="text-2xl font-bold tabular-nums text-brand-verde sm:text-3xl">
+                    {formatarNumero(totalExibido) ?? "—"}
+                  </span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
-        <p className="px-4 pb-3 text-[10px] text-brand-cinza/60 sm:px-5">
-          Deslize horizontalmente para ver todas as colunas de auditoria.
-        </p>
       </div>
     </section>
   );

@@ -51,6 +51,23 @@ def ingest():
         logger.exception("Erro ao ingerir payload")
         return jsonify({"erro": "Falha ao gravar medição na base de dados", "detalhe": str(exc)}), 500
 
+    if resultado.tipo == "por_pessoa":
+        if not resultado.sucesso:
+            return jsonify({"erro": resultado.mensagem or "Falha na ingestão por pessoa"}), 400
+        return (
+            jsonify(
+                {
+                    "tipo": "por_pessoa",
+                    "status_import": "SUCESSO",
+                    "mensagem": resultado.mensagem,
+                    "colaboradores_processados": resultado.colaboradores_processados,
+                    "medicoes_inseridas": resultado.medicoes_inseridas,
+                    "nome_arquivo": nome_arquivo,
+                }
+            ),
+            201,
+        )
+
     medicao = resultado.medicao
     if medicao is None:
         return jsonify({"erro": "Medição não foi criada durante a ingestão"}), 500
@@ -185,4 +202,6 @@ def bootstrap_services() -> None:
 
 if __name__ == "__main__":
     bootstrap_services()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # FLASK_PORT evita colisão com outras apps do monorepo (ex.: PanelDX em :5000).
+    flask_port = int(os.environ.get("FLASK_PORT", "5000"))
+    app.run(host="0.0.0.0", port=flask_port, debug=True)

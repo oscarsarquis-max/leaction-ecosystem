@@ -31,7 +31,7 @@ const NIVEL_BASELINE = {
 const BUSCA_POR_NIVEL = {
   colaborador: {
     label: "Buscar colaborador",
-    placeholder: "Nome ou matrícula — necessário para análise individual",
+    placeholder: "Digite nome ou matrícula…",
     listKey: null,
   },
   papel: {
@@ -46,7 +46,7 @@ const BUSCA_POR_NIVEL = {
   },
   setor: {
     label: "Buscar setor",
-    placeholder: "Ex.: APD — vazio inclui todos",
+    placeholder: "Código do setor — vazio inclui todos",
     listKey: "setores",
   },
 };
@@ -56,14 +56,6 @@ const NIVEIS_PADRAO = [
   { valor: "papel", label: "Papel", baseline: "Média do setor" },
   { valor: "subpapel", label: "Subpapel", baseline: "Média do papel" },
   { valor: "setor", label: "Setor", baseline: "Média total" },
-];
-
-/** Atalhos temporários até a importação JSON popular o universo real. */
-const COLABORADORES_TESTE = [
-  { label: "José", matricula: "F178992" },
-  { label: "Saulo", matricula: "F178841" },
-  { label: "Samuel", matricula: "F170046" },
-  { label: "Francisco", matricula: "F179117" },
 ];
 
 function countActiveFilters(filtros) {
@@ -83,7 +75,6 @@ function FilterBar({
   onClear,
   onRefresh,
   loading,
-  onSelectColaboradorTeste,
   onSelectColaborador,
   onClearColaborador,
   onInvalidateColaborador,
@@ -94,6 +85,7 @@ function FilterBar({
   const niveis = opcoes.niveis?.length ? opcoes.niveis : NIVEIS_PADRAO;
   const nivelInfo = niveis.find((item) => item.valor === filtros.nivel);
   const buscaConfig = BUSCA_POR_NIVEL[filtros.nivel] || BUSCA_POR_NIVEL.colaborador;
+  const totalColaboradores = (opcoes.colaboradores || []).length;
 
   const handleNivelChange = (nivel) => {
     onFiltrosChange({ nivel, busca: "", id_colaborador: null });
@@ -111,7 +103,7 @@ function FilterBar({
             <p className="section-subtitle">
               {modoColaborador
                 ? "Análise individual do colaborador selecionado"
-                : "Visão geral da organização · selecione um colaborador para detalhar"}
+                : "Pesquise um colaborador para abrir a análise individual"}
               {" · "}
               {NIVEL_BASELINE[filtros.nivel]}
             </p>
@@ -125,7 +117,7 @@ function FilterBar({
             onClick={onToggleFiltros}
           >
             <FilterIcon />
-            Filtros
+            Mais filtros
             {activeCount > 0 && (
               <span className="rounded-full bg-brand-laranja px-2 py-0.5 text-xs font-semibold text-white">
                 {activeCount}
@@ -139,33 +131,52 @@ function FilterBar({
         </div>
       </div>
 
-      {onSelectColaboradorTeste && (
-        <div className="space-y-2 border-t border-gray-100 pt-4">
-          <p className="text-xs font-medium text-brand-cinza">
-            Atalhos temporários — colaboradores de validação APD
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {COLABORADORES_TESTE.map((item) => {
-              const ativo = modoColaborador && filtros.busca === item.matricula;
-              return (
-                <button
-                  key={item.matricula}
-                  type="button"
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                    ativo
-                      ? "border-brand-verde bg-brand-verde text-white"
-                      : "border-gray-200 bg-white text-brand-cinza hover:border-brand-verde/40 hover:bg-brand-verde/5"
-                  }`}
-                  onClick={() => onSelectColaboradorTeste(item.matricula)}
-                >
-                  {item.label}
-                  <span className="ml-1 font-normal opacity-70">{item.matricula}</span>
-                </button>
-              );
-            })}
+      {/* Busca de colaborador sempre visível */}
+      <div className="space-y-2 border-t border-gray-100 pt-4">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <label className="block min-w-[240px] flex-1 text-sm text-brand-cinza">
+            <span className="mb-1 block font-medium">
+              Buscar colaborador
+              {totalColaboradores > 0 && (
+                <span className="ml-2 font-normal text-brand-cinza/55">
+                  ({totalColaboradores} na base)
+                </span>
+              )}
+            </span>
+            <ColaboradorAutocomplete
+              ref={autocompleteRef}
+              colaboradores={opcoes.colaboradores || []}
+              valorSelecionado={filtros.nivel === "colaborador" ? filtros.busca : ""}
+              onSelect={onSelectColaborador}
+              onClear={onClearColaborador}
+              onInvalidateSelection={onInvalidateColaborador}
+              disabled={loading}
+              placeholder="Digite nome ou matrícula…"
+            />
+          </label>
+          <div className="flex flex-wrap gap-2 pb-0.5">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => onApply(autocompleteRef.current?.getTermoBusca?.() ?? "")}
+              disabled={loading}
+            >
+              Aplicar
+            </button>
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={onClear}
+              disabled={loading && activeCount === 0}
+            >
+              Limpar
+            </button>
           </div>
         </div>
-      )}
+        <p className="text-xs text-brand-cinza/70">
+          Digite parte do nome ou a matrícula e selecione na lista. A análise individual só abre após a seleção.
+        </p>
+      </div>
 
       {filtrosAbertos && (
         <div className="space-y-4 border-t border-gray-100 pt-4">
@@ -185,21 +196,7 @@ function FilterBar({
               </select>
             </label>
 
-            {filtros.nivel === "colaborador" ? (
-              <div className="block text-sm text-brand-cinza">
-                <span className="mb-1 block font-medium">{buscaConfig.label}</span>
-                <ColaboradorAutocomplete
-                  ref={autocompleteRef}
-                  colaboradores={opcoes.colaboradores || []}
-                  valorSelecionado={filtros.busca}
-                  onSelect={onSelectColaborador}
-                  onClear={onClearColaborador}
-                  onInvalidateSelection={onInvalidateColaborador}
-                  disabled={loading}
-                  placeholder={buscaConfig.placeholder}
-                />
-              </div>
-            ) : (
+            {filtros.nivel !== "colaborador" && (
               <label className="block text-sm text-brand-cinza">
                 <span className="mb-1 block font-medium">{buscaConfig.label}</span>
                 <input
@@ -229,17 +226,6 @@ function FilterBar({
             )}
           </div>
 
-          <p className="text-xs text-brand-cinza/80">
-            {filtros.nivel === "colaborador"
-              ? "Pesquise por nome ou matrícula. A análise individual só é exibida após selecionar um colaborador."
-              : "Uma única caixa de busca por nível. Deixe vazio para ver "}
-            {filtros.nivel !== "colaborador" && (
-              <>
-                <strong>todos</strong> os registos do critério selecionado.
-              </>
-            )}
-          </p>
-
           {nivelInfo && (
             <p className="text-xs text-brand-cinza/80">
               Ao filtrar por <strong>{nivelInfo.label.toLowerCase()}</strong>, o gráfico
@@ -247,25 +233,6 @@ function FilterBar({
               <strong>{nivelInfo.baseline.toLowerCase()}</strong>.
             </p>
           )}
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => onApply(autocompleteRef.current?.getTermoBusca?.() ?? "")}
-              disabled={loading}
-            >
-              Aplicar filtros
-            </button>
-            <button
-              type="button"
-              className="btn-outline"
-              onClick={onClear}
-              disabled={loading && activeCount === 0}
-            >
-              Limpar filtros
-            </button>
-          </div>
         </div>
       )}
     </div>
