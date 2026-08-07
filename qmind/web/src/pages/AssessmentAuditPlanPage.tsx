@@ -12,12 +12,12 @@ import {
 import { useAuditDashboard } from "@/hooks/useAuditDashboard";
 import {
   useAuditPlan,
-  useMarkAuditPlanReady,
   usePatchAuditPlan,
   useRefreshAuditPlan,
 } from "@/hooks/useAuditPlan";
 import { useAssessmentPermissions } from "@/hooks/useAssessmentPermissions";
 import { AuditPlanScheduleSection } from "@/components/AuditPlanScheduleSection";
+import { AuditPlanHandoffPanel } from "@/components/AuditPlanHandoffPanel";
 import {
   MODALITY_OPTIONS,
   planStatusLabel,
@@ -29,6 +29,7 @@ import {
   type OrgRepresentative,
 } from "@/api/auditPlanTypes";
 import { QmindApiError } from "@/api/qmindApi";
+import { useAuditPlanSchedule } from "@/hooks/useAuditPlanSchedule";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -144,10 +145,11 @@ export function AssessmentAuditPlanPage() {
   const team = useAssessmentTeam(assessmentId);
   const perms = useAssessmentPermissions(assessment.data?.status);
   const patch = usePatchAuditPlan(assessmentId ?? "");
-  const markReady = useMarkAuditPlanReady(assessmentId ?? "");
   const refresh = useRefreshAuditPlan(assessmentId ?? "");
+  const scheduleQ = useAuditPlanSchedule(assessmentId);
 
   const [local, setLocal] = useState<AuditPlan | null>(null);
+  const [readyInfo, setReadyInfo] = useState<string | null>(null);
   const [amendmentReason, setAmendmentReason] = useState("");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [error, setError] = useState<unknown>(null);
@@ -231,6 +233,11 @@ export function AssessmentAuditPlanPage() {
   const pendingByKey = Object.fromEntries(
     readiness.items.filter((i) => !i.done).map((i) => [i.key, i.label]),
   );
+  const openingSatisfied = (scheduleQ.data?.items ?? []).some(
+    (i) =>
+      i.plan_activity_kind === "opening_meeting" &&
+      (i.status === "completed" || i.status === "waived"),
+  );
 
   return (
     <div className="space-y-6" data-testid="audit-plan-page">
@@ -288,33 +295,44 @@ export function AssessmentAuditPlanPage() {
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <SaveHint state={saveState} />
         {!readOnly ? (
-          <>
-            <button
-              type="button"
-              className="qm-btn-secondary"
-              disabled={refresh.isPending}
-              onClick={() => void refresh.mutateAsync(false)}
-            >
-              Completar vazios com a preparação
-            </button>
-            <button
-              type="button"
-              className="qm-btn-primary"
-              disabled={!readiness.ready || markReady.isPending || local.plan_status === "ready"}
-              data-testid="audit-plan-mark-ready"
-              onClick={() =>
-                void markReady
-                  .mutateAsync(local.updated_at)
-                  .catch((err) => setError(err))
-              }
-            >
-              Marcar plano como pronto
-            </button>
-          </>
+          <button
+            type="button"
+            className="qm-btn-secondary"
+            disabled={refresh.isPending}
+            onClick={() => void refresh.mutateAsync(false)}
+          >
+            Completar vazios com a preparação
+          </button>
         ) : (
           <p className="text-[var(--qm-muted)]">Visualização — sem edição nesta fase.</p>
         )}
       </div>
+
+      {readyInfo ? (
+        <p
+          className="rounded-md border border-qmind-semantic-success/30 bg-qmind-semantic-success/10 px-3 py-2 text-sm"
+          data-testid="audit-plan-ready-info"
+        >
+          {readyInfo}
+        </p>
+      ) : null}
+
+      <AuditPlanHandoffPanel
+        assessmentId={assessmentId}
+        plan={local}
+        assessmentStatus={assessment.data?.status}
+        canMutate={!!perms.canMutate && assessment.data?.status !== "cancelled"}
+        openingSatisfied={openingSatisfied}
+        onError={setError}
+        onPlanUpdated={(p) => {
+          setLocal(p);
+          if (p.plan_status === "ready") {
+            setReadyInfo(
+              "O plano está completo e pronto para ser formalizado. A próxima etapa confirmará o planejamento da avaliação.",
+            );
+          }
+        }}
+      />
 
       {needsReason && !readOnly ? (
         <label className="block space-y-1.5">
@@ -603,15 +621,17 @@ export function AssessmentAuditPlanPage() {
           Próxima ação recomendada: <strong>{readiness.next_action}</strong>
         </p>
         <div className="flex flex-wrap gap-3">
-          <Link
-            to={`/assessments/${assessmentId}/work`}
-            className="qm-btn-secondary"
-          >
-            Voltar ao Planejamento
-          </Link>
           <Link to={`/assessments/${assessmentId}`} className="qm-btn-primary">
             Ir ao Mapa do Percurso
           </Link>
+          {assessment.data?.status === "in_progress" ? (
+            <Link
+              to={`/assessments/${assessmentId}/work`}
+              className="qm-btn-secondary"
+            >
+              Ir à Execução em campo
+            </Link>
+          ) : null}
         </div>
       </Block>
     </div>

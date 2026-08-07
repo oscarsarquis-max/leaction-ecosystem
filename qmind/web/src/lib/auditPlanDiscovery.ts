@@ -44,20 +44,31 @@ export function auditPlanDiscoveryAction(
 ): { href: string; label: string } {
   const href = `/assessments/${assessmentId}/audit-plan`;
   const state = auditPlanDiscoveryState(plan);
+
   if (state === "not_started") {
     return { href, label: "Criar Plano da Auditoria" };
   }
   if (state === "in_progress") {
     return { href, label: "Continuar Plano da Auditoria" };
   }
-  // ready | amended
-  if (assessmentStatus === "planned" || assessmentStatus === "in_progress") {
+  if (state === "amended") {
+    return { href, label: "Revisar emenda" };
+  }
+
+  // ready
+  if (assessmentStatus === "draft") {
+    return { href, label: "Concluir planejamento" };
+  }
+  if (assessmentStatus === "planned") {
+    return { href, label: "Iniciar execução em campo" };
+  }
+  if (assessmentStatus === "in_progress") {
     return {
       href: `/assessments/${assessmentId}/work`,
-      label: "Iniciar execução em campo",
+      label: "Continuar execução em campo",
     };
   }
-  return { href, label: "Revisar programação" };
+  return { href, label: "Revisar Plano da Auditoria" };
 }
 
 export function planStatusDiscoveryLabel(status: AuditPlanStatus): string {

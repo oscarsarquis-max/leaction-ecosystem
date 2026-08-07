@@ -50,7 +50,8 @@ class ScheduleMeetingUpdate(BaseModel):
     owner_membership_id: UUID | None = None
     title: str | None = Field(default=None, max_length=200)
     outside_period_justification: str | None = Field(default=None, max_length=2000)
-    status: Literal["scheduled", "completed", "cancelled"] | None = None
+    status: Literal["scheduled", "completed", "cancelled", "waived"] | None = None
+    waiver_reason: str | None = Field(default=None, max_length=2000)
     timezone: str | None = Field(default=None, max_length=64)
 
 

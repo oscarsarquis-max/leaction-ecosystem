@@ -1,39 +1,49 @@
 import { Link, useParams } from "react-router-dom";
-import { AssessmentDetailPage } from "@/pages/AssessmentDetailPage";
 import { PageHeader } from "@/components/qm";
 import { JourneyBar } from "@/components/navigation/JourneyBar";
 import { AssessmentSectionNav } from "@/components/navigation/AssessmentSectionNav";
-import { useAuditDashboard } from "@/hooks/useAuditDashboard";
-import { JOURNEY_PHASES, phaseForStatus } from "@/lib/auditJourney";
-import { LoadingPanel } from "@/components/StatePanels";
+import { FieldCentral } from "@/components/fieldCentral/FieldCentral";
+import { useFieldCentral } from "@/hooks/useFieldCentral";
+import { AccessDeniedPanel, LoadingPanel } from "@/components/StatePanels";
+import { ApiErrorBanner } from "@/components/ApiErrorBanner";
+import { QmindApiError } from "@/api/qmindApi";
 
 /**
- * Espaço de trabalho orientado (campo → análise → ações → relatório).
- * Reutiliza o painel operacional existente, com mapa e orientação no topo.
+ * Central operacional da execução em campo.
+ * Agenda responde “quando”; aqui responde o que fazer agora.
  */
 export function AssessmentWorkPage() {
   const { assessmentId } = useParams<{ assessmentId: string }>();
-  const dash = useAuditDashboard(assessmentId);
+  const field = useFieldCentral(assessmentId);
 
-  if (!assessmentId || dash.loading) {
-    return <LoadingPanel title="Abrindo a etapa da avaliação…" />;
+  if (!assessmentId || field.loading) {
+    return <LoadingPanel title="Abrindo a Central de Campo…" />;
   }
 
-  const phase = JOURNEY_PHASES.find(
-    (p) =>
-      p.id ===
-      phaseForStatus(dash.status, { preparationReady: dash.preparationReady }),
-  )!;
+  if (field.error instanceof QmindApiError && (field.error.status === 401 || field.error.status === 403)) {
+    return <AccessDeniedPanel message={field.error.message} />;
+  }
+
+  if (!field.model) {
+    return (
+      <ApiErrorBanner
+        title="Não foi possível montar a Central de Campo"
+        error={field.error ?? new Error("Modelo indisponível")}
+      />
+    );
+  }
+
+  const model = field.model;
+  const status = field.assessment.data?.status;
 
   return (
     <div className="space-y-6" data-testid="audit-work">
       <JourneyBar
-        status={dash.status}
-        percent={dash.percent}
-        pendingCount={dash.pending.length}
-        pending={dash.pending}
+        status={status}
+        pendingCount={model.pendencies.length}
+        pending={model.pendencies.map((p) => p.problem)}
         assessmentId={assessmentId}
-        preparationReady={dash.preparationReady}
+        preparationReady={model.planReady}
       />
 
       <AssessmentSectionNav assessmentId={assessmentId} />
@@ -47,31 +57,23 @@ export function AssessmentWorkPage() {
           Visão geral
         </Link>
         {" / "}
-        {phase.label}
+        Central de Campo
       </p>
 
       <PageHeader
-        title={phase.label}
-        explanation={phase.objective}
-        expectedResult={phase.expectedResult}
-        progress={`${dash.percent}% do percurso`}
-        nextStep={
-          dash.pending[0] ?? "Concluir as atividades desta fase e revisar o mapa"
-        }
+        eyebrow={`${model.organizationName} · ${model.todayLabel}`}
+        title="Central de Campo"
+        explanation={`${model.assessmentLabel} · ${model.modalityLabel}. Fase: ${model.phaseLabel}. ${model.scopeSummary}`}
+        progress={model.progress.summary}
+        nextStep={model.nextAction.label}
       />
 
-      {dash.counts.evidences === 0 && dash.status === "in_progress" ? (
-        <div className="rounded-md border border-[var(--qm-line)] bg-[var(--qm-surface-soft)] px-4 py-3 text-sm text-[var(--qm-muted)]">
-          <p className="font-semibold text-[var(--qm-ink)]">Por que evidências?</p>
-          <p className="mt-1">
-            Elas comprovam o que foi observado nas entrevistas. Exemplo: ata de
-            reunião, procedimento resumido ou registro de reclamação. Comece por
-            uma entrevista ou anexe após responder uma pergunta.
-          </p>
-        </div>
-      ) : null}
-
-      <AssessmentDetailPage />
+      <FieldCentral
+        assessmentId={assessmentId}
+        model={model}
+        canEditField={field.perms.canEditField}
+        canCollectEvidence={field.perms.canCollectEvidence}
+      />
     </div>
   );
 }

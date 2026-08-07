@@ -45,6 +45,9 @@ export const STATUS_MAP: Record<string, string> = {
   validated: "Validada (eficácia pendente)",
   ineffective: "Ineficaz",
   ineffective_closed: "Ineficaz (fechada)",
+  confirmed: "Confirmada",
+  scheduled: "Programada",
+  waived: "Dispensada",
 };
 
 const ASSESSMENT_STATUS: Record<string, string> = {

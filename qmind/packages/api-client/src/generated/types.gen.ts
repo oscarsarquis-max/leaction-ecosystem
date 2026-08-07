@@ -402,7 +402,7 @@ export type AgendaEventOut = {
     /**
      * Status
      */
-    status: 'scheduled' | 'completed' | 'cancelled';
+    status: 'scheduled' | 'completed' | 'cancelled' | 'waived';
     /**
      * Timezone
      */
@@ -472,7 +472,7 @@ export type AgendaEventUpdate = {
     /**
      * Status
      */
-    status?: ('scheduled' | 'completed' | 'cancelled') | null;
+    status?: ('scheduled' | 'completed' | 'cancelled' | 'waived') | null;
     /**
      * Timezone
      */
@@ -1045,6 +1045,32 @@ export type CloseIn = {
      * Waiver Reason
      */
     waiver_reason?: string | null;
+};
+
+/**
+ * ConcludePlanningIn
+ */
+export type ConcludePlanningIn = {
+    /**
+     * Expected Updated At
+     */
+    expected_updated_at?: string | null;
+    /**
+     * Mark Ready If Needed
+     */
+    mark_ready_if_needed?: boolean;
+};
+
+/**
+ * ConcludePlanningOut
+ */
+export type ConcludePlanningOut = {
+    /**
+     * Message
+     */
+    message?: string;
+    plan: AuditPlanOut;
+    transition: AssessmentTransitionResult;
 };
 
 /**
@@ -2197,6 +2223,60 @@ export type MembershipOut = {
 export type MembershipStatus = 'invited' | 'active' | 'revoked' | 'expired';
 
 /**
+ * OpeningMeetingOut
+ */
+export type OpeningMeetingOut = {
+    /**
+     * Event Id
+     */
+    event_id: string;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Status
+     */
+    status: 'completed' | 'waived';
+};
+
+/**
+ * OpeningMeetingPerformIn
+ */
+export type OpeningMeetingPerformIn = {
+    /**
+     * Actual Starts At
+     */
+    actual_starts_at?: string | null;
+    /**
+     * Adjustments
+     */
+    adjustments?: string;
+    /**
+     * Observations
+     */
+    observations?: string;
+    /**
+     * Participant Membership Ids
+     */
+    participant_membership_ids?: Array<string> | null;
+    /**
+     * Pendings
+     */
+    pendings?: string;
+};
+
+/**
+ * OpeningMeetingWaiveIn
+ */
+export type OpeningMeetingWaiveIn = {
+    /**
+     * Waiver Reason
+     */
+    waiver_reason: string;
+};
+
+/**
  * OrgMemberOut
  */
 export type OrgMemberOut = {
@@ -2683,7 +2763,7 @@ export type ScheduleMeetingUpdate = {
     /**
      * Status
      */
-    status?: ('scheduled' | 'completed' | 'cancelled') | null;
+    status?: ('scheduled' | 'completed' | 'cancelled' | 'waived') | null;
     /**
      * Timezone
      */
@@ -2692,6 +2772,10 @@ export type ScheduleMeetingUpdate = {
      * Title
      */
     title?: string | null;
+    /**
+     * Waiver Reason
+     */
+    waiver_reason?: string | null;
 };
 
 /**
@@ -2946,6 +3030,31 @@ export type ScoresUpsertIn = {
      * Scores
      */
     scores: Array<ScoreUpsert>;
+};
+
+/**
+ * StartFieldIn
+ */
+export type StartFieldIn = {
+    /**
+     * Expected Plan Updated At
+     */
+    expected_plan_updated_at?: string | null;
+};
+
+/**
+ * StartFieldOut
+ */
+export type StartFieldOut = {
+    /**
+     * Message
+     */
+    message?: string;
+    /**
+     * Redirect Href
+     */
+    redirect_href: string;
+    transition: AssessmentTransitionResult;
 };
 
 /**
@@ -5351,6 +5460,90 @@ export type PatchAuditPlanResponses = {
 
 export type PatchAuditPlanResponse = PatchAuditPlanResponses[keyof PatchAuditPlanResponses];
 
+export type ConcludeAuditPlanningData = {
+    /**
+     * Payload
+     */
+    body?: ConcludePlanningIn | null;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan/conclude-planning';
+};
+
+export type ConcludeAuditPlanningErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ConcludeAuditPlanningError = ConcludeAuditPlanningErrors[keyof ConcludeAuditPlanningErrors];
+
+export type ConcludeAuditPlanningResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConcludePlanningOut;
+};
+
+export type ConcludeAuditPlanningResponse = ConcludeAuditPlanningResponses[keyof ConcludeAuditPlanningResponses];
+
 export type MarkAuditPlanReadyData = {
     /**
      * Payload
@@ -5751,6 +5944,179 @@ export type UpdateAuditPlanMeetingResponses = {
 
 export type UpdateAuditPlanMeetingResponse = UpdateAuditPlanMeetingResponses[keyof UpdateAuditPlanMeetingResponses];
 
+export type PerformOpeningMeetingData = {
+    /**
+     * Payload
+     */
+    body?: OpeningMeetingPerformIn | null;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+        /**
+         * Event Id
+         */
+        event_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan/schedule/meetings/{event_id}/perform';
+};
+
+export type PerformOpeningMeetingErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type PerformOpeningMeetingError = PerformOpeningMeetingErrors[keyof PerformOpeningMeetingErrors];
+
+export type PerformOpeningMeetingResponses = {
+    /**
+     * Successful Response
+     */
+    200: OpeningMeetingOut;
+};
+
+export type PerformOpeningMeetingResponse = PerformOpeningMeetingResponses[keyof PerformOpeningMeetingResponses];
+
+export type WaiveOpeningMeetingData = {
+    body: OpeningMeetingWaiveIn;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+        /**
+         * Event Id
+         */
+        event_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan/schedule/meetings/{event_id}/waive';
+};
+
+export type WaiveOpeningMeetingErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type WaiveOpeningMeetingError = WaiveOpeningMeetingErrors[keyof WaiveOpeningMeetingErrors];
+
+export type WaiveOpeningMeetingResponses = {
+    /**
+     * Successful Response
+     */
+    200: OpeningMeetingOut;
+};
+
+export type WaiveOpeningMeetingResponse = WaiveOpeningMeetingResponses[keyof WaiveOpeningMeetingResponses];
+
 export type CreateAuditPlanMilestoneData = {
     body: ScheduleMilestoneCreate;
     headers?: {
@@ -5911,6 +6277,90 @@ export type UpdateAuditPlanMilestoneResponses = {
 };
 
 export type UpdateAuditPlanMilestoneResponse = UpdateAuditPlanMilestoneResponses[keyof UpdateAuditPlanMilestoneResponses];
+
+export type StartAuditFieldExecutionData = {
+    /**
+     * Payload
+     */
+    body?: StartFieldIn | null;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Assessment Id
+         */
+        assessment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/assessments/{assessment_id}/audit-plan/start-field';
+};
+
+export type StartAuditFieldExecutionErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type StartAuditFieldExecutionError = StartAuditFieldExecutionErrors[keyof StartAuditFieldExecutionErrors];
+
+export type StartAuditFieldExecutionResponses = {
+    /**
+     * Successful Response
+     */
+    200: StartFieldOut;
+};
+
+export type StartAuditFieldExecutionResponse = StartAuditFieldExecutionResponses[keyof StartAuditFieldExecutionResponses];
 
 export type ListAssessmentEvidencesData = {
     body?: never;

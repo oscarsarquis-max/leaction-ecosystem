@@ -203,11 +203,14 @@ def compute_readiness(row, conn=None, org_id: UUID | None = None) -> AuditPlanRe
     blockers = [i.label for i in pending if i.blocking]
     next_action = pending[0].label if pending else "Revisar plano"
     if not pending:
-        next_action = (
-            "Marcar plano como pronto"
-            if row.plan_status == "draft"
-            else "Plano pronto — confirme o planejamento da avaliação quando escopo e equipe estiverem ok"
-        )
+        if row.plan_status == "draft":
+            next_action = "Concluir Plano"
+        elif row.plan_status == "amended":
+            next_action = "Revisar emenda e reconfirmar o plano (Concluir Plano)"
+        else:
+            next_action = (
+                "Concluir planejamento — formaliza a avaliação como planejada"
+            )
     return AuditPlanReadiness(
         ready=len(pending) == 0,
         completed_count=completed,
@@ -567,9 +570,11 @@ def patch_plan(ctx: OrgContext, assessment_id: UUID, payload: AuditPlanPatch) ->
             sources["team_membership_ids"] = "manual"
 
         if not fields:
-            return _row_to_out(
+            out = _row_to_out(
                 row, assessment.status, conn=conn, org_id=ctx.organization_id
             )
+            conn.commit()
+            return out
 
         start = fields.get("planned_start", row.planned_start)
         end = fields.get("planned_end", row.planned_end)
@@ -645,13 +650,16 @@ def patch_plan(ctx: OrgContext, assessment_id: UUID, payload: AuditPlanPatch) ->
                 "amendment": bool(needs_reason or assessment.status == "in_progress"),
             },
         )
-        conn.commit()
-        return _row_to_out(
+        # Before commit: RLS session GUCs still apply for agenda readiness lookups.
+        out = _row_to_out(
             updated, assessment.status, conn=conn, org_id=ctx.organization_id
         )
+        conn.commit()
+        return out
 
 
 def mark_ready(ctx: OrgContext, assessment_id: UUID, payload: AuditPlanReadyIn) -> AuditPlanOut:
+    """Concluir Plano: plan_status=ready. Não altera o status da avaliação."""
     require_role(ctx, *_MUTATE_ROLES)
     with tenant_connection(ctx.organization_id) as conn:
         assessment = _assessment(
@@ -678,6 +686,14 @@ def mark_ready(ctx: OrgContext, assessment_id: UUID, payload: AuditPlanReadyIn) 
                 "Plano incompleto: " + "; ".join(readiness.blockers),
                 status_code=422,
             )
+        from_status = row.plan_status
+        # Idempotent when already ready
+        if from_status == "ready":
+            out = _row_to_out(
+                row, assessment.status, conn=conn, org_id=ctx.organization_id
+            )
+            conn.commit()
+            return out
         updated = conn.execute(
             text(
                 """
@@ -704,13 +720,20 @@ def mark_ready(ctx: OrgContext, assessment_id: UUID, payload: AuditPlanReadyIn) 
             action="audit_plan.ready",
             resource_type="assessment_audit_plan",
             resource_id=updated.id,
+            from_status=from_status,
             to_status="ready",
-            metadata={"assessment_id": str(assessment_id)},
+            metadata={
+                "assessment_id": str(assessment_id),
+                "reconfirm_after_amendment": from_status == "amended",
+            },
         )
-        conn.commit()
-        return _row_to_out(
+        # Build response before commit — after commit, SET LOCAL RLS GUCs are gone
+        # and agenda_events lookups would falsely look empty.
+        out = _row_to_out(
             updated, assessment.status, conn=conn, org_id=ctx.organization_id
         )
+        conn.commit()
+        return out
 
 
 def refresh_from_preparation(

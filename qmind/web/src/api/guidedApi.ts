@@ -34,6 +34,21 @@ export async function fetchGuidedCatalog(
   });
 }
 
+/** Resultado previsível do GET guided (sessão, indisponível na fase, ou erro). */
+export type GuidedSessionFetch =
+  | { kind: "session"; session: GuidedSession }
+  | { kind: "unavailable_in_phase"; message: string };
+
+export function isGuidedUnavailableInPhase(
+  err: unknown,
+): err is QmindApiError {
+  return (
+    err instanceof QmindApiError &&
+    err.status === 409 &&
+    err.code === "guided_unavailable_in_phase"
+  );
+}
+
 export async function getOrCreateGuidedSession(
   assessmentId: string,
 ): Promise<GuidedSession> {
@@ -45,6 +60,21 @@ export async function getOrCreateGuidedSession(
     });
     return asSession(res.data);
   });
+}
+
+/** Preferir no dashboard/overview: distingue sessão, fase incompatível e erro real. */
+export async function fetchGuidedSessionState(
+  assessmentId: string,
+): Promise<GuidedSessionFetch> {
+  try {
+    const session = await getOrCreateGuidedSession(assessmentId);
+    return { kind: "session", session };
+  } catch (err) {
+    if (isGuidedUnavailableInPhase(err)) {
+      return { kind: "unavailable_in_phase", message: err.message };
+    }
+    throw err;
+  }
 }
 
 export async function patchGuidedSession(

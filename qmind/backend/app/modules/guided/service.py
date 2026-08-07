@@ -215,11 +215,12 @@ def get_or_create_session(ctx: OrgContext, assessment_id: UUID) -> GuidedSession
 
         if row is None:
             if assessment.status not in _EDITABLE_ASSESSMENT:
-                # Sem sessão: leitura vazia (dashboard/mapa) — não cria fora de draft/planned/in_progress.
+                # Fase avançada sem sessão: estado explícito (não 404 enganoso).
                 raise AppError(
-                    "not_found",
-                    "Roteiro guiado ainda não iniciado nesta avaliação",
-                    status_code=404,
+                    "guided_unavailable_in_phase",
+                    "Roteiro guiado não está disponível nesta fase da avaliação "
+                    f"(status={assessment.status}; nenhuma sessão iniciada na preparação).",
+                    status_code=409,
                 )
             require_role(ctx, *_MUTATE_ROLES)
             row = conn.execute(

@@ -215,8 +215,9 @@ export type ContinueHrefOptions = {
 
 /**
  * Próxima rota do percurso.
- * Em draft: só vai ao Planejamento (/work) quando a preparação estiver pronta;
+ * Em draft: só vai ao Plano da Auditoria quando a preparação estiver pronta;
  * caso contrário permanece na preparação (/guided).
+ * Planejamento usa /audit-plan (único caminho); /work é execução em campo.
  */
 export function continueHref(
   assessmentId: string,
@@ -227,8 +228,8 @@ export function continueHref(
     case "draft":
       if (options?.preparationReady) {
         return {
-          href: `/assessments/${assessmentId}/work`,
-          label: "Ir para o Planejamento",
+          href: `/assessments/${assessmentId}/audit-plan`,
+          label: "Abrir Plano da Auditoria",
         };
       }
       return {
@@ -237,8 +238,8 @@ export function continueHref(
       };
     case "planned":
       return {
-        href: `/assessments/${assessmentId}/work`,
-        label: "Continuar planejamento",
+        href: `/assessments/${assessmentId}/audit-plan`,
+        label: "Continuar Plano da Auditoria",
       };
     case "in_progress":
     case "analysis":

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 EventType = Literal[
     "interview", "meeting", "visit", "reminder", "milestone", "deadline", "other"
 ]
-EventStatus = Literal["scheduled", "completed", "cancelled"]
+EventStatus = Literal["scheduled", "completed", "cancelled", "waived"]
 
 
 PlanActivityKind = Literal[

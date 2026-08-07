@@ -4,17 +4,20 @@ import { queryKeys } from "@/api/queryKeys";
 import {
   completeGuidedAnswerEvidenceLink,
   fetchGuidedCatalog,
-  getOrCreateGuidedSession,
+  fetchGuidedSessionState,
   isGuidedApiError,
+  isGuidedUnavailableInPhase,
   linkGuidedAnswerEvidence,
   patchGuidedPosition,
   patchGuidedSession,
   unlinkGuidedAnswerEvidence,
   upsertGuidedAnswer,
+  type GuidedSessionFetch,
 } from "@/api/guidedApi";
 import type {
   GuidedAnswerUpsert,
   GuidedContext,
+  GuidedSession,
   GuidedStep,
 } from "@/api/guidedTypes";
 
@@ -26,21 +29,43 @@ export function useGuidedCatalog(version?: string | null) {
   });
 }
 
+/**
+ * Sessão guided com estado explícito:
+ * - data = sessão quando existe
+ * - unavailableInPhase = 409 guided_unavailable_in_phase (não é erro de UI)
+ * - isError = falha real (rede, 403, etc.)
+ */
 export function useGuidedSession(assessmentId: string | undefined) {
   const { currentOrganizationId } = useOrganization();
-  return useQuery({
+  const q = useQuery({
     queryKey:
       currentOrganizationId && assessmentId
         ? queryKeys.guidedSession(currentOrganizationId, assessmentId)
         : ["org", "none", "guided"],
     enabled: !!currentOrganizationId && !!assessmentId,
-    queryFn: () => getOrCreateGuidedSession(assessmentId!),
-    // 404 = roteiro ainda não iniciado (fases posteriores sem sessão).
+    queryFn: () => fetchGuidedSessionState(assessmentId!),
     retry: (count, err) => {
+      if (isGuidedUnavailableInPhase(err)) return false;
       if (isGuidedApiError(err) && err.status === 404) return false;
       return count < 1;
     },
   });
+
+  const fetch = q.data as GuidedSessionFetch | undefined;
+  const session: GuidedSession | undefined =
+    fetch?.kind === "session" ? fetch.session : undefined;
+  const unavailableInPhase =
+    fetch?.kind === "unavailable_in_phase"
+      ? { message: fetch.message }
+      : undefined;
+
+  return {
+    ...q,
+    data: session,
+    unavailableInPhase,
+    /** true quando não há sessão porque a fase não cria/abre roteiro */
+    isUnavailableInPhase: !!unavailableInPhase,
+  };
 }
 
 export function usePatchGuidedSession(assessmentId: string) {
@@ -59,9 +84,10 @@ export function usePatchGuidedSession(assessmentId: string) {
       }),
     onSuccess: (data) => {
       if (!currentOrganizationId) return;
+      const wrapped: GuidedSessionFetch = { kind: "session", session: data };
       qc.setQueryData(
         queryKeys.guidedSession(currentOrganizationId, assessmentId),
-        data,
+        wrapped,
       );
     },
   });
@@ -77,9 +103,10 @@ export function usePatchGuidedPosition(assessmentId: string) {
     }) => patchGuidedPosition(assessmentId, body),
     onSuccess: (data) => {
       if (!currentOrganizationId) return;
+      const wrapped: GuidedSessionFetch = { kind: "session", session: data };
       qc.setQueryData(
         queryKeys.guidedSession(currentOrganizationId, assessmentId),
-        data,
+        wrapped,
       );
     },
   });
@@ -88,11 +115,12 @@ export function usePatchGuidedPosition(assessmentId: string) {
 function useSetGuidedSession(assessmentId: string) {
   const { currentOrganizationId } = useOrganization();
   const qc = useQueryClient();
-  return (data: unknown) => {
+  return (data: GuidedSession) => {
     if (!currentOrganizationId) return;
+    const wrapped: GuidedSessionFetch = { kind: "session", session: data };
     qc.setQueryData(
       queryKeys.guidedSession(currentOrganizationId, assessmentId),
-      data,
+      wrapped,
     );
   };
 }

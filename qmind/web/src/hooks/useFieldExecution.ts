@@ -151,24 +151,111 @@ export function useAssessmentEvidences(assessmentId: string | undefined) {
   });
 }
 
+export type CreateInterviewInput = {
+  mode?: "onsite" | "remote" | "hybrid";
+  title?: string;
+  objective?: string;
+  process_name?: string;
+  org_contact_name?: string;
+  scheduled_at?: string;
+  duration_minutes?: number;
+  location?: string;
+  remote_link?: string;
+  preparation?: string;
+  outside_period_justification?: string;
+};
+
 export function useCreateInterview(assessmentId: string) {
   const { currentOrganizationId } = useOrganization();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (mode: "onsite" | "remote" | "hybrid") => {
+    mutationFn: async (input: CreateInterviewInput | "onsite" | "remote" | "hybrid") => {
+      const body: CreateInterviewInput =
+        typeof input === "string" ? { mode: input } : input;
       const client = getQmindClient();
       return guardTenant(async () => {
         const res = await client.api.createInterview({
           path: { assessment_id: assessmentId },
-          body: { mode },
+          body: {
+            mode: body.mode ?? "onsite",
+            title: body.title,
+            objective: body.objective,
+            process_name: body.process_name,
+            org_contact_name: body.org_contact_name,
+            scheduled_at: body.scheduled_at,
+            duration_minutes: body.duration_minutes,
+            location: body.location,
+            remote_link: body.remote_link,
+            preparation: body.preparation,
+            outside_period_justification: body.outside_period_justification,
+          },
         });
         return res.data!;
       });
     },
     onSuccess: async () => {
       if (!currentOrganizationId) return;
+      await Promise.all([
+        qc.invalidateQueries({
+          queryKey: queryKeys.assessmentInterviews(currentOrganizationId, assessmentId),
+        }),
+        qc.invalidateQueries({
+          queryKey: queryKeys.auditPlanSchedule(currentOrganizationId, assessmentId),
+        }),
+      ]);
+    },
+  });
+}
+
+export function useStartInterviewMutation(assessmentId: string) {
+  const { currentOrganizationId } = useOrganization();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (interviewId: string) => {
+      const client = getQmindClient();
+      return guardTenant(async () => {
+        const res = await client.api.startInterview({
+          path: { interview_id: interviewId },
+        });
+        return res.data!;
+      });
+    },
+    onSuccess: async () => {
+      if (!currentOrganizationId) return;
+      await invalidateFieldBundle(qc, currentOrganizationId, assessmentId);
       await qc.invalidateQueries({
-        queryKey: queryKeys.assessmentInterviews(currentOrganizationId, assessmentId),
+        queryKey: queryKeys.auditPlanSchedule(currentOrganizationId, assessmentId),
+      });
+    },
+  });
+}
+
+export function useCancelInterviewMutation(assessmentId: string) {
+  const { currentOrganizationId } = useOrganization();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { interviewId: string; reason: string }) => {
+      const client = getQmindClient();
+      return guardTenant(async () => {
+        if (args.reason.trim()) {
+          await client.api.updateInterview({
+            path: { interview_id: args.interviewId },
+            body: {
+              preparation: `Cancelamento: ${args.reason.trim()}`,
+            },
+          });
+        }
+        const res = await client.api.cancelInterview({
+          path: { interview_id: args.interviewId },
+        });
+        return res.data!;
+      });
+    },
+    onSuccess: async () => {
+      if (!currentOrganizationId) return;
+      await invalidateFieldBundle(qc, currentOrganizationId, assessmentId);
+      await qc.invalidateQueries({
+        queryKey: queryKeys.auditPlanSchedule(currentOrganizationId, assessmentId),
       });
     },
   });
@@ -329,5 +416,36 @@ export function useAbandonEvidence(assessmentId: string) {
 export function usePreviewEvidence() {
   return useMutation({
     mutationFn: async (evidenceId: string) => openEvidencePreview(evidenceId),
+  });
+}
+
+/** Vincula evidência já existente (ex.: antecipada) a entrevista/resposta sem novo upload. */
+export function useLinkEvidence(assessmentId: string) {
+  const { currentOrganizationId } = useOrganization();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      evidenceId: string;
+      target_type: EvidenceLinkTarget["target_type"];
+      target_id: string;
+    }) => {
+      const client = getQmindClient();
+      return guardTenant(async () => {
+        const res = await client.api.createEvidenceLink({
+          path: { evidence_id: payload.evidenceId },
+          body: {
+            target_type: payload.target_type,
+            target_id: payload.target_id,
+          },
+        });
+        return res.data!;
+      });
+    },
+    onSuccess: async () => {
+      if (!currentOrganizationId) return;
+      await qc.invalidateQueries({
+        queryKey: queryKeys.assessmentEvidences(currentOrganizationId, assessmentId),
+      });
+    },
   });
 }

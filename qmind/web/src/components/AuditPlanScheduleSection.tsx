@@ -6,7 +6,9 @@ import {
   useCreatePlannedInterview,
   useCreateScheduleMeeting,
   useCreateScheduleMilestone,
+  usePerformOpeningMeeting,
   useStartInterview,
+  useWaiveOpeningMeeting,
 } from "@/hooks/useAuditPlanSchedule";
 import type { ScheduleItem } from "@/api/auditPlanScheduleTypes";
 
@@ -64,8 +66,17 @@ export function AuditPlanScheduleSection({
   const createMilestone = useCreateScheduleMilestone(assessmentId);
   const createInterview = useCreatePlannedInterview(assessmentId);
   const startIv = useStartInterview(assessmentId);
+  const performOpening = usePerformOpeningMeeting(assessmentId);
+  const waiveOpening = useWaiveOpeningMeeting(assessmentId);
   const [searchParams, setSearchParams] = useSearchParams();
   const [error, setError] = useState<unknown>(null);
+  const [openingMode, setOpeningMode] = useState<"closed" | "perform" | "waive">(
+    "closed",
+  );
+  const [openingNotes, setOpeningNotes] = useState("");
+  const [openingAdjust, setOpeningAdjust] = useState("");
+  const [openingPendings, setOpeningPendings] = useState("");
+  const [waiverReason, setWaiverReason] = useState("");
   const [form, setForm] = useState<"closed" | "interview" | "meeting" | "milestone">(
     "closed",
   );
@@ -274,6 +285,63 @@ export function AuditPlanScheduleSection({
         </div>
       ) : null}
 
+      <OpeningMeetingPanel
+        opening={
+          (schedule?.items ?? []).find(
+            (i) =>
+              i.plan_activity_kind === "opening_meeting" &&
+              i.status !== "cancelled",
+          ) ?? null
+        }
+        readOnly={!!readOnly}
+        mode={openingMode}
+        setMode={setOpeningMode}
+        notes={openingNotes}
+        setNotes={setOpeningNotes}
+        adjustments={openingAdjust}
+        setAdjustments={setOpeningAdjust}
+        pendings={openingPendings}
+        setPendings={setOpeningPendings}
+        waiverReason={waiverReason}
+        setWaiverReason={setWaiverReason}
+        busy={performOpening.isPending || waiveOpening.isPending}
+        onPerform={() => {
+          const opening = (schedule?.items ?? []).find(
+            (i) =>
+              i.plan_activity_kind === "opening_meeting" &&
+              i.status !== "cancelled",
+          );
+          if (!opening) return;
+          void performOpening
+            .mutateAsync({
+              eventId: opening.id,
+              observations: openingNotes,
+              adjustments: openingAdjust,
+              pendings: openingPendings,
+            })
+            .then(() => {
+              setOpeningMode("closed");
+              setError(null);
+            })
+            .catch(setError);
+        }}
+        onWaive={() => {
+          const opening = (schedule?.items ?? []).find(
+            (i) =>
+              i.plan_activity_kind === "opening_meeting" &&
+              i.status !== "cancelled",
+          );
+          if (!opening) return;
+          void waiveOpening
+            .mutateAsync({ eventId: opening.id, waiverReason })
+            .then(() => {
+              setOpeningMode("closed");
+              setError(null);
+            })
+            .catch(setError);
+        }}
+      />
+
       {form !== "closed" && !readOnly ? (
         <div className="space-y-3 rounded-md border border-[var(--qm-line)] p-3">
           <div className="flex flex-wrap gap-2 text-sm">
@@ -458,6 +526,157 @@ export function AuditPlanScheduleSection({
         </div>
       </div>
     </section>
+  );
+}
+
+function OpeningMeetingPanel({
+  opening,
+  readOnly,
+  mode,
+  setMode,
+  notes,
+  setNotes,
+  adjustments,
+  setAdjustments,
+  pendings,
+  setPendings,
+  waiverReason,
+  setWaiverReason,
+  busy,
+  onPerform,
+  onWaive,
+}: {
+  opening: ScheduleItem | null;
+  readOnly: boolean;
+  mode: "closed" | "perform" | "waive";
+  setMode: (m: "closed" | "perform" | "waive") => void;
+  notes: string;
+  setNotes: (v: string) => void;
+  adjustments: string;
+  setAdjustments: (v: string) => void;
+  pendings: string;
+  setPendings: (v: string) => void;
+  waiverReason: string;
+  setWaiverReason: (v: string) => void;
+  busy: boolean;
+  onPerform: () => void;
+  onWaive: () => void;
+}) {
+  if (!opening) {
+    return (
+      <div
+        className="rounded-md border border-[var(--qm-line)] px-3 py-2 text-sm text-[var(--qm-muted)]"
+        data-testid="opening-meeting-missing"
+      >
+        Programe a reunião de abertura — ela é pré-requisito para iniciar o campo
+        (ou dispense-a com justificativa depois de criada).
+      </div>
+    );
+  }
+
+  const done = opening.status === "completed" || opening.status === "waived";
+  return (
+    <div
+      className="space-y-2 rounded-md border border-[var(--qm-line)] px-3 py-3"
+      data-testid="opening-meeting-panel"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="font-semibold text-[var(--qm-ink)]">
+            Reunião de abertura
+          </p>
+          <p className="text-sm text-[var(--qm-muted)]">
+            Status:{" "}
+            {opening.status === "completed"
+              ? "Realizada"
+              : opening.status === "waived"
+                ? "Dispensada"
+                : "Programada"}
+          </p>
+        </div>
+        {!readOnly && !done ? (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="qm-btn-primary text-sm"
+              data-testid="opening-meeting-perform"
+              onClick={() => setMode(mode === "perform" ? "closed" : "perform")}
+            >
+              Registrar reunião de abertura
+            </button>
+            <button
+              type="button"
+              className="qm-btn-secondary text-sm"
+              data-testid="opening-meeting-waive"
+              onClick={() => setMode(mode === "waive" ? "closed" : "waive")}
+            >
+              Dispensar com justificativa
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      {mode === "perform" ? (
+        <div className="space-y-2 text-sm">
+          <p className="text-[var(--qm-muted)]">
+            Registra realização com horário real, participantes (já no evento) e
+            observações. Isso libera o início do campo quando o plano estiver pronto.
+          </p>
+          <textarea
+            className="qm-field min-h-16"
+            placeholder="Observações"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+          <textarea
+            className="qm-field min-h-14"
+            placeholder="Ajustes combinados"
+            value={adjustments}
+            onChange={(e) => setAdjustments(e.target.value)}
+          />
+          <textarea
+            className="qm-field min-h-14"
+            placeholder="Pendências"
+            value={pendings}
+            onChange={(e) => setPendings(e.target.value)}
+          />
+          <button
+            type="button"
+            className="qm-btn-primary"
+            disabled={busy}
+            data-testid="opening-meeting-perform-confirm"
+            onClick={onPerform}
+          >
+            {busy ? "Salvando…" : "Registrar reunião de abertura"}
+          </button>
+        </div>
+      ) : null}
+
+      {mode === "waive" ? (
+        <div className="space-y-2 text-sm">
+          <p className="text-[var(--qm-muted)]">
+            Dispensa exige justificativa, autor autorizado e registro de auditoria.
+            Use só quando a abertura formal não for necessária.
+          </p>
+          <textarea
+            className="qm-field min-h-20"
+            placeholder="Justificativa (mínimo 8 caracteres)"
+            value={waiverReason}
+            data-testid="opening-meeting-waiver-reason"
+            onChange={(e) => setWaiverReason(e.target.value)}
+          />
+          <button
+            type="button"
+            className="qm-btn-primary"
+            disabled={busy || waiverReason.trim().length < 8}
+            data-testid="opening-meeting-waive-confirm"
+            onClick={onWaive}
+          >
+            {busy ? "Salvando…" : "Confirmar dispensa"}
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

@@ -298,12 +298,18 @@ export function useAuditDashboard(assessmentId: string | undefined) {
             }
           : status === "planned"
             ? {
-                title: planReady
-                  ? "Iniciar execução em campo"
-                  : "Continuar o Plano da Auditoria",
-                description: planReady
-                  ? "Com o plano pronto, abra a execução em campo quando a equipe estiver preparada."
-                  : "Ainda há pendências no Plano da Auditoria antes de iniciar o campo.",
+                title:
+                  planState === "amended"
+                    ? "Revisar emenda do plano"
+                    : planReady
+                      ? "Iniciar execução em campo"
+                      : "Continuar o Plano da Auditoria",
+                description:
+                  planState === "amended"
+                    ? "Há emenda pendente: revise, reconfirme o plano e só então inicie o campo."
+                    : planReady
+                      ? "Com o plano pronto, registre a abertura (ou dispensa) e inicie a execução em campo."
+                      : "Ainda há pendências no Plano da Auditoria antes de iniciar o campo.",
                 actionText: continueActionResolved.label,
               }
             : {
@@ -317,7 +323,7 @@ export function useAuditDashboard(assessmentId: string | undefined) {
       loading:
         assessment.isLoading ||
         extras.some((q) => q.isLoading) ||
-        (guided.isLoading && !guided.isError) ||
+        (guided.isLoading && !guided.isError && !guided.isUnavailableInPhase) ||
         (auditPlan.isLoading && !auditPlan.isError) ||
         (schedule.isLoading && !schedule.isError),
       assessment: a,
@@ -361,6 +367,7 @@ export function useAuditDashboard(assessmentId: string | undefined) {
     guided.data,
     guided.isLoading,
     guided.isError,
+    guided.isUnavailableInPhase,
     auditPlan.data,
     auditPlan.isLoading,
     auditPlan.isError,

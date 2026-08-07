@@ -786,7 +786,8 @@
             "enum": [
               "scheduled",
               "completed",
-              "cancelled"
+              "cancelled",
+              "waived"
             ],
             "title": "Status",
             "type": "string"
@@ -998,7 +999,8 @@
                 "enum": [
                   "scheduled",
                   "completed",
-                  "cancelled"
+                  "cancelled",
+                  "waived"
                 ],
                 "type": "string"
               },
@@ -2076,6 +2078,50 @@
           }
         },
         "title": "CloseIn",
+        "type": "object"
+      },
+      "ConcludePlanningIn": {
+        "properties": {
+          "expected_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Updated At"
+          },
+          "mark_ready_if_needed": {
+            "default": true,
+            "title": "Mark Ready If Needed",
+            "type": "boolean"
+          }
+        },
+        "title": "ConcludePlanningIn",
+        "type": "object"
+      },
+      "ConcludePlanningOut": {
+        "properties": {
+          "message": {
+            "default": "Planejamento concluído. A avaliação está planejada; o próximo passo é a reunião de abertura e o início da execução em campo.",
+            "title": "Message",
+            "type": "string"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/AuditPlanOut"
+          },
+          "transition": {
+            "$ref": "#/components/schemas/AssessmentTransitionResult"
+          }
+        },
+        "required": [
+          "plan",
+          "transition"
+        ],
+        "title": "ConcludePlanningOut",
         "type": "object"
       },
       "DimensionScoreOut": {
@@ -4373,6 +4419,100 @@
         "title": "MembershipStatus",
         "type": "string"
       },
+      "OpeningMeetingOut": {
+        "properties": {
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "waived"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "status",
+          "message"
+        ],
+        "title": "OpeningMeetingOut",
+        "type": "object"
+      },
+      "OpeningMeetingPerformIn": {
+        "properties": {
+          "actual_starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Starts At"
+          },
+          "adjustments": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Adjustments",
+            "type": "string"
+          },
+          "observations": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Observations",
+            "type": "string"
+          },
+          "participant_membership_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participant Membership Ids"
+          },
+          "pendings": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Pendings",
+            "type": "string"
+          }
+        },
+        "title": "OpeningMeetingPerformIn",
+        "type": "object"
+      },
+      "OpeningMeetingWaiveIn": {
+        "properties": {
+          "waiver_reason": {
+            "maxLength": 2000,
+            "minLength": 8,
+            "title": "Waiver Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "waiver_reason"
+        ],
+        "title": "OpeningMeetingWaiveIn",
+        "type": "object"
+      },
       "OrgMemberOut": {
         "properties": {
           "display_name": {
@@ -5289,7 +5429,8 @@
                 "enum": [
                   "scheduled",
                   "completed",
-                  "cancelled"
+                  "cancelled",
+                  "waived"
                 ],
                 "type": "string"
               },
@@ -5322,6 +5463,18 @@
               }
             ],
             "title": "Title"
+          },
+          "waiver_reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiver Reason"
           }
         },
         "title": "ScheduleMeetingUpdate",
@@ -5891,6 +6044,46 @@
           "scores"
         ],
         "title": "ScoresUpsertIn",
+        "type": "object"
+      },
+      "StartFieldIn": {
+        "properties": {
+          "expected_plan_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Plan Updated At"
+          }
+        },
+        "title": "StartFieldIn",
+        "type": "object"
+      },
+      "StartFieldOut": {
+        "properties": {
+          "message": {
+            "default": "Execução em campo iniciada. Continue no painel de trabalho da avaliação.",
+            "title": "Message",
+            "type": "string"
+          },
+          "redirect_href": {
+            "title": "Redirect Href",
+            "type": "string"
+          },
+          "transition": {
+            "$ref": "#/components/schemas/AssessmentTransitionResult"
+          }
+        },
+        "required": [
+          "transition",
+          "redirect_href"
+        ],
+        "title": "StartFieldOut",
         "type": "object"
       },
       "TeamMemberIn": {
@@ -12677,8 +12870,253 @@
         ]
       }
     },
+    "/api/v1/assessments/{assessment_id}/audit-plan/conclude-planning": {
+      "post": {
+        "operationId": "concludeAuditPlanning",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assessment Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ConcludePlanningIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConcludePlanningOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Concluir planejamento (plano ready + avaliação draft→planned)",
+        "tags": [
+          "audit-plan"
+        ]
+      }
+    },
     "/api/v1/assessments/{assessment_id}/audit-plan/ready": {
       "post": {
+        "description": "Concluir Plano — plan_status=ready; não altera o status da avaliação.",
         "operationId": "markAuditPlanReady",
         "parameters": [
           {
@@ -13834,6 +14272,507 @@
         ]
       }
     },
+    "/api/v1/assessments/{assessment_id}/audit-plan/schedule/meetings/{event_id}/perform": {
+      "post": {
+        "operationId": "performOpeningMeeting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assessment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/OpeningMeetingPerformIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpeningMeetingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Registrar reunião de abertura como realizada",
+        "tags": [
+          "audit-plan"
+        ]
+      }
+    },
+    "/api/v1/assessments/{assessment_id}/audit-plan/schedule/meetings/{event_id}/waive": {
+      "post": {
+        "operationId": "waiveOpeningMeeting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assessment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpeningMeetingWaiveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpeningMeetingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Dispensar reunião de abertura com justificativa",
+        "tags": [
+          "audit-plan"
+        ]
+      }
+    },
     "/api/v1/assessments/{assessment_id}/audit-plan/schedule/milestones": {
       "post": {
         "operationId": "createAuditPlanMilestone",
@@ -14304,6 +15243,250 @@
           }
         ],
         "summary": "Update Audit Plan Milestone",
+        "tags": [
+          "audit-plan"
+        ]
+      }
+    },
+    "/api/v1/assessments/{assessment_id}/audit-plan/start-field": {
+      "post": {
+        "operationId": "startAuditFieldExecution",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assessment Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/StartFieldIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartFieldOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Iniciar execução em campo (planned→in_progress com guardas)",
         "tags": [
           "audit-plan"
         ]

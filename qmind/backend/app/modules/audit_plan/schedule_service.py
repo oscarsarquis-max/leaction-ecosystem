@@ -550,6 +550,19 @@ def update_meeting(
             members.append(owner)
         _assert_memberships(conn, ctx.organization_id, members)
         status = payload.status if payload.status is not None else cur.status
+        waiver = (
+            (payload.waiver_reason or "").strip()
+            if payload.waiver_reason is not None
+            else getattr(cur, "waiver_reason", None) or ""
+        )
+        if status == "waived" and len(waiver) < 8:
+            raise AppError(
+                "validation_error",
+                "Justificativa da dispensa é obrigatória (mínimo 8 caracteres)",
+                status_code=422,
+            )
+        if status != "waived":
+            waiver = ""
         conn.execute(
             text(
                 """
@@ -564,6 +577,7 @@ def update_meeting(
                   location_or_link = :loc,
                   guidance = :prep,
                   status = :status,
+                  waiver_reason = :waiver,
                   updated_at = now(),
                   updated_by_user_id = :uid
                 WHERE id = :id AND organization_id = :org
@@ -590,6 +604,7 @@ def update_meeting(
                     payload.preparation if payload.preparation is not None else cur.guidance or ""
                 ).strip(),
                 "status": status,
+                "waiver": waiver,
                 "uid": ctx.principal.user_id,
             },
         )

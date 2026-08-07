@@ -307,7 +307,11 @@ function installApi(store: Store, opts?: { ensureFills?: boolean }) {
         return json(row, 201);
       }
 
-      if (url.includes(`/transitions/plan`) && method === "POST") {
+      if (
+        (url.includes(`/transitions/plan`) ||
+          url.includes(`/audit-plan/conclude-planning`)) &&
+        method === "POST"
+      ) {
         store.planCalls += 1;
         if (store.planFailOnce) {
           const fail = store.planFailOnce;
@@ -336,12 +340,20 @@ function installApi(store: Store, opts?: { ensureFills?: boolean }) {
         }
         store.assessment = { ...store.assessment, status: "planned" };
         store.listByOrg[store.assessment.organization_id] = [store.assessment];
-        return json({
+        const transition = {
           assessment: store.assessment,
           from_status: "draft",
           to_status: "planned",
           event: "plan",
-        });
+        };
+        if (url.includes("conclude-planning")) {
+          return json({
+            plan: { plan_status: "ready", readiness: { ready: true } },
+            transition,
+            message: "Planejamento concluído",
+          });
+        }
+        return json(transition);
       }
 
       if (
@@ -467,7 +479,7 @@ describe("assessment setup and planning UI", () => {
     ];
     installApi(store);
     const { App } = harness(`/assessments/${AID}`);
-    render(<App />);
+    const { unmount } = render(<App />);
     await enterApp(user);
 
     await waitFor(() => expect(screen.getByTestId("team-list")).toBeInTheDocument());
@@ -478,19 +490,25 @@ describe("assessment setup and planning UI", () => {
     await waitFor(() => {
       expect(screen.getByText("Colega Extra")).toBeInTheDocument();
     });
+    expect(screen.getByTestId("open-audit-plan")).toBeInTheDocument();
 
-    await user.click(screen.getByTestId("plan-open-confirm"));
-    await user.click(screen.getByTestId("plan-confirm-submit"));
+    // Handoff oficial é no Plano da Auditoria; aqui exercitamos o efeito do plan no /work.
+    store.assessment = { ...store.assessment, status: "planned" };
+    store.listByOrg[store.assessment.organization_id] = [store.assessment];
+    unmount();
+    const { App: App2 } = harness(`/assessments/${AID}`);
+    render(<App2 />);
+    await enterApp(user);
 
     await waitFor(() => {
       expect(screen.getByTestId("assessment-status")).toHaveTextContent(/planejada/i);
-      expect(screen.getByTestId("plan-locked")).toBeInTheDocument();
+      expect(screen.getByTestId("open-audit-plan")).toBeInTheDocument();
     });
     expect(screen.queryByTestId("scope-add")).not.toBeInTheDocument();
     expect(screen.queryByTestId("team-member-select")).not.toBeInTheDocument();
   });
 
-  it("shows plan guards when scope/team incomplete", async () => {
+  it("points planning handoff to Plano da Auditoria (single path)", async () => {
     const user = userEvent.setup();
     const store = baseStore();
     store.scopes = [];
@@ -500,9 +518,10 @@ describe("assessment setup and planning UI", () => {
     await enterApp(user);
 
     await waitFor(() => {
-      expect(screen.getByTestId("plan-guard-scope")).toHaveTextContent(/faltando/i);
-      expect(screen.getByTestId("plan-open-confirm")).toBeDisabled();
+      expect(screen.getByTestId("open-audit-plan")).toBeInTheDocument();
+      expect(screen.getByTestId("legacy-plan-compat-note")).toBeInTheDocument();
     });
+    expect(screen.queryByTestId("plan-open-confirm")).not.toBeInTheDocument();
   });
 
   it("reader sees detail without mutation controls", async () => {
@@ -532,82 +551,19 @@ describe("assessment setup and planning UI", () => {
     expect(screen.queryByTestId("new-assessment")).not.toBeInTheDocument();
   });
 
-  it("displays 422 plan guard with correlation_id", async () => {
-    const user = userEvent.setup();
-    const store = baseStore();
-    // Force UI ready then fail server-side once
-    store.scopes = [
-      {
-        id: SCOPE_ID,
-        assessment_id: AID,
-        org_process_id: null,
-        requirement_id: REQ,
-        created_at: "2026-01-01T00:00:00Z",
-      },
-    ];
-    store.planFailOnce = {
-      status: 422,
-      code: "plan_guard_scope",
-      message: "plan requires at least one scope item",
-      correlation_id: "corr-422-scope",
-    };
-    installApi(store);
-    const { App } = harness(`/assessments/${AID}`);
-    render(<App />);
-    await enterApp(user);
-
-    await waitFor(() => expect(screen.getByTestId("plan-open-confirm")).toBeEnabled());
-    await user.click(screen.getByTestId("plan-open-confirm"));
-    await user.click(screen.getByTestId("plan-confirm-submit"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("api-error-code")).toHaveTextContent("plan_guard_scope");
-      expect(screen.getByTestId("api-error-correlation")).toHaveTextContent(
-        "corr-422-scope",
-      );
-    });
-  });
-
-  it("double click does not duplicate create or plan", async () => {
+  it("create double click does not duplicate assessment", async () => {
     const user = userEvent.setup();
 
-    // create double-submit
     const createStore = baseStore();
     installApi(createStore);
     const { App: CreateApp } = harness("/assessments/new");
-    const { unmount } = render(<CreateApp />);
+    render(<CreateApp />);
     await enterApp(user);
     await waitFor(() => screen.getByRole("button", { name: /Criar e ver o mapa/i }));
     const createBtn = screen.getByRole("button", { name: /Criar e ver o mapa/i });
     await user.dblClick(createBtn);
     await waitFor(() => expect(createStore.createCalls).toBeGreaterThanOrEqual(1));
     expect(createStore.createCalls).toBe(1);
-    unmount();
-
-    // plan double-submit (fresh store with ready guards)
-    vi.unstubAllGlobals();
-    resetQmindClient();
-    resetTenantContext();
-    const planStore = baseStore();
-    planStore.scopes = [
-      {
-        id: SCOPE_ID,
-        assessment_id: AID,
-        org_process_id: null,
-        requirement_id: REQ,
-        created_at: "2026-01-01T00:00:00Z",
-      },
-    ];
-    installApi(planStore);
-    const { App: DetailApp } = harness(`/assessments/${AID}`);
-    render(<DetailApp />);
-    await enterApp(user);
-    await waitFor(() => expect(screen.getByTestId("plan-open-confirm")).toBeEnabled());
-    await user.click(screen.getByTestId("plan-open-confirm"));
-    const confirm = screen.getByTestId("plan-confirm-submit");
-    await user.dblClick(confirm);
-    await waitFor(() => expect(planStore.planCalls).toBeGreaterThanOrEqual(1));
-    expect(planStore.planCalls).toBe(1);
   });
 
   it("tenant switch during edit ignores previous org responses", async () => {
@@ -649,7 +605,7 @@ describe("assessment setup and planning UI", () => {
     });
   });
 
-  it("successful plan updates listing status", async () => {
+  it("planned assessment appears as planejada in listing", async () => {
     const user = userEvent.setup();
     const store = baseStore();
     store.scopes = [
@@ -661,17 +617,16 @@ describe("assessment setup and planning UI", () => {
         created_at: "2026-01-01T00:00:00Z",
       },
     ];
+    store.assessment = { ...store.assessment, status: "planned" };
+    store.listByOrg[store.assessment.organization_id] = [store.assessment];
     installApi(store);
     const { App } = harness(`/assessments/${AID}`);
     render(<App />);
     await enterApp(user);
 
-    await waitFor(() => expect(screen.getByTestId("plan-open-confirm")).toBeEnabled());
-    await user.click(screen.getByTestId("plan-open-confirm"));
-    await user.click(screen.getByTestId("plan-confirm-submit"));
-
     await waitFor(() => {
       expect(screen.getByTestId("assessment-status")).toHaveTextContent(/planejada/i);
+      expect(screen.getByTestId("open-audit-plan")).toBeInTheDocument();
     });
 
     await user.click(screen.getByTestId("nav-assessments"));

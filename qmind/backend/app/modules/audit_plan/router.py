@@ -13,6 +13,16 @@ from app.modules.audit_plan.schedule_schemas import (
     ScheduleMilestoneCreate,
     ScheduleMilestoneUpdate,
 )
+from app.modules.audit_plan.handoff_schemas import (
+    ConcludePlanningIn,
+    ConcludePlanningOut,
+    OpeningMeetingOut,
+    OpeningMeetingPerformIn,
+    OpeningMeetingWaiveIn,
+    StartFieldIn,
+    StartFieldOut,
+)
+from app.modules.audit_plan import handoff_service
 from app.modules.audit_plan.schemas import (
     AuditPlanOut,
     AuditPlanPatch,
@@ -74,7 +84,92 @@ def mark_audit_plan_ready(
     payload: AuditPlanReadyIn | None = None,
     _idempotency_key: IdempotencyKeyHeader = None,
 ) -> AuditPlanOut:
+    """Concluir Plano — plan_status=ready; não altera o status da avaliação."""
     return service.mark_ready(ctx, assessment_id, payload or AuditPlanReadyIn())
+
+
+@router.post(
+    "/assessments/{assessment_id}/audit-plan/conclude-planning",
+    response_model=ConcludePlanningOut,
+    operation_id="concludeAuditPlanning",
+    responses={
+        404: ERROR_RESPONSES[404],
+        409: ERROR_RESPONSES[409],
+        422: ERROR_RESPONSES[422],
+    },
+    summary="Concluir planejamento (plano ready + avaliação draft→planned)",
+)
+def conclude_audit_planning(
+    assessment_id: UUID,
+    ctx: OrgContextDep,
+    payload: ConcludePlanningIn | None = None,
+    _idempotency_key: IdempotencyKeyHeader = None,
+) -> ConcludePlanningOut:
+    return handoff_service.conclude_planning(
+        ctx, assessment_id, payload or ConcludePlanningIn()
+    )
+
+
+@router.post(
+    "/assessments/{assessment_id}/audit-plan/start-field",
+    response_model=StartFieldOut,
+    operation_id="startAuditFieldExecution",
+    responses={
+        404: ERROR_RESPONSES[404],
+        409: ERROR_RESPONSES[409],
+        422: ERROR_RESPONSES[422],
+    },
+    summary="Iniciar execução em campo (planned→in_progress com guardas)",
+)
+def start_audit_field_execution(
+    assessment_id: UUID,
+    ctx: OrgContextDep,
+    payload: StartFieldIn | None = None,
+    _idempotency_key: IdempotencyKeyHeader = None,
+) -> StartFieldOut:
+    return handoff_service.start_field_execution(
+        ctx, assessment_id, payload or StartFieldIn()
+    )
+
+
+@router.post(
+    "/assessments/{assessment_id}/audit-plan/schedule/meetings/{event_id}/perform",
+    response_model=OpeningMeetingOut,
+    operation_id="performOpeningMeeting",
+    responses={404: ERROR_RESPONSES[404], 409: ERROR_RESPONSES[409]},
+    summary="Registrar reunião de abertura como realizada",
+)
+def perform_opening_meeting(
+    assessment_id: UUID,
+    event_id: UUID,
+    ctx: OrgContextDep,
+    payload: OpeningMeetingPerformIn | None = None,
+    _idempotency_key: IdempotencyKeyHeader = None,
+) -> OpeningMeetingOut:
+    return handoff_service.perform_opening_meeting(
+        ctx, assessment_id, event_id, payload or OpeningMeetingPerformIn()
+    )
+
+
+@router.post(
+    "/assessments/{assessment_id}/audit-plan/schedule/meetings/{event_id}/waive",
+    response_model=OpeningMeetingOut,
+    operation_id="waiveOpeningMeeting",
+    responses={
+        404: ERROR_RESPONSES[404],
+        409: ERROR_RESPONSES[409],
+        422: ERROR_RESPONSES[422],
+    },
+    summary="Dispensar reunião de abertura com justificativa",
+)
+def waive_opening_meeting(
+    assessment_id: UUID,
+    event_id: UUID,
+    payload: OpeningMeetingWaiveIn,
+    ctx: OrgContextDep,
+    _idempotency_key: IdempotencyKeyHeader = None,
+) -> OpeningMeetingOut:
+    return handoff_service.waive_opening_meeting(ctx, assessment_id, event_id, payload)
 
 
 @router.post(

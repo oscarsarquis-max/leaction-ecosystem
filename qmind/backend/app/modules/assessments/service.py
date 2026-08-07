@@ -759,12 +759,27 @@ def transition_plan(ctx: OrgContext, assessment_id: UUID) -> AssessmentTransitio
     require_role(ctx, *_MUTATE_ROLES)
     with tenant_connection(ctx.organization_id) as conn:
         row = _lock_assessment(conn, ctx.organization_id, assessment_id)
+        if row.status == "planned":
+            # Idempotent: already planned
+            return AssessmentTransitionResult(
+                assessment=_row_to_out(row),
+                from_status="planned",
+                to_status="planned",
+                event="plan",
+            )
         if row.status != "draft":
             raise AppError(
                 "invalid_transition",
                 f"plan requires status draft (current={row.status})",
                 status_code=409,
             )
+        # Handoff gate: Plano da Auditoria must be ready
+        from app.modules.audit_plan.handoff_service import (
+            assert_plan_ready_for_assessment_plan,
+        )
+
+        assert_plan_ready_for_assessment_plan(conn, ctx.organization_id, assessment_id)
+
         scope_n = conn.execute(
             text("SELECT count(*) FROM assessment_scopes WHERE assessment_id = :id"),
             {"id": assessment_id},
@@ -820,12 +835,24 @@ def transition_start(ctx: OrgContext, assessment_id: UUID) -> AssessmentTransiti
     require_role(ctx, *_MUTATE_ROLES)
     with tenant_connection(ctx.organization_id) as conn:
         row = _lock_assessment(conn, ctx.organization_id, assessment_id)
+        if row.status == "in_progress":
+            # Idempotent: already in field
+            return AssessmentTransitionResult(
+                assessment=_row_to_out(row),
+                from_status="in_progress",
+                to_status="in_progress",
+                event="start",
+            )
         if row.status != "planned":
             raise AppError(
                 "invalid_transition",
                 f"start requires status planned (current={row.status})",
                 status_code=409,
             )
+        from app.modules.audit_plan.handoff_service import assert_plan_ready_for_field
+
+        assert_plan_ready_for_field(conn, ctx.organization_id, assessment_id)
+
         updated = _set_status(
             conn, ctx, assessment_id, "planned", "in_progress", "start", set_started=True
         )

@@ -8,7 +8,11 @@ import {
 } from "@/api/guidedTypes";
 import { QmindApiError } from "@/api/qmindApi";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
-import { AccessDeniedPanel, LoadingPanel } from "@/components/StatePanels";
+import {
+  AccessDeniedPanel,
+  EmptyPanel,
+  LoadingPanel,
+} from "@/components/StatePanels";
 import { GuidedContextSteps } from "@/components/guided/GuidedContextSteps";
 import { GuidedProgress } from "@/components/guided/GuidedProgress";
 import { GuidedReview } from "@/components/guided/GuidedReview";
@@ -273,6 +277,18 @@ export function AssessmentGuidedPage() {
 
   if (assessment.isLoading || sessionQ.isLoading || catalog.isLoading) {
     return <LoadingPanel title="Preparando o roteiro guiado…" />;
+  }
+
+  if (sessionQ.isUnavailableInPhase) {
+    return (
+      <EmptyPanel
+        title="Roteiro guiado não disponível nesta fase"
+        message={
+          sessionQ.unavailableInPhase?.message ||
+          "Não há sessão de preparação iniciada nesta fase da avaliação. Isso não é um erro — continue pelo mapa ou pela execução em campo."
+        }
+      />
+    );
   }
 
   if (assessment.isError || sessionQ.isError || catalog.isError) {

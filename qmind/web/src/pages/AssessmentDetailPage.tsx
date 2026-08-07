@@ -9,11 +9,9 @@ import {
   useDeleteScope,
   useEnsureScopes,
   useOrgMembers,
-  usePlanAssessment,
   useRemoveTeamMember,
   useScopeOptions,
 } from "@/hooks/useAssessmentDetail";
-import { useStartAssessment } from "@/hooks/useFieldExecution";
 import { useAssessmentPermissions } from "@/hooks/useAssessmentPermissions";
 import {
   AccessDeniedPanel,
@@ -21,7 +19,6 @@ import {
   LoadingPanel,
 } from "@/components/StatePanels";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
-import { FieldExecutionPanel } from "@/components/FieldExecutionPanel";
 import { FindingsAnalysisPanel } from "@/components/FindingsAnalysisPanel";
 import { MaturityAnalysisPanel } from "@/components/MaturityAnalysisPanel";
 import { ActionPlanPanel } from "@/components/ActionPlanPanel";
@@ -134,57 +131,64 @@ export function AssessmentDetailPage() {
       >
         <h2 className="font-display text-xl text-teal-950">Plano da Auditoria</h2>
         <p className="mt-1 text-sm text-teal-950/70">
-          Organize propósito, processos, pessoas e período em linguagem clara —
-          com preenchimento a partir da preparação.
+          O planejamento e o início do campo acontecem no Plano da Auditoria —
+          único caminho principal (concluir plano, concluir planejamento, abertura
+          e iniciar execução).
         </p>
         <Link
           to={`/assessments/${assessmentId}/audit-plan`}
           className="qm-btn-primary mt-3 inline-flex"
           data-testid="open-audit-plan"
         >
-          Abrir Plano da Auditoria
+          {a.status === "draft"
+            ? "Abrir Plano da Auditoria"
+            : a.status === "planned"
+              ? "Continuar handoff no Plano da Auditoria"
+              : "Revisar Plano da Auditoria"}
         </Link>
+        {(a.status === "draft" || a.status === "planned") && canEdit ? (
+          <p className="mt-2 text-xs text-teal-950/60" data-testid="legacy-plan-compat-note">
+            Escopo e equipe abaixo ficam para compatibilidade; a confirmação oficial
+            do planejamento e o início do campo são feitos no Plano da Auditoria.
+          </p>
+        ) : null}
       </section>
-      <PlanSection
-        assessmentId={assessmentId}
-        canEdit={canEdit}
-        isDraft={a.status === "draft"}
-        scopeCount={scopes.data?.length ?? 0}
-        teamCount={team.data?.length ?? 0}
-        hasLead={!!a.lead_membership_id}
-      />
-      <StartSection
-        assessmentId={assessmentId}
-        canStart={perms.canStart}
-        isPlanned={a.status === "planned"}
-      />
-      {a.status === "in_progress" || a.status === "analysis" ? (
-        <FieldExecutionPanel
-          assessmentId={assessmentId}
-          canEditField={perms.canEditField}
-          canCollectEvidence={perms.canCollectEvidence}
-        />
+      {a.status === "in_progress" ||
+      a.status === "analysis" ||
+      a.status === "actions" ||
+      a.status === "report" ||
+      a.status === "closed" ? (
+        <section
+          className="rounded-lg border border-teal-900/10 bg-white/70 p-4"
+          data-testid="field-central-entry"
+        >
+          <h2 className="font-display text-xl text-teal-950">Central de Campo</h2>
+          <p className="mt-1 text-sm text-teal-950/70">
+            Entrevistas, evidências e pendências do dia ficam na Central de Campo —
+            único painel operacional de execução (esta tela avançada não duplica o fluxo).
+          </p>
+          <Link
+            to={`/assessments/${assessmentId}/work`}
+            className="qm-btn-primary mt-3 inline-flex"
+            data-testid="open-field-central"
+          >
+            {a.status === "in_progress"
+              ? "Abrir Central de Campo"
+              : "Ver resumo do campo"}
+          </Link>
+        </section>
       ) : a.status === "draft" || a.status === "planned" ? (
         <BlockingNotice
           title="Execução em campo bloqueada"
-          reason="A execução em campo só é liberada depois do planejamento da avaliação."
+          reason="A execução em campo só é liberada depois do handoff no Plano da Auditoria."
           missingItem={
             a.status === "draft"
-              ? "Falta concluir o planejamento (escopo, equipe e marcar como planejada)."
-              : "A avaliação está planejada — inicie a execução quando a equipe estiver pronta."
+              ? "Conclua o Plano, conclua o planejamento e formalize a avaliação como planejada."
+              : "Registre a reunião de abertura (ou dispense) e use «Iniciar execução em campo» no Plano."
           }
-          actionText={
-            a.status === "draft"
-              ? "Voltar para o planejamento"
-              : "Ir para o início da execução"
-          }
+          actionText="Abrir Plano da Auditoria"
           onResolve={() => {
-            const el = document.querySelector(
-              a.status === "draft"
-                ? "[data-testid='plan-open-confirm'], [data-testid='plan-locked']"
-                : "[data-testid='start-open-confirm'], [data-testid='start-locked']",
-            );
-            el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            void navigate(`/assessments/${assessmentId}/audit-plan`);
           }}
         />
       ) : null}
@@ -590,275 +594,3 @@ function TeamSection({
   );
 }
 
-function PlanSection({
-  assessmentId,
-  canEdit,
-  isDraft,
-  scopeCount,
-  teamCount,
-  hasLead,
-}: {
-  assessmentId: string;
-  canEdit: boolean;
-  isDraft: boolean;
-  scopeCount: number;
-  teamCount: number;
-  hasLead: boolean;
-}) {
-  const plan = usePlanAssessment(assessmentId);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const busyRef = useRef(false);
-  const ready = scopeCount >= 1 && teamCount >= 1 && hasLead;
-
-  if (!isDraft) {
-    return (
-      <div data-testid="plan-locked">
-        <BlockingNotice
-          title="Planejamento concluído"
-          reason="Escopo e equipe ficam imutáveis depois que a avaliação sai da preparação."
-          missingItem="Nenhuma alteração de planejamento é necessária nesta etapa."
-          actionText="Ir para a próxima etapa"
-          onResolve={() => {
-            document
-              .querySelector(
-                "[data-testid='start-open-confirm'], [data-testid='start-locked']",
-              )
-              ?.scrollIntoView({ behavior: "smooth", block: "center" });
-          }}
-        />
-      </div>
-    );
-  }
-
-  if (!canEdit) {
-    return (
-      <BlockingNotice
-        title="Planejamento bloqueado"
-        reason="Seu papel nesta organização não permite alterar o planejamento."
-        missingItem="É necessário um papel com permissão de edição (ex.: administrador ou gestor da qualidade)."
-        actionText="Voltar ao mapa da avaliação"
-        onResolve={() => {
-          window.history.back();
-        }}
-      />
-    );
-  }
-
-  async function confirmPlan() {
-    if (busyRef.current || plan.isPending) return;
-    busyRef.current = true;
-    try {
-      await plan.mutateAsync();
-      setConfirmOpen(false);
-    } catch {
-      // error banner below; 409/422 already invalidate + reload via hook
-    } finally {
-      busyRef.current = false;
-    }
-  }
-
-  const missing: string[] = [];
-  if (scopeCount < 1) {
-    missing.push("Inclua pelo menos um item de escopo (requisito ou processo) acima.");
-  }
-  if (teamCount < 1 || !hasLead) {
-    missing.push("Confirme a equipe com um líder definido.");
-  }
-
-  return (
-    <section className="rounded-lg border border-teal-900/10 bg-white/70 p-4">
-      <h2 className="font-display text-xl text-teal-950">Confirmar planejamento</h2>
-      <p className="mt-1 text-sm text-teal-950/70">
-        Quando escopo e equipe estiverem ok, confirme para liberar a execução em campo.
-        Depois disso, escopo e equipe ficam bloqueados para alteração.
-      </p>
-      <ul className="mt-3 list-inside list-disc text-sm text-teal-950/70">
-        <li data-testid="plan-guard-scope">
-          Escopo: {scopeCount >= 1 ? "ok" : "faltando (≥ 1 item)"}
-        </li>
-        <li data-testid="plan-guard-team">
-          Equipe/líder:{" "}
-          {teamCount >= 1 && hasLead ? "ok" : "faltando (líder + membro)"}
-        </li>
-      </ul>
-
-      {!ready ? (
-        <div className="mt-4">
-          <BlockingNotice
-            title="Planejamento ainda incompleto"
-            reason="Não é possível confirmar o planejamento enquanto faltar o essencial abaixo."
-            missingItem={missing.join(" ")}
-            actionText="Ir para o escopo"
-            onResolve={() => {
-              document
-                .querySelector(
-                  "[data-testid='scope-add'], [data-testid='scope-empty'], [data-testid='scope-list']",
-                )
-                ?.scrollIntoView({ behavior: "smooth", block: "center" });
-            }}
-          />
-        </div>
-      ) : null}
-
-      {!confirmOpen ? (
-        <button
-          type="button"
-          disabled={!ready || plan.isPending}
-          onClick={() => setConfirmOpen(true)}
-          className="mt-4 rounded-md bg-teal-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-          data-testid="plan-open-confirm"
-        >
-          Marcar como planejada…
-        </button>
-      ) : (
-        <div
-          className="mt-4 rounded-md border border-amber-300/70 bg-amber-50/90 p-4"
-          data-testid="plan-confirm"
-          role="dialog"
-          aria-labelledby="plan-confirm-title"
-        >
-          <h3 id="plan-confirm-title" className="font-semibold text-amber-950">
-            Confirmar planejamento?
-          </h3>
-          <p className="mt-2 text-sm text-amber-950/90">
-            Após o planejamento, escopo e equipe ficam bloqueados para alteração. Esta ação
-            não usa atualização otimista — a tela recarrega o recurso do servidor.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={plan.isPending}
-              onClick={() => void confirmPlan()}
-              className="rounded-md bg-teal-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
-              data-testid="plan-confirm-submit"
-            >
-              {plan.isPending ? "Planejando…" : "Confirmar planejamento"}
-            </button>
-            <button
-              type="button"
-              disabled={plan.isPending}
-              onClick={() => setConfirmOpen(false)}
-              className="rounded-md border border-teal-900/20 bg-white px-3 py-1.5 text-sm font-semibold text-teal-950"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {plan.isError ? (
-        <div className="mt-3">
-          <ApiErrorBanner title="Falha na transição de planejamento" error={plan.error} />
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function StartSection({
-  assessmentId,
-  canStart,
-  isPlanned,
-}: {
-  assessmentId: string;
-  canStart: boolean;
-  isPlanned: boolean;
-}) {
-  const start = useStartAssessment(assessmentId);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const busyRef = useRef(false);
-
-  if (!isPlanned) {
-    return null;
-  }
-
-  if (!canStart) {
-    return (
-      <div data-testid="start-locked">
-        <BlockingNotice
-          title="Início da execução bloqueado"
-          reason="A avaliação já está planejada, mas seu papel não permite iniciar a execução em campo."
-          missingItem="Peça a um responsável com permissão de mutação para iniciar a execução."
-          actionText="Voltar ao mapa da avaliação"
-          onResolve={() => {
-            window.history.back();
-          }}
-        />
-      </div>
-    );
-  }
-
-  async function confirmStart() {
-    if (busyRef.current || start.isPending) return;
-    busyRef.current = true;
-    try {
-      await start.mutateAsync();
-      setConfirmOpen(false);
-    } catch {
-      // banner
-    } finally {
-      busyRef.current = false;
-    }
-  }
-
-  return (
-    <section className="rounded-lg border border-teal-900/10 bg-white/70 p-4">
-      <h2 className="font-display text-xl text-teal-950">Iniciar execução</h2>
-      <p className="mt-1 text-sm text-teal-950/70">
-        Transição planejada → em execução. Abre coleta de entrevistas e evidências.
-      </p>
-
-      {!confirmOpen ? (
-        <button
-          type="button"
-          disabled={start.isPending}
-          onClick={() => setConfirmOpen(true)}
-          className="mt-4 rounded-md bg-teal-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-          data-testid="start-open-confirm"
-        >
-          Iniciar avaliação…
-        </button>
-      ) : (
-        <div
-          className="mt-4 rounded-md border border-amber-300/70 bg-amber-50/90 p-4"
-          data-testid="start-confirm"
-          role="dialog"
-          aria-labelledby="start-confirm-title"
-        >
-          <h3 id="start-confirm-title" className="font-semibold text-amber-950">
-            Confirmar início?
-          </h3>
-          <p className="mt-2 text-sm text-amber-950/90">
-            Após o início, a avaliação entra em execução de campo. Sem atualização otimista —
-            a tela recarrega o estado do servidor.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={start.isPending}
-              onClick={() => void confirmStart()}
-              className="rounded-md bg-teal-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
-              data-testid="start-confirm-submit"
-            >
-              {start.isPending ? "Iniciando…" : "Confirmar início"}
-            </button>
-            <button
-              type="button"
-              disabled={start.isPending}
-              onClick={() => setConfirmOpen(false)}
-              className="rounded-md border border-teal-900/20 bg-white px-3 py-1.5 text-sm font-semibold text-teal-950"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {start.isError ? (
-        <div className="mt-3">
-          <ApiErrorBanner title="Falha na transição de início" error={start.error} />
-        </div>
-      ) : null}
-    </section>
-  );
-}

@@ -2,11 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOrganization } from "@/org/OrganizationProvider";
 import { queryKeys } from "@/api/queryKeys";
 import {
+  concludeAuditPlanning,
   getOrCreateAuditPlan,
   isAuditPlanApiError,
   markAuditPlanReady,
   patchAuditPlan,
   refreshAuditPlanFromPreparation,
+  startAuditFieldExecution,
 } from "@/api/auditPlanApi";
 import type { AuditPlanPatch } from "@/api/auditPlanTypes";
 
@@ -61,6 +63,53 @@ export function useMarkAuditPlanReady(assessmentId: string) {
           queryKey: queryKeys.assessment(currentOrganizationId, assessmentId),
         });
       }
+    },
+  });
+}
+
+function useInvalidateHandoff(assessmentId: string) {
+  const { currentOrganizationId } = useOrganization();
+  const qc = useQueryClient();
+  return async () => {
+    if (!currentOrganizationId) return;
+    await Promise.all([
+      qc.invalidateQueries({
+        queryKey: queryKeys.assessment(currentOrganizationId, assessmentId),
+      }),
+      qc.invalidateQueries({
+        queryKey: queryKeys.auditPlan(currentOrganizationId, assessmentId),
+      }),
+      qc.invalidateQueries({
+        queryKey: queryKeys.auditPlanSchedule(currentOrganizationId, assessmentId),
+      }),
+      qc.invalidateQueries({
+        queryKey: queryKeys.assessments(currentOrganizationId),
+      }),
+    ]);
+  };
+}
+
+export function useConcludeAuditPlanning(assessmentId: string) {
+  const setPlan = useSetPlan(assessmentId);
+  const invalidate = useInvalidateHandoff(assessmentId);
+  return useMutation({
+    mutationFn: (body?: {
+      expected_updated_at?: string;
+      mark_ready_if_needed?: boolean;
+    }) => concludeAuditPlanning(assessmentId, body),
+    onSuccess: async (data) => {
+      setPlan(data.plan);
+      await invalidate();
+    },
+  });
+}
+
+export function useStartAuditFieldExecution(assessmentId: string) {
+  const invalidate = useInvalidateHandoff(assessmentId);
+  return useMutation({
+    mutationFn: () => startAuditFieldExecution(assessmentId),
+    onSuccess: async () => {
+      await invalidate();
     },
   });
 }

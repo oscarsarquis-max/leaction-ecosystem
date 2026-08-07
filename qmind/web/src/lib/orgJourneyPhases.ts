@@ -248,11 +248,13 @@ export function homeNextAction(input: {
 
   if (status === "planned") {
     const label = input.continueLabel || "Iniciar execução em campo";
-    const href = input.continueHref || `/assessments/${assessmentId}/work`;
+    const href =
+      input.continueHref || `/assessments/${assessmentId}/audit-plan`;
     return {
-      title: "Inicie a execução em campo",
-      description: "Com o plano pronto, abra entrevistas e evidências.",
-      reason: pending[0] ?? "Avaliação planejada — pronta para começar em campo.",
+      title: "Prepare o início em campo",
+      description:
+        "Confirme abertura (ou dispensa justificada) e inicie a execução pelo Plano da Auditoria.",
+      reason: pending[0] ?? "Avaliação planejada — conclua abertura e inicie o campo.",
       actionText: label,
       href,
     };

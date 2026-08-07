@@ -13,7 +13,11 @@ import type {
   ScheduleMeetingCreate,
   ScheduleMilestoneCreate,
 } from "@/api/auditPlanScheduleTypes";
-import { isAuditPlanApiError } from "@/api/auditPlanApi";
+import {
+  isAuditPlanApiError,
+  performOpeningMeeting,
+  waiveOpeningMeeting,
+} from "@/api/auditPlanApi";
 
 export function useAuditPlanSchedule(assessmentId: string | undefined) {
   const { currentOrganizationId } = useOrganization();
@@ -80,6 +84,35 @@ export function useStartInterview(assessmentId: string) {
   const invalidate = useInvalidateSchedule(assessmentId);
   return useMutation({
     mutationFn: (interviewId: string) => startInterview(interviewId),
+    onSuccess: invalidate,
+  });
+}
+
+export function usePerformOpeningMeeting(assessmentId: string) {
+  const invalidate = useInvalidateSchedule(assessmentId);
+  return useMutation({
+    mutationFn: (args: {
+      eventId: string;
+      observations?: string;
+      adjustments?: string;
+      pendings?: string;
+      actual_starts_at?: string;
+    }) =>
+      performOpeningMeeting(assessmentId, args.eventId, {
+        observations: args.observations,
+        adjustments: args.adjustments,
+        pendings: args.pendings,
+        actual_starts_at: args.actual_starts_at,
+      }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useWaiveOpeningMeeting(assessmentId: string) {
+  const invalidate = useInvalidateSchedule(assessmentId);
+  return useMutation({
+    mutationFn: (args: { eventId: string; waiverReason: string }) =>
+      waiveOpeningMeeting(assessmentId, args.eventId, args.waiverReason),
     onSuccess: invalidate,
   });
 }

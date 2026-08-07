@@ -16,10 +16,7 @@ import {
   listScopeOptions,
 } from "@/api/scopeTeamApi";
 
-type AssessmentType =
-  | NonNullable<AssessmentCreate["type"]>
-  | "external_audit"
-  | "certification_prep";
+type AssessmentType = NonNullable<AssessmentCreate["type"]>;
 type ScopeItem = NonNullable<AssessmentCreate["scope"]>[number];
 
 async function guardTenant<T>(fn: () => Promise<T>): Promise<T> {
@@ -192,8 +189,7 @@ export function useCreateAssessment() {
           body: {
             assessment_model_id: input.assessment_model_id,
             standard_version_id: input.standard_version_id,
-            // Novos tipos (external_audit / certification_prep) até regenerar OpenAPI.
-            type: input.type as AssessmentCreate["type"],
+            type: input.type,
             scope,
           },
           headers: { "Idempotency-Key": newIdempotencyKey("assess-create") },
