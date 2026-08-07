@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import { AssessmentSectionNav } from "@/components/navigation/AssessmentSectionNav";
@@ -7,7 +7,11 @@ import {
   EmptyPanel,
   LoadingPanel,
 } from "@/components/StatePanels";
-import { useAssessment, useAssessmentTeam } from "@/hooks/useAssessmentDetail";
+import {
+  useAssessment,
+  useAssessmentTeam,
+  useOrgMembers,
+} from "@/hooks/useAssessmentDetail";
 import { useAssessmentPermissions } from "@/hooks/useAssessmentPermissions";
 import {
   useAcceptEvolutionSuggestion,
@@ -33,6 +37,7 @@ import {
   labelEvolutionPriority,
   labelEvolutionStatus,
 } from "@/lib/evolutionLabels";
+import { formatMemberOptionLabel } from "@/lib/memberLabels";
 import { labelAssessmentStatus } from "@/lib/labels";
 import { canReviewEvolutionMap } from "@/lib/permissions";
 
@@ -92,6 +97,7 @@ export function AssessmentEvolutionPage() {
   const perms = useAssessmentPermissions(assessment.data?.status);
   const canReview = canReviewEvolutionMap(perms.roles);
   const team = useAssessmentTeam(assessmentId);
+  const orgMembers = useOrgMembers();
   const plans = useActionPlans(assessmentId);
 
   const generate = useGenerateEvolutionMap(assessmentId ?? "");
@@ -112,6 +118,32 @@ export function AssessmentEvolutionPage() {
 
   const pkg = (mapQ.data as Package | null) ?? null;
   const status = assessment.data?.status;
+
+  const convertOwnerOptions = useMemo(() => {
+    const members = orgMembers.data ?? [];
+    const byId = new Map(members.map((m) => [m.membership_id, m]));
+    const teamRows = (team.data ?? []) as Array<{
+      membership_id: string;
+      team_role?: string | null;
+    }>;
+    const ids =
+      teamRows.length > 0
+        ? teamRows.map((t) => t.membership_id)
+        : members.map((m) => m.membership_id);
+    return ids.map((id) => {
+      const m = byId.get(id);
+      const teamRole = teamRows.find((t) => t.membership_id === id)?.team_role;
+      return {
+        membership_id: id,
+        label: formatMemberOptionLabel({
+          display_name: m?.display_name,
+          email: m?.email,
+          roles: m?.roles,
+          team_role: teamRole,
+        }),
+      };
+    });
+  }, [orgMembers.data, team.data]);
 
   const assistantCtx = useMemo((): AssistantContext | null => {
     if (!assessmentId || !assessment.data || !org.currentOrganizationId) return null;
@@ -457,7 +489,7 @@ export function AssessmentEvolutionPage() {
         <ConvertModal
           suggestion={convertFor}
           assessmentStatus={status}
-          teamMembers={(team.data ?? []).map((m: { membership_id: string }) => m.membership_id)}
+          ownerOptions={convertOwnerOptions}
           plans={(plans.data ?? []) as Array<{ id: string; status: string }>}
           pending={busyId === convertFor.id}
           openActionsPending={openActions.isPending}
@@ -894,7 +926,7 @@ function InvestigateModal({
 function ConvertModal({
   suggestion,
   assessmentStatus,
-  teamMembers,
+  ownerOptions,
   plans,
   pending,
   openActionsPending,
@@ -904,7 +936,7 @@ function ConvertModal({
 }: {
   suggestion: Suggestion;
   assessmentStatus?: string;
-  teamMembers: string[];
+  ownerOptions: Array<{ membership_id: string; label: string }>;
   plans: Array<{ id: string; status: string }>;
   pending: boolean;
   openActionsPending: boolean;
@@ -925,13 +957,27 @@ function ConvertModal({
   const [description, setDescription] = useState(
     `${suggestion.suggested_evolution}\n\nBenefício esperado: ${suggestion.expected_benefit}\nPrimeiro passo: ${suggestion.first_step}`,
   );
-  const [owner, setOwner] = useState(teamMembers[0] ?? "");
+  const [owner, setOwner] = useState(ownerOptions[0]?.membership_id ?? "");
   const [dueLocal, setDueLocal] = useState("");
   const [kind, setKind] = useState<"correction" | "corrective_action" | "improvement">(
     "improvement",
   );
   const [efficacy, setEfficacy] = useState(false);
   const editablePlan = plans.find((p) => p.status === "draft" || p.status === "active");
+
+  useEffect(() => {
+    if (!owner && ownerOptions[0]?.membership_id) {
+      setOwner(ownerOptions[0].membership_id);
+      return;
+    }
+    if (
+      owner &&
+      ownerOptions.length > 0 &&
+      !ownerOptions.some((o) => o.membership_id === owner)
+    ) {
+      setOwner(ownerOptions[0]?.membership_id ?? "");
+    }
+  }, [owner, ownerOptions]);
 
   if (assessmentStatus === "analysis") {
     return (
@@ -1018,17 +1064,18 @@ function ConvertModal({
           </select>
         </label>
         <label className="block text-xs text-teal-950/70">
-          Responsável (membership)
+          Responsável
           <select
             className="mt-1 w-full rounded border border-teal-900/20 px-2 py-1.5 text-sm"
             value={owner}
             onChange={(e) => setOwner(e.target.value)}
             required
+            data-testid="evolution-convert-owner"
           >
-            <option value="">—</option>
-            {teamMembers.map((id) => (
-              <option key={id} value={id}>
-                {id.slice(0, 8)}…
+            <option value="">— selecione —</option>
+            {ownerOptions.map((m) => (
+              <option key={m.membership_id} value={m.membership_id}>
+                {m.label}
               </option>
             ))}
           </select>

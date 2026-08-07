@@ -9,8 +9,9 @@ Uso:
   .\\.venv\\Scripts\\python.exe scripts\\smoke_journey_local.py
 
 Cobre: org → wizard seed → plano → planned → campo → entrevista →
-evidência → constatação (SoD) → análise → maturidade (SoD) → ações (SoD) →
-relatório (SoD) → PDF → close → reopen → cross-org.
+evidência → constatação (SoD) → análise → maturidade (SoD) →
+mapa de evolução (gerar/aceitar/aprofundar/descartar/converter) →
+ações (SoD) → relatório (SoD) → PDF → close → reopen → cross-org.
 """
 
 from __future__ import annotations
@@ -445,13 +446,78 @@ def main() -> None:
         )
         _ok("maturidade aprovada (SoD)")
 
+        evo = client.post(
+            f"/api/v1/assessments/{aid}/evolution-map/generate",
+            json={"mode": "analysis_ready"},
+            headers={**h, "Idempotency-Key": f"evo-{uuid.uuid4()}"},
+        )
+        if evo.status_code != 200:
+            _fail(f"evolution generate {evo.status_code}: {evo.text}")
+        pkg = evo.json()
+        pri = pkg.get("priority_suggestions") or []
+        if not pri:
+            _fail("mapa de evolução sem sugestões prioritárias")
+        if len(pri) > 10:
+            _fail(f"mapa excedeu 10 prioritárias ({len(pri)})")
+        sug_a = pri[0]
+        sug_b = pri[1] if len(pri) > 1 else None
+        sug_c = pri[2] if len(pri) > 2 else None
+        if not sug_a.get("source_references"):
+            _fail("sugestão sem source_references")
+        assert (
+            client.post(
+                f"/api/v1/evolution-suggestions/{sug_a['id']}/accept",
+                headers={**h, "Idempotency-Key": f"evo-acc-{uuid.uuid4()}"},
+            ).status_code
+            == 200
+        )
+        if sug_b:
+            inv = client.post(
+                f"/api/v1/evolution-suggestions/{sug_b['id']}/investigate",
+                json={"missing_information": "Falta entrevista com comercial"},
+                headers=h,
+            )
+            if inv.status_code != 200:
+                _fail(f"evolution investigate {inv.status_code}: {inv.text}")
+        if sug_c:
+            dis = client.post(
+                f"/api/v1/evolution-suggestions/{sug_c['id']}/dismiss",
+                json={"reason": "Já tratado no plano da oficina"},
+                headers=h,
+            )
+            if dis.status_code != 200:
+                _fail(f"evolution dismiss {dis.status_code}: {dis.text}")
+        _ok(
+            f"mapa evolução v{pkg.get('package_version')} "
+            f"({len(pri)} prioritárias; aceita/aprofunda/descarta)"
+        )
+
         assert (
             client.post(f"/api/v1/assessments/{aid}/transitions/open_actions", headers=h).status_code
             == 200
         )
-        plan_id = client.post(
-            "/api/v1/action-plans", json={"assessment_id": aid}, headers=h
-        ).json()["id"]
+        conv = client.post(
+            f"/api/v1/evolution-suggestions/{sug_a['id']}/convert-to-action",
+            json={
+                "create_plan_if_missing": True,
+                "action_kind": "improvement",
+                "description": f"{sug_a['suggested_evolution']}\n\n{sug_a['first_step']}",
+                "owner_membership_id": lead_mid,
+                "due_at": _due(),
+                "efficacy_required": False,
+                "title": sug_a["title"],
+            },
+            headers={**h, "Idempotency-Key": f"evo-conv-{uuid.uuid4()}"},
+        )
+        if conv.status_code != 200:
+            _fail(f"evolution convert {conv.status_code}: {conv.text}")
+        if conv.json()["suggestion"]["status"] != "converted_to_action":
+            _fail("sugestão não marcada converted_to_action")
+        evo_item_id = conv.json()["action_item_id"]
+        evo_plan_id = conv.json()["action_plan_id"]
+        _ok(f"sugestão convertida em ação {evo_item_id}")
+
+        plan_id = evo_plan_id
         item = client.post(
             f"/api/v1/action-plans/{plan_id}/items",
             json={
@@ -485,11 +551,28 @@ def main() -> None:
             client.post(f"/api/v1/action-items/{item_id}/transitions/validate", headers=qm).status_code
             == 200
         )
+        # Also close the converted evolution item path lightly
+        assert (
+            client.post(f"/api/v1/action-items/{evo_item_id}/transitions/start", headers=h).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                f"/api/v1/action-items/{evo_item_id}/transitions/mark_implemented", headers=h
+            ).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                f"/api/v1/action-items/{evo_item_id}/transitions/validate", headers=qm
+            ).status_code
+            == 200
+        )
         assert (
             client.post(f"/api/v1/action-plans/{plan_id}/transitions/complete", headers=h).status_code
             == 200
         )
-        _ok("plano de ação concluído (SoD)")
+        _ok("plano de ação concluído (SoD + evolução)")
 
         assert (
             client.post(f"/api/v1/assessments/{aid}/transitions/begin_report", headers=h).status_code
@@ -531,6 +614,17 @@ def main() -> None:
             _fail(f"pdf bytes {pdf.status_code}: {pdf.text}")
         if not pdf.content.startswith(b"%PDF"):
             _fail("PDF bytes sem assinatura %PDF")
+        # Seção de evolução (ReportLab sem acentos no título)
+        if b"Oportunidades de Evolucao" not in pdf.content and b"Evolucao Empresarial" not in pdf.content:
+            # snapshot may omit if no accepted/investigate — we accepted+converted
+            snap = client.get(f"/api/v1/reports/{rid}", headers=h)
+            content = (snap.json() or {}).get("structured_content") or {}
+            evo_snap = content.get("evolution_map") or {}
+            if not (evo_snap.get("suggestions") or []):
+                _fail("snapshot sem evolution_map.suggestions após aceitar/converter")
+            _ok("snapshot evolution_map presente (PDF sem string legível neste encoding)")
+        else:
+            _ok(f"PDF com seção de evolução ({len(pdf.content)} bytes)")
         _ok(f"PDF gerado ({len(pdf.content)} bytes) e download ok")
 
         closed = client.post(f"/api/v1/assessments/{aid}/transitions/close", headers=h)
@@ -570,6 +664,7 @@ def main() -> None:
         print(f"  assessment={aid}")
         print(f"  work=http://127.0.0.1:5173/assessments/{aid}/work")
         print(f"  analysis=http://127.0.0.1:5173/assessments/{aid}/advanced")
+        print(f"  evolution=http://127.0.0.1:5173/assessments/{aid}/evolution")
 
 
 if __name__ == "__main__":
