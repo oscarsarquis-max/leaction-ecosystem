@@ -18,7 +18,12 @@ export function OrgSelector() {
 
   if (memberships.length === 0) {
     return (
-      <span className="text-sm text-[var(--qm-muted)]">Nenhuma organização ativa</span>
+      <span
+        className="text-sm text-[var(--qm-muted)]"
+        data-testid="no-organization-access"
+      >
+        Você ainda não possui acesso a uma organização.
+      </span>
     );
   }
 

@@ -124,6 +124,8 @@ export function AppShell() {
                 onClick: () => void org.refreshMemberships(),
               }}
             />
+          ) : !org.loading && org.memberships.length === 0 ? (
+            <AccessDeniedPanel message="Você ainda não possui acesso a uma organização." />
           ) : (
             <Suspense
               fallback={<LoadingPanel title="Carregando…" />}

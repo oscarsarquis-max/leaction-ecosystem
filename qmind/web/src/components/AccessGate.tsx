@@ -1,14 +1,17 @@
+import { getConfig } from "@/config/env";
+
 type Props = {
   status: "anonymous" | "invalid_session";
   onLogin: () => void;
 };
 
 /**
- * Primeira tela do produto — obrigatória antes de qualquer conteúdo.
- * Só identidade + CTA. Sem tutorial de jornada (isso fica depois do login).
+ * Tela de entrada explícita — nunca autentica sozinha.
+ * Em AUTH_MODE=dev o CTA deixa claro que é usuário de desenvolvimento.
  */
 export function AccessGate({ status, onLogin }: Props) {
   const expired = status === "invalid_session";
+  const isDevAuth = getConfig().authMode === "dev";
 
   return (
     <div className="qmind-login" data-testid="access-gate">
@@ -27,7 +30,9 @@ export function AccessGate({ status, onLogin }: Props) {
         <p className="qmind-login__text">
           {expired
             ? "Sua sessão expirou. Entre de novo para retomar o trabalho na sua organização."
-            : "Plataforma de autoavaliação assistida. Prepare contexto, evidências e prioridades antes da auditoria formal."}
+            : isDevAuth
+              ? "Ambiente local: a autenticação só começa quando você escolher entrar como usuário de desenvolvimento. Em produção o acesso é pelo Cognito e pela membership."
+              : "Acesso por convite. Você entra com Cognito; só visualiza organizações em que possui membership ativa."}
         </p>
 
         <button
@@ -35,15 +40,16 @@ export function AccessGate({ status, onLogin }: Props) {
           onClick={onLogin}
           className="qmind-login__cta"
           data-testid="login-cta"
-          autoFocus
         >
-          Entrar
+          {isDevAuth
+            ? "Entrar como usuário de desenvolvimento"
+            : "Entrar com Cognito"}
         </button>
 
         <p className="qmind-login__meta">
-          Acesso por convite · sessão segura
-          <br />
-          <span className="qmind-login__build">Ambiente local de demonstração</span>
+          {isDevAuth
+            ? "Modo desenvolvimento · sessão apenas em memória · clique obrigatório"
+            : "Acesso por convite · sessão segura Cognito"}
         </p>
       </div>
     </div>

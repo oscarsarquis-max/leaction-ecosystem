@@ -97,6 +97,12 @@ export function AssessmentsPage() {
 
   useRegisterAssistantContext(assistantCtx);
 
+  if (!org.loading && org.memberships.length === 0) {
+    return (
+      <AccessDeniedPanel message="Você ainda não possui acesso a uma organização." />
+    );
+  }
+
   if (!org.currentOrganizationId) {
     return (
       <GuidedEmptyState
