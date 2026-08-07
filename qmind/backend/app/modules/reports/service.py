@@ -805,17 +805,22 @@ def get_job(ctx: OrgContext, job_id: UUID) -> JobOut:
     return _job_out(row)
 
 
+def _allows_local_memory_pdf(settings) -> bool:
+    """Inline PDF + bytes endpoint: local/test + memory only (never homolog/prod)."""
+    return settings.environment in ("local", "test") and settings.storage_backend == "memory"
+
+
 def _process_pdf_inline_local_memory(
     ctx: OrgContext, *, job_id: UUID, report_id: UUID, job_status: str
 ) -> JobOut | None:
-    """Process PDF in-API when STORAGE_BACKEND=memory.
+    """Process PDF in-API only when ENVIRONMENT is local|test and STORAGE_BACKEND=memory.
 
-    In-memory objects cannot be shared with an external worker process.
-    Also re-queues succeeded jobs whose object vanished (API reload).
+    Homolog/prod must keep: enqueue job → worker → S3 → authorized download.
+    Also re-queues succeeded jobs whose in-memory object vanished (API reload).
     Returns refreshed JobOut when processed; None when nothing to do.
     """
     settings = get_settings()
-    if settings.storage_backend != "memory":
+    if not _allows_local_memory_pdf(settings):
         return None
 
     storage = get_storage(settings)
@@ -877,11 +882,8 @@ def _process_pdf_inline_local_memory(
     claimed = claim_job(settings, job_id)
     if claimed is None:
         return None
-    status = process_report_pdf_export(claimed, settings)
-    if status != "succeeded":
-        return get_job(ctx, job_id)
+    process_report_pdf_export(claimed, settings)
     return get_job(ctx, job_id)
-
 
 def enqueue_pdf_export(ctx: OrgContext, report_id: UUID) -> JobOut:
     """Enqueue PDF export Job (worker generates bytes out-of-band).
@@ -889,8 +891,8 @@ def enqueue_pdf_export(ctx: OrgContext, report_id: UUID) -> JobOut:
     Download must re-check Membership + org isolation at access time;
     knowing a storage key/URL never grants permission by itself.
 
-    Local + memory storage: process inline so PDF bytes live in the API
-    process (separate worker cannot share in-memory objects).
+    Local|test + memory only: process inline so PDF bytes live in the API
+    process. Homolog/prod always enqueue for the worker (S3).
     """
     require_role(ctx, *_READ_ROLES)
     settings = get_settings()
@@ -972,13 +974,18 @@ def enqueue_pdf_export(ctx: OrgContext, report_id: UUID) -> JobOut:
     return healed or out
 
 def get_pdf_bytes_local(ctx: OrgContext, report_id: UUID) -> tuple[bytes, str]:
-    """Local memory GET for PDF bytes (browser cannot fetch memory:// URLs)."""
+    """Local memory GET for PDF bytes (browser cannot fetch memory:// URLs).
+
+    Requires ENVIRONMENT in {local, test} AND STORAGE_BACKEND=memory.
+    Forbidden in homolog/prod (use S3 presigned download).
+    """
     require_role(ctx, *_READ_ROLES)
     settings = get_settings()
-    if settings.storage_backend != "memory":
+    if not _allows_local_memory_pdf(settings):
         raise AppError(
             "local_bytes_unavailable",
-            "Local PDF bytes endpoint only available with STORAGE_BACKEND=memory",
+            "Local PDF bytes endpoint only available when ENVIRONMENT is local|test "
+            "and STORAGE_BACKEND=memory",
             status_code=503,
         )
     storage = get_storage(settings)

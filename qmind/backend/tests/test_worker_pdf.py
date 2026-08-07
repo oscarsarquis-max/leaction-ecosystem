@@ -214,7 +214,7 @@ def test_recover_abandoned_running_job(client: TestClient, disable_inline_pdf):
 
 
 def test_export_pdf_inline_memory_materializes_bytes(client: TestClient):
-    """STORAGE_BACKEND=memory must process inline so download works without worker."""
+    """STORAGE_BACKEND=memory + ENVIRONMENT local|test must process inline."""
     h, _org_id, _aid, _qm, rid = _publish_report(client)
     job = client.post(f"/api/v1/reports/{rid}/export-pdf", headers=h)
     assert job.status_code == 202, job.text
@@ -225,3 +225,18 @@ def test_export_pdf_inline_memory_materializes_bytes(client: TestClient):
     pdf = client.get(f"/api/v1/reports/{rid}/export-pdf/bytes", headers=h)
     assert pdf.status_code == 200, pdf.text
     assert pdf.content.startswith(b"%PDF")
+
+
+def test_export_pdf_inline_forbidden_outside_local_test(client: TestClient, monkeypatch):
+    """When local-memory guard is off, enqueue stays queued and bytes endpoint is 503."""
+    h, _org_id, _aid, _qm, rid = _publish_report(client)
+    monkeypatch.setattr(
+        "app.modules.reports.service._allows_local_memory_pdf",
+        lambda _settings: False,
+    )
+    job = client.post(f"/api/v1/reports/{rid}/export-pdf", headers=h)
+    assert job.status_code == 202, job.text
+    assert job.json()["status"] == "queued"
+    denied = client.get(f"/api/v1/reports/{rid}/export-pdf/bytes", headers=h)
+    assert denied.status_code == 503
+    assert denied.json()["code"] == "local_bytes_unavailable"

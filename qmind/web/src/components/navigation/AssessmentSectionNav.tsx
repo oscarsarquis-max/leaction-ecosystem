@@ -30,14 +30,7 @@ export function AssessmentSectionNav({ assessmentId }: Props) {
     status === "report" ||
     status === "closed";
 
-  const phaseWorkLabel =
-    status === "report" || status === "closed"
-      ? "Relatório"
-      : status === "actions"
-        ? "Plano de ação"
-        : status === "analysis"
-          ? "Análise"
-          : "Análise e relatório";
+  const phaseWorkLabel = "Análise, ações e relatório";
 
   return (
     <nav

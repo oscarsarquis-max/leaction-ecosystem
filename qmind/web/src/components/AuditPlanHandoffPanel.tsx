@@ -286,7 +286,7 @@ export function AuditPlanHandoffPanel({
           locks="Você não volta ao rascunho sem fluxo de reabertura. Emendas no plano bloqueiam novo início até reconfirmação."
           canChange="Entrevistas, evidências e registros de campo."
           fixLater="Ajuste programação e registre ocorrências; emendas estruturais exigem motivo e reconfirmação."
-          next="Abrir o painel de trabalho (/work) para coletar entrevistas e evidências."
+          next="Abrir a Central de Campo para coletar entrevistas e evidências."
         />
       ) : null}
 

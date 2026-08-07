@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     app_name: str = "QMind"
     api_prefix: str = "/api/v1"
-    environment: Literal["local", "dev", "homolog", "prod"] = "local"
+    environment: Literal["local", "test", "dev", "homolog", "prod"] = "local"
 
     database_url_admin: str = Field(..., description="Migrator/bootstrap DSN (table owner)")
     database_url_app: str = Field(..., description="Runtime DSN as qmind_app")

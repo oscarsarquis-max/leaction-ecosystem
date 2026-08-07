@@ -43,7 +43,7 @@ export function AccessGate({ status, onLogin }: Props) {
         <p className="qmind-login__meta">
           Acesso por convite · sessão segura
           <br />
-          <span className="qmind-login__build">UI access-gate-2026-08-06d</span>
+          <span className="qmind-login__build">Ambiente local de demonstração</span>
         </p>
       </div>
     </div>

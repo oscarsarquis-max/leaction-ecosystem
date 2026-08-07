@@ -19,6 +19,10 @@ import {
 } from "@/hooks/useFieldExecution";
 import { useCreateScheduleMeeting } from "@/hooks/useAuditPlanSchedule";
 import { labelInterviewMode, labelWorkflowStatus } from "@/lib/labels";
+import {
+  humanizeQuestionPrompt,
+  isDemoOrTestQuestion,
+} from "@/lib/humanizeAuditCopy";
 import { validateEvidenceFile } from "@/lib/evidenceConstraints";
 import type { EvidenceUploadPhase } from "@/lib/evidenceUpload";
 
@@ -556,8 +560,16 @@ function InterviewWorkspace({
   const [questionId, setQuestionId] = useState("");
 
   const status = iv?.status ?? "planned";
-  const editable =
-    canEdit && ["planned", "confirmed", "in_progress"].includes(status);
+  const canStart =
+    canEdit && (status === "planned" || status === "confirmed");
+  const canAnswer = canEdit && status === "in_progress";
+  const recommendedQuestions = useMemo(
+    () =>
+      (questions.data ?? []).filter(
+        (q) => !isDemoOrTestQuestion(q.code, q.prompt_text),
+      ),
+    [questions.data],
+  );
 
   return (
     <section
@@ -601,17 +613,15 @@ function InterviewWorkspace({
 
       <p className="text-sm text-[var(--qm-muted)]">
         {(answers.data?.length ?? 0)} resposta(s)
-        {questions.data && questions.data.length > 0
-          ? ` · ${questions.data.length} perguntas recomendadas`
+        {recommendedQuestions.length > 0
+          ? ` · ${recommendedQuestions.length} perguntas sugeridas`
           : ""}
       </p>
 
-      {questions.data && questions.data.length > 0 ? (
+      {recommendedQuestions.length > 0 ? (
         <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--qm-muted)]">
-          {questions.data.slice(0, 8).map((q) => (
-            <li key={q.id}>
-              {q.code}: {q.prompt_text.slice(0, 100)}
-            </li>
+          {recommendedQuestions.slice(0, 8).map((q) => (
+            <li key={q.id}>{humanizeQuestionPrompt(q.code, q.prompt_text)}</li>
           ))}
         </ul>
       ) : null}
@@ -631,7 +641,7 @@ function InterviewWorkspace({
       </ul>
 
       <div className="flex flex-wrap gap-2">
-        {canEdit && (status === "planned" || status === "confirmed") ? (
+        {canStart ? (
           <button
             type="button"
             className="qm-btn-primary"
@@ -642,7 +652,7 @@ function InterviewWorkspace({
             Iniciar entrevista
           </button>
         ) : null}
-        {editable ? (
+        {canAnswer ? (
           <button
             type="button"
             className="qm-btn-secondary"
@@ -657,7 +667,7 @@ function InterviewWorkspace({
         ) : null}
       </div>
 
-      {editable ? (
+      {canAnswer ? (
         <form
           className="space-y-2"
           onSubmit={(e: FormEvent) => {
@@ -672,7 +682,7 @@ function InterviewWorkspace({
               .catch(onError);
           }}
         >
-          {questions.data && questions.data.length > 0 ? (
+          {recommendedQuestions.length > 0 ? (
             <label className="block text-sm">
               <span className="font-semibold">Pergunta (opcional)</span>
               <select
@@ -681,9 +691,9 @@ function InterviewWorkspace({
                 onChange={(e) => setQuestionId(e.target.value)}
               >
                 <option value="">Observação livre</option>
-                {questions.data.map((q) => (
+                {recommendedQuestions.map((q) => (
                   <option key={q.id} value={q.id}>
-                    {q.code}: {q.prompt_text.slice(0, 80)}
+                    {humanizeQuestionPrompt(q.code, q.prompt_text).slice(0, 100)}
                   </option>
                 ))}
               </select>
@@ -706,6 +716,11 @@ function InterviewWorkspace({
             Registrar resposta
           </button>
         </form>
+      ) : canStart ? (
+        <p className="text-sm text-[var(--qm-muted)]">
+          Inicie a entrevista para registrar respostas. O Assistente QMind explica o
+          objetivo desta conversa.
+        </p>
       ) : (
         <p className="text-sm text-[var(--qm-muted)]">
           Entrevista somente leitura neste estado.

@@ -303,7 +303,7 @@ describe("report panel UI", () => {
     await waitFor(() => expect(screen.getByTestId(`report-select-${RID2}`)).toBeInTheDocument());
     await user.click(screen.getByTestId(`report-select-${RID2}`));
     expect(screen.getByTestId("report-version")).toHaveTextContent("v2");
-    expect(screen.getByTestId("report-supersedes").textContent).toMatch(new RegExp(RID));
+    expect(screen.getByTestId("report-supersedes")).toHaveTextContent(/sim/i);
   });
 
   it("begin_report from actions; close then reopen with reason", async () => {

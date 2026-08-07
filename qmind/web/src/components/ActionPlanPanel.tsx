@@ -180,7 +180,9 @@ export function ActionPlanPanel({
                     }`}
                     data-testid={`action-plan-select-${p.id}`}
                   >
-                    <span className="block font-mono text-[11px]">{p.id.slice(0, 8)}…</span>
+                    <span className="block text-[11px] text-teal-950/60">
+                      Plano {list.indexOf(p) + 1}
+                    </span>
                     <span data-testid={`action-plan-status-${p.id}`}>
                       {labelWorkflowStatus(p.status)}
                     </span>
@@ -584,12 +586,12 @@ function CreateItemForm({
           <option value="">— selecione —</option>
           {teamMembers.map((m) => (
             <option key={m.membership_id} value={m.membership_id}>
-              {m.membership_id}
+              {m.membership_id === defaultOwner ? "Você" : "Membro da equipe"}
             </option>
           ))}
           {defaultOwner &&
           !teamMembers.some((m) => m.membership_id === defaultOwner) ? (
-            <option value={defaultOwner}>{defaultOwner} (você)</option>
+            <option value={defaultOwner}>Você</option>
           ) : null}
         </select>
       </label>
@@ -708,8 +710,10 @@ function ItemDetail({
         </div>
         <div>
           <dt className="text-xs uppercase tracking-wide text-teal-950/50">Responsável</dt>
-          <dd className="font-mono text-xs" data-testid="action-item-owner-id">
-            {item.owner_membership_id}
+          <dd data-testid="action-item-owner-id">
+            {membershipId && membershipId === item.owner_membership_id
+              ? "Você"
+              : "Membro da equipe"}
           </dd>
         </div>
         <div>

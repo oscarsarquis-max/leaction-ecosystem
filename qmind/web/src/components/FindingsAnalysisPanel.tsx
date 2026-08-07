@@ -287,10 +287,9 @@ function FindingEditor({
 
       {selected ? (
         <p className="mt-2 text-xs text-teal-950/60" data-testid="finding-sod-banner">
-          Autor: <span className="font-mono">{selected.author_membership_id}</span>
-          {author ? " (você)" : ""}
+          {author ? "Autor: você" : "Autor: outro membro da equipe"}
           {sodBlocksApprove
-            ? " — SoD: você não pode aprovar a constatação da qual é autor."
+            ? " — Você não pode aprovar a constatação da qual é autor (segregação de funções)."
             : null}
         </p>
       ) : null}

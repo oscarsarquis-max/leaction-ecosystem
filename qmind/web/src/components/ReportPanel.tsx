@@ -303,18 +303,18 @@ export function ReportPanel({
                   </div>
                   <div>
                     <dt className="text-xs uppercase tracking-wide text-teal-950/50">Autor</dt>
-                    <dd className="font-mono text-xs" data-testid="report-author">
-                      {active.author_membership_id ?? "—"}
+                    <dd data-testid="report-author">
+                      {active.author_membership_id ? "Membro da equipe" : "—"}
                     </dd>
                   </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-wide text-teal-950/50">
-                      Substitui
-                    </dt>
-                    <dd className="font-mono text-xs" data-testid="report-supersedes">
-                      {active.supersedes_report_id ?? "—"}
-                    </dd>
-                  </div>
+                  {active.supersedes_report_id ? (
+                    <div>
+                      <dt className="text-xs uppercase tracking-wide text-teal-950/50">
+                        Substitui versão anterior
+                      </dt>
+                      <dd data-testid="report-supersedes">Sim</dd>
+                    </div>
+                  ) : null}
                 </dl>
 
                 <div

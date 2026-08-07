@@ -324,9 +324,10 @@ function PackageWorkspace({
             </span>
           </p>
           <p className="mt-1 text-xs text-teal-950/60" data-testid="maturity-sod">
-            Autor: <span className="font-mono">{pkg.author_membership_id}</span>
-            {author ? " (você)" : ""}
-            {sodBlocks ? " — SoD: você não pode aprovar este pacote." : null}
+            {author ? "Autor: você" : "Autor: outro membro da equipe"}
+            {sodBlocks
+              ? " — Você não pode aprovar este pacote (segregação de funções)."
+              : null}
           </p>
         </div>
         <div className="text-right" data-testid="maturity-global-score">
@@ -336,7 +337,7 @@ function PackageWorkspace({
           <p className="font-display text-3xl text-teal-950">
             {formatScore(pkg.global_score)}
           </p>
-          <p className="text-[11px] text-teal-950/50">servidor · half-up 2dp</p>
+          <p className="text-[11px] text-teal-950/50">calculado pelo servidor</p>
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import type { AuditPlan } from "@/api/auditPlanTypes";
 import type { AuditPlanSchedule, ScheduleItem } from "@/api/auditPlanScheduleTypes";
 import { planStatusLabel } from "@/api/auditPlanTypes";
 import { labelAssessmentType, labelWorkflowStatus } from "@/lib/labels";
+import { humanizeScopeLabel } from "@/lib/humanizeAuditCopy";
 import type {
   EvidenceBucket,
   EvidenceBucketKey,
@@ -877,7 +878,10 @@ export function buildFieldCentralModel(
       input.plan?.modality || input.assessment.type,
     ),
     scopeSummary:
-      input.scopeLabels.slice(0, 3).join(" · ") ||
+      input.scopeLabels
+        .slice(0, 3)
+        .map((l) => humanizeScopeLabel(l))
+        .join(" · ") ||
       (input.plan?.scope_text || "").slice(0, 120) ||
       "Escopo conforme Plano da Auditoria",
     phaseLabel,
