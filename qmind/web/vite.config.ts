@@ -50,9 +50,12 @@ export default defineConfig(({ mode }) => {
       setupFiles: ["./src/test/setup.ts"],
       globals: false,
       // Cap parallelism: unrestricted forks OOMs on Windows / CI runners.
+      // fileParallelism=false evita deadlock entre arquivos (CI e Windows).
       pool: "threads",
       maxWorkers: 2,
-      fileParallelism: true,
+      fileParallelism: false,
+      testTimeout: 20_000,
+      hookTimeout: 10_000,
       exclude: ["**/node_modules/**", "**/e2e/**", "**/dist/**"],
     },
   };
