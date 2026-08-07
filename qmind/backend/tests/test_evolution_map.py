@@ -366,7 +366,7 @@ def test_api_generate_preliminary_max10_sources_and_roles(client: TestClient):
 
     inv = client.post(
         f"/api/v1/evolution-suggestions/{preserved[0]['id']}/investigate",
-        json={"note": "Precisa entrevista com comercial"},
+        json={"missing_information": "Precisa entrevista com comercial"},
         headers=h,
     )
     assert inv.status_code == 200
@@ -395,3 +395,97 @@ def test_analysis_ready_requires_phase(client: TestClient):
         headers=h,
     )
     assert bad.status_code == 409
+
+
+def test_convert_to_action_phase_gate_and_link(client: TestClient):
+    from datetime import datetime, timedelta, timezone
+
+    from tests.test_findings import _setup_in_progress
+    from tests.test_findings_lifecycle import _approve_finding
+
+    h, org_id, aid, req_id = _setup_in_progress(client)
+    _seed_guided_answer(org_id, aid, value="partial")
+
+    gen = client.post(
+        f"/api/v1/assessments/{aid}/evolution-map/generate",
+        json={"mode": "preliminary"},
+        headers=h,
+    )
+    assert gen.status_code == 200, gen.text
+    sug = gen.json()["priority_suggestions"][0]
+    sid = sug["id"]
+
+    assert client.post(f"/api/v1/evolution-suggestions/{sid}/accept", headers=h).status_code == 200
+
+    me = client.get("/api/v1/organizations/me/memberships", headers=h).json()
+    owner = next(m["id"] for m in me if m["organization_id"] == org_id)
+    due = (datetime.now(timezone.utc) + timedelta(days=10)).isoformat()
+
+    blocked = client.post(
+        f"/api/v1/evolution-suggestions/{sid}/convert-to-action",
+        json={
+            "create_plan_if_missing": True,
+            "action_kind": "improvement",
+            "description": "Primeiro passo prático da sugestão",
+            "owner_membership_id": owner,
+            "due_at": due,
+            "title": sug["title"],
+        },
+        headers=h,
+    )
+    assert blocked.status_code == 409
+
+    assert client.post(
+        f"/api/v1/assessments/{aid}/transitions/begin_analysis", headers=h
+    ).status_code == 200
+
+    still = client.post(
+        f"/api/v1/evolution-suggestions/{sid}/convert-to-action",
+        json={
+            "create_plan_if_missing": True,
+            "action_kind": "improvement",
+            "description": "Primeiro passo prático da sugestão",
+            "owner_membership_id": owner,
+            "due_at": due,
+        },
+        headers=h,
+    )
+    assert still.status_code == 409
+    assert still.json()["code"] == "actions_phase_required"
+
+    _approve_finding(client, h, org_id, aid, req_id)
+    assert client.post(
+        f"/api/v1/assessments/{aid}/transitions/open_actions", headers=h
+    ).status_code == 200
+
+    ok = client.post(
+        f"/api/v1/evolution-suggestions/{sid}/convert-to-action",
+        json={
+            "create_plan_if_missing": True,
+            "action_kind": "improvement",
+            "description": "Primeiro passo prático da sugestão",
+            "owner_membership_id": owner,
+            "due_at": due,
+            "efficacy_required": False,
+        },
+        headers={**h, "Idempotency-Key": f"conv-{uuid.uuid4()}"},
+    )
+    assert ok.status_code == 200, ok.text
+    body = ok.json()
+    assert body["suggestion"]["status"] == "converted_to_action"
+    assert body["action_item_id"]
+    assert body["action_plan_id"]
+    assert body["suggestion"]["action_item_id"] == body["action_item_id"]
+
+    dup = client.post(
+        f"/api/v1/evolution-suggestions/{sid}/convert-to-action",
+        json={
+            "create_plan_if_missing": True,
+            "action_kind": "improvement",
+            "description": "dup",
+            "owner_membership_id": owner,
+            "due_at": due,
+        },
+        headers=h,
+    )
+    assert dup.status_code == 409

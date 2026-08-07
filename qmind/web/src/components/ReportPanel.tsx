@@ -35,11 +35,15 @@ type ReportRow = {
 type ExportJob = ReportPdfJob;
 
 function snapshotSummary(content: Record<string, unknown> | null | undefined) {
-  if (!content) return { findings: 0, hasMaturity: false, hasPlan: false };
+  if (!content) {
+    return { findings: 0, hasMaturity: false, hasPlan: false, evolution: 0 };
+  }
   const findings = Array.isArray(content.findings) ? content.findings.length : 0;
   const hasMaturity = content.maturity != null;
   const hasPlan = content.action_plan != null;
-  return { findings, hasMaturity: !!hasMaturity, hasPlan: !!hasPlan };
+  const evo = content.evolution_map as { suggestions?: unknown[] } | null | undefined;
+  const evolution = Array.isArray(evo?.suggestions) ? evo.suggestions.length : 0;
+  return { findings, hasMaturity: !!hasMaturity, hasPlan: !!hasPlan, evolution };
 }
 
 export function ReportPanel({
@@ -324,6 +328,9 @@ export function ReportPanel({
                   Snapshot: {snap.findings} constatação(ões) aprovada(s)
                   {snap.hasMaturity ? " · maturidade" : " · sem maturidade"}
                   {snap.hasPlan ? " · plano de ação" : " · sem plano"}
+                  {snap.evolution
+                    ? ` · ${snap.evolution} oportunidade(s) de evolução`
+                    : ""}
                   {active.status !== "draft" ? (
                     <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-teal-900">
                       imutável

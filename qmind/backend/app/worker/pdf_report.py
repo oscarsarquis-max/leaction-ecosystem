@@ -100,6 +100,38 @@ def render_report_pdf(snapshot: dict[str, Any], *, report_id: str, version_no: i
     else:
         story.append(Paragraph("Plano de acao nao incluido neste snapshot.", body))
 
+    evo = snapshot.get("evolution_map") or {}
+    story.append(Paragraph("Oportunidades de Evolucao Empresarial", h2))
+    if evo:
+        story.append(
+            Paragraph(
+                f"Pacote v{evo.get('package_version', '—')} · "
+                f"Modo: {_esc(str(evo.get('generation_mode') or '—'))}",
+                body,
+            )
+        )
+        sug = evo.get("suggestions") or []
+        if not sug:
+            story.append(
+                Paragraph(
+                    "Nenhuma sugestao aceita, marcada para aprofundar ou convertida.",
+                    body,
+                )
+            )
+        else:
+            rows = [["Titulo", "Situacao", "Prioridade"]]
+            for s in sug[:30]:
+                rows.append(
+                    [
+                        _esc(str(s.get("title") or "")[:90]),
+                        _esc(str(s.get("status") or "")),
+                        _esc(str(s.get("priority") or "")),
+                    ]
+                )
+            story.append(_table(rows))
+    else:
+        story.append(Paragraph("Mapa de evolucao nao incluido neste snapshot.", body))
+
     story.append(Spacer(1, 12))
     story.append(
         Paragraph(

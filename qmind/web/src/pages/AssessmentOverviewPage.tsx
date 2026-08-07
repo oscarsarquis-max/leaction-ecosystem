@@ -185,6 +185,26 @@ export function AssessmentOverviewPage() {
           }
         />
       </div>
+
+      <section
+        className="rounded-xl border border-teal-900/10 bg-white/70 p-4"
+        data-testid="overview-evolution-cta"
+      >
+        <h2 className="font-display text-xl text-teal-950">
+          Mapa de Evolução Empresarial
+        </h2>
+        <p className="mt-1 text-sm text-teal-950/70">
+          Sugestões práticas a partir das respostas e evidências — sem certificação
+          automática. Revise antes de converter em ações.
+        </p>
+        <button
+          type="button"
+          className="qm-btn-secondary mt-3"
+          onClick={() => void navigate(`/assessments/${assessmentId}/evolution`)}
+        >
+          Abrir mapa de evolução
+        </button>
+      </section>
     </div>
   );
 }

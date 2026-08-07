@@ -279,3 +279,10 @@ export function canBeginAssessmentReport(
     assessmentStatus === "actions"
   );
 }
+
+/** Evolution Map review/generate — mirrors backend _REVIEW_ROLES / _GENERATE_ROLES. */
+export function canReviewEvolutionMap(
+  roles: readonly string[] | undefined,
+): boolean {
+  return (roles ?? []).some((r) => MUTATE_ROLES.has(r));
+}

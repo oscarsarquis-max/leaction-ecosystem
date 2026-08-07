@@ -9,6 +9,7 @@ export type AssistantPageId =
   | "wizard"
   | "audit_plan"
   | "field_central"
+  | "evolution_map"
   | "generic";
 
 export type AssistantQuickActionId =
@@ -59,6 +60,15 @@ export type AssistantFieldSnippet = {
   closingPrepShow: boolean;
 };
 
+export type AssistantEvolutionSnippet = {
+  hasPackage: boolean;
+  priorityCount: number;
+  secondaryCount: number;
+  needsReviewCount: number;
+  topPriorityTitle: string | null;
+  generationMode: string | null;
+};
+
 /** Snapshot registrado pela página ativa. */
 export type AssistantContext = {
   organization_id: string | null;
@@ -81,6 +91,7 @@ export type AssistantContext = {
   wizard?: AssistantWizardSnippet | null;
   plan?: AssistantPlanSnippet | null;
   field?: AssistantFieldSnippet | null;
+  evolution?: AssistantEvolutionSnippet | null;
 };
 
 export type AssistantReplyBlock =

@@ -33,7 +33,8 @@ _PLAN_COLS = """
     id, organization_id, assessment_id, status, empty_plan_rationale, created_at, updated_at
 """
 _ITEM_COLS = """
-    id, organization_id, action_plan_id, finding_id, action_kind, description,
+    id, organization_id, action_plan_id, finding_id, source_evolution_suggestion_id,
+    action_kind, description,
     owner_membership_id, due_at, status, is_overdue, efficacy_required,
     source_finding_withdrawn, validated_by, efficacy_confirmed_by,
     cancel_reason, reject_reason, efficacy_fail_reason,
@@ -59,6 +60,9 @@ def _item_out(row) -> ActionItemOut:
         organization_id=row.organization_id,
         action_plan_id=row.action_plan_id,
         finding_id=row.finding_id,
+        source_evolution_suggestion_id=getattr(
+            row, "source_evolution_suggestion_id", None
+        ),
         action_kind=row.action_kind,
         description=row.description,
         owner_membership_id=row.owner_membership_id,
@@ -467,15 +471,61 @@ def create_item(ctx: OrgContext, plan_id: UUID, payload: ActionItemCreate) -> Ac
             if finding.status == "discarded":
                 raise AppError("finding_discarded", "Cannot link discarded finding", status_code=422)
 
+        if payload.source_evolution_suggestion_id:
+            sug = conn.execute(
+                text(
+                    """
+                    SELECT id, status FROM evolution_suggestions
+                    WHERE id = :id AND organization_id = :org
+                    """
+                ),
+                {
+                    "id": payload.source_evolution_suggestion_id,
+                    "org": ctx.organization_id,
+                },
+            ).first()
+            if sug is None:
+                raise AppError(
+                    "not_found", "Evolution suggestion not found", status_code=404
+                )
+            if sug.status not in ("accepted", "converted_to_action"):
+                raise AppError(
+                    "suggestion_not_convertible",
+                    "Only accepted suggestions can be linked as action origin",
+                    status_code=422,
+                )
+            dup = conn.execute(
+                text(
+                    """
+                    SELECT id FROM action_items
+                    WHERE source_evolution_suggestion_id = :sid
+                      AND organization_id = :org
+                    LIMIT 1
+                    """
+                ),
+                {
+                    "sid": payload.source_evolution_suggestion_id,
+                    "org": ctx.organization_id,
+                },
+            ).first()
+            if dup is not None:
+                raise AppError(
+                    "suggestion_already_converted",
+                    "This evolution suggestion already has an action item",
+                    status_code=409,
+                )
+
         item_id = uuid4()
         row = conn.execute(
             text(
                 f"""
                 INSERT INTO action_items (
-                  id, organization_id, action_plan_id, finding_id, action_kind,
+                  id, organization_id, action_plan_id, finding_id,
+                  source_evolution_suggestion_id, action_kind,
                   description, owner_membership_id, due_at, status, efficacy_required
                 ) VALUES (
-                  :id, :org, :plan, :fid, :kind,
+                  :id, :org, :plan, :fid,
+                  :esid, :kind,
                   :desc, :owner, :due, 'open', :efficacy
                 )
                 RETURNING {_ITEM_COLS}
@@ -486,6 +536,7 @@ def create_item(ctx: OrgContext, plan_id: UUID, payload: ActionItemCreate) -> Ac
                 "org": ctx.organization_id,
                 "plan": plan_id,
                 "fid": payload.finding_id,
+                "esid": payload.source_evolution_suggestion_id,
                 "kind": payload.action_kind,
                 "desc": payload.description.strip(),
                 "owner": payload.owner_membership_id,

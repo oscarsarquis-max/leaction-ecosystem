@@ -9,6 +9,8 @@ from fastapi import APIRouter
 from app.auth.deps import OrgContextDep
 from app.modules.evolution_map import service
 from app.modules.evolution_map.schemas import (
+    ConvertSuggestionToActionIn,
+    ConvertSuggestionToActionOut,
     DismissSuggestionIn,
     EvolutionGenerateIn,
     EvolutionPackageOut,
@@ -119,3 +121,24 @@ def investigate_suggestion(
     _idempotency_key: IdempotencyKeyHeader = None,
 ) -> EvolutionSuggestionOut:
     return service.investigate_suggestion(ctx, suggestion_id, payload)
+
+
+@router.post(
+    "/evolution-suggestions/{suggestion_id}/convert-to-action",
+    response_model=ConvertSuggestionToActionOut,
+    operation_id="convertEvolutionSuggestionToAction",
+    responses={
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+        409: ERROR_RESPONSES[409],
+        422: ERROR_RESPONSES[422],
+    },
+    summary="Convert accepted suggestion into a confirmed action item",
+)
+def convert_suggestion(
+    suggestion_id: UUID,
+    payload: ConvertSuggestionToActionIn,
+    ctx: OrgContextDep,
+    _idempotency_key: IdempotencyKeyHeader = None,
+) -> ConvertSuggestionToActionOut:
+    return service.convert_suggestion_to_action(ctx, suggestion_id, payload)

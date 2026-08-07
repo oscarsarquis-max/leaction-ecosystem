@@ -43,6 +43,18 @@
             "format": "uuid",
             "title": "Owner Membership Id",
             "type": "string"
+          },
+          "source_evolution_suggestion_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Evolution Suggestion Id"
           }
         },
         "required": [
@@ -157,6 +169,18 @@
               }
             ],
             "title": "Reject Reason"
+          },
+          "source_evolution_suggestion_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Evolution Suggestion Id"
           },
           "source_finding_withdrawn": {
             "default": false,
@@ -2124,6 +2148,101 @@
         "title": "ConcludePlanningOut",
         "type": "object"
       },
+      "ConvertSuggestionToActionIn": {
+        "properties": {
+          "action_kind": {
+            "$ref": "#/components/schemas/ActionKind",
+            "default": "improvement"
+          },
+          "action_plan_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Plan Id"
+          },
+          "create_plan_if_missing": {
+            "default": false,
+            "title": "Create Plan If Missing",
+            "type": "boolean"
+          },
+          "description": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "due_at": {
+            "format": "date-time",
+            "title": "Due At",
+            "type": "string"
+          },
+          "efficacy_required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Efficacy Required"
+          },
+          "owner_membership_id": {
+            "format": "uuid",
+            "title": "Owner Membership Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "description",
+          "owner_membership_id",
+          "due_at"
+        ],
+        "title": "ConvertSuggestionToActionIn",
+        "type": "object"
+      },
+      "ConvertSuggestionToActionOut": {
+        "properties": {
+          "action_item_id": {
+            "format": "uuid",
+            "title": "Action Item Id",
+            "type": "string"
+          },
+          "action_plan_id": {
+            "format": "uuid",
+            "title": "Action Plan Id",
+            "type": "string"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/EvolutionSuggestionOut"
+          }
+        },
+        "required": [
+          "suggestion",
+          "action_item_id",
+          "action_plan_id"
+        ],
+        "title": "ConvertSuggestionToActionOut",
+        "type": "object"
+      },
       "DimensionScoreOut": {
         "properties": {
           "applicable_count": {
@@ -2652,6 +2771,16 @@
             "title": "Priority Suggestions",
             "type": "array"
           },
+          "regeneration_diff": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvolutionRegenerationDiff"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "secondary_suggestions": {
             "items": {
               "$ref": "#/components/schemas/EvolutionSuggestionOut"
@@ -2717,8 +2846,66 @@
         "title": "EvolutionPriority",
         "type": "string"
       },
+      "EvolutionRegenerationDiff": {
+        "properties": {
+          "new_rule_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "New Rule Ids",
+            "type": "array"
+          },
+          "preserved_accepted_rule_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Preserved Accepted Rule Ids",
+            "type": "array"
+          },
+          "retained_rule_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Retained Rule Ids",
+            "type": "array"
+          },
+          "superseded_rule_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Superseded Rule Ids",
+            "type": "array"
+          }
+        },
+        "title": "EvolutionRegenerationDiff",
+        "type": "object"
+      },
       "EvolutionSuggestionOut": {
         "properties": {
+          "action_item_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Item Id"
+          },
+          "action_plan_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Plan Id"
+          },
           "assessment_id": {
             "format": "uuid",
             "title": "Assessment Id",
@@ -2774,6 +2961,17 @@
           "impact": {
             "$ref": "#/components/schemas/EvolutionImpact"
           },
+          "investigate_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Investigate Note"
+          },
           "is_priority": {
             "title": "Is Priority",
             "type": "boolean"
@@ -2798,6 +2996,13 @@
           },
           "priority": {
             "$ref": "#/components/schemas/EvolutionPriority"
+          },
+          "related_clauses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Clauses",
+            "type": "array"
           },
           "reviewed_at": {
             "anyOf": [
@@ -4408,6 +4613,18 @@
       },
       "InvestigateSuggestionIn": {
         "properties": {
+          "missing_information": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Information"
+          },
           "note": {
             "anyOf": [
               {
@@ -26400,6 +26617,238 @@
           }
         ],
         "summary": "Accept Suggestion",
+        "tags": [
+          "evolution-map"
+        ]
+      }
+    },
+    "/api/v1/evolution-suggestions/{suggestion_id}/convert-to-action": {
+      "post": {
+        "operationId": "convertEvolutionSuggestionToAction",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.",
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConvertSuggestionToActionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConvertSuggestionToActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Convert accepted suggestion into a confirmed action item",
         "tags": [
           "evolution-map"
         ]

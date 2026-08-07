@@ -100,7 +100,15 @@ export function AssessmentDetailPage() {
         </p>
         <p className="mt-3 text-sm text-teal-950/70">
           Aqui você registra constatações, maturidade, plano de ação e relatório —
-          na ordem do percurso. O Assistente QMind explica cada bloco.
+          na ordem do percurso. O{" "}
+          <Link
+            to={`/assessments/${assessmentId}/evolution`}
+            className="font-semibold underline"
+            data-testid="detail-evolution-link"
+          >
+            Mapa de Evolução Empresarial
+          </Link>{" "}
+          complementa com sugestões revisáveis (sem caminho paralelo às constatações).
         </p>
       </header>
 

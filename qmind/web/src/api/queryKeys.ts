@@ -71,6 +71,8 @@ export const queryKeys = {
     ] as const,
   agendaBoard: (organizationId: string, selectedDate: string) =>
     ["org", organizationId, "agenda", selectedDate] as const,
+  assessmentEvolutionMap: (organizationId: string, assessmentId: string) =>
+    ["org", organizationId, "assessment", assessmentId, "evolution-map"] as const,
   health: ["health"] as const,
 };
 

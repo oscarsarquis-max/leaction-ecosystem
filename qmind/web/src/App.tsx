@@ -12,6 +12,7 @@ import { AssessmentGuidedPage } from "@/pages/AssessmentGuidedPage";
 import { AssessmentLobby } from "@/pages/AssessmentLobby";
 import { AssessmentWorkPage } from "@/pages/AssessmentWorkPage";
 import { AssessmentAuditPlanPage } from "@/pages/AssessmentAuditPlanPage";
+import { AssessmentEvolutionPage } from "@/pages/AssessmentEvolutionPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,6 +52,10 @@ export default function App() {
                 <Route
                   path="assessments/:assessmentId/advanced"
                   element={<AssessmentDetailPage />}
+                />
+                <Route
+                  path="assessments/:assessmentId/evolution"
+                  element={<AssessmentEvolutionPage />}
                 />
                 <Route
                   path="assessments/:assessmentId"

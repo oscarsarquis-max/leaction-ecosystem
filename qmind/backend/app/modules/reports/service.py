@@ -195,7 +195,8 @@ def build_snapshot(
         items = conn.execute(
             text(
                 """
-                SELECT id, finding_id, action_kind, description, status,
+                SELECT id, finding_id, source_evolution_suggestion_id, action_kind,
+                       description, status,
                        owner_membership_id, due_at, source_finding_withdrawn
                 FROM action_items
                 WHERE action_plan_id = :pid AND organization_id = :org
@@ -213,6 +214,11 @@ def build_snapshot(
                 {
                     "id": str(i.id),
                     "finding_id": str(i.finding_id) if i.finding_id else None,
+                    "source_evolution_suggestion_id": (
+                        str(i.source_evolution_suggestion_id)
+                        if getattr(i, "source_evolution_suggestion_id", None)
+                        else None
+                    ),
                     "action_kind": i.action_kind,
                     "description": i.description,
                     "status": i.status,
@@ -223,6 +229,8 @@ def build_snapshot(
                 for i in items
             ],
         }
+
+    evolution_blob = _build_evolution_snapshot(conn, org_id, assessment_id)
 
     snap = {
         "snapshot_at": datetime.now(timezone.utc).isoformat(),
@@ -247,8 +255,102 @@ def build_snapshot(
         "maturity_assessment_id": str(maturity_id) if maturity_id else None,
         "action_plan": plan_blob,
         "action_plan_id": plan_blob["id"] if plan_blob else None,
+        "evolution_map": evolution_blob,
     }
     return snap, maturity_id
+
+
+def _build_evolution_snapshot(conn: Connection, org_id: UUID, assessment_id: UUID) -> dict | None:
+    """Freeze accepted / investigate / converted suggestions — never proposed/dismissed."""
+    pkg = conn.execute(
+        text(
+            """
+            SELECT id, package_version, generation_mode, catalog_version, generated_at
+            FROM evolution_suggestion_packages
+            WHERE assessment_id = :aid AND organization_id = :org AND status = 'active'
+            LIMIT 1
+            """
+        ),
+        {"aid": assessment_id, "org": org_id},
+    ).first()
+    if pkg is None:
+        return None
+
+    suggestions = conn.execute(
+        text(
+            """
+            SELECT s.id, s.rule_id, s.category, s.title, s.observation,
+                   s.suggested_evolution, s.expected_benefit, s.first_step,
+                   s.priority, s.confidence, s.status, s.investigate_note,
+                   s.source_references,
+                   ai.id AS action_item_id
+            FROM evolution_suggestions s
+            LEFT JOIN action_items ai
+              ON ai.source_evolution_suggestion_id = s.id
+             AND ai.organization_id = s.organization_id
+            WHERE s.package_id = :pid AND s.organization_id = :org
+              AND s.status NOT IN ('dismissed', 'superseded')
+              AND (
+                s.status IN ('accepted', 'converted_to_action')
+                OR s.priority = 'investigate'
+              )
+            ORDER BY s.priority, s.title
+            """
+        ),
+        {"pid": pkg.id, "org": org_id},
+    ).all()
+
+    def _refs(raw):
+        if isinstance(raw, str):
+            import json
+
+            raw = json.loads(raw)
+        if not isinstance(raw, list):
+            return []
+        # IDs + labels only — never signed URLs or document bodies
+        out = []
+        for r in raw:
+            if not isinstance(r, dict):
+                continue
+            out.append(
+                {
+                    "kind": r.get("kind"),
+                    "question_id": r.get("question_id"),
+                    "question_version": r.get("question_version"),
+                    "label": r.get("label"),
+                    "detail": r.get("detail"),
+                    # keep opaque id only as reference key, not primary display
+                    "id": r.get("id"),
+                }
+            )
+        return out
+
+    return {
+        "package_id": str(pkg.id),
+        "package_version": int(pkg.package_version),
+        "generation_mode": pkg.generation_mode,
+        "catalog_version": pkg.catalog_version,
+        "generated_at": pkg.generated_at.isoformat() if pkg.generated_at else None,
+        "suggestions": [
+            {
+                "id": str(s.id),
+                "rule_id": s.rule_id,
+                "category": s.category,
+                "title": s.title,
+                "observation": s.observation,
+                "suggested_evolution": s.suggested_evolution,
+                "expected_benefit": s.expected_benefit,
+                "first_step": s.first_step,
+                "priority": s.priority,
+                "confidence": s.confidence,
+                "status": s.status,
+                "investigate_note": s.investigate_note,
+                "action_item_id": str(s.action_item_id) if s.action_item_id else None,
+                "source_references_summary": _refs(s.source_references),
+            }
+            for s in suggestions
+        ],
+    }
 
 
 def create_draft(ctx: OrgContext, payload: ReportCreate) -> ReportOut:

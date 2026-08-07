@@ -30,6 +30,15 @@ export function AssessmentSectionNav({ assessmentId }: Props) {
     status === "report" ||
     status === "closed";
 
+  const showEvolution =
+    status === "draft" ||
+    status === "planned" ||
+    status === "in_progress" ||
+    status === "analysis" ||
+    status === "actions" ||
+    status === "report" ||
+    status === "closed";
+
   const phaseWorkLabel = "Análise, ações e relatório";
 
   return (
@@ -80,6 +89,15 @@ export function AssessmentSectionNav({ assessmentId }: Props) {
           data-testid="nav-phase-work"
         >
           {phaseWorkLabel}
+        </NavLink>
+      ) : null}
+      {showEvolution ? (
+        <NavLink
+          to={`/assessments/${assessmentId}/evolution`}
+          className={linkClass}
+          data-testid="nav-evolution"
+        >
+          Mapa de Evolução Empresarial
         </NavLink>
       ) : null}
     </nav>

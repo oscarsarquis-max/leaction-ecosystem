@@ -283,6 +283,13 @@ export function GuidedReview({
             Continuar depois
           </Link>
           <Link
+            to={`/assessments/${assessmentId}/evolution`}
+            className="qm-btn-secondary"
+            data-testid="guided-review-evolution"
+          >
+            Abrir Mapa de Evolução Empresarial
+          </Link>
+          <Link
             to={`/assessments/${assessmentId}/work`}
             className="qm-btn-primary"
             data-testid="guided-done"

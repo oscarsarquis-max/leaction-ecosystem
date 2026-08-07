@@ -32,6 +32,7 @@ class ActionPlanTransitionResult(BaseModel):
 
 class ActionItemCreate(BaseModel):
     finding_id: UUID | None = None
+    source_evolution_suggestion_id: UUID | None = None
     action_kind: ActionKind
     description: str = Field(..., min_length=1)
     owner_membership_id: UUID
@@ -44,6 +45,7 @@ class ActionItemOut(BaseModel):
     organization_id: UUID
     action_plan_id: UUID
     finding_id: UUID | None
+    source_evolution_suggestion_id: UUID | None = None
     action_kind: ActionKind
     description: str
     owner_membership_id: UUID

@@ -12,7 +12,7 @@ from app.audit import write_audit
 from app.auth.context import OrgContext
 from app.db import tenant_connection
 from app.errors import AppError
-from app.modules.evolution_map.catalog import CATALOG_VERSION
+from app.modules.evolution_map.catalog import CATALOG_VERSION, rules_by_id
 from app.modules.evolution_map.engine import (
     ActionItemFact,
     AssessmentFacts,
@@ -25,9 +25,12 @@ from app.modules.evolution_map.engine import (
     source_snapshot,
 )
 from app.modules.evolution_map.schemas import (
+    ConvertSuggestionToActionIn,
+    ConvertSuggestionToActionOut,
     DismissSuggestionIn,
     EvolutionGenerateIn,
     EvolutionPackageOut,
+    EvolutionRegenerationDiff,
     EvolutionSuggestionOut,
     InvestigateSuggestionIn,
     SourceReference,
@@ -64,7 +67,8 @@ _SUGGESTION_COLS = """
     rule_id, rule_version, category, title, observation, business_rationale,
     suggested_evolution, expected_benefit, first_step, impact, effort,
     priority, confidence, is_priority, source_references, status, dismiss_reason,
-    generated_at, generated_by, reviewed_at, reviewed_by, created_at, updated_at
+    investigate_note, generated_at, generated_by, reviewed_at, reviewed_by,
+    created_at, updated_at
 """
 
 
@@ -76,7 +80,14 @@ def _parse_refs(raw: Any) -> list[SourceReference]:
     return [SourceReference.model_validate(x) for x in raw]
 
 
-def _suggestion_out(row) -> EvolutionSuggestionOut:
+def _suggestion_out(
+    row,
+    *,
+    action_item_id=None,
+    action_plan_id=None,
+) -> EvolutionSuggestionOut:
+    rule = rules_by_id().get(row.rule_id)
+    clauses = list(rule.related_clauses) if rule else []
     return EvolutionSuggestionOut(
         id=row.id,
         organization_id=row.organization_id,
@@ -98,8 +109,12 @@ def _suggestion_out(row) -> EvolutionSuggestionOut:
         confidence=row.confidence,
         is_priority=bool(row.is_priority),
         source_references=_parse_refs(row.source_references),
+        related_clauses=clauses,
         status=row.status,
         dismiss_reason=row.dismiss_reason,
+        investigate_note=getattr(row, "investigate_note", None),
+        action_item_id=action_item_id,
+        action_plan_id=action_plan_id,
         generated_at=row.generated_at,
         generated_by=row.generated_by,
         reviewed_at=row.reviewed_at,
@@ -107,7 +122,48 @@ def _suggestion_out(row) -> EvolutionSuggestionOut:
     )
 
 
-def _package_out(row, suggestions: list[EvolutionSuggestionOut]) -> EvolutionPackageOut:
+def _action_links_for_suggestions(conn, org_id, suggestion_ids: list) -> dict:
+    if not suggestion_ids:
+        return {}
+    rows = conn.execute(
+        text(
+            """
+            SELECT id, action_plan_id, source_evolution_suggestion_id
+            FROM action_items
+            WHERE organization_id = :org
+              AND source_evolution_suggestion_id = ANY(CAST(:ids AS uuid[]))
+            """
+        ),
+        {"org": org_id, "ids": [str(x) for x in suggestion_ids]},
+    ).all()
+    return {
+        r.source_evolution_suggestion_id: (r.id, r.action_plan_id) for r in rows
+    }
+
+
+def _enrich_suggestions(conn, org_id, sug_rows) -> list[EvolutionSuggestionOut]:
+    links = _action_links_for_suggestions(
+        conn, org_id, [s.id for s in sug_rows]
+    )
+    out: list[EvolutionSuggestionOut] = []
+    for s in sug_rows:
+        link = links.get(s.id)
+        out.append(
+            _suggestion_out(
+                s,
+                action_item_id=link[0] if link else None,
+                action_plan_id=link[1] if link else None,
+            )
+        )
+    return out
+
+
+def _package_out(
+    row,
+    suggestions: list[EvolutionSuggestionOut],
+    *,
+    regeneration_diff: EvolutionRegenerationDiff | None = None,
+) -> EvolutionPackageOut:
     snap = row.source_snapshot
     if isinstance(snap, str):
         snap = json.loads(snap)
@@ -128,6 +184,7 @@ def _package_out(row, suggestions: list[EvolutionSuggestionOut]) -> EvolutionPac
         generated_by=row.generated_by,
         priority_suggestions=priority,
         secondary_suggestions=secondary,
+        regeneration_diff=regeneration_diff,
     )
 
 
@@ -331,7 +388,8 @@ def get_active_package(ctx: OrgContext, assessment_id: UUID) -> EvolutionPackage
             ),
             {"pid": row.id, "org": ctx.organization_id},
         ).all()
-    return _package_out(row, [_suggestion_out(s) for s in sug_rows])
+        suggestions = _enrich_suggestions(conn, ctx.organization_id, sug_rows)
+    return _package_out(row, suggestions)
 
 
 def get_suggestion(ctx: OrgContext, suggestion_id: UUID) -> EvolutionSuggestionOut:
@@ -349,7 +407,8 @@ def get_suggestion(ctx: OrgContext, suggestion_id: UUID) -> EvolutionSuggestionO
         ).first()
         if row is None:
             raise AppError("not_found", "Suggestion not found", status_code=404)
-    return _suggestion_out(row)
+        suggestions = _enrich_suggestions(conn, ctx.organization_id, [row])
+    return suggestions[0]
 
 
 def generate_package(
@@ -417,27 +476,27 @@ def generate_package(
                 ),
                 {"pid": active.id, "org": ctx.organization_id},
             ).all()
+            suggestions = _enrich_suggestions(conn, ctx.organization_id, sug_rows)
             conn.commit()
-            return _package_out(active, [_suggestion_out(s) for s in sug_rows])
+            return _package_out(active, suggestions)
 
         preserved: dict[str, Any] = {}
+        previous_rule_ids: set[str] = set()
         if active:
-            prev = conn.execute(
+            prev_all = conn.execute(
                 text(
                     f"""
                     SELECT {_SUGGESTION_COLS}
                     FROM evolution_suggestions
                     WHERE package_id = :pid AND organization_id = :org
-                      AND status IN ('accepted', 'dismissed', 'converted_to_action')
                     """
                 ),
-                {
-                    "pid": active.id,
-                    "org": ctx.organization_id,
-                },
+                {"pid": active.id, "org": ctx.organization_id},
             ).all()
-            for p in prev:
-                preserved[p.rule_id] = p
+            previous_rule_ids = {p.rule_id for p in prev_all}
+            for p in prev_all:
+                if p.status in _PRESERVE_STATUSES:
+                    preserved[p.rule_id] = p
 
         candidates = evaluate_rules(facts)
         # Keep preserved rules even if not rematched (carry forward)
@@ -651,6 +710,22 @@ def generate_package(
 
     out = get_active_package(ctx, assessment_id)
     assert out is not None
+    if previous_rule_ids or preserved:
+        new_ids = {s.rule_id for s in out.priority_suggestions + out.secondary_suggestions}
+        out.regeneration_diff = EvolutionRegenerationDiff(
+            new_rule_ids=sorted(new_ids - previous_rule_ids),
+            retained_rule_ids=sorted(new_ids & previous_rule_ids),
+            superseded_rule_ids=sorted(previous_rule_ids - new_ids),
+            preserved_accepted_rule_ids=sorted(
+                rid
+                for rid, prow in preserved.items()
+                if prow.status
+                in (
+                    EvolutionSuggestionStatus.accepted.value,
+                    EvolutionSuggestionStatus.converted_to_action.value,
+                )
+            ),
+        )
     return out
 
 
@@ -677,7 +752,7 @@ def accept_suggestion(ctx: OrgContext, suggestion_id: UUID) -> EvolutionSuggesti
                 status_code=409,
             )
         if row.status == "accepted":
-            return _suggestion_out(row)
+            return get_suggestion(ctx, suggestion_id)
         conn.execute(
             text(
                 """
@@ -796,18 +871,31 @@ def investigate_suggestion(
                 f"Cannot mark investigate from status {row.status}",
                 status_code=409,
             )
+        note = (payload.missing_information or payload.note or "").strip()
+        if len(note) < 3:
+            raise AppError(
+                "validation_error",
+                "Informe qual informação está faltando para aprofundar",
+                status_code=422,
+            )
         conn.execute(
             text(
                 """
                 UPDATE evolution_suggestions
                 SET priority = 'investigate',
+                    investigate_note = :note,
                     reviewed_at = now(),
                     reviewed_by = :by,
                     updated_at = now()
                 WHERE id = :id AND organization_id = :org
                 """
             ),
-            {"id": suggestion_id, "org": ctx.organization_id, "by": ctx.membership_id},
+            {
+                "id": suggestion_id,
+                "org": ctx.organization_id,
+                "by": ctx.membership_id,
+                "note": note,
+            },
         )
         write_audit(
             conn,
@@ -820,8 +908,243 @@ def investigate_suggestion(
             resource_id=suggestion_id,
             metadata={
                 "rule_id": row.rule_id,
-                "note_present": bool(payload.note and payload.note.strip()),
+                "note_present": True,
             },
         )
         conn.commit()
     return get_suggestion(ctx, suggestion_id)
+
+
+def convert_suggestion_to_action(
+    ctx: OrgContext, suggestion_id: UUID, payload: ConvertSuggestionToActionIn
+) -> ConvertSuggestionToActionOut:
+    """Create ActionItem + mark suggestion converted in one transaction."""
+    require_role(ctx, *_REVIEW_ROLES)
+    with tenant_connection(ctx.organization_id) as conn:
+        row = conn.execute(
+            text(
+                f"""
+                SELECT {_SUGGESTION_COLS}
+                FROM evolution_suggestions
+                WHERE id = :id AND organization_id = :org
+                FOR UPDATE
+                """
+            ),
+            {"id": suggestion_id, "org": ctx.organization_id},
+        ).first()
+        if row is None:
+            raise AppError("not_found", "Suggestion not found", status_code=404)
+        if row.status == "converted_to_action":
+            raise AppError(
+                "suggestion_already_converted",
+                "Suggestion already converted to an action",
+                status_code=409,
+            )
+        if row.status != "accepted":
+            raise AppError(
+                "suggestion_not_convertible",
+                "Only accepted suggestions can be converted to actions",
+                status_code=409,
+            )
+
+        assessment = conn.execute(
+            text(
+                """
+                SELECT id, status FROM assessments
+                WHERE id = :id AND organization_id = :org
+                FOR UPDATE
+                """
+            ),
+            {"id": row.assessment_id, "org": ctx.organization_id},
+        ).first()
+        if assessment is None:
+            raise AppError("not_found", "Assessment not found", status_code=404)
+        if assessment.status == "analysis":
+            raise AppError(
+                "actions_phase_required",
+                "Abra explicitamente a fase de ações antes de converter sugestões",
+                status_code=409,
+            )
+        if assessment.status not in ("actions", "report", "closed"):
+            raise AppError(
+                "phase_incompatible",
+                f"Conversão exige fase de ações ou posterior (atual={assessment.status})",
+                status_code=409,
+            )
+
+        existing = conn.execute(
+            text(
+                """
+                SELECT id FROM action_items
+                WHERE source_evolution_suggestion_id = :sid
+                  AND organization_id = :org
+                LIMIT 1
+                """
+            ),
+            {"sid": suggestion_id, "org": ctx.organization_id},
+        ).first()
+        if existing is not None:
+            raise AppError(
+                "suggestion_already_converted",
+                "This evolution suggestion already has an action item",
+                status_code=409,
+            )
+
+        plan_id = payload.action_plan_id
+        if plan_id is None:
+            plan = conn.execute(
+                text(
+                    """
+                    SELECT id, status FROM action_plans
+                    WHERE assessment_id = :aid AND organization_id = :org
+                      AND status IN ('draft', 'active')
+                    ORDER BY
+                      CASE status WHEN 'draft' THEN 0 ELSE 1 END,
+                      created_at DESC
+                    LIMIT 1
+                    """
+                ),
+                {"aid": row.assessment_id, "org": ctx.organization_id},
+            ).first()
+            if plan is None:
+                if not payload.create_plan_if_missing:
+                    raise AppError(
+                        "action_plan_required",
+                        "Informe um plano de ação ou peça criação explícita",
+                        status_code=422,
+                    )
+                plan_id = uuid4()
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO action_plans (
+                          id, organization_id, assessment_id, status
+                        ) VALUES (
+                          :id, :org, :aid, 'draft'
+                        )
+                        """
+                    ),
+                    {
+                        "id": plan_id,
+                        "org": ctx.organization_id,
+                        "aid": row.assessment_id,
+                    },
+                )
+            else:
+                plan_id = plan.id
+        else:
+            plan = conn.execute(
+                text(
+                    """
+                    SELECT id, status, assessment_id FROM action_plans
+                    WHERE id = :id AND organization_id = :org
+                    FOR UPDATE
+                    """
+                ),
+                {"id": plan_id, "org": ctx.organization_id},
+            ).first()
+            if plan is None:
+                raise AppError("not_found", "Action plan not found", status_code=404)
+            if plan.assessment_id != row.assessment_id:
+                raise AppError(
+                    "plan_mismatch",
+                    "Action plan does not belong to this assessment",
+                    status_code=422,
+                )
+            if plan.status not in ("draft", "active"):
+                raise AppError(
+                    "plan_not_editable",
+                    f"Items only on draft|active plans (current={plan.status})",
+                    status_code=409,
+                )
+
+        owner = conn.execute(
+            text(
+                """
+                SELECT id FROM memberships
+                WHERE id = :id AND organization_id = :org AND status = 'active'
+                """
+            ),
+            {"id": payload.owner_membership_id, "org": ctx.organization_id},
+        ).first()
+        if owner is None:
+            raise AppError("not_found", "Owner membership not found", status_code=404)
+
+        efficacy = payload.efficacy_required
+        if efficacy is None:
+            efficacy = payload.action_kind.value == "corrective_action"
+
+        title = (payload.title or row.title).strip()
+        description = payload.description.strip()
+        if title and title not in description:
+            description = f"{title}\n\n{description}"
+
+        item_id = uuid4()
+        conn.execute(
+            text(
+                """
+                INSERT INTO action_items (
+                  id, organization_id, action_plan_id, finding_id,
+                  source_evolution_suggestion_id, action_kind,
+                  description, owner_membership_id, due_at, status, efficacy_required
+                ) VALUES (
+                  :id, :org, :plan, NULL,
+                  :esid, :kind,
+                  :desc, :owner, :due, 'open', :efficacy
+                )
+                """
+            ),
+            {
+                "id": item_id,
+                "org": ctx.organization_id,
+                "plan": plan_id,
+                "esid": suggestion_id,
+                "kind": payload.action_kind.value,
+                "desc": description,
+                "owner": payload.owner_membership_id,
+                "due": payload.due_at,
+                "efficacy": efficacy,
+            },
+        )
+        conn.execute(
+            text(
+                """
+                UPDATE evolution_suggestions
+                SET status = 'converted_to_action',
+                    reviewed_at = now(),
+                    reviewed_by = :by,
+                    updated_at = now()
+                WHERE id = :id AND organization_id = :org
+                """
+            ),
+            {
+                "id": suggestion_id,
+                "org": ctx.organization_id,
+                "by": ctx.membership_id,
+            },
+        )
+        write_audit(
+            conn,
+            organization_id=ctx.organization_id,
+            actor_type="user",
+            actor_user_id=ctx.principal.user_id,
+            actor_membership_id=ctx.membership_id,
+            action="evolution_suggestion.convert_to_action",
+            resource_type="evolution_suggestion",
+            resource_id=suggestion_id,
+            from_status="accepted",
+            to_status="converted_to_action",
+            metadata={
+                "rule_id": row.rule_id,
+                "action_item_id": str(item_id),
+                "action_plan_id": str(plan_id),
+            },
+        )
+        conn.commit()
+
+    suggestion = get_suggestion(ctx, suggestion_id)
+    return ConvertSuggestionToActionOut(
+        suggestion=suggestion,
+        action_item_id=item_id,
+        action_plan_id=plan_id,
+    )

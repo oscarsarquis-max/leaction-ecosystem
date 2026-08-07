@@ -173,6 +173,41 @@ function explainStage(ctx: AssistantContext): AssistantReply {
     };
   }
 
+  if (ctx.page === "evolution_map") {
+    const e = ctx.evolution;
+    return {
+      title: "Mapa de Evolução Empresarial — o que é",
+      blocks: [
+        {
+          type: "paragraph",
+          text: "Este mapa transforma respostas, evidências e resultados da avaliação em sugestões práticas para fortalecer a organização.",
+        },
+        {
+          type: "paragraph",
+          text: "As sugestões não representam certificação ou julgamento automático e devem ser revisadas antes de virar ações.",
+        },
+        {
+          type: "list",
+          items: [
+            e?.hasPackage
+              ? `Pacote ativo com ${e.priorityCount} sugestões principais e ${e.secondaryCount} secundárias.`
+              : "Ainda não há pacote — gere o mapa a partir das fontes da avaliação.",
+            e?.needsReviewCount
+              ? `${e.needsReviewCount} sugestão(ões) ainda precisam de revisão humana.`
+              : "Nenhuma pendência de revisão registrada no contexto atual.",
+            e?.topPriorityTitle
+              ? `Maior prioridade em evidência: ${e.topPriorityTitle}.`
+              : "Sem sugestão prioritária destacada ainda.",
+          ],
+        },
+        {
+          type: "note",
+          text: "O assistente não aceita, descarta nem converte sugestões — use os botões da página.",
+        },
+      ],
+    };
+  }
+
   const phase = phaseDef(ctx);
   if (phase) {
     return {

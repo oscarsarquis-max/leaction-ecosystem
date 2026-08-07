@@ -26,6 +26,10 @@ export type ActionItemCreate = {
      * Owner Membership Id
      */
     owner_membership_id: string;
+    /**
+     * Source Evolution Suggestion Id
+     */
+    source_evolution_suggestion_id?: string | null;
 };
 
 /**
@@ -89,6 +93,10 @@ export type ActionItemOut = {
      * Reject Reason
      */
     reject_reason?: string | null;
+    /**
+     * Source Evolution Suggestion Id
+     */
+    source_evolution_suggestion_id?: string | null;
     /**
      * Source Finding Withdrawn
      */
@@ -1074,6 +1082,56 @@ export type ConcludePlanningOut = {
 };
 
 /**
+ * ConvertSuggestionToActionIn
+ */
+export type ConvertSuggestionToActionIn = {
+    action_kind?: ActionKind;
+    /**
+     * Action Plan Id
+     */
+    action_plan_id?: string | null;
+    /**
+     * Create Plan If Missing
+     */
+    create_plan_if_missing?: boolean;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Due At
+     */
+    due_at: string;
+    /**
+     * Efficacy Required
+     */
+    efficacy_required?: boolean | null;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id: string;
+    /**
+     * Title
+     */
+    title?: string | null;
+};
+
+/**
+ * ConvertSuggestionToActionOut
+ */
+export type ConvertSuggestionToActionOut = {
+    /**
+     * Action Item Id
+     */
+    action_item_id: string;
+    /**
+     * Action Plan Id
+     */
+    action_plan_id: string;
+    suggestion: EvolutionSuggestionOut;
+};
+
+/**
  * DimensionScoreOut
  */
 export type DimensionScoreOut = {
@@ -1351,6 +1409,7 @@ export type EvolutionPackageOut = {
      * Priority Suggestions
      */
     priority_suggestions?: Array<EvolutionSuggestionOut>;
+    regeneration_diff?: EvolutionRegenerationDiff | null;
     /**
      * Secondary Suggestions
      */
@@ -1383,9 +1442,39 @@ export type EvolutionPackageStatus = 'active' | 'superseded';
 export type EvolutionPriority = 'now' | 'next_cycle' | 'future' | 'investigate';
 
 /**
+ * EvolutionRegenerationDiff
+ */
+export type EvolutionRegenerationDiff = {
+    /**
+     * New Rule Ids
+     */
+    new_rule_ids?: Array<string>;
+    /**
+     * Preserved Accepted Rule Ids
+     */
+    preserved_accepted_rule_ids?: Array<string>;
+    /**
+     * Retained Rule Ids
+     */
+    retained_rule_ids?: Array<string>;
+    /**
+     * Superseded Rule Ids
+     */
+    superseded_rule_ids?: Array<string>;
+};
+
+/**
  * EvolutionSuggestionOut
  */
 export type EvolutionSuggestionOut = {
+    /**
+     * Action Item Id
+     */
+    action_item_id?: string | null;
+    /**
+     * Action Plan Id
+     */
+    action_plan_id?: string | null;
     /**
      * Assessment Id
      */
@@ -1423,6 +1512,10 @@ export type EvolutionSuggestionOut = {
     id: string;
     impact: EvolutionImpact;
     /**
+     * Investigate Note
+     */
+    investigate_note?: string | null;
+    /**
      * Is Priority
      */
     is_priority: boolean;
@@ -1443,6 +1536,10 @@ export type EvolutionSuggestionOut = {
      */
     package_version: number;
     priority: EvolutionPriority;
+    /**
+     * Related Clauses
+     */
+    related_clauses?: Array<string>;
     /**
      * Reviewed At
      */
@@ -2234,6 +2331,10 @@ export type InterviewUpdate = {
  * InvestigateSuggestionIn
  */
 export type InvestigateSuggestionIn = {
+    /**
+     * Missing Information
+     */
+    missing_information?: string | null;
     /**
      * Note
      */
@@ -10328,6 +10429,87 @@ export type AcceptEvolutionSuggestionResponses = {
 };
 
 export type AcceptEvolutionSuggestionResponse = AcceptEvolutionSuggestionResponses[keyof AcceptEvolutionSuggestionResponses];
+
+export type ConvertEvolutionSuggestionToActionData = {
+    body: ConvertSuggestionToActionIn;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Suggestion Id
+         */
+        suggestion_id: string;
+    };
+    query?: never;
+    url: '/api/v1/evolution-suggestions/{suggestion_id}/convert-to-action';
+};
+
+export type ConvertEvolutionSuggestionToActionErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type ConvertEvolutionSuggestionToActionError = ConvertEvolutionSuggestionToActionErrors[keyof ConvertEvolutionSuggestionToActionErrors];
+
+export type ConvertEvolutionSuggestionToActionResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConvertSuggestionToActionOut;
+};
+
+export type ConvertEvolutionSuggestionToActionResponse = ConvertEvolutionSuggestionToActionResponses[keyof ConvertEvolutionSuggestionToActionResponses];
 
 export type DismissEvolutionSuggestionData = {
     body: DismissSuggestionIn;

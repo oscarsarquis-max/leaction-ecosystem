@@ -11,6 +11,7 @@ export function assessmentAllowedLinks(assessmentId: string): string[] {
     `/assessments/${assessmentId}/audit-plan`,
     `/assessments/${assessmentId}/work`,
     `/assessments/${assessmentId}/advanced`,
+    `/assessments/${assessmentId}/evolution`,
   ];
 }
 
@@ -40,7 +41,7 @@ export function baseAssessmentContext(input: {
   pendencies?: AssistantContext["pendencies"];
   blockers?: string[];
   progress_summary?: string | null;
-}): Omit<AssistantContext, "wizard" | "plan" | "field"> {
+}): Omit<AssistantContext, "wizard" | "plan" | "field" | "evolution"> {
   return {
     organization_id: input.organizationId,
     organization_name: input.organizationName,
