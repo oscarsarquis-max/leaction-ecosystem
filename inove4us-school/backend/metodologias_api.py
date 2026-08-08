@@ -209,6 +209,8 @@ def _row_merged(row: dict[str, Any]) -> dict[str, Any]:
         "is_active": bool(row["is_active"]),
         "adaptada_pela_escola": is_customizado,
         "tem_override_org": tem_override,
+        "config_id": str(row["config_id"]) if row.get("config_id") else None,
+        "org_id": str(row["org_id"]) if row.get("org_id") else None,
     }
 
 
@@ -271,11 +273,16 @@ SELECT
     COALESCE(org.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
     COALESCE(org.ativo_desafio, TRUE) AS disponivel_desafio,
     COALESCE(cur.sugestoes_count, 0) AS sugestoes_count,
-    (org.id IS NOT NULL) AS tem_override
+    (org.id IS NOT NULL) AS tem_override,
+    org.id AS org_id,
+    cfg.id AS config_id
 FROM public.school_metodologias_catalogo c
 LEFT JOIN public.school_metodologias_org org
     ON org.metodologia_id_canonica = c.id
    AND org.instituicao_id = %s
+LEFT JOIN public.school_metodologia_config cfg
+    ON cfg.metodologia_catalogo_id = c.id
+   AND cfg.instituicao_id = %s
 LEFT JOIN (
     SELECT
         LOWER(TRIM(metodologia_nome)) AS nome_key,
@@ -548,7 +555,13 @@ def create_instituicao_metodologia(instituicao_id: str):
 
             cur.execute(
                 _ONE_SQL,
-                (str(parsed), str(parsed), str(new_id), str(parsed)),
+                (
+                    str(parsed),
+                    str(parsed),
+                    str(parsed),
+                    str(new_id),
+                    str(parsed),
+                ),
             )
             row = cur.fetchone()
 
@@ -727,7 +740,13 @@ def upsert_instituicao_metodologia(instituicao_id: str, metodologia_catalogo_id:
 
             cur.execute(
                 _ONE_SQL,
-                (str(parsed_inst), str(parsed_inst), str(parsed_met), str(parsed_inst)),
+                (
+                    str(parsed_inst),
+                    str(parsed_inst),
+                    str(parsed_inst),
+                    str(parsed_met),
+                    str(parsed_inst),
+                ),
             )
             row = cur.fetchone()
 
@@ -738,10 +757,28 @@ def upsert_instituicao_metodologia(instituicao_id: str, metodologia_catalogo_id:
     try:
         from b2c_integration_service import dispatch_methodology_override_updated
 
+        updated_at = merged.get("updated_at")
+        versao_ts = None
+        if updated_at:
+            try:
+                from datetime import datetime
+
+                raw = str(updated_at).replace("Z", "+00:00")
+                versao_ts = int(datetime.fromisoformat(raw).timestamp())
+            except Exception:
+                versao_ts = None
+
         dispatch_methodology_override_updated(
             instituicao_id=str(parsed_inst),
             metodologia_nome=str(merged.get("nome") or ""),
+            metodologia_codigo=merged.get("codigo"),
             diretriz_customizada=merged.get("versao_escola"),
+            disponivel_dia_a_dia=bool(merged.get("disponivel_dia_a_dia", True)),
+            disponivel_desafio=bool(merged.get("disponivel_desafio", True)),
+            is_active=bool(merged.get("is_active", True)),
+            atualizado_em=updated_at,
+            versao=versao_ts,
+            origem_config_school_id=merged.get("config_id"),
         )
     except Exception as exc:
         print(f"[metodologias] dispatch B2C falhou: {exc}", flush=True)

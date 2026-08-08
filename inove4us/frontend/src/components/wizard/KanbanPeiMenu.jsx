@@ -9,9 +9,11 @@ export const PEI_PERFIS = [
 
 /**
  * Gatilho 🧩 no card pai — escolhe perfil e dispara adaptação PEI.
+ * alunoNome opcional: best-effort para casar PEI individual da escola.
  */
 export default function KanbanPeiMenu({ disabled, busy, onSelectPerfil }) {
   const [open, setOpen] = useState(false)
+  const [alunoNome, setAlunoNome] = useState('')
   const rootRef = useRef(null)
   const menuId = useId()
 
@@ -74,12 +76,25 @@ export default function KanbanPeiMenu({ disabled, busy, onSelectPerfil }) {
         <div
           id={menuId}
           role="menu"
-          className="absolute right-0 z-30 mt-1 w-64 overflow-hidden rounded-xl border border-brand-200 bg-white shadow-soft"
+          className="absolute right-0 z-30 mt-1 w-72 overflow-hidden rounded-xl border border-brand-200 bg-white shadow-soft"
           onClick={(e) => e.stopPropagation()}
         >
           <p className="border-b border-brand-100 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-bordo-soft">
             Perfil de inclusão
           </p>
+          <label className="block border-b border-brand-50 px-3 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-bordo-soft">
+              Nome do aluno (opcional)
+            </span>
+            <input
+              type="text"
+              className="mt-1 w-full rounded-lg border border-brand-200 px-2 py-1.5 text-xs text-bordo outline-none focus:border-brand-500"
+              value={alunoNome}
+              onChange={(e) => setAlunoNome(e.target.value)}
+              placeholder="Ex.: João Pedro — casa PEI da escola"
+              autoComplete="off"
+            />
+          </label>
           <ul className="py-1">
             {PEI_PERFIS.map((p) => (
               <li key={p.id}>
@@ -89,7 +104,7 @@ export default function KanbanPeiMenu({ disabled, busy, onSelectPerfil }) {
                   className="w-full px-3 py-2.5 text-left text-xs font-semibold text-bordo hover:bg-amber-50"
                   onClick={() => {
                     setOpen(false)
-                    onSelectPerfil?.(p.id)
+                    onSelectPerfil?.(p.id, alunoNome.trim())
                   }}
                 >
                   {p.label}

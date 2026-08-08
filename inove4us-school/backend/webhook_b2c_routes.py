@@ -67,10 +67,15 @@ def _as_date(value: Any) -> date:
 
 def _map_status(raw: Any) -> str:
     s = str(raw or "pendente").strip().lower()
-    if s in ("pendente", "aprovado", "reprovado"):
-        return s
-    if s in ("em_andamento", "executado", "concluido", "concluído", "done"):
+    if s in ("aprovado",):
         return "aprovado"
+    if s in ("reprovado",):
+        return "reprovado"
+    if s in ("concluido", "concluído", "done", "finalizado", "executado"):
+        return "aprovado"
+    # Em andamento / planejado permanece pendente no espelho School
+    if s in ("em_andamento", "em_execucao", "executando", "planejado", "pendente"):
+        return "pendente"
     return "pendente"
 
 
@@ -123,8 +128,14 @@ def _resolve_professor(cur: Any, instituicao_id: str, payload: dict) -> str | No
         if row:
             return str(row["id"])
 
-    professor_b2c = _as_uuid(payload.get("professor_b2c_id"))
-    if professor_b2c:
+    professor_b2c = None
+    raw_b2c = payload.get("professor_b2c_id")
+    if raw_b2c is not None and str(raw_b2c).strip() != "":
+        try:
+            professor_b2c = int(raw_b2c)
+        except (TypeError, ValueError):
+            professor_b2c = None
+    if professor_b2c is not None:
         cur.execute(
             """
             SELECT id FROM public.school_professores_vinculo
@@ -277,6 +288,17 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
         payload.get("has_teacher_adaptations")
         or mesa.get("has_teacher_adaptations")
     )
+    # Texto isolado no fechamento também dispara curadoria (sem depender só da flag).
+    teacher_text_preview = str(
+        payload.get("texto_sugestao")
+        or payload.get("teacher_adaptation_text")
+        or payload.get("sugestao_coordenacao")
+        or mesa.get("texto_sugestao")
+        or mesa.get("teacher_adaptation_text")
+        or ""
+    ).strip()
+    if teacher_text_preview:
+        has_adapt = True
     desafio_grupo = _as_uuid(payload.get("desafio_grupo_id") or mesa.get("desafio_grupo_id"))
     desafio_titulo = str(
         payload.get("desafio_titulo") or mesa.get("desafio_titulo") or ""
@@ -381,7 +403,10 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
             has_pei_adapt = False
             if has_adapt and plano_id:
                 teacher_text = str(
-                    payload.get("teacher_adaptation_text")
+                    payload.get("texto_sugestao")
+                    or payload.get("teacher_adaptation_text")
+                    or payload.get("sugestao_coordenacao")
+                    or mesa.get("texto_sugestao")
                     or mesa.get("teacher_adaptation_text")
                     or ""
                 ).strip() or None
@@ -399,7 +424,30 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
                     or met_nome
                     or ""
                 ).strip()
+                aula_contexto = str(
+                    payload.get("aula_contexto")
+                    or mesa.get("aula_contexto")
+                    or mesa.get("titulo")
+                    or resumo
+                    or met_usada
+                    or ""
+                ).strip()
+                professor_nome = str(
+                    payload.get("professor_nome")
+                    or mesa.get("professor_nome")
+                    or ""
+                ).strip() or None
+                professor_id_payload = str(
+                    payload.get("professor_id")
+                    or payload.get("professor_b2c_id")
+                    or mesa.get("professor_id")
+                    or ""
+                ).strip() or None
                 sugestao = {
+                    "professor_id": professor_id_payload or professor_id,
+                    "professor_nome": professor_nome,
+                    "aula_contexto": aula_contexto,
+                    "texto_sugestao": teacher_text,
                     "mesa": mesa,
                     "metodologia_usada": met_usada,
                     "teacher_adaptation_text": teacher_text,
@@ -462,7 +510,7 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
                     or payload.get("pei_individualizado_id")
                     or mesa.get("pei_aluno_id")
                 )
-                # Se não veio ID, tenta match por nome do aluno no payload.
+                # Se não veio ID, tenta match por nome do aluno no PEI documental.
                 if not pei_aluno:
                     aluno_nome = str(
                         payload.get("aluno_nome")
@@ -473,11 +521,12 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
                         cur.execute(
                             """
                             SELECT p.id
-                            FROM public.school_pei_individualizado p
+                            FROM public.school_pei_alunos p
                             JOIN public.school_alunos a ON a.id = p.aluno_id
-                            WHERE a.instituicao_id = %s
+                            WHERE p.instituicao_id = %s
+                              AND p.status = 'ativo'
                               AND LOWER(TRIM(a.nome)) = LOWER(TRIM(%s))
-                              AND p.ativo = TRUE
+                            ORDER BY p.versao DESC
                             LIMIT 1
                             """,
                             (instituicao_id, aluno_nome),
@@ -494,7 +543,7 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
                         instituicao_id          UUID NOT NULL
                             REFERENCES public.school_instituicoes (id) ON DELETE CASCADE,
                         pei_aluno_id            UUID
-                            REFERENCES public.school_pei_individualizado (id)
+                            REFERENCES public.school_pei_alunos (id)
                             ON DELETE SET NULL,
                         metodologia_nome        TEXT NOT NULL DEFAULT '',
                         sugestao_professor_json JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -508,6 +557,27 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
                     """
                 )
                 sug_pei = {
+                    "professor_id": str(
+                        payload.get("professor_id")
+                        or payload.get("professor_b2c_id")
+                        or mesa.get("professor_id")
+                        or professor_id
+                        or ""
+                    ).strip()
+                    or None,
+                    "professor_nome": str(
+                        payload.get("professor_nome") or mesa.get("professor_nome") or ""
+                    ).strip()
+                    or None,
+                    "aula_contexto": str(
+                        payload.get("aula_contexto")
+                        or mesa.get("aula_contexto")
+                        or mesa.get("titulo")
+                        or resumo
+                        or met_nome
+                        or ""
+                    ).strip(),
+                    "texto_sugestao": pei_text,
                     "pei_adaptation_text": pei_text,
                     "metodologia_nome": met_nome,
                     "mesa": mesa,

@@ -142,43 +142,87 @@ def _ensure_school_agenda_columns(cur) -> None:
 
 
 def _handle_methodology_override(payload: dict) -> dict:
+    """Persiste override da escola (upsert por instituição + metodologia_key)."""
     instituicao_id = payload.get("instituicao_id")
     metodologia_nome = payload.get("metodologia_nome")
     diretriz = payload.get("diretriz_customizada")
     _log(
         f"METHODOLOGY_OVERRIDE_UPDATED instituicao={instituicao_id} "
         f"metodologia={metodologia_nome!r} "
+        f"codigo={payload.get('metodologia_codigo')!r} "
         f"diretriz_len={len(str(diretriz or ''))}"
     )
+    try:
+        from services.methodology_override_service import upsert_methodology_override
+
+        result = upsert_methodology_override(payload if isinstance(payload, dict) else {})
+    except Exception as exc:
+        _log(f"METHODOLOGY_OVERRIDE persist falhou: {exc}")
+        # ACK mesmo em falha de persistência — não derruba a ponte School→B2C
+        return {
+            "handled": True,
+            "event": "METHODOLOGY_OVERRIDE_UPDATED",
+            "instituicao_id": instituicao_id,
+            "metodologia_nome": metodologia_nome,
+            "override_applied": False,
+            "error": str(exc),
+        }
+
     return {
         "handled": True,
         "event": "METHODOLOGY_OVERRIDE_UPDATED",
         "instituicao_id": instituicao_id,
         "metodologia_nome": metodologia_nome,
-        "override_applied": False,
-        "note": "receiver stub — apply override in teacher IA layer next",
+        "metodologia_key": result.get("metodologia_key"),
+        "override_applied": bool(result.get("ok") and result.get("applied")),
+        "stale": result.get("reason") == "stale_event",
+        "override": result.get("override"),
+        "reason": result.get("reason"),
     }
 
 
 def _handle_pei_override(payload: dict) -> dict:
-    """PEI_OVERRIDE_UPDATED — adaptação oficial PEI×metodologia da escola."""
-    instituicao_id = payload.get("instituicao_id")
-    pei_aluno_id = payload.get("pei_aluno_id")
-    metodologia_nome = payload.get("metodologia_nome")
-    passos = payload.get("passos_customizados")
+    """Persiste PEI_OVERRIDE_UPDATED (níveis aee_base | individual)."""
+    body = payload if isinstance(payload, dict) else {}
+    nivel = str(body.get("nivel") or "").strip().lower()
+    instituicao_id = body.get("instituicao_id")
     _log(
-        f"PEI_OVERRIDE_UPDATED instituicao={instituicao_id} "
-        f"pei={pei_aluno_id} metodologia={metodologia_nome!r} "
-        f"passos_len={len(str(passos or ''))}"
+        f"PEI_OVERRIDE_UPDATED nivel={nivel!r} instituicao={instituicao_id} "
+        f"condicao={body.get('condicao')!r} aluno={body.get('aluno_nome')!r} "
+        f"pei_aluno_id={body.get('pei_aluno_id')}"
     )
+    if not nivel:
+        # Payload legado (Ciclo Vivo) — não persiste; ACK sem aplicar
+        return {
+            "handled": True,
+            "event": "PEI_OVERRIDE_UPDATED",
+            "instituicao_id": instituicao_id,
+            "override_applied": False,
+            "reason": "nivel ausente (payload legado ignorado)",
+        }
+    try:
+        from services.pei_override_service import upsert_pei_override
+
+        result = upsert_pei_override(body)
+    except Exception as exc:
+        _log(f"PEI_OVERRIDE persist falhou: {exc}")
+        return {
+            "handled": True,
+            "event": "PEI_OVERRIDE_UPDATED",
+            "instituicao_id": instituicao_id,
+            "nivel": nivel,
+            "override_applied": False,
+            "error": str(exc),
+        }
     return {
         "handled": True,
         "event": "PEI_OVERRIDE_UPDATED",
         "instituicao_id": instituicao_id,
-        "pei_aluno_id": pei_aluno_id,
-        "metodologia_nome": metodologia_nome,
-        "override_applied": False,
-        "note": "receiver stub — apply PEI passos in teacher layer next",
+        "nivel": result.get("nivel") or nivel,
+        "override_applied": bool(result.get("ok") and result.get("applied")),
+        "stale": result.get("reason") == "stale_event",
+        "override": result.get("override"),
+        "reason": result.get("reason"),
     }
 
 
@@ -303,6 +347,102 @@ def _handle_teacher_allocated(payload: dict) -> dict:
     }
 
 
+def _ensure_avisos_mesa(cur: Any) -> None:
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS public.inove_avisos_mesa (
+            id                          UUID PRIMARY KEY,
+            instituicao_b2b_id          UUID,
+            texto                       TEXT NOT NULL,
+            disciplina_nome             TEXT,
+            turma_nome                  TEXT,
+            disciplina_id               UUID,
+            turma_id                    UUID,
+            ativo                       BOOLEAN NOT NULL DEFAULT TRUE,
+            synced_at                   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_inove_avisos_mesa_ativos
+            ON public.inove_avisos_mesa (ativo, synced_at DESC)
+            WHERE ativo = TRUE;
+        CREATE INDEX IF NOT EXISTS idx_inove_avisos_mesa_inst_ativos
+            ON public.inove_avisos_mesa (instituicao_b2b_id, synced_at DESC)
+            WHERE ativo = TRUE AND instituicao_b2b_id IS NOT NULL;
+        """
+    )
+
+
+def _handle_aviso_mesa_pinned(payload: dict) -> dict:
+    aviso_id = str(payload.get("aviso_id") or payload.get("id") or "").strip()
+    texto = str(payload.get("texto") or "").strip()
+    if not aviso_id or not texto:
+        return {"handled": False, "reason": "aviso_id/texto obrigatórios", "event": "AVISO_MESA_PINNED"}
+    ativo = payload.get("ativo")
+    if ativo is None:
+        ativo = True
+    inst = str(payload.get("instituicao_id") or "").strip() or None
+    # Fail-safe fechado na ingestão: aviso ativo sem instituição não é persistido
+    # (evita linha órfã que, em bug de listagem, vaze para todos).
+    if bool(ativo) and not inst:
+        return {
+            "handled": False,
+            "reason": "instituicao_id obrigatório para aviso ativo",
+            "event": "AVISO_MESA_PINNED",
+        }
+    disc_id = str(payload.get("disciplina_id") or "").strip() or None
+    turma_id = str(payload.get("turma_id") or "").strip() or None
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            _ensure_avisos_mesa(cur)
+            cur.execute(
+                """
+                INSERT INTO public.inove_avisos_mesa
+                    (id, instituicao_b2b_id, texto, disciplina_nome, turma_nome,
+                     disciplina_id, turma_id, ativo, synced_at)
+                VALUES (
+                    %s::uuid, NULLIF(%s, '')::uuid, %s, %s, %s,
+                    NULLIF(%s, '')::uuid, NULLIF(%s, '')::uuid, %s, CURRENT_TIMESTAMP
+                )
+                ON CONFLICT (id) DO UPDATE SET
+                    instituicao_b2b_id = COALESCE(
+                        EXCLUDED.instituicao_b2b_id,
+                        inove_avisos_mesa.instituicao_b2b_id
+                    ),
+                    texto = EXCLUDED.texto,
+                    disciplina_nome = EXCLUDED.disciplina_nome,
+                    turma_nome = EXCLUDED.turma_nome,
+                    disciplina_id = EXCLUDED.disciplina_id,
+                    turma_id = EXCLUDED.turma_id,
+                    ativo = EXCLUDED.ativo,
+                    synced_at = CURRENT_TIMESTAMP
+                """,
+                (
+                    aviso_id,
+                    inst or "",
+                    texto,
+                    payload.get("disciplina_nome"),
+                    payload.get("turma_nome"),
+                    disc_id or "",
+                    turma_id or "",
+                    bool(ativo),
+                ),
+            )
+    _log(f"AVISO_MESA_PINNED id={aviso_id} inst={inst} ativo={bool(ativo)}")
+    return {"handled": True, "event": "AVISO_MESA_PINNED", "aviso_id": aviso_id}
+
+
+def _handle_teacher_invite(payload: dict) -> dict:
+    email = str(payload.get("professor_email") or payload.get("email") or "").strip().lower()
+    invite_url = str(payload.get("invite_url") or "").strip()
+    _log(f"TEACHER_INVITE email={email} url={invite_url[:80] if invite_url else ''}")
+    return {
+        "handled": True,
+        "event": "TEACHER_INVITE",
+        "email": email,
+        "invite_url": invite_url or None,
+        "note": "Convite registrado no webhook; e-mail transacional fica a cargo do provedor configurado.",
+    }
+
+
 @webhook_school_bp.post("/api/webhooks/school")
 @require_school_bridge_jwt
 def school_webhook():
@@ -317,6 +457,10 @@ def school_webhook():
             result = _handle_pei_override(payload)
         elif event_type == "TEACHER_ALLOCATED":
             result = _handle_teacher_allocated(payload)
+        elif event_type == "AVISO_MESA_PINNED":
+            result = _handle_aviso_mesa_pinned(payload)
+        elif event_type == "TEACHER_INVITE":
+            result = _handle_teacher_invite(payload)
         else:
             _log(f"event_type desconhecido: {event_type or '(vazio)'}")
             print(

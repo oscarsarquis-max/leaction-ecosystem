@@ -35,7 +35,7 @@ def dispatch_event_to_b2c(event_type: str, payload: dict[str, Any]) -> dict[str,
             payload=body_payload,
         )
     except RuntimeError as exc:
-        print(f"[school→b2c] config: {exc}", file=sys.stderr, flush=True)
+        print(f"[school->b2c] config: {exc}", file=sys.stderr, flush=True)
         return {"ok": False, "error": str(exc)}
 
     url = b2c_webhook_url()
@@ -55,7 +55,7 @@ def dispatch_event_to_b2c(event_type: str, payload: dict[str, Any]) -> dict[str,
         res = requests.post(url, json=body, headers=headers, timeout=5.0)
         ok = 200 <= res.status_code < 300
         print(
-            f"[school→b2c] {event} → {url} http={res.status_code}",
+            f"[school->b2c] {event} -> {url} http={res.status_code}",
             flush=True,
         )
         return {
@@ -65,7 +65,7 @@ def dispatch_event_to_b2c(event_type: str, payload: dict[str, Any]) -> dict[str,
             "response": (res.text or "")[:300],
         }
     except requests.RequestException as exc:
-        print(f"[school→b2c] falha de rede {event}: {exc}", file=sys.stderr, flush=True)
+        print(f"[school->b2c] falha de rede {event}: {exc}", file=sys.stderr, flush=True)
         return {"ok": False, "error": str(exc), "event_type": event}
 
 
@@ -74,15 +74,36 @@ def dispatch_methodology_override_updated(
     instituicao_id: str,
     metodologia_nome: str,
     diretriz_customizada: str | None,
+    metodologia_codigo: str | None = None,
+    disponivel_dia_a_dia: bool = True,
+    disponivel_desafio: bool = True,
+    is_active: bool = True,
+    atualizado_em: str | None = None,
+    versao: int | None = None,
+    origem_config_school_id: str | None = None,
 ) -> dict[str, Any]:
-    return dispatch_event_to_b2c(
-        "METHODOLOGY_OVERRIDE_UPDATED",
-        {
-            "instituicao_id": str(instituicao_id),
-            "metodologia_nome": str(metodologia_nome or "").strip(),
-            "diretriz_customizada": diretriz_customizada,
-        },
-    )
+    payload: dict[str, Any] = {
+        "instituicao_id": str(instituicao_id),
+        "metodologia_nome": str(metodologia_nome or "").strip(),
+        "diretriz_customizada": diretriz_customizada,
+        "disponivel_dia_a_dia": bool(disponivel_dia_a_dia),
+        "disponivel_desafio": bool(disponivel_desafio),
+        "is_active": bool(is_active),
+    }
+    codigo = str(metodologia_codigo or "").strip()
+    if codigo:
+        payload["metodologia_codigo"] = codigo
+        payload["metodologia_key"] = codigo
+    if atualizado_em:
+        payload["atualizado_em"] = str(atualizado_em)
+    if versao is not None:
+        try:
+            payload["versao"] = int(versao)
+        except (TypeError, ValueError):
+            pass
+    if origem_config_school_id:
+        payload["origem_config_school_id"] = str(origem_config_school_id)
+    return dispatch_event_to_b2c("METHODOLOGY_OVERRIDE_UPDATED", payload)
 
 
 def dispatch_teacher_allocated(payload: dict[str, Any]) -> dict[str, Any]:
@@ -90,27 +111,19 @@ def dispatch_teacher_allocated(payload: dict[str, Any]) -> dict[str, Any]:
     return dispatch_event_to_b2c("TEACHER_ALLOCATED", payload or {})
 
 
-def dispatch_pei_override_updated(
-    *,
-    instituicao_id: str,
-    pei_aluno_id: str,
-    metodologia_nome: str,
-    passos_customizados: str | None,
-    aluno_nome: str = "",
-    tipo_neurodivergencia: str = "",
-) -> dict[str, Any]:
-    """School → B2C: adaptação PEI×metodologia oficial da escola."""
-    return dispatch_event_to_b2c(
-        "PEI_OVERRIDE_UPDATED",
-        {
-            "instituicao_id": str(instituicao_id),
-            "pei_aluno_id": str(pei_aluno_id),
-            "aluno_nome": str(aluno_nome or "").strip(),
-            "metodologia_nome": str(metodologia_nome or "").strip(),
-            "passos_customizados": passos_customizados,
-            "tipo_neurodivergencia": str(tipo_neurodivergencia or "").strip(),
-        },
-    )
+def dispatch_pei_override_updated(payload: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
+    """School → B2C: PEI_OVERRIDE_UPDATED (níveis aee_base | individual).
+
+    Aceita dict completo ou kwargs legados. Campos None são omitidos.
+    """
+    body: dict[str, Any] = {}
+    if isinstance(payload, dict):
+        body.update(payload)
+    body.update(kwargs)
+    clean = {k: v for k, v in body.items() if v is not None}
+    if "instituicao_id" in clean:
+        clean["instituicao_id"] = str(clean["instituicao_id"])
+    return dispatch_event_to_b2c("PEI_OVERRIDE_UPDATED", clean)
 
 
 def b2c_api_base() -> str:
@@ -130,21 +143,45 @@ def school_integration_api_key() -> str:
 
 def push_comunicado_to_b2c(payload: dict[str, Any]) -> dict[str, Any]:
     """POST /api/integracoes/school/comunicados (API key) → mural + agenda no B2C."""
+    return _post_school_integration(
+        "/api/integracoes/school/comunicados",
+        payload,
+        label="COMUNICADO",
+    )
+
+
+def push_planejamento_to_b2c(payload: dict[str, Any]) -> dict[str, Any]:
+    """POST /api/integracoes/school/planejamento (API key) → esqueleto aula/evento no B2C."""
+    return _post_school_integration(
+        "/api/integracoes/school/planejamento",
+        payload,
+        label="PLANEJAMENTO",
+        timeout=12.0,
+    )
+
+
+def _post_school_integration(
+    path: str,
+    payload: dict[str, Any],
+    *,
+    label: str,
+    timeout: float = 6.0,
+) -> dict[str, Any]:
     key = school_integration_api_key()
     if not key:
         return {"ok": False, "error": "SCHOOL_INTEGRATION_API_KEY não configurada"}
 
-    url = f"{b2c_api_base()}/api/integracoes/school/comunicados"
+    url = f"{b2c_api_base()}{path}"
     headers = {
         "Content-Type": "application/json",
         "X-School-Api-Key": key,
     }
     body = payload if isinstance(payload, dict) else {}
     try:
-        res = requests.post(url, json=body, headers=headers, timeout=6.0)
+        res = requests.post(url, json=body, headers=headers, timeout=timeout)
         ok = 200 <= res.status_code < 300
         print(
-            f"[school→b2c] COMUNICADO → {url} http={res.status_code}",
+            f"[school->b2c] {label} -> {url} http={res.status_code}",
             flush=True,
         )
         parsed: Any = None
@@ -158,5 +195,9 @@ def push_comunicado_to_b2c(payload: dict[str, Any]) -> dict[str, Any]:
             "response": parsed,
         }
     except requests.RequestException as exc:
-        print(f"[school→b2c] falha de rede COMUNICADO: {exc}", file=sys.stderr, flush=True)
+        print(
+            f"[school->b2c] falha de rede {label}: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
         return {"ok": False, "error": str(exc)}

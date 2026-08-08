@@ -12,16 +12,16 @@ export const ZONA_LABEL = {
   pedagogico: 'Pedagógico',
 }
 
-/** Itens de navegação: exige ao menos uma das zonas listadas. */
+/** Itens de navegação (header horizontal): exige ao menos uma das zonas listadas. */
 export const NAV_ITEMS = [
   { to: '/', label: 'Radar Pedagógico', end: true, zonas: [ZONAS.pedagogico] },
-  { to: '/equipe', label: 'Minha Equipe', zonas: [ZONAS.administrativo] },
-  { to: '/secretaria', label: 'Secretaria Acadêmica', zonas: [ZONAS.operacional] },
   {
     to: '/editor-pedagogico',
     label: 'Editor Pedagógico',
     zonas: [ZONAS.pedagogico],
   },
+  { to: '/secretaria', label: 'Secretaria Acadêmica', zonas: [ZONAS.operacional] },
+  { to: '/equipe', label: 'Minha Equipe', zonas: [ZONAS.administrativo] },
 ]
 
 export function normalizeZonas(zonas) {

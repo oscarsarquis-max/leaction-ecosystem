@@ -7,6 +7,7 @@ Etapa 12/15:
 """
 from __future__ import annotations
 
+import hashlib
 import re
 import uuid
 from typing import Any
@@ -38,8 +39,16 @@ def _email_ok(value: str) -> bool:
     return bool(_EMAIL_RE.match(value))
 
 
-def _provisional_b2c_id(email: str) -> uuid.UUID:
-    return uuid.uuid5(uuid.NAMESPACE_URL, f"inove4us-school:convite:{email}")
+def _provisional_b2c_id(email: str) -> int:
+    """Placeholder INTEGER até o aceite de convite gravar o id_clie real.
+
+    Negativo para não colidir com ctdi_clie.id_clie (SERIAL positivo no B2C).
+    """
+    digest = hashlib.sha256(
+        f"inove4us-school:convite:{email.strip().lower()}".encode("utf-8")
+    ).digest()
+    n = int.from_bytes(digest[:4], "big") & 0x7FFFFFFF
+    return -(n or 1)
 
 
 def _status_pedagogico(stats: dict[str, Any] | None) -> dict[str, Any]:
@@ -93,7 +102,9 @@ def _serialize_vinculo(row: dict[str, Any], ped: dict[str, Any]) -> dict:
     return {
         "id": str(row["id"]),
         "email": row.get("email_convite") or None,
-        "professor_b2c_id": str(row["professor_b2c_id"]),
+        "professor_b2c_id": int(row["professor_b2c_id"])
+        if row.get("professor_b2c_id") is not None
+        else None,
         "status": _STATUS_LABEL.get(status, status),
         "status_vinculo": status,
         "convidadoEm": row["created_at"].date().isoformat()
@@ -273,7 +284,7 @@ def convidar(instituicao_id: str):
                   )
                 LIMIT 1
                 """,
-                (str(parsed), email, str(_provisional_b2c_id(email))),
+                (str(parsed), email, _provisional_b2c_id(email)),
             )
             existing = cur.fetchone()
             if existing and existing["status_vinculo"] != "revogado":
@@ -300,7 +311,7 @@ def convidar(instituicao_id: str):
                     VALUES (%s, %s, %s, 'pendente')
                     RETURNING id, professor_b2c_id, email_convite, status_vinculo, created_at
                     """,
-                    (str(parsed), str(b2c_id), email),
+                    (str(parsed), b2c_id, email),
                 )
             row = cur.fetchone()
             lic = _licencas_payload(cur, parsed)
@@ -309,6 +320,88 @@ def convidar(instituicao_id: str):
             ped = _status_pedagogico(None)
 
     return jsonify({"membro": _serialize_vinculo(row, ped), "licencas": lic}), 201
+
+
+@bp.post("/api/instituicoes/<instituicao_id>/equipe/<vinculo_id>/disparar-convite")
+def disparar_convite_inove(instituicao_id: str, vinculo_id: str):
+    """Reenvia / dispara link de acesso Inove para professor ainda não ativado."""
+    import os
+
+    inst = _parse_uuid(instituicao_id, "instituição")
+    if isinstance(inst, tuple):
+        return inst
+    vid = _parse_uuid(vinculo_id, "vínculo")
+    if isinstance(vid, tuple):
+        return vid
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, professor_b2c_id, email_convite, status_vinculo
+                FROM public.school_professores_vinculo
+                WHERE id = %s AND instituicao_id = %s
+                """,
+                (str(vid), str(inst)),
+            )
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"error": "Vínculo não encontrado"}), 404
+            status = str(row.get("status_vinculo") or "")
+            if status == "ativo":
+                return jsonify({"error": "Professor já está ativo no Inove."}), 409
+            if status == "revogado":
+                return jsonify({"error": "Vínculo revogado. Convide novamente."}), 409
+
+            email = str(row.get("email_convite") or "").strip().lower()
+            if not email:
+                return jsonify({"error": "Vínculo sem e-mail de convite."}), 400
+
+            cur.execute(
+                """
+                UPDATE public.school_professores_vinculo
+                SET status_vinculo = 'pendente',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                """,
+                (str(vid),),
+            )
+
+    frontend = (
+        os.getenv("INOVE4US_B2C_FRONTEND_URL")
+        or os.getenv("INOVE4US_FRONTEND_URL")
+        or "http://localhost:5173"
+    ).rstrip("/")
+    invite_url = f"{frontend}/acesso?email={email}&school_invite=1"
+
+    push: dict = {"ok": False}
+    try:
+        from b2c_integration_service import dispatch_event_to_b2c
+
+        push = dispatch_event_to_b2c(
+            "TEACHER_INVITE",
+            {
+                "instituicao_id": str(inst),
+                "vinculo_id": str(vid),
+                "professor_email": email,
+                "email": email,
+                "professor_b2c_id": str(row.get("professor_b2c_id") or ""),
+                "invite_url": invite_url,
+            },
+        )
+    except Exception as exc:
+        push = {"ok": False, "error": str(exc)}
+
+    return jsonify(
+        {
+            "ok": True,
+            "email": email,
+            "invite_url": invite_url,
+            "status_vinculo": "pendente",
+            "b2c_push": push,
+            "mensagem": "Convite Inove disparado. O professor recebe o link de acesso.",
+        }
+    )
 
 
 @bp.post("/api/instituicoes/<instituicao_id>/equipe/<vinculo_id>/revogar")
@@ -352,9 +445,11 @@ def revogar(instituicao_id: str, vinculo_id: str):
 
 @bp.get("/api/instituicoes/<instituicao_id>/equipe/<vinculo_id>/radiografia")
 def radiografia(instituicao_id: str, vinculo_id: str):
-    """Radiografia do professor: recursos, entrega, metodologias, disciplinas,
-    avaliações declaradas e registros de execução alinhados à metodologia da escola.
+    """Radiografia do professor: identidade, linha do tempo, repertório,
+    entrega acadêmica e avaliações (extrato acadêmico).
     """
+    from datetime import date
+
     inst = _parse_uuid(instituicao_id, "instituição")
     if isinstance(inst, tuple):
         return inst
@@ -366,7 +461,8 @@ def radiografia(instituicao_id: str, vinculo_id: str):
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT id, professor_b2c_id, email_convite, status_vinculo, created_at
+                SELECT id, professor_b2c_id, email_convite, status_vinculo,
+                       created_at, updated_at
                 FROM public.school_professores_vinculo
                 WHERE id = %s AND instituicao_id = %s
                 """,
@@ -414,15 +510,15 @@ def radiografia(instituicao_id: str, vinculo_id: str):
                     },
                 )
 
-            # Metodologias ativas da escola (repertório liberado)
+            # Repertório liberado — canônico: school_metodologias_org (022)
             cur.execute(
                 """
                 SELECT c.nome
-                FROM public.school_metodologia_config cfg
+                FROM public.school_metodologias_org org
                 JOIN public.school_metodologias_catalogo c
-                  ON c.id = cfg.metodologia_catalogo_id
-                WHERE cfg.instituicao_id = %s
-                  AND cfg.is_active = TRUE
+                  ON c.id = org.metodologia_id_canonica
+                WHERE org.instituicao_id = %s
+                  AND org.is_active = TRUE
                   AND c.ativo = TRUE
                 ORDER BY c.nome
                 LIMIT 40
@@ -451,7 +547,40 @@ def radiografia(instituicao_id: str, vinculo_id: str):
                 for r in cur.fetchall()
             ]
 
-            # Entrega + metodologias usadas + execuções (planos espelhados)
+            # Primeira aula (índice idx_school_planos_aula_professor)
+            cur.execute(
+                """
+                SELECT MIN(p.semana_referencia) AS primeira
+                FROM public.school_planos_aula_espelhados p
+                WHERE p.professor_vinculo_id = %s AND p.instituicao_id = %s
+                """,
+                (str(vid), str(inst)),
+            )
+            primeira_row = cur.fetchone()
+            primeira_aula = (
+                primeira_row["primeira"].isoformat()
+                if primeira_row and primeira_row.get("primeira")
+                else None
+            )
+
+            # Contagens agregadas (sem LIMIT) + lista recente de aulas
+            cur.execute(
+                """
+                SELECT
+                    count(*)::int AS total,
+                    count(*) FILTER (WHERE p.status = 'aprovado')::int AS aprovados,
+                    count(*) FILTER (WHERE p.status = 'pendente')::int AS pendentes,
+                    count(*) FILTER (WHERE p.status = 'reprovado')::int AS reprovados,
+                    count(*) FILTER (WHERE p.tipo_aula = 'dia_a_dia')::int AS dia_a_dia,
+                    count(*) FILTER (WHERE p.tipo_aula = 'desafio')::int AS desafio,
+                    count(DISTINCT p.metodologia_catalogo_id)::int AS metodologias_distintas
+                FROM public.school_planos_aula_espelhados p
+                WHERE p.professor_vinculo_id = %s AND p.instituicao_id = %s
+                """,
+                (str(vid), str(inst)),
+            )
+            agg = cur.fetchone() or {}
+
             cur.execute(
                 """
                 SELECT
@@ -480,13 +609,13 @@ def radiografia(instituicao_id: str, vinculo_id: str):
                 {r["metodologia_nome"] for r in planos if r.get("metodologia_nome")}
             )
             entrega = {
-                "planos_total": len(planos),
-                "aprovados": sum(1 for r in planos if r["status"] == "aprovado"),
-                "pendentes": sum(1 for r in planos if r["status"] == "pendente"),
-                "reprovados": sum(1 for r in planos if r["status"] == "reprovado"),
-                "dia_a_dia": sum(1 for r in planos if r["tipo_aula"] == "dia_a_dia"),
-                "desafio": sum(1 for r in planos if r["tipo_aula"] == "desafio"),
-                "metodologias_distintas": len(metodologias_usadas),
+                "planos_total": int(agg.get("total") or 0),
+                "aprovados": int(agg.get("aprovados") or 0),
+                "pendentes": int(agg.get("pendentes") or 0),
+                "reprovados": int(agg.get("reprovados") or 0),
+                "dia_a_dia": int(agg.get("dia_a_dia") or 0),
+                "desafio": int(agg.get("desafio") or 0),
+                "metodologias_distintas": int(agg.get("metodologias_distintas") or 0),
                 "disciplinas_ativas": sum(1 for d in disciplinas if d["ativo"]),
             }
             execucoes = [
@@ -506,13 +635,16 @@ def radiografia(instituicao_id: str, vinculo_id: str):
                 for r in planos
             ]
 
-            # Avaliações declaradas
+            # Avaliações — UNIQUE (vinculo, referencia): histórico multi-linha
             cur.execute(
                 """
-                SELECT id, nota, referencia, observacao, declarado_em
-                FROM public.school_professor_avaliacoes
-                WHERE professor_vinculo_id = %s
-                ORDER BY declarado_em DESC, created_at DESC
+                SELECT a.id, a.nota, a.referencia, a.observacao, a.declarado_em,
+                       g.nome AS declarado_por_nome
+                FROM public.school_professor_avaliacoes a
+                LEFT JOIN public.school_gestores g
+                  ON g.id = a.declarado_por_gestor_id
+                WHERE a.professor_vinculo_id = %s
+                ORDER BY a.declarado_em DESC, a.created_at DESC
                 """,
                 (str(vid),),
             )
@@ -522,6 +654,7 @@ def radiografia(instituicao_id: str, vinculo_id: str):
                     "nota": float(r["nota"]),
                     "referencia": r["referencia"],
                     "observacao": r.get("observacao"),
+                    "declarado_por": r.get("declarado_por_nome"),
                     "declarado_em": r["declarado_em"].isoformat()
                     if r.get("declarado_em")
                     else None,
@@ -530,14 +663,59 @@ def radiografia(instituicao_id: str, vinculo_id: str):
             ]
             nota_atual = avaliacoes[0] if avaliacoes else None
 
+            status_v = vinculo["status_vinculo"]
+            created = vinculo.get("created_at")
+            updated = vinculo.get("updated_at")
+            created_iso = created.isoformat() if created else None
+            created_date = (
+                created.date().isoformat()
+                if created and hasattr(created, "date")
+                else (str(created)[:10] if created else None)
+            )
+            dias_aguardando = None
+            if status_v == "pendente" and created:
+                created_d = created.date() if hasattr(created, "date") else date.fromisoformat(str(created)[:10])
+                dias_aguardando = max(0, (date.today() - created_d).days)
+            aceite_em = None
+            if status_v == "ativo" and updated:
+                aceite_em = (
+                    updated.date().isoformat()
+                    if hasattr(updated, "date")
+                    else str(updated)[:10]
+                )
+            linha_do_tempo = {
+                "convite_enviado_em": created_date,
+                "aceite": {
+                    "status": status_v,
+                    "em": aceite_em,
+                    "dias_aguardando": dias_aguardando,
+                },
+                "primeira_aula_em": primeira_aula,
+            }
+            ped = _status_pedagogico(
+                {
+                    "total": entrega["planos_total"],
+                    "pendentes": entrega["pendentes"],
+                    "aprovados": entrega["aprovados"],
+                    "reprovados": entrega["reprovados"],
+                }
+            )
+
     return jsonify(
         {
             "professor": {
                 "id": str(vinculo["id"]),
                 "email": vinculo.get("email_convite"),
                 "status_vinculo": vinculo["status_vinculo"],
+                "status": _STATUS_LABEL.get(
+                    vinculo["status_vinculo"], vinculo["status_vinculo"]
+                ),
                 "professor_b2c_id": str(vinculo["professor_b2c_id"]),
+                "created_at": created_iso,
+                "updated_at": updated.isoformat() if updated else None,
             },
+            "status_pedagogico": ped,
+            "linha_do_tempo": linha_do_tempo,
             "recursos_recebidos": recursos,
             "metodologias_liberadas_escola": metodologias_liberadas,
             "entrega": entrega,

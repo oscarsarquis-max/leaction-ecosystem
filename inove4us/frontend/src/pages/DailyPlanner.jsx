@@ -53,6 +53,8 @@ function emptyForm() {
     dinamica_etiqueta: '',
     dinamica_contexto: '',
     dinamica_passos: [],
+    escola_override_mensagem: '',
+    escola_override_versao: null,
     fechamento_checkout: '',
     status: 'draft',
     disciplina_id: null,
@@ -141,8 +143,11 @@ function camposDinamicaDeItem(item) {
       dinamica_etiqueta: '',
       dinamica_contexto: '',
       dinamica_passos: [],
+      escola_override_mensagem: '',
+      escola_override_versao: null,
     }
   }
+  const ov = item.escola_override || null
   return {
     dinamica_ativa_id: item.id || '',
     dinamica_nome: item.nome || '',
@@ -150,6 +155,8 @@ function camposDinamicaDeItem(item) {
     dinamica_etiqueta: item.etiqueta || '',
     dinamica_contexto: item.contexto_execucao || 'sala',
     dinamica_passos: Array.isArray(item.passos) ? item.passos : [],
+    escola_override_mensagem: ov?.mensagem || ov?.diretriz_customizada || '',
+    escola_override_versao: ov?.versao ?? null,
   }
 }
 
@@ -941,6 +948,12 @@ export default function DailyPlanner() {
                 onTrocar={() => void openPicker()}
                 onRemover={limparDinamica}
               />
+              {form.escola_override_mensagem ? (
+                <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950">
+                  <span className="font-semibold">Regra da escola: </span>
+                  {form.escola_override_mensagem}
+                </p>
+              ) : null}
             </div>
 
             <label className="block">
@@ -1087,6 +1100,12 @@ export default function DailyPlanner() {
                     {d.descricao_curta && d.descricao_curta !== d.motivo ? (
                       <p className="mt-1 text-xs leading-relaxed text-bordo-soft">
                         {d.descricao_curta}
+                      </p>
+                    ) : null}
+                    {d.escola_override?.mensagem ? (
+                      <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50/90 px-2 py-1.5 text-xs leading-relaxed text-amber-950">
+                        <span className="font-semibold">Regra da escola: </span>
+                        {d.escola_override.mensagem}
                       </p>
                     ) : null}
                   </button>

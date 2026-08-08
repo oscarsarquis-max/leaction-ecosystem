@@ -42,6 +42,94 @@ bp = Blueprint("pei_documental", __name__)
 SESSION_KEY = "school_gestor"
 
 
+def _build_aee_diretriz_payload(cur: Any, matriz: dict[str, Any]) -> str:
+    """Texto da 'versão da escola' no nível AEE: diretriz + campos + Adaptações na Prática."""
+    parts: list[str] = []
+    texto = str(matriz.get("texto_escola") or "").strip()
+    if texto:
+        parts.append(texto)
+    campos = str(matriz.get("campos_experiencia_metodologica") or "").strip()
+    if campos:
+        parts.append("Campos de experiência:\n" + campos)
+    try:
+        cur.execute(
+            """
+            SELECT metodologia_nome, passos_customizados
+            FROM public.school_aee_metodologias_org
+            WHERE aee_matriz_id = %s
+              AND NULLIF(TRIM(passos_customizados), '') IS NOT NULL
+            ORDER BY metodologia_nome
+            """,
+            (str(matriz["id"]),),
+        )
+        for row in cur.fetchall() or []:
+            nome = str(row.get("metodologia_nome") or "").strip() or "Metodologia"
+            passos = str(row.get("passos_customizados") or "").strip()
+            if passos:
+                parts.append(f"Adaptação na prática — {nome}:\n{passos}")
+    except Exception as exc:
+        print(f"[pei] aee adaptações na diretriz: {exc}", flush=True)
+    return "\n\n".join(parts).strip()
+
+
+def _build_pei_particularidades(row: dict[str, Any]) -> str:
+    blocos = [
+        ("Perfil / habilidades", row.get("perfil_atual_habilidades")),
+        ("Barreiras", row.get("barreiras_identificadas")),
+        ("Metas", row.get("metas_desenvolvimento")),
+        ("Recursos assistivos", row.get("recursos_assistivos")),
+        ("Critérios de avaliação", row.get("criterios_avaliacao_flexibilizados")),
+        ("Experiências adaptadas", row.get("experiencias_adaptadas_individuais")),
+    ]
+    parts = []
+    for label, raw in blocos:
+        txt = str(raw or "").strip()
+        if txt:
+            parts.append(f"{label}: {txt}")
+    return "\n\n".join(parts).strip()
+
+
+def _dispatch_pei_aee_base(matriz: dict[str, Any], diretriz: str) -> None:
+    try:
+        from b2c_integration_service import dispatch_pei_override_updated
+
+        dispatch_pei_override_updated(
+            {
+                "nivel": "aee_base",
+                "instituicao_id": str(matriz["instituicao_id"]),
+                "condicao": str(matriz.get("condicao_categoria") or ""),
+                "diretriz": diretriz or str(matriz.get("texto_escola") or ""),
+                "versao": int(matriz.get("versao") or 1),
+                "aee_matriz_id": str(matriz["id"]),
+            }
+        )
+    except Exception as exc:
+        print(f"[pei] dispatch AEE_BASE falhou: {exc}", flush=True)
+
+
+def _dispatch_pei_individual(pei: dict[str, Any]) -> None:
+    try:
+        from b2c_integration_service import dispatch_pei_override_updated
+
+        dispatch_pei_override_updated(
+            {
+                "nivel": "individual",
+                "instituicao_id": str(pei["instituicao_id"]),
+                "aluno_id": str(pei["aluno_id"]) if pei.get("aluno_id") else None,
+                "aluno_nome": str(pei.get("nome_completo") or "").strip(),
+                "condicao": str(pei.get("condicao_categoria") or ""),
+                "particularidades": _build_pei_particularidades(pei),
+                "aee_matriz_id_base": str(pei["aee_matriz_id"])
+                if pei.get("aee_matriz_id")
+                else None,
+                "versao": int(pei.get("versao") or 1),
+                "pei_aluno_id": str(pei["id"]),
+            }
+        )
+    except Exception as exc:
+        print(f"[pei] dispatch INDIVIDUAL falhou: {exc}", flush=True)
+
+
 def _instituicao_id() -> str:
     user = session.get(SESSION_KEY) or {}
     return str(
@@ -112,8 +200,9 @@ def _serialize_pei(row: dict[str, Any]) -> dict[str, Any]:
         "pei_linha_id": str(row["pei_linha_id"]) if row.get("pei_linha_id") else str(row["id"]),
         "versao": int(row["versao"] or 1),
         "status": str(status),
-        "nome_completo": row.get("nome_completo") or "",
-        "matricula": row.get("matricula") or "",
+        "aluno_id": str(row["aluno_id"]) if row.get("aluno_id") else None,
+        "nome_completo": row.get("nome_completo") or row.get("aluno_nome") or "",
+        "matricula": row.get("matricula") or row.get("aluno_matricula") or "",
         "nome_responsavel": row.get("nome_responsavel") or "",
         "perfil_atual_habilidades": row.get("perfil_atual_habilidades") or "",
         "barreiras_identificadas": row.get("barreiras_identificadas") or "",
@@ -477,6 +566,8 @@ def _assinar_aee(papel: str):
     body = request.get_json(silent=True) or {}
     mid = _parse_uuid(body.get("matriz_id"))
     condicao = str(body.get("condicao_categoria") or body.get("condicao") or "").strip()
+    diretriz_ativacao = ""
+    activated = False
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -573,15 +664,21 @@ def _assinar_aee(papel: str):
                     (str(updated["id"]),),
                 )
                 updated = cur.fetchone()
+                diretriz_ativacao = _build_aee_diretriz_payload(cur, updated)
+                activated = True
+
+    if activated:
+        _dispatch_pei_aee_base(updated, diretriz_ativacao)
 
     return jsonify(
         {
             "message": (
                 "Matriz AEE ativada — versões anteriores da condição arquivadas."
-                if _status_str(updated) == "ativo"
+                if activated
                 else f"Assinatura de {papel} registrada."
             ),
             "matriz": _serialize_aee(updated),
+            "b2c_pei_override": activated,
         }
     )
 
@@ -665,9 +762,11 @@ def list_pei_alunos():
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT p.*, m.versao AS aee_versao, m.condicao_categoria
+                SELECT p.*, m.versao AS aee_versao, m.condicao_categoria,
+                       a.nome AS aluno_nome, a.matricula AS aluno_matricula
                 FROM public.school_pei_alunos p
                 JOIN public.school_aee_matrizes m ON m.id = p.aee_matriz_id
+                JOIN public.school_alunos a ON a.id = p.aluno_id
                 WHERE p.instituicao_id = %s
                   AND p.status <> 'arquivado'
                 ORDER BY p.created_at DESC
@@ -751,9 +850,9 @@ def historico_pei_aluno(pei_id: str):
 def criar_pei_aluno():
     inst = _instituicao_id()
     body = request.get_json(silent=True) or {}
-    nome = str(body.get("nome_completo") or "").strip()
-    if not nome:
-        return jsonify({"error": "Informe o nome completo do aluno"}), 400
+    aluno_id = _parse_uuid(body.get("aluno_id"))
+    if not aluno_id:
+        return jsonify({"error": "Selecione um aluno cadastrado na Secretaria"}), 400
     condicao = str(body.get("condicao_categoria") or body.get("condicao") or "").strip()
     if not condicao_valida(condicao):
         return jsonify({"error": "Informe uma condição AEE válida"}), 400
@@ -763,10 +862,23 @@ def criar_pei_aluno():
             break
 
     linha_ref = _parse_uuid(body.get("pei_linha_id") or body.get("nova_versao_de"))
-    matricula = str(body.get("matricula") or "").strip()
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, nome, matricula
+                FROM public.school_alunos
+                WHERE id = %s AND instituicao_id = %s AND ativo = TRUE
+                """,
+                (str(aluno_id), inst),
+            )
+            aluno = cur.fetchone()
+            if not aluno:
+                return jsonify({"error": "Aluno não encontrado na Secretaria"}), 404
+            nome = str(aluno["nome"] or "").strip()
+            matricula = str(aluno["matricula"] or "").strip()
+
             ativa = _aee_ativa(cur, inst, condicao)
             if not ativa:
                 return jsonify(
@@ -791,6 +903,7 @@ def criar_pei_aluno():
                 origem = cur.fetchone()
                 if origem:
                     pei_linha_id = origem.get("pei_linha_id") or origem["id"]
+                    aluno_id = origem.get("aluno_id") or aluno_id
                     cur.execute(
                         """
                         SELECT COALESCE(MAX(versao), 0) AS max_v
@@ -800,7 +913,6 @@ def criar_pei_aluno():
                         (str(pei_linha_id),),
                     )
                     next_v = int(cur.fetchone()["max_v"]) + 1
-                    # Arquiva versões ativas anteriores da linha
                     cur.execute(
                         """
                         UPDATE public.school_pei_alunos
@@ -809,10 +921,6 @@ def criar_pei_aluno():
                         """,
                         (str(pei_linha_id),),
                     )
-                    if not matricula:
-                        matricula = origem.get("matricula") or ""
-                    if not nome:
-                        nome = origem.get("nome_completo") or nome
 
             if not pei_linha_id:
                 pei_linha_id = uuid.uuid4()
@@ -821,13 +929,13 @@ def criar_pei_aluno():
                 """
                 INSERT INTO public.school_pei_alunos (
                     instituicao_id, aee_matriz_id, pei_linha_id, versao, status,
-                    nome_completo, matricula, nome_responsavel,
+                    aluno_id, nome_completo, matricula, nome_responsavel,
                     perfil_atual_habilidades, barreiras_identificadas,
                     metas_desenvolvimento, recursos_assistivos,
                     criterios_avaliacao_flexibilizados,
                     experiencias_adaptadas_individuais
                 )
-                VALUES (%s, %s, %s, %s, 'rascunho', %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, 'rascunho', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING *
                 """,
                 (
@@ -835,6 +943,7 @@ def criar_pei_aluno():
                     str(ativa["id"]),
                     str(pei_linha_id),
                     next_v,
+                    str(aluno_id),
                     nome,
                     matricula,
                     str(body.get("nome_responsavel") or "").strip(),
@@ -906,13 +1015,13 @@ def nova_versao_pei(pei_id: str):
                 """
                 INSERT INTO public.school_pei_alunos (
                     instituicao_id, aee_matriz_id, pei_linha_id, versao, status,
-                    nome_completo, matricula, nome_responsavel,
+                    aluno_id, nome_completo, matricula, nome_responsavel,
                     perfil_atual_habilidades, barreiras_identificadas,
                     metas_desenvolvimento, recursos_assistivos,
                     criterios_avaliacao_flexibilizados,
                     experiencias_adaptadas_individuais
                 )
-                VALUES (%s, %s, %s, %s, 'rascunho', %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, 'rascunho', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING *
                 """,
                 (
@@ -920,6 +1029,7 @@ def nova_versao_pei(pei_id: str):
                     aee_id,
                     str(linha),
                     next_v,
+                    str(origem["aluno_id"]),
                     origem["nome_completo"],
                     origem.get("matricula") or "",
                     origem.get("nome_responsavel") or "",
@@ -945,8 +1055,6 @@ def atualizar_pei_aluno(pei_id: str):
     inst = _instituicao_id()
     body = request.get_json(silent=True) or {}
     fields = [
-        "nome_completo",
-        "matricula",
         "nome_responsavel",
         "perfil_atual_habilidades",
         "barreiras_identificadas",
@@ -980,6 +1088,20 @@ def atualizar_pei_aluno(pei_id: str):
 
             sets = []
             vals: list[Any] = []
+            novo_aluno = _parse_uuid(body.get("aluno_id")) if "aluno_id" in body else None
+            if novo_aluno:
+                cur.execute(
+                    """
+                    SELECT id, nome, matricula FROM public.school_alunos
+                    WHERE id = %s AND instituicao_id = %s AND ativo = TRUE
+                    """,
+                    (str(novo_aluno), inst),
+                )
+                aluno = cur.fetchone()
+                if not aluno:
+                    return jsonify({"error": "Aluno não encontrado na Secretaria"}), 404
+                sets.extend(["aluno_id = %s", "nome_completo = %s", "matricula = %s"])
+                vals.extend([str(aluno["id"]), aluno["nome"], aluno.get("matricula") or ""])
             for f in fields:
                 if f in body:
                     sets.append(f"{f} = %s")
@@ -1015,6 +1137,7 @@ def _assinar_pei(papel: str, pei_id: str):
     if not pid:
         return jsonify({"error": "Identificador inválido"}), 400
     inst = _instituicao_id()
+    activated = False
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -1079,9 +1202,14 @@ def _assinar_pei(papel: str, pei_id: str):
                     (str(pid),),
                 )
                 updated = cur.fetchone()
+                activated = True
             updated["aee_versao"] = row["aee_versao"]
             updated["condicao_categoria"] = row["condicao_categoria"]
-    return jsonify(_serialize_pei(updated))
+    if activated:
+        _dispatch_pei_individual(updated)
+    payload = _serialize_pei(updated)
+    payload["b2c_pei_override"] = activated
+    return jsonify(payload)
 
 
 @bp.post("/api/pei/alunos/<pei_id>/assinar/coordenador")
@@ -1341,73 +1469,19 @@ def adaptar_aee_metodologia_ia(aee_id: str, metodologia_nome: str):
 
 @bp.get("/api/pei/metodologias")
 def list_pei_metodologias():
-    inst = _instituicao_id()
-    with get_conn() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                """
-                SELECT
-                    c.id AS metodologia_catalogo_id,
-                    c.nome,
-                    c.categoria,
-                    c.descricao,
-                    c.passos_execucao,
-                    ad.passos_customizados AS versao_pei,
-                    ad.gerado_por_ia,
-                    ad.updated_at AS adaptacao_updated_at,
-                    COALESCE(org.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
-                    COALESCE(org.ativo_desafio, TRUE) AS disponivel_desafio,
-                    COALESCE(cur.sugestoes_count, 0) AS sugestoes_count
-                FROM public.school_metodologias_catalogo c
-                LEFT JOIN public.school_pei_metodologia_adaptacao ad
-                    ON ad.instituicao_id = %s
-                   AND ad.pei_aluno_id IS NULL
-                   AND LOWER(TRIM(ad.metodologia_nome)) = LOWER(TRIM(c.nome))
-                LEFT JOIN public.school_metodologias_org org
-                    ON org.metodologia_id_canonica = c.id
-                   AND org.instituicao_id = %s
-                LEFT JOIN (
-                    SELECT
-                        LOWER(TRIM(metodologia_nome)) AS nome_key,
-                        COUNT(*)::int AS sugestoes_count
-                    FROM public.school_curadoria_pei
-                    WHERE instituicao_id = %s
-                      AND status_analise IN ('pendente', 'incorporado')
-                    GROUP BY LOWER(TRIM(metodologia_nome))
-                ) cur ON cur.nome_key = LOWER(TRIM(c.nome))
-                WHERE c.ativo = TRUE AND c.origem = 'padrao'
-                ORDER BY c.categoria, c.nome
-                """,
-                (inst, inst, inst),
-            )
-            rows = cur.fetchall()
-
-    out = []
-    for r in rows:
-        texto = _passos_to_text(r.get("passos_execucao"))
-        count = int(r.get("sugestoes_count") or 0)
-        estrelas = 0 if count <= 0 else min(3, count)
-        versao = (r.get("versao_pei") or "").strip()
-        is_custom = bool(versao)
-        updated = r.get("adaptacao_updated_at")
-        out.append(
+    """Legado — Adaptações na Prática vivem em /api/aee/<aee_id>/metodologias."""
+    return (
+        jsonify(
             {
-                "metodologia_id": str(r["metodologia_catalogo_id"]),
-                "nome": r["nome"],
-                "familia": r.get("categoria"),
-                "descricao": r.get("descricao"),
-                "texto_canonico": texto,
-                "versao_pei": versao,
-                "is_customizado": is_custom,
-                "updated_at": updated.isoformat() if updated else None,
-                "gerado_por_ia": bool(r.get("gerado_por_ia")),
-                "disponivel_dia_a_dia": bool(r.get("disponivel_dia_a_dia", True)),
-                "disponivel_desafio": bool(r.get("disponivel_desafio", True)),
-                "uso_estrelas": estrelas,
-                "sugestoes_count": count,
+                "error": (
+                    "Endpoint legado removido. Use GET /api/aee/<aee_id>/metodologias "
+                    "(modelo AEE canônico)."
+                ),
+                "code": "PEI_LEGACY_REMOVED",
             }
-        )
-    return jsonify(out)
+        ),
+        410,
+    )
 
 
 @bp.get("/api/pei/curadoria")
@@ -1656,74 +1730,19 @@ def adaptar_pei_metodologia_ia(metodologia_id: str):
 
 @bp.put("/api/pei/metodologia/<metodologia_id>/versao")
 def salvar_versao_pei_metodologia(metodologia_id: str):
-    mid = _parse_uuid(metodologia_id)
-    if not mid:
-        return jsonify({"error": "Identificador inválido"}), 400
-    inst = _instituicao_id()
-    body = request.get_json(silent=True) or {}
-    versao = str(body.get("versao_pei") or body.get("passos_customizados") or "").strip()
-    gerado = bool(body.get("gerado_por_ia", False))
-
-    with get_conn() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                """
-                SELECT id, nome FROM public.school_metodologias_catalogo
-                WHERE id = %s AND ativo = TRUE
-                """,
-                (str(mid),),
-            )
-            cat = cur.fetchone()
-            if not cat:
-                return jsonify({"error": "Metodologia não encontrada"}), 404
-
-            cur.execute(
-                """
-                SELECT id FROM public.school_pei_metodologia_adaptacao
-                WHERE instituicao_id = %s
-                  AND pei_aluno_id IS NULL
-                  AND LOWER(TRIM(metodologia_nome)) = LOWER(TRIM(%s))
-                """,
-                (inst, cat["nome"]),
-            )
-            existing = cur.fetchone()
-            if existing:
-                cur.execute(
-                    """
-                    UPDATE public.school_pei_metodologia_adaptacao
-                    SET passos_customizados = %s,
-                        metodologia_catalogo_id = %s,
-                        gerado_por_ia = %s,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = %s
-                    RETURNING *
-                    """,
-                    (versao, str(mid), gerado, str(existing["id"])),
-                )
-            else:
-                cur.execute(
-                    """
-                    INSERT INTO public.school_pei_metodologia_adaptacao (
-                        instituicao_id, pei_aluno_id, metodologia_nome,
-                        metodologia_catalogo_id, passos_customizados, gerado_por_ia
-                    )
-                    VALUES (%s, NULL, %s, %s, %s, %s)
-                    RETURNING *
-                    """,
-                    (inst, cat["nome"], str(mid), versao, gerado),
-                )
-            row = cur.fetchone()
-
-    updated = row.get("updated_at")
-    return jsonify(
-        {
-            "metodologia_id": str(mid),
-            "metodologia_nome": cat["nome"],
-            "versao_pei": row.get("passos_customizados") or "",
-            "gerado_por_ia": bool(row.get("gerado_por_ia")),
-            "is_customizado": bool((row.get("passos_customizados") or "").strip()),
-            "updated_at": updated.isoformat() if updated else None,
-        }
+    """Legado — persistir em PUT /api/aee/<aee_id>/metodologias/<nome>."""
+    return (
+        jsonify(
+            {
+                "error": (
+                    "Endpoint legado removido. Use PUT "
+                    "/api/aee/<aee_id>/metodologias/<metodologia_nome>."
+                ),
+                "code": "PEI_LEGACY_REMOVED",
+                "metodologia_id": metodologia_id,
+            }
+        ),
+        410,
     )
 
 

@@ -517,6 +517,16 @@ def sugerir_dinamicas():
         items = buscar_dinamicas_rapidas(termo)
         fonte = "cache_local_versionado"
 
+    # Vetor Dia a Dia: escola pode desabilitar metodologias (fail-soft)
+    try:
+        from services.methodology_override_service import filter_dinamicas_by_vector
+
+        items = filter_dinamicas_by_vector(
+            items, user.get("id_clie"), "dia_a_dia"
+        )
+    except Exception as exc:
+        print(f"[daily] override filter: {exc}", flush=True)
+
     return jsonify(
         {
             "success": True,
@@ -570,11 +580,29 @@ def planejar_aula():
             if "dinamica_ativa_fonte" not in data:
                 fonte = "inove_local"
     kanban = _normalize_kanban_state(data.get("kanban_state"))
-    kanban_json = json.dumps(kanban, ensure_ascii=False) if kanban is not None else None
     origem = _parse_origem(data.get("origem"), default="manual")
     tipo_registro = _parse_tipo_registro(data.get("tipo_registro"), default="aula")
 
     id_clie = int(user["id_clie"])
+    # Auditoria: versão da diretriz escolar aplicada nesta aula (fail-soft)
+    try:
+        if dinamica_id:
+            from services.methodology_override_service import get_override_for_professor
+
+            ov = get_override_for_professor(id_clie, dinamica_id)
+            if ov and ov.get("versao"):
+                base = dict(kanban) if isinstance(kanban, dict) else {}
+                base["metodologia_override_versao_aplicada"] = int(ov["versao"])
+                base["escola_override"] = {
+                    "metodologia_key": ov.get("metodologia_key"),
+                    "versao": int(ov["versao"]),
+                    "mensagem": (ov.get("diretriz_customizada") or "")[:220] or None,
+                }
+                kanban = base
+    except Exception as exc:
+        print(f"[daily] override audit: {exc}", flush=True)
+
+    kanban_json = json.dumps(kanban, ensure_ascii=False) if kanban is not None else None
     try:
         from db import aulas_simples_quota
 

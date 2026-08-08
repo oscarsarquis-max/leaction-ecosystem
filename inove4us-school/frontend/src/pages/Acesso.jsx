@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { CrmEvents, trackEvent } from '../lib/tracking'
 
 const CMS_CACHE_KEY = 'school_acesso_cms_v1'
 const CMS_CONFIG_KEY = 'inove4us-school'
@@ -222,6 +223,10 @@ export default function Acesso() {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Não foi possível entrar')
       setUser(body.user)
+      void trackEvent(CrmEvents.LOGIN_SUCESSO, {
+        url: '/acesso',
+        idUsuario: body.user?.id ?? null,
+      })
       navigate(nextPath || '/', { replace: true })
     } catch (err) {
       setError(err.message || 'Erro ao entrar')

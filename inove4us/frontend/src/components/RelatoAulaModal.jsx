@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import DictationField from './DictationField'
 
@@ -8,8 +8,33 @@ function hojeISO() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
+function formatHora(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const p = (n) => (n < 10 ? `0${n}` : String(n))
+  return `${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+function diarioParaTexto(entries) {
+  if (!Array.isArray(entries) || !entries.length) return ''
+  return entries
+    .map((e) => {
+      const card = e.card || 'Card'
+      const trajeto =
+        e.deLabel || e.paraLabel
+          ? `${e.deLabel || e.de || '?'} → ${e.paraLabel || e.para || '?'}`
+          : ''
+      const hora = formatHora(e.em)
+      const head = [card, trajeto, hora].filter(Boolean).join(' · ')
+      return `• ${head}\n  ${e.nota || ''}`
+    })
+    .join('\n\n')
+}
+
 /**
- * Pós-execução da aula: relato, participantes e opcional desdobramento vinculado.
+ * Pós-execução da aula: diário de bordo (notas das movimentações) +
+ * sugestão opcional à coordenação (curadoria School só no fechamento).
  */
 export default function RelatoAulaModal({
   aula,
@@ -18,16 +43,19 @@ export default function RelatoAulaModal({
   onSubmit,
   busy,
   temAlunosPei: temAlunosPeiProp,
+  diarioBordo = [],
+  metodologiaNome = '',
+  aulaContexto = '',
 }) {
-  const [relato, setRelato] = useState('')
+  const [relatoExtra, setRelatoExtra] = useState('')
   const [participantes, setParticipantes] = useState('')
   const [criarProximo, setCriarProximo] = useState(false)
   const [dataProximo, setDataProximo] = useState(hojeISO())
   const [tituloProximo, setTituloProximo] = useState('')
-  const [adaptouMetodologia, setAdaptouMetodologia] = useState(false)
-  const [adaptacaoTexto, setAdaptacaoTexto] = useState('')
+  const [sugestaoCoord, setSugestaoCoord] = useState('')
   const [adaptouPei, setAdaptouPei] = useState(false)
   const [peiAdaptacaoTexto, setPeiAdaptacaoTexto] = useState('')
+  const [peiAlunoNome, setPeiAlunoNome] = useState('')
   const [error, setError] = useState('')
 
   const temAlunosPei = Boolean(
@@ -37,16 +65,28 @@ export default function RelatoAulaModal({
       (Array.isArray(aula?.kanban_pei) && aula.kanban_pei.length > 0),
   )
 
+  const diarioEntries = useMemo(
+    () => (Array.isArray(diarioBordo) ? diarioBordo : []),
+    [diarioBordo],
+  )
+  const diarioTexto = useMemo(() => diarioParaTexto(diarioEntries), [diarioEntries])
+
   useEffect(() => {
-    setRelato('')
+    setRelatoExtra('')
     setParticipantes('')
     setCriarProximo(false)
     setDataProximo(hojeISO())
     setTituloProximo(missao ? `Continuidade · ${missao}`.slice(0, 180) : '')
-    setAdaptouMetodologia(false)
-    setAdaptacaoTexto('')
+    setSugestaoCoord('')
     setAdaptouPei(false)
     setPeiAdaptacaoTexto('')
+    setPeiAlunoNome(
+      String(
+        aula?.meta_json?.aluno_nome ||
+          aula?.aluno_nome ||
+          '',
+      ).trim(),
+    )
     setError('')
   }, [aula, missao])
 
@@ -63,8 +103,12 @@ export default function RelatoAulaModal({
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!relato.trim()) {
-      setError('Registre o que houve na sala.')
+    const sugestao = sugestaoCoord.trim()
+    const relatoSala = [diarioTexto, relatoExtra.trim()].filter(Boolean).join('\n\n').trim()
+    if (!relatoSala && !diarioEntries.length) {
+      setError(
+        'Não há anotações do diário de bordo. Mova cards na mesa com observação ou acrescente uma nota de síntese.',
+      )
       return
     }
     if (!participantes.trim()) {
@@ -75,24 +119,29 @@ export default function RelatoAulaModal({
       setError('Informe a data do próximo evento.')
       return
     }
-    if (adaptouMetodologia && !adaptacaoTexto.trim()) {
-      setError('Descreva a modificação feita na metodologia.')
-      return
-    }
     if (adaptouPei && !peiAdaptacaoTexto.trim()) {
       setError('Descreva o que funcionou melhor no PEI nesta metodologia.')
       return
     }
+    if (adaptouPei && !peiAlunoNome.trim()) {
+      setError('Informe o nome do aluno a que a adaptação de PEI se refere.')
+      return
+    }
     onSubmit?.({
-      relato_sala: relato.trim(),
+      relato_sala: relatoSala || 'Aula concluída (diário de bordo registrado na mesa).',
       participantes: participantes.trim(),
       criar_proximo: criarProximo,
       data_proximo: criarProximo ? dataProximo : undefined,
       titulo_proximo: criarProximo ? (tituloProximo || '').trim() : undefined,
-      has_teacher_adaptations: adaptouMetodologia,
-      teacher_adaptation_text: adaptouMetodologia ? adaptacaoTexto.trim() : undefined,
+      has_teacher_adaptations: Boolean(sugestao),
+      teacher_adaptation_text: sugestao || undefined,
+      sugestao_coordenacao: sugestao || undefined,
+      texto_sugestao: sugestao || undefined,
+      metodologia_usada: metodologiaNome || undefined,
+      aula_contexto: aulaContexto || undefined,
       has_pei_adaptations: adaptouPei,
       pei_adaptation_text: adaptouPei ? peiAdaptacaoTexto.trim() : undefined,
+      aluno_nome: adaptouPei ? peiAlunoNome.trim() : undefined,
     })
   }
 
@@ -115,28 +164,63 @@ export default function RelatoAulaModal({
           Encerramento da aula
         </p>
         <h2 id="relato-aula-title" className="mt-1 font-display text-xl font-bold text-bordo-deep">
-          O que aconteceu na sala?
+          Fechamento da aula
         </h2>
         <p className="mt-2 text-sm text-bordo-soft">
-          Antes de marcar como concluída, registre a realização. Se fizer sentido, gere um novo
-          evento vinculado a este.
+          Revise o diário de bordo das movimentações e, se quiser, envie uma sugestão à
+          coordenação. A curadoria pedagógica só recebe a sugestão neste fechamento.
         </p>
 
-        <label className="mt-4 block text-xs font-bold uppercase tracking-wide text-bordo">
-          Relato da sala
-        </label>
-        <div className="mt-1.5">
-          <DictationField
-            as="textarea"
-            rows={4}
-            className="field-input min-h-[110px] resize-y"
-            value={relato}
-            onChange={setRelato}
-            placeholder="Digite ou dite: clima, aprendizagens, obstáculos, decisões…"
-          />
-        </div>
+        {/* Área 1 — Anotações Gerais (diário de bordo) */}
+        <section className="mt-4 rounded-xl border border-brand-100 bg-brand-50/40 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-600">
+            Área 1 · Anotações gerais
+          </p>
+          <h3 className="mt-1 text-sm font-bold text-bordo">Diário de bordo</h3>
+          <p className="mt-0.5 text-xs text-bordo-soft">
+            Notas registradas nas transições dos cards (somente leitura).
+          </p>
+          {diarioEntries.length ? (
+            <ul className="mt-3 max-h-48 space-y-2 overflow-y-auto pr-0.5">
+              {diarioEntries.map((e, i) => (
+                <li
+                  key={`${e.card}-${e.em || i}-${i}`}
+                  className="rounded-lg border border-brand-100 bg-white px-3 py-2 text-sm text-bordo"
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-bordo-soft">
+                    {e.card}
+                    {e.deLabel || e.paraLabel
+                      ? ` · ${e.deLabel || e.de || '?'} → ${e.paraLabel || e.para || '?'}`
+                      : ''}
+                    {formatHora(e.em) ? ` · ${formatHora(e.em)}` : ''}
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{e.nota}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 rounded-lg border border-dashed border-brand-200 bg-white px-3 py-4 text-center text-xs text-bordo-soft">
+              Nenhuma observação de movimentação ainda. Você pode acrescentar uma síntese
+              abaixo.
+            </p>
+          )}
 
-        <label className="mt-3 block text-xs font-bold uppercase tracking-wide text-bordo">
+          <label className="mt-3 block text-xs font-bold uppercase tracking-wide text-bordo">
+            Síntese adicional (opcional)
+          </label>
+          <div className="mt-1.5">
+            <DictationField
+              as="textarea"
+              rows={3}
+              className="field-input min-h-[80px] resize-y"
+              value={relatoExtra}
+              onChange={setRelatoExtra}
+              placeholder="Digite ou dite um complemento ao diário…"
+            />
+          </div>
+        </section>
+
+        <label className="mt-4 block text-xs font-bold uppercase tracking-wide text-bordo">
           Quem participou
         </label>
         <div className="mt-1.5">
@@ -150,54 +234,44 @@ export default function RelatoAulaModal({
           />
         </div>
 
-        <label className="mt-4 flex cursor-pointer items-start gap-2 rounded-xl border border-brand-100 bg-brand-50/50 px-3 py-3">
-          <input
-            type="checkbox"
-            className="mt-1"
-            checked={adaptouMetodologia}
-            onChange={(e) => {
-              setAdaptouMetodologia(e.target.checked)
-              if (!e.target.checked) setAdaptacaoTexto('')
-            }}
-          />
-          <span className="text-sm text-bordo">
-            <span className="font-bold">
-              Adaptei a metodologia original da escola nesta aula.
-            </span>
-            <span className="mt-0.5 block text-xs text-bordo-soft">
-              Envia a sugestão para a curadoria pedagógica da escola (bottom-up).
-            </span>
-          </span>
-        </label>
-
-        {adaptouMetodologia ? (
-          <div className="mt-3">
-            <label className="block text-xs font-bold uppercase tracking-wide text-bordo">
-              Descreva a modificação
-            </label>
-            <div className="mt-1.5">
-              <DictationField
-                as="textarea"
-                rows={3}
-                className="field-input min-h-[90px] resize-y"
-                value={adaptacaoTexto}
-                onChange={setAdaptacaoTexto}
-                placeholder="Ex.: Mudei o tempo do ciclo PBL, adicionei uma etapa visual…"
-              />
-            </div>
+        {/* Área 2 — Sugestão para a Coordenação */}
+        <section className="mt-4 rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-700">
+            Área 2 · Sugestão para a coordenação
+          </p>
+          <label className="mt-1 block text-sm font-bold text-bordo">
+            Teve alguma ideia de adaptação metodológica para esta aula que a coordenação
+            deveria incluir no padrão da escola?
+          </label>
+          <p className="mt-0.5 text-xs text-bordo-soft">
+            Opcional. Se preenchido, a sugestão vai para a curadoria da escola neste fechamento.
+            {metodologiaNome ? ` Metodologia: ${metodologiaNome}.` : ''}
+          </p>
+          <div className="mt-2">
+            <DictationField
+              as="textarea"
+              rows={4}
+              className="field-input min-h-[100px] resize-y"
+              value={sugestaoCoord}
+              onChange={setSugestaoCoord}
+              placeholder="Ex.: Incluir rotina visual no passo 2; encurtar o ciclo de feedback…"
+            />
           </div>
-        ) : null}
+        </section>
 
         {temAlunosPei ? (
           <>
             <label className="mt-4 flex cursor-pointer items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-3">
               <input
                 type="checkbox"
-                className="mt-1"
+                className="mt-1 accent-emerald-600"
                 checked={adaptouPei}
                 onChange={(e) => {
                   setAdaptouPei(e.target.checked)
-                  if (!e.target.checked) setPeiAdaptacaoTexto('')
+                  if (!e.target.checked) {
+                    setPeiAdaptacaoTexto('')
+                    setPeiAlunoNome('')
+                  }
                 }}
               />
               <span className="text-sm text-bordo">
@@ -210,19 +284,38 @@ export default function RelatoAulaModal({
               </span>
             </label>
             {adaptouPei ? (
-              <div className="mt-3">
-                <label className="block text-xs font-bold uppercase tracking-wide text-bordo">
-                  O que funcionou melhor para o aluno nesta metodologia?
-                </label>
-                <div className="mt-1.5">
-                  <DictationField
-                    as="textarea"
-                    rows={3}
-                    className="field-input min-h-[90px] resize-y"
-                    value={peiAdaptacaoTexto}
-                    onChange={setPeiAdaptacaoTexto}
-                    placeholder="Ex.: Apoio visual curto + tempo extra na estação de entrega…"
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wide text-bordo">
+                    Nome do aluno
+                  </label>
+                  <input
+                    type="text"
+                    className="field-input mt-1.5"
+                    value={peiAlunoNome}
+                    onChange={(e) => setPeiAlunoNome(e.target.value)}
+                    placeholder="Ex.: João Pedro"
+                    required={adaptouPei}
+                    autoComplete="off"
                   />
+                  <p className="mt-1 text-[11px] text-bordo-soft">
+                    Identifica o aluno na fila de curadoria da escola (best-effort por nome).
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wide text-bordo">
+                    O que funcionou melhor para o aluno nesta metodologia?
+                  </label>
+                  <div className="mt-1.5">
+                    <DictationField
+                      as="textarea"
+                      rows={3}
+                      className="field-input min-h-[90px] resize-y"
+                      value={peiAdaptacaoTexto}
+                      onChange={setPeiAdaptacaoTexto}
+                      placeholder="Ex.: Apoio visual curto + tempo extra na estação de entrega…"
+                    />
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -232,7 +325,7 @@ export default function RelatoAulaModal({
         <label className="mt-4 flex cursor-pointer items-start gap-2 rounded-xl border border-brand-100 bg-brand-50/50 px-3 py-3">
           <input
             type="checkbox"
-            className="mt-1"
+            className="mt-1 accent-bordo"
             checked={criarProximo}
             onChange={(e) => setCriarProximo(e.target.checked)}
           />

@@ -1625,6 +1625,22 @@ def atualizar_estado(id_evento: int):
                     params,
                 )
                 row = cur.fetchone()
+        # Espelho em andamento → School (sem curadoria; cards + diário).
+        try:
+            ev = _serialize(dict(row)) if row else None
+            if ev and str(ev.get("status") or "") in ("em_execucao", "planejado"):
+                from school_outbound import dispatch_lesson_record_sync
+
+                dispatch_lesson_record_sync(
+                    id_clie=int(user["id_clie"]),
+                    evento=ev,
+                    has_teacher_adaptations=False,
+                    school_status="pendente",
+                    professor_nome=(user.get("nome_clie") or "").strip() or None,
+                )
+        except Exception as sync_exc:
+            print(f"⚠️ agenda estado LESSON_RECORD_SYNC: {sync_exc}", file=sys.stderr)
+
         return jsonify({"success": True, "evento": _serialize(dict(row))}), 200
     except Exception as exc:
         print(f"⚠️ agenda estado: {exc}", file=sys.stderr)
@@ -1649,20 +1665,41 @@ def concluir_aula(id_evento: int):
     criar_proximo = bool(data.get("criar_proximo"))
     data_proximo = (data.get("data_proximo") or "").strip()
     titulo_proximo = (data.get("titulo_proximo") or "").strip()
-    has_teacher_adaptations = bool(data.get("has_teacher_adaptations"))
-    teacher_adaptation_text = (data.get("teacher_adaptation_text") or "").strip()
+    # Sugestão à coordenação: aliases do FE (só no fechamento).
+    teacher_adaptation_text = (
+        data.get("teacher_adaptation_text")
+        or data.get("sugestao_coordenacao")
+        or data.get("texto_sugestao")
+        or ""
+    ).strip()
+    has_teacher_adaptations = bool(data.get("has_teacher_adaptations")) or bool(
+        teacher_adaptation_text
+    )
     metodologia_usada = (data.get("metodologia_usada") or "").strip() or None
+    aula_contexto = (data.get("aula_contexto") or "").strip() or None
     has_pei_adaptations = bool(data.get("has_pei_adaptations"))
     pei_adaptation_text = (data.get("pei_adaptation_text") or "").strip()
     pei_aluno_id = (data.get("pei_aluno_id") or "").strip() or None
     aluno_nome = (data.get("aluno_nome") or "").strip() or None
+    # Best-effort: resolve pei_aluno_id School a partir do nome (override individual)
+    if has_pei_adaptations and aluno_nome and not pei_aluno_id:
+        try:
+            from services.pei_override_service import get_individual_by_nome
+
+            hit = get_individual_by_nome(int(user["id_clie"]), aluno_nome)
+            if hit:
+                pei_aluno_id = (
+                    hit.get("pei_aluno_id_origem") or hit.get("aluno_id") or None
+                )
+        except Exception as exc:
+            print(f"⚠️ agenda pei resolve: {exc}", file=sys.stderr)
 
     if has_teacher_adaptations and not teacher_adaptation_text:
         return (
             jsonify(
                 {
                     "success": False,
-                    "error": "Descreva a modificação feita na metodologia.",
+                    "error": "Descreva a sugestão metodológica para a coordenação.",
                 }
             ),
             400,
@@ -1700,7 +1737,7 @@ def concluir_aula(id_evento: int):
                 nota = atual.get("nota_texto") or ""
                 stamp = f"Concluída com relato em sala."
                 if has_teacher_adaptations:
-                    stamp += " Adaptação de metodologia registrada."
+                    stamp += " Sugestão à coordenação registrada."
                 nota_final = f"{nota}\n{stamp}".strip() if nota else stamp
 
                 cur.execute(
@@ -1755,10 +1792,13 @@ def concluir_aula(id_evento: int):
                 has_teacher_adaptations=has_teacher_adaptations,
                 teacher_adaptation_text=teacher_adaptation_text or None,
                 metodologia_usada=metodologia_usada,
+                aula_contexto=aula_contexto,
+                professor_nome=(user.get("nome_clie") or "").strip() or None,
                 has_pei_adaptations=has_pei_adaptations,
                 pei_adaptation_text=pei_adaptation_text or None,
                 pei_aluno_id=pei_aluno_id,
                 aluno_nome=aluno_nome,
+                school_status="aprovado",
             )
         except Exception as sync_exc:
             print(f"⚠️ agenda LESSON_RECORD_SYNC: {sync_exc}", file=sys.stderr)
@@ -2077,3 +2117,84 @@ def evento_detail(id_evento: int):
     except Exception as exc:
         print(f"⚠️ agenda detail: {exc}", file=sys.stderr)
         return jsonify({"success": False, "error": "Falha na operação da agenda"}), 500
+
+
+@agenda_bp.get("/api/avisos-mesa")
+def list_avisos_mesa():
+    """Avisos fixados pela coordenação (School) para a Mesa do Professor.
+
+    Fail-safe fechado: sem vínculo institucional do professor, ou aviso sem
+    instituicao_b2b_id, não exibe (nunca vaza entre instituições / para solo).
+    """
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+    try:
+        id_clie = int(user["id_clie"])
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS public.inove_avisos_mesa (
+                        id                          UUID PRIMARY KEY,
+                        instituicao_b2b_id          UUID,
+                        texto                       TEXT NOT NULL,
+                        disciplina_nome             TEXT,
+                        turma_nome                  TEXT,
+                        disciplina_id               UUID,
+                        turma_id                    UUID,
+                        ativo                       BOOLEAN NOT NULL DEFAULT TRUE,
+                        synced_at                   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_inove_avisos_mesa_inst_ativos
+                        ON public.inove_avisos_mesa (instituicao_b2b_id, synced_at DESC)
+                        WHERE ativo = TRUE AND instituicao_b2b_id IS NOT NULL;
+                    """
+                )
+                # Fonte de verdade: ctdi_clie (sessão pode estar desatualizada).
+                cur.execute(
+                    """
+                    SELECT instituicao_b2b_id
+                    FROM public.ctdi_clie
+                    WHERE id_clie = %s
+                    """,
+                    (id_clie,),
+                )
+                clie = cur.fetchone() or {}
+                inst_id = clie.get("instituicao_b2b_id")
+                if not inst_id:
+                    return jsonify({"success": True, "avisos": []})
+
+                cur.execute(
+                    """
+                    SELECT id, texto, disciplina_nome, turma_nome, synced_at
+                    FROM public.inove_avisos_mesa
+                    WHERE ativo = TRUE
+                      AND instituicao_b2b_id IS NOT NULL
+                      AND instituicao_b2b_id = %s::uuid
+                    ORDER BY synced_at DESC
+                    LIMIT 30
+                    """,
+                    (str(inst_id),),
+                )
+                rows = cur.fetchall()
+        return jsonify(
+            {
+                "success": True,
+                "avisos": [
+                    {
+                        "id": str(r["id"]),
+                        "texto": r["texto"],
+                        "disciplina_nome": r.get("disciplina_nome"),
+                        "turma_nome": r.get("turma_nome"),
+                        "synced_at": r["synced_at"].isoformat()
+                        if r.get("synced_at")
+                        else None,
+                    }
+                    for r in rows
+                ],
+            }
+        )
+    except Exception as exc:
+        print(f"⚠️ avisos-mesa: {exc}", file=sys.stderr)
+        return jsonify({"success": True, "avisos": []})

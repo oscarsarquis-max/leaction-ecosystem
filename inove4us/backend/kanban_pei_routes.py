@@ -275,6 +275,7 @@ def adaptar_pei():
     titulo_card = _clip(data.get("titulo_card"), 500)
     descricao_card = _clip(data.get("descricao_card"), 8000)
     perfil = _norm_perfil(str(data.get("perfil_selecionado") or ""))
+    aluno_nome = _clip(data.get("aluno_nome"), 200)
 
     if not card_id:
         return jsonify({"success": False, "error": "card_id é obrigatório"}), 400
@@ -282,6 +283,18 @@ def adaptar_pei():
         return jsonify({"success": False, "error": "titulo_card é obrigatório"}), 400
     if not perfil:
         return jsonify({"success": False, "error": "perfil_selecionado é obrigatório"}), 400
+
+    # Overrides da escola (fail-soft) — base por condição + individual por nome
+    pei_ctx: dict[str, Any] = {}
+    try:
+        from services.pei_override_service import resolve_context_for_professor
+
+        pei_ctx = resolve_context_for_professor(
+            id_clie, condicao=perfil, aluno_nome=aluno_nome or None
+        )
+    except Exception as exc:
+        print(f"[pei] override resolve: {exc}", file=sys.stderr)
+        pei_ctx = {}
 
     id_evento = data.get("id_evento")
     try:
@@ -312,11 +325,20 @@ def adaptar_pei():
         titulo_card=titulo_card,
         descricao_card=descricao_card or titulo_card,
     )
+    bloco_escola = str(pei_ctx.get("bloco_prompt") or "").strip()
+    if bloco_escola:
+        system_prompt = (
+            system_prompt
+            + "\n\nDIRETRIZES OBRIGATÓRIAS DA ESCOLA (respeite sem contradizer):\n"
+            + bloco_escola
+        )
     user_content = build_pei_user_content(
         perfil_selecionado=perfil,
         titulo_card=titulo_card,
         descricao_card=descricao_card or titulo_card,
     )
+    if aluno_nome:
+        user_content += f"\nAluno (identificação do professor): {aluno_nome}\n"
 
     try:
         adaptacao = _invoke_pei_bedrock(
@@ -360,12 +382,24 @@ def adaptar_pei():
                 meta = {
                     "origem": "adaptar_pei",
                     "perfil_selecionado": perfil,
+                    "aluno_nome": aluno_nome or None,
                     "atividade_original": {
                         "card_id": card_id,
                         "titulo": titulo_card,
                         "descricao": descricao_card,
                     },
                     "gerado_em": datetime.utcnow().isoformat() + "Z",
+                    "pei_override_versao_aplicada": pei_ctx.get(
+                        "pei_override_versao_aplicada"
+                    ),
+                    "escola_override": {
+                        "ativa": bool(pei_ctx.get("bloco_prompt")),
+                        "mensagem": pei_ctx.get("mensagem_ui"),
+                        "base": pei_ctx.get("base"),
+                        "individual": pei_ctx.get("individual"),
+                    }
+                    if pei_ctx.get("bloco_prompt")
+                    else None,
                 }
 
                 cur.execute(
@@ -436,6 +470,18 @@ def adaptar_pei():
         # Geração ok, mas crédito sumiu em condição de corrida — ainda devolve o subcard.
         novo_saldo = get_creditos_ia(id_clie)
 
+    escola_ov = None
+    if pei_ctx.get("bloco_prompt"):
+        escola_ov = {
+            "ativa": True,
+            "mensagem": pei_ctx.get("mensagem_ui"),
+            "base": pei_ctx.get("base"),
+            "individual": pei_ctx.get("individual"),
+            "pei_override_versao_aplicada": pei_ctx.get(
+                "pei_override_versao_aplicada"
+            ),
+        }
+
     return jsonify(
         {
             "success": True,
@@ -448,8 +494,39 @@ def adaptar_pei():
                 "parent_card_id": card_id,
                 "perfil_inclusao": perfil,
                 "cor": "#FDE68A",
+                "aluno_nome": aluno_nome or None,
+                "escola_override": escola_ov,
+                "pei_override_versao_aplicada": pei_ctx.get(
+                    "pei_override_versao_aplicada"
+                ),
             },
             "kanban_state": kanban_state,
             "creditos_ia": novo_saldo,
+            "escola_override": escola_ov,
+            "pei_override_versao_aplicada": pei_ctx.get(
+                "pei_override_versao_aplicada"
+            ),
         }
     )
+
+
+@kanban_pei_bp.get("/api/pei-overrides")
+def list_pei_overrides():
+    """Overrides PEI ativos da instituição do professor (transparência / debug)."""
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+    try:
+        from services.pei_override_service import list_overrides_for_professor
+
+        data = list_overrides_for_professor(int(user["id_clie"]))
+        return jsonify(
+            {
+                "success": True,
+                "base": data.get("base") or [],
+                "individual": data.get("individual") or [],
+            }
+        )
+    except Exception as exc:
+        print(f"[pei] list overrides: {exc}", file=sys.stderr)
+        return jsonify({"success": True, "base": [], "individual": []})

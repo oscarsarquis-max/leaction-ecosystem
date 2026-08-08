@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import AdminLayout from './layouts/AdminLayout'
+import CrmPageTracker from './components/CrmPageTracker'
 import { AuthProvider, useAuth } from './lib/auth'
 import { firstAccessiblePath, hasAnyZona, pathAllowed } from './lib/rbac'
 import Acesso from './pages/Acesso'
@@ -7,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import TeamManagement from './pages/TeamManagement'
 import PedagogicalEditor from './pages/PedagogicalEditor'
 import SecretariaOperacional from './pages/SecretariaOperacional'
+import Market from './pages/Market'
 
 function ZoneGate({ zonasRequired, children }) {
   const { user } = useAuth()
@@ -71,8 +73,11 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <CrmPageTracker />
         <Routes>
           <Route path="/acesso" element={<Acesso />} />
+          {/* Full-bleed: fora do AdminLayout; gate próprio (sessão + zona administrativo) */}
+          <Route path="/market" element={<Market />} />
           <Route element={<ProtectedShell />}>
             <Route
               index

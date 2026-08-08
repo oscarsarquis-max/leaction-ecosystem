@@ -290,8 +290,10 @@ def incorporar(item_id: str):
             # Resolve metodologia no catálogo (match case-insensitive / slug).
             cur.execute(
                 """
-                SELECT c.id AS metodologia_catalogo_id, c.nome,
-                       cfg.id AS config_id, cfg.diretriz_customizada
+                SELECT c.id AS metodologia_catalogo_id, c.nome, c.codigo,
+                       cfg.id AS config_id, cfg.diretriz_customizada,
+                       COALESCE(cfg.ativo_dia_a_dia, TRUE) AS ativo_dia_a_dia,
+                       COALESCE(cfg.ativo_desafio, TRUE) AS ativo_desafio
                 FROM public.school_metodologias_catalogo c
                 LEFT JOIN public.school_metodologia_config cfg
                   ON cfg.metodologia_catalogo_id = c.id
@@ -331,11 +333,15 @@ def incorporar(item_id: str):
                     diretriz_customizada = EXCLUDED.diretriz_customizada,
                     is_customizado = TRUE,
                     updated_at = CURRENT_TIMESTAMP
-                RETURNING id, diretriz_customizada, is_customizado
+                RETURNING id, diretriz_customizada, is_customizado, updated_at,
+                          ativo_dia_a_dia, ativo_desafio, is_active
                 """,
                 (inst, str(met["metodologia_catalogo_id"]), nova_diretriz),
             )
             cfg = cur.fetchone()
+            if cfg is not None:
+                cfg = dict(cfg)
+                cfg["codigo"] = met.get("codigo")
 
             # Espelho na especialização da organização (Editor Pedagógico)
             cur.execute(
@@ -373,10 +379,33 @@ def incorporar(item_id: str):
     # Fora da TX — notifica B2C (IA do professor).
     from b2c_integration_service import dispatch_methodology_override_updated
 
+    cfg_updated = None
+    if cfg and hasattr(cfg.get("updated_at"), "isoformat"):
+        cfg_updated = cfg["updated_at"].isoformat()
+    elif cfg and cfg.get("updated_at"):
+        cfg_updated = str(cfg["updated_at"])
+    versao_ts = None
+    if cfg_updated:
+        try:
+            from datetime import datetime
+
+            versao_ts = int(
+                datetime.fromisoformat(cfg_updated.replace("Z", "+00:00")).timestamp()
+            )
+        except Exception:
+            versao_ts = None
+
     dispatch = dispatch_methodology_override_updated(
         instituicao_id=inst,
         metodologia_nome=met_nome,
+        metodologia_codigo=(cfg or {}).get("codigo") if cfg else None,
         diretriz_customizada=cfg["diretriz_customizada"] if cfg else nova_diretriz,
+        disponivel_dia_a_dia=bool((cfg or {}).get("ativo_dia_a_dia", True)) if cfg else True,
+        disponivel_desafio=bool((cfg or {}).get("ativo_desafio", True)) if cfg else True,
+        is_active=bool((cfg or {}).get("is_active", True)) if cfg else True,
+        atualizado_em=cfg_updated,
+        versao=versao_ts,
+        origem_config_school_id=str(cfg["id"]) if cfg and cfg.get("id") else None,
     )
 
     return jsonify(

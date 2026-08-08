@@ -29,6 +29,7 @@ const inputClass =
 const areaClass = `${inputClass} min-h-[7rem] resize-y`
 
 const emptyPei = {
+  aluno_id: '',
   nome_completo: '',
   matricula: '',
   nome_responsavel: '',
@@ -467,6 +468,7 @@ function Field({ label, hint, children, highlight }) {
 function PeisIndividuaisPanel({ onToast }) {
   const [lista, setLista] = useState([])
   const [condicoes, setCondicoes] = useState([])
+  const [alunosSec, setAlunosSec] = useState([])
   const [form, setForm] = useState(emptyPei)
   const [editId, setEditId] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -480,16 +482,23 @@ function PeisIndividuaisPanel({ onToast }) {
     setLoading(true)
     setError('')
     try {
-      const [resP, resC] = await Promise.all([
+      const [resP, resC, resA] = await Promise.all([
         fetch('/api/pei/alunos', { credentials: 'include' }),
         fetch('/api/aee/condicoes', { credentials: 'include' }),
+        fetch('/api/secretaria/alunos', { credentials: 'include' }),
       ])
       const bodyP = await resP.json().catch(() => [])
       const bodyC = await resC.json().catch(() => [])
+      const bodyA = await resA.json().catch(() => ({}))
       if (!resP.ok) throw new Error(bodyP.error || 'Falha ao listar PEIs')
       setLista(Array.isArray(bodyP) ? bodyP : [])
       if (Array.isArray(bodyC) && bodyC.length) {
         setCondicoes(bodyC.map((c) => c.condicao_categoria))
+      }
+      const itemsA = Array.isArray(bodyA?.items) ? bodyA.items : []
+      setAlunosSec(itemsA.filter((a) => a.ativo !== false))
+      if (!resA.ok) {
+        setError(bodyA.error || 'Não foi possível carregar alunos da Secretaria')
       }
     } catch (e) {
       setError(e.message || 'Erro')
@@ -514,6 +523,7 @@ function PeisIndividuaisPanel({ onToast }) {
   function abrirEditar(row) {
     setEditId(row.id)
     setForm({
+      aluno_id: row.aluno_id || '',
       nome_completo: row.nome_completo || '',
       matricula: row.matricula || '',
       nome_responsavel: row.nome_responsavel || '',
@@ -528,19 +538,42 @@ function PeisIndividuaisPanel({ onToast }) {
     setShowForm(true)
   }
 
+  function onSelectAluno(alunoId) {
+    const a = alunosSec.find((x) => x.id === alunoId)
+    setForm((s) => ({
+      ...s,
+      aluno_id: alunoId,
+      nome_completo: a?.nome || '',
+      matricula: a?.matricula || '',
+    }))
+  }
+
   function setField(key, value) {
     setForm((s) => ({ ...s, [key]: value }))
   }
 
   async function salvar(e) {
     e.preventDefault()
+    if (!form.aluno_id) {
+      setError('Selecione um aluno cadastrado na Secretaria.')
+      return
+    }
     setBusy('salvar')
     setError('')
     try {
       const url = editId ? `/api/pei/alunos/${editId}` : '/api/pei/alunos'
       const method = editId ? 'PUT' : 'POST'
-      const payload = { ...form }
-      if (editId) delete payload.condicao_categoria
+      const payload = {
+        aluno_id: form.aluno_id,
+        nome_responsavel: form.nome_responsavel,
+        perfil_atual_habilidades: form.perfil_atual_habilidades,
+        barreiras_identificadas: form.barreiras_identificadas,
+        metas_desenvolvimento: form.metas_desenvolvimento,
+        recursos_assistivos: form.recursos_assistivos,
+        criterios_avaliacao_flexibilizados: form.criterios_avaliacao_flexibilizados,
+        experiencias_adaptadas_individuais: form.experiencias_adaptadas_individuais,
+      }
+      if (!editId) payload.condicao_categoria = form.condicao_categoria
       const res = await fetch(url, {
         method,
         credentials: 'include',
@@ -647,19 +680,38 @@ function PeisIndividuaisPanel({ onToast }) {
             {editId ? 'Editar PEI' : 'Criar PEI individual'}
           </h3>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Nome completo">
-              <input
+            <Field
+              label="Aluno (Secretaria)"
+              hint="Cadastre o aluno em Secretaria Acadêmica antes de criar o PEI."
+            >
+              <select
                 className={inputClass}
                 required
-                value={form.nome_completo}
-                onChange={(e) => setField('nome_completo', e.target.value)}
-              />
+                value={form.aluno_id}
+                onChange={(e) => onSelectAluno(e.target.value)}
+                disabled={Boolean(editId)}
+              >
+                <option value="">Selecione o aluno…</option>
+                {alunosSec.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nome}
+                    {a.matricula ? ` · ${a.matricula}` : ''}
+                    {a.turma_nome ? ` · ${a.turma_nome}` : ''}
+                  </option>
+                ))}
+              </select>
+              {!alunosSec.length ? (
+                <p className="mt-1 text-xs text-amber-800">
+                  Nenhum aluno ativo na Secretaria desta instituição.
+                </p>
+              ) : null}
             </Field>
-            <Field label="Matrícula">
+            <Field label="Matrícula (somente leitura)">
               <input
                 className={inputClass}
                 value={form.matricula}
-                onChange={(e) => setField('matricula', e.target.value)}
+                readOnly
+                disabled
               />
             </Field>
             <Field label="Nome do responsável">

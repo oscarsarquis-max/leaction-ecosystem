@@ -100,7 +100,7 @@ def _cliente_bridge_context(id_clie: int) -> dict[str, Any]:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT id_clie, mail_clie, instituicao_b2b_id, institutional_name
+                SELECT id_clie, nome_clie, mail_clie, instituicao_b2b_id, institutional_name
                 FROM public.ctdi_clie
                 WHERE id_clie = %s
                 LIMIT 1
@@ -132,6 +132,71 @@ def _metodologia_nome_from_evento(evento: dict[str, Any]) -> str:
     return tipo or "Metodologia"
 
 
+def _aula_contexto_from_evento(
+    evento: dict[str, Any],
+    *,
+    metodologia: str,
+    aula_contexto: str | None = None,
+) -> str:
+    explicit = (aula_contexto or "").strip()
+    if explicit:
+        return explicit
+    meta = evento.get("meta_json") if isinstance(evento.get("meta_json"), dict) else {}
+    disc = str(
+        meta.get("disciplina_nome")
+        or evento.get("disciplina_nome")
+        or ""
+    ).strip()
+    titulo = str(evento.get("titulo") or "").strip()
+    parts = [p for p in (metodologia, disc, titulo) if p]
+    return " · ".join(parts) or metodologia or "Aula"
+
+
+def _tarefas_from_kanban(kanban_state: Any) -> list[dict[str, Any]]:
+    if isinstance(kanban_state, list):
+        return [t for t in kanban_state if isinstance(t, dict)]
+    if isinstance(kanban_state, dict):
+        tarefas = kanban_state.get("tarefas")
+        if isinstance(tarefas, list):
+            return [t for t in tarefas if isinstance(t, dict)]
+    return []
+
+
+def _cards_snapshot_from_evento(evento: dict[str, Any]) -> list[dict[str, Any]]:
+    """Snapshot enxuto dos cards (com historico) para o espelho School."""
+    ks = evento.get("kanban_state")
+    if isinstance(ks, str) and ks.strip():
+        try:
+            import json
+
+            ks = json.loads(ks)
+        except Exception:
+            ks = None
+    cards_out: list[dict[str, Any]] = []
+    for t in _tarefas_from_kanban(ks):
+        cards_out.append(
+            {
+                "id": t.get("id"),
+                "titulo": t.get("titulo") or t.get("titulo_do_card"),
+                "coluna": t.get("coluna") or "para_fazer",
+                "cor": t.get("cor"),
+                "duracao_minutos": t.get("duracao_minutos"),
+                "objetivo": t.get("objetivo"),
+                "como_executar_detalhado": t.get("como_executar_detalhado")
+                or t.get("mecanica_passo_a_passo")
+                or t.get("descricao"),
+                "dica_de_facilitacao": t.get("dica_de_facilitacao"),
+                "ultima_observacao": t.get("ultima_observacao"),
+                "historico": t.get("historico") if isinstance(t.get("historico"), list) else [],
+                "perfil_inclusao": t.get("perfil_inclusao"),
+                "parent_card_id": t.get("parent_card_id"),
+                "pei_concluido": t.get("pei_concluido"),
+                "aula_id": t.get("aula_id"),
+            }
+        )
+    return cards_out
+
+
 def dispatch_lesson_record_sync(
     *,
     id_clie: int,
@@ -139,10 +204,13 @@ def dispatch_lesson_record_sync(
     has_teacher_adaptations: bool,
     teacher_adaptation_text: str | None = None,
     metodologia_usada: str | None = None,
+    aula_contexto: str | None = None,
+    professor_nome: str | None = None,
     has_pei_adaptations: bool = False,
     pei_adaptation_text: str | None = None,
     pei_aluno_id: str | None = None,
     aluno_nome: str | None = None,
+    school_status: str | None = None,
 ) -> dict[str, Any]:
     """Empurra LESSON_RECORD_SYNC ao School (curadoria bottom-up se houver adaptação)."""
     cliente = _cliente_bridge_context(id_clie)
@@ -152,24 +220,48 @@ def dispatch_lesson_record_sync(
 
     met_nome = (metodologia_usada or "").strip() or _metodologia_nome_from_evento(evento)
     adapt_text = (teacher_adaptation_text or "").strip() or None
-    has_adapt = bool(has_teacher_adaptations) and bool(adapt_text)
+    # Curadoria só com texto concreto no fechamento (flag sozinha não basta).
+    has_adapt = bool(adapt_text)
     pei_text = (pei_adaptation_text or "").strip() or None
     has_pei = bool(has_pei_adaptations) and bool(pei_text)
+
+    prof_nome = (
+        (professor_nome or "").strip()
+        or str(cliente.get("nome_clie") or "").strip()
+        or None
+    )
+    contexto = _aula_contexto_from_evento(
+        evento, metodologia=met_nome, aula_contexto=aula_contexto
+    )
 
     origem = None
     raw_origem = evento.get("desafio_id") or evento.get("id_evento")
     if raw_origem is not None:
         origem = str(raw_origem)
 
+    ev_status = str(evento.get("status") or "").strip().lower()
+    mesa_status = ev_status or "concluido"
+    # Status no School: aprovado só no fechamento; em andamento → pendente.
+    if school_status:
+        payload_status = school_status
+    elif has_adapt or mesa_status in ("concluido", "concluído", "done"):
+        payload_status = "aprovado"
+    else:
+        payload_status = "pendente"
+
+    cards = _cards_snapshot_from_evento(evento)
+
     mesa = {
         "id": str(evento.get("id_evento") or ""),
         "titulo": evento.get("titulo") or "",
         "tipo_aula": "desafio",
-        "status": evento.get("status") or "concluido",
+        "status": mesa_status,
         "metodologia_nome": met_nome,
         "semana_referencia": str(evento.get("data_evento") or "")[:10] or None,
         "has_teacher_adaptations": has_adapt,
         "teacher_adaptation_text": adapt_text,
+        "texto_sugestao": adapt_text,
+        "aula_contexto": contexto,
         "adaptations": {"texto": adapt_text} if adapt_text else None,
         "has_pei_adaptations": has_pei,
         "pei_adaptation_text": pei_text,
@@ -177,6 +269,10 @@ def dispatch_lesson_record_sync(
         "aluno_nome": aluno_nome,
         "relato_sala": evento.get("relato_sala"),
         "participantes": evento.get("participantes"),
+        "professor_id": str(id_clie),
+        "professor_nome": prof_nome,
+        "cards": cards,
+        "kanban_cards": cards,
     }
 
     payload = {
@@ -185,11 +281,15 @@ def dispatch_lesson_record_sync(
         "professor_email": cliente.get("mail_clie"),
         "email": cliente.get("mail_clie"),
         "professor_b2c_id": str(id_clie),
+        "professor_id": str(id_clie),
+        "professor_nome": prof_nome,
+        "aula_contexto": contexto,
+        "texto_sugestao": adapt_text,
         "metodologia_nome": met_nome,
         "metodologia_usada": met_nome,
         "semana_referencia": mesa["semana_referencia"],
         "tipo_aula": "desafio",
-        "status": "aprovado",
+        "status": payload_status,
         "conteudo_resumo": evento.get("titulo") or met_nome,
         "has_teacher_adaptations": has_adapt,
         "teacher_adaptation_text": adapt_text,

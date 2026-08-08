@@ -98,6 +98,14 @@ export default function StepHipoteses({
                 </p>
               ) : null}
 
+              {caminho.escola_override?.ativa ? (
+                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-950">
+                  <span className="font-semibold">Regra da escola: </span>
+                  {caminho.escola_override.mensagem ||
+                    caminho.escola_override.diretriz_customizada}
+                </p>
+              ) : null}
+
               <h2 className="mt-2 font-display text-lg font-bold text-bordo-deep">
                 {caminho.titulo}
               </h2>

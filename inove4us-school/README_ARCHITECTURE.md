@@ -42,7 +42,7 @@ A School **não** executa o ciclo de aula do professor. Ela **define e governa**
 
 ## Ponte com o B2C
 
-- Coluna `school_professores_vinculo.professor_b2c_id` (UUID) é a **única ponte de identidade** no schema inicial.
+- Coluna `school_professores_vinculo.professor_b2c_id` (`INTEGER` = `id_clie` do B2C, desde migration 030) é a **única ponte de identidade** no schema.
 - Sem FK para tabelas do banco `inove4us`. O mapeamento para `id_clie` / conta do professor acontece em **camada de integração** (API, webhook ou serviço de identidade do Hub), quando for implementada.
 - Diretrizes ativas (`school_editor_pedagogico.is_active`) são **repassadas** ao B2C como payload de política — o B2C pode espelhar ou consultar; a fonte de verdade institucional é a School.
 

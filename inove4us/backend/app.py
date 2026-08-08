@@ -152,7 +152,7 @@ def create_app() -> Flask:
     app.register_blueprint(webhook_bp)
     # Ponte interna School → B2C (JWT HS256 / METHODOLOGY_OVERRIDE_UPDATED)
     app.register_blueprint(webhook_school_bp)
-    # School → B2C (comunicados / mural)
+    # School → B2C (comunicados / mural + planejamento escolar)
     app.register_blueprint(school_integracao_bp)
     # Billing — proxy S2S checkout (secret fica só no backend)
     app.register_blueprint(billing_bp)

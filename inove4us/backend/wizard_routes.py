@@ -790,9 +790,13 @@ def _pick_metodologia_diversa(
     preferred_id: str | None = None,
     slot: int = 0,
     seed: str = "",
+    exclude_ids: set[str] | None = None,
 ) -> str:
     """Escolhe entre as 39: IDs distintos + famílias distintas; rotaciona na família."""
+    blocked = {str(x) for x in (exclude_ids or set()) if x}
     preferred = _resolve_catalog_id(preferred_id)
+    if preferred and preferred in blocked:
+        preferred = None
     used_families = {_familia_de(m) for m in used if _familia_de(m)}
     pref_fam = _familia_de(preferred) if preferred else ""
     rot = abs(hash((seed or "", slot))) if seed else slot
@@ -800,13 +804,14 @@ def _pick_metodologia_diversa(
     if (
         preferred
         and preferred not in used
+        and preferred not in blocked
         and (not pref_fam or pref_fam not in used_families)
     ):
         if preferred in _OVERUSED_IDS and rot % 3 != 0 and pref_fam:
             alts = [
                 m
                 for m in _ids_da_familia(pref_fam)
-                if m not in used and m not in _OVERUSED_IDS
+                if m not in used and m not in blocked and m not in _OVERUSED_IDS
             ]
             if alts:
                 return alts[rot % len(alts)]
@@ -819,7 +824,9 @@ def _pick_metodologia_diversa(
     for etq in ordered:
         if etq in used_families:
             continue
-        candidatos = [m for m in _ids_da_familia(etq) if m not in used]
+        candidatos = [
+            m for m in _ids_da_familia(etq) if m not in used and m not in blocked
+        ]
         if candidatos:
             preferidos = [m for m in candidatos if m not in _OVERUSED_IDS] or candidatos
             return preferidos[rot % len(preferidos)]
@@ -827,9 +834,14 @@ def _pick_metodologia_diversa(
     # Qualquer uma das 39 ainda livre
     from core.catalogo_metodologias_dia import entradas_catalogo_dia
 
-    livres = [e["id"] for e in entradas_catalogo_dia() if e["id"] not in used]
+    livres = [
+        e["id"]
+        for e in entradas_catalogo_dia()
+        if e["id"] not in used and e["id"] not in blocked
+    ]
     if livres:
         return livres[rot % len(livres)]
+    # Último recurso: ignora bloqueio escolar só se o catálogo inteiro estiver vazio
     return _FALLBACK_IDS_DIVERSOS[slot % len(_FALLBACK_IDS_DIVERSOS)]
 
 
@@ -1177,6 +1189,7 @@ def _montar_caminho_hibrido(
     trecho_relato: str,
     refs_no_prompt: list[dict] | None = None,
     forced_mid: str | None = None,
+    override_by_key: dict | None = None,
 ) -> dict:
     """Costura: id do catálogo 39 + gancho/hipótese LLM → cards do id_db (se houver)."""
     mid = forced_mid or _resolve_catalog_id(opt.get("id_metodologia"))
@@ -1336,6 +1349,15 @@ def _montar_caminho_hibrido(
         caminho["ancoragem_de_para"] = (
             f"[De: desafio do professor] -> [Para: {nome} ({entrada['id']})]"
         )
+    # Governança escolar (fail-soft): injeta diretriz se houver override ativo
+    try:
+        from services.methodology_override_service import apply_override_to_caminho
+
+        ov = (override_by_key or {}).get(entrada["id"])
+        if ov:
+            caminho = apply_override_to_caminho(caminho, ov)
+    except Exception as exc:
+        print(f"[wizard] override inject: {exc}", file=sys.stderr)
     return caminho
 
 
@@ -1345,6 +1367,9 @@ def _stitch_ranking_hibrido(
     contexto: str,
     refs: list[dict],
     corpus_refs: list[str] | None = None,
+    *,
+    exclude_ids: set[str] | None = None,
+    override_by_key: dict | None = None,
 ) -> dict:
     """
     Costura o JSON curto do LLM (A/B/C) com o catálogo canônico de 39.
@@ -1382,6 +1407,7 @@ def _stitch_ranking_hibrido(
             preferred_id=preferred,
             slot=i,
             seed=problema or contexto or "",
+            exclude_ids=exclude_ids,
         )
         used_mids.add(mid)
         caminhos_out.append(
@@ -1394,6 +1420,7 @@ def _stitch_ranking_hibrido(
                 trecho_relato=trecho_uso,
                 refs_no_prompt=refs,
                 forced_mid=mid,
+                override_by_key=override_by_key,
             )
         )
 
@@ -1541,7 +1568,32 @@ def estruturar_problema():
             "- (estilo) Engajamento: turma dispersa precisa de papéis claros e entrega curta."
         )
 
-    system_prompt = build_estruturar_system_prompt(bloco_ref)
+    # Overrides da escola (fail-soft): nunca bloqueia freemium / criação de aula
+    override_by_key: dict = {}
+    exclude_ids: set[str] = set()
+    try:
+        from services.methodology_override_service import (
+            blocked_ids_for_vector,
+            overrides_map_for_professor,
+        )
+
+        override_by_key = overrides_map_for_professor(int(id_clie))
+        exclude_ids = blocked_ids_for_vector(int(id_clie), "desafio")
+    except Exception as exc:
+        print(f"[wizard] overrides load: {exc}", file=sys.stderr)
+        override_by_key = {}
+        exclude_ids = set()
+
+    diretrizes_escola = [
+        ov
+        for ov in override_by_key.values()
+        if ov.get("diretriz_customizada") and ov.get("disponivel_desafio", True)
+    ]
+    system_prompt = build_estruturar_system_prompt(
+        bloco_ref,
+        exclude_ids=exclude_ids,
+        diretrizes_escola=diretrizes_escola,
+    )
 
     problema_limpo = texto_professor_limpo(problema) or problema
     ctx_prompt = contexto_seguro_para_ui(contexto, problema, corpus_refs)
@@ -1560,7 +1612,8 @@ def estruturar_problema():
     tokens_user = estimate_tokens(user_content)
     print(
         f"[wizard] prompt_tokens_est system={tokens_system} user={tokens_user} "
-        f"total={tokens_system + tokens_user} refs={len(refs_prompt)}",
+        f"total={tokens_system + tokens_user} refs={len(refs_prompt)} "
+        f"overrides={len(override_by_key)} blocked_desafio={len(exclude_ids)}",
         file=sys.stderr,
     )
 
@@ -1585,7 +1638,13 @@ def estruturar_problema():
             file=sys.stderr,
         )
         payload = _stitch_ranking_hibrido(
-            raw, problema, contexto, refs_prompt, corpus_refs
+            raw,
+            problema,
+            contexto,
+            refs_prompt,
+            corpus_refs,
+            exclude_ids=exclude_ids,
+            override_by_key=override_by_key,
         )
 
         # Retry único e controlado se a checagem determinística falhar
@@ -1615,7 +1674,13 @@ def estruturar_problema():
                 json_prefill=json_prefill,
             )
             payload = _stitch_ranking_hibrido(
-                raw2, problema, contexto, refs_prompt, corpus_refs
+                raw2,
+                problema,
+                contexto,
+                refs_prompt,
+                corpus_refs,
+                exclude_ids=exclude_ids,
+                override_by_key=override_by_key,
             )
             usou_retry = True
             q1 = dict(payload.get("qualidade") or {})
@@ -1625,6 +1690,24 @@ def estruturar_problema():
         print(f"[wizard] Bedrock/fallback: {exc}", file=sys.stderr)
         payload = _fallback_payload(problema, contexto, refs_prompt, corpus_refs)
         usou_fallback = True
+        # Fallback também respeita vetores/diretrizes quando possível
+        try:
+            if isinstance(payload, dict) and payload.get("caminhos"):
+                from services.methodology_override_service import apply_override_to_caminho
+
+                novos = []
+                for c in payload["caminhos"]:
+                    mid = _resolve_catalog_id(
+                        (c or {}).get("id_metodologia") or (c or {}).get("metodologia")
+                    )
+                    if mid and mid in exclude_ids:
+                        continue
+                    ov = override_by_key.get(mid) if mid else None
+                    novos.append(apply_override_to_caminho(c, ov) if ov else c)
+                if len(novos) >= 1:
+                    payload["caminhos"] = novos
+        except Exception as exc2:
+            print(f"[wizard] fallback override: {exc2}", file=sys.stderr)
 
     # Defesa determinística + barreira final (tabela inteira de refs)
     payload = forcar_ancoragem_payload(
@@ -1735,6 +1818,20 @@ def selecionar_caminho():
     if not isinstance(plano, dict):
         return jsonify({"error": "Plano EduScrum ausente no caminho."}), 400
 
+    # Garante auditoria da versão do override no plano persistido
+    versao = (
+        caminho.get("metodologia_override_versao_aplicada")
+        or (caminho.get("escola_override") or {}).get("versao")
+        or plano.get("metodologia_override_versao_aplicada")
+    )
+    if versao is not None:
+        try:
+            plano["metodologia_override_versao_aplicada"] = int(versao)
+        except (TypeError, ValueError):
+            pass
+    if caminho.get("escola_override") and not plano.get("escola_override"):
+        plano["escola_override"] = caminho.get("escola_override")
+
     return jsonify(
         {
             "status": "success",
@@ -1742,5 +1839,33 @@ def selecionar_caminho():
             "plano_eduscrum": plano,
             "caminho_id": caminho.get("id"),
             "caminho_titulo": caminho.get("titulo"),
+            "escola_override": caminho.get("escola_override"),
+            "metodologia_override_versao_aplicada": plano.get(
+                "metodologia_override_versao_aplicada"
+            ),
         }
     )
+
+
+@wizard_bp.get("/api/wizard/metodologia-overrides")
+def list_metodologia_overrides_professor():
+    """Consulta os overrides ativos da instituição do professor (transparência / debug)."""
+    user = session.get("user") or {}
+    id_clie = user.get("id_clie")
+    if not id_clie:
+        return jsonify({"error": "Não autenticado"}), 401
+    try:
+        from services.methodology_override_service import overrides_map_for_professor
+
+        m = overrides_map_for_professor(int(id_clie))
+        return jsonify(
+            {
+                "success": True,
+                "overrides": list(m.values()),
+                "total": len(m),
+            }
+        )
+    except Exception as exc:
+        print(f"[wizard] list overrides: {exc}", file=sys.stderr)
+        return jsonify({"success": True, "overrides": [], "total": 0})
+

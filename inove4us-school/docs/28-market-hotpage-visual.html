@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>inove4us — Ecossistema | /market</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bordo:#7A2331;
+    --bordo-deep:#4E1620;
+    --bordo-soft:#F4E6E8;
+    --verde:#1F6F4A;
+    --verde-deep:#123F2A;
+    --verde-soft:#E3F1E9;
+    --lilas:#6C4E9E;
+    --lilas-deep:#3E2C63;
+    --lilas-soft:#EDE7F6;
+    --ink:#181512;
+    --ink-soft:#5B5551;
+    --paper:#FAF7F2;
+    --paper-dim:#F1ECE3;
+    --line:#E4DDD1;
+    --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:'Inter',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.6;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,.serif{font-family:'Fraunces',serif;}
+  .container{max-width:1180px;margin:0 auto;padding:0 32px;}
+
+  /* ---------- password gate ---------- */
+  #gate{
+    position:fixed;inset:0;background:var(--ink);z-index:999;
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    color:var(--paper);gap:22px;transition:opacity .5s ease, visibility .5s ease;
+  }
+  #gate.hidden{opacity:0;visibility:hidden;pointer-events:none;}
+  #gate .mark{font-family:'Fraunces',serif;font-size:15px;letter-spacing:.35em;text-transform:uppercase;color:#C9A9AE;}
+  #gate h2{font-size:28px;font-weight:500;text-align:center;max-width:420px;}
+  #gate form{display:flex;gap:10px;}
+  #gate input{
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);
+    color:var(--paper);padding:13px 16px;border-radius:8px;font-size:15px;width:240px;
+    font-family:'Inter',sans-serif;
+  }
+  #gate input::placeholder{color:rgba(255,255,255,.4);}
+  #gate button{
+    background:var(--bordo);color:#fff;border:none;padding:13px 22px;border-radius:8px;
+    font-weight:600;cursor:pointer;font-size:15px;
+  }
+  #gate .hint{font-size:13px;color:rgba(255,255,255,.45);max-width:340px;text-align:center;}
+  #gate .err{font-size:13px;color:#E39BA6;min-height:16px;}
+
+  /* ---------- reveal ---------- */
+  .reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease, transform .7s ease;}
+  .reveal.in{opacity:1;transform:translateY(0);}
+
+  /* ---------- nav ---------- */
+  nav{
+    position:sticky;top:0;z-index:50;background:rgba(250,247,242,.88);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+  }
+  nav .inner{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;max-width:1180px;margin:0 auto;}
+  nav .logo{font-family:'Fraunces',serif;font-weight:600;font-size:18px;letter-spacing:.02em;}
+  nav .links{display:flex;gap:28px;font-size:13.5px;font-weight:600;}
+  nav .links a{color:var(--ink-soft);text-decoration:none;padding:6px 0;border-bottom:2px solid transparent;transition:.2s;}
+  nav .links a:hover{color:var(--ink);}
+  nav .links a.b2c:hover{border-color:var(--bordo);color:var(--bordo);}
+  nav .links a.b2b:hover{border-color:var(--verde);color:var(--verde-deep);}
+  nav .links a.bridge:hover{border-color:var(--lilas);color:var(--lilas-deep);}
+  nav .tag{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:var(--ink);color:var(--paper);padding:5px 11px;border-radius:100px;}
+
+  /* ---------- hero ---------- */
+  .hero{padding:100px 0 70px;text-align:center;position:relative;}
+  .hero .eyebrow{font-size:12.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:22px;}
+  .hero h1{font-size:56px;font-weight:600;line-height:1.08;letter-spacing:-.01em;max-width:820px;margin:0 auto 26px;}
+  .hero h1 em{font-style:italic;font-weight:500;background:linear-gradient(90deg,var(--bordo),var(--lilas) 55%,var(--verde));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .hero p.lead{font-size:19px;color:var(--ink-soft);max-width:620px;margin:0 auto;font-weight:400;}
+
+  .split{
+    display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
+    margin-top:64px;border:1px solid var(--line);border-radius:18px;overflow:hidden;
+  }
+  .split .side{background:var(--white);padding:38px 34px;position:relative;}
+  .split .side.b2c{background:linear-gradient(165deg,var(--bordo-soft),var(--white) 65%);}
+  .split .side.b2b{background:linear-gradient(195deg,var(--verde-soft),var(--white) 65%);}
+  .split .side .kicker{font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;}
+  .split .side.b2c .kicker{color:var(--bordo);}
+  .split .side.b2b .kicker{color:var(--verde-deep);}
+  .split .side h3{font-size:26px;font-weight:600;margin:10px 0 8px;text-align:left;}
+  .split .side .concept{font-size:14.5px;color:var(--ink-soft);text-align:left;}
+
+  /* ---------- section shell ---------- */
+  section.block{padding:120px 0;position:relative;}
+  .block .head{max-width:660px;margin:0 auto 64px;text-align:center;}
+  .block .head .kicker{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;margin-bottom:16px;}
+  .block .head h2{font-size:40px;font-weight:600;line-height:1.15;margin-bottom:16px;}
+  .block .head p{font-size:17px;color:var(--ink-soft);}
+
+  .b2c-block{background:linear-gradient(180deg,var(--paper) 0%, var(--bordo-soft) 50%, var(--paper) 100%);}
+  .b2c-block .kicker{color:var(--bordo);}
+  .b2b-block{background:linear-gradient(180deg,var(--paper) 0%, var(--verde-soft) 50%, var(--paper) 100%);}
+  .b2b-block .kicker{color:var(--verde-deep);}
+  .bridge-block{background:var(--lilas-deep);color:var(--paper);}
+  .bridge-block .kicker{color:#C9B6EA;}
+  .bridge-block .head p{color:rgba(250,247,242,.75);}
+
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-bottom:26px;}
+  .card{
+    background:var(--white);border:1px solid var(--line);border-radius:16px;padding:30px 26px;
+    transition:transform .25s ease, box-shadow .25s ease;
+  }
+  .card:hover{transform:translateY(-4px);box-shadow:0 18px 40px -18px rgba(0,0,0,.18);}
+  .card .num{font-family:'Fraunces',serif;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:14px;display:block;}
+  .card h4{font-size:17.5px;font-weight:700;margin-bottom:10px;}
+  .card p{font-size:14.5px;color:var(--ink-soft);}
+  .b2c-block .card .num{color:var(--bordo);}
+  .b2b-block .card .num{color:var(--verde-deep);}
+
+  .subhead{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);text-align:center;margin:56px 0 26px;}
+
+  .diff-row{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+  .diff{border-radius:16px;padding:26px;border:1px solid var(--line);background:var(--white);}
+  .diff .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:100px;margin-bottom:14px;}
+  .b2c-block .diff .tag{background:var(--bordo-soft);color:var(--bordo-deep);}
+  .b2b-block .diff .tag{background:var(--verde-soft);color:var(--verde-deep);}
+  .diff h4{font-size:16px;font-weight:700;margin-bottom:8px;}
+  .diff p{font-size:14px;color:var(--ink-soft);}
+
+  /* ---------- bridge ---------- */
+  .bridge-block .container{position:relative;}
+  .matrix{
+    display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:18px;
+    margin:56px 0 60px;
+  }
+  .matrix .node{
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:16px;
+    padding:26px 20px;text-align:center;
+  }
+  .matrix .node .lab{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#C9B6EA;font-weight:700;margin-bottom:10px;}
+  .matrix .node h4{font-size:16.5px;font-weight:600;color:#fff;}
+  .matrix .op{font-family:'Fraunces',serif;font-size:26px;text-align:center;color:#C9B6EA;font-style:italic;}
+  .matrix .result{
+    grid-column:1/-1;margin-top:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);
+    border-radius:16px;padding:28px 30px;text-align:center;
+  }
+  .matrix .result .lab{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#C9B6EA;font-weight:700;margin-bottom:10px;}
+  .matrix .result h4{font-size:20px;font-weight:600;color:#fff;}
+  .bridge-para{max-width:720px;margin:0 auto;text-align:center;font-size:17px;color:rgba(250,247,242,.88);}
+  .bridge-para strong{color:#fff;}
+
+  /* ---------- closing ---------- */
+  .closing{padding:110px 0 130px;text-align:center;background:var(--ink);color:var(--paper);}
+  .closing .eyebrow{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#a99;margin-bottom:20px;color:#B79FC9;}
+  .closing h2{font-size:34px;font-weight:600;max-width:640px;margin:0 auto 16px;line-height:1.25;}
+  .closing p{color:rgba(250,247,242,.6);font-size:15px;max-width:520px;margin:0 auto;}
+  .closing .dots{display:flex;justify-content:center;gap:8px;margin-top:40px;}
+  .closing .dots span{width:8px;height:8px;border-radius:50%;}
+  .closing .dots span:nth-child(1){background:var(--bordo);}
+  .closing .dots span:nth-child(2){background:var(--lilas);}
+  .closing .dots span:nth-child(3){background:var(--verde);}
+
+  footer{padding:26px 0;text-align:center;font-size:12px;color:var(--ink-soft);background:var(--paper-dim);}
+
+  @media (max-width:860px){
+    .hero h1{font-size:38px;}
+    .split{grid-template-columns:1fr;}
+    .grid3, .diff-row{grid-template-columns:1fr;}
+    .matrix{grid-template-columns:1fr;}
+    .matrix .op{transform:rotate(90deg);padding:4px 0;}
+    nav .links{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<!-- PASSWORD GATE (mockup only — ver nota de implementação no prompt para o Cursor) -->
+<div id="gate">
+  <div class="mark">inove4us · school</div>
+  <h2>Área restrita — conteúdo de posicionamento estratégico</h2>
+  <form id="gateForm">
+    <input type="password" id="gatePass" placeholder="Senha de administrador" autocomplete="off">
+    <button type="submit">Entrar</button>
+  </form>
+  <div class="err" id="gateErr"></div>
+  <div class="hint">Acesso restrito a administradores da escola. (Mockup: senha "market2026" — a versão real deve usar autenticação de sessão do gestor, não senha fixa em cliente.)</div>
+</div>
+
+<nav>
+  <div class="inner">
+    <div class="logo">inove4us</div>
+    <div class="links">
+      <a class="b2c" href="#b2c">inove · professor</a>
+      <a class="b2b" href="#b2b">school · gestão</a>
+      <a class="bridge" href="#bridge">a ponte</a>
+    </div>
+    <div class="tag">/market</div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <div class="eyebrow reveal">Ecossistema inove4us · posicionamento</div>
+    <h1 class="reveal">Uma <em>trincheira</em> para o professor. Uma <em>torre de controle</em> para a escola.</h1>
+    <p class="lead reveal">Dois produtos, uma só verdade pedagógica: o que o professor executa na ponta é exatamente o que a gestão enxerga, audita e evolui no centro.</p>
+
+    <div class="split reveal">
+      <div class="side b2c">
+        <div class="kicker">01 — B2C</div>
+        <h3>inove</h3>
+        <p class="concept">A ferramenta do professor. Remove a carga burocrática das costas do docente para que ele foque exclusivamente na execução da aula e na observação dos alunos.</p>
+      </div>
+      <div class="side b2b">
+        <div class="kicker">02 — B2B</div>
+        <h3>inove4us school</h3>
+        <p class="concept">A ferramenta da escola. Governança, compliance jurídico e visão de exceção sobre tudo o que acontece em sala — sem tirar autonomia do professor.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block b2c-block" id="b2c">
+  <div class="container">
+    <div class="head reveal">
+      <div class="kicker">inove — a ferramenta do professor</div>
+      <h2>A Trincheira e a Mesa de Operação</h2>
+      <p>O objetivo é um só: tirar a burocracia do caminho para que o professor foque na aula e nos alunos — nunca no preenchimento de formulário.</p>
+    </div>
+
+    <div class="subhead reveal">Princípios norteadores</div>
+    <div class="grid3">
+      <div class="card reveal">
+        <span class="num">Fricção zero</span>
+        <h4>Operação invisível</h4>
+        <p>A simples movimentação dos cards no Kanban gera o "Diário de Bordo" automaticamente. Documentar não é uma tarefa extra — é consequência de executar.</p>
+      </div>
+      <div class="card reveal">
+        <span class="num">Empatia visual</span>
+        <h4>Proteção do espaço do professor</h4>
+        <p>O ambiente — a "Mesa" — é dele. O design protege esse espaço de qualquer sensação de vigilância ou cobrança externa.</p>
+      </div>
+      <div class="card reveal">
+        <span class="num">Protagonismo</span>
+        <h4>Voz no momento certo</h4>
+        <p>O professor pode sugerir mudanças na metodologia (Curadoria) exatamente no instante em que a aula termina — quando a percepção ainda está viva.</p>
+      </div>
+    </div>
+
+    <div class="subhead reveal">Diferenciais para o professor</div>
+    <div class="diff-row">
+      <div class="diff reveal">
+        <span class="tag">IA</span>
+        <h4>Roteiro "mastigado" por IA</h4>
+        <p>Um roteiro único, em Markdown, pronto para dar aula — sem montagem manual.</p>
+      </div>
+      <div class="diff reveal">
+        <span class="tag">Inclusão</span>
+        <h4>Amparo direto no card</h4>
+        <p>Adaptações de PEI chegam junto da aula, no próprio card — não em um documento separado que ninguém abre.</p>
+      </div>
+      <div class="diff reveal">
+        <span class="tag">Comunicação</span>
+        <h4>Avisos pinados na mesa</h4>
+        <p>Comunicação direta da escola, fixada no topo da mesa de trabalho — visível sem precisar procurar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block b2b-block" id="b2b">
+  <div class="container">
+    <div class="head reveal">
+      <div class="kicker">inove4us school — a ferramenta da escola</div>
+      <h2>A Torre de Controle e o Radar Pedagógico</h2>
+      <p>Governança sobre o que acontece em cada sala de aula, sem burocratizar o professor — visão de exceção, não vigilância linha a linha.</p>
+    </div>
+
+    <div class="subhead reveal">Princípios norteadores</div>
+    <div class="grid3">
+      <div class="card reveal">
+        <span class="num">Governança</span>
+        <h4>Compliance jurídico by design</h4>
+        <p>Separação formal AEE/PEI e uma "Máquina do Tempo" — histórico imutável, assinaturas com timestamp — que blinda a escola de passivos legais e atende exigências do MEC.</p>
+      </div>
+      <div class="card reveal">
+        <span class="num">Exceção</span>
+        <h4>Gestão pelo que importa</h4>
+        <p>O Grafo destaca em lilás exatamente as sugestões de curadoria que pedem atenção — a gestão vê o desvio, não o volume.</p>
+      </div>
+      <div class="card reveal">
+        <span class="num">Disclosure</span>
+        <h4>Complexidade sob demanda</h4>
+        <p>Acordeões colapsados, pílulas de status, filtros poderosos: a informação densa fica disponível, mas nunca despejada de uma vez.</p>
+      </div>
+    </div>
+
+    <div class="subhead reveal">Diferenciais para a escola e a gestão</div>
+    <div class="diff-row">
+      <div class="diff reveal">
+        <span class="tag">Espelho</span>
+        <h4>Espelhamento absoluto</h4>
+        <p>O Radar mostra exatamente o mesmo card que o professor vê na mesa — o mesmo <em>TeacherCardPreview</em>, sem tradução nem perda de contexto.</p>
+      </div>
+      <div class="diff reveal">
+        <span class="tag">Curadoria</span>
+        <h4>Evolução curricular viva</h4>
+        <p>Curadoria da escola → IA reescreve → novo padrão já disponível no dia seguinte. A metodologia da escola nunca fica parada no tempo.</p>
+      </div>
+      <div class="diff reveal">
+        <span class="tag">Onboarding</span>
+        <h4>Funil financeiro automático</h4>
+        <p>Webhook Action-Sponge conduz onboarding e cobrança ponta a ponta, sem intervenção manual da equipe.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block bridge-block" id="bridge">
+  <div class="container">
+    <div class="head reveal">
+      <div class="kicker">a ponte entre os dois mundos</div>
+      <h2>A Matriz Metodológica Inclusiva</h2>
+      <p>O maior diferencial do ecossistema: tratar a inclusão como algo vivo, não como um PDF arquivado numa gaveta.</p>
+    </div>
+
+    <div class="matrix reveal">
+      <div class="node">
+        <div class="lab">Base</div>
+        <h4>Metodologia canônica</h4>
+      </div>
+      <div class="op">×</div>
+      <div class="node">
+        <div class="lab">Condição</div>
+        <h4>Limitação da deficiência</h4>
+      </div>
+      <div class="op">×</div>
+      <div class="node">
+        <div class="lab">Indivíduo</div>
+        <h4>Barreiras do aluno</h4>
+      </div>
+      <div class="result">
+        <div class="lab">a IA traduz</div>
+        <h4>Metodologia de aula prática, na palma da mão do professor</h4>
+      </div>
+    </div>
+
+    <p class="bridge-para reveal">O PEI deixa de ser um documento que se assina e se guarda. Ele <strong>cruza</strong> a metodologia oficial da escola com a condição do aluno e com suas barreiras específicas — e o resultado chega pronto para uso, dentro do mesmo card que o professor já abre todos os dias.</p>
+  </div>
+</section>
+
+<section class="closing">
+  <div class="container">
+    <div class="eyebrow reveal">inove4us</div>
+    <h2 class="reveal">Um ecossistema. Duas experiências. Uma só verdade pedagógica.</h2>
+    <p class="reveal">O que acontece na trincheira chega íntegro à torre de controle — e o que a torre de controle decide chega íntegro à trincheira.</p>
+    <div class="dots reveal"><span></span><span></span><span></span></div>
+  </div>
+</section>
+
+<footer>Proposta visual — hotpage /market · uso interno, gestão inove4us school</footer>
+
+<script>
+  // Reveal on scroll
+  const els = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, {threshold:.12});
+  els.forEach(el=>io.observe(el));
+
+  // Gate (mockup only — trocar por auth real de sessão no backend)
+  const gate = document.getElementById('gate');
+  const form = document.getElementById('gateForm');
+  const pass = document.getElementById('gatePass');
+  const err = document.getElementById('gateErr');
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    if(pass.value === 'market2026'){
+      gate.classList.add('hidden');
+    } else {
+      err.textContent = 'Senha incorreta.';
+    }
+  });
+</script>
+
+</body>
+</html>

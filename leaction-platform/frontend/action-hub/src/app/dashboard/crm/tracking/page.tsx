@@ -68,6 +68,9 @@ type DashboardViewModel = {
   dispositivos: Array<{ name: string; value: number; color: string }>;
   funil: Array<{ etapa: string; valor: number; fill: string }>;
   liveFeed: LiveFeedItem[];
+  funilModelo?: string;
+  isSchool?: boolean;
+  isInove?: boolean;
 };
 
 const EMPTY_DASHBOARD: DashboardViewModel = {
@@ -89,6 +92,8 @@ const EMPTY_DASHBOARD: DashboardViewModel = {
     { etapa: 'Uso Real', valor: 0, fill: COLOR_ACCENT },
   ],
   liveFeed: [],
+  isSchool: false,
+  isInove: false,
 };
 
 function formatNumber(n: number): string {
@@ -140,24 +145,27 @@ function mapApiToDashboard(api: any): DashboardViewModel {
   const eng = api?.engajamento || {};
   const ret = api?.retencao || {};
   const dev = api?.dispositivos || {};
+  const modelo = String(api?.funil_modelo || '');
+  const isSchool =
+    modelo === 'inove4us_school_b2b' || api?.sistema_origem === 'inove4us-school';
   const isInove =
-    String(api?.funil_modelo || '').startsWith('inove4us_') ||
-    api?.sistema_origem === 'inove4us';
+    !isSchool &&
+    (modelo.startsWith('inove4us_') || api?.sistema_origem === 'inove4us');
 
   const visitas = Number(funil.visitas_home || funil.total_sessoes || 0);
   const cliques = Number(
-    isInove
+    isInove || isSchool
       ? funil.desafios_estruturados || funil.cliques_ferramentas || 0
       : funil.cliques_ferramentas || 0
   );
   const uso = Number(
-    isInove
+    isInove || isSchool
       ? funil.planos_gerados || funil.acesso_ferramentas || 0
       : funil.acesso_ferramentas || 0
   );
   const pagamentos = Number(funil.pagamentos_aprovados || 0);
   const conv = Number(
-    (isInove
+    (isInove || isSchool
       ? funil.taxas_conversao?.plano_para_pagamento_pct ??
         funil.taxas_conversao?.home_para_uso_pct
       : funil.taxas_conversao?.home_para_uso_pct) || 0
@@ -212,23 +220,33 @@ function mapApiToDashboard(api: any): DashboardViewModel {
         ? [{ name: 'Desconhecido', value: Number(dev.desconhecido || 0), color: COLOR_NEUTRAL }]
         : []),
     ],
-    funil: isInove
+    funil: isSchool
       ? [
-          { etapa: 'Acesso / Mesa', valor: visitas, fill: COLOR_PRIMARY },
-          { etapa: 'Criou desafio', valor: cliques, fill: COLOR_SECONDARY },
-          { etapa: 'Elaborou plano', valor: uso, fill: COLOR_ACCENT },
-          {
-            etapa: 'Pagou / assinou',
-            valor: pagamentos,
-            fill: COLOR_NEUTRAL,
-          },
+          { etapa: 'Acesso', valor: visitas, fill: COLOR_PRIMARY },
+          { etapa: 'Login', valor: cliques, fill: COLOR_SECONDARY },
+          { etapa: 'Checkout', valor: uso, fill: COLOR_ACCENT },
+          { etapa: 'Pagou', valor: pagamentos, fill: COLOR_NEUTRAL },
         ]
-      : [
-          { etapa: 'Home', valor: visitas, fill: COLOR_PRIMARY },
-          { etapa: 'Interesse (Clique)', valor: cliques, fill: COLOR_SECONDARY },
-          { etapa: 'Uso Real', valor: uso, fill: COLOR_ACCENT },
-        ],
+      : isInove
+        ? [
+            { etapa: 'Acesso / Mesa', valor: visitas, fill: COLOR_PRIMARY },
+            { etapa: 'Criou desafio', valor: cliques, fill: COLOR_SECONDARY },
+            { etapa: 'Elaborou plano', valor: uso, fill: COLOR_ACCENT },
+            {
+              etapa: 'Pagou / assinou',
+              valor: pagamentos,
+              fill: COLOR_NEUTRAL,
+            },
+          ]
+        : [
+            { etapa: 'Home', valor: visitas, fill: COLOR_PRIMARY },
+            { etapa: 'Interesse (Clique)', valor: cliques, fill: COLOR_SECONDARY },
+            { etapa: 'Uso Real', valor: uso, fill: COLOR_ACCENT },
+          ],
     liveFeed,
+    funilModelo: modelo,
+    isSchool,
+    isInove,
   };
 }
 
@@ -741,9 +759,19 @@ export default function CrmTrackingConversionPage() {
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">
-                  Funil de Conversão (PLG)
+                  {data?.isSchool
+                    ? 'Funil de Conversão (B2B School)'
+                    : data?.isInove
+                      ? 'Funil de Conversão (PLG)'
+                      : 'Funil de Conversão (PLG)'}
                 </h2>
-                <p className="text-xs text-slate-500">Home → Interesse → Uso Real</p>
+                <p className="text-xs text-slate-500">
+                  {data?.isSchool
+                    ? 'Acesso → Login → Checkout → Pagou'
+                    : data?.isInove
+                      ? 'Acesso → Criou desafio → Elaborou plano → Pagou'
+                      : 'Home → Interesse → Uso Real'}
+                </p>
               </div>
               {!loading ? (
                 <div className="flex flex-wrap gap-1.5">

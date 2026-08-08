@@ -63,14 +63,19 @@ VERBOS_DT_PROIBIDOS = (
 )
 
 
-def _framework_ids_block() -> str:
+def _framework_ids_block(exclude_ids: set[str] | None = None) -> str:
     """As 39 metodologias do catálogo canônico (IDs + nomes, sem cards)."""
+    blocked = {str(x) for x in (exclude_ids or set()) if x}
     buckets: dict[str, list[str]] = {k: [] for k in _BUCKET_ORDER}
+    total = 0
     for entrada in entradas_catalogo_dia():
+        if entrada["id"] in blocked:
+            continue
         etq = entrada["etiqueta"]
         line = f"`{entrada['id']}` — {entrada['nome']}"
         buckets.setdefault(etq, []).append(line)
-    linhas = [f"Total: {len(LISTA_FLAT)} metodologias (catálogo canônico — não invente)."]
+        total += 1
+    linhas = [f"Total: {total} metodologias (catálogo canônico — não invente)."]
     for cat in _BUCKET_ORDER:
         items = buckets.get(cat) or []
         if not items:
@@ -81,9 +86,36 @@ def _framework_ids_block() -> str:
     return "\n".join(linhas)
 
 
-def build_estruturar_system_prompt(bloco_ref: str) -> str:
+def build_estruturar_system_prompt(
+    bloco_ref: str,
+    *,
+    exclude_ids: set[str] | None = None,
+    diretrizes_escola: list[dict] | None = None,
+) -> str:
     """Uma chamada: roteia IDs do catálogo 39 + hipóteses ancoradas no RELATO."""
-    framework = _framework_ids_block()
+    framework = _framework_ids_block(exclude_ids)
+    bloco_escola = ""
+    itens = [d for d in (diretrizes_escola or []) if d.get("diretriz_customizada")]
+    if itens:
+        linhas_esc = []
+        for d in itens[:12]:
+            mid = d.get("metodologia_key") or ""
+            nome = d.get("metodologia_nome") or mid
+            txt = str(d.get("diretriz_customizada") or "").strip()
+            if not txt:
+                continue
+            if len(txt) > 400:
+                txt = txt[:397] + "…"
+            linhas_esc.append(f"- `{mid}` ({nome}): {txt}")
+        if linhas_esc:
+            bloco_escola = (
+                "\n<diretrizes_da_escola>\n"
+                "O professor tem vínculo com uma escola. Se escolher um dos IDs abaixo, "
+                "o gancho_adaptacao e a hipotese_teste DEVEM respeitar a diretriz correspondente "
+                "(não contradizer nem ignorar).\n"
+                + "\n".join(linhas_esc)
+                + "\n</diretrizes_da_escola>\n"
+            )
     return f"""Você é uma especialista pedagógica da inove4us, conversando com professores e instrutores.
 Arquitetura HÍBRIDA: NÃO gere cards EduScrum, timebox nem manuais de sala.
 Papel: (1) ROTEAR 3 IDs do catálogo de 39; (2) escrever gancho + hipótese + trecho do RELATO DO PROFESSOR.
@@ -95,6 +127,7 @@ Resposta em PT-BR. SOMENTE JSON válido.
 Use APENAS estes IDs do catálogo canônico (nunca invente nome ou ID fora da lista).
 {framework}
 </framework_obrigatorio>
+{bloco_escola}
 
 <ancoras_de_estilo>
 Os itens abaixo são SÓ exemplo de FORMATO (categoria › tema). NÃO são o problema do professor.

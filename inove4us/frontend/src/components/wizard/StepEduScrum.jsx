@@ -37,6 +37,47 @@ function colunaLabel(id) {
   return COLUNAS.find((c) => c.id === id)?.label || id
 }
 
+/** Diário de bordo: notas das transições de cards na mesa (só leitura no fechamento). */
+function buildDiarioBordo(tasks, aulaId, { multiAula = false } = {}) {
+  const entries = []
+  const list = Array.isArray(tasks) ? tasks : []
+  for (const t of list) {
+    if (multiAula && aulaId != null && t.aula_id != null) {
+      if (Number(t.aula_id) !== Number(aulaId)) continue
+    }
+    const hist = Array.isArray(t.historico) ? t.historico : []
+    for (const h of hist) {
+      const nota = String(h?.nota || '').trim()
+      if (!nota) continue
+      entries.push({
+        card: t.titulo || t.titulo_do_card || 'Card',
+        de: h.de,
+        para: h.para,
+        deLabel: colunaLabel(h.de),
+        paraLabel: colunaLabel(h.para),
+        nota,
+        em: h.em,
+      })
+    }
+  }
+  return entries
+}
+
+function metodologiaFromAula(aula, plano) {
+  const meta = aula?.meta_json && typeof aula.meta_json === 'object' ? aula.meta_json : {}
+  for (const src of [meta, plano, aula]) {
+    if (!src || typeof src !== 'object') continue
+    for (const key of ['metodologia_nome', 'metodologia', 'metodologia_usada', 'nome_metodologia']) {
+      const val = String(src[key] || '').trim()
+      if (val) return val
+    }
+  }
+  const tipo = String(aula?.tipo || '').toLowerCase()
+  if (tipo.includes('eduscrum')) return 'EduScrum'
+  if (tipo.includes('pbl')) return 'PBL'
+  return tipo || 'EduScrum'
+}
+
 function pad2(n) {
   return n < 10 ? `0${n}` : String(n)
 }
@@ -296,6 +337,7 @@ export default function StepEduScrum({
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackAula, setFeedbackAula] = useState(null)
   const [feedbackBusy, setFeedbackBusy] = useState(false)
+  const [avisosMesa, setAvisosMesa] = useState([])
   const [saveStatus, setSaveStatus] = useState('idle') // idle | saving | saved | error
   const [novaTarefaTitulo, setNovaTarefaTitulo] = useState('')
 
@@ -312,6 +354,21 @@ export default function StepEduScrum({
   planMetaRef.current = { plano, hipotese, problema, planoSession, causas }
 
   const multiAula = aulas.length > 1
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await api.getAvisosMesa()
+        if (!cancelled) setAvisosMesa(Array.isArray(data?.avisos) ? data.avisos : [])
+      } catch {
+        if (!cancelled) setAvisosMesa([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const loadAulas = useCallback(async () => {
     try {
@@ -724,6 +781,41 @@ export default function StepEduScrum({
     return (plano?.missao || 'Aula · método inove4us').trim()
   }, [plano])
 
+  const metodologiaNome = useMemo(
+    () => metodologiaFromAula(aulaAtiva, plano),
+    [aulaAtiva, plano],
+  )
+
+  const escolaOverrideMsg = useMemo(() => {
+    const ov = plano?.escola_override || aulaAtiva?.plan_data?.escola_override
+    if (!ov?.ativa && !ov?.mensagem && !ov?.diretriz_customizada) return ''
+    return (
+      ov.mensagem ||
+      (metodologiaNome
+        ? `Sua escola definiu uma regra para ${metodologiaNome}: ${ov.diretriz_customizada || ''}`
+        : ov.diretriz_customizada || '')
+    ).trim()
+  }, [plano, aulaAtiva, metodologiaNome])
+
+  const aulaContextoLabel = useMemo(() => {
+    const disc =
+      aulaAtiva?.meta_json?.disciplina_nome ||
+      plano?.disciplina_nome ||
+      plano?.disciplina ||
+      ''
+    const etapa = aulaAtiva?.titulo || missaoCompleta || ''
+    const parts = [metodologiaNome, disc, etapa].map((s) => String(s || '').trim()).filter(Boolean)
+    return parts.join(' · ') || metodologiaNome || 'Aula'
+  }, [aulaAtiva, plano, missaoCompleta, metodologiaNome])
+
+  const diarioBordoFechamento = useMemo(
+    () =>
+      buildDiarioBordo(tasks, aulaAtiva?.id_evento, {
+        multiAula: Boolean(multiAula),
+      }),
+    [tasks, aulaAtiva?.id_evento, multiAula],
+  )
+
   /** Só para campos VARCHAR curtos da agenda — a UI mostra a missão completa. */
   const tituloAgendaCurto = useMemo(() => {
     const base = `Método inove4us · ${missaoCompleta}`
@@ -780,7 +872,7 @@ export default function StepEduScrum({
     }
   }
 
-  async function handleAdaptarPei(task, perfilSelecionado) {
+  async function handleAdaptarPei(task, perfilSelecionado, alunoNomeOpt = '') {
     if (!task?.id || !perfilSelecionado || peiBusyId) return
     if (isPeiSubcard(task)) return
     const idEvento =
@@ -802,11 +894,17 @@ export default function StepEduScrum({
           task.objetivo ||
           '',
         perfil_selecionado: perfilSelecionado,
+        aluno_nome: alunoNomeOpt || undefined,
         id_evento: idEvento || undefined,
         desafio_id: desafioIdLocal || undefined,
       })
       const kt = data?.kanban_task
       const sub = data?.subcard
+      const escolaMsg =
+        data?.escola_override?.mensagem || kt?.escola_override?.mensagem || ''
+      if (escolaMsg) {
+        setAcaoErro('') // limpa erro; banner dedicado abaixo no card
+      }
       const newTask = {
         id: kt?.id || sub?.card_key,
         titulo: kt?.titulo || sub?.titulo || `Adaptação PEI: ${task.titulo || ''}`,
@@ -815,9 +913,13 @@ export default function StepEduScrum({
         coluna: kt?.coluna || sub?.coluna || task.coluna || 'para_fazer',
         parent_card_id: kt?.parent_card_id || String(task.id),
         perfil_inclusao: kt?.perfil_inclusao || perfilSelecionado,
+        aluno_nome: alunoNomeOpt || kt?.aluno_nome || '',
         cor: kt?.cor || '#FDE68A',
         historico: [],
         ultima_observacao: `Adaptação PEI · ${perfilSelecionado}`,
+        escola_override: data?.escola_override || kt?.escola_override || null,
+        pei_override_versao_aplicada:
+          data?.pei_override_versao_aplicada || kt?.pei_override_versao_aplicada || null,
         aula_id: task.aula_id ?? idEvento,
         aula_ids: Array.isArray(task.aula_ids) && task.aula_ids.length
           ? task.aula_ids
@@ -1230,6 +1332,40 @@ export default function StepEduScrum({
         </p>
       </div>
 
+      {avisosMesa.length ? (
+        <div className="mb-4 rounded-2xl border border-brand-200 bg-brand-50/70 p-3 shadow-soft print:hidden sm:p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-600">
+            Avisos da coordenação
+          </p>
+          <ul className="mt-2 space-y-2">
+            {avisosMesa.map((a) => (
+              <li
+                key={a.id}
+                className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm text-bordo"
+              >
+                {a.texto}
+                {a.turma_nome || a.disciplina_nome ? (
+                  <span className="mt-0.5 block text-[11px] text-bordo-soft">
+                    {[a.disciplina_nome, a.turma_nome].filter(Boolean).join(' · ')}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {escolaOverrideMsg ? (
+        <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 shadow-soft print:hidden sm:p-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-900">
+            Regra da escola em vigor
+          </p>
+          <p className="mt-1.5 text-sm leading-relaxed text-amber-950">
+            {escolaOverrideMsg}
+          </p>
+        </div>
+      ) : null}
+
       {/* Registro / planejamento do dia */}
       {!readOnly ? (
       <div className="mb-5 rounded-2xl border border-brand-200 bg-white/95 p-4 shadow-soft print:hidden sm:p-5">
@@ -1597,6 +1733,7 @@ export default function StepEduScrum({
                                 {pei ? (
                                   <p className="mb-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-800">
                                     PEI · {task.perfil_inclusao || 'Adaptação'}
+                                    {task.aluno_nome ? ` · ${task.aluno_nome}` : ''}
                                     {depth > 0 ? ' · subcard' : ''}
                                   </p>
                                 ) : null}
@@ -1607,6 +1744,12 @@ export default function StepEduScrum({
                                 >
                                   {task.titulo}
                                 </p>
+                                {pei && task.escola_override?.mensagem ? (
+                                  <p className="mt-1 rounded-md border border-amber-200 bg-amber-50/90 px-1.5 py-1 text-[10px] leading-snug text-amber-950">
+                                    <span className="font-semibold">Regra da escola: </span>
+                                    {task.escola_override.mensagem}
+                                  </p>
+                                ) : null}
                               </div>
                             </div>
                             <div className="flex shrink-0 items-start gap-1">
@@ -1614,8 +1757,8 @@ export default function StepEduScrum({
                                 <KanbanPeiMenu
                                   disabled={Boolean(peiBusyId)}
                                   busy={peiLoading}
-                                  onSelectPerfil={(perfil) =>
-                                    void handleAdaptarPei(task, perfil)
+                                  onSelectPerfil={(perfil, alunoNome) =>
+                                    void handleAdaptarPei(task, perfil, alunoNome)
                                   }
                                 />
                               ) : null}
@@ -1893,9 +2036,18 @@ export default function StepEduScrum({
 
       {showRelato ? (
         <RelatoAulaModal
-          aula={aulaAtiva}
+          aula={{
+            ...aulaAtiva,
+            aluno_nome:
+              tasks.find((t) => t?.aluno_nome)?.aluno_nome ||
+              aulaAtiva?.meta_json?.aluno_nome ||
+              '',
+          }}
           missao={missaoCompleta}
           busy={relatoBusy}
+          diarioBordo={diarioBordoFechamento}
+          metodologiaNome={metodologiaNome}
+          aulaContexto={aulaContextoLabel}
           temAlunosPei={tasks.some(
             (t) =>
               t?.perfil_inclusao ||

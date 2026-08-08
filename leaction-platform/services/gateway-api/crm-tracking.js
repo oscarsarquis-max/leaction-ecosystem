@@ -294,10 +294,10 @@ function registerCrmTrackingRoutes(app, pool) {
 
     const sistema = String(req.query.sistema || 'paneldx').trim().toLowerCase() || 'paneldx';
     const isInove4us = sistema === 'inove4us';
+    const isSchool = sistema === 'inove4us-school';
+    const isPlgLike = isInove4us || isSchool;
 
-    try {
-      const funilSql = isInove4us
-        ? `WITH base AS (
+    const funilSqlInove = `WITH base AS (
                SELECT
                  e.tipo_evento,
                  e.id_sessao,
@@ -367,8 +367,67 @@ function registerCrmTrackingRoutes(app, pool) {
                ) AS pagamentos_erro,
                COUNT(*) AS total_eventos,
                COUNT(DISTINCT id_sessao) AS total_sessoes
-             FROM base`
-        : `WITH base AS (
+             FROM base`;
+
+    const funilSqlSchool = `WITH base AS (
+               SELECT
+                 e.tipo_evento,
+                 e.id_sessao,
+                 split_part(
+                   regexp_replace(COALESCE(e.url_pagina, ''), '^https?://[^/]+', ''),
+                   '?',
+                   1
+                 ) AS path
+               FROM crm_eventos e
+               INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+               WHERE s.sistema_origem = $1
+             )
+             SELECT
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'pageview'
+                   AND (path = '/' OR path = '' OR path LIKE '/acesso%')
+               ) AS visitas_home,
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'login_sucesso'
+               ) AS cliques_mesa_inovador,
+               0::int AS cliques_solucionador,
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'login_sucesso'
+               ) AS cliques_ferramentas,
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'pageview' AND path LIKE '/equipe%'
+               ) AS acesso_mesa_inovador,
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'checkout_iniciar'
+               ) AS acesso_solucionador,
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'checkout_iniciar'
+               ) AS acesso_ferramentas,
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'login_sucesso'
+               ) AS desafios_estruturados,
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'checkout_iniciar'
+               ) AS planos_gerados,
+               0::int AS desafios_erro,
+               0::int AS desafios_fallback,
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'checkout_iniciar'
+               ) AS checkouts_iniciados,
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'pagamento_aprovado'
+               ) AS pagamentos_aprovados,
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'pagamento_pendente'
+               ) AS pagamentos_pendentes,
+               COUNT(DISTINCT id_sessao) FILTER (
+                 WHERE tipo_evento = 'pagamento_erro'
+               ) AS pagamentos_erro,
+               COUNT(*) AS total_eventos,
+               COUNT(DISTINCT id_sessao) AS total_sessoes
+             FROM base`;
+
+    const funilSqlPaneldx = `WITH base AS (
                SELECT
                  e.tipo_evento,
                  e.id_sessao,
@@ -424,14 +483,41 @@ function registerCrmTrackingRoutes(app, pool) {
                COUNT(DISTINCT id_sessao) AS total_sessoes
              FROM base`;
 
-      const [funilResult, engagementResult, retentionResult, devicesResult, recentesResult, evolucaoResult] =
-        await Promise.all([
-          pool.query(funilSql, [sistema]),
+    try {
+      const funilSql = isSchool
+        ? funilSqlSchool
+        : isInove4us
+          ? funilSqlInove
+          : funilSqlPaneldx;
 
-          // Tempo médio de engajamento (usa tempo_gasto_segundos > 0)
-          pool.query(
-            isInove4us
-              ? `WITH ev AS (
+      const engagementSql = isSchool
+        ? `WITH ev AS (
+               SELECT
+                 split_part(
+                   regexp_replace(COALESCE(e.url_pagina, ''), '^https?://[^/]+', ''),
+                   '?',
+                   1
+                 ) AS path,
+                 e.tempo_gasto_segundos
+               FROM crm_eventos e
+               INNER JOIN crm_sessoes s ON s.id_sessao = e.id_sessao
+               WHERE s.sistema_origem = $1
+                 AND e.tempo_gasto_segundos > 0
+             )
+             SELECT
+               COALESCE(AVG(tempo_gasto_segundos) FILTER (
+                 WHERE path LIKE '/acesso%' OR path = '/' OR path = ''
+               ), 0) AS avg_mesa_segundos,
+               COALESCE(AVG(tempo_gasto_segundos) FILTER (
+                 WHERE path LIKE '/equipe%'
+               ), 0) AS avg_solucionador_segundos,
+               COUNT(*) FILTER (
+                 WHERE path LIKE '/acesso%' OR path = '/' OR path = ''
+               ) AS amostras_mesa,
+               COUNT(*) FILTER (WHERE path LIKE '/equipe%') AS amostras_solucionador
+             FROM ev`
+        : isInove4us
+          ? `WITH ev AS (
                SELECT
                  split_part(
                    regexp_replace(COALESCE(e.url_pagina, ''), '^https?://[^/]+', ''),
@@ -456,7 +542,7 @@ function registerCrmTrackingRoutes(app, pool) {
                ) AS amostras_mesa,
                COUNT(*) FILTER (WHERE path LIKE '/desafio%') AS amostras_solucionador
              FROM ev`
-              : `WITH ev AS (
+          : `WITH ev AS (
                SELECT
                  split_part(
                    regexp_replace(COALESCE(e.url_pagina, ''), '^https?://[^/]+', ''),
@@ -482,9 +568,14 @@ function registerCrmTrackingRoutes(app, pool) {
                  WHERE path LIKE '/solucionador-de-problemas%'
                    OR path LIKE '/consultor-leaction%'
                ) AS amostras_solucionador
-             FROM ev`,
-            [sistema]
-          ),
+             FROM ev`;
+
+      const [funilResult, engagementResult, retentionResult, devicesResult, recentesResult, evolucaoResult] =
+        await Promise.all([
+          pool.query(funilSql, [sistema]),
+
+          // Tempo médio de engajamento (usa tempo_gasto_segundos > 0)
+          pool.query(engagementSql, [sistema]),
 
           /**
            * Retenção 24h com session UUID sticky (localStorage 30d):
@@ -629,14 +720,23 @@ function registerCrmTrackingRoutes(app, pool) {
       const pagamentosPendentes = Number(row.pagamentos_pendentes || 0);
       const pagamentosErro = Number(row.pagamentos_erro || 0);
 
-      // inove4us: Acesso → Criou desafio → Elaborou plano → Pagou/assinou
-      const etapaInteresse = isInove4us ? desafiosEstruturados : cliquesFerramentas;
-      const etapaUso = isInove4us ? planosGerados : acessoFerramentas;
-      const etapaPagamento = isInove4us ? pagamentosAprovados : 0;
+      // inove4us: Acesso → Criou desafio → Elaborou plano → Pagou
+      // school: Acesso → Login → Checkout → Pagou
+      const etapaInteresse = isSchool
+        ? desafiosEstruturados
+        : isInove4us
+          ? desafiosEstruturados
+          : cliquesFerramentas;
+      const etapaUso = isSchool
+        ? planosGerados
+        : isInove4us
+          ? planosGerados
+          : acessoFerramentas;
+      const etapaPagamento = isPlgLike ? pagamentosAprovados : 0;
       const convHomeCliques = convPct(etapaInteresse, visitasHome);
       const convCliquesUso = convPct(etapaUso, etapaInteresse);
       const convHomeUso = convPct(
-        isInove4us ? etapaPagamento || etapaUso : etapaUso,
+        isPlgLike ? etapaPagamento || etapaUso : etapaUso,
         visitasHome
       );
       const convPlanoPagamento = convPct(etapaPagamento, etapaUso);
@@ -655,18 +755,24 @@ function registerCrmTrackingRoutes(app, pool) {
       const dispositivosTotal = Number(dev.total || 0);
       const dispositivosClassificados = mobile + desktop;
 
+      const funilModelo = isSchool
+        ? 'inove4us_school_b2b'
+        : isInove4us
+          ? 'inove4us_desafio_plano_pagamento'
+          : 'paneldx_freemium';
+
       return res.json({
         ok: true,
         sistema_origem: sistema,
-        funil_modelo: isInove4us ? 'inove4us_desafio_plano_pagamento' : 'paneldx_freemium',
+        funil_modelo: funilModelo,
         funil: {
           visitas_home: visitasHome,
           cliques_mesa_inovador: cliquesMesa,
           cliques_solucionador: cliquesSol,
-          cliques_ferramentas: isInove4us ? etapaInteresse : cliquesFerramentas,
+          cliques_ferramentas: isPlgLike ? etapaInteresse : cliquesFerramentas,
           acesso_mesa_inovador: acessoMesa,
           acesso_solucionador: acessoSol,
-          acesso_ferramentas: isInove4us ? etapaUso : acessoFerramentas,
+          acesso_ferramentas: isPlgLike ? etapaUso : acessoFerramentas,
           desafios_estruturados: desafiosEstruturados,
           planos_gerados: planosGerados,
           desafios_erro: desafiosErro,
@@ -681,10 +787,10 @@ function registerCrmTrackingRoutes(app, pool) {
             home_para_cliques_pct: convHomeCliques,
             cliques_para_uso_pct: convCliquesUso,
             home_para_uso_pct: convHomeUso,
-            plano_para_pagamento_pct: isInove4us ? convPlanoPagamento : null,
+            plano_para_pagamento_pct: isPlgLike ? convPlanoPagamento : null,
             dropoff_home_para_cliques_pct: dropoffPct(convHomeCliques),
             dropoff_cliques_para_uso_pct: dropoffPct(convCliquesUso),
-            dropoff_plano_para_pagamento_pct: isInove4us
+            dropoff_plano_para_pagamento_pct: isPlgLike
               ? dropoffPct(convPlanoPagamento)
               : null,
           },
@@ -699,19 +805,27 @@ function registerCrmTrackingRoutes(app, pool) {
             amostras: Number(eng.amostras_solucionador || 0),
           },
         },
-        funcionalidades: isInove4us
+        funcionalidades: isSchool
           ? {
-              desafio_estruturar: desafiosEstruturados,
-              plano_gerar: planosGerados,
-              caminho_selecionar: cliquesSol,
-              desafio_estruturar_erro: desafiosErro,
-              desafio_estruturar_fallback: desafiosFallback,
+              login_sucesso: desafiosEstruturados,
               checkout_iniciar: checkoutsIniciados,
               pagamento_aprovado: pagamentosAprovados,
               pagamento_pendente: pagamentosPendentes,
               pagamento_erro: pagamentosErro,
             }
-          : null,
+          : isInove4us
+            ? {
+                desafio_estruturar: desafiosEstruturados,
+                plano_gerar: planosGerados,
+                caminho_selecionar: cliquesSol,
+                desafio_estruturar_erro: desafiosErro,
+                desafio_estruturar_fallback: desafiosFallback,
+                checkout_iniciar: checkoutsIniciados,
+                pagamento_aprovado: pagamentosAprovados,
+                pagamento_pendente: pagamentosPendentes,
+                pagamento_erro: pagamentosErro,
+              }
+            : null,
         retencao: {
           janela_horas: 24,
           sessoes_criadas_24h: criadas24h,

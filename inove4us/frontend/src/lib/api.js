@@ -67,6 +67,7 @@ export const api = {
     const q = includeLidos ? '?include_lidos=1' : ''
     return request(`/api/mural${q}`)
   },
+  getAvisosMesa: () => request('/api/avisos-mesa'),
   marcarCienciaMural: (id) =>
     request(`/api/mural/${id}/ciencia`, { method: 'POST' }),
   estruturarWizard: (payload) =>

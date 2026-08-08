@@ -45,15 +45,14 @@ def create_app() -> Flask:
     from cms_api import bp as cms_bp
     from auth_api import bp as auth_bp
     from equipe_api import bp as equipe_bp
-    from comunicacoes_api import bp as comunicacoes_bp
-    from secretaria_api import bp as secretaria_bp
     from secretaria_routes import bp as secretaria_academica_bp
     from webhook_actionhub_routes import bp as actionhub_webhook_bp
     from webhook_b2c_routes import bp as b2c_webhook_bp
     from billing_routes import billing_bp
     from curadoria_routes import bp as curadoria_bp
-    from pei_ciclo_routes import bp as pei_ciclo_bp
     from pei_documental_routes import bp as pei_documental_bp
+    from tracking_routes import tracking_bp
+    from avisos_api import bp as avisos_bp
 
     app.register_blueprint(metodologias_bp)
     app.register_blueprint(dashboard_bp)
@@ -61,17 +60,17 @@ def create_app() -> Flask:
     app.register_blueprint(cms_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(equipe_bp)
-    app.register_blueprint(comunicacoes_bp)
-    app.register_blueprint(secretaria_bp)
-    # Secretaria Acadêmica — CRUD flat + alocação (TEACHER_ALLOCATED)
+    # Secretaria Acadêmica — superfície unificada (/api/secretaria/*)
     app.register_blueprint(secretaria_academica_bp)
     app.register_blueprint(billing_bp)
     # Curadoria bottom-up (professor → pedagogo)
     app.register_blueprint(curadoria_bp)
-    # Ciclo Vivo do PEI (adaptação × metodologia + curadoria PEI)
-    app.register_blueprint(pei_ciclo_bp)
-    # PEI Documental (matriz versionada) + adaptações metodológicas institucionais
+    # PEI canônico: AEE + pei_alunos + Adaptações na Prática (legado Ciclo Vivo removido)
     app.register_blueprint(pei_documental_bp)
+    # Action-Sponge — sensor CRM (origem inove4us-school)
+    app.register_blueprint(tracking_bp)
+    # Quadro de Avisos → Mesa do Professor
+    app.register_blueprint(avisos_bp)
     # S2S Outbox — sem sessão de gestor / RBAC
     app.register_blueprint(actionhub_webhook_bp)
     # Ponte interna School ← B2C (JWT HS256)

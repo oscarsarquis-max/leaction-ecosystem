@@ -1,19 +1,19 @@
-"""Integração S2S School → B2C: comunicados (mural + agenda).
+"""Integração S2S School → B2C: comunicados + planejamento escolar.
 
-POST /api/integracoes/school/comunicados  — upsert (API key de serviço)
-GET  /api/mural                           — lista do professor autenticado
-POST /api/mural/<id>/ciencia              — marca lido_em
+POST /api/integracoes/school/comunicados   — upsert mural (API key)
+POST /api/integracoes/school/planejamento  — esqueleto aula/evento (mesmo upsert da importação)
+GET  /api/mural                            — lista do professor autenticado
+POST /api/mural/<id>/ciencia               — marca lido_em
 
 Auth S2S: header X-School-Api-Key (ou Authorization: Bearer <key>)
   env SCHOOL_INTEGRATION_API_KEY (fallback INOVE4US_SCHOOL_API_KEY).
-Mesmo espírito do webhook Hub, mas chave estática simples (School ↔ B2C).
 """
 from __future__ import annotations
 
 import os
 import sys
 import uuid
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import Any
 
 from flask import Blueprint, jsonify, request, session
@@ -24,6 +24,9 @@ from db import get_conn
 school_integracao_bp = Blueprint("school_integracao", __name__)
 
 TIPOS = frozenset({"reuniao_pedagogica", "evento_escolar"})
+PLAN_TIPOS = frozenset({"aula", "evento"})
+DEFAULT_DURACAO_MIN = 50
+MAX_PLAN_ITENS = 500
 
 
 def _api_key() -> str:
@@ -540,3 +543,357 @@ def marcar_ciencia(comunicado_id: str):
                 return jsonify({"error": "Comunicado não encontrado"}), 404
 
     return jsonify({"ok": True, "lido_em": row["lido_em"].isoformat()})
+
+
+# ---------------------------------------------------------------------------
+# Planejamento Escolar (School → mesmo destino da importação / pull)
+# ---------------------------------------------------------------------------
+def _parse_plan_date(value: Any) -> date | None:
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, datetime):
+        return value.date()
+    text = str(value or "").strip()[:10]
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _parse_plan_time(value: Any) -> time | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, time):
+        return value
+    if isinstance(value, datetime):
+        return value.time().replace(microsecond=0)
+    text = str(value).strip()
+    if not text:
+        return None
+    if len(text) >= 8:
+        try:
+            return datetime.strptime(text[:8], "%H:%M:%S").time()
+        except ValueError:
+            pass
+    try:
+        return datetime.strptime(text[:5], "%H:%M").time()
+    except ValueError:
+        return None
+
+
+@school_integracao_bp.post("/api/integracoes/school/planejamento")
+def receber_planejamento_school():
+    """Recebe lote da Secretaria e grava via upsert da importação (agenda + draft).
+
+    Body:
+      {
+        "professor_b2c_id": 12345,
+        "itens": [{
+          "id_externo": "<uuid school>",
+          "titulo": "...",
+          "tipo": "aula"|"evento",
+          "data": "YYYY-MM-DD",
+          "hora_inicio": "HH:MM"|null,
+          "hora_fim": "HH:MM"|null,
+          "vinculo_pai_id_externo": "<id_externo>"|null,
+          "observacoes": "..."
+        }]
+      }
+    """
+    denied = _require_school_key()
+    if denied:
+        return denied
+
+    body = request.get_json(silent=True) or {}
+    try:
+        professor_b2c_id = int(body.get("professor_b2c_id"))
+    except (TypeError, ValueError):
+        professor_b2c_id = 0
+    if professor_b2c_id <= 0:
+        return jsonify({"error": "professor_b2c_id (id_clie) é obrigatório"}), 400
+
+    itens_in = body.get("itens")
+    if not isinstance(itens_in, list) or not itens_in:
+        return jsonify({"error": "itens é obrigatório"}), 400
+    if len(itens_in) > MAX_PLAN_ITENS:
+        return jsonify({"error": f"Limite de {MAX_PLAN_ITENS} itens por lote"}), 400
+
+    # Import lazy evita ciclo na carga do app
+    from routes.importacoes_routes import (
+        _ensure_import_schema,
+        _find_agenda_by_externo,
+        upsert_registro_importado,
+    )
+
+    relatorio: list[dict[str, Any]] = []
+    prontos: list[dict[str, Any]] = []
+    seen_ext: set[str] = set()
+
+    for idx, raw in enumerate(itens_in, start=1):
+        if not isinstance(raw, dict):
+            relatorio.append(
+                {
+                    "linha": idx,
+                    "id_externo": None,
+                    "status": "erro",
+                    "ok": False,
+                    "mensagem": "item inválido",
+                    "error": "item inválido",
+                }
+            )
+            continue
+
+        id_externo = str(raw.get("id_externo") or "").strip()[:160]
+        titulo = str(raw.get("titulo") or "").strip()
+        tipo = str(raw.get("tipo") or "aula").strip().lower()
+        if tipo not in PLAN_TIPOS:
+            tipo = "aula"
+        data_val = _parse_plan_date(raw.get("data"))
+        pai = str(raw.get("vinculo_pai_id_externo") or "").strip()[:160] or ""
+
+        if not id_externo:
+            relatorio.append(
+                {
+                    "linha": idx,
+                    "id_externo": None,
+                    "status": "erro",
+                    "ok": False,
+                    "mensagem": "id_externo ausente",
+                    "error": "id_externo ausente",
+                }
+            )
+            continue
+        if id_externo in seen_ext:
+            relatorio.append(
+                {
+                    "linha": idx,
+                    "id_externo": id_externo,
+                    "status": "erro",
+                    "ok": False,
+                    "mensagem": "id_externo duplicado no lote",
+                    "error": "id_externo duplicado no lote",
+                }
+            )
+            continue
+        seen_ext.add(id_externo)
+        if not titulo:
+            relatorio.append(
+                {
+                    "linha": idx,
+                    "id_externo": id_externo,
+                    "status": "erro",
+                    "ok": False,
+                    "mensagem": "titulo ausente",
+                    "error": "titulo ausente",
+                }
+            )
+            continue
+        if not data_val:
+            relatorio.append(
+                {
+                    "linha": idx,
+                    "id_externo": id_externo,
+                    "status": "erro",
+                    "ok": False,
+                    "mensagem": "data inválida",
+                    "error": "data inválida",
+                }
+            )
+            continue
+
+        prontos.append(
+            {
+                "line": idx,
+                "id_externo": id_externo,
+                "titulo": titulo[:200],
+                "tipo": tipo,
+                "data": data_val,
+                "hora_inicio": _parse_plan_time(raw.get("hora_inicio")),
+                "hora_fim": _parse_plan_time(raw.get("hora_fim")),
+                "instituicao": "",
+                "curso": "",
+                "disciplina": "",
+                "assunto": None,
+                "vinculo_pai_id_externo": pai,
+                "observacoes": str(raw.get("observacoes") or "").strip()[:4000] or None,
+            }
+        )
+
+    total_sucesso = 0
+    total_erro = len(relatorio)
+    total_aviso = 0
+    id_map: dict[str, int] = {}
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT id_clie FROM public.ctdi_clie WHERE id_clie = %s",
+                    (professor_b2c_id,),
+                )
+                if not cur.fetchone():
+                    return (
+                        jsonify(
+                            {
+                                "error": "professor_b2c_id não encontrado no B2C",
+                                "professor_b2c_id": professor_b2c_id,
+                            }
+                        ),
+                        404,
+                    )
+
+                _ensure_import_schema(conn)
+                cur.execute(
+                    """
+                    INSERT INTO public.inove_importacoes_lote (
+                        id_clie, nome_arquivo, formato,
+                        total_registros, total_sucesso, total_erro, total_aviso,
+                        relatorio_json
+                    ) VALUES (%s, %s, %s, %s, 0, 0, 0, '[]'::jsonb)
+                    RETURNING id
+                    """,
+                    (
+                        professor_b2c_id,
+                        "school-planejamento",
+                        "json",
+                        len(itens_in),
+                    ),
+                )
+                lote_id = int(cur.fetchone()["id"])
+
+                for row in prontos:
+                    try:
+                        id_evento, acao, aula_id = upsert_registro_importado(
+                            cur,
+                            id_clie=professor_b2c_id,
+                            row=row,
+                            disciplina_id=None,
+                            duracao_min=DEFAULT_DURACAO_MIN,
+                            lote_id=lote_id,
+                        )
+                        id_map[row["id_externo"]] = id_evento
+                        # Marca meta de origem School (além de origem=importacao do upsert)
+                        cur.execute(
+                            """
+                            UPDATE public.inove_agenda_eventos
+                               SET meta_json = COALESCE(meta_json, '{}'::jsonb)
+                                 || %s::jsonb
+                             WHERE id_evento = %s AND id_clie = %s
+                            """,
+                            (
+                                Json(
+                                    {
+                                        "origem_school": "planejamento_escolar",
+                                        "school_lote_importacao_id": lote_id,
+                                    }
+                                ),
+                                id_evento,
+                                professor_b2c_id,
+                            ),
+                        )
+                        total_sucesso += 1
+                        relatorio.append(
+                            {
+                                "linha": row["line"],
+                                "id_externo": row["id_externo"],
+                                "status": "ok",
+                                "ok": True,
+                                "acao": acao,
+                                "id_evento": id_evento,
+                                "aula_simples_id": aula_id,
+                                "mensagem": "criado" if acao == "created" else "atualizado",
+                            }
+                        )
+                    except Exception as exc:
+                        print(
+                            f"[school planejamento] item {row['id_externo']}: {exc}",
+                            file=sys.stderr,
+                        )
+                        total_erro += 1
+                        relatorio.append(
+                            {
+                                "linha": row["line"],
+                                "id_externo": row["id_externo"],
+                                "status": "erro",
+                                "ok": False,
+                                "mensagem": f"falha ao persistir: {exc}",
+                                "error": str(exc),
+                            }
+                        )
+
+                # Passada 2 — vínculos pai (igual importação)
+                for row in prontos:
+                    pai_ext = row.get("vinculo_pai_id_externo") or ""
+                    if not pai_ext:
+                        continue
+                    id_evento = id_map.get(row["id_externo"])
+                    if not id_evento:
+                        continue
+                    id_pai = id_map.get(pai_ext)
+                    if not id_pai:
+                        prev = _find_agenda_by_externo(cur, professor_b2c_id, pai_ext)
+                        id_pai = int(prev["id_evento"]) if prev else None
+                    if not id_pai or id_pai == id_evento:
+                        if not id_pai:
+                            total_aviso += 1
+                            for item in relatorio:
+                                if item.get("id_externo") == row["id_externo"] and item.get(
+                                    "ok"
+                                ):
+                                    item["status"] = "aviso"
+                                    item["mensagem"] = (
+                                        (item.get("mensagem") or "")
+                                        + f"; vinculo_pai '{pai_ext}' não resolvido"
+                                    )
+                                    break
+                        continue
+                    cur.execute(
+                        """
+                        UPDATE public.inove_agenda_eventos
+                           SET id_evento_pai = %s
+                         WHERE id_evento = %s AND id_clie = %s
+                        """,
+                        (id_pai, id_evento, professor_b2c_id),
+                    )
+                    for item in relatorio:
+                        if item.get("id_externo") == row["id_externo"]:
+                            item["id_evento_pai"] = id_pai
+                            break
+
+                relatorio.sort(key=lambda r: (r.get("linha") or 0,))
+                cur.execute(
+                    """
+                    UPDATE public.inove_importacoes_lote
+                       SET total_sucesso = %s,
+                           total_erro = %s,
+                           total_aviso = %s,
+                           relatorio_json = %s
+                     WHERE id = %s AND id_clie = %s
+                    """,
+                    (
+                        total_sucesso,
+                        total_erro,
+                        total_aviso,
+                        Json(relatorio),
+                        lote_id,
+                        professor_b2c_id,
+                    ),
+                )
+    except Exception as exc:
+        print(f"[school planejamento] lote: {exc}", file=sys.stderr)
+        return jsonify({"error": str(exc)}), 500
+
+    return jsonify(
+        {
+            "ok": total_erro == 0 and total_sucesso > 0,
+            "professor_b2c_id": professor_b2c_id,
+            "lote_id": lote_id,
+            "total_sucesso": total_sucesso,
+            "total_erro": total_erro,
+            "total_aviso": total_aviso,
+            "itens": relatorio,
+            "relatorio": relatorio,
+        }
+    )
