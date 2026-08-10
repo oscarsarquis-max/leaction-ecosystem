@@ -101,26 +101,23 @@ BEDROCK_MODEL_ID = os.environ.get(
     "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
 )
 BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
-# Arquitetura híbrida: 1 chamada curta (roteador A/B/C + ganchos). Cards vêm do DB.
-# SLA UX: resposta em ~30s (Haiku + teto de tokens). Sonnet estoura fácil.
-BEDROCK_MAX_TOKENS = int(os.environ.get("BEDROCK_MAX_TOKENS", "2048"))
+# Arquitetura híbrida: 1 chamada (roteador A/B/C + ganchos). Cards vêm do DB.
+# Qualidade: Sonnet (padrão). Haiku/30s degradou a análise em prod — não repetir.
+BEDROCK_MAX_TOKENS = int(os.environ.get("BEDROCK_MAX_TOKENS", "4096"))
 WIZARD_REF_LIMIT = int(os.environ.get("WIZARD_REF_LIMIT", "2"))
-# Wizard usa Haiku por padrão (rápido). Override via env se necessário.
-WIZARD_BEDROCK_MODEL_ID = (
-    os.environ.get("WIZARD_BEDROCK_MODEL_ID", "").strip()
-    or "us.anthropic.claude-3-5-haiku-20241022-v1:0"
-)
-# Orçamento duro de parede (~30s). Acima disso → fallback local, sem 504 longo.
-WIZARD_BEDROCK_READ_TIMEOUT = int(os.environ.get("WIZARD_BEDROCK_READ_TIMEOUT", "25"))
-WIZARD_TOTAL_BUDGET_SEC = float(os.environ.get("WIZARD_TOTAL_BUDGET_SEC", "30"))
-# Com SLA 30s não há margem útil para 2ª chamada Bedrock.
-WIZARD_RETRY_ENABLED = os.environ.get("WIZARD_RETRY_ENABLED", "0").strip().lower() in (
-    "1",
-    "true",
-    "yes",
+# Vazio = BEDROCK_MODEL_ID (Sonnet). Só force Haiku via env se for teste explícito.
+WIZARD_BEDROCK_MODEL_ID = os.environ.get("WIZARD_BEDROCK_MODEL_ID", "").strip()
+# Teto abaixo do idle_timeout do ALB (60s) para evitar 504; fallback só se estourar.
+WIZARD_BEDROCK_READ_TIMEOUT = int(os.environ.get("WIZARD_BEDROCK_READ_TIMEOUT", "50"))
+WIZARD_TOTAL_BUDGET_SEC = float(os.environ.get("WIZARD_TOTAL_BUDGET_SEC", "55"))
+# Retry de qualidade ligado (era o comportamento estável pré-SLA-30s).
+WIZARD_RETRY_ENABLED = os.environ.get("WIZARD_RETRY_ENABLED", "1").strip().lower() not in (
+    "0",
+    "false",
+    "no",
 )
 WIZARD_RETRY_MIN_REMAINING_SEC = float(
-    os.environ.get("WIZARD_RETRY_MIN_REMAINING_SEC", "20")
+    os.environ.get("WIZARD_RETRY_MIN_REMAINING_SEC", "22")
 )
 # Fallback canônico no catálogo das 39 (não inventar fora da lista)
 _DEFAULT_METODOLOGIA_ID = "criativa_narrativas_transmidia"
@@ -189,14 +186,14 @@ def _get_bedrock_runtime_client():
         import urllib3
 
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    read_timeout = max(10, min(int(WIZARD_BEDROCK_READ_TIMEOUT), 28))
+    read_timeout = max(15, min(int(WIZARD_BEDROCK_READ_TIMEOUT), 55))
     return boto3.client(
         service_name="bedrock-runtime",
         region_name=BEDROCK_REGION,
         verify=verify,
-        # SLA wizard ~30s: corta a IA e devolve fallback em vez de esperar minutos.
+        # Qualidade Sonnet com teto < ALB 60s; se estourar → pad (já corrigido).
         config=Config(
-            connect_timeout=5,
+            connect_timeout=8,
             read_timeout=read_timeout,
             retries={"max_attempts": 1},
         ),
