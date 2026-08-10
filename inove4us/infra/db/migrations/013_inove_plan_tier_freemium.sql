@@ -1,4 +1,4 @@
--- Planos HVLT: tier de assinatura + freemium Starter (1 desafio, 5 aulas/mês)
+-- Planos HVLT: tier de assinatura + freemium Starter (1 desafio; Dia a Dia sem registro)
 -- Aplicar: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/db/migrations/013_inove_plan_tier_freemium.sql
 
 BEGIN;

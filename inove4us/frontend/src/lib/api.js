@@ -16,12 +16,18 @@ async function request(path, options = {}) {
   }
 
   if (!res.ok) {
+    const fromBody = data && (data.error || data.erro)
     const message =
-      (data && (data.error || data.erro)) || 'Falha na requisição'
+      fromBody ||
+      (res.status === 504
+        ? 'A análise demorou mais que o esperado. Tente de novo em instantes.'
+        : res.status === 502 || res.status === 503
+          ? 'Serviço temporariamente indisponível. Tente de novo em instantes.'
+          : 'Falha na requisição')
     const err = new Error(message)
     err.status = res.status
     err.data = data
-    err.code = data?.code || null
+    err.code = data?.code || (res.status === 504 ? 'GATEWAY_TIMEOUT' : null)
     throw err
   }
   return data

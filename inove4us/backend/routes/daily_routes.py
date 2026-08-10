@@ -613,8 +613,9 @@ def planejar_aula():
                     {
                         "success": False,
                         "error": (
-                            "No plano gratuito você pode planejar até 5 aulas simples por mês. "
-                            "Faça o upgrade para continuar sem limites."
+                            "No plano gratuito você pode navegar pelo Dia a Dia, "
+                            "mas o registro de aulas exige o plano Profissional, Mentor "
+                            "ou um pacote avulso."
                         ),
                         "code": "AULAS_MES_LIMIT",
                         "aulas_mes": quota,

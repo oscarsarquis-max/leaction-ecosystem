@@ -13,10 +13,47 @@ from typing import Any
 
 def build_fallback_tree(
     *,
-    aulas_mes: int = 5,
+    aulas_mes: int = 0,
     desafios_gratis: int = 1,
 ) -> dict[str, Any]:
     """Árvore completa usada como plano B e como conteúdo inicial até o Hub publicar."""
+    dia_gratis = aulas_mes > 0
+    planos_msg = (
+        (
+            f"No plano gratuito: até {aulas_mes} aulas do Dia a Dia por mês e "
+            f"{desafios_gratis} desafio ativo (crédito de IA). "
+            "Para mais liberdade, veja Profissional, Mentor ou pacotes avulsos."
+        )
+        if dia_gratis
+        else (
+            f"No plano gratuito você começa com {desafios_gratis} desafio"
+            f"{'' if desafios_gratis == 1 else 's'} (crédito de IA). "
+            "O Dia a Dia fica liberado para navegação; o registro de aulas exige "
+            "plano Profissional, Mentor ou pacote avulso."
+        )
+    )
+    planos_limites_msg = (
+        (
+            f"Gratuito: {aulas_mes} aulas do Dia a Dia / mês e "
+            f"{desafios_gratis} crédito de desafio. "
+            "Quando o crédito acaba, a estruturação com IA fica bloqueada até "
+            "você escolher um plano ou pacote."
+        )
+        if dia_gratis
+        else (
+            f"Gratuito: {desafios_gratis} crédito de desafio. "
+            "Registro no Dia a Dia não está incluso — só navegação. "
+            "Para registrar aulas ou ter mais desafios, escolha um plano ou pacote."
+        )
+    )
+    desafio_credito_extra = (
+        "Aulas do Dia a Dia usam outro limite (aulas/mês), não esse crédito."
+        if dia_gratis
+        else (
+            "No gratuito, o Dia a Dia é só navegação — o registro de aulas "
+            "exige plano ou pacote avulso (não consome crédito de desafio)."
+        )
+    )
     return {
         "avatar_name": "Nina",
         "avatar_tagline": "Guia do inovador",
@@ -107,7 +144,7 @@ def build_fallback_tree(
                     f"Sim. Cada estruturação com IA consome 1 crédito de desafio. "
                     f"No plano gratuito você começa com {desafios_gratis} desafio"
                     f"{'' if desafios_gratis == 1 else 's'}. "
-                    "Aulas do Dia a Dia usam outro limite (aulas/mês), não esse crédito."
+                    f"{desafio_credito_extra}"
                 ),
                 "options": [
                     {"label": "Ver planos e créditos", "next": "planos"},
@@ -154,11 +191,7 @@ def build_fallback_tree(
                 ],
             },
             "planos": {
-                "message": (
-                    f"No plano gratuito: até {aulas_mes} aulas do Dia a Dia por mês e "
-                    f"{desafios_gratis} desafio ativo (crédito de IA). "
-                    "Para mais liberdade, veja Profissional, Mentor ou pacotes avulsos."
-                ),
+                "message": planos_msg,
                 "options": [
                     {"label": "Limites do plano grátis", "next": "planos_limites"},
                     {"label": "Como assinar / comprar créditos?", "next": "planos_assinar"},
@@ -167,12 +200,7 @@ def build_fallback_tree(
                 ],
             },
             "planos_limites": {
-                "message": (
-                    f"Gratuito: {aulas_mes} aulas do Dia a Dia / mês e "
-                    f"{desafios_gratis} crédito de desafio. "
-                    "Quando o crédito acaba, a estruturação com IA fica bloqueada até "
-                    "você escolher um plano ou pacote."
-                ),
+                "message": planos_limites_msg,
                 "options": [
                     {"label": "Como assinar?", "next": "planos_assinar"},
                     {"label": "Voltar a Planos", "next": "planos"},
@@ -258,4 +286,36 @@ def normalize_tree_payload(raw: object, *, aulas_mes: int, desafios_gratis: int)
         out["nodes"][str(nid)] = {"message": msg[:2000], "options": options}
     if root_id not in out["nodes"]:
         return None
-    return out
+    return _overlay_freemium_plan_copy(out, aulas_mes=aulas_mes, desafios_gratis=desafios_gratis)
+
+
+def _overlay_freemium_plan_copy(
+    tree: dict[str, Any],
+    *,
+    aulas_mes: int,
+    desafios_gratis: int,
+) -> dict[str, Any]:
+    """
+    Quando o freemium não inclui registro no Dia a Dia (aulas_mes=0),
+    evita textos do CMS legado do tipo \"até 0 aulas\".
+    """
+    if int(aulas_mes) > 0:
+        return tree
+    fallback = build_fallback_tree(aulas_mes=aulas_mes, desafios_gratis=desafios_gratis)
+    nodes = tree.get("nodes")
+    fb_nodes = fallback.get("nodes") or {}
+    if not isinstance(nodes, dict):
+        return tree
+    for key in ("planos", "planos_limites", "desafio_credito"):
+        fb = fb_nodes.get(key)
+        if not isinstance(fb, dict):
+            continue
+        current = nodes.get(key)
+        if not isinstance(current, dict):
+            nodes[key] = {
+                "message": str(fb.get("message") or "")[:2000],
+                "options": list(fb.get("options") or []),
+            }
+            continue
+        current["message"] = str(fb.get("message") or "")[:2000]
+    return tree

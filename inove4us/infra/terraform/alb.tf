@@ -4,6 +4,9 @@ resource "aws_lb" "inove4us" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.public_subnet_ids
+
+  # Margem acima do SLA wizard (30s). Não deixar 3+ min de conexão ociosa.
+  idle_timeout = 60
 }
 
 resource "aws_lb_target_group" "inove4us" {

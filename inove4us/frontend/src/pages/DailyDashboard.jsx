@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import BrandLogo from '../components/BrandLogo'
+import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import { useAuth } from '../lib/auth'
+import { canRegisterDailyAula } from '../lib/dailyAccess'
 import {
   excluirAula,
   isSchemaPendingError,
@@ -40,11 +42,13 @@ function formatDate(iso) {
 export default function DailyDashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const canRegister = canRegisterDailyAula(user)
   const [aulas, setAulas] = useState([])
   const [loading, setLoading] = useState(true)
   const [schemaPending, setSchemaPending] = useState(false)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState(null)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -103,13 +107,22 @@ export default function DailyDashboard() {
             >
               ← Mesa
             </Link>
-            {!schemaPending ? (
+            {!schemaPending && canRegister ? (
               <Link
                 to="/dia-a-dia/nova"
                 className="btn-primary min-h-11 !px-4 !py-2.5 text-sm"
               >
                 Planejar Nova Aula
               </Link>
+            ) : null}
+            {!schemaPending && !canRegister ? (
+              <button
+                type="button"
+                onClick={() => setUpgradeOpen(true)}
+                className="btn-primary min-h-11 !px-4 !py-2.5 text-sm"
+              >
+                Liberar registro
+              </button>
             ) : null}
             <button
               type="button"
@@ -137,6 +150,20 @@ export default function DailyDashboard() {
           <p className="mt-1 text-xs text-bordo-soft">
             Professor(a): <span className="font-semibold text-bordo">{user.nome_clie}</span>
           </p>
+        ) : null}
+
+        {!schemaPending && !canRegister ? (
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            No plano gratuito você pode explorar o Dia a Dia, mas o registro de aulas exige
+            plano Profissional, Mentor ou pacote avulso.{' '}
+            <button
+              type="button"
+              onClick={() => setUpgradeOpen(true)}
+              className="font-semibold underline-offset-2 hover:underline"
+            >
+              Ver planos
+            </button>
+          </div>
         ) : null}
 
         {schemaPending ? (
@@ -181,15 +208,27 @@ export default function DailyDashboard() {
           <div className="mt-10 rounded-2xl border border-dashed border-brand-300 bg-white/70 px-6 py-12 text-center">
             <p className="font-display text-xl font-bold text-bordo-deep">Nenhuma aula ainda</p>
             <p className="mt-2 text-sm text-bordo-soft">
-              Planeje a primeira aula do dia em poucos minutos.
+              {canRegister
+                ? 'Planeje a primeira aula do dia em poucos minutos.'
+                : 'Com um plano ou pacote você registra aulas aqui. Por enquanto, explore a área.'}
             </p>
-            <button
-              type="button"
-              onClick={() => navigate('/dia-a-dia/nova')}
-              className="btn-primary mt-6 min-h-11 !px-5 !py-3 text-sm"
-            >
-              Planejar Nova Aula
-            </button>
+            {canRegister ? (
+              <button
+                type="button"
+                onClick={() => navigate('/dia-a-dia/nova')}
+                className="btn-primary mt-6 min-h-11 !px-5 !py-3 text-sm"
+              >
+                Planejar Nova Aula
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setUpgradeOpen(true)}
+                className="btn-primary mt-6 min-h-11 !px-5 !py-3 text-sm"
+              >
+                Ver planos
+              </button>
+            )}
           </div>
         ) : null}
 
@@ -244,6 +283,8 @@ export default function DailyDashboard() {
           </div>
         ) : null}
       </main>
+
+      <UpgradeCreditsModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </div>
   )
 }

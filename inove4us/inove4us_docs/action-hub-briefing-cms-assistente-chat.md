@@ -51,7 +51,7 @@ Autenticação: igual aos posts CMS (S2S / público publicado — a definir na i
 
 O backend inove4us substitui antes de devolver ao FE:
 
-- `{{FREEMIUM_AULAS}}` → `FREEMIUM_AULAS_MES` (hoje 5)
+- `{{FREEMIUM_AULAS}}` → `FREEMIUM_AULAS_MES` (hoje 0 — só navegação no Dia a Dia)
 - `{{FREEMIUM_DESAFIOS}}` → `CREDITO_IA_FREEMIUM_DEFAULT` (hoje 1)
 
 ## Nomenclatura do produto (não inventar termos)
@@ -61,7 +61,7 @@ Use estes termos — são os da UI real:
 - **Dia a Dia** — 4 estações: Alinhamento · Entrega do dia · Atividade em campo · Retro do ciclo
 - **Desafios** / plano **EduScrum**
 - **Kanban**: colunas **Para Fazer · Fazendo · Pronto** (não “Sprint”)
-- Limites freemium: **5 aulas/mês** + **1 desafio** (crédito IA)
+- Limites freemium: **1 desafio** (crédito IA); Dia a Dia **sem registro** (só navegação)
 
 ## Fallback
 

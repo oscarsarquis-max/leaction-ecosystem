@@ -101,9 +101,9 @@ export default function UpgradeCreditsModal({ open, onClose, exhausted = false }
           <p className="mt-3 text-sm leading-relaxed text-bordo-soft">
             {semCreditos ? (
               <>
-                No plano gratuito você tem 1 desafio e até 5 aulas simples por mês. Escolha o
-                Profissional (R$&nbsp;24,90) ou o Mentor (R$&nbsp;49,90) — ou um pacote avulso de
-                3 desafios.
+                No plano gratuito você tem 1 desafio. O Dia a Dia fica só para navegação — para
+                registrar aulas, escolha o Profissional (R$&nbsp;24,90), o Mentor (R$&nbsp;49,90)
+                ou um pacote avulso.
               </>
             ) : (
               <>
@@ -112,8 +112,8 @@ export default function UpgradeCreditsModal({ open, onClose, exhausted = false }
                   {Number.isFinite(saldo) ? saldo : '—'} desafio
                   {saldo === 1 ? '' : 's'}
                 </span>{' '}
-                restante{saldo === 1 ? '' : 's'}. Veja os planos Profissional e Mentor, ou compre
-                um pacote avulso.
+                restante{saldo === 1 ? '' : 's'}. O registro no Dia a Dia e mais desafios ficam
+                nos planos Profissional e Mentor, ou em pacotes avulsos.
               </>
             )}
           </p>

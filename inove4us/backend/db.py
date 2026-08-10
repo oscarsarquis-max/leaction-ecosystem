@@ -38,12 +38,12 @@ def get_conn():
 _creditos_ensured = False
 _nina_onboarding_ensured = False
 
-# Freemium Starter: 1 desafio IA. Aulas simples: 5/mês (ver plan_limits).
+# Freemium Starter (solo): 1 desafio IA. Dia a Dia: só navegação (registro=0).
 CREDITO_IA_FREEMIUM_DEFAULT = 1
 PLAN_TIER_STARTER = "starter"
 PLAN_TIER_PRO = "profissional"
 PLAN_TIER_MENTOR = "mentor"
-FREEMIUM_AULAS_MES = 5
+FREEMIUM_AULAS_MES = 0
 
 
 def ensure_creditos_ia_column() -> None:
@@ -294,14 +294,32 @@ def count_aulas_simples_mes(id_clie: int) -> int:
             return int(row[0] or 0) if row else 0
 
 
+def is_institutional_cliente(id_clie: int) -> bool:
+    """True se o inovador está vinculado a uma escola (Chave Mestra B2B)."""
+    ensure_instituicao_b2b_columns()
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT instituicao_b2b_id
+                  FROM public.ctdi_clie
+                 WHERE id_clie = %s
+                """,
+                (int(id_clie),),
+            )
+            row = cur.fetchone()
+            return bool(row and row[0])
+
+
 def aulas_simples_quota(id_clie: int) -> dict:
     """
-    Limite mensal de aulas (Dia a Dia) conforme plan_tier.
-    Starter: 5/mês. Profissional/Mentor: ilimitado.
+    Limite de registro no Dia a Dia.
+    Solo freemium (starter): bloqueado (só navegação).
+    Profissional / Mentor / institucional: ilimitado.
     """
     tier = get_plan_tier(id_clie)
     usados = count_aulas_simples_mes(id_clie)
-    if tier in (PLAN_TIER_PRO, PLAN_TIER_MENTOR):
+    if tier in (PLAN_TIER_PRO, PLAN_TIER_MENTOR) or is_institutional_cliente(id_clie):
         return {
             "tier": tier,
             "limite": None,
@@ -310,10 +328,10 @@ def aulas_simples_quota(id_clie: int) -> dict:
             "ilimitado": True,
             "bloqueado": False,
         }
-    restantes = max(0, FREEMIUM_AULAS_MES - usados)
+    restantes = max(0, int(FREEMIUM_AULAS_MES) - usados)
     return {
         "tier": tier,
-        "limite": FREEMIUM_AULAS_MES,
+        "limite": int(FREEMIUM_AULAS_MES),
         "usados": usados,
         "restantes": restantes,
         "ilimitado": False,

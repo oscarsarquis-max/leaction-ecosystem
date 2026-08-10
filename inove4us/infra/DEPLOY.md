@@ -80,7 +80,7 @@ O módulo cria:
 - ECR
 - Security Groups (ALB + ECS tasks)
 - **Regra no SG do RDS**: `5432` ← SG das tasks inove4us (**sem** `0.0.0.0/0`)
-- ALB + Target Group (`/api/health`)
+- ALB + Target Group (`/api/health`) — `idle_timeout = 60`; wizard responde em ≤30s (Haiku + fallback)
 - Cluster/Service Fargate + autoscaling (CPU 60% e ALB RequestCountPerTarget)
 - IAM task (SES + Bedrock)
 - Route 53 alias A para apex e `www`

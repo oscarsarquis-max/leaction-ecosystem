@@ -7,7 +7,10 @@ import DailyCycleKanban, {
   cycleKanbanPayload,
 } from '../components/DailyCycleKanban'
 import FieldHelp from '../components/FieldHelp'
+import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import VinculoPedagogicoSelector from '../components/VinculoPedagogicoSelector'
+import { useAuth } from '../lib/auth'
+import { canRegisterDailyAula } from '../lib/dailyAccess'
 import {
   atualizarAula,
   buscarAula,
@@ -318,6 +321,9 @@ export default function DailyPlanner() {
   const isNew = !id || id === 'nova'
   const navigate = useNavigate()
   const location = useLocation()
+  const { user } = useAuth()
+  const canRegister = canRegisterDailyAula(user)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   const [form, setForm] = useState(emptyForm)
   const [baseline, setBaseline] = useState(() => snapshotForm(emptyForm()))
@@ -709,6 +715,51 @@ export default function DailyPlanner() {
             atualização da plataforma.
           </p>
         </main>
+      </div>
+    )
+  }
+
+  if (isNew && !canRegister) {
+    return (
+      <div className="min-h-screen">
+        <header className="sticky top-0 z-40 border-b border-brand-200/80 bg-white/90 backdrop-blur-md">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <Link to="/mesa-do-inovador" aria-label="Voltar">
+              <BrandLogo
+                variant="internal"
+                className="h-16 w-auto max-w-[200px] object-contain"
+              />
+            </Link>
+            <Link to="/dia-a-dia" className="btn-ghost min-h-11 !px-4 !py-2.5 text-sm">
+              ← Aulas
+            </Link>
+          </div>
+        </header>
+        <main className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-600">
+            Dia a Dia
+          </p>
+          <h1 className="mt-2 font-display text-2xl font-bold text-bordo-deep">
+            Registro disponível nos planos
+          </h1>
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-bordo-soft">
+            No gratuito você pode navegar pelo Dia a Dia. Para planejar e registrar aulas,
+            escolha o Profissional, o Mentor ou um pacote avulso.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setUpgradeOpen(true)}
+              className="btn-primary min-h-11 !px-5 !py-3 text-sm"
+            >
+              Ver planos
+            </button>
+            <Link to="/dia-a-dia" className="btn-ghost min-h-11 !px-5 !py-3 text-sm">
+              Voltar à listagem
+            </Link>
+          </div>
+        </main>
+        <UpgradeCreditsModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
       </div>
     )
   }

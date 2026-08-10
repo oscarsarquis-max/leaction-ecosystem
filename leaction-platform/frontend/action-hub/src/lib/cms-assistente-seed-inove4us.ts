@@ -113,7 +113,7 @@ export const ASSISTENTE_SEED_INOVE4US: AssistenteTree = {
       message:
         'Sim. Cada estruturação com IA consome 1 crédito de desafio. ' +
         'No plano gratuito você começa com {{FREEMIUM_DESAFIOS}} desafio (crédito de IA). ' +
-        'Aulas do Dia a Dia usam outro limite (aulas/mês), não esse crédito.',
+        'No gratuito, o Dia a Dia é só navegação — o registro de aulas exige plano ou pacote avulso.',
       options: [
         { label: 'Ver planos e créditos', next: 'planos' },
         { label: 'Voltar a Desafios', next: 'desafios' },
@@ -161,9 +161,9 @@ export const ASSISTENTE_SEED_INOVE4US: AssistenteTree = {
     },
     planos: {
       message:
-        'No plano gratuito: até {{FREEMIUM_AULAS}} aulas do Dia a Dia por mês e ' +
-        '{{FREEMIUM_DESAFIOS}} desafio ativo (crédito de IA). ' +
-        'Para mais liberdade, veja Profissional, Mentor ou pacotes avulsos.',
+        'No plano gratuito você começa com {{FREEMIUM_DESAFIOS}} desafio (crédito de IA). ' +
+        'O Dia a Dia fica liberado para navegação; o registro de aulas exige ' +
+        'plano Profissional, Mentor ou pacote avulso.',
       options: [
         { label: 'Limites do plano grátis', next: 'planos_limites' },
         { label: 'Como assinar / comprar créditos?', next: 'planos_assinar' },
@@ -173,8 +173,8 @@ export const ASSISTENTE_SEED_INOVE4US: AssistenteTree = {
     },
     planos_limites: {
       message:
-        'Gratuito: {{FREEMIUM_AULAS}} aulas do Dia a Dia / mês e ' +
-        '{{FREEMIUM_DESAFIOS}} crédito de desafio. ' +
+        'Gratuito: {{FREEMIUM_DESAFIOS}} crédito de desafio. ' +
+        'Registro no Dia a Dia não está incluso — só navegação. ' +
         'Quando o crédito acaba, a estruturação com IA fica bloqueada até ' +
         'você escolher um plano ou pacote.',
       options: [

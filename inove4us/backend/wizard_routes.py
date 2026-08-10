@@ -11,6 +11,9 @@ import json
 import os
 import re
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 
 import boto3
 from botocore.config import Config
@@ -99,11 +102,26 @@ BEDROCK_MODEL_ID = os.environ.get(
 )
 BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
 # Arquitetura híbrida: 1 chamada curta (roteador A/B/C + ganchos). Cards vêm do DB.
-# Espaço para causas/ganchos completos (evitar JSON cortado no meio da frase).
-BEDROCK_MAX_TOKENS = int(os.environ.get("BEDROCK_MAX_TOKENS", "4096"))
+# SLA UX: resposta em ~30s (Haiku + teto de tokens). Sonnet estoura fácil.
+BEDROCK_MAX_TOKENS = int(os.environ.get("BEDROCK_MAX_TOKENS", "2048"))
 WIZARD_REF_LIMIT = int(os.environ.get("WIZARD_REF_LIMIT", "2"))
-# Vazio = BEDROCK_MODEL_ID.
-WIZARD_BEDROCK_MODEL_ID = os.environ.get("WIZARD_BEDROCK_MODEL_ID", "").strip()
+# Wizard usa Haiku por padrão (rápido). Override via env se necessário.
+WIZARD_BEDROCK_MODEL_ID = (
+    os.environ.get("WIZARD_BEDROCK_MODEL_ID", "").strip()
+    or "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+)
+# Orçamento duro de parede (~30s). Acima disso → fallback local, sem 504 longo.
+WIZARD_BEDROCK_READ_TIMEOUT = int(os.environ.get("WIZARD_BEDROCK_READ_TIMEOUT", "25"))
+WIZARD_TOTAL_BUDGET_SEC = float(os.environ.get("WIZARD_TOTAL_BUDGET_SEC", "30"))
+# Com SLA 30s não há margem útil para 2ª chamada Bedrock.
+WIZARD_RETRY_ENABLED = os.environ.get("WIZARD_RETRY_ENABLED", "0").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+WIZARD_RETRY_MIN_REMAINING_SEC = float(
+    os.environ.get("WIZARD_RETRY_MIN_REMAINING_SEC", "20")
+)
 # Fallback canônico no catálogo das 39 (não inventar fora da lista)
 _DEFAULT_METODOLOGIA_ID = "criativa_narrativas_transmidia"
 
@@ -171,13 +189,49 @@ def _get_bedrock_runtime_client():
         import urllib3
 
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    read_timeout = max(10, min(int(WIZARD_BEDROCK_READ_TIMEOUT), 28))
     return boto3.client(
         service_name="bedrock-runtime",
         region_name=BEDROCK_REGION,
         verify=verify,
-        # Ranking híbrido (JSON curto) — timeout menor que a antiga geração densa.
-        config=Config(connect_timeout=8, read_timeout=60, retries={"max_attempts": 1}),
+        # SLA wizard ~30s: corta a IA e devolve fallback em vez de esperar minutos.
+        config=Config(
+            connect_timeout=5,
+            read_timeout=read_timeout,
+            retries={"max_attempts": 1},
+        ),
     )
+
+
+def _invoke_estruturar_bedrock_deadline(
+    *,
+    bedrock,
+    model_id: str,
+    system_prompt: str,
+    user_content: str,
+    max_tokens: int,
+    json_prefill: str,
+    deadline_sec: float,
+) -> dict:
+    """Chama Bedrock com teto de parede; TimeoutError se estourar o SLA."""
+    remaining = max(1.0, float(deadline_sec))
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        fut = pool.submit(
+            _invoke_estruturar_bedrock,
+            bedrock=bedrock,
+            model_id=model_id,
+            system_prompt=system_prompt,
+            user_content=user_content,
+            max_tokens=max_tokens,
+            json_prefill=json_prefill,
+        )
+        try:
+            return fut.result(timeout=remaining)
+        except FuturesTimeout as exc:
+            fut.cancel()
+            raise TimeoutError(
+                f"Bedrock ultrapassou o SLA de {remaining:.0f}s"
+            ) from exc
 
 
 def _reconstruir_json_prefill(texto: str, prefill: str = "{") -> str:
@@ -1524,8 +1578,6 @@ def estruturar_problema():
     if motivo_curto:
         return jsonify({"error": motivo_curto, "code": "RELATO_CURTO"}), 400
 
-    corpus_refs = _carregar_corpus_referencia_completo()
-
     try:
         saldo = get_creditos_ia(int(id_clie))
     except Exception as exc:
@@ -1542,6 +1594,9 @@ def estruturar_problema():
             ),
             403,
         )
+
+    t0 = time.monotonic()
+    corpus_refs = _carregar_corpus_referencia_completo()
 
     try:
         refs = _buscar_problemas_referencia(problema, contexto)
@@ -1621,20 +1676,32 @@ def estruturar_problema():
     usou_retry = False
     json_prefill = "{"
     model_id = WIZARD_BEDROCK_MODEL_ID or BEDROCK_MODEL_ID
+    print(
+        f"[wizard] model_escolhido={model_id} budget_s={WIZARD_TOTAL_BUDGET_SEC} "
+        f"read_timeout_s={WIZARD_BEDROCK_READ_TIMEOUT} max_tokens={BEDROCK_MAX_TOKENS} "
+        f"retry_enabled={WIZARD_RETRY_ENABLED}",
+        file=sys.stderr,
+    )
     raw = None
     try:
         bedrock = _get_bedrock_runtime_client()
-        # Chamada 1: roteador A/B/C + hipóteses + trecho do relato
-        raw = _invoke_estruturar_bedrock(
+        remaining = WIZARD_TOTAL_BUDGET_SEC - (time.monotonic() - t0)
+        if remaining < 5:
+            raise TimeoutError("Orçamento de 30s esgotado antes da IA")
+        # Chamada única sob SLA (sem 2ª rodada por padrão)
+        raw = _invoke_estruturar_bedrock_deadline(
             bedrock=bedrock,
             model_id=model_id,
             system_prompt=system_prompt,
             user_content=user_content,
             max_tokens=BEDROCK_MAX_TOKENS,
             json_prefill=json_prefill,
+            deadline_sec=remaining,
         )
+        elapsed = time.monotonic() - t0
         print(
-            f"[wizard] bedrock_ok keys={list(raw.keys()) if isinstance(raw, dict) else type(raw)}",
+            f"[wizard] bedrock_ok keys={list(raw.keys()) if isinstance(raw, dict) else type(raw)} "
+            f"elapsed_s={elapsed:.1f}",
             file=sys.stderr,
         )
         payload = _stitch_ranking_hibrido(
@@ -1647,14 +1714,20 @@ def estruturar_problema():
             override_by_key=override_by_key,
         )
 
-        # Retry único e controlado se a checagem determinística falhar
+        # Retry opcional (off por padrão no SLA 30s)
         q0 = payload.get("qualidade") or {}
-        if q0.get("precisa_retry"):
+        remaining = WIZARD_TOTAL_BUDGET_SEC - (time.monotonic() - t0)
+        if (
+            WIZARD_RETRY_ENABLED
+            and q0.get("precisa_retry")
+            and remaining >= WIZARD_RETRY_MIN_REMAINING_SEC
+        ):
             print(
                 f"[wizard] retry_unico motivo vinculo={q0.get('vinculo_relato_ok')} "
                 f"vazamento={q0.get('possivel_vazamento')} "
                 f"ancoragem={q0.get('ancoragem_termos_ok')} "
-                f"enlatadas={q0.get('causas_enlatadas')}",
+                f"enlatadas={q0.get('causas_enlatadas')} "
+                f"remaining_s={remaining:.1f}",
                 file=sys.stderr,
             )
             user_retry = (
@@ -1665,13 +1738,14 @@ def estruturar_problema():
                 "PROIBIDO usar faltas, leituras obrigatórias ou absenteísmo se isso "
                 "não estiver no relato."
             )
-            raw2 = _invoke_estruturar_bedrock(
+            raw2 = _invoke_estruturar_bedrock_deadline(
                 bedrock=bedrock,
                 model_id=model_id,
                 system_prompt=system_prompt,
                 user_content=user_retry,
                 max_tokens=BEDROCK_MAX_TOKENS,
                 json_prefill=json_prefill,
+                deadline_sec=remaining,
             )
             payload = _stitch_ranking_hibrido(
                 raw2,
@@ -1686,8 +1760,17 @@ def estruturar_problema():
             q1 = dict(payload.get("qualidade") or {})
             q1["retry_aplicado"] = True
             payload["qualidade"] = q1
+        elif q0.get("precisa_retry"):
+            print(
+                f"[wizard] retry_pulado enabled={WIZARD_RETRY_ENABLED} "
+                f"remaining_s={remaining:.1f}",
+                file=sys.stderr,
+            )
     except Exception as exc:
-        print(f"[wizard] Bedrock/fallback: {exc}", file=sys.stderr)
+        print(
+            f"[wizard] Bedrock/fallback: {exc} elapsed_s={time.monotonic() - t0:.1f}",
+            file=sys.stderr,
+        )
         payload = _fallback_payload(problema, contexto, refs_prompt, corpus_refs)
         usou_fallback = True
         # Fallback também respeita vetores/diretrizes quando possível
