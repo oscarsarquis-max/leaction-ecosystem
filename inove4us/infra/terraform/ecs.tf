@@ -90,7 +90,8 @@ resource "aws_ecs_task_definition" "inove4us" {
       { name = "FRONTEND_ORIGIN", value = "https://${var.domain_name}" },
       { name = "CORS_ORIGINS", value = "https://${var.domain_name},https://www.${var.domain_name}" },
       { name = "ACTION_HUB_PUBLIC_URL", value = "https://actionhub.com.br" },
-      { name = "ACTION_HUB_API_URL", value = "https://actionhub.com.br/hub-api" },
+      # API pública do gateway (mesmo host do EC2; evita depender do rewrite /hub-api no Next).
+      { name = "ACTION_HUB_API_URL", value = "https://api.actionhub.com.br" },
       { name = "ACTION_HUB_APP_ID", value = "inove4us" },
       { name = "ACTION_HUB_APP_SECRET", value = var.secrets.actionhub_webhook_secret },
       { name = "ACTIONHUB_WEBHOOK_SECRET", value = var.secrets.actionhub_webhook_secret },

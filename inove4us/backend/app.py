@@ -11,9 +11,16 @@ from flask import Flask, jsonify, request, send_from_directory, session
 from flask_cors import CORS
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-load_dotenv(os.path.join(ROOT, ".env"))
-# backend/.env prevalece (EMAIL_SENDER / SES_REGION / EMAIL_DEV_MODE locais).
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=True)
+# Em produção (ECS), a task definition prevalece. Nunca sobrescrever com .env
+# local/bakeado (já vimos ACTION_HUB_API_URL=localhost apagar o Hub em prod).
+_is_prod = (os.environ.get("INOVE4US_ENV") or os.environ.get("FLASK_ENV") or "").lower() in (
+    "production",
+    "prod",
+)
+if not _is_prod:
+    load_dotenv(os.path.join(ROOT, ".env"))
+    # backend/.env preenche só chaves ausentes (não override do ambiente).
+    load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=False)
 
 sys.path.insert(0, os.path.dirname(__file__))
 

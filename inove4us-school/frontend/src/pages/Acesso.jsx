@@ -54,7 +54,7 @@ function CmsSideColumn({ column, side, loading }) {
   if (loading && !columnVisible(column)) {
     return (
       <aside
-        className={`hidden w-[min(100%,17.5rem)] shrink-0 lg:block ${
+        className={`hidden w-[min(100%,17.5rem)] shrink-0 md:block ${
           side === 'left' ? 'order-1' : 'order-3'
         }`}
         aria-hidden="true"
@@ -91,7 +91,7 @@ function CmsSideColumn({ column, side, loading }) {
 
   return (
     <aside
-      className={`hidden w-[min(100%,17.5rem)] shrink-0 lg:block ${
+      className={`hidden w-[min(100%,17.5rem)] shrink-0 md:block ${
         side === 'left' ? 'order-1' : 'order-3'
       }`}
       aria-label={side === 'left' ? 'Conteúdo institucional' : 'Como começar'}

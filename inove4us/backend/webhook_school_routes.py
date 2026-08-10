@@ -19,7 +19,8 @@ from psycopg2.extras import Json, RealDictCursor
 
 from db import find_cliente_by_email, get_conn
 
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+# Só preenche ausentes — nunca sobrescreve env da task ECS.
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
 webhook_school_bp = Blueprint("school_webhooks", __name__)
 
