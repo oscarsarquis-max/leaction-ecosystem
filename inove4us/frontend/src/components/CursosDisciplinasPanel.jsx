@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   atualizarCurso,
   atualizarDisciplina,
@@ -53,23 +53,29 @@ export default function CursosDisciplinasPanel({ periodo, onSchemaPending }) {
   const [discForm, setDiscForm] = useState(emptyDisc)
   const [editingDiscId, setEditingDiscId] = useState(null)
 
+  // Pai passa callback inline — não pode entrar nas deps ou o form zera a cada tecla.
+  const onSchemaPendingRef = useRef(onSchemaPending)
+  onSchemaPendingRef.current = onSchemaPending
+
+  const periodoId = periodo?.id ?? null
+
   const loadCursos = useCallback(async () => {
-    if (!periodo?.id) {
+    if (!periodoId) {
       setCursos([])
       return
     }
     setLoading(true)
     try {
-      const data = await listarCursos(periodo.id)
+      const data = await listarCursos(periodoId)
       setCursos(Array.isArray(data?.cursos) ? data.cursos : [])
     } catch (err) {
-      if (isSchemaPendingError(err)) onSchemaPending?.()
+      if (isSchemaPendingError(err)) onSchemaPendingRef.current?.()
       else window.alert(err?.message || 'Falha ao carregar cursos')
       setCursos([])
     } finally {
       setLoading(false)
     }
-  }, [periodo?.id, onSchemaPending])
+  }, [periodoId])
 
   const loadDisciplinas = useCallback(async (cursoId) => {
     if (!cursoId) {
@@ -81,20 +87,22 @@ export default function CursosDisciplinasPanel({ periodo, onSchemaPending }) {
       const data = await listarDisciplinas(cursoId)
       setDisciplinas(Array.isArray(data?.disciplinas) ? data.disciplinas : [])
     } catch (err) {
-      if (isSchemaPendingError(err)) onSchemaPending?.()
+      if (isSchemaPendingError(err)) onSchemaPendingRef.current?.()
       else window.alert(err?.message || 'Falha ao carregar disciplinas')
       setDisciplinas([])
     } finally {
       setDiscLoading(false)
     }
-  }, [onSchemaPending])
+  }, [])
 
   useEffect(() => {
     setSelectedCursoId(null)
     setEditingCursoId(null)
     setCursoForm(emptyCurso)
+    setEditingDiscId(null)
+    setDiscForm(emptyDisc)
     void loadCursos()
-  }, [loadCursos])
+  }, [periodoId, loadCursos])
 
   useEffect(() => {
     setEditingDiscId(null)

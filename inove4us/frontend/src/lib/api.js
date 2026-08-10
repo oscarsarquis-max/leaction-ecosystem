@@ -123,6 +123,12 @@ export const api = {
   },
   getDesafioDoEvento: (idEvento) => request(`/api/agenda-eventos/${idEvento}/desafio`),
   getDesafio: (desafioId) => request(`/api/desafios/${desafioId}`),
+  /** Persiste desafio com plano/cards (sem aulas) — retomada sem nova IA. */
+  criarDesafio: (payload) =>
+    request('/api/desafios', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   listDesafios: ({ q, limit } = {}) => {
     const params = new URLSearchParams()
     if (q) params.set('q', q)

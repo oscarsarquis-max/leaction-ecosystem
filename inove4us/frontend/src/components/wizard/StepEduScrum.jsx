@@ -427,20 +427,33 @@ export default function StepEduScrum({
     }
   }, [planoSession, initialEventoId])
 
+  // Só reseta a mesa quando muda a aula/plano de verdade — não a cada nova
+  // referência de objeto (isso fechava o modal ao editar o escopo do card).
+  const planoSyncKey = [
+    initialEventoId ?? '',
+    planoSession ?? '',
+    plano?.missao ?? '',
+    Array.isArray(plano?.tarefas_kanban) ? plano.tarefas_kanban.length : 0,
+  ].join('|')
+  const syncPayloadRef = useRef({ initialKanbanState, plano, initialEventoId })
+  syncPayloadRef.current = { initialKanbanState, plano, initialEventoId }
+
   useEffect(() => {
+    const {
+      initialKanbanState: ks,
+      plano: pl,
+      initialEventoId: evId,
+    } = syncPayloadRef.current
     if (!resumeMode) {
       setTasks(
-        stampAulaId(
-          tasksFromKanbanState(initialKanbanState, plano?.tarefas_kanban || []),
-          initialEventoId,
-        ),
+        stampAulaId(tasksFromKanbanState(ks, pl?.tarefas_kanban || []), evId),
       )
     }
     setPendingMove(null)
-    setShowRegistro(false)
     setAcaoErro('')
-    if (initialEventoId) setAulaAtivaId(initialEventoId)
-  }, [plano, initialKanbanState, initialEventoId, resumeMode])
+    if (evId) setAulaAtivaId(evId)
+    // Modal de registro permanece aberto — não chamar setShowRegistro(false) aqui.
+  }, [planoSyncKey, resumeMode])
 
   useEffect(() => {
     loadAulas()
@@ -1108,6 +1121,7 @@ export default function StepEduScrum({
       const data = await api.registrarAulas({
         aulas,
         titulo: tituloAgendaCurto,
+        desafio_id: desafioIdAtivo || undefined,
         nota_texto: [
           hipotese ? `Hipótese: ${hipotese}` : null,
           problema ? `Problema: ${problema}` : null,
@@ -1126,6 +1140,7 @@ export default function StepEduScrum({
           contexto_execucao: contextoExecucao,
           ...(disciplinaId != null ? { disciplina_id: disciplinaId } : {}),
           ...(causas != null ? { causas } : {}),
+          ...(desafioIdAtivo ? { desafio_id: desafioIdAtivo } : {}),
         },
         plan_data: planData,
         kanban_state: { tarefas: tasks },
@@ -1173,7 +1188,9 @@ export default function StepEduScrum({
     const email = conviteEmail.trim().toLowerCase()
     const cardId = conviteCardId.trim()
     if (!desafioIdAtivo) {
-      setConviteErro('Salve a(s) aula(s) primeiro — o desafio precisa existir para convidar.')
+      setConviteErro(
+        'Aguarde o desafio ser salvo (após gerar os cards) ou registre as aulas para convidar.',
+      )
       return
     }
     if (!email || !email.includes('@')) {
@@ -2077,12 +2094,26 @@ export default function StepEduScrum({
               className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-bordo-deep/55 p-3 sm:p-6"
               role="dialog"
               aria-modal="true"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                  e.currentTarget.dataset.closeOnClick = '1'
+                }
+              }}
               onClick={(e) => {
-                if (e.target === e.currentTarget && !registroBusy) setShowRegistro(false)
+                if (
+                  e.target === e.currentTarget &&
+                  e.currentTarget.dataset.closeOnClick === '1' &&
+                  !registroBusy
+                ) {
+                  setShowRegistro(false)
+                }
+                delete e.currentTarget.dataset.closeOnClick
               }}
             >
               <form
                 onSubmit={handleRegistrarAulas}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
                 className="my-2 w-full max-w-2xl rounded-2xl border border-brand-200 bg-white p-5 shadow-soft sm:my-4 sm:p-6"
                 style={{ maxHeight: 'min(92vh, 920px)', overflowY: 'auto' }}
               >
@@ -2193,19 +2224,22 @@ export default function StepEduScrum({
                       <ul className="mt-2 space-y-2">
                         {cardsCatalogo.map((card) => {
                           const checked = (slot.card_ids || []).includes(card.id)
+                          const checkId = `reg-card-${slot.key}-${card.id}`
+                          const escopoId = `reg-escopo-${slot.key}-${card.id}`
                           return (
                             <li
                               key={`${slot.key}-${card.id}`}
                               className="rounded-lg border border-white bg-white/80 p-2"
                             >
-                              <label className="flex cursor-pointer items-start gap-2">
+                              <div className="flex items-start gap-2">
                                 <input
+                                  id={checkId}
                                   type="checkbox"
                                   className="mt-1"
                                   checked={checked}
                                   onChange={() => toggleSlotCard(slot.key, card.id)}
                                 />
-                                <span className="min-w-0 flex-1">
+                                <label htmlFor={checkId} className="min-w-0 flex-1 cursor-pointer">
                                   <span className="block text-sm font-semibold text-bordo-deep">
                                     {card.titulo}
                                   </span>
@@ -2214,14 +2248,22 @@ export default function StepEduScrum({
                                       {card.objetivo}
                                     </span>
                                   ) : null}
-                                </span>
-                              </label>
+                                </label>
+                              </div>
                               {checked ? (
-                                <div className="mt-2 pl-6">
-                                  <label className="text-[10px] font-bold uppercase text-bordo-soft">
+                                <div
+                                  className="mt-2 pl-6"
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <label
+                                    htmlFor={escopoId}
+                                    className="text-[10px] font-bold uppercase text-bordo-soft"
+                                  >
                                     O que esta turma realiza neste card
                                   </label>
                                   <textarea
+                                    id={escopoId}
                                     className="field-input mt-1 !py-2 text-sm"
                                     rows={2}
                                     value={slot.escopos?.[card.id] || ''}
@@ -2312,7 +2354,8 @@ export default function StepEduScrum({
                 </button>
               ) : (
                 <p className="mt-2 text-[11px] text-bordo-soft">
-                  Ao salvar as aulas, o convite (se preenchido) será enviado junto.
+                  Quando o desafio estiver salvo (ou ao registrar as aulas), o convite pode ser
+                  enviado.
                 </p>
               )}
               {conviteErro ? (

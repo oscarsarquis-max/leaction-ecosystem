@@ -118,8 +118,8 @@ export default function DesafioSeletor({ className = '' }) {
               Abrir a mesa do desafio
             </h2>
             <p className="mt-1 max-w-xl text-sm text-bordo-soft">
-              Busque pelos desafios que você criou ou aceitou. Ao selecionar, vê a execução
-              completa — cards, aulas e tempo restante — antes do grafo do período.
+              Busque pelos desafios que você criou ou aceitou — inclusive os que ainda aguardam
+              registro de aulas. Ao selecionar, retoma a gestão da execução sem nova IA.
             </p>
           </div>
           <p className="text-xs font-semibold text-bordo-soft">{filteredHint}</p>
@@ -213,6 +213,11 @@ export default function DesafioSeletor({ className = '' }) {
                           >
                             {d.sou_dono ? 'Meu' : 'Atribuído'}
                           </span>
+                          {d.precisa_registrar_aulas || !(r.n_aulas > 0) ? (
+                            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-900">
+                              Aguardando aulas
+                            </span>
+                          ) : null}
                           {d.tema ? (
                             <span className="text-[11px] font-medium text-bordo-soft">
                               {d.tema}
@@ -220,11 +225,17 @@ export default function DesafioSeletor({ className = '' }) {
                           ) : null}
                         </div>
                         <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-bordo-soft">
-                          <span>Progresso {formatPct(r.progresso_pct)}</span>
-                          <span>
-                            Aulas {r.n_concluido || 0}/{r.n_aulas || 0}
-                          </span>
-                          <span>{formatDias(r)}</span>
+                          {d.precisa_registrar_aulas || !(r.n_aulas > 0) ? (
+                            <span>Cards prontos · registre as aulas para executar</span>
+                          ) : (
+                            <>
+                              <span>Progresso {formatPct(r.progresso_pct)}</span>
+                              <span>
+                                Aulas {r.n_concluido || 0}/{r.n_aulas || 0}
+                              </span>
+                              <span>{formatDias(r)}</span>
+                            </>
+                          )}
                           {!d.sou_dono && d.dono_nome ? (
                             <span>de {d.dono_nome}</span>
                           ) : null}
@@ -252,8 +263,10 @@ export default function DesafioSeletor({ className = '' }) {
                       {d.titulo || 'Desafio'}
                     </span>
                     <span className="mt-1 text-[11px] text-bordo-soft">
-                      {d.sou_dono ? 'Meu desafio' : 'Aceito'} · {formatPct(r.progresso_pct)} ·{' '}
-                      {formatDias(r)}
+                      {d.sou_dono ? 'Meu desafio' : 'Aceito'}
+                      {d.precisa_registrar_aulas || !(r.n_aulas > 0)
+                        ? ' · Aguardando aulas'
+                        : ` · ${formatPct(r.progresso_pct)} · ${formatDias(r)}`}
                     </span>
                   </button>
                 </li>

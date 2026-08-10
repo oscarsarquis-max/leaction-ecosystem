@@ -91,6 +91,8 @@ export default function InstituicoesPage() {
   const [periodosLoading, setPeriodosLoading] = useState(false)
   const [selectedPeriodoId, setSelectedPeriodoId] = useState(null)
 
+  const markSchemaPending = useCallback(() => setSchemaPending(true), [])
+
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -715,7 +717,7 @@ export default function InstituicoesPage() {
                 {selectedPeriodo ? (
                   <CursosDisciplinasPanel
                     periodo={selectedPeriodo}
-                    onSchemaPending={() => setSchemaPending(true)}
+                    onSchemaPending={markSchemaPending}
                   />
                 ) : null}
               </>

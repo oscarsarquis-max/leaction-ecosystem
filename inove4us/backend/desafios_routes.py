@@ -907,6 +907,141 @@ def _agrupar_execucoes_mesa(cur, desafio: dict, eventos: list[dict], id_clie: in
     return execucoes
 
 
+def _titulo_from_plan(plan_data, problema: str | None = None) -> str:
+    plan = plan_data if isinstance(plan_data, dict) else {}
+    plano = plan.get("plano") or plan.get("plano_eduscrum") or plan
+    if not isinstance(plano, dict):
+        plano = {}
+    for key in ("nome", "etiqueta", "metodologia", "titulo"):
+        val = str(plano.get(key) or "").strip()
+        if val:
+            return val[:200]
+    missao = str(plano.get("missao") or "").strip()
+    if missao:
+        return (missao[:140] + ("…" if len(missao) > 140 else ""))[:200]
+    prob = str(problema or plan.get("problema") or "").strip()
+    if prob:
+        return (prob[:140] + ("…" if len(prob) > 140 else ""))[:200]
+    return "Desafio"
+
+
+@desafios_bp.post("/api/desafios")
+def criar_desafio():
+    """
+    Persiste o desafio assim que o plano/cards existem — sem aulas.
+    A IA já foi consumida no estruturar; daqui em diante é só gestão da execução.
+    """
+    user = _require_user()
+    if not user:
+        return jsonify({"success": False, "error": "Não autenticado"}), 401
+
+    data = request.get_json(silent=True) or {}
+    plan_data_obj = data.get("plan_data")
+    if isinstance(plan_data_obj, str) and plan_data_obj.strip():
+        try:
+            plan_data_obj = json.loads(plan_data_obj)
+        except Exception:
+            return jsonify({"success": False, "error": "plan_data inválido"}), 400
+    if not isinstance(plan_data_obj, dict):
+        return jsonify({"success": False, "error": "plan_data é obrigatório"}), 400
+
+    plano_session = str(data.get("plano_session") or "").strip() or None
+    if plano_session:
+        plan_data_obj = {**plan_data_obj, "plano_session": plano_session}
+
+    causas_obj = data.get("causas")
+    if causas_obj is None:
+        causas_obj = plan_data_obj.get("causas")
+    if isinstance(plan_data_obj, dict) and causas_obj is not None and "causas" not in plan_data_obj:
+        plan_data_obj = {**plan_data_obj, "causas": causas_obj}
+
+    hipotese_val = (
+        data.get("hipotese")
+        or plan_data_obj.get("hipotese")
+        or plan_data_obj.get("hipotese_teste")
+        or None
+    )
+    problema_val = data.get("problema") or plan_data_obj.get("problema") or None
+    if hipotese_val is not None:
+        hipotese_val = str(hipotese_val).strip() or None
+    if problema_val is not None:
+        problema_val = str(problema_val).strip() or None
+
+    tema_obj = str(data.get("tema") or "").strip() or None
+    titulo = str(data.get("titulo") or "").strip() or _titulo_from_plan(
+        plan_data_obj, problema_val
+    )
+
+    meta_obj = data.get("meta_json") if isinstance(data.get("meta_json"), dict) else {}
+    meta_obj = {
+        **meta_obj,
+        "precisa_registrar_aulas": True,
+        "hipotese": hipotese_val or meta_obj.get("hipotese") or "",
+        "problema": (problema_val or meta_obj.get("problema") or "")[:500],
+    }
+    if plano_session:
+        meta_obj["plano_session"] = plano_session
+    if causas_obj is not None:
+        meta_obj["causas"] = causas_obj
+
+    disciplina_id = data.get("disciplina_id")
+    if disciplina_id is not None and disciplina_id != "":
+        try:
+            disciplina_id = int(disciplina_id)
+            if disciplina_id <= 0:
+                disciplina_id = None
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "disciplina_id inválido"}), 400
+    else:
+        disciplina_id = None
+
+    try:
+        with get_conn() as conn:
+            _ensure_desafios_schema(conn)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                if disciplina_id is not None:
+                    cur.execute(
+                        """
+                        SELECT d.id
+                          FROM public.inove_disciplinas d
+                          JOIN public.inove_cursos c ON c.id = d.curso_id
+                          JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
+                          JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+                         WHERE d.id = %s
+                           AND i.id_clie = %s
+                           AND d.ativo = TRUE
+                           AND c.ativo = TRUE
+                           AND p.ativo = TRUE
+                           AND i.ativo = TRUE
+                        """,
+                        (disciplina_id, user["id_clie"]),
+                    )
+                    if not cur.fetchone():
+                        return jsonify(
+                            {"success": False, "error": "Disciplina não encontrada ou sem permissão"}
+                        ), 404
+
+                row = create_desafio_row(
+                    cur,
+                    id_clie=int(user["id_clie"]),
+                    titulo=titulo,
+                    problema=problema_val,
+                    hipotese=hipotese_val,
+                    causas=causas_obj,
+                    tema=tema_obj,
+                    plan_data=plan_data_obj,
+                    meta_json=meta_obj,
+                    disciplina_id=disciplina_id,
+                )
+                out = _serialize_desafio(dict(row))
+                out["precisa_registrar_aulas"] = True
+                out["n_aulas"] = 0
+        return jsonify({"success": True, "desafio": out, "desafio_id": out["id"]}), 201
+    except Exception as exc:
+        print(f"⚠️ desafios criar: {exc}", file=sys.stderr)
+        return jsonify({"success": False, "error": "Falha ao salvar o desafio"}), 500
+
+
 @desafios_bp.get("/api/desafios")
 def listar_desafios():
     """Lista desafios do professor (próprios + aceitos como colaborador)."""
@@ -1022,6 +1157,8 @@ def listar_desafios():
                     if ancora is None and eventos:
                         ancora = eventos[0]["id_evento"]
                     item["id_evento_ancora"] = ancora
+                    n_aulas = int(prog.get("n_aulas") or 0)
+                    item["precisa_registrar_aulas"] = n_aulas == 0
                     out.append(item)
 
         return jsonify({"success": True, "desafios": out, "q": q or None}), 200
@@ -1148,6 +1285,17 @@ def mesa_do_desafio(desafio_id: str):
                         if ps:
                             plano_session_mesa = ps
                             break
+                if not plano_session_mesa:
+                    meta_d = _json_field(desafio.get("meta_json")) or {}
+                    plan_d = _json_field(desafio.get("plan_data")) or {}
+                    for src in (meta_d, plan_d):
+                        if isinstance(src, dict):
+                            ps = str(src.get("plano_session") or "").strip()
+                            if ps:
+                                plano_session_mesa = ps
+                                break
+
+                d_out["precisa_registrar_aulas"] = len(eventos) == 0
 
         return jsonify(
             {
@@ -1162,6 +1310,7 @@ def mesa_do_desafio(desafio_id: str):
                 "tempo": tempo,
                 "id_evento_ancora": minha_ancora,
                 "plano_session": plano_session_mesa,
+                "precisa_registrar_aulas": len(eventos) == 0,
             }
         ), 200
     except Exception as exc:

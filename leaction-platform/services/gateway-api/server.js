@@ -48,6 +48,7 @@ const { registerCheckoutSessionsRoutes } = require('./domain/checkout-sessions')
 const { registerCatalogPublicRoutes } = require('./domain/catalog-public');
 const { registerMpWebhookRoutes } = require('./domain/mp-webhooks');
 const { startOutboxWorker } = require('./domain/outbox-worker');
+const { startStatusWatcher } = require('./lib/status-watcher');
 const { registerAdminRoutes } = require('./admin');
 const { registerCmsPostsRoutes } = require('./domain/cms-posts');
 const { registerCmsAssistenteChatRoutes } = require('./domain/cms-assistente-chat');
@@ -1446,4 +1447,8 @@ startOutboxWorker(pool);
 
 // API na 4001; Action Hub (Next.js) na 4000
 const PORT = process.env.GATEWAY_PORT || 4001;
-app.listen(PORT, () => console.log(`🚀 Orquestrador ActionHub Online na porta ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Orquestrador ActionHub Online na porta ${PORT}`);
+  // Alertas SES desatendidos (prod / STATUS_ALERT_ENABLED=1)
+  startStatusWatcher(pool);
+});

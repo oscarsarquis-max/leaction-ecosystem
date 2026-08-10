@@ -84,7 +84,8 @@ Scripts locais:
 
 ### Gatekeeper / monitoramento
 - `system_config.system_locked` + rotas `/gatekeeper/*`.
-- Monitor: `/dashboard/monitor` → `GET /api/sys/status`.
+- Monitor UI: `/dashboard/monitor` → `GET /api/sys/status` (JWT admin). Sessão 401 **não** pinta serviços como DOWN.
+- Alertas prod: Gateway `lib/status-watcher.js` (SES) → `suporte@leaction.com.br` em transição DOWN/UP. Env: `STATUS_ALERT_*` em `.env.production.example`.
 
 ---
 

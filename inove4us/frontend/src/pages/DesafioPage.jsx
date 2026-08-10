@@ -58,6 +58,7 @@ export default function DesafioPage() {
   const [hipotese, setHipotese] = useState('')
   const [plano, setPlano] = useState(null)
   const [planoSession, setPlanoSession] = useState(null)
+  const [desafioId, setDesafioId] = useState(null)
   const [ditadoLivre, setDitadoLivre] = useState('')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeExhausted, setUpgradeExhausted] = useState(false)
@@ -77,6 +78,7 @@ export default function DesafioPage() {
     setHipotese('')
     setPlano(null)
     setPlanoSession(null)
+    setDesafioId(null)
     if (complemento) {
       setProblema(problemaEnvio)
     }
@@ -151,23 +153,72 @@ export default function DesafioPage() {
     })
   }
 
+  async function persistirDesafioComPlano({ planoObj, hipoteseTxt, sessionKey }) {
+    if (!planoObj) return null
+    try {
+      const planData = {
+        plano: planoObj,
+        plano_eduscrum: planoObj,
+        hipotese: hipoteseTxt || '',
+        problema: problema || '',
+        plano_session: sessionKey || null,
+        ...(causas != null ? { causas } : {}),
+      }
+      const res = await api.criarDesafio({
+        titulo: planoObj?.nome || planoObj?.etiqueta || undefined,
+        problema: problema || undefined,
+        hipotese: hipoteseTxt || undefined,
+        causas: causas ?? undefined,
+        plano_session: sessionKey || undefined,
+        disciplina_id: disciplinaId ?? undefined,
+        plan_data: planData,
+        meta_json: {
+          missao: planoObj?.missao || '',
+          hipotese: hipoteseTxt || '',
+          problema: (problema || '').slice(0, 500),
+          precisa_registrar_aulas: true,
+          ...(disciplinaId != null ? { disciplina_id: disciplinaId } : {}),
+          ...(causas != null ? { causas } : {}),
+          ...(sessionKey ? { plano_session: sessionKey } : {}),
+        },
+      })
+      const id = res?.desafio_id || res?.desafio?.id || null
+      if (id) setDesafioId(id)
+      return id
+    } catch (err) {
+      console.warn('Falha ao persistir desafio após gerar cards', err)
+      setError(
+        err?.message ||
+          'Plano gerado, mas não foi possível salvar para retomada. Registre as aulas agora ou tente de novo.',
+      )
+      return null
+    }
+  }
+
   async function handleGerarPlano() {
     if (!selectedCaminho) return
     setBusy(true)
+    setError('')
     const sessionKey = newSessionKey()
     try {
       const data = await api.selecionarCaminho(selectedCaminho)
-      setHipotese(data.hipotese_teste || selectedCaminho.hipotese_teste)
-      setPlano(data.plano_eduscrum || selectedCaminho.plano_eduscrum)
+      const hipoteseTxt = data.hipotese_teste || selectedCaminho.hipotese_teste
+      const planoObj = data.plano_eduscrum || selectedCaminho.plano_eduscrum
+      setHipotese(hipoteseTxt)
+      setPlano(planoObj)
       setPlanoSession(sessionKey)
       setCurrentStep(4)
       void trackEvent(CrmEvents.PLANO_GERAR, {
         url: '/desafio?etapa=plano',
         idUsuario: user?.id_clie ?? null,
       })
+      // Crédito IA já foi gasto no estruturar — salva o desafio agora (gestão de execução).
+      await persistirDesafioComPlano({ planoObj, hipoteseTxt, sessionKey })
     } catch (err) {
-      setHipotese(selectedCaminho.hipotese_teste)
-      setPlano(selectedCaminho.plano_eduscrum)
+      const hipoteseTxt = selectedCaminho.hipotese_teste
+      const planoObj = selectedCaminho.plano_eduscrum
+      setHipotese(hipoteseTxt)
+      setPlano(planoObj)
       setPlanoSession(sessionKey)
       setCurrentStep(4)
       // Plano local ainda abre — conta como elaboração (mesmo com falha do endpoint).
@@ -176,6 +227,7 @@ export default function DesafioPage() {
         idUsuario: user?.id_clie ?? null,
       })
       console.warn(err)
+      await persistirDesafioComPlano({ planoObj, hipoteseTxt, sessionKey })
     } finally {
       setBusy(false)
     }
@@ -274,16 +326,42 @@ export default function DesafioPage() {
         )}
 
         {currentStep === 4 && plano && (
-          <StepEduScrum
-            plano={plano}
-            hipotese={hipotese}
-            problema={problema}
-            causas={causas}
-            user={user}
-            planoSession={planoSession}
-            disciplinaId={disciplinaId}
-            onVoltar={() => setCurrentStep(3)}
-          />
+          <>
+            {desafioId ? (
+              <div className="mx-auto mb-4 max-w-6xl rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+                <p className="font-semibold">Desafio salvo — você pode sair e retomar depois.</p>
+                <p className="mt-1 text-emerald-900/90">
+                  Os cards já estão prontos. O próximo passo é registrar as aulas (gestão da
+                  execução). Sem nova consulta à IA.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Link
+                    to={`/desafios/${desafioId}`}
+                    className="text-sm font-bold text-emerald-900 underline-offset-2 hover:underline"
+                  >
+                    Abrir mesa do desafio
+                  </Link>
+                  <Link
+                    to="/mesa-do-inovador"
+                    className="text-sm font-semibold text-emerald-800/90 underline-offset-2 hover:underline"
+                  >
+                    Ir ao início (lista de desafios)
+                  </Link>
+                </div>
+              </div>
+            ) : null}
+            <StepEduScrum
+              plano={plano}
+              hipotese={hipotese}
+              problema={problema}
+              causas={causas}
+              user={user}
+              planoSession={planoSession}
+              disciplinaId={disciplinaId}
+              desafioId={desafioId}
+              onVoltar={() => setCurrentStep(3)}
+            />
+          </>
         )}
       </main>
 

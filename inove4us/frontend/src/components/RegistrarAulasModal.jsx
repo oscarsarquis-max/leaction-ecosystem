@@ -233,12 +233,26 @@ export default function RegistrarAulasModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="registrar-aulas-title"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          e.currentTarget.dataset.closeOnClick = '1'
+        }
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose?.()
+        if (
+          e.target === e.currentTarget &&
+          e.currentTarget.dataset.closeOnClick === '1' &&
+          !busy
+        ) {
+          onClose?.()
+        }
+        delete e.currentTarget.dataset.closeOnClick
       }}
     >
       <form
         onSubmit={handleSubmit}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         className="my-2 w-full max-w-2xl rounded-2xl border border-brand-200 bg-white p-5 shadow-soft sm:my-4 sm:p-6"
         style={{ maxHeight: 'min(92vh, 920px)', overflowY: 'auto' }}
       >
@@ -342,17 +356,20 @@ export default function RegistrarAulasModal({
                 <ul className="mt-2 space-y-2">
                   {catalogo.map((card) => {
                     const checked = (slot.card_ids || []).includes(card.id)
+                    const checkId = `mesa-card-${slot.key}-${card.id}`
+                    const escopoId = `mesa-escopo-${slot.key}-${card.id}`
                     return (
                       <li key={`${slot.key}-${card.id}`} className="rounded-lg bg-white p-3">
-                        <label className="flex cursor-pointer items-start gap-2">
+                        <div className="flex items-start gap-2">
                           <input
+                            id={checkId}
                             type="checkbox"
                             className="mt-1"
                             checked={checked}
                             onChange={() => toggleCard(slot.key, card.id)}
                             disabled={busy}
                           />
-                          <span className="min-w-0 flex-1">
+                          <label htmlFor={checkId} className="min-w-0 flex-1 cursor-pointer">
                             <span className="block text-sm font-semibold text-bordo-deep">
                               {card.titulo}
                             </span>
@@ -361,14 +378,22 @@ export default function RegistrarAulasModal({
                                 {card.objetivo}
                               </span>
                             ) : null}
-                          </span>
-                        </label>
+                          </label>
+                        </div>
                         {checked ? (
-                          <div className="mt-2 pl-6">
-                            <label className="text-[10px] font-bold uppercase text-bordo-soft">
+                          <div
+                            className="mt-2 pl-6"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <label
+                              htmlFor={escopoId}
+                              className="text-[10px] font-bold uppercase text-bordo-soft"
+                            >
                               O que esta turma realiza neste card
                             </label>
                             <textarea
+                              id={escopoId}
                               className="field-input mt-1 !py-2 text-sm"
                               rows={3}
                               value={slot.escopos?.[card.id] || ''}

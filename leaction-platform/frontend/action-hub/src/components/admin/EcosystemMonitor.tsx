@@ -171,14 +171,11 @@ function ServiceCard({
   );
 }
 
-function fallbackDown(name: string, detail: string): ServiceStatusItem {
-  return {
-    name,
-    status: 'DOWN',
-    latency: null,
-    lastChecked: new Date().toISOString(),
-    detail,
-  };
+const AUTH_BANNER =
+  'Sessão admin expirada — faça login de novo para ver o status.';
+
+function isAuthFailureMessage(message: string): boolean {
+  return /n[aã]o autorizado|unauthorized|sess[aã]o admin/i.test(message);
 }
 
 export function EcosystemMonitor() {
@@ -187,6 +184,7 @@ export function EcosystemMonitor() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authBlocked, setAuthBlocked] = useState(false);
   const [mitigateMsg, setMitigateMsg] = useState<string | null>(null);
   const [mitigatingService, setMitigatingService] = useState<MitigateService | null>(
     null
@@ -204,14 +202,10 @@ export function EcosystemMonitor() {
       try {
         const auth = String(token || '').trim();
         if (!auth) {
-          setServices([
-            fallbackDown('Action Pay', 'Sessão admin ausente'),
-            fallbackDown('Gestão de Planos', 'Sessão admin ausente'),
-            fallbackDown('API do Marketplace', 'Sessão admin ausente'),
-            fallbackDown('PostgreSQL', 'Sessão admin ausente'),
-            fallbackDown('Frontend do Action Hub', 'Sessão admin ausente'),
-          ]);
-          setError('Faça login como admin para ver o status.');
+          // Não pintar os 5 serviços como DOWN — é falha de sessão, não de infra.
+          setAuthBlocked(true);
+          setServices([]);
+          setError(AUTH_BANNER);
           return;
         }
 
@@ -224,6 +218,13 @@ export function EcosystemMonitor() {
           signal: AbortSignal.timeout(60_000),
         });
 
+        if (res.status === 401) {
+          setAuthBlocked(true);
+          setServices([]);
+          setError(AUTH_BANNER);
+          return;
+        }
+
         if (!res.ok) {
           const body = (await res.json().catch(() => ({}))) as { error?: string };
           throw new Error(body.error || `HTTP ${res.status}`);
@@ -234,6 +235,7 @@ export function EcosystemMonitor() {
           throw new Error('Resposta inválida da API de status.');
         }
 
+        setAuthBlocked(false);
         setServices(
           data.map((row) => {
             const item = row as Partial<ServiceStatusItem>;
@@ -252,11 +254,20 @@ export function EcosystemMonitor() {
         );
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Falha ao carregar status';
+        if (isAuthFailureMessage(message)) {
+          setAuthBlocked(true);
+          setServices([]);
+          setError(AUTH_BANNER);
+          return;
+        }
+
         const timedOut =
           (err instanceof Error && err.name === 'TimeoutError') ||
           /aborted|timeout/i.test(message);
 
+        setAuthBlocked(false);
         setError(timedOut ? 'Timeout ao agregar status dos serviços.' : message);
+        // Mantém a lista anterior; só marca DOWN/TIMEOUT se já havia dados reais.
         setServices((prev) =>
           prev.length
             ? prev.map((s) => ({
@@ -265,13 +276,7 @@ export function EcosystemMonitor() {
                 lastChecked: new Date().toISOString(),
                 detail: timedOut ? 'Timeout na agregação' : message,
               }))
-            : [
-                fallbackDown('Action Pay', message),
-                fallbackDown('Gestão de Planos', message),
-                fallbackDown('API do Marketplace', message),
-                fallbackDown('PostgreSQL', message),
-                fallbackDown('Frontend do Action Hub', message),
-              ]
+            : prev
         );
       } finally {
         setLoading(false);
@@ -408,7 +413,20 @@ export function EcosystemMonitor() {
         </div>
       ) : null}
 
-      {!loading && total > 0 ? (
+      {authBlocked ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="inline-flex items-start gap-2 font-medium">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            {error || AUTH_BANNER}
+          </p>
+          <p className="mt-1 text-amber-800/90">
+            Os serviços não foram marcados como fora do ar — é preciso autenticar de novo
+            para consultar o status real.
+          </p>
+        </div>
+      ) : null}
+
+      {!loading && !authBlocked && total > 0 ? (
         <div className="rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
           <p className="text-sm text-stone-600">
             <span className="font-semibold text-stone-900">
@@ -425,10 +443,14 @@ export function EcosystemMonitor() {
         </div>
       ) : null}
 
-      {loading && services.length === 0 ? (
+      {loading && !authBlocked && services.length === 0 ? (
         <div className="flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white py-16 text-sm text-stone-500 shadow-sm">
           <Loader2 className="size-4 animate-spin" aria-hidden />
           Verificando serviços…
+        </div>
+      ) : authBlocked ? (
+        <div className="rounded-xl border border-dashed border-stone-200 bg-white py-12 text-center text-sm text-stone-500 shadow-sm">
+          Status dos serviços oculto até o login admin.
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import BrandLogo from '../components/BrandLogo'
 import RegistrarAulasModal from '../components/RegistrarAulasModal'
 import { useAuth } from '../lib/auth'
@@ -57,6 +57,7 @@ function aulaIdsDoCard(card) {
 export default function MesaDoDesafioPage() {
   const { desafioId } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user, logout } = useAuth()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -64,6 +65,7 @@ export default function MesaDoDesafioPage() {
   const [selectedCardId, setSelectedCardId] = useState(null)
   const [showRegistro, setShowRegistro] = useState(false)
   const [registroOk, setRegistroOk] = useState('')
+  const autoRegistroFeito = useRef(false)
 
   const load = useCallback(async () => {
     if (!desafioId) return
@@ -86,7 +88,26 @@ export default function MesaDoDesafioPage() {
 
   useEffect(() => {
     setSelectedCardId(null)
+    autoRegistroFeito.current = false
   }, [desafioId])
+
+  useEffect(() => {
+    if (!data || autoRegistroFeito.current) return
+    const semAulas = !(
+      (data?.aulas_por_executar || []).length || (data?.aulas_executadas || []).length
+    )
+    const wants =
+      searchParams.get('registrar') === '1' ||
+      ((data.precisa_registrar_aulas || data?.desafio?.precisa_registrar_aulas) && semAulas)
+    if (!wants || !semAulas) return
+    autoRegistroFeito.current = true
+    setShowRegistro(true)
+    if (searchParams.get('registrar') === '1') {
+      const next = new URLSearchParams(searchParams)
+      next.delete('registrar')
+      setSearchParams(next, { replace: true })
+    }
+  }, [data, searchParams, setSearchParams])
 
   const desafio = data?.desafio
   const plan = useMemo(() => {
@@ -223,7 +244,9 @@ export default function MesaDoDesafioPage() {
               }}
               className="btn-primary !px-4 !py-2 text-sm"
             >
-              Acrescentar / ratificar aulas
+              {data?.precisa_registrar_aulas || data?.desafio?.precisa_registrar_aulas
+                ? 'Registrar aulas'
+                : 'Acrescentar / ratificar aulas'}
             </button>
             {data?.id_evento_ancora ? (
               <button type="button" onClick={openKanban} className="btn-ghost !px-3 !py-2 text-sm font-semibold">
@@ -256,6 +279,25 @@ export default function MesaDoDesafioPage() {
 
         {!loading && !error && desafio ? (
           <>
+            {data?.precisa_registrar_aulas || desafio?.precisa_registrar_aulas ? (
+              <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+                <p className="font-semibold">Desafio retomado — cards prontos, sem nova IA.</p>
+                <p className="mt-1 text-sky-900/90">
+                  O desafio já foi cumprido na geração dos cards. Agora é gestão da execução:
+                  registre as aulas para seguir no calendário e no Kanban.
+                </p>
+                <button
+                  type="button"
+                  className="mt-2 text-sm font-bold text-sky-950 underline-offset-2 hover:underline"
+                  onClick={() => {
+                    setRegistroOk('')
+                    setShowRegistro(true)
+                  }}
+                >
+                  Registrar aulas agora
+                </button>
+              </div>
+            ) : null}
             <div className="mb-6 text-center sm:text-left">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-600">
                 Mesa do desafio · painel gerencial
