@@ -16,8 +16,10 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-# 5–10 min (padrão 8 min)
+# 5–10 min (padrão 8 min) — posts/assistente
 CACHE_TTL_SEC = int(os.environ.get("CMS_CACHE_TTL_SEC", "480"))
+# Micro-CMS /acesso: TTL curto p/ refletir edições do Hub sem esperar minutos
+SITE_CMS_CACHE_TTL_SEC = int(os.environ.get("CMS_SITE_CACHE_TTL_SEC", "20"))
 HUB_TIMEOUT_SEC = float(os.environ.get("CMS_HUB_TIMEOUT_SEC", "3.5"))
 
 _lock = threading.Lock()
@@ -118,10 +120,11 @@ def fetch_site_cms(
     """
     key = f"site_cms:{config_key}"
     now = time.time()
+    ttl = max(0, SITE_CMS_CACHE_TTL_SEC)
 
     with _lock:
         entry = _cache.get(key)
-        if entry and (now - float(entry["fetched_at"])) < CACHE_TTL_SEC:
+        if entry and ttl > 0 and (now - float(entry["fetched_at"])) < ttl:
             payload = entry.get("payload")
             return dict(payload) if isinstance(payload, dict) else {}
 

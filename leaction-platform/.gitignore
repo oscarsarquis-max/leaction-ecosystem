@@ -27,3 +27,6 @@ chaves/
 # OAuth Mercado Livre (Marketplace plugin)
 backend/.ml_tokens.json
 backend/.env.ml.secrets
+
+.deploy-secrets/
+

@@ -154,6 +154,48 @@ async function cmsObjectExists(filename) {
 }
 
 /**
+ * Sobe imagem com o mesmo filename (ex.: promote local → S3 sem reescrever o JSON).
+ * @returns {{ filename: string, objectKey: string, publicUrl: string, persistedUrl: string, skipped?: boolean }}
+ */
+async function putCmsImageExactFilename(buffer, mimetype, filename) {
+  if (!isCmsS3Enabled()) {
+    throw new Error('CMS_S3_BUCKET não configurado.');
+  }
+  const safe = path.basename(String(filename || '').trim());
+  if (!safe || safe.includes('..')) {
+    throw new Error('filename inválido.');
+  }
+  if (!buffer || !buffer.length) {
+    throw new Error('Arquivo vazio.');
+  }
+  if (await cmsObjectExists(safe)) {
+    return {
+      filename: safe,
+      objectKey: buildObjectKey(safe),
+      publicUrl: getPublicUrlForFilename(safe),
+      persistedUrl: getCmsPersistedUrl(safe),
+      skipped: true,
+    };
+  }
+  const objectKey = buildObjectKey(safe);
+  await getS3Client().send(
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key: objectKey,
+      Body: buffer,
+      ContentType: mimetype || 'application/octet-stream',
+      CacheControl: 'public, max-age=31536000, immutable',
+    })
+  );
+  return {
+    filename: safe,
+    objectKey,
+    publicUrl: getPublicUrlForKey(objectKey),
+    persistedUrl: getCmsPersistedUrl(safe),
+  };
+}
+
+/**
  * Snapshot durável do Micro-CMS (landing + instructions) por config_key.
  * @returns {{ objectKey: string, publicUrl: string, updated_at: string }}
  */
@@ -240,6 +282,7 @@ module.exports = {
   getPublicUrlForKey,
   getCmsPersistedUrl,
   uploadCmsImage,
+  putCmsImageExactFilename,
   cmsObjectExists,
   putCmsSiteConfig,
   getCmsSiteConfig,

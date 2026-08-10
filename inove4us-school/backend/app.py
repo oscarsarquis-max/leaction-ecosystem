@@ -8,11 +8,11 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-load_dotenv()
+# Preenche só chaves ausentes — nunca sobrescreve env já injetada (PM2/ECS).
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
 
 def _version() -> str:
@@ -132,6 +132,21 @@ def create_app() -> Flask:
                 },
             }
         )
+
+    # SPA React (Vite) — em produção o dist fica em SPA_DIR / frontend/dist
+    root = Path(__file__).resolve().parents[1]
+    spa_dir = Path(os.environ.get("SPA_DIR") or (root / "frontend" / "dist"))
+    if spa_dir.is_dir():
+
+        @app.get("/", defaults={"path": ""})
+        @app.get("/<path:path>")
+        def spa_fallback(path: str):
+            if path.startswith("api/"):
+                return jsonify({"error": "Not found"}), 404
+            target = spa_dir / path
+            if path and target.is_file():
+                return send_from_directory(spa_dir, path)
+            return send_from_directory(spa_dir, "index.html")
 
     return app
 

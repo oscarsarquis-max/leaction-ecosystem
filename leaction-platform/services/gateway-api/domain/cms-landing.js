@@ -361,7 +361,9 @@ function normalizeColuna1(landing) {
 
   merged.pill_text = String(merged.pill_text || merged.badge_text || defaults.pill_text).trim() || defaults.pill_text;
   merged.title = String(merged.title || defaults.title).trim() || defaults.title;
+  // Campo do admin = subtitle; description espelhado p/ satélites (/acesso).
   merged.subtitle = String(merged.subtitle || merged.description || defaults.subtitle).trim();
+  merged.description = merged.subtitle;
   merged.cta_text = String(merged.cta_text || merged.button_text || defaults.cta_text).trim() || defaults.cta_text;
   merged.cta_url = String(merged.cta_url || merged.button_url || '').trim();
   merged.image_path = String(merged.image_path || merged.image_url || defaults.image_path).trim();
@@ -429,6 +431,9 @@ function normalizeHeroCta(landing) {
   merged.button_url = String(merged.button_url || '/consultor-leaction').trim() || '/consultor-leaction';
   merged.image_url = String(merged.image_url || '').trim();
   merged.badge_text = String(merged.badge_text || defaults.badge_text).trim() || defaults.badge_text;
+  // Preserva \n (quebra de linha) no subtítulo do hero.
+  merged.subtitle = String(merged.subtitle || merged.description || defaults.subtitle || '');
+  merged.description = merged.subtitle;
   for (const key of HERO_CTA_COLOR_KEYS) {
     merged[key] = coerceColor(merged[key], defaults[key]);
   }
@@ -457,13 +462,23 @@ function normalizeCmsLanding(landing, defaultsSource = null) {
   const defaults = defaultsSource || defaultCmsLanding();
   if (!landing || typeof landing !== 'object') return defaults;
 
-  const hero = { ...defaults.hero, ...(landing.hero || {}) };
   const heroCta = normalizeHeroCta({
     ...defaults,
     ...landing,
     hero_cta: { ...(defaults.hero_cta || {}), ...(landing.hero_cta || {}) },
     cta_consultor: { ...(defaults.cta_consultor || {}), ...(landing.cta_consultor || {}) },
   });
+  // /acesso lê landing.hero; admin edita hero_cta — espelhar subtitle/description.
+  const heroRaw = { ...defaults.hero, ...(landing.hero || {}) };
+  const heroBody = String(
+    heroCta.subtitle || heroRaw.subtitle || heroRaw.description || ''
+  ).trim();
+  const hero = {
+    ...heroRaw,
+    title: String(heroCta.title || heroRaw.title || '').trim() || heroRaw.title,
+    subtitle: heroBody,
+    description: heroBody,
+  };
   const coluna1 = normalizeColuna1({
     ...defaults,
     ...landing,

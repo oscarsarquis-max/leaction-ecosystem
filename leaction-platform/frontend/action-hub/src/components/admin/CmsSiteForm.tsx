@@ -1,7 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from 'react';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { useHubSession } from '@/context/HubSessionContext';
 import {
@@ -135,6 +142,57 @@ const HERO_CTA_COLOR_FIELDS: BannerColorField[] = [
   { key: 'button_shadow_color', label: 'Sombra 3D do botão', fallback: '#b34700' },
 ];
 
+function LineBreakHint() {
+  return (
+    <span className="text-[11px] text-stone-400">
+      Precisa apertar <strong className="font-semibold text-stone-500">Enter</strong> (o wrap
+      automático do campo não vira quebra no site). Bullets:{' '}
+      <code className="rounded bg-stone-100 px-1">-</code> ou{' '}
+      <code className="rounded bg-stone-100 px-1">•</code>.
+    </span>
+  );
+}
+
+/** Textarea que cresce com o conteúdo — sem barra de rolagem interna. */
+function AutoGrowTextarea({
+  className = '',
+  value,
+  onChange,
+  placeholder,
+  minRows = 2,
+}: {
+  className?: string;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  minRows?: number;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  const fit = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = '0px';
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  useEffect(() => {
+    fit();
+  }, [value, fit]);
+
+  return (
+    <textarea
+      ref={ref}
+      rows={minRows}
+      className={`${className} resize-none overflow-hidden`}
+      value={value}
+      placeholder={placeholder}
+      onChange={onChange}
+      onInput={fit}
+    />
+  );
+}
+
 function BannerColorPreview({
   data,
   pillText,
@@ -166,13 +224,13 @@ function BannerColorPreview({
         {pillText || 'Badge'}
       </span>
       <p
-        className="mt-2 text-sm font-bold"
+        className="mt-2 whitespace-pre-line text-sm font-bold"
         style={{ color: str(data.title_color) || '#ffffff' }}
       >
         {title || 'Prévia do título'}
       </p>
       <p
-        className="mt-1 text-xs"
+        className="mt-1 whitespace-pre-line text-xs"
         style={{ color: str(data.subtitle_color) || 'rgba(255,255,255,0.78)' }}
       >
         {subtitle || 'Prévia do subtítulo'}
@@ -230,11 +288,25 @@ export function CmsSiteForm() {
   function patchHeroCta(patch: Record<string, unknown>) {
     setLanding((prev) => {
       const heroCta = { ...asRecord(prev.hero_cta), ...patch };
-      return { ...prev, hero_cta: heroCta, cta_consultor: {
-        title: heroCta.title,
-        button_text: heroCta.button_text,
-        visible: heroCta.visible,
-      } };
+      const bodyText = String(heroCta.subtitle || '');
+      heroCta.subtitle = bodyText;
+      // Satélites (/acesso) leem landing.hero — espelhar título/subtítulo do Hero CTA.
+      const hero = {
+        ...asRecord(prev.hero),
+        title: String(heroCta.title || ''),
+        subtitle: bodyText,
+        description: bodyText,
+      };
+      return {
+        ...prev,
+        hero_cta: heroCta,
+        hero,
+        cta_consultor: {
+          title: heroCta.title,
+          button_text: heroCta.button_text,
+          visible: heroCta.visible,
+        },
+      };
     });
   }
 
@@ -246,6 +318,10 @@ export function CmsSiteForm() {
       ).trim();
       nextColuna1.image_path = media;
       nextColuna1.image_url = media;
+      // Satélites leem description || subtitle — manter os dois iguais ao campo Subtítulo.
+      const bodyText = String(nextColuna1.subtitle || nextColuna1.description || '');
+      nextColuna1.subtitle = bodyText;
+      nextColuna1.description = bodyText;
       const columns = Array.isArray(prev.columns) ? [...prev.columns] : [{}, {}, {}, {}];
       while (columns.length < 4) columns.push({});
       // Espelha coluna esquerda em columns[0] (School/inove4us leem coluna1 || columns[0]).
@@ -256,8 +332,8 @@ export function CmsSiteForm() {
         image_url: media,
         image_path: media,
         title: nextColuna1.title || '',
-        description: nextColuna1.subtitle || '',
-        subtitle: nextColuna1.subtitle || '',
+        description: bodyText,
+        subtitle: bodyText,
         pill_text: nextColuna1.pill_text || '',
         badge_text: nextColuna1.pill_text || '',
         cta_text: nextColuna1.cta_text || '',
@@ -445,6 +521,10 @@ export function CmsSiteForm() {
         </label>
       ) : (
         <div className="space-y-6">
+          <p className="rounded-xl border border-sky-100 bg-sky-50/80 px-3 py-2 text-xs text-sky-900">
+            Textos longos (título, subtítulo, descrição, resumo): use Enter para quebra de linha.
+            Nos satélites e na prévia isso é preservado.
+          </p>
           <section className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-bold text-stone-900">Hero CTA</h2>
             <label className="flex items-center gap-2 text-sm text-stone-700">
@@ -482,11 +562,13 @@ export function CmsSiteForm() {
               </label>
               <label className="block space-y-1 md:col-span-2">
                 <span className="text-xs font-semibold text-stone-500">Subtítulo</span>
-                <textarea
-                  className={`${field} min-h-[72px]`}
+                <AutoGrowTextarea
+                  className={field}
                   value={str(heroCta.subtitle)}
                   onChange={(e) => patchHeroCta({ subtitle: e.target.value })}
+                  minRows={3}
                 />
+                <LineBreakHint />
               </label>
               <label className="block space-y-1 md:col-span-2">
                 <span className="text-xs font-semibold text-stone-500">URL do botão</span>
@@ -578,11 +660,14 @@ export function CmsSiteForm() {
               </label>
               <label className="block space-y-1 md:col-span-2">
                 <span className="text-xs font-semibold text-stone-500">Subtítulo</span>
-                <textarea
-                  className={`${field} min-h-[72px]`}
+                <AutoGrowTextarea
+                  className={field}
                   value={str(coluna1.subtitle)}
                   onChange={(e) => patchColuna1({ subtitle: e.target.value })}
+                  placeholder="Texto livre. Enter = quebra. Bullets: - ou •"
+                  minRows={3}
                 />
+                <LineBreakHint />
               </label>
               <label className="block space-y-1 md:col-span-2">
                 <span className="text-xs font-semibold text-stone-500">CTA — URL</span>
@@ -707,8 +792,8 @@ export function CmsSiteForm() {
                 <span className="text-xs font-semibold text-stone-500">
                   {isAcessoSatellite ? 'Subtítulo / descrição' : 'Descrição'}
                 </span>
-                <textarea
-                  className={`${field} min-h-[72px]`}
+                <AutoGrowTextarea
+                  className={field}
                   value={str(col2.description || col2.subtitle)}
                   onChange={(e) =>
                     patchColumn1({
@@ -716,7 +801,10 @@ export function CmsSiteForm() {
                       subtitle: e.target.value,
                     })
                   }
+                  placeholder="Enter = quebra de linha"
+                  minRows={3}
                 />
+                <LineBreakHint />
               </label>
               {isAcessoSatellite ? (
                 <>
@@ -816,7 +904,9 @@ export function CmsSiteForm() {
                     <p className="font-bold text-stone-800">
                       #{idx - 1} {str(item.title) || '(aguardando sync)'}
                     </p>
-                    <p className="mt-1 line-clamp-3">{str(item.description)}</p>
+                    <p className="mt-1 line-clamp-3 whitespace-pre-line">
+                      {str(item.description)}
+                    </p>
                   </div>
                 );
               })}
@@ -845,7 +935,7 @@ export function CmsSiteForm() {
               </label>
               <label className="block space-y-1">
                 <span className="text-xs font-semibold text-stone-500">Seção — subtítulo</span>
-                <input
+                <AutoGrowTextarea
                   className={field}
                   value={str(insightsSection.subtitle)}
                   onChange={(e) =>
@@ -857,7 +947,9 @@ export function CmsSiteForm() {
                       },
                     }))
                   }
+                  minRows={2}
                 />
+                <LineBreakHint />
               </label>
             </div>
             {[0, 1, 2].map((i) => {
@@ -876,12 +968,14 @@ export function CmsSiteForm() {
                     value={str(item.title)}
                     onChange={(e) => patchInsight(i, { title: e.target.value })}
                   />
-                  <textarea
-                    className={`${field} min-h-[64px]`}
-                    placeholder="Resumo"
+                  <AutoGrowTextarea
+                    className={field}
+                    placeholder="Resumo (Enter = quebra de linha)"
                     value={str(item.summary)}
                     onChange={(e) => patchInsight(i, { summary: e.target.value })}
+                    minRows={2}
                   />
+                  <LineBreakHint />
                   <div className="grid gap-2 md:grid-cols-2">
                     <input
                       className={field}

@@ -1,7 +1,7 @@
 # inove4us School — Torre de Controle B2B
 #
 # Aplicação **independente** do inove4us (B2C professores).
-# Subdomínio previsto: school.inove4us.com.br (a definir).
+# Subdomínio previsto: school.inove4us.com.br.
 # Stack alinhada à família inove4us: React + Vite | Flask | PostgreSQL dedicado.
 
 ## Stack

@@ -6,7 +6,7 @@ import { requestNinaOnboardingReplay } from '../lib/ninaOnboarding'
 import BrandLogo from '../components/BrandLogo'
 import DictationField from '../components/DictationField'
 
-const CMS_CACHE_KEY = 'i4_acesso_cms_v1'
+const CMS_CACHE_KEY = 'i4_acesso_cms_v5'
 
 function safeNextPath(raw) {
   if (!raw || typeof raw !== 'string') return null
@@ -16,12 +16,112 @@ function safeNextPath(raw) {
   return t
 }
 
+/** Normaliza quebras: CRLF, literal `\n`, separadores unicode. */
+function normalizeCmsText(text) {
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\u2028|\u2029/g, '\n')
+    .replace(/\\n/g, '\n')
+}
+
+function countBreaks(text) {
+  return (normalizeCmsText(text).match(/\n/g) || []).length
+}
+
+/** Escolhe subtitle/description com mais quebras reais (não só wrap visual). */
+function pickColumnBody(column) {
+  const sub = normalizeCmsText(column?.subtitle || '').trim()
+  const desc = normalizeCmsText(column?.description || '').trim()
+  if (!sub) return desc
+  if (!desc) return sub
+  const sb = countBreaks(sub)
+  const db = countBreaks(desc)
+  if (db !== sb) return db > sb ? desc : sub
+  return desc.length >= sub.length ? desc : sub
+}
+
 function columnVisible(col) {
   if (!col || typeof col !== 'object') return false
   if (col.visibility === false || col.visible === false) return false
   const title = String(col.title || '').trim()
-  const desc = String(col.description || col.subtitle || '').trim()
+  const desc = pickColumnBody(col)
   return Boolean(title || desc || col.image_url || col.image_path)
+}
+
+function Lines({ text }) {
+  const lines = normalizeCmsText(text).split('\n')
+  return lines.map((line, i) => (
+    <span key={i}>
+      {i > 0 ? <br /> : null}
+      {line}
+    </span>
+  ))
+}
+
+/** Texto do CMS: quebra via `<br />` (não depende de CSS) + bullets. */
+function CmsBodyText({ text, className = '', style }) {
+  const raw = normalizeCmsText(text).trim()
+  if (!raw) return null
+
+  const hasBullets = /(?:^|\n)\s*[•\-\*]\s+\S/.test(raw)
+  if (!hasBullets) {
+    return (
+      <p className={`text-sm leading-relaxed ${className}`} style={style}>
+        <Lines text={raw} />
+      </p>
+    )
+  }
+
+  const blocks = []
+  let para = []
+  let bullets = []
+
+  const flushPara = () => {
+    if (!para.length) return
+    blocks.push({ type: 'p', text: para.join('\n') })
+    para = []
+  }
+  const flushBullets = () => {
+    if (!bullets.length) return
+    blocks.push({ type: 'ul', items: bullets })
+    bullets = []
+  }
+
+  for (const line of raw.split('\n')) {
+    const m = line.match(/^\s*([•\-\*])\s+(.+)$/)
+    if (m) {
+      flushPara()
+      bullets.push(m[2].trim())
+      continue
+    }
+    flushBullets()
+    if (!line.trim()) {
+      flushPara()
+      continue
+    }
+    para.push(line)
+  }
+  flushPara()
+  flushBullets()
+
+  return (
+    <div className={`space-y-2 text-sm leading-relaxed ${className}`} style={style}>
+      {blocks.map((b, i) =>
+        b.type === 'ul' ? (
+          <ul key={i} className="list-disc space-y-1 pl-4">
+            {b.items.map((item, j) => (
+              <li key={j}>{item}</li>
+            ))}
+          </ul>
+        ) : (
+          <p key={i}>
+            <Lines text={b.text} />
+          </p>
+        ),
+      )}
+    </div>
+  )
 }
 
 function readCmsCache() {
@@ -77,7 +177,7 @@ function CmsSideColumn({ column, side, loading }) {
   if (!columnVisible(column)) return null
 
   const title = String(column.title || '').trim()
-  const subtitle = String(column.description || column.subtitle || '').trim()
+  const subtitle = pickColumnBody(column)
   const pill = String(column.pill_text || column.badge_text || '').trim()
   const image = String(column.image_url || column.image_path || '').trim()
   const ctaText = String(column.cta_text || column.button_text || column.link_text || '').trim()
@@ -99,13 +199,13 @@ function CmsSideColumn({ column, side, loading }) {
       aria-label={side === 'left' ? 'Conteúdo institucional' : 'Como começar'}
     >
       <article
-        className="flex h-full min-h-[28rem] flex-col overflow-hidden rounded-3xl border border-brand-100/60 shadow-soft"
+        className="flex h-full min-h-[28rem] flex-col rounded-3xl border border-brand-100/60 shadow-soft"
         style={{
           background: `linear-gradient(160deg, ${bgStart} 0%, ${bgEnd} 100%)`,
         }}
       >
         {image ? (
-          <div className="relative h-36 shrink-0 overflow-hidden">
+          <div className="relative h-36 shrink-0 overflow-hidden rounded-t-3xl">
             <img src={image} alt="" className="h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
           </div>
@@ -120,19 +220,20 @@ function CmsSideColumn({ column, side, loading }) {
             </span>
           ) : null}
           {title ? (
-            <h2 className="font-display text-xl font-bold leading-snug" style={{ color: titleColor }}>
+            <h2
+              className="whitespace-pre-line font-display text-xl font-bold leading-snug"
+              style={{ color: titleColor }}
+            >
               {title}
             </h2>
           ) : null}
           {subtitle ? (
-            <p className="text-sm leading-relaxed" style={{ color: subtitleColor }}>
-              {subtitle}
-            </p>
+            <CmsBodyText text={subtitle} className="min-w-0 break-words" style={{ color: subtitleColor }} />
           ) : null}
           {ctaText && ctaUrl ? (
             <a
               href={ctaUrl}
-              className="mt-auto inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition hover:opacity-90"
+              className="mt-auto inline-flex shrink-0 items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition hover:opacity-90"
               style={{ backgroundColor: btnBg, color: btnFg }}
               target={ctaUrl.startsWith('http') ? '_blank' : undefined}
               rel={ctaUrl.startsWith('http') ? 'noreferrer' : undefined}
@@ -177,19 +278,36 @@ export default function Acesso() {
         const landing = data?.landing_page_data || {}
         const columns = Array.isArray(landing.columns) ? landing.columns : []
         const col1 = landing.coluna1 && typeof landing.coluna1 === 'object' ? landing.coluna1 : null
-        const nextLeft = col1 || columns[0] || null
+        const col0 = columns[0] && typeof columns[0] === 'object' ? columns[0] : null
+        // Preferir o bloco com mais Enter reais (coluna1 vs columns[0] podem divergir).
+        const nextLeft =
+          !col1 ? col0 : !col0 ? col1 : countBreaks(pickColumnBody(col1)) >= countBreaks(pickColumnBody(col0)) ? col1 : col0
         const nextRight = columns[1] || null
         const hero = landing.hero && typeof landing.hero === 'object' ? landing.hero : {}
-        const line = String(hero.description || hero.subtitle || '').trim()
+        const heroCta =
+          landing.hero_cta && typeof landing.hero_cta === 'object' ? landing.hero_cta : {}
+        const line = normalizeCmsText(
+          hero.subtitle ||
+            hero.description ||
+            heroCta.subtitle ||
+            heroCta.description ||
+            '',
+        ).trim()
 
         const hasContent = columnVisible(nextLeft) || columnVisible(nextRight)
+        // Sempre atualiza com o Hub (evita esquerda stale sem \n no sessionStorage).
         if (hasContent) {
           setLeftCol(nextLeft)
           setRightCol(nextRight)
           setHeroLine(line)
           writeCmsCache(nextLeft, nextRight, line)
+        } else {
+          try {
+            sessionStorage.removeItem(CMS_CACHE_KEY)
+          } catch {
+            /* ignore */
+          }
         }
-        // Falha/vazio: mantém cache anterior — evita sumir/aparecer as colunas
       } catch {
         // mantém cache / estado atual
       } finally {
@@ -346,7 +464,10 @@ export default function Acesso() {
               Inovação na hora que precisa
             </p>
             {heroLine ? (
-              <p className="mt-2 max-w-sm text-sm leading-relaxed text-bordo-soft/90">{heroLine}</p>
+              <CmsBodyText
+                text={heroLine}
+                className="mt-2 max-w-sm text-bordo-soft/90"
+              />
             ) : null}
           </div>
           <h1 className="font-display text-3xl font-bold tracking-tight text-bordo sm:text-4xl">
