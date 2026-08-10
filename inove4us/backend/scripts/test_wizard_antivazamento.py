@@ -82,6 +82,11 @@ for i, c in enumerate(pads):
         assert p not in texto, (i, p, texto)
     assert not parece_lista_tokens_soltos(c["descricao"]), c["descricao"]
     assert contem_termo_do_relato(c["descricao"], relato_sabia), (i, c)
+# Pad legível: sem colagem de fragmentos nem meta-texto «quando o relato as mencionar»
+blob_pads = " ".join(c["descricao"].lower() for c in pads)
+assert "quando o relato as mencionar" not in blob_pads
+assert "para atuar como um e" not in blob_pads
+assert "em torno de escola para" not in blob_pads
 
 # 3ª com flag de complemento
 assert pads[2].get("precisa_complemento") is True

@@ -270,7 +270,16 @@ def _ancora_legivel(texto: str, *, max_chars: int = 56, max_words: int = 8) -> s
     # Verbos/cláusulas de abertura — não são entidades
     if re.match(
         r"(?i)^(fomos|somos|temos|quero|queremos|precisamos|preciso|"
-        r"n[oó]s|eu|eles|elas|foi|ser[aá]|estamos|estamos)\b",
+        r"n[oó]s|eu|eles|elas|foi|ser[aá]|estamos|para|como|com|sem|"
+        r"entre|sobre|em|na|no|nas|nos)\b",
+        e,
+    ):
+        return None
+    # Fragmentos de oração (eco ruim na UI)
+    if re.search(
+        r"(?i)\b(para atuar|atuar como|como um e|e nas casas|"
+        r"realiza[cç][aã]o de|fomos escolhidos|que voc[eê]|"
+        r"do relato|em torno de)\b",
         e,
     ):
         return None
@@ -278,14 +287,28 @@ def _ancora_legivel(texto: str, *, max_chars: int = 56, max_words: int = 8) -> s
 
 
 def frase_tema_do_relato(problema: str) -> str:
-    """Frase curta e legível — expressões completas, nunca lista de tokens."""
-    exprs = expressoes_do_relato(problema, limite=3)
+    """Tema curto e legível — uma âncora boa, sem colar fragmentos com «e»."""
+    exprs = expressoes_do_relato(problema, limite=6)
     curtas = [e for e in (_ancora_legivel(x) for x in exprs) if e]
+
+    def _score(a: str) -> tuple[int, int]:
+        # Prioriza entidades nomeadas / tema ambiental; evita gambiarras.
+        s = 0
+        if re.search(
+            r"(?i)c[oó]rrego|escola|concurso|esgoto|bueiro|sustent|vale\s+\w+",
+            a,
+        ):
+            s -= 20
+        if re.search(r"(?i)\d+[ºoª]\s*ano|turma", a):
+            s -= 8
+        # Prefere âncoras compactas entre as priorizadas
+        return (s, len(a))
+
     if curtas:
-        if len(curtas) == 1:
-            return curtas[0]
-        return f"{curtas[0]} e {curtas[1]}"
-    tit = _ancora_legivel(extrair_titulo_sugerido(problema) or "", max_chars=72, max_words=10)
+        return sorted(curtas, key=_score)[0]
+    tit = _ancora_legivel(
+        extrair_titulo_sugerido(problema) or "", max_chars=72, max_words=10
+    )
     if tit:
         return tit
     # Sem entidade nomeada: tema genérico (não ecoar 1ª frase inteira do relato)
@@ -585,40 +608,36 @@ def causas_somente_do_relato(
     ctx = contexto_seguro_para_ui(contexto, problema, corpus_refs)
     tema = frase_tema_do_relato(problema)
 
-    # Ângulos preferidos a partir do relato (diversidade)
-    ambientais = [
-        e
-        for e in exprs
-        if _ancora_legivel(e)
-        and re.search(
+    # Ângulos preferidos — sempre a forma já “legível”, nunca fragmento cru.
+    ambientais: list[str] = []
+    turmas: list[str] = []
+    prazo: list[str] = []
+    for e in exprs:
+        a = _ancora_legivel(e)
+        if not a:
+            continue
+        if re.search(
             r"(?i)esgoto|bueiro|coleta|lixo|c[oó]rrego|cheiro|água|agua|"
             r"ambient|sustent|campo|diagn[oó]stico",
-            e,
-        )
-    ]
-    turmas = [
-        e
-        for e in exprs
-        if _ancora_legivel(e) and re.search(r"(?i)\d+[ºoª]\s*ano|turma|ensino", e)
-    ]
-    prazo = [
-        e
-        for e in exprs
-        if _ancora_legivel(e)
-        and re.search(r"(?i)concurso|prazo|sustent[aá]vel|dossi", e)
-    ]
+            a,
+        ):
+            ambientais.append(a)
+        if re.search(r"(?i)\d+[ºoª]\s*ano|turma|ensino", a):
+            turmas.append(a)
+        if re.search(r"(?i)concurso|prazo|sustent[aá]vel|dossi", a):
+            prazo.append(a)
+
     e_amb = ambientais[0] if ambientais else tema
     e_turma = ", ".join(turmas[:2]) if turmas else "as turmas envolvidas"
     e_prazo = prazo[0] if prazo else tema
     # Focos curtos só — nunca embutir frase inteira do relato na pergunta.
     # Temas genéricos («o desafio ambiental…») não entram na pergunta.
-    _tema_generico = re.compile(
-        r"(?i)^o desafio\b|que voc[eê] descreveu"
-    )
-    foco_a = _ancora_legivel(e_amb)
-    if foco_a and _tema_generico.search(foco_a):
+    _tema_generico = re.compile(r"(?i)^o desafio\b|que voc[eê] descreveu")
+    foco_a = None if _tema_generico.search(e_amb or "") else e_amb
+    if foco_a and not _ancora_legivel(foco_a) and not ambientais:
+        # tema genérico / longo demais para a pergunta
         foco_a = None
-    foco_t = _ancora_legivel(e_turma) if turmas else None
+    foco_t = turmas[0] if turmas else None
     focos = [f for f in (foco_a, foco_t) if f]
     if focos:
         pergunta_comp = (
@@ -631,30 +650,36 @@ def causas_somente_do_relato(
             "coletem primeiro — para tornar essa hipótese testável?"
         )
 
-    detalhe_amb = ""
-    if re.search(r"(?i)esgoto|bueiro|coleta\s+irregular|lixo", problema or ""):
-        detalhe_amb = (
-            " — incluindo esgoto clandestino, coleta irregular ou bueiro entupido "
-            "quando o relato as mencionar"
+    menciona_esgoto = bool(
+        re.search(r"(?i)esgoto|bueiro|coleta\s+irregular|lixo", problema or "")
+    )
+    if menciona_esgoto:
+        desc_causas = (
+            f"No relato sobre {e_amb}, há causas concorrentes a investigar "
+            f"(esgoto clandestino, coleta irregular ou bueiro entupido). "
+            f"Com as turmas, vale estruturar evidências de campo para "
+            f"confirmar ou descartar cada hipótese."
+        )
+    else:
+        desc_causas = (
+            f"O relato aponta hipóteses testáveis ligadas a {e_amb}. "
+            f"Com as turmas, vale estruturar evidências para confirmar "
+            f"ou descartar cada linha."
         )
 
     return [
         {
             "titulo": "Causas concorrentes",
-            "descricao": (
-                f"O relato aponta hipóteses testáveis em torno de {e_amb}"
-                f"{detalhe_amb}: vale estruturar evidências para descartar "
-                f"ou confirmar cada linha com as turmas."
-            ),
+            "descricao": desc_causas,
             "origem": "pad_deterministico",
             "precisa_complemento": False,
         },
         {
             "titulo": "Coordenação entre turmas",
             "descricao": (
-                f"No cenário de {ctx}, o fio entre {e_turma} precisa estar "
-                f"articulado (diagnóstico → intervenção → dossiê), senão o "
-                f"trabalho em cadeia sobre {tema} se desconecta."
+                f"No cenário de {ctx}, o trabalho entre {e_turma} precisa "
+                f"ficar articulado (diagnóstico → intervenção → dossiê). "
+                f"Sem esse fio, o projeto em torno de {tema} se desconecta."
             ),
             "origem": "pad_deterministico",
             "precisa_complemento": False,
@@ -662,9 +687,9 @@ def causas_somente_do_relato(
         {
             "titulo": "Hipótese a aprofundar",
             "descricao": (
-                f"Para o prazo de {e_prazo}, falta tornar testável a hipótese "
-                f"que a turma priorizar — com um detalhe observável a mais "
-                f"(o que medir, onde, com qual turma), o plano fica concreto."
+                f"Em relação a {e_prazo}, ainda falta tornar testável a "
+                f"hipótese que a turma priorizar — com um detalhe observável "
+                f"(o que medir, onde e com qual turma), o plano fica concreto."
             ),
             "origem": "pad_deterministico",
             "precisa_complemento": True,
