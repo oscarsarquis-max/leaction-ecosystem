@@ -1,7 +1,8 @@
-"""Matcher lexical de metodologias (modo diagnóstico).
+"""Matcher lexical de metodologias.
 
 Calcula scores por keywords do catálogo canônico.
-NÃO altera A/B/C, stitch, fallback nem o prompt do Sonnet.
+NÃO escolhe A/B/C nem altera stitch/fallback local.
+O ranking pode alimentar a seleção de candidatas do prompt (Top N).
 """
 
 from __future__ import annotations

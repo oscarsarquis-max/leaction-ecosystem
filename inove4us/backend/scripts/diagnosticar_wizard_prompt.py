@@ -22,6 +22,10 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from core.metodologia_candidatos_prompt import (  # noqa: E402
+    MATCHER_CANDIDATE_TOP_N,
+    selecionar_candidatos_para_sonnet,
+)
 from core.metodologia_keyword_matcher import (  # noqa: E402
     format_top_log,
     rankear_metodologias_por_keywords,
@@ -168,12 +172,31 @@ CENARIOS = {
 
 
 def _montar_cenario(dados: dict) -> dict:
+    ranking_all = rankear_metodologias_por_keywords(
+        problema=dados["problema"],
+        objetivo=dados.get("objetivo") or "",
+        turma_nivel=dados.get("turma_nivel") or "",
+        duracao=dados.get("duracao") or "",
+        contexto=dados.get("contexto") or "",
+        disciplina_nome=dados.get("disciplina_area") or "",
+        top_n=0,
+    )
+    sel = selecionar_candidatos_para_sonnet(
+        ranking_all,
+        top_n=MATCHER_CANDIDATE_TOP_N,
+        exclude_ids=set(),
+        preferred_id=dados.get("metodologia_id") or None,
+    )
+    candidate_ids = None if sel.get("full_catalog_fallback") else list(
+        sel.get("candidate_ids") or []
+    )
     system_prompt = build_estruturar_system_prompt(
         BLOCO_REF_DIAG,
         exclude_ids=set(),
         diretrizes_escola=[],
         metodologia_obrigatoria_id=dados.get("metodologia_id") or None,
         metodologia_obrigatoria_nome=dados.get("metodologia_nome") or None,
+        candidate_ids=candidate_ids,
     )
     user_content = montar_user_content_estruturar(
         problema_limpo=dados["problema"],
@@ -194,22 +217,18 @@ def _montar_cenario(dados: dict) -> dict:
         system_prompt=system_prompt,
         user_content=user_content,
         ancoras_count=2,
+        candidate_ids=candidate_ids,
     )
-    ranking = rankear_metodologias_por_keywords(
-        problema=dados["problema"],
-        objetivo=dados.get("objetivo") or "",
-        turma_nivel=dados.get("turma_nivel") or "",
-        duracao=dados.get("duracao") or "",
-        contexto=dados.get("contexto") or "",
-        disciplina_nome=dados.get("disciplina_area") or "",
-        top_n=5,
-    )
+    ranking = ranking_all[:5]
     return {
         "dados": dados,
         "system_prompt": system_prompt,
         "user_content": user_content,
         "partes": partes,
         "ranking": ranking,
+        "ranking_all": ranking_all,
+        "selecao": sel,
+        "candidate_ids": candidate_ids,
     }
 
 
@@ -217,6 +236,8 @@ def _imprimir_cenario(montado: dict, *, usage: dict | None = None) -> None:
     d = montado["dados"]
     p = montado["partes"]
     ranking = montado["ranking"]
+    sel = montado.get("selecao") or {}
+    cands = montado.get("candidate_ids")
     print(f"\n=== CENÁRIO: {d['nome']} ===")
     print(f"system_chars: {p['system_total_chars']}")
     print(f"catalogo_chars: {p['system_catalogo_chars']}")
@@ -227,6 +248,12 @@ def _imprimir_cenario(montado: dict, *, usage: dict | None = None) -> None:
     print(f"problema_chars: {len(d['problema'])}")
     print(f"contexto_chars: {len(d.get('contexto') or '')}")
     print(f"matcher_top5: [{format_top_log(ranking, limite=5)}]")
+    print(f"matcher_top_n: {MATCHER_CANDIDATE_TOP_N}")
+    print(f"matcher_positive_count: {sel.get('positive_count')}")
+    print(f"matcher_fill_count: {sel.get('fill_count')}")
+    print(f"full_catalog_fallback: {sel.get('full_catalog_fallback')}")
+    print(f"candidate_count: {0 if cands is None else len(cands)}")
+    print(f"candidate_ids: {cands}")
     mid = d.get("metodologia_id") or ""
     print(f"metodologia_desejada_id: {mid or '(nenhuma)'}")
     if usage:

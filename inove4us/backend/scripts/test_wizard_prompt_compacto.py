@@ -48,6 +48,7 @@ for campo in (
 assert '"A"' in prompt and '"B"' in prompt and '"C"' in prompt
 
 assert "framework_obrigatorio" in prompt
+assert "METODOLOGIAS DISPONÍVEIS" in prompt
 assert "ancoras_de_estilo" in prompt
 # Bloco obrigatório só quando há metodologia desejada
 assert "<metodologia_obrigatoria_do_professor>" not in build_estruturar_system_prompt(bloco)
@@ -78,8 +79,14 @@ assert "criativa_pbl_projetos" in p_ob
 partes = medir_componentes_entrada_prompt(
     bloco, system_prompt=prompt, user_content="x", ancoras_count=1
 )
-assert partes["system_total_chars"] < 4200, partes["system_total_chars"]
-assert partes["system_catalogo_chars"] < 2000, partes["system_catalogo_chars"]
+assert partes["system_total_chars"] < 4300, partes["system_total_chars"]
+assert partes["system_catalogo_chars"] < 2100, partes["system_catalogo_chars"]
+# Subconjunto reduz o catálogo no prompt
+sub = build_estruturar_system_prompt(
+    bloco, candidate_ids=[e["id"] for e in entradas_catalogo_dia()[:8]]
+)
+assert len(sub) < len(prompt)
+assert "METODOLOGIAS DISPONÍVEIS" in sub
 
 # BLOCO_TOM longo não deve entrar no estruturar
 assert "<tom_de_voz>" not in prompt

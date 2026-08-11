@@ -63,24 +63,52 @@ VERBOS_DT_PROIBIDOS = (
 )
 
 
-def _framework_ids_block(exclude_ids: set[str] | None = None) -> str:
-    """As 39 metodologias do catálogo canônico — formato compacto `id|Nome`."""
+def _framework_ids_block(
+    exclude_ids: set[str] | None = None,
+    *,
+    candidate_ids: list[str] | None = None,
+) -> str:
+    """Metodologias disponíveis — formato compacto `id|Nome`.
+
+    Sem `candidate_ids`: catálogo completo permitido (menos bloqueios).
+    Com `candidate_ids`: somente esse subconjunto (ainda respeita exclude_ids).
+    """
     blocked = {str(x) for x in (exclude_ids or set()) if x}
+    by_id = {e["id"]: e for e in entradas_catalogo_dia()}
+    ordered_entradas: list[dict] = []
+    if candidate_ids is not None:
+        seen: set[str] = set()
+        for mid in candidate_ids:
+            mid = str(mid).strip()
+            if not mid or mid in blocked or mid in seen:
+                continue
+            entrada = by_id.get(mid)
+            if not entrada:
+                continue
+            seen.add(mid)
+            ordered_entradas.append(entrada)
+    else:
+        for entrada in entradas_catalogo_dia():
+            if entrada["id"] in blocked:
+                continue
+            ordered_entradas.append(entrada)
+
     buckets: dict[str, list[str]] = {k: [] for k in _BUCKET_ORDER}
-    total = 0
-    for entrada in entradas_catalogo_dia():
-        if entrada["id"] in blocked:
-            continue
+    for entrada in ordered_entradas:
         etq = entrada["etiqueta"]
-        line = f"{entrada['id']}|{entrada['nome']}"
-        buckets.setdefault(etq, []).append(line)
-        total += 1
-    linhas = [f"{total} IDs (só estes):"]
+        buckets.setdefault(etq, []).append(f"{entrada['id']}|{entrada['nome']}")
+    total = sum(len(v) for v in buckets.values())
+    linhas = [
+        "METODOLOGIAS DISPONÍVEIS",
+        f"{total} IDs (escolha só entre estes; não invente):",
+    ]
     for cat in _BUCKET_ORDER:
         items = buckets.get(cat) or []
         if not items:
             continue
-        linhas.append(f"{cat}: " + "; ".join(sorted(items)))
+        if candidate_ids is None:
+            items = sorted(items)
+        linhas.append(f"{cat}: " + "; ".join(items))
     return "\n".join(linhas)
 
 
@@ -138,6 +166,7 @@ def medir_componentes_entrada_prompt(
     system_prompt: str = "",
     user_content: str = "",
     ancoras_count: int | None = None,
+    candidate_ids: list[str] | None = None,
 ) -> dict:
     """Métricas de tamanho (chars) das entradas reais do prompt — sem alterar o texto.
 
@@ -145,7 +174,7 @@ def medir_componentes_entrada_prompt(
     os componentes de entrada usados na montagem (não necessariamente uma partição
     exata da string final do system, que também inclui regras/formato).
     """
-    catalogo = _framework_ids_block(exclude_ids)
+    catalogo = _framework_ids_block(exclude_ids, candidate_ids=candidate_ids)
     bloco_escola = _bloco_diretrizes_escola(diretrizes_escola)
     bloco_obrigatoria = _bloco_metodologia_obrigatoria(
         metodologia_obrigatoria_id, metodologia_obrigatoria_nome
@@ -159,6 +188,8 @@ def medir_componentes_entrada_prompt(
         "system_obrigatoria_chars": len(bloco_obrigatoria),
         "user_content_chars": len(user_content or ""),
         "ancoras_count": int(ancoras_count) if ancoras_count is not None else 0,
+        "candidate_catalog_chars": len(catalogo),
+        "matcher_candidate_count": len(candidate_ids) if candidate_ids is not None else 0,
     }
 
 
@@ -169,9 +200,14 @@ def build_estruturar_system_prompt(
     diretrizes_escola: list[dict] | None = None,
     metodologia_obrigatoria_id: str | None = None,
     metodologia_obrigatoria_nome: str | None = None,
+    candidate_ids: list[str] | None = None,
 ) -> str:
-    """Uma chamada: roteia IDs do catálogo 39 + hipóteses ancoradas no RELATO."""
-    framework = _framework_ids_block(exclude_ids)
+    """Uma chamada: roteia IDs disponíveis + hipóteses ancoradas no RELATO.
+
+    `candidate_ids=None` → catálogo completo permitido.
+    `candidate_ids=[...]` → subconjunto (Top N do matcher).
+    """
+    framework = _framework_ids_block(exclude_ids, candidate_ids=candidate_ids)
     bloco_escola = _bloco_diretrizes_escola(diretrizes_escola)
     bloco_obrigatoria = _bloco_metodologia_obrigatoria(
         metodologia_obrigatoria_id, metodologia_obrigatoria_nome
@@ -193,7 +229,7 @@ Só formato. NÃO são o problema. PROIBIDO copiar em causas/ganchos/hipóteses.
 
 <regras>
 1. A,B,C: IDs distintos e famílias distintas (Agilidade/Dedutivas/Contextuais/Indutivas). A=encaixe; B=outra família; C=híbrido. Se existir bloco metodologia_obrigatoria_do_professor, A.id_metodologia = esse ID.
-2. id_metodologia = ID literal do framework. Nunca invente.
+2. id_metodologia = ID literal de METODOLOGIAS DISPONÍVEIS. Nunca invente.
 3. Evite hábito Design Thinking / Diagnóstico Coletivo / Discurso de Elevador; varie pelo relato (exceto A obrigatório).
 4. trecho_relato_usado: fragmento mínimo do PROBLEMA (não das âncoras).
 5. causas: exatamente 3 {{titulo, descricao}}; cada descricao = 1 frase curta, específica, distinta, só do relato.

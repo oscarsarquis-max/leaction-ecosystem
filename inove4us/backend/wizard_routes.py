@@ -169,6 +169,11 @@ def _log_wizard_ai_metrics(
     retry_reason: str = "",
     matcher_top_ids: str = "",
     matcher_top_scores: str = "",
+    matcher_candidate_count: int | None = None,
+    matcher_positive_count: int | None = None,
+    candidate_ids: str = "",
+    full_catalog_fallback: bool | None = None,
+    candidate_catalog_chars: int | None = None,
 ) -> None:
     """Log estruturado só com métricas numéricas / IDs técnicos (sem conteúdo)."""
     m = meta or {}
@@ -197,6 +202,18 @@ def _log_wizard_ai_metrics(
             parts.append(f"matcher_top_ids={matcher_top_ids}")
         if matcher_top_scores:
             parts.append(f"matcher_top_scores={matcher_top_scores}")
+        if matcher_candidate_count is not None:
+            parts.append(f"matcher_candidate_count={matcher_candidate_count}")
+        if matcher_positive_count is not None:
+            parts.append(f"matcher_positive_count={matcher_positive_count}")
+        if candidate_ids:
+            parts.append(f"candidate_ids={candidate_ids}")
+        if full_catalog_fallback is not None:
+            parts.append(
+                f"full_catalog_fallback={str(bool(full_catalog_fallback)).lower()}"
+            )
+        if candidate_catalog_chars is not None:
+            parts.append(f"candidate_catalog_chars={candidate_catalog_chars}")
     for key in (
         "input_tokens",
         "output_tokens",
@@ -1924,25 +1941,29 @@ def estruturar_problema():
             file=sys.stderr,
         )
 
-    system_prompt = build_estruturar_system_prompt(
-        bloco_ref,
-        exclude_ids=exclude_ids,
-        diretrizes_escola=diretrizes_escola,
-        metodologia_obrigatoria_id=pref_mid,
-        metodologia_obrigatoria_nome=pref_nome,
-    )
-
     problema_limpo = texto_professor_limpo(problema) or problema
     ctx_prompt = contexto_seguro_para_ui(contexto, problema, corpus_refs)
     disciplina_area = _nome_disciplina_para_prompt(int(id_clie), disciplina_id_raw)
 
-    # Matcher lexical — MODO DIAGNÓSTICO apenas (não altera A/B/C nem o prompt).
-    try:
-        from core.metodologia_keyword_matcher import (
-            format_top_log,
-            rankear_metodologias_por_keywords,
-        )
+    # Matcher lexical → Top N candidatos no prompt (Sonnet ainda escolhe A/B/C).
+    from core.metodologia_candidatos_prompt import (
+        MATCHER_CANDIDATE_TOP_N,
+        origem_escolha_sonnet,
+        selecionar_candidatos_para_sonnet,
+    )
+    from core.metodologia_keyword_matcher import (
+        format_top_log,
+        rankear_metodologias_por_keywords,
+    )
 
+    ranking_all: list = []
+    candidate_ids_prompt: list[str] | None = None
+    candidate_origins: dict[str, str] = {}
+    full_catalog_fallback = True
+    matcher_positive_count = 0
+    matcher_fill_count = 0
+    preferred_injected = False
+    try:
         ranking_all = rankear_metodologias_por_keywords(
             problema=problema_limpo,
             objetivo=objetivo,
@@ -1952,21 +1973,54 @@ def estruturar_problema():
             disciplina_nome=disciplina_area,
             top_n=0,
         )
-        n_pos = sum(1 for r in ranking_all if int(r.get("score") or 0) > 0)
+        sel = selecionar_candidatos_para_sonnet(
+            ranking_all,
+            top_n=MATCHER_CANDIDATE_TOP_N,
+            exclude_ids=exclude_ids,
+            preferred_id=pref_mid,
+        )
+        full_catalog_fallback = bool(sel.get("full_catalog_fallback"))
+        matcher_positive_count = int(sel.get("positive_count") or 0)
+        matcher_fill_count = int(sel.get("fill_count") or 0)
+        preferred_injected = bool(sel.get("preferred_injected"))
+        candidate_origins = dict(sel.get("origins") or {})
+        if full_catalog_fallback:
+            candidate_ids_prompt = None
+        else:
+            candidate_ids_prompt = list(sel.get("candidate_ids") or [])
         top5 = ranking_all[:5]
         matcher_top_ids = ",".join(str(r.get("id") or "") for r in top5)
         matcher_top_scores = ",".join(str(int(r.get("score") or 0)) for r in top5)
         print(
             f"[wizard] matcher_executado=true request_id={request_id} "
-            f"com_score_positivo={n_pos} "
+            f"top_n={MATCHER_CANDIDATE_TOP_N} "
+            f"com_score_positivo={matcher_positive_count} "
+            f"fill_diversity={matcher_fill_count} "
+            f"preferred_injected={str(preferred_injected).lower()} "
+            f"full_catalog_fallback={str(full_catalog_fallback).lower()} "
+            f"candidate_count="
+            f"{0 if candidate_ids_prompt is None else len(candidate_ids_prompt)} "
             f"keyword_match top=[{format_top_log(ranking_all, limite=5)}]",
             file=sys.stderr,
         )
     except Exception as exc:
+        full_catalog_fallback = True
+        candidate_ids_prompt = None
+        candidate_origins = {}
         print(
-            f"[wizard] matcher_executado=false request_id={request_id} err={exc}",
+            f"[wizard] matcher_executado=false request_id={request_id} "
+            f"full_catalog_fallback=true err={exc}",
             file=sys.stderr,
         )
+
+    system_prompt = build_estruturar_system_prompt(
+        bloco_ref,
+        exclude_ids=exclude_ids,
+        diretrizes_escola=diretrizes_escola,
+        metodologia_obrigatoria_id=pref_mid,
+        metodologia_obrigatoria_nome=pref_nome,
+        candidate_ids=candidate_ids_prompt,
+    )
 
     user_content = montar_user_content_estruturar(
         problema_limpo=problema_limpo,
@@ -2026,6 +2080,7 @@ def estruturar_problema():
         system_prompt=system_prompt,
         user_content=user_content,
         ancoras_count=len(refs_prompt),
+        candidate_ids=candidate_ids_prompt,
     )
     print(
         f"[wizard] prompt_chars request_id={request_id} "
@@ -2036,6 +2091,10 @@ def estruturar_problema():
         f"diretrizes={partes_prompt.get('system_diretrizes_chars')} "
         f"obrigatoria={partes_prompt.get('system_obrigatoria_chars')} "
         f"user={partes_prompt.get('user_content_chars')} "
+        f"candidate_catalog_chars={partes_prompt.get('candidate_catalog_chars')} "
+        f"matcher_candidate_count="
+        f"{0 if candidate_ids_prompt is None else len(candidate_ids_prompt)} "
+        f"full_catalog_fallback={str(full_catalog_fallback).lower()} "
         f"prefill_chars={len(json_prefill)}",
         file=sys.stderr,
     )
@@ -2073,6 +2132,15 @@ def estruturar_problema():
             retry=False,
             matcher_top_ids=matcher_top_ids,
             matcher_top_scores=matcher_top_scores,
+            matcher_candidate_count=(
+                0 if candidate_ids_prompt is None else len(candidate_ids_prompt)
+            ),
+            matcher_positive_count=matcher_positive_count,
+            candidate_ids=(
+                ",".join(candidate_ids_prompt) if candidate_ids_prompt else ""
+            ),
+            full_catalog_fallback=full_catalog_fallback,
+            candidate_catalog_chars=partes_prompt.get("candidate_catalog_chars"),
         )
         elapsed = time.monotonic() - t0
         print(
@@ -2081,6 +2149,26 @@ def estruturar_problema():
             f"elapsed_s={elapsed:.1f}",
             file=sys.stderr,
         )
+        # Cobertura diagnóstica: origem dos IDs escolhidos pelo Sonnet (não altera fluxo).
+        try:
+            cov = []
+            for chave in ("A", "B", "C"):
+                bloco = raw.get(chave) if isinstance(raw, dict) else None
+                mid = (bloco or {}).get("id_metodologia") if isinstance(bloco, dict) else None
+                cov.append(
+                    f"{chave}={mid or '-'}:"
+                    f"{origem_escolha_sonnet(mid, origins=candidate_origins, full_catalog_fallback=full_catalog_fallback)}"
+                )
+            print(
+                f"[wizard] matcher_coverage request_id={request_id} "
+                + " ".join(cov),
+                file=sys.stderr,
+            )
+        except Exception as cov_exc:
+            print(
+                f"[wizard] matcher_coverage_err request_id={request_id} err={cov_exc}",
+                file=sys.stderr,
+            )
         payload = _stitch_ranking_hibrido(
             raw,
             problema,
