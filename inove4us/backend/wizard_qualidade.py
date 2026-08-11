@@ -350,6 +350,41 @@ def termos_concretos_do_relato(problema: str, *, limite: int = 12) -> list[str]:
     return out
 
 
+def campo_texto_curto(valor: object) -> str:
+    """Normaliza campos opcionais do wizard (whitespace); vazio → ''."""
+    return " ".join(str(valor or "").split()).strip()
+
+
+def montar_user_content_estruturar(
+    *,
+    problema_limpo: str,
+    objetivo: str = "",
+    turma_nivel: str = "",
+    disciplina_area: str = "",
+    duracao: str = "",
+    contexto_seguro: str = "",
+) -> str:
+    """Monta user_content semântico; omite blocos vazios (sem N/A)."""
+    problema_txt = str(problema_limpo or "").strip()
+    parts = [f"PROBLEMA / DESAFIO DO PROFESSOR\n\n{problema_txt}"]
+    objetivo_txt = campo_texto_curto(objetivo)
+    if objetivo_txt:
+        parts.append(f"OBJETIVO / RESULTADO ESPERADO\n\n{objetivo_txt}")
+    turma_txt = campo_texto_curto(turma_nivel)
+    if turma_txt:
+        parts.append(f"TURMA / NÍVEL\n\n{turma_txt}")
+    disc_txt = campo_texto_curto(disciplina_area)
+    if disc_txt:
+        parts.append(f"DISCIPLINA / ÁREA\n\n{disc_txt}")
+    duracao_txt = campo_texto_curto(duracao)
+    if duracao_txt:
+        parts.append(f"DURAÇÃO\n\n{duracao_txt}")
+    ctx_txt = campo_texto_curto(contexto_seguro)
+    if ctx_txt:
+        parts.append(f"CONTEXTO INFORMADO\n\n{ctx_txt}")
+    return "\n\n".join(parts) + "\n"
+
+
 def contexto_request_normalizado(contexto: str) -> str:
     ctx = " ".join(str(contexto or "").split()).strip()
     ctx = _ROTULO_FORM_RE.sub(" ", ctx)

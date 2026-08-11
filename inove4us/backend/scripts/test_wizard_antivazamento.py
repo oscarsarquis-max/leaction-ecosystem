@@ -9,6 +9,7 @@ from wizard_qualidade import (
     expressoes_do_relato,
     extrair_trecho_relato,
     forcar_ancoragem_payload,
+    montar_user_content_estruturar,
     parece_causa_enlatada,
     parece_lista_tokens_soltos,
     parece_texto_debug_ui,
@@ -105,6 +106,64 @@ caso4_contexto = "2º ano do Ensino Médio · escola pública de Fortaleza"
 ctx4 = contexto_seguro_para_ui(caso4_contexto, caso4_problema, CORPUS)
 assert "fortaleza" in ctx4.lower(), ctx4
 assert "ensino" in ctx4.lower() or "2" in ctx4, ctx4
+
+# --- user_content semântico (etapa 2: campos opcionais) ---
+uc1 = montar_user_content_estruturar(
+    problema_limpo="Os alunos precisam investigar o desperdício de água."
+)
+assert "PROBLEMA / DESAFIO DO PROFESSOR" in uc1
+assert "desperdício de água" in uc1 or "desperdicio de agua" in uc1.lower()
+assert "OBJETIVO" not in uc1
+assert "TURMA" not in uc1
+assert "DURAÇÃO" not in uc1 and "DURACAO" not in uc1.upper()
+assert "CONTEXTO INFORMADO" not in uc1
+assert "N/A" not in uc1
+assert "não informado" not in uc1.lower()
+
+uc2 = montar_user_content_estruturar(
+    problema_limpo="Investigar focos de dengue no entorno da escola.",
+    objetivo="Mapear focos e propor intervenção de baixo custo.",
+    turma_nivel="8º ano",
+    disciplina_area="Ciências",
+    duracao="6 aulas",
+    contexto_seguro="Escola municipal no bairro Aldeota, Fortaleza",
+)
+assert "OBJETIVO / RESULTADO ESPERADO" in uc2
+assert "Mapear focos" in uc2
+assert "TURMA / NÍVEL" in uc2 and "8º ano" in uc2
+assert "DISCIPLINA / ÁREA" in uc2 and "Ciências" in uc2
+assert "DURAÇÃO" in uc2 and "6 aulas" in uc2
+assert "CONTEXTO INFORMADO" in uc2 and "Aldeota" in uc2
+# Ordem dos blocos
+assert uc2.index("PROBLEMA") < uc2.index("OBJETIVO") < uc2.index("TURMA")
+assert uc2.index("TURMA") < uc2.index("DISCIPLINA") < uc2.index("DURAÇÃO")
+assert uc2.index("DURAÇÃO") < uc2.index("CONTEXTO INFORMADO")
+
+# Compatibilidade antiga: só problema + contexto
+uc3 = montar_user_content_estruturar(
+    problema_limpo="Turma dispersa precisa de papéis claros num projeto curto.",
+    contexto_seguro="1º ano EM · escola pública",
+)
+assert "PROBLEMA / DESAFIO DO PROFESSOR" in uc3
+assert "CONTEXTO INFORMADO" in uc3
+assert "OBJETIVO" not in uc3
+assert "não informado" not in uc3.lower()
+
+# Opcionais vazios / whitespace → omitidos
+uc4 = montar_user_content_estruturar(
+    problema_limpo="Reduzir o desperdício de água na escola.",
+    objetivo="   ",
+    turma_nivel="",
+    disciplina_area=None,
+    duracao="  ",
+    contexto_seguro="",
+)
+assert "OBJETIVO" not in uc4
+assert "TURMA" not in uc4
+assert "DISCIPLINA" not in uc4
+assert "DURAÇÃO" not in uc4
+assert "CONTEXTO INFORMADO" not in uc4
+assert "N/A" not in uc4
 
 pads = causas_somente_do_relato(relato_sabia, contexto_stale, CORPUS)
 assert len(pads) == 3

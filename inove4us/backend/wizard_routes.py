@@ -65,8 +65,10 @@ from wizard_qualidade import (
     texto_professor_limpo,
     vaza_contra_corpus,
     vinculo_minimo_com_relato,
+    campo_texto_curto,
     contexto_explicito_aceitavel,
     contexto_request_normalizado,
+    montar_user_content_estruturar,
 )
 
 
@@ -1548,6 +1550,45 @@ def _stitch_ranking_hibrido(
 
 
 @wizard_bp.post("/api/wizard/estruturar")
+def _nome_disciplina_para_prompt(id_clie: int, disciplina_id_raw: object) -> str:
+    """Resolve nome da disciplina do professor (fail-soft). Vazio se inválido/ausente."""
+    if disciplina_id_raw in (None, "", 0, "0", "null"):
+        return ""
+    try:
+        disciplina_id = int(disciplina_id_raw)
+    except (TypeError, ValueError):
+        return ""
+    if disciplina_id <= 0:
+        return ""
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT d.nome
+                      FROM public.inove_disciplinas d
+                      JOIN public.inove_cursos c ON c.id = d.curso_id
+                      JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
+                      JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+                     WHERE d.id = %s
+                       AND i.id_clie = %s
+                       AND d.ativo = TRUE
+                       AND c.ativo = TRUE
+                       AND p.ativo = TRUE
+                       AND i.ativo = TRUE
+                    """,
+                    (disciplina_id, int(id_clie)),
+                )
+                row = cur.fetchone()
+        if not row:
+            return ""
+        nome = row[0] if not isinstance(row, dict) else row.get("nome")
+        return campo_texto_curto(nome)
+    except Exception as exc:
+        print(f"[wizard] disciplina_nome: {exc}", file=sys.stderr)
+        return ""
+
+
 def estruturar_problema():
     """Recebe o problema do professor e devolve JSON para as etapas 2–4.
 
@@ -1562,6 +1603,10 @@ def estruturar_problema():
     data = request.get_json(silent=True) or {}
     problema = str(data.get("problema") or "").strip()
     contexto = str(data.get("contexto") or data.get("localizacao") or "").strip()
+    objetivo = campo_texto_curto(data.get("objetivo"))
+    turma_nivel = campo_texto_curto(data.get("turma_nivel"))
+    duracao = campo_texto_curto(data.get("duracao"))
+    disciplina_id_raw = data.get("disciplina_id")
     complementacao = str(data.get("complementacao") or "").strip()
     # Complementação soma ao relato (não substitui) e força reprocessamento completo.
     if complementacao:
@@ -1652,11 +1697,15 @@ def estruturar_problema():
 
     problema_limpo = texto_professor_limpo(problema) or problema
     ctx_prompt = contexto_seguro_para_ui(contexto, problema, corpus_refs)
-    # Sem inventar contexto: omite o bloco quando vazio.
-    user_parts = [f"PROBLEMA / DESAFIO DO PROFESSOR\n\n{problema_limpo}"]
-    if ctx_prompt:
-        user_parts.append(f"CONTEXTO INFORMADO\n\n{ctx_prompt}")
-    user_content = "\n\n".join(user_parts) + "\n"
+    disciplina_area = _nome_disciplina_para_prompt(int(id_clie), disciplina_id_raw)
+    user_content = montar_user_content_estruturar(
+        problema_limpo=problema_limpo,
+        objetivo=objetivo,
+        turma_nivel=turma_nivel,
+        disciplina_area=disciplina_area,
+        duracao=duracao,
+        contexto_seguro=ctx_prompt,
+    )
     if complementacao:
         user_content += (
             "\nINSTRUÇÃO: o professor acabou de complementar o relato. "
@@ -1676,7 +1725,9 @@ def estruturar_problema():
     print(
         f"[wizard] user_ctx chars_problema={len(problema_limpo)} "
         f"chars_contexto={len(ctx_prompt)} tem_contexto={bool(ctx_prompt)} "
-        f"origem_contexto={origem_contexto}",
+        f"origem_contexto={origem_contexto} "
+        f"tem_objetivo={bool(objetivo)} tem_turma={bool(turma_nivel)} "
+        f"tem_duracao={bool(duracao)} tem_disciplina={bool(disciplina_area)}",
         file=sys.stderr,
     )
 

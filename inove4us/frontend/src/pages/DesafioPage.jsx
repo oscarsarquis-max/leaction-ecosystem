@@ -42,6 +42,9 @@ export default function DesafioPage() {
 
   const [currentStep, setCurrentStep] = useState(1)
   const [problema, setProblema] = useState('')
+  const [objetivo, setObjetivo] = useState('')
+  const [turmaNivel, setTurmaNivel] = useState('')
+  const [duracao, setDuracao] = useState('')
   const [contexto, setContexto] = useState('')
   const [disciplinaId, setDisciplinaId] = useState(disciplinaInicial)
   const [trechoRelato, setTrechoRelato] = useState('')
@@ -86,6 +89,9 @@ export default function DesafioPage() {
       const data = await api.estruturarWizard({
         problema: problemaEnvio,
         contexto: contexto.trim(),
+        ...(objetivo.trim() ? { objetivo: objetivo.trim() } : {}),
+        ...(turmaNivel.trim() ? { turma_nivel: turmaNivel.trim() } : {}),
+        ...(duracao.trim() ? { duracao: duracao.trim() } : {}),
         id_clie: user?.id_clie,
         ...(disciplinaId != null ? { disciplina_id: disciplinaId } : {}),
         ...(complemento ? { complementacao: complemento } : {}),
@@ -287,9 +293,15 @@ export default function DesafioPage() {
         {currentStep === 1 && (
           <StepProblema
             problema={problema}
+            objetivo={objetivo}
+            turmaNivel={turmaNivel}
+            duracao={duracao}
             contexto={contexto}
             disciplinaId={disciplinaId}
             onProblemaChange={setProblema}
+            onObjetivoChange={setObjetivo}
+            onTurmaNivelChange={setTurmaNivel}
+            onDuracaoChange={setDuracao}
             onContextoChange={setContexto}
             onDisciplinaChange={setDisciplinaId}
             onSubmit={handleEstruturar}
