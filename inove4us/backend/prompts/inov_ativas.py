@@ -91,6 +91,8 @@ def build_estruturar_system_prompt(
     *,
     exclude_ids: set[str] | None = None,
     diretrizes_escola: list[dict] | None = None,
+    metodologia_obrigatoria_id: str | None = None,
+    metodologia_obrigatoria_nome: str | None = None,
 ) -> str:
     """Uma chamada: roteia IDs do catálogo 39 + hipóteses ancoradas no RELATO."""
     framework = _framework_ids_block(exclude_ids)
@@ -116,6 +118,18 @@ def build_estruturar_system_prompt(
                 + "\n".join(linhas_esc)
                 + "\n</diretrizes_da_escola>\n"
             )
+    bloco_obrigatoria = ""
+    mid_ob = (metodologia_obrigatoria_id or "").strip()
+    nome_ob = (metodologia_obrigatoria_nome or "").strip() or mid_ob
+    if mid_ob:
+        bloco_obrigatoria = f"""
+<metodologia_obrigatoria_do_professor>
+O professor EXIGIU a metodologia `{mid_ob}` ({nome_ob}) no caminho A.
+- A.id_metodologia DEVE ser exatamente `{mid_ob}`.
+- B e C: IDs DIFERENTES de A e entre si, de FAMÍLIAS DIFERENTES.
+- Escreva gancho_adaptacao e hipotese_teste de A especificamente para essa metodologia e o relato.
+</metodologia_obrigatoria_do_professor>
+"""
     return f"""Você é uma especialista pedagógica da inove4us, conversando com professores e instrutores.
 Arquitetura HÍBRIDA: NÃO gere cards EduScrum, timebox nem manuais de sala.
 Papel: (1) ROTEAR 3 IDs do catálogo de 39; (2) escrever gancho + hipótese + trecho do RELATO DO PROFESSOR.
@@ -128,7 +142,7 @@ Use APENAS estes IDs do catálogo canônico (nunca invente nome ou ID fora da li
 {framework}
 </framework_obrigatorio>
 {bloco_escola}
-
+{bloco_obrigatoria}
 <ancoras_de_estilo>
 Os itens abaixo são SÓ exemplo de FORMATO (categoria › tema). NÃO são o problema do professor.
 PROIBIDO copiar, parafrasear ou reutilizar o conteúdo dessas âncoras em hipóteses/causas/ganchos.
@@ -136,9 +150,9 @@ PROIBIDO copiar, parafrasear ou reutilizar o conteúdo dessas âncoras em hipót
 </ancoras_de_estilo>
 
 <regras>
-1. Chaves "A","B","C": A=encaixe direto, B=outra família, C=híbrido. IDs DIFERENTES e de FAMÍLIAS DIFERENTES (Agilidade / Dedutivas / Contextuais / Indutivas).
+1. Chaves "A","B","C": A=encaixe direto, B=outra família, C=híbrido. IDs DIFERENTES e de FAMÍLIAS DIFERENTES (Agilidade / Dedutivas / Contextuais / Indutivas). Se houver <metodologia_obrigatoria_do_professor>, A DEVE usar exatamente esse ID.
 2. `id_metodologia` = ID literal de <framework_obrigatorio> (uma das 39). NUNCA invente.
-3. NÃO escolha por hábito Design Thinking / Diagnóstico Coletivo / Discurso de Elevador. Varie entre as 39 conforme o relato.
+3. NÃO escolha por hábito Design Thinking / Diagnóstico Coletivo / Discurso de Elevador. Varie entre as 39 conforme o relato (exceto A quando obrigatório).
 4. `trecho_relato_usado` (raiz): cite 1 frase CURTA do PROBLEMA DO PROFESSOR (não das âncoras).
 5. `causas` (raiz): SEMPRE 3 itens {{titulo, descricao}} derivados SÓ do relato/contexto do professor. Títulos curtos e descrições completas (2–4 frases), em linguagem pedagógica simples — o que está atrapalhando a aprendizagem e o que observar na turma.
 6. Em cada opção: `gancho_adaptacao` (3–5 frases COMPLETAS) explica, para o professor, POR QUE esta dinâmica serve NESTA aula e COMO mediar a prática. Cite elementos concretos do relato. `hipotese_teste` (2–3 frases completas) no formato: se conduzir X, a turma pratica Y e você observa Z. NÃO invente cards nem copie o problema inteiro.

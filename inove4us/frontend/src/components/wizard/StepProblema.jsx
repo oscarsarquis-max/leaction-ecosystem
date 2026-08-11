@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { api } from '../../lib/api'
 import DictationField from '../DictationField'
 import FieldHelp from '../FieldHelp'
 import VinculoPedagogicoSelector from '../VinculoPedagogicoSelector'
@@ -21,16 +23,36 @@ export default function StepProblema({
   duracao,
   contexto,
   disciplinaId,
+  metodologiaDesejadaId,
   onProblemaChange,
   onObjetivoChange,
   onTurmaNivelChange,
   onDuracaoChange,
   onContextoChange,
   onDisciplinaChange,
+  onMetodologiaDesejadaChange,
   onSubmit,
   busy,
   error,
 }) {
+  const [metodologias, setMetodologias] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await api.catalogoMetodologiasWizard()
+        const list = Array.isArray(data?.metodologias) ? data.metodologias : []
+        if (!cancelled) setMetodologias(list)
+      } catch {
+        if (!cancelled) setMetodologias([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   function usarExemplo() {
     onProblemaChange(EXEMPLO_PROBLEMA)
     onObjetivoChange?.(EXEMPLO_OBJETIVO)
@@ -160,6 +182,31 @@ export default function StepProblema({
               value={contexto}
               onChange={onContextoChange}
             />
+          </div>
+
+          <div>
+            <label htmlFor="metodologiaDesejada" className="field-label">
+              Metodologia desejada
+            </label>
+            <select
+              id="metodologiaDesejada"
+              className="field-input"
+              value={metodologiaDesejadaId || ''}
+              disabled={busy}
+              onChange={(e) => onMetodologiaDesejadaChange?.(e.target.value || null)}
+            >
+              <option value="">Sem preferência — deixe o Inove4Us sugerir</option>
+              {metodologias.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome}
+                  {m.etiqueta ? ` · ${m.etiqueta}` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-bordo-soft">
+              Se você já decidiu qual metodologia utilizar, selecione-a. Caso contrário, o
+              Inove4Us sugerirá alternativas.
+            </p>
           </div>
         </div>
 

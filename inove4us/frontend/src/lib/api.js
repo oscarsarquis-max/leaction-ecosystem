@@ -81,6 +81,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  catalogoMetodologiasWizard: () => request('/api/wizard/catalogo-metodologias'),
   selecionarCaminho: (caminho) =>
     request('/api/wizard/selecionar-caminho', {
       method: 'POST',

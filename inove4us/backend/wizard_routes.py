@@ -571,24 +571,32 @@ def _fallback_payload(
     contexto: str,
     refs: list[dict],
     corpus_refs: list[str] | None = None,
+    *,
+    preferred_metodologia_id: str | None = None,
+    exclude_ids: set[str] | None = None,
 ) -> dict:
     ref = refs[0] if refs else None
     trecho = extrair_trecho_relato(problema)
     corpus = corpus_refs if corpus_refs is not None else _carregar_corpus_referencia_completo()
     causas = causas_somente_do_relato(problema, contexto, corpus)
 
-    # Fallback local: 3 famílias distintas, IDs fora do trio habitual da IA
-    fb_ids = [
-        _pick_metodologia_diversa(set(), preferred_id=None, slot=i, seed=problema or contexto or "")
-        for i in range(3)
-    ]
-    # Garante unicidade mesmo se o seed colapsar
+    # Fallback local: 3 famílias distintas; slot A respeita preferência do professor se válida
+    preferred_a = _resolve_catalog_id(preferred_metodologia_id)
+    if preferred_a and preferred_a in {str(x) for x in (exclude_ids or set()) if x}:
+        preferred_a = None
     used_fb: set[str] = set()
     fb_ids_unique: list[str] = []
-    for i, mid in enumerate(fb_ids):
-        mid = _pick_metodologia_diversa(
-            used_fb, preferred_id=mid, slot=i, seed=problema or contexto or ""
-        )
+    for i in range(3):
+        if i == 0 and preferred_a:
+            mid = preferred_a
+        else:
+            mid = _pick_metodologia_diversa(
+                used_fb,
+                preferred_id=None,
+                slot=i,
+                seed=problema or contexto or "",
+                exclude_ids=exclude_ids,
+            )
         used_fb.add(mid)
         fb_ids_unique.append(mid)
 
@@ -1426,13 +1434,25 @@ def _stitch_ranking_hibrido(
     *,
     exclude_ids: set[str] | None = None,
     override_by_key: dict | None = None,
+    preferred_metodologia_id: str | None = None,
 ) -> dict:
     """
     Costura o JSON curto do LLM (A/B/C) com o catálogo canônico de 39.
     Sempre devolve plano com vários cards (DB ou plano pedagógico denso).
+    Se preferred_metodologia_id válido: força o slot A (cards/nome coerentes via forced_mid).
     """
     corpus = corpus_refs if corpus_refs is not None else _carregar_corpus_referencia_completo()
-    base = _fallback_payload(problema, contexto, refs, corpus)
+    preferred_a = _resolve_catalog_id(preferred_metodologia_id)
+    if preferred_a and preferred_a in {str(x) for x in (exclude_ids or set()) if x}:
+        preferred_a = None
+    base = _fallback_payload(
+        problema,
+        contexto,
+        refs,
+        corpus,
+        preferred_metodologia_id=preferred_a,
+        exclude_ids=exclude_ids,
+    )
     if not isinstance(raw, dict):
         return base
 
@@ -1457,14 +1477,19 @@ def _stitch_ranking_hibrido(
             if trecho_opt and jaccard_words(trecho_opt, problema) >= 0.12
             else trecho
         )
-        preferred = _resolve_catalog_id(opt.get("id_metodologia"))
-        mid = _pick_metodologia_diversa(
-            used_mids,
-            preferred_id=preferred,
-            slot=i,
-            seed=problema or contexto or "",
-            exclude_ids=exclude_ids,
-        )
+        if i == 0 and preferred_a:
+            mid = preferred_a
+            # Garante que cards/nome usem a metodologia do professor, não a do Sonnet
+            opt = {**opt, "id_metodologia": preferred_a}
+        else:
+            preferred = _resolve_catalog_id(opt.get("id_metodologia"))
+            mid = _pick_metodologia_diversa(
+                used_mids,
+                preferred_id=preferred,
+                slot=i,
+                seed=problema or contexto or "",
+                exclude_ids=exclude_ids,
+            )
         used_mids.add(mid)
         caminhos_out.append(
             _montar_caminho_hibrido(
@@ -1549,7 +1574,6 @@ def _stitch_ranking_hibrido(
     )
 
 
-@wizard_bp.post("/api/wizard/estruturar")
 def _nome_disciplina_para_prompt(id_clie: int, disciplina_id_raw: object) -> str:
     """Resolve nome da disciplina do professor (fail-soft). Vazio se inválido/ausente."""
     if disciplina_id_raw in (None, "", 0, "0", "null"):
@@ -1589,6 +1613,64 @@ def _nome_disciplina_para_prompt(id_clie: int, disciplina_id_raw: object) -> str
         return ""
 
 
+def _resolver_metodologia_desejada(
+    raw: object,
+    *,
+    exclude_ids: set[str] | None = None,
+) -> tuple[str | None, str | None]:
+    """
+    Resolve preferência do professor → (id_canonico, nome) ou (None, None).
+    IDs inválidos ou bloqueados pela escola degradam para sem preferência.
+    """
+    if raw in (None, "", "null", "undefined"):
+        return None, None
+    mid = _resolve_catalog_id(raw)
+    if not mid:
+        entrada = resolver_entrada_catalogo(str(raw).strip())
+        mid = (entrada or {}).get("id") if entrada else None
+    if not mid:
+        return None, None
+    blocked = {str(x) for x in (exclude_ids or set()) if x}
+    if mid in blocked:
+        return None, None
+    entrada = resolver_entrada_catalogo(mid) or {}
+    nome = str(entrada.get("nome") or mid).strip()
+    return mid, nome
+
+
+@wizard_bp.get("/api/wizard/catalogo-metodologias")
+def catalogo_metodologias_wizard():
+    """Lista slim das 39 (id + nome + etiqueta) para o select do StepProblema."""
+    user = session.get("user") or {}
+    id_clie = user.get("id_clie")
+    if not id_clie:
+        return jsonify({"error": "Não autenticado"}), 401
+    exclude_ids: set[str] = set()
+    try:
+        from services.methodology_override_service import blocked_ids_for_vector
+
+        exclude_ids = blocked_ids_for_vector(int(id_clie), "desafio")
+    except Exception as exc:
+        print(f"[wizard] catalogo exclude: {exc}", file=sys.stderr)
+    from core.catalogo_metodologias_dia import entradas_catalogo_dia
+
+    items = []
+    for e in entradas_catalogo_dia():
+        mid = e.get("id")
+        if not mid or mid in exclude_ids:
+            continue
+        items.append(
+            {
+                "id": mid,
+                "nome": e.get("nome") or mid,
+                "etiqueta": e.get("etiqueta") or "",
+            }
+        )
+    items.sort(key=lambda x: str(x.get("nome") or "").lower())
+    return jsonify({"success": True, "metodologias": items, "total": len(items)})
+
+
+@wizard_bp.post("/api/wizard/estruturar")
 def estruturar_problema():
     """Recebe o problema do professor e devolve JSON para as etapas 2–4.
 
@@ -1607,6 +1689,7 @@ def estruturar_problema():
     turma_nivel = campo_texto_curto(data.get("turma_nivel"))
     duracao = campo_texto_curto(data.get("duracao"))
     disciplina_id_raw = data.get("disciplina_id")
+    metodologia_desejada_raw = data.get("metodologia_desejada_id")
     complementacao = str(data.get("complementacao") or "").strip()
     # Complementação soma ao relato (não substitui) e força reprocessamento completo.
     if complementacao:
@@ -1689,10 +1772,27 @@ def estruturar_problema():
         for ov in override_by_key.values()
         if ov.get("diretriz_customizada") and ov.get("disponivel_desafio", True)
     ]
+    pref_mid, pref_nome = _resolver_metodologia_desejada(
+        metodologia_desejada_raw, exclude_ids=exclude_ids
+    )
+    metodologia_preferida_valida = bool(pref_mid)
+    if metodologia_desejada_raw not in (None, "", "null", "undefined") and not pref_mid:
+        print(
+            "[wizard] metodologia_preferida_valida=false (invalida_ou_bloqueada)",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"[wizard] metodologia_preferida_valida={str(metodologia_preferida_valida).lower()}",
+            file=sys.stderr,
+        )
+
     system_prompt = build_estruturar_system_prompt(
         bloco_ref,
         exclude_ids=exclude_ids,
         diretrizes_escola=diretrizes_escola,
+        metodologia_obrigatoria_id=pref_mid,
+        metodologia_obrigatoria_nome=pref_nome,
     )
 
     problema_limpo = texto_professor_limpo(problema) or problema
@@ -1705,6 +1805,8 @@ def estruturar_problema():
         disciplina_area=disciplina_area,
         duracao=duracao,
         contexto_seguro=ctx_prompt,
+        metodologia_nome=pref_nome or "",
+        metodologia_id=pref_mid or "",
     )
     if complementacao:
         user_content += (
@@ -1727,7 +1829,8 @@ def estruturar_problema():
         f"chars_contexto={len(ctx_prompt)} tem_contexto={bool(ctx_prompt)} "
         f"origem_contexto={origem_contexto} "
         f"tem_objetivo={bool(objetivo)} tem_turma={bool(turma_nivel)} "
-        f"tem_duracao={bool(duracao)} tem_disciplina={bool(disciplina_area)}",
+        f"tem_duracao={bool(duracao)} tem_disciplina={bool(disciplina_area)} "
+        f"tem_metodologia_pref={metodologia_preferida_valida}",
         file=sys.stderr,
     )
 
@@ -1780,6 +1883,7 @@ def estruturar_problema():
             corpus_refs,
             exclude_ids=exclude_ids,
             override_by_key=override_by_key,
+            preferred_metodologia_id=pref_mid,
         )
 
         # Retry opcional (off por padrão no SLA 30s)
@@ -1823,6 +1927,7 @@ def estruturar_problema():
                 corpus_refs,
                 exclude_ids=exclude_ids,
                 override_by_key=override_by_key,
+                preferred_metodologia_id=pref_mid,
             )
             usou_retry = True
             q1 = dict(payload.get("qualidade") or {})
@@ -1839,7 +1944,14 @@ def estruturar_problema():
             f"[wizard] Bedrock/fallback: {exc} elapsed_s={time.monotonic() - t0:.1f}",
             file=sys.stderr,
         )
-        payload = _fallback_payload(problema, contexto, refs_prompt, corpus_refs)
+        payload = _fallback_payload(
+            problema,
+            contexto,
+            refs_prompt,
+            corpus_refs,
+            preferred_metodologia_id=pref_mid,
+            exclude_ids=exclude_ids,
+        )
         usou_fallback = True
         # Fallback também respeita vetores/diretrizes quando possível
         try:

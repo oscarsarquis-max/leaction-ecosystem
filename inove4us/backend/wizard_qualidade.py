@@ -363,6 +363,8 @@ def montar_user_content_estruturar(
     disciplina_area: str = "",
     duracao: str = "",
     contexto_seguro: str = "",
+    metodologia_nome: str = "",
+    metodologia_id: str = "",
 ) -> str:
     """Monta user_content semântico; omite blocos vazios (sem N/A)."""
     problema_txt = str(problema_limpo or "").strip()
@@ -382,6 +384,14 @@ def montar_user_content_estruturar(
     ctx_txt = campo_texto_curto(contexto_seguro)
     if ctx_txt:
         parts.append(f"CONTEXTO INFORMADO\n\n{ctx_txt}")
+    met_nome = campo_texto_curto(metodologia_nome)
+    met_id = campo_texto_curto(metodologia_id)
+    if met_nome or met_id:
+        if met_nome and met_id:
+            bloco_met = f"Nome: {met_nome}\nID: {met_id}"
+        else:
+            bloco_met = met_nome or met_id
+        parts.append(f"METODOLOGIA INFORMADA PELO PROFESSOR\n\n{bloco_met}")
     return "\n\n".join(parts) + "\n"
 
 

@@ -46,6 +46,7 @@ export default function DesafioPage() {
   const [turmaNivel, setTurmaNivel] = useState('')
   const [duracao, setDuracao] = useState('')
   const [contexto, setContexto] = useState('')
+  const [metodologiaDesejadaId, setMetodologiaDesejadaId] = useState(null)
   const [disciplinaId, setDisciplinaId] = useState(disciplinaInicial)
   const [trechoRelato, setTrechoRelato] = useState('')
   const [error, setError] = useState('')
@@ -94,6 +95,9 @@ export default function DesafioPage() {
         ...(duracao.trim() ? { duracao: duracao.trim() } : {}),
         id_clie: user?.id_clie,
         ...(disciplinaId != null ? { disciplina_id: disciplinaId } : {}),
+        ...(metodologiaDesejadaId
+          ? { metodologia_desejada_id: metodologiaDesejadaId }
+          : {}),
         ...(complemento ? { complementacao: complemento } : {}),
       })
       setCausas(data.causas_raiz || [])
@@ -298,12 +302,14 @@ export default function DesafioPage() {
             duracao={duracao}
             contexto={contexto}
             disciplinaId={disciplinaId}
+            metodologiaDesejadaId={metodologiaDesejadaId}
             onProblemaChange={setProblema}
             onObjetivoChange={setObjetivo}
             onTurmaNivelChange={setTurmaNivel}
             onDuracaoChange={setDuracao}
             onContextoChange={setContexto}
             onDisciplinaChange={setDisciplinaId}
+            onMetodologiaDesejadaChange={setMetodologiaDesejadaId}
             onSubmit={handleEstruturar}
             busy={busy}
             error={error}
