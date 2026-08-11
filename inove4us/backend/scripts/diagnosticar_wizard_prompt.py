@@ -380,6 +380,50 @@ def _invoke_opcional(montado: dict) -> dict | None:
     return meta
 
 
+# Usage real Etapa 07 (já medido) — só para derivar tokens no --analyze-cache sem nova chamada.
+_BASELINE_INPUT_TOKENS_ETAPA07 = {
+    "curto": 1016,
+    "medio": 1394,
+    "longo": 2182,
+}
+
+
+def _run_analyze_cache(nomes: list[str], *, use_baseline_tokens: bool = True) -> list[dict]:
+    from core.wizard_cache_feasibility import (
+        INVOKE_MODEL_CACHE_USAGE_KEYS,
+        analyze_cache_feasibility,
+        format_cache_feasibility_report,
+    )
+    from wizard_routes import BEDROCK_MODEL_ID, WIZARD_BEDROCK_MODEL_ID
+
+    model_id = WIZARD_BEDROCK_MODEL_ID or BEDROCK_MODEL_ID
+    print("\n=== ANALYZE-CACHE (sem alterar produção; sem cache_control) ===")
+    print(f"api: bedrock-runtime InvokeModel")
+    print(f"model_id_efetivo: {model_id}")
+    print(f"invoke_cache_usage_keys_instrumentados: {list(INVOKE_MODEL_CACHE_USAGE_KEYS)}")
+    out = []
+    for nome in nomes:
+        montado = _montar_cenario(CENARIOS[nome]())
+        measured = (
+            _BASELINE_INPUT_TOKENS_ETAPA07.get(nome) if use_baseline_tokens else None
+        )
+        analysis = analyze_cache_feasibility(
+            model_id=model_id,
+            system_prompt=montado["system_prompt"],
+            user_content=montado["user_content"],
+            candidate_catalog_chars=montado["partes"].get("candidate_catalog_chars"),
+            measured_input_tokens=measured,
+        )
+        analysis["cenario"] = nome
+        print(f"\n--- cenario={nome} ---")
+        print(format_cache_feasibility_report(analysis))
+        print("block_order_real:")
+        for line in analysis.get("block_order_real") or []:
+            print(f"  - {line}")
+        out.append(analysis)
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Diagnóstico de prompt do wizard")
     parser.add_argument(
@@ -394,6 +438,11 @@ def main() -> int:
         help="Opcional: chama Bedrock de verdade (requer AWS configurada)",
     )
     parser.add_argument(
+        "--analyze-cache",
+        action="store_true",
+        help="Diagnóstico de viabilidade de Prompt Caching (offline; sem cache_control)",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emite resumo JSON (apenas métricas numéricas / IDs)",
@@ -402,6 +451,39 @@ def main() -> int:
 
     nomes = list(CENARIOS) if args.cenario == "todos" else [args.cenario]
     _info_max_tokens()
+
+    if args.analyze_cache:
+        analyses = _run_analyze_cache(nomes)
+        if args.json:
+            # Sem system/user text — só métricas
+            slim = []
+            for a in analyses:
+                slim.append(
+                    {
+                        k: a.get(k)
+                        for k in (
+                            "cenario",
+                            "model_id",
+                            "cache_supported",
+                            "min_checkpoint_tokens",
+                            "static_prefix_chars",
+                            "static_prefix_tokens_derived",
+                            "static_if_reorganized_chars",
+                            "static_reorg_tokens_derived",
+                            "system_total_chars",
+                            "system_tokens_derived",
+                            "candidate_catalog_chars",
+                            "dynamic_system_chars",
+                            "user_chars",
+                            "checkpoint_before_candidates_valid",
+                            "checkpoint_after_candidates_stable",
+                            "classification",
+                            "recommendation",
+                        )
+                    }
+                )
+            print("\n" + json.dumps(slim, ensure_ascii=False, indent=2))
+        return 0
 
     resumo = []
     for nome in nomes:
