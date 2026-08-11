@@ -1,0 +1,18 @@
+# Fixture sintetica — sem dados de professores
+{"event":"wizard_ai_metrics","request_id":"req001","attempt":1,"retry":false,"input_tokens":1100,"output_tokens":540,"bedrock_latency_ms":8000,"stop_reason":"end_turn","max_tokens_config":4096,"matcher_candidate_count":8,"full_catalog_fallback":false,"system_chars":2660,"catalogo_chars":480,"user_chars":200}
+{"event":"wizard_total_metrics","request_id":"req001","total_latency_ms":9200,"bedrock_calls":1,"retry":false,"fallback":false,"total_input_tokens":1100,"total_output_tokens":540}
+{"event":"metodologia_preferida_valida","request_id":"req001","metodologia_preferida_valida":true}
+{"event":"wizard_ai_metrics","request_id":"req002","attempt":1,"retry":false,"input_tokens":1500,"output_tokens":560,"bedrock_latency_ms":9000,"stop_reason":"end_turn","matcher_candidate_count":8,"full_catalog_fallback":false}
+{"event":"wizard_ai_metrics","request_id":"req002","attempt":2,"retry":true,"retry_reason":"vinculo=False;vazamento=False","input_tokens":1520,"output_tokens":580,"bedrock_latency_ms":8500,"stop_reason":"end_turn"}
+{"event":"wizard_total_metrics","request_id":"req002","total_latency_ms":19000,"bedrock_calls":2,"retry":true,"fallback":false,"total_input_tokens":3020,"total_output_tokens":1140}
+{"event":"metodologia_preferida_valida","request_id":"req002","metodologia_preferida_valida":false}
+{"event":"wizard_ai_metrics","request_id":"req003","attempt":1,"retry":false,"input_tokens":2200,"output_tokens":null,"bedrock_latency_ms":10500,"stop_reason":"end_turn","matcher_candidate_count":8,"full_catalog_fallback":true}
+{"event":"wizard_total_metrics","request_id":"req003","total_latency_ms":12000,"bedrock_calls":1,"retry":false,"fallback":false,"total_input_tokens":2200}
+{"event":"wizard_total_metrics","request_id":"req004","total_latency_ms":500,"bedrock_calls":0,"retry":false,"fallback":true}
+{"event":"wizard_ai_metrics","request_id":"req005","attempt":1,"retry":false,"input_tokens":1300,"output_tokens":550,"bedrock_latency_ms":7000,"stop_reason":"max_tokens","matcher_candidate_count":8,"full_catalog_fallback":false}
+# linha invalida abaixo
+isto nao e json nem metrica
+{"event":"wizard_ai_metrics","request_id":"req006","attempt":1,"retry":false,"input_tokens":1400,"output_tokens":570,"bedrock_latency_ms":7500,"stop_reason":"end_turn","matcher_candidate_count":8,"full_catalog_fallback":false}
+[wizard] wizard_ai_metrics request_id=req007 attempt=1 retry=false input_tokens=1000 output_tokens=500 bedrock_latency_ms=6000 stop_reason=end_turn matcher_candidate_count=8 full_catalog_fallback=false
+[wizard] wizard_total_metrics request_id=req007 total_latency_ms=7000 bedrock_calls=1 retry=false fallback=false total_input_tokens=1000 total_output_tokens=500
+[wizard] metodologia_preferida_valida=true
