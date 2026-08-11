@@ -86,6 +86,86 @@ def _framework_ids_block(exclude_ids: set[str] | None = None) -> str:
     return "\n".join(linhas)
 
 
+def _bloco_diretrizes_escola(diretrizes_escola: list[dict] | None) -> str:
+    """Bloco opcional de diretrizes — mesma montagem usada no system prompt."""
+    bloco_escola = ""
+    itens = [d for d in (diretrizes_escola or []) if d.get("diretriz_customizada")]
+    if not itens:
+        return bloco_escola
+    linhas_esc = []
+    for d in itens[:12]:
+        mid = d.get("metodologia_key") or ""
+        nome = d.get("metodologia_nome") or mid
+        txt = str(d.get("diretriz_customizada") or "").strip()
+        if not txt:
+            continue
+        if len(txt) > 400:
+            txt = txt[:397] + "…"
+        linhas_esc.append(f"- `{mid}` ({nome}): {txt}")
+    if linhas_esc:
+        bloco_escola = (
+            "\n<diretrizes_da_escola>\n"
+            "O professor tem vínculo com uma escola. Se escolher um dos IDs abaixo, "
+            "o gancho_adaptacao e a hipotese_teste DEVEM respeitar a diretriz correspondente "
+            "(não contradizer nem ignorar).\n"
+            + "\n".join(linhas_esc)
+            + "\n</diretrizes_da_escola>\n"
+        )
+    return bloco_escola
+
+
+def _bloco_metodologia_obrigatoria(
+    metodologia_obrigatoria_id: str | None,
+    metodologia_obrigatoria_nome: str | None,
+) -> str:
+    mid_ob = (metodologia_obrigatoria_id or "").strip()
+    nome_ob = (metodologia_obrigatoria_nome or "").strip() or mid_ob
+    if not mid_ob:
+        return ""
+    return f"""
+<metodologia_obrigatoria_do_professor>
+O professor EXIGIU a metodologia `{mid_ob}` ({nome_ob}) no caminho A.
+- A.id_metodologia DEVE ser exatamente `{mid_ob}`.
+- B e C: IDs DIFERENTES de A e entre si, de FAMÍLIAS DIFERENTES.
+- Escreva gancho_adaptacao e hipotese_teste de A especificamente para essa metodologia e o relato.
+</metodologia_obrigatoria_do_professor>
+"""
+
+
+def medir_componentes_entrada_prompt(
+    bloco_ref: str,
+    *,
+    exclude_ids: set[str] | None = None,
+    diretrizes_escola: list[dict] | None = None,
+    metodologia_obrigatoria_id: str | None = None,
+    metodologia_obrigatoria_nome: str | None = None,
+    system_prompt: str = "",
+    user_content: str = "",
+    ancoras_count: int | None = None,
+) -> dict:
+    """Métricas de tamanho (chars) das entradas reais do prompt — sem alterar o texto.
+
+    `system_catalogo_chars` / `system_ancoras_chars` / `system_diretrizes_chars` medem
+    os componentes de entrada usados na montagem (não necessariamente uma partição
+    exata da string final do system, que também inclui regras/formato/TOM).
+    """
+    catalogo = _framework_ids_block(exclude_ids)
+    bloco_escola = _bloco_diretrizes_escola(diretrizes_escola)
+    bloco_obrigatoria = _bloco_metodologia_obrigatoria(
+        metodologia_obrigatoria_id, metodologia_obrigatoria_nome
+    )
+    ref = bloco_ref or ""
+    return {
+        "system_total_chars": len(system_prompt or ""),
+        "system_catalogo_chars": len(catalogo),
+        "system_ancoras_chars": len(ref),
+        "system_diretrizes_chars": len(bloco_escola),
+        "system_obrigatoria_chars": len(bloco_obrigatoria),
+        "user_content_chars": len(user_content or ""),
+        "ancoras_count": int(ancoras_count) if ancoras_count is not None else 0,
+    }
+
+
 def build_estruturar_system_prompt(
     bloco_ref: str,
     *,
@@ -96,40 +176,10 @@ def build_estruturar_system_prompt(
 ) -> str:
     """Uma chamada: roteia IDs do catálogo 39 + hipóteses ancoradas no RELATO."""
     framework = _framework_ids_block(exclude_ids)
-    bloco_escola = ""
-    itens = [d for d in (diretrizes_escola or []) if d.get("diretriz_customizada")]
-    if itens:
-        linhas_esc = []
-        for d in itens[:12]:
-            mid = d.get("metodologia_key") or ""
-            nome = d.get("metodologia_nome") or mid
-            txt = str(d.get("diretriz_customizada") or "").strip()
-            if not txt:
-                continue
-            if len(txt) > 400:
-                txt = txt[:397] + "…"
-            linhas_esc.append(f"- `{mid}` ({nome}): {txt}")
-        if linhas_esc:
-            bloco_escola = (
-                "\n<diretrizes_da_escola>\n"
-                "O professor tem vínculo com uma escola. Se escolher um dos IDs abaixo, "
-                "o gancho_adaptacao e a hipotese_teste DEVEM respeitar a diretriz correspondente "
-                "(não contradizer nem ignorar).\n"
-                + "\n".join(linhas_esc)
-                + "\n</diretrizes_da_escola>\n"
-            )
-    bloco_obrigatoria = ""
-    mid_ob = (metodologia_obrigatoria_id or "").strip()
-    nome_ob = (metodologia_obrigatoria_nome or "").strip() or mid_ob
-    if mid_ob:
-        bloco_obrigatoria = f"""
-<metodologia_obrigatoria_do_professor>
-O professor EXIGIU a metodologia `{mid_ob}` ({nome_ob}) no caminho A.
-- A.id_metodologia DEVE ser exatamente `{mid_ob}`.
-- B e C: IDs DIFERENTES de A e entre si, de FAMÍLIAS DIFERENTES.
-- Escreva gancho_adaptacao e hipotese_teste de A especificamente para essa metodologia e o relato.
-</metodologia_obrigatoria_do_professor>
-"""
+    bloco_escola = _bloco_diretrizes_escola(diretrizes_escola)
+    bloco_obrigatoria = _bloco_metodologia_obrigatoria(
+        metodologia_obrigatoria_id, metodologia_obrigatoria_nome
+    )
     return f"""Você é uma especialista pedagógica da inove4us, conversando com professores e instrutores.
 Arquitetura HÍBRIDA: NÃO gere cards EduScrum, timebox nem manuais de sala.
 Papel: (1) ROTEAR 3 IDs do catálogo de 39; (2) escrever gancho + hipótese + trecho do RELATO DO PROFESSOR.

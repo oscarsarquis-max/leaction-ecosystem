@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 
@@ -45,7 +46,11 @@ from core.metodologias_db import (
 )
 from services.methodology_service import get_dinamica_by_id
 from db import consumir_credito_ia, get_conn, get_creditos_ia
-from prompts.inov_ativas import LISTA_FLAT, build_estruturar_system_prompt
+from prompts.inov_ativas import (
+    LISTA_FLAT,
+    build_estruturar_system_prompt,
+    medir_componentes_entrada_prompt,
+)
 from wizard_qualidade import (
     aplicar_barreira_final_payload,
     avaliar_qualidade,
@@ -127,6 +132,118 @@ WIZARD_RETRY_MIN_REMAINING_SEC = float(
 _DEFAULT_METODOLOGIA_ID = "criativa_narrativas_transmidia"
 
 
+def _opt_int_usage(val: object) -> int | None:
+    if val is None:
+        return None
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def _extrair_usage_bedrock(body_json: object) -> dict:
+    """Extrai usage nativo do Bedrock/Anthropic; campos ausentes ficam None."""
+    usage = {}
+    if isinstance(body_json, dict):
+        raw_usage = body_json.get("usage")
+        if isinstance(raw_usage, dict):
+            usage = raw_usage
+    # Campos oficiais comuns; opcionais só entram se existirem no payload.
+    out = {
+        "input_tokens": _opt_int_usage(usage.get("input_tokens")),
+        "output_tokens": _opt_int_usage(usage.get("output_tokens")),
+    }
+    for key in ("cache_creation_input_tokens", "cache_read_input_tokens", "total_tokens"):
+        if key in usage:
+            out[key] = _opt_int_usage(usage.get(key))
+    return out
+
+
+def _log_wizard_ai_metrics(
+    *,
+    request_id: str,
+    attempt: int,
+    meta: dict | None,
+    partes: dict | None = None,
+    retry: bool = False,
+    retry_reason: str = "",
+    matcher_top_ids: str = "",
+    matcher_top_scores: str = "",
+) -> None:
+    """Log estruturado só com métricas numéricas / IDs técnicos (sem conteúdo)."""
+    m = meta or {}
+    p = partes or {}
+    parts = [
+        "[wizard] wizard_ai_metrics",
+        f"request_id={request_id}",
+        f"attempt={attempt}",
+        f"retry={str(bool(retry)).lower()}",
+    ]
+    if retry and retry_reason:
+        parts.append(f"retry_reason={retry_reason}")
+    if attempt == 1 and p:
+        parts.extend(
+            [
+                f"system_chars={p.get('system_total_chars')}",
+                f"catalogo_chars={p.get('system_catalogo_chars')}",
+                f"ancoras_chars={p.get('system_ancoras_chars')}",
+                f"ancoras_count={p.get('ancoras_count')}",
+                f"diretrizes_chars={p.get('system_diretrizes_chars')}",
+                f"obrigatoria_chars={p.get('system_obrigatoria_chars')}",
+                f"user_chars={p.get('user_content_chars')}",
+            ]
+        )
+        if matcher_top_ids:
+            parts.append(f"matcher_top_ids={matcher_top_ids}")
+        if matcher_top_scores:
+            parts.append(f"matcher_top_scores={matcher_top_scores}")
+    for key in (
+        "input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "cache_creation_input_tokens",
+        "cache_read_input_tokens",
+        "bedrock_latency_ms",
+        "stop_reason",
+        "max_tokens_config",
+    ):
+        if key in m and m.get(key) is not None:
+            parts.append(f"{key}={m.get(key)}")
+    print(" ".join(parts), file=sys.stderr)
+
+
+def _log_wizard_total_metrics(
+    *,
+    request_id: str,
+    total_latency_ms: float,
+    bedrock_calls: int,
+    total_input_tokens: int | None,
+    total_output_tokens: int | None,
+    usou_retry: bool,
+    usou_fallback: bool,
+) -> None:
+    parts = [
+        "[wizard] wizard_total_metrics",
+        f"request_id={request_id}",
+        f"total_latency_ms={round(total_latency_ms, 1)}",
+        f"bedrock_calls={bedrock_calls}",
+        f"retry={str(bool(usou_retry)).lower()}",
+        f"fallback={str(bool(usou_fallback)).lower()}",
+    ]
+    if total_input_tokens is not None:
+        parts.append(f"total_input_tokens={total_input_tokens}")
+    if total_output_tokens is not None:
+        parts.append(f"total_output_tokens={total_output_tokens}")
+    print(" ".join(parts), file=sys.stderr)
+
+
+def _sum_optional_ints(values: list[int | None]) -> int | None:
+    nums = [v for v in values if v is not None]
+    if not nums:
+        return None
+    return sum(nums)
+
+
 def _invoke_estruturar_bedrock(
     *,
     bedrock,
@@ -135,8 +252,11 @@ def _invoke_estruturar_bedrock(
     user_content: str,
     max_tokens: int,
     json_prefill: str = "{",
-) -> dict:
-    """Chama Bedrock e devolve dict JSON parseado. Levanta se truncar/inválido."""
+) -> tuple[dict, dict]:
+    """Chama Bedrock e devolve (dict JSON parseado, meta de usage/latência).
+
+    Meta é só instrumentação — não altera o body enviado ao modelo.
+    """
     body = json.dumps(
         {
             "anthropic_version": "bedrock-2023-05-31",
@@ -150,6 +270,7 @@ def _invoke_estruturar_bedrock(
             ],
         }
     )
+    t_call = time.perf_counter()
     response = bedrock.invoke_model(
         modelId=model_id,
         contentType="application/json",
@@ -157,23 +278,32 @@ def _invoke_estruturar_bedrock(
         body=body,
     )
     body_json = json.loads(response.get("body").read())
+    latency_ms = (time.perf_counter() - t_call) * 1000.0
     texto_modelo = body_json["content"][0]["text"]
     stop_reason = body_json.get("stop_reason")
-    usage = body_json.get("usage") or {}
+    usage_fields = _extrair_usage_bedrock(body_json)
+    meta = {
+        **usage_fields,
+        "bedrock_latency_ms": round(latency_ms, 1),
+        "stop_reason": stop_reason,
+        "max_tokens_config": int(max_tokens),
+    }
     print(
         f"[wizard] model={model_id} stop={stop_reason} "
-        f"out_tokens={usage.get('output_tokens')} in_tokens={usage.get('input_tokens')}",
+        f"out_tokens={meta.get('output_tokens')} in_tokens={meta.get('input_tokens')} "
+        f"bedrock_latency_ms={meta.get('bedrock_latency_ms')}",
         file=sys.stderr,
     )
     texto = _reconstruir_json_prefill(texto_modelo, json_prefill)
     try:
-        return _extrair_json(texto)
+        parsed = _extrair_json(texto)
     except Exception as parse_exc:
         if stop_reason == "max_tokens":
             raise ValueError(
                 f"Resposta truncada (max_tokens); JSON incompleto: {parse_exc}"
             ) from parse_exc
         raise
+    return parsed, meta
 
 
 def _bedrock_ssl_verify_enabled() -> bool:
@@ -213,8 +343,11 @@ def _invoke_estruturar_bedrock_deadline(
     max_tokens: int,
     json_prefill: str,
     deadline_sec: float,
-) -> dict:
-    """Chama Bedrock com teto de parede; TimeoutError se estourar o SLA."""
+) -> tuple[dict, dict]:
+    """Chama Bedrock com teto de parede; TimeoutError se estourar o SLA.
+
+    Retorna (parsed, meta) — meta inclui usage nativo e latência da chamada.
+    """
     remaining = max(1.0, float(deadline_sec))
     with ThreadPoolExecutor(max_workers=1) as pool:
         fut = pool.submit(
@@ -1724,6 +1857,10 @@ def estruturar_problema():
         )
 
     t0 = time.monotonic()
+    request_id = uuid.uuid4().hex[:12]
+    bedrock_metas: list[dict] = []
+    matcher_top_ids = ""
+    matcher_top_scores = ""
     corpus_refs = _carregar_corpus_referencia_completo()
 
     try:
@@ -1816,13 +1953,20 @@ def estruturar_problema():
             top_n=0,
         )
         n_pos = sum(1 for r in ranking_all if int(r.get("score") or 0) > 0)
+        top5 = ranking_all[:5]
+        matcher_top_ids = ",".join(str(r.get("id") or "") for r in top5)
+        matcher_top_scores = ",".join(str(int(r.get("score") or 0)) for r in top5)
         print(
-            f"[wizard] matcher_executado=true com_score_positivo={n_pos} "
+            f"[wizard] matcher_executado=true request_id={request_id} "
+            f"com_score_positivo={n_pos} "
             f"keyword_match top=[{format_top_log(ranking_all, limite=5)}]",
             file=sys.stderr,
         )
     except Exception as exc:
-        print(f"[wizard] matcher_executado=false err={exc}", file=sys.stderr)
+        print(
+            f"[wizard] matcher_executado=false request_id={request_id} err={exc}",
+            file=sys.stderr,
+        )
 
     user_content = montar_user_content_estruturar(
         problema_limpo=problema_limpo,
@@ -1863,7 +2007,8 @@ def estruturar_problema():
     tokens_system = estimate_tokens(system_prompt)
     tokens_user = estimate_tokens(user_content)
     print(
-        f"[wizard] prompt_tokens_est system={tokens_system} user={tokens_user} "
+        f"[wizard] prompt_tokens_est request_id={request_id} "
+        f"system={tokens_system} user={tokens_user} "
         f"total={tokens_system + tokens_user} refs={len(refs_prompt)} "
         f"overrides={len(override_by_key)} blocked_desafio={len(exclude_ids)}",
         file=sys.stderr,
@@ -1872,11 +2017,35 @@ def estruturar_problema():
     usou_fallback = False
     usou_retry = False
     json_prefill = "{"
+    partes_prompt = medir_componentes_entrada_prompt(
+        bloco_ref,
+        exclude_ids=exclude_ids,
+        diretrizes_escola=diretrizes_escola,
+        metodologia_obrigatoria_id=pref_mid,
+        metodologia_obrigatoria_nome=pref_nome,
+        system_prompt=system_prompt,
+        user_content=user_content,
+        ancoras_count=len(refs_prompt),
+    )
+    print(
+        f"[wizard] prompt_chars request_id={request_id} "
+        f"system={partes_prompt.get('system_total_chars')} "
+        f"catalogo={partes_prompt.get('system_catalogo_chars')} "
+        f"ancoras={partes_prompt.get('system_ancoras_chars')} "
+        f"ancoras_count={partes_prompt.get('ancoras_count')} "
+        f"diretrizes={partes_prompt.get('system_diretrizes_chars')} "
+        f"obrigatoria={partes_prompt.get('system_obrigatoria_chars')} "
+        f"user={partes_prompt.get('user_content_chars')} "
+        f"prefill_chars={len(json_prefill)}",
+        file=sys.stderr,
+    )
+
     model_id = WIZARD_BEDROCK_MODEL_ID or BEDROCK_MODEL_ID
     print(
-        f"[wizard] model_escolhido={model_id} budget_s={WIZARD_TOTAL_BUDGET_SEC} "
+        f"[wizard] model_escolhido={model_id} request_id={request_id} "
+        f"budget_s={WIZARD_TOTAL_BUDGET_SEC} "
         f"read_timeout_s={WIZARD_BEDROCK_READ_TIMEOUT} max_tokens={BEDROCK_MAX_TOKENS} "
-        f"retry_enabled={WIZARD_RETRY_ENABLED}",
+        f"retry_enabled={WIZARD_RETRY_ENABLED} assistant_prefill='{{'",
         file=sys.stderr,
     )
     raw = None
@@ -1886,7 +2055,7 @@ def estruturar_problema():
         if remaining < 5:
             raise TimeoutError("Orçamento de 30s esgotado antes da IA")
         # Chamada única sob SLA (sem 2ª rodada por padrão)
-        raw = _invoke_estruturar_bedrock_deadline(
+        raw, meta1 = _invoke_estruturar_bedrock_deadline(
             bedrock=bedrock,
             model_id=model_id,
             system_prompt=system_prompt,
@@ -1895,9 +2064,20 @@ def estruturar_problema():
             json_prefill=json_prefill,
             deadline_sec=remaining,
         )
+        bedrock_metas.append(meta1)
+        _log_wizard_ai_metrics(
+            request_id=request_id,
+            attempt=1,
+            meta=meta1,
+            partes=partes_prompt,
+            retry=False,
+            matcher_top_ids=matcher_top_ids,
+            matcher_top_scores=matcher_top_scores,
+        )
         elapsed = time.monotonic() - t0
         print(
-            f"[wizard] bedrock_ok keys={list(raw.keys()) if isinstance(raw, dict) else type(raw)} "
+            f"[wizard] bedrock_ok request_id={request_id} "
+            f"keys={list(raw.keys()) if isinstance(raw, dict) else type(raw)} "
             f"elapsed_s={elapsed:.1f}",
             file=sys.stderr,
         )
@@ -1920,11 +2100,14 @@ def estruturar_problema():
             and q0.get("precisa_retry")
             and remaining >= WIZARD_RETRY_MIN_REMAINING_SEC
         ):
+            retry_reason = (
+                f"vinculo={q0.get('vinculo_relato_ok')}"
+                f";vazamento={q0.get('possivel_vazamento')}"
+                f";ancoragem={q0.get('ancoragem_termos_ok')}"
+                f";enlatadas={q0.get('causas_enlatadas')}"
+            )
             print(
-                f"[wizard] retry_unico motivo vinculo={q0.get('vinculo_relato_ok')} "
-                f"vazamento={q0.get('possivel_vazamento')} "
-                f"ancoragem={q0.get('ancoragem_termos_ok')} "
-                f"enlatadas={q0.get('causas_enlatadas')} "
+                f"[wizard] retry_unico request_id={request_id} motivo {retry_reason} "
                 f"remaining_s={remaining:.1f}",
                 file=sys.stderr,
             )
@@ -1936,7 +2119,7 @@ def estruturar_problema():
                 "PROIBIDO usar faltas, leituras obrigatórias ou absenteísmo se isso "
                 "não estiver no relato."
             )
-            raw2 = _invoke_estruturar_bedrock_deadline(
+            raw2, meta2 = _invoke_estruturar_bedrock_deadline(
                 bedrock=bedrock,
                 model_id=model_id,
                 system_prompt=system_prompt,
@@ -1944,6 +2127,14 @@ def estruturar_problema():
                 max_tokens=BEDROCK_MAX_TOKENS,
                 json_prefill=json_prefill,
                 deadline_sec=remaining,
+            )
+            bedrock_metas.append(meta2)
+            _log_wizard_ai_metrics(
+                request_id=request_id,
+                attempt=2,
+                meta=meta2,
+                retry=True,
+                retry_reason=retry_reason,
             )
             payload = _stitch_ranking_hibrido(
                 raw2,
@@ -1961,13 +2152,15 @@ def estruturar_problema():
             payload["qualidade"] = q1
         elif q0.get("precisa_retry"):
             print(
-                f"[wizard] retry_pulado enabled={WIZARD_RETRY_ENABLED} "
+                f"[wizard] retry_pulado request_id={request_id} "
+                f"enabled={WIZARD_RETRY_ENABLED} "
                 f"remaining_s={remaining:.1f}",
                 file=sys.stderr,
             )
     except Exception as exc:
         print(
-            f"[wizard] Bedrock/fallback: {exc} elapsed_s={time.monotonic() - t0:.1f}",
+            f"[wizard] Bedrock/fallback: {exc} request_id={request_id} "
+            f"elapsed_s={time.monotonic() - t0:.1f}",
             file=sys.stderr,
         )
         payload = _fallback_payload(
@@ -2057,7 +2250,8 @@ def estruturar_problema():
             print(f"[wizard] erro ao debitar crédito: {exc}", file=sys.stderr)
 
     print(
-        f"[wizard] qualidade vinculo_ok={qualidade.get('vinculo_relato_ok')} "
+        f"[wizard] qualidade request_id={request_id} "
+        f"vinculo_ok={qualidade.get('vinculo_relato_ok')} "
         f"vazamento={qualidade.get('possivel_vazamento')} "
         f"ancoragem={qualidade.get('ancoragem_termos_ok')} "
         f"debug_ui={qualidade.get('debug_ui')} "
@@ -2066,6 +2260,20 @@ def estruturar_problema():
         f"retry={usou_retry} fallback={usou_fallback} "
         f"complementacao={bool(complementacao)}",
         file=sys.stderr,
+    )
+
+    _log_wizard_total_metrics(
+        request_id=request_id,
+        total_latency_ms=(time.monotonic() - t0) * 1000.0,
+        bedrock_calls=len(bedrock_metas),
+        total_input_tokens=_sum_optional_ints(
+            [m.get("input_tokens") for m in bedrock_metas]
+        ),
+        total_output_tokens=_sum_optional_ints(
+            [m.get("output_tokens") for m in bedrock_metas]
+        ),
+        usou_retry=usou_retry,
+        usou_fallback=usou_fallback,
     )
 
     return jsonify(
