@@ -1798,6 +1798,32 @@ def estruturar_problema():
     problema_limpo = texto_professor_limpo(problema) or problema
     ctx_prompt = contexto_seguro_para_ui(contexto, problema, corpus_refs)
     disciplina_area = _nome_disciplina_para_prompt(int(id_clie), disciplina_id_raw)
+
+    # Matcher lexical — MODO DIAGNÓSTICO apenas (não altera A/B/C nem o prompt).
+    try:
+        from core.metodologia_keyword_matcher import (
+            format_top_log,
+            rankear_metodologias_por_keywords,
+        )
+
+        ranking_all = rankear_metodologias_por_keywords(
+            problema=problema_limpo,
+            objetivo=objetivo,
+            turma_nivel=turma_nivel,
+            duracao=duracao,
+            contexto=ctx_prompt or contexto,
+            disciplina_nome=disciplina_area,
+            top_n=0,
+        )
+        n_pos = sum(1 for r in ranking_all if int(r.get("score") or 0) > 0)
+        print(
+            f"[wizard] matcher_executado=true com_score_positivo={n_pos} "
+            f"keyword_match top=[{format_top_log(ranking_all, limite=5)}]",
+            file=sys.stderr,
+        )
+    except Exception as exc:
+        print(f"[wizard] matcher_executado=false err={exc}", file=sys.stderr)
+
     user_content = montar_user_content_estruturar(
         problema_limpo=problema_limpo,
         objetivo=objetivo,
