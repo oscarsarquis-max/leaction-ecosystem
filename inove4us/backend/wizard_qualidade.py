@@ -350,40 +350,73 @@ def termos_concretos_do_relato(problema: str, *, limite: int = 12) -> list[str]:
     return out
 
 
+def contexto_request_normalizado(contexto: str) -> str:
+    ctx = " ".join(str(contexto or "").split()).strip()
+    ctx = _ROTULO_FORM_RE.sub(" ", ctx)
+    return " ".join(ctx.split()).strip()
+
+
+def contexto_explicito_aceitavel(
+    ctx: str,
+    *,
+    problema: str,
+    corpus_refs: list[str] | None,
+) -> bool:
+    """Mesmas barreiras de vazamento/vínculo — sem inventar regras novas."""
+    if not ctx or len(ctx) < 8:
+        return False
+    corpo = texto_professor_limpo(problema)
+    vaza, _, _ = vaza_contra_corpus(ctx, corpus_refs or [], problema)
+    if vaza:
+        return False
+    ligado = (
+        jaccard_words(ctx, corpo) >= JACCARD_CONTEXTO_OK
+        or any(t in ctx.lower() for t in termos_concretos_do_relato(problema, limite=6))
+    )
+    return ligado
+
+
 def contexto_seguro_para_ui(
     contexto: str,
     problema: str,
     corpus_refs: list[str] | None = None,
 ) -> str:
     """
-    Contexto exibível: prioriza entidades do relato.
-    Nunca ecoa um `contexto` de requisição desconectado (ex.: Escola Recanto
-    de um teste anterior) nem texto da base de referência.
+    Contexto exibível/seguro para prompt e pads.
+
+    Prioridade: contexto explícito do request (se passar anti-vazamento/vínculo).
+    Inferência a partir do relato só via `_ancora_legivel` — nunca devolver
+    fragmentos crus (ex.: «escola para atuar como um»).
+    Sem contexto confiável → string vazia (não inventar localização).
     """
+    ctx = contexto_request_normalizado(contexto)
+    if contexto_explicito_aceitavel(ctx, problema=problema, corpus_refs=corpus_refs):
+        return ctx[:100]
+
     exprs = expressoes_do_relato(problema, limite=6)
+
+    # Entidades «escola …» só se forem âncoras legíveis (nome/local), não cláusulas.
     for e in exprs:
         if re.match(r"(?i)^escola\b", e):
-            return e[:100]
-    turmas = [e for e in exprs if re.search(r"(?i)\d+[ºoª]\s*ano|\bano\b", e)]
-    if turmas:
-        return ", ".join(turmas[:3])[:100]
+            ancora = _ancora_legivel(e, max_chars=100, max_words=12)
+            if ancora:
+                return ancora
 
-    corpo = texto_professor_limpo(problema)
-    ctx = " ".join(str(contexto or "").split()).strip()
-    ctx = _ROTULO_FORM_RE.sub(" ", ctx)
-    ctx = " ".join(ctx.split()).strip()
-    if ctx and len(ctx) >= 8:
-        vaza, _, _ = vaza_contra_corpus(ctx, corpus_refs or [], problema)
-        ligado = (
-            jaccard_words(ctx, corpo) >= JACCARD_CONTEXTO_OK
-            or any(t in ctx.lower() for t in termos_concretos_do_relato(problema, limite=6))
-        )
-        if (not vaza) and ligado:
-            return ctx[:100]
+    turmas_ok: list[str] = []
+    for e in exprs:
+        if re.search(r"(?i)\d+[ºoª]\s*ano|\bano\b", e):
+            ancora = _ancora_legivel(e, max_chars=100, max_words=12)
+            if ancora:
+                turmas_ok.append(ancora)
+    if turmas_ok:
+        return ", ".join(turmas_ok[:3])[:100]
 
-    if exprs:
-        return exprs[0][:100]
-    return "a realidade descrita no seu relato"
+    for e in exprs:
+        ancora = _ancora_legivel(e, max_chars=100, max_words=12)
+        if ancora:
+            return ancora
+
+    return ""
 
 
 def contem_termo_do_relato(texto: str, problema: str) -> bool:
@@ -605,8 +638,8 @@ def causas_somente_do_relato(
     Só usado quando a IA falhou nas checagens (não como reescrita padrão).
     """
     exprs = expressoes_do_relato(problema, limite=8)
-    ctx = contexto_seguro_para_ui(contexto, problema, corpus_refs)
     tema = frase_tema_do_relato(problema)
+    ctx = contexto_seguro_para_ui(contexto, problema, corpus_refs) or tema
 
     # Ângulos preferidos — sempre a forma já “legível”, nunca fragmento cru.
     ambientais: list[str] = []

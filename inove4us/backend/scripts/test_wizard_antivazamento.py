@@ -73,6 +73,38 @@ assert any("vale verde" in e.lower() for e in exprs), exprs
 ctx_safe = contexto_seguro_para_ui(contexto_stale, relato_sabia, CORPUS)
 assert "recanto" not in ctx_safe.lower(), ctx_safe
 assert "vale" in ctx_safe.lower() or "escola" in ctx_safe.lower(), ctx_safe
+assert "para atuar" not in ctx_safe.lower(), ctx_safe
+
+# --- Contexto seguro: prioridade do request + anti falso-positivo «escola para atuar» ---
+caso1_problema = (
+    "Os alunos irão investigar os focos de dengue no entorno da escola."
+)
+caso1_contexto = "Escola municipal no bairro Aldeota, Fortaleza"
+ctx1 = contexto_seguro_para_ui(caso1_contexto, caso1_problema, CORPUS)
+assert "aldeota" in ctx1.lower(), ctx1
+assert "fortaleza" in ctx1.lower(), ctx1
+
+caso2_problema = (
+    "A prefeitura convocou a sua escola para atuar como um Polo de "
+    "Inteligência e Intervenção para o bairro."
+)
+ctx2 = contexto_seguro_para_ui("", caso2_problema, CORPUS)
+assert "para atuar" not in ctx2.lower(), ctx2
+assert ctx2.lower() != "escola para atuar como um"
+assert "atuar como" not in ctx2.lower(), ctx2
+
+caso3_problema = (
+    "Os alunos precisam investigar maneiras de reduzir o desperdício de água."
+)
+ctx3 = contexto_seguro_para_ui("", caso3_problema, CORPUS)
+assert ctx3 == "", repr(ctx3)
+assert "realidade descrita" not in ctx3.lower()
+
+caso4_problema = "A escola irá desenvolver ações junto à comunidade."
+caso4_contexto = "2º ano do Ensino Médio · escola pública de Fortaleza"
+ctx4 = contexto_seguro_para_ui(caso4_contexto, caso4_problema, CORPUS)
+assert "fortaleza" in ctx4.lower(), ctx4
+assert "ensino" in ctx4.lower() or "2" in ctx4, ctx4
 
 pads = causas_somente_do_relato(relato_sabia, contexto_stale, CORPUS)
 assert len(pads) == 3
@@ -307,6 +339,8 @@ assert apos_barreira["caminhos"][0]["hipotese_teste"] == payload_ia["caminhos"][
 p = build_estruturar_system_prompt(
     "- (estilo) Engajamento: turma dispersa precisa de papeis claros."
 )
-assert "ÂNGULOS DIFERENTES" in p or "angulos diferentes" in p.lower() or "Ângulos" in p
+assert "framework_obrigatorio" in p
+assert "id_metodologia" in p
+assert "ancoras_de_estilo" in p or "âncoras" in p.lower() or "ancoras" in p.lower()
 print("system_tokens_est", estimate_tokens(p))
-print("OK barreira + IA intacta + diversidade")
+print("OK barreira + IA intacta + diversidade + contexto_seguro")

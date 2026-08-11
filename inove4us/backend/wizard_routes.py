@@ -65,6 +65,8 @@ from wizard_qualidade import (
     texto_professor_limpo,
     vaza_contra_corpus,
     vinculo_minimo_com_relato,
+    contexto_explicito_aceitavel,
+    contexto_request_normalizado,
 )
 
 
@@ -988,7 +990,8 @@ def _cards_plano_pedagogico(
     """
     sinais = _sinais_complexidade_projeto(problema, contexto)
     tema = trecho or frase_tema_do_relato(problema)
-    ctx = contexto_seguro_para_ui(contexto, problema)
+    # Contexto vazio → tema do relato (não inventar localização).
+    ctx = contexto_seguro_para_ui(contexto, problema) or tema
     mec_base = desc_curta or (
         f"prática ativa com «{nome}» (grupo {etiqueta}), "
         f"com mediação do professor e evidência de aprendizagem"
@@ -1327,7 +1330,7 @@ def _montar_caminho_hibrido(
         hipotese = completar_frase(hip_ia, LIMITE_HIPOTESE)
     else:
         tema = frase_tema_do_relato(problema)
-        ctx_safe = contexto_seguro_para_ui(contexto, problema)
+        ctx_safe = contexto_seguro_para_ui(contexto, problema) or tema
         hipotese = (
             f"Se você conduzir {nome} com a turma em torno de {tema}, "
             f"os estudantes praticam a aprendizagem de forma ativa "
@@ -1649,16 +1652,33 @@ def estruturar_problema():
 
     problema_limpo = texto_professor_limpo(problema) or problema
     ctx_prompt = contexto_seguro_para_ui(contexto, problema, corpus_refs)
-    user_content = (
-        f"PROBLEMA DO PROFESSOR:\n{problema_limpo}\n\n"
-        f"LOCALIZAÇÃO / CONTEXTO:\n{ctx_prompt}\n"
-    )
+    # Sem inventar contexto: omite o bloco quando vazio.
+    user_parts = [f"PROBLEMA / DESAFIO DO PROFESSOR\n\n{problema_limpo}"]
+    if ctx_prompt:
+        user_parts.append(f"CONTEXTO INFORMADO\n\n{ctx_prompt}")
+    user_content = "\n\n".join(user_parts) + "\n"
     if complementacao:
         user_content += (
             "\nINSTRUÇÃO: o professor acabou de complementar o relato. "
             "Reescreva as 3 causas do zero com esse detalhe novo — "
             "não concatene o texto antigo de 'hipótese a aprofundar'.\n"
         )
+
+    ctx_request_norm = contexto_request_normalizado(contexto)
+    if ctx_prompt and contexto_explicito_aceitavel(
+        ctx_request_norm, problema=problema, corpus_refs=corpus_refs
+    ):
+        origem_contexto = "request"
+    elif ctx_prompt:
+        origem_contexto = "inferido"
+    else:
+        origem_contexto = "nenhum"
+    print(
+        f"[wizard] user_ctx chars_problema={len(problema_limpo)} "
+        f"chars_contexto={len(ctx_prompt)} tem_contexto={bool(ctx_prompt)} "
+        f"origem_contexto={origem_contexto}",
+        file=sys.stderr,
+    )
 
     tokens_system = estimate_tokens(system_prompt)
     tokens_user = estimate_tokens(user_content)
