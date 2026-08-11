@@ -215,7 +215,7 @@ def build_estruturar_system_prompt(
     # Compacto: sem BLOCO_TOM_PROMPT (persona longa); regras funcionais preservadas.
     return f"""Roteador inove4us. PT-BR. JSON válido apenas.
 HÍBRIDO: NÃO gere cards/plano/cronograma/materiais/avaliação/EduScrum (backend).
-Tarefa: 3 IDs + trecho_relato_usado + 3 causas + gancho/hipótese (1 frase cada).
+Tarefa: 3 IDs + trecho + 3 causas + gancho/hipótese (1 frase boa, curta e contextualizada).
 
 <framework_obrigatorio>
 {framework}
@@ -231,15 +231,15 @@ Só formato. NÃO são o problema. PROIBIDO copiar em causas/ganchos/hipóteses.
 1. A,B,C: IDs distintos e famílias distintas (Agilidade/Dedutivas/Contextuais/Indutivas). A=encaixe; B=outra família; C=híbrido. Se existir bloco metodologia_obrigatoria_do_professor, A.id_metodologia = esse ID.
 2. id_metodologia = ID literal de METODOLOGIAS DISPONÍVEIS. Nunca invente.
 3. Evite hábito Design Thinking / Diagnóstico Coletivo / Discurso de Elevador; varie pelo relato (exceto A obrigatório).
-4. trecho_relato_usado: fragmento mínimo do PROBLEMA (não das âncoras).
-5. causas: exatamente 3 {{titulo, descricao}}; cada descricao = 1 frase curta, específica, distinta, só do relato.
-6. gancho_adaptacao: 1 frase com elemento concreto do relato. hipotese_teste: 1 frase testável (se X → turma Y → observa Z). Sem explicar metodologia nem mini-plano.
-7. PROIBIDO: plano, sequência, materiais, avaliação, cronograma, repetir o relato, genéricos ("aplicar a metodologia ao problema").
-8. Frases completas; se parecer âncora, reescreva com palavras do professor.
+4. trecho_relato_usado: menor fragmento reconhecível do PROBLEMA (~40–90 chars); sem título/objetivo/contexto inteiro; sem âncoras.
+5. causas: 3 {{titulo, descricao}}; título curto; descricao = 1 frase causal (~70–120 chars), uma ideia, só do relato; sem justificativa/plano.
+6. gancho_adaptacao: 1 frase (~70–110 chars) com elemento do relato + como a dinâmica entra; sem explicar metodologia nem repetir a hipótese.
+7. hipotese_teste: 1 frase (~90–130 chars), testável (ação → efeito → evidência); um pouco mais rica que o gancho; sem mini-plano.
+8. PROIBIDO: genéricos ("aplicar a metodologia"), plano/materiais, frase sem elemento do relato. Frases completas; se parecer âncora, reescreva.
 </regras>
 
 <formato>
-{{"trecho_relato_usado":"...","causas":[{{"titulo":"...","descricao":"1 frase"}},{{"titulo":"...","descricao":"1 frase"}},{{"titulo":"...","descricao":"1 frase"}}],"A":{{"id_metodologia":"dia_world_cafe","gancho_adaptacao":"1 frase do relato","hipotese_teste":"Se… turma… observa…"}},"B":{{"id_metodologia":"agil_minute_paper","gancho_adaptacao":"...","hipotese_teste":"..."}},"C":{{"id_metodologia":"imersiva_escape_room","gancho_adaptacao":"...","hipotese_teste":"..."}}}}
+{{"trecho_relato_usado":"fragmento curto","causas":[{{"titulo":"...","descricao":"1 frase causal"}},{{"titulo":"...","descricao":"1 frase causal"}},{{"titulo":"...","descricao":"1 frase causal"}}],"A":{{"id_metodologia":"dia_world_cafe","gancho_adaptacao":"frase curta do relato","hipotese_teste":"Se…, então…; observa…"}},"B":{{"id_metodologia":"agil_minute_paper","gancho_adaptacao":"...","hipotese_teste":"..."}},"C":{{"id_metodologia":"imersiva_escape_room","gancho_adaptacao":"...","hipotese_teste":"..."}}}}
 </formato>
 """.strip()
 

@@ -53,12 +53,17 @@ assert "ancoras_de_estilo" in prompt
 # Bloco obrigatório só quando há metodologia desejada
 assert "<metodologia_obrigatoria_do_professor>" not in build_estruturar_system_prompt(bloco)
 
-# Concisão: não pedir parágrafos longos no output
+# Concisão: não pedir parágrafos longos no output; faixas da Etapa 10
 assert "3–5 frases" not in prompt
 assert "2–4 frases" not in prompt
 assert "2–3 frases" not in prompt
 assert "1 frase" in prompt
+assert "40–90" in prompt
+assert "70–120" in prompt
+assert "70–110" in prompt
+assert "90–130" in prompt
 assert "não gere cards" in prompt.lower()
+assert "aplicar a metodologia" in prompt.lower()
 
 # Exclusões ainda removem IDs
 exc = {"agil_eduscrum"}
@@ -79,7 +84,7 @@ assert "criativa_pbl_projetos" in p_ob
 partes = medir_componentes_entrada_prompt(
     bloco, system_prompt=prompt, user_content="x", ancoras_count=1
 )
-assert partes["system_total_chars"] < 4300, partes["system_total_chars"]
+assert partes["system_total_chars"] < 4500, partes["system_total_chars"]
 assert partes["system_catalogo_chars"] < 2100, partes["system_catalogo_chars"]
 # Subconjunto reduz o catálogo no prompt
 sub = build_estruturar_system_prompt(
