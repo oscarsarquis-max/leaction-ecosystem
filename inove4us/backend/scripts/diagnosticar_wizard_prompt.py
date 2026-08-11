@@ -352,7 +352,7 @@ def _avaliar_qualidade_estrutural(parsed: dict) -> dict:
     }
 
 
-def _invoke_opcional(montado: dict) -> dict | None:
+def _invoke_opcional(montado: dict, *, analyze_output: bool = False) -> dict | None:
     from wizard_routes import (
         BEDROCK_MAX_TOKENS,
         BEDROCK_MODEL_ID,
@@ -377,6 +377,15 @@ def _invoke_opcional(montado: dict) -> dict | None:
         meta["bedrock_latency_ms"] = round((time.perf_counter() - t0) * 1000.0, 1)
     # Só métricas/flags — sem texto do modelo.
     meta["qualidade"] = _avaliar_qualidade_estrutural(parsed if isinstance(parsed, dict) else {})
+    if analyze_output:
+        from core.wizard_output_analysis import analisar_output_estruturar
+
+        # Análise fica em meta; o relatório formata só números (sem dump de texto).
+        meta["output_analysis"] = analisar_output_estruturar(
+            parsed if isinstance(parsed, dict) else {}
+        )
+        # Mantém parsed só em memória local do caller se precisar — não imprime.
+        meta["_parsed_for_diag"] = parsed if isinstance(parsed, dict) else {}
     return meta
 
 
@@ -443,6 +452,11 @@ def main() -> int:
         help="Diagnóstico de viabilidade de Prompt Caching (offline; sem cache_control)",
     )
     parser.add_argument(
+        "--analyze-output",
+        action="store_true",
+        help="Decompõe o JSON do Sonnet (chars/words). Requer --invoke-bedrock.",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emite resumo JSON (apenas métricas numéricas / IDs)",
@@ -451,6 +465,13 @@ def main() -> int:
 
     nomes = list(CENARIOS) if args.cenario == "todos" else [args.cenario]
     _info_max_tokens()
+
+    if args.analyze_output and not args.invoke_bedrock:
+        print(
+            "[erro] --analyze-output requer --invoke-bedrock (precisa do JSON real).",
+            file=sys.stderr,
+        )
+        return 2
 
     if args.analyze_cache:
         analyses = _run_analyze_cache(nomes)
@@ -485,13 +506,21 @@ def main() -> int:
             print("\n" + json.dumps(slim, ensure_ascii=False, indent=2))
         return 0
 
+    from core.wizard_output_analysis import (
+        aggregate_field_stats,
+        format_output_analysis_report,
+    )
+
     resumo = []
+    output_analyses = []
     for nome in nomes:
         montado = _montar_cenario(CENARIOS[nome]())
         usage = None
         if args.invoke_bedrock:
             try:
-                usage = _invoke_opcional(montado)
+                usage = _invoke_opcional(
+                    montado, analyze_output=bool(args.analyze_output)
+                )
             except Exception as exc:
                 print(
                     f"\n[aviso] falha ao invocar Bedrock no cenário {nome}: {exc}",
@@ -499,6 +528,19 @@ def main() -> int:
                 )
                 usage = None
         _imprimir_cenario(montado, usage=usage)
+        if args.analyze_output and usage and usage.get("output_analysis"):
+            oa = usage["output_analysis"]
+            output_analyses.append(oa)
+            print()
+            print(
+                format_output_analysis_report(
+                    oa,
+                    output_tokens=usage.get("output_tokens"),
+                    stop_reason=usage.get("stop_reason"),
+                )
+            )
+            # Descarta texto parseado — não imprimir.
+            usage.pop("_parsed_for_diag", None)
         p = montado["partes"]
         top = montado["ranking"]
         item = {
@@ -516,7 +558,29 @@ def main() -> int:
             item["input_tokens"] = usage.get("input_tokens")
             item["output_tokens"] = usage.get("output_tokens")
             item["bedrock_latency_ms"] = usage.get("bedrock_latency_ms")
+            item["stop_reason"] = usage.get("stop_reason")
+            if usage.get("output_analysis"):
+                oa = usage["output_analysis"]
+                item["output_analysis"] = {
+                    "json_chars": oa.get("json_chars"),
+                    "groups_chars": oa.get("groups_chars"),
+                    "maior_consumidor_chars": oa.get("maior_consumidor_chars"),
+                    "trecho_chars": (oa.get("trecho_relato_usado") or {}).get("chars"),
+                    "causas_chars": (oa.get("causas_total") or {}).get("chars"),
+                    "ganchos_chars": (oa.get("ganchos_total") or {}).get("chars"),
+                    "hipoteses_chars": (oa.get("hipoteses_total") or {}).get("chars"),
+                    "structural_chars": oa.get("structural_chars"),
+                    "redundancy_jaccard": oa.get("redundancy_jaccard"),
+                }
         resumo.append(item)
+
+    if args.analyze_output and output_analyses:
+        stats = aggregate_field_stats(output_analyses)
+        print("\n=== AGGREGATE FIELD STATS (chars) ===")
+        for name, s in stats.items():
+            print(
+                f"{name}: min={s['min']} max={s['max']} avg={s['avg']} n={s['n']}"
+            )
 
     if args.json:
         print("\n" + json.dumps(resumo, ensure_ascii=False, indent=2))
