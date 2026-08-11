@@ -253,11 +253,15 @@ export default function ExecucaoPage() {
 
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 print:hidden">
         <div className="flex min-w-0 items-center gap-3">
-          <Link to="/mesa-do-inovador" className="btn-ghost !px-3 !py-1.5 text-xs">
-            ← Início
+          <Link
+            to={desafio?.id ? `/desafios/${desafio.id}` : '/mesa-do-inovador'}
+            className="btn-ghost !px-3 !py-1.5 text-xs"
+          >
+            {desafio?.id ? '← Mesa do desafio' : '← Início'}
           </Link>
           <p className="truncate text-sm text-bordo-soft">
-            Execução · <span className="font-semibold text-bordo">{user?.nome_clie || 'professor'}</span>
+            Mesa da aula ·{' '}
+            <span className="font-semibold text-bordo">{user?.nome_clie || 'professor'}</span>
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -416,8 +420,20 @@ export default function ExecucaoPage() {
               resumeMode
               readOnly={hydrated.somenteLeitura}
               colaboradores={colaboradores}
-              onVoltar={() => navigate('/mesa-do-inovador')}
-              onAgendaChanged={() => navigate('/mesa-do-inovador')}
+              onVoltar={() =>
+                navigate(
+                  desafio?.id || hydrated.desafioId
+                    ? `/desafios/${desafio?.id || hydrated.desafioId}`
+                    : '/mesa-do-inovador',
+                )
+              }
+              onAgendaChanged={() =>
+                navigate(
+                  desafio?.id || hydrated.desafioId
+                    ? `/desafios/${desafio?.id || hydrated.desafioId}`
+                    : '/mesa-do-inovador',
+                )
+              }
               onReplicar={desafio?.id && !hydrated.somenteLeitura ? () => setShowReplicar(true) : undefined}
             />
           </>

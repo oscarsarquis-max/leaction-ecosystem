@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import BrandLogo from '../components/BrandLogo'
 import ClassFeedbackModal from '../components/ClassFeedbackModal'
@@ -11,6 +11,7 @@ import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import VinculoPedagogicoSelector from '../components/VinculoPedagogicoSelector'
 import { useAuth } from '../lib/auth'
 import { canRegisterDailyAula } from '../lib/dailyAccess'
+import { parseEmentaTopicos } from '../lib/ementaTopicos'
 import {
   atualizarAula,
   buscarAula,
@@ -61,6 +62,8 @@ function emptyForm() {
     fechamento_checkout: '',
     status: 'draft',
     disciplina_id: null,
+    ementa_topico: '',
+    ementa_texto: '',
   }
 }
 
@@ -76,6 +79,7 @@ function snapshotForm(f) {
     dinamica_nome: f.dinamica_nome || '',
     fechamento_checkout: f.fechamento_checkout || '',
     disciplina_id: f.disciplina_id ?? null,
+    ementa_topico: f.ementa_topico || '',
   })
 }
 
@@ -353,6 +357,10 @@ export default function DailyPlanner() {
   const isInProgress = form.status === 'em_execucao' || form.status === 'in_progress'
   const isCompleted = form.status === 'realizado' || form.status === 'completed'
   const canStartAula = !isNew && !isInProgress && !isCompleted && Boolean(id)
+  const ementaTopicos = useMemo(
+    () => parseEmentaTopicos(form.ementa_texto),
+    [form.ementa_texto],
+  )
 
   const applyForm = useCallback((next, kanbanState = null) => {
     const nextTasks = buildCycleTasks(next, kanbanState)
@@ -467,6 +475,8 @@ export default function DailyPlanner() {
           fechamento_checkout: aula.fechamento_checkout || '',
           status: aula.status || 'draft',
           disciplina_id: aula.disciplina_id ?? null,
+          ementa_topico: aula.ementa_topico || '',
+          ementa_texto: '',
         },
         aula.kanban_state || null,
       )
@@ -576,6 +586,7 @@ export default function DailyPlanner() {
       fechamento_checkout: form.fechamento_checkout.slice(0, LIMITS.fechamento_checkout),
       kanban_state: cycleKanbanPayload(tasks),
       disciplina_id: form.disciplina_id ?? null,
+      ementa_topico: form.ementa_topico.trim().slice(0, LIMITS.tema_aula) || null,
     }
 
     setSaving(true)
@@ -618,6 +629,7 @@ export default function DailyPlanner() {
       fechamento_checkout: form.fechamento_checkout.slice(0, LIMITS.fechamento_checkout),
       kanban_state: cycleKanbanPayload(tasks),
       disciplina_id: form.disciplina_id ?? null,
+      ementa_topico: form.ementa_topico.trim().slice(0, LIMITS.tema_aula) || null,
       status: form.status === 'draft' ? 'planejado' : form.status,
     }
     await atualizarAula(id, payload)
@@ -880,6 +892,78 @@ export default function DailyPlanner() {
         ) : (
           <div className="mt-8 grid gap-6 lg:grid-cols-2 lg:items-start">
             <form onSubmit={handleSubmit} className="space-y-5">
+            <VinculoPedagogicoSelector
+              disciplinaId={form.disciplina_id}
+              onChange={(id, meta) => {
+                const sameDisc =
+                  String(form.disciplina_id ?? '') === String(id ?? '')
+                const tops = parseEmentaTopicos(meta?.ementa || '')
+                setForm((prev) => {
+                  const nextTopico = (() => {
+                    if (!id) return ''
+                    if (prev.ementa_topico && tops.includes(prev.ementa_topico)) {
+                      return prev.ementa_topico
+                    }
+                    // Hidratação da mesma disciplina: mantém tópico salvo
+                    if (sameDisc) return prev.ementa_topico || ''
+                    return ''
+                  })()
+                  return {
+                    ...prev,
+                    disciplina_id: id,
+                    ementa_texto: meta?.ementa || '',
+                    ementa_topico: nextTopico,
+                  }
+                })
+                if (!sameDisc) {
+                  dirtyRef.current = true
+                  setDirty(true)
+                }
+              }}
+            />
+
+            {ementaTopicos.length > 0 ? (
+              <label className="block">
+                <span className="field-label">Tópico da ementa</span>
+                <select
+                  className="field-input mt-1 min-h-11"
+                  value={form.ementa_topico}
+                  onChange={(e) => {
+                    const topico = e.target.value
+                    setForm((prev) => ({
+                      ...prev,
+                      ementa_topico: topico,
+                      tema_aula: topico
+                        ? topico.slice(0, LIMITS.tema_aula)
+                        : prev.tema_aula,
+                      conteudo_essencial:
+                        topico && !String(prev.conteudo_essencial || '').trim()
+                          ? `Ementa: ${topico}`
+                          : prev.conteudo_essencial,
+                    }))
+                    setDirty(true)
+                    dirtyRef.current = true
+                  }}
+                >
+                  <option value="">Selecione um item da ementa…</option>
+                  {ementaTopicos.map((t) => (
+                    <option key={t} value={t}>
+                      {t.length > 120 ? `${t.slice(0, 117)}…` : t}
+                    </option>
+                  ))}
+                </select>
+                <FieldHelp tip="Itens vêm da ementa da disciplina (uma linha = um tópico). Preenche o tema da aula.">
+                  A ementa da disciplina alimenta o plano do dia a dia: escolha o tópico
+                  desta aula.
+                </FieldHelp>
+              </label>
+            ) : form.disciplina_id ? (
+              <p className="rounded-xl border border-dashed border-brand-200 bg-brand-50/40 px-3 py-2 text-[12px] text-bordo-soft">
+                Esta disciplina ainda não tem ementa com tópicos (uma linha por item).
+                Cadastre em Instituições → disciplina → Ementa para selecionar aqui.
+              </p>
+            ) : null}
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block sm:col-span-2">
                 <span className="field-label">Tema da aula</span>
@@ -887,12 +971,12 @@ export default function DailyPlanner() {
                   className="field-input mt-1 min-h-11"
                   value={form.tema_aula}
                   onChange={(e) => setField('tema_aula', e.target.value.slice(0, LIMITS.tema_aula))}
-                  placeholder="Ex.: Termodinâmica"
+                  placeholder="Ex.: Termodinâmica — ou escolha um tópico da ementa"
                   required
                   maxLength={LIMITS.tema_aula}
                 />
-                <FieldHelp tip="Seja específico. Ex: 'Termodinâmica' em vez de 'Física'.">
-                  Seja específico. Ex: &apos;Termodinâmica&apos; em vez de &apos;Física&apos;.
+                <FieldHelp tip="Pode vir da ementa ou ser digitado livremente. Seja específico.">
+                  Pode vir da ementa ou ser digitado livremente. Seja específico.
                 </FieldHelp>
                 <CharHint value={form.tema_aula} max={LIMITS.tema_aula} />
               </label>
@@ -920,11 +1004,6 @@ export default function DailyPlanner() {
                 <CharHint value={form.turma_nome} max={LIMITS.turma_nome} />
               </label>
             </div>
-
-            <VinculoPedagogicoSelector
-              disciplinaId={form.disciplina_id}
-              onChange={(id) => setField('disciplina_id', id)}
-            />
 
             <label className="block">
               <span className="field-label">Meta do ciclo (opcional)</span>

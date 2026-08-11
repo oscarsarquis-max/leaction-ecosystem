@@ -24,8 +24,8 @@ function defaultPeriodoPayload() {
     ano_letivo: year,
     tipo_periodo: 'anual',
     etapa: '',
-    data_inicio: `${year}-02-01`,
-    data_fim: `${year}-12-15`,
+    data_inicio: `${year}-01-01`,
+    data_fim: `${year}-12-31`,
     carga_horaria_total_horas: '',
     duracao_padrao_aula_min: 50,
     dias_semana_letivos: ['seg', 'ter', 'qua', 'qui', 'sex'],
@@ -73,6 +73,7 @@ export default function NinaOnboarding() {
   const titleId = useId()
   const userId = user?.id_clie
   const serverDone = Boolean(user?.nina_onboarding_done)
+  const isInstitutional = Boolean(user?.is_institutional || user?.instituicao_b2b_id)
 
   const [open, setOpen] = useState(false)
   const [checking, setChecking] = useState(true)
@@ -350,7 +351,9 @@ export default function NinaOnboarding() {
                     <span className="font-semibold text-bordo">Cadastro</span>
                     <span className="text-bordo-soft">
                       {' '}
-                      — instituição, períodos, cursos e disciplinas, quando fizer sentido.
+                      {isInstitutional
+                        ? '— sua escola já configurou instituição, períodos, cursos e turmas; você só seleciona o que foi alocado.'
+                        : '— instituição, períodos, cursos e disciplinas, quando fizer sentido.'}
                     </span>
                   </li>
                   <li className="rounded-2xl bg-brand-50/80 px-3.5 py-2.5 leading-snug">
@@ -452,9 +455,16 @@ export default function NinaOnboarding() {
               <button
                 type="button"
                 className="btn-primary min-h-11 w-full"
-                onClick={() => setPhase('ask_escola')}
+                onClick={() => {
+                  if (isInstitutional) {
+                    void completeAndGo()
+                    return
+                  }
+                  setPhase('ask_escola')
+                }}
+                disabled={busy}
               >
-                Continuar
+                {isInstitutional ? 'Ir para a Mesa' : 'Continuar'}
               </button>
             ) : null}
 

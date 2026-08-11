@@ -5,6 +5,7 @@ import RelatoAulaModal from '../RelatoAulaModal'
 import ClassFeedbackModal from '../ClassFeedbackModal'
 import { api } from '../../lib/api'
 import { debounce } from '../../lib/debounce'
+import { isSchemaPendingError, listarMinhasTurmas } from '../../services/instituicoesService'
 import KanbanMoveModal from './KanbanMoveModal'
 import KanbanPeiMenu, { isPeiSubcard, orderColumnCards } from './KanbanPeiMenu'
 
@@ -181,6 +182,7 @@ export default function StepEduScrum({
   desafioId: desafioIdProp = null,
   onVoltar,
   onAgendaChanged,
+  onAulasRegistradas,
   onReplicar,
   initialEventoId = null,
   initialKanbanState = null,
@@ -224,6 +226,8 @@ export default function StepEduScrum({
   const [slotsRegistro, setSlotsRegistro] = useState(() => [emptySlotRegistro()])
   const [registroBusy, setRegistroBusy] = useState(false)
   const [registroErro, setRegistroErro] = useState('')
+  const [turmasCadastro, setTurmasCadastro] = useState([])
+  const [turmasLoading, setTurmasLoading] = useState(false)
   const [desafioIdLocal, setDesafioIdLocal] = useState(desafioIdProp || null)
   const [conviteEmail, setConviteEmail] = useState('')
   const [conviteCardId, setConviteCardId] = useState('')
@@ -238,6 +242,30 @@ export default function StepEduScrum({
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = prev
+    }
+  }, [showRegistro])
+
+  useEffect(() => {
+    if (!showRegistro) return
+    let cancelled = false
+    setTurmasLoading(true)
+    listarMinhasTurmas()
+      .then((data) => {
+        if (cancelled) return
+        setTurmasCadastro(Array.isArray(data?.turmas) ? data.turmas : [])
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (!isSchemaPendingError(err)) {
+          console.warn('[StepEduScrum] turmas:', err?.message)
+        }
+        setTurmasCadastro([])
+      })
+      .finally(() => {
+        if (!cancelled) setTurmasLoading(false)
+      })
+    return () => {
+      cancelled = true
     }
   }, [showRegistro])
 
@@ -1152,6 +1180,7 @@ export default function StepEduScrum({
       onAgendaChanged?.()
       const criados = data.eventos || []
       if (criados[0]?.id_evento) setAulaAtivaId(criados[0].id_evento)
+      onAulasRegistradas?.(data)
 
       // Convite opcional preenchido no mesmo formulário
       const emailConv = conviteEmail.trim().toLowerCase()
@@ -2167,13 +2196,48 @@ export default function StepEduScrum({
                       <label className="text-[10px] font-bold uppercase text-bordo-soft">
                         Turma
                       </label>
-                      <input
-                        className="field-input mt-1 !py-2"
-                        value={slot.turma}
-                        onChange={(e) => updateSlot(slot.key, { turma: e.target.value })}
-                        placeholder="Ex.: 8º A"
-                        required
-                      />
+                      {turmasCadastro.length > 0 ? (
+                        <select
+                          className="field-input mt-1 !py-2"
+                          value={slot.turma}
+                          onChange={(e) => updateSlot(slot.key, { turma: e.target.value })}
+                          required
+                          disabled={turmasLoading}
+                        >
+                          <option value="">Selecione a turma…</option>
+                          {turmasCadastro.map((t) => {
+                            const label = [
+                              t.disciplina_nome,
+                              t.curso_nome,
+                              t.nome,
+                              t.turno,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')
+                            return (
+                              <option key={t.id || `${t.nome}-${t.curso_id}`} value={t.nome}>
+                                {label}
+                              </option>
+                            )
+                          })}
+                          {slot.turma &&
+                          !turmasCadastro.some((t) => t.nome === slot.turma) ? (
+                            <option value={slot.turma}>{slot.turma} (livre)</option>
+                          ) : null}
+                        </select>
+                      ) : (
+                        <input
+                          className="field-input mt-1 !py-2"
+                          value={slot.turma}
+                          onChange={(e) => updateSlot(slot.key, { turma: e.target.value })}
+                          placeholder={
+                            turmasLoading
+                              ? 'Carregando turmas…'
+                              : 'Cadastre turmas em Instituições, ou digite aqui'
+                          }
+                          required
+                        />
+                      )}
                     </div>
                     <div>
                       <label className="text-[10px] font-bold uppercase text-bordo-soft">

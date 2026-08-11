@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '../lib/api'
+import { isSchemaPendingError, listarMinhasTurmas } from '../services/instituicoesService'
 
 const TURNO_OPTS = [
   { id: 'manha', label: 'Manhã' },
@@ -82,6 +83,8 @@ export default function RegistrarAulasModal({
   const [slots, setSlots] = useState(() => [emptySlot()])
   const [busy, setBusy] = useState(false)
   const [erro, setErro] = useState('')
+  const [turmasCadastro, setTurmasCadastro] = useState([])
+  const [turmasLoading, setTurmasLoading] = useState(false)
 
   const catalogo = useMemo(
     () => cardsFromDesafio(desafio, cardsMesa),
@@ -97,6 +100,26 @@ export default function RegistrarAulasModal({
         modo_execucao: suggestTurma ? 'continuidade' : 'reinicio',
       }),
     ])
+    let cancelled = false
+    setTurmasLoading(true)
+    listarMinhasTurmas()
+      .then((data) => {
+        if (cancelled) return
+        setTurmasCadastro(Array.isArray(data?.turmas) ? data.turmas : [])
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (!isSchemaPendingError(err)) {
+          console.warn('[RegistrarAulasModal] turmas:', err?.message)
+        }
+        setTurmasCadastro([])
+      })
+      .finally(() => {
+        if (!cancelled) setTurmasLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [open, suggestTurma, desafio?.id])
 
   useEffect(() => {
@@ -305,14 +328,49 @@ export default function RegistrarAulasModal({
                 </div>
                 <div>
                   <label className="text-[10px] font-bold uppercase text-bordo-soft">Turma</label>
-                  <input
-                    className="field-input mt-1 !py-2.5"
-                    value={slot.turma}
-                    onChange={(e) => updateSlot(slot.key, { turma: e.target.value })}
-                    placeholder="Ex.: 8º A"
-                    required
-                    disabled={busy}
-                  />
+                  {turmasCadastro.length > 0 ? (
+                    <select
+                      className="field-input mt-1 !py-2.5"
+                      value={slot.turma}
+                      onChange={(e) => updateSlot(slot.key, { turma: e.target.value })}
+                      required
+                      disabled={busy || turmasLoading}
+                    >
+                      <option value="">Selecione a turma…</option>
+                      {turmasCadastro.map((t) => {
+                        const label = [
+                          t.disciplina_nome,
+                          t.curso_nome,
+                          t.nome,
+                          t.turno,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                        return (
+                          <option key={t.id || `${t.nome}-${t.curso_id}`} value={t.nome}>
+                            {label}
+                          </option>
+                        )
+                      })}
+                      {slot.turma &&
+                      !turmasCadastro.some((t) => t.nome === slot.turma) ? (
+                        <option value={slot.turma}>{slot.turma} (livre)</option>
+                      ) : null}
+                    </select>
+                  ) : (
+                    <input
+                      className="field-input mt-1 !py-2.5"
+                      value={slot.turma}
+                      onChange={(e) => updateSlot(slot.key, { turma: e.target.value })}
+                      placeholder={
+                        turmasLoading
+                          ? 'Carregando turmas…'
+                          : 'Cadastre turmas em Instituições, ou digite aqui'
+                      }
+                      required
+                      disabled={busy}
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="text-[10px] font-bold uppercase text-bordo-soft">Turno</label>

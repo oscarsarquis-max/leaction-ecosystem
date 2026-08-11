@@ -6,7 +6,7 @@ import { requestNinaOnboardingReplay } from '../lib/ninaOnboarding'
 import BrandLogo from '../components/BrandLogo'
 import DictationField from '../components/DictationField'
 
-const CMS_CACHE_KEY = 'i4_acesso_cms_v5'
+const CMS_CACHE_KEY = 'i4_acesso_cms_v6'
 
 function safeNextPath(raw) {
   if (!raw || typeof raw !== 'string') return null
@@ -253,11 +253,15 @@ export default function Acesso() {
   const nextPath = safeNextPath(searchParams.get('next'))
   const { setUser } = useAuth()
   const [step, setStep] = useState('email') // email | lead | code
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(() => (searchParams.get('email') || '').trim())
   const [nome, setNome] = useState('')
   const [empresa, setEmpresa] = useState('')
   const [code, setCode] = useState('')
-  const [hint, setHint] = useState('')
+  const [hint, setHint] = useState(() =>
+    searchParams.get('school_invite') === '1'
+      ? 'Convite da sua escola — valide o e-mail para vincular sua conta institucional.'
+      : '',
+  )
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -319,16 +323,28 @@ export default function Acesso() {
     }
   }, [])
 
-  function enterSession(user) {
-    setUser(user)
+  async function enterSession(user) {
+    let nextUser = user
     try {
       const sp = new URLSearchParams(window.location.search)
       if (sp.get('reset_onboarding') === '1' && user?.id_clie) {
         requestNinaOnboardingReplay(user.id_clie)
       }
+      // Convite School: amarra instituicao_b2b_id + replay de alocações pendentes
+      if (sp.get('school_invite') === '1' && user?.id_clie) {
+        try {
+          const bind = await api.aceitarConviteEscola({
+            email: (email || user?.mail_clie || '').trim().toLowerCase(),
+          })
+          if (bind?.user) nextUser = { ...user, ...bind.user }
+        } catch (err) {
+          console.warn('[acesso] aceite school_invite:', err?.message || err)
+        }
+      }
     } catch {
       /* ignore */
     }
+    setUser(nextUser)
     navigate(nextPath || '/mesa-do-inovador', { replace: true })
   }
 
@@ -366,9 +382,17 @@ export default function Acesso() {
         enterSession(data.user)
         return
       }
-      setCode('')
+      setCode(data.dev_access_code ? String(data.dev_access_code) : '')
       setStep('code')
-      setHint('Enviamos um código para o seu e-mail. Digite-o abaixo para validar o acesso.')
+      if (data.channel === 'dev_log' && data.dev_access_code) {
+        setHint(
+          `Modo local: e-mail não é enviado. Seu código é ${data.dev_access_code}`,
+        )
+      } else {
+        setHint(
+          'Enviamos um código para o seu e-mail. Digite-o abaixo para validar o acesso.',
+        )
+      }
     } catch (err) {
       setError(err.message || 'Não foi possível concluir o cadastro.')
     } finally {

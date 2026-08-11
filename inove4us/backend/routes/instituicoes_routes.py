@@ -32,7 +32,14 @@ TIPOS_INSTITUICAO = frozenset(
     }
 )
 REDES = frozenset({"publica", "privada", "nao_informado"})
-TIPOS_PERIODO = frozenset({"anual", "semestral", "trimestral", "modular"})
+TIPOS_PERIODO = frozenset({
+    "anual",
+    "semestral",
+    "trimestral",
+    "modular",
+    "quinzenal",
+    "mensal",
+})
 STATUS_PERIODO = frozenset({"planejamento", "em_andamento", "encerrado"})
 DIAS_SEMANA = frozenset({"seg", "ter", "qua", "qui", "sex", "sab", "dom"})
 
@@ -50,6 +57,23 @@ def require_session(view):
 
 def _id_clie() -> int:
     return int(session["user"]["id_clie"])
+
+
+def _is_institutional_session() -> bool:
+    user = session.get("user") or {}
+    return bool(user.get("is_institutional") or user.get("instituicao_b2b_id"))
+
+
+def _forbid_institutional_write():
+    if _is_institutional_session():
+        return jsonify({
+            "error": (
+                "Sua estrutura acadêmica é definida pela escola (Secretaria). "
+                "Não é possível alterar instituição, período, curso, disciplina ou turma aqui."
+            ),
+            "code": "school_source_of_truth",
+        }), 403
+    return None
 
 
 def _jsonable(row: dict | None) -> dict | None:
@@ -136,6 +160,9 @@ def _get_periodo(cur, periodo_id: int, id_clie: int, *, include_inactive: bool =
 @instituicoes_bp.post("/api/instituicoes")
 @require_session
 def criar_instituicao():
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     data = request.get_json(silent=True) or {}
     nome = str(data.get("nome") or "").strip()
     tipo = str(data.get("tipo_instituicao") or "").strip().lower()
@@ -251,6 +278,9 @@ def detalhe_instituicao(instituicao_id: int):
 @instituicoes_bp.put("/api/instituicoes/<int:instituicao_id>")
 @require_session
 def atualizar_instituicao(instituicao_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     data = request.get_json(silent=True) or {}
     try:
         with get_conn() as conn:
@@ -258,6 +288,11 @@ def atualizar_instituicao(instituicao_id: int):
                 current = _get_instituicao(cur, instituicao_id, _id_clie())
                 if not current:
                     return jsonify({"error": "Instituição não encontrada."}), 404
+                if current.get("origem_school") or current.get("school_instituicao_id"):
+                    return jsonify({
+                        "error": "Instituição espelhada da escola — somente leitura.",
+                        "code": "school_source_of_truth",
+                    }), 403
 
                 nome = str(data.get("nome", current["nome"]) or "").strip()
                 tipo = str(
@@ -323,12 +358,20 @@ def atualizar_instituicao(instituicao_id: int):
 @instituicoes_bp.delete("/api/instituicoes/<int:instituicao_id>")
 @require_session
 def soft_delete_instituicao(instituicao_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     try:
         with get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 current = _get_instituicao(cur, instituicao_id, _id_clie())
                 if not current:
                     return jsonify({"error": "Instituição não encontrada."}), 404
+                if current.get("origem_school") or current.get("school_instituicao_id"):
+                    return jsonify({
+                        "error": "Instituição espelhada da escola — somente leitura.",
+                        "code": "school_source_of_truth",
+                    }), 403
 
                 cur.execute(
                     """
@@ -466,6 +509,9 @@ def _periodo_payload_from_body(data: dict, *, partial: bool = False, current: di
 @instituicoes_bp.post("/api/instituicoes/<int:instituicao_id>/periodos-letivos")
 @require_session
 def criar_periodo(instituicao_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     data = request.get_json(silent=True) or {}
     try:
         payload = _periodo_payload_from_body(data)
@@ -577,6 +623,9 @@ def detalhe_periodo(periodo_id: int):
 @instituicoes_bp.put("/api/periodos-letivos/<int:periodo_id>")
 @require_session
 def atualizar_periodo(periodo_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     data = request.get_json(silent=True) or {}
     try:
         with get_conn() as conn:
@@ -584,6 +633,11 @@ def atualizar_periodo(periodo_id: int):
                 current = _get_periodo(cur, periodo_id, _id_clie())
                 if not current:
                     return jsonify({"error": "Período letivo não encontrado."}), 404
+                if current.get("origem_school") or current.get("school_periodo_id"):
+                    return jsonify({
+                        "error": "Período espelhado da escola — somente leitura.",
+                        "code": "school_source_of_truth",
+                    }), 403
                 try:
                     payload = _periodo_payload_from_body(data, partial=True, current=current)
                 except ValueError as exc:
@@ -654,12 +708,20 @@ def atualizar_periodo(periodo_id: int):
 @instituicoes_bp.delete("/api/periodos-letivos/<int:periodo_id>")
 @require_session
 def soft_delete_periodo(periodo_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     try:
         with get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 current = _get_periodo(cur, periodo_id, _id_clie())
                 if not current:
                     return jsonify({"error": "Período letivo não encontrado."}), 404
+                if current.get("origem_school") or current.get("school_periodo_id"):
+                    return jsonify({
+                        "error": "Período espelhado da escola — somente leitura.",
+                        "code": "school_source_of_truth",
+                    }), 403
                 if current.get("status") == "em_andamento" and current.get("em_curso"):
                     return jsonify({
                         "error": (
@@ -691,6 +753,9 @@ def soft_delete_periodo(periodo_id: int):
 @instituicoes_bp.post("/api/periodos-letivos/<int:periodo_id>/marcar-em-curso")
 @require_session
 def marcar_em_curso(periodo_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     try:
         with get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:

@@ -15,6 +15,7 @@ import {
   listarPeriodos,
   marcarPeriodoEmCurso,
 } from '../services/instituicoesService'
+import { datasPadraoPeriodo, TIPOS_PERIODO_OPTS } from '../lib/periodoDatas'
 
 const TIPOS_INST = [
   { value: 'escola', label: 'Escola' },
@@ -25,12 +26,7 @@ const TIPOS_INST = [
   { value: 'outro', label: 'Outro' },
 ]
 
-const TIPOS_PERIODO = [
-  { value: 'anual', label: 'Anual' },
-  { value: 'semestral', label: 'Semestral' },
-  { value: 'trimestral', label: 'Trimestral' },
-  { value: 'modular', label: 'Modular' },
-]
+const TIPOS_PERIODO = TIPOS_PERIODO_OPTS
 
 const STATUS_PERIODO = [
   { value: 'planejamento', label: 'Planejamento' },
@@ -51,18 +47,26 @@ const emptyInst = {
 
 function emptyPeriodo() {
   const year = new Date().getFullYear()
+  const datas = datasPadraoPeriodo('anual', year)
   return {
     rotulo: `Ano Letivo ${year}`,
     ano_letivo: year,
     tipo_periodo: 'anual',
     etapa: '',
-    data_inicio: `${year}-02-01`,
-    data_fim: `${year}-12-15`,
+    data_inicio: datas.data_inicio,
+    data_fim: datas.data_fim,
     carga_horaria_total_horas: '',
     duracao_padrao_aula_min: 50,
     status: 'planejamento',
     em_curso: false,
   }
+}
+
+function aplicarDatasPorTipo(form, { tipo, ano } = {}) {
+  const tipoPeriodo = tipo ?? form.tipo_periodo
+  const anoLetivo = ano ?? form.ano_letivo
+  const datas = datasPadraoPeriodo(tipoPeriodo, anoLetivo)
+  return { ...form, tipo_periodo: tipoPeriodo, ano_letivo: anoLetivo, ...datas }
 }
 
 function tipoLabel(value) {
@@ -77,6 +81,7 @@ function statusTone(status) {
 
 export default function InstituicoesPage() {
   const { user, logout } = useAuth()
+  const isInstitutional = Boolean(user?.is_institutional || user?.instituicao_b2b_id)
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -311,9 +316,23 @@ export default function InstituicoesPage() {
           Instituições, períodos, cursos e disciplinas
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-bordo-soft">
-          Cadastro opcional da estruturação pedagógica (versão ampliada). Continua sendo possível
-          criar aulas avulsas sem vincular instituição, período, curso ou disciplina.
+          {isInstitutional
+            ? 'Estrutura acadêmica definida pela sua escola (Secretaria). Aqui você só consulta o que foi alocado a você.'
+            : 'Cadastro opcional da estruturação pedagógica (versão ampliada). Continua sendo possível criar aulas avulsas sem vincular instituição, período, curso ou disciplina.'}
         </p>
+
+        {isInstitutional ? (
+          <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+            <p className="font-semibold">
+              Conta institucional
+              {user?.institutional_name ? ` · ${user.institutional_name}` : ''}
+            </p>
+            <p className="mt-1 text-sky-900/90">
+              Instituição, período, curso, disciplina e turma vêm da Secretaria do School. Para
+              alterar, fale com a coordenação da escola.
+            </p>
+          </div>
+        ) : null}
 
         {schemaPending ? (
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
@@ -331,6 +350,7 @@ export default function InstituicoesPage() {
         <div className="mt-8 grid gap-8 lg:grid-cols-2">
           {/* Coluna instituições */}
           <section className="space-y-4">
+            {isInstitutional ? null : (
             <form
               onSubmit={handleSaveInst}
               className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm sm:p-5"
@@ -388,6 +408,11 @@ export default function InstituicoesPage() {
                 <label className="block text-xs font-semibold text-bordo-soft">
                   Cidade
                   <input
+                    type="text"
+                    name="cidade"
+                    autoComplete="address-level2"
+                    inputMode="text"
+                    placeholder="ex.: São Paulo"
                     className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm"
                     value={form.cidade}
                     onChange={(e) => setForm((f) => ({ ...f, cidade: e.target.value }))}
@@ -396,6 +421,11 @@ export default function InstituicoesPage() {
                 <label className="block text-xs font-semibold text-bordo-soft">
                   UF
                   <input
+                    type="text"
+                    name="uf"
+                    autoComplete="address-level1"
+                    inputMode="text"
+                    placeholder="SP"
                     className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm uppercase"
                     maxLength={8}
                     value={form.uf}
@@ -423,13 +453,20 @@ export default function InstituicoesPage() {
                 ) : null}
               </div>
             </form>
+            )}
 
             <div className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm sm:p-5">
-              <h2 className="text-sm font-bold text-bordo">Suas instituições</h2>
+              <h2 className="text-sm font-bold text-bordo">
+                {isInstitutional ? 'Instituição (escola)' : 'Suas instituições'}
+              </h2>
               {loading ? (
                 <p className="mt-3 text-sm text-bordo-soft">Carregando…</p>
               ) : items.length === 0 ? (
-                <p className="mt-3 text-sm text-bordo-soft">Nenhuma instituição cadastrada ainda.</p>
+                <p className="mt-3 text-sm text-bordo-soft">
+                  {isInstitutional
+                    ? 'Aguardando espelho da escola. Quando a Secretaria alocar disciplina/turma, a estrutura aparece aqui.'
+                    : 'Nenhuma instituição cadastrada ainda.'}
+                </p>
               ) : (
                 <ul className="mt-3 divide-y divide-brand-100">
                   {items.map((inst) => (
@@ -451,6 +488,7 @@ export default function InstituicoesPage() {
                             : ` · ${inst.periodos_count || 0} período(s)`}
                         </p>
                       </button>
+                      {isInstitutional ? null : (
                       <div className="flex gap-1">
                         <button
                           type="button"
@@ -468,6 +506,7 @@ export default function InstituicoesPage() {
                           Desativar
                         </button>
                       </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -489,6 +528,7 @@ export default function InstituicoesPage() {
                   </p>
                   <h2 className="font-display text-xl font-bold text-bordo-deep">{selected.nome}</h2>
 
+                  {isInstitutional ? null : (
                   <form onSubmit={handleSavePeriodo} className="mt-4 grid gap-3 sm:grid-cols-2">
                     <label className="sm:col-span-2 block text-xs font-semibold text-bordo-soft">
                       Rótulo *
@@ -510,9 +550,14 @@ export default function InstituicoesPage() {
                         max={2100}
                         className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm"
                         value={periodoForm.ano_letivo}
-                        onChange={(e) =>
-                          setPeriodoForm((f) => ({ ...f, ano_letivo: e.target.value }))
-                        }
+                        onChange={(e) => {
+                          const ano = e.target.value
+                          setPeriodoForm((f) =>
+                            editingPeriodoId
+                              ? { ...f, ano_letivo: ano }
+                              : aplicarDatasPorTipo(f, { ano }),
+                          )
+                        }}
                       />
                     </label>
                     <label className="block text-xs font-semibold text-bordo-soft">
@@ -520,9 +565,10 @@ export default function InstituicoesPage() {
                       <select
                         className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm"
                         value={periodoForm.tipo_periodo}
-                        onChange={(e) =>
-                          setPeriodoForm((f) => ({ ...f, tipo_periodo: e.target.value }))
-                        }
+                        onChange={(e) => {
+                          const tipo = e.target.value
+                          setPeriodoForm((f) => aplicarDatasPorTipo(f, { tipo }))
+                        }}
                       >
                         {TIPOS_PERIODO.map((t) => (
                           <option key={t.value} value={t.value}>
@@ -629,6 +675,7 @@ export default function InstituicoesPage() {
                       ) : null}
                     </div>
                   </form>
+                  )}
                 </div>
 
                 <div className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm sm:p-5">
@@ -681,6 +728,8 @@ export default function InstituicoesPage() {
                               >
                                 {selectedPeriodoId === p.id ? 'Ocultar cursos' : 'Cursos'}
                               </button>
+                              {isInstitutional ? null : (
+                                <>
                               {!p.em_curso ? (
                                 <button
                                   type="button"
@@ -706,6 +755,8 @@ export default function InstituicoesPage() {
                               >
                                 Desativar
                               </button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </li>
@@ -718,6 +769,7 @@ export default function InstituicoesPage() {
                   <CursosDisciplinasPanel
                     periodo={selectedPeriodo}
                     onSchemaPending={markSchemaPending}
+                    readOnly={isInstitutional}
                   />
                 ) : null}
               </>

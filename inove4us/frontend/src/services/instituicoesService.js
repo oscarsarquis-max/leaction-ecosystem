@@ -103,3 +103,37 @@ export function atualizarDisciplina(disciplinaId, payload) {
 export function desativarDisciplina(disciplinaId) {
   return request(`/api/disciplinas/${disciplinaId}`, { method: 'DELETE' })
 }
+
+// --- Turmas (1 curso → N turmas) ---
+
+export function listarTurmas(cursoId) {
+  return request(`/api/cursos/${cursoId}/turmas`)
+}
+
+export function criarTurma(cursoId, payload) {
+  return request(`/api/cursos/${cursoId}/turmas`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function atualizarTurma(turmaId, payload) {
+  return request(`/api/turmas/${turmaId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function desativarTurma(turmaId) {
+  return request(`/api/turmas/${turmaId}`, { method: 'DELETE' })
+}
+
+/** Turmas ativas do professor (selects ao registrar aula). */
+export function listarMinhasTurmas() {
+  return request('/api/me/turmas')
+}
+
+/** Alocações School espelhadas (disciplina + turma). */
+export function listarAlocacoesEscola() {
+  return request('/api/me/alocacoes-escola')
+}

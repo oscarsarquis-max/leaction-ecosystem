@@ -624,6 +624,138 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
     }
 
 
+def _handle_teacher_invite_accepted(payload: dict) -> dict:
+    """B2C confirma aceite: grava id_clie real e promove vínculo pendente → ativo."""
+    body = payload if isinstance(payload, dict) else {}
+    email = str(body.get("professor_email") or body.get("email") or "").strip().lower()
+    instituicao_id = _as_uuid(body.get("instituicao_id"))
+    vinculo_id = _as_uuid(body.get("vinculo_id"))
+    raw_b2c = body.get("professor_b2c_id")
+    try:
+        professor_b2c_id = int(raw_b2c)
+    except (TypeError, ValueError):
+        professor_b2c_id = None
+    if not professor_b2c_id or professor_b2c_id <= 0:
+        return {
+            "handled": False,
+            "reason": "professor_b2c_id inválido",
+            "event": "TEACHER_INVITE_ACCEPTED",
+        }
+    if not instituicao_id and not vinculo_id and not email:
+        return {
+            "handled": False,
+            "reason": "instituicao_id/vinculo_id/email obrigatórios",
+            "event": "TEACHER_INVITE_ACCEPTED",
+        }
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            row = None
+            if vinculo_id:
+                cur.execute(
+                    """
+                    SELECT id, instituicao_id, email_convite, professor_b2c_id, status_vinculo
+                    FROM public.school_professores_vinculo
+                    WHERE id = %s
+                    LIMIT 1
+                    """,
+                    (vinculo_id,),
+                )
+                row = cur.fetchone()
+            if not row and instituicao_id and email:
+                cur.execute(
+                    """
+                    SELECT id, instituicao_id, email_convite, professor_b2c_id, status_vinculo
+                    FROM public.school_professores_vinculo
+                    WHERE instituicao_id = %s
+                      AND LOWER(TRIM(email_convite)) = %s
+                      AND status_vinculo IN ('pendente', 'ativo')
+                    ORDER BY
+                      CASE WHEN status_vinculo = 'pendente' THEN 0 ELSE 1 END,
+                      created_at DESC
+                    LIMIT 1
+                    """,
+                    (instituicao_id, email),
+                )
+                row = cur.fetchone()
+            if not row and email:
+                cur.execute(
+                    """
+                    SELECT id, instituicao_id, email_convite, professor_b2c_id, status_vinculo
+                    FROM public.school_professores_vinculo
+                    WHERE LOWER(TRIM(email_convite)) = %s
+                      AND status_vinculo IN ('pendente', 'ativo')
+                    ORDER BY
+                      CASE WHEN status_vinculo = 'pendente' THEN 0 ELSE 1 END,
+                      created_at DESC
+                    LIMIT 1
+                    """,
+                    (email,),
+                )
+                row = cur.fetchone()
+            if not row:
+                return {
+                    "handled": False,
+                    "reason": "vinculo_not_found",
+                    "event": "TEACHER_INVITE_ACCEPTED",
+                }
+
+            status = str(row.get("status_vinculo") or "")
+            current_id = row.get("professor_b2c_id")
+            try:
+                current_id_int = int(current_id) if current_id is not None else None
+            except (TypeError, ValueError):
+                current_id_int = None
+
+            if status == "ativo" and current_id_int == professor_b2c_id:
+                _log(
+                    f"TEACHER_INVITE_ACCEPTED idempotente vinculo={row['id']} "
+                    f"id_clie={professor_b2c_id}"
+                )
+                return {
+                    "handled": True,
+                    "event": "TEACHER_INVITE_ACCEPTED",
+                    "idempotent": True,
+                    "vinculo_id": str(row["id"]),
+                    "professor_b2c_id": professor_b2c_id,
+                    "status_vinculo": "ativo",
+                }
+
+            if status == "revogado":
+                return {
+                    "handled": False,
+                    "reason": "vinculo_revogado",
+                    "event": "TEACHER_INVITE_ACCEPTED",
+                    "vinculo_id": str(row["id"]),
+                }
+
+            cur.execute(
+                """
+                UPDATE public.school_professores_vinculo
+                   SET professor_b2c_id = %s,
+                       status_vinculo = 'ativo',
+                       updated_at = CURRENT_TIMESTAMP
+                 WHERE id = %s
+                RETURNING id, status_vinculo, professor_b2c_id
+                """,
+                (professor_b2c_id, str(row["id"])),
+            )
+            updated = cur.fetchone()
+
+    _log(
+        f"TEACHER_INVITE_ACCEPTED vinculo={updated['id']} "
+        f"id_clie={professor_b2c_id} status=ativo"
+    )
+    return {
+        "handled": True,
+        "event": "TEACHER_INVITE_ACCEPTED",
+        "vinculo_id": str(updated["id"]),
+        "professor_b2c_id": professor_b2c_id,
+        "status_vinculo": "ativo",
+        "instituicao_id": str(row["instituicao_id"]),
+    }
+
+
 @bp.post("/api/webhooks/b2c")
 @require_b2c_bridge_jwt
 def b2c_webhook():
@@ -635,6 +767,8 @@ def b2c_webhook():
     try:
         if event_type == "LESSON_RECORD_SYNC":
             result = _handle_lesson_record_sync(payload)
+        elif event_type == "TEACHER_INVITE_ACCEPTED":
+            result = _handle_teacher_invite_accepted(payload)
         else:
             _log(f"event_type desconhecido: {event_type or '(vazio)'}")
             print(

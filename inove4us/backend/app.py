@@ -18,8 +18,10 @@ _is_prod = (os.environ.get("INOVE4US_ENV") or os.environ.get("FLASK_ENV") or "")
     "prod",
 )
 if not _is_prod:
-    load_dotenv(os.path.join(ROOT, ".env"))
-    # backend/.env preenche só chaves ausentes (não override do ambiente).
+    # Local: .env da raiz prevalece sobre env herdado do shell (ex.: DB_NAME
+    # de outro app no mesmo terminal). Em produção a task definition manda.
+    load_dotenv(os.path.join(ROOT, ".env"), override=True)
+    # backend/.env só completa chaves ainda ausentes.
     load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=False)
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -56,6 +58,7 @@ from instituicoes_routes import instituicoes_bp  # noqa: E402
 from cursos_disciplinas_routes import cursos_disciplinas_bp  # noqa: E402
 from importacoes_routes import importacoes_bp  # noqa: E402
 from kanban_pei_routes import kanban_pei_bp  # noqa: E402
+from school_bridge_routes import school_bridge_bp  # noqa: E402
 
 
 EMAIL_RE = re.compile(
@@ -175,6 +178,7 @@ def create_app() -> Flask:
     app.register_blueprint(assistente_chat_bp)
     app.register_blueprint(instituicoes_bp)
     app.register_blueprint(cursos_disciplinas_bp)
+    app.register_blueprint(school_bridge_bp)
     app.register_blueprint(importacoes_bp)
     # Adaptação Inclusiva (PEI) — subcards do Kanban via IA
     app.register_blueprint(kanban_pei_bp)
@@ -283,15 +287,21 @@ def create_app() -> Flask:
             print(f"[inove4us] DB error register-lead: {exc}", file=sys.stderr)
             return jsonify({"error": "Falha ao gravar a solicitação."}), 500
 
-        # Nunca devolver o código na resposta — valida via e-mail
-        return jsonify(
-            {
-                "status": "code_sent",
-                "email": email,
-                "message": "Código gerado e enviado. Informe-o para entrar.",
-                "channel": mail_info.get("channel"),
-            }
-        ), 201
+        channel = mail_info.get("channel")
+        payload = {
+            "status": "code_sent",
+            "email": email,
+            "message": "Código gerado e enviado. Informe-o para entrar.",
+            "channel": channel,
+        }
+        # Só em EMAIL_DEV_MODE (channel=dev_log): e-mail não sai; mostra o código na UI local.
+        if channel == "dev_log":
+            payload["dev_access_code"] = access_code
+            payload["message"] = (
+                "Modo local (EMAIL_DEV_MODE): o código não é enviado por e-mail. "
+                "Use o código exibido abaixo."
+            )
+        return jsonify(payload), 201
 
     @app.post("/api/auth/verify-code")
     def verify_code():

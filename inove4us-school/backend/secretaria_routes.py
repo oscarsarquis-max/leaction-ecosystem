@@ -1688,13 +1688,17 @@ def _build_teacher_allocated_payload(
     disc: dict,
     prof: dict,
     turma: dict | None,
+    instituicao_nome: str | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "professor_b2c_id": str(prof["professor_b2c_id"]),
         "disciplina_nome": disc["nome"],
         "ementa_macro": disc.get("ementa") or "",
         "data_inicio_periodo": _iso(periodo.get("data_inicio")),
+        "data_fim_periodo": _iso(periodo.get("data_fim")),
+        "tipo_periodo": periodo.get("tipo_periodo") or "semestral",
         "instituicao_id": inst,
+        "instituicao_nome": (instituicao_nome or "").strip() or None,
         "unidade_id": str(unidade["id"]),
         "unidade_nome": unidade["nome"],
         "periodo_id": str(periodo["id"]),
@@ -1702,10 +1706,18 @@ def _build_teacher_allocated_payload(
         "disciplina_id": str(disc["id"]),
         "alocacao_id": str(aloc_id),
         "professor_email": prof.get("email_convite"),
+        "vinculo_id": str(prof["id"]) if prof.get("id") else None,
     }
+    curso_id = disc.get("curso_id") or (turma or {}).get("curso_id")
+    curso_nome = disc.get("curso_nome") or (turma or {}).get("curso_nome")
+    if curso_id:
+        payload["curso_id"] = str(curso_id)
+        payload["curso_nome"] = (curso_nome or "").strip() or "Curso"
     if turma:
         payload["turma_id"] = str(turma["id"])
         payload["turma_nome"] = turma["nome"]
+        if turma.get("turno"):
+            payload["turma_turno"] = turma.get("turno")
     return payload
 
 
@@ -1841,7 +1853,7 @@ def create_alocacao():
 
             cur.execute(
                 """
-                SELECT id, rotulo, data_inicio
+                SELECT id, rotulo, data_inicio, data_fim, tipo_periodo
                 FROM public.school_periodos_letivos
                 WHERE id = %s AND instituicao_id = %s AND ativo = TRUE
                 """,
@@ -1853,7 +1865,9 @@ def create_alocacao():
 
             cur.execute(
                 """
-                SELECT d.id, d.nome, d.ementa, d.instituicao_id, p.instituicao_id AS periodo_inst
+                SELECT d.id, d.nome, d.ementa, d.curso_id, d.instituicao_id,
+                       c.nome AS curso_nome,
+                       p.instituicao_id AS periodo_inst
                 FROM public.school_disciplinas d
                 LEFT JOIN public.school_cursos c ON c.id = d.curso_id
                 LEFT JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
@@ -1881,12 +1895,21 @@ def create_alocacao():
             if not prof:
                 return jsonify({"error": "professor inválido ou inativo"}), 400
 
+            cur.execute(
+                "SELECT nome FROM public.school_instituicoes WHERE id = %s",
+                (inst,),
+            )
+            inst_row = cur.fetchone()
+            instituicao_nome = (inst_row or {}).get("nome")
+
             turma = None
             if turma_id:
                 cur.execute(
                     """
-                    SELECT id, nome FROM public.school_turmas
-                    WHERE id = %s AND instituicao_id = %s AND ativa = TRUE
+                    SELECT t.id, t.nome, t.turno, t.curso_id, c.nome AS curso_nome
+                    FROM public.school_turmas t
+                    LEFT JOIN public.school_cursos c ON c.id = t.curso_id
+                    WHERE t.id = %s AND t.instituicao_id = %s AND t.ativa = TRUE
                     """,
                     (str(turma_id), inst),
                 )
@@ -1918,8 +1941,20 @@ def create_alocacao():
                 conn.rollback()
                 return jsonify({"error": "Esta alocação já existe"}), 409
 
-            periodo_full = {"id": periodo["id"], "rotulo": periodo["rotulo"], "data_inicio": periodo["data_inicio"]}
-            disc_full = {"id": disc["id"], "nome": disc["nome"], "ementa": disc.get("ementa")}
+            periodo_full = {
+                "id": periodo["id"],
+                "rotulo": periodo["rotulo"],
+                "data_inicio": periodo["data_inicio"],
+                "data_fim": periodo.get("data_fim"),
+                "tipo_periodo": periodo.get("tipo_periodo"),
+            }
+            disc_full = {
+                "id": disc["id"],
+                "nome": disc["nome"],
+                "ementa": disc.get("ementa"),
+                "curso_id": disc.get("curso_id"),
+                "curso_nome": disc.get("curso_nome"),
+            }
             payload_b2c = _build_teacher_allocated_payload(
                 inst=inst,
                 aloc_id=str(aloc["id"]),
@@ -1928,6 +1963,7 @@ def create_alocacao():
                 disc=disc_full,
                 prof=prof,
                 turma=turma,
+                instituicao_nome=instituicao_nome,
             )
 
     dispatch = _dispatch_alocacao_b2c(payload_b2c)
@@ -2102,14 +2138,20 @@ def update_alocacao(item_id: str):
                     p.id AS periodo_id,
                     p.rotulo,
                     p.data_inicio,
+                    p.data_fim,
+                    p.tipo_periodo,
                     d.id AS disciplina_id,
                     d.nome AS disciplina_nome,
                     d.ementa,
+                    d.curso_id,
+                    c.nome AS curso_nome,
                     v.id AS professor_vinculo_id,
                     v.professor_b2c_id,
                     v.email_convite,
                     a.turma_id,
                     t.nome AS turma_nome,
+                    t.curso_id AS turma_curso_id,
+                    i.nome AS instituicao_nome,
                     a.ativo,
                     a.notificado_b2c
                 FROM public.school_alocacoes_docentes a
@@ -2117,6 +2159,8 @@ def update_alocacao(item_id: str):
                 JOIN public.school_periodos_letivos p ON p.id = a.periodo_id
                 JOIN public.school_disciplinas d ON d.id = a.disciplina_id
                 JOIN public.school_professores_vinculo v ON v.id = a.professor_vinculo_id
+                JOIN public.school_instituicoes i ON i.id = a.instituicao_id
+                LEFT JOIN public.school_cursos c ON c.id = d.curso_id
                 LEFT JOIN public.school_turmas t ON t.id = a.turma_id
                 WHERE a.id = %s
                 """,
@@ -2128,15 +2172,37 @@ def update_alocacao(item_id: str):
     if ctx and ctx["ativo"] and (should_redispatch or not ctx["notificado_b2c"]):
         turma_row = None
         if ctx.get("turma_id"):
-            turma_row = {"id": ctx["turma_id"], "nome": ctx.get("turma_nome") or ""}
+            turma_row = {
+                "id": ctx["turma_id"],
+                "nome": ctx.get("turma_nome") or "",
+                "curso_id": ctx.get("turma_curso_id"),
+                "curso_nome": ctx.get("curso_nome"),
+            }
         payload_b2c = _build_teacher_allocated_payload(
             inst=inst,
             aloc_id=str(ctx["id"]),
             unidade={"id": ctx["unidade_id"], "nome": ctx["unidade_nome"]},
-            periodo={"id": ctx["periodo_id"], "rotulo": ctx["rotulo"], "data_inicio": ctx["data_inicio"]},
-            disc={"id": ctx["disciplina_id"], "nome": ctx["disciplina_nome"], "ementa": ctx.get("ementa")},
-            prof={"professor_b2c_id": ctx["professor_b2c_id"], "email_convite": ctx.get("email_convite")},
+            periodo={
+                "id": ctx["periodo_id"],
+                "rotulo": ctx["rotulo"],
+                "data_inicio": ctx["data_inicio"],
+                "data_fim": ctx.get("data_fim"),
+                "tipo_periodo": ctx.get("tipo_periodo"),
+            },
+            disc={
+                "id": ctx["disciplina_id"],
+                "nome": ctx["disciplina_nome"],
+                "ementa": ctx.get("ementa"),
+                "curso_id": ctx.get("curso_id"),
+                "curso_nome": ctx.get("curso_nome"),
+            },
+            prof={
+                "id": ctx["professor_vinculo_id"],
+                "professor_b2c_id": ctx["professor_b2c_id"],
+                "email_convite": ctx.get("email_convite"),
+            },
             turma=turma_row,
+            instituicao_nome=ctx.get("instituicao_nome"),
         )
         dispatch = _dispatch_alocacao_b2c(payload_b2c)
 

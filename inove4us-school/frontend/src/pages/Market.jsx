@@ -82,7 +82,7 @@ function MarketContent() {
           <div className="logo">inove4us</div>
           <div className="links">
             <a className="b2c" href="#b2c">
-              inove · professor
+              Inove4Us · professor
             </a>
             <a className="b2b" href="#b2b">
               school · gestão
@@ -112,10 +112,10 @@ function MarketContent() {
               <img
                 className="brand-logo"
                 src="/images/logo-inove.png"
-                alt="inove — ferramenta do professor"
+                alt="Inove4Us — ferramenta do professor"
               />
               <div className="kicker">01 — B2C</div>
-              <h3>inove</h3>
+              <h3>Inove4Us</h3>
               <p className="concept">
                 A ferramenta do professor. Remove a carga burocrática das costas do docente
                 para que ele foque exclusivamente na execução da aula e na observação dos
@@ -145,9 +145,9 @@ function MarketContent() {
             <img
               className="brand-logo"
               src="/images/logo-inove.png"
-              alt="inove — ferramenta do professor"
+              alt="Inove4Us — ferramenta do professor"
             />
-            <div className="kicker">inove — a ferramenta do professor</div>
+            <div className="kicker">Inove4Us — a ferramenta do professor</div>
             <h2>A Trincheira e a Mesa de Operação</h2>
             <p>
               O objetivo é um só: tirar a burocracia do caminho para que o professor foque na

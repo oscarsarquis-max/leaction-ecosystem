@@ -54,6 +54,12 @@ export const api = {
       body: JSON.stringify({ email, code }),
     }),
   logout: () => request('/api/auth/logout', { method: 'POST', body: '{}' }),
+  aceitarConviteEscola: (payload = {}) =>
+    request('/api/school/aceitar-convite', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    }),
+  listarAlocacoesEscola: () => request('/api/me/alocacoes-escola'),
   completeNinaOnboarding: () =>
     request('/api/auth/nina-onboarding', {
       method: 'POST',

@@ -8,6 +8,7 @@ Etapa 12/15:
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import uuid
 from typing import Any
@@ -378,10 +379,24 @@ def disparar_convite_inove(instituicao_id: str, vinculo_id: str):
     try:
         from b2c_integration_service import dispatch_event_to_b2c
 
+        cur_inst_nome = None
+        try:
+            with get_conn() as conn_n:
+                with conn_n.cursor(cursor_factory=RealDictCursor) as cur_n:
+                    cur_n.execute(
+                        "SELECT nome FROM public.school_instituicoes WHERE id = %s",
+                        (str(inst),),
+                    )
+                    ir = cur_n.fetchone()
+                    cur_inst_nome = (ir or {}).get("nome")
+        except Exception:
+            cur_inst_nome = None
+
         push = dispatch_event_to_b2c(
             "TEACHER_INVITE",
             {
                 "instituicao_id": str(inst),
+                "instituicao_nome": cur_inst_nome,
                 "vinculo_id": str(vid),
                 "professor_email": email,
                 "email": email,

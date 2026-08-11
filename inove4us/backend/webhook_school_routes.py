@@ -228,124 +228,10 @@ def _handle_pei_override(payload: dict) -> dict:
 
 
 def _handle_teacher_allocated(payload: dict) -> dict:
-    """
-    TEACHER_ALLOCATED → cria compromisso em inove_agenda_eventos para o professor.
-    Status inicial: planejado (padrão da agenda; equivalente a 'pendente' de planejamento).
-    """
-    professor_b2c_id = payload.get("professor_b2c_id")
-    disciplina_nome = str(payload.get("disciplina_nome") or "").strip() or "Disciplina"
-    ementa_macro = str(payload.get("ementa_macro") or "").strip()
-    data_inicio = payload.get("data_inicio_periodo")
-    alocacao_id = str(payload.get("alocacao_id") or "").strip() or None
+    """TEACHER_ALLOCATED → espelha árvore acadêmica + agenda de planejamento."""
+    from services.school_academic_mirror import handle_teacher_allocated
 
-    id_clie = _resolve_id_clie(payload)
-    if not id_clie:
-        _log(
-            f"TEACHER_ALLOCATED sem professor resolvido "
-            f"b2c_id={professor_b2c_id} email={payload.get('professor_email')}"
-        )
-        return {
-            "handled": False,
-            "reason": "professor_not_found",
-            "event": "TEACHER_ALLOCATED",
-            "professor_b2c_id": professor_b2c_id,
-        }
-
-    titulo = f"Planejamento Institucional: {disciplina_nome}"[:200]
-    data_evento = _parse_event_dt(data_inicio)
-    meta = {
-        "alocacao_escola": True,
-        "is_from_school": True,
-        "professor_b2c_id": str(professor_b2c_id) if professor_b2c_id else None,
-        "disciplina_nome": disciplina_nome,
-        "ementa_macro": ementa_macro,
-        "instituicao_id": payload.get("instituicao_id"),
-        "unidade_nome": payload.get("unidade_nome"),
-        "periodo_nome": payload.get("periodo_nome"),
-        "alocacao_id": alocacao_id,
-        "status_planejamento": "pendente",
-    }
-
-    with get_conn() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            _ensure_school_agenda_columns(cur)
-
-            if alocacao_id:
-                cur.execute(
-                    """
-                    SELECT id_evento
-                    FROM public.inove_agenda_eventos
-                    WHERE id_clie = %s
-                      AND origem = 'alocacao_escola'
-                      AND id_externo_importacao = %s
-                    LIMIT 1
-                    """,
-                    (id_clie, alocacao_id),
-                )
-                existing = cur.fetchone()
-                if existing:
-                    _log(
-                        f"TEACHER_ALLOCATED idempotente id_evento={existing['id_evento']} "
-                        f"alocacao={alocacao_id}"
-                    )
-                    return {
-                        "handled": True,
-                        "event": "TEACHER_ALLOCATED",
-                        "idempotent": True,
-                        "id_evento": int(existing["id_evento"]),
-                        "id_clie": id_clie,
-                        "calendar_event_created": False,
-                    }
-
-            cur.execute(
-                """
-                INSERT INTO public.inove_agenda_eventos (
-                    id_clie,
-                    data_evento,
-                    titulo,
-                    nota_texto,
-                    status,
-                    tipo,
-                    origem,
-                    is_from_school,
-                    id_externo_importacao,
-                    meta_json
-                )
-                VALUES (
-                    %s, %s, %s, %s,
-                    'planejado', 'geral', 'alocacao_escola', TRUE,
-                    %s, %s
-                )
-                RETURNING id_evento
-                """,
-                (
-                    id_clie,
-                    data_evento,
-                    titulo,
-                    ementa_macro or None,
-                    alocacao_id,
-                    Json(meta),
-                ),
-            )
-            row = cur.fetchone()
-            id_evento = int(row["id_evento"])
-
-    _log(
-        f"TEACHER_ALLOCATED criado id_evento={id_evento} id_clie={id_clie} "
-        f"disciplina={disciplina_nome!r} data={data_evento.date().isoformat()}"
-    )
-    return {
-        "handled": True,
-        "event": "TEACHER_ALLOCATED",
-        "id_evento": id_evento,
-        "id_clie": id_clie,
-        "professor_b2c_id": professor_b2c_id,
-        "disciplina_nome": disciplina_nome,
-        "data_inicio_periodo": data_inicio,
-        "calendar_event_created": True,
-        "status": "planejado",
-        "is_from_school": True,
-    }
+    return handle_teacher_allocated(payload if isinstance(payload, dict) else {})
 
 
 def _ensure_avisos_mesa(cur: Any) -> None:
@@ -432,16 +318,9 @@ def _handle_aviso_mesa_pinned(payload: dict) -> dict:
 
 
 def _handle_teacher_invite(payload: dict) -> dict:
-    email = str(payload.get("professor_email") or payload.get("email") or "").strip().lower()
-    invite_url = str(payload.get("invite_url") or "").strip()
-    _log(f"TEACHER_INVITE email={email} url={invite_url[:80] if invite_url else ''}")
-    return {
-        "handled": True,
-        "event": "TEACHER_INVITE",
-        "email": email,
-        "invite_url": invite_url or None,
-        "note": "Convite registrado no webhook; e-mail transacional fica a cargo do provedor configurado.",
-    }
+    from services.school_academic_mirror import handle_teacher_invite
+
+    return handle_teacher_invite(payload if isinstance(payload, dict) else {})
 
 
 @webhook_school_bp.post("/api/webhooks/school")

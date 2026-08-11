@@ -52,6 +52,23 @@ def _id_clie() -> int:
     return int(session["user"]["id_clie"])
 
 
+def _is_institutional_session() -> bool:
+    user = session.get("user") or {}
+    return bool(user.get("is_institutional") or user.get("instituicao_b2b_id"))
+
+
+def _forbid_institutional_write():
+    if _is_institutional_session():
+        return jsonify({
+            "error": (
+                "Sua estrutura acadêmica é definida pela escola (Secretaria). "
+                "Não é possível alterar curso, disciplina ou turma aqui."
+            ),
+            "code": "school_source_of_truth",
+        }), 403
+    return None
+
+
 def _jsonable(row: dict | None) -> dict | None:
     if not row:
         return None
@@ -143,6 +160,9 @@ def _get_disciplina_owned(cur, disciplina_id: int, id_clie: int, *, include_inac
 @cursos_disciplinas_bp.post("/api/periodos-letivos/<int:periodo_id>/cursos")
 @require_session
 def criar_curso(periodo_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     data = request.get_json(silent=True) or {}
     nome = str(data.get("nome") or "").strip()
     if not nome:
@@ -185,11 +205,29 @@ def criar_curso(periodo_id: int):
                     ),
                 )
                 row = cur.fetchone()
+                # Se veio turma_turno legado no create, materializa 1 turma (1:N).
+                turma_nome = (str(data.get("turma_turno") or "").strip()[:120] or None)
+                if turma_nome and row:
+                    try:
+                        cur.execute(
+                            """
+                            INSERT INTO public.inove_turmas (curso_id, nome)
+                            SELECT %s, %s
+                             WHERE NOT EXISTS (
+                               SELECT 1 FROM public.inove_turmas t
+                                WHERE t.curso_id = %s AND t.ativo = TRUE
+                                  AND lower(t.nome) = lower(%s)
+                             )
+                            """,
+                            (int(row["id"]), turma_nome, int(row["id"]), turma_nome),
+                        )
+                    except pg_errors.UndefinedTable:
+                        pass
                 conn.commit()
         return jsonify({"curso": _jsonable(row)}), 201
     except pg_errors.UndefinedTable:
         return jsonify({
-            "error": "Schema pendente. Aplique a migration 009.",
+            "error": "Schema pendente. Aplique a migration 009/027.",
             "code": "schema_pending",
         }), 503
     except Exception as exc:
@@ -213,7 +251,12 @@ def listar_cursos(periodo_id: int):
                              SELECT COUNT(*)::int
                                FROM public.inove_disciplinas d
                               WHERE d.curso_id = c.id AND d.ativo = TRUE
-                           ) AS disciplinas_count
+                           ) AS disciplinas_count,
+                           (
+                             SELECT COUNT(*)::int
+                               FROM public.inove_turmas t
+                              WHERE t.curso_id = c.id AND t.ativo = TRUE
+                           ) AS turmas_count
                       FROM public.inove_cursos c
                      WHERE c.periodo_letivo_id = %s AND c.ativo = TRUE
                      ORDER BY c.nome ASC, c.id ASC
@@ -249,6 +292,9 @@ def detalhe_curso(curso_id: int):
 @cursos_disciplinas_bp.put("/api/cursos/<int:curso_id>")
 @require_session
 def atualizar_curso(curso_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     data = request.get_json(silent=True) or {}
     try:
         with get_conn() as conn:
@@ -256,6 +302,11 @@ def atualizar_curso(curso_id: int):
                 current = _get_curso_owned(cur, curso_id, _id_clie())
                 if not current:
                     return jsonify({"error": "Curso não encontrado."}), 404
+                if current.get("origem_school") or current.get("school_curso_id"):
+                    return jsonify({
+                        "error": "Curso espelhado da escola — somente leitura.",
+                        "code": "school_source_of_truth",
+                    }), 403
 
                 nome = str(data.get("nome", current["nome"]) or "").strip()
                 if not nome:
@@ -326,12 +377,20 @@ def atualizar_curso(curso_id: int):
 @cursos_disciplinas_bp.delete("/api/cursos/<int:curso_id>")
 @require_session
 def soft_delete_curso(curso_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     try:
         with get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 current = _get_curso_owned(cur, curso_id, _id_clie())
                 if not current:
                     return jsonify({"error": "Curso não encontrado."}), 404
+                if current.get("origem_school") or current.get("school_curso_id"):
+                    return jsonify({
+                        "error": "Curso espelhado da escola — somente leitura.",
+                        "code": "school_source_of_truth",
+                    }), 403
 
                 cur.execute(
                     """
@@ -378,6 +437,9 @@ def soft_delete_curso(curso_id: int):
 @cursos_disciplinas_bp.post("/api/cursos/<int:curso_id>/disciplinas")
 @require_session
 def criar_disciplina(curso_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     data = request.get_json(silent=True) or {}
     nome = str(data.get("nome") or "").strip()
     if not nome:
@@ -465,6 +527,9 @@ def detalhe_disciplina(disciplina_id: int):
 @cursos_disciplinas_bp.put("/api/disciplinas/<int:disciplina_id>")
 @require_session
 def atualizar_disciplina(disciplina_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     data = request.get_json(silent=True) or {}
     try:
         with get_conn() as conn:
@@ -472,6 +537,11 @@ def atualizar_disciplina(disciplina_id: int):
                 current = _get_disciplina_owned(cur, disciplina_id, _id_clie())
                 if not current:
                     return jsonify({"error": "Disciplina não encontrada."}), 404
+                if current.get("origem_school") or current.get("school_disciplina_id"):
+                    return jsonify({
+                        "error": "Disciplina espelhada da escola — somente leitura.",
+                        "code": "school_source_of_truth",
+                    }), 403
 
                 nome = str(data.get("nome", current["nome"]) or "").strip()
                 if not nome:
@@ -526,12 +596,20 @@ def atualizar_disciplina(disciplina_id: int):
 @cursos_disciplinas_bp.delete("/api/disciplinas/<int:disciplina_id>")
 @require_session
 def soft_delete_disciplina(disciplina_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
     try:
         with get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 current = _get_disciplina_owned(cur, disciplina_id, _id_clie())
                 if not current:
                     return jsonify({"error": "Disciplina não encontrada."}), 404
+                if current.get("origem_school") or current.get("school_disciplina_id"):
+                    return jsonify({
+                        "error": "Disciplina espelhada da escola — somente leitura.",
+                        "code": "school_source_of_truth",
+                    }), 403
 
                 # Etapa 3: bloquear se houver aula/evento vinculado
                 cur.execute(
@@ -574,3 +652,264 @@ def soft_delete_disciplina(disciplina_id: int):
     except Exception as exc:
         print(f"[disciplinas] delete: {exc}")
         return jsonify({"error": "Falha ao desativar disciplina."}), 500
+
+
+# ---------------------------------------------------------------------------
+# Turmas (1 curso → N turmas)
+# ---------------------------------------------------------------------------
+
+
+@cursos_disciplinas_bp.get("/api/cursos/<int:curso_id>/turmas")
+@require_session
+def listar_turmas(curso_id: int):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                curso = _get_curso_owned(cur, curso_id, _id_clie())
+                if not curso:
+                    return jsonify({"error": "Curso não encontrado."}), 404
+                cur.execute(
+                    """
+                    SELECT t.*
+                      FROM public.inove_turmas t
+                     WHERE t.curso_id = %s AND t.ativo = TRUE
+                     ORDER BY t.nome ASC, t.id ASC
+                    """,
+                    (curso_id,),
+                )
+                rows = cur.fetchall() or []
+        return jsonify({"curso_id": curso_id, "turmas": [_jsonable(r) for r in rows]})
+    except pg_errors.UndefinedTable:
+        return jsonify({
+            "error": "Schema pendente. Aplique a migration 027.",
+            "code": "schema_pending",
+        }), 503
+    except Exception as exc:
+        print(f"[turmas] listar: {exc}")
+        return jsonify({"error": "Falha ao listar turmas."}), 500
+
+
+@cursos_disciplinas_bp.post("/api/cursos/<int:curso_id>/turmas")
+@require_session
+def criar_turma(curso_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
+    data = request.get_json(silent=True) or {}
+    nome = str(data.get("nome") or "").strip()
+    if not nome:
+        return jsonify({"error": "Informe o nome da turma."}), 400
+    turno = str(data.get("turno") or "").strip()[:40] or None
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                curso = _get_curso_owned(cur, curso_id, _id_clie())
+                if not curso:
+                    return jsonify({"error": "Curso não encontrado."}), 404
+                cur.execute(
+                    """
+                    INSERT INTO public.inove_turmas (curso_id, nome, turno)
+                    VALUES (%s, %s, %s)
+                    RETURNING *
+                    """,
+                    (curso_id, nome[:120], turno),
+                )
+                row = cur.fetchone()
+                conn.commit()
+        return jsonify({"turma": _jsonable(row)}), 201
+    except pg_errors.UniqueViolation:
+        return jsonify({"error": "Já existe uma turma com este nome neste curso."}), 409
+    except pg_errors.UndefinedTable:
+        return jsonify({
+            "error": "Schema pendente. Aplique a migration 027.",
+            "code": "schema_pending",
+        }), 503
+    except Exception as exc:
+        print(f"[turmas] criar: {exc}")
+        return jsonify({"error": "Falha ao criar turma."}), 500
+
+
+@cursos_disciplinas_bp.put("/api/turmas/<int:turma_id>")
+@require_session
+def atualizar_turma(turma_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
+    data = request.get_json(silent=True) or {}
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT t.*, c.id AS _curso_id
+                      FROM public.inove_turmas t
+                      JOIN public.inove_cursos c ON c.id = t.curso_id
+                      JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
+                      JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+                     WHERE t.id = %s AND i.id_clie = %s AND t.ativo = TRUE
+                       AND c.ativo = TRUE AND p.ativo = TRUE AND i.ativo = TRUE
+                    """,
+                    (turma_id, _id_clie()),
+                )
+                current = cur.fetchone()
+                if not current:
+                    return jsonify({"error": "Turma não encontrada."}), 404
+                if current.get("origem_school") or current.get("school_turma_id"):
+                    return jsonify({
+                        "error": "Turma espelhada da escola — somente leitura.",
+                        "code": "school_source_of_truth",
+                    }), 403
+                nome = str(data.get("nome", current["nome"]) or "").strip()
+                if not nome:
+                    return jsonify({"error": "Informe o nome da turma."}), 400
+                if "turno" in data:
+                    turno = str(data.get("turno") or "").strip()[:40] or None
+                else:
+                    turno = current.get("turno")
+                cur.execute(
+                    """
+                    UPDATE public.inove_turmas
+                       SET nome = %s,
+                           turno = %s,
+                           updated_at = CURRENT_TIMESTAMP
+                     WHERE id = %s
+                    RETURNING *
+                    """,
+                    (nome[:120], turno, turma_id),
+                )
+                row = cur.fetchone()
+                conn.commit()
+        return jsonify({"turma": _jsonable(row)})
+    except pg_errors.UniqueViolation:
+        return jsonify({"error": "Já existe uma turma com este nome neste curso."}), 409
+    except pg_errors.UndefinedTable:
+        return jsonify({"error": "Schema pendente.", "code": "schema_pending"}), 503
+    except Exception as exc:
+        print(f"[turmas] atualizar: {exc}")
+        return jsonify({"error": "Falha ao atualizar turma."}), 500
+
+
+@cursos_disciplinas_bp.delete("/api/turmas/<int:turma_id>")
+@require_session
+def soft_delete_turma(turma_id: int):
+    blocked = _forbid_institutional_write()
+    if blocked:
+        return blocked
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT t.id, t.origem_school, t.school_turma_id
+                      FROM public.inove_turmas t
+                      JOIN public.inove_cursos c ON c.id = t.curso_id
+                      JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
+                      JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+                     WHERE t.id = %s AND i.id_clie = %s AND t.ativo = TRUE
+                    """,
+                    (turma_id, _id_clie()),
+                )
+                current = cur.fetchone()
+                if not current:
+                    return jsonify({"error": "Turma não encontrada."}), 404
+                if current.get("origem_school") or current.get("school_turma_id"):
+                    return jsonify({
+                        "error": "Turma espelhada da escola — somente leitura.",
+                        "code": "school_source_of_truth",
+                    }), 403
+                cur.execute(
+                    """
+                    UPDATE public.inove_turmas
+                       SET ativo = FALSE, updated_at = CURRENT_TIMESTAMP
+                     WHERE id = %s
+                    RETURNING id
+                    """,
+                    (turma_id,),
+                )
+                conn.commit()
+        return jsonify({"ok": True, "id": turma_id})
+    except pg_errors.UndefinedTable:
+        return jsonify({"error": "Schema pendente.", "code": "schema_pending"}), 503
+    except Exception as exc:
+        print(f"[turmas] delete: {exc}")
+        return jsonify({"error": "Falha ao desativar turma."}), 500
+
+
+@cursos_disciplinas_bp.get("/api/me/turmas")
+@require_session
+def listar_minhas_turmas():
+    """Turmas ativas do professor (para selects ao registrar aula).
+
+    Professor institucional: prioriza turmas das alocações School.
+    """
+    try:
+        # Preferência institucional: alocações espelhadas
+        if _is_institutional_session():
+            try:
+                from services.school_academic_mirror import list_alocacoes_escola
+
+                alocs = list_alocacoes_escola(_id_clie())
+                turmas_from_aloc = []
+                seen = set()
+                for a in alocs:
+                    tid = a.get("turma_id")
+                    nome = (a.get("turma_nome") or "").strip()
+                    key = tid or nome
+                    if not key or key in seen:
+                        continue
+                    seen.add(key)
+                    turmas_from_aloc.append({
+                        "id": tid,
+                        "nome": nome or "Turma",
+                        "turno": a.get("turma_turno"),
+                        "curso_id": a.get("curso_id"),
+                        "curso_nome": a.get("curso_nome"),
+                        "periodo_letivo_id": a.get("periodo_id"),
+                        "periodo_rotulo": a.get("periodo_nome"),
+                        "instituicao_nome": a.get("instituicao_nome"),
+                        "disciplina_id": a.get("disciplina_id"),
+                        "disciplina_nome": a.get("disciplina_nome"),
+                        "alocacao_escola_id": a.get("id"),
+                        "origem_school": True,
+                    })
+                if turmas_from_aloc:
+                    return jsonify({"turmas": turmas_from_aloc, "source": "alocacoes_escola"})
+            except Exception as exc:
+                print(f"[turmas] alocacoes_escola fallback: {exc}")
+
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT t.id,
+                           t.nome,
+                           t.turno,
+                           t.curso_id,
+                           c.nome AS curso_nome,
+                           p.id AS periodo_letivo_id,
+                           p.rotulo AS periodo_rotulo,
+                           i.nome AS instituicao_nome
+                      FROM public.inove_turmas t
+                      JOIN public.inove_cursos c ON c.id = t.curso_id
+                      JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
+                      JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+                     WHERE i.id_clie = %s
+                       AND t.ativo = TRUE
+                       AND c.ativo = TRUE
+                       AND p.ativo = TRUE
+                       AND i.ativo = TRUE
+                     ORDER BY i.nome, p.ano_letivo DESC, c.nome, t.nome
+                    """,
+                    (_id_clie(),),
+                )
+                rows = cur.fetchall() or []
+        return jsonify({"turmas": [_jsonable(r) for r in rows]})
+    except pg_errors.UndefinedTable:
+        return jsonify({
+            "error": "Schema pendente. Aplique a migration 027/029.",
+            "code": "schema_pending",
+            "turmas": [],
+        }), 503
+    except Exception as exc:
+        print(f"[turmas] listar_minhas: {exc}")
+        return jsonify({"error": "Falha ao listar turmas."}), 500

@@ -154,6 +154,7 @@ def _serialize(row: dict) -> dict:
         "data_planejada": _iso(row.get("data_planejada")),
         "turma_nome": row.get("turma_nome"),
         "tema_aula": row.get("tema_aula") or "",
+        "ementa_topico": row.get("ementa_topico") or "",
         "objetivo_aprendizagem": row.get("objetivo_aprendizagem") or "",
         "acolhida": row.get("acolhida") or "",
         "conteudo_essencial": row.get("conteudo_essencial") or "",
@@ -638,16 +639,17 @@ def planejar_aula():
                     )
                 except ValueError as exc:
                     return jsonify({"success": False, "error": str(exc)}), 400
+                ementa_topico = _clip(data.get("ementa_topico"), TEMA_LIMIT).strip() or None
                 cur.execute(
                     """
                     INSERT INTO public.inove_aulas_simples (
-                        id_clie, data_planejada, turma_nome, tema_aula,
+                        id_clie, data_planejada, turma_nome, tema_aula, ementa_topico,
                         objetivo_aprendizagem, acolhida, conteudo_essencial,
                         dinamica_ativa_id, dinamica_ativa_fonte,
                         fechamento_checkout, status, kanban_state,
                         disciplina_id, tipo_registro, origem
                     ) VALUES (
-                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
                         %s, %s, %s,
                         %s, %s,
                         %s, 'draft', %s::jsonb,
@@ -660,6 +662,7 @@ def planejar_aula():
                         data_planejada,
                         turma,
                         tema,
+                        ementa_topico,
                         objetivo,
                         acolhida,
                         conteudo,
@@ -877,6 +880,12 @@ def atualizar_aula(aula_id: int):
                         )
                     fields.append("tema_aula = %s")
                     params.append(tema)
+
+                if "ementa_topico" in data:
+                    fields.append("ementa_topico = %s")
+                    params.append(
+                        _clip(data.get("ementa_topico"), TEMA_LIMIT).strip() or None
+                    )
 
                 for key, col, limit in (
                     ("objetivo_aprendizagem", "objetivo_aprendizagem", TEXT_LIMIT),

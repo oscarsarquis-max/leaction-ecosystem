@@ -12,6 +12,10 @@ import FieldHelp from './FieldHelp'
  * Só aparece se houver ao menos um caminho completo.
  * Com autoDefault, pré-seleciona quando há um único caminho (prioriza período em curso).
  */
+/**
+ * onChange(disciplinaId|null, meta?)
+ * meta: { ementa, disciplina_nome, curso_nome, ... } quando houver disciplina.
+ */
 export default function VinculoPedagogicoSelector({
   disciplinaId,
   onChange,
@@ -83,6 +87,7 @@ export default function VinculoPedagogicoSelector({
                     curso_nome: cur.nome || '',
                     disciplina_id: String(d.id),
                     disciplina_nome: d.nome || '',
+                    ementa: d.ementa || '',
                   }
                 }
               }
@@ -120,7 +125,15 @@ export default function VinculoPedagogicoSelector({
     if (loading || !available) return
     const target = disciplinaId != null && disciplinaId !== '' ? String(disciplinaId) : ''
     if (!target || !pathsByDisc[target]) return
-    applyPath(pathsByDisc[target])
+    const path = pathsByDisc[target]
+    applyPath(path)
+    // Reenvia meta (ementa) ao hidratar disciplina já salva — sem exigir clique.
+    const num = Number(target)
+    onChangeRef.current(Number.isFinite(num) ? num : target, {
+      ...path,
+      ementa: path.ementa || '',
+      disciplina_nome: path.disciplina_nome || '',
+    })
   }, [disciplinaId, loading, available, pathsByDisc])
 
   // Default: NÃO pré-selecionar disciplina (desafio pode ficar sem vínculo e
@@ -213,13 +226,28 @@ export default function VinculoPedagogicoSelector({
 
   if (loading || !available) return null
 
+  function emitChange(id) {
+    if (id == null || id === '') {
+      onChange(null, null)
+      return
+    }
+    const num = Number(id)
+    const path = pathsByDisc[String(id)] || {}
+    const fromList = disciplinas.find((d) => String(d.id) === String(id))
+    onChange(Number.isFinite(num) ? num : id, {
+      ...path,
+      ementa: fromList?.ementa || path.ementa || '',
+      disciplina_nome: fromList?.nome || path.disciplina_nome || '',
+    })
+  }
+
   function clearAll() {
     didAutoRef.current = true
     setInstId('')
     setPeriodoId('')
     setCursoId('')
     setDiscId('')
-    onChange(null)
+    emitChange(null)
   }
 
   return (
@@ -228,8 +256,8 @@ export default function VinculoPedagogicoSelector({
         Planejamento escolar (opcional)
       </legend>
       <p className="mb-2 text-[11px] leading-relaxed text-bordo-soft">
-        Não é obrigatório — mas, quando houver cadastro, preferimos vincular o desafio à
-        instituição, curso e disciplina.
+        Quando houver cadastro, vincule instituição, curso e disciplina — a ementa da
+        disciplina pode orientar o tema desta aula.
       </p>
       <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
@@ -244,7 +272,7 @@ export default function VinculoPedagogicoSelector({
               setPeriodoId('')
               setCursoId('')
               setDiscId('')
-              onChange(null)
+              emitChange(null)
             }}
           >
             <option value="">—</option>
@@ -270,7 +298,7 @@ export default function VinculoPedagogicoSelector({
               setPeriodoId(v)
               setCursoId('')
               setDiscId('')
-              onChange(null)
+              emitChange(null)
             }}
           >
             <option value="">—</option>
@@ -293,7 +321,7 @@ export default function VinculoPedagogicoSelector({
               didAutoRef.current = true
               setCursoId(v)
               setDiscId('')
-              onChange(null)
+              emitChange(null)
             }}
           >
             <option value="">—</option>
@@ -314,7 +342,7 @@ export default function VinculoPedagogicoSelector({
               const v = e.target.value
               didAutoRef.current = true
               setDiscId(v)
-              onChange(v ? Number(v) : null)
+              emitChange(v || null)
             }}
           >
             <option value="">—</option>

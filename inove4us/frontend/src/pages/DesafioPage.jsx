@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { CrmEvents, trackEvent } from '../lib/tracking'
@@ -31,6 +31,7 @@ function parseDisciplinaId(raw) {
 export default function DesafioPage() {
   const { user, logout, applyCredits, refresh } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
   const disciplinaInicial = useMemo(() => {
@@ -207,6 +208,11 @@ export default function DesafioPage() {
 
   async function handleGerarPlano() {
     if (!selectedCaminho) return
+    // Desafio já persistido (ex.: voltou das hipóteses) — não regenerar mesa vazia.
+    if (desafioId) {
+      navigate(`/desafios/${desafioId}`)
+      return
+    }
     setBusy(true)
     setError('')
     const sessionKey = newSessionKey()
@@ -377,7 +383,14 @@ export default function DesafioPage() {
               planoSession={planoSession}
               disciplinaId={disciplinaId}
               desafioId={desafioId}
-              onVoltar={() => setCurrentStep(3)}
+              onVoltar={() => {
+                if (desafioId) navigate(`/desafios/${desafioId}`)
+                else setCurrentStep(3)
+              }}
+              onAulasRegistradas={(data) => {
+                const id = data?.desafio_id || desafioId
+                if (id) navigate(`/desafios/${id}`)
+              }}
             />
           </>
         )}

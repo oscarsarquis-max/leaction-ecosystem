@@ -303,7 +303,9 @@ export default function MesaDoDesafioPage() {
                 Mesa do desafio · painel gerencial
               </p>
               <h1 className="mt-2 font-display text-3xl font-bold text-bordo-deep sm:text-4xl">
-                Aula · método inove4us
+                {(desafio?.titulo || '').trim() ||
+                  (missao || '').replace(/^Missão:\s*/i, '').slice(0, 120) ||
+                  'Mesa do desafio'}
               </h1>
               <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <span
