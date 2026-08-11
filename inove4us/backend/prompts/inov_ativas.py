@@ -64,7 +64,7 @@ VERBOS_DT_PROIBIDOS = (
 
 
 def _framework_ids_block(exclude_ids: set[str] | None = None) -> str:
-    """As 39 metodologias do catálogo canônico (IDs + nomes, sem cards)."""
+    """As 39 metodologias do catálogo canônico — formato compacto `id|Nome`."""
     blocked = {str(x) for x in (exclude_ids or set()) if x}
     buckets: dict[str, list[str]] = {k: [] for k in _BUCKET_ORDER}
     total = 0
@@ -72,17 +72,15 @@ def _framework_ids_block(exclude_ids: set[str] | None = None) -> str:
         if entrada["id"] in blocked:
             continue
         etq = entrada["etiqueta"]
-        line = f"`{entrada['id']}` — {entrada['nome']}"
+        line = f"{entrada['id']}|{entrada['nome']}"
         buckets.setdefault(etq, []).append(line)
         total += 1
-    linhas = [f"Total: {total} metodologias (catálogo canônico — não invente)."]
+    linhas = [f"{total} IDs (só estes):"]
     for cat in _BUCKET_ORDER:
         items = buckets.get(cat) or []
         if not items:
             continue
-        linhas.append(f"- {cat}:")
-        for item in sorted(items):
-            linhas.append(f"  - {item}")
+        linhas.append(f"{cat}: " + "; ".join(sorted(items)))
     return "\n".join(linhas)
 
 
@@ -101,13 +99,11 @@ def _bloco_diretrizes_escola(diretrizes_escola: list[dict] | None) -> str:
             continue
         if len(txt) > 400:
             txt = txt[:397] + "…"
-        linhas_esc.append(f"- `{mid}` ({nome}): {txt}")
+        linhas_esc.append(f"- {mid} ({nome}): {txt}")
     if linhas_esc:
         bloco_escola = (
             "\n<diretrizes_da_escola>\n"
-            "O professor tem vínculo com uma escola. Se escolher um dos IDs abaixo, "
-            "o gancho_adaptacao e a hipotese_teste DEVEM respeitar a diretriz correspondente "
-            "(não contradizer nem ignorar).\n"
+            "Se usar um ID abaixo, gancho_adaptacao e hipotese_teste DEVEM respeitar a diretriz.\n"
             + "\n".join(linhas_esc)
             + "\n</diretrizes_da_escola>\n"
         )
@@ -124,10 +120,10 @@ def _bloco_metodologia_obrigatoria(
         return ""
     return f"""
 <metodologia_obrigatoria_do_professor>
-O professor EXIGIU a metodologia `{mid_ob}` ({nome_ob}) no caminho A.
-- A.id_metodologia DEVE ser exatamente `{mid_ob}`.
-- B e C: IDs DIFERENTES de A e entre si, de FAMÍLIAS DIFERENTES.
-- Escreva gancho_adaptacao e hipotese_teste de A especificamente para essa metodologia e o relato.
+O professor EXIGIU a metodologia {mid_ob} ({nome_ob}) no caminho A.
+A.id_metodologia DEVE ser exatamente {mid_ob}.
+B e C: IDs distintos de A e entre si, de famílias distintas.
+gancho_adaptacao e hipotese_teste de A: específicos dessa metodologia e do relato.
 </metodologia_obrigatoria_do_professor>
 """
 
@@ -147,7 +143,7 @@ def medir_componentes_entrada_prompt(
 
     `system_catalogo_chars` / `system_ancoras_chars` / `system_diretrizes_chars` medem
     os componentes de entrada usados na montagem (não necessariamente uma partição
-    exata da string final do system, que também inclui regras/formato/TOM).
+    exata da string final do system, que também inclui regras/formato).
     """
     catalogo = _framework_ids_block(exclude_ids)
     bloco_escola = _bloco_diretrizes_escola(diretrizes_escola)
@@ -180,58 +176,34 @@ def build_estruturar_system_prompt(
     bloco_obrigatoria = _bloco_metodologia_obrigatoria(
         metodologia_obrigatoria_id, metodologia_obrigatoria_nome
     )
-    return f"""Você é uma especialista pedagógica da inove4us, conversando com professores e instrutores.
-Arquitetura HÍBRIDA: NÃO gere cards EduScrum, timebox nem manuais de sala.
-Papel: (1) ROTEAR 3 IDs do catálogo de 39; (2) escrever gancho + hipótese + trecho do RELATO DO PROFESSOR.
-Resposta em PT-BR. SOMENTE JSON válido.
-
-{BLOCO_TOM_PROMPT}
+    # Compacto: sem BLOCO_TOM_PROMPT (persona longa); regras funcionais preservadas.
+    return f"""Roteador inove4us. PT-BR. JSON válido apenas.
+HÍBRIDO: NÃO gere cards/plano/cronograma/materiais/avaliação/EduScrum (backend).
+Tarefa: 3 IDs + trecho_relato_usado + 3 causas + gancho/hipótese (1 frase cada).
 
 <framework_obrigatorio>
-Use APENAS estes IDs do catálogo canônico (nunca invente nome ou ID fora da lista).
 {framework}
 </framework_obrigatorio>
 {bloco_escola}
 {bloco_obrigatoria}
 <ancoras_de_estilo>
-Os itens abaixo são SÓ exemplo de FORMATO (categoria › tema). NÃO são o problema do professor.
-PROIBIDO copiar, parafrasear ou reutilizar o conteúdo dessas âncoras em hipóteses/causas/ganchos.
+Só formato. NÃO são o problema. PROIBIDO copiar em causas/ganchos/hipóteses.
 {bloco_ref}
 </ancoras_de_estilo>
 
 <regras>
-1. Chaves "A","B","C": A=encaixe direto, B=outra família, C=híbrido. IDs DIFERENTES e de FAMÍLIAS DIFERENTES (Agilidade / Dedutivas / Contextuais / Indutivas). Se houver <metodologia_obrigatoria_do_professor>, A DEVE usar exatamente esse ID.
-2. `id_metodologia` = ID literal de <framework_obrigatorio> (uma das 39). NUNCA invente.
-3. NÃO escolha por hábito Design Thinking / Diagnóstico Coletivo / Discurso de Elevador. Varie entre as 39 conforme o relato (exceto A quando obrigatório).
-4. `trecho_relato_usado` (raiz): cite 1 frase CURTA do PROBLEMA DO PROFESSOR (não das âncoras).
-5. `causas` (raiz): SEMPRE 3 itens {{titulo, descricao}} derivados SÓ do relato/contexto do professor. Títulos curtos e descrições completas (2–4 frases), em linguagem pedagógica simples — o que está atrapalhando a aprendizagem e o que observar na turma.
-6. Em cada opção: `gancho_adaptacao` (3–5 frases COMPLETAS) explica, para o professor, POR QUE esta dinâmica serve NESTA aula e COMO mediar a prática. Cite elementos concretos do relato. `hipotese_teste` (2–3 frases completas) no formato: se conduzir X, a turma pratica Y e você observa Z. NÃO invente cards nem copie o problema inteiro.
-7. Se uma hipótese parecer com as âncoras de estilo, REESCREVA com palavras do professor.
-8. Prefira citar elementos específicos do relato. Textos SEMPRE inteiros — nunca termine com reticências ou frase cortada.
+1. A,B,C: IDs distintos e famílias distintas (Agilidade/Dedutivas/Contextuais/Indutivas). A=encaixe; B=outra família; C=híbrido. Se existir bloco metodologia_obrigatoria_do_professor, A.id_metodologia = esse ID.
+2. id_metodologia = ID literal do framework. Nunca invente.
+3. Evite hábito Design Thinking / Diagnóstico Coletivo / Discurso de Elevador; varie pelo relato (exceto A obrigatório).
+4. trecho_relato_usado: fragmento mínimo do PROBLEMA (não das âncoras).
+5. causas: exatamente 3 {{titulo, descricao}}; cada descricao = 1 frase curta, específica, distinta, só do relato.
+6. gancho_adaptacao: 1 frase com elemento concreto do relato. hipotese_teste: 1 frase testável (se X → turma Y → observa Z). Sem explicar metodologia nem mini-plano.
+7. PROIBIDO: plano, sequência, materiais, avaliação, cronograma, repetir o relato, genéricos ("aplicar a metodologia ao problema").
+8. Frases completas; se parecer âncora, reescreva com palavras do professor.
 </regras>
 
 <formato>
-{{
-  "trecho_relato_usado": "frase curta copiada/parafraseada do PROBLEMA DO PROFESSOR",
-  "causas": [
-    {{"titulo": "...", "descricao": "..."}}
-  ],
-  "A": {{
-    "id_metodologia": "dia_world_cafe",
-    "gancho_adaptacao": "...",
-    "hipotese_teste": "Se aplicarmos … a partir de «trecho do professor», …"
-  }},
-  "B": {{
-    "id_metodologia": "agil_minute_paper",
-    "gancho_adaptacao": "...",
-    "hipotese_teste": "..."
-  }},
-  "C": {{
-    "id_metodologia": "imersiva_escape_room",
-    "gancho_adaptacao": "...",
-    "hipotese_teste": "..."
-  }}
-}}
+{{"trecho_relato_usado":"...","causas":[{{"titulo":"...","descricao":"1 frase"}},{{"titulo":"...","descricao":"1 frase"}},{{"titulo":"...","descricao":"1 frase"}}],"A":{{"id_metodologia":"dia_world_cafe","gancho_adaptacao":"1 frase do relato","hipotese_teste":"Se… turma… observa…"}},"B":{{"id_metodologia":"agil_minute_paper","gancho_adaptacao":"...","hipotese_teste":"..."}},"C":{{"id_metodologia":"imersiva_escape_room","gancho_adaptacao":"...","hipotese_teste":"..."}}}}
 </formato>
 """.strip()
 

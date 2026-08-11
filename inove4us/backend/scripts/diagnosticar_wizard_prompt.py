@@ -238,6 +238,19 @@ def _imprimir_cenario(montado: dict, *, usage: dict | None = None) -> None:
         ):
             if usage.get(k) is not None:
                 print(f"{k}: {usage[k]}")
+        q = usage.get("qualidade") or {}
+        if q:
+            print(
+                "qualidade: "
+                f"json_ok={q.get('json_ok')} n_causas={q.get('n_causas')} "
+                f"tem_abc={q.get('tem_abc')} ids_validos={q.get('ids_validos')} "
+                f"ids_distintos={q.get('ids_distintos')} "
+                f"familias_distintas={q.get('familias_distintas')} "
+                f"ids={q.get('ids')} "
+                f"causas_1frase={q.get('causas_uma_frase')} "
+                f"ganchos_1frase={q.get('ganchos_uma_frase')} "
+                f"hipoteses_1frase={q.get('hipoteses_uma_frase')}"
+            )
 
 
 def _info_max_tokens() -> None:
@@ -258,6 +271,60 @@ def _info_max_tokens() -> None:
     print("nota: max_tokens é teto de saída, não tokens efetivamente consumidos.")
 
 
+def _avaliar_qualidade_estrutural(parsed: dict) -> dict:
+    """Flags estruturais sem logar texto do professor/modelo."""
+    from prompts.inov_ativas import IDS_METODOLOGIA_CATALOGO
+    from core.catalogo_metodologias_dia import entradas_catalogo_dia
+
+    ids_ok = set(IDS_METODOLOGIA_CATALOGO)
+    fam_por_id = {e["id"]: e["etiqueta"] for e in entradas_catalogo_dia()}
+    causas = parsed.get("causas") if isinstance(parsed, dict) else None
+    n_causas = len(causas) if isinstance(causas, list) else 0
+    ids = []
+    fams = []
+    for chave in ("A", "B", "C"):
+        bloco = (parsed or {}).get(chave) if isinstance(parsed, dict) else None
+        mid = (bloco or {}).get("id_metodologia") if isinstance(bloco, dict) else None
+        ids.append(mid)
+        fams.append(fam_por_id.get(mid) if mid else None)
+
+    def _uma_frase(txt: object) -> bool:
+        s = " ".join(str(txt or "").split()).strip()
+        if not s or s.endswith("…") or s.endswith("..."):
+            return False
+        # heurística: poucas sentenças
+        return s.count(". ") + s.count("! ") + s.count("? ") <= 1
+
+    ganchos_ok = all(
+        _uma_frase(((parsed or {}).get(k) or {}).get("gancho_adaptacao"))
+        for k in ("A", "B", "C")
+        if isinstance((parsed or {}).get(k), dict)
+    )
+    hipoteses_ok = all(
+        _uma_frase(((parsed or {}).get(k) or {}).get("hipotese_teste"))
+        for k in ("A", "B", "C")
+        if isinstance((parsed or {}).get(k), dict)
+    )
+    causas_ok = False
+    if isinstance(causas, list) and n_causas == 3:
+        causas_ok = all(
+            isinstance(c, dict) and _uma_frase(c.get("descricao")) for c in causas
+        )
+
+    return {
+        "json_ok": isinstance(parsed, dict),
+        "n_causas": n_causas,
+        "tem_abc": all(isinstance((parsed or {}).get(k), dict) for k in ("A", "B", "C")),
+        "ids_validos": all(i in ids_ok for i in ids if i),
+        "ids_distintos": len(set(ids)) == 3 and all(ids),
+        "familias_distintas": len(set(fams)) == 3 and all(fams),
+        "ids": ids,
+        "causas_uma_frase": causas_ok,
+        "ganchos_uma_frase": ganchos_ok,
+        "hipoteses_uma_frase": hipoteses_ok,
+    }
+
+
 def _invoke_opcional(montado: dict) -> dict | None:
     from wizard_routes import (
         BEDROCK_MAX_TOKENS,
@@ -270,7 +337,7 @@ def _invoke_opcional(montado: dict) -> dict | None:
     model_id = WIZARD_BEDROCK_MODEL_ID or BEDROCK_MODEL_ID
     bedrock = _get_bedrock_runtime_client()
     t0 = time.perf_counter()
-    _parsed, meta = _invoke_estruturar_bedrock(
+    parsed, meta = _invoke_estruturar_bedrock(
         bedrock=bedrock,
         model_id=model_id,
         system_prompt=montado["system_prompt"],
@@ -279,11 +346,10 @@ def _invoke_opcional(montado: dict) -> dict | None:
         json_prefill="{",
     )
     meta = dict(meta or {})
-    # Garante latência mesmo se meta já tiver (invoke já mede).
     if meta.get("bedrock_latency_ms") is None:
         meta["bedrock_latency_ms"] = round((time.perf_counter() - t0) * 1000.0, 1)
-    # Não imprime conteúdo do modelo — só usage.
-    _ = _parsed
+    # Só métricas/flags — sem texto do modelo.
+    meta["qualidade"] = _avaliar_qualidade_estrutural(parsed if isinstance(parsed, dict) else {})
     return meta
 
 
