@@ -17,38 +17,24 @@ from typing import Any
 from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor
 
+from auth_guards import SESSION_KEY, require_zona, resolve_instituicao_id
 from db import get_conn
 
 bp = Blueprint("curadoria_pedagogica", __name__)
-
-SESSION_KEY = "school_gestor"
 
 STATUS_PENDENTE = "pendente"
 STATUS_INCORPORADO = "incorporado"
 STATUS_MANTIDO_AULA = "mantido_apenas_na_aula"
 
 
-def require_gestor(view):
-    @wraps(view)
-    def wrapped(*args, **kwargs):
-        user = session.get(SESSION_KEY)
-        if user and user.get("instituicao_id"):
-            return view(*args, **kwargs)
-        # Dev local: permite leitura/escrita pedagógica com DEV_INSTITUICAO_ID
-        if os.getenv("DEV_INSTITUICAO_ID") or os.getenv("FLASK_ENV") == "development":
-            return view(*args, **kwargs)
-        return jsonify({"error": "Não autenticado"}), 401
-
-    return wrapped
+require_gestor = require_zona("pedagogico")
 
 
 def _instituicao_id() -> str:
-    user = session.get(SESSION_KEY) or {}
-    return str(
-        user.get("instituicao_id")
-        or os.getenv("DEV_INSTITUICAO_ID")
-        or "a1111111-1111-4111-8111-111111111111"
-    ).strip()
+    resolved = resolve_instituicao_id()
+    if isinstance(resolved, tuple):
+        return ""
+    return resolved
 
 
 def _parse_uuid(value: Any):

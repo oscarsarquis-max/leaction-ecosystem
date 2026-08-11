@@ -1,5 +1,5 @@
 /**
- * Vetor Dia a Dia — cliente da API /api/daily/*
+ * Dia a Dia (aulas curriculares) — cliente da API /api/daily/*
  * Usa o mesmo `request` de lib/api.js (fetch + credentials).
  */
 import { request } from '../lib/api'

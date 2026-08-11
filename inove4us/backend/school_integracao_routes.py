@@ -745,13 +745,14 @@ def receber_planejamento_school():
                     )
 
                 _ensure_import_schema(conn)
+                # Reaproveita inove_importacoes_lote (canal=escola vs arquivo do professor).
                 cur.execute(
                     """
                     INSERT INTO public.inove_importacoes_lote (
-                        id_clie, nome_arquivo, formato,
+                        id_clie, nome_arquivo, formato, canal,
                         total_registros, total_sucesso, total_erro, total_aviso,
                         relatorio_json
-                    ) VALUES (%s, %s, %s, %s, 0, 0, 0, '[]'::jsonb)
+                    ) VALUES (%s, %s, %s, 'escola', %s, 0, 0, 0, '[]'::jsonb)
                     RETURNING id
                     """,
                     (
@@ -772,9 +773,11 @@ def receber_planejamento_school():
                             disciplina_id=None,
                             duracao_min=DEFAULT_DURACAO_MIN,
                             lote_id=lote_id,
+                            origem="planejamento_escola",
+                            # is_from_school fica p/ alocação docente; aqui a origem já identifica.
+                            is_from_school=False,
                         )
                         id_map[row["id_externo"]] = id_evento
-                        # Marca meta de origem School (além de origem=importacao do upsert)
                         cur.execute(
                             """
                             UPDATE public.inove_agenda_eventos
@@ -783,12 +786,7 @@ def receber_planejamento_school():
                              WHERE id_evento = %s AND id_clie = %s
                             """,
                             (
-                                Json(
-                                    {
-                                        "origem_school": "planejamento_escolar",
-                                        "school_lote_importacao_id": lote_id,
-                                    }
-                                ),
+                                Json({"school_lote_importacao_id": lote_id}),
                                 id_evento,
                                 professor_b2c_id,
                             ),
@@ -798,7 +796,7 @@ def receber_planejamento_school():
                             {
                                 "linha": row["line"],
                                 "id_externo": row["id_externo"],
-                                "status": "ok",
+                                "status": "sucesso",
                                 "ok": True,
                                 "acao": acao,
                                 "id_evento": id_evento,

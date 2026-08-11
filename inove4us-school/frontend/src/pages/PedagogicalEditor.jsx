@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import PeiEditorTab from './PeiEditorTab'
+import { useInstituicaoId } from '../lib/auth'
 import { tabClassName } from '../lib/tabs'
 import { BTN_PRIMARY, BTN_PRIMARY_FULL, CHECKBOX_CLASS } from '../lib/buttons'
-
-/** Interino até auth real — instituição de desenvolvimento. */
-const INSTITUICAO_ID =
-  import.meta.env.VITE_INSTITUICAO_ID || 'a1111111-1111-4111-8111-111111111111'
 
 const PILARES = [
   { id: 'metodologias', label: 'Metodologias' },
@@ -45,7 +42,7 @@ function EstrelasUso({ value }) {
 function iniciaisNome(nome) {
   const parts = String(nome || '')
     .trim()
-    .split(/\s+/)
+    .split(/s+/)
     .filter(Boolean)
   if (!parts.length) return '?'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
@@ -55,7 +52,7 @@ function iniciaisNome(nome) {
 function rotuloProfessor(nome) {
   const raw = String(nome || '').trim()
   if (!raw) return 'Professor(a)'
-  if (/^prof\.?\s/i.test(raw)) return raw
+  if (/^prof.?s/i.test(raw)) return raw
   return `Prof. ${raw}`
 }
 
@@ -131,7 +128,7 @@ function textoCanonico(row) {
       return titulo || mec
     })
     .filter(Boolean)
-    .join('\n')
+    .join('n')
 }
 
 /** Aceita só o roteiro unificado da IA — descarta blocos fragmentados legados. */
@@ -139,13 +136,13 @@ function limparRoteiroIntegrado(raw) {
   const text = String(raw || '').trim()
   if (!text) return ''
   const ban =
-    /observações da coordenação|sugestões dos professores|texto integrado da escola\s*\(rascunho|\[canônico|\[observações|\[sugestões|dados de entrada:/i
-  const lines = text.split('\n')
+    /observações da coordenação|sugestões dos professores|texto integrado da escolas*(rascunho|[canônico|[observações|[sugestões|dados de entrada:/i
+  const lines = text.split('n')
   const out = []
   let skipping = false
   for (const ln of lines) {
     const low = ln.trim().toLowerCase()
-    if (ban.test(low) || /^—\s*.+\s*—\s*$/.test(ln.trim())) {
+    if (ban.test(low) || /^—s*.+s*—s*$/.test(ln.trim())) {
       skipping = true
       continue
     }
@@ -155,7 +152,7 @@ function limparRoteiroIntegrado(raw) {
     }
     out.push(ln)
   }
-  const cleaned = out.join('\n').trim()
+  const cleaned = out.join('n').trim()
   return cleaned || text
 }
 
@@ -164,7 +161,7 @@ function descricaoCurta(row) {
   if (d) return d
   const canon = textoCanonico(row)
   if (!canon) return 'Sem descrição.'
-  const line = canon.split('\n').find((l) => l.trim()) || ''
+  const line = canon.split('n').find((l) => l.trim()) || ''
   return line.length > 140 ? `${line.slice(0, 137)}…` : line
 }
 
@@ -259,6 +256,7 @@ function ModalPadraoCanonico({ open, onClose, texto }) {
  * - Toda composição parte do texto atual da escola
  */
 function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
+  const INSTITUICAO_ID = useInstituicaoId()
   const id = row.metodologia_id || row.metodologia_catalogo_id
   const canonCatalogo = textoCanonico(row)
   const isCustomizado = Boolean(row.is_customizado ?? draft.is_customizado)
@@ -411,6 +409,7 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
         `/api/instituicoes/${INSTITUICAO_ID}/metodologias/${id}`,
         {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             versao_escola: texto,
@@ -583,6 +582,7 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
 }
 
 export default function PedagogicalEditor() {
+  const INSTITUICAO_ID = useInstituicaoId()
   const [pilar, setPilar] = useState('metodologias')
   const [items, setItems] = useState([])
   const [drafts, setDrafts] = useState({})
@@ -620,10 +620,16 @@ export default function PedagogicalEditor() {
   }, [])
 
   const load = useCallback(async () => {
+    if (!INSTITUICAO_ID) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/metodologias`)
+      const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/metodologias`, {
+        credentials: 'include',
+      })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error || 'Não foi possível carregar as metodologias')
@@ -634,7 +640,7 @@ export default function PedagogicalEditor() {
     } finally {
       setLoading(false)
     }
-  }, [applyList])
+  }, [applyList, INSTITUICAO_ID])
 
   useEffect(() => {
     void load()
@@ -670,6 +676,7 @@ export default function PedagogicalEditor() {
         `/api/instituicoes/${INSTITUICAO_ID}/metodologias/${id}`,
         {
           method: 'PUT',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             disponivel_dia_a_dia: draft.disponivel_dia_a_dia,
@@ -714,6 +721,7 @@ export default function PedagogicalEditor() {
       if (!passos.length) throw new Error('Inclua ao menos uma etapa no roteiro.')
       const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/metodologias`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nome: createForm.nome.trim(),

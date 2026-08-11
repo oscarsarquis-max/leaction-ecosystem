@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import { listarInstituicoes, listarPeriodos } from '../services/instituicoesService'
 
@@ -48,6 +48,50 @@ function addDays(d, n) {
   return x
 }
 
+function pad2(n) {
+  return n < 10 ? `0${n}` : String(n)
+}
+
+function startOfWeekMonday(d) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const day = x.getDay() // 0=dom
+  const diff = day === 0 ? -6 : 1 - day
+  x.setDate(x.getDate() + diff)
+  return x
+}
+
+/** Semanas (seg–dom) que intersectam o mês civil. */
+function weeksOverlappingMonth(year, month) {
+  const first = new Date(year, month, 1)
+  const last = new Date(year, month + 1, 0)
+  let cur = startOfWeekMonday(first)
+  const weeks = []
+  while (cur <= last) {
+    const end = addDays(cur, 6)
+    const inMonthStart = cur < first ? first : cur
+    const inMonthEnd = end > last ? last : end
+    weeks.push({
+      start: new Date(cur),
+      end,
+      bandStart: inMonthStart,
+      bandEnd: inMonthEnd,
+      label: `Sem ${weeks.length + 1}`,
+      sublabel: `${pad2(inMonthStart.getDate())}/${pad2(inMonthStart.getMonth() + 1)}–${pad2(inMonthEnd.getDate())}/${pad2(inMonthEnd.getMonth() + 1)}`,
+    })
+    cur = addDays(cur, 7)
+    if (weeks.length >= 6) break
+  }
+  return weeks
+}
+
+const DIAS_UTEIS = [
+  { key: 'seg', label: 'Seg', offset: 0 },
+  { key: 'ter', label: 'Ter', offset: 1 },
+  { key: 'qua', label: 'Qua', offset: 2 },
+  { key: 'qui', label: 'Qui', offset: 3 },
+  { key: 'sex', label: 'Sex', offset: 4 },
+]
+
 function connectedComponents(nodes, edges) {
   const ids = nodes.map((n) => n.id)
   const parent = Object.fromEntries(ids.map((id) => [id, id]))
@@ -87,6 +131,9 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
   const [error, setError] = useState('')
   const [selectedId, setSelectedId] = useState(null)
   const [granularity, setGranularity] = useState('mes') // semana | mes
+  /** Âncora da janela visível (mês civil ou semana). */
+  const [viewAnchor, setViewAnchor] = useState(() => new Date())
+  const viewAnchorSeededRef = useRef(false)
   const [editModal, setEditModal] = useState(null)
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState('')
@@ -160,36 +207,87 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
     void loadGrafo()
   }, [loadGrafo, refreshKey])
 
+  // Semeia a âncora uma vez com as aulas (navegação ‹ › do usuário prevalece depois).
   useEffect(() => {
-    if (!periodoMeta?.data_inicio || !periodoMeta?.data_fim) return
-    const a = parseDate(periodoMeta.data_inicio)
-    const b = parseDate(periodoMeta.data_fim)
-    if (!a || !b) return
-    const span = daysBetween(a, b)
-    setGranularity(span > 45 ? 'mes' : 'semana')
-  }, [periodoMeta?.id, periodoMeta?.data_inicio, periodoMeta?.data_fim])
+    if (viewAnchorSeededRef.current) return
+    const dates = nodes.map((n) => parseDate(n.data || n.data_evento)).filter(Boolean)
+    if (!dates.length) return
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const hasTodayMonth = dates.some(
+      (d) => d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth(),
+    )
+    setViewAnchor(hasTodayMonth ? today : new Date(Math.max(...dates.map((d) => d.getTime()))))
+    viewAnchorSeededRef.current = true
+  }, [nodes])
+
+  useEffect(() => {
+    viewAnchorSeededRef.current = false
+  }, [refreshKey])
 
   const layout = useMemo(() => {
-    const byId = Object.fromEntries(nodes.map((n) => [n.id, n]))
+    const anchor = viewAnchor instanceof Date ? viewAnchor : new Date()
+    let bands = []
+    let windowLabel = ''
+    let rangeStart
+    let rangeEnd
 
-    let rangeStart = periodoMeta ? parseDate(periodoMeta.data_inicio) : null
-    let rangeEnd = periodoMeta ? parseDate(periodoMeta.data_fim) : null
-    if (!rangeStart || !rangeEnd) {
-      const dates = nodes.map((n) => parseDate(n.data || n.data_evento)).filter(Boolean)
-      if (dates.length) {
-        rangeStart = new Date(Math.min(...dates))
-        rangeEnd = new Date(Math.max(...dates))
-      } else {
-        const now = new Date()
-        rangeStart = new Date(now.getFullYear(), now.getMonth(), 1)
-        rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      }
+    if (granularity === 'mes') {
+      const y = anchor.getFullYear()
+      const m = anchor.getMonth()
+      bands = weeksOverlappingMonth(y, m).map((w, i) => ({
+        ...w,
+        label: w.label || `Sem ${i + 1}`,
+      }))
+      rangeStart = new Date(y, m, 1)
+      rangeEnd = new Date(y, m + 1, 0)
+      windowLabel = anchor.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    } else {
+      const monday = startOfWeekMonday(anchor)
+      const friday = addDays(monday, 4)
+      const sunday = addDays(monday, 6)
+      rangeStart = monday
+      rangeEnd = sunday
+      bands = DIAS_UTEIS.map((d) => {
+        const day = addDays(monday, d.offset)
+        return {
+          start: day,
+          end: day,
+          bandStart: day,
+          bandEnd: day,
+          label: d.label,
+          sublabel: `${pad2(day.getDate())}/${pad2(day.getMonth() + 1)}`,
+          weekdayOffset: d.offset,
+        }
+      })
+      windowLabel = `${pad2(monday.getDate())}/${pad2(monday.getMonth() + 1)} – ${pad2(friday.getDate())}/${pad2(friday.getMonth() + 1)}`
     }
-    if (rangeEnd < rangeStart) rangeEnd = addDays(rangeStart, 30)
-    // margem visual
-    const spanDays = Math.max(7, daysBetween(rangeStart, rangeEnd) + 1)
-    const pxPerDay = granularity === 'semana' ? 18 : 6
-    const timelineW = Math.max(480, spanDays * pxPerDay + CARD_W)
+
+    const bandCount = Math.max(1, bands.length)
+    const bandW = Math.max(granularity === 'semana' ? 120 : 130, CARD_W + 28)
+    const timelineW = Math.max(480, bandCount * bandW)
+
+    const inWindow = (d) => {
+      if (!d) return false
+      if (granularity === 'mes') {
+        return (
+          d.getFullYear() === rangeStart.getFullYear() &&
+          d.getMonth() === rangeStart.getMonth()
+        )
+      }
+      return d >= rangeStart && d <= rangeEnd
+    }
+
+    const bandIndexForDate = (d) => {
+      if (!d) return -1
+      if (granularity === 'mes') {
+        return bands.findIndex((b) => d >= b.start && d <= b.end)
+      }
+      let offset = daysBetween(rangeStart, d)
+      if (offset < 0) return -1
+      if (offset > 4) offset = 4 // sáb/dom → sexta
+      return offset
+    }
 
     const trackKey = (n) =>
       n.disciplina_id != null && n.disciplina_id !== ''
@@ -197,7 +295,15 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
         : TRACK_NONE
 
     const trackMap = new Map()
+    const nodesInView = []
+    let nodesOutOfView = 0
     nodes.forEach((n) => {
+      const d = parseDate(n.data || n.data_evento)
+      if (!inWindow(d)) {
+        nodesOutOfView += 1
+        return
+      }
+      nodesInView.push(n)
       const key = trackKey(n)
       if (!trackMap.has(key)) {
         trackMap.set(key, {
@@ -214,7 +320,6 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
       }
       trackMap.get(key).nodes.push(n)
     })
-    // Sempre mostrar trilha genérica
     if (!trackMap.has(TRACK_NONE)) {
       trackMap.set(TRACK_NONE, {
         key: TRACK_NONE,
@@ -227,7 +332,6 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
     }
 
     const tracks = Array.from(trackMap.values()).sort((a, b) => {
-      // Trilha sem disciplina primeiro — evita o usuário achar que o desafio “sumiu”
       if (a.key === TRACK_NONE) return -1
       if (b.key === TRACK_NONE) return 1
       const ia = a.nome_instituicao || ''
@@ -242,28 +346,43 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
     const showBrackets = instIds.size >= 2
     const leftW = LABEL_W + (showBrackets ? BRACKET_W : 0)
 
-    const xForDate = (iso) => {
-      const d = parseDate(iso)
-      if (!d) return CARD_W / 2
-      const day = Math.max(0, Math.min(spanDays - 1, daysBetween(rangeStart, d)))
-      return day * pxPerDay + CARD_W / 2
-    }
+    // Agrupa por trilha+faixa para espalhar cartões na mesma célula
+    const slotCounts = new Map()
+    const slotIndex = new Map()
+    nodesInView.forEach((n) => {
+      const d = parseDate(n.data || n.data_evento)
+      const bi = bandIndexForDate(d)
+      if (bi < 0) return
+      const key = `${trackKey(n)}|${bi}`
+      const idx = slotCounts.get(key) || 0
+      slotCounts.set(key, idx + 1)
+      slotIndex.set(n.id, idx)
+    })
 
     const placed = []
     tracks.forEach((t, ti) => {
-      const y = PAD_TOP + ti * TRACK_H + TRACK_H / 2
+      const yBase = PAD_TOP + ti * TRACK_H + TRACK_H / 2
       t.nodes.forEach((n) => {
+        const d = parseDate(n.data || n.data_evento)
+        const bi = bandIndexForDate(d)
+        if (bi < 0) return
+        const key = `${t.key}|${bi}`
+        const total = slotCounts.get(key) || 1
+        const idx = slotIndex.get(n.id) || 0
+        const bandCenter = bi * bandW + bandW / 2
+        const stagger = (idx - (total - 1) / 2) * Math.min(36, (bandW - CARD_W) / Math.max(1, total))
         placed.push({
           ...n,
           trackKey: t.key,
-          x: xForDate(n.data || n.data_evento),
-          y,
+          bandIndex: bi,
+          x: bandCenter + stagger,
+          y: yBase,
         })
       })
     })
     const placedById = Object.fromEntries(placed.map((p) => [p.id, p]))
 
-    const comps = connectedComponents(nodes, edges)
+    const comps = connectedComponents(nodesInView, edges)
     const capsules = []
     const crossEdges = []
     comps.forEach((ids) => {
@@ -272,7 +391,6 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
       if (members.length < 2) return
       const discKeys = new Set(members.map((m) => m.trackKey))
       const sameTrack = discKeys.size === 1
-      // arestas internas
       const internal = edges.filter((e) => ids.includes(e.from) && ids.includes(e.to))
       if (!sameTrack) {
         internal.forEach((e) => crossEdges.push(e))
@@ -299,19 +417,16 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
         memberIds: ids,
         x: minX,
         y: minY,
-        w: maxX - minX,
-        h: maxY - minY,
+        w: Math.max(CARD_W + 20, maxX - minX),
+        h: Math.max(CARD_H + 24, maxY - minY),
         label: label.slice(0, 42),
         edges: internal,
       })
     })
 
-    // Pais de cápsula = "tema": não renderizam cartão (só a área pontilhada).
-    const hiddenCardIds = new Set(
-      capsules.map((c) => c.rootId).filter((id) => id != null),
-    )
+    // Todas as aulas da sequência aparecem como cartão (incluindo a 1ª / tema).
+    const hiddenCardIds = new Set()
 
-    // brackets por instituição
     const brackets = []
     if (showBrackets) {
       const byInst = {}
@@ -335,35 +450,16 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
       })
     }
 
-    // ticks do eixo
-    const ticks = []
-    if (granularity === 'mes') {
-      let cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1)
-      while (cur <= rangeEnd) {
-        ticks.push({
-          x: xForDate(
-            `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-01`,
-          ),
-          label: cur.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-        })
-        cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1)
-      }
-    } else {
-      let cur = new Date(rangeStart)
-      const dow = cur.getDay()
-      cur = addDays(cur, dow === 0 ? 0 : -dow) // domingo
-      while (cur <= rangeEnd) {
-        const iso = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
-        ticks.push({
-          x: xForDate(iso),
-          label: `${String(cur.getDate()).padStart(2, '0')}/${String(cur.getMonth() + 1).padStart(2, '0')}`,
-        })
-        cur = addDays(cur, 7)
-      }
-    }
+    const ticks = bands.map((b, i) => ({
+      x: i * bandW + bandW / 2,
+      label: b.label,
+      sublabel: b.sublabel || '',
+      x0: i * bandW,
+      x1: (i + 1) * bandW,
+    }))
 
     const height = PAD_TOP + tracks.length * TRACK_H + PAD_BOTTOM
-    const visibleCards = placed.filter((n) => !hiddenCardIds.has(n.id))
+    const visibleCards = placed
 
     return {
       tracks,
@@ -379,10 +475,26 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
       timelineW,
       height,
       ticks,
+      bands,
+      bandW,
       rangeStart,
       rangeEnd,
+      windowLabel,
+      nodesInView: nodesInView.length,
+      nodesOutOfView,
+      bandCount,
     }
-  }, [nodes, edges, periodoMeta, granularity])
+  }, [nodes, edges, granularity, viewAnchor])
+
+  function shiftView(delta) {
+    setViewAnchor((prev) => {
+      const base = prev instanceof Date ? prev : new Date()
+      if (granularity === 'mes') {
+        return new Date(base.getFullYear(), base.getMonth() + delta, 1)
+      }
+      return addDays(startOfWeekMonday(base), delta * 7)
+    })
+  }
 
   async function openEditModal(n, { asTema = false } = {}) {
     if (!n?.id && !n?.id_evento) return
@@ -471,8 +583,8 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
               Grafo do período
             </h2>
             <p className="mt-1 max-w-xl text-xs text-bordo-soft">
-              Tempo na horizontal · uma trilha por disciplina. Clique num cartão ou na cápsula
-              para editar título, data e notas.
+              Em mês, o grafo divide em semanas; em semana, em dias úteis (seg–sex). Cada aula
+              cai na faixa da sua data. Clique no cartão para editar.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -494,33 +606,60 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
                 </select>
               </label>
             ) : null}
-            <div className="flex rounded-lg border border-brand-100 p-0.5 text-[11px] font-semibold">
+            <div className="flex items-center gap-1">
               <button
                 type="button"
-                className={`rounded-md px-2.5 py-1.5 ${
-                  granularity === 'semana' ? 'bg-brand-50 text-bordo' : 'text-bordo-soft'
-                }`}
-                onClick={() => setGranularity('semana')}
+                className="rounded-lg border border-brand-100 bg-white px-2.5 py-1.5 text-xs font-bold text-bordo shadow-sm hover:bg-brand-50"
+                onClick={() => shiftView(-1)}
+                aria-label={granularity === 'mes' ? 'Mês anterior' : 'Semana anterior'}
               >
-                Semana
+                ‹
               </button>
+              <div className="flex rounded-lg border border-brand-100 p-0.5 text-[11px] font-semibold">
+                <button
+                  type="button"
+                  className={`rounded-md px-2.5 py-1.5 ${
+                    granularity === 'semana' ? 'bg-brand-50 text-bordo' : 'text-bordo-soft'
+                  }`}
+                  onClick={() => setGranularity('semana')}
+                >
+                  Semana
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-md px-2.5 py-1.5 ${
+                    granularity === 'mes' ? 'bg-brand-50 text-bordo' : 'text-bordo-soft'
+                  }`}
+                  onClick={() => setGranularity('mes')}
+                >
+                  Mês
+                </button>
+              </div>
               <button
                 type="button"
-                className={`rounded-md px-2.5 py-1.5 ${
-                  granularity === 'mes' ? 'bg-brand-50 text-bordo' : 'text-bordo-soft'
-                }`}
-                onClick={() => setGranularity('mes')}
+                className="rounded-lg border border-brand-100 bg-white px-2.5 py-1.5 text-xs font-bold text-bordo shadow-sm hover:bg-brand-50"
+                onClick={() => shiftView(1)}
+                aria-label={granularity === 'mes' ? 'Próximo mês' : 'Próxima semana'}
               >
-                Mês
+                ›
               </button>
             </div>
           </div>
         </div>
 
-        <p className="mb-3 text-[11px] text-slate-500">
-          Cápsula tracejada = tema (clique na área pontilhada para editar) · cartões = aulas
-          da sequência · cartão cinza isolado = aula avulsa
-        </p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+          <p>
+            {granularity === 'mes'
+              ? 'Faixas = semanas do mês · cartões = todas as aulas (inclui a 1ª da sequência)'
+              : 'Faixas = seg–sex · cada aula na coluna do dia'}
+          </p>
+          <p className="font-semibold capitalize text-bordo-soft">
+            {layout.windowLabel || '—'}
+            {layout.nodesOutOfView > 0
+              ? ` · ${layout.nodesOutOfView} fora desta vista`
+              : ''}
+          </p>
+        </div>
 
         {loading ? (
           <p className="py-10 text-center text-sm text-bordo-soft">Carregando mapa…</p>
@@ -598,25 +737,43 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
                       fill={ti % 2 === 0 ? '#ffffff' : '#f8fafc'}
                     />
                   ))}
-                  {/* ticks */}
+                  {/* faixas (semanas ou dias) */}
                   {layout.ticks.map((tk, i) => (
-                    <g key={`tick-${i}`}>
+                    <g key={`band-${i}`}>
+                      <rect
+                        x={tk.x0}
+                        y={PAD_TOP - 28}
+                        width={Math.max(1, (tk.x1 ?? tk.x) - (tk.x0 ?? tk.x))}
+                        height={layout.height - PAD_TOP + 28 - PAD_BOTTOM + 4}
+                        fill={i % 2 === 0 ? 'rgba(225, 29, 72, 0.03)' : 'transparent'}
+                        pointerEvents="none"
+                      />
                       <line
-                        x1={tk.x}
-                        y1={PAD_TOP - 8}
-                        x2={tk.x}
+                        x1={tk.x0}
+                        y1={PAD_TOP - 28}
+                        x2={tk.x0}
                         y2={layout.height - PAD_BOTTOM + 4}
                         stroke="#e2e8f0"
                         strokeWidth="1"
                       />
                       <text
                         x={tk.x}
-                        y={PAD_TOP - 14}
+                        y={PAD_TOP - 16}
                         textAnchor="middle"
-                        style={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }}
+                        style={{ fontSize: 10, fill: '#7f1d1d', fontWeight: 700 }}
                       >
                         {tk.label}
                       </text>
+                      {tk.sublabel ? (
+                        <text
+                          x={tk.x}
+                          y={PAD_TOP - 4}
+                          textAnchor="middle"
+                          style={{ fontSize: 8, fill: '#94a3b8', fontWeight: 600 }}
+                        >
+                          {tk.sublabel}
+                        </text>
+                      ) : null}
                     </g>
                   ))}
 
@@ -651,15 +808,11 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
                         const a = layout.placedById[e.from]
                         const b = layout.placedById[e.to]
                         if (!a || !b) return null
-                        // Se o pai está oculto (tema), seta parte da borda esquerda da cápsula.
-                        const fromHidden = layout.hiddenCardIds.has(e.from)
-                        const x1 = fromHidden ? c.x + 16 : a.x + CARD_W / 2 - 4
-                        const y1 = fromHidden ? a.y : a.y
                         return (
                           <line
                             key={`${e.from}-${e.to}`}
-                            x1={x1}
-                            y1={y1}
+                            x1={a.x + CARD_W / 2 - 4}
+                            y1={a.y}
                             x2={b.x - CARD_W / 2 + 4}
                             y2={b.y}
                             stroke={ACCENT}
@@ -706,7 +859,7 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
                     </marker>
                   </defs>
 
-                  {/* cards (aulas) — pais de cápsula ficam de fora da lista visual */}
+                  {/* cards (aulas) — todas as aulas da sequência, inclusive a 1ª */}
                   {layout.visibleCards.map((n) => {
                     const active = selectedId === n.id
                     const passado = n.status === 'concluido' || n.no_passado || n.cards_prontos
@@ -814,7 +967,7 @@ export default function MapaRealizacoes({ refreshKey = 0, onSelectNode, onChange
             </h3>
             {editModal.asTema ? (
               <p className="mt-1 text-xs text-bordo-soft">
-                Pai da cadeia no grafo — não aparece na lista de compromissos do dia.
+                Tema (pai) da sequência no grafo — também listado nos compromissos do dia.
               </p>
             ) : null}
 

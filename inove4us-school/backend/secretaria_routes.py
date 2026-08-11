@@ -17,11 +17,15 @@ from flask import Blueprint, jsonify, request, session
 from psycopg2 import errors as pg_errors
 from psycopg2.extras import Json, RealDictCursor
 
+from auth_guards import (
+    SESSION_KEY,
+    require_zona,
+    resolve_instituicao_id,
+    resolve_unidade_id,
+)
 from db import get_conn
 
 bp = Blueprint("secretaria_academica", __name__)
-
-SESSION_KEY = "school_gestor"
 
 TIPOS_PERIODO = frozenset({"anual", "semestral", "trimestral", "modular"})
 NIVEIS = frozenset(
@@ -42,24 +46,20 @@ PLAN_TIPOS = frozenset({"aula", "evento"})
 PLAN_STATUS = frozenset({"rascunho", "enviado", "erro"})
 
 
-def require_gestor(view):
-    @wraps(view)
-    def wrapped(*args, **kwargs):
-        user = session.get(SESSION_KEY)
-        if not user or not user.get("instituicao_id"):
-            return jsonify({"error": "Não autenticado"}), 401
-        return view(*args, **kwargs)
-
-    return wrapped
+# Zona operacional — Secretaria Acadêmica (inclui planejamento escolar).
+require_gestor = require_zona("operacional")
 
 
 def _instituicao_id() -> str:
-    user = session.get(SESSION_KEY) or {}
-    return str(
-        user.get("instituicao_id")
-        or os.getenv("DEV_INSTITUICAO_ID")
-        or ""
-    ).strip()
+    """Instituição da sessão (sem fallback DEV — evita vazamento multi-tenant)."""
+    resolved = resolve_instituicao_id()
+    if isinstance(resolved, tuple):
+        return ""
+    return resolved
+
+
+def _unidade_escopo(claimed: Any = None):
+    return resolve_unidade_id(claimed)
 
 
 def _parse_uuid(value: Any, label: str):
@@ -132,17 +132,22 @@ def _time_iso(value: Any) -> str | None:
 @require_gestor
 def list_unidades():
     inst = _instituicao_id()
+    escopo = _unidade_escopo()
+    if isinstance(escopo, tuple):
+        return escopo
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                """
+            sql = """
                 SELECT id, nome, endereco, codigo, cidade, uf, ativo, created_at
                 FROM public.school_unidades
                 WHERE instituicao_id = %s
-                ORDER BY nome ASC
-                """,
-                (inst,),
-            )
+            """
+            params: list[Any] = [inst]
+            if escopo:
+                sql += " AND id = %s"
+                params.append(escopo)
+            sql += " ORDER BY nome ASC"
+            cur.execute(sql, params)
             rows = cur.fetchall()
     return jsonify(
         {
@@ -925,7 +930,11 @@ def _serialize_turma(r: dict) -> dict[str, Any]:
 @require_gestor
 def list_turmas():
     inst = _instituicao_id()
-    unidade_id = _parse_uuid(request.args.get("unidade_id"), "unidade")
+    unidade_raw = request.args.get("unidade_id")
+    escopo = _unidade_escopo(unidade_raw)
+    if isinstance(escopo, tuple):
+        return escopo
+    unidade_id = _parse_uuid(escopo or unidade_raw, "unidade") if (escopo or unidade_raw) else None
     curso_id = _parse_uuid(request.args.get("curso_id"), "curso")
     periodo_id = _parse_uuid(
         request.args.get("periodo_letivo_id") or request.args.get("periodo_id"),
@@ -951,6 +960,9 @@ def list_turmas():
             if unidade_id:
                 sql += " AND t.unidade_id = %s"
                 params.append(str(unidade_id))
+            elif escopo:
+                sql += " AND t.unidade_id = %s"
+                params.append(escopo)
             if curso_id:
                 sql += " AND t.curso_id = %s"
                 params.append(str(curso_id))
@@ -1420,7 +1432,11 @@ def update_aluno(item_id: str):
 @require_gestor
 def list_calendario():
     inst = _instituicao_id()
-    unidade_id = _parse_uuid(request.args.get("unidade_id"), "unidade")
+    unidade_raw = request.args.get("unidade_id")
+    escopo = _unidade_escopo(unidade_raw)
+    if isinstance(escopo, tuple):
+        return escopo
+    unidade_id = _parse_uuid(escopo or unidade_raw, "unidade") if (escopo or unidade_raw) else None
     data_inicio = _parse_date(request.args.get("data_inicio"))
     data_fim = _parse_date(request.args.get("data_fim"))
     with get_conn() as conn:
@@ -1436,6 +1452,9 @@ def list_calendario():
             if unidade_id:
                 sql += " AND c.unidade_id = %s"
                 params.append(str(unidade_id))
+            elif escopo:
+                sql += " AND c.unidade_id = %s"
+                params.append(escopo)
             if data_inicio:
                 sql += " AND (c.data_fim IS NULL OR c.data_fim >= %s)"
                 params.append(data_inicio)

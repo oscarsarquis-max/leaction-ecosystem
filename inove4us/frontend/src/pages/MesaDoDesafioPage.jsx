@@ -52,7 +52,7 @@ function aulaIdsDoCard(card) {
 
 /**
  * Mesa do desafio — painel gerencial no espírito do método inove4us:
- * missão completa, Kanban com todos os cards, aulas com realce ao selecionar card.
+ * missão completa, Kanban, seleção cruzada card ↔ aula.
  */
 export default function MesaDoDesafioPage() {
   const { desafioId } = useParams()
@@ -63,6 +63,8 @@ export default function MesaDoDesafioPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedCardId, setSelectedCardId] = useState(null)
+  /** Filtra o Kanban aos cards da aula escolhida. */
+  const [selectedAulaId, setSelectedAulaId] = useState(null)
   const [showRegistro, setShowRegistro] = useState(false)
   const [registroOk, setRegistroOk] = useState('')
   const autoRegistroFeito = useRef(false)
@@ -167,10 +169,22 @@ export default function MesaDoDesafioPage() {
     [cards, selectedCardId],
   )
 
+  const selectedAula = useMemo(
+    () => aulas.find((a) => String(a.id_evento) === String(selectedAulaId)) || null,
+    [aulas, selectedAulaId],
+  )
+
   const highlightedAulaIds = useMemo(() => {
     if (!selectedCard) return new Set()
     return new Set(aulaIdsDoCard(selectedCard).map(String))
   }, [selectedCard])
+
+  /** Cards da aula selecionada; sem seleção → todos. */
+  const cardsVisiveis = useMemo(() => {
+    if (!selectedAulaId) return cards
+    const aid = String(selectedAulaId)
+    return cards.filter((c) => aulaIdsDoCard(c).some((id) => String(id) === aid))
+  }, [cards, selectedAulaId])
 
   const execucaoStats = useMemo(() => {
     let prontoMin = 0
@@ -203,7 +217,18 @@ export default function MesaDoDesafioPage() {
   }, [cards, progresso.progresso_pct])
 
   function toggleCard(cardId) {
+    setSelectedAulaId(null)
     setSelectedCardId((prev) => (String(prev) === String(cardId) ? null : cardId))
+  }
+
+  function toggleAula(aulaId) {
+    setSelectedCardId(null)
+    setSelectedAulaId((prev) => (String(prev) === String(aulaId) ? null : aulaId))
+  }
+
+  function limparSelecao() {
+    setSelectedCardId(null)
+    setSelectedAulaId(null)
   }
 
   function openKanban() {
@@ -389,21 +414,30 @@ export default function MesaDoDesafioPage() {
                       Mesa
                     </p>
                     <p className="mt-1 text-sm text-bordo-soft">
-                      Clique em um card para realçar as aulas associadas no painel ao lado.
-                      Para mudar o plano em execução, use{' '}
+                      Clique em um card para realçar as aulas, ou em uma aula para ver só os cards
+                      dela. Para mudar o plano, use{' '}
                       <strong className="text-bordo">Acrescentar / ratificar aulas</strong>.
                     </p>
                   </div>
-                  {selectedCard ? (
+                  {selectedCard || selectedAula ? (
                     <button
                       type="button"
                       className="btn-ghost !px-3 !py-1.5 text-xs"
-                      onClick={() => setSelectedCardId(null)}
+                      onClick={limparSelecao}
                     >
                       Limpar seleção
                     </button>
                   ) : null}
                 </div>
+
+                {selectedAula ? (
+                  <p className="mb-3 rounded-lg bg-bordo/5 px-3 py-2 text-sm font-semibold text-bordo">
+                    Mostrando {cardsVisiveis.length} card
+                    {cardsVisiveis.length === 1 ? '' : 's'} da aula{' '}
+                    {formatDate(selectedAula.data_evento)}
+                    {selectedAula.turma ? ` · ${selectedAula.turma}` : ''}.
+                  </p>
+                ) : null}
 
                 {!cards.length ? (
                   <div className="rounded-xl border border-dashed border-brand-200 bg-brand-50/50 px-4 py-8 text-center">
@@ -422,10 +456,25 @@ export default function MesaDoDesafioPage() {
                       Ir para acrescentar aulas
                     </button>
                   </div>
+                ) : !cardsVisiveis.length && selectedAula ? (
+                  <div className="rounded-xl border border-dashed border-brand-200 bg-brand-50/50 px-4 py-8 text-center">
+                    <p className="text-sm font-semibold text-bordo">
+                      Esta aula ainda não tem cards vinculados.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn-ghost mt-3 !px-3 !py-1.5 text-xs"
+                      onClick={limparSelecao}
+                    >
+                      Ver todos os cards
+                    </button>
+                  </div>
                 ) : (
                   <div className="grid gap-4 md:grid-cols-3">
                     {COLUNAS.map((col) => {
-                      const colCards = cards.filter((c) => (c.coluna || 'para_fazer') === col.id)
+                      const colCards = cardsVisiveis.filter(
+                        (c) => (c.coluna || 'para_fazer') === col.id,
+                      )
                       return (
                         <div
                           key={col.id}
@@ -545,7 +594,11 @@ export default function MesaDoDesafioPage() {
                       <p className="mt-1 text-sm text-bordo-soft">
                         {selectedCard
                           ? `Realce: aulas ligadas ao card «${selectedCard.titulo}».`
-                          : 'Selecione um card acima para destacar as aulas associadas.'}
+                          : selectedAula
+                            ? `Filtro: cards da aula ${formatDate(selectedAula.data_evento)}${
+                                selectedAula.turma ? ` · ${selectedAula.turma}` : ''
+                              }. Clique de novo na aula para limpar.`
+                            : 'Clique em uma aula para ver só os cards dela, ou em um card para destacar as aulas.'}
                       </p>
                     </div>
                     <button
@@ -569,17 +622,31 @@ export default function MesaDoDesafioPage() {
                     <ul className="grid gap-3 sm:grid-cols-2">
                       {aulas.map((a) => {
                         const linked = highlightedAulaIds.has(String(a.id_evento))
+                        const aulaSel = String(selectedAulaId) === String(a.id_evento)
                         const faded = selectedCard && !linked
+                        const nCardsAula = cards.filter((c) =>
+                          aulaIdsDoCard(c).some((id) => String(id) === String(a.id_evento)),
+                        ).length
                         return (
                           <li key={a.id_evento}>
                             <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => toggleAula(a.id_evento)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  toggleAula(a.id_evento)
+                                }
+                              }}
+                              aria-pressed={aulaSel}
                               className={[
-                                'rounded-xl border px-4 py-4 transition',
-                                linked
+                                'cursor-pointer rounded-xl border px-4 py-4 text-left transition',
+                                aulaSel || linked
                                   ? 'border-bordo bg-bordo/5 ring-2 ring-bordo ring-offset-2'
                                   : a.status === 'concluido'
                                     ? 'border-emerald-200 bg-emerald-50/60'
-                                    : 'border-brand-200 bg-white',
+                                    : 'border-brand-200 bg-white hover:border-bordo/40',
                                 faded ? 'opacity-35' : '',
                               ].join(' ')}
                             >
@@ -608,7 +675,14 @@ export default function MesaDoDesafioPage() {
                                 <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-bordo-soft">
                                   {STATUS_LABEL[a.status] || a.status}
                                 </span>
-                                {linked ? (
+                                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-bordo">
+                                  {nCardsAula} card{nCardsAula === 1 ? '' : 's'}
+                                </span>
+                                {aulaSel ? (
+                                  <span className="rounded-full bg-bordo px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                                    Filtrando mesa
+                                  </span>
+                                ) : linked ? (
                                   <span className="rounded-full bg-bordo px-2 py-0.5 text-[10px] font-bold uppercase text-white">
                                     Vinculada ao card
                                   </span>
@@ -621,7 +695,10 @@ export default function MesaDoDesafioPage() {
                                 <button
                                   type="button"
                                   className="mt-3 text-sm font-bold text-brand-700 underline-offset-2 hover:underline"
-                                  onClick={() => navigate(`/execucao/${a.id_evento}`)}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    navigate(`/execucao/${a.id_evento}`)
+                                  }}
                                 >
                                   Abrir minha mesa desta aula →
                                 </button>

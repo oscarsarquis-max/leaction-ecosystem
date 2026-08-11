@@ -131,7 +131,8 @@ function parseMesInicial(mesISO, fallbackDate) {
 }
 
 function aguardaPlanejamento(ev) {
-  if (ev?.origem !== 'importacao') return false
+  // Importação de arquivo ou push da Secretaria — esqueleto sem conteúdo do Wizard.
+  if (ev?.origem !== 'importacao' && ev?.origem !== 'planejamento_escola') return false
   if (ev?.status === 'concluido' || ev?.status === 'em_execucao') return false
   return !hasPlanData(ev?.plan_data)
 }
@@ -288,29 +289,10 @@ export default function AgendaExecutiva({
     return map
   }, [eventos])
 
-  /**
-   * Cadeia do grafo (pai OU filho com id_evento_pai) não entra na lista do dia —
-   * vive no mapa (cápsula / cartões). Compromissos soltos continuam na lista.
-   */
-  const idsNaCadeiaGrafo = useMemo(() => {
-    const set = new Set()
-    eventos.forEach((ev) => {
-      if (ev.id_evento_pai != null && ev.id_evento_pai !== '') {
-        set.add(String(ev.id_evento_pai))
-        set.add(String(ev.id_evento))
-      }
-    })
-    return set
-  }, [eventos])
-
+  /** Todos os compromissos do dia selecionado (inclui cadeia do Desafio / grafo). */
   const eventosDoDia = useMemo(
-    () =>
-      eventos.filter((ev) => {
-        if (diaDeEvento(ev.data_evento) !== selectedDate) return false
-        if (idsNaCadeiaGrafo.has(String(ev.id_evento))) return false
-        return true
-      }),
-    [eventos, selectedDate, idsNaCadeiaGrafo],
+    () => eventos.filter((ev) => diaDeEvento(ev.data_evento) === selectedDate),
+    [eventos, selectedDate],
   )
 
   const cells = useMemo(() => {
@@ -748,7 +730,7 @@ export default function AgendaExecutiva({
             </h3>
             {modal.asTema ? (
               <p className="mt-1 text-xs text-bordo-soft">
-                Este registro é o pai da cadeia no grafo — não aparece na lista do dia.
+                Este registro é o tema (pai) da sequência — também aparece na lista do dia.
               </p>
             ) : null}
 

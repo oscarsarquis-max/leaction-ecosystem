@@ -37,7 +37,7 @@ function formatDate(iso) {
 }
 
 /**
- * Dashboard do vetor Dia a Dia — listagem de aulas simples.
+ * Dashboard do Dia a Dia — listagem de aulas curriculares (ciclo rápido).
  */
 export default function DailyDashboard() {
   const { user, logout } = useAuth()
@@ -136,30 +136,32 @@ export default function DailyDashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-600">
-          Vetor Dia a Dia
-        </p>
-        <h1 className="font-display text-3xl font-bold text-bordo-deep sm:text-4xl">
-          Atividade de uma aula
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-bordo-soft">
-          Ciclo rápido de ~50 min na agenda: alinhamento → entrega do dia → atividade em campo →
-          retro. Aparece na Mesa junto com os demais compromissos.
-        </p>
-        {user?.nome_clie ? (
-          <p className="mt-1 text-xs text-bordo-soft">
-            Professor(a): <span className="font-semibold text-bordo">{user.nome_clie}</span>
+        <div className="text-center">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-700">
+            Seu dia a dia (aulas curriculares)
           </p>
-        ) : null}
+          <h1 className="font-display text-3xl font-bold text-bordo-deep sm:text-4xl">
+            Atividade de uma aula
+          </h1>
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-bordo-soft">
+            Ciclo rápido de ~50 min na agenda: alinhamento → entrega do dia → atividade em campo →
+            retro. Aparece na Mesa junto com os demais compromissos.
+          </p>
+          {user?.nome_clie ? (
+            <p className="mt-1 text-xs text-bordo-soft">
+              Professor(a): <span className="font-semibold text-bordo">{user.nome_clie}</span>
+            </p>
+          ) : null}
+        </div>
 
         {!schemaPending && !canRegister ? (
-          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <div className="mx-auto mt-6 max-w-2xl rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm text-rose-950">
             No plano gratuito você pode explorar o Dia a Dia, mas o registro de aulas exige
             plano Profissional, Mentor ou pacote avulso.{' '}
             <button
               type="button"
               onClick={() => setUpgradeOpen(true)}
-              className="font-semibold underline-offset-2 hover:underline"
+              className="font-semibold text-rose-800 underline-offset-2 hover:underline"
             >
               Ver planos
             </button>

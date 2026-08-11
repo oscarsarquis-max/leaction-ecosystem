@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
+import { useInstituicaoId } from '../lib/auth'
 import { tabClassName } from '../lib/tabs'
 import LessonMirrorModal from '../components/LessonMirrorModal'
 import RadarAvisosPanel from '../components/RadarAvisosPanel'
 import MonthAgendaCalendar, { hojeISO as hojeISOCal } from '../components/MonthAgendaCalendar'
-
-const INSTITUICAO_ID =
-  import.meta.env.VITE_INSTITUICAO_ID || 'a1111111-1111-4111-8111-111111111111'
 
 const MESES = [
   'Janeiro',
@@ -172,7 +170,7 @@ function professorDisplayName(emailOrName, idx = 0) {
   const raw = String(emailOrName || '').trim()
   if (!raw) return `Prof. ${idx + 1}`
   if (!raw.includes('@')) {
-    const parts = raw.replace(/^Prof\.?\s*/i, '').split(/\s+/).filter(Boolean)
+    const parts = raw.replace(/^Prof.?s*/i, '').split(/s+/).filter(Boolean)
     if (parts.length >= 2) {
       return `Prof. ${capitalizeToken(parts[0])} ${capitalizeToken(parts[parts.length - 1])}`
     }
@@ -180,7 +178,7 @@ function professorDisplayName(emailOrName, idx = 0) {
     return `Prof. ${idx + 1}`
   }
   const local = raw.split('@')[0] || ''
-  const parts = local.split(/[._+\-]+/).filter(Boolean)
+  const parts = local.split(/[._+-]+/).filter(Boolean)
   if (parts.length >= 2) {
     return `Prof. ${capitalizeToken(parts[0])} ${capitalizeToken(parts[parts.length - 1])}`
   }
@@ -190,9 +188,9 @@ function professorDisplayName(emailOrName, idx = 0) {
 
 function professorInitials(displayName) {
   const cleaned = String(displayName || '')
-    .replace(/^Prof\.?\s*/i, '')
+    .replace(/^Prof.?s*/i, '')
     .trim()
-  const parts = cleaned.split(/\s+/).filter(Boolean)
+  const parts = cleaned.split(/s+/).filter(Boolean)
   if (parts.length >= 2) {
     return `${parts[0][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase()
   }
@@ -217,7 +215,7 @@ function pillTooltip(item) {
       ? 'Curadoria: gerou insumo para a matriz'
       : null,
   ].filter(Boolean)
-  return lines.join('\n')
+  return lines.join('n')
 }
 
 function TipoBadge({ tipo }) {
@@ -792,6 +790,7 @@ function AgendaCalendario({
 }
 
 export default function Dashboard() {
+  const INSTITUICAO_ID = useInstituicaoId()
   const navigate = useNavigate()
   const [tipoPeriodo, setTipoPeriodo] = useState('diario')
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()))
@@ -823,10 +822,13 @@ export default function Dashboard() {
   const [curadoriaOpen, setCuradoriaOpen] = useState(false)
 
   useEffect(() => {
+    if (!INSTITUICAO_ID) return undefined
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/unidades`)
+        const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/unidades`, {
+          credentials: 'include',
+        })
         const body = await res.json().catch(() => [])
         if (!res.ok) throw new Error(body.error || 'Não foi possível carregar as unidades')
         if (!cancelled) setUnidades(body)
@@ -837,13 +839,16 @@ export default function Dashboard() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [INSTITUICAO_ID])
 
   useEffect(() => {
+    if (!INSTITUICAO_ID) return undefined
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/resumo-consolidado`)
+        const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/resumo-consolidado`, {
+          credentials: 'include',
+        })
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.error || 'Falha no resumo consolidado')
         if (!cancelled) setConsolidado(body)
@@ -854,9 +859,10 @@ export default function Dashboard() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [INSTITUICAO_ID])
 
   useEffect(() => {
+    if (!INSTITUICAO_ID) return undefined
     let cancelled = false
     ;(async () => {
       setLoading(true)
@@ -869,6 +875,7 @@ export default function Dashboard() {
       try {
         const rPlanos = await fetch(
           `/api/instituicoes/${INSTITUICAO_ID}/calendario-pedagogico?${q}`,
+          { credentials: 'include' },
         )
         const jPlanos = await rPlanos.json().catch(() => [])
         if (!rPlanos.ok) throw new Error(jPlanos.error || 'Falha ao carregar os planos')
@@ -886,9 +893,10 @@ export default function Dashboard() {
     return () => {
       cancelled = true
     }
-  }, [unidadeId, periodo.data_inicio, periodo.data_fim])
+  }, [INSTITUICAO_ID, unidadeId, periodo.data_inicio, periodo.data_fim])
 
   useEffect(() => {
+    if (!INSTITUICAO_ID) return undefined
     let cancelled = false
     ;(async () => {
       const q = new URLSearchParams()
@@ -896,6 +904,7 @@ export default function Dashboard() {
       try {
         const res = await fetch(
           `/api/instituicoes/${INSTITUICAO_ID}/curadoria-pendente?${q}`,
+          { credentials: 'include' },
         )
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.error || 'Falha na curadoria')
@@ -907,7 +916,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true
     }
-  }, [unidadeId])
+  }, [INSTITUICAO_ID, unidadeId])
 
   const professoresOpts = useMemo(() => {
     const map = new Map()

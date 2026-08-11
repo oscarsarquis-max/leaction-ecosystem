@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useInstituicaoId } from '../lib/auth'
 import { BTN_PRIMARY } from '../lib/buttons'
-
-const INSTITUICAO_ID =
-  import.meta.env.VITE_INSTITUICAO_ID || 'a1111111-1111-4111-8111-111111111111'
 
 /**
  * Quadro de Avisos — cria avisos curtos fixados na Mesa do Professor (Inove).
  */
 export default function RadarAvisosPanel() {
+  const INSTITUICAO_ID = useInstituicaoId()
   const [avisos, setAvisos] = useState([])
   const [turmas, setTurmas] = useState([])
   const [disciplinas, setDisciplinas] = useState([])
@@ -19,11 +18,16 @@ export default function RadarAvisosPanel() {
   const [ok, setOk] = useState('')
 
   async function load() {
+    if (!INSTITUICAO_ID) return
     setError('')
     try {
       const [rA, rO] = await Promise.all([
-        fetch(`/api/instituicoes/${INSTITUICAO_ID}/avisos-mesa?ativos=1`),
-        fetch(`/api/instituicoes/${INSTITUICAO_ID}/avisos-mesa/opcoes`),
+        fetch(`/api/instituicoes/${INSTITUICAO_ID}/avisos-mesa?ativos=1`, {
+          credentials: 'include',
+        }),
+        fetch(`/api/instituicoes/${INSTITUICAO_ID}/avisos-mesa/opcoes`, {
+          credentials: 'include',
+        }),
       ])
       const jA = await rA.json().catch(() => [])
       const jO = await rO.json().catch(() => ({}))
@@ -40,16 +44,18 @@ export default function RadarAvisosPanel() {
 
   useEffect(() => {
     load()
-  }, [])
+  }, [INSTITUICAO_ID])
 
   async function handleCreate(e) {
     e.preventDefault()
+    if (!INSTITUICAO_ID) return
     setBusy(true)
     setError('')
     setOk('')
     try {
       const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/avisos-mesa`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           texto: texto.trim(),
@@ -81,6 +87,7 @@ export default function RadarAvisosPanel() {
     try {
       const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/avisos-mesa/${id}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ativo: false }),
       })

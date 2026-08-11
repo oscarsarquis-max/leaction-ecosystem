@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import LessonMirrorModal from '../components/LessonMirrorModal'
-import { useAuth } from '../lib/auth'
+import { useAuth, useInstituicaoId } from '../lib/auth'
 import { CrmEvents, trackEvent } from '../lib/tracking'
-
-const FALLBACK_INSTITUICAO_ID =
-  import.meta.env.VITE_INSTITUICAO_ID || 'a1111111-1111-4111-8111-111111111111'
 
 function formatDate(iso) {
   if (!iso) return '—'
@@ -301,7 +298,7 @@ function BillingModal({ open, onClose, onPaidHint }) {
 
 export default function TeamManagement() {
   const { user } = useAuth()
-  const instituicaoId = user?.instituicao_id || FALLBACK_INSTITUICAO_ID
+  const instituicaoId = useInstituicaoId()
 
   const [email, setEmail] = useState('')
   const [licencas, setLicencas] = useState(null)
@@ -320,6 +317,10 @@ export default function TeamManagement() {
   const [aulasAbertas, setAulasAbertas] = useState(true)
 
   const load = useCallback(async () => {
+    if (!instituicaoId) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError('')
     try {

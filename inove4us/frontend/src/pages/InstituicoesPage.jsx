@@ -26,6 +26,22 @@ const TIPOS_INST = [
   { value: 'outro', label: 'Outro' },
 ]
 
+/** Segmentos educacionais — valor persistido = rótulo (compatível com cadastros já salvos). */
+const SEGMENTOS = [
+  { value: '', label: 'Não informado' },
+  { value: 'Educação Infantil', label: 'Educação Infantil' },
+  { value: 'Ensino Fundamental', label: 'Ensino Fundamental' },
+  { value: 'Ensino Médio', label: 'Ensino Médio' },
+  { value: 'EJA', label: 'EJA' },
+  { value: 'Ensino Técnico', label: 'Ensino Técnico' },
+  { value: 'Ensino Superior', label: 'Ensino Superior' },
+  { value: 'Pós-graduação', label: 'Pós-graduação' },
+  { value: 'Curso livre', label: 'Curso livre' },
+  { value: 'Corporativo', label: 'Corporativo' },
+  { value: 'Vários segmentos', label: 'Vários segmentos' },
+  { value: 'Outro', label: 'Outro' },
+]
+
 const TIPOS_PERIODO = TIPOS_PERIODO_OPTS
 
 const STATUS_PERIODO = [
@@ -398,12 +414,23 @@ export default function InstituicoesPage() {
                 </label>
                 <label className="block text-xs font-semibold text-bordo-soft">
                   Segmento
-                  <input
+                  <select
                     className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm"
-                    placeholder="ex.: ensino médio, superior…"
                     value={form.segmento}
                     onChange={(e) => setForm((f) => ({ ...f, segmento: e.target.value }))}
-                  />
+                  >
+                    {(SEGMENTOS.some((s) => s.value === form.segmento)
+                      ? SEGMENTOS
+                      : [
+                          ...SEGMENTOS,
+                          { value: form.segmento, label: form.segmento },
+                        ]
+                    ).map((s) => (
+                      <option key={s.value || '__vazio'} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="block text-xs font-semibold text-bordo-soft">
                   Cidade

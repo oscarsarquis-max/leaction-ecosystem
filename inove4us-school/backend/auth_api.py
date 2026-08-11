@@ -28,9 +28,11 @@ def _text(value: Any) -> str:
 
 
 def _serialize_gestor(row: dict[str, Any], zonas: list[str]) -> dict:
+    unidade = row.get("unidade_id")
     return {
         "id": str(row["id"]),
         "instituicao_id": str(row["instituicao_id"]),
+        "unidade_id": str(unidade) if unidade else None,
         "nome": row["nome"],
         "email": row["email"],
         "cargo": row["cargo"],

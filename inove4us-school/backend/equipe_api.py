@@ -16,9 +16,23 @@ from typing import Any
 from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
 
+from auth_guards import require_zona, resolve_instituicao_id
 from db import get_conn
 
 bp = Blueprint("equipe", __name__)
+
+
+@bp.before_request
+@require_zona("administrativo")
+def _authz_equipe():
+    return None
+
+
+def _bound_instituicao(instituicao_id: str):
+    inst = resolve_instituicao_id(instituicao_id)
+    if isinstance(inst, tuple):
+        return inst
+    return _parse_uuid(inst, "instituição")
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _STATUS_LABEL = {
@@ -209,7 +223,7 @@ def _pedagogico_map(cur: Any, instituicao_id: uuid.UUID) -> dict[str, dict]:
 
 @bp.get("/api/instituicoes/<instituicao_id>/equipe")
 def get_equipe(instituicao_id: str):
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    parsed = _bound_instituicao(instituicao_id)
     if isinstance(parsed, tuple):
         return parsed
 
@@ -246,7 +260,7 @@ def get_equipe(instituicao_id: str):
 
 @bp.post("/api/instituicoes/<instituicao_id>/equipe/convites")
 def convidar(instituicao_id: str):
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    parsed = _bound_instituicao(instituicao_id)
     if isinstance(parsed, tuple):
         return parsed
 
@@ -328,7 +342,7 @@ def disparar_convite_inove(instituicao_id: str, vinculo_id: str):
     """Reenvia / dispara link de acesso Inove para professor ainda não ativado."""
     import os
 
-    inst = _parse_uuid(instituicao_id, "instituição")
+    inst = _bound_instituicao(instituicao_id)
     if isinstance(inst, tuple):
         return inst
     vid = _parse_uuid(vinculo_id, "vínculo")
@@ -421,7 +435,7 @@ def disparar_convite_inove(instituicao_id: str, vinculo_id: str):
 
 @bp.post("/api/instituicoes/<instituicao_id>/equipe/<vinculo_id>/revogar")
 def revogar(instituicao_id: str, vinculo_id: str):
-    inst = _parse_uuid(instituicao_id, "instituição")
+    inst = _bound_instituicao(instituicao_id)
     if isinstance(inst, tuple):
         return inst
     vid = _parse_uuid(vinculo_id, "vínculo")
@@ -465,7 +479,7 @@ def radiografia(instituicao_id: str, vinculo_id: str):
     """
     from datetime import date
 
-    inst = _parse_uuid(instituicao_id, "instituição")
+    inst = _bound_instituicao(instituicao_id)
     if isinstance(inst, tuple):
         return inst
     vid = _parse_uuid(vinculo_id, "vínculo")
@@ -748,7 +762,7 @@ def radiografia(instituicao_id: str, vinculo_id: str):
 @bp.post("/api/instituicoes/<instituicao_id>/equipe/<vinculo_id>/avaliacoes")
 def declarar_avaliacao(instituicao_id: str, vinculo_id: str):
     """Declara / atualiza nota de desempenho (histórico por referência)."""
-    inst = _parse_uuid(instituicao_id, "instituição")
+    inst = _bound_instituicao(instituicao_id)
     if isinstance(inst, tuple):
         return inst
     vid = _parse_uuid(vinculo_id, "vínculo")

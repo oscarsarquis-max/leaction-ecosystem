@@ -133,6 +133,11 @@ export function listarMinhasTurmas() {
   return request('/api/me/turmas')
 }
 
+/** Cursos do professor — solo = só os que ele cadastrou. */
+export function listarMeusCursos() {
+  return request('/api/me/cursos')
+}
+
 /** Alocações School espelhadas (disciplina + turma). */
 export function listarAlocacoesEscola() {
   return request('/api/me/alocacoes-escola')

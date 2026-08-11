@@ -7,9 +7,24 @@ from typing import Any
 from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
 
+from auth_guards import require_zona, resolve_instituicao_id
 from db import get_conn
 
 bp = Blueprint("avisos_mesa", __name__)
+
+
+@bp.before_request
+@require_zona("operacional", "pedagogico")
+def _authz_avisos():
+    """Leitura no Radar (pedagógico) e gestão na Secretaria (operacional)."""
+    return None
+
+
+def _bound_instituicao(instituicao_id: str):
+    inst = resolve_instituicao_id(instituicao_id)
+    if isinstance(inst, tuple):
+        return inst
+    return _parse_uuid(inst, "instituição")
 
 
 def _parse_uuid(value: str | None, label: str, *, required: bool = True):
@@ -105,7 +120,7 @@ LEFT JOIN public.school_turmas t ON t.id = a.turma_id
 
 @bp.get("/api/instituicoes/<instituicao_id>/avisos-mesa")
 def list_avisos(instituicao_id: str):
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    parsed = _bound_instituicao(instituicao_id)
     if isinstance(parsed, tuple):
         return parsed
     ativos_only = str(request.args.get("ativos") or "1").strip() not in ("0", "false", "no")
@@ -132,7 +147,7 @@ def list_avisos(instituicao_id: str):
 
 @bp.post("/api/instituicoes/<instituicao_id>/avisos-mesa")
 def criar_aviso(instituicao_id: str):
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    parsed = _bound_instituicao(instituicao_id)
     if isinstance(parsed, tuple):
         return parsed
 
@@ -222,7 +237,7 @@ def criar_aviso(instituicao_id: str):
 
 @bp.patch("/api/instituicoes/<instituicao_id>/avisos-mesa/<aviso_id>")
 def atualizar_aviso(instituicao_id: str, aviso_id: str):
-    inst = _parse_uuid(instituicao_id, "instituição")
+    inst = _bound_instituicao(instituicao_id)
     if isinstance(inst, tuple):
         return inst
     aid = _parse_uuid(aviso_id, "aviso")
@@ -270,7 +285,7 @@ def atualizar_aviso(instituicao_id: str, aviso_id: str):
 @bp.get("/api/instituicoes/<instituicao_id>/avisos-mesa/opcoes")
 def opcoes_vinculo(instituicao_id: str):
     """Turmas e disciplinas para o seletor do quadro de avisos."""
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    parsed = _bound_instituicao(instituicao_id)
     if isinstance(parsed, tuple):
         return parsed
 

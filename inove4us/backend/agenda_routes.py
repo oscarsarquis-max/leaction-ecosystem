@@ -1484,17 +1484,15 @@ def listar_kanban_desafio(id_evento: int):
                     "id_evento_pai": ev.get("id_evento_pai"),
                 }
             )
+            # Visão por aula: só o board dessa aula (não expandir por aula_ids
+            # de continuidade — isso puxava cards de outras turmas).
+            if aula_filtro is not None and aid != aula_filtro:
+                continue
             for t in stamped:
                 tarefas_all.append(t)
 
         if aula_filtro is not None:
-            tarefas_all = [
-                t
-                for t in tarefas_all
-                if t.get("aula_id") == aula_filtro
-                or aula_filtro in _aula_ids_do_card(t)
-                or (t.get("aula_id") is None and aula_filtro == id_evento)
-            ]
+            tarefas_all = _merge_tarefas_by_card_id(tarefas_all)
             visao = "aula"
         else:
             # Mesmo card em várias turmas → um card com aula_ids + escopos_turma

@@ -46,6 +46,22 @@ PLAN_TIER_MENTOR = "mentor"
 FREEMIUM_AULAS_MES = 0
 
 
+def _is_production_env() -> bool:
+    env = (os.environ.get("INOVE4US_ENV") or os.environ.get("FLASK_ENV") or "").lower()
+    return env == "production"
+
+
+def _daily_dev_unlock() -> bool:
+    """
+    Local/dev: libera registro no Dia a Dia para checagem.
+    Produção mantém freemium bloqueado. Desliga com INOVE_DAILY_DEV_UNLOCK=0.
+    """
+    if _is_production_env():
+        return False
+    flag = (os.environ.get("INOVE_DAILY_DEV_UNLOCK") or "1").strip().lower()
+    return flag not in ("0", "false", "no")
+
+
 def ensure_creditos_ia_column() -> None:
     """Garante coluna freemium creditos_ia + plan_tier em ctdi_clie."""
     global _creditos_ensured
@@ -316,6 +332,7 @@ def aulas_simples_quota(id_clie: int) -> dict:
     Limite de registro no Dia a Dia.
     Solo freemium (starter): bloqueado (só navegação).
     Profissional / Mentor / institucional: ilimitado.
+    Local/dev: liberado por padrão (_daily_dev_unlock).
     """
     tier = get_plan_tier(id_clie)
     usados = count_aulas_simples_mes(id_clie)
@@ -327,6 +344,16 @@ def aulas_simples_quota(id_clie: int) -> dict:
             "restantes": None,
             "ilimitado": True,
             "bloqueado": False,
+        }
+    if _daily_dev_unlock():
+        return {
+            "tier": tier,
+            "limite": None,
+            "usados": usados,
+            "restantes": None,
+            "ilimitado": True,
+            "bloqueado": False,
+            "dev_unlock": True,
         }
     restantes = max(0, int(FREEMIUM_AULAS_MES) - usados)
     return {

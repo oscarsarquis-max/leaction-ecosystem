@@ -35,11 +35,16 @@ from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor
 
 from aee_canonico import condicao_valida, get_canonico, listar_condicoes
+from auth_guards import SESSION_KEY, require_zona, resolve_instituicao_id
 from db import get_conn
 
 bp = Blueprint("pei_documental", __name__)
 
-SESSION_KEY = "school_gestor"
+
+@bp.before_request
+@require_zona("pedagogico")
+def _authz_pei_documental():
+    return None
 
 
 def _build_aee_diretriz_payload(cur: Any, matriz: dict[str, Any]) -> str:
@@ -131,12 +136,10 @@ def _dispatch_pei_individual(pei: dict[str, Any]) -> None:
 
 
 def _instituicao_id() -> str:
-    user = session.get(SESSION_KEY) or {}
-    return str(
-        user.get("instituicao_id")
-        or os.getenv("DEV_INSTITUICAO_ID")
-        or "a1111111-1111-4111-8111-111111111111"
-    ).strip()
+    resolved = resolve_instituicao_id()
+    if isinstance(resolved, tuple):
+        return ""
+    return resolved
 
 
 def _parse_uuid(value: Any):

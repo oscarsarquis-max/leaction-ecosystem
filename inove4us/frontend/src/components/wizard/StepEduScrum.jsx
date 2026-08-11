@@ -218,8 +218,13 @@ export default function StepEduScrum({
 
   const [aulas, setAulas] = useState([])
   const [aulaAtivaId, setAulaAtivaId] = useState(initialEventoId || null)
-  /** Multi-aula: 'todas' | id_evento. Com 1 aula o seletor some. */
-  const [visaoKanban, setVisaoKanban] = useState('todas')
+  /** Multi-aula: 'todas' | id_evento. Com 1 aula o seletor some.
+   * Ao abrir /execucao/:id, começa na aula da URL (não em «todas»). */
+  const [visaoKanban, setVisaoKanban] = useState(() =>
+    initialEventoId != null && Number.isFinite(Number(initialEventoId))
+      ? Number(initialEventoId)
+      : 'todas',
+  )
   const [novaTarefaAulaId, setNovaTarefaAulaId] = useState(null)
   const [boardLoading, setBoardLoading] = useState(false)
   const [showRegistro, setShowRegistro] = useState(false)
@@ -447,8 +452,16 @@ export default function StepEduScrum({
         setVisaoKanban((prev) => {
           if (prev === 'todas') return 'todas'
           if (prev && lista.some((a) => a.id_evento === Number(prev))) return prev
+          if (
+            initialEventoId &&
+            lista.some((a) => a.id_evento === Number(initialEventoId))
+          ) {
+            return Number(initialEventoId)
+          }
           return 'todas'
         })
+      } else if (lista.length === 1) {
+        setVisaoKanban(lista[0].id_evento)
       }
     } catch {
       setAulas([])

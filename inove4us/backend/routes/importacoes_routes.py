@@ -471,11 +471,16 @@ def upsert_registro_importado(
     disciplina_id: int | None,
     duracao_min: int,
     lote_id: int | None,
+    origem: str = "importacao",
+    is_from_school: bool = False,
 ) -> tuple[int, str, int | None]:
     """
     Upsert canônico na agenda; espelha Dia a Dia se tipo=aula.
     Retorna (id_evento, acao 'created'|'updated', aula_simples_id|None).
+
+    `origem` padrão = importacao (arquivo). Push School usa planejamento_escola.
     """
+    origem_val = (origem or "importacao").strip() or "importacao"
     id_externo = row["id_externo"]
     titulo = row["titulo"]
     tipo_reg = row["tipo"]
@@ -492,7 +497,7 @@ def upsert_registro_importado(
         assunto = assunto[:200]
 
     meta = {
-        "origem": "importacao",
+        "origem": origem_val,
         "id_externo": id_externo,
         "tipo_arquivo": tipo_reg,
         "importacao_lote_id": lote_id,
@@ -503,6 +508,8 @@ def upsert_registro_importado(
         "tema": assunto,
         "assunto": assunto,
     }
+    if origem_val == "planejamento_escola":
+        meta["origem_school"] = "planejamento_escolar"
 
     if tipo_reg == "aula":
         existing_aula = _find_aula_by_externo(cur, id_clie, id_externo)
@@ -515,7 +522,7 @@ def upsert_registro_importado(
                        fechamento_checkout = COALESCE(%s, fechamento_checkout),
                        disciplina_id = %s,
                        tipo_registro = 'aula',
-                       origem = 'importacao',
+                       origem = %s,
                        status = CASE WHEN status = 'realizado' THEN status ELSE 'draft' END,
                        updated_at = CURRENT_TIMESTAMP
                  WHERE id = %s AND id_clie = %s
@@ -526,6 +533,7 @@ def upsert_registro_importado(
                     titulo[:255],
                     nota or "",
                     disciplina_id,
+                    origem_val,
                     int(existing_aula["id"]),
                     id_clie,
                 ),
@@ -541,7 +549,7 @@ def upsert_registro_importado(
                     id_clie, data_planejada, tema_aula, fechamento_checkout,
                     status, disciplina_id, tipo_registro, origem, id_externo_importacao
                 ) VALUES (
-                    %s, %s, %s, %s, 'draft', %s, 'aula', 'importacao', %s
+                    %s, %s, %s, %s, 'draft', %s, 'aula', %s, %s
                 )
                 RETURNING id
                 """,
@@ -551,12 +559,13 @@ def upsert_registro_importado(
                     titulo[:255],
                     nota or "",
                     disciplina_id,
+                    origem_val,
                     id_externo,
                 ),
             )
             aula_id = int(cur.fetchone()["id"])
         meta["aula_simples_id"] = aula_id
-        meta["ciclo"] = "importacao"
+        meta["ciclo"] = origem_val
 
     meta_json = json.dumps(meta, ensure_ascii=False)
 
@@ -571,9 +580,12 @@ def upsert_registro_importado(
                    tipo = %s,
                    meta_json = %s::jsonb,
                    disciplina_id = %s,
-                   origem = 'importacao',
+                   origem = %s,
                    id_externo_importacao = %s,
                    tema = %s,
+                   is_from_school = CASE
+                     WHEN %s THEN TRUE ELSE COALESCE(is_from_school, FALSE)
+                   END,
                    status = CASE WHEN status = 'concluido' THEN status ELSE 'planejado' END
              WHERE id_evento = %s AND id_clie = %s
          RETURNING id_evento
@@ -585,8 +597,10 @@ def upsert_registro_importado(
                 agenda_tipo,
                 meta_json,
                 disciplina_id,
+                origem_val,
                 id_externo,
                 assunto,
+                bool(is_from_school),
                 id_evento,
                 id_clie,
             ),
@@ -597,10 +611,12 @@ def upsert_registro_importado(
             """
             INSERT INTO public.inove_agenda_eventos (
                 id_clie, data_evento, titulo, nota_texto, status, tipo,
-                meta_json, disciplina_id, origem, id_externo_importacao, tema
+                meta_json, disciplina_id, origem, id_externo_importacao, tema,
+                is_from_school
             ) VALUES (
                 %s, %s, %s, %s, 'planejado', %s,
-                %s::jsonb, %s, 'importacao', %s, %s
+                %s::jsonb, %s, %s, %s, %s,
+                %s
             )
             RETURNING id_evento
             """,
@@ -612,8 +628,10 @@ def upsert_registro_importado(
                 agenda_tipo,
                 meta_json,
                 disciplina_id,
+                origem_val,
                 id_externo,
                 assunto,
+                bool(is_from_school),
             ),
         )
         id_evento = int(cur.fetchone()["id_evento"])
@@ -641,6 +659,8 @@ def _ensure_import_schema(conn) -> None:
                 ADD COLUMN IF NOT EXISTS id_externo_importacao VARCHAR(160);
             ALTER TABLE public.inove_agenda_eventos
                 ADD COLUMN IF NOT EXISTS tema VARCHAR(200);
+            ALTER TABLE public.inove_agenda_eventos
+                ADD COLUMN IF NOT EXISTS is_from_school BOOLEAN NOT NULL DEFAULT FALSE;
             ALTER TABLE public.inove_aulas_simples
                 ADD COLUMN IF NOT EXISTS id_externo_importacao VARCHAR(160);
             CREATE TABLE IF NOT EXISTS public.inove_importacoes_lote (
@@ -656,6 +676,25 @@ def _ensure_import_schema(conn) -> None:
                 relatorio_json   JSONB NOT NULL DEFAULT '[]'::jsonb,
                 created_at       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            ALTER TABLE public.inove_importacoes_lote
+                ADD COLUMN IF NOT EXISTS canal VARCHAR(32) NOT NULL DEFAULT 'arquivo';
+
+            ALTER TABLE public.inove_agenda_eventos
+                DROP CONSTRAINT IF EXISTS chk_inove_agenda_eventos_origem;
+            ALTER TABLE public.inove_agenda_eventos
+                ADD CONSTRAINT chk_inove_agenda_eventos_origem
+                CHECK (origem IN (
+                    'manual', 'wizard_ia', 'importacao',
+                    'comunicado_escola', 'alocacao_escola', 'planejamento_escola',
+                    'convite_colaborador'
+                ));
+            ALTER TABLE public.inove_aulas_simples
+                DROP CONSTRAINT IF EXISTS chk_inove_aulas_simples_origem;
+            ALTER TABLE public.inove_aulas_simples
+                ADD CONSTRAINT chk_inove_aulas_simples_origem
+                CHECK (origem IN (
+                    'manual', 'wizard_ia', 'importacao', 'planejamento_escola'
+                ));
             """
         )
 

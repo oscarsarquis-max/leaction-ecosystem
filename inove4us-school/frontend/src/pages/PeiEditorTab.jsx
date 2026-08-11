@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import ModalHistoricoVersoes from '../components/ModalHistoricoVersoes'
+import { useInstituicaoId } from '../lib/auth'
 import { tabClassName } from '../lib/tabs'
 import {
   BTN_PRIMARY,
@@ -7,9 +8,6 @@ import {
   BTN_PRIMARY_FULL,
   CHECKBOX_CLASS,
 } from '../lib/buttons'
-
-const INSTITUICAO_ID =
-  import.meta.env.VITE_INSTITUICAO_ID || 'a1111111-1111-4111-8111-111111111111'
 
 const SUBS = [
   { id: 'aee', label: '1. Diretrizes AEE (Por Condição)' },
@@ -83,7 +81,7 @@ function EstrelasUso({ value }) {
 function iniciaisNome(nome) {
   const parts = String(nome || '')
     .trim()
-    .split(/\s+/)
+    .split(/s+/)
     .filter(Boolean)
   if (!parts.length) return '?'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
@@ -93,7 +91,7 @@ function iniciaisNome(nome) {
 function rotuloProfessor(nome) {
   const raw = String(nome || '').trim()
   if (!raw) return 'Professor(a)'
-  if (/^prof\.?\s/i.test(raw)) return raw
+  if (/^prof.?s/i.test(raw)) return raw
   return `Prof. ${raw}`
 }
 
@@ -928,13 +926,13 @@ function limparRoteiroPei(raw) {
   const text = String(raw || '').trim()
   if (!text) return ''
   const ban =
-    /adaptação pei|observações da coordenação|sugestões dos professores|texto integrado|campos de experiência|metodologia original|dados de entrada:|\[canônico|\[sugestões/i
-  const lines = text.split('\n')
+    /adaptação pei|observações da coordenação|sugestões dos professores|texto integrado|campos de experiência|metodologia original|dados de entrada:|[canônico|[sugestões/i
+  const lines = text.split('n')
   const out = []
   let skipping = false
   for (const ln of lines) {
     const low = ln.trim().toLowerCase()
-    if (ban.test(low) || /^—\s*.+\s*—\s*$/.test(ln.trim())) {
+    if (ban.test(low) || /^—s*.+s*—s*$/.test(ln.trim())) {
       skipping = true
       continue
     }
@@ -944,7 +942,7 @@ function limparRoteiroPei(raw) {
     }
     out.push(ln)
   }
-  const cleaned = out.join('\n').trim()
+  const cleaned = out.join('n').trim()
   return cleaned || text
 }
 
@@ -1030,7 +1028,7 @@ function descricaoCurtaPei(row) {
   if (d) return d
   const canon = String(row.texto_canonico || '').trim()
   if (!canon) return 'Sem descrição.'
-  const line = canon.split('\n').find((l) => l.trim()) || ''
+  const line = canon.split('n').find((l) => l.trim()) || ''
   return line.length > 140 ? `${line.slice(0, 137)}…` : line
 }
 
@@ -1398,6 +1396,7 @@ function MetBody({
 }
 
 function AdaptacoesPraticaPanel({ onToast }) {
+  const INSTITUICAO_ID = useInstituicaoId()
   const [condicoes, setCondicoes] = useState([])
   const [condicao, setCondicao] = useState('TEA')
   const [aeeId, setAeeId] = useState('')

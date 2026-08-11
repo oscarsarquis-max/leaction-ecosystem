@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../lib/api'
+import { useAuth } from '../../lib/auth'
+import { listarMeusCursos } from '../../services/instituicoesService'
 import DictationField from '../DictationField'
 import FieldHelp from '../FieldHelp'
 import VinculoPedagogicoSelector from '../VinculoPedagogicoSelector'
@@ -35,7 +37,10 @@ export default function StepProblema({
   busy,
   error,
 }) {
+  const { user } = useAuth()
+  const isInstitutional = Boolean(user?.is_institutional || user?.instituicao_b2b_id)
   const [metodologias, setMetodologias] = useState([])
+  const [cursosProf, setCursosProf] = useState([])
 
   useEffect(() => {
     let cancelled = false
@@ -52,6 +57,39 @@ export default function StepProblema({
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await listarMeusCursos()
+        if (!cancelled) {
+          setCursosProf(Array.isArray(data?.cursos) ? data.cursos : [])
+        }
+      } catch {
+        if (!cancelled) setCursosProf([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const opcoesCurso = useMemo(() => {
+    const nomes = []
+    const seen = new Set()
+    for (const c of cursosProf) {
+      const nome = String(c?.nome || '').trim()
+      if (!nome || seen.has(nome.toLowerCase())) continue
+      seen.add(nome.toLowerCase())
+      nomes.push(nome)
+    }
+    const atual = String(turmaNivel || '').trim()
+    if (atual && !seen.has(atual.toLowerCase())) {
+      nomes.unshift(atual)
+    }
+    return nomes
+  }, [cursosProf, turmaNivel])
 
   function usarExemplo() {
     onProblemaChange(EXEMPLO_PROBLEMA)
@@ -79,7 +117,11 @@ export default function StepProblema({
       <div className="space-y-5 rounded-2xl border border-brand-200 bg-white/90 p-6 shadow-soft">
         <VinculoPedagogicoSelector
           disciplinaId={disciplinaId}
-          onChange={onDisciplinaChange}
+          onChange={(id, meta) => {
+            onDisciplinaChange?.(id, meta)
+            const cursoNome = String(meta?.curso_nome || '').trim()
+            if (cursoNome) onTurmaNivelChange?.(cursoNome)
+          }}
           autoDefault
         />
 
@@ -138,16 +180,33 @@ export default function StepProblema({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="turmaNivel" className="field-label">
-                Turma / nível
+                Curso
               </label>
-              <DictationField
+              <select
                 id="turmaNivel"
-                type="text"
                 className="field-input"
-                placeholder="Ex.: 8º ano, 2º ano do Ensino Médio, graduação"
-                value={turmaNivel}
-                onChange={onTurmaNivelChange}
-              />
+                value={turmaNivel || ''}
+                disabled={busy}
+                onChange={(e) => onTurmaNivelChange?.(e.target.value)}
+              >
+                <option value="">
+                  {opcoesCurso.length
+                    ? 'Selecione um curso'
+                    : isInstitutional
+                      ? 'Nenhum curso alocado pela escola ainda'
+                      : 'Nenhum curso cadastrado — use Instituições'}
+                </option>
+                {opcoesCurso.map((nome) => (
+                  <option key={nome} value={nome}>
+                    {nome}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-bordo-soft">
+                {isInstitutional
+                  ? 'Somente cursos em que a escola vinculou você (Secretaria).'
+                  : 'Somente cursos que você cadastrou (professor solo).'}
+              </p>
             </div>
             <div>
               <label htmlFor="duracao" className="field-label">

@@ -9,14 +9,14 @@ import TeamManagement from './pages/TeamManagement'
 import PedagogicalEditor from './pages/PedagogicalEditor'
 import SecretariaOperacional from './pages/SecretariaOperacional'
 import Market from './pages/Market'
+import SemPermissao from './pages/SemPermissao'
 
 function ZoneGate({ zonasRequired, children }) {
   const { user } = useAuth()
-  const location = useLocation()
   const zonas = user?.zonas || []
 
   if (!hasAnyZona(zonas, zonasRequired)) {
-    return <Navigate to={firstAccessiblePath(zonas)} replace state={{ from: location }} />
+    return <SemPermissao zonasRequired={zonasRequired} />
   }
   return children
 }
@@ -40,8 +40,19 @@ function ProtectedShell() {
   }
 
   const zonas = user?.zonas || []
-  if (!pathAllowed(location.pathname, zonas) && location.pathname !== '/') {
-    return <Navigate to={firstAccessiblePath(zonas)} replace />
+
+  // Autenticado sem nenhuma zona ativa
+  if (!zonas.length && location.pathname !== '/sem-permissao') {
+    return <Navigate to="/sem-permissao" replace />
+  }
+
+  if (
+    zonas.length &&
+    !pathAllowed(location.pathname, zonas) &&
+    location.pathname !== '/' &&
+    location.pathname !== '/sem-permissao'
+  ) {
+    return <SemPermissao />
   }
 
   const gestorNome = user?.cargo
@@ -64,7 +75,7 @@ function HomeEntry() {
   const { user } = useAuth()
   const zonas = user?.zonas || []
   if (!pathAllowed('/', zonas)) {
-    return <Navigate to={firstAccessiblePath(zonas)} replace />
+    return <SemPermissao zonasRequired={['pedagogico']} />
   }
   return <Dashboard />
 }
@@ -79,6 +90,7 @@ export default function App() {
           {/* Full-bleed: fora do AdminLayout; gate próprio (sessão + zona administrativo) */}
           <Route path="/market" element={<Market />} />
           <Route element={<ProtectedShell />}>
+            <Route path="sem-permissao" element={<SemPermissao />} />
             <Route
               index
               element={

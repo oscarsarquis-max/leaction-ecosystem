@@ -5,7 +5,7 @@ Especialização por instituição: school_metodologias_org
   • ativo_dia_a_dia / ativo_desafio
   • uso_estrelas (1–3)
 
-Auth real ainda não existe: instituicao_id na URL (interino).
+Instituição da sessão (zona pedagógico); UUID na URL validado contra a sessão.
 """
 from __future__ import annotations
 
@@ -18,11 +18,21 @@ from typing import Any
 from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import Json, RealDictCursor
 
+from auth_guards import require_zona, resolve_instituicao_id
 from db import get_conn
 
 bp = Blueprint("metodologias", __name__)
 
 FAMILIAS = ("Indutivas", "Agilidade", "Contextuais", "Dedutivas")
+
+
+@bp.before_request
+def _authz_metodologias():
+    # Catálogo público global sem tenant — sem login.
+    if request.path.rstrip("/").endswith("/metodologias-catalogo"):
+        return None
+    # Demais rotas deste blueprint exigem zona pedagógica.
+    return require_zona("pedagogico")(lambda *a, **k: None)()
 
 
 def _parse_uuid(value: str, label: str):
@@ -47,13 +57,22 @@ def _instituicao_exists(cur: Any, instituicao_id: uuid.UUID) -> bool:
     return cur.fetchone() is not None
 
 
-def _dev_instituicao_id() -> str:
-    user = session.get("school_gestor") or {}
-    return str(
-        user.get("instituicao_id")
-        or os.getenv("DEV_INSTITUICAO_ID")
-        or "a1111111-1111-4111-8111-111111111111"
-    ).strip()
+def _session_instituicao_id() -> str:
+    """Instituição da sessão. Sem fallback hardcode."""
+    resolved = resolve_instituicao_id()
+    if isinstance(resolved, tuple):
+        return ""
+    return resolved
+
+
+def _bound_instituicao(instituicao_id: str):
+    inst = resolve_instituicao_id(instituicao_id)
+    if isinstance(inst, tuple):
+        return inst
+    parsed = _parse_uuid(inst, "instituição")
+    if not isinstance(parsed, uuid.UUID):
+        return parsed
+    return parsed
 
 
 def _normalize_passos(raw: Any) -> list[Any] | None:
@@ -421,7 +440,7 @@ def list_catalogo():
 
 @bp.get("/api/instituicoes/<instituicao_id>/metodologias")
 def list_instituicao_metodologias(instituicao_id: str):
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    parsed = _bound_instituicao(instituicao_id)
     if not isinstance(parsed, uuid.UUID):
         return parsed
 
@@ -437,13 +456,13 @@ def list_instituicao_metodologias(instituicao_id: str):
 @bp.get("/api/pedagogico/metodologias")
 def list_pedagogico_metodologias():
     """Alias do Editor Pedagógico — usa instituição da sessão / DEV."""
-    return list_instituicao_metodologias(_dev_instituicao_id())
+    return list_instituicao_metodologias(_session_instituicao_id())
 
 
 @bp.post("/api/instituicoes/<instituicao_id>/metodologias")
 def create_instituicao_metodologia(instituicao_id: str):
     """Cria metodologia da escola. Não altera a referência inove4us."""
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    parsed = _bound_instituicao(instituicao_id)
     if not isinstance(parsed, uuid.UUID):
         return parsed
 
@@ -570,7 +589,7 @@ def create_instituicao_metodologia(instituicao_id: str):
 
 @bp.put("/api/instituicoes/<instituicao_id>/metodologias/<metodologia_catalogo_id>")
 def upsert_instituicao_metodologia(instituicao_id: str, metodologia_catalogo_id: str):
-    parsed_inst = _parse_uuid(instituicao_id, "instituição")
+    parsed_inst = _bound_instituicao(instituicao_id)
     if not isinstance(parsed_inst, uuid.UUID):
         return parsed_inst
     parsed_met = _parse_uuid(metodologia_catalogo_id, "metodologia")
@@ -814,14 +833,13 @@ def adaptar_metodologia_ia(metodologia_id: str):
     if not isinstance(body, dict):
         return jsonify({"error": "Dados inválidos"}), 400
 
-    inst_raw = (
-        body.get("instituicao_id")
-        or request.args.get("instituicao_id")
-        or _dev_instituicao_id()
+    claimed = body.get("instituicao_id") or request.args.get("instituicao_id")
+    bound = _bound_instituicao(claimed) if claimed else _bound_instituicao(
+        _session_instituicao_id()
     )
-    parsed_inst = _parse_uuid(str(inst_raw), "instituição")
-    if not isinstance(parsed_inst, uuid.UUID):
-        return parsed_inst
+    if not isinstance(bound, uuid.UUID):
+        return bound
+    parsed_inst = bound
 
     sugestao = str(body.get("sugestao") or body.get("sugestao_professor") or "").strip()
     sugestoes_raw = body.get("sugestoes") or body.get("sugestoes_aceitas") or []

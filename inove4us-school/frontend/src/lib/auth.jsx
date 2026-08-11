@@ -83,3 +83,9 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth fora de AuthProvider')
   return ctx
 }
+
+/** Instituição da sessão do gestor — nunca usar UUID fixo / VITE_INSTITUICAO_ID. */
+export function useInstituicaoId() {
+  const { user } = useAuth()
+  return user?.instituicao_id || null
+}

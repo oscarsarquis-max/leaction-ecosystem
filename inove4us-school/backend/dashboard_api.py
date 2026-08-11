@@ -1,7 +1,7 @@
-"""Dashboard — calendário pedagógico consolidado.
+"""Dashboard — calendário pedagógico consolidado (zona pedagógico).
 
-Fonte: school_planos_aula_espelhados (espelho local). Sem sync B2C ainda.
-Auth interina: instituicao_id / unidade_id na URL.
+Fonte: school_planos_aula_espelhados (espelho local).
+Instituição/unidade vêm da sessão; UUID na URL só é aceito se bater com a sessão.
 """
 from __future__ import annotations
 
@@ -13,9 +13,77 @@ from typing import Any
 from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
 
+from auth_guards import (
+    require_zona,
+    resolve_instituicao_id,
+    resolve_unidade_id,
+)
 from db import get_conn
 
 bp = Blueprint("dashboard", __name__)
+
+
+@bp.before_request
+@require_zona("pedagogico")
+def _authz_dashboard():
+    return None
+
+def _bound_instituicao(instituicao_id: str):
+    inst = resolve_instituicao_id(instituicao_id)
+    if isinstance(inst, tuple):
+        return inst
+    parsed = _parse_uuid(inst, "instituição")
+    if not isinstance(parsed, uuid.UUID):
+        return parsed
+    return parsed
+
+
+def _bound_unidade(unidade_id: str):
+    """Unidade deve pertencer à instituição da sessão e respeitar escopo do gestor."""
+    parsed = _parse_uuid(unidade_id, "unidade")
+    if not isinstance(parsed, uuid.UUID):
+        return parsed
+    escopo = resolve_unidade_id(str(parsed))
+    if isinstance(escopo, tuple):
+        return escopo
+    inst = resolve_instituicao_id()
+    if isinstance(inst, tuple):
+        return inst
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, instituicao_id FROM public.school_unidades
+                WHERE id = %s AND ativo = TRUE
+                """,
+                (str(parsed),),
+            )
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"error": "Unidade não encontrada"}), 404
+            if str(row["instituicao_id"]) != inst:
+                return (
+                    jsonify(
+                        {
+                            "error": "Unidade fora do escopo da sessão.",
+                            "code": "FORBIDDEN_INSTITUICAO",
+                        }
+                    ),
+                    403,
+                )
+    return parsed
+
+
+def _unidade_filtro_da_request():
+    """Query unidade_id + escopo do gestor. Retorna uuid|None ou (resp, code)."""
+    claimed = (request.args.get("unidade_id") or "").strip() or None
+    resolved = resolve_unidade_id(claimed)
+    if isinstance(resolved, tuple):
+        return resolved
+    if not resolved:
+        return None
+    return _parse_uuid(resolved, "unidade")
+
 
 _PLANOS_SELECT = """
 SELECT
@@ -278,23 +346,31 @@ JOIN public.school_unidades u ON u.id = t.unidade_id
 
 @bp.get("/api/instituicoes/<instituicao_id>/unidades")
 def list_unidades(instituicao_id: str):
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    inst = resolve_instituicao_id(instituicao_id)
+    if isinstance(inst, tuple):
+        return inst
+    parsed = _parse_uuid(inst, "instituição")
     if not isinstance(parsed, uuid.UUID):
         return parsed
+    escopo = resolve_unidade_id()
+    if isinstance(escopo, tuple):
+        return escopo
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             if not _instituicao_exists(cur, parsed):
                 return jsonify({"error": "Instituição não encontrada"}), 404
-            cur.execute(
-                """
+            sql = """
                 SELECT id, nome, codigo, cidade, uf
                 FROM public.school_unidades
                 WHERE instituicao_id = %s AND ativo = TRUE
-                ORDER BY nome
-                """,
-                (str(parsed),),
-            )
+            """
+            params: list[Any] = [str(parsed)]
+            if escopo:
+                sql += " AND id = %s"
+                params.append(escopo)
+            sql += " ORDER BY nome"
+            cur.execute(sql, params)
             rows = cur.fetchall()
 
     return jsonify(
@@ -313,7 +389,7 @@ def list_unidades(instituicao_id: str):
 
 @bp.get("/api/unidades/<unidade_id>/calendario-pedagogico")
 def calendario_pedagogico(unidade_id: str):
-    parsed = _parse_uuid(unidade_id, "unidade")
+    parsed = _bound_unidade(unidade_id)
     if not isinstance(parsed, uuid.UUID):
         return parsed
     periodo = _resolver_periodo()
@@ -343,7 +419,7 @@ def calendario_pedagogico(unidade_id: str):
 
 @bp.get("/api/unidades/<unidade_id>/calendario-pedagogico/resumo")
 def calendario_pedagogico_resumo(unidade_id: str):
-    parsed = _parse_uuid(unidade_id, "unidade")
+    parsed = _bound_unidade(unidade_id)
     if not isinstance(parsed, uuid.UUID):
         return parsed
     periodo = _resolver_periodo()
@@ -372,7 +448,7 @@ def calendario_pedagogico_resumo(unidade_id: str):
 
 @bp.get("/api/instituicoes/<instituicao_id>/calendario-pedagogico")
 def calendario_instituicao(instituicao_id: str):
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    parsed = _bound_instituicao(instituicao_id)
     if not isinstance(parsed, uuid.UUID):
         return parsed
     periodo = _resolver_periodo()
@@ -380,12 +456,9 @@ def calendario_instituicao(instituicao_id: str):
         return periodo
     data_inicio, data_fim = periodo
 
-    unidade_raw = (request.args.get("unidade_id") or "").strip()
-    unidade_id = None
-    if unidade_raw:
-        unidade_id = _parse_uuid(unidade_raw, "unidade")
-        if not isinstance(unidade_id, uuid.UUID):
-            return unidade_id
+    unidade_id = _unidade_filtro_da_request()
+    if isinstance(unidade_id, tuple):
+        return unidade_id
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -429,7 +502,7 @@ def calendario_instituicao(instituicao_id: str):
 
 @bp.get("/api/instituicoes/<instituicao_id>/calendario-pedagogico/resumo")
 def calendario_instituicao_resumo(instituicao_id: str):
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    parsed = _bound_instituicao(instituicao_id)
     if not isinstance(parsed, uuid.UUID):
         return parsed
     periodo = _resolver_periodo()
@@ -437,12 +510,9 @@ def calendario_instituicao_resumo(instituicao_id: str):
         return periodo
     data_inicio, data_fim = periodo
 
-    unidade_raw = (request.args.get("unidade_id") or "").strip()
-    unidade_id = None
-    if unidade_raw:
-        unidade_id = _parse_uuid(unidade_raw, "unidade")
-        if not isinstance(unidade_id, uuid.UUID):
-            return unidade_id
+    unidade_id = _unidade_filtro_da_request()
+    if isinstance(unidade_id, tuple):
+        return unidade_id
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -485,7 +555,7 @@ def calendario_instituicao_resumo(instituicao_id: str):
 @bp.get("/api/instituicoes/<instituicao_id>/planos-espelhados/<plano_id>")
 def plano_espelhado_detail(instituicao_id: str, plano_id: str):
     """Detalhe do espelho: mesa completa + diário de bordo + flag de curadoria."""
-    inst = _parse_uuid(instituicao_id, "instituição")
+    inst = _bound_instituicao(instituicao_id)
     if not isinstance(inst, uuid.UUID):
         return inst
     pid = _parse_uuid(plano_id, "plano")
@@ -567,9 +637,12 @@ def plano_espelhado_detail(instituicao_id: str, plano_id: str):
 @bp.get("/api/instituicoes/<instituicao_id>/resumo-consolidado")
 def resumo_consolidado(instituicao_id: str):
     """Visão consolidada do Radar — contadores dos módulos da Torre."""
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    parsed = _bound_instituicao(instituicao_id)
     if not isinstance(parsed, uuid.UUID):
         return parsed
+    unidade_escopo = resolve_unidade_id()
+    if isinstance(unidade_escopo, tuple):
+        return unidade_escopo
 
     hoje = date.today()
     inicio_semana = hoje - timedelta(days=hoje.weekday())
@@ -579,25 +652,47 @@ def resumo_consolidado(instituicao_id: str):
             if not _instituicao_exists(cur, parsed):
                 return jsonify({"error": "Instituição não encontrada"}), 404
 
-            cur.execute(
-                """
-                SELECT COUNT(*)::int AS n
-                FROM public.school_unidades
-                WHERE instituicao_id = %s AND ativo = TRUE
-                """,
-                (str(parsed),),
-            )
+            if unidade_escopo:
+                cur.execute(
+                    """
+                    SELECT COUNT(*)::int AS n
+                    FROM public.school_unidades
+                    WHERE instituicao_id = %s AND ativo = TRUE AND id = %s
+                    """,
+                    (str(parsed), unidade_escopo),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT COUNT(*)::int AS n
+                    FROM public.school_unidades
+                    WHERE instituicao_id = %s AND ativo = TRUE
+                    """,
+                    (str(parsed),),
+                )
             unidades = int((cur.fetchone() or {}).get("n") or 0)
 
-            cur.execute(
-                """
-                SELECT COUNT(*)::int AS n
-                FROM public.school_turmas t
-                JOIN public.school_unidades u ON u.id = t.unidade_id
-                WHERE u.instituicao_id = %s AND t.ativa = TRUE
-                """,
-                (str(parsed),),
-            )
+            if unidade_escopo:
+                cur.execute(
+                    """
+                    SELECT COUNT(*)::int AS n
+                    FROM public.school_turmas t
+                    JOIN public.school_unidades u ON u.id = t.unidade_id
+                    WHERE u.instituicao_id = %s AND t.ativa = TRUE
+                      AND t.unidade_id = %s
+                    """,
+                    (str(parsed), unidade_escopo),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT COUNT(*)::int AS n
+                    FROM public.school_turmas t
+                    JOIN public.school_unidades u ON u.id = t.unidade_id
+                    WHERE u.instituicao_id = %s AND t.ativa = TRUE
+                    """,
+                    (str(parsed),),
+                )
             turmas_ativas = int((cur.fetchone() or {}).get("n") or 0)
 
             cur.execute(
@@ -667,16 +762,13 @@ def resumo_consolidado(instituicao_id: str):
 @bp.get("/api/instituicoes/<instituicao_id>/curadoria-pendente")
 def curadoria_pendente(instituicao_id: str):
     """Fila unificada: curadoria metodologia + PEI com status_analise = pendente."""
-    parsed = _parse_uuid(instituicao_id, "instituição")
+    parsed = _bound_instituicao(instituicao_id)
     if not isinstance(parsed, uuid.UUID):
         return parsed
 
-    unidade_raw = (request.args.get("unidade_id") or "").strip()
-    unidade_id = None
-    if unidade_raw:
-        unidade_id = _parse_uuid(unidade_raw, "unidade")
-        if not isinstance(unidade_id, uuid.UUID):
-            return unidade_id
+    unidade_id = _unidade_filtro_da_request()
+    if isinstance(unidade_id, tuple):
+        return unidade_id
 
     itens: list[dict[str, Any]] = []
     with get_conn() as conn:

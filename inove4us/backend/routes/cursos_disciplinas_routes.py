@@ -69,6 +69,71 @@ def _forbid_institutional_write():
     return None
 
 
+def _sql_escopo_curso(
+    alias: str = "c", *, id_clie: int | None = None
+) -> tuple[str, list[Any]]:
+    """
+    Solo: só curso cadastrado pelo próprio professor.
+    Vinculado (escola): só cursos para os quais a Secretaria alocou o professor.
+    Retorna (fragmento SQL, params extras).
+    """
+    cid = int(id_clie if id_clie is not None else _id_clie())
+    if _is_institutional_session():
+        return (
+            f" AND {alias}.id IN ("
+            f" SELECT a.curso_id FROM public.inove_alocacoes_escola a"
+            f"  WHERE a.id_clie = %s AND a.ativo = TRUE"
+            f"    AND a.curso_id IS NOT NULL"
+            f" )",
+            [cid],
+        )
+    return (
+        f" AND COALESCE({alias}.origem_school, FALSE) = FALSE"
+        f" AND {alias}.school_curso_id IS NULL",
+        [],
+    )
+
+
+def _sql_escopo_disciplina(
+    alias: str = "d", *, id_clie: int | None = None
+) -> tuple[str, list[Any]]:
+    cid = int(id_clie if id_clie is not None else _id_clie())
+    if _is_institutional_session():
+        return (
+            f" AND {alias}.id IN ("
+            f" SELECT a.disciplina_id FROM public.inove_alocacoes_escola a"
+            f"  WHERE a.id_clie = %s AND a.ativo = TRUE"
+            f"    AND a.disciplina_id IS NOT NULL"
+            f" )",
+            [cid],
+        )
+    return (
+        f" AND COALESCE({alias}.origem_school, FALSE) = FALSE"
+        f" AND {alias}.school_disciplina_id IS NULL",
+        [],
+    )
+
+
+def _sql_escopo_turma(
+    alias: str = "t", *, id_clie: int | None = None
+) -> tuple[str, list[Any]]:
+    cid = int(id_clie if id_clie is not None else _id_clie())
+    if _is_institutional_session():
+        return (
+            f" AND {alias}.id IN ("
+            f" SELECT a.turma_id FROM public.inove_alocacoes_escola a"
+            f"  WHERE a.id_clie = %s AND a.ativo = TRUE"
+            f"    AND a.turma_id IS NOT NULL"
+            f" )",
+            [cid],
+        )
+    return (
+        f" AND COALESCE({alias}.origem_school, FALSE) = FALSE"
+        f" AND {alias}.school_turma_id IS NULL",
+        [],
+    )
+
+
 def _jsonable(row: dict | None) -> dict | None:
     if not row:
         return None
@@ -114,7 +179,8 @@ def _get_periodo_owned(cur, periodo_id: int, id_clie: int):
 
 
 def _get_curso_owned(cur, curso_id: int, id_clie: int, *, include_inactive: bool = False):
-    sql = """
+    escopo_sql, escopo_params = _sql_escopo_curso("c", id_clie=id_clie)
+    sql = f"""
         SELECT c.*,
                p.id AS periodo_letivo_id,
                p.rotulo AS periodo_rotulo,
@@ -125,15 +191,17 @@ def _get_curso_owned(cur, curso_id: int, id_clie: int, *, include_inactive: bool
           JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
           JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
          WHERE c.id = %s AND i.id_clie = %s
+               {escopo_sql}
     """
     if not include_inactive:
         sql += " AND c.ativo = TRUE AND p.ativo = TRUE AND i.ativo = TRUE"
-    cur.execute(sql, (curso_id, id_clie))
+    cur.execute(sql, (curso_id, id_clie, *escopo_params))
     return cur.fetchone()
 
 
 def _get_disciplina_owned(cur, disciplina_id: int, id_clie: int, *, include_inactive: bool = False):
-    sql = """
+    escopo_sql, escopo_params = _sql_escopo_disciplina("d", id_clie=id_clie)
+    sql = f"""
         SELECT d.*,
                c.id AS curso_id,
                c.nome AS curso_nome,
@@ -145,10 +213,11 @@ def _get_disciplina_owned(cur, disciplina_id: int, id_clie: int, *, include_inac
           JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
           JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
          WHERE d.id = %s AND i.id_clie = %s
+               {escopo_sql}
     """
     if not include_inactive:
         sql += " AND d.ativo = TRUE AND c.ativo = TRUE AND p.ativo = TRUE AND i.ativo = TRUE"
-    cur.execute(sql, (disciplina_id, id_clie))
+    cur.execute(sql, (disciplina_id, id_clie, *escopo_params))
     return cur.fetchone()
 
 
@@ -244,8 +313,9 @@ def listar_cursos(periodo_id: int):
                 periodo = _get_periodo_owned(cur, periodo_id, _id_clie())
                 if not periodo:
                     return jsonify({"error": "Período letivo não encontrado."}), 404
+                escopo_sql, escopo_params = _sql_escopo_curso("c")
                 cur.execute(
-                    """
+                    f"""
                     SELECT c.*,
                            (
                              SELECT COUNT(*)::int
@@ -258,20 +328,76 @@ def listar_cursos(periodo_id: int):
                               WHERE t.curso_id = c.id AND t.ativo = TRUE
                            ) AS turmas_count
                       FROM public.inove_cursos c
-                     WHERE c.periodo_letivo_id = %s AND c.ativo = TRUE
+                      JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
+                      JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+                     WHERE c.periodo_letivo_id = %s
+                       AND c.ativo = TRUE
+                       AND i.id_clie = %s
+                       AND i.ativo = TRUE
+                       AND p.ativo = TRUE
+                       {escopo_sql}
                      ORDER BY c.nome ASC, c.id ASC
                     """,
-                    (periodo_id,),
+                    (periodo_id, _id_clie(), *escopo_params),
                 )
                 rows = cur.fetchall() or []
         return jsonify({
             "periodo_letivo_id": periodo_id,
             "cursos": [_jsonable(r) for r in rows],
+            "source": "alocacoes_escola" if _is_institutional_session() else "professor",
         })
     except pg_errors.UndefinedTable:
         return jsonify({"error": "Schema pendente.", "code": "schema_pending"}), 503
     except Exception as exc:
         print(f"[cursos] listar: {exc}")
+        return jsonify({"error": "Falha ao listar cursos."}), 500
+
+
+@cursos_disciplinas_bp.get("/api/me/cursos")
+@require_session
+def listar_meus_cursos():
+    """Cursos do professor: solo = cadastro próprio; vinculado = só alocados pela escola."""
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                escopo_sql, escopo_params = _sql_escopo_curso("c")
+                cur.execute(
+                    f"""
+                    SELECT c.id,
+                           c.nome,
+                           c.nivel,
+                           c.periodo_letivo_id,
+                           p.rotulo AS periodo_rotulo,
+                           p.ano_letivo,
+                           i.id AS instituicao_id,
+                           i.nome AS instituicao_nome
+                      FROM public.inove_cursos c
+                      JOIN public.inove_periodos_letivos p ON p.id = c.periodo_letivo_id
+                      JOIN public.inove_instituicoes i ON i.id = p.instituicao_id
+                     WHERE i.id_clie = %s
+                       AND c.ativo = TRUE
+                       AND p.ativo = TRUE
+                       AND i.ativo = TRUE
+                       {escopo_sql}
+                     ORDER BY i.nome, p.ano_letivo DESC, c.nome, c.id
+                    """,
+                    (_id_clie(), *escopo_params),
+                )
+                rows = cur.fetchall() or []
+        return jsonify({
+            "cursos": [_jsonable(r) for r in rows],
+            "source": (
+                "alocacoes_escola" if _is_institutional_session() else "professor"
+            ),
+        })
+    except pg_errors.UndefinedTable:
+        return jsonify({
+            "error": "Schema pendente.",
+            "code": "schema_pending",
+            "cursos": [],
+        }), 503
+    except Exception as exc:
+        print(f"[cursos] listar_meus: {exc}")
         return jsonify({"error": "Falha ao listar cursos."}), 500
 
 
@@ -489,19 +615,22 @@ def listar_disciplinas(curso_id: int):
                 curso = _get_curso_owned(cur, curso_id, _id_clie())
                 if not curso:
                     return jsonify({"error": "Curso não encontrado."}), 404
+                escopo_sql, escopo_params = _sql_escopo_disciplina("d")
                 cur.execute(
-                    """
-                    SELECT *
-                      FROM public.inove_disciplinas
-                     WHERE curso_id = %s AND ativo = TRUE
-                     ORDER BY nome ASC, id ASC
+                    f"""
+                    SELECT d.*
+                      FROM public.inove_disciplinas d
+                     WHERE d.curso_id = %s AND d.ativo = TRUE
+                       {escopo_sql}
+                     ORDER BY d.nome ASC, d.id ASC
                     """,
-                    (curso_id,),
+                    (curso_id, *escopo_params),
                 )
                 rows = cur.fetchall() or []
         return jsonify({
             "curso_id": curso_id,
             "disciplinas": [_jsonable(r) for r in rows],
+            "source": "alocacoes_escola" if _is_institutional_session() else "professor",
         })
     except pg_errors.UndefinedTable:
         return jsonify({"error": "Schema pendente.", "code": "schema_pending"}), 503
@@ -668,17 +797,23 @@ def listar_turmas(curso_id: int):
                 curso = _get_curso_owned(cur, curso_id, _id_clie())
                 if not curso:
                     return jsonify({"error": "Curso não encontrado."}), 404
+                escopo_sql, escopo_params = _sql_escopo_turma("t")
                 cur.execute(
-                    """
+                    f"""
                     SELECT t.*
                       FROM public.inove_turmas t
                      WHERE t.curso_id = %s AND t.ativo = TRUE
+                       {escopo_sql}
                      ORDER BY t.nome ASC, t.id ASC
                     """,
-                    (curso_id,),
+                    (curso_id, *escopo_params),
                 )
                 rows = cur.fetchall() or []
-        return jsonify({"curso_id": curso_id, "turmas": [_jsonable(r) for r in rows]})
+        return jsonify({
+            "curso_id": curso_id,
+            "turmas": [_jsonable(r) for r in rows],
+            "source": "alocacoes_escola" if _is_institutional_session() else "professor",
+        })
     except pg_errors.UndefinedTable:
         return jsonify({
             "error": "Schema pendente. Aplique a migration 027.",
@@ -879,8 +1014,10 @@ def listar_minhas_turmas():
 
         with get_conn() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                escopo_t, params_t = _sql_escopo_turma("t")
+                escopo_c, params_c = _sql_escopo_curso("c")
                 cur.execute(
-                    """
+                    f"""
                     SELECT t.id,
                            t.nome,
                            t.turno,
@@ -898,12 +1035,17 @@ def listar_minhas_turmas():
                        AND c.ativo = TRUE
                        AND p.ativo = TRUE
                        AND i.ativo = TRUE
+                       {escopo_t}
+                       {escopo_c}
                      ORDER BY i.nome, p.ano_letivo DESC, c.nome, t.nome
                     """,
-                    (_id_clie(),),
+                    (_id_clie(), *params_t, *params_c),
                 )
                 rows = cur.fetchall() or []
-        return jsonify({"turmas": [_jsonable(r) for r in rows]})
+        return jsonify({
+            "turmas": [_jsonable(r) for r in rows],
+            "source": "alocacoes_escola" if _is_institutional_session() else "professor",
+        })
     except pg_errors.UndefinedTable:
         return jsonify({
             "error": "Schema pendente. Aplique a migration 027/029.",

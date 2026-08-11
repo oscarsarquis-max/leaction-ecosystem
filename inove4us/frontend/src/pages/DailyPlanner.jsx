@@ -22,6 +22,7 @@ import {
   planejarAula,
   sugerirDinamicas,
 } from '../services/dailyService'
+import { listarMinhasTurmas } from '../services/instituicoesService'
 
 /** Alinhado a daily_routes.py / migration 007 */
 const LIMITS = {
@@ -353,6 +354,8 @@ export default function DailyPlanner() {
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackBusy, setFeedbackBusy] = useState(false)
   const [feedbackAula, setFeedbackAula] = useState(null)
+  const [turmasCadastro, setTurmasCadastro] = useState([])
+  const [turmasLoading, setTurmasLoading] = useState(true)
 
   const isInProgress = form.status === 'em_execucao' || form.status === 'in_progress'
   const isCompleted = form.status === 'realizado' || form.status === 'completed'
@@ -361,6 +364,16 @@ export default function DailyPlanner() {
     () => parseEmentaTopicos(form.ementa_texto),
     [form.ementa_texto],
   )
+  /** Turmas cadastradas; se a disciplina tiver alocação, prioriza as dela. */
+  const turmasOpcoes = useMemo(() => {
+    if (!form.disciplina_id) return turmasCadastro
+    const filtradas = turmasCadastro.filter(
+      (t) =>
+        t.disciplina_id == null ||
+        String(t.disciplina_id) === String(form.disciplina_id),
+    )
+    return filtradas.length ? filtradas : turmasCadastro
+  }, [turmasCadastro, form.disciplina_id])
 
   const applyForm = useCallback((next, kanbanState = null) => {
     const nextTasks = buildCycleTasks(next, kanbanState)
@@ -377,6 +390,29 @@ export default function DailyPlanner() {
   }
 
   // Mantém o resumo dos cards alinhado ao texto do formulário
+  useEffect(() => {
+    let cancelled = false
+    setTurmasLoading(true)
+    listarMinhasTurmas()
+      .then((data) => {
+        if (cancelled) return
+        setTurmasCadastro(Array.isArray(data?.turmas) ? data.turmas : [])
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (!isSchemaPendingError(err)) {
+          console.warn('[DailyPlanner] turmas:', err?.message)
+        }
+        setTurmasCadastro([])
+      })
+      .finally(() => {
+        if (!cancelled) setTurmasLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   useEffect(() => {
     if (loading) return
     setTasks((prev) => buildCycleTasks(form, { tarefas: prev }))
@@ -818,8 +854,8 @@ export default function DailyPlanner() {
       <main className="mx-auto max-w-6xl px-4 pb-20 pt-6 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-600">
-              Vetor Dia a Dia · atividade de uma aula
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-700">
+              Seu dia a dia (aulas curriculares)
             </p>
             <h1 className="font-display text-3xl font-bold text-bordo-deep">
               {isInProgress
@@ -992,16 +1028,46 @@ export default function DailyPlanner() {
               </label>
               <label className="block">
                 <span className="field-label">Turma (time)</span>
-                <input
-                  className="field-input mt-1 min-h-11"
-                  value={form.turma_nome}
-                  onChange={(e) =>
-                    setField('turma_nome', e.target.value.slice(0, LIMITS.turma_nome))
-                  }
-                  placeholder="Ex.: 7º A"
-                  maxLength={LIMITS.turma_nome}
-                />
-                <CharHint value={form.turma_nome} max={LIMITS.turma_nome} />
+                {turmasOpcoes.length > 0 || turmasLoading ? (
+                  <select
+                    className="field-input mt-1 min-h-11"
+                    value={form.turma_nome}
+                    onChange={(e) => setField('turma_nome', e.target.value)}
+                    disabled={turmasLoading || isInProgress || isCompleted}
+                    required
+                  >
+                    <option value="">
+                      {turmasLoading ? 'Carregando turmas…' : 'Selecione a turma…'}
+                    </option>
+                    {turmasOpcoes.map((t) => {
+                      const label = [t.curso_nome, t.nome, t.turno, t.disciplina_nome]
+                        .filter(Boolean)
+                        .join(' · ')
+                      return (
+                        <option key={t.id || `${t.nome}-${t.curso_id}`} value={t.nome}>
+                          {label}
+                        </option>
+                      )
+                    })}
+                    {form.turma_nome &&
+                    !turmasOpcoes.some((t) => t.nome === form.turma_nome) ? (
+                      <option value={form.turma_nome}>
+                        {form.turma_nome} (não está no cadastro)
+                      </option>
+                    ) : null}
+                  </select>
+                ) : (
+                  <div className="mt-1 rounded-xl border border-dashed border-brand-200 bg-brand-50/40 px-3 py-3 text-sm text-bordo-soft">
+                    Nenhuma turma cadastrada.{' '}
+                    <Link
+                      to="/instituicoes"
+                      className="font-semibold text-bordo underline-offset-2 hover:underline"
+                    >
+                      Cadastre em Instituições
+                    </Link>{' '}
+                    (curso → turmas) para selecionar aqui.
+                  </div>
+                )}
               </label>
             </div>
 
