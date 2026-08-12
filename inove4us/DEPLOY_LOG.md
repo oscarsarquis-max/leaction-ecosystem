@@ -4,6 +4,7 @@ Registro operacional de deploys. Uma linha por promoção a produção.
 
 | Data (UTC-3) | Versão | Tag Git | SHA | Ambiente | Resumo | Quem |
 |--------------|--------|---------|-----|----------|--------|------|
+| 2026-08-12 | 2.2.0 | lancamento-2026-08-12 | 5c47834 | prod | ECR `v2.2.0` · ECS `:26` · N:N curso-disciplina (`033`) + chaves School na task; site trancado | Cursor |
 | 2026-08-10 | 2.1.5 | (main) | 1732903 | prod | ECR `v2.1.5` · ECS `:25` · restaura Sonnet no wizard (reverte Haiku/SLA 30s) | Cursor |
 | 2026-08-10 | 2.1.4 | (main) | fe303d3 | prod | ECR `v2.1.4` · ECS `:24` · pad wizard legível (sem colagem de fragmentos) | Cursor |
 | 2026-08-10 | 2.1.3 | (main) | 4e7358b | prod | ECR `v2.1.3` · ECS `:23` · wizard SLA 30s (Haiku) + freemium Dia a Dia só navegação | Cursor |

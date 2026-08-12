@@ -27,26 +27,31 @@ function Invoke-Ssh([string]$Cmd) {
     if ($LASTEXITCODE -ne 0) { throw "SSH falhou: $Cmd" }
 }
 
-Write-Host "==> DNS $Domain -> $ServerHost (zona $DnsZone)" -ForegroundColor Cyan
-$zoneId = aws route53 list-hosted-zones-by-name --dns-name "$DnsZone." --query "HostedZones[0].Id" --output text
-$zoneId = $zoneId -replace '/hostedzone/', ''
-if (-not $zoneId) { throw "Hosted zone nao encontrada: $DnsZone" }
-$change = @{
-  Comment = "school public endpoint"
-  Changes = @(@{
-    Action = 'UPSERT'
-    ResourceRecordSet = @{
-      Name = "$Domain."
-      Type = 'A'
-      TTL = 60
-      ResourceRecords = @(@{ Value = $ServerHost })
-    }
-  })
-} | ConvertTo-Json -Depth 8 -Compress
-$changeFile = Join-Path $env:TEMP 'school-dns.json'
-[System.IO.File]::WriteAllText($changeFile, $change)
-aws route53 change-resource-record-sets --hosted-zone-id $zoneId --change-batch "file://$changeFile" | Out-Null
-Write-Host "DNS UPSERT ok"
+$awsCmd = Get-Command aws -ErrorAction SilentlyContinue
+if (-not $awsCmd) {
+    Write-Host "==> AWS CLI ausente - pulando UPSERT DNS. Dominio ja deve apontar para $ServerHost" -ForegroundColor Yellow
+} else {
+    Write-Host "==> DNS $Domain -> $ServerHost (zona $DnsZone)" -ForegroundColor Cyan
+    $zoneId = aws route53 list-hosted-zones-by-name --dns-name "$DnsZone." --query "HostedZones[0].Id" --output text
+    $zoneId = $zoneId -replace '/hostedzone/', ''
+    if (-not $zoneId) { throw "Hosted zone nao encontrada: $DnsZone" }
+    $change = @{
+      Comment = "school public endpoint"
+      Changes = @(@{
+        Action = 'UPSERT'
+        ResourceRecordSet = @{
+          Name = "$Domain."
+          Type = 'A'
+          TTL = 60
+          ResourceRecords = @(@{ Value = $ServerHost })
+        }
+      })
+    } | ConvertTo-Json -Depth 8 -Compress
+    $changeFile = Join-Path $env:TEMP 'school-dns.json'
+    [System.IO.File]::WriteAllText($changeFile, $change)
+    aws route53 change-resource-record-sets --hosted-zone-id $zoneId --change-batch "file://$changeFile" | Out-Null
+    Write-Host "DNS UPSERT ok"
+}
 
 Write-Host "==> Empacotando school (tar.gz)" -ForegroundColor Cyan
 $tarPath = Join-Path $env:TEMP 'inove4us-school-deploy.tar.gz'
