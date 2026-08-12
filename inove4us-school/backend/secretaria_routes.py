@@ -6,8 +6,11 @@ alocações, comunicações e planejamento escolar.
 """
 from __future__ import annotations
 
+import csv
+import io
 import json
 import os
+import unicodedata
 import uuid
 from datetime import date, datetime, time
 from functools import wraps
@@ -45,9 +48,210 @@ CAL_TIPOS = frozenset({"letivo", "feriado", "avaliacao", "evento"})
 PLAN_TIPOS = frozenset({"aula", "evento"})
 PLAN_STATUS = frozenset({"rascunho", "enviado", "erro"})
 
+IMPORT_ALUNOS_MAX_LINHAS = 2000
+IMPORT_NOME_ALIASES = frozenset({"nome", "name"})
+IMPORT_MATRICULA_ALIASES = frozenset({"matricula", "ra"})
+IMPORT_NASC_ALIASES = frozenset(
+    {"data_nascimento", "nascimento", "data de nascimento", "dt_nasc"}
+)
+
 
 # Zona operacional — Secretaria Acadêmica (inclui planejamento escolar).
 require_gestor = require_zona("operacional")
+
+
+def _strip_accents(value: str) -> str:
+    norm = unicodedata.normalize("NFKD", value or "")
+    return "".join(ch for ch in norm if not unicodedata.combining(ch))
+
+
+def _norm_header(value: str) -> str:
+    raw = _strip_accents(str(value or "")).strip().lower()
+    return " ".join(raw.split())
+
+
+def _decode_csv_bytes(raw: bytes) -> str:
+    for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("latin-1", errors="replace")
+
+
+def _detect_csv_delimiter(sample: str) -> str:
+    first = ""
+    for line in sample.splitlines():
+        if line.strip():
+            first = line
+            break
+    if first.count(";") > first.count(","):
+        return ";"
+    return ","
+
+
+def _parse_import_date(value: Any) -> tuple[date | None, str | None]:
+    """Retorna (date|None, erro|None). Vazio → (None, None)."""
+    raw = _text(value)
+    if not raw:
+        return None, None
+    if len(raw) >= 10 and raw[4] == "-" and raw[7] == "-":
+        try:
+            return date.fromisoformat(raw[:10]), None
+        except ValueError:
+            return None, "data_nascimento inválida"
+    if len(raw) >= 10 and raw[2] == "/" and raw[5] == "/":
+        try:
+            d, m, y = raw[:10].split("/")
+            return date(int(y), int(m), int(d)), None
+        except (ValueError, TypeError):
+            return None, "data_nascimento inválida"
+    return None, "data_nascimento inválida"
+
+
+def _parse_alunos_csv(text: str) -> tuple[list[dict[str, Any]] | None, str | None]:
+    """Parse CSV → lista de dicts brutos {linha, nome, matricula, data_nascimento_raw}."""
+    if not (text or "").strip():
+        return None, "Arquivo CSV vazio"
+    delim = _detect_csv_delimiter(text)
+    reader = csv.reader(io.StringIO(text), delimiter=delim)
+    try:
+        header_row = next(reader)
+    except StopIteration:
+        return None, "Arquivo CSV vazio"
+
+    headers = [_norm_header(h) for h in header_row]
+    col_nome = next((i for i, h in enumerate(headers) if h in IMPORT_NOME_ALIASES), None)
+    col_mat = next(
+        (i for i, h in enumerate(headers) if h in IMPORT_MATRICULA_ALIASES), None
+    )
+    col_nasc = next((i for i, h in enumerate(headers) if h in IMPORT_NASC_ALIASES), None)
+    if col_nome is None or col_mat is None:
+        return None, "Cabeçalho inválido: é obrigatório ter colunas nome e matricula"
+
+    rows: list[dict[str, Any]] = []
+    for idx, cells in enumerate(reader, start=2):
+        if not cells or all(not str(c or "").strip() for c in cells):
+            continue
+        def _cell(i: int | None) -> str:
+            if i is None or i >= len(cells):
+                return ""
+            return str(cells[i] or "").strip()
+
+        rows.append(
+            {
+                "linha": idx,
+                "nome": _cell(col_nome),
+                "matricula": _cell(col_mat),
+                "data_nascimento_raw": _cell(col_nasc) if col_nasc is not None else "",
+            }
+        )
+        if len(rows) > IMPORT_ALUNOS_MAX_LINHAS:
+            return None, f"Limite de {IMPORT_ALUNOS_MAX_LINHAS} linhas úteis excedido"
+
+    return rows, None
+
+
+def _validate_alunos_import_rows(
+    raw_rows: list[dict[str, Any]],
+    existing_by_mat: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Valida linhas; existing_by_mat: matricula_lower → aluno_id."""
+    seen_mats: dict[str, int] = {}
+    out: list[dict[str, Any]] = []
+    for raw in raw_rows:
+        linha = int(raw.get("linha") or 0)
+        nome = _text(raw.get("nome"))
+        matricula = _text(raw.get("matricula"))
+        nasc_raw = raw.get("data_nascimento_raw")
+        if nasc_raw is None and "data_nascimento" in raw:
+            nasc_raw = raw.get("data_nascimento")
+        nasc_date, nasc_err = _parse_import_date(nasc_raw)
+
+        item: dict[str, Any] = {
+            "linha": linha,
+            "nome": nome or None,
+            "matricula": matricula or None,
+            "data_nascimento": nasc_date.isoformat() if nasc_date else None,
+            "status": "ok",
+            "acao": None,
+            "erro": None,
+            "aluno_id_existente": None,
+        }
+
+        if not nome:
+            item["status"] = "erro"
+            item["erro"] = "nome vazio"
+            out.append(item)
+            continue
+        if not matricula:
+            item["status"] = "erro"
+            item["erro"] = "matrícula vazia"
+            out.append(item)
+            continue
+        if nasc_err:
+            item["status"] = "erro"
+            item["erro"] = nasc_err
+            out.append(item)
+            continue
+
+        mat_key = matricula.casefold()
+        if mat_key in seen_mats:
+            item["status"] = "erro"
+            item["erro"] = "matrícula duplicada no arquivo"
+            out.append(item)
+            continue
+        seen_mats[mat_key] = linha
+
+        existing_id = existing_by_mat.get(mat_key)
+        if existing_id:
+            item["acao"] = "atualizar"
+            item["aluno_id_existente"] = existing_id
+        else:
+            item["acao"] = "criar"
+        out.append(item)
+    return out
+
+
+def _import_resumo(linhas: list[dict[str, Any]]) -> dict[str, int]:
+    ok = sum(1 for L in linhas if L.get("status") == "ok")
+    erro = sum(1 for L in linhas if L.get("status") == "erro")
+    novos = sum(1 for L in linhas if L.get("acao") == "criar")
+    atualizacoes = sum(1 for L in linhas if L.get("acao") == "atualizar")
+    return {
+        "total": len(linhas),
+        "ok": ok,
+        "erro": erro,
+        "novos": novos,
+        "atualizacoes": atualizacoes,
+    }
+
+
+def _load_turma_contexto(cur: Any, inst: str, turma_id: uuid.UUID):
+    cur.execute(
+        """
+        SELECT id, nome FROM public.school_turmas
+        WHERE id = %s AND instituicao_id = %s
+        """,
+        (str(turma_id), inst),
+    )
+    return cur.fetchone()
+
+
+def _load_matriculas_existentes(cur: Any, inst: str) -> dict[str, str]:
+    cur.execute(
+        """
+        SELECT id, matricula FROM public.school_alunos
+        WHERE instituicao_id = %s
+        """,
+        (inst,),
+    )
+    out: dict[str, str] = {}
+    for r in cur.fetchall():
+        key = _text(r["matricula"]).casefold()
+        if key:
+            out[key] = str(r["id"])
+    return out
 
 
 def _instituicao_id() -> str:
@@ -218,13 +422,294 @@ def create_unidade():
     )
 
 
+EQUIPE_PAPEIS = frozenset({"gestor_principal", "gestor_academico", "coordenador"})
+
+
+def _unidade_no_escopo(uid: uuid.UUID):
+    """Valida escopo de unidade do gestor. Retorna None ou (response, status)."""
+    escopo = _unidade_escopo()
+    if isinstance(escopo, tuple):
+        return escopo
+    if escopo and str(uid) != str(escopo):
+        return jsonify({"error": "Unidade fora do escopo"}), 403
+    return None
+
+
+def _equipe_unique_error(exc: Exception) -> str:
+    cname = str(getattr(getattr(exc, "diag", None), "constraint_name", "") or "")
+    if "um_principal" in cname:
+        return "Já existe um gestor principal ativo nesta unidade"
+    if "um_academico" in cname:
+        return "Já existe um gestor acadêmico ativo nesta unidade"
+    if "gestor_papel" in cname:
+        return "Este gestor já está na equipe com este papel"
+    return "Conflito de unicidade na equipe gestora"
+
+
+def _serialize_unidade_lista(row: dict[str, Any]) -> dict[str, Any]:
+    """Shape estável do GET lista / create / update (compatibilidade)."""
+    return {
+        "id": str(row["id"]),
+        "nome": row["nome"],
+        "endereco": row.get("endereco") or "",
+        "codigo": row.get("codigo"),
+        "cidade": row.get("cidade"),
+        "uf": row.get("uf"),
+        "ativo": bool(row["ativo"]),
+    }
+
+
+@bp.get("/api/secretaria/unidades/<item_id>")
+@require_gestor
+def get_unidade(item_id: str):
+    """Ficha da unidade: institucional + equipe + cursos + resumo (1 CTE, sem N+1)."""
+    inst = _instituicao_id()
+    uid = _parse_uuid(item_id, "unidade")
+    if not uid:
+        return jsonify({"error": "Identificador inválido"}), 400
+    denied = _unidade_no_escopo(uid)
+    if denied:
+        return denied
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                WITH unidade AS (
+                    SELECT
+                        u.id,
+                        u.nome,
+                        u.codigo,
+                        u.ativo,
+                        u.cidade,
+                        u.uf,
+                        u.endereco,
+                        u.logradouro,
+                        u.numero,
+                        u.bairro,
+                        u.cep,
+                        u.telefone,
+                        u.email_institucional
+                    FROM public.school_unidades u
+                    WHERE u.id = %s AND u.instituicao_id = %s
+                ),
+                cursos_u AS (
+                    SELECT
+                        c.id,
+                        c.nome,
+                        c.periodo_letivo_id AS periodo_id,
+                        p.rotulo AS periodo_rotulo
+                    FROM public.school_cursos c
+                    JOIN public.school_periodos_letivos p
+                      ON p.id = c.periodo_letivo_id
+                    JOIN unidade u ON p.unidade_id = u.id
+                    WHERE c.ativo = TRUE
+                ),
+                curso_stats AS (
+                    SELECT
+                        cu.id,
+                        cu.nome,
+                        cu.periodo_id,
+                        cu.periodo_rotulo,
+                        (
+                            SELECT count(*)::int
+                            FROM public.school_turmas t
+                            WHERE t.curso_id = cu.id
+                              AND t.unidade_id = (SELECT id FROM unidade)
+                              AND t.ativa = TRUE
+                        ) AS n_turmas,
+                        (
+                            SELECT count(*)::int
+                            FROM public.school_disciplinas d
+                            WHERE d.curso_id = cu.id
+                              AND d.ativo = TRUE
+                        ) AS n_disciplinas
+                    FROM cursos_u cu
+                ),
+                disc_ids AS (
+                    SELECT d.id
+                    FROM public.school_disciplinas d
+                    WHERE d.ativo = TRUE
+                      AND d.curso_id IN (SELECT id FROM cursos_u)
+                    UNION
+                    SELECT a.disciplina_id AS id
+                    FROM public.school_alocacoes_docentes a
+                    JOIN unidade u ON a.unidade_id = u.id
+                    WHERE a.ativo = TRUE
+                ),
+                resumo AS (
+                    SELECT
+                        (SELECT count(*)::int FROM cursos_u) AS cursos,
+                        (
+                            SELECT count(*)::int
+                            FROM public.school_turmas t
+                            JOIN unidade u ON t.unidade_id = u.id
+                            WHERE t.ativa = TRUE
+                        ) AS turmas,
+                        (SELECT count(*)::int FROM disc_ids) AS disciplinas,
+                        (
+                            SELECT count(*)::int
+                            FROM public.school_alunos a
+                            JOIN public.school_turmas t ON t.id = a.turma_id
+                            JOIN unidade u ON t.unidade_id = u.id
+                            WHERE a.ativo = TRUE
+                        ) AS alunos,
+                        (
+                            SELECT count(DISTINCT a.professor_vinculo_id)::int
+                            FROM public.school_alocacoes_docentes a
+                            JOIN unidade u ON a.unidade_id = u.id
+                            WHERE a.ativo = TRUE
+                        ) AS professores_alocados
+                ),
+                equipe AS (
+                    SELECT
+                        e.id,
+                        e.papel,
+                        e.gestor_id,
+                        COALESCE(g.nome, e.nome) AS nome,
+                        COALESCE(g.email::text, e.email) AS email,
+                        e.telefone,
+                        e.area_coordenacao,
+                        (e.gestor_id IS NOT NULL) AS tem_login,
+                        CASE e.papel
+                            WHEN 'gestor_principal' THEN 1
+                            WHEN 'gestor_academico' THEN 2
+                            ELSE 3
+                        END AS papel_ord
+                    FROM public.school_unidade_equipe e
+                    LEFT JOIN public.school_gestores g ON g.id = e.gestor_id
+                    JOIN unidade u ON e.unidade_id = u.id
+                    WHERE e.ativo = TRUE
+                )
+                SELECT
+                    (SELECT row_to_json(u) FROM unidade u) AS unidade,
+                    (
+                        SELECT COALESCE(
+                            json_agg(
+                                json_build_object(
+                                    'id', cs.id,
+                                    'nome', cs.nome,
+                                    'periodo_id', cs.periodo_id,
+                                    'periodo_rotulo', cs.periodo_rotulo,
+                                    'n_turmas', cs.n_turmas,
+                                    'n_disciplinas', cs.n_disciplinas
+                                )
+                                ORDER BY cs.nome
+                            ),
+                            '[]'::json
+                        )
+                        FROM curso_stats cs
+                    ) AS cursos,
+                    (SELECT row_to_json(r) FROM resumo r) AS resumo,
+                    (
+                        SELECT COALESCE(
+                            json_agg(
+                                json_build_object(
+                                    'id', eq.id,
+                                    'papel', eq.papel,
+                                    'gestor_id', eq.gestor_id,
+                                    'nome', eq.nome,
+                                    'email', eq.email,
+                                    'telefone', eq.telefone,
+                                    'area_coordenacao', eq.area_coordenacao,
+                                    'tem_login', eq.tem_login
+                                )
+                                ORDER BY eq.papel_ord, eq.nome
+                            ),
+                            '[]'::json
+                        )
+                        FROM equipe eq
+                    ) AS equipe_gestora
+                """,
+                (str(uid), inst),
+            )
+            row = cur.fetchone()
+
+    if not row or not row.get("unidade"):
+        return jsonify({"error": "Unidade não encontrada"}), 404
+
+    u = row["unidade"]
+    equipe = row.get("equipe_gestora") or []
+    cursos = row.get("cursos") or []
+    resumo = row.get("resumo") or {}
+
+    def _as_list(val: Any) -> list:
+        if val is None:
+            return []
+        if isinstance(val, list):
+            return val
+        if isinstance(val, str):
+            return json.loads(val)
+        return list(val)
+
+    equipe_list = _as_list(equipe)
+    cursos_list = _as_list(cursos)
+    if not isinstance(resumo, dict):
+        resumo = json.loads(resumo) if isinstance(resumo, str) else dict(resumo or {})
+
+    return jsonify(
+        {
+            "item": {
+                "id": str(u["id"]),
+                "nome": u.get("nome"),
+                "codigo": u.get("codigo"),
+                "ativo": bool(u.get("ativo")),
+                "cidade": u.get("cidade"),
+                "uf": u.get("uf"),
+                "endereco": u.get("endereco") or "",
+                "logradouro": u.get("logradouro"),
+                "numero": u.get("numero"),
+                "bairro": u.get("bairro"),
+                "cep": u.get("cep"),
+                "telefone": u.get("telefone"),
+                "email_institucional": u.get("email_institucional"),
+                "equipe_gestora": [
+                    {
+                        "id": str(e["id"]),
+                        "papel": e.get("papel"),
+                        "gestor_id": str(e["gestor_id"]) if e.get("gestor_id") else None,
+                        "nome": e.get("nome"),
+                        "email": e.get("email"),
+                        "telefone": e.get("telefone"),
+                        "area_coordenacao": e.get("area_coordenacao"),
+                        "tem_login": bool(e.get("tem_login")),
+                    }
+                    for e in equipe_list
+                ],
+                "cursos": [
+                    {
+                        "id": str(c["id"]),
+                        "nome": c.get("nome"),
+                        "periodo_id": str(c["periodo_id"]) if c.get("periodo_id") else None,
+                        "periodo_rotulo": c.get("periodo_rotulo"),
+                        "n_turmas": int(c.get("n_turmas") or 0),
+                        "n_disciplinas": int(c.get("n_disciplinas") or 0),
+                    }
+                    for c in cursos_list
+                ],
+                "resumo": {
+                    "cursos": int(resumo.get("cursos") or 0),
+                    "turmas": int(resumo.get("turmas") or 0),
+                    "disciplinas": int(resumo.get("disciplinas") or 0),
+                    "alunos": int(resumo.get("alunos") or 0),
+                    "professores_alocados": int(resumo.get("professores_alocados") or 0),
+                },
+            }
+        }
+    )
+
+
 @bp.put("/api/secretaria/unidades/<item_id>")
+@bp.patch("/api/secretaria/unidades/<item_id>")
 @require_gestor
 def update_unidade(item_id: str):
     inst = _instituicao_id()
     uid = _parse_uuid(item_id, "unidade")
     if not uid:
         return jsonify({"error": "Identificador inválido"}), 400
+    denied = _unidade_no_escopo(uid)
+    if denied:
+        return denied
     body = request.get_json(silent=True) or {}
 
     with get_conn() as conn:
@@ -238,6 +723,12 @@ def update_unidade(item_id: str):
                         codigo = CASE WHEN %s THEN %s ELSE codigo END,
                         cidade = CASE WHEN %s THEN %s ELSE cidade END,
                         uf = CASE WHEN %s THEN %s ELSE uf END,
+                        logradouro = CASE WHEN %s THEN %s ELSE logradouro END,
+                        numero = CASE WHEN %s THEN %s ELSE numero END,
+                        bairro = CASE WHEN %s THEN %s ELSE bairro END,
+                        cep = CASE WHEN %s THEN %s ELSE cep END,
+                        telefone = CASE WHEN %s THEN %s ELSE telefone END,
+                        email_institucional = CASE WHEN %s THEN %s ELSE email_institucional END,
                         ativo = COALESCE(%s, ativo),
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s AND instituicao_id = %s
@@ -253,6 +744,18 @@ def update_unidade(item_id: str):
                         _text(body.get("cidade")) or None,
                         "uf" in body,
                         _text(body.get("uf")) or None,
+                        "logradouro" in body,
+                        _text(body.get("logradouro")) or None,
+                        "numero" in body,
+                        _text(body.get("numero")) or None,
+                        "bairro" in body,
+                        _text(body.get("bairro")) or None,
+                        "cep" in body,
+                        _text(body.get("cep")) or None,
+                        "telefone" in body,
+                        _text(body.get("telefone")) or None,
+                        "email_institucional" in body,
+                        _text(body.get("email_institucional")) or None,
                         bool(body["ativo"]) if "ativo" in body else None,
                         str(uid),
                         inst,
@@ -264,15 +767,265 @@ def update_unidade(item_id: str):
                 return jsonify({"error": "Já existe unidade com este nome"}), 409
     if not row:
         return jsonify({"error": "Unidade não encontrada"}), 404
+    return jsonify({"item": _serialize_unidade_lista(row)})
+
+
+@bp.get("/api/secretaria/gestores")
+@require_gestor
+def list_gestores_secretaria():
+    """Picker leve para vincular gestor com login à equipe da unidade."""
+    inst = _instituicao_id()
+    q = _text(request.args.get("q"))
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            sql = """
+                SELECT id, nome, email, cargo
+                FROM public.school_gestores
+                WHERE instituicao_id = %s AND ativo = TRUE
+            """
+            params: list[Any] = [inst]
+            if q:
+                sql += " AND (nome ILIKE %s OR email ILIKE %s)"
+                like = f"%{q}%"
+                params.extend([like, like])
+            sql += " ORDER BY nome ASC LIMIT 100"
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+    return jsonify(
+        {
+            "items": [
+                {
+                    "id": str(r["id"]),
+                    "nome": r["nome"],
+                    "email": r["email"],
+                    "cargo": r.get("cargo"),
+                }
+                for r in rows
+            ]
+        }
+    )
+
+
+@bp.post("/api/secretaria/unidades/<item_id>/equipe")
+@require_gestor
+def create_unidade_equipe(item_id: str):
+    inst = _instituicao_id()
+    uid = _parse_uuid(item_id, "unidade")
+    if not uid:
+        return jsonify({"error": "Identificador inválido"}), 400
+    denied = _unidade_no_escopo(uid)
+    if denied:
+        return denied
+    body = request.get_json(silent=True) or {}
+    papel = _text(body.get("papel"))
+    if papel not in EQUIPE_PAPEIS:
+        return jsonify(
+            {
+                "error": "papel inválido (gestor_principal|gestor_academico|coordenador)",
+            }
+        ), 400
+
+    gestor_id = None
+    if body.get("gestor_id") not in (None, ""):
+        gestor_id = _parse_uuid(body.get("gestor_id"), "gestor")
+        if not gestor_id:
+            return jsonify({"error": "gestor_id inválido"}), 400
+
+    nome = _text(body.get("nome")) or None
+    email = _text(body.get("email")) or None
+    telefone = _text(body.get("telefone")) or None
+    area = _text(body.get("area_coordenacao")) or None
+    if papel != "coordenador":
+        area = None
+
+    if not gestor_id and not nome:
+        return jsonify({"error": "Informe gestor_id ou nome do contato"}), 400
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id FROM public.school_unidades
+                WHERE id = %s AND instituicao_id = %s
+                """,
+                (str(uid), inst),
+            )
+            if not cur.fetchone():
+                return jsonify({"error": "Unidade não encontrada"}), 404
+
+            if gestor_id:
+                cur.execute(
+                    """
+                    SELECT id, nome, email FROM public.school_gestores
+                    WHERE id = %s AND instituicao_id = %s AND ativo = TRUE
+                    """,
+                    (str(gestor_id), inst),
+                )
+                g = cur.fetchone()
+                if not g:
+                    return jsonify({"error": "Gestor não encontrado nesta instituição"}), 404
+                if not nome:
+                    nome = g["nome"]
+                if not email:
+                    email = g["email"]
+
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO public.school_unidade_equipe (
+                        unidade_id, papel, gestor_id, nome, email, telefone, area_coordenacao
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id, papel, gestor_id, nome, email, telefone, area_coordenacao, ativo
+                    """,
+                    (
+                        str(uid),
+                        papel,
+                        str(gestor_id) if gestor_id else None,
+                        nome,
+                        email,
+                        telefone,
+                        area,
+                    ),
+                )
+                row = cur.fetchone()
+            except pg_errors.UniqueViolation as exc:
+                conn.rollback()
+                return jsonify({"error": _equipe_unique_error(exc)}), 409
+            except pg_errors.CheckViolation:
+                conn.rollback()
+                return jsonify({"error": "Dados da equipe inválidos"}), 400
+
+    return (
+        jsonify(
+            {
+                "item": {
+                    "id": str(row["id"]),
+                    "papel": row["papel"],
+                    "gestor_id": str(row["gestor_id"]) if row.get("gestor_id") else None,
+                    "nome": row.get("nome"),
+                    "email": row.get("email"),
+                    "telefone": row.get("telefone"),
+                    "area_coordenacao": row.get("area_coordenacao"),
+                    "tem_login": bool(row.get("gestor_id")),
+                    "ativo": bool(row["ativo"]),
+                }
+            }
+        ),
+        201,
+    )
+
+
+@bp.put("/api/secretaria/unidades/<item_id>/equipe/<equipe_id>")
+@bp.patch("/api/secretaria/unidades/<item_id>/equipe/<equipe_id>")
+@require_gestor
+def update_unidade_equipe(item_id: str, equipe_id: str):
+    inst = _instituicao_id()
+    uid = _parse_uuid(item_id, "unidade")
+    eid = _parse_uuid(equipe_id, "equipe")
+    if not uid or not eid:
+        return jsonify({"error": "Identificador inválido"}), 400
+    denied = _unidade_no_escopo(uid)
+    if denied:
+        return denied
+    body = request.get_json(silent=True) or {}
+
+    papel = None
+    if "papel" in body:
+        papel = _text(body.get("papel"))
+        if papel not in EQUIPE_PAPEIS:
+            return jsonify({"error": "papel inválido"}), 400
+
+    gestor_id_set = "gestor_id" in body
+    gestor_id = None
+    if gestor_id_set:
+        if body.get("gestor_id") in (None, ""):
+            gestor_id = None
+        else:
+            gestor_id = _parse_uuid(body.get("gestor_id"), "gestor")
+            if not gestor_id:
+                return jsonify({"error": "gestor_id inválido"}), 400
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT e.id
+                FROM public.school_unidade_equipe e
+                JOIN public.school_unidades u ON u.id = e.unidade_id
+                WHERE e.id = %s AND e.unidade_id = %s AND u.instituicao_id = %s
+                """,
+                (str(eid), str(uid), inst),
+            )
+            if not cur.fetchone():
+                return jsonify({"error": "Membro da equipe não encontrado"}), 404
+
+            if gestor_id:
+                cur.execute(
+                    """
+                    SELECT id FROM public.school_gestores
+                    WHERE id = %s AND instituicao_id = %s AND ativo = TRUE
+                    """,
+                    (str(gestor_id), inst),
+                )
+                if not cur.fetchone():
+                    return jsonify({"error": "Gestor não encontrado nesta instituição"}), 404
+
+            try:
+                cur.execute(
+                    """
+                    UPDATE public.school_unidade_equipe
+                    SET papel = COALESCE(%s, papel),
+                        gestor_id = CASE WHEN %s THEN %s ELSE gestor_id END,
+                        nome = CASE WHEN %s THEN %s ELSE nome END,
+                        email = CASE WHEN %s THEN %s ELSE email END,
+                        telefone = CASE WHEN %s THEN %s ELSE telefone END,
+                        area_coordenacao = CASE WHEN %s THEN %s ELSE area_coordenacao END,
+                        ativo = COALESCE(%s, ativo),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s AND unidade_id = %s
+                    RETURNING id, papel, gestor_id, nome, email, telefone, area_coordenacao, ativo
+                    """,
+                    (
+                        papel,
+                        gestor_id_set,
+                        str(gestor_id) if gestor_id else None,
+                        "nome" in body,
+                        _text(body.get("nome")) or None if "nome" in body else None,
+                        "email" in body,
+                        _text(body.get("email")) or None if "email" in body else None,
+                        "telefone" in body,
+                        _text(body.get("telefone")) or None if "telefone" in body else None,
+                        "area_coordenacao" in body,
+                        _text(body.get("area_coordenacao")) or None
+                        if "area_coordenacao" in body
+                        else None,
+                        bool(body["ativo"]) if "ativo" in body else None,
+                        str(eid),
+                        str(uid),
+                    ),
+                )
+                row = cur.fetchone()
+            except pg_errors.UniqueViolation as exc:
+                conn.rollback()
+                return jsonify({"error": _equipe_unique_error(exc)}), 409
+            except pg_errors.CheckViolation:
+                conn.rollback()
+                return jsonify({"error": "Dados da equipe inválidos"}), 400
+
+    if not row:
+        return jsonify({"error": "Membro da equipe não encontrado"}), 404
     return jsonify(
         {
             "item": {
                 "id": str(row["id"]),
-                "nome": row["nome"],
-                "endereco": row.get("endereco") or "",
-                "codigo": row.get("codigo"),
-                "cidade": row.get("cidade"),
-                "uf": row.get("uf"),
+                "papel": row["papel"],
+                "gestor_id": str(row["gestor_id"]) if row.get("gestor_id") else None,
+                "nome": row.get("nome"),
+                "email": row.get("email"),
+                "telefone": row.get("telefone"),
+                "area_coordenacao": row.get("area_coordenacao"),
+                "tem_login": bool(row.get("gestor_id")),
                 "ativo": bool(row["ativo"]),
             }
         }
@@ -282,6 +1035,7 @@ def update_unidade(item_id: str):
 # ---------------------------------------------------------------------------
 # Períodos
 # ---------------------------------------------------------------------------
+
 @bp.get("/api/secretaria/periodos")
 @require_gestor
 def list_periodos():
@@ -1225,6 +1979,194 @@ def update_turma(item_id: str):
 
 
 # ---------------------------------------------------------------------------
+# Situação por período (corte do estado atual — não é histórico)
+# ---------------------------------------------------------------------------
+SITUACAO_AVISO = (
+    "Corte do estado atual por período letivo; não é histórico de matrículas."
+)
+
+
+@bp.get("/api/secretaria/situacao-por-periodo")
+@require_gestor
+def situacao_por_periodo():
+    """Agrega turmas/alunos/professores por período (estado atual)."""
+    inst = _instituicao_id()
+    unidade_raw = request.args.get("unidade_id")
+    escopo = _unidade_escopo(unidade_raw)
+    if isinstance(escopo, tuple):
+        return escopo
+    unidade_id = _parse_uuid(escopo or unidade_raw, "unidade") if (escopo or unidade_raw) else None
+    if (escopo or unidade_raw) and not unidade_id:
+        return jsonify({"error": "unidade_id inválido"}), 400
+
+    curso_raw = request.args.get("curso_id")
+    curso_id = None
+    if curso_raw not in (None, ""):
+        curso_id = _parse_uuid(curso_raw, "curso")
+        if not curso_id:
+            return jsonify({"error": "curso_id inválido"}), 400
+
+    uid = str(unidade_id) if unidade_id else None
+    cid = str(curso_id) if curso_id else None
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                WITH periodos AS (
+                    SELECT
+                        p.id,
+                        p.rotulo,
+                        p.ano_letivo,
+                        p.tipo_periodo,
+                        p.status,
+                        p.em_curso,
+                        p.ativo,
+                        p.data_inicio,
+                        p.data_fim,
+                        p.unidade_id,
+                        u.nome AS unidade_nome
+                    FROM public.school_periodos_letivos p
+                    LEFT JOIN public.school_unidades u ON u.id = p.unidade_id
+                    WHERE p.instituicao_id = %s
+                      AND (
+                        %s::uuid IS NULL
+                        OR p.unidade_id = %s::uuid
+                        OR p.unidade_id IS NULL
+                      )
+                ),
+                cursos_c AS (
+                    SELECT c.periodo_letivo_id AS periodo_id, count(*)::int AS n
+                    FROM public.school_cursos c
+                    JOIN periodos p ON p.id = c.periodo_letivo_id
+                    WHERE c.ativo = TRUE
+                      AND (%s::uuid IS NULL OR c.id = %s::uuid)
+                    GROUP BY c.periodo_letivo_id
+                ),
+                turmas_c AS (
+                    SELECT t.periodo_letivo_id AS periodo_id, count(*)::int AS n
+                    FROM public.school_turmas t
+                    JOIN periodos p ON p.id = t.periodo_letivo_id
+                    WHERE t.ativa = TRUE
+                      AND (%s::uuid IS NULL OR t.unidade_id = %s::uuid)
+                      AND (%s::uuid IS NULL OR t.curso_id = %s::uuid)
+                    GROUP BY t.periodo_letivo_id
+                ),
+                alunos_c AS (
+                    SELECT t.periodo_letivo_id AS periodo_id, count(*)::int AS n
+                    FROM public.school_alunos a
+                    JOIN public.school_turmas t ON t.id = a.turma_id
+                    JOIN periodos p ON p.id = t.periodo_letivo_id
+                    WHERE a.ativo = TRUE
+                      AND t.ativa = TRUE
+                      AND (%s::uuid IS NULL OR t.unidade_id = %s::uuid)
+                      AND (%s::uuid IS NULL OR t.curso_id = %s::uuid)
+                    GROUP BY t.periodo_letivo_id
+                ),
+                profs_c AS (
+                    SELECT a.periodo_id, count(DISTINCT a.professor_vinculo_id)::int AS n
+                    FROM public.school_alocacoes_docentes a
+                    JOIN periodos p ON p.id = a.periodo_id
+                    WHERE a.ativo = TRUE
+                      AND (%s::uuid IS NULL OR a.unidade_id = %s::uuid)
+                      AND (
+                        %s::uuid IS NULL
+                        OR (
+                          a.turma_id IS NOT NULL
+                          AND EXISTS (
+                            SELECT 1
+                            FROM public.school_turmas t
+                            WHERE t.id = a.turma_id
+                              AND t.periodo_letivo_id = a.periodo_id
+                              AND t.curso_id = %s::uuid
+                              AND t.ativa = TRUE
+                              AND (%s::uuid IS NULL OR t.unidade_id = %s::uuid)
+                          )
+                        )
+                      )
+                    GROUP BY a.periodo_id
+                )
+                SELECT
+                    p.id AS periodo_id,
+                    p.rotulo,
+                    p.ano_letivo,
+                    p.tipo_periodo,
+                    p.status,
+                    p.em_curso,
+                    p.ativo,
+                    p.data_inicio,
+                    p.data_fim,
+                    p.unidade_id,
+                    p.unidade_nome,
+                    COALESCE(cc.n, 0) AS n_cursos,
+                    COALESCE(tc.n, 0) AS n_turmas,
+                    COALESCE(ac.n, 0) AS n_alunos,
+                    COALESCE(pc.n, 0) AS n_professores
+                FROM periodos p
+                LEFT JOIN cursos_c cc ON cc.periodo_id = p.id
+                LEFT JOIN turmas_c tc ON tc.periodo_id = p.id
+                LEFT JOIN alunos_c ac ON ac.periodo_id = p.id
+                LEFT JOIN profs_c pc ON pc.periodo_id = p.id
+                ORDER BY p.data_inicio DESC, p.rotulo ASC
+                """,
+                (
+                    inst,
+                    uid,
+                    uid,
+                    cid,
+                    cid,
+                    uid,
+                    uid,
+                    cid,
+                    cid,
+                    uid,
+                    uid,
+                    cid,
+                    cid,
+                    uid,
+                    uid,
+                    cid,
+                    cid,
+                    uid,
+                    uid,
+                ),
+            )
+            rows = cur.fetchall()
+
+    return jsonify(
+        {
+            "meta": {
+                "aviso": SITUACAO_AVISO,
+                "filtros": {
+                    "unidade_id": uid,
+                    "curso_id": cid,
+                },
+            },
+            "items": [
+                {
+                    "periodo_id": str(r["periodo_id"]),
+                    "rotulo": r["rotulo"],
+                    "ano_letivo": r["ano_letivo"],
+                    "tipo_periodo": r.get("tipo_periodo"),
+                    "status": r.get("status"),
+                    "em_curso": bool(r.get("em_curso")),
+                    "ativo": bool(r.get("ativo")),
+                    "data_inicio": _iso(r.get("data_inicio")),
+                    "data_fim": _iso(r.get("data_fim")),
+                    "unidade_id": str(r["unidade_id"]) if r.get("unidade_id") else None,
+                    "unidade_nome": r.get("unidade_nome"),
+                    "n_cursos": int(r.get("n_cursos") or 0),
+                    "n_turmas": int(r.get("n_turmas") or 0),
+                    "n_alunos": int(r.get("n_alunos") or 0),
+                    "n_professores": int(r.get("n_professores") or 0),
+                }
+                for r in rows
+            ],
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
 # Alunos
 # ---------------------------------------------------------------------------
 @bp.get("/api/secretaria/alunos")
@@ -1425,9 +2367,188 @@ def update_aluno(item_id: str):
     )
 
 
+@bp.post("/api/secretaria/alunos/importar/preview")
+@require_gestor
+def importar_alunos_preview():
+    """Dry-run: parse CSV + valida linhas sem gravar."""
+    inst = _instituicao_id()
+    turma_raw = request.form.get("turma_id") or request.args.get("turma_id")
+    turma_id = _parse_uuid(turma_raw, "turma")
+    if not turma_id:
+        return jsonify({"error": "turma_id é obrigatório"}), 400
+
+    upload = request.files.get("file")
+    if not upload or not upload.filename:
+        return jsonify({"error": "Arquivo CSV é obrigatório (campo file)"}), 400
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            turma = _load_turma_contexto(cur, inst, turma_id)
+            if not turma:
+                return jsonify({"error": "turma inválida"}), 400
+            existing = _load_matriculas_existentes(cur, inst)
+
+    raw_bytes = upload.read()
+    if not raw_bytes:
+        return jsonify({"error": "Arquivo CSV vazio"}), 400
+
+    text = _decode_csv_bytes(raw_bytes)
+    parsed, parse_err = _parse_alunos_csv(text)
+    if parse_err:
+        return jsonify({"error": parse_err}), 400
+
+    linhas = _validate_alunos_import_rows(parsed or [], existing)
+    return jsonify(
+        {
+            "turma_id": str(turma_id),
+            "turma_nome": turma["nome"],
+            "resumo": _import_resumo(linhas),
+            "linhas": linhas,
+        }
+    )
+
+
+@bp.post("/api/secretaria/alunos/importar/confirmar")
+@require_gestor
+def importar_alunos_confirmar():
+    """Aplica linhas ok do preview em transação atômica (criar + upsert)."""
+    inst = _instituicao_id()
+    body = request.get_json(silent=True) or {}
+    turma_id = _parse_uuid(body.get("turma_id"), "turma")
+    if not turma_id:
+        return jsonify({"error": "turma_id é obrigatório"}), 400
+
+    raw_linhas = body.get("linhas")
+    if not isinstance(raw_linhas, list) or not raw_linhas:
+        return jsonify({"error": "linhas deve ser uma lista não vazia"}), 400
+    if len(raw_linhas) > IMPORT_ALUNOS_MAX_LINHAS:
+        return jsonify(
+            {"error": f"Limite de {IMPORT_ALUNOS_MAX_LINHAS} linhas úteis excedido"}
+        ), 400
+
+    prepared: list[dict[str, Any]] = []
+    for i, row in enumerate(raw_linhas, start=1):
+        if not isinstance(row, dict):
+            return jsonify({"error": f"Linha {i} inválida"}), 400
+        prepared.append(
+            {
+                "linha": int(row.get("linha") or i),
+                "nome": row.get("nome"),
+                "matricula": row.get("matricula"),
+                "data_nascimento": row.get("data_nascimento"),
+                "data_nascimento_raw": row.get("data_nascimento"),
+            }
+        )
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            turma = _load_turma_contexto(cur, inst, turma_id)
+            if not turma:
+                return jsonify({"error": "turma inválida"}), 400
+            existing = _load_matriculas_existentes(cur, inst)
+            validated = _validate_alunos_import_rows(prepared, existing)
+            erros = [L for L in validated if L.get("status") == "erro"]
+            if erros:
+                first = erros[0]
+                return (
+                    jsonify(
+                        {
+                            "error": (
+                                f"Revalidação falhou na linha {first.get('linha')}: "
+                                f"{first.get('erro')}"
+                            ),
+                            "linhas": validated,
+                            "resumo": _import_resumo(validated),
+                        }
+                    ),
+                    400,
+                )
+
+            ok_linhas = [L for L in validated if L.get("status") == "ok"]
+            if not ok_linhas:
+                return jsonify({"error": "Nenhuma linha válida para importar"}), 400
+
+            criados = 0
+            atualizados = 0
+            try:
+                for L in ok_linhas:
+                    nasc = None
+                    if L.get("data_nascimento"):
+                        nasc, _err = _parse_import_date(L.get("data_nascimento"))
+                    if L.get("acao") == "criar":
+                        cur.execute(
+                            """
+                            INSERT INTO public.school_alunos (
+                                instituicao_id, nome, matricula, turma_id, data_nascimento
+                            )
+                            VALUES (%s, %s, %s, %s, %s)
+                            """,
+                            (
+                                inst,
+                                L["nome"],
+                                L["matricula"],
+                                str(turma_id),
+                                nasc,
+                            ),
+                        )
+                        criados += 1
+                    else:
+                        aluno_id = L.get("aluno_id_existente")
+                        if not aluno_id:
+                            raise RuntimeError("aluno_id_existente ausente no upsert")
+                        # data_nascimento: só atualiza se enviada (não apaga com vazio)
+                        cur.execute(
+                            """
+                            UPDATE public.school_alunos
+                            SET nome = %s,
+                                turma_id = %s,
+                                data_nascimento = CASE
+                                    WHEN %s::date IS NOT NULL THEN %s::date
+                                    ELSE data_nascimento
+                                END,
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE id = %s AND instituicao_id = %s
+                            """,
+                            (
+                                L["nome"],
+                                str(turma_id),
+                                nasc,
+                                nasc,
+                                aluno_id,
+                                inst,
+                            ),
+                        )
+                        if cur.rowcount < 1:
+                            raise RuntimeError("Aluno para atualização não encontrado")
+                        atualizados += 1
+            except pg_errors.UniqueViolation:
+                conn.rollback()
+                return jsonify(
+                    {
+                        "error": (
+                            "Conflito de matrícula durante a importação "
+                            "(outro processo pode ter criado a mesma matrícula). "
+                            "Execute o preview novamente."
+                        )
+                    }
+                ), 409
+            except Exception as exc:
+                conn.rollback()
+                return jsonify({"error": f"Falha na importação: {exc}"}), 500
+
+    return jsonify(
+        {
+            "criados": criados,
+            "atualizados": atualizados,
+            "turma_id": str(turma_id),
+        }
+    )
+
+
 # ---------------------------------------------------------------------------
 # Calendário
 # ---------------------------------------------------------------------------
+
 @bp.get("/api/secretaria/calendario")
 @require_gestor
 def list_calendario():
@@ -1915,11 +3036,11 @@ def create_alocacao():
                 return jsonify({"error": "professor inválido ou inativo"}), 400
 
             cur.execute(
-                "SELECT nome FROM public.school_instituicoes WHERE id = %s",
+                "SELECT razao_social FROM public.school_instituicoes WHERE id = %s",
                 (inst,),
             )
-            inst_row = cur.fetchone()
-            instituicao_nome = (inst_row or {}).get("nome")
+            inst_row = cur.fetchone() or {}
+            instituicao_nome = str(inst_row.get("razao_social") or "").strip() or None
 
             turma = None
             if turma_id:

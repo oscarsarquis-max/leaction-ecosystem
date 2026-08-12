@@ -211,8 +211,9 @@ def _row_merged(row: dict[str, Any]) -> dict[str, Any]:
         "roteiro_referencia": passos_ref,
         "passos_execucao": passos_ref,
         "texto_canonico": texto_canonico,
-        # Persistência org: vazio se a escola ainda não adaptou
-        "versao_escola": versao if is_customizado else "",
+        # Campo da escola (sempre preenchido): canônico até a 1ª adaptação salva.
+        "versao_escola": versao if is_customizado else texto_canonico,
+        # Persistência org: só texto próprio da escola (vazio = ainda no padrão).
         "passos_customizados": versao if is_customizado else "",
         "roteiro_adaptado": versao if is_customizado else "",
         "roteiro_em_uso": versao if is_customizado else texto_canonico,
@@ -222,9 +223,10 @@ def _row_merged(row: dict[str, Any]) -> dict[str, Any]:
         "disponivel_desafio": bool(row["disponivel_desafio"]),
         "ativo_dia_a_dia": bool(row["disponivel_dia_a_dia"]),
         "ativo_desafio": bool(row["disponivel_desafio"]),
-        # Dinâmico: engajamento dos professores (curadoria), não o valor estático da org.
+        # Estrelas = histórico de sugestões aceitas; pendentes_count = fila de análise.
         "uso_estrelas": _estrelas_from_count(row.get("sugestoes_count")),
         "sugestoes_count": int(row.get("sugestoes_count") or 0),
+        "pendentes_count": int(row.get("pendentes_count") or 0),
         "is_active": bool(row["is_active"]),
         "adaptada_pela_escola": is_customizado,
         "tem_override_org": tem_override,
@@ -250,6 +252,7 @@ SELECT
     COALESCE(org.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
     COALESCE(org.ativo_desafio, TRUE) AS disponivel_desafio,
     COALESCE(cur.sugestoes_count, 0) AS sugestoes_count,
+    COALESCE(cur.pendentes_count, 0) AS pendentes_count,
     (org.id IS NOT NULL) AS tem_override
 FROM public.school_metodologias_catalogo c
 LEFT JOIN public.school_metodologias_org org
@@ -258,12 +261,14 @@ LEFT JOIN public.school_metodologias_org org
 LEFT JOIN (
     SELECT
         LOWER(TRIM(metodologia_nome)) AS nome_key,
-        COUNT(*)::int AS sugestoes_count
+        COUNT(*) FILTER (
+            WHERE status_analise IN ('incorporada', 'incorporado')
+        )::int AS sugestoes_count,
+        COUNT(*) FILTER (
+            WHERE status_analise IN ('pendente', 'em_analise')
+        )::int AS pendentes_count
     FROM public.school_curadoria_metodologias
     WHERE instituicao_id = %s
-      AND status_analise IN (
-          'pendente', 'em_analise', 'incorporada', 'incorporado'
-      )
     GROUP BY LOWER(TRIM(metodologia_nome))
 ) cur
     ON cur.nome_key = LOWER(TRIM(c.nome))
@@ -292,6 +297,7 @@ SELECT
     COALESCE(org.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
     COALESCE(org.ativo_desafio, TRUE) AS disponivel_desafio,
     COALESCE(cur.sugestoes_count, 0) AS sugestoes_count,
+    COALESCE(cur.pendentes_count, 0) AS pendentes_count,
     (org.id IS NOT NULL) AS tem_override,
     org.id AS org_id,
     cfg.id AS config_id
@@ -305,12 +311,14 @@ LEFT JOIN public.school_metodologia_config cfg
 LEFT JOIN (
     SELECT
         LOWER(TRIM(metodologia_nome)) AS nome_key,
-        COUNT(*)::int AS sugestoes_count
+        COUNT(*) FILTER (
+            WHERE status_analise IN ('incorporada', 'incorporado')
+        )::int AS sugestoes_count,
+        COUNT(*) FILTER (
+            WHERE status_analise IN ('pendente', 'em_analise')
+        )::int AS pendentes_count
     FROM public.school_curadoria_metodologias
     WHERE instituicao_id = %s
-      AND status_analise IN (
-          'pendente', 'em_analise', 'incorporada', 'incorporado'
-      )
     GROUP BY LOWER(TRIM(metodologia_nome))
 ) cur
     ON cur.nome_key = LOWER(TRIM(c.nome))

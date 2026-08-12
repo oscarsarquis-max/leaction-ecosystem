@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import PeiEditorTab from './PeiEditorTab'
 import { useInstituicaoId } from '../lib/auth'
 import { tabClassName } from '../lib/tabs'
@@ -16,8 +17,8 @@ function EstrelasUso({ value }) {
   if (n === 0) {
     return (
       <span
-        className="inline-flex items-center gap-0.5 text-slate-300"
-        title="Ainda sem sugestões de professores"
+        className="inline-flex items-center gap-0.5 text-base leading-none text-slate-300 sm:text-lg"
+        title="Histórico do período: ainda sem sugestões aceitas"
         aria-label="Sem estrelas de uso"
       >
         <span aria-hidden>☆☆☆</span>
@@ -26,8 +27,8 @@ function EstrelasUso({ value }) {
   }
   return (
     <span
-      className="inline-flex items-center gap-0.5 text-amber-500"
-      title={`${n} de 3 — engajamento dos professores`}
+      className="inline-flex items-center gap-0.5 text-base leading-none text-amber-500 sm:text-lg"
+      title={`${n} de 3 — sugestões aceitas no período (histórico)`}
       aria-label={`${n} de 3 estrelas de uso`}
     >
       {[1, 2, 3].map((i) => (
@@ -42,7 +43,7 @@ function EstrelasUso({ value }) {
 function iniciaisNome(nome) {
   const parts = String(nome || '')
     .trim()
-    .split(/s+/)
+    .split(/\s+/)
     .filter(Boolean)
   if (!parts.length) return '?'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
@@ -128,7 +129,7 @@ function textoCanonico(row) {
       return titulo || mec
     })
     .filter(Boolean)
-    .join('n')
+    .join('\n')
 }
 
 /** Aceita só o roteiro unificado da IA — descarta blocos fragmentados legados. */
@@ -136,13 +137,13 @@ function limparRoteiroIntegrado(raw) {
   const text = String(raw || '').trim()
   if (!text) return ''
   const ban =
-    /observações da coordenação|sugestões dos professores|texto integrado da escolas*(rascunho|[canônico|[observações|[sugestões|dados de entrada:/i
-  const lines = text.split('n')
+    /observações da coordenação|sugestões dos professores|texto integrado da escola|rascunho|canônico|dados de entrada:/i
+  const lines = text.split('\n')
   const out = []
   let skipping = false
   for (const ln of lines) {
     const low = ln.trim().toLowerCase()
-    if (ban.test(low) || /^—s*.+s*—s*$/.test(ln.trim())) {
+    if (ban.test(low) || /^—\s*.+\s*—\s*$/.test(ln.trim())) {
       skipping = true
       continue
     }
@@ -152,7 +153,7 @@ function limparRoteiroIntegrado(raw) {
     }
     out.push(ln)
   }
-  const cleaned = out.join('n').trim()
+  const cleaned = out.join('\n').trim()
   return cleaned || text
 }
 
@@ -161,7 +162,7 @@ function descricaoCurta(row) {
   if (d) return d
   const canon = textoCanonico(row)
   if (!canon) return 'Sem descrição.'
-  const line = canon.split('n').find((l) => l.trim()) || ''
+  const line = canon.split('\n').find((l) => l.trim()) || ''
   return line.length > 140 ? `${line.slice(0, 137)}…` : line
 }
 
@@ -442,9 +443,8 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
   return (
     <div className="border-t border-slate-100 bg-white px-4 py-4 sm:px-5">
       <div className="space-y-4">
-        {/* Onde era o canônico: Versão da Escola */}
         <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -460,16 +460,23 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
                 </button>
               </div>
               <p className="mt-0.5 text-[11px] text-slate-500">
-                Texto oficial da metodologia nesta escola. O padrão original inove4us fica no
-                cadeado ao lado.
+                Texto oficial em uso pelo professor. Começa igual ao padrão canônico e muda
+                quando a escola adapta.
               </p>
             </div>
-            <p className="shrink-0 text-xs text-slate-500">
+            <p className="shrink-0 text-xs font-medium text-slate-600">
               {isCustomizado && dataMod
-                ? `Última modificação: ${dataMod}`
-                : 'Usando Padrão Inove4us'}
+                ? `Adaptada · ${dataMod}`
+                : 'Padrão canônico (ainda sem adaptação)'}
             </p>
           </div>
+          <textarea
+            value={draft.versao_escola || ''}
+            onChange={(e) => onDraft({ versao_escola: e.target.value })}
+            rows={12}
+            placeholder="Versão da escola — inicia com o padrão canônico."
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-school-500 focus:ring-2 focus:ring-school-100"
+          />
         </section>
 
         <label className="block">
@@ -485,60 +492,40 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
           />
         </label>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_minmax(17rem,24rem)] lg:items-stretch">
-          <div className="flex min-h-[22rem] flex-col">
-            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">
-              Texto integrado (editável)
-            </span>
-            <p className="mb-1.5 text-[11px] italic text-slate-500">
-              Compose com IA a partir deste texto + coordenação + sugestões; depois revise e salve.
+        <aside className="flex min-h-[14rem] flex-col">
+          <div className="mb-2 shrink-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Sugestões dos Professores
             </p>
-            <textarea
-              value={draft.versao_escola || ''}
-              onChange={(e) => onDraft({ versao_escola: e.target.value })}
-              rows={12}
-              placeholder="Texto da escola — incorpore sugestões e gere a composição."
-              className="min-h-0 w-full flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-school-500 focus:ring-2 focus:ring-school-100"
-            />
+            <p className="mt-0.5 text-xs text-slate-500">
+              Marque com Incorporar e gere a composição no campo Versão da Escola acima.
+              {incorporadas.length
+                ? ` (${incorporadas.length} selecionada${incorporadas.length > 1 ? 's' : ''})`
+                : ''}
+            </p>
           </div>
 
-          <aside className="flex min-h-[22rem] flex-col">
-            <div className="mb-2 shrink-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Sugestões dos Professores
-              </p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Marque com Incorporar. Depois gere o texto integrado.
-                {incorporadas.length
-                  ? ` (${incorporadas.length} selecionada${incorporadas.length > 1 ? 's' : ''})`
-                  : ''}
-              </p>
-            </div>
+          {loadingSug ? <p className="text-xs text-muted">Carregando…</p> : null}
 
-            {loadingSug ? (
-              <p className="text-xs text-muted">Carregando…</p>
-            ) : null}
+          {!loadingSug && !sugestoes.length ? (
+            <p className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-muted">
+              Nenhuma sugestão pendente para esta metodologia.
+            </p>
+          ) : null}
 
-            {!loadingSug && !sugestoes.length ? (
-              <p className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-muted">
-                Nenhuma sugestão pendente para esta metodologia.
-              </p>
-            ) : null}
-
-            <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5">
-              {sugestoes.map((item) => (
-                <li key={item.id}>
-                  <SugestaoCard
-                    item={item}
-                    busy={busyId === item.id}
-                    incorporada={idsIncorporados.has(item.id)}
-                    onIncorporar={(it) => void incorporarSugestao(it)}
-                  />
-                </li>
-              ))}
-            </ul>
-          </aside>
-        </div>
+          <ul className="grid min-h-0 flex-1 gap-3 overflow-y-auto pr-0.5 sm:grid-cols-2 xl:grid-cols-3">
+            {sugestoes.map((item) => (
+              <li key={item.id}>
+                <SugestaoCard
+                  item={item}
+                  busy={busyId === item.id}
+                  incorporada={idsIncorporados.has(item.id)}
+                  onIncorporar={(it) => void incorporarSugestao(it)}
+                />
+              </li>
+            ))}
+          </ul>
+        </aside>
 
         <div>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -583,7 +570,12 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
 
 export default function PedagogicalEditor() {
   const INSTITUICAO_ID = useInstituicaoId()
-  const [pilar, setPilar] = useState('metodologias')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const pilarParam = searchParams.get('pilar')
+  const metParam = (searchParams.get('met') || '').trim()
+  const [pilar, setPilar] = useState(
+    pilarParam === 'pei' ? 'pei' : 'metodologias',
+  )
   const [items, setItems] = useState([])
   const [drafts, setDrafts] = useState({})
   const [expandedId, setExpandedId] = useState(null)
@@ -596,6 +588,12 @@ export default function PedagogicalEditor() {
   const [createForm, setCreateForm] = useState(emptyCreate)
   const [creating, setCreating] = useState(false)
   const [togglingId, setTogglingId] = useState(null)
+
+  useEffect(() => {
+    if (pilarParam === 'pei' || pilarParam === 'metodologias') {
+      setPilar(pilarParam)
+    }
+  }, [pilarParam])
 
   const applyList = useCallback((data) => {
     setItems(data)
@@ -617,7 +615,16 @@ export default function PedagogicalEditor() {
       }
     }
     setDrafts(next)
-  }, [])
+    if (metParam) {
+      const hit = data.find(
+        (r) => String(r.nome || '').trim().toLowerCase() === metParam.toLowerCase(),
+      )
+      if (hit) {
+        setExpandedId(hit.metodologia_id || hit.metodologia_catalogo_id)
+        setFiltro(hit.nome || metParam)
+      }
+    }
+  }, [metParam])
 
   const load = useCallback(async () => {
     if (!INSTITUICAO_ID) {
@@ -769,6 +776,10 @@ export default function PedagogicalEditor() {
                 setPilar(p.id)
                 setError('')
                 setFeedback('')
+                const next = new URLSearchParams(searchParams)
+                next.set('pilar', p.id)
+                if (p.id !== 'metodologias') next.delete('met')
+                setSearchParams(next, { replace: true })
               }}
               className={tabClassName(active)}
             >
@@ -778,7 +789,7 @@ export default function PedagogicalEditor() {
         })}
       </div>
 
-      {pilar === 'pei' ? <PeiEditorTab /> : null}
+      {pilar === 'pei' ? <PeiEditorTab focusMet={metParam} /> : null}
 
       {pilar === 'metodologias' ? (
         <div className="space-y-5">
@@ -960,11 +971,24 @@ export default function PedagogicalEditor() {
               }
               const open = expandedId === id
               const busyToggle = togglingId === id
+              const pendentes = Number(row.pendentes_count) || 0
+              const temPendente = pendentes > 0
+              const versaoStatus =
+                draft.is_customizado || row.is_customizado
+                  ? `Versão da escola · adaptada${
+                      formatDataModificacao(draft.updated_at || row.updated_at)
+                        ? ` em ${formatDataModificacao(draft.updated_at || row.updated_at)}`
+                        : ''
+                    }`
+                  : 'Versão da escola · padrão canônico'
 
               return (
                 <article
                   key={id}
-                  className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                  className={[
+                    'overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm',
+                    temPendente ? 'border-l-[5px] border-l-amber-500 bg-amber-50/35' : '',
+                  ].join(' ')}
                 >
                   <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-4">
                     <button
@@ -982,7 +1006,17 @@ export default function PedagogicalEditor() {
                         </span>
                         <h3 className="text-base font-semibold text-ink">{row.nome}</h3>
                         <EstrelasUso value={row.uso_estrelas} />
+                        {temPendente ? (
+                          <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                            {pendentes === 1
+                              ? '1 sugestão p/ análise'
+                              : `${pendentes} sugestões p/ análise`}
+                          </span>
+                        ) : null}
                       </div>
+                      <p className="mt-1 pl-5 text-xs font-medium text-slate-600">
+                        {versaoStatus}
+                      </p>
                       <p className="mt-1 line-clamp-2 pl-5 text-sm text-muted">
                         {descricaoCurta(row)}
                       </p>

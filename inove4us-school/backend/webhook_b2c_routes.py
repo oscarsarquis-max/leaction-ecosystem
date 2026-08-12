@@ -213,13 +213,16 @@ def _resolve_metodologia(
             return str(row["id"]), str(row["nome"] or nome)
 
     if nome:
+        # Catálogo seed usa origem='padrao' (não 'inove4us').
         cur.execute(
             """
             SELECT id, nome FROM public.school_metodologias_catalogo
             WHERE ativo IS TRUE
               AND lower(nome) = lower(%s)
               AND (
-                    origem = 'inove4us'
+                    COALESCE(origem, '') IN (
+                        'inove4us', 'padrao', 'referencia_inove4us', 'escola'
+                    )
                  OR instituicao_origem_id = %s::uuid
               )
             ORDER BY CASE WHEN origem = 'escola' THEN 0 ELSE 1 END
@@ -230,13 +233,35 @@ def _resolve_metodologia(
         row = cur.fetchone()
         if row:
             return str(row["id"]), str(row["nome"] or nome)
+        # Fallback: match por codigo (ex.: agil_minute_paper)
+        codigo = str(
+            payload.get("metodologia_codigo")
+            or payload.get("metodologia_key")
+            or mesa.get("metodologia_codigo")
+            or mesa.get("metodologia_key")
+            or ""
+        ).strip()
+        if codigo:
+            cur.execute(
+                """
+                SELECT id, nome FROM public.school_metodologias_catalogo
+                WHERE ativo IS TRUE AND lower(codigo) = lower(%s)
+                LIMIT 1
+                """,
+                (codigo,),
+            )
+            row = cur.fetchone()
+            if row:
+                return str(row["id"]), str(row["nome"] or nome)
 
     cur.execute(
         """
         SELECT id, nome FROM public.school_metodologias_catalogo
         WHERE ativo IS TRUE
           AND (
-                origem = 'inove4us'
+                COALESCE(origem, '') IN (
+                    'inove4us', 'padrao', 'referencia_inove4us', 'escola'
+                )
              OR instituicao_origem_id = %s::uuid
           )
         ORDER BY nome ASC
@@ -300,6 +325,11 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
     if teacher_text_preview:
         has_adapt = True
     desafio_grupo = _as_uuid(payload.get("desafio_grupo_id") or mesa.get("desafio_grupo_id"))
+    # chk_school_planos_aula_desafio_cadeia: desafio <=> desafio_grupo_id NOT NULL
+    if tipo_aula == "desafio" and not desafio_grupo:
+        tipo_aula = "dia_a_dia"
+    if tipo_aula == "dia_a_dia":
+        desafio_grupo = None
     desafio_titulo = str(
         payload.get("desafio_titulo") or mesa.get("desafio_titulo") or ""
     ).strip() or None
@@ -309,6 +339,9 @@ def _handle_lesson_record_sync(payload: dict) -> dict:
             desafio_seq = int(desafio_seq)
         except (TypeError, ValueError):
             desafio_seq = None
+    if tipo_aula != "desafio":
+        desafio_titulo = None
+        desafio_seq = None
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:

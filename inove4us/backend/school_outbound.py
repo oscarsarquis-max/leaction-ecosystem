@@ -64,7 +64,7 @@ def dispatch_event_to_school(event_type: str, payload: dict[str, Any]) -> dict[s
     try:
         token = sign_bridge_jwt(event_type=event, payload=body_payload)
     except RuntimeError as exc:
-        print(f"[b2c→school] config: {exc}", file=sys.stderr, flush=True)
+        print(f"[b2c->school] config: {exc}", file=sys.stderr, flush=True)
         return {"ok": False, "error": str(exc)}
 
     url = school_webhook_url()
@@ -83,7 +83,8 @@ def dispatch_event_to_school(event_type: str, payload: dict[str, Any]) -> dict[s
     try:
         res = requests.post(url, json=body, headers=headers, timeout=5.0)
         ok = 200 <= res.status_code < 300
-        print(f"[b2c→school] {event} → {url} http={res.status_code}", flush=True)
+        # ASCII only: console Windows (cp1252) quebra com setas Unicode no print.
+        print(f"[b2c->school] {event} -> {url} http={res.status_code}", flush=True)
         return {
             "ok": ok,
             "status_code": res.status_code,
@@ -91,7 +92,7 @@ def dispatch_event_to_school(event_type: str, payload: dict[str, Any]) -> dict[s
             "response": (res.text or "")[:300],
         }
     except requests.RequestException as exc:
-        print(f"[b2c→school] falha de rede {event}: {exc}", file=sys.stderr, flush=True)
+        print(f"[b2c->school] falha de rede {event}: {exc}", file=sys.stderr, flush=True)
         return {"ok": False, "error": str(exc), "event_type": event}
 
 
@@ -251,10 +252,17 @@ def dispatch_lesson_record_sync(
 
     cards = _cards_snapshot_from_evento(evento)
 
+    # Cadeia School: desafio exige desafio_grupo_id; aula avulsa/Dia a Dia não.
+    raw_desafio = evento.get("desafio_id") or evento.get("desafio_grupo_id")
+    desafio_grupo_id = None
+    if raw_desafio not in (None, ""):
+        desafio_grupo_id = str(raw_desafio).strip() or None
+    tipo_aula = "desafio" if desafio_grupo_id else "dia_a_dia"
+
     mesa = {
         "id": str(evento.get("id_evento") or ""),
         "titulo": evento.get("titulo") or "",
-        "tipo_aula": "desafio",
+        "tipo_aula": tipo_aula,
         "status": mesa_status,
         "metodologia_nome": met_nome,
         "semana_referencia": str(evento.get("data_evento") or "")[:10] or None,
@@ -271,6 +279,7 @@ def dispatch_lesson_record_sync(
         "participantes": evento.get("participantes"),
         "professor_id": str(id_clie),
         "professor_nome": prof_nome,
+        "desafio_grupo_id": desafio_grupo_id,
         "cards": cards,
         "kanban_cards": cards,
     }
@@ -288,7 +297,8 @@ def dispatch_lesson_record_sync(
         "metodologia_nome": met_nome,
         "metodologia_usada": met_nome,
         "semana_referencia": mesa["semana_referencia"],
-        "tipo_aula": "desafio",
+        "tipo_aula": tipo_aula,
+        "desafio_grupo_id": desafio_grupo_id,
         "status": payload_status,
         "conteudo_resumo": evento.get("titulo") or met_nome,
         "has_teacher_adaptations": has_adapt,

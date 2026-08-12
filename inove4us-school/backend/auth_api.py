@@ -102,7 +102,8 @@ def login():
 def me():
     user = session.get(SESSION_KEY)
     if not user:
-        return jsonify({"authenticated": False}), 401
+        # 200 (não 401): visita anônima é estado normal; evita ruído no DevTools.
+        return jsonify({"authenticated": False, "user": None})
     return jsonify({"authenticated": True, "user": user})
 
 

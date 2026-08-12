@@ -47,12 +47,10 @@ export function AuthProvider({ children }) {
     ;(async () => {
       try {
         const res = await fetch('/api/auth/me', { credentials: 'include' })
-        if (res.ok) {
-          const body = await res.json()
-          if (!cancelled && body.user) setUser(body.user)
-        } else if (!cancelled && !readStored()) {
-          setUser(null)
-        }
+        const body = res.ok ? await res.json().catch(() => ({})) : {}
+        if (cancelled) return
+        if (body.authenticated && body.user) setUser(body.user)
+        else if (!readStored()) setUser(null)
       } catch {
         /* mantém cache de sessão */
       } finally {

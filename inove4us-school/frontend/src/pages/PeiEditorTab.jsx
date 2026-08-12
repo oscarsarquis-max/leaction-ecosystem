@@ -55,8 +55,8 @@ function EstrelasUso({ value }) {
   if (n === 0) {
     return (
       <span
-        className="inline-flex items-center gap-0.5 text-slate-300"
-        title="Ainda sem sugestões de professores"
+        className="inline-flex items-center gap-0.5 text-base leading-none text-slate-300 sm:text-lg"
+        title="Histórico do período: ainda sem sugestões aceitas"
         aria-label="Sem estrelas de uso"
       >
         <span aria-hidden>☆☆☆</span>
@@ -65,8 +65,8 @@ function EstrelasUso({ value }) {
   }
   return (
     <span
-      className="inline-flex items-center gap-0.5 text-amber-500"
-      title={`${n} de 3 — engajamento dos professores`}
+      className="inline-flex items-center gap-0.5 text-base leading-none text-amber-500 sm:text-lg"
+      title={`${n} de 3 — sugestões aceitas no período (histórico)`}
       aria-label={`${n} de 3 estrelas de uso`}
     >
       {[1, 2, 3].map((i) => (
@@ -81,7 +81,7 @@ function EstrelasUso({ value }) {
 function iniciaisNome(nome) {
   const parts = String(nome || '')
     .trim()
-    .split(/s+/)
+    .split(/\s+/)
     .filter(Boolean)
   if (!parts.length) return '?'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
@@ -926,13 +926,13 @@ function limparRoteiroPei(raw) {
   const text = String(raw || '').trim()
   if (!text) return ''
   const ban =
-    /adaptação pei|observações da coordenação|sugestões dos professores|texto integrado|campos de experiência|metodologia original|dados de entrada:|[canônico|[sugestões/i
-  const lines = text.split('n')
+    /adaptação pei|observações da coordenação|sugestões dos professores|texto integrado|campos de experiência|metodologia original|dados de entrada:|canônico|sugestões/i
+  const lines = text.split('\n')
   const out = []
   let skipping = false
   for (const ln of lines) {
     const low = ln.trim().toLowerCase()
-    if (ban.test(low) || /^—s*.+s*—s*$/.test(ln.trim())) {
+    if (ban.test(low) || /^—\s*.+\s*—\s*$/.test(ln.trim())) {
       skipping = true
       continue
     }
@@ -942,7 +942,7 @@ function limparRoteiroPei(raw) {
     }
     out.push(ln)
   }
-  const cleaned = out.join('n').trim()
+  const cleaned = out.join('\n').trim()
   return cleaned || text
 }
 
@@ -1028,7 +1028,7 @@ function descricaoCurtaPei(row) {
   if (d) return d
   const canon = String(row.texto_canonico || '').trim()
   if (!canon) return 'Sem descrição.'
-  const line = canon.split('n').find((l) => l.trim()) || ''
+  const line = canon.split('\n').find((l) => l.trim()) || ''
   return line.length > 140 ? `${line.slice(0, 137)}…` : line
 }
 
@@ -1118,6 +1118,10 @@ function MetBody({
   useEffect(() => {
     setIncorporadas([])
     setErr('')
+    if (!(draft.versao_escola || '').trim() && canonCatalogo) {
+      onDraft({ versao_escola: canonCatalogo })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao trocar metodologia/AEE
   }, [id, aeeId])
 
   useEffect(() => {
@@ -1270,7 +1274,7 @@ function MetBody({
     <div className="border-t border-slate-100 bg-white px-4 py-4 sm:px-5">
       <div className="space-y-4">
         <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -1286,43 +1290,32 @@ function MetBody({
                 </button>
               </div>
               <p className="mt-0.5 text-[11px] text-slate-500">
-                Texto oficial desta metodologia para a condição. A base (canônico + campos
-                AEE) fica no cadeado.
+                Texto oficial em uso pelo professor nesta condição. Começa com o canônico e
+                muda quando a escola adapta. A base (canônico + campos AEE) fica no cadeado.
               </p>
             </div>
-            <p className="shrink-0 text-xs text-slate-500">
+            <p className="shrink-0 text-xs font-medium text-slate-600">
               {isCustomizado && dataMod
-                ? `Última modificação: ${dataMod}`
-                : 'Usando Padrão Gerado'}
+                ? `Adaptada · ${dataMod}`
+                : 'Padrão canônico (ainda sem adaptação)'}
             </p>
           </div>
+          <textarea
+            value={draft.versao_escola || ''}
+            onChange={(e) => onDraft({ versao_escola: e.target.value })}
+            rows={12}
+            placeholder="Versão da escola para esta condição — inicia com o padrão canônico."
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-school-500 focus:ring-2 focus:ring-school-100"
+          />
         </section>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_minmax(17rem,24rem)] lg:items-stretch">
-          <div className="flex min-h-[22rem] flex-col">
-            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">
-              Versão da Escola para {condicao || '—'}
-            </span>
-            <p className="mb-1.5 text-[11px] italic text-slate-500">
-              Compose com IA a partir da base de adaptação + sugestões; depois revise e
-              salve.
-            </p>
-            <textarea
-              value={draft.versao_escola || ''}
-              onChange={(e) => onDraft({ versao_escola: e.target.value })}
-              rows={12}
-              placeholder="Texto da escola para esta condição — gere com IA ou escreva manualmente."
-              className="min-h-0 w-full flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-school-500 focus:ring-2 focus:ring-school-100"
-            />
-          </div>
-
-          <aside className="flex min-h-[22rem] flex-col">
+        <aside className="flex min-h-[14rem] flex-col">
             <div className="mb-2 shrink-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                 Sugestões dos Professores
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                Marque com Incorporar. Depois gere o texto integrado.
+                Marque com Incorporar e gere a composição no campo Versão da Escola acima.
                 {incorporadas.length
                   ? ` (${incorporadas.length} selecionada${incorporadas.length > 1 ? 's' : ''})`
                   : ''}
@@ -1337,7 +1330,7 @@ function MetBody({
               </p>
             ) : null}
 
-            <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5">
+            <ul className="grid min-h-0 flex-1 gap-3 overflow-y-auto pr-0.5 sm:grid-cols-2 xl:grid-cols-3">
               {sugestoes.map((item) => (
                 <li key={item.id}>
                   <SugestaoCard
@@ -1350,7 +1343,6 @@ function MetBody({
               ))}
             </ul>
           </aside>
-        </div>
 
         <div>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -1395,7 +1387,7 @@ function MetBody({
   )
 }
 
-function AdaptacoesPraticaPanel({ onToast }) {
+function AdaptacoesPraticaPanel({ onToast, focusMet = '' }) {
   const INSTITUICAO_ID = useInstituicaoId()
   const [condicoes, setCondicoes] = useState([])
   const [condicao, setCondicao] = useState('TEA')
@@ -1404,7 +1396,7 @@ function AdaptacoesPraticaPanel({ onToast }) {
   const [lista, setLista] = useState([])
   const [drafts, setDrafts] = useState({})
   const [expandedId, setExpandedId] = useState(null)
-  const [filtro, setFiltro] = useState('')
+  const [filtro, setFiltro] = useState(focusMet || '')
   const [familiaFiltro, setFamiliaFiltro] = useState('Todas')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -1451,8 +1443,11 @@ function AdaptacoesPraticaPanel({ onToast }) {
       setCamposAee(body.campos_experiencia_aee || matriz.campos_experiencia_metodologica || '')
       const d = {}
       rows.forEach((r) => {
+        const salvo = (r.versao_escola || '').trim()
+        const canon = (r.texto_canonico || '').trim()
         d[r.metodologia_id] = {
-          versao_escola: r.versao_escola || '',
+          // Sempre inicia com a versão em uso (canônica até a 1ª adaptação).
+          versao_escola: salvo || canon,
           is_customizado: Boolean(r.is_customizado),
           updated_at: r.updated_at || null,
           disponivel_dia_a_dia: r.disponivel_dia_a_dia !== false,
@@ -1460,6 +1455,15 @@ function AdaptacoesPraticaPanel({ onToast }) {
         }
       })
       setDrafts(d)
+      if (focusMet) {
+        const hit = rows.find(
+          (r) => String(r.nome || '').trim().toLowerCase() === focusMet.toLowerCase(),
+        )
+        if (hit) {
+          setExpandedId(hit.metodologia_id)
+          setFiltro(hit.nome || focusMet)
+        }
+      }
     } catch (e) {
       setError(e.message || 'Erro ao carregar')
       setLista([])
@@ -1467,11 +1471,15 @@ function AdaptacoesPraticaPanel({ onToast }) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [focusMet])
 
   useEffect(() => {
     if (condicao) void carregar(condicao)
   }, [condicao, carregar])
+
+  useEffect(() => {
+    if (focusMet) setFiltro(focusMet)
+  }, [focusMet])
 
   const filtered = useMemo(() => {
     const q = filtro.trim().toLowerCase()
@@ -1609,11 +1617,24 @@ function AdaptacoesPraticaPanel({ onToast }) {
           }
           const open = expandedId === id
           const busyToggle = togglingId === id
+          const pendentes = Number(row.pendentes_count) || 0
+          const temPendente = pendentes > 0
+          const versaoStatus =
+            draft.is_customizado || row.is_customizado
+              ? `Versão da escola · adaptada${
+                  formatDataModificacaoPei(draft.updated_at || row.updated_at)
+                    ? ` em ${formatDataModificacaoPei(draft.updated_at || row.updated_at)}`
+                    : ''
+                }`
+              : 'Versão da escola · padrão canônico'
 
           return (
             <article
               key={id}
-              className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+              className={[
+                'overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm',
+                temPendente ? 'border-l-[5px] border-l-amber-500 bg-amber-50/35' : '',
+              ].join(' ')}
             >
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-4">
                 <button
@@ -1628,7 +1649,17 @@ function AdaptacoesPraticaPanel({ onToast }) {
                     </span>
                     <h3 className="text-base font-semibold text-ink">{row.nome}</h3>
                     <EstrelasUso value={row.uso_estrelas} />
+                    {temPendente ? (
+                      <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                        {pendentes === 1
+                          ? '1 sugestão p/ análise'
+                          : `${pendentes} sugestões p/ análise`}
+                      </span>
+                    ) : null}
                   </div>
+                  <p className="mt-1 pl-5 text-xs font-medium text-slate-600">
+                    {versaoStatus}
+                  </p>
                   <p className="mt-1 line-clamp-2 pl-5 text-sm text-muted">
                     {descricaoCurtaPei(row)}
                   </p>
@@ -1709,12 +1740,13 @@ function AdaptacoesPraticaPanel({ onToast }) {
 /**
  * Aba Inclusão do Editor Pedagógico — AEE + PEI + adaptações práticas.
  */
-/**
- * Aba Inclusão do Editor Pedagógico — AEE + PEI + adaptações práticas.
- */
-export default function PeiEditorTab() {
-  const [sub, setSub] = useState('aee')
+export default function PeiEditorTab({ focusMet = '' }) {
+  const [sub, setSub] = useState(focusMet ? 'metodologicas' : 'aee')
   const [toast, setToast] = useState('')
+
+  useEffect(() => {
+    if (focusMet) setSub('metodologicas')
+  }, [focusMet])
 
   useEffect(() => {
     if (!toast) return undefined
@@ -1748,7 +1780,9 @@ export default function PeiEditorTab() {
 
       {sub === 'aee' ? <DiretrizesAeePanel onToast={setToast} /> : null}
       {sub === 'pei' ? <PeisIndividuaisPanel onToast={setToast} /> : null}
-      {sub === 'metodologicas' ? <AdaptacoesPraticaPanel onToast={setToast} /> : null}
+      {sub === 'metodologicas' ? (
+        <AdaptacoesPraticaPanel onToast={setToast} focusMet={focusMet} />
+      ) : null}
     </div>
   )
 }

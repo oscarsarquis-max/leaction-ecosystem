@@ -1257,7 +1257,8 @@ def list_aee_metodologias(aee_id: str):
                     org.updated_at AS org_updated_at,
                     COALESCE(vet.ativo_dia_a_dia, TRUE) AS disponivel_dia_a_dia,
                     COALESCE(vet.ativo_desafio, TRUE) AS disponivel_desafio,
-                    COALESCE(cur.sugestoes_count, 0) AS sugestoes_count
+                    COALESCE(cur.sugestoes_count, 0) AS sugestoes_count,
+                    COALESCE(cur.pendentes_count, 0) AS pendentes_count
                 FROM public.school_metodologias_catalogo c
                 LEFT JOIN public.school_aee_metodologias_org org
                     ON org.aee_matriz_id = %s
@@ -1268,10 +1269,14 @@ def list_aee_metodologias(aee_id: str):
                 LEFT JOIN (
                     SELECT
                         LOWER(TRIM(metodologia_nome)) AS nome_key,
-                        COUNT(*)::int AS sugestoes_count
+                        COUNT(*) FILTER (
+                            WHERE status_analise IN ('incorporada', 'incorporado')
+                        )::int AS sugestoes_count,
+                        COUNT(*) FILTER (
+                            WHERE status_analise IN ('pendente', 'em_analise')
+                        )::int AS pendentes_count
                     FROM public.school_curadoria_pei
                     WHERE instituicao_id = %s
-                      AND status_analise IN ('pendente', 'incorporado')
                     GROUP BY LOWER(TRIM(metodologia_nome))
                 ) cur ON cur.nome_key = LOWER(TRIM(c.nome))
                 WHERE c.ativo = TRUE AND c.origem = 'padrao'
@@ -1288,6 +1293,7 @@ def list_aee_metodologias(aee_id: str):
         is_custom = bool(versao)
         updated = r.get("org_updated_at")
         count = int(r.get("sugestoes_count") or 0)
+        pendentes = int(r.get("pendentes_count") or 0)
         out.append(
             {
                 "metodologia_id": str(r["metodologia_catalogo_id"]),
@@ -1298,13 +1304,15 @@ def list_aee_metodologias(aee_id: str):
                 "campos_experiencia_aee": campos,
                 "condicao_categoria": condicao,
                 "aee_matriz_id": str(aid),
-                "versao_escola": versao,
+                # Em uso pelo professor: adaptada ou, se ainda não houver, a canônica.
+                "versao_escola": versao or texto,
                 "is_customizado": is_custom,
                 "updated_at": updated.isoformat() if updated else None,
                 "disponivel_dia_a_dia": bool(r.get("disponivel_dia_a_dia", True)),
                 "disponivel_desafio": bool(r.get("disponivel_desafio", True)),
                 "uso_estrelas": 0 if count <= 0 else min(3, count),
                 "sugestoes_count": count,
+                "pendentes_count": pendentes,
             }
         )
     return jsonify(

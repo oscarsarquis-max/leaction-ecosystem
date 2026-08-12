@@ -4,18 +4,34 @@ import { tabClassNameCompact } from '../lib/tabs'
 import MonthAgendaCalendar from '../components/MonthAgendaCalendar'
 
 /**
- * Secretaria Acadêmica v2 — 6 abas:
- * Unidades · Estrutura · Alunos · Calendário · Mural · Planejamento Escolar
+ * Secretaria Acadêmica — Unidades · Estrutura · Alunos · Situação por período ·
+ * Calendário · Mural · Planejamento Escolar
  */
 
 const TABS = [
   { id: 'unidades', label: 'Unidades' },
   { id: 'estrutura', label: 'Estrutura Acadêmica' },
   { id: 'alunos', label: 'Alunos' },
+  { id: 'situacao', label: 'Situação por período' },
   { id: 'calendario', label: 'Calendário' },
   { id: 'comunicacoes', label: 'Mural / Comunicações' },
   { id: 'planejamento', label: 'Planejamento Escolar' },
 ]
+
+const PERIODO_STATUS_LABEL = {
+  planejamento: 'Planejamento',
+  em_andamento: 'Em andamento',
+  encerrado: 'Encerrado',
+}
+
+const PERIODO_STATUS_CLASS = {
+  planejamento: 'bg-slate-100 text-slate-700',
+  em_andamento: 'bg-emerald-50 text-emerald-800',
+  encerrado: 'bg-amber-50 text-amber-900',
+}
+
+const SITUACAO_AVISO_UI =
+  'Situação atual por período. Os números refletem o cadastro de hoje. Alunos e professores que mudaram de turma ou período aparecem apenas onde estão agora. Não há snapshot de fechamento de período neste painel.'
 
 const PLAN_TIPOS = [
   { value: 'aula', label: 'Aula' },
@@ -196,8 +212,36 @@ function eachDateInclusive(startIso, endIso) {
   return out
 }
 
+const EQUIPE_PAPEL_LABEL = {
+  gestor_principal: 'Gestor principal',
+  gestor_academico: 'Gestor acadêmico',
+  coordenador: 'Coordenador',
+}
+
+/** Pseudo-nó UI na árvore de Estrutura (não é UUID de API). */
+const SEM_CURSO_ID = '__sem_curso__'
+
 const EMPTY = {
   unidade: { nome: '', endereco: '', codigo: '', cidade: '', uf: '' },
+  unidadeFicha: {
+    logradouro: '',
+    numero: '',
+    bairro: '',
+    cep: '',
+    telefone: '',
+    email_institucional: '',
+    cidade: '',
+    uf: '',
+  },
+  equipe: {
+    modo: 'gestor',
+    papel: 'coordenador',
+    gestor_id: '',
+    nome: '',
+    email: '',
+    telefone: '',
+    area_coordenacao: '',
+  },
   periodo: {
     nome: '',
     data_inicio: '',
@@ -270,6 +314,7 @@ export default function SecretariaOperacional() {
   const [periodoSel, setPeriodoSel] = useState('')
   const [cursoSel, setCursoSel] = useState('')
   const [turmaSel, setTurmaSel] = useState('')
+  const [discSel, setDiscSel] = useState('')
   const [filtroTurmaId, setFiltroTurmaId] = useState('')
   const [filtroPlanTurmaId, setFiltroPlanTurmaId] = useState('')
   const [planSelected, setPlanSelected] = useState([])
@@ -284,11 +329,24 @@ export default function SecretariaOperacional() {
   const [context, setContext] = useState({})
 
   const [formUnidade, setFormUnidade] = useState(EMPTY.unidade)
+  const [fichaId, setFichaId] = useState(null)
+  const [ficha, setFicha] = useState(null)
+  const [fichaLoading, setFichaLoading] = useState(false)
+  const [formFicha, setFormFicha] = useState(EMPTY.unidadeFicha)
+  const [formEquipe, setFormEquipe] = useState(EMPTY.equipe)
+  const [gestoresOpts, setGestoresOpts] = useState([])
   const [formPeriodo, setFormPeriodo] = useState(EMPTY.periodo)
   const [formCurso, setFormCurso] = useState(EMPTY.curso)
   const [formDisc, setFormDisc] = useState(EMPTY.disciplina)
   const [formTurma, setFormTurma] = useState(EMPTY.turma)
   const [formAluno, setFormAluno] = useState(EMPTY.aluno)
+  const [importStep, setImportStep] = useState('upload')
+  const [importFile, setImportFile] = useState(null)
+  const [importPreview, setImportPreview] = useState(null)
+  const [situacaoItems, setSituacaoItems] = useState([])
+  const [situacaoLoading, setSituacaoLoading] = useState(false)
+  const [situacaoUnidadeId, setSituacaoUnidadeId] = useState('')
+  const [situacaoCursoId, setSituacaoCursoId] = useState('')
   const [formCal, setFormCal] = useState(EMPTY.calendario)
   const [formAloc, setFormAloc] = useState(EMPTY.aloc)
   const [formCom, setFormCom] = useState(EMPTY.com)
@@ -361,6 +419,28 @@ export default function SecretariaOperacional() {
     loadAll()
   }, [loadAll])
 
+  const loadSituacao = useCallback(async () => {
+    setSituacaoLoading(true)
+    setError('')
+    try {
+      const qs = new URLSearchParams()
+      if (situacaoUnidadeId) qs.set('unidade_id', situacaoUnidadeId)
+      if (situacaoCursoId) qs.set('curso_id', situacaoCursoId)
+      const url = `/api/secretaria/situacao-por-periodo${qs.toString() ? `?${qs}` : ''}`
+      const data = await apiJson(url)
+      setSituacaoItems(data.items || [])
+    } catch (err) {
+      setError(err.message || 'Falha ao carregar situação por período')
+      setSituacaoItems([])
+    } finally {
+      setSituacaoLoading(false)
+    }
+  }, [situacaoUnidadeId, situacaoCursoId])
+
+  useEffect(() => {
+    if (tab === 'situacao') loadSituacao()
+  }, [tab, loadSituacao])
+
   useEffect(() => {
     if (!periodoSel && periodos.length) {
       const ativo = periodos.find((p) => p.ativo) || periodos[0]
@@ -369,8 +449,18 @@ export default function SecretariaOperacional() {
   }, [periodos, periodoSel])
 
   useEffect(() => {
-    setCursoSel('')
     setTurmaSel('')
+    setDiscSel('')
+    setCursoSel((prev) => {
+      if (!prev) return ''
+      if (prev === SEM_CURSO_ID) return prev
+      const stillHere = cursos.some(
+        (c) => c.id === prev && c.periodo_letivo_id === periodoSel,
+      )
+      return stillHere ? prev : ''
+    })
+    // Só reage a troca de período (navegação da ficha preserva cursoSel do mesmo período).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cursos lidos do closure atual
   }, [periodoSel])
 
   const alunosFiltrados = useMemo(() => {
@@ -395,6 +485,42 @@ export default function SecretariaOperacional() {
     () => disciplinas.filter((d) => !d.curso_id && d.ativo !== false),
     [disciplinas],
   )
+
+  const estruturaNodes = useMemo(() => {
+    if (!periodoSel) return []
+    return [
+      ...cursosDoPeriodo,
+      {
+        id: SEM_CURSO_ID,
+        nome: 'Sem curso',
+        isSemCurso: true,
+        ativo: true,
+        periodo_letivo_id: periodoSel,
+      },
+    ]
+  }, [periodoSel, cursosDoPeriodo])
+
+  const countsByTurma = useMemo(() => {
+    const map = {}
+    for (const t of turmas) {
+      map[t.id] = { alunos: 0, professores: new Set() }
+    }
+    for (const a of alunos) {
+      if (a.ativo === false || !a.turma_id) continue
+      if (!map[a.turma_id]) map[a.turma_id] = { alunos: 0, professores: new Set() }
+      map[a.turma_id].alunos += 1
+    }
+    for (const al of alocacoes) {
+      if (al.ativo === false || !al.turma_id) continue
+      if (!map[al.turma_id]) map[al.turma_id] = { alunos: 0, professores: new Set() }
+      if (al.professor_id) map[al.turma_id].professores.add(al.professor_id)
+    }
+    const out = {}
+    for (const [tid, v] of Object.entries(map)) {
+      out[tid] = { alunos: v.alunos, professores: v.professores.size }
+    }
+    return out
+  }, [turmas, alunos, alocacoes])
 
   const comunicacoesOrdenadas = useMemo(
     () =>
@@ -468,6 +594,81 @@ export default function SecretariaOperacional() {
     setModal(null)
     setEditId(null)
     setContext({})
+    setImportStep('upload')
+    setImportFile(null)
+    setImportPreview(null)
+  }
+
+  function downloadModeloCsv() {
+    const content = 'nome,matricula,data_nascimento\n'
+    const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'modelo_alunos.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function openImportAlunos() {
+    clearMessages()
+    if (!filtroTurmaId) {
+      setError('Selecione uma turma no filtro antes de importar.')
+      return
+    }
+    setImportStep('upload')
+    setImportFile(null)
+    setImportPreview(null)
+    setModal('importAlunos')
+  }
+
+  async function runImportPreview() {
+    if (!filtroTurmaId || !importFile) {
+      setError('Selecione o arquivo CSV e uma turma.')
+      return
+    }
+    await runBusy(async () => {
+      const fd = new FormData()
+      fd.append('file', importFile)
+      fd.append('turma_id', filtroTurmaId)
+      const res = await fetch('/api/secretaria/alunos/importar/preview', {
+        method: 'POST',
+        credentials: 'include',
+        body: fd,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Falha no preview da importação')
+      setImportPreview(data)
+      setImportStep('preview')
+    })
+  }
+
+  async function runImportConfirm() {
+    if (!filtroTurmaId || !importPreview?.linhas) return
+    const linhasOk = importPreview.linhas
+      .filter((L) => L.status === 'ok')
+      .map((L) => ({
+        linha: L.linha,
+        nome: L.nome,
+        matricula: L.matricula,
+        data_nascimento: L.data_nascimento || null,
+      }))
+    if (!linhasOk.length) {
+      setError('Nenhuma linha válida para importar.')
+      return
+    }
+    await runBusy(async () => {
+      const data = await apiJson('/api/secretaria/alunos/importar/confirmar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turma_id: filtroTurmaId, linhas: linhasOk }),
+      })
+      setFeedback(
+        `Importação concluída: ${data.criados || 0} criado(s), ${data.atualizados || 0} atualizado(s).`,
+      )
+      closeModal()
+      await loadAll()
+    })
   }
 
   async function runBusy(fn) {
@@ -619,6 +820,123 @@ export default function SecretariaOperacional() {
       }
       closeModal()
       await loadAll()
+      if (fichaId) await loadFicha(fichaId)
+    })
+  }
+
+  async function loadFicha(id) {
+    if (!id) return
+    setFichaLoading(true)
+    setError('')
+    try {
+      const data = await apiJson(`/api/secretaria/unidades/${id}`)
+      const item = data.item || null
+      setFicha(item)
+      setFichaId(id)
+      if (item) {
+        setFormFicha({
+          logradouro: item.logradouro || '',
+          numero: item.numero || '',
+          bairro: item.bairro || '',
+          cep: item.cep || '',
+          telefone: item.telefone || '',
+          email_institucional: item.email_institucional || '',
+          cidade: item.cidade || '',
+          uf: item.uf || '',
+        })
+      }
+    } catch (err) {
+      setError(err.message || 'Falha ao abrir ficha da unidade')
+      setFicha(null)
+    } finally {
+      setFichaLoading(false)
+    }
+  }
+
+  function closeFicha() {
+    setFichaId(null)
+    setFicha(null)
+    setFormFicha(EMPTY.unidadeFicha)
+  }
+
+  async function saveFichaInstitucional(e) {
+    e.preventDefault()
+    if (!fichaId) return
+    await runBusy(async () => {
+      await apiJson(`/api/secretaria/unidades/${fichaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          logradouro: formFicha.logradouro || null,
+          numero: formFicha.numero || null,
+          bairro: formFicha.bairro || null,
+          cep: formFicha.cep || null,
+          telefone: formFicha.telefone || null,
+          email_institucional: formFicha.email_institucional || null,
+          cidade: formFicha.cidade || null,
+          uf: formFicha.uf || null,
+        }),
+      })
+      setFeedback('Dados institucionais atualizados.')
+      await loadAll()
+      await loadFicha(fichaId)
+    })
+  }
+
+  async function openEquipeModal(papel = 'coordenador') {
+    clearMessages()
+    setFormEquipe({ ...EMPTY.equipe, papel })
+    try {
+      const data = await apiJson('/api/secretaria/gestores')
+      setGestoresOpts(data.items || [])
+    } catch {
+      setGestoresOpts([])
+    }
+    setModal('equipe')
+  }
+
+  async function saveEquipe(e) {
+    e.preventDefault()
+    if (!fichaId) return
+    await runBusy(async () => {
+      const body = {
+        papel: formEquipe.papel,
+        area_coordenacao:
+          formEquipe.papel === 'coordenador'
+            ? formEquipe.area_coordenacao || null
+            : null,
+      }
+      if (formEquipe.modo === 'gestor') {
+        if (!formEquipe.gestor_id) throw new Error('Selecione um gestor')
+        body.gestor_id = formEquipe.gestor_id
+      } else {
+        if (!formEquipe.nome.trim()) throw new Error('Nome é obrigatório')
+        body.nome = formEquipe.nome
+        body.email = formEquipe.email || null
+        body.telefone = formEquipe.telefone || null
+      }
+      await apiJson(`/api/secretaria/unidades/${fichaId}/equipe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      setFeedback('Membro adicionado à equipe gestora.')
+      closeModal()
+      await loadFicha(fichaId)
+    })
+  }
+
+  async function softRemoveEquipe(membro) {
+    if (!fichaId || !membro?.id) return
+    if (!window.confirm(`Remover ${membro.nome || 'este membro'} da equipe?`)) return
+    await runBusy(async () => {
+      await apiJson(`/api/secretaria/unidades/${fichaId}/equipe/${membro.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ativo: false }),
+      })
+      setFeedback('Membro removido da equipe.')
+      await loadFicha(fichaId)
     })
   }
 
@@ -1018,6 +1336,44 @@ export default function SecretariaOperacional() {
     return alocacoes.filter((a) => a.turma_id === turmaId && a.ativo !== false)
   }
 
+  function alocacoesForDisc(disciplinaId) {
+    return alocacoes.filter((a) => a.disciplina_id === disciplinaId && a.ativo !== false)
+  }
+
+  function turmasForNode(node) {
+    if (!node) return []
+    if (node.isSemCurso || node.id === SEM_CURSO_ID) return turmasSemCurso
+    return turmasForCurso(node.id)
+  }
+
+  function discsForNode(node) {
+    if (!node) return []
+    if (node.isSemCurso || node.id === SEM_CURSO_ID) return discsSemCurso
+    return discsForCurso(node.id)
+  }
+
+  function countsForNode(node) {
+    const tList = turmasForNode(node)
+    const dList = discsForNode(node)
+    const turmaIds = new Set(tList.map((t) => t.id))
+    let alunosN = 0
+    for (const tid of turmaIds) {
+      alunosN += countsByTurma[tid]?.alunos ?? 0
+    }
+    const profs = new Set()
+    for (const al of alocacoes) {
+      if (al.ativo === false || !al.turma_id || !al.professor_id) continue
+      if (!turmaIds.has(al.turma_id)) continue
+      profs.add(al.professor_id)
+    }
+    return {
+      turmas: tList.length,
+      disciplinas: dList.length,
+      professores: profs.size,
+      alunos: alunosN,
+    }
+  }
+
   function discsForAloc(turma) {
     if (!turma) return []
     if (turma.curso_id) return discsForCurso(turma.curso_id)
@@ -1030,9 +1386,108 @@ export default function SecretariaOperacional() {
     ]
   }
 
+  function openCursoNaEstrutura(cursoFicha) {
+    clearMessages()
+    if (cursoFicha?.periodo_id) setPeriodoSel(cursoFicha.periodo_id)
+    setCursoSel(cursoFicha.id)
+    setTurmaSel('')
+    setDiscSel('')
+    switchTab('estrutura')
+  }
+
+  function renderDiscRow(disc, { cursoIdForEdit } = {}) {
+    const expanded = discSel === disc.id
+    const alocs = alocacoesForDisc(disc.id)
+    const editCursoId =
+      cursoIdForEdit === SEM_CURSO_ID || cursoIdForEdit === ''
+        ? ''
+        : cursoIdForEdit ?? disc.curso_id ?? ''
+    return (
+      <div
+        key={disc.id}
+        className={[
+          'border-t border-slate-100 first:border-t-0',
+          disc.ativo === false ? 'opacity-60' : '',
+        ].join(' ')}
+      >
+        <div className="flex items-stretch gap-1">
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-slate-50"
+            onClick={() => setDiscSel(expanded ? '' : disc.id)}
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink">
+                {disc.nome}
+                {disc.ativo === false ? <InactiveBadge /> : null}
+              </p>
+              {disc.ementa_macro ? (
+                <p className="truncate text-xs text-muted">{disc.ementa_macro}</p>
+              ) : null}
+            </div>
+            <span className="shrink-0 text-xs font-bold text-muted">
+              {expanded ? '▾' : '▸'}
+            </span>
+          </button>
+          <div className="flex shrink-0 items-center gap-1 px-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className={btnSmall}
+              onClick={(e) => {
+                e.stopPropagation()
+                openDisc({ item: disc, cursoId: editCursoId })
+              }}
+            >
+              Editar
+            </button>
+            <button
+              type="button"
+              className={btnSmall}
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleAtivo('disciplina', disc)
+              }}
+            >
+              {disc.ativo === false ? 'Reativar' : 'Desativar'}
+            </button>
+          </div>
+        </div>
+        {expanded ? (
+          <div className="border-t border-slate-50 bg-slate-50/60 px-3 py-2.5">
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-muted">
+              Ministrada em
+            </p>
+            {alocs.length === 0 ? (
+              <p className="text-xs text-muted">Ainda não alocada em nenhuma turma.</p>
+            ) : (
+              <ul className="space-y-1">
+                {alocs.map((a) => (
+                  <li
+                    key={a.id}
+                    className="flex items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-1.5 text-xs"
+                  >
+                    <span className="font-medium text-ink">
+                      {a.turma_nome ||
+                        turmas.find((t) => t.id === a.turma_id)?.nome ||
+                        (a.turma_id ? 'Turma' : 'Sem turma vinculada')}
+                    </span>
+                    <span className="text-muted">
+                      {a.professor_email || a.professor_nome || 'Professor'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
   function renderTurmaBlock(turma, { showCursoHint } = {}) {
     const expanded = turmaSel === turma.id
     const alocs = alocacoesForTurma(turma.id)
+    const nAlunos = countsByTurma[turma.id]?.alunos ?? 0
     return (
       <div
         key={turma.id}
@@ -1056,6 +1511,8 @@ export default function SecretariaOperacional() {
               {turma.serie_ano} · {TURNO_LABEL[turma.turno] || turma.turno} ·{' '}
               {turma.unidade_nome || '—'}
               {showCursoHint && !turma.curso_id ? ' · Sem curso' : ''}
+              {' · '}
+              {nAlunos} aluno{nAlunos === 1 ? '' : 's'}
             </p>
           </div>
           <span className="text-xs font-bold text-muted">{expanded ? '▾' : '▸'}</span>
@@ -1067,7 +1524,11 @@ export default function SecretariaOperacional() {
                 Alocação docente
               </p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" className={btnSmall} onClick={() => openTurma({ item: turma, cursoId: turma.curso_id })}>
+                <button
+                  type="button"
+                  className={btnSmall}
+                  onClick={() => openTurma({ item: turma, cursoId: turma.curso_id })}
+                >
                   Editar turma
                 </button>
                 <button
@@ -1079,6 +1540,16 @@ export default function SecretariaOperacional() {
                 </button>
                 <button type="button" className={btnSmall} onClick={() => openAloc(turma)}>
                   + Alocar professor
+                </button>
+                <button
+                  type="button"
+                  className={btnSmall}
+                  onClick={() => {
+                    setFiltroTurmaId(turma.id)
+                    switchTab('alunos')
+                  }}
+                >
+                  Ver alunos
                 </button>
               </div>
             </div>
@@ -1105,46 +1576,57 @@ export default function SecretariaOperacional() {
     )
   }
 
-  function renderCursoPanel(curso) {
-    const expanded = cursoSel === curso.id
-    const tList = turmasForCurso(curso.id)
-    const dList = discsForCurso(curso.id)
+  function renderEstruturaNode(node) {
+    const isSem = Boolean(node.isSemCurso || node.id === SEM_CURSO_ID)
+    const expanded = cursoSel === node.id
+    const tList = turmasForNode(node)
+    const dList = discsForNode(node)
+    const counts = countsForNode(node)
+    const cursoIdForCreate = isSem ? '' : node.id
     return (
       <div
-        key={curso.id}
+        key={node.id}
         className={[
           'rounded-2xl border bg-white shadow-panel',
           expanded ? 'border-violet-300' : 'border-slate-200',
-          curso.ativo === false ? 'opacity-70' : '',
+          isSem ? 'border-dashed' : '',
+          node.ativo === false ? 'opacity-70' : '',
         ].join(' ')}
       >
         <button
           type="button"
           className="flex w-full items-start justify-between gap-3 p-4 text-left"
-          onClick={() => setCursoSel(expanded ? '' : curso.id)}
+          onClick={() => setCursoSel(expanded ? '' : node.id)}
         >
           <div>
             <p className="text-base font-semibold text-ink">
-              {curso.nome}
-              {curso.ativo === false ? <InactiveBadge /> : null}
+              {node.nome}
+              {node.ativo === false ? <InactiveBadge /> : null}
             </p>
+            {isSem ? (
+              <p className="mt-0.5 text-xs text-muted">
+                Catálogo flat — turmas e disciplinas sem hierarquia de curso
+              </p>
+            ) : null}
             <p className="mt-1 text-xs text-muted">
-              {curso.turmas_count ?? tList.length} turmas ·{' '}
-              {curso.disciplinas_count ?? dList.length} disciplinas
+              {counts.turmas} turmas · {counts.disciplinas} disciplinas ·{' '}
+              {counts.professores} professores · {counts.alunos} alunos
             </p>
           </div>
           <span className="text-sm font-bold text-muted">{expanded ? '▾' : '▸'}</span>
         </button>
         {expanded ? (
           <div className="space-y-4 border-t border-slate-100 p-4">
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className={btnSmall} onClick={() => openCurso(curso)}>
-                Editar curso
-              </button>
-              <button type="button" className={btnSmall} onClick={() => toggleAtivo('curso', curso)}>
-                {curso.ativo === false ? 'Reativar' : 'Desativar'}
-              </button>
-            </div>
+            {!isSem ? (
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className={btnSmall} onClick={() => openCurso(node)}>
+                  Editar curso
+                </button>
+                <button type="button" className={btnSmall} onClick={() => toggleAtivo('curso', node)}>
+                  {node.ativo === false ? 'Reativar' : 'Desativar'}
+                </button>
+              </div>
+            ) : null}
             <div className="grid gap-4 lg:grid-cols-2">
               <section>
                 <div className="mb-2 flex items-center justify-between">
@@ -1152,16 +1634,18 @@ export default function SecretariaOperacional() {
                   <button
                     type="button"
                     className={btnSmall}
-                    onClick={() => openTurma({ cursoId: curso.id })}
+                    onClick={() => openTurma({ cursoId: cursoIdForCreate })}
                   >
                     + Nova turma
                   </button>
                 </div>
                 <div className="space-y-2">
                   {tList.length === 0 ? (
-                    <p className="text-xs text-muted">Nenhuma turma neste curso.</p>
+                    <p className="text-xs text-muted">
+                      {isSem ? 'Nenhuma turma sem curso.' : 'Nenhuma turma neste curso.'}
+                    </p>
                   ) : (
-                    tList.map((t) => renderTurmaBlock(t))
+                    tList.map((t) => renderTurmaBlock(t, { showCursoHint: isSem }))
                   )}
                 </div>
               </section>
@@ -1173,58 +1657,25 @@ export default function SecretariaOperacional() {
                   <button
                     type="button"
                     className={btnSmall}
-                    onClick={() => openDisc({ cursoId: curso.id })}
+                    onClick={() => openDisc({ cursoId: cursoIdForCreate })}
                   >
                     + Nova disciplina
                   </button>
                 </div>
-                <div className="overflow-hidden rounded-xl border border-slate-200">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-xs uppercase text-muted">
-                      <tr>
-                        <th className="px-3 py-2">Nome</th>
-                        <th className="px-3 py-2">Ementa</th>
-                        <th className="px-3 py-2 text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dList.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="px-3 py-4 text-xs text-muted">
-                            Nenhuma disciplina neste curso.
-                          </td>
-                        </tr>
-                      ) : (
-                        dList.map((d) => (
-                          <tr key={d.id} className="border-t border-slate-100">
-                            <td className="px-3 py-2 font-medium text-ink">
-                              {d.nome}
-                              {d.ativo === false ? <InactiveBadge /> : null}
-                            </td>
-                            <td className="max-w-[220px] truncate px-3 py-2 text-xs text-muted">
-                              {d.ementa_macro || '—'}
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-2 text-right">
-                              <button
-                                type="button"
-                                className={btnSmall}
-                                onClick={() => openDisc({ item: d, cursoId: curso.id })}
-                              >
-                                Editar
-                              </button>{' '}
-                              <button
-                                type="button"
-                                className={btnSmall}
-                                onClick={() => toggleAtivo('disciplina', d)}
-                              >
-                                {d.ativo === false ? 'Reativar' : 'Desativar'}
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  {dList.length === 0 ? (
+                    <p className="px-3 py-4 text-xs text-muted">
+                      {isSem
+                        ? 'Nenhuma disciplina sem curso.'
+                        : 'Nenhuma disciplina neste curso.'}
+                    </p>
+                  ) : (
+                    dList.map((d) =>
+                      renderDiscRow(d, {
+                        cursoIdForEdit: isSem ? SEM_CURSO_ID : node.id,
+                      }),
+                    )
+                  )}
                 </div>
               </section>
             </div>
@@ -1273,7 +1724,7 @@ export default function SecretariaOperacional() {
 
       {/* —— Unidades —— */}
       {!loading && tab === 'unidades' ? (
-        <section>
+        <section className="space-y-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-ink">Unidades</h2>
             <button
@@ -1308,14 +1759,24 @@ export default function SecretariaOperacional() {
                   </tr>
                 ) : (
                   unidades.map((u) => (
-                    <tr key={u.id} className="border-t border-slate-100">
+                    <tr
+                      key={u.id}
+                      className={[
+                        'border-t border-slate-100 cursor-pointer hover:bg-slate-50/80',
+                        fichaId === u.id ? 'bg-violet-50/60' : '',
+                      ].join(' ')}
+                      onClick={() => {
+                        clearMessages()
+                        loadFicha(u.id)
+                      }}
+                    >
                       <td className="px-4 py-3 font-medium">
                         {u.nome}
                         {u.ativo === false ? <InactiveBadge /> : null}
                       </td>
                       <td className="px-4 py-3 text-muted">{u.cidade || '—'}</td>
                       <td className="px-4 py-3 text-muted">{u.uf || '—'}</td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           className={btnGhost}
@@ -1348,6 +1809,240 @@ export default function SecretariaOperacional() {
               </tbody>
             </table>
           </div>
+
+          {fichaId ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-panel space-y-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">Ficha da unidade</p>
+                  <h3 className="text-xl font-semibold text-ink">
+                    {ficha?.nome || '…'}
+                    {ficha?.ativo === false ? <InactiveBadge /> : null}
+                  </h3>
+                  {ficha?.codigo ? (
+                    <p className="text-sm text-muted">Código: {ficha.codigo}</p>
+                  ) : null}
+                </div>
+                <button type="button" className={btnGhost} onClick={closeFicha}>
+                  Fechar ficha
+                </button>
+              </div>
+
+              {fichaLoading ? (
+                <p className="text-sm text-muted">Carregando ficha…</p>
+              ) : ficha ? (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      ['Cursos', ficha.resumo?.cursos],
+                      ['Turmas', ficha.resumo?.turmas],
+                      ['Disciplinas', ficha.resumo?.disciplinas],
+                      ['Alunos', ficha.resumo?.alunos],
+                      ['Professores alocados', ficha.resumo?.professores_alocados],
+                    ].map(([label, n]) => (
+                      <span
+                        key={label}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-ink"
+                      >
+                        <span className="text-muted font-medium">{label}</span>
+                        {n ?? 0}
+                      </span>
+                    ))}
+                  </div>
+
+                  <form onSubmit={saveFichaInstitucional} className="space-y-3 border-t border-slate-100 pt-4">
+                    <h4 className="text-sm font-semibold text-ink">Dados institucionais</h4>
+                    {!formFicha.logradouro && !formFicha.numero && !formFicha.bairro && ficha.endereco ? (
+                      <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                        Endereço (legado): {ficha.endereco}
+                      </p>
+                    ) : null}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field label="Logradouro">
+                        <input
+                          className={inputCls}
+                          value={formFicha.logradouro}
+                          onChange={(e) => setFormFicha((f) => ({ ...f, logradouro: e.target.value }))}
+                        />
+                      </Field>
+                      <Field label="Número">
+                        <input
+                          className={inputCls}
+                          value={formFicha.numero}
+                          onChange={(e) => setFormFicha((f) => ({ ...f, numero: e.target.value }))}
+                        />
+                      </Field>
+                      <Field label="Bairro">
+                        <input
+                          className={inputCls}
+                          value={formFicha.bairro}
+                          onChange={(e) => setFormFicha((f) => ({ ...f, bairro: e.target.value }))}
+                        />
+                      </Field>
+                      <Field label="CEP">
+                        <input
+                          className={inputCls}
+                          value={formFicha.cep}
+                          onChange={(e) => setFormFicha((f) => ({ ...f, cep: e.target.value }))}
+                        />
+                      </Field>
+                      <Field label="Telefone">
+                        <input
+                          className={inputCls}
+                          value={formFicha.telefone}
+                          onChange={(e) => setFormFicha((f) => ({ ...f, telefone: e.target.value }))}
+                        />
+                      </Field>
+                      <Field label="E-mail institucional">
+                        <input
+                          type="email"
+                          className={inputCls}
+                          value={formFicha.email_institucional}
+                          onChange={(e) =>
+                            setFormFicha((f) => ({ ...f, email_institucional: e.target.value }))
+                          }
+                        />
+                      </Field>
+                      <Field label="Cidade">
+                        <input
+                          className={inputCls}
+                          value={formFicha.cidade}
+                          onChange={(e) => setFormFicha((f) => ({ ...f, cidade: e.target.value }))}
+                        />
+                      </Field>
+                      <Field label="UF">
+                        <input
+                          className={inputCls}
+                          maxLength={2}
+                          value={formFicha.uf}
+                          onChange={(e) =>
+                            setFormFicha((f) => ({ ...f, uf: e.target.value.toUpperCase() }))
+                          }
+                        />
+                      </Field>
+                    </div>
+                    <button type="submit" disabled={busy} className={btnPrimary}>
+                      {busy ? 'Salvando…' : 'Salvar dados institucionais'}
+                    </button>
+                  </form>
+
+                  <div className="space-y-3 border-t border-slate-100 pt-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="text-sm font-semibold text-ink">Equipe gestora</h4>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className={btnSmall}
+                          onClick={() => openEquipeModal('gestor_principal')}
+                        >
+                          + Gestor principal
+                        </button>
+                        <button
+                          type="button"
+                          className={btnSmall}
+                          onClick={() => openEquipeModal('gestor_academico')}
+                        >
+                          + Gestor acadêmico
+                        </button>
+                        <button
+                          type="button"
+                          className={btnSmall}
+                          onClick={() => openEquipeModal('coordenador')}
+                        >
+                          + Coordenador
+                        </button>
+                      </div>
+                    </div>
+                    {['gestor_principal', 'gestor_academico', 'coordenador'].map((papel) => {
+                      const membros = (ficha.equipe_gestora || []).filter((m) => m.papel === papel)
+                      return (
+                        <div key={papel} className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
+                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                            {EQUIPE_PAPEL_LABEL[papel]}
+                          </p>
+                          {membros.length === 0 ? (
+                            <p className="text-sm text-muted">Nenhum cadastrado.</p>
+                          ) : (
+                            <ul className="space-y-2">
+                              {membros.map((m) => (
+                                <li
+                                  key={m.id}
+                                  className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-ink">
+                                      {m.nome || '—'}
+                                      {m.tem_login ? (
+                                        <span className="ml-2 text-[10px] font-bold uppercase text-violet-700">
+                                          login
+                                        </span>
+                                      ) : (
+                                        <span className="ml-2 text-[10px] font-bold uppercase text-slate-500">
+                                          avulso
+                                        </span>
+                                      )}
+                                    </p>
+                                    <p className="text-xs text-muted">
+                                      {[m.email, m.telefone].filter(Boolean).join(' · ') || 'Sem contato'}
+                                    </p>
+                                    {m.area_coordenacao ? (
+                                      <p className="text-xs text-muted">Área: {m.area_coordenacao}</p>
+                                    ) : null}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className={btnDanger}
+                                    onClick={() => softRemoveEquipe(m)}
+                                  >
+                                    Remover
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div className="space-y-2 border-t border-slate-100 pt-4">
+                    <h4 className="text-sm font-semibold text-ink">Cursos oferecidos</h4>
+                    {(ficha.cursos || []).length === 0 ? (
+                      <p className="text-sm text-muted">
+                        Nenhum curso com período vinculado a esta unidade.
+                      </p>
+                    ) : (
+                      <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                        {(ficha.cursos || []).map((c) => (
+                          <li key={c.id}>
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-slate-50"
+                              onClick={() => openCursoNaEstrutura(c)}
+                            >
+                              <span>
+                                <span className="font-medium text-ink">{c.nome}</span>
+                                <span className="ml-2 text-xs text-muted">
+                                  {c.periodo_rotulo || 'Período'}
+                                </span>
+                              </span>
+                              <span className="shrink-0 text-xs text-muted">
+                                {c.n_turmas} turma(s) · {c.n_disciplinas} disc.
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted">Não foi possível carregar a ficha.</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted">Clique em uma unidade da tabela para abrir a ficha.</p>
+          )}
         </section>
       ) : null}
 
@@ -1398,105 +2093,18 @@ export default function SecretariaOperacional() {
           ) : (
             <>
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold text-ink">Cursos do período</h2>
+                <h2 className="text-lg font-semibold text-ink">Estrutura do período</h2>
                 <button type="button" className={btnPrimary} onClick={() => openCurso(null)}>
                   + Novo curso
                 </button>
               </div>
+              {cursosDoPeriodo.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-muted">
+                  Nenhum curso neste período — use o nó “Sem curso” ou crie um curso.
+                </p>
+              ) : null}
               <div className="space-y-3">
-                {cursosDoPeriodo.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-muted">
-                    Nenhum curso neste período. Crie um curso ou use a seção Sem curso abaixo.
-                  </p>
-                ) : (
-                  cursosDoPeriodo.map((c) => renderCursoPanel(c))
-                )}
-              </div>
-
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-4">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-base font-semibold text-ink">Sem curso</h3>
-                    <p className="text-xs text-muted">
-                      Turmas e disciplinas flat deste período (escola sem hierarquia de curso).
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className={btnGhost}
-                      onClick={() => openTurma({ cursoId: '' })}
-                    >
-                      + Nova turma
-                    </button>
-                    <button
-                      type="button"
-                      className={btnGhost}
-                      onClick={() => openDisc({ cursoId: '' })}
-                    >
-                      + Nova disciplina
-                    </button>
-                  </div>
-                </div>
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold uppercase tracking-wide text-muted">Turmas</p>
-                    {turmasSemCurso.length === 0 ? (
-                      <p className="text-xs text-muted">Nenhuma turma sem curso.</p>
-                    ) : (
-                      turmasSemCurso.map((t) => renderTurmaBlock(t, { showCursoHint: true }))
-                    )}
-                  </div>
-                  <div>
-                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">
-                      Disciplinas
-                    </p>
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                      <table className="min-w-full text-left text-sm">
-                        <thead className="bg-slate-50 text-xs uppercase text-muted">
-                          <tr>
-                            <th className="px-3 py-2">Nome</th>
-                            <th className="px-3 py-2 text-right">Ações</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {discsSemCurso.length === 0 ? (
-                            <tr>
-                              <td colSpan={2} className="px-3 py-4 text-xs text-muted">
-                                Nenhuma disciplina sem curso.
-                              </td>
-                            </tr>
-                          ) : (
-                            discsSemCurso.map((d) => (
-                              <tr key={d.id} className="border-t border-slate-100">
-                                <td className="px-3 py-2 font-medium">
-                                  {d.nome}
-                                  {d.ativo === false ? <InactiveBadge /> : null}
-                                </td>
-                                <td className="px-3 py-2 text-right">
-                                  <button
-                                    type="button"
-                                    className={btnSmall}
-                                    onClick={() => openDisc({ item: d, cursoId: '' })}
-                                  >
-                                    Editar
-                                  </button>{' '}
-                                  <button
-                                    type="button"
-                                    className={btnSmall}
-                                    onClick={() => toggleAtivo('disciplina', d)}
-                                  >
-                                    {d.ativo === false ? 'Reativar' : 'Desativar'}
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
+                {estruturaNodes.map((node) => renderEstruturaNode(node))}
               </div>
             </>
           )}
@@ -1521,6 +2129,19 @@ export default function SecretariaOperacional() {
                   </option>
                 ))}
               </select>
+              <button
+                type="button"
+                className={btnGhost}
+                disabled={!filtroTurmaId}
+                title={
+                  filtroTurmaId
+                    ? 'Importar CSV para a turma selecionada'
+                    : 'Selecione uma turma no filtro para importar'
+                }
+                onClick={openImportAlunos}
+              >
+                Importar alunos
+              </button>
               <button
                 type="button"
                 className={btnPrimary}
@@ -1596,6 +2217,129 @@ export default function SecretariaOperacional() {
               </tbody>
             </table>
           </div>
+        </section>
+      ) : null}
+
+      {/* —— Situação por período —— */}
+      {!loading && tab === 'situacao' ? (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-ink">Situação por período</h2>
+              <p className="text-sm text-muted">
+                Corte do estado atual por período letivo — não é um histórico de matrículas.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              {unidades.length > 1 ? (
+                <label className="block text-sm">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted">
+                    Unidade
+                  </span>
+                  <select
+                    className={inputCls + ' w-auto min-w-[180px]'}
+                    value={situacaoUnidadeId}
+                    onChange={(e) => setSituacaoUnidadeId(e.target.value)}
+                  >
+                    <option value="">Todas</option>
+                    {unidades.map((u) => (
+                      <option key={u.id} value={u.id}>{u.nome}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted">
+                  Curso
+                </span>
+                <select
+                  className={inputCls + ' w-auto min-w-[200px]'}
+                  value={situacaoCursoId}
+                  onChange={(e) => setSituacaoCursoId(e.target.value)}
+                >
+                  <option value="">Todos</option>
+                  {cursos.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+            {SITUACAO_AVISO_UI}
+          </div>
+
+          {situacaoLoading ? (
+            <p className="text-sm text-muted">Carregando situação…</p>
+          ) : situacaoItems.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-muted">
+              Nenhum período letivo cadastrado.
+            </p>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase text-muted">
+                  <tr>
+                    <th className="px-4 py-3">Período</th>
+                    <th className="px-4 py-3">Ano</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Datas</th>
+                    <th className="px-4 py-3">Unidade</th>
+                    <th className="px-4 py-3 text-right">Turmas</th>
+                    <th
+                      className="px-4 py-3 text-right"
+                      title="Contagem pelo vínculo atual do aluno à turma do período"
+                    >
+                      Alunos
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right"
+                      title="Professores com alocação ativa neste período (estado atual)"
+                    >
+                      Professores
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {situacaoItems.map((row) => (
+                    <tr key={row.periodo_id} className="border-t border-slate-100">
+                      <td className="px-4 py-3 font-medium text-ink">
+                        {row.rotulo}
+                        {row.em_curso ? (
+                          <span className="ml-2 text-[10px] font-bold uppercase text-violet-700">
+                            vigente
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-muted">{row.ano_letivo}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={[
+                            'inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                            PERIODO_STATUS_CLASS[row.status] || 'bg-slate-100 text-slate-600',
+                          ].join(' ')}
+                        >
+                          {PERIODO_STATUS_LABEL[row.status] || row.status || '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-muted whitespace-nowrap">
+                        {(row.data_inicio || '—').slice(0, 10)}
+                        {' – '}
+                        {(row.data_fim || '—').slice(0, 10)}
+                      </td>
+                      <td className="px-4 py-3 text-muted">
+                        {row.unidade_nome || 'Institucional'}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold">{row.n_turmas}</td>
+                      <td className="px-4 py-3 text-right font-semibold">{row.n_alunos}</td>
+                      <td className="px-4 py-3 text-right font-semibold">{row.n_professores}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       ) : null}
 
@@ -1953,6 +2697,99 @@ export default function SecretariaOperacional() {
         </form>
       </Modal>
 
+      <Modal
+        title={`Adicionar — ${EQUIPE_PAPEL_LABEL[formEquipe.papel] || 'Equipe'}`}
+        open={modal === 'equipe'}
+        onClose={closeModal}
+      >
+        <form onSubmit={saveEquipe} className="space-y-3">
+          <Field label="Papel">
+            <select
+              className={inputCls}
+              value={formEquipe.papel}
+              onChange={(e) => setFormEquipe((f) => ({ ...f, papel: e.target.value }))}
+            >
+              {Object.entries(EQUIPE_PAPEL_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </Field>
+          <div className="flex gap-2 text-sm">
+            <button
+              type="button"
+              className={formEquipe.modo === 'gestor' ? btnPrimary : btnGhost}
+              onClick={() => setFormEquipe((f) => ({ ...f, modo: 'gestor' }))}
+            >
+              Gestor existente
+            </button>
+            <button
+              type="button"
+              className={formEquipe.modo === 'avulso' ? btnPrimary : btnGhost}
+              onClick={() => setFormEquipe((f) => ({ ...f, modo: 'avulso' }))}
+            >
+              Contato avulso
+            </button>
+          </div>
+          {formEquipe.modo === 'gestor' ? (
+            <Field label="Gestor">
+              <select
+                className={inputCls}
+                required
+                value={formEquipe.gestor_id}
+                onChange={(e) => setFormEquipe((f) => ({ ...f, gestor_id: e.target.value }))}
+              >
+                <option value="">Selecione…</option>
+                {gestoresOpts.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.nome} ({g.email})
+                  </option>
+                ))}
+              </select>
+            </Field>
+          ) : (
+            <>
+              <Field label="Nome">
+                <input
+                  className={inputCls}
+                  required
+                  value={formEquipe.nome}
+                  onChange={(e) => setFormEquipe((f) => ({ ...f, nome: e.target.value }))}
+                />
+              </Field>
+              <Field label="E-mail">
+                <input
+                  type="email"
+                  className={inputCls}
+                  value={formEquipe.email}
+                  onChange={(e) => setFormEquipe((f) => ({ ...f, email: e.target.value }))}
+                />
+              </Field>
+              <Field label="Telefone">
+                <input
+                  className={inputCls}
+                  value={formEquipe.telefone}
+                  onChange={(e) => setFormEquipe((f) => ({ ...f, telefone: e.target.value }))}
+                />
+              </Field>
+            </>
+          )}
+          {formEquipe.papel === 'coordenador' ? (
+            <Field label="Área de coordenação (opcional)">
+              <input
+                className={inputCls}
+                value={formEquipe.area_coordenacao}
+                onChange={(e) =>
+                  setFormEquipe((f) => ({ ...f, area_coordenacao: e.target.value }))
+                }
+              />
+            </Field>
+          ) : null}
+          <button type="submit" disabled={busy} className={btnPrimary}>
+            {busy ? 'Salvando…' : 'Adicionar'}
+          </button>
+        </form>
+      </Modal>
+
       <Modal title={editId ? 'Editar período' : 'Novo período letivo'} open={modal === 'periodo'} onClose={closeModal}>
         <form onSubmit={savePeriodo} className="space-y-3">
           <Field label="Nome">
@@ -2081,6 +2918,141 @@ export default function SecretariaOperacional() {
           </Field>
           <button type="submit" disabled={busy} className={btnPrimary}>{busy ? 'Salvando…' : 'Salvar'}</button>
         </form>
+      </Modal>
+
+      <Modal
+        title="Importar alunos"
+        open={modal === 'importAlunos'}
+        onClose={closeModal}
+        wide
+      >
+        <p className="mb-3 text-sm text-muted">
+          Turma destino:{' '}
+          <span className="font-semibold text-ink">
+            {turmas.find((t) => t.id === filtroTurmaId)?.nome || '—'}
+          </span>
+          . Todas as linhas do CSV serão vinculadas a esta turma.
+        </p>
+        {importStep === 'upload' ? (
+          <div className="space-y-3">
+            <Field label="Arquivo CSV">
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="block w-full text-sm"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              />
+            </Field>
+            <button
+              type="button"
+              className="text-sm font-semibold text-violet-700 hover:underline"
+              onClick={downloadModeloCsv}
+            >
+              Baixar modelo CSV
+            </button>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                className={btnPrimary}
+                disabled={busy || !importFile}
+                onClick={runImportPreview}
+              >
+                {busy ? 'Analisando…' : 'Analisar arquivo'}
+              </button>
+              <button type="button" className={btnGhost} onClick={closeModal}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {[
+                ['Total', importPreview?.resumo?.total],
+                ['Ok', importPreview?.resumo?.ok],
+                ['Erros', importPreview?.resumo?.erro],
+                ['Novos', importPreview?.resumo?.novos],
+                ['Atualizações', importPreview?.resumo?.atualizacoes],
+              ].map(([label, n]) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-ink"
+                >
+                  <span className="font-medium text-muted">{label}</span>
+                  {n ?? 0}
+                </span>
+              ))}
+            </div>
+            <div className="max-h-72 overflow-auto rounded-xl border border-slate-200">
+              <table className="min-w-full text-left text-xs">
+                <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase text-muted">
+                  <tr>
+                    <th className="px-2 py-2">Linha</th>
+                    <th className="px-2 py-2">Nome</th>
+                    <th className="px-2 py-2">Matrícula</th>
+                    <th className="px-2 py-2">Nascimento</th>
+                    <th className="px-2 py-2">Status</th>
+                    <th className="px-2 py-2">Ação</th>
+                    <th className="px-2 py-2">Erro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(importPreview?.linhas || []).map((L) => (
+                    <tr key={`${L.linha}-${L.matricula || ''}`} className="border-t border-slate-100">
+                      <td className="px-2 py-1.5 text-muted">{L.linha}</td>
+                      <td className="px-2 py-1.5 font-medium text-ink">{L.nome || '—'}</td>
+                      <td className="px-2 py-1.5">{L.matricula || '—'}</td>
+                      <td className="px-2 py-1.5 text-muted">{L.data_nascimento || '—'}</td>
+                      <td className="px-2 py-1.5">
+                        <span
+                          className={
+                            L.status === 'ok'
+                              ? 'font-semibold text-emerald-700'
+                              : 'font-semibold text-red-700'
+                          }
+                        >
+                          {L.status}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1.5 text-muted">
+                        {L.acao === 'criar'
+                          ? 'Novo'
+                          : L.acao === 'atualizar'
+                            ? 'Atualizar'
+                            : '—'}
+                      </td>
+                      <td className="px-2 py-1.5 text-red-700">{L.erro || ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={btnPrimary}
+                disabled={busy || !(importPreview?.resumo?.ok > 0)}
+                onClick={runImportConfirm}
+              >
+                {busy ? 'Importando…' : 'Confirmar importação'}
+              </button>
+              <button
+                type="button"
+                className={btnGhost}
+                disabled={busy}
+                onClick={() => {
+                  setImportStep('upload')
+                  setImportPreview(null)
+                }}
+              >
+                Voltar
+              </button>
+              <button type="button" className={btnGhost} disabled={busy} onClick={closeModal}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <Modal

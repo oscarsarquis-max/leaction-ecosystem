@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import calendar
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from flask import Blueprint, jsonify, request
@@ -90,6 +90,7 @@ SELECT
     p.id,
     p.turma_id,
     t.nome AS turma_nome,
+    t.turno AS turma_turno,
     t.unidade_id,
     u.nome AS unidade_nome,
     p.professor_vinculo_id,
@@ -104,6 +105,11 @@ SELECT
     p.desafio_sequencia,
     p.mesa_payload_json,
     p.updated_at,
+    aloc.disciplina_nome,
+    aloc.disciplina_codigo,
+    cur.nome AS curso_nome,
+    pl.hora_inicio,
+    pl.hora_fim,
     EXISTS (
         SELECT 1
         FROM public.school_curadoria_metodologias c
@@ -122,6 +128,28 @@ JOIN public.school_metodologias_catalogo m
     ON m.id = p.metodologia_catalogo_id
 LEFT JOIN public.school_professores_vinculo v
     ON v.id = p.professor_vinculo_id
+LEFT JOIN public.school_cursos cur
+    ON cur.id = t.curso_id
+LEFT JOIN LATERAL (
+    SELECT
+        d.nome AS disciplina_nome,
+        d.codigo AS disciplina_codigo
+    FROM public.school_alocacoes_docentes a
+    JOIN public.school_disciplinas d ON d.id = a.disciplina_id
+    WHERE a.professor_vinculo_id = p.professor_vinculo_id
+      AND a.ativo = TRUE
+    ORDER BY (a.turma_id = p.turma_id) DESC NULLS LAST, a.updated_at DESC
+    LIMIT 1
+) aloc ON TRUE
+LEFT JOIN LATERAL (
+    SELECT pe.hora_inicio, pe.hora_fim
+    FROM public.school_planejamento_escolar pe
+    WHERE pe.turma_id = p.turma_id
+      AND pe.professor_vinculo_id = p.professor_vinculo_id
+      AND pe.data = p.semana_referencia
+    ORDER BY pe.hora_inicio NULLS LAST
+    LIMIT 1
+) pl ON TRUE
 """
 
 
@@ -279,6 +307,56 @@ def _diario_bordo(mesa: dict[str, Any]) -> list[dict[str, Any]]:
     return entries
 
 
+_TURNO_HORARIO = {
+    "manha": ("07:00", "Manhã"),
+    "tarde": ("13:00", "Tarde"),
+    "noite": ("18:00", "Noite"),
+    "integral": ("08:00", "Integral"),
+}
+
+
+def _fmt_time(value: Any) -> str | None:
+    if value is None:
+        return None
+    if hasattr(value, "strftime"):
+        return value.strftime("%H:%M")
+    text = str(value).strip()
+    if not text:
+        return None
+    # time/datetime string → HH:MM
+    if ":" in text:
+        return text[:5]
+    return text
+
+
+def _codigo_disciplina(r: dict[str, Any]) -> str:
+    code = str(r.get("disciplina_codigo") or "").strip()
+    if code:
+        return code.upper()
+    nome = str(
+        r.get("disciplina_nome") or r.get("curso_nome") or r.get("metodologia_nome") or ""
+    ).strip()
+    if not nome:
+        return "—"
+    parts = [p for p in nome.replace("-", " ").split() if p]
+    if len(parts) == 1:
+        return parts[0][:6].upper()
+    return "".join(p[0] for p in parts[:4]).upper()
+
+
+def _horario_fields(r: dict[str, Any]) -> tuple[str, str, str | None, str | None]:
+    """Retorna (horario_sort, horario_label, hora_inicio, hora_fim)."""
+    hi = _fmt_time(r.get("hora_inicio"))
+    hf = _fmt_time(r.get("hora_fim"))
+    if hi and hf:
+        return hi, f"{hi}–{hf}", hi, hf
+    if hi:
+        return hi, hi, hi, hf
+    turno = str(r.get("turma_turno") or "").strip().lower()
+    sort_key, label = _TURNO_HORARIO.get(turno, ("99:99", "Sem horário"))
+    return sort_key, label, None, None
+
+
 def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
     mesa = _as_mesa(r.get("mesa_payload_json"))
     sugestao = str(
@@ -287,14 +365,18 @@ def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
         or mesa.get("teacher_adaptation_text")
         or ""
     ).strip() or None
+    horario_sort, horario_label, hora_inicio, hora_fim = _horario_fields(r)
+    codigo = _codigo_disciplina(r)
     return {
         "id": str(r["id"]),
         "turma_id": str(r["turma_id"]),
         "turma_nome": r["turma_nome"],
+        "turma_turno": r.get("turma_turno"),
         "unidade_id": str(r["unidade_id"]),
         "unidade_nome": r["unidade_nome"],
         "professor_vinculo_id": str(r["professor_vinculo_id"]),
         "professor_email": r.get("professor_email"),
+        "professor_nome": mesa.get("professor_nome"),
         "metodologia_nome": r["metodologia_nome"],
         "tipo_aula": r["tipo_aula"],
         "semana_referencia": _fmt_date(r["semana_referencia"]),
@@ -308,7 +390,127 @@ def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
         "texto_sugestao": sugestao,
         "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
         "aula_titulo": mesa.get("titulo") or r.get("conteudo_resumo"),
+        "disciplina_nome": r.get("disciplina_nome"),
+        "disciplina_codigo": codigo,
+        "curso_nome": r.get("curso_nome"),
+        "hora_inicio": hora_inicio,
+        "hora_fim": hora_fim,
+        "horario_sort": horario_sort,
+        "horario_label": horario_label,
+        "item_kind": "aula",
     }
+
+
+def _evento_row(r: dict[str, Any]) -> dict[str, Any]:
+    inicio = r.get("data_hora_inicio")
+    fim = r.get("data_hora_fim")
+    if hasattr(inicio, "astimezone"):
+        try:
+            inicio_local = inicio.astimezone()
+        except Exception:
+            inicio_local = inicio
+    else:
+        inicio_local = inicio
+    ref = None
+    hi = None
+    if hasattr(inicio_local, "date"):
+        ref = inicio_local.date().isoformat()
+        hi = inicio_local.strftime("%H:%M")
+    elif inicio_local:
+        text = str(inicio_local)
+        ref = text[:10]
+        hi = text[11:16] if len(text) >= 16 else None
+    hf = _fmt_time(fim) if fim else None
+    if hi and hf:
+        horario_label = f"{hi}–{hf}"
+    else:
+        horario_label = hi or "Evento"
+    tipo = str(r.get("tipo") or "evento_escolar")
+    reuniao = tipo == "reuniao_pedagogica"
+    codigo = "REU" if reuniao else "EVT"
+    now = datetime.now(timezone.utc)
+    encerrado = False
+    if isinstance(inicio, datetime):
+        try:
+            encerrado = (fim or inicio) < now
+        except TypeError:
+            encerrado = False
+    return {
+        "id": f"evt-{r['id']}",
+        "item_kind": "evento",
+        "tipo_aula": "evento",
+        "evento_tipo": tipo,
+        "turma_id": str(r["turma_id"]) if r.get("turma_id") else None,
+        "turma_nome": r.get("turma_nome") or "Escola",
+        "turma_turno": r.get("turma_turno"),
+        "unidade_id": str(r["unidade_id"]) if r.get("unidade_id") else None,
+        "unidade_nome": r.get("unidade_nome") or "Instituição",
+        "professor_vinculo_id": None,
+        "professor_email": None,
+        "professor_nome": None,
+        "metodologia_nome": None,
+        "semana_referencia": ref,
+        "status": r.get("status") or "agendado",
+        "execucao_status": "concluida" if encerrado else "em_andamento",
+        "conteudo_resumo": r.get("descricao"),
+        "desafio_grupo_id": None,
+        "desafio_titulo": None,
+        "desafio_sequencia": None,
+        "has_sugestao_curadoria": False,
+        "texto_sugestao": None,
+        "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
+        "aula_titulo": r.get("titulo"),
+        "disciplina_nome": "Reunião pedagógica" if reuniao else "Evento escolar",
+        "disciplina_codigo": codigo,
+        "curso_nome": None,
+        "hora_inicio": hi,
+        "hora_fim": hf,
+        "horario_sort": hi or "12:00",
+        "horario_label": horario_label,
+    }
+
+
+def _fetch_eventos(
+    cur: Any,
+    *,
+    instituicao_id: str,
+    data_inicio: date,
+    data_fim: date,
+    unidade_id: str | None = None,
+) -> list[dict[str, Any]]:
+    sql = """
+        SELECT
+            e.id,
+            e.titulo,
+            e.descricao,
+            e.tipo,
+            e.status,
+            e.data_hora_inicio,
+            e.data_hora_fim,
+            e.turma_id,
+            e.unidade_id,
+            e.updated_at,
+            t.nome AS turma_nome,
+            t.turno AS turma_turno,
+            u.nome AS unidade_nome
+        FROM public.school_comunicacoes_eventos e
+        LEFT JOIN public.school_turmas t ON t.id = e.turma_id
+        LEFT JOIN public.school_unidades u ON u.id = COALESCE(e.unidade_id, t.unidade_id)
+        WHERE e.instituicao_id = %s
+          AND e.status <> 'cancelado'
+          AND (e.data_hora_inicio::date) >= %s
+          AND (e.data_hora_inicio::date) <= %s
+    """
+    params: list[Any] = [instituicao_id, data_inicio, data_fim]
+    if unidade_id:
+        sql += " AND (e.unidade_id = %s OR t.unidade_id = %s OR e.unidade_id IS NULL)"
+        params.extend([unidade_id, unidade_id])
+    sql += " ORDER BY e.data_hora_inicio"
+    try:
+        cur.execute(sql, params)
+        return [_evento_row(r) for r in cur.fetchall()]
+    except Exception:
+        return []
 
 
 def _resumo_payload(row: dict[str, Any], data_inicio: date, data_fim: date) -> dict[str, Any]:
@@ -413,8 +615,18 @@ def calendario_pedagogico(unidade_id: str):
                 (str(parsed), data_inicio, data_fim),
             )
             rows = cur.fetchall()
+            itens = [_plano_row(r) for r in rows]
+            itens.extend(
+                _fetch_eventos(
+                    cur,
+                    instituicao_id=str(unidade["instituicao_id"]),
+                    data_inicio=data_inicio,
+                    data_fim=data_fim,
+                    unidade_id=str(parsed),
+                )
+            )
 
-    return jsonify([_plano_row(r) for r in rows])
+    return jsonify(itens)
 
 
 @bp.get("/api/unidades/<unidade_id>/calendario-pedagogico/resumo")
@@ -496,8 +708,18 @@ def calendario_instituicao(instituicao_id: str):
                     (str(parsed), data_inicio, data_fim),
                 )
             rows = cur.fetchall()
+            itens = [_plano_row(r) for r in rows]
+            itens.extend(
+                _fetch_eventos(
+                    cur,
+                    instituicao_id=str(parsed),
+                    data_inicio=data_inicio,
+                    data_fim=data_fim,
+                    unidade_id=str(unidade_id) if unidade_id else None,
+                )
+            )
 
-    return jsonify([_plano_row(r) for r in rows])
+    return jsonify(itens)
 
 
 @bp.get("/api/instituicoes/<instituicao_id>/calendario-pedagogico/resumo")
@@ -759,6 +981,53 @@ def resumo_consolidado(instituicao_id: str):
     )
 
 
+def _professor_label_from_email(email: str | None) -> str:
+    local = str(email or "").strip().split("@")[0] if email else ""
+    parts = [p for p in local.replace("_", ".").split(".") if p]
+    if len(parts) >= 2:
+        return f"Prof. {parts[0].title()} {parts[-1].title()}"
+    if parts:
+        return f"Prof. {parts[0].title()}"
+    return "Professor"
+
+
+def _trecho_sugestao(payload: Any, limit: int = 140) -> str:
+    if not isinstance(payload, dict):
+        return ""
+    text = str(
+        payload.get("teacher_adaptation_text")
+        or payload.get("texto_sugestao")
+        or payload.get("texto")
+        or ""
+    ).strip()
+    if not text:
+        mesa = payload.get("mesa") if isinstance(payload.get("mesa"), dict) else {}
+        text = str(mesa.get("teacher_adaptation_text") or "").strip()
+    if not text:
+        return ""
+    compact = " ".join(text.split())
+    if len(compact) <= limit:
+        return compact
+    return f"{compact[: limit - 1]}…"
+
+
+def _item_curadoria(row: dict[str, Any], *, tipo: str) -> dict[str, Any]:
+    created = row.get("created_at")
+    return {
+        "id": str(row["id"]),
+        "plano_id": str(row["plano_espelhado_id"])
+        if row.get("plano_espelhado_id")
+        else None,
+        "tipo": tipo,
+        "metodologia_nome": (row.get("metodologia_nome") or "").strip() or "—",
+        "turma_nome": row.get("turma_nome") or "—",
+        "professor_label": _professor_label_from_email(row.get("professor_email")),
+        "data": _fmt_date(row.get("semana_referencia") or created),
+        "trecho": _trecho_sugestao(row.get("sugestao_professor_json")),
+        "created_at": created.isoformat() if hasattr(created, "isoformat") else None,
+    }
+
+
 @bp.get("/api/instituicoes/<instituicao_id>/curadoria-pendente")
 def curadoria_pendente(instituicao_id: str):
     """Fila unificada: curadoria metodologia + PEI com status_analise = pendente."""
@@ -817,6 +1086,8 @@ def curadoria_pendente(instituicao_id: str):
                 SELECT
                     c.id,
                     c.plano_espelhado_id,
+                    c.metodologia_nome,
+                    c.sugestao_professor_json,
                     c.created_at,
                     pe.semana_referencia,
                     t.nome AS turma_nome,
@@ -836,33 +1107,15 @@ def curadoria_pendente(instituicao_id: str):
                 params_base,
             )
             for r in cur.fetchall():
-                email = str(r.get("professor_email") or "").strip()
-                local = email.split("@")[0] if email else ""
-                parts = [p for p in local.replace("_", ".").split(".") if p]
-                if len(parts) >= 2:
-                    label = f"Prof. {parts[0].title()} {parts[-1].title()}"
-                elif parts:
-                    label = f"Prof. {parts[0].title()}"
-                else:
-                    label = "Professor"
-                itens.append(
-                    {
-                        "id": str(r["id"]),
-                        "plano_id": str(r["plano_espelhado_id"])
-                        if r.get("plano_espelhado_id")
-                        else None,
-                        "tipo": "metodologia",
-                        "turma_nome": r.get("turma_nome") or "—",
-                        "professor_label": label,
-                        "data": _fmt_date(r.get("semana_referencia") or r.get("created_at")),
-                    }
-                )
+                itens.append(_item_curadoria(r, tipo="metodologia"))
 
             cur.execute(
                 f"""
                 SELECT
                     c.id,
                     c.plano_espelhado_id,
+                    c.metodologia_nome,
+                    c.sugestao_professor_json,
                     c.created_at,
                     pe.semana_referencia,
                     t.nome AS turma_nome,
@@ -882,29 +1135,12 @@ def curadoria_pendente(instituicao_id: str):
                 params_base,
             )
             for r in cur.fetchall():
-                email = str(r.get("professor_email") or "").strip()
-                local = email.split("@")[0] if email else ""
-                parts = [p for p in local.replace("_", ".").split(".") if p]
-                if len(parts) >= 2:
-                    label = f"Prof. {parts[0].title()} {parts[-1].title()}"
-                elif parts:
-                    label = f"Prof. {parts[0].title()}"
-                else:
-                    label = "Professor"
-                itens.append(
-                    {
-                        "id": str(r["id"]),
-                        "plano_id": str(r["plano_espelhado_id"])
-                        if r.get("plano_espelhado_id")
-                        else None,
-                        "tipo": "pei",
-                        "turma_nome": r.get("turma_nome") or "—",
-                        "professor_label": label,
-                        "data": _fmt_date(r.get("semana_referencia") or r.get("created_at")),
-                    }
-                )
+                itens.append(_item_curadoria(r, tipo="pei"))
 
-    itens.sort(key=lambda x: x.get("data") or "", reverse=True)
+    itens.sort(
+        key=lambda x: x.get("created_at") or x.get("data") or "",
+        reverse=True,
+    )
 
     return jsonify(
         {

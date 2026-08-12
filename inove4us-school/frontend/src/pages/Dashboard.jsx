@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useInstituicaoId } from '../lib/auth'
 import { tabClassName } from '../lib/tabs'
@@ -35,10 +34,58 @@ const STATUS_CLASS = {
   reprovado: 'bg-red-50 text-red-700',
 }
 
-const COL_W = 148
-const LABEL_W = 250
+const COL_W = 156
+const LABEL_W = 112
 const HEADER_H = 44
-const PILL_H = 36
+const PILL_H = 40
+
+/**
+ * Cores semânticas do grafo:
+ * - família: Dia a Dia (verde) | Desafio (âmbar) | Evento (ardósia)
+ * - saturação: planejada (sólida) | encerrada (clara)
+ */
+function isEventoItem(item) {
+  return item?.item_kind === 'evento' || item?.tipo_aula === 'evento'
+}
+
+function isEncerrada(item) {
+  return item?.execucao_status === 'concluida'
+}
+
+function pillSemanticStyle(item) {
+  if (isEventoItem(item)) {
+    return isEncerrada(item)
+      ? 'border-slate-300 bg-slate-100 text-slate-700'
+      : 'border-slate-700 bg-slate-700 text-white'
+  }
+  const desafio = item?.tipo_aula === 'desafio'
+  if (desafio) {
+    return isEncerrada(item)
+      ? 'border-amber-200 bg-amber-50 text-amber-900'
+      : 'border-amber-600 bg-amber-500 text-amber-950'
+  }
+  return isEncerrada(item)
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+    : 'border-emerald-700 bg-emerald-600 text-white'
+}
+
+function pillCodigo(item) {
+  if (isEventoItem(item)) {
+    return String(item.disciplina_codigo || 'EVT').trim().toUpperCase() || 'EVT'
+  }
+  return (
+    String(item.disciplina_codigo || item.curso_codigo || '').trim().toUpperCase() || '—'
+  )
+}
+
+function pillTurmaShort(nome) {
+  const t = String(nome || '').trim()
+  if (!t) return ''
+  // "6º Ano A" → "6A"; fallback truncado
+  const m = t.match(/(\d+)\s*[ºªo]?\s*(?:ano)?\s*([A-Za-z])?/i)
+  if (m) return `${m[1]}${(m[2] || '').toUpperCase()}`
+  return t.length > 8 ? `${t.slice(0, 7)}…` : t
+}
 
 function pad2(n) {
   return n < 10 ? `0${n}` : String(n)
@@ -170,7 +217,7 @@ function professorDisplayName(emailOrName, idx = 0) {
   const raw = String(emailOrName || '').trim()
   if (!raw) return `Prof. ${idx + 1}`
   if (!raw.includes('@')) {
-    const parts = raw.replace(/^Prof.?s*/i, '').split(/s+/).filter(Boolean)
+    const parts = raw.replace(/^Prof\.?\s*/i, '').split(/\s+/).filter(Boolean)
     if (parts.length >= 2) {
       return `Prof. ${capitalizeToken(parts[0])} ${capitalizeToken(parts[parts.length - 1])}`
     }
@@ -188,9 +235,9 @@ function professorDisplayName(emailOrName, idx = 0) {
 
 function professorInitials(displayName) {
   const cleaned = String(displayName || '')
-    .replace(/^Prof.?s*/i, '')
+    .replace(/^Prof\.?\s*/i, '')
     .trim()
-  const parts = cleaned.split(/s+/).filter(Boolean)
+  const parts = cleaned.split(/\s+/).filter(Boolean)
   if (parts.length >= 2) {
     return `${parts[0][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase()
   }
@@ -198,13 +245,34 @@ function professorInitials(displayName) {
 }
 
 function pillTooltip(item) {
+  const codigo = pillCodigo(item)
+  if (isEventoItem(item)) {
+    return [
+      item.aula_titulo || 'Evento escolar',
+      item.disciplina_nome || (codigo === 'REU' ? 'Reunião pedagógica' : 'Evento escolar'),
+      item.turma_nome ? `Público: ${item.turma_nome}` : null,
+      item.horario_label ? `Horário: ${item.horario_label}` : null,
+      item.semana_referencia ? `Data: ${formatarDataBR(item.semana_referencia)}` : null,
+      isEncerrada(item) ? 'Estado: encerrado' : 'Estado: planejado',
+    ]
+      .filter(Boolean)
+      .join('\n')
+  }
   const lines = [
+    codigo !== '—' ? `Código: ${codigo}` : null,
+    item.disciplina_nome ? `Disciplina: ${item.disciplina_nome}` : null,
+    item.curso_nome ? `Curso: ${item.curso_nome}` : null,
     item.turma_nome || 'Turma',
+    item.horario_label ? `Horário: ${item.horario_label}` : null,
+    item.professor_nome || item.professor_email
+      ? `Professor: ${professorDisplayName(item.professor_nome || item.professor_email, 0)}`
+      : null,
     item.aula_titulo || item.conteudo_resumo || item.metodologia_nome
       ? `Plano: ${item.aula_titulo || item.conteudo_resumo || item.metodologia_nome}`
       : null,
     item.metodologia_nome ? `Metodologia: ${item.metodologia_nome}` : null,
     `Status: ${STATUS_LABEL[item.status] || item.status || '—'}`,
+    isEncerrada(item) ? 'Execução: encerrada' : 'Execução: planejada',
     item.semana_referencia
       ? `Referência: ${formatarDataBR(item.semana_referencia)}`
       : null,
@@ -215,7 +283,7 @@ function pillTooltip(item) {
       ? 'Curadoria: gerou insumo para a matriz'
       : null,
   ].filter(Boolean)
-  return lines.join('n')
+  return lines.join('\n')
 }
 
 function TipoBadge({ tipo }) {
@@ -269,7 +337,7 @@ function KpiCard({ label, value, hint, onClick }) {
 }
 
 function deriveKpis(planos) {
-  const list = Array.isArray(planos) ? planos : []
+  const list = (Array.isArray(planos) ? planos : []).filter((p) => !isEventoItem(p))
   let dia = 0
   let desafio = 0
   let pendente = 0
@@ -296,6 +364,7 @@ function countExecucao(planos) {
   let andamento = 0
   let concluidas = 0
   for (const p of planos || []) {
+    if (isEventoItem(p)) continue
     if (p.execucao_status === 'concluida') concluidas += 1
     else andamento += 1
   }
@@ -311,58 +380,78 @@ function EmptyState() {
   )
 }
 
-function ProfessorLaneLabel({ displayName }) {
-  const initials = professorInitials(displayName)
+function HorarioLaneLabel({ label, sortKey }) {
+  const isClock = /^\d{2}:\d{2}/.test(String(sortKey || ''))
   return (
     <div
-      className="flex min-w-0 items-center gap-2.5 overflow-hidden"
-      style={{ width: LABEL_W - 24 }}
-      title={displayName}
+      className="flex min-w-0 items-center overflow-hidden"
+      style={{ width: LABEL_W - 16 }}
+      title={label}
     >
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-school-100 text-xs font-bold text-school-700"
-        aria-hidden
+        className={[
+          'truncate font-semibold tabular-nums tracking-tight text-ink',
+          isClock ? 'text-base' : 'text-sm',
+        ].join(' ')}
       >
-        {initials}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
-        {displayName}
+        {label}
       </span>
     </div>
   )
 }
 
 function LessonPill({ item, onClick }) {
+  const evento = isEventoItem(item)
   const desafio = item.tipo_aula === 'desafio'
+  const encerrada = isEncerrada(item)
   const curadoria = Boolean(item.has_sugestao_curadoria)
+  const codigo = pillCodigo(item)
+  const turmaShort = pillTurmaShort(item.turma_nome)
+  const label = evento
+    ? String(item.aula_titulo || codigo).trim()
+    : `${codigo}${turmaShort ? ` · ${turmaShort}` : ''}`
   return (
     <button
       type="button"
       onClick={() => onClick?.(item)}
       title={pillTooltip(item)}
       className={[
-        'inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 text-left text-xs font-semibold transition',
+        'inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2 text-left text-xs font-semibold transition',
         'hover:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-school-500',
-        desafio
-          ? 'border-amber-200/90 bg-amber-50 text-amber-950'
-          : 'border-emerald-200/90 bg-emerald-50 text-emerald-950',
-        curadoria
-          ? 'border-violet-500 shadow-[0_0_12px_rgba(109,40,217,0.45)] ring-1 ring-violet-400/80'
+        pillSemanticStyle(item),
+        encerrada ? 'opacity-90' : '',
+        curadoria && !evento
+          ? 'ring-2 ring-violet-400/80 ring-offset-1'
           : '',
       ].join(' ')}
       style={{ height: PILL_H, maxHeight: PILL_H }}
     >
-      <span
-        className={[
-          'h-1.5 w-1.5 shrink-0 rounded-full',
-          desafio ? 'bg-amber-500' : 'bg-emerald-500',
-          curadoria ? 'bg-violet-600' : '',
-        ].join(' ')}
-        aria-hidden
-      />
-      <span className="min-w-0 truncate">{item.turma_nome || 'Turma'}</span>
-      {curadoria ? (
-        <span className="shrink-0 text-[10px] font-bold text-violet-700" aria-hidden>
+      <span className="min-w-0 flex-1 truncate">
+        {evento ? (
+          <>
+            <span className="font-bold tracking-wide">{codigo}</span>
+            <span className="font-medium opacity-90">
+              {' '}
+              · {String(item.aula_titulo || 'Evento').slice(0, 18)}
+            </span>
+          </>
+        ) : (
+          <span className="font-bold tracking-wide">{label}</span>
+        )}
+      </span>
+      {desafio && !evento ? (
+        <span className="shrink-0 text-[9px] font-bold uppercase opacity-90" aria-hidden>
+          D
+        </span>
+      ) : null}
+      {curadoria && !evento ? (
+        <span
+          className={[
+            'shrink-0 text-[10px] font-bold',
+            encerrada ? 'text-violet-700' : 'text-violet-200',
+          ].join(' ')}
+          aria-hidden
+        >
           ◆
         </span>
       ) : null}
@@ -370,30 +459,67 @@ function LessonPill({ item, onClick }) {
   )
 }
 
+function GraphLegend() {
+  const items = [
+    { key: 'dd-p', label: 'Dia a Dia · planejada', className: 'border-emerald-700 bg-emerald-600' },
+    { key: 'dd-e', label: 'Dia a Dia · encerrada', className: 'border-emerald-200 bg-emerald-50' },
+    { key: 'dz-p', label: 'Desafio · planejada', className: 'border-amber-600 bg-amber-500' },
+    { key: 'dz-e', label: 'Desafio · encerrada', className: 'border-amber-200 bg-amber-50' },
+    { key: 'ev-p', label: 'Evento escolar · planejado', className: 'border-slate-700 bg-slate-700' },
+    { key: 'ev-e', label: 'Evento escolar · encerrado', className: 'border-slate-300 bg-slate-100' },
+    { key: 'cur', label: 'Com sugestão p/ curadoria', className: 'border-violet-400 bg-white ring-2 ring-violet-400' },
+  ]
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100 bg-slate-50/70 px-4 py-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+        Legenda
+      </p>
+      {items.map((it) => (
+        <div key={it.key} className="inline-flex items-center gap-1.5 text-[11px] text-slate-700">
+          <span
+            className={['h-3 w-5 shrink-0 rounded border', it.className].join(' ')}
+            aria-hidden
+          />
+          <span>{it.label}</span>
+        </div>
+      ))}
+      <p className="text-[11px] text-muted">
+        Texto na pílula = código da disciplina (ou EVT/REU) · turma
+      </p>
+    </div>
+  )
+}
+
+/** Faixas do grafo = horário (eixo esquerdo tabular). */
 function buildLanes(planos) {
-  const byProf = new Map()
+  const byHorario = new Map()
   for (const p of planos) {
-    const key = p.professor_vinculo_id || 'sem-professor'
-    if (!byProf.has(key)) byProf.set(key, [])
-    byProf.get(key).push(p)
-  }
-  return [...byProf.entries()].map(([professorId, items], idx) => {
-    const sorted = [...items].sort((a, b) => {
-      const da = a.semana_referencia || ''
-      const db = b.semana_referencia || ''
-      if (da !== db) return da.localeCompare(db)
-      return (a.desafio_sequencia || 0) - (b.desafio_sequencia || 0)
-    })
-    const displayName = professorDisplayName(
-      items[0]?.professor_nome || items[0]?.professor_email,
-      idx,
-    )
-    return {
-      professorId,
-      displayName,
-      items: sorted,
+    const sort = p.horario_sort || '99:99'
+    const label = p.horario_label || 'Sem horário'
+    const key = `${sort}|${label}`
+    if (!byHorario.has(key)) {
+      byHorario.set(key, { sortKey: sort, label, items: [] })
     }
-  })
+    byHorario.get(key).items.push(p)
+  }
+  return [...byHorario.values()]
+    .sort((a, b) => {
+      if (a.sortKey !== b.sortKey) return a.sortKey.localeCompare(b.sortKey)
+      return a.label.localeCompare(b.label)
+    })
+    .map((lane) => ({
+      ...lane,
+      laneId: `${lane.sortKey}-${lane.label}`,
+      items: [...lane.items].sort((a, b) => {
+        const da = a.semana_referencia || ''
+        const db = b.semana_referencia || ''
+        if (da !== db) return da.localeCompare(db)
+        const ca = pillCodigo(a)
+        const cb = pillCodigo(b)
+        if (ca !== cb) return ca.localeCompare(cb)
+        return (a.desafio_sequencia || 0) - (b.desafio_sequencia || 0)
+      }),
+    }))
 }
 
 function weeksFromPlanos(planos) {
@@ -444,10 +570,10 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
           {/* Header */}
           <div className="flex border-b border-slate-100 bg-slate-50/90">
             <div
-              className="sticky left-0 z-30 flex shrink-0 items-end border-r border-slate-200 bg-slate-50 px-3 pb-2 text-[10px] font-semibold uppercase tracking-wide text-muted"
+              className="sticky left-0 z-30 flex shrink-0 items-end border-r border-slate-200 bg-slate-50 px-2 pb-2 text-[10px] font-semibold uppercase tracking-wide text-muted"
               style={{ width: LABEL_W, height: HEADER_H }}
             >
-              Professor
+              Horário
             </div>
             {weeks.map((w) => (
               <div
@@ -460,29 +586,29 @@ function PedagogicalGraph({ planos, weeks: weeksProp, title, onNodeClick }) {
             ))}
           </div>
 
-          {/* Swimlanes — altura da linha cresce com o stacking */}
+          {/* Swimlanes por horário — pílulas diferenciadas por código */}
           {lanes.map((lane, laneIdx) => {
             const byWeek = cellsByLane[laneIdx]
             return (
               <div
-                key={lane.professorId}
+                key={lane.laneId}
                 className="flex items-stretch border-b border-slate-100"
               >
                 <div
-                  className="sticky left-0 z-20 flex shrink-0 items-center overflow-hidden border-r border-slate-200 bg-white px-3 py-2"
+                  className="sticky left-0 z-20 flex shrink-0 items-center overflow-hidden border-r border-slate-200 bg-white px-2 py-2"
                   style={{ width: LABEL_W }}
                 >
-                  <ProfessorLaneLabel displayName={lane.displayName} />
+                  <HorarioLaneLabel label={lane.label} sortKey={lane.sortKey} />
                 </div>
                 {weeks.map((w) => {
                   const cellItems = byWeek.get(w) || []
                   return (
                     <div
-                      key={`${lane.professorId}-${w}`}
-                      className="flex shrink-0 flex-col flex-wrap content-start gap-1 border-r border-slate-50 p-1.5"
+                      key={`${lane.laneId}-${w}`}
+                      className="flex shrink-0 flex-col content-start gap-1 border-r border-slate-50 p-1.5"
                       style={{
                         width: COL_W,
-                        minHeight: 52,
+                        minHeight: 56,
                         gap: 4,
                       }}
                     >
@@ -525,28 +651,39 @@ function GraphStack({ planos, unidadeId, onNodeClick }) {
     return [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome))
   }, [planos])
 
-  if (!planos.length) return <EmptyState />
+  if (!planos.length) {
+    return (
+      <div>
+        <GraphLegend />
+        <EmptyState />
+      </div>
+    )
+  }
 
   // Unidade específica: um único grafo amplo
   if (unidadeId) {
     return (
-      <PedagogicalGraph
-        planos={planos}
-        weeks={weeks}
-        title={planos[0]?.unidade_nome || 'Unidade'}
-        onNodeClick={onNodeClick}
-      />
+      <div>
+        <GraphLegend />
+        <PedagogicalGraph
+          planos={planos}
+          weeks={weeks}
+          title={planos[0]?.unidade_nome || 'Unidade'}
+          onNodeClick={onNodeClick}
+        />
+      </div>
     )
   }
 
   // Todas: superior agregado + inferiores por unidade
   return (
     <div className="space-y-6 pb-4">
+      <GraphLegend />
       <div className="overflow-hidden rounded-none border-b border-slate-200">
         <PedagogicalGraph
           planos={planos}
           weeks={weeks}
-          title="Todas as unidades"
+          title="Todas as unidades · aulas e eventos"
           onNodeClick={onNodeClick}
         />
       </div>
@@ -570,7 +707,7 @@ function GraphStack({ planos, unidadeId, onNodeClick }) {
 
 function AulasRadarLists({ planos, onOpen, statusFilter = null }) {
   const base = useMemo(() => {
-    const list = Array.isArray(planos) ? planos : []
+    const list = (Array.isArray(planos) ? planos : []).filter((p) => !isEventoItem(p))
     if (!statusFilter || !statusFilter.length) return list
     const set = new Set(statusFilter)
     return list.filter((p) => set.has(p.status))
@@ -718,10 +855,10 @@ function AgendaCalendario({
       const d = String(p.semana_referencia || '').slice(0, 10)
       if (!d) return
       if (!map[d]) map[d] = []
-      map[d].push({
-        id: p.id,
-        tone: p.tipo_aula === 'desafio' ? 'amber' : 'emerald',
-      })
+      let tone = 'emerald'
+      if (isEventoItem(p)) tone = 'slate'
+      else if (p.tipo_aula === 'desafio') tone = 'amber'
+      map[d].push({ id: p.id, tone })
     })
     return map
   }, [planos])
@@ -742,15 +879,31 @@ function AgendaCalendario({
       podeNavegarMes={podeNavegarMes}
       dayMarkers={dayMarkers}
       legend={[
-        { tone: 'amber', label: 'Desafio' },
         { tone: 'emerald', label: 'Dia a Dia' },
+        { tone: 'amber', label: 'Desafio' },
+        { tone: 'slate', label: 'Evento escolar' },
       ]}
       selectedDate={selectedDate}
       onSelectDate={setSelectedDate}
-      dayPanelTitle="Planos do dia"
-      dayEmptyText="Nenhum plano neste dia."
+      dayPanelTitle="Planos e eventos do dia"
+      dayEmptyText="Nenhum plano ou evento neste dia."
       dayItems={planosDoDia}
       renderDayItem={(p) => {
+        if (isEventoItem(p)) {
+          return (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-ink">
+                {p.aula_titulo || 'Evento escolar'}
+              </p>
+              <p className="mt-0.5 text-xs text-muted">
+                {[p.disciplina_nome, p.horario_label, p.turma_nome].filter(Boolean).join(' · ')}
+              </p>
+              <span className="mt-1 inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700">
+                Evento
+              </span>
+            </div>
+          )
+        }
         const desafio = p.tipo_aula === 'desafio'
         return (
           <button
@@ -819,7 +972,6 @@ export default function Dashboard() {
   const [selectedPlanoId, setSelectedPlanoId] = useState(null)
   const [consolidado, setConsolidado] = useState(null)
   const [curadoria, setCuradoria] = useState(null)
-  const [curadoriaOpen, setCuradoriaOpen] = useState(false)
 
   useEffect(() => {
     if (!INSTITUICAO_ID) return undefined
@@ -941,6 +1093,11 @@ export default function Dashboard() {
 
   const planosFiltrados = useMemo(() => {
     return planos.filter((p) => {
+      if (isEventoItem(p)) {
+        // Eventos da escola ficam no grafo; somem se houver filtro de prof/metodologia.
+        if (professorId || metodologia) return false
+        return true
+      }
       if (professorId && p.professor_vinculo_id !== professorId) return false
       if (metodologia && p.metodologia_nome !== metodologia) return false
       return true
@@ -1233,7 +1390,10 @@ export default function Dashboard() {
               unidadeId ||
               (professorId ? planosFiltrados[0]?.unidade_id || null : null)
             }
-            onNodeClick={(p) => setSelectedPlanoId(p.id)}
+            onNodeClick={(p) => {
+              if (isEventoItem(p)) return
+              setSelectedPlanoId(p.id)
+            }}
           />
         </div>
 
@@ -1273,25 +1433,83 @@ export default function Dashboard() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-panel">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
-            Central de ações
-          </p>
-          <h2 className="mt-1 text-base font-semibold text-ink">Curadoria pendente</h2>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-ink">
-            {curadoria?.total ?? 0}
-          </p>
-          <p className="mt-1 text-sm text-muted">
-            {curadoria?.metodologia ?? 0} sugestões de metodologia e{' '}
-            {curadoria?.pei ?? 0} de PEI aguardando revisão.
-          </p>
-          <button
-            type="button"
-            onClick={() => setCuradoriaOpen(true)}
-            className="mt-4 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700"
-          >
-            Revisar
-          </button>
+        <article className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+              Central de ações
+            </p>
+            <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
+              <h2 className="text-base font-semibold text-ink">Curadoria pendente</h2>
+              <p className="text-2xl font-semibold tabular-nums text-ink">
+                {curadoria?.total ?? 0}
+              </p>
+            </div>
+            <p className="mt-1 text-sm text-muted">
+              {curadoria?.metodologia ?? 0} sugestões de metodologia e{' '}
+              {curadoria?.pei ?? 0} de PEI aguardando análise — atalho para o Editor
+              Pedagógico.
+            </p>
+          </div>
+
+          <ul className="max-h-[min(28rem,55vh)] divide-y divide-slate-100 overflow-y-auto">
+            {(curadoria?.itens || []).length === 0 ? (
+              <li className="px-4 py-8 text-center text-sm text-muted">
+                Nenhuma sugestão pendente no momento.
+              </li>
+            ) : (
+              (curadoria?.itens || []).map((item) => {
+                const pei = item.tipo === 'pei'
+                const met = (item.metodologia_nome || '').trim()
+                const q = new URLSearchParams({
+                  pilar: pei ? 'pei' : 'metodologias',
+                })
+                if (met && met !== '—') q.set('met', met)
+                return (
+                  <li key={`${item.tipo}-${item.id}`}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/editor-pedagogico?${q}`)}
+                      className="flex w-full items-start gap-3 border-l-[5px] border-l-amber-500 bg-amber-50/30 px-4 py-3 text-left transition hover:bg-amber-50/70"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-ink">
+                            {met && met !== '—' ? met : 'Metodologia'}
+                          </p>
+                          <span
+                            className={[
+                              'inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase',
+                              pei
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-violet-100 text-violet-800',
+                            ].join(' ')}
+                          >
+                            {pei ? 'PEI' : 'Metodologia'}
+                          </span>
+                          <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                            p/ análise
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-muted">
+                          {item.turma_nome || '—'}
+                          {item.professor_label ? ` · ${item.professor_label}` : ''}
+                          {item.data ? ` · ${formatarDataBR(item.data)}` : ''}
+                        </p>
+                        {item.trecho ? (
+                          <p className="mt-1 line-clamp-2 text-xs text-slate-600">
+                            {item.trecho}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span className="shrink-0 pt-0.5 text-xs font-semibold text-amber-900">
+                        Avaliar →
+                      </span>
+                    </button>
+                  </li>
+                )
+              })
+            )}
+          </ul>
         </article>
 
         <article className="rounded-xl border border-slate-200 bg-white shadow-panel">
@@ -1304,83 +1522,6 @@ export default function Dashboard() {
           <RadarAvisosPanel />
         </article>
       </section>
-
-      {curadoriaOpen
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-ink/50 p-3 sm:p-6"
-              role="dialog"
-              aria-modal="true"
-              onClick={(e) => {
-                if (e.target === e.currentTarget) setCuradoriaOpen(false)
-              }}
-            >
-              <div className="my-4 w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-panel">
-                <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
-                      Curadoria
-                    </p>
-                    <h3 className="text-lg font-semibold text-ink">Pendências</h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCuradoriaOpen(false)}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-muted hover:bg-slate-50"
-                  >
-                    Fechar
-                  </button>
-                </div>
-                <ul className="max-h-[min(70vh,560px)] divide-y divide-slate-100 overflow-y-auto">
-                  {(curadoria?.itens || []).length === 0 ? (
-                    <li className="px-4 py-8 text-center text-sm text-muted">
-                      Nenhuma pendência no momento.
-                    </li>
-                  ) : (
-                    (curadoria?.itens || []).map((item) => (
-                      <li key={`${item.tipo}-${item.id}`}>
-                        <button
-                          type="button"
-                          disabled={!item.plano_id}
-                          onClick={() => {
-                            if (!item.plano_id) return
-                            setCuradoriaOpen(false)
-                            setSelectedPlanoId(item.plano_id)
-                          }}
-                          className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition hover:bg-school-50/50 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-ink">
-                              {item.turma_nome}
-                            </p>
-                            <p className="mt-0.5 text-xs text-muted">
-                              {item.professor_label}
-                              {item.data ? ` · ${formatarDataBR(item.data)}` : ''}
-                            </p>
-                            <span
-                              className={[
-                                'mt-1.5 inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase',
-                                item.tipo === 'pei'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-violet-100 text-violet-800',
-                              ].join(' ')}
-                            >
-                              {item.tipo === 'pei' ? 'PEI' : 'Metodologia'}
-                            </span>
-                          </div>
-                          <span className="shrink-0 text-xs font-semibold text-school-700">
-                            {item.plano_id ? 'Abrir mesa →' : 'Sem plano'}
-                          </span>
-                        </button>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
 
       {selectedPlanoId ? (
         <LessonMirrorModal
