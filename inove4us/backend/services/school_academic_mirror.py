@@ -1,4 +1,10 @@
-"""Espelho acadêmico School → B2C (instituição/período/curso/disciplina/turma/alocação)."""
+"""Espelho acadêmico School → B2C (instituição/período/curso/disciplina/turma/alocação).
+
+Catálogo curso↔disciplina é N:N (`inove_curso_disciplinas`), construído de forma
+incremental no webhook TEACHER_ALLOCATED — o espelho B2C é por professor, então
+associar disciplina a curso no School sem alocação não tem destinatário aqui.
+`_synthetic_curso_school_id` foi removido: o School (034) sempre envia curso da turma.
+"""
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -41,14 +47,6 @@ def _map_tipo_periodo(raw: Any) -> str:
     t = str(raw or "anual").strip().lower()
     allowed = {"anual", "semestral", "trimestral", "modular", "quinzenal", "mensal"}
     return t if t in allowed else "anual"
-
-
-def _synthetic_curso_school_id(periodo_school_id: str, disciplina_school_id: str) -> str:
-    """UUID determinístico para curso placeholder quando School não envia curso."""
-    # uuid5-like via namespace + names — usa UUID v5 padrão
-    from uuid import NAMESPACE_URL, uuid5
-
-    return str(uuid5(NAMESPACE_URL, f"inove4us:curso:{periodo_school_id}:{disciplina_school_id}"))
 
 
 def store_pending(
@@ -244,12 +242,10 @@ def _upsert_periodo(cur, instituicao_id: int, payload: dict) -> int | None:
 
 def _upsert_curso(cur, periodo_id: int, payload: dict) -> int | None:
     school_curso = _as_uuid(payload.get("curso_id"))
-    disc_school = _as_uuid(payload.get("disciplina_id"))
-    periodo_school = _as_uuid(payload.get("periodo_id"))
     if not school_curso:
-        if not disc_school or not periodo_school:
-            return None
-        school_curso = _synthetic_curso_school_id(periodo_school, disc_school)
+        # School 034: turma.curso_id é NOT NULL. Placeholder sintético (era híbrida)
+        # removido — sem curso no payload a materialização falha de forma explícita.
+        return None
     nome = str(payload.get("curso_nome") or "").strip()
     if not nome:
         unidade = str(payload.get("unidade_nome") or "").strip()
@@ -290,7 +286,22 @@ def _upsert_curso(cur, periodo_id: int, payload: dict) -> int | None:
     return int(cur.fetchone()["id"])
 
 
-def _upsert_disciplina(cur, curso_id: int, payload: dict) -> int | None:
+def _associate_curso_disciplina(cur, curso_id: int, disciplina_id: int) -> None:
+    """Idempotente. Catálogo N:N local (espelha school_curso_disciplinas)."""
+    cur.execute(
+        """
+        INSERT INTO public.inove_curso_disciplinas (curso_id, disciplina_id)
+        VALUES (%s, %s)
+        ON CONFLICT (curso_id, disciplina_id) DO NOTHING
+        """,
+        (int(curso_id), int(disciplina_id)),
+    )
+
+
+def _upsert_disciplina(
+    cur, instituicao_id: int, curso_id: int, payload: dict
+) -> int | None:
+    """Uma linha por (instituição do professor, school_disciplina_id)."""
     school_id = _as_uuid(payload.get("disciplina_id"))
     if not school_id:
         return None
@@ -299,13 +310,16 @@ def _upsert_disciplina(cur, curso_id: int, payload: dict) -> int | None:
     cur.execute(
         """
         SELECT id FROM public.inove_disciplinas
-         WHERE curso_id = %s AND school_disciplina_id = %s::uuid AND ativo = TRUE
+         WHERE instituicao_id = %s
+           AND school_disciplina_id = %s::uuid
+           AND ativo = TRUE
          LIMIT 1
         """,
-        (curso_id, school_id),
+        (int(instituicao_id), school_id),
     )
     row = cur.fetchone()
     if row:
+        did = int(row["id"])
         cur.execute(
             """
             UPDATE public.inove_disciplinas
@@ -316,20 +330,24 @@ def _upsert_disciplina(cur, curso_id: int, payload: dict) -> int | None:
              WHERE id = %s
             RETURNING id
             """,
-            (nome, ementa, int(row["id"])),
+            (nome, ementa, did),
         )
-        return int(cur.fetchone()["id"])
+        _associate_curso_disciplina(cur, curso_id, did)
+        return did
     cur.execute(
         """
         INSERT INTO public.inove_disciplinas (
-            curso_id, nome, ementa, origem_school, school_disciplina_id
+            curso_id, instituicao_id, nome, ementa,
+            origem_school, school_disciplina_id
         )
-        VALUES (%s, %s, %s, TRUE, %s::uuid)
+        VALUES (%s, %s, %s, %s, TRUE, %s::uuid)
         RETURNING id
         """,
-        (curso_id, nome, ementa, school_id),
+        (curso_id, int(instituicao_id), nome, ementa, school_id),
     )
-    return int(cur.fetchone()["id"])
+    did = int(cur.fetchone()["id"])
+    _associate_curso_disciplina(cur, curso_id, did)
+    return did
 
 
 def _upsert_turma(cur, curso_id: int, payload: dict) -> int | None:
@@ -481,7 +499,7 @@ def materialize_allocation(*, id_clie: int, payload: dict) -> dict:
             curso_id = _upsert_curso(cur, periodo_id, payload)
             if not curso_id:
                 return {"ok": False, "reason": "curso_upsert_failed"}
-            disciplina_id = _upsert_disciplina(cur, curso_id, payload)
+            disciplina_id = _upsert_disciplina(cur, inst_id, curso_id, payload)
             if not disciplina_id:
                 return {"ok": False, "reason": "disciplina_upsert_failed"}
             turma_id = _upsert_turma(cur, curso_id, payload)

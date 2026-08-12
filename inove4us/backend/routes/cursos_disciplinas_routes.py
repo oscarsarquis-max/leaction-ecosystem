@@ -134,6 +134,20 @@ def _sql_escopo_turma(
     )
 
 
+def _sql_disciplina_do_curso(disc_alias: str, curso_expr: str) -> str:
+    """Disciplina no curso via dono legado (curso_id) ou catálogo N:N."""
+    return (
+        f"("
+        f" {disc_alias}.curso_id = {curso_expr}"
+        f" OR EXISTS ("
+        f"   SELECT 1 FROM public.inove_curso_disciplinas _cd"
+        f"    WHERE _cd.curso_id = {curso_expr}"
+        f"      AND _cd.disciplina_id = {disc_alias}.id"
+        f" )"
+        f")"
+    )
+
+
 def _jsonable(row: dict | None) -> dict | None:
     if not row:
         return None
@@ -320,7 +334,8 @@ def listar_cursos(periodo_id: int):
                            (
                              SELECT COUNT(*)::int
                                FROM public.inove_disciplinas d
-                              WHERE d.curso_id = c.id AND d.ativo = TRUE
+                              WHERE d.ativo = TRUE
+                                AND {_sql_disciplina_do_curso("d", "c.id")}
                            ) AS disciplinas_count,
                            (
                              SELECT COUNT(*)::int
@@ -519,12 +534,13 @@ def soft_delete_curso(curso_id: int):
                     }), 403
 
                 cur.execute(
-                    """
+                    f"""
                     SELECT COUNT(*)::int AS n
-                      FROM public.inove_disciplinas
-                     WHERE curso_id = %s AND ativo = TRUE
+                      FROM public.inove_disciplinas d
+                     WHERE d.ativo = TRUE
+                       AND {_sql_disciplina_do_curso("d", "%s")}
                     """,
-                    (curso_id,),
+                    (curso_id, curso_id),
                 )
                 n = int((cur.fetchone() or {}).get("n") or 0)
                 if n > 0:
@@ -584,12 +600,13 @@ def criar_disciplina(curso_id: int):
                 cur.execute(
                     """
                     INSERT INTO public.inove_disciplinas (
-                        curso_id, nome, codigo, carga_horaria_horas, ementa
-                    ) VALUES (%s, %s, %s, %s, %s)
+                        curso_id, instituicao_id, nome, codigo, carga_horaria_horas, ementa
+                    ) VALUES (%s, %s, %s, %s, %s, %s)
                     RETURNING *
                     """,
                     (
                         curso_id,
+                        curso.get("instituicao_id"),
                         nome[:255],
                         (str(data.get("codigo") or "").strip()[:80] or None),
                         carga,
@@ -597,6 +614,15 @@ def criar_disciplina(curso_id: int):
                     ),
                 )
                 row = cur.fetchone()
+                if row:
+                    cur.execute(
+                        """
+                        INSERT INTO public.inove_curso_disciplinas (curso_id, disciplina_id)
+                        VALUES (%s, %s)
+                        ON CONFLICT (curso_id, disciplina_id) DO NOTHING
+                        """,
+                        (curso_id, int(row["id"])),
+                    )
                 conn.commit()
         return jsonify({"disciplina": _jsonable(row)}), 201
     except pg_errors.UndefinedTable:
@@ -618,13 +644,14 @@ def listar_disciplinas(curso_id: int):
                 escopo_sql, escopo_params = _sql_escopo_disciplina("d")
                 cur.execute(
                     f"""
-                    SELECT d.*
+                    SELECT DISTINCT d.*
                       FROM public.inove_disciplinas d
-                     WHERE d.curso_id = %s AND d.ativo = TRUE
+                     WHERE d.ativo = TRUE
+                       AND {_sql_disciplina_do_curso("d", "%s")}
                        {escopo_sql}
                      ORDER BY d.nome ASC, d.id ASC
                     """,
-                    (curso_id, *escopo_params),
+                    (curso_id, curso_id, *escopo_params),
                 )
                 rows = cur.fetchall() or []
         return jsonify({

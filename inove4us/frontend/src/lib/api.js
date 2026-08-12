@@ -189,6 +189,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  listPeiOverrides: () => request('/api/pei-overrides'),
   updateAgendaEvento: (id, payload) =>
     request(`/api/agenda-eventos/${id}`, {
       method: 'PUT',

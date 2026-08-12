@@ -1,10 +1,17 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { api } from '../../lib/api'
 
+/** Alinha aee_canonico do School + Dislexia (perfil só do B2C). */
 export const PEI_PERFIS = [
-  { id: 'TDAH', label: 'TDAH (Atenção e Hiperatividade)' },
   { id: 'TEA', label: 'TEA (Espectro Autista)' },
-  { id: 'Dislexia', label: 'Dislexia' },
+  { id: 'TDAH', label: 'TDAH (Atenção e Hiperatividade)' },
+  { id: 'Altas Habilidades', label: 'Altas Habilidades' },
+  { id: 'Deficiência Intelectual', label: 'Deficiência Intelectual' },
   { id: 'Deficiência Visual', label: 'Deficiência Visual' },
+  { id: 'Deficiência Auditiva', label: 'Deficiência Auditiva' },
+  { id: 'Deficiência Física', label: 'Deficiência Física' },
+  { id: 'Outras Dificuldades Severas', label: 'Outras Dificuldades Severas' },
+  { id: 'Dislexia', label: 'Dislexia' },
 ]
 
 /**
@@ -14,6 +21,7 @@ export const PEI_PERFIS = [
 export default function KanbanPeiMenu({ disabled, busy, onSelectPerfil }) {
   const [open, setOpen] = useState(false)
   const [alunoNome, setAlunoNome] = useState('')
+  const [escolaHint, setEscolaHint] = useState('')
   const rootRef = useRef(null)
   const menuId = useId()
 
@@ -36,6 +44,36 @@ export default function KanbanPeiMenu({ disabled, busy, onSelectPerfil }) {
   useEffect(() => {
     if (busy) setOpen(false)
   }, [busy])
+
+  useEffect(() => {
+    if (!open) return undefined
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await api.listPeiOverrides()
+        if (cancelled) return
+        const bases = (data?.base || [])
+          .map((b) => b.condicao)
+          .filter(Boolean)
+        const nomes = (data?.individual || [])
+          .map((i) => i.aluno_nome)
+          .filter(Boolean)
+        const parts = []
+        if (bases.length) {
+          parts.push(`Diretriz AEE da escola: ${bases.join(', ')}.`)
+        }
+        if (nomes.length) {
+          parts.push(`PEI individual: ${nomes.slice(0, 4).join(', ')}${nomes.length > 4 ? '…' : ''}.`)
+        }
+        setEscolaHint(parts.join(' '))
+      } catch {
+        if (!cancelled) setEscolaHint('')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   return (
     <div ref={rootRef} className="relative shrink-0 print:hidden">
@@ -82,6 +120,12 @@ export default function KanbanPeiMenu({ disabled, busy, onSelectPerfil }) {
           <p className="border-b border-brand-100 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-bordo-soft">
             Perfil de inclusão
           </p>
+          {escolaHint ? (
+            <p className="border-b border-amber-100 bg-amber-50 px-3 py-2 text-[10px] leading-snug text-amber-950">
+              <span className="font-semibold">Regra da escola. </span>
+              {escolaHint}
+            </p>
+          ) : null}
           <label className="block border-b border-brand-50 px-3 py-2">
             <span className="text-[10px] font-semibold uppercase tracking-wide text-bordo-soft">
               Nome do aluno (opcional)
@@ -95,7 +139,7 @@ export default function KanbanPeiMenu({ disabled, busy, onSelectPerfil }) {
               autoComplete="off"
             />
           </label>
-          <ul className="py-1">
+          <ul className="max-h-56 overflow-y-auto py-1">
             {PEI_PERFIS.map((p) => (
               <li key={p.id}>
                 <button
