@@ -216,3 +216,10 @@ RDS PostgreSQL LeAction_SysF         SG-RDS (compartilhado com PanelDX)
 - Deploy app: `infra/scripts/build-and-push.ps1` + `aws ecs update-service --force-new-deployment`  
 - IaC: `infra/terraform`  
 - Smoke local: `docker compose up`
+
+## Escalonamento rápido (lançamento)
+
+- **Inove (Fargate):** `aws ecs update-service --cluster inove4us-prod --service inove4us-prod --desired-count N` (hoje o Terraform usa `desired_count = 2`, `max_capacity = 10`). Subir CPU/memória da task: `cpu`/`memory` em `infra/terraform/variables.tf` + `terraform apply` (nova task definition).
+- **Hub + School (mesmo EC2 `action_hub_prod`):** os dois competem por CPU/RAM. Caminho curto: trocar o instance type no console EC2 (stop → change type → start) ou subir um segundo EC2 e mover só o School. PM2 (`inove4us-school`) e o Node do Hub já têm `autorestart`.
+- **Trava pública:** Inove e Hub usam `system_locked` no banco (`/gatekeeper/lock|unlock?secret=`). School usa arquivo `data/system_locked` + env `SCHOOL_SYSTEM_LOCKED` (mesmo contrato de rotas).
+

@@ -23,9 +23,25 @@ def _version() -> str:
         return "0.0.0"
 
 
+def _git_sha() -> str:
+    for key in ("GIT_SHA", "SOURCE_COMMIT", "GITHUB_SHA", "COMMIT_SHA"):
+        val = (os.getenv(key) or "").strip()
+        if val:
+            return val[:12]
+    root = Path(__file__).resolve().parents[1]
+    try:
+        return (root / "GIT_SHA").read_text(encoding="utf-8").strip()[:12] or "unknown"
+    except OSError:
+        return "unknown"
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-school-secret")
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    if (os.getenv("INOVE4US_SCHOOL_ENV") or os.getenv("FLASK_ENV") or "").lower() == "production":
+        app.config["SESSION_COOKIE_SECURE"] = True
     app.config["ACTIONHUB_WEBHOOK_SECRET"] = (
         os.getenv("ACTIONHUB_WEBHOOK_SECRET")
         or os.getenv("ACTION_HUB_APP_SECRET")
@@ -53,6 +69,7 @@ def create_app() -> Flask:
     from pei_documental_routes import bp as pei_documental_bp
     from tracking_routes import tracking_bp
     from avisos_api import bp as avisos_bp
+    from gatekeeper_routes import register_gatekeeper
 
     app.register_blueprint(metodologias_bp)
     app.register_blueprint(dashboard_bp)
@@ -75,6 +92,7 @@ def create_app() -> Flask:
     app.register_blueprint(actionhub_webhook_bp)
     # Ponte interna School ← B2C (JWT HS256)
     app.register_blueprint(b2c_webhook_bp)
+    register_gatekeeper(app)
 
     @app.get("/api/health")
     def health():
@@ -92,6 +110,7 @@ def create_app() -> Flask:
                 "product": "inove4us School",
                 "audience": "b2b",
                 "version": _version(),
+                "git_sha": _git_sha(),
                 "db": "inove4us_school" if db_ok else "unreachable",
             }
         )

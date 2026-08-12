@@ -40,4 +40,7 @@ secrets = {
   actionhub_webhook_secret = "mesmo-secret-do-hub-app-registry"
   # Mesmo valor de CRM_TRACKING_SECRET no Action Hub (Action-Sponge)
   crm_tracking_secret      = "mesmo-crm-tracking-secret-do-hub"
+  # Idênticos ao .env do School no EC2 (ponte Comunicações / Planejamento / JWT)
+  school_integration_api_key = "gere-um-segredo-forte-nao-usar-dev-key"
+  school_b2c_shared_secret   = "gere-um-segredo-jwt-forte"
 }

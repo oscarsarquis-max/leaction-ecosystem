@@ -28,14 +28,14 @@ export default function ManutencaoPage() {
         }}
       >
         <p style={{ margin: '0 0 8px', letterSpacing: '0.12em', fontSize: 12, color: '#7dd3fc' }}>
-          ACTION HUB
+          ACTION HUB · ECOSSISTEMA INOVE4US
         </p>
         <h1 style={{ margin: '0 0 12px', fontSize: '1.75rem', fontWeight: 800 }}>
-          Em preparação
+          Lançamento do Ecossistema inove4us — em breve
         </h1>
         <p style={{ margin: 0, color: '#94a3b8', lineHeight: 1.6 }}>
-          Estamos finalizando o lançamento. Em breve o sistema estará disponível para todos os
-          clientes.
+          Estamos finalizando o lançamento. O painel interno da equipe continua acessível em
+          /dashboard. O público verá esta página até a abertura.
         </p>
       </section>
     </main>

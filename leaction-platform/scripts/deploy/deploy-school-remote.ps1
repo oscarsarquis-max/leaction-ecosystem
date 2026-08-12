@@ -51,13 +51,16 @@ Write-Host "DNS UPSERT ok"
 Write-Host "==> Empacotando school (tar.gz)" -ForegroundColor Cyan
 $tarPath = Join-Path $env:TEMP 'inove4us-school-deploy.tar.gz'
 if (Test-Path $tarPath) { Remove-Item $tarPath -Force }
+$gitSha = (git -C $SchoolRoot rev-parse --short HEAD 2>$null)
+if (-not $gitSha) { $gitSha = 'unknown' }
+Set-Content -Path (Join-Path $SchoolRoot 'GIT_SHA') -Value $gitSha -NoNewline -Encoding ascii
 Push-Location $SchoolRoot
 try {
     # exclui artefatos locais pesados
     tar -czf $tarPath `
         --exclude=node_modules --exclude=.venv --exclude=dist --exclude=__pycache__ `
         --exclude=.git --exclude=frontend/node_modules --exclude=backend/.venv `
-        backend frontend infra VERSION 2>$null
+        backend frontend infra VERSION GIT_SHA 2>$null
     if (-not (Test-Path $tarPath)) { throw 'tar falhou' }
 }
 finally { Pop-Location }

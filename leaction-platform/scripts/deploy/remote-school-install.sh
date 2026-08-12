@@ -69,7 +69,34 @@ conn.close()
 PY
 )"
 
-SECRET_KEY="$(openssl rand -hex 24)"
+_env_get() {
+  local file="$1" key="$2"
+  [ -f "$file" ] || return 0
+  awk -F= -v k="$key" '$1==k {print substr($0, index($0,"=")+1); exit}' "$file"
+}
+
+PREV_ENV="$REMOTE/.env"
+SECRET_KEY="$(_env_get "$PREV_ENV" SECRET_KEY)"
+if [ -z "$SECRET_KEY" ]; then
+  SECRET_KEY="$(openssl rand -hex 24)"
+  echo "WARN: SECRET_KEY gerada nesta instalacao — sessoes de gestor anteriores ficam invalidas"
+else
+  echo "SECRET_KEY preservada do .env anterior"
+fi
+
+SCHOOL_INTEGRATION_API_KEY="$(_env_get "$PREV_ENV" SCHOOL_INTEGRATION_API_KEY)"
+[ -z "$SCHOOL_INTEGRATION_API_KEY" ] && SCHOOL_INTEGRATION_API_KEY="$(_env_get "$HUB_ENV" SCHOOL_INTEGRATION_API_KEY)"
+SCHOOL_B2C_SHARED_SECRET="$(_env_get "$PREV_ENV" SCHOOL_B2C_SHARED_SECRET)"
+[ -z "$SCHOOL_B2C_SHARED_SECRET" ] && SCHOOL_B2C_SHARED_SECRET="$(_env_get "$HUB_ENV" SCHOOL_B2C_SHARED_SECRET)"
+PRODUCTION_MASTER_KEY="$(_env_get "$PREV_ENV" PRODUCTION_MASTER_KEY)"
+[ -z "$PRODUCTION_MASTER_KEY" ] && PRODUCTION_MASTER_KEY="$(_env_get "$HUB_ENV" PRODUCTION_MASTER_KEY)"
+SCHOOL_SYSTEM_LOCKED="$(_env_get "$PREV_ENV" SCHOOL_SYSTEM_LOCKED)"
+SCHOOL_SYSTEM_LOCKED="${SCHOOL_SYSTEM_LOCKED:-true}"
+
+if [ -z "$SCHOOL_INTEGRATION_API_KEY" ] || [ -z "$SCHOOL_B2C_SHARED_SECRET" ]; then
+  echo "WARN: SCHOOL_INTEGRATION_API_KEY e/ou SCHOOL_B2C_SHARED_SECRET ausentes — ponte School↔Inove falha em silêncio até setar nos dois lados"
+fi
+
 cat > "$REMOTE/.env" <<EOF
 INOVE4US_SCHOOL_ENV=production
 FLASK_ENV=production
@@ -89,6 +116,13 @@ ACTION_HUB_APP_SECRET=$WEBHOOK
 ACTIONHUB_WEBHOOK_SECRET=$WEBHOOK
 CORS_ORIGINS=https://school.inove4us.com.br,https://school.actionhub.com.br,https://actionhub.com.br,https://inove4us.com.br
 FRONTEND_ORIGIN=https://school.inove4us.com.br
+INOVE4US_B2C_API_URL=https://inove4us.com.br
+INOVE4US_B2C_WEBHOOK_URL=https://inove4us.com.br/api/webhooks/school
+INOVE4US_B2C_FRONTEND_URL=https://inove4us.com.br
+SCHOOL_INTEGRATION_API_KEY=$SCHOOL_INTEGRATION_API_KEY
+SCHOOL_B2C_SHARED_SECRET=$SCHOOL_B2C_SHARED_SECRET
+PRODUCTION_MASTER_KEY=$PRODUCTION_MASTER_KEY
+SCHOOL_SYSTEM_LOCKED=$SCHOOL_SYSTEM_LOCKED
 EOF
 chmod 600 "$REMOTE/.env"
 

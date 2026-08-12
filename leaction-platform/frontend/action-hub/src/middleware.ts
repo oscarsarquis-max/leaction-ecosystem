@@ -7,6 +7,7 @@ const EXEMPT_EXACT = new Set(['/manutencao', '/api/health', '/favicon.ico']);
 const EXEMPT_PREFIXES = [
   '/_next/',
   '/gatekeeper/',
+  '/dashboard',
   '/hub-api/webhooks/',
   '/hub-api/gatekeeper/',
   '/webhooks/',

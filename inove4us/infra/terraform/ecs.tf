@@ -107,7 +107,9 @@ resource "aws_ecs_task_definition" "inove4us" {
       { name = "EMAIL_SENDER", value = var.secrets.email_sender },
       { name = "SECRET_KEY", value = local.app_secret_key },
       { name = "DB_PASS", value = local.db_pass },
-      { name = "PRODUCTION_MASTER_KEY", value = var.secrets.production_master_key }
+      { name = "PRODUCTION_MASTER_KEY", value = var.secrets.production_master_key },
+      { name = "SCHOOL_INTEGRATION_API_KEY", value = var.secrets.school_integration_api_key },
+      { name = "SCHOOL_B2C_SHARED_SECRET", value = var.secrets.school_b2c_shared_secret }
     ]
     logConfiguration = {
       logDriver = "awslogs"

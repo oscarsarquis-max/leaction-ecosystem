@@ -84,8 +84,8 @@ _MANUTENCAO_HTML = """<!DOCTYPE html>
 <body>
   <section class="card">
     <p class="brand">INOVE4US</p>
-    <h1>Em preparação</h1>
-    <p>Estamos finalizando o lançamento. Em breve a Mesa do Inovador estará disponível para todos os clientes.</p>
+    <h1>Lançamento do Ecossistema inove4us — em breve</h1>
+    <p>Estamos finalizando o lançamento. Em breve a Mesa do Inovador estará disponível para todos os professores.</p>
   </section>
 </body>
 </html>
