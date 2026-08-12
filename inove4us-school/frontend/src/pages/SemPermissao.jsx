@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { firstAccessiblePath } from '../lib/rbac'
+import { firstAccessiblePath, ZONA_LABEL } from '../lib/rbac'
 
 /**
  * Tela dedicada quando o gestor está autenticado mas sem a zona da rota.
@@ -22,7 +22,10 @@ export default function SemPermissao({ zonasRequired = [] }) {
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-muted">
         Sua sessão está autenticada, mas não tem a zona necessária
-        {req.length ? ` (${req.join(', ')})` : ''}. Peça ao administrador da escola para
+        {req.length
+          ? ` (${req.map((z) => ZONA_LABEL[z] || z).join(', ')})`
+          : ''}
+        . Peça ao administrador da escola para
         liberar o perfil correspondente em Gestão de Gestores.
       </p>
       {zonas.length === 0 ? (

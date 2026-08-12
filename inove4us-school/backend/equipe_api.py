@@ -730,6 +730,33 @@ def radiografia(instituicao_id: str, vinculo_id: str):
                 }
             )
 
+            cur.execute(
+                """
+                SELECT h.disciplina_id, d.nome
+                FROM public.school_professor_disciplina_habilitacao h
+                JOIN public.school_disciplinas d ON d.id = h.disciplina_id
+                WHERE h.professor_vinculo_id = %s
+                ORDER BY d.nome
+                """,
+                (str(vid),),
+            )
+            habilitacoes = [
+                {"disciplina_id": str(r["disciplina_id"]), "nome": r["nome"]}
+                for r in cur.fetchall()
+            ]
+            cur.execute(
+                """
+                SELECT id, nome
+                FROM public.school_disciplinas
+                WHERE instituicao_id = %s AND ativo = TRUE
+                ORDER BY nome
+                """,
+                (str(inst),),
+            )
+            catalogo_disciplinas = [
+                {"id": str(r["id"]), "nome": r["nome"]} for r in cur.fetchall()
+            ]
+
     return jsonify(
         {
             "professor": {
@@ -750,6 +777,8 @@ def radiografia(instituicao_id: str, vinculo_id: str):
             "entrega": entrega,
             "metodologias_usadas": metodologias_usadas,
             "disciplinas": disciplinas,
+            "habilitacoes": habilitacoes,
+            "catalogo_disciplinas": catalogo_disciplinas,
             "avaliacao": {
                 "atual": nota_atual,
                 "historico": avaliacoes,
@@ -831,3 +860,119 @@ def declarar_avaliacao(instituicao_id: str, vinculo_id: str):
         ),
         201,
     )
+
+
+def _sid_or_err():
+    inst = resolve_instituicao_id()
+    if isinstance(inst, tuple):
+        return inst
+    return inst
+
+
+@bp.get("/api/equipe")
+def get_equipe_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return get_equipe(inst)
+
+
+@bp.post("/api/equipe/convites")
+def convidar_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return convidar(inst)
+
+
+@bp.post("/api/equipe/<vinculo_id>/disparar-convite")
+def disparar_convite_inove_sessao(vinculo_id: str):
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return disparar_convite_inove(inst, vinculo_id)
+
+
+@bp.post("/api/equipe/<vinculo_id>/revogar")
+def revogar_sessao(vinculo_id: str):
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return revogar(inst, vinculo_id)
+
+
+@bp.get("/api/equipe/<vinculo_id>/radiografia")
+def radiografia_sessao(vinculo_id: str):
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return radiografia(inst, vinculo_id)
+
+
+@bp.post("/api/equipe/<vinculo_id>/avaliacoes")
+def declarar_avaliacao_sessao(vinculo_id: str):
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return declarar_avaliacao(inst, vinculo_id)
+
+
+@bp.put("/api/equipe/<vinculo_id>/habilitacoes")
+def put_habilitacoes_sessao(vinculo_id: str):
+    """Habilitação informativa — não trava alocação na Secretaria."""
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    vid = _parse_uuid(vinculo_id, "vínculo")
+    if isinstance(vid, tuple):
+        return vid
+    body = request.get_json(silent=True) or {}
+    raw_ids = body.get("disciplina_ids") or []
+    if not isinstance(raw_ids, list):
+        return jsonify({"error": "disciplina_ids deve ser uma lista"}), 400
+    ids: list[str] = []
+    for raw in raw_ids:
+        parsed = _parse_uuid(raw, "disciplina")
+        if isinstance(parsed, tuple):
+            continue
+        ids.append(str(parsed))
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT 1 FROM public.school_professores_vinculo
+                WHERE id = %s AND instituicao_id = %s
+                """,
+                (str(vid), str(inst)),
+            )
+            if not cur.fetchone():
+                return jsonify({"error": "Vínculo não encontrado"}), 404
+            unique_ids = list(set(ids))
+            if unique_ids:
+                cur.execute(
+                    """
+                    SELECT count(*)::int AS n
+                    FROM public.school_disciplinas
+                    WHERE instituicao_id = %s AND id = ANY(%s::uuid[])
+                    """,
+                    (str(inst), unique_ids),
+                )
+                if int(cur.fetchone()["n"] or 0) != len(unique_ids):
+                    return jsonify({"error": "disciplina inválida"}), 400
+            cur.execute(
+                """
+                DELETE FROM public.school_professor_disciplina_habilitacao
+                WHERE professor_vinculo_id = %s
+                """,
+                (str(vid),),
+            )
+            for did in unique_ids:
+                cur.execute(
+                    """
+                    INSERT INTO public.school_professor_disciplina_habilitacao (
+                        professor_vinculo_id, disciplina_id
+                    ) VALUES (%s, %s)
+                    """,
+                    (str(vid), did),
+                )
+    return jsonify({"ok": True, "disciplina_ids": unique_ids})

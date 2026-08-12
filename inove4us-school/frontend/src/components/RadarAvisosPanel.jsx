@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useInstituicaoId } from '../lib/auth'
 import { BTN_PRIMARY } from '../lib/buttons'
 
 /**
  * Quadro de Avisos — cria avisos curtos fixados na Mesa do Professor (Inove).
  */
 export default function RadarAvisosPanel() {
-  const INSTITUICAO_ID = useInstituicaoId()
   const [avisos, setAvisos] = useState([])
   const [turmas, setTurmas] = useState([])
   const [disciplinas, setDisciplinas] = useState([])
@@ -18,14 +16,13 @@ export default function RadarAvisosPanel() {
   const [ok, setOk] = useState('')
 
   async function load() {
-    if (!INSTITUICAO_ID) return
     setError('')
     try {
       const [rA, rO] = await Promise.all([
-        fetch(`/api/instituicoes/${INSTITUICAO_ID}/avisos-mesa?ativos=1`, {
+        fetch('/api/avisos-mesa?ativos=1', {
           credentials: 'include',
         }),
-        fetch(`/api/instituicoes/${INSTITUICAO_ID}/avisos-mesa/opcoes`, {
+        fetch('/api/avisos-mesa/opcoes', {
           credentials: 'include',
         }),
       ])
@@ -44,16 +41,15 @@ export default function RadarAvisosPanel() {
 
   useEffect(() => {
     load()
-  }, [INSTITUICAO_ID])
+  }, [])
 
   async function handleCreate(e) {
     e.preventDefault()
-    if (!INSTITUICAO_ID) return
     setBusy(true)
     setError('')
     setOk('')
     try {
-      const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/avisos-mesa`, {
+      const res = await fetch('/api/avisos-mesa', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -85,7 +81,7 @@ export default function RadarAvisosPanel() {
     setBusy(true)
     setError('')
     try {
-      const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/avisos-mesa/${id}`, {
+      const res = await fetch(`/api/avisos-mesa/${id}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

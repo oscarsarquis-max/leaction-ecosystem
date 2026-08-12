@@ -331,7 +331,7 @@ export default function Acesso() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.trim(),
-          password,
+          password: password.trim(),
         }),
       })
       const body = await res.json().catch(() => ({}))

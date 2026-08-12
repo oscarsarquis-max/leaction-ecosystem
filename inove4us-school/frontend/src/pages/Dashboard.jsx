@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useInstituicaoId } from '../lib/auth'
 import { tabClassName } from '../lib/tabs'
 import LessonMirrorModal from '../components/LessonMirrorModal'
 import RadarAvisosPanel from '../components/RadarAvisosPanel'
@@ -943,7 +942,6 @@ function AgendaCalendario({
 }
 
 export default function Dashboard() {
-  const INSTITUICAO_ID = useInstituicaoId()
   const navigate = useNavigate()
   const [tipoPeriodo, setTipoPeriodo] = useState('diario')
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()))
@@ -974,11 +972,10 @@ export default function Dashboard() {
   const [curadoria, setCuradoria] = useState(null)
 
   useEffect(() => {
-    if (!INSTITUICAO_ID) return undefined
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/unidades`, {
+        const res = await fetch('/api/pedagogico/unidades', {
           credentials: 'include',
         })
         const body = await res.json().catch(() => [])
@@ -991,14 +988,13 @@ export default function Dashboard() {
     return () => {
       cancelled = true
     }
-  }, [INSTITUICAO_ID])
+  }, [])
 
   useEffect(() => {
-    if (!INSTITUICAO_ID) return undefined
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/resumo-consolidado`, {
+        const res = await fetch('/api/pedagogico/resumo-consolidado', {
           credentials: 'include',
         })
         const body = await res.json().catch(() => ({}))
@@ -1011,10 +1007,9 @@ export default function Dashboard() {
     return () => {
       cancelled = true
     }
-  }, [INSTITUICAO_ID])
+  }, [])
 
   useEffect(() => {
-    if (!INSTITUICAO_ID) return undefined
     let cancelled = false
     ;(async () => {
       setLoading(true)
@@ -1026,7 +1021,7 @@ export default function Dashboard() {
       if (unidadeId) q.set('unidade_id', unidadeId)
       try {
         const rPlanos = await fetch(
-          `/api/instituicoes/${INSTITUICAO_ID}/calendario-pedagogico?${q}`,
+          `/api/pedagogico/calendario-pedagogico?${q}`,
           { credentials: 'include' },
         )
         const jPlanos = await rPlanos.json().catch(() => [])
@@ -1045,17 +1040,16 @@ export default function Dashboard() {
     return () => {
       cancelled = true
     }
-  }, [INSTITUICAO_ID, unidadeId, periodo.data_inicio, periodo.data_fim])
+  }, [unidadeId, periodo.data_inicio, periodo.data_fim])
 
   useEffect(() => {
-    if (!INSTITUICAO_ID) return undefined
     let cancelled = false
     ;(async () => {
       const q = new URLSearchParams()
       if (unidadeId) q.set('unidade_id', unidadeId)
       try {
         const res = await fetch(
-          `/api/instituicoes/${INSTITUICAO_ID}/curadoria-pendente?${q}`,
+          `/api/pedagogico/curadoria-pendente?${q}`,
           { credentials: 'include' },
         )
         const body = await res.json().catch(() => ({}))
@@ -1068,7 +1062,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true
     }
-  }, [INSTITUICAO_ID, unidadeId])
+  }, [unidadeId])
 
   const professoresOpts = useMemo(() => {
     const map = new Map()
@@ -1526,7 +1520,6 @@ export default function Dashboard() {
       {selectedPlanoId ? (
         <LessonMirrorModal
           planoId={selectedPlanoId}
-          instituicaoId={INSTITUICAO_ID}
           onClose={() => setSelectedPlanoId(null)}
         />
       ) : null}

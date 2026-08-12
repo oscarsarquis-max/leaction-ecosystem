@@ -123,7 +123,7 @@ export default function App() {
                 </ZoneGate>
               }
             />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<SemPermissao />} />
           </Route>
         </Routes>
       </BrowserRouter>

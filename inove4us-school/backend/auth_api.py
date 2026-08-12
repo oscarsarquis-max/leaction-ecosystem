@@ -57,7 +57,8 @@ def _load_zonas(cur: Any, gestor_id: uuid.UUID) -> list[str]:
 def login():
     body = request.get_json(silent=True) or {}
     email = _text(body.get("email")).lower()
-    password = str(body.get("password") or "")
+    # Trim evita 401 por espaço colado ao copiar a senha demo.
+    password = str(body.get("password") or "").strip()
     if not email or not password:
         return jsonify({"error": "Informe e-mail e senha"}), 400
 

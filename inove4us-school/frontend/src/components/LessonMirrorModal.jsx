@@ -7,21 +7,21 @@ import TeacherCardPreview from './TeacherCardPreview'
  * Espelho da Mesa (abas Mesa do Professor + Diário de bordo).
  * Extraído do Radar para reuso na Equipe — mesmo endpoint e comportamento.
  */
-export default function LessonMirrorModal({ planoId, instituicaoId, onClose }) {
+export default function LessonMirrorModal({ planoId, onClose }) {
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [tab, setTab] = useState('mesa')
 
   useEffect(() => {
-    if (!planoId || !instituicaoId) return undefined
+    if (!planoId) return undefined
     let cancelled = false
     ;(async () => {
       setLoading(true)
       setError('')
       try {
         const res = await fetch(
-          `/api/instituicoes/${instituicaoId}/planos-espelhados/${planoId}`,
+          `/api/pedagogico/planos-espelhados/${planoId}`,
           { credentials: 'include' },
         )
         const body = await res.json().catch(() => ({}))
@@ -36,7 +36,7 @@ export default function LessonMirrorModal({ planoId, instituicaoId, onClose }) {
     return () => {
       cancelled = true
     }
-  }, [planoId, instituicaoId])
+  }, [planoId])
 
   useEffect(() => {
     const prev = document.body.style.overflow

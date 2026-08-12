@@ -3,6 +3,10 @@
 O Editor Pedagógico usa `/api/aee/*` e `/api/pei/alunos` (`pei_documental_routes`).
 Este blueprint permanece registrado só para responder 410 nas rotas antigas e
 evitar reabertura acidental de superfície multi-tenant sem sessão.
+
+Etapa 14 (v2): o levantamento citava "PEI legado" como API aberta. Confirmado —
+não voltou a existir; pei_ciclo_routes foi removido. Não migrar nem reabrir.
+O PEI canônico já usa require_zona("pedagogico") + instituição da sessão.
 """
 from __future__ import annotations
 

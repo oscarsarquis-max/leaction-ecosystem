@@ -155,4 +155,12 @@ app = create_app()
 
 if __name__ == "__main__":
     port = int(os.getenv("FLASK_PORT", "5012"))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    # Windows + Start-Process com log redirecionado: o reloader mata o PID e o Vite
+    # devolve 500 (ECONNRESET) no /api/auth/login.
+    use_reloader = os.getenv("FLASK_USE_RELOADER", "0" if os.name == "nt" else "1")
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=True,
+        use_reloader=use_reloader.strip().lower() in ("1", "true", "yes"),
+    )

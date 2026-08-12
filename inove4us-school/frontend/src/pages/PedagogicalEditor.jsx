@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import PeiEditorTab from './PeiEditorTab'
-import { useInstituicaoId } from '../lib/auth'
 import { tabClassName } from '../lib/tabs'
 import { BTN_PRIMARY, BTN_PRIMARY_FULL, CHECKBOX_CLASS } from '../lib/buttons'
 
@@ -257,7 +256,6 @@ function ModalPadraoCanonico({ open, onClose, texto }) {
  * - Toda composição parte do texto atual da escola
  */
 function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
-  const INSTITUICAO_ID = useInstituicaoId()
   const id = row.metodologia_id || row.metodologia_catalogo_id
   const canonCatalogo = textoCanonico(row)
   const isCustomizado = Boolean(row.is_customizado ?? draft.is_customizado)
@@ -378,7 +376,6 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instituicao_id: INSTITUICAO_ID,
           texto_canonico: baseComposicao,
           observacoes_coordenacao: (draft.observacoes_coordenacao || '').trim(),
           sugestoes: sugestoesTxt,
@@ -407,7 +404,7 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
     setErr('')
     try {
       const res = await fetch(
-        `/api/instituicoes/${INSTITUICAO_ID}/metodologias/${id}`,
+        `/api/pedagogico/metodologias/${id}`,
         {
           method: 'PUT',
           credentials: 'include',
@@ -569,7 +566,6 @@ function AccordionBody({ row, draft, onDraft, onSaved, onToast }) {
 }
 
 export default function PedagogicalEditor() {
-  const INSTITUICAO_ID = useInstituicaoId()
   const [searchParams, setSearchParams] = useSearchParams()
   const pilarParam = searchParams.get('pilar')
   const metParam = (searchParams.get('met') || '').trim()
@@ -627,14 +623,10 @@ export default function PedagogicalEditor() {
   }, [metParam])
 
   const load = useCallback(async () => {
-    if (!INSTITUICAO_ID) {
-      setLoading(false)
-      return
-    }
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/metodologias`, {
+      const res = await fetch('/api/pedagogico/metodologias', {
         credentials: 'include',
       })
       if (!res.ok) {
@@ -647,7 +639,7 @@ export default function PedagogicalEditor() {
     } finally {
       setLoading(false)
     }
-  }, [applyList, INSTITUICAO_ID])
+  }, [applyList])
 
   useEffect(() => {
     void load()
@@ -680,7 +672,7 @@ export default function PedagogicalEditor() {
     try {
       const draft = { ...drafts[id], [field]: value }
       const res = await fetch(
-        `/api/instituicoes/${INSTITUICAO_ID}/metodologias/${id}`,
+        `/api/pedagogico/metodologias/${id}`,
         {
           method: 'PUT',
           credentials: 'include',
@@ -726,7 +718,7 @@ export default function PedagogicalEditor() {
         .filter(Boolean)
       if (!createForm.nome.trim()) throw new Error('Informe o nome da metodologia.')
       if (!passos.length) throw new Error('Inclua ao menos uma etapa no roteiro.')
-      const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/metodologias`, {
+      const res = await fetch('/api/pedagogico/metodologias', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import ModalHistoricoVersoes from '../components/ModalHistoricoVersoes'
-import { useInstituicaoId } from '../lib/auth'
 import { tabClassName } from '../lib/tabs'
 import {
   BTN_PRIMARY,
@@ -1388,7 +1387,6 @@ function MetBody({
 }
 
 function AdaptacoesPraticaPanel({ onToast, focusMet = '' }) {
-  const INSTITUICAO_ID = useInstituicaoId()
   const [condicoes, setCondicoes] = useState([])
   const [condicao, setCondicao] = useState('TEA')
   const [aeeId, setAeeId] = useState('')
@@ -1507,7 +1505,7 @@ function AdaptacoesPraticaPanel({ onToast, focusMet = '' }) {
     setError('')
     try {
       const draft = { ...drafts[id], [field]: value }
-      const res = await fetch(`/api/instituicoes/${INSTITUICAO_ID}/metodologias/${id}`, {
+      const res = await fetch(`/api/pedagogico/metodologias/${id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

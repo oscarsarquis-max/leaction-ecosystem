@@ -57,12 +57,9 @@ def _instituicao_exists(cur: Any, instituicao_id: uuid.UUID) -> bool:
     return cur.fetchone() is not None
 
 
-def _session_instituicao_id() -> str:
-    """Instituição da sessão. Sem fallback hardcode."""
-    resolved = resolve_instituicao_id()
-    if isinstance(resolved, tuple):
-        return ""
-    return resolved
+def _session_instituicao_id():
+    """Instituição da sessão. str ou (Response, status) — sem fallback hardcode."""
+    return resolve_instituicao_id()
 
 
 def _bound_instituicao(instituicao_id: str):
@@ -463,8 +460,27 @@ def list_instituicao_metodologias(instituicao_id: str):
 
 @bp.get("/api/pedagogico/metodologias")
 def list_pedagogico_metodologias():
-    """Alias do Editor Pedagógico — usa instituição da sessão / DEV."""
-    return list_instituicao_metodologias(_session_instituicao_id())
+    """Alias do Editor Pedagógico — instituição da sessão, sem UUID na URL."""
+    inst = _session_instituicao_id()
+    if isinstance(inst, tuple):
+        return inst
+    return list_instituicao_metodologias(inst)
+
+
+@bp.post("/api/pedagogico/metodologias")
+def create_pedagogico_metodologia():
+    inst = _session_instituicao_id()
+    if isinstance(inst, tuple):
+        return inst
+    return create_instituicao_metodologia(inst)
+
+
+@bp.put("/api/pedagogico/metodologias/<metodologia_catalogo_id>")
+def upsert_pedagogico_metodologia(metodologia_catalogo_id: str):
+    inst = _session_instituicao_id()
+    if isinstance(inst, tuple):
+        return inst
+    return upsert_instituicao_metodologia(inst, metodologia_catalogo_id)
 
 
 @bp.post("/api/instituicoes/<instituicao_id>/metodologias")
@@ -842,9 +858,10 @@ def adaptar_metodologia_ia(metodologia_id: str):
         return jsonify({"error": "Dados inválidos"}), 400
 
     claimed = body.get("instituicao_id") or request.args.get("instituicao_id")
-    bound = _bound_instituicao(claimed) if claimed else _bound_instituicao(
-        _session_instituicao_id()
-    )
+    sid = _session_instituicao_id()
+    if isinstance(sid, tuple):
+        return sid
+    bound = _bound_instituicao(claimed) if claimed else _bound_instituicao(sid)
     if not isinstance(bound, uuid.UUID):
         return bound
     parsed_inst = bound

@@ -84,6 +84,11 @@ def require_zona(*zonas_required: str):
     return deco
 
 
+def session_instituicao_id():
+    """Instituição da sessão (sem claimed). str ou (Response, status)."""
+    return resolve_instituicao_id()
+
+
 def resolve_instituicao_id(claimed: Any = None):
     """
     Instituição da sessão. Se `claimed` (URL/query/body) vier preenchido,

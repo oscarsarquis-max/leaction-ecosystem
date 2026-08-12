@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../lib/auth'
-import { tabClassNameCompact } from '../lib/tabs'
 import MonthAgendaCalendar from '../components/MonthAgendaCalendar'
+import ProfessorChip from '../components/ProfessorChip'
 
 /**
  * Secretaria Acadêmica — Unidades · Estrutura · Alunos · Situação por período ·
@@ -17,6 +17,52 @@ const TABS = [
   { id: 'comunicacoes', label: 'Mural / Comunicações' },
   { id: 'planejamento', label: 'Planejamento Escolar' },
 ]
+
+/** Identidade de cor por aba — borda superior do painel + fundo da barra de contexto. */
+const TAB_THEME = {
+  unidades: {
+    tabActive: 'bg-slate-600 text-white',
+    panel: 'border-t-4 border-t-slate-500',
+    context: 'border-b border-slate-200 bg-slate-50',
+    label: 'text-slate-700',
+  },
+  estrutura: {
+    tabActive: 'bg-sky-600 text-white',
+    panel: 'border-t-4 border-t-sky-500',
+    context: 'border-b border-sky-200 bg-sky-50',
+    label: 'text-sky-800',
+  },
+  alunos: {
+    tabActive: 'bg-teal-600 text-white',
+    panel: 'border-t-4 border-t-teal-500',
+    context: 'border-b border-teal-200 bg-teal-50',
+    label: 'text-teal-800',
+  },
+  situacao: {
+    tabActive: 'bg-amber-600 text-white',
+    panel: 'border-t-4 border-t-amber-500',
+    context: 'border-b border-amber-200 bg-amber-50',
+    label: 'text-amber-900',
+  },
+  calendario: {
+    tabActive: 'bg-orange-500 text-white',
+    panel: 'border-t-4 border-t-orange-400',
+    context: 'border-b border-orange-200 bg-orange-50',
+    label: 'text-orange-800',
+  },
+  comunicacoes: {
+    tabActive: 'bg-rose-500 text-white',
+    panel: 'border-t-4 border-t-rose-400',
+    context: 'border-b border-rose-200 bg-rose-50',
+    label: 'text-rose-800',
+  },
+  planejamento: {
+    tabActive: 'bg-violet-600 text-white',
+    panel: 'border-t-4 border-t-violet-500',
+    context: 'border-b border-violet-200 bg-violet-50',
+    label: 'text-violet-800',
+  },
+}
 
 const PERIODO_STATUS_LABEL = {
   planejamento: 'Planejamento',
@@ -80,6 +126,7 @@ const COM_PUBLICOS = [
   { value: 'professores', label: 'Professores' },
   { value: 'toda_instituicao', label: 'Toda a instituição' },
   { value: 'unidade', label: 'Unidade' },
+  { value: 'turma', label: 'Turma' },
 ]
 
 const TURNO_LABEL = Object.fromEntries(TURNOS.map((t) => [t.value, t.label]))
@@ -150,6 +197,44 @@ function InactiveBadge() {
   )
 }
 
+const COUNT_BADGE_TONE = {
+  turma: 'bg-teal-50 text-teal-800 ring-teal-200',
+  disciplina: 'bg-rose-50 text-rose-800 ring-rose-200',
+  professor: 'bg-amber-50 text-amber-900 ring-amber-200',
+  aluno: 'bg-slate-100 text-slate-700 ring-slate-200',
+}
+
+function CountBadge({ tone, children }) {
+  return (
+    <span
+      className={[
+        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ring-inset',
+        COUNT_BADGE_TONE[tone] || COUNT_BADGE_TONE.aluno,
+      ].join(' ')}
+    >
+      {children}
+    </span>
+  )
+}
+
+function IconAlocacao() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  )
+}
+
 function StatusBadge({ status }) {
   const map = {
     agendado: 'bg-sky-50 text-sky-800',
@@ -169,6 +254,41 @@ function StatusBadge({ status }) {
       ].join(' ')}
     >
       {label[status] || status || '—'}
+    </span>
+  )
+}
+
+function toDatetimeLocal(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 16)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function ReplicadoBadge({ item }) {
+  if (item.status === 'agendado') return null
+  const ok = Boolean(item.replicado_b2c)
+  if (item.status === 'cancelado') {
+    return (
+      <span
+        className={[
+          'inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+          ok ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-900',
+        ].join(' ')}
+      >
+        {ok ? 'Cancelamento no mural' : 'Cancelamento não replicado'}
+      </span>
+    )
+  }
+  return (
+    <span
+      className={[
+        'inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+        ok ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900',
+      ].join(' ')}
+    >
+      {ok ? 'No mural dos professores' : 'Não replicado no mural'}
     </span>
   )
 }
@@ -218,9 +338,6 @@ const EQUIPE_PAPEL_LABEL = {
   coordenador: 'Coordenador',
 }
 
-/** Pseudo-nó UI na árvore de Estrutura (não é UUID de API). */
-const SEM_CURSO_ID = '__sem_curso__'
-
 const EMPTY = {
   unidade: { nome: '', endereco: '', codigo: '', cidade: '', uf: '' },
   unidadeFicha: {
@@ -251,7 +368,13 @@ const EMPTY = {
     unidade_id: '',
   },
   curso: { nome: '' },
-  disciplina: { nome: '', ementa_macro: '', carga_horaria: '', curso_id: '' },
+  disciplina: {
+    nome: '',
+    ementa_macro: '',
+    carga_horaria: '',
+    modo: 'nova',
+    disciplina_id: '',
+  },
   turma: {
     nome: '',
     serie_ano: '',
@@ -277,6 +400,7 @@ const EMPTY = {
     data_hora_inicio: '',
     data_hora_fim: '',
     unidade_id: '',
+    turma_id: '',
   },
   plan: {
     turma_id: '',
@@ -343,6 +467,7 @@ export default function SecretariaOperacional() {
   const [importStep, setImportStep] = useState('upload')
   const [importFile, setImportFile] = useState(null)
   const [importPreview, setImportPreview] = useState(null)
+  const [importPermitirMudancaTurma, setImportPermitirMudancaTurma] = useState(false)
   const [situacaoItems, setSituacaoItems] = useState([])
   const [situacaoLoading, setSituacaoLoading] = useState(false)
   const [situacaoUnidadeId, setSituacaoUnidadeId] = useState('')
@@ -453,7 +578,6 @@ export default function SecretariaOperacional() {
     setDiscSel('')
     setCursoSel((prev) => {
       if (!prev) return ''
-      if (prev === SEM_CURSO_ID) return prev
       const stillHere = cursos.some(
         (c) => c.id === prev && c.periodo_letivo_id === periodoSel,
       )
@@ -473,31 +597,9 @@ export default function SecretariaOperacional() {
     [cursos, periodoSel],
   )
 
-  const turmasSemCurso = useMemo(
-    () =>
-      turmas.filter(
-        (t) => t.periodo_letivo_id === periodoSel && !t.curso_id && t.ativa !== false,
-      ),
-    [turmas, periodoSel],
-  )
-
-  const discsSemCurso = useMemo(
-    () => disciplinas.filter((d) => !d.curso_id && d.ativo !== false),
-    [disciplinas],
-  )
-
   const estruturaNodes = useMemo(() => {
     if (!periodoSel) return []
-    return [
-      ...cursosDoPeriodo,
-      {
-        id: SEM_CURSO_ID,
-        nome: 'Sem curso',
-        isSemCurso: true,
-        ativo: true,
-        periodo_letivo_id: periodoSel,
-      },
-    ]
+    return cursosDoPeriodo
   }, [periodoSel, cursosDoPeriodo])
 
   const countsByTurma = useMemo(() => {
@@ -597,6 +699,7 @@ export default function SecretariaOperacional() {
     setImportStep('upload')
     setImportFile(null)
     setImportPreview(null)
+    setImportPermitirMudancaTurma(false)
   }
 
   function downloadModeloCsv() {
@@ -619,6 +722,7 @@ export default function SecretariaOperacional() {
     setImportStep('upload')
     setImportFile(null)
     setImportPreview(null)
+    setImportPermitirMudancaTurma(false)
     setModal('importAlunos')
   }
 
@@ -639,6 +743,7 @@ export default function SecretariaOperacional() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Falha no preview da importação')
       setImportPreview(data)
+      setImportPermitirMudancaTurma(false)
       setImportStep('preview')
     })
   }
@@ -652,6 +757,7 @@ export default function SecretariaOperacional() {
         nome: L.nome,
         matricula: L.matricula,
         data_nascimento: L.data_nascimento || null,
+        permitir_mudanca_turma: importPermitirMudancaTurma,
       }))
     if (!linhasOk.length) {
       setError('Nenhuma linha válida para importar.')
@@ -661,11 +767,25 @@ export default function SecretariaOperacional() {
       const data = await apiJson('/api/secretaria/alunos/importar/confirmar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turma_id: filtroTurmaId, linhas: linhasOk }),
+        body: JSON.stringify({
+          turma_id: filtroTurmaId,
+          linhas: linhasOk,
+          permitir_mudanca_turma: importPermitirMudancaTurma,
+        }),
       })
-      setFeedback(
-        `Importação concluída: ${data.criados || 0} criado(s), ${data.atualizados || 0} atualizado(s).`,
-      )
+      const partes = [
+        `${data.criados || 0} criado(s)`,
+        `${data.atualizados || 0} atualizado(s)`,
+      ]
+      if (data.mudancas_turma) {
+        partes.push(`${data.mudancas_turma} mudança(s) de turma`)
+      }
+      let msg = `Importação concluída: ${partes.join(', ')}.`
+      const pulados = data.nao_aplicados || (data.pulados || []).length
+      if (pulados) {
+        msg += ` ${pulados} linha(s) não aplicada(s) (mudança de turma sem autorização).`
+      }
+      setFeedback(msg)
       closeModal()
       await loadAll()
     })
@@ -723,14 +843,12 @@ export default function SecretariaOperacional() {
         nome: item.nome || '',
         ementa_macro: item.ementa_macro || '',
         carga_horaria: item.carga_horaria != null ? String(item.carga_horaria) : '',
-        curso_id: item.curso_id || cursoId || '',
+        modo: 'nova',
+        disciplina_id: '',
       })
     } else {
       setEditId(null)
-      setFormDisc({
-        ...EMPTY.disciplina,
-        curso_id: cursoId || '',
-      })
+      setFormDisc({ ...EMPTY.disciplina, modo: 'nova' })
     }
     setContext({ curso_id: cursoId || '' })
     setModal('disciplina')
@@ -1025,28 +1143,62 @@ export default function SecretariaOperacional() {
   async function saveDisc(e) {
     e.preventDefault()
     await runBusy(async () => {
-      const body = {
-        nome: formDisc.nome,
-        ementa_macro: formDisc.ementa_macro || null,
-        carga_horaria: formDisc.carga_horaria ? Number(formDisc.carga_horaria) : null,
-        curso_id: formDisc.curso_id || null,
-      }
+      const cursoId = context.curso_id
       if (editId) {
         await apiJson(`/api/secretaria/disciplinas/${editId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            nome: formDisc.nome,
+            ementa_macro: formDisc.ementa_macro || null,
+            carga_horaria: formDisc.carga_horaria ? Number(formDisc.carga_horaria) : null,
+          }),
         })
-        setFeedback('Disciplina atualizada.')
-      } else {
-        await apiJson('/api/secretaria/disciplinas', {
+        setFeedback('Disciplina atualizada em todos os cursos associados.')
+      } else if (formDisc.modo === 'existente') {
+        if (!cursoId || !formDisc.disciplina_id) {
+          throw new Error('Selecione a disciplina para associar a este curso.')
+        }
+        await apiJson(`/api/secretaria/cursos/${cursoId}/disciplinas`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ disciplina_id: formDisc.disciplina_id }),
         })
-        setFeedback('Disciplina criada.')
+        setFeedback('Disciplina associada ao catálogo do curso.')
+      } else {
+        const path = cursoId
+          ? `/api/secretaria/cursos/${cursoId}/disciplinas`
+          : '/api/secretaria/disciplinas'
+        await apiJson(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: formDisc.nome,
+            ementa_macro: formDisc.ementa_macro || null,
+            carga_horaria: formDisc.carga_horaria ? Number(formDisc.carga_horaria) : null,
+          }),
+        })
+        setFeedback(
+          cursoId
+            ? 'Disciplina criada e associada a este curso.'
+            : 'Disciplina criada no catálogo institucional.',
+        )
       }
       closeModal()
+      await loadAll()
+    })
+  }
+
+  async function dissociateDisc(cursoId, disc) {
+    if (!cursoId || !disc?.id) return
+    if (!window.confirm(`Remover "${disc.nome}" do catálogo deste curso? A disciplina continua no catálogo da instituição.`)) {
+      return
+    }
+    await runBusy(async () => {
+      await apiJson(`/api/secretaria/cursos/${cursoId}/disciplinas/${disc.id}`, {
+        method: 'DELETE',
+      })
+      setFeedback('Disciplina desassociada deste curso.')
       await loadAll()
     })
   }
@@ -1063,7 +1215,7 @@ export default function SecretariaOperacional() {
         turno: formTurma.turno,
         unidade_id: formTurma.unidade_id,
         periodo_letivo_id: formTurma.periodo_letivo_id || periodoSel,
-        curso_id: formTurma.curso_id || null,
+        curso_id: formTurma.curso_id,
         ano_letivo: periodo?.ano_letivo || new Date().getFullYear(),
       }
       if (editId) {
@@ -1178,24 +1330,58 @@ export default function SecretariaOperacional() {
     })
   }
 
+  function openCom(item) {
+    clearMessages()
+    if (item) {
+      setEditId(item.id)
+      setFormCom({
+        titulo: item.titulo || '',
+        descricao: item.descricao || '',
+        tipo: item.tipo || 'reuniao_pedagogica',
+        publico_alvo: item.publico_alvo || 'professores',
+        data_hora_inicio: toDatetimeLocal(item.data_hora_inicio),
+        data_hora_fim: toDatetimeLocal(item.data_hora_fim),
+        unidade_id: item.unidade_id || '',
+        turma_id: item.turma_id || '',
+      })
+    } else {
+      setEditId(null)
+      const scopedUnidade = user?.unidade_id || ''
+      setFormCom({
+        ...EMPTY.com,
+        publico_alvo: scopedUnidade ? 'unidade' : 'professores',
+        unidade_id: scopedUnidade,
+      })
+    }
+    setModal('comunicacao')
+  }
+
   async function saveCom(e) {
     e.preventDefault()
     await runBusy(async () => {
-      await apiJson('/api/secretaria/comunicacoes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          titulo: formCom.titulo,
-          descricao: formCom.descricao || null,
-          tipo: formCom.tipo,
-          publico_alvo: formCom.publico_alvo,
-          data_hora_inicio: formCom.data_hora_inicio,
-          data_hora_fim: formCom.data_hora_fim || null,
-          unidade_id: formCom.unidade_id || null,
-          status: 'publicado',
-        }),
-      })
-      setFeedback('Comunicado publicado.')
+      const body = {
+        titulo: formCom.titulo,
+        descricao: formCom.descricao || null,
+        tipo: formCom.tipo,
+        publico_alvo: formCom.publico_alvo,
+        data_hora_inicio: formCom.data_hora_inicio,
+        data_hora_fim: formCom.data_hora_fim || null,
+        unidade_id: formCom.publico_alvo === 'unidade' ? formCom.unidade_id || null : null,
+        turma_id: formCom.publico_alvo === 'turma' ? formCom.turma_id || null : null,
+        status: 'publicado',
+      }
+      const data = editId
+        ? await apiJson(`/api/secretaria/comunicacoes/${editId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          })
+        : await apiJson('/api/secretaria/comunicacoes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          })
+      setFeedback(data.message || 'Comunicado salvo.')
       closeModal()
       await loadAll()
     })
@@ -1204,12 +1390,12 @@ export default function SecretariaOperacional() {
   async function cancelarComunicacao(item) {
     if (!window.confirm(`Cancelar o comunicado "${item.titulo}"?`)) return
     await runBusy(async () => {
-      await apiJson(`/api/secretaria/comunicacoes/${item.id}`, {
+      const data = await apiJson(`/api/secretaria/comunicacoes/${item.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'cancelado' }),
       })
-      setFeedback('Comunicado cancelado.')
+      setFeedback(data.message || 'Comunicado cancelado.')
       await loadAll()
     })
   }
@@ -1324,8 +1510,15 @@ export default function SecretariaOperacional() {
     })
   }
 
+  function discInCurso(d, cursoId) {
+    if (!d || !cursoId) return false
+    if (Array.isArray(d.curso_ids) && d.curso_ids.includes(cursoId)) return true
+    if (Array.isArray(d.cursos) && d.cursos.some((c) => c.id === cursoId)) return true
+    return false
+  }
+
   function discsForCurso(cursoId) {
-    return disciplinas.filter((d) => d.curso_id === cursoId)
+    return disciplinas.filter((d) => discInCurso(d, cursoId))
   }
 
   function turmasForCurso(cursoId) {
@@ -1342,13 +1535,11 @@ export default function SecretariaOperacional() {
 
   function turmasForNode(node) {
     if (!node) return []
-    if (node.isSemCurso || node.id === SEM_CURSO_ID) return turmasSemCurso
     return turmasForCurso(node.id)
   }
 
   function discsForNode(node) {
     if (!node) return []
-    if (node.isSemCurso || node.id === SEM_CURSO_ID) return discsSemCurso
     return discsForCurso(node.id)
   }
 
@@ -1375,15 +1566,8 @@ export default function SecretariaOperacional() {
   }
 
   function discsForAloc(turma) {
-    if (!turma) return []
-    if (turma.curso_id) return discsForCurso(turma.curso_id)
-    return [
-      ...discsSemCurso,
-      ...disciplinas.filter((d) => {
-        const curso = cursos.find((c) => c.id === d.curso_id)
-        return curso?.periodo_letivo_id === turma.periodo_letivo_id
-      }),
-    ]
+    if (!turma?.curso_id) return []
+    return discsForCurso(turma.curso_id)
   }
 
   function openCursoNaEstrutura(cursoFicha) {
@@ -1398,22 +1582,20 @@ export default function SecretariaOperacional() {
   function renderDiscRow(disc, { cursoIdForEdit } = {}) {
     const expanded = discSel === disc.id
     const alocs = alocacoesForDisc(disc.id)
-    const editCursoId =
-      cursoIdForEdit === SEM_CURSO_ID || cursoIdForEdit === ''
-        ? ''
-        : cursoIdForEdit ?? disc.curso_id ?? ''
+    const editCursoId = cursoIdForEdit || ''
+    const extraCursos = (disc.cursos || []).filter((c) => c.id && c.id !== editCursoId)
     return (
       <div
         key={disc.id}
         className={[
-          'border-t border-slate-100 first:border-t-0',
+          'border-t border-rose-100 first:border-t-0',
           disc.ativo === false ? 'opacity-60' : '',
         ].join(' ')}
       >
         <div className="flex items-stretch gap-1">
           <button
             type="button"
-            className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-slate-50"
+            className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-rose-50/50"
             onClick={() => setDiscSel(expanded ? '' : disc.id)}
           >
             <div className="min-w-0">
@@ -1424,8 +1606,13 @@ export default function SecretariaOperacional() {
               {disc.ementa_macro ? (
                 <p className="truncate text-xs text-muted">{disc.ementa_macro}</p>
               ) : null}
+              {extraCursos.length ? (
+                <p className="mt-0.5 truncate text-[10px] text-rose-700">
+                  Também em: {extraCursos.map((c) => c.nome).join(', ')}
+                </p>
+              ) : null}
             </div>
-            <span className="shrink-0 text-xs font-bold text-muted">
+            <span className="shrink-0 text-xs font-bold text-rose-400">
               {expanded ? '▾' : '▸'}
             </span>
           </button>
@@ -1450,30 +1637,41 @@ export default function SecretariaOperacional() {
             >
               {disc.ativo === false ? 'Reativar' : 'Desativar'}
             </button>
+            {editCursoId ? (
+              <button
+                type="button"
+                className={btnSmall}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  dissociateDisc(editCursoId, disc)
+                }}
+              >
+                Remover do curso
+              </button>
+            ) : null}
           </div>
         </div>
         {expanded ? (
-          <div className="border-t border-slate-50 bg-slate-50/60 px-3 py-2.5">
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-muted">
+          <div className="border-t border-rose-100 bg-rose-50/40 px-3 py-2.5">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-rose-800">
               Ministrada em
             </p>
             {alocs.length === 0 ? (
               <p className="text-xs text-muted">Ainda não alocada em nenhuma turma.</p>
             ) : (
-              <ul className="space-y-1">
+              <ul className="flex flex-wrap gap-1.5">
                 {alocs.map((a) => (
-                  <li
-                    key={a.id}
-                    className="flex items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-1.5 text-xs"
-                  >
-                    <span className="font-medium text-ink">
-                      {a.turma_nome ||
+                  <li key={a.id}>
+                    <ProfessorChip
+                      nome={a.professor_nome}
+                      email={a.professor_email}
+                      badge={
+                        a.turma_nome ||
                         turmas.find((t) => t.id === a.turma_id)?.nome ||
-                        (a.turma_id ? 'Turma' : 'Sem turma vinculada')}
-                    </span>
-                    <span className="text-muted">
-                      {a.professor_email || a.professor_nome || 'Professor'}
-                    </span>
+                        (a.turma_id ? 'Turma' : 'Sem turma')
+                      }
+                      badgeTone="turma"
+                    />
                   </li>
                 ))}
               </ul>
@@ -1492,8 +1690,8 @@ export default function SecretariaOperacional() {
       <div
         key={turma.id}
         className={[
-          'rounded-xl border bg-white',
-          expanded ? 'border-violet-300 shadow-sm' : 'border-slate-200',
+          'rounded-xl border border-l-4 bg-white',
+          expanded ? 'border-teal-300 border-l-teal-500 shadow-sm' : 'border-slate-200 border-l-teal-500',
           turma.ativa === false ? 'opacity-60' : '',
         ].join(' ')}
       >
@@ -1510,66 +1708,71 @@ export default function SecretariaOperacional() {
             <p className="text-xs text-muted">
               {turma.serie_ano} · {TURNO_LABEL[turma.turno] || turma.turno} ·{' '}
               {turma.unidade_nome || '—'}
-              {showCursoHint && !turma.curso_id ? ' · Sem curso' : ''}
               {' · '}
               {nAlunos} aluno{nAlunos === 1 ? '' : 's'}
             </p>
           </div>
-          <span className="text-xs font-bold text-muted">{expanded ? '▾' : '▸'}</span>
+          <span className="text-xs font-bold text-teal-500">{expanded ? '▾' : '▸'}</span>
         </button>
         {expanded ? (
-          <div className="border-t border-slate-100 px-3 py-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted">
-                Alocação docente
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className={btnSmall}
-                  onClick={() => openTurma({ item: turma, cursoId: turma.curso_id })}
-                >
-                  Editar turma
-                </button>
-                <button
-                  type="button"
-                  className={btnSmall}
-                  onClick={() => toggleAtivo('turma', turma, 'ativa')}
-                >
-                  {turma.ativa === false ? 'Reativar' : 'Desativar'}
-                </button>
-                <button type="button" className={btnSmall} onClick={() => openAloc(turma)}>
-                  + Alocar professor
-                </button>
-                <button
-                  type="button"
-                  className={btnSmall}
-                  onClick={() => {
-                    setFiltroTurmaId(turma.id)
-                    switchTab('alunos')
-                  }}
-                >
-                  Ver alunos
-                </button>
+          <div className="border-t border-teal-100 px-3 py-3">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <div className="mb-2.5 flex items-center gap-2 text-amber-950">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-200">
+                  <IconAlocacao />
+                </span>
+                <h5 className="text-sm font-bold">Alocação docente</h5>
               </div>
+              {alocs.length === 0 ? (
+                <p className="text-xs text-amber-900/80">Nenhum professor alocado nesta turma.</p>
+              ) : (
+                <ul className="flex flex-wrap gap-1.5">
+                  {alocs.map((a) => (
+                    <li key={a.id}>
+                      <ProfessorChip
+                        nome={a.professor_nome}
+                        email={a.professor_email}
+                        badge={a.disciplina_nome || '—'}
+                        badgeTone="disciplina"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <button
+                type="button"
+                className="mt-3 rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-60"
+                onClick={() => openAloc(turma)}
+              >
+                + Alocar professor
+              </button>
             </div>
-            {alocs.length === 0 ? (
-              <p className="text-xs text-muted">Nenhum professor alocado nesta turma.</p>
-            ) : (
-              <ul className="space-y-1.5">
-                {alocs.map((a) => (
-                  <li
-                    key={a.id}
-                    className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-2 text-xs"
-                  >
-                    <span className="font-medium text-ink">
-                      {a.professor_email || a.professor_nome || 'Professor'}
-                    </span>
-                    <span className="text-muted">{a.disciplina_nome || '—'}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                className={btnSmall}
+                onClick={() => openTurma({ item: turma, cursoId: turma.curso_id })}
+              >
+                Editar turma
+              </button>
+              <button
+                type="button"
+                className={btnSmall}
+                onClick={() => {
+                  setFiltroTurmaId(turma.id)
+                  switchTab('alunos')
+                }}
+              >
+                Ver alunos
+              </button>
+              <button
+                type="button"
+                className={btnSmall}
+                onClick={() => toggleAtivo('turma', turma, 'ativa')}
+              >
+                {turma.ativa === false ? 'Reativar' : 'Desativar'}
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
@@ -1577,19 +1780,17 @@ export default function SecretariaOperacional() {
   }
 
   function renderEstruturaNode(node) {
-    const isSem = Boolean(node.isSemCurso || node.id === SEM_CURSO_ID)
     const expanded = cursoSel === node.id
     const tList = turmasForNode(node)
     const dList = discsForNode(node)
     const counts = countsForNode(node)
-    const cursoIdForCreate = isSem ? '' : node.id
+    const cursoIdForCreate = node.id
     return (
       <div
         key={node.id}
         className={[
-          'rounded-2xl border bg-white shadow-panel',
-          expanded ? 'border-violet-300' : 'border-slate-200',
-          isSem ? 'border-dashed' : '',
+          'rounded-2xl border border-l-4 bg-white shadow-panel',
+          expanded ? 'border-sky-300 border-l-sky-500' : 'border-slate-200 border-l-sky-500',
           node.ativo === false ? 'opacity-70' : '',
         ].join(' ')}
       >
@@ -1598,27 +1799,31 @@ export default function SecretariaOperacional() {
           className="flex w-full items-start justify-between gap-3 p-4 text-left"
           onClick={() => setCursoSel(expanded ? '' : node.id)}
         >
-          <div>
+          <div className="min-w-0">
             <p className="text-base font-semibold text-ink">
               {node.nome}
               {node.ativo === false ? <InactiveBadge /> : null}
             </p>
-            {isSem ? (
-              <p className="mt-0.5 text-xs text-muted">
-                Catálogo flat — turmas e disciplinas sem hierarquia de curso
-              </p>
-            ) : null}
-            <p className="mt-1 text-xs text-muted">
-              {counts.turmas} turmas · {counts.disciplinas} disciplinas ·{' '}
-              {counts.professores} professores · {counts.alunos} alunos
-            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <CountBadge tone="turma">
+                {counts.turmas} turma{counts.turmas === 1 ? '' : 's'}
+              </CountBadge>
+              <CountBadge tone="disciplina">
+                {counts.disciplinas} disciplina{counts.disciplinas === 1 ? '' : 's'}
+              </CountBadge>
+              <CountBadge tone="professor">
+                {counts.professores} professor{counts.professores === 1 ? '' : 'es'}
+              </CountBadge>
+              <CountBadge tone="aluno">
+                {counts.alunos} aluno{counts.alunos === 1 ? '' : 's'}
+              </CountBadge>
+            </div>
           </div>
-          <span className="text-sm font-bold text-muted">{expanded ? '▾' : '▸'}</span>
+          <span className="text-sm font-bold text-sky-500">{expanded ? '▾' : '▸'}</span>
         </button>
         {expanded ? (
-          <div className="space-y-4 border-t border-slate-100 p-4">
-            {!isSem ? (
-              <div className="flex flex-wrap gap-2">
+          <div className="space-y-4 border-t border-sky-100 p-4">
+            <div className="flex flex-wrap gap-2">
                 <button type="button" className={btnSmall} onClick={() => openCurso(node)}>
                   Editar curso
                 </button>
@@ -1626,58 +1831,57 @@ export default function SecretariaOperacional() {
                   {node.ativo === false ? 'Reativar' : 'Desativar'}
                 </button>
               </div>
-            ) : null}
-            <div className="grid gap-4 lg:grid-cols-2">
-              <section>
-                <div className="mb-2 flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wide text-muted">Turmas</h4>
-                  <button
-                    type="button"
-                    className={btnSmall}
-                    onClick={() => openTurma({ cursoId: cursoIdForCreate })}
-                  >
-                    + Nova turma
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {tList.length === 0 ? (
-                    <p className="text-xs text-muted">
-                      {isSem ? 'Nenhuma turma sem curso.' : 'Nenhuma turma neste curso.'}
-                    </p>
-                  ) : (
-                    tList.map((t) => renderTurmaBlock(t, { showCursoHint: isSem }))
-                  )}
-                </div>
-              </section>
-              <section>
-                <div className="mb-2 flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wide text-muted">
-                    Disciplinas
-                  </h4>
-                  <button
-                    type="button"
-                    className={btnSmall}
-                    onClick={() => openDisc({ cursoId: cursoIdForCreate })}
-                  >
-                    + Nova disciplina
-                  </button>
-                </div>
-                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                  {dList.length === 0 ? (
-                    <p className="px-3 py-4 text-xs text-muted">
-                      {isSem
-                        ? 'Nenhuma disciplina sem curso.'
-                        : 'Nenhuma disciplina neste curso.'}
-                    </p>
-                  ) : (
-                    dList.map((d) =>
-                      renderDiscRow(d, {
-                        cursoIdForEdit: isSem ? SEM_CURSO_ID : node.id,
-                      }),
-                    )
-                  )}
-                </div>
-              </section>
+            <div className="relative ml-1 border-l-2 border-sky-200 pl-5">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <section>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wide text-teal-700">
+                      Turmas
+                    </h4>
+                    <button
+                      type="button"
+                      className={btnSmall}
+                      onClick={() => openTurma({ cursoId: cursoIdForCreate })}
+                    >
+                      + Nova turma
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {tList.length === 0 ? (
+                      <p className="text-xs text-muted">Nenhuma turma neste curso.</p>
+                    ) : (
+                      tList.map((t) => renderTurmaBlock(t))
+                    )}
+                  </div>
+                </section>
+                <section>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wide text-rose-700">
+                      Disciplinas
+                    </h4>
+                    <button
+                      type="button"
+                      className={btnSmall}
+                      onClick={() => openDisc({ cursoId: cursoIdForCreate })}
+                    >
+                      + Associar disciplina
+                    </button>
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-l-4 border-slate-200 border-l-rose-400 bg-white">
+                    {dList.length === 0 ? (
+                      <p className="px-3 py-4 text-xs text-muted">
+                        Nenhuma disciplina neste curso.
+                      </p>
+                    ) : (
+                      dList.map((d) =>
+                        renderDiscRow(d, {
+                          cursoIdForEdit: node.id,
+                        }),
+                      )
+                    )}
+                  </div>
+                </section>
+              </div>
             </div>
           </div>
         ) : null}
@@ -1697,12 +1901,17 @@ export default function SecretariaOperacional() {
         </p>
       </header>
 
-      <nav className="mb-5 flex flex-wrap gap-2">
+      <nav className="mb-0 flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
-            className={tabClassNameCompact(tab === t.id)}
+            className={[
+              'rounded-t-lg px-3 py-2 text-sm font-semibold transition',
+              tab === t.id
+                ? TAB_THEME[t.id].tabActive
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+            ].join(' ')}
             onClick={() => switchTab(t.id)}
           >
             {t.label}
@@ -1722,8 +1931,68 @@ export default function SecretariaOperacional() {
       ) : null}
       {loading ? <p className="text-sm text-muted">Carregando…</p> : null}
 
+      {!loading ? (
+        <div
+          className={[
+            'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel',
+            TAB_THEME[tab].panel,
+          ].join(' ')}
+        >
+          <div className={['px-4 py-3', TAB_THEME[tab].context].join(' ')}>
+            {tab === 'estrutura' ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {periodos.map((p) => {
+                  const sel = p.id === periodoSel
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setPeriodoSel(p.id)}
+                      onDoubleClick={() => openPeriodo(p)}
+                      className={[
+                        'rounded-full px-3.5 py-1.5 text-sm font-semibold transition',
+                        sel
+                          ? 'bg-sky-600 text-white shadow-sm'
+                          : 'bg-white text-ink hover:bg-sky-100',
+                        p.ativo === false ? 'opacity-60' : '',
+                      ].join(' ')}
+                      title="Clique para selecionar · duplo clique para editar"
+                    >
+                      {p.nome}
+                    </button>
+                  )
+                })}
+                <button type="button" className={btnGhost} onClick={() => openPeriodo(null)}>
+                  + Novo período
+                </button>
+                {periodoSel ? (
+                  <button
+                    type="button"
+                    className={btnSmall}
+                    onClick={() => {
+                      const p = periodos.find((x) => x.id === periodoSel)
+                      if (p) openPeriodo(p)
+                    }}
+                  >
+                    Editar período
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              <p
+                className={[
+                  'text-xs font-bold uppercase tracking-[0.18em]',
+                  TAB_THEME[tab].label,
+                ].join(' ')}
+              >
+                {TABS.find((t) => t.id === tab)?.label}
+              </p>
+            )}
+          </div>
+          <div className="p-4 sm:p-5">
+
       {/* —— Unidades —— */}
-      {!loading && tab === 'unidades' ? (
+      {tab === 'unidades' ? (
         <section className="space-y-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-ink">Unidades</h2>
@@ -2047,47 +2316,8 @@ export default function SecretariaOperacional() {
       ) : null}
 
       {/* —— Estrutura Acadêmica —— */}
-      {!loading && tab === 'estrutura' ? (
+      {tab === 'estrutura' ? (
         <section className="space-y-5">
-          <div className="flex flex-wrap items-center gap-2">
-            {periodos.map((p) => {
-              const sel = p.id === periodoSel
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setPeriodoSel(p.id)}
-                  onDoubleClick={() => openPeriodo(p)}
-                  className={[
-                    'rounded-full px-3.5 py-1.5 text-sm font-semibold transition',
-                    sel
-                      ? 'bg-violet-600 text-white shadow-sm'
-                      : 'bg-slate-100 text-ink hover:bg-slate-200',
-                    p.ativo === false ? 'opacity-60' : '',
-                  ].join(' ')}
-                  title="Clique para selecionar · duplo clique para editar"
-                >
-                  {p.nome}
-                </button>
-              )
-            })}
-            <button type="button" className={btnGhost} onClick={() => openPeriodo(null)}>
-              + Novo período
-            </button>
-            {periodoSel ? (
-              <button
-                type="button"
-                className={btnSmall}
-                onClick={() => {
-                  const p = periodos.find((x) => x.id === periodoSel)
-                  if (p) openPeriodo(p)
-                }}
-              >
-                Editar período
-              </button>
-            ) : null}
-          </div>
-
           {!periodoSel ? (
             <p className="text-sm text-muted">Crie ou selecione um período letivo para continuar.</p>
           ) : (
@@ -2100,7 +2330,7 @@ export default function SecretariaOperacional() {
               </div>
               {cursosDoPeriodo.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-muted">
-                  Nenhum curso neste período — use o nó “Sem curso” ou crie um curso.
+                  Nenhum curso neste período — crie um curso para cadastrar turmas.
                 </p>
               ) : null}
               <div className="space-y-3">
@@ -2112,7 +2342,7 @@ export default function SecretariaOperacional() {
       ) : null}
 
       {/* —— Alunos —— */}
-      {!loading && tab === 'alunos' ? (
+      {tab === 'alunos' ? (
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-ink">Alunos</h2>
@@ -2221,7 +2451,7 @@ export default function SecretariaOperacional() {
       ) : null}
 
       {/* —— Situação por período —— */}
-      {!loading && tab === 'situacao' ? (
+      {tab === 'situacao' ? (
         <section className="space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -2344,7 +2574,7 @@ export default function SecretariaOperacional() {
       ) : null}
 
       {/* —— Calendário —— */}
-      {!loading && tab === 'calendario' ? (
+      {tab === 'calendario' ? (
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-ink">Calendário letivo</h2>
@@ -2401,7 +2631,7 @@ export default function SecretariaOperacional() {
       ) : null}
 
       {/* —— Planejamento Escolar —— */}
-      {!loading && tab === 'planejamento' ? (
+      {tab === 'planejamento' ? (
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -2612,7 +2842,7 @@ export default function SecretariaOperacional() {
       ) : null}
 
       {/* —— Mural —— */}
-      {!loading && tab === 'comunicacoes' ? (
+      {tab === 'comunicacoes' ? (
         <section>
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
@@ -2622,11 +2852,7 @@ export default function SecretariaOperacional() {
             <button
               type="button"
               className={btnPrimary}
-              onClick={() => {
-                clearMessages()
-                setFormCom(EMPTY.com)
-                setModal('comunicacao')
-              }}
+              onClick={() => openCom(null)}
             >
               + Publicar comunicado
             </button>
@@ -2645,6 +2871,7 @@ export default function SecretariaOperacional() {
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <TipoBadge tipo={item.tipo} />
                     <StatusBadge status={item.status} />
+                    <ReplicadoBadge item={item} />
                   </div>
                   <h3 className="text-base font-semibold text-ink">{item.titulo}</h3>
                   {item.descricao ? (
@@ -2658,22 +2885,37 @@ export default function SecretariaOperacional() {
                   <p className="mt-1 text-xs text-muted">
                     Público: {COM_PUBLICO_LABEL[item.publico_alvo] || item.publico_alvo || '—'}
                     {item.unidade_nome ? ` · ${item.unidade_nome}` : ''}
+                    {item.turma_nome ? ` · ${item.turma_nome}` : ''}
                   </p>
                   {item.status === 'publicado' || item.status === 'agendado' ? (
-                    <button
-                      type="button"
-                      className={`${btnDanger} mt-4 self-start`}
-                      disabled={busy}
-                      onClick={() => cancelarComunicacao(item)}
-                    >
-                      Cancelar
-                    </button>
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        className={btnSmall}
+                        disabled={busy}
+                        onClick={() => openCom(item)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        className={btnDanger}
+                        disabled={busy}
+                        onClick={() => cancelarComunicacao(item)}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
                   ) : null}
                 </article>
               ))}
             </div>
           )}
         </section>
+      ) : null}
+
+          </div>
+        </div>
       ) : null}
 
       {/* Modais */}
@@ -2828,28 +3070,68 @@ export default function SecretariaOperacional() {
         </form>
       </Modal>
 
-      <Modal title={editId ? 'Editar disciplina' : 'Nova disciplina'} open={modal === 'disciplina'} onClose={closeModal}>
+      <Modal
+        title={
+          editId
+            ? 'Editar disciplina'
+            : context.curso_id
+              ? 'Associar disciplina ao curso'
+              : 'Nova disciplina'
+        }
+        open={modal === 'disciplina'}
+        onClose={closeModal}
+      >
         <form onSubmit={saveDisc} className="space-y-3">
-          <Field label="Nome">
-            <input className={inputCls} required value={formDisc.nome} onChange={(e) => setFormDisc((f) => ({ ...f, nome: e.target.value }))} />
-          </Field>
-          <Field label="Curso">
-            <select className={inputCls} value={formDisc.curso_id} onChange={(e) => setFormDisc((f) => ({ ...f, curso_id: e.target.value }))}>
-              <option value="">Nenhum</option>
-              {cursos
-                .filter((c) => !periodoSel || c.periodo_letivo_id === periodoSel)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>{c.nome}</option>
-                ))}
-            </select>
-          </Field>
-          <Field label="Ementa">
-            <textarea className={inputCls} rows={3} value={formDisc.ementa_macro} onChange={(e) => setFormDisc((f) => ({ ...f, ementa_macro: e.target.value }))} />
-          </Field>
-          <Field label="Carga horária">
-            <input type="number" className={inputCls} value={formDisc.carga_horaria} onChange={(e) => setFormDisc((f) => ({ ...f, carga_horaria: e.target.value }))} />
-          </Field>
-          <button type="submit" disabled={busy} className={btnPrimary}>{busy ? 'Salvando…' : 'Salvar'}</button>
+          {!editId && context.curso_id ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className={formDisc.modo === 'nova' ? btnPrimary : btnGhost}
+                onClick={() => setFormDisc((f) => ({ ...f, modo: 'nova', disciplina_id: '' }))}
+              >
+                Criar nova
+              </button>
+              <button
+                type="button"
+                className={formDisc.modo === 'existente' ? btnPrimary : btnGhost}
+                onClick={() => setFormDisc((f) => ({ ...f, modo: 'existente' }))}
+              >
+                Associar existente
+              </button>
+            </div>
+          ) : null}
+          {!editId && formDisc.modo === 'existente' && context.curso_id ? (
+            <Field label="Disciplina do catálogo">
+              <select
+                className={inputCls}
+                required
+                value={formDisc.disciplina_id}
+                onChange={(e) => setFormDisc((f) => ({ ...f, disciplina_id: e.target.value }))}
+              >
+                <option value="">Selecione</option>
+                {disciplinas
+                  .filter((d) => d.ativo !== false && !discInCurso(d, context.curso_id))
+                  .map((d) => (
+                    <option key={d.id} value={d.id}>{d.nome}</option>
+                  ))}
+              </select>
+            </Field>
+          ) : (
+            <>
+              <Field label="Nome">
+                <input className={inputCls} required={formDisc.modo !== 'existente'} value={formDisc.nome} onChange={(e) => setFormDisc((f) => ({ ...f, nome: e.target.value }))} />
+              </Field>
+              <Field label="Ementa">
+                <textarea className={inputCls} rows={3} value={formDisc.ementa_macro} onChange={(e) => setFormDisc((f) => ({ ...f, ementa_macro: e.target.value }))} />
+              </Field>
+              <Field label="Carga horária">
+                <input type="number" className={inputCls} value={formDisc.carga_horaria} onChange={(e) => setFormDisc((f) => ({ ...f, carga_horaria: e.target.value }))} />
+              </Field>
+            </>
+          )}
+          <button type="submit" disabled={busy} className={btnPrimary}>
+            {busy ? 'Salvando…' : editId ? 'Salvar' : formDisc.modo === 'existente' ? 'Associar' : 'Salvar'}
+          </button>
         </form>
       </Modal>
 
@@ -2879,8 +3161,8 @@ export default function SecretariaOperacional() {
             </select>
           </Field>
           <Field label="Curso">
-            <select className={inputCls} value={formTurma.curso_id} onChange={(e) => setFormTurma((f) => ({ ...f, curso_id: e.target.value }))}>
-              <option value="">Nenhum (sem curso)</option>
+            <select className={inputCls} required value={formTurma.curso_id} onChange={(e) => setFormTurma((f) => ({ ...f, curso_id: e.target.value }))}>
+              <option value="">Selecione o curso</option>
               {cursosDoPeriodo.map((c) => (
                 <option key={c.id} value={c.id}>{c.nome}</option>
               ))}
@@ -2931,7 +3213,8 @@ export default function SecretariaOperacional() {
           <span className="font-semibold text-ink">
             {turmas.find((t) => t.id === filtroTurmaId)?.nome || '—'}
           </span>
-          . Todas as linhas do CSV serão vinculadas a esta turma.
+          . Alunos novos e atualizações na mesma turma entram nesta turma.
+          Matrículas de outra turma só mudam se você autorizar explicitamente.
         </p>
         {importStep === 'upload' ? (
           <div className="space-y-3">
@@ -2973,16 +3256,36 @@ export default function SecretariaOperacional() {
                 ['Erros', importPreview?.resumo?.erro],
                 ['Novos', importPreview?.resumo?.novos],
                 ['Atualizações', importPreview?.resumo?.atualizacoes],
+                ['Mudança de turma', importPreview?.resumo?.mudancas_turma],
               ].map(([label, n]) => (
                 <span
                   key={label}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-ink"
+                  className={
+                    label === 'Mudança de turma'
+                      ? 'inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900'
+                      : 'inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-ink'
+                  }
                 >
                   <span className="font-medium text-muted">{label}</span>
                   {n ?? 0}
                 </span>
               ))}
             </div>
+            {(importPreview?.resumo?.mudancas_turma || 0) > 0 && (
+              <label className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={importPermitirMudancaTurma}
+                  onChange={(e) => setImportPermitirMudancaTurma(e.target.checked)}
+                />
+                <span>
+                  Autorizar mudança de turma para{' '}
+                  <strong>{importPreview.resumo.mudancas_turma}</strong> aluno(s).
+                  Sem esta autorização, essas linhas não serão aplicadas.
+                </span>
+              </label>
+            )}
             <div className="max-h-72 overflow-auto rounded-xl border border-slate-200">
               <table className="min-w-full text-left text-xs">
                 <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase text-muted">
@@ -2993,12 +3296,20 @@ export default function SecretariaOperacional() {
                     <th className="px-2 py-2">Nascimento</th>
                     <th className="px-2 py-2">Status</th>
                     <th className="px-2 py-2">Ação</th>
+                    <th className="px-2 py-2">Turma</th>
                     <th className="px-2 py-2">Erro</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(importPreview?.linhas || []).map((L) => (
-                    <tr key={`${L.linha}-${L.matricula || ''}`} className="border-t border-slate-100">
+                    <tr
+                      key={`${L.linha}-${L.matricula || ''}`}
+                      className={
+                        L.acao === 'mudar_turma'
+                          ? 'border-t border-amber-100 bg-amber-50/70'
+                          : 'border-t border-slate-100'
+                      }
+                    >
                       <td className="px-2 py-1.5 text-muted">{L.linha}</td>
                       <td className="px-2 py-1.5 font-medium text-ink">{L.nome || '—'}</td>
                       <td className="px-2 py-1.5">{L.matricula || '—'}</td>
@@ -3011,7 +3322,7 @@ export default function SecretariaOperacional() {
                               : 'font-semibold text-red-700'
                           }
                         >
-                          {L.status}
+                          {L.status === 'ok' ? 'Ok' : L.status === 'erro' ? 'Erro' : L.status}
                         </span>
                       </td>
                       <td className="px-2 py-1.5 text-muted">
@@ -3019,7 +3330,16 @@ export default function SecretariaOperacional() {
                           ? 'Novo'
                           : L.acao === 'atualizar'
                             ? 'Atualizar'
-                            : '—'}
+                            : L.acao === 'mudar_turma'
+                              ? 'Mudança de turma'
+                              : '—'}
+                      </td>
+                      <td className="px-2 py-1.5 text-muted">
+                        {L.acao === 'mudar_turma'
+                          ? `${L.turma_atual_nome || 'sem turma'} → ${L.turma_nova_nome || 'esta turma'}`
+                          : L.acao === 'atualizar'
+                            ? (L.turma_atual_nome || L.turma_nova_nome || '—')
+                            : (L.turma_nova_nome || '—')}
                       </td>
                       <td className="px-2 py-1.5 text-red-700">{L.erro || ''}</td>
                     </tr>
@@ -3043,6 +3363,7 @@ export default function SecretariaOperacional() {
                 onClick={() => {
                   setImportStep('upload')
                   setImportPreview(null)
+                  setImportPermitirMudancaTurma(false)
                 }}
               >
                 Voltar
@@ -3111,29 +3432,53 @@ export default function SecretariaOperacional() {
           <p className="text-sm text-muted">
             Turma: <strong className="text-ink">{context.turma?.nome}</strong>
           </p>
-          <Field label="Disciplina">
-            <select className={inputCls} required value={formAloc.disciplina_id} onChange={(e) => setFormAloc((f) => ({ ...f, disciplina_id: e.target.value }))}>
-              <option value="">Selecione</option>
-              {discsForAloc(context.turma).map((d) => (
-                <option key={d.id} value={d.id}>{d.nome}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Professor">
-            <select className={inputCls} required value={formAloc.professor_id} onChange={(e) => setFormAloc((f) => ({ ...f, professor_id: e.target.value }))}>
-              <option value="">Selecione</option>
-              {professores.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label || p.email || p.email_convite || p.id}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <button type="submit" disabled={busy} className={btnPrimary}>{busy ? 'Salvando…' : 'Alocar'}</button>
+          {discsForAloc(context.turma).length === 0 ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Este curso ainda não tem disciplinas no catálogo. Associe disciplinas ao curso
+              antes de alocar um professor.
+            </p>
+          ) : (
+            <>
+              <Field label="Disciplina do catálogo do curso">
+                <select className={inputCls} required value={formAloc.disciplina_id} onChange={(e) => setFormAloc((f) => ({ ...f, disciplina_id: e.target.value }))}>
+                  <option value="">Selecione</option>
+                  {discsForAloc(context.turma).map((d) => (
+                    <option key={d.id} value={d.id}>{d.nome}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Professor">
+                <select className={inputCls} required value={formAloc.professor_id} onChange={(e) => setFormAloc((f) => ({ ...f, professor_id: e.target.value }))}>
+                  <option value="">Selecione</option>
+                  {professores.map((p) => {
+                    const hab = Array.isArray(p.habilitacao_disciplina_ids)
+                      ? p.habilitacao_disciplina_ids
+                      : []
+                    const habilitado = formAloc.disciplina_id && hab.includes(formAloc.disciplina_id)
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.label || p.email || p.email_convite || p.id}
+                        {habilitado ? ' · habilitado' : ''}
+                      </option>
+                    )
+                  })}
+                </select>
+              </Field>
+              <p className="text-xs text-muted">
+                “Habilitado” é só informativo — qualquer professor da equipe pode ser alocado.
+              </p>
+              <button type="submit" disabled={busy} className={btnPrimary}>{busy ? 'Salvando…' : 'Alocar'}</button>
+            </>
+          )}
         </form>
       </Modal>
 
-      <Modal title="Publicar comunicado" open={modal === 'comunicacao'} onClose={closeModal} wide>
+      <Modal
+        title={editId ? 'Editar comunicado' : 'Publicar comunicado'}
+        open={modal === 'comunicacao'}
+        onClose={closeModal}
+        wide
+      >
         <form onSubmit={saveCom} className="space-y-3">
           <Field label="Título">
             <input className={inputCls} required value={formCom.titulo} onChange={(e) => setFormCom((f) => ({ ...f, titulo: e.target.value }))} />
@@ -3150,8 +3495,22 @@ export default function SecretariaOperacional() {
               </select>
             </Field>
             <Field label="Público">
-              <select className={inputCls} value={formCom.publico_alvo} onChange={(e) => setFormCom((f) => ({ ...f, publico_alvo: e.target.value }))}>
-                {COM_PUBLICOS.map((t) => (
+              <select
+                className={inputCls}
+                value={formCom.publico_alvo}
+                onChange={(e) =>
+                  setFormCom((f) => ({
+                    ...f,
+                    publico_alvo: e.target.value,
+                    unidade_id: e.target.value === 'unidade' ? f.unidade_id || user?.unidade_id || '' : '',
+                    turma_id: e.target.value === 'turma' ? f.turma_id : '',
+                  }))
+                }
+              >
+                {(user?.unidade_id
+                  ? COM_PUBLICOS.filter((t) => t.value === 'unidade' || t.value === 'turma')
+                  : COM_PUBLICOS
+                ).map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
@@ -3165,15 +3524,44 @@ export default function SecretariaOperacional() {
               <input type="datetime-local" className={inputCls} value={formCom.data_hora_fim} onChange={(e) => setFormCom((f) => ({ ...f, data_hora_fim: e.target.value }))} />
             </Field>
           </div>
-          <Field label="Unidade (opcional)">
-            <select className={inputCls} value={formCom.unidade_id} onChange={(e) => setFormCom((f) => ({ ...f, unidade_id: e.target.value }))}>
-              <option value="">Toda a instituição</option>
-              {unidades.map((u) => (
-                <option key={u.id} value={u.id}>{u.nome}</option>
-              ))}
-            </select>
-          </Field>
-          <button type="submit" disabled={busy} className={btnPrimary}>{busy ? 'Publicando…' : 'Publicar'}</button>
+          {formCom.publico_alvo === 'unidade' ? (
+            <Field label="Unidade">
+              <select
+                className={inputCls}
+                required
+                value={formCom.unidade_id}
+                onChange={(e) => setFormCom((f) => ({ ...f, unidade_id: e.target.value }))}
+              >
+                <option value="">Selecione</option>
+                {unidades.map((u) => (
+                  <option key={u.id} value={u.id}>{u.nome}</option>
+                ))}
+              </select>
+            </Field>
+          ) : null}
+          {formCom.publico_alvo === 'turma' ? (
+            <Field label="Turma">
+              <select
+                className={inputCls}
+                required
+                value={formCom.turma_id}
+                onChange={(e) => setFormCom((f) => ({ ...f, turma_id: e.target.value }))}
+              >
+                <option value="">Selecione</option>
+                {turmas
+                  .filter((t) => !user?.unidade_id || t.unidade_id === user.unidade_id)
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome}
+                      {t.unidade_nome ? ` · ${t.unidade_nome}` : ''}
+                    </option>
+                  ))}
+              </select>
+            </Field>
+          ) : null}
+          <button type="submit" disabled={busy} className={btnPrimary}>
+            {busy ? 'Salvando…' : editId ? 'Salvar e enviar ao mural' : 'Publicar'}
+          </button>
         </form>
       </Modal>
 

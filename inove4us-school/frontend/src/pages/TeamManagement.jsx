@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import LessonMirrorModal from '../components/LessonMirrorModal'
-import { useAuth, useInstituicaoId } from '../lib/auth'
+import { useAuth } from '../lib/auth'
 import { CrmEvents, trackEvent } from '../lib/tracking'
 
 function formatDate(iso) {
@@ -298,7 +298,6 @@ function BillingModal({ open, onClose, onPaidHint }) {
 
 export default function TeamManagement() {
   const { user } = useAuth()
-  const instituicaoId = useInstituicaoId()
 
   const [email, setEmail] = useState('')
   const [licencas, setLicencas] = useState(null)
@@ -315,16 +314,15 @@ export default function TeamManagement() {
   const [notaForm, setNotaForm] = useState({ nota: '', referencia: '', observacao: '' })
   const [selectedPlanoId, setSelectedPlanoId] = useState(null)
   const [aulasAbertas, setAulasAbertas] = useState(true)
+  const [habDraft, setHabDraft] = useState([])
+  const [habBusy, setHabBusy] = useState(false)
+  const [habFeedback, setHabFeedback] = useState('')
 
   const load = useCallback(async () => {
-    if (!instituicaoId) {
-      setLoading(false)
-      return
-    }
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/instituicoes/${instituicaoId}/equipe`, {
+      const res = await fetch('/api/equipe', {
         credentials: 'include',
       })
       const body = await res.json().catch(() => ({}))
@@ -336,7 +334,7 @@ export default function TeamManagement() {
     } finally {
       setLoading(false)
     }
-  }, [instituicaoId])
+  }, [])
 
   useEffect(() => {
     load()
@@ -364,7 +362,7 @@ export default function TeamManagement() {
       setRadio(null)
       try {
         const res = await fetch(
-          `/api/instituicoes/${instituicaoId}/equipe/${vinculoId}/radiografia`,
+          `/api/equipe/${vinculoId}/radiografia`,
           { credentials: 'include' },
         )
         const body = await res.json().catch(() => ({}))
@@ -376,12 +374,18 @@ export default function TeamManagement() {
         setRadioLoading(false)
       }
     },
-    [instituicaoId],
+    [],
   )
 
   useEffect(() => {
     if (selectedId) loadRadiografia(selectedId)
   }, [selectedId, loadRadiografia])
+
+  useEffect(() => {
+    const ids = (radio?.habilitacoes || []).map((h) => h.disciplina_id).filter(Boolean)
+    setHabDraft(ids)
+    setHabFeedback('')
+  }, [radio, selectedId])
 
   const ordered = useMemo(
     () =>
@@ -401,7 +405,7 @@ export default function TeamManagement() {
     setError('')
     setBusy(true)
     try {
-      const res = await fetch(`/api/instituicoes/${instituicaoId}/equipe/convites`, {
+      const res = await fetch(`/api/equipe/convites`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
@@ -421,7 +425,7 @@ export default function TeamManagement() {
       if (body.membro?.id) {
         try {
           const d = await fetch(
-            `/api/instituicoes/${instituicaoId}/equipe/${body.membro.id}/disparar-convite`,
+            `/api/equipe/${body.membro.id}/disparar-convite`,
             { method: 'POST', credentials: 'include' },
           )
           const dj = await d.json().catch(() => ({}))
@@ -447,7 +451,7 @@ export default function TeamManagement() {
     setBusy(true)
     try {
       const res = await fetch(
-        `/api/instituicoes/${instituicaoId}/equipe/${vinculoId}/disparar-convite`,
+        `/api/equipe/${vinculoId}/disparar-convite`,
         { method: 'POST', credentials: 'include' },
       )
       const body = await res.json().catch(() => ({}))
@@ -478,7 +482,7 @@ export default function TeamManagement() {
     setBusy(true)
     setError('')
     try {
-      const res = await fetch(`/api/instituicoes/${instituicaoId}/equipe/${id}/revogar`, {
+      const res = await fetch(`/api/equipe/${id}/revogar`, {
         method: 'POST',
         credentials: 'include',
       })
@@ -498,6 +502,38 @@ export default function TeamManagement() {
     }
   }
 
+  async function handleSaveHabilitacoes(e) {
+    e.preventDefault()
+    if (!selectedId) return
+    setHabBusy(true)
+    setHabFeedback('')
+    setRadioError('')
+    try {
+      const res = await fetch(`/api/equipe/${selectedId}/habilitacoes`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({ disciplina_ids: habDraft }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Falha ao salvar habilitação')
+      setHabFeedback('Habilitação atualizada. Não altera a alocação na Secretaria.')
+      await loadRadiografia(selectedId)
+    } catch (err) {
+      setRadioError(err.message || 'Erro ao salvar habilitação')
+    } finally {
+      setHabBusy(false)
+    }
+  }
+
+  function toggleHab(disciplinaId) {
+    setHabDraft((prev) =>
+      prev.includes(disciplinaId)
+        ? prev.filter((id) => id !== disciplinaId)
+        : [...prev, disciplinaId],
+    )
+  }
+
   async function handleDeclararNota(e) {
     e.preventDefault()
     if (!selectedId) return
@@ -505,7 +541,7 @@ export default function TeamManagement() {
     setRadioError('')
     try {
       const res = await fetch(
-        `/api/instituicoes/${instituicaoId}/equipe/${selectedId}/avaliacoes`,
+        `/api/equipe/${selectedId}/avaliacoes`,
         {
           method: 'POST',
           credentials: 'include',
@@ -732,6 +768,46 @@ export default function TeamManagement() {
                 </div>
               </section>
 
+              {/* Habilitação informativa */}
+              <section className="rounded-lg border border-slate-100 p-3">
+                <h3 className="text-sm font-semibold text-ink">Habilitação para lecionar</h3>
+                <p className="mt-1 text-[11px] text-muted">
+                  Cadastro informativo. Não filtra nem trava a alocação na Secretaria.
+                </p>
+                {(radio.catalogo_disciplinas || []).length === 0 ? (
+                  <p className="mt-2 text-xs text-muted">
+                    Nenhuma disciplina no catálogo institucional ainda.
+                  </p>
+                ) : (
+                  <form onSubmit={handleSaveHabilitacoes} className="mt-2 space-y-2">
+                    <ul className="max-h-40 space-y-1 overflow-y-auto">
+                      {(radio.catalogo_disciplinas || []).map((d) => (
+                        <li key={d.id}>
+                          <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+                            <input
+                              type="checkbox"
+                              checked={habDraft.includes(d.id)}
+                              onChange={() => toggleHab(d.id)}
+                            />
+                            <span>{d.nome}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                    {habFeedback ? (
+                      <p className="text-xs text-emerald-700">{habFeedback}</p>
+                    ) : null}
+                    <button
+                      type="submit"
+                      disabled={habBusy}
+                      className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+                    >
+                      {habBusy ? 'Salvando…' : 'Salvar habilitação'}
+                    </button>
+                  </form>
+                )}
+              </section>
+
               {/* 2. Linha do tempo */}
               <section className="rounded-lg border border-slate-100 p-3">
                 <h3 className="text-sm font-semibold text-ink">Linha do tempo do vínculo</h3>
@@ -956,7 +1032,6 @@ export default function TeamManagement() {
       {selectedPlanoId ? (
         <LessonMirrorModal
           planoId={selectedPlanoId}
-          instituicaoId={instituicaoId}
           onClose={() => setSelectedPlanoId(null)}
         />
       ) : null}

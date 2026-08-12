@@ -47,10 +47,15 @@ export function AuthProvider({ children }) {
     ;(async () => {
       try {
         const res = await fetch('/api/auth/me', { credentials: 'include' })
-        const body = res.ok ? await res.json().catch(() => ({})) : {}
+        const body = await res.json().catch(() => ({}))
         if (cancelled) return
-        if (body.authenticated && body.user) setUser(body.user)
-        else if (!readStored()) setUser(null)
+        if (body.authenticated && body.user) {
+          setUser(body.user)
+        } else if (res.status === 200 || res.status === 401) {
+          // 200 + authenticated:false é o contrato atual (visita anônima).
+          // 401 também limpa. 5xx/rede: o catch abaixo mantém o cache.
+          setUser(null)
+        }
       } catch {
         /* mantém cache de sessão */
       } finally {

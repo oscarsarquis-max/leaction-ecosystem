@@ -1150,3 +1150,58 @@ def curadoria_pendente(instituicao_id: str):
             "itens": itens,
         }
     )
+
+
+def _sid_or_err():
+    inst = resolve_instituicao_id()
+    if isinstance(inst, tuple):
+        return inst
+    return inst
+
+
+@bp.get("/api/pedagogico/unidades")
+def list_unidades_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return list_unidades(inst)
+
+
+@bp.get("/api/pedagogico/calendario-pedagogico")
+def calendario_instituicao_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return calendario_instituicao(inst)
+
+
+@bp.get("/api/pedagogico/calendario-pedagogico/resumo")
+def calendario_instituicao_resumo_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return calendario_instituicao_resumo(inst)
+
+
+@bp.get("/api/pedagogico/planos-espelhados/<plano_id>")
+def plano_espelhado_detail_sessao(plano_id: str):
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return plano_espelhado_detail(inst, plano_id)
+
+
+@bp.get("/api/pedagogico/resumo-consolidado")
+def resumo_consolidado_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return resumo_consolidado(inst)
+
+
+@bp.get("/api/pedagogico/curadoria-pendente")
+def curadoria_pendente_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return curadoria_pendente(inst)

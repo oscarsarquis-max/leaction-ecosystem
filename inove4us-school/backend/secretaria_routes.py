@@ -154,9 +154,13 @@ def _parse_alunos_csv(text: str) -> tuple[list[dict[str, Any]] | None, str | Non
 
 def _validate_alunos_import_rows(
     raw_rows: list[dict[str, Any]],
-    existing_by_mat: dict[str, str],
+    existing_by_mat: dict[str, dict[str, Any]],
+    turma_destino_id: str,
+    turma_destino_nome: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Valida linhas; existing_by_mat: matricula_lower → aluno_id."""
+    """Valida linhas; existing_by_mat: matricula_lower → {id, turma_id, turma_nome}."""
+    dest_id = str(turma_destino_id)
+    dest_nome = turma_destino_nome
     seen_mats: dict[str, int] = {}
     out: list[dict[str, Any]] = []
     for raw in raw_rows:
@@ -177,6 +181,10 @@ def _validate_alunos_import_rows(
             "acao": None,
             "erro": None,
             "aluno_id_existente": None,
+            "turma_atual_id": None,
+            "turma_atual_nome": None,
+            "turma_nova_id": dest_id,
+            "turma_nova_nome": dest_nome,
         }
 
         if not nome:
@@ -203,10 +211,16 @@ def _validate_alunos_import_rows(
             continue
         seen_mats[mat_key] = linha
 
-        existing_id = existing_by_mat.get(mat_key)
-        if existing_id:
-            item["acao"] = "atualizar"
-            item["aluno_id_existente"] = existing_id
+        existing = existing_by_mat.get(mat_key)
+        if existing:
+            item["aluno_id_existente"] = existing["id"]
+            atual_id = existing.get("turma_id")
+            item["turma_atual_id"] = atual_id
+            item["turma_atual_nome"] = existing.get("turma_nome")
+            if atual_id and str(atual_id) != dest_id:
+                item["acao"] = "mudar_turma"
+            else:
+                item["acao"] = "atualizar"
         else:
             item["acao"] = "criar"
         out.append(item)
@@ -218,19 +232,21 @@ def _import_resumo(linhas: list[dict[str, Any]]) -> dict[str, int]:
     erro = sum(1 for L in linhas if L.get("status") == "erro")
     novos = sum(1 for L in linhas if L.get("acao") == "criar")
     atualizacoes = sum(1 for L in linhas if L.get("acao") == "atualizar")
+    mudancas_turma = sum(1 for L in linhas if L.get("acao") == "mudar_turma")
     return {
         "total": len(linhas),
         "ok": ok,
         "erro": erro,
         "novos": novos,
         "atualizacoes": atualizacoes,
+        "mudancas_turma": mudancas_turma,
     }
 
 
 def _load_turma_contexto(cur: Any, inst: str, turma_id: uuid.UUID):
     cur.execute(
         """
-        SELECT id, nome FROM public.school_turmas
+        SELECT id, nome, unidade_id FROM public.school_turmas
         WHERE id = %s AND instituicao_id = %s
         """,
         (str(turma_id), inst),
@@ -238,19 +254,72 @@ def _load_turma_contexto(cur: Any, inst: str, turma_id: uuid.UUID):
     return cur.fetchone()
 
 
-def _load_matriculas_existentes(cur: Any, inst: str) -> dict[str, str]:
+def _import_flag(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    return str(value or "").strip().lower() in {"1", "true", "sim", "yes", "on"}
+
+
+def _assert_turma_import_escopo(turma: dict[str, Any]):
+    """Escopo de unidade via resolve_unidade_id (Etapa 14 / _unidade_no_escopo), sem middleware duplicado."""
+    uid = turma.get("unidade_id")
+    if not uid:
+        escopo = _unidade_escopo()
+        if isinstance(escopo, tuple):
+            return escopo
+        if escopo:
+            return (
+                jsonify(
+                    {
+                        "error": "Turma sem unidade definida — fora do escopo do gestor.",
+                        "code": "FORBIDDEN_UNIDADE",
+                    }
+                ),
+                403,
+            )
+        return None
+    denied = _unidade_no_escopo(uuid.UUID(str(uid)))
+    if not denied:
+        return None
+    _resp, status = denied
+    if status == 403:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "Esta turma pertence a outra unidade. "
+                        "Só é possível importar alunos para turmas da unidade do gestor."
+                    ),
+                    "code": "FORBIDDEN_UNIDADE",
+                }
+            ),
+            403,
+        )
+    return denied
+
+
+def _load_matriculas_existentes(cur: Any, inst: str) -> dict[str, dict[str, Any]]:
     cur.execute(
         """
-        SELECT id, matricula FROM public.school_alunos
-        WHERE instituicao_id = %s
+        SELECT a.id, a.matricula, a.turma_id, t.nome AS turma_nome
+          FROM public.school_alunos a
+          LEFT JOIN public.school_turmas t ON t.id = a.turma_id
+         WHERE a.instituicao_id = %s
         """,
         (inst,),
     )
-    out: dict[str, str] = {}
+    out: dict[str, dict[str, Any]] = {}
     for r in cur.fetchall():
         key = _text(r["matricula"]).casefold()
-        if key:
-            out[key] = str(r["id"])
+        if not key:
+            continue
+        out[key] = {
+            "id": str(r["id"]),
+            "turma_id": str(r["turma_id"]) if r.get("turma_id") else None,
+            "turma_nome": r.get("turma_nome"),
+        }
     return out
 
 
@@ -520,17 +589,17 @@ def get_unidade(item_id: str):
                         ) AS n_turmas,
                         (
                             SELECT count(*)::int
-                            FROM public.school_disciplinas d
-                            WHERE d.curso_id = cu.id
+                            FROM public.school_curso_disciplinas cd
+                            JOIN public.school_disciplinas d ON d.id = cd.disciplina_id
+                            WHERE cd.curso_id = cu.id
                               AND d.ativo = TRUE
                         ) AS n_disciplinas
                     FROM cursos_u cu
                 ),
                 disc_ids AS (
-                    SELECT d.id
-                    FROM public.school_disciplinas d
-                    WHERE d.ativo = TRUE
-                      AND d.curso_id IN (SELECT id FROM cursos_u)
+                    SELECT cd.disciplina_id AS id
+                    FROM public.school_curso_disciplinas cd
+                    WHERE cd.curso_id IN (SELECT id FROM cursos_u)
                     UNION
                     SELECT a.disciplina_id AS id
                     FROM public.school_alocacoes_docentes a
@@ -1268,8 +1337,9 @@ def list_cursos():
                          WHERE t.curso_id = c.id AND t.ativa = TRUE
                        ) AS turmas_count,
                        (
-                         SELECT COUNT(*)::int FROM public.school_disciplinas d
-                         WHERE d.curso_id = c.id AND d.ativo = TRUE
+                         SELECT COUNT(*)::int FROM public.school_curso_disciplinas cd
+                         JOIN public.school_disciplinas d ON d.id = cd.disciplina_id
+                         WHERE cd.curso_id = c.id AND d.ativo = TRUE
                        ) AS disciplinas_count
                 FROM public.school_cursos c
                 JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
@@ -1418,8 +1488,116 @@ def update_curso(item_id: str):
 
 
 # ---------------------------------------------------------------------------
-# Disciplinas
+# Disciplinas (catálogo institucional) + vínculo N:N com cursos
 # ---------------------------------------------------------------------------
+def _serialize_disciplina(r: dict) -> dict[str, Any]:
+    cursos = r.get("cursos") or []
+    if isinstance(cursos, str):
+        try:
+            cursos = json.loads(cursos)
+        except Exception:
+            cursos = []
+    if not isinstance(cursos, list):
+        cursos = []
+    clean = []
+    for c in cursos:
+        if not isinstance(c, dict) or not c.get("id"):
+            continue
+        clean.append({"id": str(c["id"]), "nome": c.get("nome") or ""})
+    return {
+        "id": str(r["id"]),
+        "nome": r["nome"],
+        "ementa_macro": r.get("ementa") or "",
+        "carga_horaria": float(r["carga_horaria_horas"])
+        if r.get("carga_horaria_horas") is not None
+        else None,
+        "codigo": r.get("codigo"),
+        "cursos": clean,
+        "curso_ids": [c["id"] for c in clean],
+        "ativo": bool(r["ativo"]),
+    }
+
+
+def _sql_disciplinas_cursos_agg() -> str:
+    return """
+        COALESCE((
+            SELECT json_agg(
+                json_build_object('id', c.id::text, 'nome', c.nome)
+                ORDER BY c.nome
+            )
+            FROM public.school_curso_disciplinas cd
+            JOIN public.school_cursos c ON c.id = cd.curso_id
+            WHERE cd.disciplina_id = d.id
+        ), '[]'::json) AS cursos
+    """
+
+
+def _assert_curso_instituicao(cur, inst: str, curso_id: str):
+    cur.execute(
+        """
+        SELECT c.id
+        FROM public.school_cursos c
+        JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
+        WHERE c.id = %s AND p.instituicao_id = %s
+        """,
+        (curso_id, inst),
+    )
+    return cur.fetchone()
+
+
+def _associate_curso_disciplina(cur, inst: str, curso_id: str, disciplina_id: str):
+    if not _assert_curso_instituicao(cur, inst, curso_id):
+        return jsonify({"error": "curso inválido"}), 400
+    cur.execute(
+        """
+        SELECT 1 FROM public.school_disciplinas
+        WHERE id = %s AND instituicao_id = %s
+        """,
+        (disciplina_id, inst),
+    )
+    if not cur.fetchone():
+        return jsonify({"error": "disciplina inválida"}), 400
+    try:
+        cur.execute(
+            """
+            INSERT INTO public.school_curso_disciplinas (curso_id, disciplina_id)
+            VALUES (%s, %s)
+            ON CONFLICT (curso_id, disciplina_id) DO NOTHING
+            """,
+            (curso_id, disciplina_id),
+        )
+    except Exception:
+        return jsonify({"error": "Não foi possível associar a disciplina ao curso"}), 400
+    return None
+
+
+def _disciplina_no_catalogo_turma(cur, inst: str, turma_id: str, disciplina_id: str) -> bool:
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.school_turmas t
+        JOIN public.school_curso_disciplinas cd ON cd.curso_id = t.curso_id
+        WHERE t.id = %s
+          AND t.instituicao_id = %s
+          AND cd.disciplina_id = %s
+        """,
+        (turma_id, inst, disciplina_id),
+    )
+    return cur.fetchone() is not None
+
+
+def _reject_disc_fora_catalogo():
+    return (
+        jsonify(
+            {
+                "error": "Esta disciplina não está no catálogo do curso desta turma.",
+                "code": "DISCIPLINA_FORA_CATALOGO",
+            }
+        ),
+        422,
+    )
+
+
 @bp.get("/api/secretaria/disciplinas")
 @require_gestor
 def list_disciplinas():
@@ -1429,61 +1607,38 @@ def list_disciplinas():
         request.args.get("periodo_letivo_id") or request.args.get("periodo_id"),
         "periodo",
     )
-    sem_curso = str(request.args.get("sem_curso") or "").lower() in (
-        "1",
-        "true",
-        "yes",
-    )
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            sql = """
+            sql = f"""
                 SELECT d.id, d.nome, d.ementa, d.carga_horaria_horas, d.codigo,
-                       d.curso_id, d.ativo, c.nome AS curso_nome,
-                       c.periodo_letivo_id
+                       d.ativo, {_sql_disciplinas_cursos_agg()}
                 FROM public.school_disciplinas d
-                LEFT JOIN public.school_cursos c ON c.id = d.curso_id
-                LEFT JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
-                WHERE (d.instituicao_id = %s OR p.instituicao_id = %s)
+                WHERE d.instituicao_id = %s
             """
-            params: list[Any] = [inst, inst]
+            params: list[Any] = [inst]
             if curso_id:
-                sql += " AND d.curso_id = %s"
-                params.append(str(curso_id))
-            if sem_curso:
-                sql += " AND d.curso_id IS NULL"
-            if periodo_id and not curso_id and not sem_curso:
                 sql += """
-                    AND (
-                        c.periodo_letivo_id = %s
-                        OR d.curso_id IS NULL
+                    AND EXISTS (
+                        SELECT 1 FROM public.school_curso_disciplinas cd
+                        WHERE cd.disciplina_id = d.id AND cd.curso_id = %s
+                    )
+                """
+                params.append(str(curso_id))
+            if periodo_id and not curso_id:
+                sql += """
+                    AND EXISTS (
+                        SELECT 1
+                        FROM public.school_curso_disciplinas cd
+                        JOIN public.school_cursos c ON c.id = cd.curso_id
+                        WHERE cd.disciplina_id = d.id
+                          AND c.periodo_letivo_id = %s
                     )
                 """
                 params.append(str(periodo_id))
             sql += " ORDER BY d.nome ASC"
             cur.execute(sql, params)
             rows = cur.fetchall()
-    return jsonify(
-        {
-            "items": [
-                {
-                    "id": str(r["id"]),
-                    "nome": r["nome"],
-                    "ementa_macro": r.get("ementa") or "",
-                    "carga_horaria": float(r["carga_horaria_horas"])
-                    if r.get("carga_horaria_horas") is not None
-                    else None,
-                    "codigo": r.get("codigo"),
-                    "curso_id": str(r["curso_id"]) if r.get("curso_id") else None,
-                    "curso_nome": r.get("curso_nome"),
-                    "periodo_letivo_id": str(r["periodo_letivo_id"])
-                    if r.get("periodo_letivo_id")
-                    else None,
-                    "ativo": bool(r["ativo"]),
-                }
-                for r in rows
-            ]
-        }
-    )
+    return jsonify({"items": [_serialize_disciplina(r) for r in rows]})
 
 
 @bp.post("/api/secretaria/disciplinas")
@@ -1511,46 +1666,32 @@ def create_disciplina():
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            if curso_id:
-                cur.execute(
-                    """
-                    SELECT c.id
-                    FROM public.school_cursos c
-                    JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
-                    WHERE c.id = %s AND p.instituicao_id = %s
-                    """,
-                    (str(curso_id), inst),
-                )
-                if not cur.fetchone():
-                    return jsonify({"error": "curso inválido"}), 400
             cur.execute(
                 """
                 INSERT INTO public.school_disciplinas (
-                    instituicao_id, curso_id, nome, ementa, carga_horaria_horas
+                    instituicao_id, nome, ementa, carga_horaria_horas
                 )
-                VALUES (%s, %s, %s, %s, %s)
-                RETURNING id, nome, ementa, carga_horaria_horas, curso_id, ativo
+                VALUES (%s, %s, %s, %s)
+                RETURNING id, nome, ementa, carga_horaria_horas, ativo
                 """,
-                (inst, str(curso_id) if curso_id else None, nome, ementa, carga),
+                (inst, nome, ementa, carga),
             )
             row = cur.fetchone()
-    return (
-        jsonify(
-            {
-                "item": {
-                    "id": str(row["id"]),
-                    "nome": row["nome"],
-                    "ementa_macro": row.get("ementa") or "",
-                    "carga_horaria": float(row["carga_horaria_horas"])
-                    if row.get("carga_horaria_horas") is not None
-                    else None,
-                    "curso_id": str(row["curso_id"]) if row.get("curso_id") else None,
-                    "ativo": bool(row["ativo"]),
-                }
-            }
-        ),
-        201,
-    )
+            if curso_id:
+                err = _associate_curso_disciplina(cur, inst, str(curso_id), str(row["id"]))
+                if err:
+                    return err
+            cur.execute(
+                f"""
+                SELECT d.id, d.nome, d.ementa, d.carga_horaria_horas, d.codigo,
+                       d.ativo, {_sql_disciplinas_cursos_agg()}
+                FROM public.school_disciplinas d
+                WHERE d.id = %s
+                """,
+                (str(row["id"]),),
+            )
+            row = cur.fetchone()
+    return jsonify({"item": _serialize_disciplina(row)}), 201
 
 
 @bp.put("/api/secretaria/disciplinas/<item_id>")
@@ -1573,57 +1714,18 @@ def update_disciplina(item_id: str):
             except (TypeError, ValueError):
                 return jsonify({"error": "carga_horaria inválida"}), 400
 
-    curso_s = None
-    clear_curso = False
-    if "curso_id" in body:
-        if body.get("curso_id") in (None, ""):
-            clear_curso = True
-        else:
-            curso_id = _parse_uuid(body.get("curso_id"), "curso")
-            if not curso_id:
-                return jsonify({"error": "curso_id inválido"}), 400
-            curso_s = str(curso_id)
-
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            if curso_s:
-                cur.execute(
-                    """
-                    SELECT c.id
-                    FROM public.school_cursos c
-                    JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
-                    WHERE c.id = %s AND p.instituicao_id = %s
-                    """,
-                    (curso_s, inst),
-                )
-                if not cur.fetchone():
-                    return jsonify({"error": "curso inválido"}), 400
-
             cur.execute(
                 """
                 UPDATE public.school_disciplinas d
                 SET nome = COALESCE(%s, d.nome),
                     ementa = CASE WHEN %s THEN %s ELSE d.ementa END,
                     carga_horaria_horas = CASE WHEN %s THEN %s ELSE d.carga_horaria_horas END,
-                    curso_id = CASE
-                        WHEN %s THEN NULL
-                        WHEN %s IS NOT NULL THEN %s::uuid
-                        ELSE d.curso_id
-                    END,
                     ativo = COALESCE(%s, d.ativo),
                     updated_at = CURRENT_TIMESTAMP
-                WHERE d.id = %s
-                  AND (
-                        d.instituicao_id = %s
-                     OR EXISTS (
-                            SELECT 1
-                            FROM public.school_cursos c
-                            JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
-                            WHERE c.id = d.curso_id AND p.instituicao_id = %s
-                        )
-                  )
-                RETURNING d.id, d.nome, d.ementa, d.carga_horaria_horas,
-                          d.curso_id, d.ativo
+                WHERE d.id = %s AND d.instituicao_id = %s
+                RETURNING d.id
                 """,
                 (
                     _text(body["nome"]) if body.get("nome") is not None else None,
@@ -1631,32 +1733,116 @@ def update_disciplina(item_id: str):
                     _text(body.get("ementa_macro") or body.get("ementa")) or None,
                     update_carga,
                     carga,
-                    clear_curso,
-                    curso_s,
-                    curso_s,
                     bool(body["ativo"]) if "ativo" in body else None,
                     str(did),
-                    inst,
                     inst,
                 ),
             )
             row = cur.fetchone()
-    if not row:
-        return jsonify({"error": "Disciplina não encontrada"}), 404
-    return jsonify(
-        {
-            "item": {
-                "id": str(row["id"]),
-                "nome": row["nome"],
-                "ementa_macro": row.get("ementa") or "",
-                "carga_horaria": float(row["carga_horaria_horas"])
-                if row.get("carga_horaria_horas") is not None
-                else None,
-                "curso_id": str(row["curso_id"]) if row.get("curso_id") else None,
-                "ativo": bool(row["ativo"]),
-            }
-        }
-    )
+            if not row:
+                return jsonify({"error": "Disciplina não encontrada"}), 404
+            if body.get("curso_id") not in (None, ""):
+                cid = _parse_uuid(body.get("curso_id"), "curso")
+                if not cid:
+                    return jsonify({"error": "curso_id inválido"}), 400
+                err = _associate_curso_disciplina(cur, inst, str(cid), str(did))
+                if err:
+                    return err
+            cur.execute(
+                f"""
+                SELECT d.id, d.nome, d.ementa, d.carga_horaria_horas, d.codigo,
+                       d.ativo, {_sql_disciplinas_cursos_agg()}
+                FROM public.school_disciplinas d
+                WHERE d.id = %s
+                """,
+                (str(did),),
+            )
+            row = cur.fetchone()
+    return jsonify({"item": _serialize_disciplina(row)})
+
+
+@bp.post("/api/secretaria/cursos/<curso_id>/disciplinas")
+@require_gestor
+def associate_disciplina_curso(curso_id: str):
+    """Associa disciplina existente (ou cria nova) ao catálogo do curso."""
+    inst = _instituicao_id()
+    cid = _parse_uuid(curso_id, "curso")
+    if not cid:
+        return jsonify({"error": "curso inválido"}), 400
+    body = request.get_json(silent=True) or {}
+    disc_id = None
+    if body.get("disciplina_id") not in (None, ""):
+        disc_id = _parse_uuid(body.get("disciplina_id"), "disciplina")
+        if not disc_id:
+            return jsonify({"error": "disciplina_id inválido"}), 400
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if not _assert_curso_instituicao(cur, inst, str(cid)):
+                return jsonify({"error": "curso inválido"}), 400
+            if not disc_id:
+                nome = _text(body.get("nome"))
+                if not nome:
+                    return jsonify({"error": "Informe disciplina_id ou o nome da nova disciplina"}), 400
+                ementa = _text(body.get("ementa_macro") or body.get("ementa")) or None
+                carga = None
+                carga_raw = body.get("carga_horaria", body.get("carga_horaria_horas"))
+                if carga_raw is not None and str(carga_raw).strip() != "":
+                    try:
+                        carga = float(carga_raw)
+                    except (TypeError, ValueError):
+                        return jsonify({"error": "carga_horaria inválida"}), 400
+                cur.execute(
+                    """
+                    INSERT INTO public.school_disciplinas (
+                        instituicao_id, nome, ementa, carga_horaria_horas
+                    )
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (inst, nome, ementa, carga),
+                )
+                disc_id = cur.fetchone()["id"]
+            err = _associate_curso_disciplina(cur, inst, str(cid), str(disc_id))
+            if err:
+                return err
+            cur.execute(
+                f"""
+                SELECT d.id, d.nome, d.ementa, d.carga_horaria_horas, d.codigo,
+                       d.ativo, {_sql_disciplinas_cursos_agg()}
+                FROM public.school_disciplinas d
+                WHERE d.id = %s
+                """,
+                (str(disc_id),),
+            )
+            row = cur.fetchone()
+    return jsonify({"item": _serialize_disciplina(row)}), 201
+
+
+@bp.delete("/api/secretaria/cursos/<curso_id>/disciplinas/<disciplina_id>")
+@require_gestor
+def dissociate_disciplina_curso(curso_id: str, disciplina_id: str):
+    inst = _instituicao_id()
+    cid = _parse_uuid(curso_id, "curso")
+    did = _parse_uuid(disciplina_id, "disciplina")
+    if not cid or not did:
+        return jsonify({"error": "Identificador inválido"}), 400
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if not _assert_curso_instituicao(cur, inst, str(cid)):
+                return jsonify({"error": "curso inválido"}), 400
+            cur.execute(
+                """
+                DELETE FROM public.school_curso_disciplinas
+                WHERE curso_id = %s AND disciplina_id = %s
+                RETURNING id
+                """,
+                (str(cid), str(did)),
+            )
+            gone = cur.fetchone()
+    if not gone:
+        return jsonify({"error": "Associação não encontrada"}), 404
+    return jsonify({"ok": True})
 
 
 # ---------------------------------------------------------------------------
@@ -1694,11 +1880,6 @@ def list_turmas():
         request.args.get("periodo_letivo_id") or request.args.get("periodo_id"),
         "periodo",
     )
-    sem_curso = str(request.args.get("sem_curso") or "").lower() in (
-        "1",
-        "true",
-        "yes",
-    )
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             sql = """
@@ -1720,8 +1901,6 @@ def list_turmas():
             if curso_id:
                 sql += " AND t.curso_id = %s"
                 params.append(str(curso_id))
-            if sem_curso:
-                sql += " AND t.curso_id IS NULL"
             if periodo_id:
                 sql += " AND t.periodo_letivo_id = %s"
                 params.append(str(periodo_id))
@@ -1755,11 +1934,9 @@ def create_turma():
     if not periodo_id:
         return jsonify({"error": "periodo_letivo_id é obrigatório"}), 400
 
-    curso_id = None
-    if body.get("curso_id") not in (None, ""):
-        curso_id = _parse_uuid(body.get("curso_id"), "curso")
-        if not curso_id:
-            return jsonify({"error": "curso_id inválido"}), 400
+    curso_id = _parse_uuid(body.get("curso_id"), "curso") if body.get("curso_id") not in (None, "") else None
+    if not curso_id:
+        return jsonify({"error": "curso_id é obrigatório"}), 400
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -1827,7 +2004,7 @@ def create_turma():
                         ano_letivo,
                         str(unidade_id),
                         str(periodo_id),
-                        str(curso_id) if curso_id else None,
+                        str(curso_id),
                     ),
                 )
                 row = cur.fetchone()
@@ -1869,16 +2046,14 @@ def update_turma(item_id: str):
             return jsonify({"error": "periodo_letivo_id inválido"}), 400
         periodo_s = str(periodo_id)
 
-    clear_curso = False
     curso_s = None
     if "curso_id" in body:
         if body.get("curso_id") in (None, ""):
-            clear_curso = True
-        else:
-            curso_id = _parse_uuid(body.get("curso_id"), "curso")
-            if not curso_id:
-                return jsonify({"error": "curso_id inválido"}), 400
-            curso_s = str(curso_id)
+            return jsonify({"error": "curso_id é obrigatório"}), 400
+        curso_id = _parse_uuid(body.get("curso_id"), "curso")
+        if not curso_id:
+            return jsonify({"error": "curso_id inválido"}), 400
+        curso_s = str(curso_id)
 
     ano_letivo = None
     if body.get("ano_letivo") is not None and str(body.get("ano_letivo")).strip() != "":
@@ -1943,11 +2118,7 @@ def update_turma(item_id: str):
                         ano_letivo = COALESCE(%s, ano_letivo),
                         unidade_id = COALESCE(%s, unidade_id),
                         periodo_letivo_id = COALESCE(%s, periodo_letivo_id),
-                        curso_id = CASE
-                            WHEN %s THEN NULL
-                            WHEN %s IS NOT NULL THEN %s::uuid
-                            ELSE curso_id
-                        END,
+                        curso_id = COALESCE(%s, curso_id),
                         ativa = COALESCE(%s, ativa),
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s AND instituicao_id = %s
@@ -1961,8 +2132,6 @@ def update_turma(item_id: str):
                         ano_letivo,
                         unidade_s,
                         periodo_s,
-                        clear_curso,
-                        curso_s,
                         curso_s,
                         bool(body["ativa"]) if "ativa" in body else None,
                         str(tid),
@@ -2386,6 +2555,9 @@ def importar_alunos_preview():
             turma = _load_turma_contexto(cur, inst, turma_id)
             if not turma:
                 return jsonify({"error": "turma inválida"}), 400
+            denied = _assert_turma_import_escopo(turma)
+            if denied:
+                return denied
             existing = _load_matriculas_existentes(cur, inst)
 
     raw_bytes = upload.read()
@@ -2397,7 +2569,9 @@ def importar_alunos_preview():
     if parse_err:
         return jsonify({"error": parse_err}), 400
 
-    linhas = _validate_alunos_import_rows(parsed or [], existing)
+    linhas = _validate_alunos_import_rows(
+        parsed or [], existing, str(turma_id), turma.get("nome")
+    )
     return jsonify(
         {
             "turma_id": str(turma_id),
@@ -2426,10 +2600,15 @@ def importar_alunos_confirmar():
             {"error": f"Limite de {IMPORT_ALUNOS_MAX_LINHAS} linhas úteis excedido"}
         ), 400
 
+    permitir_geral = _import_flag(body.get("permitir_mudanca_turma"))
+    auth_by_mat: dict[str, bool] = {}
     prepared: list[dict[str, Any]] = []
     for i, row in enumerate(raw_linhas, start=1):
         if not isinstance(row, dict):
             return jsonify({"error": f"Linha {i} inválida"}), 400
+        mat_key = _text(row.get("matricula")).casefold()
+        if mat_key:
+            auth_by_mat[mat_key] = _import_flag(row.get("permitir_mudanca_turma"))
         prepared.append(
             {
                 "linha": int(row.get("linha") or i),
@@ -2445,8 +2624,13 @@ def importar_alunos_confirmar():
             turma = _load_turma_contexto(cur, inst, turma_id)
             if not turma:
                 return jsonify({"error": "turma inválida"}), 400
+            denied = _assert_turma_import_escopo(turma)
+            if denied:
+                return denied
             existing = _load_matriculas_existentes(cur, inst)
-            validated = _validate_alunos_import_rows(prepared, existing)
+            validated = _validate_alunos_import_rows(
+                prepared, existing, str(turma_id), turma.get("nome")
+            )
             erros = [L for L in validated if L.get("status") == "erro"]
             if erros:
                 first = erros[0]
@@ -2470,12 +2654,33 @@ def importar_alunos_confirmar():
 
             criados = 0
             atualizados = 0
+            mudancas_turma = 0
+            pulados: list[dict[str, Any]] = []
             try:
                 for L in ok_linhas:
+                    acao = L.get("acao")
+                    if acao == "mudar_turma":
+                        mat_key = _text(L.get("matricula")).casefold()
+                        if not (permitir_geral or auth_by_mat.get(mat_key)):
+                            pulados.append(
+                                {
+                                    "linha": L.get("linha"),
+                                    "matricula": L.get("matricula"),
+                                    "nome": L.get("nome"),
+                                    "motivo": "mudança de turma não autorizada",
+                                    "turma_atual_id": L.get("turma_atual_id"),
+                                    "turma_atual_nome": L.get("turma_atual_nome"),
+                                    "turma_nova_id": L.get("turma_nova_id")
+                                    or str(turma_id),
+                                    "turma_nova_nome": L.get("turma_nova_nome")
+                                    or turma.get("nome"),
+                                }
+                            )
+                            continue
                     nasc = None
                     if L.get("data_nascimento"):
                         nasc, _err = _parse_import_date(L.get("data_nascimento"))
-                    if L.get("acao") == "criar":
+                    if acao == "criar":
                         cur.execute(
                             """
                             INSERT INTO public.school_alunos (
@@ -2492,7 +2697,7 @@ def importar_alunos_confirmar():
                             ),
                         )
                         criados += 1
-                    else:
+                    elif acao in ("atualizar", "mudar_turma"):
                         aluno_id = L.get("aluno_id_existente")
                         if not aluno_id:
                             raise RuntimeError("aluno_id_existente ausente no upsert")
@@ -2520,7 +2725,12 @@ def importar_alunos_confirmar():
                         )
                         if cur.rowcount < 1:
                             raise RuntimeError("Aluno para atualização não encontrado")
-                        atualizados += 1
+                        if acao == "mudar_turma":
+                            mudancas_turma += 1
+                        else:
+                            atualizados += 1
+                    else:
+                        raise RuntimeError(f"ação de importação desconhecida: {acao}")
             except pg_errors.UniqueViolation:
                 conn.rollback()
                 return jsonify(
@@ -2540,6 +2750,9 @@ def importar_alunos_confirmar():
         {
             "criados": criados,
             "atualizados": atualizados,
+            "mudancas_turma": mudancas_turma,
+            "nao_aplicados": len(pulados),
+            "pulados": pulados,
             "turma_id": str(turma_id),
         }
     )
@@ -2790,33 +3003,148 @@ def list_professores_equipe():
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT id, email_convite, professor_b2c_id, status_vinculo
-                FROM public.school_professores_vinculo
-                WHERE instituicao_id = %s
-                  AND status_vinculo IN ('ativo', 'pendente')
-                ORDER BY email_convite NULLS LAST, created_at ASC
+                SELECT
+                    v.id,
+                    v.email_convite,
+                    v.professor_b2c_id,
+                    v.status_vinculo,
+                    COALESCE(
+                        (
+                            SELECT json_agg(h.disciplina_id::text ORDER BY h.disciplina_id)
+                            FROM public.school_professor_disciplina_habilitacao h
+                            WHERE h.professor_vinculo_id = v.id
+                        ),
+                        '[]'::json
+                    ) AS habilitacao_disciplina_ids
+                FROM public.school_professores_vinculo v
+                WHERE v.instituicao_id = %s
+                  AND v.status_vinculo IN ('ativo', 'pendente')
+                ORDER BY v.email_convite NULLS LAST, v.created_at ASC
                 """,
                 (inst,),
+            )
+            rows = cur.fetchall()
+    items = []
+    for r in rows:
+        hab = r.get("habilitacao_disciplina_ids") or []
+        if isinstance(hab, str):
+            try:
+                hab = json.loads(hab)
+            except Exception:
+                hab = []
+        if not isinstance(hab, list):
+            hab = []
+        items.append(
+            {
+                "id": str(r["id"]),
+                "professor_id": str(r["id"]),
+                "email": r.get("email_convite") or "",
+                "professor_b2c_id": str(r["professor_b2c_id"])
+                if r.get("professor_b2c_id")
+                else None,
+                "status": r["status_vinculo"],
+                "label": r.get("email_convite") or f"Professor {str(r['id'])[:8]}",
+                "habilitacao_disciplina_ids": [str(x) for x in hab if x],
+            }
+        )
+    return jsonify({"items": items})
+
+
+@bp.get("/api/secretaria/professores/<vinculo_id>/habilitacoes")
+@require_gestor
+def list_habilitacoes_professor(vinculo_id: str):
+    inst = _instituicao_id()
+    vid = _parse_uuid(vinculo_id, "professor")
+    if not vid:
+        return jsonify({"error": "Identificador inválido"}), 400
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT 1 FROM public.school_professores_vinculo
+                WHERE id = %s AND instituicao_id = %s
+                """,
+                (str(vid), inst),
+            )
+            if not cur.fetchone():
+                return jsonify({"error": "Professor não encontrado"}), 404
+            cur.execute(
+                """
+                SELECT h.disciplina_id, d.nome
+                FROM public.school_professor_disciplina_habilitacao h
+                JOIN public.school_disciplinas d ON d.id = h.disciplina_id
+                WHERE h.professor_vinculo_id = %s
+                ORDER BY d.nome
+                """,
+                (str(vid),),
             )
             rows = cur.fetchall()
     return jsonify(
         {
             "items": [
-                {
-                    "id": str(r["id"]),
-                    "professor_id": str(r["id"]),
-                    "email": r.get("email_convite") or "",
-                    "professor_b2c_id": str(r["professor_b2c_id"])
-                    if r.get("professor_b2c_id")
-                    else None,
-                    "status": r["status_vinculo"],
-                    "label": r.get("email_convite")
-                    or f"Professor {str(r['id'])[:8]}",
-                }
+                {"disciplina_id": str(r["disciplina_id"]), "nome": r["nome"]}
                 for r in rows
             ]
         }
     )
+
+
+@bp.put("/api/secretaria/professores/<vinculo_id>/habilitacoes")
+@require_gestor
+def put_habilitacoes_professor(vinculo_id: str):
+    """Cadastro informativo. Não afeta a regra de alocação."""
+    inst = _instituicao_id()
+    vid = _parse_uuid(vinculo_id, "professor")
+    if not vid:
+        return jsonify({"error": "Identificador inválido"}), 400
+    body = request.get_json(silent=True) or {}
+    raw_ids = body.get("disciplina_ids") or []
+    if not isinstance(raw_ids, list):
+        return jsonify({"error": "disciplina_ids deve ser uma lista"}), 400
+    ids: list[str] = []
+    for raw in raw_ids:
+        uid = _parse_uuid(raw, "disciplina")
+        if uid:
+            ids.append(str(uid))
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT 1 FROM public.school_professores_vinculo
+                WHERE id = %s AND instituicao_id = %s
+                """,
+                (str(vid), inst),
+            )
+            if not cur.fetchone():
+                return jsonify({"error": "Professor não encontrado"}), 404
+            if ids:
+                cur.execute(
+                    """
+                    SELECT count(*)::int AS n
+                    FROM public.school_disciplinas
+                    WHERE instituicao_id = %s AND id = ANY(%s::uuid[])
+                    """,
+                    (inst, ids),
+                )
+                if int(cur.fetchone()["n"] or 0) != len(set(ids)):
+                    return jsonify({"error": "disciplina inválida"}), 400
+            cur.execute(
+                """
+                DELETE FROM public.school_professor_disciplina_habilitacao
+                WHERE professor_vinculo_id = %s
+                """,
+                (str(vid),),
+            )
+            for did in set(ids):
+                cur.execute(
+                    """
+                    INSERT INTO public.school_professor_disciplina_habilitacao (
+                        professor_vinculo_id, disciplina_id
+                    ) VALUES (%s, %s)
+                    """,
+                    (str(vid), did),
+                )
+    return jsonify({"ok": True, "disciplina_ids": list(set(ids))})
 
 
 def _build_teacher_allocated_payload(
@@ -2848,8 +3176,8 @@ def _build_teacher_allocated_payload(
         "professor_email": prof.get("email_convite"),
         "vinculo_id": str(prof["id"]) if prof.get("id") else None,
     }
-    curso_id = disc.get("curso_id") or (turma or {}).get("curso_id")
-    curso_nome = disc.get("curso_nome") or (turma or {}).get("curso_nome")
+    curso_id = (turma or {}).get("curso_id") or disc.get("curso_id")
+    curso_nome = (turma or {}).get("curso_nome") or disc.get("curso_nome")
     if curso_id:
         payload["curso_id"] = str(curso_id)
         payload["curso_nome"] = (curso_nome or "").strip() or "Curso"
@@ -3005,12 +3333,8 @@ def create_alocacao():
 
             cur.execute(
                 """
-                SELECT d.id, d.nome, d.ementa, d.curso_id, d.instituicao_id,
-                       c.nome AS curso_nome,
-                       p.instituicao_id AS periodo_inst
+                SELECT d.id, d.nome, d.ementa, d.instituicao_id
                 FROM public.school_disciplinas d
-                LEFT JOIN public.school_cursos c ON c.id = d.curso_id
-                LEFT JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
                 WHERE d.id = %s AND d.ativo = TRUE
                 """,
                 (str(disciplina_id),),
@@ -3018,7 +3342,7 @@ def create_alocacao():
             disc = cur.fetchone()
             if not disc:
                 return jsonify({"error": "disciplina inválida"}), 400
-            disc_inst = str(disc.get("instituicao_id") or disc.get("periodo_inst") or "")
+            disc_inst = str(disc.get("instituicao_id") or "")
             if disc_inst and disc_inst != inst:
                 return jsonify({"error": "disciplina não pertence à instituição"}), 403
 
@@ -3056,6 +3380,10 @@ def create_alocacao():
                 turma = cur.fetchone()
                 if not turma:
                     return jsonify({"error": "turma inválida"}), 400
+                if not _disciplina_no_catalogo_turma(
+                    cur, inst, str(turma_id), str(disciplina_id)
+                ):
+                    return _reject_disc_fora_catalogo()
 
             try:
                 cur.execute(
@@ -3092,8 +3420,8 @@ def create_alocacao():
                 "id": disc["id"],
                 "nome": disc["nome"],
                 "ementa": disc.get("ementa"),
-                "curso_id": disc.get("curso_id"),
-                "curso_nome": disc.get("curso_nome"),
+                "curso_id": (turma or {}).get("curso_id"),
+                "curso_nome": (turma or {}).get("curso_nome"),
             }
             payload_b2c = _build_teacher_allocated_payload(
                 inst=inst,
@@ -3205,11 +3533,9 @@ def update_alocacao(item_id: str):
                     """
                     SELECT d.id
                     FROM public.school_disciplinas d
-                    LEFT JOIN public.school_cursos c ON c.id = d.curso_id
-                    LEFT JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
-                    WHERE d.id = %s AND (d.instituicao_id = %s OR p.instituicao_id = %s)
+                    WHERE d.id = %s AND d.instituicao_id = %s
                     """,
-                    (disciplina_s, inst, inst),
+                    (disciplina_s, inst),
                 )
                 if not cur.fetchone():
                     return jsonify({"error": "disciplina inválida"}), 400
@@ -3231,6 +3557,26 @@ def update_alocacao(item_id: str):
                 )
                 if not cur.fetchone():
                     return jsonify({"error": "turma inválida"}), 400
+
+            cur.execute(
+                """
+                SELECT turma_id, disciplina_id
+                FROM public.school_alocacoes_docentes
+                WHERE id = %s AND instituicao_id = %s
+                """,
+                (str(aid), inst),
+            )
+            current = cur.fetchone()
+            if not current:
+                return jsonify({"error": "Alocação não encontrada"}), 404
+            final_turma = None if clear_turma else (turma_s or (
+                str(current["turma_id"]) if current.get("turma_id") else None
+            ))
+            final_disc = disciplina_s or str(current["disciplina_id"])
+            if final_turma and not _disciplina_no_catalogo_turma(
+                cur, inst, final_turma, final_disc
+            ):
+                return _reject_disc_fora_catalogo()
 
             try:
                 cur.execute(
@@ -3283,7 +3629,6 @@ def update_alocacao(item_id: str):
                     d.id AS disciplina_id,
                     d.nome AS disciplina_nome,
                     d.ementa,
-                    d.curso_id,
                     c.nome AS curso_nome,
                     v.id AS professor_vinculo_id,
                     v.professor_b2c_id,
@@ -3300,8 +3645,8 @@ def update_alocacao(item_id: str):
                 JOIN public.school_disciplinas d ON d.id = a.disciplina_id
                 JOIN public.school_professores_vinculo v ON v.id = a.professor_vinculo_id
                 JOIN public.school_instituicoes i ON i.id = a.instituicao_id
-                LEFT JOIN public.school_cursos c ON c.id = d.curso_id
                 LEFT JOIN public.school_turmas t ON t.id = a.turma_id
+                LEFT JOIN public.school_cursos c ON c.id = t.curso_id
                 WHERE a.id = %s
                 """,
                 (str(aid),),
@@ -3333,7 +3678,7 @@ def update_alocacao(item_id: str):
                 "id": ctx["disciplina_id"],
                 "nome": ctx["disciplina_nome"],
                 "ementa": ctx.get("ementa"),
-                "curso_id": ctx.get("curso_id"),
+                "curso_id": ctx.get("turma_curso_id"),
                 "curso_nome": ctx.get("curso_nome"),
             },
             prof={
@@ -3419,76 +3764,352 @@ def _serialize_comunicacao(row: dict[str, Any]) -> dict:
         "data_hora_inicio": _iso(row.get("data_hora_inicio")),
         "data_hora_fim": _iso(row.get("data_hora_fim")),
         "unidade_id": str(row["unidade_id"]) if row.get("unidade_id") else None,
+        "unidade_nome": row.get("unidade_nome"),
+        "turma_id": str(row["turma_id"]) if row.get("turma_id") else None,
+        "turma_nome": row.get("turma_nome"),
         "replicado_b2c": bool(row.get("replicado_b2c")),
+        "replicado_b2c_em": _iso(row.get("replicado_b2c_em")),
         "created_at": _iso(row.get("created_at")),
     }
 
 
-def _resolve_professor_targets(cur, inst: str, publico: str, unidade_id: str | None):
+def _positive_professor_b2c_id(raw: Any) -> int | None:
+    """id_clie real do B2C. Placeholder negativo (convite pendente, Etapa 13) → None."""
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if n > 0:
+        return n
+    return None
+
+
+def _targets_from_vinculo_rows(rows) -> tuple[list[str], list[int]]:
+    emails: list[str] = []
+    ids: list[int] = []
+    for r in rows:
+        bid = _positive_professor_b2c_id(r.get("professor_b2c_id"))
+        if bid is None:
+            continue
+        if bid not in ids:
+            ids.append(bid)
+        email = str(r.get("email_convite") or "").strip().lower()
+        if email and "@" in email and email not in emails:
+            emails.append(email)
+    return emails, ids
+
+
+def _resolve_professor_targets(
+    cur,
+    inst: str,
+    publico: str,
+    unidade_id: str | None,
+    turma_id: str | None,
+) -> tuple[list[str], list[int]]:
+    """Lista de professores-alvo. Só vínculo ativo + professor_b2c_id > 0.
+
+    Recorte (mesma fonte da Alocação Docente / Planejamento Escolar):
+      toda_instituicao / professores → vínculos ativos da instituição
+      unidade → alocados a turmas daquela unidade
+      turma → alocados à turma_id do comunicado
+    """
+    if publico == "turma" and turma_id:
+        cur.execute(
+            """
+            SELECT DISTINCT v.email_convite, v.professor_b2c_id
+            FROM public.school_alocacoes_docentes a
+            JOIN public.school_professores_vinculo v
+              ON v.id = a.professor_vinculo_id
+            WHERE a.instituicao_id = %s
+              AND a.turma_id = %s
+              AND a.ativo = TRUE
+              AND v.status_vinculo = 'ativo'
+            """,
+            (inst, turma_id),
+        )
+        return _targets_from_vinculo_rows(cur.fetchall())
+
     if publico == "unidade" and unidade_id:
-        pass
+        cur.execute(
+            """
+            SELECT DISTINCT v.email_convite, v.professor_b2c_id
+            FROM public.school_alocacoes_docentes a
+            JOIN public.school_professores_vinculo v
+              ON v.id = a.professor_vinculo_id
+            JOIN public.school_turmas t ON t.id = a.turma_id
+            WHERE a.instituicao_id = %s
+              AND a.ativo = TRUE
+              AND v.status_vinculo = 'ativo'
+              AND t.unidade_id = %s
+            """,
+            (inst, unidade_id),
+        )
+        return _targets_from_vinculo_rows(cur.fetchall())
+
     cur.execute(
         """
         SELECT email_convite, professor_b2c_id
         FROM public.school_professores_vinculo
         WHERE instituicao_id = %s
-          AND status_vinculo IN ('ativo', 'pendente')
+          AND status_vinculo = 'ativo'
         """,
         (inst,),
     )
-    emails: list[str] = []
-    ids: list[int] = []
-    for r in cur.fetchall():
-        email = str(r.get("email_convite") or "").strip().lower()
-        if email and "@" in email and email not in emails:
-            emails.append(email)
-        try:
-            n = int(r.get("professor_b2c_id"))
-        except (TypeError, ValueError):
-            continue
-        # Só id_clie real (positivo); provisórios da Equipe são negativos
-        if n > 0 and n not in ids:
-            ids.append(n)
-    return emails, ids
+    return _targets_from_vinculo_rows(cur.fetchall())
 
 
-def _push_comunicacao_row(cur, row: dict[str, Any], inst: str) -> dict[str, Any]:
-    emails, ids = _resolve_professor_targets(
-        cur, inst, row["publico_alvo"], str(row["unidade_id"]) if row.get("unidade_id") else None
+def _mark_comunicacao_replicado(cid: str, ok: bool) -> None:
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                if ok:
+                    cur.execute(
+                        """
+                        UPDATE public.school_comunicacoes_eventos
+                        SET replicado_b2c = TRUE,
+                            replicado_b2c_em = CURRENT_TIMESTAMP,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                        """,
+                        (cid,),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        UPDATE public.school_comunicacoes_eventos
+                        SET replicado_b2c = FALSE,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                        """,
+                        (cid,),
+                    )
+    except Exception as exc:
+        print(
+            f"[comunicacoes] falha ao gravar replicado_b2c: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
+def _dispatch_comunicacao_b2c(row: dict[str, Any], inst: str) -> dict[str, Any]:
+    """Push fail-soft. Nunca levanta — o CRUD no School já foi gravado."""
+    status = str(row.get("status") or "")
+    cid = str(row["id"])
+    if status not in ("publicado", "cancelado"):
+        return {"ok": False, "skipped": True}
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                emails, ids = _resolve_professor_targets(
+                    cur,
+                    inst,
+                    str(row.get("publico_alvo") or ""),
+                    str(row["unidade_id"]) if row.get("unidade_id") else None,
+                    str(row["turma_id"]) if row.get("turma_id") else None,
+                )
+        if status == "publicado" and not ids:
+            result = {
+                "ok": False,
+                "error": (
+                    "Nenhum professor com conta no mural neste recorte. "
+                    "Convites pendentes não recebem comunicado."
+                ),
+                "professor_b2c_ids": [],
+            }
+            _mark_comunicacao_replicado(cid, False)
+            print(f"[comunicacoes] push id={cid} sem destinos B2C", flush=True)
+            return result
+
+        from b2c_integration_service import push_comunicado_to_b2c
+
+        payload = {
+            "origem_comunicado_school_id": cid,
+            "instituicao_escola_id": inst,
+            "titulo": row["titulo"],
+            "descricao": row.get("descricao") or "",
+            "tipo": row["tipo"],
+            "data_hora_inicio": _iso(row.get("data_hora_inicio")),
+            "data_hora_fim": _iso(row.get("data_hora_fim")),
+            "status": status,
+            "professor_b2c_ids": ids,
+            "professor_emails": emails,
+        }
+        result = push_comunicado_to_b2c(payload)
+        if not isinstance(result, dict):
+            result = {"ok": False, "error": "resposta inválida do B2C"}
+        result["professor_b2c_ids"] = ids
+        ok = bool(result.get("ok"))
+        _mark_comunicacao_replicado(cid, ok)
+        print(
+            f"[comunicacoes] push id={cid} status={status} n={len(ids)} ok={ok}",
+            flush=True,
+        )
+        return result
+    except Exception as exc:
+        print(f"[comunicacoes] push falhou id={cid}: {exc}", file=sys.stderr, flush=True)
+        _mark_comunicacao_replicado(cid, False)
+        return {"ok": False, "error": str(exc)}
+
+
+def _comunicacao_feedback(status: str, dispatch: dict[str, Any]) -> str:
+    if status == "agendado":
+        return "Comunicado agendado. Será enviado ao mural quando publicado."
+    if status == "cancelado":
+        if dispatch.get("ok"):
+            return "Comunicado cancelado no mural dos professores."
+        return (
+            "Comunicado cancelado. Cancelamento ainda não replicado no mural dos professores."
+        )
+    if dispatch.get("ok"):
+        return "Comunicado publicado no mural dos professores."
+    err = str(dispatch.get("error") or "").strip()
+    extra = f" {err}" if err else ""
+    return f"Comunicado salvo. Não replicado no mural dos professores.{extra}"
+
+
+def _fetch_comunicacao(cur, inst: str, cid: str):
+    cur.execute(
+        """
+        SELECT e.*, u.nome AS unidade_nome, t.nome AS turma_nome
+        FROM public.school_comunicacoes_eventos e
+        LEFT JOIN public.school_unidades u ON u.id = e.unidade_id
+        LEFT JOIN public.school_turmas t ON t.id = e.turma_id
+        WHERE e.id = %s AND e.instituicao_id = %s
+        """,
+        (cid, inst),
     )
-    from b2c_integration_service import push_comunicado_to_b2c
+    return cur.fetchone()
 
-    payload = {
-        "origem_comunicado_school_id": str(row["id"]),
-        "instituicao_escola_id": inst,
-        "titulo": row["titulo"],
-        "descricao": row.get("descricao") or "",
-        "tipo": row["tipo"],
-        "data_hora_inicio": _iso(row.get("data_hora_inicio")),
-        "data_hora_fim": _iso(row.get("data_hora_fim")),
-        "status": row["status"],
-        "professor_emails": emails,
-        "professor_b2c_ids": ids,
-    }
-    return push_comunicado_to_b2c(payload)
+
+def _resolver_alvo_comunicacao(
+    cur, inst: str, publico: str, unidade_raw: Any, turma_raw: Any
+):
+    """Retorna (unidade_id|None, turma_id|None, erro|(None))."""
+    turma_id = None
+    unidade_id = None
+    if turma_raw not in (None, ""):
+        turma_id = _parse_uuid(turma_raw, "turma")
+        if not turma_id:
+            return None, None, (jsonify({"error": "turma_id inválido"}), 400)
+    if unidade_raw not in (None, ""):
+        unidade_id = _parse_uuid(unidade_raw, "unidade")
+        if not unidade_id:
+            return None, None, (jsonify({"error": "unidade_id inválido"}), 400)
+
+    if publico == "turma":
+        if not turma_id:
+            return None, None, (jsonify({"error": "Selecione a turma"}), 400)
+        turma = _load_turma_contexto(cur, inst, turma_id)
+        if not turma:
+            return None, None, (jsonify({"error": "Turma não encontrada"}), 404)
+        denied = _assert_turma_import_escopo(turma)
+        if denied:
+            return None, None, denied
+        uid = turma.get("unidade_id")
+        return (str(uid) if uid else None, str(turma_id), None)
+
+    if publico == "unidade":
+        if not unidade_id:
+            return None, None, (jsonify({"error": "Selecione a unidade"}), 400)
+        denied = _unidade_no_escopo(unidade_id)
+        if denied:
+            return None, None, denied
+        return str(unidade_id), None, None
+
+    escopo = _unidade_escopo()
+    if isinstance(escopo, tuple):
+        return None, None, escopo
+    if escopo:
+        return None, None, (
+            jsonify(
+                {
+                    "error": (
+                        "Seu acesso é limitado à unidade. "
+                        "Publique para a unidade ou para uma turma."
+                    ),
+                    "code": "FORBIDDEN_UNIDADE",
+                }
+            ),
+            403,
+        )
+    return None, None, None
+
+
+def _parse_comunicacao_body(body: dict[str, Any], *, existing: dict | None = None):
+    """Campos de conteúdo. existing = merge em PATCH parcial (ex.: só status)."""
+    src = existing or {}
+    titulo = _text(body["titulo"]) if "titulo" in body else _text(src.get("titulo"))
+    if not titulo:
+        return None, (jsonify({"error": "Título obrigatório"}), 400)
+    tipo = _text(body["tipo"]) if "tipo" in body else (_text(src.get("tipo")) or "reuniao_pedagogica")
+    if tipo not in COM_TIPOS:
+        return None, (jsonify({"error": "Tipo inválido"}), 400)
+    publico = (
+        _text(body["publico_alvo"])
+        if "publico_alvo" in body
+        else (_text(src.get("publico_alvo")) or "professores")
+    )
+    if publico not in COM_PUBLICOS:
+        return None, (jsonify({"error": "Público-alvo inválido"}), 400)
+    status = _text(body["status"]) if "status" in body else (_text(src.get("status")) or "publicado")
+    if status not in COM_STATUS:
+        return None, (jsonify({"error": "Status inválido"}), 400)
+
+    if "data_hora_inicio" in body or not existing:
+        inicio = _parse_dt_local(body.get("data_hora_inicio"), required=True)
+        if inicio is False or inicio is None:
+            return None, (jsonify({"error": "data_hora_inicio inválida ou obrigatória"}), 400)
+    else:
+        inicio = src.get("data_hora_inicio")
+
+    if "data_hora_fim" in body or not existing:
+        fim = _parse_dt_local(body.get("data_hora_fim"), required=False)
+        if fim is False:
+            return None, (jsonify({"error": "data_hora_fim inválida"}), 400)
+    else:
+        fim = src.get("data_hora_fim")
+
+    descricao = (
+        (_text(body.get("descricao")) or None)
+        if "descricao" in body or not existing
+        else (src.get("descricao") or None)
+    )
+    return {
+        "titulo": titulo,
+        "tipo": tipo,
+        "publico": publico,
+        "status": status,
+        "inicio": inicio,
+        "fim": fim,
+        "descricao": descricao,
+        "unidade_raw": body.get("unidade_id") if "unidade_id" in body else src.get("unidade_id"),
+        "turma_raw": body.get("turma_id") if "turma_id" in body else src.get("turma_id"),
+        "resolve_alvo": "publico_alvo" in body or "unidade_id" in body or "turma_id" in body or not existing,
+    }, None
 
 
 @bp.get("/api/secretaria/comunicacoes")
 @require_gestor
 def list_comunicacoes():
     inst = _instituicao_id()
+    escopo = _unidade_escopo()
+    if isinstance(escopo, tuple):
+        return escopo
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                """
-                SELECT *
-                FROM public.school_comunicacoes_eventos
-                WHERE instituicao_id = %s
-                  AND status <> 'cancelado'
-                ORDER BY data_hora_inicio DESC, created_at DESC
-                """,
-                (inst,),
-            )
+            sql = """
+                SELECT e.*, u.nome AS unidade_nome, t.nome AS turma_nome
+                FROM public.school_comunicacoes_eventos e
+                LEFT JOIN public.school_unidades u ON u.id = e.unidade_id
+                LEFT JOIN public.school_turmas t ON t.id = e.turma_id
+                WHERE e.instituicao_id = %s
+            """
+            params: list[Any] = [inst]
+            if escopo:
+                sql += " AND (e.unidade_id = %s OR t.unidade_id = %s)"
+                params.extend([escopo, escopo])
+            sql += " ORDER BY e.created_at DESC, e.data_hora_inicio DESC NULLS LAST"
+            cur.execute(sql, params)
             rows = [_serialize_comunicacao(r) for r in cur.fetchall()]
     return jsonify({"items": rows})
 
@@ -3498,100 +4119,57 @@ def list_comunicacoes():
 def create_comunicacao():
     inst = _instituicao_id()
     body = request.get_json(silent=True) or {}
-    titulo = _text(body.get("titulo"))
-    if not titulo:
-        return jsonify({"error": "Título obrigatório"}), 400
-    tipo = _text(body.get("tipo")) or "reuniao_pedagogica"
-    if tipo not in COM_TIPOS:
-        return jsonify({"error": "Tipo inválido"}), 400
-    publico = _text(body.get("publico_alvo")) or "professores"
-    if publico not in COM_PUBLICOS:
-        return jsonify({"error": "Público-alvo inválido"}), 400
-    status = _text(body.get("status")) or "publicado"
-    if status not in COM_STATUS:
-        return jsonify({"error": "Status inválido"}), 400
-
-    inicio = _parse_dt_local(body.get("data_hora_inicio"), required=True)
-    if inicio is False or inicio is None:
-        return jsonify({"error": "data_hora_inicio inválida ou obrigatória"}), 400
-    fim = _parse_dt_local(body.get("data_hora_fim"), required=False)
-    if fim is False:
-        return jsonify({"error": "data_hora_fim inválida"}), 400
-
-    unidade = _parse_uuid(body.get("unidade_id"), "unidade") if body.get("unidade_id") else None
-    if publico == "unidade" and not unidade:
-        return jsonify({"error": "Selecione a unidade"}), 400
-    if publico in ("toda_instituicao", "professores"):
-        unidade = None
-
-    descricao = _text(body.get("descricao")) or None
+    parsed, err = _parse_comunicacao_body(body)
+    if err:
+        return err
     gestor = session.get(SESSION_KEY) or {}
     gestor_id = _parse_uuid(gestor.get("id"), "gestor")
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            unidade, turma, alvo_err = _resolver_alvo_comunicacao(
+                cur, inst, parsed["publico"], parsed["unidade_raw"], parsed["turma_raw"]
+            )
+            if alvo_err:
+                return alvo_err
             cur.execute(
                 """
                 INSERT INTO public.school_comunicacoes_eventos (
-                    instituicao_id, unidade_id, titulo, descricao, tipo,
+                    instituicao_id, unidade_id, turma_id, titulo, descricao, tipo,
                     data_hora_inicio, data_hora_fim, publico_alvo,
                     status, criado_por_gestor_id
                 ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                 )
                 RETURNING *
                 """,
                 (
                     inst,
-                    str(unidade) if unidade else None,
-                    titulo,
-                    descricao,
-                    tipo,
-                    inicio,
-                    fim,
-                    publico,
-                    status,
+                    unidade,
+                    turma,
+                    parsed["titulo"],
+                    parsed["descricao"],
+                    parsed["tipo"],
+                    parsed["inicio"],
+                    parsed["fim"],
+                    parsed["publico"],
+                    parsed["status"],
                     str(gestor_id) if gestor_id else None,
                 ),
             )
             row = cur.fetchone()
 
-    dispatch: dict[str, Any] = {"ok": False, "skipped": True}
-    if status == "publicado":
-        with get_conn() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                dispatch = _push_comunicacao_row(cur, row, inst)
-                if dispatch.get("ok"):
-                    cur.execute(
-                        """
-                        UPDATE public.school_comunicacoes_eventos
-                        SET replicado_b2c = TRUE,
-                            replicado_b2c_em = CURRENT_TIMESTAMP,
-                            updated_at = CURRENT_TIMESTAMP
-                        WHERE id = %s
-                        RETURNING *
-                        """,
-                        (str(row["id"]),),
-                    )
-                    row = cur.fetchone() or row
+    dispatch = _dispatch_comunicacao_b2c(row, inst)
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            row = _fetch_comunicacao(cur, inst, str(row["id"])) or row
 
     return (
         jsonify(
             {
                 "item": _serialize_comunicacao(row),
                 "b2c_dispatch": dispatch,
-                "message": (
-                    "Comunicado publicado no mural dos professores."
-                    if dispatch.get("ok")
-                    else (
-                        "Comunicado salvo."
-                        + (
-                            " Push ao mural pendente."
-                            if status == "publicado"
-                            else ""
-                        )
-                    )
-                ),
+                "message": _comunicacao_feedback(parsed["status"], dispatch),
             }
         ),
         201,
@@ -3606,47 +4184,65 @@ def patch_comunicacao(item_id: str):
     if not cid:
         return jsonify({"error": "Identificador inválido"}), 400
     body = request.get_json(silent=True) or {}
-    status = _text(body.get("status"))
-    if status not in COM_STATUS:
-        return jsonify({"error": "Status inválido"}), 400
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            existing = _fetch_comunicacao(cur, inst, str(cid))
+            if not existing:
+                return jsonify({"error": "Comunicação não encontrada"}), 404
+            parsed, err = _parse_comunicacao_body(body, existing=existing)
+            if err:
+                return err
+            unidade = str(existing["unidade_id"]) if existing.get("unidade_id") else None
+            turma = str(existing["turma_id"]) if existing.get("turma_id") else None
+            if parsed["resolve_alvo"]:
+                unidade, turma, alvo_err = _resolver_alvo_comunicacao(
+                    cur, inst, parsed["publico"], parsed["unidade_raw"], parsed["turma_raw"]
+                )
+                if alvo_err:
+                    return alvo_err
             cur.execute(
                 """
                 UPDATE public.school_comunicacoes_eventos
-                SET status = %s, updated_at = CURRENT_TIMESTAMP
+                SET titulo = %s,
+                    descricao = %s,
+                    tipo = %s,
+                    publico_alvo = %s,
+                    unidade_id = %s,
+                    turma_id = %s,
+                    data_hora_inicio = %s,
+                    data_hora_fim = %s,
+                    status = %s,
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s AND instituicao_id = %s
                 RETURNING *
                 """,
-                (status, str(cid), inst),
+                (
+                    parsed["titulo"],
+                    parsed["descricao"],
+                    parsed["tipo"],
+                    parsed["publico"],
+                    unidade,
+                    turma,
+                    parsed["inicio"],
+                    parsed["fim"],
+                    parsed["status"],
+                    str(cid),
+                    inst,
+                ),
             )
             row = cur.fetchone()
-            if not row:
-                return jsonify({"error": "Comunicação não encontrada"}), 404
 
-    dispatch: dict[str, Any] = {"ok": False, "skipped": True}
-    if status in ("publicado", "cancelado"):
-        with get_conn() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                dispatch = _push_comunicacao_row(cur, row, inst)
-                if dispatch.get("ok") and status == "publicado":
-                    cur.execute(
-                        """
-                        UPDATE public.school_comunicacoes_eventos
-                        SET replicado_b2c = TRUE,
-                            replicado_b2c_em = CURRENT_TIMESTAMP
-                        WHERE id = %s
-                        RETURNING *
-                        """,
-                        (str(cid),),
-                    )
-                    row = cur.fetchone() or row
+    dispatch = _dispatch_comunicacao_b2c(row, inst)
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            row = _fetch_comunicacao(cur, inst, str(cid)) or row
 
     return jsonify(
         {
             "item": _serialize_comunicacao(row),
             "b2c_dispatch": dispatch,
+            "message": _comunicacao_feedback(parsed["status"], dispatch),
         }
     )
 
@@ -3791,12 +4387,9 @@ def create_planejamento():
                 """
                 SELECT d.id
                 FROM public.school_disciplinas d
-                LEFT JOIN public.school_cursos c ON c.id = d.curso_id
-                LEFT JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
-                WHERE d.id = %s
-                  AND (d.instituicao_id = %s OR p.instituicao_id = %s)
+                WHERE d.id = %s AND d.instituicao_id = %s
                 """,
-                (str(disciplina_id), inst, inst),
+                (str(disciplina_id), inst),
             )
             if not cur.fetchone():
                 return jsonify({"error": "disciplina inválida"}), 400

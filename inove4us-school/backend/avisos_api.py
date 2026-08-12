@@ -7,7 +7,7 @@ from typing import Any
 from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
 
-from auth_guards import require_zona, resolve_instituicao_id
+from auth_guards import require_zona, resolve_instituicao_id, resolve_unidade_id
 from db import get_conn
 
 bp = Blueprint("avisos_mesa", __name__)
@@ -111,7 +111,8 @@ _SELECT = """
 SELECT
     a.*,
     d.nome AS disciplina_nome,
-    t.nome AS turma_nome
+    t.nome AS turma_nome,
+    t.unidade_id AS turma_unidade_id
 FROM public.school_avisos_mesa a
 LEFT JOIN public.school_disciplinas d ON d.id = a.disciplina_id
 LEFT JOIN public.school_turmas t ON t.id = a.turma_id
@@ -138,6 +139,12 @@ def list_avisos(instituicao_id: str):
             params: list[Any] = [str(parsed)]
             if ativos_only:
                 sql += " AND a.ativo = TRUE"
+            escopo = resolve_unidade_id()
+            if isinstance(escopo, tuple):
+                return escopo
+            if escopo:
+                sql += " AND (t.unidade_id = %s OR a.turma_id IS NULL)"
+                params.append(escopo)
             sql += " ORDER BY a.created_at DESC LIMIT 100"
             cur.execute(sql, params)
             rows = cur.fetchall()
@@ -177,9 +184,7 @@ def criar_aviso(instituicao_id: str):
                 cur.execute(
                     """
                     SELECT d.id FROM public.school_disciplinas d
-                    JOIN public.school_cursos c ON c.id = d.curso_id
-                    JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
-                    WHERE d.id = %s AND p.instituicao_id = %s
+                    WHERE d.id = %s AND d.instituicao_id = %s
                     """,
                     (str(disc), str(parsed)),
                 )
@@ -189,14 +194,20 @@ def criar_aviso(instituicao_id: str):
             if turma:
                 cur.execute(
                     """
-                    SELECT t.id FROM public.school_turmas t
+                    SELECT t.id, t.unidade_id FROM public.school_turmas t
                     JOIN public.school_unidades u ON u.id = t.unidade_id
                     WHERE t.id = %s AND u.instituicao_id = %s
                     """,
                     (str(turma), str(parsed)),
                 )
-                if not cur.fetchone():
+                trow = cur.fetchone()
+                if not trow:
                     return jsonify({"error": "Turma não encontrada"}), 404
+                denied = resolve_unidade_id(
+                    str(trow["unidade_id"]) if trow.get("unidade_id") else None
+                )
+                if isinstance(denied, tuple):
+                    return denied
 
             cur.execute(
                 """
@@ -243,11 +254,35 @@ def atualizar_aviso(instituicao_id: str, aviso_id: str):
     aid = _parse_uuid(aviso_id, "aviso")
     if isinstance(aid, tuple):
         return aid
+    escopo = resolve_unidade_id()
+    if isinstance(escopo, tuple):
+        return escopo
 
     body = request.get_json(silent=True) or {}
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             _ensure_table(cur)
+            cur.execute(
+                _SELECT + " WHERE a.id = %s AND a.instituicao_id = %s",
+                (str(aid), str(inst)),
+            )
+            existing = cur.fetchone()
+            if not existing:
+                return jsonify({"error": "Aviso não encontrado"}), 404
+            if (
+                escopo
+                and existing.get("turma_unidade_id")
+                and str(existing["turma_unidade_id"]) != str(escopo)
+            ):
+                return (
+                    jsonify(
+                        {
+                            "error": "Aviso fora do escopo da unidade do gestor.",
+                            "code": "FORBIDDEN_UNIDADE",
+                        }
+                    ),
+                    403,
+                )
             sets = []
             params: list[Any] = []
             if "ativo" in body:
@@ -288,20 +323,24 @@ def opcoes_vinculo(instituicao_id: str):
     parsed = _bound_instituicao(instituicao_id)
     if isinstance(parsed, tuple):
         return parsed
+    escopo = resolve_unidade_id()
+    if isinstance(escopo, tuple):
+        return escopo
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                """
+            sql_t = """
                 SELECT t.id, t.nome, u.nome AS unidade_nome
                 FROM public.school_turmas t
                 JOIN public.school_unidades u ON u.id = t.unidade_id
                 WHERE u.instituicao_id = %s
-                ORDER BY u.nome, t.nome
-                LIMIT 200
-                """,
-                (str(parsed),),
-            )
+            """
+            params_t: list[Any] = [str(parsed)]
+            if escopo:
+                sql_t += " AND t.unidade_id = %s"
+                params_t.append(escopo)
+            sql_t += " ORDER BY u.nome, t.nome LIMIT 200"
+            cur.execute(sql_t, params_t)
             turmas = [
                 {
                     "id": str(r["id"]),
@@ -312,20 +351,55 @@ def opcoes_vinculo(instituicao_id: str):
                 }
                 for r in cur.fetchall()
             ]
-            cur.execute(
-                """
+            sql_d = """
                 SELECT d.id, d.nome
                 FROM public.school_disciplinas d
-                JOIN public.school_cursos c ON c.id = d.curso_id
-                JOIN public.school_periodos_letivos p ON p.id = c.periodo_letivo_id
-                WHERE p.instituicao_id = %s
-                ORDER BY d.nome
-                LIMIT 200
-                """,
-                (str(parsed),),
-            )
+                WHERE d.instituicao_id = %s AND d.ativo = TRUE
+            """
+            params_d: list[Any] = [str(parsed)]
+            sql_d += " ORDER BY d.nome LIMIT 200"
+            cur.execute(sql_d, params_d)
             disciplinas = [
                 {"id": str(r["id"]), "nome": r["nome"]} for r in cur.fetchall()
             ]
 
     return jsonify({"turmas": turmas, "disciplinas": disciplinas})
+
+
+def _sid_or_err():
+    inst = resolve_instituicao_id()
+    if isinstance(inst, tuple):
+        return inst
+    return inst
+
+
+@bp.get("/api/avisos-mesa/opcoes")
+def opcoes_vinculo_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return opcoes_vinculo(inst)
+
+
+@bp.get("/api/avisos-mesa")
+def list_avisos_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return list_avisos(inst)
+
+
+@bp.post("/api/avisos-mesa")
+def criar_aviso_sessao():
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return criar_aviso(inst)
+
+
+@bp.patch("/api/avisos-mesa/<aviso_id>")
+def atualizar_aviso_sessao(aviso_id: str):
+    inst = _sid_or_err()
+    if isinstance(inst, tuple):
+        return inst
+    return atualizar_aviso(inst, aviso_id)
