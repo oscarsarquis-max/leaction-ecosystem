@@ -49,16 +49,15 @@ $condFile = Join-Path $env:TEMP 'inove-eco-alb-conditions.json'
 '@ | Set-Content -Path $condFile -Encoding ascii
 
 Write-Host '==> Listener rule'
+$actFile = Join-Path $env:TEMP 'inove-eco-alb-actions.json'
+Set-Content -Path $actFile -Encoding ascii -Value ('[{"Type":"forward","TargetGroupArn":"' + $tgArn + '"}]')
 $ruleArn = & $aws elbv2 describe-rules --region $Region --listener-arn $HttpsListenerArn --query "Rules[?Priority=='10'].RuleArn | [0]" --output text
 if ($ruleArn -and $ruleArn -ne 'None') {
-    Write-Host "regra priority 10 já existe $ruleArn — atualizando"
-    & $aws elbv2 modify-rule --region $Region --rule-arn $ruleArn `
-        --conditions "file://$condFile" `
-        --actions "Type=forward,TargetGroupArn=$tgArn" | Out-Null
+    Write-Host "updating existing priority 10 rule"
+    & $aws elbv2 modify-rule --region $Region --rule-arn $ruleArn --conditions "file://$condFile" --actions "file://$actFile" | Out-Null
 } else {
-    & $aws elbv2 create-rule --region $Region --listener-arn $HttpsListenerArn --priority 10 `
-        --conditions "file://$condFile" `
-        --actions "Type=forward,TargetGroupArn=$tgArn" | Out-Null
+    Write-Host 'creating priority 10 rule'
+    & $aws elbv2 create-rule --region $Region --listener-arn $HttpsListenerArn --priority 10 --conditions "file://$condFile" --actions "file://$actFile" | Out-Null
 }
 
 Write-Host 'OK ALB /ecossistema* → Hub'
