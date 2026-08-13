@@ -93,6 +93,16 @@ PRODUCTION_MASTER_KEY="$(_env_get "$PREV_ENV" PRODUCTION_MASTER_KEY)"
 SCHOOL_SYSTEM_LOCKED="$(_env_get "$PREV_ENV" SCHOOL_SYSTEM_LOCKED)"
 SCHOOL_SYSTEM_LOCKED="${SCHOOL_SYSTEM_LOCKED:-true}"
 
+if [ -z "$WEBHOOK" ]; then
+  WEBHOOK="$(_env_get "$PREV_ENV" ACTIONHUB_WEBHOOK_SECRET)"
+  [ -z "$WEBHOOK" ] && WEBHOOK="$(_env_get "$PREV_ENV" ACTION_HUB_APP_SECRET)"
+  if [ -n "$WEBHOOK" ]; then
+    echo "WARN: webhook secret nao veio do Hub DB — preservado do .env anterior"
+  else
+    echo "WARN: ACTIONHUB_WEBHOOK_SECRET ausente — webhook Hub→School nao autentica"
+  fi
+fi
+
 if [ -z "$SCHOOL_INTEGRATION_API_KEY" ] || [ -z "$SCHOOL_B2C_SHARED_SECRET" ]; then
   echo "WARN: SCHOOL_INTEGRATION_API_KEY e/ou SCHOOL_B2C_SHARED_SECRET ausentes — ponte School↔Inove falha em silêncio até setar nos dois lados"
 fi
