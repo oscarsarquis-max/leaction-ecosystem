@@ -152,6 +152,115 @@ def send_access_code_email(recipient: str, access_code: str) -> dict:
     return {"sent": True, "channel": "ses"}
 
 
+def send_school_gestor_credentials_email(
+    *,
+    recipient: str,
+    password: str,
+    acesso_url: str,
+    razao_social: str | None = None,
+) -> dict:
+    """E-mail de credencial do gestor School (self-serve). Reusa SES / EMAIL_DEV_MODE.
+
+    Em produção não registra a senha no log. Em EMAIL_DEV_MODE o texto plano
+    vai ao stderr para teste local.
+    """
+    recipient = (recipient or "").strip().lower()
+    password = (password or "").strip()
+    acesso_url = (acesso_url or "https://school.inove4us.com.br/acesso").strip()
+    escola = (razao_social or "sua escola").strip() or "sua escola"
+    logo_url = _email_logo_url()
+
+    if not recipient or "@" not in recipient or not password:
+        return {"sent": False, "channel": "none", "error": "destinatário ou senha ausente"}
+
+    subject = "Acesso à Torre de Controle | inove4us School"
+    body_text = textwrap.dedent(
+        f"""\
+        Olá!
+
+        A conta da instituição {escola} foi criada na Torre de Controle inove4us School.
+
+        Login (e-mail): {recipient}
+        Senha temporária (uso único): {password}
+
+        Acesse: {acesso_url}
+
+        Recomendamos alterar a senha no primeiro acesso.
+
+        Se você não solicitou este cadastro, ignore esta mensagem.
+
+        Equipe inove4us
+        contato@inove4us.com.br
+        """
+    ).strip()
+
+    def _esc(s: str) -> str:
+        return (
+            (s or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\n", "<br/>")
+        )
+
+    body_html = f"""<!DOCTYPE html>
+<html lang="pt-BR"><body style="font-family:Segoe UI,system-ui,sans-serif;color:#1c1917;line-height:1.5">
+  <p><img src="{logo_url}" alt="inove4us" width="180" height="48" style="display:block;max-width:180px;height:auto;border:0;outline:none;text-decoration:none"/></p>
+  <p>A conta da instituição <strong>{_esc(escola)}</strong> foi criada na Torre de Controle inove4us School.</p>
+  <p>Login (e-mail): <strong>{_esc(recipient)}</strong></p>
+  <p>Senha temporária (uso único): <strong>{_esc(password)}</strong></p>
+  <p><a href="{_esc(acesso_url)}" style="display:inline-block;background:#9f1239;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:700">Acessar a Torre de Controle</a></p>
+  <p style="font-size:12px;color:#78716c">Se o botão não funcionar: {_esc(acesso_url)}</p>
+  <p>Recomendamos alterar a senha no primeiro acesso.</p>
+</body></html>"""
+
+    if _dev_mode():
+        print(
+            f"[inove4us][DEV-MAIL] School gestor {recipient} senha={password} url={acesso_url}",
+            file=sys.stderr,
+        )
+        return {"sent": True, "channel": "dev_log"}
+
+    try:
+        import boto3
+
+        region = (
+            os.environ.get("SES_REGION")
+            or os.environ.get("AWS_REGION")
+            or os.environ.get("AWS_DEFAULT_REGION")
+            or "us-east-2"
+        )
+        sender = os.environ.get("EMAIL_SENDER") or os.environ.get("SES_SENDER")
+        if not sender:
+            print(
+                "[inove4us] EMAIL_SENDER ausente — credencial School não enviada.",
+                file=sys.stderr,
+            )
+            return {"sent": False, "channel": "dev_log", "error": "EMAIL_SENDER ausente"}
+
+        client = boto3.client("ses", region_name=region)
+        resp = client.send_email(
+            Source=sender,
+            Destination={"ToAddresses": [recipient]},
+            Message={
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
+                "Body": {
+                    "Text": {"Data": body_text.replace("\n", "\r\n"), "Charset": "UTF-8"},
+                    "Html": {"Data": body_html, "Charset": "UTF-8"},
+                },
+            },
+        )
+        message_id = resp.get("MessageId")
+        print(
+            f"[inove4us] Credencial School enviada via SES ({region}) de {sender} para {recipient} id={message_id}",
+            file=sys.stderr,
+        )
+        return {"sent": True, "channel": "ses", "message_id": message_id, "region": region}
+    except Exception as exc:
+        print(f"[inove4us] Falha SES credencial School: {exc}", file=sys.stderr)
+        return {"sent": False, "channel": "ses", "error": str(exc)}
+
+
 def send_desafio_convite_email(
     *,
     recipient: str,

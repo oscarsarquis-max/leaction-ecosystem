@@ -14,11 +14,11 @@ from school_b2c_jwt import ISSUER_SCHOOL, sign_bridge_jwt
 
 
 def b2c_webhook_url() -> str:
-    return (
-        os.getenv("INOVE4US_B2C_WEBHOOK_URL")
-        or os.getenv("INOVE4US_B2C_API_URL", "http://127.0.0.1:5010").rstrip("/")
-        + "/api/webhooks/school"
-    ).strip()
+    explicit = (os.getenv("INOVE4US_B2C_WEBHOOK_URL") or "").strip()
+    if explicit:
+        return explicit
+    base = (os.getenv("INOVE4US_B2C_API_URL") or "http://127.0.0.1:5011").rstrip("/")
+    return f"{base}/api/webhooks/school"
 
 
 def dispatch_event_to_b2c(event_type: str, payload: dict[str, Any]) -> dict[str, Any]:

@@ -79,7 +79,7 @@ def main() -> None:
                     """
                     INSERT INTO school_instituicoes (id, razao_social, cnpj, dominio_email, status)
                     VALUES (%s, %s, %s, %s, 'ativa')
-                    ON CONFLICT (cnpj) DO NOTHING
+                    ON CONFLICT (cnpj) WHERE cnpj IS NOT NULL DO NOTHING
                     RETURNING id
                     """,
                     (DEV_INST, "inove4us School (sysadmin)", "00.000.000/0001-00", "i4uschool.com.br"),

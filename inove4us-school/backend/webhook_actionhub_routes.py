@@ -1,7 +1,7 @@
 """Webhook S2S Action Hub → inove4us-school (padrão Outbox JWT).
 
 POST /api/webhooks/actionhub — sem sessão de gestor / RBAC.
-Sempre HTTP 200 após JWT válido (ACK outbox).
+ACK 200 após JWT válido, salvo falha de persistência (500 para o Hub retentar).
 """
 from __future__ import annotations
 
@@ -10,10 +10,9 @@ import uuid
 from typing import Any
 
 from flask import Blueprint, g, jsonify, request
-from psycopg2.extras import RealDictCursor
 
-from db import get_conn
 from hub_jwt import require_hub_jwt
+from provision_selfserve import apply_licenses_granted
 
 bp = Blueprint("actionhub_webhooks", __name__)
 
@@ -108,107 +107,8 @@ def _resolve_instituicao_id(payload: dict) -> str | None:
     return _as_uuid(subject)
 
 
-def _count_professores_ativos(cur: Any, instituicao_id: str) -> int:
-    cur.execute(
-        """
-        SELECT count(*)::int AS n
-        FROM public.school_professores_vinculo
-        WHERE instituicao_id = %s AND status_vinculo = 'ativo'
-        """,
-        (instituicao_id,),
-    )
-    row = cur.fetchone()
-    return int(row["n"] or 0) if row else 0
-
-
 def _apply_licenses_granted(payload: dict, *, event_label: str) -> dict:
-    instituicao_id = _resolve_instituicao_id(payload)
-    qty = _licenses_qty(payload)
-    sku = str(payload.get("sku") or "").strip() or None
-    contract_id = str(payload.get("contract_id") or "").strip() or None
-
-    if not instituicao_id:
-        _log(f"{event_label} sem instituicao_id/subject_id UUID — ignorado")
-        return {
-            "handled": False,
-            "reason": "instituicao_id_missing",
-            "event": event_label,
-        }
-    if qty <= 0:
-        _log(f"{event_label} instituicao={instituicao_id} qty=0 — ack sem aplicar")
-        return {
-            "handled": False,
-            "reason": "licenses_qty_zero",
-            "instituicao_id": instituicao_id,
-            "event": event_label,
-        }
-
-    with get_conn() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT 1 FROM public.school_instituicoes WHERE id = %s",
-                (instituicao_id,),
-            )
-            if not cur.fetchone():
-                _log(f"{event_label} instituição inexistente: {instituicao_id}")
-                return {
-                    "handled": False,
-                    "reason": "instituicao_not_found",
-                    "instituicao_id": instituicao_id,
-                    "event": event_label,
-                }
-
-            em_uso = _count_professores_ativos(cur, instituicao_id)
-
-            cur.execute(
-                """
-                INSERT INTO public.school_licencas (
-                    instituicao_id,
-                    total_assentos,
-                    assentos_em_uso,
-                    sku_ultimo,
-                    contrato_hub_id
-                )
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT (instituicao_id) DO UPDATE SET
-                    total_assentos = public.school_licencas.total_assentos + EXCLUDED.total_assentos,
-                    assentos_em_uso = EXCLUDED.assentos_em_uso,
-                    sku_ultimo = COALESCE(EXCLUDED.sku_ultimo, public.school_licencas.sku_ultimo),
-                    contrato_hub_id = COALESCE(
-                        EXCLUDED.contrato_hub_id, public.school_licencas.contrato_hub_id
-                    ),
-                    updated_at = CURRENT_TIMESTAMP
-                RETURNING id, total_assentos, assentos_em_uso
-                """,
-                (instituicao_id, qty, em_uso, sku, contract_id),
-            )
-            lic = cur.fetchone()
-
-            # Espelho legado na instituição (Equipe / convites)
-            cur.execute(
-                """
-                UPDATE public.school_instituicoes
-                SET licencas_contratadas = %s,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s
-                """,
-                (int(lic["total_assentos"]), instituicao_id),
-            )
-
-    _log(
-        f"{event_label} instituicao={instituicao_id} +{qty} "
-        f"total={lic['total_assentos']} em_uso={lic['assentos_em_uso']} sku={sku}"
-    )
-    return {
-        "handled": True,
-        "event": event_label,
-        "instituicao_id": instituicao_id,
-        "licenses_granted": qty,
-        "total_assentos": int(lic["total_assentos"]),
-        "assentos_em_uso": int(lic["assentos_em_uso"]),
-        "sku": sku,
-        "contract_id": contract_id,
-    }
+    return apply_licenses_granted(payload, event_label=event_label)
 
 
 def _handle_subscription_canceled(payload: dict) -> dict:
@@ -288,16 +188,24 @@ def actionhub_webhook():
     except Exception as exc:
         _log(f"erro processando {event_type}: {exc}")
         print(f"[actionhub-webhook] {exc}", file=sys.stderr, flush=True)
-        result = {"handled": False, "error": str(exc), "event_type": event_type}
+        result = {
+            "handled": False,
+            "error": str(exc),
+            "event_type": event_type,
+            "http_status": 500,
+        }
 
+    http_status = int(result.get("http_status") or 200)
+    if http_status < 200 or http_status > 599:
+        http_status = 200
     return (
         jsonify(
             {
-                "status": "received",
+                "status": "received" if http_status < 500 else "error",
                 "app": "inove4us-school",
                 "event_type": event_type,
                 "result": result,
             }
         ),
-        200,
+        http_status,
     )

@@ -323,6 +323,40 @@ def _handle_teacher_invite(payload: dict) -> dict:
     return handle_teacher_invite(payload if isinstance(payload, dict) else {})
 
 
+def _handle_school_gestor_credentials(payload: dict) -> dict:
+    """Disparo transacional da credencial do gestor School. Sem senha no log."""
+    from mail import send_school_gestor_credentials_email
+
+    email = str(
+        payload.get("payer_email") or payload.get("email") or payload.get("gestor_email") or ""
+    ).strip().lower()
+    senha = str(payload.get("senha_temporaria") or payload.get("password") or "").strip()
+    acesso_url = str(
+        payload.get("acesso_url") or "https://school.inove4us.com.br/acesso"
+    ).strip()
+    razao = str(payload.get("razao_social") or "").strip()
+    if not email or "@" not in email or not senha:
+        _log("SCHOOL_GESTOR_CREDENTIALS sem e-mail ou senha — ignorado")
+        return {"handled": False, "reason": "missing_email_or_password"}
+    info = send_school_gestor_credentials_email(
+        recipient=email,
+        password=senha,
+        acesso_url=acesso_url,
+        razao_social=razao,
+    )
+    sent = bool(info.get("sent"))
+    _log(
+        f"SCHOOL_GESTOR_CREDENTIALS email={email} sent={sent} channel={info.get('channel')}"
+    )
+    return {
+        "handled": True,
+        "event": "SCHOOL_GESTOR_CREDENTIALS",
+        "sent": sent,
+        "channel": info.get("channel"),
+        "error": info.get("error"),
+    }
+
+
 @webhook_school_bp.post("/api/webhooks/school")
 @require_school_bridge_jwt
 def school_webhook():
@@ -341,6 +375,8 @@ def school_webhook():
             result = _handle_aviso_mesa_pinned(payload)
         elif event_type == "TEACHER_INVITE":
             result = _handle_teacher_invite(payload)
+        elif event_type == "SCHOOL_GESTOR_CREDENTIALS":
+            result = _handle_school_gestor_credentials(payload)
         else:
             _log(f"event_type desconhecido: {event_type or '(vazio)'}")
             print(
