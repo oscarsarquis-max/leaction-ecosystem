@@ -14,6 +14,11 @@ const {
   buildHubBrickCheckoutUrl,
 } = require('./checkout-sessions');
 const { isMercadoPagoConfigured } = require('../mercadopago');
+const {
+  isSchoolCatalogApp,
+  parseSchoolCatalogCheckout,
+  licensesFromPlanMeta,
+} = require('./catalog-school-checkout');
 
 function normalizeMeta(value) {
   if (value == null) return {};
@@ -144,7 +149,13 @@ function registerCatalogPublicRoutes(app, pool) {
       const body = req.body && typeof req.body === 'object' ? req.body : {};
       const appId = String(body.app_id || '').trim().toLowerCase();
       const sku = String(body.sku || '').trim();
-      const subjectId = String(body.subject_id || body.email || '').trim();
+      const school = isSchoolCatalogApp(appId) ? parseSchoolCatalogCheckout(body) : null;
+      if (school && !school.ok) {
+        return res.status(school.status).json({ error: school.error });
+      }
+      const subjectId = school
+        ? school.fields.subject_id
+        : String(body.subject_id || body.email || '').trim();
 
       if (!appId || !sku || !subjectId) {
         return res.status(400).json({
@@ -202,15 +213,23 @@ function registerCatalogPublicRoutes(app, pool) {
         });
       }
 
-      const subjectLooksLikeEmail = subjectId.includes('@');
-      const payerEmail = subjectLooksLikeEmail
-        ? subjectId.toLowerCase()
-        : String(body.payer_email || body.email || '').trim().toLowerCase();
+      const subjectLooksLikeEmail = !school && subjectId.includes('@');
+      const payerEmail = school
+        ? school.fields.payer_email
+        : subjectLooksLikeEmail
+          ? subjectId.toLowerCase()
+          : String(body.payer_email || body.email || '').trim().toLowerCase();
 
       const userEmail =
         payerEmail && payerEmail.includes('@')
           ? payerEmail
           : `${appId}.${Buffer.from(subjectId).toString('base64url').slice(0, 24)}@hub.local`;
+
+      const userFullName = school
+        ? school.fields.razao_social
+        : subjectLooksLikeEmail
+          ? subjectId.split('@')[0]
+          : subjectId;
 
       const userResult = await pool.query(
         `INSERT INTO users (email, full_name)
@@ -218,7 +237,7 @@ function registerCatalogPublicRoutes(app, pool) {
          ON CONFLICT (email)
          DO UPDATE SET full_name = COALESCE(NULLIF(EXCLUDED.full_name, ''), users.full_name)
          RETURNING id, email`,
-        [userEmail, subjectLooksLikeEmail ? subjectId.split('@')[0] : subjectId]
+        [userEmail, userFullName]
       );
       const user = userResult.rows[0];
 
@@ -227,7 +246,11 @@ function registerCatalogPublicRoutes(app, pool) {
       const hubPayload = {
         app_id: appId,
         subject_id: subjectId,
-        subject_type: subjectLooksLikeEmail ? 'email' : String(body.subject_type || 'email'),
+        subject_type: school
+          ? 'instituicao'
+          : subjectLooksLikeEmail
+            ? 'email'
+            : String(body.subject_type || 'email'),
         sku: plan.sku,
         catalog_plan_id: plan.id,
         catalog_type: planType,
@@ -242,6 +265,18 @@ function registerCatalogPublicRoutes(app, pool) {
         direitos: meta.direitos || meta.entitlements || undefined,
         source: 'catalog_vitrine',
       };
+      if (school) {
+        const seats = licensesFromPlanMeta(meta);
+        hubPayload.instituicao_id = school.fields.instituicao_id;
+        hubPayload.payer_email = school.fields.payer_email;
+        hubPayload.razao_social = school.fields.razao_social;
+        hubPayload.payer_document = school.fields.payer_document;
+        hubPayload.payer_document_type = school.fields.payer_document_type;
+        if (seats) {
+          hubPayload.licenses_granted = seats;
+          hubPayload.seats = seats;
+        }
+      }
       Object.keys(hubPayload).forEach((k) => {
         if (hubPayload[k] === undefined) delete hubPayload[k];
       });
@@ -267,9 +302,8 @@ function registerCatalogPublicRoutes(app, pool) {
       const appFrontend = resolveAppFrontendBase(appId);
       const returnOrigin =
         String(body.return_origin || appFrontend || '').trim() || undefined;
-      const returnTo =
-        String(body.return_to || '/mesa-do-inovador?paid=1').trim() ||
-        '/mesa-do-inovador?paid=1';
+      const defaultReturnTo = school ? '/ecossistema?pedido=ok' : '/mesa-do-inovador?paid=1';
+      const returnTo = String(body.return_to || defaultReturnTo).trim() || defaultReturnTo;
 
       const checkoutUrl = buildHubBrickCheckoutUrl({
         orderId: order.id,

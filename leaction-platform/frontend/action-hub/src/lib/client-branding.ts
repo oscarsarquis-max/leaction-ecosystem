@@ -83,9 +83,35 @@ const INOVE4US_BRAND: ClientBrandTheme = {
   },
 };
 
+/** Branding inove4us School (Torre de Controle B2B). */
+const INOVE4US_SCHOOL_BRAND: ClientBrandTheme = {
+  id: 'inove4us-school',
+  displayName: 'inove4us School',
+  productLabel: 'Torre de Controle da escola',
+  checkoutTitle: 'Contratar o inove4us School',
+  logo: '/brands/inove4us.png',
+  logoAlt: 'inove4us School — Torre de Controle',
+  colors: {
+    headerBg: '#ffffff',
+    pageBg: '#f4f2ec',
+    accent: '#1f6f4a',
+    accentHover: '#165536',
+    accentMuted: '#e3f1e9',
+    textOnHeader: '#1e2a4a',
+    textMutedOnHeader: '#5b5551',
+    cardBorder: '#d8d4c8',
+    infoBg: '#e3f1e9',
+    infoBorder: '#1f6f4a',
+    infoText: '#123f2a',
+    success: '#1f6f4a',
+    successHover: '#165536',
+  },
+};
+
 const BRAND_REGISTRY: Record<string, ClientBrandTheme> = {
   paneldx: PANELDX_BRAND,
   inove4us: INOVE4US_BRAND,
+  'inove4us-school': INOVE4US_SCHOOL_BRAND,
 };
 
 export function parseClientId(raw: string | null | undefined): string {

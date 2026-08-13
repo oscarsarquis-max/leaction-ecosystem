@@ -35,6 +35,7 @@ const EXEMPT_PREFIXES = [
 function isExempt(pathname: string, searchParams: URLSearchParams): boolean {
   if (EXEMPT_EXACT.has(pathname)) return true;
   if (pathname === '/checkout' || pathname.startsWith('/checkout/')) return true;
+  if (pathname === '/ecossistema' || pathname.startsWith('/ecossistema/')) return true;
   // Brick white-label: /dashboard?checkout=<orderId>
   if (pathname === '/dashboard' && searchParams.has('checkout')) return true;
   return EXEMPT_PREFIXES.some((p) => pathname === p.slice(0, -1) || pathname.startsWith(p));

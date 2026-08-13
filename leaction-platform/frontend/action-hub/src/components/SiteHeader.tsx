@@ -41,6 +41,10 @@ function SiteHeaderInner() {
     return null;
   }
 
+  if (pathname === '/ecossistema' || pathname.startsWith('/ecossistema/')) {
+    return null;
+  }
+
   return <Header />;
 }
 

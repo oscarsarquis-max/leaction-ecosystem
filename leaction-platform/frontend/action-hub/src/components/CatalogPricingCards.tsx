@@ -14,6 +14,7 @@ type Props = {
   loadingSku?: string | null;
   onSelect: (plan: CatalogPlanPublic) => void;
   highlightMiddle?: boolean;
+  ctaLabel?: string;
 };
 
 function periodLabel(plan: CatalogPlanPublic): string | null {
@@ -32,6 +33,7 @@ export function CatalogPricingCards({
   loadingSku,
   onSelect,
   highlightMiddle = true,
+  ctaLabel,
 }: Props) {
   if (!plans.length) {
     return (
@@ -104,6 +106,18 @@ export function CatalogPricingCards({
                   +{plan.credits} desafio{plan.credits === 1 ? '' : 's'}
                 </p>
               ) : null}
+              {plan.licenses_granted != null && plan.licenses_granted > 0 ? (
+                <p
+                  className="mt-3 inline-flex rounded-lg px-3 py-1.5 text-sm font-bold"
+                  style={{
+                    color: brand.colors.accentHover,
+                    backgroundColor: `${brand.colors.accent}14`,
+                  }}
+                >
+                  {plan.licenses_granted}{' '}
+                  {plan.licenses_granted === 1 ? 'licença de professor' : 'licenças de professor'}
+                </p>
+              ) : null}
             </div>
 
             <ul className="mt-6 flex-1 space-y-3">
@@ -130,6 +144,8 @@ export function CatalogPricingCards({
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Preparando…
                 </>
+              ) : ctaLabel ? (
+                ctaLabel
               ) : plan.type === 'credit_pack' ? (
                 'Comprar agora'
               ) : (

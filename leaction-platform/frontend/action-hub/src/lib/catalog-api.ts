@@ -11,6 +11,7 @@ export type CatalogPlanPublic = {
   currency: string;
   features: string[];
   credits: number | null;
+  licenses_granted?: number | null;
   period_months?: number | null;
   periodicidade?: string | null;
   recommended?: boolean;
@@ -48,6 +49,20 @@ export async function fetchCatalogPlans(appId: string): Promise<CatalogPlanPubli
       features: Array.isArray(p.features) ? p.features.map(String) : [],
       credits:
         p.credits != null && Number.isFinite(Number(p.credits)) ? Number(p.credits) : null,
+      licenses_granted: (() => {
+        const fromPlan =
+          p.licenses_granted != null && Number.isFinite(Number(p.licenses_granted))
+            ? Number(p.licenses_granted)
+            : null;
+        const fromMeta =
+          meta.licenses_granted != null && Number.isFinite(Number(meta.licenses_granted))
+            ? Number(meta.licenses_granted)
+            : meta.seats != null && Number.isFinite(Number(meta.seats))
+              ? Number(meta.seats)
+              : null;
+        const n = fromPlan || fromMeta;
+        return n && n > 0 ? n : null;
+      })(),
       period_months:
         meta.period_months != null && Number.isFinite(Number(meta.period_months))
           ? Number(meta.period_months)
@@ -64,6 +79,11 @@ export async function startCatalogCheckout(payload: {
   app_id: string;
   sku: string;
   subject_id: string;
+  subject_type?: string;
+  payer_email?: string;
+  razao_social?: string;
+  payer_document?: string;
+  payer_document_type?: 'cnpj' | 'cpf';
   return_origin?: string;
   return_to?: string;
   hub_public_url?: string;
