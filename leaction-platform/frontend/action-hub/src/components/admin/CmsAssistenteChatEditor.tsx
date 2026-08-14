@@ -30,13 +30,27 @@ import {
   type AssistenteTreeNode,
   type AssistenteTreeOption,
 } from '@/lib/cms-assistente-seed-inove4us';
+import { cloneAssistenteSeedComercialPublico } from '@/lib/cms-assistente-seed-comercial-publico';
 
 const DESTINOS_MVP: { value: CmsSistemaDestino; label: string }[] = [
-  { value: 'inove4us', label: 'inove4us' },
+  { value: 'inove4us', label: 'inove4us (Nina — app autenticado)' },
+  { value: 'comercial_publico', label: 'comercial_publico (/comeco — pré-venda)' },
 ];
 
 const ACTION_WHITELIST = ['', 'open_upgrade'] as const;
 const NODE_ID_RE = /^[a-z][a-z0-9_]{0,63}$/;
+
+function isAllowedHref(href: string): boolean {
+  const value = String(href || '').trim();
+  if (!value) return false;
+  if (value.startsWith('/')) return true;
+  try {
+    const u = new URL(value);
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
 
 type EditorTab = 'visual' | 'json';
 
@@ -131,8 +145,8 @@ function validateTreeClient(tree: AssistenteTree): string[] {
       }
       if (opt.href != null && String(opt.href).trim() !== '') {
         const href = String(opt.href).trim();
-        if (!href.startsWith('/')) {
-          errors.push(`${prefix}.href deve começar com '/'`);
+        if (!isAllowedHref(href)) {
+          errors.push(`${prefix}.href deve ser '/' interno ou URL http(s)`);
         }
       }
       if (opt.action != null && String(opt.action).trim() !== '') {
@@ -477,6 +491,12 @@ export function CmsAssistenteChatEditor() {
   }
 
   function loadSeed() {
+    if (sistemaDestino === 'comercial_publico') {
+      applyTreeToEditor(cloneAssistenteSeedComercialPublico());
+      setSaveErrors([]);
+      setToast('Árvore comercial_publico carregada no editor (ainda não salva).');
+      return;
+    }
     applyTreeToEditor(cloneAssistenteSeedInove4us());
     setSaveErrors([]);
     setToast('Árvore inicial inove4us carregada no editor (ainda não salva).');
@@ -624,7 +644,7 @@ export function CmsAssistenteChatEditor() {
   }, [tree]);
 
   const field =
-    'w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 outline-none ring-orange-400/30 transition focus:border-orange-400 focus:ring-2';
+    'w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 outline-none ring-emerald-400/30 transition focus:border-emerald-400 focus:ring-2';
 
   return (
     <div className="space-y-5">
@@ -638,14 +658,14 @@ export function CmsAssistenteChatEditor() {
             Voltar ao CMS
           </Link>
           <div className="mb-1 flex items-center gap-2">
-            <Bot className="size-5 text-orange-500" aria-hidden />
+            <Bot className="size-5 text-emerald-500" aria-hidden />
             <h1 className="text-xl font-bold text-stone-900">
-              Assistente Nina
+              Assistente (árvore CMS)
             </h1>
           </div>
           <p className="max-w-xl text-sm text-stone-500">
-            Edite a árvore no modo Visual ou em JSON — o mesmo estado alimenta
-            rascunho e publicação.
+            Nina (`inove4us`) ou comercial público (`comercial_publico` /comeco).
+            Edite no Visual ou JSON — rascunho e publicação compartilham o editor.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -663,7 +683,9 @@ export function CmsAssistenteChatEditor() {
             className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:bg-stone-50"
           >
             <Sparkles className="size-4" aria-hidden />
-            Carregar árvore inicial inove4us
+            {sistemaDestino === 'comercial_publico'
+              ? 'Carregar árvore comercial (/comeco)'
+              : 'Carregar árvore inicial inove4us'}
           </button>
         </div>
       </div>
@@ -769,7 +791,7 @@ export function CmsAssistenteChatEditor() {
                     onClick={() => switchTab(id)}
                     className={`px-3 py-2 text-sm font-semibold transition ${
                       editorTab === id
-                        ? 'border-b-2 border-orange-500 text-orange-700'
+                        ? 'border-b-2 border-emerald-500 text-emerald-700'
                         : 'text-stone-500 hover:text-stone-800'
                     }`}
                   >
@@ -796,7 +818,7 @@ export function CmsAssistenteChatEditor() {
                     value={jsonText}
                     onChange={(e) => onJsonChange(e.target.value)}
                     spellCheck={false}
-                    className="min-h-[520px] w-full rounded-2xl border border-stone-300 bg-white p-3 font-mono text-xs leading-relaxed text-stone-800 outline-none ring-orange-400/30 transition focus:border-orange-400 focus:ring-2"
+                    className="min-h-[520px] w-full rounded-2xl border border-stone-300 bg-white p-3 font-mono text-xs leading-relaxed text-stone-800 outline-none ring-emerald-400/30 transition focus:border-emerald-400 focus:ring-2"
                   />
                 </div>
               ) : (
@@ -825,7 +847,7 @@ export function CmsAssistenteChatEditor() {
                                 <div
                                   className={`flex items-start gap-0.5 rounded-lg ${
                                     active
-                                      ? 'bg-orange-50 ring-1 ring-orange-200'
+                                      ? 'bg-emerald-50 ring-1 ring-emerald-200'
                                       : 'hover:bg-stone-50'
                                   }`}
                                   style={{ paddingLeft: `${row.depth * 12}px` }}
@@ -855,7 +877,7 @@ export function CmsAssistenteChatEditor() {
                                     <span
                                       className={`block truncate font-mono text-[11px] font-semibold ${
                                         active
-                                          ? 'text-orange-800'
+                                          ? 'text-emerald-800'
                                           : 'text-stone-800'
                                       }`}
                                     >
@@ -895,7 +917,7 @@ export function CmsAssistenteChatEditor() {
                                 onClick={() => selectNodeResetTrail(id)}
                                 className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-sm transition ${
                                   active
-                                    ? 'bg-orange-50 font-semibold text-orange-800 ring-1 ring-orange-200'
+                                    ? 'bg-emerald-50 font-semibold text-emerald-800 ring-1 ring-emerald-200'
                                     : 'text-stone-700 hover:bg-stone-50'
                                 }`}
                               >
@@ -998,7 +1020,7 @@ export function CmsAssistenteChatEditor() {
                                 className={`rounded px-1 py-0.5 font-mono font-semibold transition ${
                                   index === navTrail.length - 1
                                     ? 'bg-stone-100 text-stone-900'
-                                    : 'text-orange-700 hover:bg-orange-50'
+                                    : 'text-emerald-700 hover:bg-emerald-50'
                                 }`}
                               >
                                 {id}
@@ -1056,7 +1078,7 @@ export function CmsAssistenteChatEditor() {
                             selectedNode.options.map((opt, idx) => {
                               const href = String(opt.href || '');
                               const hrefInvalid =
-                                href.trim() !== '' && !href.trim().startsWith('/');
+                                href.trim() !== '' && !isAllowedHref(href);
                               const nextId = String(opt.next || '').trim();
                               const nextExists = nextId
                                 ? !!tree.nodes[nextId]
@@ -1121,7 +1143,7 @@ export function CmsAssistenteChatEditor() {
                                         <button
                                           type="button"
                                           onClick={() => navigateToNode(nextId)}
-                                          className="inline-flex items-center gap-1 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-xs font-bold text-orange-800 hover:bg-orange-100"
+                                          className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
                                         >
                                           Ir para nó
                                           <ArrowRight className="size-3.5" aria-hidden />
@@ -1156,14 +1178,14 @@ export function CmsAssistenteChatEditor() {
                                           : ''
                                       }`}
                                       value={href}
-                                      placeholder="/rota-interna"
+                                      placeholder="/rota ou https://..."
                                       onChange={(e) =>
                                         updateOption(idx, { href: e.target.value })
                                       }
                                     />
                                     {hrefInvalid ? (
                                       <span className="text-xs text-red-600">
-                                        href deve começar com &quot;/&quot;
+                                        href: rota &quot;/&quot; ou URL http(s)
                                       </span>
                                     ) : null}
                                   </label>
@@ -1207,7 +1229,7 @@ export function CmsAssistenteChatEditor() {
                 ) : (
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
                         {(tree.avatar_name || 'N').slice(0, 1).toUpperCase()}
                       </span>
                       <div>
@@ -1271,7 +1293,7 @@ export function CmsAssistenteChatEditor() {
               type="button"
               disabled={!jsonValid || saving !== null}
               onClick={() => void save('publicado')}
-              className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-orange-400 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-400 disabled:opacity-50"
             >
               {saving === 'publicado' ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />

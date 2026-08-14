@@ -34,7 +34,7 @@ export function ActionHubBrandHeader({ right, left }: ActionHubBrandHeaderProps)
             className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-stone-200/80"
           />
           <div className="min-w-0">
-            <p className="truncate text-lg font-bold leading-none tracking-tight text-orange-950">
+            <p className="truncate text-lg font-bold leading-none tracking-tight text-emerald-950">
               ActionHub
             </p>
             <p className="mt-0.5 hidden text-[10px] font-medium uppercase tracking-wider text-stone-400 sm:block">

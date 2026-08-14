@@ -27,7 +27,7 @@ export function CmsImageUploadField({
   const [error, setError] = useState<string | null>(null);
 
   const field =
-    'w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 outline-none ring-orange-400/30 transition focus:border-orange-400 focus:ring-2';
+    'w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 outline-none ring-emerald-400/30 transition focus:border-emerald-400 focus:ring-2';
 
   async function onFileSelected(file: File | null) {
     if (!file || !token) return;
@@ -92,7 +92,7 @@ export function CmsImageUploadField({
             </div>
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1 text-xs font-semibold text-stone-700">
-                <ImagePlus className="size-3.5 text-orange-500" aria-hidden />
+                <ImagePlus className="size-3.5 text-emerald-500" aria-hidden />
                 Imagem salva
               </p>
               <p className="mt-0.5 truncate font-mono text-[11px] text-stone-500">{value}</p>

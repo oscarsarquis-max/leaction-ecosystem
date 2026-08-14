@@ -59,7 +59,7 @@ export function CmsPostsList() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="mb-1 flex items-center gap-2">
-            <Newspaper className="size-5 text-orange-500" aria-hidden />
+            <Newspaper className="size-5 text-emerald-500" aria-hidden />
             <h1 className="text-xl font-bold text-stone-900">
               Gestão de Conteúdo (CMS)
             </h1>
@@ -94,7 +94,7 @@ export function CmsPostsList() {
           </Link>
           <Link
             href="/dashboard/cms/novo"
-            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-orange-400"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-400"
           >
             <FilePlus2 className="size-4" aria-hidden />
             Novo Post

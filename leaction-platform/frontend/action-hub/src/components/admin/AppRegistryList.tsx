@@ -58,7 +58,7 @@ export function AppRegistryList() {
               setSuccess(null);
               setInjectOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-900 transition hover:bg-orange-100"
+            className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100"
           >
             <Gift className="size-4" aria-hidden />
             Injetar Créditos (Cortesia)
@@ -119,7 +119,7 @@ export function AppRegistryList() {
               </tr>
             ) : null}
             {apps.map((app) => (
-              <tr key={app.app_id} className="bg-white hover:bg-orange-50/40">
+              <tr key={app.app_id} className="bg-white hover:bg-emerald-50/40">
                 <td className="px-4 py-3 font-mono text-xs text-stone-700">
                   {app.app_id}
                 </td>
@@ -158,14 +158,14 @@ export function AppRegistryList() {
                     </button>
                     <Link
                       href={`/dashboard/admin/plans?app_id=${encodeURIComponent(app.app_id)}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-orange-600"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-600"
                     >
                       <Package className="size-3.5" aria-hidden />
                       Planos
                     </Link>
                     <Link
                       href={`/dashboard/admin/payments?app_id=${encodeURIComponent(app.app_id)}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-900 transition hover:bg-orange-100"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 transition hover:bg-emerald-100"
                     >
                       Pagamentos
                     </Link>

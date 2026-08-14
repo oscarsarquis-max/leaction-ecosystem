@@ -42,7 +42,7 @@ export function HeroCurationShortcut() {
   return (
     <Link
       href="/dashboard/marketplace/curadoria"
-      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-orange-300 hover:text-orange-700"
+      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700"
     >
       <Settings2 className="size-3.5" aria-hidden />
       Curadoria de Categorias

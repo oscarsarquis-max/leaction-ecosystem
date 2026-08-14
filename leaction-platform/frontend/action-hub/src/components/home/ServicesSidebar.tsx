@@ -58,15 +58,9 @@ const SERVICES_NAV: NavItem[] = [
     icon: Rocket,
     children: [
       {
-        label: 'mudaedu',
-        description: 'Transformação Digital Educacional',
-        href: 'https://mudaedu.com.br',
-        iconSrc: '/brands/mudaedu.png',
-      },
-      {
         label: 'inove4us',
         description: 'Inovação Educacional',
-        href: 'https://inove4us.com.br',
+        href: '/comeco',
         iconSrc: '/brands/inove4us.png',
       },
       {
@@ -164,32 +158,32 @@ function NavLink({
         active
           ? adminTone
             ? 'bg-stone-800 text-white'
-            : 'bg-orange-50 text-orange-900'
+            : 'bg-emerald-50 text-emerald-900'
           : locked
             ? 'text-stone-400 hover:bg-stone-50'
             : adminTone
               ? 'text-stone-700 hover:bg-stone-100'
-              : 'text-stone-700 hover:bg-orange-50 hover:text-orange-900'
+              : 'text-stone-700 hover:bg-emerald-50 hover:text-emerald-900'
       }`}
     >
       <span
         className={`flex size-8 items-center justify-center rounded-lg ${
           active
             ? adminTone
-              ? 'bg-stone-700 text-orange-300'
-              : 'bg-orange-100 text-orange-700'
+              ? 'bg-stone-700 text-emerald-300'
+              : 'bg-emerald-100 text-emerald-700'
             : locked
               ? 'bg-stone-50 text-stone-400'
               : adminTone
                 ? 'bg-stone-100 text-stone-700'
-                : 'bg-stone-50 text-orange-800'
+                : 'bg-stone-50 text-emerald-800'
         }`}
       >
         <Icon className="size-4" aria-hidden />
       </span>
       <span className="flex-1">{item.label}</span>
       {item.id === 'action-pay' ? (
-        <span className="rounded-full bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">
+        <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
           Pagamentos
         </span>
       ) : null}
@@ -232,7 +226,7 @@ function ServicesSidebarInner() {
             className="h-11 w-11 rounded-xl object-cover shadow-sm ring-1 ring-stone-200"
           />
           <div>
-            <p className="text-2xl font-bold leading-none tracking-tight text-orange-950">
+            <p className="text-2xl font-bold leading-none tracking-tight text-emerald-950">
               ActionHub
             </p>
             <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-stone-400">
@@ -258,9 +252,9 @@ function ServicesSidebarInner() {
                   <button
                     type="button"
                     onClick={() => setOpenTransform((v) => !v)}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-stone-700 transition hover:bg-orange-50 hover:text-orange-900"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-stone-700 transition hover:bg-emerald-50 hover:text-emerald-900"
                   >
-                    <span className="flex size-8 items-center justify-center rounded-lg bg-stone-50 text-orange-800">
+                    <span className="flex size-8 items-center justify-center rounded-lg bg-stone-50 text-emerald-800">
                       <Icon className="size-4" aria-hidden />
                     </span>
                     <span className="flex-1">{item.label}</span>
@@ -281,15 +275,15 @@ function ServicesSidebarInner() {
                               {...(external
                                 ? { target: '_blank', rel: 'noopener noreferrer' }
                                 : {})}
-                              className="group flex items-start gap-2.5 rounded-xl px-2.5 py-2.5 transition hover:bg-orange-50"
+                              className="group flex items-start gap-2.5 rounded-xl px-2.5 py-2.5 transition hover:bg-emerald-50"
                             >
                               <img
                                 src={child.iconSrc}
                                 alt=""
-                                className="mt-0.5 h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-orange-200/80"
+                                className="mt-0.5 h-9 w-9 shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-emerald-200/80"
                               />
                               <span className="min-w-0 flex-1">
-                                <span className="flex items-center gap-1 text-sm font-semibold text-stone-800 group-hover:text-orange-900">
+                                <span className="flex items-center gap-1 text-sm font-semibold text-stone-800 group-hover:text-emerald-900">
                                   {child.label}
                                   {external ? (
                                     <ExternalLink
@@ -330,7 +324,7 @@ function ServicesSidebarInner() {
             className="rounded-2xl bg-stone-950 p-2 text-white shadow-sm ring-1 ring-stone-800"
             aria-label="Administração"
           >
-            <p className="px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-orange-400">
+            <p className="px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400">
               Administração
             </p>
             <div className="space-y-0.5">
@@ -346,13 +340,13 @@ function ServicesSidebarInner() {
                     }
                     className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
                       active
-                        ? 'bg-orange-500 text-white'
-                        : 'text-white/90 hover:bg-white/10 hover:text-orange-300'
+                        ? 'bg-emerald-500 text-white'
+                        : 'text-white/90 hover:bg-white/10 hover:text-emerald-300'
                     }`}
                   >
                     <span
                       className={`flex size-8 items-center justify-center rounded-lg ${
-                        active ? 'bg-orange-600 text-white' : 'bg-white/10 text-orange-400'
+                        active ? 'bg-emerald-600 text-white' : 'bg-white/10 text-emerald-400'
                       }`}
                     >
                       <Icon className="size-4" aria-hidden />

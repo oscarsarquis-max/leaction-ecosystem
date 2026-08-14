@@ -238,7 +238,7 @@ export default function MarketplaceCurationPage() {
   if (!authChecked) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-stone-500">
-        <Loader2 className="size-6 animate-spin text-orange-500" aria-hidden />
+        <Loader2 className="size-6 animate-spin text-emerald-500" aria-hidden />
       </div>
     );
   }
@@ -253,7 +253,7 @@ export default function MarketplaceCurationPage() {
             </p>
             <Link
               href="/"
-              className="mt-3 inline-block text-sm font-semibold text-orange-600 hover:text-orange-700"
+              className="mt-3 inline-block text-sm font-semibold text-emerald-600 hover:text-emerald-700"
             >
               Ir para o início
             </Link>
@@ -274,7 +274,7 @@ export default function MarketplaceCurationPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <header>
-          <p className="mb-1 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-orange-500">
+          <p className="mb-1 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-500">
             <Settings2 className="size-4" aria-hidden />
             Marketplace
           </p>
@@ -289,9 +289,9 @@ export default function MarketplaceCurationPage() {
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 hover:border-orange-300"
+            className="inline-flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 hover:border-emerald-300"
           >
-            <LogOut className="size-4 text-orange-500" aria-hidden />
+            <LogOut className="size-4 text-emerald-500" aria-hidden />
             Sair da curadoria
           </button>
         ) : null}
@@ -317,7 +317,7 @@ export default function MarketplaceCurationPage() {
 
         {isLoading ? (
           <div className="flex min-h-[320px] items-center justify-center gap-2 text-red-950/60">
-            <Loader2 className="size-5 animate-spin text-orange-500" aria-hidden />
+            <Loader2 className="size-5 animate-spin text-emerald-500" aria-hidden />
             <span className="text-sm font-medium">Carregando curadoria…</span>
           </div>
         ) : null}
@@ -333,7 +333,7 @@ export default function MarketplaceCurationPage() {
             <div className="space-y-6">
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
                 <div className="mb-4 flex items-center gap-2">
-                  <Shield className="size-5 text-orange-500" aria-hidden />
+                  <Shield className="size-5 text-emerald-500" aria-hidden />
                   <h2 className="text-lg font-bold text-red-950">Card Global</h2>
                 </div>
                 <label htmlFor="global-negative" className="mb-1 block text-sm font-semibold text-red-950">
@@ -346,7 +346,7 @@ export default function MarketplaceCurationPage() {
                   value={globalNegativeText}
                   onChange={(e) => setGlobalNegativeText(e.target.value)}
                   placeholder="gamer, brinquedo, infantil, smart tv"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-red-950 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-red-950 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
                   spellCheck={false}
                 />
                 {globalRule?.updated_at ? (
@@ -378,7 +378,7 @@ export default function MarketplaceCurationPage() {
                       className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                         activeCategory === categoryId
                           ? 'bg-red-600 text-white shadow-sm'
-                          : 'bg-slate-100 text-red-950 hover:bg-orange-50'
+                          : 'bg-slate-100 text-red-950 hover:bg-emerald-50'
                       }`}
                     >
                       {labelForCategory(categoryId)}
@@ -451,7 +451,7 @@ export default function MarketplaceCurationPage() {
               <h2 className="text-lg font-bold text-red-950">Preview ao Vivo</h2>
               <p className="mt-1 text-sm text-red-950/70">
                 Categoria:{' '}
-                <span className="font-semibold text-orange-500">{labelForCategory(activeCategory)}</span>
+                <span className="font-semibold text-emerald-500">{labelForCategory(activeCategory)}</span>
               </p>
               <button
                 type="button"
@@ -462,7 +462,7 @@ export default function MarketplaceCurationPage() {
                 {previewLoading ? (
                   <Loader2 className="size-5 animate-spin" aria-hidden />
                 ) : (
-                  <Search className="size-5 text-orange-200" aria-hidden />
+                  <Search className="size-5 text-emerald-200" aria-hidden />
                 )}
                 Testar Busca (Preview)
               </button>
@@ -473,7 +473,7 @@ export default function MarketplaceCurationPage() {
               ) : null}
               {!previewLoading && previewError ? (
                 <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">
-                  <AlertCircle className="mb-1 inline size-4 text-orange-500" />
+                  <AlertCircle className="mb-1 inline size-4 text-emerald-500" />
                   {previewError}
                 </div>
               ) : null}

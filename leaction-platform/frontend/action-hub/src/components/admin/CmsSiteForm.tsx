@@ -403,7 +403,7 @@ export function CmsSiteForm() {
   }
 
   const field =
-    'w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 outline-none ring-orange-400/30 transition focus:border-orange-400 focus:ring-2';
+    'w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 outline-none ring-emerald-400/30 transition focus:border-emerald-400 focus:ring-2';
 
   const heroCta = asRecord(landing.hero_cta);
   const coluna1 = asRecord(landing.coluna1);
@@ -464,7 +464,7 @@ export function CmsSiteForm() {
         <button
           type="submit"
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-orange-400 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-400 disabled:opacity-50"
         >
           {saving ? (
             <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -488,7 +488,7 @@ export function CmsSiteForm() {
             onClick={() => setTab(id)}
             className={`px-3 py-2 text-sm font-semibold transition ${
               tab === id
-                ? 'border-b-2 border-orange-500 text-orange-700'
+                ? 'border-b-2 border-emerald-500 text-emerald-700'
                 : 'text-stone-500 hover:text-stone-800'
             }`}
           >
@@ -869,7 +869,7 @@ export function CmsSiteForm() {
           </section>
 
           {!isAcessoSatellite ? (
-          <section className="space-y-3 rounded-2xl border border-orange-100 bg-orange-50/50 p-4 shadow-sm">
+          <section className="space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm">
             <h2 className="text-sm font-bold text-stone-900">
               Destaques do blog (fixos — 3 cards)
             </h2>
@@ -880,7 +880,7 @@ export function CmsSiteForm() {
                 href="https://leaction.com.br/blog"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold text-orange-700 underline-offset-2 hover:underline"
+                className="font-semibold text-emerald-700 underline-offset-2 hover:underline"
               >
                 leaction.com.br/blog
               </a>

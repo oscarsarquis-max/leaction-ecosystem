@@ -96,7 +96,7 @@ export function ActionCenter() {
           <div className="h-16 animate-pulse rounded-xl bg-stone-100" />
         ) : user ? (
           <div className="flex items-start gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-orange-50 text-sm font-bold text-orange-800">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-bold text-emerald-800">
               {initials || <UserRound className="size-5" />}
             </div>
             <div className="min-w-0 flex-1">
@@ -123,7 +123,7 @@ export function ActionCenter() {
           <form onSubmit={onLogin} className="space-y-2">
             <p className="text-sm font-semibold text-stone-900">Entrar no ActionHub</p>
             {loginHint ? (
-              <p className="rounded-lg bg-orange-50 px-2.5 py-2 text-xs font-medium text-orange-800">
+              <p className="rounded-lg bg-emerald-50 px-2.5 py-2 text-xs font-medium text-emerald-800">
                 {loginHint}
               </p>
             ) : null}
@@ -133,7 +133,7 @@ export function ActionCenter() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="E-mail"
-              className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+              className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
             />
             <input
               type="password"
@@ -141,13 +141,13 @@ export function ActionCenter() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Senha"
-              className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+              className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
             />
             {error ? <p className="text-xs text-red-600">{error}</p> : null}
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-60"
             >
               <LogIn className="size-4" aria-hidden />
               {busy ? 'Entrando…' : 'Entrar'}
@@ -162,7 +162,7 @@ export function ActionCenter() {
           <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
             Action-Sponge
           </p>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-orange-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
             <span className="relative flex size-1.5">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
               <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
@@ -170,7 +170,7 @@ export function ActionCenter() {
             Live Status
           </span>
         </div>
-        <div className="mb-1 flex items-center gap-2 text-orange-300">
+        <div className="mb-1 flex items-center gap-2 text-emerald-300">
           <Radio className="size-4" aria-hidden />
           <span className="text-sm font-medium">Tracking CRM</span>
         </div>
@@ -181,7 +181,7 @@ export function ActionCenter() {
           </div>
           <div className="flex items-baseline justify-between">
             <dt className="text-sm text-stone-400">Drop-off</dt>
-            <dd className="text-2xl font-bold tabular-nums text-orange-400">12%</dd>
+            <dd className="text-2xl font-bold tabular-nums text-emerald-400">12%</dd>
           </div>
           <div className="flex items-baseline justify-between border-t border-white/10 pt-3">
             <dt className="text-sm text-stone-400">Carrinho</dt>
@@ -196,7 +196,7 @@ export function ActionCenter() {
             }
             router.push('/dashboard/crm/tracking');
           }}
-          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-orange-600"
+          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-600"
         >
           Abrir Analytics
         </button>
@@ -217,16 +217,16 @@ export function ActionCenter() {
                 }
                 router.push(dashboardHref);
               }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-stone-700 transition hover:bg-orange-50 hover:text-orange-900"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-stone-700 transition hover:bg-emerald-50 hover:text-emerald-900"
             >
-              <CreditCard className="size-4 text-orange-600" aria-hidden />
+              <CreditCard className="size-4 text-emerald-600" aria-hidden />
               Action-Pay (Pagamentos)
             </button>
           </li>
           <li>
             <Link
               href="/dashboard"
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-orange-50 hover:text-orange-900"
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-emerald-50 hover:text-emerald-900"
               onClick={(e) => {
                 if (!isAuthenticated) {
                   e.preventDefault();
@@ -234,7 +234,7 @@ export function ActionCenter() {
                 }
               }}
             >
-              <FileText className="size-4 text-orange-600" aria-hidden />
+              <FileText className="size-4 text-emerald-600" aria-hidden />
               Meus Relatórios
             </Link>
           </li>
@@ -245,9 +245,9 @@ export function ActionCenter() {
                 if (!requireLogin(dashboardHref, 'Faça login para ver contratos.')) return;
                 router.push(dashboardHref);
               }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-stone-700 transition hover:bg-orange-50 hover:text-orange-900"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-stone-700 transition hover:bg-emerald-50 hover:text-emerald-900"
             >
-              <Building2 className="size-4 text-orange-600" aria-hidden />
+              <Building2 className="size-4 text-emerald-600" aria-hidden />
               Meus Contratos
             </button>
           </li>
@@ -262,12 +262,12 @@ export function ActionCenter() {
                 }
                 router.push(cartHref);
               }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-stone-700 transition hover:bg-orange-50 hover:text-orange-900"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-stone-700 transition hover:bg-emerald-50 hover:text-emerald-900"
             >
-              <ShoppingCart className="size-4 text-orange-600" aria-hidden />
+              <ShoppingCart className="size-4 text-emerald-600" aria-hidden />
               Carrinho
               {cartItems.length > 0 ? (
-                <span className="ml-auto rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-bold text-orange-700">
+                <span className="ml-auto rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
                   {cartItems.length}
                 </span>
               ) : null}

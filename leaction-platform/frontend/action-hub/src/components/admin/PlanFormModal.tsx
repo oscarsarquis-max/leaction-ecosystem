@@ -163,7 +163,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
+                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-emerald-200 focus:ring-2"
                   placeholder="Ex.: Pacote 100 créditos"
                 />
               </label>
@@ -176,7 +176,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
                   onChange={(e) => setSku(e.target.value)}
                   required
                   disabled={editing}
-                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 font-mono text-sm outline-none ring-orange-200 focus:ring-2 disabled:bg-stone-50"
+                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 font-mono text-sm outline-none ring-emerald-200 focus:ring-2 disabled:bg-stone-50"
                   placeholder="INOVE4US_CREDITOS_100"
                 />
                 <p className="text-[11px] text-stone-500">
@@ -190,7 +190,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value as CatalogPlanType)}
-                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
+                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-emerald-200 focus:ring-2"
                 >
                   {TYPE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -210,7 +210,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   required
-                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
+                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-emerald-200 focus:ring-2"
                 />
               </label>
               <label className="flex items-center gap-2 self-end rounded-xl border border-stone-200 px-3 py-2.5 text-sm">
@@ -218,7 +218,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
                   type="checkbox"
                   checked={active}
                   onChange={(e) => setActive(e.target.checked)}
-                  className="size-4 rounded border-stone-300 text-orange-600 focus:ring-orange-500"
+                  className="size-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
                 />
                 <span className="font-medium text-stone-700">Ativo na vitrine</span>
               </label>
@@ -232,7 +232,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
                 value={bullets}
                 onChange={(e) => setBullets(e.target.value)}
                 rows={3}
-                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
+                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-emerald-200 focus:ring-2"
                 placeholder={'Acesso completo\nSuporte prioritário'}
               />
             </label>
@@ -257,7 +257,7 @@ export function PlanFormModal({ open, appId, plan, onClose, onSave }: Props) {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-60"
             >
               {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
               {editing ? 'Salvar alterações' : 'Criar plano'}

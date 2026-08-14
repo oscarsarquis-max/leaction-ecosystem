@@ -34,9 +34,9 @@ import {
   YAxis,
 } from 'recharts';
 
-const COLOR_PRIMARY = '#7f1d1d';
-const COLOR_SECONDARY = '#dc2626';
-const COLOR_ACCENT = '#f97316';
+const COLOR_PRIMARY = '#123f2a';
+const COLOR_SECONDARY = '#1f6f4a';
+const COLOR_ACCENT = '#1f6f4a';
 const COLOR_NEUTRAL = '#cbd5e1';
 
 type OrigemItem = {
@@ -401,7 +401,7 @@ export default function CrmTrackingConversionPage() {
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 bg-stone-50 px-4 text-center">
-        <span className="flex size-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 ring-1 ring-orange-200">
+        <span className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200">
           <Lock className="size-7" aria-hidden />
         </span>
         <div>
@@ -418,7 +418,7 @@ export default function CrmTrackingConversionPage() {
               'Faça login para acessar o Action-Sponge Analytics.'
             )
           }
-          className="rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
+          className="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600"
         >
           Ir para login
         </button>
@@ -440,7 +440,7 @@ export default function CrmTrackingConversionPage() {
           <div className="min-w-0 flex-1">
             <Link
               href="/"
-              className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-orange-800"
+              className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-emerald-800"
             >
               <ArrowLeft className="size-4" aria-hidden />
               Voltar ao Action Hub
@@ -483,7 +483,7 @@ export default function CrmTrackingConversionPage() {
                 setShowNovaOrigem((v) => !v);
                 setOrigemMsg('');
               }}
-              className="inline-flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3.5 py-2 text-sm font-semibold text-orange-800 transition hover:bg-orange-100"
+              className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
             >
               <Plus className="size-4" aria-hidden />
               Nova origem
@@ -509,7 +509,7 @@ export default function CrmTrackingConversionPage() {
         {showNovaOrigem ? (
           <form
             onSubmit={handleCreateOrigem}
-            className="mb-6 rounded-xl border border-orange-200 bg-white p-5 shadow-sm"
+            className="mb-6 rounded-xl border border-emerald-200 bg-white p-5 shadow-sm"
           >
             <h2 className="text-base font-semibold text-slate-900">Cadastrar origem</h2>
             <p className="mt-1 text-xs text-slate-500">
@@ -556,7 +556,7 @@ export default function CrmTrackingConversionPage() {
               <button
                 type="submit"
                 disabled={savingOrigem}
-                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
+                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
               >
                 {savingOrigem ? 'Salvando…' : 'Salvar origem'}
               </button>
@@ -962,7 +962,7 @@ function ToolBadge({
     kind === 'mesa'
       ? { bg: 'bg-red-50', text: 'text-red-800', border: 'border-red-100' }
       : kind === 'solucionador'
-        ? { bg: 'bg-orange-50', text: 'text-orange-800', border: 'border-orange-100' }
+        ? { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-100' }
         : { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
 
   return (

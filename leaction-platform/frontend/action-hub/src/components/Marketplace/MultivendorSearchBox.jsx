@@ -66,7 +66,7 @@ export function MultivendorSearchBox({ className = '' }) {
               id="marketplace-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="h-full w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
+              className="h-full w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
             >
               {SEARCH_CATEGORIES.map((opt) => (
                 <option key={opt.value || 'all'} value={opt.value}>
@@ -86,14 +86,14 @@ export function MultivendorSearchBox({ className = '' }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Ex.: liderança digital, switch, LMS…"
-              className="h-full w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
+              className="h-full w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-70 md:min-w-[140px]"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 md:min-w-[140px]"
           >
             <Search className="size-4" aria-hidden />
             {loading ? 'Buscando…' : 'Buscar'}

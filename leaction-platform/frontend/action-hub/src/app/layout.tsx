@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ActionHub — Contextual Platform",
+  title: "ActionHub — Plataforma Contextual de Serviços de TI",
   description: "Marketplace B2B, transformação digital e Action-Sponge Analytics.",
 };
 

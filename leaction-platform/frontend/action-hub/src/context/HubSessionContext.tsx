@@ -79,24 +79,43 @@ export function HubSessionProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const apiBase = getHubApiBase();
-    const { data } = await axios.post(
-      `${apiBase}/auth/login`,
-      { email: email.trim(), password },
-      { timeout: 15000 }
-    );
-    if (!data?.authenticated || !data?.user?.email) {
-      throw new Error(data?.error || 'Falha no login.');
+    try {
+      const { data } = await axios.post(
+        `${apiBase}/auth/login`,
+        { email: email.trim(), password },
+        { timeout: 15000 }
+      );
+      if (!data?.authenticated || !data?.user?.email) {
+        throw new Error(data?.error || 'Falha no login.');
+      }
+      const nextUser: HubUser = {
+        id: String(data.user.id),
+        email: String(data.user.email),
+        name: String(data.user.name || data.user.email),
+      };
+      const nextToken = typeof data.token === 'string' ? data.token : null;
+      setUser(nextUser);
+      setToken(nextToken);
+      writeStoredSession({ user: nextUser, token: nextToken });
+      return nextUser;
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const apiError = err.response?.data?.error;
+        if (typeof apiError === 'string' && apiError.trim()) {
+          throw new Error(apiError);
+        }
+        if (err.response?.status === 401) {
+          throw new Error('Usuário ou senha inválidos');
+        }
+        if (err.code === 'ECONNABORTED') {
+          throw new Error('Tempo esgotado ao conectar no Hub. Confira se o gateway está no ar.');
+        }
+        if (!err.response) {
+          throw new Error('Não foi possível alcançar a API do Hub (/hub-api).');
+        }
+      }
+      throw err instanceof Error ? err : new Error('Falha no login.');
     }
-    const nextUser: HubUser = {
-      id: String(data.user.id),
-      email: String(data.user.email),
-      name: String(data.user.name || data.user.email),
-    };
-    const nextToken = typeof data.token === 'string' ? data.token : null;
-    setUser(nextUser);
-    setToken(nextToken);
-    writeStoredSession({ user: nextUser, token: nextToken });
-    return nextUser;
   }, []);
 
   const logout = useCallback(() => {

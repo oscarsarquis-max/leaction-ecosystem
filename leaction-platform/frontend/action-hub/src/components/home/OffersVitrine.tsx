@@ -228,7 +228,7 @@ export function OffersVitrine() {
   }
 
   return (
-    <section id="vitrine" className="flex h-full min-h-0 flex-col">
+    <section id="vitrine" className="flex min-h-0 w-full flex-col">
       <header className="mb-5 shrink-0">
         <h1 className="text-2xl font-bold tracking-tight text-stone-900 md:text-3xl">
           Descubra Soluções
@@ -247,7 +247,7 @@ export function OffersVitrine() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar por oferta, categoria ou fornecedor…"
-            className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pl-10 pr-3 text-sm text-stone-800 shadow-sm outline-none transition placeholder:text-stone-400 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+            className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pl-10 pr-3 text-sm text-stone-800 shadow-sm outline-none transition placeholder:text-stone-400 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
           />
         </label>
       </header>
@@ -272,28 +272,28 @@ export function OffersVitrine() {
               const inCart = cartItems.some((i) => String(i.id) === String(offer.id));
               return (
                 <li key={offer.id}>
-                  <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition hover:border-orange-200 hover:shadow-md">
-                    <div className="relative h-44 w-full shrink-0 overflow-hidden rounded-t-xl bg-orange-50">
+                  <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm transition hover:border-emerald-200 hover:shadow-md">
+                    <div className="relative h-44 w-full shrink-0 overflow-hidden bg-emerald-50">
                       <MarketplaceProductImage
                         src={offer.image || '/marketplace/placeholders/default.svg'}
                         title={offer.title}
                       />
                     </div>
                     <div className="flex flex-1 flex-col gap-2 p-4">
-                      <span className="inline-flex w-fit rounded-full bg-orange-50 px-2.5 py-0.5 text-[11px] font-semibold text-orange-700">
+                      <span className="inline-flex w-fit rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
                         {offer.category || offer.vendor || 'Marketplace'}
                       </span>
                       <h2 className="line-clamp-2 text-sm font-semibold leading-snug text-stone-900">
                         {offer.title}
                       </h2>
-                      <p className="text-lg font-bold text-orange-950">
+                      <p className="text-lg font-bold text-emerald-950">
                         {offer.price_label || 'Consulte'}
                       </p>
                       <button
                         type="button"
                         disabled={inCart}
                         onClick={(event) => acquire(offer, event)}
-                        className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-orange-600 disabled:cursor-default disabled:opacity-70"
+                        className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-default disabled:opacity-70"
                       >
                         <ShoppingBag className="size-3.5" aria-hidden />
                         {inCart ? 'No carrinho' : 'Adquirir'}

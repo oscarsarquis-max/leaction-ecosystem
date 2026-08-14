@@ -104,7 +104,7 @@ export function AppEditModal({ open, token, app, onClose, onSuccess }: Props) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
+                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-emerald-200 focus:ring-2"
               />
             </label>
 
@@ -117,7 +117,7 @@ export function AppEditModal({ open, token, app, onClose, onSuccess }: Props) {
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
                 placeholder="http://127.0.0.1:5010/api/webhooks/actionhub"
-                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 font-mono text-xs outline-none ring-orange-200 focus:ring-2"
+                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 font-mono text-xs outline-none ring-emerald-200 focus:ring-2"
               />
               <p className="text-[11px] text-stone-500">
                 inove4us local: Flask em{' '}
@@ -131,7 +131,7 @@ export function AppEditModal({ open, token, app, onClose, onSuccess }: Props) {
                 type="checkbox"
                 checked={active}
                 onChange={(e) => setActive(e.target.checked)}
-                className="size-4 rounded border-stone-300 text-orange-600 focus:ring-orange-500"
+                className="size-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
               />
               Aplicação ativa (aceita checkout e notificações)
             </label>
@@ -155,7 +155,7 @@ export function AppEditModal({ open, token, app, onClose, onSuccess }: Props) {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
             >
               {saving ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />

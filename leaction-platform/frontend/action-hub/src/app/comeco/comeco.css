@@ -1,5 +1,16 @@
 /* Extensões da página /comeco — tokens e base vêm de ecossistema.css (.ecossistema-page). */
 
+/*
+ * Visibilidade imediata: o shell eco esconde .reveal com opacity:0 até o JS.
+ * Em dev (HMR / 127.0.0.1) isso deixava a página só com o fundo.
+ * Animação fica só no transform sutil via .reveal:not(.in) opcional — conteúdo sempre legível.
+ */
+.comeco-page .reveal {
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
 .comeco-page .comeco-fork {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -82,7 +93,7 @@
   display: flex;
   gap: 10px;
   justify-content: center;
-  margin-bottom: 28px;
+  margin-bottom: 22px;
   flex-wrap: wrap;
 }
 
@@ -97,53 +108,160 @@
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.comeco-page .comeco-tab[aria-selected='true'] {
+.comeco-page .comeco-tab--escola[aria-selected='true'] {
   background: var(--verde-deep);
   border-color: var(--verde-deep);
   color: var(--paper);
 }
 
-.comeco-page .comeco-treino-bloco {
-  margin-bottom: 28px;
+.comeco-page .comeco-tab--professor[aria-selected='true'] {
+  background: var(--bordo);
+  border-color: var(--bordo);
+  color: var(--paper);
 }
 
-.comeco-page .comeco-treino-bloco h3 {
-  font-size: 22px;
-  font-weight: 600;
-  margin: 0 0 8px;
+.comeco-page .comeco-treino {
+  --treino-accent: var(--verde);
+  --treino-accent-deep: var(--verde-deep);
+  --treino-accent-soft: var(--verde-soft);
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.comeco-page .comeco-treino--professor {
+  --treino-accent: var(--bordo);
+  --treino-accent-deep: var(--bordo-deep);
+  --treino-accent-soft: var(--bordo-soft);
+}
+
+.comeco-page .comeco-treino-bloco {
+  margin-bottom: 22px;
+}
+
+.comeco-page .comeco-treino-bloco:last-child {
+  margin-bottom: 0;
+}
+
+/* Cabeçalho de bloco — linguagem do /roteiro-guiado */
+.comeco-page .comeco-treino-bloco-head {
+  color: #fff;
+  font-size: 1.02rem;
+  font-weight: 700;
+  padding: 0.55rem 0.85rem;
+  border-radius: 0.35rem;
+  margin: 0 0 0.55rem;
+  line-height: 1.3;
 }
 
 .comeco-page .comeco-treino-bloco .intro {
-  font-size: 15px;
+  font-size: 14px;
   color: var(--ink-soft);
-  margin: 0 0 16px;
+  margin: 0 0 12px;
+  line-height: 1.45;
+}
+
+.comeco-page .comeco-treino-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .comeco-page .comeco-passo {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 10px 12px;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.comeco-page .comeco-passo + .comeco-passo {
+  margin-top: 2px;
+}
+
+.comeco-page .comeco-passo-rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding-top: 2px;
+}
+
+.comeco-page .comeco-passo:not(:last-child) .comeco-passo-rail::after {
+  content: '';
+  position: absolute;
+  top: 36px;
+  bottom: -4px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--treino-accent) 28%, var(--line));
+}
+
+.comeco-page .comeco-passo-marker {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 36px;
+}
+
+.comeco-page .comeco-passo-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--treino-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  box-shadow: 0 0 0 3px var(--paper);
+}
+
+.comeco-page .comeco-passo-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--treino-accent-deep);
+  opacity: 0.85;
+}
+
+.comeco-page .comeco-passo-body {
   background: var(--white);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 18px 20px;
-  margin-bottom: 12px;
+  border-left: 3px solid var(--treino-accent);
+  border-radius: 10px;
+  padding: 10px 12px 10px 14px;
+  margin-bottom: 8px;
 }
 
 .comeco-page .comeco-passo h4 {
-  font-size: 16px;
+  font-size: 14.5px;
   font-weight: 700;
-  margin: 0 0 10px;
+  margin: 0 0 6px;
+  line-height: 1.3;
+  color: var(--ink);
 }
 
 .comeco-page .comeco-passo ul {
   margin: 0;
-  padding-left: 1.15rem;
+  padding-left: 1.05rem;
   color: var(--ink-soft);
-  font-size: 14.5px;
+  font-size: 13.5px;
+  line-height: 1.4;
 }
 
 .comeco-page .comeco-passo li {
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 
 .comeco-page .comeco-passo li:last-child {
@@ -179,16 +297,211 @@
   background: var(--verde-soft);
 }
 
-.comeco-page #treinamentos,
-.comeco-page #novidades,
-.comeco-page #acessos,
-.comeco-page #comercial {
-  scroll-margin-top: 24px;
+.comeco-page .eco-closing .cta {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.comeco-page .eco-closing .comeco-btn-ghost {
+  color: var(--paper);
+  border-color: rgba(250, 247, 242, 0.35);
+  background: transparent;
+}
+
+.comeco-page .eco-closing .comeco-btn-ghost:hover {
+  background: rgba(250, 247, 242, 0.1);
+  border-color: rgba(250, 247, 242, 0.55);
+  color: var(--paper);
+}
+
+.comeco-page {
+  --bordo: #7a2331;
+  --bordo-deep: #4e1620;
+  --bordo-soft: #f4e6e8;
+}
+
+.comeco-page .eco-hero h1 em {
+  background: linear-gradient(90deg, var(--bordo), #6c4e9e 55%, var(--verde));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.comeco-page .comeco-pos-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+  margin: 40px 0 56px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.comeco-page .comeco-pos-side {
+  background: var(--white);
+  padding: 34px 30px;
+  text-align: left;
+}
+
+.comeco-page .comeco-pos-side.comeco-pos-b2c {
+  background: linear-gradient(165deg, var(--bordo-soft), var(--white) 65%);
+}
+
+.comeco-page .comeco-pos-side.comeco-pos-b2b {
+  background: linear-gradient(195deg, var(--verde-soft), var(--white) 65%);
+}
+
+.comeco-page .comeco-pos-logo {
+  display: block;
+  height: 52px;
+  width: auto;
+  max-width: 180px;
+  margin-bottom: 16px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.comeco-page .comeco-pos-side.comeco-pos-b2b .comeco-pos-logo {
+  border: 2px solid var(--verde);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85);
+}
+
+.comeco-page .comeco-pos-kicker {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+}
+
+.comeco-page .comeco-pos-b2c .comeco-pos-kicker,
+.comeco-page .comeco-pos-b2c-tone .comeco-pos-kicker {
+  color: var(--bordo);
+}
+
+.comeco-page .comeco-pos-b2b .comeco-pos-kicker,
+.comeco-page .comeco-pos-b2b-tone .comeco-pos-kicker {
+  color: var(--verde-deep);
+}
+
+.comeco-page .comeco-pos-side h3 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  line-height: 1.2;
+}
+
+.comeco-page .comeco-pos-side p:last-child {
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.comeco-page .comeco-pos-sub {
+  margin-top: 48px;
+  padding: 36px 28px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+}
+
+.comeco-page .comeco-pos-b2c-tone {
+  background: linear-gradient(180deg, var(--paper) 0%, var(--bordo-soft) 55%, var(--paper) 100%);
+}
+
+.comeco-page .comeco-pos-b2b-tone {
+  background: linear-gradient(180deg, var(--paper) 0%, var(--verde-soft) 55%, var(--paper) 100%);
+}
+
+.comeco-page .comeco-pos-sub .head {
+  margin-bottom: 8px;
+}
+
+.comeco-page .comeco-pos-subhead {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-align: center;
+  margin: 40px 0 22px;
+}
+
+.comeco-page .comeco-pos-grid,
+.comeco-page .comeco-pos-diff-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.comeco-page .comeco-pos-card,
+.comeco-page .comeco-pos-diff {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px 22px;
+  text-align: left;
+}
+
+.comeco-page .comeco-pos-num {
+  font-family: var(--eco-font-serif), 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.comeco-page .comeco-pos-b2c-tone .comeco-pos-num {
+  color: var(--bordo);
+}
+
+.comeco-page .comeco-pos-b2b-tone .comeco-pos-num {
+  color: var(--verde-deep);
+}
+
+.comeco-page .comeco-pos-card h4,
+.comeco-page .comeco-pos-diff h4 {
+  font-size: 16.5px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.comeco-page .comeco-pos-card p,
+.comeco-page .comeco-pos-diff p {
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.comeco-page .comeco-pos-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 100px;
+  margin-bottom: 12px;
+}
+
+.comeco-page .comeco-pos-b2c-tone .comeco-pos-tag {
+  background: var(--bordo-soft);
+  color: var(--bordo-deep);
+}
+
+.comeco-page .comeco-pos-b2b-tone .comeco-pos-tag {
+  background: var(--verde-soft);
+  color: var(--verde-deep);
 }
 
 @media (max-width: 860px) {
   .comeco-page .comeco-fork,
-  .comeco-page .comeco-access {
+  .comeco-page .comeco-access,
+  .comeco-page .comeco-pos-split,
+  .comeco-page .comeco-pos-grid,
+  .comeco-page .comeco-pos-diff-row {
     grid-template-columns: 1fr;
   }
 }

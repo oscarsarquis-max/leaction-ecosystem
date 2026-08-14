@@ -43,8 +43,8 @@ export function CurationLogin({ onSuccess }: CurationLoginProps) {
     <div className="flex items-center justify-center px-2 py-8">
       <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50">
-            <Lock className="size-7 text-orange-500" aria-hidden />
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
+            <Lock className="size-7 text-emerald-500" aria-hidden />
           </div>
           <h1 className="text-2xl font-extrabold text-red-950">Curadoria Marketplace</h1>
           <p className="mt-2 text-sm text-red-950/70">Área administrativa — faça login para continuar.</p>
@@ -61,7 +61,7 @@ export function CurationLogin({ onSuccess }: CurationLoginProps) {
               autoComplete="username"
               value={user}
               onChange={(e) => setUser(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-red-950 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-red-950 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
               required
             />
           </div>
@@ -75,7 +75,7 @@ export function CurationLogin({ onSuccess }: CurationLoginProps) {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-red-950 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-red-950 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
               required
             />
           </div>

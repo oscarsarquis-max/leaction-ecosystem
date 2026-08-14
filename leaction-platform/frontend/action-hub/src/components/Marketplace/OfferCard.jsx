@@ -32,8 +32,8 @@ export function OfferCard({ offer }) {
   };
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-orange-300 hover:shadow-md">
-      <div className="relative aspect-square overflow-hidden bg-orange-50">
+    <article className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-emerald-300 hover:shadow-md">
+      <div className="relative aspect-square overflow-hidden bg-emerald-50">
         <MarketplaceProductImage
           src={offer.image || '/marketplace/placeholders/default.svg'}
           title={offer.title}
@@ -58,7 +58,7 @@ export function OfferCard({ offer }) {
               aria-label={inCart ? `Já no carrinho: ${offer.title}` : `Adicionar ao carrinho: ${offer.title}`}
               onClick={handleAdd}
               disabled={inCart}
-              className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-orange-200 bg-orange-50 px-2 py-1.5 text-xs font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-default disabled:opacity-70"
+              className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-default disabled:opacity-70"
             >
               <ShoppingCart className="size-3.5 shrink-0" aria-hidden />
               {inCart ? 'No carrinho' : 'Carrinho'}
@@ -67,7 +67,7 @@ export function OfferCard({ offer }) {
               type="button"
               aria-label={`Ver oferta: ${offer.title}`}
               onClick={openLink}
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-orange-700"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-emerald-700"
             >
               Abrir
               <ExternalLink className="size-3.5 shrink-0" aria-hidden />

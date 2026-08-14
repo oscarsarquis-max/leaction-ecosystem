@@ -4,17 +4,8 @@ import { PortalAccessColumn } from '@/components/public-portal/PortalAccessColum
 import { PortalEcosystemColumn } from '@/components/public-portal/PortalEcosystemColumn';
 import { PortalHeroColumn } from '@/components/public-portal/PortalHeroColumn';
 
-function focusLogin() {
-  const el = document.getElementById('actionhub-login');
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    const input = el.querySelector<HTMLInputElement>('input[type="email"]');
-    input?.focus();
-  }
-}
-
 /**
- * Home pública — Portal B2B Executivo.
+ * Home pública — ActionHub.
  * Mobile: Login → Centro → Ecossistema. Desktop: 3 colunas.
  */
 export function PublicPortalShell() {
@@ -32,7 +23,7 @@ export function PublicPortalShell() {
               ActionHub
             </p>
             <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-stone-500">
-              MudaEdu · Portal B2B Executivo
+              Plataforma Contextual de Serviços de TI
             </p>
           </div>
         </div>
@@ -47,7 +38,7 @@ export function PublicPortalShell() {
 
           {/* Centro */}
           <div className="order-2 lg:order-2 lg:col-span-6">
-            <PortalHeroColumn onDiscover={focusLogin} />
+            <PortalHeroColumn />
           </div>
 
           {/* Direita / Login — no mobile primeiro */}

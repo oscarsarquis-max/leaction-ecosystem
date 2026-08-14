@@ -265,7 +265,8 @@ export type CmsSistemaDestino =
   | 'actionhub'
   | 'inove4us'
   | 'paneldx'
-  | 'todos';
+  | 'todos'
+  | 'comercial_publico';
 export type CmsPostStatus = 'rascunho' | 'publicado';
 
 export type CmsPost = {

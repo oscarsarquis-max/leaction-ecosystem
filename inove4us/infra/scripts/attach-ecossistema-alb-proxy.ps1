@@ -1,4 +1,4 @@
-# Anexa no ALB do Inove: /ecossistema* /_next* /hub-api* → Hub EC2 :80
+# Anexa no ALB do Inove: /ecossistema* /comeco* /_next* /hub-api* → Hub EC2 :80
 # TLS continua no ALB (certificado inove4us.com.br). O app ECS do professor não é alterado.
 param(
     [string]$Region = 'us-east-2',
@@ -42,7 +42,7 @@ $condFile = Join-Path $env:TEMP 'inove-eco-alb-conditions.json'
   {
     "Field": "path-pattern",
     "PathPatternConfig": {
-      "Values": ["/ecossistema", "/ecossistema/*", "/_next/*", "/hub-api/*"]
+      "Values": ["/ecossistema", "/ecossistema/*", "/comeco", "/comeco/*", "/_next/*", "/hub-api/*"]
     }
   }
 ]
@@ -60,4 +60,4 @@ if ($ruleArn -and $ruleArn -ne 'None') {
     & $aws elbv2 create-rule --region $Region --listener-arn $HttpsListenerArn --priority 10 --conditions "file://$condFile" --actions "file://$actFile" | Out-Null
 }
 
-Write-Host 'OK ALB /ecossistema* → Hub'
+Write-Host 'OK ALB /ecossistema* /comeco* → Hub'

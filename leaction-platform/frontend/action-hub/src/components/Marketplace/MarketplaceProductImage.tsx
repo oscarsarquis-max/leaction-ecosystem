@@ -25,14 +25,14 @@ const LOAD_TIMEOUT_MS = 15000;
 function MarketplaceOrangeFallback({ title }: { title: string }) {
   return (
     <div
-      className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-orange-100 via-orange-50 to-amber-50 px-3 text-center"
+      className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-emerald-100 via-emerald-50 to-amber-50 px-3 text-center"
       role="img"
       aria-label={title || 'Produto sem imagem'}
     >
-      <span className="flex size-12 items-center justify-center rounded-2xl bg-orange-500/15 ring-1 ring-orange-300/60">
-        <ShoppingBag className="size-7 text-orange-500" aria-hidden />
+      <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-300/60">
+        <ShoppingBag className="size-7 text-emerald-500" aria-hidden />
       </span>
-      <span className="line-clamp-2 max-w-[90%] text-xs font-semibold text-orange-800/80">
+      <span className="line-clamp-2 max-w-[90%] text-xs font-semibold text-emerald-800/80">
         {title || 'Oferta'}
       </span>
     </div>
@@ -134,7 +134,7 @@ export function MarketplaceProductImage({
   }
 
   return (
-    <div className="relative h-full w-full min-h-[11rem] bg-orange-50/50">
+    <div className="relative h-full w-full min-h-[11rem] bg-emerald-50/50">
       {/* Skeleton neutro só enquanto carrega — nunca empilha o fallback sob a foto */}
       {!loaded ? (
         <div

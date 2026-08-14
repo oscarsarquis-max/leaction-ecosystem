@@ -5,7 +5,7 @@ import { PublicPortalShell } from '@/components/public-portal/PublicPortalShell'
 import { useHubSession } from '@/context/HubSessionContext';
 
 /**
- * Home pública (Portal B2B Executivo) ou Área Logada.
+ * Home pública (ActionHub) ou Área Logada.
  * Rotas /dashboard, admin, checkout e analytics não são alteradas.
  */
 export default function ActionHubPage() {

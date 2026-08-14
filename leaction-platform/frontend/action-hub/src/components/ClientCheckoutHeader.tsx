@@ -34,7 +34,7 @@ export function ClientCheckoutHeader({ brand, subtitle }: ClientCheckoutHeaderPr
             >
               {`Pagamento seguro · ${brand.displayName}`}
             </p>
-            <h1 className="truncate text-base font-bold tracking-tight text-orange-950 md:text-lg">
+            <h1 className="truncate text-base font-bold tracking-tight text-emerald-950 md:text-lg">
               {brand.checkoutTitle}
             </h1>
             {(subtitle || brand.productLabel) && (

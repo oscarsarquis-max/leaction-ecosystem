@@ -86,8 +86,8 @@ function OfferGrid({
         const inCart = cartItems.some((i) => String(i.id) === String(offer.id));
         return (
           <li key={`${keyPrefix}-${offer.id}`}>
-            <article className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-orange-200 hover:shadow-md">
-              <div className="relative h-44 w-full shrink-0 overflow-hidden bg-orange-50">
+            <article className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-emerald-200 hover:shadow-md">
+              <div className="relative h-44 w-full shrink-0 overflow-hidden bg-emerald-50">
                 <MarketplaceProductImage
                   src={offer.image || '/marketplace/placeholders/default.svg'}
                   title={offer.title}
@@ -121,7 +121,7 @@ function OfferGrid({
                         vendor: offer.vendor,
                       })
                     }
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-default disabled:opacity-70"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-default disabled:opacity-70"
                   >
                     <ShoppingCart className="size-3.5 shrink-0" aria-hidden />
                     {inCart ? 'No carrinho' : 'Adicionar ao carrinho'}
@@ -130,7 +130,7 @@ function OfferGrid({
                     type="button"
                     aria-label={`Ver oferta: ${offer.title}`}
                     onClick={(event) => openOfferLink(event, offer.link)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
                   >
                     Ver oferta
                     <ExternalLink className="size-3.5 shrink-0" aria-hidden />
@@ -207,7 +207,7 @@ export function ContextualVitrineSection() {
   return (
     <div className="mx-auto max-w-5xl space-y-10 md:space-y-12">
       <div className="mx-auto max-w-2xl text-center">
-        <p className="mb-1.5 text-sm font-semibold uppercase tracking-wider text-orange-600">
+        <p className="mb-1.5 text-sm font-semibold uppercase tracking-wider text-emerald-600">
           {isContextual ? 'Recomendação contextual' : 'Curadoria B2B'}
         </p>
         <h2
@@ -237,11 +237,11 @@ export function ContextualVitrineSection() {
 
       {!loading && isContextual && recommended.length > 0 ? (
         <section
-          className="rounded-2xl border border-orange-200/80 bg-white p-5 shadow-sm md:p-6"
+          className="rounded-2xl border border-emerald-200/80 bg-white p-5 shadow-sm md:p-6"
           aria-labelledby="vitrine-recomendadas"
         >
           <div className="mb-5 flex flex-wrap items-start gap-3">
-            <div className="rounded-xl bg-orange-50 p-2 text-orange-600">
+            <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
               <Target className="size-4" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
@@ -255,7 +255,7 @@ export function ContextualVitrineSection() {
                 Match por tags entre sprints priorizadas e o catálogo.
               </p>
               {payload?.sprints && payload.sprints.length > 0 ? (
-                <p className="mt-2 text-xs font-medium text-orange-700">
+                <p className="mt-2 text-xs font-medium text-emerald-700">
                   <Sparkles className="mr-1 inline size-3.5" aria-hidden />
                   {payload.sprints.length} sprint(s) ativas consideradas
                 </p>

@@ -74,8 +74,8 @@ function CartIconLink({
       onClick={onCartClick}
       className={
         isLight
-          ? 'relative inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-orange-800'
-          : 'relative inline-flex items-center justify-center rounded-lg p-2 text-orange-200 transition hover:bg-white/10 hover:text-white'
+          ? 'relative inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-emerald-800'
+          : 'relative inline-flex items-center justify-center rounded-lg p-2 text-emerald-200 transition hover:bg-white/10 hover:text-white'
       }
       aria-label={count > 0 ? `Carrinho com ${count} item(ns)` : 'Carrinho'}
     >
@@ -83,7 +83,7 @@ function CartIconLink({
         <ShoppingCart className="size-5 md:size-6" />
       </span>
       {count > 0 ? (
-        <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold leading-none text-white">
+        <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold leading-none text-white">
           {count > 99 ? '99+' : count}
         </span>
       ) : null}
@@ -187,8 +187,8 @@ export function HeaderAuthControls({ variant = 'dark' }: HeaderAuthControlsProps
           variant="icon"
           className={
             isLight
-              ? 'inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-orange-800'
-              : 'inline-flex items-center justify-center rounded-lg p-2 text-orange-200 transition hover:bg-white/10 hover:text-white'
+              ? 'inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-emerald-800'
+              : 'inline-flex items-center justify-center rounded-lg p-2 text-emerald-200 transition hover:bg-white/10 hover:text-white'
           }
         />
         <Link
@@ -196,7 +196,7 @@ export function HeaderAuthControls({ variant = 'dark' }: HeaderAuthControlsProps
           className={
             isLight
               ? 'hidden max-w-[10rem] truncate text-xs font-medium text-slate-600 transition hover:text-red-900 sm:inline md:max-w-[14rem] md:text-sm'
-              : 'hidden max-w-[10rem] truncate text-xs font-medium text-orange-100/90 transition hover:text-white sm:inline md:max-w-[14rem] md:text-sm'
+              : 'hidden max-w-[10rem] truncate text-xs font-medium text-emerald-100/90 transition hover:text-white sm:inline md:max-w-[14rem] md:text-sm'
           }
           title={user.email}
         >
@@ -208,7 +208,7 @@ export function HeaderAuthControls({ variant = 'dark' }: HeaderAuthControlsProps
           className={
             isLight
               ? 'inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-red-900'
-              : 'inline-flex items-center justify-center rounded-lg p-2 text-orange-200 transition hover:bg-white/10 hover:text-white'
+              : 'inline-flex items-center justify-center rounded-lg p-2 text-emerald-200 transition hover:bg-white/10 hover:text-white'
           }
           aria-label="Sair"
           title="Sair"
@@ -237,8 +237,8 @@ export function HeaderAuthControls({ variant = 'dark' }: HeaderAuthControlsProps
           onChange={(e) => setEmail(e.target.value)}
           className={
             isLight
-              ? 'h-9 w-[7.5rem] rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20 sm:w-36 md:w-44 md:text-sm'
-              : 'h-9 w-[7.5rem] rounded-lg border border-white/15 bg-white/10 px-2.5 text-xs text-white outline-none placeholder:text-orange-200/50 focus:border-orange-300/60 focus:bg-white/15 sm:w-36 md:w-44 md:text-sm'
+              ? 'h-9 w-[7.5rem] rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 sm:w-36 md:w-44 md:text-sm'
+              : 'h-9 w-[7.5rem] rounded-lg border border-white/15 bg-white/10 px-2.5 text-xs text-white outline-none placeholder:text-emerald-200/50 focus:border-emerald-300/60 focus:bg-white/15 sm:w-36 md:w-44 md:text-sm'
           }
           aria-label="E-mail"
         />
@@ -251,15 +251,15 @@ export function HeaderAuthControls({ variant = 'dark' }: HeaderAuthControlsProps
           onChange={(e) => setPassword(e.target.value)}
           className={
             isLight
-              ? 'h-9 w-[5.5rem] rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20 sm:w-24 md:w-28 md:text-sm'
-              : 'h-9 w-[5.5rem] rounded-lg border border-white/15 bg-white/10 px-2.5 text-xs text-white outline-none placeholder:text-orange-200/50 focus:border-orange-300/60 focus:bg-white/15 sm:w-24 md:w-28 md:text-sm'
+              ? 'h-9 w-[5.5rem] rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 sm:w-24 md:w-28 md:text-sm'
+              : 'h-9 w-[5.5rem] rounded-lg border border-white/15 bg-white/10 px-2.5 text-xs text-white outline-none placeholder:text-emerald-200/50 focus:border-emerald-300/60 focus:bg-white/15 sm:w-24 md:w-28 md:text-sm'
           }
           aria-label="Senha"
         />
         <button
           type="submit"
           disabled={busy}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500 text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Entrar"
           title="Entrar"
         >

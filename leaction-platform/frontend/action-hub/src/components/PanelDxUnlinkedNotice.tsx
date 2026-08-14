@@ -16,7 +16,7 @@ export function PanelDxUnlinkedNotice({
       </p>
       <Link
         href="/"
-        className="mt-8 inline-flex rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
+        className="mt-8 inline-flex rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600"
       >
         Voltar ao Action Hub
       </Link>

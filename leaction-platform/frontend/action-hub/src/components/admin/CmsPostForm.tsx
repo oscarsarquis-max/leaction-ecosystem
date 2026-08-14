@@ -78,7 +78,7 @@ export function CmsPostForm() {
   }
 
   const field =
-    'w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 outline-none ring-orange-400/30 transition focus:border-orange-400 focus:ring-2';
+    'w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-800 outline-none ring-emerald-400/30 transition focus:border-emerald-400 focus:ring-2';
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -99,7 +99,7 @@ export function CmsPostForm() {
         <button
           type="submit"
           disabled={saving || !titulo.trim()}
-          className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-orange-400 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-400 disabled:opacity-50"
         >
           {saving ? (
             <Loader2 className="size-4 animate-spin" aria-hidden />

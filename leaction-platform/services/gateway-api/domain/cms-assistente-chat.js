@@ -8,9 +8,22 @@ const DESTINOS = new Set([
   'inove4us',
   'paneldx',
   'todos',
+  'comercial_publico',
 ]);
 const STATUSES = new Set(['rascunho', 'publicado']);
 const ACTIONS_WHITELIST = new Set(['open_upgrade']);
+
+function isAllowedHref(href) {
+  const value = String(href || '').trim();
+  if (!value) return false;
+  if (value.startsWith('/')) return true;
+  try {
+    const u = new URL(value);
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
 
 function serializeRow(row) {
   if (!row) return null;
@@ -98,8 +111,10 @@ function validateTree(tree) {
 
       if (opt.href != null && String(opt.href).trim() !== '') {
         const href = String(opt.href).trim();
-        if (!href.startsWith('/')) {
-          errors.push(`${prefix}.href deve ser rota interna começando com '/' (recebido: '${href}')`);
+        if (!isAllowedHref(href)) {
+          errors.push(
+            `${prefix}.href deve ser rota interna '/' ou URL http(s) (recebido: '${href}')`
+          );
         }
       }
 

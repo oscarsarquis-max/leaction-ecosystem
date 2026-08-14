@@ -149,7 +149,7 @@ export function EntitlementBuilder({ rows, onChange }: Props) {
               value={row.key}
               onChange={(e) => updateRow(index, { key: e.target.value })}
               placeholder="chave (ex.: creditos)"
-              className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none ring-orange-200 focus:ring-2"
+              className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none ring-emerald-200 focus:ring-2"
             />
             <select
               value={row.kind}
@@ -158,7 +158,7 @@ export function EntitlementBuilder({ rows, onChange }: Props) {
                   kind: e.target.value as EntitlementRow['kind'],
                 })
               }
-              className="rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm outline-none ring-orange-200 focus:ring-2"
+              className="rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm outline-none ring-emerald-200 focus:ring-2"
             >
               <option value="number">Número</option>
               <option value="boolean">Sim/Não</option>
@@ -168,7 +168,7 @@ export function EntitlementBuilder({ rows, onChange }: Props) {
               <select
                 value={row.value === 'true' ? 'true' : 'false'}
                 onChange={(e) => updateRow(index, { value: e.target.value })}
-                className="rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm outline-none ring-orange-200 focus:ring-2"
+                className="rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm outline-none ring-emerald-200 focus:ring-2"
               >
                 <option value="true">sim</option>
                 <option value="false">não</option>
@@ -178,7 +178,7 @@ export function EntitlementBuilder({ rows, onChange }: Props) {
                 value={row.value}
                 onChange={(e) => updateRow(index, { value: e.target.value })}
                 placeholder={row.kind === 'number' ? '10' : 'valor'}
-                className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none ring-orange-200 focus:ring-2"
+                className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none ring-emerald-200 focus:ring-2"
               />
             )}
             <button

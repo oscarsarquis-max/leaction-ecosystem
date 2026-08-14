@@ -22,7 +22,7 @@ export function BackToHubHome({
         href="/"
         className={
           className ||
-          'inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-orange-800'
+          'inline-flex items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-emerald-800'
         }
         aria-label="Início — Action Hub"
         title="Início"
@@ -38,7 +38,7 @@ export function BackToHubHome({
         href="/"
         className={
           className ||
-          'inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 transition hover:border-orange-300 hover:text-orange-800'
+          'inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 transition hover:border-emerald-300 hover:text-emerald-800'
         }
       >
         <Home className="size-3.5" aria-hidden />
@@ -52,7 +52,7 @@ export function BackToHubHome({
       href="/"
       className={
         className ||
-        'mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-orange-800'
+        'mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-emerald-800'
       }
     >
       <ArrowLeft className="size-4" aria-hidden />

@@ -26,7 +26,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 bg-stone-50 px-4 text-center">
-        <span className="flex size-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 ring-1 ring-orange-200">
+        <span className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200">
           <Lock className="size-7" aria-hidden />
         </span>
         <div>
@@ -43,7 +43,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
               'Faça login como administrador para continuar.'
             )
           }
-          className="rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
+          className="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600"
         >
           Ir para login
         </button>
@@ -97,7 +97,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
               'Entre com e-mail e senha de administrador.'
             )
           }
-          className="rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
+          className="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600"
         >
           Fazer login completo
         </button>

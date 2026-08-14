@@ -253,7 +253,7 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
             onClick={() => setStatusFilter(f.id)}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
               statusFilter === f.id
-                ? 'bg-orange-600 text-white'
+                ? 'bg-emerald-600 text-white'
                 : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
             }`}
           >
@@ -265,7 +265,7 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
             type="checkbox"
             checked={includeTest}
             onChange={(e) => setIncludeTest(e.target.checked)}
-            className="size-3.5 accent-orange-600"
+            className="size-3.5 accent-emerald-600"
           />
           Incluir testes
         </label>
@@ -366,7 +366,7 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
                     {p.app_id || '—'} · {p.plan_sku || p.product_sku || '—'}
                   </p>
                   {p.latest_notice ? (
-                    <p className="mt-1 text-xs text-orange-800">Último aviso: {p.latest_notice}</p>
+                    <p className="mt-1 text-xs text-emerald-800">Último aviso: {p.latest_notice}</p>
                   ) : null}
                 </td>
                 <td className="px-3 py-3 tabular-nums font-semibold text-stone-900">
@@ -388,7 +388,7 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
                         );
                         setNoticeFeedback('');
                       }}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-900 ring-1 ring-orange-200 hover:bg-orange-100"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-900 ring-1 ring-emerald-200 hover:bg-emerald-100"
                     >
                       <MessageSquarePlus className="size-3.5" />
                       Avisar app
@@ -411,7 +411,7 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
               Será entregue via webhook (ex.: banner no inove4us).
             </p>
             <textarea
-              className="mt-3 w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+              className="mt-3 w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               rows={4}
               value={noticeText}
               onChange={(e) => setNoticeText(e.target.value)}
@@ -432,7 +432,7 @@ export function PaymentsOps({ initialAppId = '' }: PaymentsOpsProps) {
                 type="button"
                 disabled={noticeSending || noticeText.trim().length < 3}
                 onClick={() => void sendNotice(noticeOrderId)}
-                className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
               >
                 {noticeSending ? <Loader2 className="size-3.5 animate-spin" /> : null}
                 Enviar aviso

@@ -125,8 +125,8 @@ export function MarketplaceShelf({
         <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {offers.map((offer) => (
             <li key={`${category}-${offer.id}`}>
-              <article className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-orange-200 hover:shadow-md">
-                <div className="relative h-44 w-full shrink-0 overflow-hidden bg-orange-50">
+              <article className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-emerald-200 hover:shadow-md">
+                <div className="relative h-44 w-full shrink-0 overflow-hidden bg-emerald-50">
                   <MarketplaceProductImage
                     src={offer.image || '/marketplace/placeholders/default.svg'}
                     title={offer.title}
@@ -160,7 +160,7 @@ export function MarketplaceShelf({
                           vendor: offer.vendor,
                         })
                       }
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-default disabled:opacity-70"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-default disabled:opacity-70"
                     >
                       <ShoppingCart className="size-3.5 shrink-0" aria-hidden />
                       {cartItems.some((i) => String(i.id) === String(offer.id))
@@ -171,7 +171,7 @@ export function MarketplaceShelf({
                       type="button"
                       aria-label={`Ver oferta: ${offer.title}`}
                       onClick={(event) => openOfferLink(event, offer.link)}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
                     >
                       Ver oferta
                       <ExternalLink className="size-3.5 shrink-0" aria-hidden />

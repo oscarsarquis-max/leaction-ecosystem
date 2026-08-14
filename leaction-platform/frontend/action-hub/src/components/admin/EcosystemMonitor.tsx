@@ -154,7 +154,7 @@ function ServiceCard({
             onClick={() => onMitigate(action.service)}
             className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition disabled:opacity-60 ${
               down
-                ? 'bg-orange-500 text-white hover:bg-orange-400'
+                ? 'bg-emerald-500 text-white hover:bg-emerald-400'
                 : 'border border-stone-200 bg-stone-50 text-stone-800 hover:bg-stone-100'
             }`}
           >
@@ -367,7 +367,7 @@ export function EcosystemMonitor() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-orange-600">
+          <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-600">
             <Radio className="size-3.5" aria-hidden />
             Operações
           </p>

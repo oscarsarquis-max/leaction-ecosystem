@@ -1,10 +1,10 @@
-/** Mock do Portal B2B Executivo (home pública). */
+/** Conteúdo do hero da home pública — identidade /comeco (código, não CMS). */
 
 export const ECOSYSTEM_CARDS = [
   {
     id: 'cloud',
     title: 'Benefícios Cloud',
-    body: 'Condições exclusivas em infraestrutura para empresas da rede MudaEdu.',
+    body: 'Condições exclusivas em infraestrutura para empresas da rede ActionHub.',
     icon: 'cloud' as const,
   },
   {
@@ -33,9 +33,30 @@ export const SECTOR_HEADLINES = [
 ];
 
 export const INOVE_HERO = {
-  badge: 'Lançamento Oficial',
-  title: 'Inove4us: O motor da sua Transformação Digital',
-  subtitle:
-    'Acelere a maturidade da sua empresa com diagnósticos precisos e planos de ação direcionados.',
-  cta: 'Descubra o Inove4us',
+  eyebrow: 'ecossistema inove4us',
+  lead: 'Dois produtos, uma só verdade pedagógica. Professor e escola começam juntos — escolha o perfil no começo.',
+  cta: 'Ir para o começo',
+  href: '/comeco',
+  products: [
+    {
+      id: 'b2c',
+      kicker: '01 — B2C',
+      name: 'Inove4Us',
+      concept:
+        'A ferramenta do professor. Remove a carga burocrática das costas do docente para que ele foque na aula e nos alunos.',
+      logo: '/brands/inove4us.png',
+      logoAlt: 'Inove4Us — ferramenta do professor',
+      tone: 'b2c' as const,
+    },
+    {
+      id: 'b2b',
+      kicker: '02 — B2B',
+      name: 'inove4us school',
+      concept:
+        'A ferramenta da escola. Governança, compliance jurídico e visão de exceção — sem tirar autonomia do professor.',
+      logo: '/brands/inove4us-school.png',
+      logoAlt: 'inove4us school — ferramenta da escola',
+      tone: 'b2b' as const,
+    },
+  ],
 };

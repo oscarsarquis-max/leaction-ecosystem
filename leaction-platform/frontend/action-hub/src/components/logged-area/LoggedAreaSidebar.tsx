@@ -19,7 +19,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { useAdminGate } from '@/lib/require-admin';
-import { resolveInove4usUrl } from '@/components/logged-area/mock-data';
 
 export type LoggedAreaNavId = 'inicio' | 'marketplace';
 
@@ -40,13 +39,13 @@ function userServiceClass(active: boolean) {
 function adminLinkClass(active: boolean) {
   return `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
     active
-      ? 'bg-orange-500 text-white'
-      : 'text-white/90 hover:bg-white/10 hover:text-orange-300'
+      ? 'bg-emerald-500 text-white'
+      : 'text-white/90 hover:bg-white/10 hover:text-emerald-300'
   }`;
 }
 
 function adminIconClass(active: boolean) {
-  return `size-3.5 shrink-0 ${active ? 'text-white' : 'text-orange-400'}`;
+  return `size-3.5 shrink-0 ${active ? 'text-white' : 'text-emerald-400'}`;
 }
 
 function resolvePanelDxUrl() {
@@ -58,11 +57,12 @@ function resolvePanelDxUrl() {
 export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps) {
   const pathname = usePathname();
   const { isAdmin } = useAdminGate();
-  const inoveUrl = resolveInove4usUrl();
   const paneldxUrl = resolvePanelDxUrl();
 
   const pathActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
+
+  const comecoActive = pathActive('/comeco');
 
   const actionPayActive =
     pathActive('/dashboard') &&
@@ -107,25 +107,26 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
         </button>
 
         {/* Apps satélite — bloco superior */}
-        <div className="space-y-1 rounded-2xl border border-orange-100 bg-orange-50/60 p-2">
-          <p className="px-2 pb-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-orange-600/80">
+        <div className="space-y-1 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-2">
+          <p className="px-2 pb-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-600/80">
             Aplicações
           </p>
-          <a
-            href={inoveUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 rounded-xl bg-orange-500 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-orange-400"
+          <Link
+            href="/comeco"
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition ${
+              comecoActive
+                ? 'bg-emerald-600 text-white'
+                : 'bg-emerald-500 text-white hover:bg-emerald-400'
+            }`}
           >
             <Zap className="size-4 shrink-0" aria-hidden />
             <span className="flex-1">Inove4us</span>
-            <ExternalLink className="size-3.5 shrink-0 opacity-80" aria-hidden />
-          </a>
+          </Link>
           <a
             href={paneldxUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-orange-800 transition hover:bg-orange-100"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100"
           >
             <Rocket className="size-4 shrink-0" aria-hidden />
             <span className="flex-1">PanelDX</span>
@@ -135,7 +136,7 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
             href="https://chamelleon.com.br"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-orange-800 transition hover:bg-orange-100"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100"
           >
             <Rocket className="size-4 shrink-0" aria-hidden />
             <span className="flex-1">Chamelleon</span>
@@ -165,7 +166,7 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
             {!isAdmin ? (
               <li>
                 <Link href="/dashboard" className={userServiceClass(actionPayActive)}>
-                  <CreditCard className="size-3.5 shrink-0 text-orange-500" aria-hidden />
+                  <CreditCard className="size-3.5 shrink-0 text-emerald-500" aria-hidden />
                   Action-Pay
                 </Link>
               </li>
@@ -175,7 +176,7 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
                 href="/dashboard/crm/tracking"
                 className={userServiceClass(pathActive('/dashboard/crm/tracking'))}
               >
-                <Activity className="size-3.5 shrink-0 text-orange-500" aria-hidden />
+                <Activity className="size-3.5 shrink-0 text-emerald-500" aria-hidden />
                 Analytics
               </Link>
             </li>
@@ -185,7 +186,7 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
         {/* Só Administração no container preto */}
         {isAdmin ? (
           <div className="mt-3 rounded-2xl bg-stone-950 p-3 text-white shadow-sm ring-1 ring-stone-800">
-            <p className="px-1 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-orange-400">
+            <p className="px-1 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400">
               Administração
             </p>
             <ul className="space-y-0.5">

@@ -1,6 +1,6 @@
 /**
  * Vínculo público PanelDX ↔ Action Hub.
- * Mantém false enquanto o PanelDX público estiver desativado / substituído pelo mudaedu.
+ * Mantém false enquanto o PanelDX público estiver desativado.
  * Não reative sem pedido explícito.
  */
 export const PANEL_DX_HUB_LINKED = false;

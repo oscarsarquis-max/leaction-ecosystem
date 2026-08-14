@@ -164,7 +164,7 @@ export function InjectCreditsModal({
                 required
                 autoComplete="email"
                 placeholder="usuario@empresa.com"
-                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
+                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-emerald-200 focus:ring-2"
               />
             </label>
 
@@ -179,7 +179,7 @@ export function InjectCreditsModal({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 required
-                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
+                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-emerald-200 focus:ring-2"
               />
               <p className="text-[11px] text-stone-500">
                 Padrão de cortesia: 3 créditos (mesma cota freemium).
@@ -193,7 +193,7 @@ export function InjectCreditsModal({
               <select
                 value={reasonOption}
                 onChange={(e) => setReasonOption(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
+                className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-emerald-200 focus:ring-2"
               >
                 {REASON_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>
@@ -214,7 +214,7 @@ export function InjectCreditsModal({
                   onChange={(e) => setReasonOther(e.target.value)}
                   required
                   placeholder="Ex.: Compensação por indisponibilidade"
-                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
+                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-emerald-200 focus:ring-2"
                 />
               </label>
             ) : null}
@@ -230,7 +230,7 @@ export function InjectCreditsModal({
                   value={appId}
                   onChange={(e) => setAppId(e.target.value)}
                   required
-                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-orange-200 focus:ring-2"
+                  className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none ring-emerald-200 focus:ring-2"
                 >
                   {activeApps.length === 0 ? (
                     <option value="">Nenhuma app ativa</option>
@@ -273,7 +273,7 @@ export function InjectCreditsModal({
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-60"
             >
               {saving ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />

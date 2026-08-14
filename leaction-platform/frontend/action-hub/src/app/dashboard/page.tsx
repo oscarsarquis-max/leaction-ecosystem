@@ -790,7 +790,7 @@ function DashboardContent() {
     return (
       <LoggedAreaFrame activeNav={null}>
         <div className="flex min-h-[40vh] items-center justify-center text-sm text-stone-500">
-          <Loader2 className="mr-2 size-5 animate-spin text-orange-500" />
+          <Loader2 className="mr-2 size-5 animate-spin text-emerald-500" />
           Abrindo Action-Pay…
         </div>
       </LoggedAreaFrame>
@@ -939,22 +939,22 @@ function DashboardContent() {
     >
       <section className="mx-auto max-w-6xl px-4 py-10 pb-16 md:px-8">
         {!checkoutBrand && (
-        <div className="mb-8 rounded-3xl bg-gradient-to-r from-stone-950 via-stone-900 to-orange-700 p-8 text-white shadow-lg">
-          <p className="mb-2 flex items-center gap-2 text-sm/6 font-medium text-orange-200">
+        <div className="mb-8 rounded-3xl bg-gradient-to-r from-stone-950 via-stone-900 to-emerald-700 p-8 text-white shadow-lg">
+          <p className="mb-2 flex items-center gap-2 text-sm/6 font-medium text-emerald-200">
             <CreditCard size={16} />
             Action-Pay
           </p>
           <h1 className="text-3xl font-black tracking-tight md:text-4xl">
             Olá, {userName}
           </h1>
-          <p className="mt-3 max-w-2xl text-sm text-orange-100/90 md:text-base">
+          <p className="mt-3 max-w-2xl text-sm text-emerald-100/90 md:text-base">
             Seu histórico de pagamentos e pedidos. Contrate novos serviços pelo Marketplace
             quando quiser.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
               href="/?nav=marketplace"
-              className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-orange-400"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-400"
             >
               Contratar novos serviços
             </Link>
@@ -1144,7 +1144,7 @@ function DashboardContent() {
                           type="button"
                           onClick={() => void handleCheckoutPayment()}
                           disabled={loginStatus === 'paying'}
-                          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-orange-300 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-70"
+                          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
                         >
                           {loginStatus === 'paying' ? (
                             <>
@@ -1206,7 +1206,7 @@ function DashboardContent() {
             </h2>
             <Link
               href="/?nav=marketplace"
-              className="text-sm font-semibold text-orange-600 hover:text-orange-700"
+              className="text-sm font-semibold text-emerald-600 hover:text-emerald-700"
             >
               + Novo serviço
             </Link>
@@ -1216,7 +1216,7 @@ function DashboardContent() {
             !errorMessage &&
             dashboardUser &&
             !isProfileComplete(dashboardUser) && (
-            <div className="mb-8 rounded-2xl border border-orange-200/80 bg-orange-50/50 p-5 md:p-6">
+            <div className="mb-8 rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-5 md:p-6">
               <h3 className="text-base font-bold text-slate-900 md:text-lg">Conclusão de Perfil</h3>
               <p className="mt-1 text-sm text-slate-600">
                 Preencha os dados abaixo para concluir seu cadastro e liberar o acompanhamento completo dos seus pedidos.
@@ -1307,7 +1307,7 @@ function DashboardContent() {
               <p>Você ainda não possui pagamentos registrados.</p>
               <Link
                 href="/?nav=marketplace"
-                className="mt-4 inline-flex rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-orange-400"
+                className="mt-4 inline-flex rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-400"
               >
                 Contratar um serviço
               </Link>

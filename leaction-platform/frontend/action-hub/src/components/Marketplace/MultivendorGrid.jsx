@@ -72,7 +72,7 @@ export function MultivendorGrid({
       aria-labelledby={`shelf-${title.replace(/\s+/g, '-').toLowerCase()}`}
     >
       <div className="mb-6 max-w-3xl">
-        <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-orange-500">
+        <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-500">
           <Sparkles className="size-3.5" aria-hidden />
           Curadoria LeAction
         </p>

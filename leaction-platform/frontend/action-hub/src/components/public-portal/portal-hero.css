@@ -1,0 +1,202 @@
+/* Hero da home pública — identidade visual do /comeco (paper / verde / Fraunces). */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+
+.portal-hero {
+  --verde: #1f6f4a;
+  --verde-deep: #123f2a;
+  --verde-soft: #e3f1e9;
+  --bordo: #7a2331;
+  --bordo-soft: #f4e6e8;
+  --ink: #181512;
+  --ink-soft: #5b5551;
+  --paper: #faf7f2;
+  --paper-dim: #f1ece3;
+  --line: #e4ddd1;
+  --white: #ffffff;
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 28px 26px 22px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, var(--verde-soft), transparent 55%),
+    var(--paper);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  box-shadow: 0 18px 40px -28px rgba(18, 63, 42, 0.35);
+}
+
+.portal-hero__eyebrow {
+  margin: 0 0 16px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--verde-deep);
+}
+
+.portal-hero__title {
+  margin: 0 0 14px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(1.55rem, 2.4vw, 2.05rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.portal-hero__title em {
+  font-style: italic;
+  font-weight: 500;
+  background: linear-gradient(90deg, var(--bordo), #6c4e9e 55%, var(--verde));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.portal-hero__lead {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.portal-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.portal-hero__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-top: 0;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: var(--verde);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.portal-hero__cta:hover {
+  background: var(--verde-deep);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -16px rgba(18, 63, 42, 0.55);
+}
+
+.portal-hero__cta-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--verde-deep);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.portal-hero__cta-ghost:hover {
+  border-color: var(--verde);
+  background: var(--verde-soft);
+}
+
+.portal-hero__split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin-top: 24px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.portal-hero__side {
+  background: var(--white);
+  padding: 18px 16px;
+  text-align: left;
+}
+
+.portal-hero__side--b2c {
+  background: linear-gradient(165deg, var(--bordo-soft), var(--white) 70%);
+}
+
+.portal-hero__side--b2b {
+  background: linear-gradient(195deg, var(--verde-soft), var(--white) 70%);
+}
+
+.portal-hero__logo {
+  display: block;
+  height: 40px;
+  width: auto;
+  max-width: 140px;
+  margin-bottom: 12px;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.portal-hero__side--b2b .portal-hero__logo {
+  border: 2px solid var(--verde);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
+.portal-hero__kicker {
+  margin: 0 0 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.portal-hero__side--b2c .portal-hero__kicker {
+  color: var(--bordo);
+}
+
+.portal-hero__side--b2b .portal-hero__kicker {
+  color: var(--verde-deep);
+}
+
+.portal-hero__side h3 {
+  margin: 0 0 8px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.portal-hero__side p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.portal-hero__foot {
+  margin: 16px 0 0;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 720px) {
+  .portal-hero__split {
+    grid-template-columns: 1fr;
+  }
+}

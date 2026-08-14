@@ -174,7 +174,6 @@ export const BLOCO_D = {
   titulo: 'D · Se sobrar tempo (opcional)',
   cor: '#5b5551',
   itens: [
-    'Conhecer a página **/market**, com a apresentação do ecossistema (só se seu perfil for de administrador).',
     'Importar uma lista de alunos por planilha, se não fez no Bloco A.',
     'Adicionar uma segunda metodologia no Editor Pedagógico.',
   ],

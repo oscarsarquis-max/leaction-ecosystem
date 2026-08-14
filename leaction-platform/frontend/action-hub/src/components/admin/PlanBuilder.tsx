@@ -143,7 +143,7 @@ export function PlanBuilder({ initialAppId = '' }: Props) {
               setSuccess(null);
               setInjectOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-900 transition hover:bg-orange-100 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100 disabled:opacity-60"
           >
             <Gift className="size-4" aria-hidden />
             Injetar Créditos (Cortesia)
@@ -168,7 +168,7 @@ export function PlanBuilder({ initialAppId = '' }: Props) {
               setEditing(null);
               setModalOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-60"
           >
             <Plus className="size-4" aria-hidden />
             Novo plano
@@ -184,7 +184,7 @@ export function PlanBuilder({ initialAppId = '' }: Props) {
           <select
             value={appId}
             onChange={(e) => selectApp(e.target.value)}
-            className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-800 outline-none ring-orange-200 focus:ring-2"
+            className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-800 outline-none ring-emerald-200 focus:ring-2"
           >
             {apps.length === 0 ? (
               <option value="">Carregando apps…</option>
@@ -199,7 +199,7 @@ export function PlanBuilder({ initialAppId = '' }: Props) {
         </label>
         <Link
           href="/dashboard/admin/apps"
-          className="self-end text-sm font-medium text-orange-700 hover:underline"
+          className="self-end text-sm font-medium text-emerald-700 hover:underline"
         >
           Ver aplicações
         </Link>
@@ -238,7 +238,7 @@ export function PlanBuilder({ initialAppId = '' }: Props) {
               setEditing(null);
               setModalOpen(true);
             }}
-            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600"
           >
             <Plus className="size-4" aria-hidden />
             Criar plano
@@ -304,7 +304,7 @@ export function PlanBuilder({ initialAppId = '' }: Props) {
                   {plan.active ? 'Ativo' : 'Inativo'}
                 </span>
               </div>
-              <p className="mt-3 text-2xl font-bold tracking-tight text-orange-900">
+              <p className="mt-3 text-2xl font-bold tracking-tight text-emerald-900">
                 {formatBrl(plan.price, plan.currency)}
               </p>
               <p className="mt-1 text-xs font-medium text-stone-500">

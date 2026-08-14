@@ -17,10 +17,10 @@ export function PortalEcosystemColumn() {
           Ecossistema
         </p>
         <h2 className="mt-1 text-lg font-bold tracking-tight text-stone-900">
-          Hub de valor MudaEdu
+          Plataforma Contextual de Serviços de TI
         </h2>
         <p className="mt-1 text-sm leading-relaxed text-stone-500">
-          Você está entrando em uma rede executiva de transformação digital.
+          Você está entrando no hub ActionHub — serviços, marketplace e satélites do ecossistema.
         </p>
       </div>
 
@@ -31,7 +31,7 @@ export function PortalEcosystemColumn() {
             key={card.id}
             className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"
           >
-            <span className="flex size-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
               <Icon className="size-5" aria-hidden />
             </span>
             <h3 className="mt-3 text-sm font-bold text-stone-900">{card.title}</h3>

@@ -1,0 +1,185 @@
+/* Assistente comercial fixo — identidade /comeco (verde + Fraunces). */
+
+.comeco-asst-fab {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.7rem 1.15rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--verde, #1f6f4a);
+  color: #fff;
+  font-family: var(--eco-font-sans), 'Inter', system-ui, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 14px 32px -14px rgba(18, 63, 42, 0.65);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.comeco-asst-fab:hover {
+  background: var(--verde-deep, #123f2a);
+  transform: translateY(-2px);
+}
+
+.comeco-asst-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 1rem;
+  background: rgba(18, 63, 42, 0.28);
+}
+
+.comeco-asst-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 26rem);
+  max-height: min(88vh, 36rem);
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid var(--line, #e4ddd1);
+  background: linear-gradient(180deg, #e3f1e9 0%, #faf7f2 38%, #ffffff 100%);
+  box-shadow: 0 24px 48px -24px rgba(18, 63, 42, 0.45);
+  color: var(--ink, #181512);
+  font-family: var(--eco-font-sans), 'Inter', system-ui, sans-serif;
+}
+
+.comeco-asst-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.85rem;
+  border-bottom: 1px solid var(--line, #e4ddd1);
+}
+
+.comeco-asst-kicker {
+  margin: 0 0 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--verde-deep, #123f2a);
+}
+
+.comeco-asst-header h2 {
+  margin: 0;
+  font-family: var(--eco-font-serif), 'Fraunces', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.comeco-asst-tagline {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--ink-soft, #5b5551);
+}
+
+.comeco-asst-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--line, #e4ddd1);
+  border-radius: 0.75rem;
+  background: #fff;
+  color: var(--ink-soft, #5b5551);
+  cursor: pointer;
+}
+
+.comeco-asst-close:hover {
+  background: var(--verde-soft, #e3f1e9);
+  color: var(--verde-deep, #123f2a);
+}
+
+.comeco-asst-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.comeco-asst-muted,
+.comeco-asst-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--ink-soft, #5b5551);
+}
+
+.comeco-asst-hint {
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.75rem;
+  border: 1px solid #a8d0b8;
+  background: #e3f1e9;
+  color: #123f2a;
+}
+
+.comeco-asst-message {
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--line, #e4ddd1);
+  background: #fff;
+}
+
+.comeco-asst-message p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.comeco-asst-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem 1rem;
+  border-top: 1px solid var(--line, #e4ddd1);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.comeco-asst-option {
+  display: block;
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--line, #e4ddd1);
+  background: #fff;
+  color: var(--verde-deep, #123f2a);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.comeco-asst-option:hover {
+  border-color: var(--verde, #1f6f4a);
+  background: var(--verde-soft, #e3f1e9);
+}
+
+.comeco-asst-option-ghost {
+  font-weight: 500;
+  color: var(--ink-soft, #5b5551);
+  background: transparent;
+}
+
+@media (min-width: 640px) {
+  .comeco-asst-fab {
+    right: 1.75rem;
+    bottom: 1.75rem;
+  }
+
+  .comeco-asst-overlay {
+    padding: 1.5rem;
+  }
+}

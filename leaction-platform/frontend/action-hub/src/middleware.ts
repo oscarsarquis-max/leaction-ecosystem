@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const GK_BYPASS_COOKIE = 'ah_gk_bypass';
 
-const EXEMPT_EXACT = new Set(['/manutencao', '/api/health', '/favicon.ico']);
+const EXEMPT_EXACT = new Set([
+  '/manutencao',
+  '/api/health',
+  // Monitor do Hub (start-hub /dashboard/monitor) — mesmo com site trancado
+  '/api/sys/status',
+  '/favicon.ico',
+]);
 
 const EXEMPT_PREFIXES = [
   '/_next/',
