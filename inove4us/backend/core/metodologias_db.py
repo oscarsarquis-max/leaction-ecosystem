@@ -37,7 +37,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
     # QUADRANTE: ÁGEIS
     # ==========================================
     "agil_elevator_pitch": {
-        "nome": "Elevator Pitch",
+        "nome": "Pitch de elevador",
         "categoria": "ÁGEIS",
         "contexto_execucao": "sala",
         "cards": [
@@ -228,7 +228,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "criativa_narrativas_transmidia": {
-        "nome": "Narrativas Transmídia",
+        "nome": "Narrativa transmídia (estações)",
         "categoria": "CRI-ATIVAS",
         "contexto_execucao": "misto",
         "cards": [
@@ -273,7 +273,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "criativa_painel_diversidade": {
-        "nome": "Painel de Diversidade",
+        "nome": "Painel de perspectivas diversas",
         "categoria": "CRI-ATIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -360,7 +360,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "criativa_design_thinking_express": {
-        "nome": "Design Thinking Express",
+        "nome": "Design Thinking express",
         "categoria": "CRI-ATIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -415,7 +415,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
     # QUADRANTE: IMERSIVAS
     # ==========================================
     "imersiva_escape_room": {
-        "nome": "Escape Room Educacional",
+        "nome": "Escape room pedagógico",
         "categoria": "IMERSIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -458,7 +458,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "imersiva_roleplaying": {
-        "nome": "Roleplaying",
+        "nome": "Roleplay (dramatização de papéis)",
         "categoria": "IMERSIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -590,7 +590,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "imersiva_jogos_serios_3d": {
-        "nome": "Jogos Sérios 3D",
+        "nome": "Jogos sérios em ambiente 3D",
         "categoria": "IMERSIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -636,7 +636,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
     # QUADRANTE: ANALÍTICAS
     # ==========================================
     "analitica_learning_analytics": {
-        "nome": "Learning Analytics",
+        "nome": "Análise da Aprendizagem",
         "categoria": "ANALÍTICAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -679,7 +679,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "analitica_diagnostico_coletivo": {
-        "nome": "Diagnóstico Coletivo",
+        "nome": "Diagnóstico coletivo",
         "categoria": "ANALÍTICAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -722,7 +722,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "analitica_trilhas_adaptativas": {
-        "nome": "Trilhas de Aprendizagem Adaptativas",
+        "nome": "Trilhas adaptativas",
         "categoria": "ANALÍTICAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -768,7 +768,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
     # EXPANSÃO DIA A DIA — 24 mecânicas faltantes
     # ==========================================
     "criativa_abordagem_problematizadora": {
-        "nome": "Abordagem Problematizadora",
+        "nome": "Abordagem problematizadora",
         "categoria": "CRIATIVAS",
         "contexto_execucao": "misto",
         "cards": [
@@ -818,7 +818,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "criativa_aprendizagem_equipes": {
-        "nome": "Aprendizagem Baseada em Equipes",
+        "nome": "Aprendizagem baseada em equipes (TBL)",
         "categoria": "CRIATIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -869,7 +869,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "criativa_pbl_problemas": {
-        "nome": "Aprendizagem Baseada em Problemas",
+        "nome": "Aprendizagem baseada em problemas (PBL)",
         "categoria": "CRIATIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -919,7 +919,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "criativa_pbl_projetos": {
-        "nome": "Aprendizagem Baseada em Projetos",
+        "nome": "Aprendizagem baseada em projetos (PjBL)",
         "categoria": "CRIATIVAS",
         "contexto_execucao": "misto",
         "cards": [
@@ -970,7 +970,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "criativa_aprendizagem_maker": {
-        "nome": "Aprendizagem Maker",
+        "nome": "Aprendizagem maker",
         "categoria": "CRIATIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1019,7 +1019,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "criativa_coaching_reverso": {
-        "nome": "Coaching Reverso",
+        "nome": "Coaching reverso",
         "categoria": "CRIATIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1071,7 +1071,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "criativa_mapa_polaridades": {
-        "nome": "Mapa de Polaridades",
+        "nome": "Mapa de polaridades",
         "categoria": "CRIATIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1123,7 +1123,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "criativa_veja_pense_pergunte_crie": {
-        "nome": "Rotina Veja-Pense-Pergunte-Crie",
+        "nome": "Rotina Veja · Pense · Pergunte · Crie",
         "categoria": "CRIATIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1166,7 +1166,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "criativa_sala_invertida": {
-        "nome": "Sala de Aula Invertida",
+        "nome": "Sala de aula invertida",
         "categoria": "CRIATIVAS",
         "contexto_execucao": "misto",
         "cards": [
@@ -1319,7 +1319,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "agil_eduscrum": {
-        "nome": "EduScrum",
+        "nome": "Método inove4us",
         "categoria": "ÁGEIS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1371,7 +1371,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "agil_hackathons": {
-        "nome": "Hackathons",
+        "nome": "Hackathon",
         "categoria": "ÁGEIS",
         "contexto_execucao": "misto",
         "cards": [
@@ -1423,7 +1423,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "agil_mapeamento_mental": {
-        "nome": "Mapeamento Mental",
+        "nome": "Mapa mental",
         "categoria": "ÁGEIS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1475,7 +1475,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "agil_pedagogia_extrema": {
-        "nome": "Pedagogia Extrema",
+        "nome": "Dupla piloto e navegador",
         "categoria": "ÁGEIS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1527,7 +1527,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "imersiva_aprendizagem_jogos": {
-        "nome": "Aprendizagem Baseada em Jogos",
+        "nome": "Aprendizagem baseada em jogos",
         "categoria": "IMERSIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1578,7 +1578,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "imersiva_simulacoes": {
-        "nome": "Simulações",
+        "nome": "Simulação",
         "categoria": "IMERSIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1630,7 +1630,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "imersiva_vivencia_multissensorial": {
-        "nome": "Vivência Metodologia Imersiva Multissensorial",
+        "nome": "Vivência Multissensorial",
         "categoria": "IMERSIVAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1682,7 +1682,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "analitica_chatbots": {
-        "nome": "Chatbots",
+        "nome": "Chatbot pedagógico",
         "categoria": "ANALÍTICAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1734,7 +1734,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "analitica_dog_or_cat": {
-        "nome": "Dog or Cat: Reconhecimento de Imagens",
+        "nome": "Classificação de imagens (treino e teste)",
         "categoria": "ANALÍTICAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1786,7 +1786,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "analitica_extrato_participacao": {
-        "nome": "Extrato de Participação",
+        "nome": "Extrato de participação",
         "categoria": "ANALÍTICAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1838,7 +1838,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "analitica_ia_generativa": {
-        "nome": "Inteligência Artificial Generativa",
+        "nome": "IA generativa na aula",
         "categoria": "ANALÍTICAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1890,7 +1890,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "analitica_mapa_calor": {
-        "nome": "Mapa de Calor",
+        "nome": "Mapa de calor",
         "categoria": "ANALÍTICAS",
         "contexto_execucao": "sala",
         "cards": [
@@ -1942,7 +1942,7 @@ METODOLOGIAS_DB: dict[str, dict[str, Any]] = {
         ],
     },
     "analitica_rag": {
-        "nome": "RAG",
+        "nome": "Pesquisa com fontes confiáveis (RAG)",
         "categoria": "ANALÍTICAS",
         "contexto_execucao": "sala",
         "cards": [

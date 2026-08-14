@@ -1,7 +1,7 @@
 [
   {
     "codigo": "criativa_abordagem_problematizadora",
-    "nome": "Abordagem Problematizadora",
+    "nome": "Abordagem problematizadora",
     "categoria": "Indutivas",
     "descricao": "Conduzir a turma a observar um recorte da realidade e identificar um problema.",
     "passos_execucao": [
@@ -49,7 +49,7 @@
   },
   {
     "codigo": "aprendizagem_baseada_em_casos",
-    "nome": "Aprendizagem Baseada em Casos",
+    "nome": "Aprendizagem baseada em casos",
     "categoria": "Indutivas",
     "descricao": "Apresentar um caso humano concreto (não abstrato).",
     "passos_execucao": [
@@ -89,7 +89,7 @@
   },
   {
     "codigo": "criativa_aprendizagem_equipes",
-    "nome": "Aprendizagem Baseada em Equipes",
+    "nome": "Aprendizagem baseada em equipes (TBL)",
     "categoria": "Indutivas",
     "descricao": "Garantir preparo individual antes da aula.",
     "passos_execucao": [
@@ -137,7 +137,7 @@
   },
   {
     "codigo": "criativa_pbl_problemas",
-    "nome": "Aprendizagem Baseada em Problemas",
+    "nome": "Aprendizagem baseada em problemas (PBL)",
     "categoria": "Indutivas",
     "descricao": "Apresentar um caso complexo sem solução óbvia.",
     "passos_execucao": [
@@ -185,7 +185,7 @@
   },
   {
     "codigo": "criativa_pbl_projetos",
-    "nome": "Aprendizagem Baseada em Projetos",
+    "nome": "Aprendizagem baseada em projetos (PjBL)",
     "categoria": "Indutivas",
     "descricao": "Apresentar um desafio engajador que exige produto ou solução final.",
     "passos_execucao": [
@@ -233,7 +233,7 @@
   },
   {
     "codigo": "criativa_aprendizagem_maker",
-    "nome": "Aprendizagem Maker",
+    "nome": "Aprendizagem maker",
     "categoria": "Indutivas",
     "descricao": "Definir o artefato a construir e sua finalidade.",
     "passos_execucao": [
@@ -281,7 +281,7 @@
   },
   {
     "codigo": "criativa_coaching_reverso",
-    "nome": "Coaching Reverso",
+    "nome": "Coaching reverso",
     "categoria": "Indutivas",
     "descricao": "Selecionar tema em que os alunos têm maior fluência.",
     "passos_execucao": [
@@ -329,7 +329,7 @@
   },
   {
     "codigo": "criativa_design_thinking_express",
-    "nome": "Design Thinking",
+    "nome": "Design Thinking express",
     "categoria": "Indutivas",
     "descricao": "Coletar dores reais em tempo curto.",
     "passos_execucao": [
@@ -377,7 +377,7 @@
   },
   {
     "codigo": "criativa_mapa_polaridades",
-    "nome": "Mapa de Polaridades",
+    "nome": "Mapa de polaridades",
     "categoria": "Indutivas",
     "descricao": "Escolher um conflito com duas forças complementares.",
     "passos_execucao": [
@@ -425,7 +425,7 @@
   },
   {
     "codigo": "criativa_narrativas_transmidia",
-    "nome": "Narrativas Transmídia em Rotação por Estações",
+    "nome": "Narrativa transmídia (estações)",
     "categoria": "Indutivas",
     "descricao": "Definir o mundo da história e o problema central a ser contado.",
     "passos_execucao": [
@@ -465,7 +465,7 @@
   },
   {
     "codigo": "criativa_painel_diversidade",
-    "nome": "Painel da Diversidade de Perspectivas",
+    "nome": "Painel de perspectivas diversas",
     "categoria": "Indutivas",
     "descricao": "Tornar visíveis os pontos de vista presentes (e ausentes) na turma.",
     "passos_execucao": [
@@ -505,7 +505,7 @@
   },
   {
     "codigo": "criativa_veja_pense_pergunte_crie",
-    "nome": "Rotina Veja-Pense-Pergunte-Crie",
+    "nome": "Rotina Veja · Pense · Pergunte · Crie",
     "categoria": "Indutivas",
     "descricao": "Listar fatos literais do estímulo, sem julgamentos.",
     "passos_execucao": [
@@ -545,7 +545,7 @@
   },
   {
     "codigo": "criativa_sala_invertida",
-    "nome": "Sala de Aula Invertida",
+    "nome": "Sala de aula invertida",
     "categoria": "Indutivas",
     "descricao": "Disponibilizar conteúdo expositivo antes da aula.",
     "passos_execucao": [
@@ -689,7 +689,7 @@
   },
   {
     "codigo": "agil_elevator_pitch",
-    "nome": "Discurso de Elevador",
+    "nome": "Pitch de elevador",
     "categoria": "Agilidade",
     "descricao": "Alinhar os 4 pilares do Pitch: Gancho, Problema, Solução e Pedido.",
     "passos_execucao": [
@@ -777,7 +777,7 @@
   },
   {
     "codigo": "agil_hackathons",
-    "nome": "Hackathons",
+    "nome": "Hackathon",
     "categoria": "Agilidade",
     "descricao": "Apresentar problema urgente com prazo estrito.",
     "passos_execucao": [
@@ -825,7 +825,7 @@
   },
   {
     "codigo": "agil_mapeamento_mental",
-    "nome": "Mapeamento mental",
+    "nome": "Mapa mental",
     "categoria": "Agilidade",
     "descricao": "Colocar o tema central no meio da página.",
     "passos_execucao": [
@@ -953,7 +953,7 @@
   },
   {
     "codigo": "agil_pedagogia_extrema",
-    "nome": "Pedagogia Extrema",
+    "nome": "Dupla piloto e navegador",
     "categoria": "Agilidade",
     "descricao": "Um executa (piloto) e o outro revisa (navegador).",
     "passos_execucao": [
@@ -1001,7 +1001,7 @@
   },
   {
     "codigo": "imersiva_aprendizagem_jogos",
-    "nome": "Aprendizagem Baseada em Jogos",
+    "nome": "Aprendizagem baseada em jogos",
     "categoria": "Contextuais",
     "descricao": "Escolher jogo cuja mecânica simule o conteúdo.",
     "passos_execucao": [
@@ -1049,7 +1049,7 @@
   },
   {
     "codigo": "imersiva_escape_room",
-    "nome": "Escape Room",
+    "nome": "Escape room pedagógico",
     "categoria": "Contextuais",
     "descricao": "Engajar a turma com uma missão em que são protagonistas.",
     "passos_execucao": [
@@ -1089,7 +1089,7 @@
   },
   {
     "codigo": "gamificacao_de_conteudo",
-    "nome": "Gamificação de Conteúdo",
+    "nome": "Gamificação de conteúdo",
     "categoria": "Contextuais",
     "descricao": "Tornar explícitos objetivos, XP, vidas e condições de vitória.",
     "passos_execucao": [
@@ -1129,7 +1129,7 @@
   },
   {
     "codigo": "gamificacao_estrutural",
-    "nome": "Gamificação Estrutural",
+    "nome": "Gamificação estrutural",
     "categoria": "Contextuais",
     "descricao": "Tornar explícitos objetivos, XP, vidas e condições de vitória.",
     "passos_execucao": [
@@ -1169,7 +1169,7 @@
   },
   {
     "codigo": "imersiva_jogos_serios_3d",
-    "nome": "Jogos Sérios com Blocos 3D",
+    "nome": "Jogos sérios em ambiente 3D",
     "categoria": "Contextuais",
     "descricao": "Alinhar objetivo de aprendizagem e regras de uso do ambiente 3D.",
     "passos_execucao": [
@@ -1209,7 +1209,7 @@
   },
   {
     "codigo": "imersiva_roleplaying",
-    "nome": "Roleplay",
+    "nome": "Roleplay (dramatização de papéis)",
     "categoria": "Contextuais",
     "descricao": "Distribuir papéis com objetivos conflitantes e claros.",
     "passos_execucao": [
@@ -1249,7 +1249,7 @@
   },
   {
     "codigo": "imersiva_simulacoes",
-    "nome": "Simulações",
+    "nome": "Simulação",
     "categoria": "Contextuais",
     "descricao": "Criar ambiente fictício ou histórico rico em detalhes.",
     "passos_execucao": [
@@ -1297,7 +1297,7 @@
   },
   {
     "codigo": "imersiva_vivencia_multissensorial",
-    "nome": "Vivência Metodologia imersiva Multissensorial",
+    "nome": "Vivência Multissensorial",
     "categoria": "Contextuais",
     "descricao": "Preparar estímulos intencionais no espaço físico.",
     "passos_execucao": [
@@ -1345,7 +1345,7 @@
   },
   {
     "codigo": "analitica_chatbots",
-    "nome": "Chatbots",
+    "nome": "Chatbot pedagógico",
     "categoria": "Dedutivas",
     "descricao": "Definir a identidade do bot.",
     "passos_execucao": [
@@ -1393,7 +1393,7 @@
   },
   {
     "codigo": "analitica_diagnostico_coletivo",
-    "nome": "Diagnóstico Coletivo",
+    "nome": "Diagnóstico coletivo",
     "categoria": "Dedutivas",
     "descricao": "Externalizar sintomas sem buscar culpados.",
     "passos_execucao": [
@@ -1433,7 +1433,7 @@
   },
   {
     "codigo": "analitica_dog_or_cat",
-    "nome": "Dog or Cat: Reconhecimento de Imagens",
+    "nome": "Classificação de imagens (treino e teste)",
     "categoria": "Dedutivas",
     "descricao": "Reunir fotos em duas categorias para treino.",
     "passos_execucao": [
@@ -1481,7 +1481,7 @@
   },
   {
     "codigo": "analitica_extrato_participacao",
-    "nome": "Extrato de Participação",
+    "nome": "Extrato de participação",
     "categoria": "Dedutivas",
     "descricao": "Definir atitudes que geram pontos/moedas.",
     "passos_execucao": [
@@ -1529,7 +1529,7 @@
   },
   {
     "codigo": "analitica_ia_generativa",
-    "nome": "Inteligência Artificial Generativa",
+    "nome": "IA generativa na aula",
     "categoria": "Dedutivas",
     "descricao": "Ensinar comandos detalhados (Papel, Tarefa, Contexto, Formato).",
     "passos_execucao": [
@@ -1577,7 +1577,7 @@
   },
   {
     "codigo": "analitica_mapa_calor",
-    "nome": "Mapa de Calor",
+    "nome": "Mapa de calor",
     "categoria": "Dedutivas",
     "descricao": "Levantar dados quantitativos do contexto analisado.",
     "passos_execucao": [
@@ -1625,7 +1625,7 @@
   },
   {
     "codigo": "analitica_learning_analytics",
-    "nome": "Metodologia analítica da Aprendizagem",
+    "nome": "Análise da Aprendizagem",
     "categoria": "Dedutivas",
     "descricao": "Definir que decisão pedagógica os dados vão informar.",
     "passos_execucao": [
@@ -1665,7 +1665,7 @@
   },
   {
     "codigo": "analitica_rag",
-    "nome": "RAG",
+    "nome": "Pesquisa com fontes confiáveis (RAG)",
     "categoria": "Dedutivas",
     "descricao": "Separar repositório fechado de fontes confiáveis.",
     "passos_execucao": [
@@ -1713,7 +1713,7 @@
   },
   {
     "codigo": "analitica_trilhas_adaptativas",
-    "nome": "Trilhas de Aprendizagem",
+    "nome": "Trilhas adaptativas",
     "categoria": "Dedutivas",
     "descricao": "Posicionar cada aluno/grupo em um nível inicial sem estigma.",
     "passos_execucao": [

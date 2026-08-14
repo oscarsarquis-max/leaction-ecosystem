@@ -1,5 +1,5 @@
 -- Seed de curadoria para testar cards + estrelas (Editor Pedagógico).
--- Metodologia canônica: "Aprendizagem Baseada em Problemas" (PBL do catálogo).
+-- Metodologia canônica: "Aprendizagem baseada em problemas (PBL)" (catálogo 035).
 -- Instituição: DEV_INSTITUICAO_ID padrão.
 --
 -- Aplicar:
@@ -11,7 +11,7 @@ BEGIN;
 -- Remove seeds anteriores deste arquivo (idempotente por marca no JSON)
 DELETE FROM public.school_curadoria_metodologias
 WHERE instituicao_id = 'a1111111-1111-4111-8111-111111111111'::uuid
-  AND metodologia_nome = 'Aprendizagem Baseada em Problemas'
+  AND metodologia_nome = 'Aprendizagem baseada em problemas (PBL)'
   AND COALESCE(sugestao_professor_json->>'seed_tag', '') = 'seed_curadoria_teste';
 
 INSERT INTO public.school_curadoria_metodologias (
@@ -22,7 +22,7 @@ INSERT INTO public.school_curadoria_metodologias (
 ) VALUES
 (
     'a1111111-1111-4111-8111-111111111111'::uuid,
-    'Aprendizagem Baseada em Problemas',
+    'Aprendizagem baseada em problemas (PBL)',
     '{
       "seed_tag": "seed_curadoria_teste",
       "professor_nome": "Eveline Braga",
@@ -34,7 +34,7 @@ INSERT INTO public.school_curadoria_metodologias (
 ),
 (
     'a1111111-1111-4111-8111-111111111111'::uuid,
-    'Aprendizagem Baseada em Problemas',
+    'Aprendizagem baseada em problemas (PBL)',
     '{
       "seed_tag": "seed_curadoria_teste",
       "professor_nome": "Eveline Braga",
@@ -46,7 +46,7 @@ INSERT INTO public.school_curadoria_metodologias (
 ),
 (
     'a1111111-1111-4111-8111-111111111111'::uuid,
-    'Aprendizagem Baseada em Problemas',
+    'Aprendizagem baseada em problemas (PBL)',
     '{
       "seed_tag": "seed_curadoria_teste",
       "professor_nome": "Eveline Braga",
@@ -62,5 +62,5 @@ COMMIT;
 -- Verificação esperada: 3 linhas / 3 estrelas na listagem do Editor
 -- SELECT metodologia_nome, COUNT(*) FROM school_curadoria_metodologias
 -- WHERE instituicao_id = 'a1111111-1111-4111-8111-111111111111'
---   AND metodologia_nome = 'Aprendizagem Baseada em Problemas'
+--   AND metodologia_nome = 'Aprendizagem baseada em problemas (PBL)'
 -- GROUP BY 1;

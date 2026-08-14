@@ -111,7 +111,7 @@ BEGIN
             'seed_tag', 'smoke_grafo_12',
             'titulo', r.nome || ' · ' || upper(r.turno),
             'status', CASE WHEN v_status = 'aprovado' THEN 'concluido' ELSE 'em_execucao' END,
-            'metodologia_nome', 'Aprendizagem Baseada em Problemas',
+            'metodologia_nome', 'Aprendizagem baseada em problemas (PBL)',
             'turno', r.turno,
             'has_teacher_adaptations', (i IN (3, 7, 11)),
             'texto_sugestao', CASE

@@ -230,7 +230,7 @@ Só formato. NÃO são o problema. PROIBIDO copiar em causas/ganchos/hipóteses.
 <regras>
 1. A,B,C: IDs distintos e famílias distintas (Agilidade/Dedutivas/Contextuais/Indutivas). A=encaixe; B=outra família; C=híbrido. Se existir bloco metodologia_obrigatoria_do_professor, A.id_metodologia = esse ID.
 2. id_metodologia = ID literal de METODOLOGIAS DISPONÍVEIS. Nunca invente.
-3. Evite hábito Design Thinking / Diagnóstico Coletivo / Discurso de Elevador; varie pelo relato (exceto A obrigatório).
+3. Evite hábito Design Thinking express / Diagnóstico coletivo / Pitch de elevador; varie pelo relato (exceto A obrigatório).
 4. trecho_relato_usado: menor fragmento reconhecível do PROBLEMA (~40–90 chars); sem título/objetivo/contexto inteiro; sem âncoras.
 5. causas: 3 {{titulo, descricao}}; título curto; descricao = 1 frase causal (~70–120 chars), uma ideia, só do relato; sem justificativa/plano.
 6. gancho_adaptacao: 1 frase (~70–110 chars) com elemento do relato + como a dinâmica entra; sem explicar metodologia nem repetir a hipótese.

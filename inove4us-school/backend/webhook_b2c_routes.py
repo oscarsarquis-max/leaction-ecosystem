@@ -13,6 +13,7 @@ from typing import Any
 from flask import Blueprint, g, jsonify, request
 from psycopg2.extras import Json, RealDictCursor
 
+from catalogo_aliases import fetch_catalogo
 from db import get_conn
 from school_b2c_jwt import require_b2c_bridge_jwt
 
@@ -212,47 +213,21 @@ def _resolve_metodologia(
         if row:
             return str(row["id"]), str(row["nome"] or nome)
 
-    if nome:
-        # Catálogo seed usa origem='padrao' (não 'inove4us').
-        cur.execute(
-            """
-            SELECT id, nome FROM public.school_metodologias_catalogo
-            WHERE ativo IS TRUE
-              AND lower(nome) = lower(%s)
-              AND (
-                    COALESCE(origem, '') IN (
-                        'inove4us', 'padrao', 'referencia_inove4us', 'escola'
-                    )
-                 OR instituicao_origem_id = %s::uuid
-              )
-            ORDER BY CASE WHEN origem = 'escola' THEN 0 ELSE 1 END
-            LIMIT 1
-            """,
-            (nome, instituicao_id),
-        )
-        row = cur.fetchone()
-        if row:
-            return str(row["id"]), str(row["nome"] or nome)
-        # Fallback: match por codigo (ex.: agil_minute_paper)
-        codigo = str(
-            payload.get("metodologia_codigo")
-            or payload.get("metodologia_key")
-            or mesa.get("metodologia_codigo")
-            or mesa.get("metodologia_key")
-            or ""
-        ).strip()
-        if codigo:
-            cur.execute(
-                """
-                SELECT id, nome FROM public.school_metodologias_catalogo
-                WHERE ativo IS TRUE AND lower(codigo) = lower(%s)
-                LIMIT 1
-                """,
-                (codigo,),
-            )
-            row = cur.fetchone()
-            if row:
-                return str(row["id"]), str(row["nome"] or nome)
+    codigo = str(
+        payload.get("metodologia_codigo")
+        or payload.get("metodologia_key")
+        or mesa.get("metodologia_codigo")
+        or mesa.get("metodologia_key")
+        or ""
+    ).strip()
+    row = fetch_catalogo(
+        cur,
+        nome=nome,
+        codigo=codigo or None,
+        instituicao_id=instituicao_id,
+    )
+    if row:
+        return str(row["id"]), str(row["nome"] or nome)
 
     cur.execute(
         """

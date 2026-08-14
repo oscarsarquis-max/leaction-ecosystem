@@ -127,9 +127,9 @@ def _metodologia_nome_from_evento(evento: dict[str, Any]) -> str:
                 return val
     tipo = str(evento.get("tipo") or "").strip()
     if "eduscrum" in tipo.lower():
-        return "EduScrum"
+        return "Método inove4us"
     if "pbl" in tipo.lower():
-        return "PBL"
+        return "Aprendizagem baseada em problemas (PBL)"
     return tipo or "Metodologia"
 
 

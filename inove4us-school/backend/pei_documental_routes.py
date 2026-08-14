@@ -36,6 +36,7 @@ from psycopg2.extras import RealDictCursor
 
 from aee_canonico import condicao_valida, get_canonico, listar_condicoes
 from auth_guards import SESSION_KEY, require_zona, resolve_instituicao_id
+from catalogo_aliases import aliases_do_codigo, codigo_por_nome, fetch_catalogo
 from db import get_conn
 
 bp = Blueprint("pei_documental", __name__)
@@ -1260,25 +1261,37 @@ def list_aee_metodologias(aee_id: str):
                     COALESCE(cur.sugestoes_count, 0) AS sugestoes_count,
                     COALESCE(cur.pendentes_count, 0) AS pendentes_count
                 FROM public.school_metodologias_catalogo c
-                LEFT JOIN public.school_aee_metodologias_org org
-                    ON org.aee_matriz_id = %s
-                   AND LOWER(TRIM(org.metodologia_nome)) = LOWER(TRIM(c.nome))
+                LEFT JOIN LATERAL (
+                    SELECT org.passos_customizados, org.updated_at
+                    FROM public.school_aee_metodologias_org org
+                    JOIN public.school_metodologias_aliases a
+                      ON a.alias_norm = LOWER(TRIM(org.metodologia_nome))
+                    WHERE org.aee_matriz_id = %s
+                      AND a.codigo = c.codigo
+                    ORDER BY CASE
+                        WHEN LOWER(TRIM(org.metodologia_nome)) = LOWER(TRIM(c.nome))
+                        THEN 0 ELSE 1
+                    END
+                    LIMIT 1
+                ) org ON TRUE
                 LEFT JOIN public.school_metodologias_org vet
                     ON vet.metodologia_id_canonica = c.id
                    AND vet.instituicao_id = %s
                 LEFT JOIN (
                     SELECT
-                        LOWER(TRIM(metodologia_nome)) AS nome_key,
+                        a.codigo,
                         COUNT(*) FILTER (
                             WHERE status_analise IN ('incorporada', 'incorporado')
                         )::int AS sugestoes_count,
                         COUNT(*) FILTER (
                             WHERE status_analise IN ('pendente', 'em_analise')
                         )::int AS pendentes_count
-                    FROM public.school_curadoria_pei
-                    WHERE instituicao_id = %s
-                    GROUP BY LOWER(TRIM(metodologia_nome))
-                ) cur ON cur.nome_key = LOWER(TRIM(c.nome))
+                    FROM public.school_curadoria_pei cur
+                    JOIN public.school_metodologias_aliases a
+                      ON a.alias_norm = LOWER(TRIM(cur.metodologia_nome))
+                    WHERE cur.instituicao_id = %s
+                    GROUP BY a.codigo
+                ) cur ON cur.codigo = c.codigo
                 WHERE c.ativo = TRUE AND c.origem = 'padrao'
                 ORDER BY c.categoria, c.nome
                 """,
@@ -1349,16 +1362,7 @@ def salvar_aee_metodologia(aee_id: str, metodologia_nome: str):
             if not matriz:
                 return jsonify({"error": "Matriz AEE não encontrada"}), 404
 
-            cur.execute(
-                """
-                SELECT id, nome FROM public.school_metodologias_catalogo
-                WHERE LOWER(TRIM(nome)) = LOWER(TRIM(%s))
-                  AND ativo = TRUE
-                LIMIT 1
-                """,
-                (nome,),
-            )
-            cat = cur.fetchone()
+            cat = fetch_catalogo(cur, nome=nome, instituicao_id=inst)
             if not cat:
                 return jsonify({"error": "Metodologia não encontrada no catálogo"}), 404
             nome_canon = cat["nome"]
@@ -1421,15 +1425,17 @@ def adaptar_aee_metodologia_ia(aee_id: str, metodologia_nome: str):
             matriz = _get_aee_matriz(cur, aid, inst)
             if not matriz:
                 return jsonify({"error": "Matriz AEE não encontrada"}), 404
+            cat = fetch_catalogo(cur, nome=nome, instituicao_id=inst)
+            if not cat:
+                return jsonify({"error": "Metodologia não encontrada"}), 404
             cur.execute(
                 """
                 SELECT id, nome, passos_execucao
                 FROM public.school_metodologias_catalogo
-                WHERE LOWER(TRIM(nome)) = LOWER(TRIM(%s))
-                  AND ativo = TRUE
+                WHERE id = %s AND ativo = TRUE
                 LIMIT 1
                 """,
-                (nome,),
+                (str(cat["id"]),),
             )
             cat = cur.fetchone()
             if not cat:
@@ -1502,15 +1508,17 @@ def list_curadoria_pei():
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             if met:
+                codigo = codigo_por_nome(met)
+                nomes = [met, *aliases_do_codigo(codigo)]
                 cur.execute(
                     """
                     SELECT * FROM public.school_curadoria_pei
                     WHERE instituicao_id = %s
                       AND status_analise = 'pendente'
-                      AND LOWER(TRIM(metodologia_nome)) = LOWER(TRIM(%s))
+                      AND LOWER(TRIM(metodologia_nome)) = ANY(%s)
                     ORDER BY created_at DESC
                     """,
-                    (inst, met),
+                    (inst, [n.strip().lower() for n in nomes if str(n).strip()]),
                 )
             else:
                 cur.execute(

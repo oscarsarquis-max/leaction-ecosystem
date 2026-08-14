@@ -18,6 +18,7 @@ from flask import Blueprint, jsonify, request, session
 from psycopg2.extras import RealDictCursor
 
 from auth_guards import SESSION_KEY, require_zona, resolve_instituicao_id
+from catalogo_aliases import aliases_do_codigo, codigo_por_nome, fetch_catalogo
 from db import get_conn
 
 bp = Blueprint("curadoria_pedagogica", __name__)
@@ -193,16 +194,22 @@ def list_pendentes():
         _ensure_curadoria_schema(conn)
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             if metodologia_q:
+                codigo = codigo_por_nome(metodologia_q)
+                nomes = [metodologia_q, *aliases_do_codigo(codigo)]
                 cur.execute(
                     """
                     SELECT *
                     FROM public.school_curadoria_metodologias
                     WHERE instituicao_id = %s
                       AND status_analise = %s
-                      AND LOWER(TRIM(metodologia_nome)) = LOWER(TRIM(%s))
+                      AND LOWER(TRIM(metodologia_nome)) = ANY(%s)
                     ORDER BY created_at DESC
                     """,
-                    (inst, STATUS_PENDENTE, metodologia_q),
+                    (
+                        inst,
+                        STATUS_PENDENTE,
+                        [n.strip().lower() for n in nomes if str(n).strip()],
+                    ),
                 )
             else:
                 cur.execute(
@@ -273,26 +280,26 @@ def incorporar(item_id: str):
                 return jsonify({"error": "Sugestão sem texto do professor"}), 400
 
             met_nome = str(row["metodologia_nome"] or "").strip()
-            # Resolve metodologia no catálogo (match case-insensitive / slug).
-            cur.execute(
-                """
-                SELECT c.id AS metodologia_catalogo_id, c.nome, c.codigo,
-                       cfg.id AS config_id, cfg.diretriz_customizada,
-                       COALESCE(cfg.ativo_dia_a_dia, TRUE) AS ativo_dia_a_dia,
-                       COALESCE(cfg.ativo_desafio, TRUE) AS ativo_desafio
-                FROM public.school_metodologias_catalogo c
-                LEFT JOIN public.school_metodologia_config cfg
-                  ON cfg.metodologia_catalogo_id = c.id
-                 AND cfg.instituicao_id = %s
-                WHERE LOWER(TRIM(c.nome)) = LOWER(TRIM(%s))
-                   OR LOWER(REGEXP_REPLACE(c.nome, '[^a-z0-9]+', '', 'g'))
-                      = LOWER(REGEXP_REPLACE(%s, '[^a-z0-9]+', '', 'g'))
-                ORDER BY cfg.id NULLS LAST
-                LIMIT 1
-                """,
-                (inst, met_nome, met_nome),
-            )
-            met = cur.fetchone()
+            cat = fetch_catalogo(cur, nome=met_nome, instituicao_id=inst)
+            met = None
+            if cat:
+                cur.execute(
+                    """
+                    SELECT c.id AS metodologia_catalogo_id, c.nome, c.codigo,
+                           cfg.id AS config_id, cfg.diretriz_customizada,
+                           COALESCE(cfg.ativo_dia_a_dia, TRUE) AS ativo_dia_a_dia,
+                           COALESCE(cfg.ativo_desafio, TRUE) AS ativo_desafio
+                    FROM public.school_metodologias_catalogo c
+                    LEFT JOIN public.school_metodologia_config cfg
+                      ON cfg.metodologia_catalogo_id = c.id
+                     AND cfg.instituicao_id = %s
+                    WHERE c.id = %s
+                    ORDER BY cfg.id NULLS LAST
+                    LIMIT 1
+                    """,
+                    (inst, str(cat["id"])),
+                )
+                met = cur.fetchone()
             if not met:
                 return (
                     jsonify(
@@ -354,11 +361,12 @@ def incorporar(item_id: str):
                 """
                 UPDATE public.school_curadoria_metodologias
                 SET status_analise = %s,
+                    metodologia_nome = %s,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
                 RETURNING *
                 """,
-                (STATUS_INCORPORADO, str(cid)),
+                (STATUS_INCORPORADO, str(met["nome"] or met_nome), str(cid)),
             )
             updated = cur.fetchone()
 
@@ -383,8 +391,8 @@ def incorporar(item_id: str):
 
     dispatch = dispatch_methodology_override_updated(
         instituicao_id=inst,
-        metodologia_nome=met_nome,
-        metodologia_codigo=(cfg or {}).get("codigo") if cfg else None,
+        metodologia_nome=str((met or {}).get("nome") or met_nome),
+        metodologia_codigo=str((met or {}).get("codigo") or "") or None,
         diretriz_customizada=cfg["diretriz_customizada"] if cfg else nova_diretriz,
         disponivel_dia_a_dia=bool((cfg or {}).get("ativo_dia_a_dia", True)) if cfg else True,
         disponivel_desafio=bool((cfg or {}).get("ativo_desafio", True)) if cfg else True,

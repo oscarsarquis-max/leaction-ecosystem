@@ -257,18 +257,20 @@ LEFT JOIN public.school_metodologias_org org
    AND org.instituicao_id = %s
 LEFT JOIN (
     SELECT
-        LOWER(TRIM(metodologia_nome)) AS nome_key,
+        a.codigo,
         COUNT(*) FILTER (
             WHERE status_analise IN ('incorporada', 'incorporado')
         )::int AS sugestoes_count,
         COUNT(*) FILTER (
             WHERE status_analise IN ('pendente', 'em_analise')
         )::int AS pendentes_count
-    FROM public.school_curadoria_metodologias
-    WHERE instituicao_id = %s
-    GROUP BY LOWER(TRIM(metodologia_nome))
+    FROM public.school_curadoria_metodologias cur
+    JOIN public.school_metodologias_aliases a
+      ON a.alias_norm = LOWER(TRIM(cur.metodologia_nome))
+    WHERE cur.instituicao_id = %s
+    GROUP BY a.codigo
 ) cur
-    ON cur.nome_key = LOWER(TRIM(c.nome))
+    ON cur.codigo = c.codigo
 WHERE c.ativo = TRUE
   AND (
         c.origem = 'padrao'
@@ -307,18 +309,20 @@ LEFT JOIN public.school_metodologia_config cfg
    AND cfg.instituicao_id = %s
 LEFT JOIN (
     SELECT
-        LOWER(TRIM(metodologia_nome)) AS nome_key,
+        a.codigo,
         COUNT(*) FILTER (
             WHERE status_analise IN ('incorporada', 'incorporado')
         )::int AS sugestoes_count,
         COUNT(*) FILTER (
             WHERE status_analise IN ('pendente', 'em_analise')
         )::int AS pendentes_count
-    FROM public.school_curadoria_metodologias
-    WHERE instituicao_id = %s
-    GROUP BY LOWER(TRIM(metodologia_nome))
+    FROM public.school_curadoria_metodologias cur
+    JOIN public.school_metodologias_aliases a
+      ON a.alias_norm = LOWER(TRIM(cur.metodologia_nome))
+    WHERE cur.instituicao_id = %s
+    GROUP BY a.codigo
 ) cur
-    ON cur.nome_key = LOWER(TRIM(c.nome))
+    ON cur.codigo = c.codigo
 WHERE c.ativo = TRUE
   AND c.id = %s
   AND (
