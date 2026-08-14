@@ -24,6 +24,11 @@ export const NAV_ITEMS = [
   { to: '/equipe', label: 'Minha Equipe', zonas: [ZONAS.administrativo] },
 ]
 
+/** Rotas autenticadas fora do menu — qualquer zona ativa. */
+export const OPEN_AUTH_PATHS = [
+  { to: '/roteiro-guiado', zonas: [ZONAS.administrativo, ZONAS.operacional, ZONAS.pedagogico] },
+]
+
 export function normalizeZonas(zonas) {
   if (!Array.isArray(zonas)) return []
   return [...new Set(zonas.map((z) => String(z || '').trim()).filter(Boolean))]
@@ -46,6 +51,10 @@ export function firstAccessiblePath(userZonas) {
 
 export function pathAllowed(pathname, userZonas) {
   const path = pathname === '' ? '/' : pathname
+  const open = OPEN_AUTH_PATHS.find(
+    (n) => path === n.to || path.startsWith(`${n.to}/`),
+  )
+  if (open) return hasAnyZona(userZonas, open.zonas)
   const item = NAV_ITEMS.find((n) =>
     n.end ? path === n.to : path === n.to || path.startsWith(`${n.to}/`),
   )

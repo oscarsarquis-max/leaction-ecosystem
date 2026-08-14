@@ -1,0 +1,259 @@
+.roteiro-page {
+  --navy: #1e2a4a;
+  --verde: #1f6f4a;
+  --marrom: #8a5a2b;
+  --roxo: #4a3a7a;
+  --cinza: #5b5551;
+  --paper: #f4f2ec;
+  --line: #d8d4c8;
+  --ink: #222222;
+  max-width: 52rem;
+  margin: 0 auto;
+  color: var(--ink);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.roteiro-page h1,
+.roteiro-page h2,
+.roteiro-page h3,
+.roteiro-page .roteiro-serif {
+  font-family: Fraunces, Georgia, serif;
+}
+
+.roteiro-badge {
+  display: inline-block;
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.25rem;
+}
+
+.roteiro-page h1 {
+  font-size: 1.85rem;
+  color: var(--navy);
+  margin: 0.75rem 0 0.35rem;
+  font-weight: 600;
+}
+
+.roteiro-sub {
+  color: var(--cinza);
+  font-size: 0.95rem;
+  margin: 0 0 1rem;
+}
+
+.roteiro-save {
+  font-size: 0.75rem;
+  color: var(--cinza);
+  min-height: 1.1rem;
+}
+
+.roteiro-save.saving {
+  color: #6c4e9e;
+}
+
+.roteiro-save.saved {
+  color: var(--verde);
+}
+
+.roteiro-save.erro {
+  color: #9b1c1c;
+}
+
+.roteiro-info {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin: 1rem 0;
+}
+
+.roteiro-info th,
+.roteiro-info td {
+  border: 1px solid var(--line);
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.roteiro-info th {
+  width: 11rem;
+  background: var(--paper);
+  font-weight: 700;
+}
+
+.roteiro-tipo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.roteiro-tipo button {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--cinza);
+  cursor: pointer;
+}
+
+.roteiro-tipo button[aria-pressed='true'] {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
+.roteiro-bloco-head {
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.35rem;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.roteiro-passo {
+  margin: 1.1rem 0;
+}
+
+.roteiro-passo h3 {
+  font-size: 1.05rem;
+  color: var(--navy);
+  margin: 0 0 0.5rem;
+}
+
+.roteiro-itens {
+  margin: 0 0 0.6rem 1.4rem;
+  padding: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.roteiro-itens li {
+  margin: 0.3rem 0;
+}
+
+.roteiro-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+}
+
+.roteiro-obs {
+  width: 100%;
+  min-height: 4.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.875rem;
+  background: #fff;
+  resize: vertical;
+}
+
+.roteiro-obs-label {
+  display: block;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--cinza);
+  margin-bottom: 0.25rem;
+}
+
+.roteiro-checkpt {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  padding: 0.9rem 1rem;
+  margin: 1.25rem 0 1.75rem;
+}
+
+.roteiro-checkpt p {
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+}
+
+.roteiro-radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+}
+
+.roteiro-radios label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.roteiro-d ul {
+  margin: 0.5rem 0 1.5rem 1.2rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.roteiro-fb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.roteiro-fb-table th,
+.roteiro-fb-table td {
+  border: 1px solid var(--line);
+  padding: 0.65rem 0.75rem;
+  vertical-align: top;
+}
+
+.roteiro-fb-table th {
+  background: var(--paper);
+  text-align: left;
+}
+
+.roteiro-fb-table textarea {
+  width: 100%;
+  min-height: 3.2rem;
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.roteiro-hist {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.roteiro-hist h2 {
+  font-size: 1.15rem;
+  color: var(--navy);
+  margin: 0 0 0.75rem;
+}
+
+.roteiro-hist table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.roteiro-hist th,
+.roteiro-hist td {
+  border: 1px solid var(--line);
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+}
+
+.roteiro-hist th {
+  background: var(--paper);
+}

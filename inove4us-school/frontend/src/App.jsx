@@ -10,6 +10,7 @@ import PedagogicalEditor from './pages/PedagogicalEditor'
 import SecretariaOperacional from './pages/SecretariaOperacional'
 import Market from './pages/Market'
 import SemPermissao from './pages/SemPermissao'
+import RoteiroGuiado from './pages/RoteiroGuiado'
 
 function ZoneGate({ zonasRequired, children }) {
   const { user } = useAuth()
@@ -123,6 +124,7 @@ export default function App() {
                 </ZoneGate>
               }
             />
+            <Route path="roteiro-guiado" element={<RoteiroGuiado />} />
             <Route path="*" element={<SemPermissao />} />
           </Route>
         </Routes>

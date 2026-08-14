@@ -69,6 +69,7 @@ def create_app() -> Flask:
     from pei_documental_routes import bp as pei_documental_bp
     from tracking_routes import tracking_bp
     from avisos_api import bp as avisos_bp
+    from roteiro_api import bp as roteiro_bp
     from gatekeeper_routes import register_gatekeeper
 
     app.register_blueprint(metodologias_bp)
@@ -88,6 +89,7 @@ def create_app() -> Flask:
     app.register_blueprint(tracking_bp)
     # Quadro de Avisos → Mesa do Professor
     app.register_blueprint(avisos_bp)
+    app.register_blueprint(roteiro_bp)
     # S2S Outbox — sem sessão de gestor / RBAC
     app.register_blueprint(actionhub_webhook_bp)
     # Ponte interna School ← B2C (JWT HS256)
