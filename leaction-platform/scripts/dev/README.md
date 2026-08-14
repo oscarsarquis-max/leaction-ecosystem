@@ -7,8 +7,8 @@ Os três processos do Hub (Gateway, Marketplace, Next) precisam subir **na ordem
 Na raiz `leaction-platform`:
 
 ```powershell
-.\scripts\dev\start-hub.ps1          # sobe tudo + healthchecks
-.\scripts\dev\status-hub.ps1         # verifica Postgres / :4001 / :4012 / :4000
+.\scripts\dev\start-hub.ps1          # sobe tudo + healthchecks + monitor UI
+.\scripts\dev\status-hub.ps1         # verifica Postgres / :4001 / :4012 / :4000 + /api/sys/status
 .\scripts\dev\stop-hub.ps1           # mata órfãos nas portas do Hub
 .\scripts\dev\restart-hub-service.ps1 -Service marketplace  # reinício pontual
 .\scripts\dev\restart-hub-service.ps1 -Service gateway
@@ -19,6 +19,16 @@ Opções:
 ```powershell
 .\scripts\dev\start-hub.ps1 -SkipFrontend   # só API
 .\scripts\dev\start-hub.ps1 -ForceRestart   # limpa portas mesmo se já houver algo
+```
+
+Monitor (`/dashboard/monitor`): o start/status sempre validam `GET /api/sys/status`
+(HTTP 401 sem sessão = rota ok; 404 = cache Next — o start limpa `.next/dev` e sobe de novo).
+Para checar os 5 serviços **UP** (Action Pay, Planos, Marketplace, Postgres, FE),
+defina no `.env` do Hub:
+
+```env
+HUB_DEV_MONITOR_EMAIL=admin@actionhub.com.br
+HUB_DEV_MONITOR_PASSWORD=sua-senha-admin
 ```
 
 Logs: `.dev-logs/*.log`

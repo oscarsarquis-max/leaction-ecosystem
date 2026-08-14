@@ -52,5 +52,11 @@ if ($failed -gt 0) {
     exit 1
 }
 
-Write-HubOk "Todos os checks passaram."
+# Mesmo endpoint da UI /dashboard/monitor (rota + opcionalmente os 5 servicos UP)
+if (-not (Assert-HubMonitorStatus)) {
+    Write-HubErr "Checks basicos OK, mas o monitor falhou."
+    exit 1
+}
+
+Write-HubOk "Todos os checks passaram (inclui monitor)."
 exit 0

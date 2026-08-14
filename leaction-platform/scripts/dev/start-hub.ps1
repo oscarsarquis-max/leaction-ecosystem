@@ -102,38 +102,26 @@ Write-HubOk "Marketplace OK -> health + curation + offers + vitrine"
 
 # --- Frontend :4000 ---
 if (-not $SkipFrontend) {
-    $feDir = Join-Path $HubRoot 'frontend\action-hub'
-    if (-not (Test-Path (Join-Path $feDir 'node_modules'))) {
-        Write-HubWarn "Instalando deps do frontend..."
-        Push-Location $feDir
-        try { npm install } finally { Pop-Location }
-    }
-
     Write-HubInfo "Iniciando Action Hub FE :4000"
-    # npm.cmd + redirect via cmd evita hang do Start-Process com npm no Windows
-    Ensure-DevLogsDir
-    $feOut = Join-Path $script:DevLogs 'action-hub.out.log'
-    $feErr = Join-Path $script:DevLogs 'action-hub.err.log'
-    $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-    Add-Content -LiteralPath $feOut -Value "`n==== start $stamp ====`n"
-    Add-Content -LiteralPath $feErr -Value "`n==== start $stamp ====`n"
-    $feCmd = "npm run dev 1>>`"$feOut`" 2>>`"$feErr`""
-    $null = Start-Process -FilePath 'cmd.exe' `
-        -ArgumentList @('/c', $feCmd) `
-        -WorkingDirectory $feDir `
-        -WindowStyle Hidden
-    Write-HubInfo "action-hub -> logs .dev-logs/action-hub.*.log"
+    Start-ActionHubFrontendDev
 
     if (-not (Wait-HttpOk -Url 'http://127.0.0.1:4000/api/health' -TimeoutSec 90)) {
         Write-HubErr "Frontend nao subiu. Veja .dev-logs/action-hub.err.log"
         exit 1
     }
     Write-HubOk "Frontend OK -> http://localhost:4000"
+
+    # Mesmo criterio da UI /dashboard/monitor — detecta 404 por cache Turbopack e recupera.
+    if (-not (Assert-HubMonitorStatus -AllowHealFrontend)) {
+        Write-HubErr "Monitor do Hub falhou apos o start."
+        exit 1
+    }
 }
 
 Write-Host ""
 Write-HubOk "Hub pronto."
 Write-Host "  FE:          http://localhost:4000"
+Write-Host "  Monitor:     http://localhost:4000/dashboard/monitor"
 Write-Host "  Gateway:     http://127.0.0.1:4001/health"
 Write-Host "  Marketplace: http://127.0.0.1:4012/api/marketplace/health"
 Write-Host "  Status:      .\scripts\dev\status-hub.ps1"

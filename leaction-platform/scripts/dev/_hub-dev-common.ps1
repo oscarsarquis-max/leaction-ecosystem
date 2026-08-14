@@ -270,3 +270,179 @@ function Start-HubLoggedProcess {
     Write-HubInfo "$Name PID $($proc.Id) -> logs .dev-logs/$Name.*.log"
     return $proc
 }
+
+function Get-HttpStatusCode {
+    param(
+        [Parameter(Mandatory = $true)][string]$Url,
+        [int]$TimeoutSec = 8,
+        [hashtable]$Headers = @{}
+    )
+    try {
+        $resp = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec $TimeoutSec -Headers $Headers
+        return [int]$resp.StatusCode
+    } catch {
+        if ($_.Exception.Response) {
+            return [int]$_.Exception.Response.StatusCode
+        }
+        return $null
+    }
+}
+
+# Rota do EcosystemMonitor — 401 (sem token) ou 200 (com admin) = OK; 404 = cache Next quebrado.
+function Test-HubMonitorRouteReady {
+    param(
+        [string]$Url = 'http://127.0.0.1:4000/api/sys/status',
+        [int]$TimeoutSec = 45
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    $last = $null
+    while ((Get-Date) -lt $deadline) {
+        $code = Get-HttpStatusCode -Url $Url -TimeoutSec 5
+        $last = $code
+        if ($code -eq 401 -or $code -eq 200) { return $true }
+        if ($code -eq 404) { return $false }
+        Start-Sleep -Milliseconds 700
+    }
+    Write-HubErr "Timeout esperando rota do monitor $Url (ultimo HTTP $last)"
+    return $false
+}
+
+function Clear-ActionHubNextDevCache {
+    $feDir = Join-Path $HubRoot 'frontend\action-hub'
+    $devCache = Join-Path $feDir '.next\dev'
+    if (Test-Path -LiteralPath $devCache) {
+        Write-HubWarn "Limpando cache Turbopack quebrado: $devCache"
+        Remove-Item -LiteralPath $devCache -Recurse -Force -ErrorAction SilentlyContinue
+        return $true
+    }
+    return $false
+}
+
+function Start-ActionHubFrontendDev {
+    $feDir = Join-Path $HubRoot 'frontend\action-hub'
+    if (-not (Test-Path (Join-Path $feDir 'node_modules'))) {
+        Write-HubWarn "Instalando deps do frontend..."
+        Push-Location $feDir
+        try { npm install } finally { Pop-Location }
+    }
+    Ensure-DevLogsDir
+    $feOut = Join-Path $script:DevLogs 'action-hub.out.log'
+    $feErr = Join-Path $script:DevLogs 'action-hub.err.log'
+    $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    Add-Content -LiteralPath $feOut -Value "`n==== start $stamp ====`n"
+    Add-Content -LiteralPath $feErr -Value "`n==== start $stamp ====`n"
+    $feCmd = "npm run dev 1>>`"$feOut`" 2>>`"$feErr`""
+    $null = Start-Process -FilePath 'cmd.exe' `
+        -ArgumentList @('/c', $feCmd) `
+        -WorkingDirectory $feDir `
+        -WindowStyle Hidden
+    Write-HubInfo "action-hub -> logs .dev-logs/action-hub.*.log"
+}
+
+# Valida o mesmo endpoint do painel /dashboard/monitor.
+# - Sempre: rota /api/sys/status responde (nao 404).
+# - Com HUB_DEV_MONITOR_PASSWORD (ou HUB_ADMIN_DEV_PASSWORD): login + todos UP.
+function Assert-HubMonitorStatus {
+    param(
+        [switch]$AllowHealFrontend,
+        [switch]$StrictServicesUp
+    )
+
+    $statusUrl = 'http://127.0.0.1:4000/api/sys/status'
+    Write-HubInfo "Validando monitor (/api/sys/status)..."
+
+    $routeOk = Test-HubMonitorRouteReady -Url $statusUrl -TimeoutSec 30
+    if (-not $routeOk) {
+        $code = Get-HttpStatusCode -Url $statusUrl -TimeoutSec 5
+        if ($code -eq 404 -and $AllowHealFrontend) {
+            Write-HubWarn "Monitor retornou 404 — cache Next provavelmente corrompido. Recuperando FE..."
+            Stop-PortListeners -Ports @(4000)
+            Start-Sleep -Seconds 1
+            $null = Clear-ActionHubNextDevCache
+            Start-ActionHubFrontendDev
+            if (-not (Wait-HttpOk -Url 'http://127.0.0.1:4000/api/health' -TimeoutSec 90)) {
+                Write-HubErr "FE nao voltou apos limpar cache. Veja .dev-logs/action-hub.err.log"
+                return $false
+            }
+            $routeOk = Test-HubMonitorRouteReady -Url $statusUrl -TimeoutSec 45
+        }
+    }
+
+    if (-not $routeOk) {
+        $code = Get-HttpStatusCode -Url $statusUrl -TimeoutSec 5
+        Write-HubErr "Rota do monitor indisponivel (HTTP $code). UI em /dashboard/monitor ficara toda 'Fora'."
+        Write-HubErr "Tente: remover frontend/action-hub/.next/dev e .\scripts\dev\start-hub.ps1 -ForceRestart"
+        return $false
+    }
+    Write-HubOk "Rota do monitor OK (HTTP 401 sem sessao = esperado)"
+
+    $rootEnv = Join-Path $HubRoot '.env'
+    $feEnv = Join-Path $HubRoot 'frontend\action-hub\.env.local'
+    $email = (
+        $env:HUB_DEV_MONITOR_EMAIL,
+        (Get-DotEnvValue -Path $rootEnv -Key 'HUB_DEV_MONITOR_EMAIL'),
+        (Get-DotEnvValue -Path $feEnv -Key 'HUB_DEV_MONITOR_EMAIL'),
+        'admin@actionhub.com.br'
+    ) | Where-Object { $_ } | Select-Object -First 1
+    $password = (
+        $env:HUB_DEV_MONITOR_PASSWORD,
+        $env:HUB_ADMIN_DEV_PASSWORD,
+        (Get-DotEnvValue -Path $rootEnv -Key 'HUB_DEV_MONITOR_PASSWORD'),
+        (Get-DotEnvValue -Path $rootEnv -Key 'HUB_ADMIN_DEV_PASSWORD'),
+        (Get-DotEnvValue -Path $feEnv -Key 'HUB_DEV_MONITOR_PASSWORD')
+    ) | Where-Object { $_ } | Select-Object -First 1
+
+    if (-not $password) {
+        Write-HubWarn "Sem HUB_DEV_MONITOR_PASSWORD no .env — pulando probe autenticado dos 5 servicos do monitor."
+        Write-HubWarn "Defina no .env do Hub para checagem completa a cada start."
+        return -not $StrictServicesUp
+    }
+
+    try {
+        $loginBody = @{ email = $email; password = $password } | ConvertTo-Json -Compress
+        $login = Invoke-RestMethod -Uri 'http://127.0.0.1:4001/auth/login' `
+            -Method POST -ContentType 'application/json' -Body $loginBody -TimeoutSec 15
+        $token = $login.token
+        if (-not $token) { $token = $login.access_token }
+        if (-not $token) {
+            Write-HubErr "Login monitor falhou para $email (sem token)."
+            return $false
+        }
+    } catch {
+        Write-HubErr "Login monitor falhou ($email): $($_.Exception.Message)"
+        return $false
+    }
+
+    try {
+        $headers = @{ Authorization = "Bearer $token"; Accept = 'application/json' }
+        $services = Invoke-RestMethod -Uri $statusUrl -Headers $headers -TimeoutSec 90
+    } catch {
+        Write-HubErr "GET /api/sys/status autenticado falhou: $($_.Exception.Message)"
+        return $false
+    }
+
+    if (-not ($services -is [System.Array])) {
+        Write-HubErr "Resposta do monitor invalida (esperado array)."
+        return $false
+    }
+
+    $failed = 0
+    foreach ($svc in $services) {
+        $name = [string]$svc.name
+        $st = [string]$svc.status
+        $detail = [string]$svc.detail
+        if ($st -eq 'UP') {
+            Write-HubOk ("Monitor {0,-28} UP  {1}" -f $name, $detail)
+        } else {
+            Write-HubErr ("Monitor {0,-28} {1}  {2}" -f $name, $st, $detail)
+            $failed++
+        }
+    }
+
+    if ($failed -gt 0) {
+        Write-HubErr "$failed servico(s) do monitor nao estao UP."
+        return $false
+    }
+    Write-HubOk "Monitor completo: $($services.Count) servico(s) UP."
+    return $true
+}
