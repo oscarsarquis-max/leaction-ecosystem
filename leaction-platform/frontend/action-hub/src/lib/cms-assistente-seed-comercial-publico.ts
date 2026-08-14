@@ -16,7 +16,7 @@ export type AssistenteTreeNode = {
 
 export type AssistenteTree = {
   avatar_name: string;
-  avatar_tagline?: string;
+  avatar_tagline: string;
   avatar_candidates?: string[];
   root_id: string;
   nodes: Record<string, AssistenteTreeNode>;
