@@ -37,12 +37,13 @@ if ($existing -and $existing -ne 'None') {
 Write-Host "target $HubPrivateIp:80 registrado"
 
 $condFile = Join-Path $env:TEMP 'inove-eco-alb-conditions.json'
+# ALB limita a 5 valores por regra de path-pattern — usar wildcards.
 @'
 [
   {
     "Field": "path-pattern",
     "PathPatternConfig": {
-      "Values": ["/ecossistema", "/ecossistema/*", "/comeco", "/comeco/*", "/_next/*", "/hub-api/*"]
+      "Values": ["/ecossistema*", "/comeco*", "/_next/*", "/hub-api/*"]
     }
   }
 ]
@@ -60,4 +61,4 @@ if ($ruleArn -and $ruleArn -ne 'None') {
     & $aws elbv2 create-rule --region $Region --listener-arn $HttpsListenerArn --priority 10 --conditions "file://$condFile" --actions "file://$actFile" | Out-Null
 }
 
-Write-Host 'OK ALB /ecossistema* /comeco* → Hub'
+Write-Host 'OK ALB /ecossistema* /comeco* -> Hub'
