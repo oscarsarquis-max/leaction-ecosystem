@@ -29,9 +29,11 @@ def _text(value: Any) -> str:
 
 def _serialize_gestor(row: dict[str, Any], zonas: list[str]) -> dict:
     unidade = row.get("unidade_id")
+    nome_inst = row.get("instituicao_nome") or row.get("razao_social")
     return {
         "id": str(row["id"]),
         "instituicao_id": str(row["instituicao_id"]),
+        "instituicao_nome": (str(nome_inst).strip() if nome_inst else None) or None,
         "unidade_id": str(unidade) if unidade else None,
         "nome": row["nome"],
         "email": row["email"],
@@ -66,9 +68,10 @@ def login():
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT *
-                FROM public.school_gestores
-                WHERE lower(email) = %s AND ativo = TRUE
+                SELECT g.*, i.razao_social AS instituicao_nome
+                FROM public.school_gestores g
+                JOIN public.school_instituicoes i ON i.id = g.instituicao_id
+                WHERE lower(g.email) = %s AND g.ativo = TRUE
                 LIMIT 1
                 """,
                 (email,),
@@ -105,6 +108,34 @@ def me():
     if not user:
         # 200 (não 401): visita anônima é estado normal; evita ruído no DevTools.
         return jsonify({"authenticated": False, "user": None})
+    # Atualiza nome da instituição / zonas ativas sem forçar relogin
+    # (implicação RBAC é avaliada em runtime; isto só sincroniza o payload).
+    try:
+        gid = uuid.UUID(str(user.get("id") or ""))
+    except (ValueError, TypeError, AttributeError):
+        return jsonify({"authenticated": True, "user": user})
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT g.*, i.razao_social AS instituicao_nome
+                    FROM public.school_gestores g
+                    JOIN public.school_instituicoes i ON i.id = g.instituicao_id
+                    WHERE g.id = %s AND g.ativo = TRUE
+                    LIMIT 1
+                    """,
+                    (str(gid),),
+                )
+                row = cur.fetchone()
+                if not row:
+                    session.pop(SESSION_KEY, None)
+                    return jsonify({"authenticated": False, "user": None})
+                zonas = _load_zonas(cur, gid)
+                user = _serialize_gestor(row, zonas)
+                session[SESSION_KEY] = user
+    except Exception:
+        pass
     return jsonify({"authenticated": True, "user": user})
 
 

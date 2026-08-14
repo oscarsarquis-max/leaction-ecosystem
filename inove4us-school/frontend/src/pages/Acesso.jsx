@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { firstAccessiblePath } from '../lib/rbac'
 import { CrmEvents, trackEvent } from '../lib/tracking'
 
 const CMS_CACHE_KEY = 'school_acesso_cms_v5'
@@ -341,7 +342,9 @@ export default function Acesso() {
         url: '/acesso',
         idUsuario: body.user?.id ?? null,
       })
-      navigate(nextPath || '/', { replace: true })
+      const dest =
+        nextPath || firstAccessiblePath(body.user?.zonas || []) || '/'
+      navigate(dest, { replace: true })
     } catch (err) {
       setError(err.message || 'Erro ao entrar')
     } finally {

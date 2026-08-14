@@ -29,7 +29,7 @@ function navLinkClass({ isActive }) {
 }
 
 export default function AdminLayout({
-  escolaNome = 'Colégio Horizonte Inovador',
+  escolaNome = 'Instituição',
   gestorNome = 'Gestor',
   zonas = [],
   onSair,

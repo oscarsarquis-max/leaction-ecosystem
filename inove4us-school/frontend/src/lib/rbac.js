@@ -12,6 +12,20 @@ export const ZONA_LABEL = {
   pedagogico: 'Pedagógico',
 }
 
+/**
+ * administrativo → operacional + pedagógico (mesma regra do backend auth_guards).
+ * operacional ↛ pedagógico e vice-versa.
+ */
+const ZONA_IMPLIES = {
+  [ZONAS.administrativo]: new Set([
+    ZONAS.administrativo,
+    ZONAS.operacional,
+    ZONAS.pedagogico,
+  ]),
+  [ZONAS.operacional]: new Set([ZONAS.operacional]),
+  [ZONAS.pedagogico]: new Set([ZONAS.pedagogico]),
+}
+
 /** Itens de navegação (header horizontal): exige ao menos uma das zonas listadas. */
 export const NAV_ITEMS = [
   { to: '/', label: 'Radar Pedagógico', end: true, zonas: [ZONAS.pedagogico] },
@@ -34,8 +48,22 @@ export function normalizeZonas(zonas) {
   return [...new Set(zonas.map((z) => String(z || '').trim()).filter(Boolean))]
 }
 
+/** Zonas efetivas após implicação de administrativo. */
+export function effectiveZonas(userZonas) {
+  const have = new Set()
+  for (const z of normalizeZonas(userZonas)) {
+    const implied = ZONA_IMPLIES[z]
+    if (implied) {
+      for (const x of implied) have.add(x)
+    } else {
+      have.add(z)
+    }
+  }
+  return have
+}
+
 export function hasAnyZona(userZonas, required) {
-  const have = new Set(normalizeZonas(userZonas))
+  const have = effectiveZonas(userZonas)
   if (!required || required.length === 0) return have.size > 0
   return required.some((z) => have.has(z))
 }

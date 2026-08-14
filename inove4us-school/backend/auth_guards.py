@@ -18,10 +18,39 @@ ZONA_ADMINISTRATIVO = "administrativo"
 ZONA_OPERACIONAL = "operacional"
 ZONA_PEDAGOGICO = "pedagogico"
 
+# administrativo implica operacional + pedagógico (leitura e escrita).
+# operacional ↛ pedagógico e vice-versa — sem transitividade.
+_ZONA_IMPLIES: dict[str, frozenset[str]] = {
+    ZONA_ADMINISTRATIVO: frozenset(
+        {ZONA_ADMINISTRATIVO, ZONA_OPERACIONAL, ZONA_PEDAGOGICO}
+    ),
+    ZONA_OPERACIONAL: frozenset({ZONA_OPERACIONAL}),
+    ZONA_PEDAGOGICO: frozenset({ZONA_PEDAGOGICO}),
+}
+
 
 def current_gestor() -> dict[str, Any] | None:
     user = session.get(SESSION_KEY)
     return user if isinstance(user, dict) else None
+
+
+def effective_zonas(raw_zonas: Any) -> set[str]:
+    """Expande zonas gravadas com a implicação de administrativo."""
+    have: set[str] = set()
+    for z in raw_zonas or []:
+        key = str(z or "").strip()
+        if not key:
+            continue
+        have |= _ZONA_IMPLIES.get(key, frozenset({key}))
+    return have
+
+
+def zona_permite(raw_zonas: Any, *needed: str) -> bool:
+    """True se a sessão satisfaz ao menos uma zona requerida (com implicação)."""
+    req = {str(z).strip() for z in needed if z and str(z).strip()}
+    if not req:
+        return bool(effective_zonas(raw_zonas))
+    return bool(effective_zonas(raw_zonas).intersection(req))
 
 
 def require_gestor(view: Callable):
@@ -46,7 +75,10 @@ def require_gestor(view: Callable):
 
 
 def require_zona(*zonas_required: str):
-    """Exige sessão + ao menos uma das zonas listadas."""
+    """Exige sessão + ao menos uma das zonas listadas.
+
+    administrativo satisfaz operacional e pedagógico automaticamente.
+    """
 
     needed = tuple(z for z in zonas_required if z)
 
@@ -55,8 +87,8 @@ def require_zona(*zonas_required: str):
         @require_gestor
         def wrapped(*args, **kwargs):
             user = current_gestor() or {}
-            have = {str(z) for z in (user.get("zonas") or []) if z}
-            if needed and not have.intersection(needed):
+            raw = [str(z) for z in (user.get("zonas") or []) if z]
+            if needed and not zona_permite(raw, *needed):
                 labels = {
                     ZONA_ADMINISTRATIVO: "Administrativo",
                     ZONA_OPERACIONAL: "Operacional",
@@ -72,7 +104,7 @@ def require_zona(*zonas_required: str):
                             ),
                             "code": "FORBIDDEN_ZONA",
                             "zonas_requeridas": list(needed),
-                            "zonas_usuario": sorted(have),
+                            "zonas_usuario": sorted(set(raw)),
                         }
                     ),
                     403,

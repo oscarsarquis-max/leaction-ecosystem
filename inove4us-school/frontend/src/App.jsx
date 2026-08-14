@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'rea
 import AdminLayout from './layouts/AdminLayout'
 import CrmPageTracker from './components/CrmPageTracker'
 import { AuthProvider, useAuth } from './lib/auth'
-import { firstAccessiblePath, hasAnyZona, pathAllowed } from './lib/rbac'
+import { hasAnyZona, pathAllowed } from './lib/rbac'
 import Acesso from './pages/Acesso'
 import Dashboard from './pages/Dashboard'
 import TeamManagement from './pages/TeamManagement'
@@ -59,10 +59,12 @@ function ProtectedShell() {
   const gestorNome = user?.cargo
     ? `${user.nome} · ${user.cargo}`
     : user?.nome || 'Gestor'
+  const escolaNome =
+    user?.instituicao_nome || user?.razao_social || 'Instituição'
 
   return (
     <AdminLayout
-      escolaNome="Colégio Horizonte Inovador"
+      escolaNome={escolaNome}
       gestorNome={gestorNome}
       zonas={zonas}
       onSair={logout}
