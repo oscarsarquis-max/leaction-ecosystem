@@ -1,0 +1,194 @@
+/* Extensões da página /comeco — tokens e base vêm de ecossistema.css (.ecossistema-page). */
+
+.comeco-page .comeco-fork {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 40px;
+  text-align: left;
+}
+
+.comeco-page .comeco-fork-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 26px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+}
+
+.comeco-page .comeco-fork-card h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.comeco-page .comeco-fork-card p {
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  margin: 0;
+  flex: 1;
+}
+
+.comeco-page .comeco-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-family: var(--eco-font-sans), 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.comeco-page .comeco-btn:hover {
+  transform: translateY(-2px);
+}
+
+.comeco-page .comeco-btn-primary {
+  background: var(--verde);
+  color: var(--white);
+}
+
+.comeco-page .comeco-btn-primary:hover {
+  background: var(--verde-deep);
+  box-shadow: 0 12px 28px -16px rgba(18, 63, 42, 0.55);
+}
+
+.comeco-page .comeco-btn-ghost {
+  background: transparent;
+  color: var(--verde-deep);
+  border: 1px solid var(--line);
+}
+
+.comeco-page .comeco-btn-ghost:hover {
+  border-color: var(--verde);
+  background: var(--verde-soft);
+}
+
+.comeco-page .comeco-btn-wa {
+  background: #1f6f4a;
+  color: var(--white);
+  min-width: 240px;
+}
+
+.comeco-page .comeco-tabs {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.comeco-page .comeco-tab {
+  min-height: 42px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.comeco-page .comeco-tab[aria-selected='true'] {
+  background: var(--verde-deep);
+  border-color: var(--verde-deep);
+  color: var(--paper);
+}
+
+.comeco-page .comeco-treino-bloco {
+  margin-bottom: 28px;
+}
+
+.comeco-page .comeco-treino-bloco h3 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.comeco-page .comeco-treino-bloco .intro {
+  font-size: 15px;
+  color: var(--ink-soft);
+  margin: 0 0 16px;
+}
+
+.comeco-page .comeco-passo {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+}
+
+.comeco-page .comeco-passo h4 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+.comeco-page .comeco-passo ul {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--ink-soft);
+  font-size: 14.5px;
+}
+
+.comeco-page .comeco-passo li {
+  margin-bottom: 6px;
+}
+
+.comeco-page .comeco-passo li:last-child {
+  margin-bottom: 0;
+}
+
+.comeco-page .comeco-access {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.comeco-page .comeco-access a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 56px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  color: var(--verde-deep);
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none;
+}
+
+.comeco-page .comeco-access a:hover {
+  border-color: var(--verde);
+  background: var(--verde-soft);
+}
+
+.comeco-page #treinamentos,
+.comeco-page #novidades,
+.comeco-page #acessos,
+.comeco-page #comercial {
+  scroll-margin-top: 24px;
+}
+
+@media (max-width: 860px) {
+  .comeco-page .comeco-fork,
+  .comeco-page .comeco-access {
+    grid-template-columns: 1fr;
+  }
+}

@@ -45,6 +45,10 @@ function SiteHeaderInner() {
     return null;
   }
 
+  if (pathname === '/comeco' || pathname.startsWith('/comeco/')) {
+    return null;
+  }
+
   return <Header />;
 }
 
