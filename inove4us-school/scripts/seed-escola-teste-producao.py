@@ -4,9 +4,14 @@
 Idempotente por domínio/e-mail/order_id. Senhas de gestores só em stdout
 (bloco CREDENTIALS); não grava em arquivo.
 
+Fluxos reais reutilizados:
+  - apply_licenses_granted (LICENSES_GRANTED / school-starter-50)
+  - vínculo + TEACHER_INVITE (Minha Equipe)
+  - alocação + TEACHER_ALLOCATED (Secretaria → pending B2C até aceite)
+
 Uso (no host School, com .env de produção):
   cd /var/www/inove4us-school
-  PYTHONPATH=backend python3 scripts/seed-escola-teste-producao.py
+  PYTHONPATH=backend backend/.venv/bin/python scripts/seed-escola-teste-producao.py
 """
 from __future__ import annotations
 
@@ -29,7 +34,10 @@ load_dotenv(ROOT / ".env", override=False)
 from psycopg2.extras import RealDictCursor  # noqa: E402
 from werkzeug.security import generate_password_hash  # noqa: E402
 
-from b2c_integration_service import dispatch_event_to_b2c  # noqa: E402
+from b2c_integration_service import (  # noqa: E402
+    dispatch_event_to_b2c,
+    dispatch_teacher_allocated,
+)
 from db import get_conn  # noqa: E402
 from provision_selfserve import (  # noqa: E402
     apply_licenses_granted,
@@ -690,6 +698,118 @@ def ensure_alocacao(
     return str(cur.fetchone()["id"])
 
 
+def _iso(value) -> str | None:
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
+def build_teacher_allocated_payload(cur, aloc_id: str) -> dict:
+    """Mesmo shape de secretaria_routes._build_teacher_allocated_payload."""
+    cur.execute(
+        """
+        SELECT
+            a.id AS alocacao_id,
+            a.instituicao_id,
+            i.razao_social AS instituicao_nome,
+            u.id AS unidade_id,
+            u.nome AS unidade_nome,
+            p.id AS periodo_id,
+            p.rotulo AS periodo_nome,
+            p.data_inicio,
+            p.data_fim,
+            p.tipo_periodo,
+            d.id AS disciplina_id,
+            d.nome AS disciplina_nome,
+            d.ementa,
+            v.id AS vinculo_id,
+            v.email_convite,
+            v.professor_b2c_id,
+            t.id AS turma_id,
+            t.nome AS turma_nome,
+            t.turno AS turma_turno,
+            t.curso_id,
+            c.nome AS curso_nome
+        FROM public.school_alocacoes_docentes a
+        JOIN public.school_instituicoes i ON i.id = a.instituicao_id
+        JOIN public.school_unidades u ON u.id = a.unidade_id
+        JOIN public.school_periodos_letivos p ON p.id = a.periodo_id
+        JOIN public.school_disciplinas d ON d.id = a.disciplina_id
+        JOIN public.school_professores_vinculo v ON v.id = a.professor_vinculo_id
+        LEFT JOIN public.school_turmas t ON t.id = a.turma_id
+        LEFT JOIN public.school_cursos c ON c.id = t.curso_id
+        WHERE a.id = %s
+        """,
+        (aloc_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise RuntimeError(f"alocação {aloc_id} não encontrada")
+
+    payload: dict = {
+        "professor_b2c_id": str(row["professor_b2c_id"]),
+        "disciplina_nome": row["disciplina_nome"],
+        "ementa_macro": row.get("ementa") or "",
+        "data_inicio_periodo": _iso(row.get("data_inicio")),
+        "data_fim_periodo": _iso(row.get("data_fim")),
+        "tipo_periodo": row.get("tipo_periodo") or "semestral",
+        "instituicao_id": str(row["instituicao_id"]),
+        "instituicao_nome": (row.get("instituicao_nome") or "").strip() or None,
+        "unidade_id": str(row["unidade_id"]),
+        "unidade_nome": row["unidade_nome"],
+        "periodo_id": str(row["periodo_id"]),
+        "periodo_nome": row["periodo_nome"],
+        "disciplina_id": str(row["disciplina_id"]),
+        "alocacao_id": str(row["alocacao_id"]),
+        "professor_email": row.get("email_convite"),
+        "vinculo_id": str(row["vinculo_id"]) if row.get("vinculo_id") else None,
+    }
+    if row.get("curso_id"):
+        payload["curso_id"] = str(row["curso_id"])
+        payload["curso_nome"] = (row.get("curso_nome") or "").strip() or "Curso"
+    if row.get("turma_id"):
+        payload["turma_id"] = str(row["turma_id"])
+        payload["turma_nome"] = row["turma_nome"]
+        if row.get("turma_turno"):
+            payload["turma_turno"] = row["turma_turno"]
+    return payload
+
+
+def mark_alocacao_notificado(aloc_id: str) -> None:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE public.school_alocacoes_docentes
+                SET notificado_b2c = TRUE, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                """,
+                (aloc_id,),
+            )
+
+
+def push_teacher_allocated(aloc_id: str) -> dict:
+    """Caminho real da Secretaria: dispatch_teacher_allocated + notificado_b2c."""
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            payload = build_teacher_allocated_payload(cur, aloc_id)
+    try:
+        dispatch = dispatch_teacher_allocated(payload)
+    except Exception as exc:
+        return {"ok": False, "error": str(exc), "alocacao_id": aloc_id}
+    if dispatch.get("ok"):
+        mark_alocacao_notificado(aloc_id)
+    return {
+        "ok": bool(dispatch.get("ok")),
+        "alocacao_id": aloc_id,
+        "professor_email": payload.get("professor_email"),
+        "b2c": {k: v for k, v in dispatch.items() if k != "response"},
+        "b2c_response": dispatch.get("response"),
+    }
+
+
 def main() -> int:
     print("=== seed Escola Teste (produção) ===", flush=True)
     print(f"dominio={DOMINIO} sku={SKU} order_id={ORDER_ID}", flush=True)
@@ -860,6 +980,12 @@ def main() -> int:
             )
             lic_final = cur.fetchone()
 
+    # TEACHER_ALLOCATED — mesmo caminho da Secretaria (pendente no B2C até o aceite)
+    aloc_pushes = []
+    for aloc_id in (aloc1, aloc2):
+        if aloc_id:
+            aloc_pushes.append(push_teacher_allocated(aloc_id))
+
     report["convites_finais"] = [
         {
             "email": r.get("email_convite"),
@@ -870,6 +996,7 @@ def main() -> int:
         for r in final_invites
     ]
     report["alocacoes"] = {"prof1_mat_turma1": aloc1, "prof2_port_turma2": aloc2}
+    report["teacher_allocated_pushes"] = aloc_pushes
     report["pushes"] = push_results
     report["licencas_final"] = dict(lic_final) if lic_final else None
     report["equipe_mapeamento"] = [
