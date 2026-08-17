@@ -30,6 +30,7 @@ Workspace documental do QMind, plataforma inteligente de apoio à consultoria, a
 - **Core → OI HTTP V1:** [`04_Docs/016_Core_OI_HTTP_Integration_V1.md`](04_Docs/016_Core_OI_HTTP_Integration_V1.md).
 - **Persistência de insights OI V1:** [`04_Docs/017_Core_OI_Intelligence_Persistence_V1.md`](04_Docs/017_Core_OI_Intelligence_Persistence_V1.md).
 - **Compatibilidade de contrato Core ↔ OI V1:** [`04_Docs/018_Core_OI_Contract_Compatibility_V1.md`](04_Docs/018_Core_OI_Contract_Compatibility_V1.md).
+- **Baseline Context ↔ OI V1:** [`04_Docs/021_Context_OI_V1_Baseline.md`](04_Docs/021_Context_OI_V1_Baseline.md) — marco operacional Profile → Insights → Completar → Reanalisar (OI-019).
 - Domínio documental **Aceito** e congelado: **`domain-docs-v0`** — `04_Docs/006_Domain_Acceptance_Checklist.md`.
 - Emenda implementação: `04_Docs/007_Domain_Docs_Amendment_001.md` (Alembic, porta 5433).
 - **DDL v0 + Alembic:** `03_Database/003_DDL_v0.md` → `qmind/backend/` (database `qmind` no cluster `leaction_db`).
