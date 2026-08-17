@@ -87,3 +87,7 @@ Humanização de `quality_structure` foi confirmada com chamada **direta** ao OI
 ## Recomendação OI-017
 
 Decidir se `"unknown"` em vocabulários controlados deve continuar como “presente” no readiness ou se o Core deve omitir/`null` esses campos até o consultor escolher um valor explícito — alinhando Completar a `quality_structure` no fluxo padrão. Não misturar com novas capacidades de insight.
+
+## Resolução LIM-OI-016-01 (pós OI-017)
+
+**Resolvido em OI-017** (`qmind-oi`): `"unknown"` continua fato preservado no profile; para readiness passa a contar como informação não determinada (`quality_structure` / `certification_status` → `missing_information`). Sem alteração de contrato nem do Core. Histórico da validação OI-016 acima permanece como executado.
