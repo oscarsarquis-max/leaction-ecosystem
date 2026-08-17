@@ -9,3 +9,6 @@ __pycache__/
 # OI-016 local smoke output
 scripts/_oi016_smoke_results.json
 
+# OI-018 local smoke output
+scripts/_oi018_smoke_results.json
+
