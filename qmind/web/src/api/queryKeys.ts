@@ -73,6 +73,8 @@ export const queryKeys = {
     ["org", organizationId, "agenda", selectedDate] as const,
   assessmentEvolutionMap: (organizationId: string, assessmentId: string) =>
     ["org", organizationId, "assessment", assessmentId, "evolution-map"] as const,
+  orgProfile: (organizationId: string) =>
+    ["org", organizationId, "profile"] as const,
   health: ["health"] as const,
 };
 

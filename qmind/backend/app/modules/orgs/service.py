@@ -13,7 +13,32 @@ from app.modules.orgs.schemas import (
     OrganizationCreate,
     OrganizationDetailOut,
     OrganizationOut,
+    OrganizationProfileOut,
+    OrganizationProfilePatch,
 )
+
+_PROFILE_COLUMNS = """
+    organization_id, trade_name, legal_name, summary, industry,
+    business_model, employee_range, unit_count, certification_status,
+    quality_structure, created_at, updated_at
+"""
+
+
+def _row_to_profile(row) -> OrganizationProfileOut:
+    return OrganizationProfileOut(
+        organization_id=row.organization_id,
+        trade_name=row.trade_name or "",
+        legal_name=row.legal_name or "",
+        summary=row.summary or "",
+        industry=row.industry or "",
+        business_model=row.business_model or "",
+        employee_range=row.employee_range or "",
+        unit_count=row.unit_count,
+        certification_status=row.certification_status or "unknown",
+        quality_structure=row.quality_structure or "unknown",
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
 
 
 def create_organization(principal: Principal, payload: OrganizationCreate) -> OrganizationDetailOut:
@@ -142,3 +167,76 @@ def get_current_organization(ctx: OrgContext) -> OrganizationOut:
 def require_role(ctx: OrgContext, *allowed: str) -> None:
     if not set(ctx.roles).intersection(allowed):
         raise AppError("forbidden", "Insufficient role for this operation", status_code=403)
+
+
+def get_or_create_organization_profile(ctx: OrgContext) -> OrganizationProfileOut:
+    """Master data 1:1 — creates empty defaults on first GET (audit-plan style)."""
+    require_role(
+        ctx,
+        "org_admin",
+        "consultant_auditor",
+        "quality_manager",
+        "process_owner",
+        "reader",
+        "action_owner",
+        "platform_admin",
+    )
+    with tenant_connection(ctx.organization_id) as conn:
+        row = conn.execute(
+            text(
+                f"""
+                SELECT {_PROFILE_COLUMNS}
+                FROM organization_profiles
+                WHERE organization_id = :org
+                """
+            ),
+            {"org": ctx.organization_id},
+        ).first()
+        if row is None:
+            row = conn.execute(
+                text(
+                    f"""
+                    INSERT INTO organization_profiles (organization_id)
+                    VALUES (:org)
+                    ON CONFLICT (organization_id) DO UPDATE
+                      SET updated_at = organization_profiles.updated_at
+                    RETURNING {_PROFILE_COLUMNS}
+                    """
+                ),
+                {"org": ctx.organization_id},
+            ).one()
+            conn.commit()
+    return _row_to_profile(row)
+
+
+def patch_organization_profile(
+    ctx: OrgContext, payload: OrganizationProfilePatch
+) -> OrganizationProfileOut:
+    """Partial upsert for current org only — organization_id is never client-supplied."""
+    require_role(ctx, "org_admin", "consultant_auditor", "quality_manager", "platform_admin")
+    data = payload.model_dump(exclude_unset=True)
+    if not data:
+        return get_or_create_organization_profile(ctx)
+
+    # Ensure row exists, then apply only provided fields.
+    get_or_create_organization_profile(ctx)
+
+    sets = [f"{col} = :{col}" for col in data]
+    sets.append("updated_at = now()")
+    params = {"org": ctx.organization_id, **data}
+    with tenant_connection(ctx.organization_id) as conn:
+        row = conn.execute(
+            text(
+                f"""
+                UPDATE organization_profiles
+                SET {", ".join(sets)}
+                WHERE organization_id = :org
+                RETURNING {_PROFILE_COLUMNS}
+                """
+            ),
+            params,
+        ).first()
+        if row is None:
+            raise AppError("not_found", "Organization profile not found", status_code=404)
+        conn.commit()
+    return _row_to_profile(row)

@@ -10,6 +10,8 @@ from app.modules.orgs.schemas import (
     OrganizationCreate,
     OrganizationDetailOut,
     OrganizationOut,
+    OrganizationProfileOut,
+    OrganizationProfilePatch,
 )
 from app.schemas.common import ERROR_RESPONSES, IdempotencyKeyHeader
 
@@ -63,3 +65,33 @@ def current_organization(ctx: OrgContextDep) -> OrganizationOut:
 )
 def current_organization_members(ctx: OrgContextDep) -> list[OrgMemberOut]:
     return service.list_current_org_members(ctx)
+
+
+@router.get(
+    "/current/profile",
+    response_model=OrganizationProfileOut,
+    operation_id="getOrCreateOrganizationProfile",
+    responses={401: ERROR_RESPONSES[401], 403: ERROR_RESPONSES[403]},
+    summary="Get or create organization profile for current tenant",
+)
+def get_current_organization_profile(ctx: OrgContextDep) -> OrganizationProfileOut:
+    return service.get_or_create_organization_profile(ctx)
+
+
+@router.patch(
+    "/current/profile",
+    response_model=OrganizationProfileOut,
+    operation_id="patchOrganizationProfile",
+    responses={
+        401: ERROR_RESPONSES[401],
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+        422: ERROR_RESPONSES[422],
+    },
+    summary="Partially update organization profile for current tenant",
+)
+def patch_current_organization_profile(
+    payload: OrganizationProfilePatch,
+    ctx: OrgContextDep,
+) -> OrganizationProfileOut:
+    return service.patch_organization_profile(ctx, payload)

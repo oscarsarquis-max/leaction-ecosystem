@@ -2681,6 +2681,103 @@ export type OrganizationOut = {
 };
 
 /**
+ * OrganizationProfileOut
+ */
+export type OrganizationProfileOut = {
+    /**
+     * Business Model
+     */
+    business_model: '' | 'b2b' | 'b2c' | 'b2b2c' | 'services' | 'manufacturing' | 'mixed' | 'other';
+    /**
+     * Certification Status
+     */
+    certification_status: 'unknown' | 'none' | 'in_progress' | 'certified' | 'expired' | 'not_applicable';
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Employee Range
+     */
+    employee_range: '' | '1-10' | '11-50' | '51-200' | '201-500' | '501-1000' | '1000+';
+    /**
+     * Industry
+     */
+    industry: string;
+    /**
+     * Legal Name
+     */
+    legal_name: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Quality Structure
+     */
+    quality_structure: 'unknown' | 'none' | 'informal' | 'formal_partial' | 'formal';
+    /**
+     * Summary
+     */
+    summary: string;
+    /**
+     * Trade Name
+     */
+    trade_name: string;
+    /**
+     * Unit Count
+     */
+    unit_count?: number | null;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * OrganizationProfilePatch
+ * Partial update — organization_id and timestamps are not accepted.
+ */
+export type OrganizationProfilePatch = {
+    /**
+     * Business Model
+     */
+    business_model?: ('' | 'b2b' | 'b2c' | 'b2b2c' | 'services' | 'manufacturing' | 'mixed' | 'other') | null;
+    /**
+     * Certification Status
+     */
+    certification_status?: ('unknown' | 'none' | 'in_progress' | 'certified' | 'expired' | 'not_applicable') | null;
+    /**
+     * Employee Range
+     */
+    employee_range?: ('' | '1-10' | '11-50' | '51-200' | '201-500' | '501-1000' | '1000+') | null;
+    /**
+     * Industry
+     */
+    industry?: string | null;
+    /**
+     * Legal Name
+     */
+    legal_name?: string | null;
+    /**
+     * Quality Structure
+     */
+    quality_structure?: ('unknown' | 'none' | 'informal' | 'formal_partial' | 'formal') | null;
+    /**
+     * Summary
+     */
+    summary?: string | null;
+    /**
+     * Trade Name
+     */
+    trade_name?: string | null;
+    /**
+     * Unit Count
+     */
+    unit_count?: number | null;
+};
+
+/**
  * OrganizationStatus
  */
 export type OrganizationStatus = 'active' | 'suspended' | 'closed';
@@ -13213,6 +13310,148 @@ export type ListCurrentOrganizationMembersResponses = {
 };
 
 export type ListCurrentOrganizationMembersResponse = ListCurrentOrganizationMembersResponses[keyof ListCurrentOrganizationMembersResponses];
+
+export type GetOrCreateOrganizationProfileData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/organizations/current/profile';
+};
+
+export type GetOrCreateOrganizationProfileErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type GetOrCreateOrganizationProfileError = GetOrCreateOrganizationProfileErrors[keyof GetOrCreateOrganizationProfileErrors];
+
+export type GetOrCreateOrganizationProfileResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrganizationProfileOut;
+};
+
+export type GetOrCreateOrganizationProfileResponse = GetOrCreateOrganizationProfileResponses[keyof GetOrCreateOrganizationProfileResponses];
+
+export type PatchOrganizationProfileData = {
+    body: OrganizationProfilePatch;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/organizations/current/profile';
+};
+
+export type PatchOrganizationProfileErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+};
+
+export type PatchOrganizationProfileError = PatchOrganizationProfileErrors[keyof PatchOrganizationProfileErrors];
+
+export type PatchOrganizationProfileResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrganizationProfileOut;
+};
+
+export type PatchOrganizationProfileResponse = PatchOrganizationProfileResponses[keyof PatchOrganizationProfileResponses];
 
 export type ListMyMembershipsData = {
     body?: never;
