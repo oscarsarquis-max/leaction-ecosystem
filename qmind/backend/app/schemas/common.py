@@ -94,5 +94,7 @@ ERROR_RESPONSES = {
     409: {"model": ErrorBody, "description": "Conflict / invalid transition"},
     410: {"model": ErrorBody, "description": "Gone (e.g. upload expired)"},
     422: {"model": ErrorBody, "description": "Validation error"},
+    502: {"model": ErrorBody, "description": "Upstream dependency error (e.g. QMind OI)"},
     503: {"model": ErrorBody, "description": "Dependency unavailable"},
+    504: {"model": ErrorBody, "description": "Upstream timeout (e.g. QMind OI)"},
 }

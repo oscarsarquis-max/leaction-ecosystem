@@ -40,6 +40,18 @@ class Settings(BaseSettings):
     # security_pass without malware worker — forbidden in prod
     allow_simulated_security_pass: bool = True
 
+    # QMind OI HTTP integration (OI-009) — no secrets; empty = not configured.
+    qmind_oi_base_url: str = Field(
+        default="",
+        description="Base URL of QMind OI (no trailing slash). Env: QMIND_OI_BASE_URL",
+    )
+    qmind_oi_timeout_seconds: float = Field(
+        default=30.0,
+        ge=1.0,
+        le=120.0,
+        description="HTTP timeout for Core → OI calls. Env: QMIND_OI_TIMEOUT_SECONDS",
+    )
+
     # Comma-separated browser origins (pilot + homolog). Empty = CORS middleware off.
     cors_origins: str = ""
 

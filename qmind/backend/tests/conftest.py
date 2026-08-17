@@ -30,6 +30,8 @@ os.environ.setdefault("AUTH_MODE", "dev")
 os.environ.setdefault("ENVIRONMENT", "local")
 os.environ.setdefault("STORAGE_BACKEND", "memory")
 os.environ.setdefault("ALLOW_SIMULATED_SECURITY_PASS", "true")
+os.environ.setdefault("QMIND_OI_BASE_URL", "http://oi.test")
+os.environ.setdefault("QMIND_OI_TIMEOUT_SECONDS", "5")
 
 
 @pytest.fixture(autouse=True)
