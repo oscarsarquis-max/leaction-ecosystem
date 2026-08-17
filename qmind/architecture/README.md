@@ -22,7 +22,11 @@ Workspace documental do QMind, plataforma inteligente de apoio à consultoria, a
 
 ## Estado atual
 
-- ADRs **001–011** Aceitos (009+010 hospedagem; **011** consultancy-led).
+- ADRs **001–012** Aceitos (012 = Foundation v1.0 + linha OI).
+- **Foundation Baseline v1.0:** [`00_Architecture/004_Foundation_Baseline_v1.md`](00_Architecture/004_Foundation_Baseline_v1.md) — marco ARCH-001.
+- **Mapa Foundation ↔ OI:** [`00_Architecture/005_Foundation_OI_Layer_Map.md`](00_Architecture/005_Foundation_OI_Layer_Map.md).
+- **Roadmap OI (Alpha):** [`04_Docs/014_OI_Architectural_Roadmap.md`](04_Docs/014_OI_Architectural_Roadmap.md).
+- **Evolução incremental:** [`04_Docs/015_Foundation_OI_Evolution_Strategy.md`](04_Docs/015_Foundation_OI_Evolution_Strategy.md).
 - Domínio documental **Aceito** e congelado: **`domain-docs-v0`** — `04_Docs/006_Domain_Acceptance_Checklist.md`.
 - Emenda implementação: `04_Docs/007_Domain_Docs_Amendment_001.md` (Alembic, porta 5433).
 - **DDL v0 + Alembic:** `03_Database/003_DDL_v0.md` → `qmind/backend/` (database `qmind` no cluster `leaction_db`).
@@ -37,5 +41,5 @@ Workspace documental do QMind, plataforma inteligente de apoio à consultoria, a
 - **Tag backend:** `mvp-backend-v0`
 - **OpenAPI:** `../backend/openapi/openapi.json` — contrato versionado; freeze `openapi-v1-initial`
 - **Cliente TS:** `../packages/api-client` (`@qmind/api-client`) — gerado do OpenAPI; `npm run generate:api-client`
-- **API foundation:** FastAPI em `qmind/backend/app/` — health, Cognito/dev auth, Organization/Membership; módulos Evidence→Report.
+- **API foundation:** FastAPI em `qmind/backend/app/` — health, Cognito/dev auth, Organization/Membership; módulos Evidence→Report; Organization Profile (ICP-01).
 

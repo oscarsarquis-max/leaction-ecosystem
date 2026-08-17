@@ -34,5 +34,12 @@
 - Criar integrações prioritárias.
 - Ampliar automações, painéis e colaboração.
 
-Datas e metas serão definidas após a descoberta inicial e a estimativa do produto mínimo viável.
+## Linha Organization Intelligence (desde 2026-08-17)
 
+A Foundation **v1.0** está baselineada (ADR-012). A linha **OI Alpha** adiciona compreensão organizacional sem substituir a operação.
+
+Roadmap detalhado: [`04_Docs/014_OI_Architectural_Roadmap.md`](04_Docs/014_OI_Architectural_Roadmap.md).
+
+Próximo passo de produto OI: bridge Profile ↔ guided (OI-0).
+
+Datas e metas serão definidas após a descoberta inicial e a estimativa do produto mínimo viável.

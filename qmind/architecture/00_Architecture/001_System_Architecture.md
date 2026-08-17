@@ -31,6 +31,15 @@ O QMind deverá iniciar como uma aplicação modular, com fronteiras claras de d
 
 As regras de negócio não deverão depender diretamente de frameworks, banco de dados ou provedor de IA.
 
+### Camadas de produto (desde ARCH-001 / ADR-012)
+
+Além das camadas lógicas acima, o produto reconhece duas linhas:
+
+- **Foundation v1.0** — operação (auth, tenant, jornada, evidências, planos, mapas, profile).
+- **Organization Intelligence (OI Alpha)** — compreensão e insights; consome a Foundation; a Foundation não depende da OI.
+
+Fonte oficial: [`004_Foundation_Baseline_v1.md`](004_Foundation_Baseline_v1.md), [`005_Foundation_OI_Layer_Map.md`](005_Foundation_OI_Layer_Map.md).
+
 ## Fluxo de rastreabilidade
 
 ```text

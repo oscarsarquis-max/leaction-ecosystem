@@ -19,6 +19,7 @@ Estados sugeridos: Proposto, Aceito, Substituído ou Rejeitado. ADRs aceitos nã
 | ADR-009 | Hospedagem, observabilidade e continuidade | Aceito |
 | ADR-010 | Homologação econômica (Lightsail) — emenda à 009 | Aceito |
 | ADR-011 | Entrada consultancy-led B2B2B (dados da organização) | Aceito |
+| ADR-012 | Foundation v1.0 e linha Organization Intelligence (OI) | Aceito |
 
 ## Aceite
 
@@ -44,9 +45,19 @@ Aceitos em **2026-08-03** após confronto com o monorepo:
 - Descoberta/piloto: [`../04_Docs/013_Discovery_and_Pilot_Plan.md`](../04_Docs/013_Discovery_and_Pilot_Plan.md) — **sem** implementação de `ConsultancyWorkspace` até evidência (H3+).
 - Homologação técnica: ADR-010 **Lightsail** / gate `011` (`terraform-lightsail/`).
 
+## Foundation e OI (2026-08-17)
+
+- **ADR-012** registra duas camadas: Foundation **v1.0** (operação) e OI **Alpha** (inteligência).
+- Baseline: [`../00_Architecture/004_Foundation_Baseline_v1.md`](../00_Architecture/004_Foundation_Baseline_v1.md).
+- Mapa: [`../00_Architecture/005_Foundation_OI_Layer_Map.md`](../00_Architecture/005_Foundation_OI_Layer_Map.md).
+- Roadmap OI: [`../04_Docs/014_OI_Architectural_Roadmap.md`](../04_Docs/014_OI_Architectural_Roadmap.md).
+- Estratégia: [`../04_Docs/015_Foundation_OI_Evolution_Strategy.md`](../04_Docs/015_Foundation_OI_Evolution_Strategy.md).
+- Nenhum código OI neste marco; Foundation permanece utilizável sozinha.
+
 ## Próxima etapa
 
-1. Executar descoberta e piloto (013) em paralelo à homologação econômica (011 / ADR-010).
-2. Emenda versionada de domínio (`02_Models` / DDL) **somente** após critérios do ADR-011.
+1. Sprint **OI-0**: bridge Organization Profile ↔ guided / checklist (sem Pain/Fit).
+2. Continuar descoberta/piloto (013) e homologação (011 / ADR-010) em paralelo.
+3. Emenda de domínio somente quando OI exigir agregados novos (com RLS).
 
 Nenhuma tecnologia será assumida como compartilhada apenas por existir em outro produto do ecossistema. A reutilização deverá demonstrar compatibilidade, isolamento e responsabilidade operacional.
