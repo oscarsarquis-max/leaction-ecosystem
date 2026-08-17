@@ -9,6 +9,14 @@ const MUTATE_ROLES = new Set([
   "quality_manager",
 ]);
 
+/** Mirrors backend patch_organization_profile roles (includes platform_admin). */
+const ORG_PROFILE_EDIT_ROLES = new Set([
+  "org_admin",
+  "consultant_auditor",
+  "quality_manager",
+  "platform_admin",
+]);
+
 const READ_ROLES = new Set([
   ...MUTATE_ROLES,
   "process_owner",
@@ -17,6 +25,12 @@ const READ_ROLES = new Set([
 
 export function canMutateAssessments(roles: readonly string[] | undefined): boolean {
   return (roles ?? []).some((r) => MUTATE_ROLES.has(r));
+}
+
+export function canEditOrganizationProfile(
+  roles: readonly string[] | undefined,
+): boolean {
+  return (roles ?? []).some((r) => ORG_PROFILE_EDIT_ROLES.has(r));
 }
 
 export function canReadAssessments(roles: readonly string[] | undefined): boolean {

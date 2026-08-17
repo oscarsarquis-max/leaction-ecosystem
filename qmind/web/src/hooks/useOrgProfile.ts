@@ -1,10 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOrganization } from "@/org/OrganizationProvider";
 import { StaleTenantResponseError } from "@/api/qmindApi";
 import { queryKeys } from "@/api/queryKeys";
 import {
   fetchOrganizationProfile,
+  patchOrganizationProfile,
   type OrganizationProfile,
+  type OrganizationProfilePatch,
 } from "@/api/orgProfileApi";
 
 /**
@@ -35,6 +37,23 @@ export function useOrgProfile() {
         }
         throw e;
       }
+    },
+  });
+}
+
+export function usePatchOrgProfile() {
+  const qc = useQueryClient();
+  const { currentOrganizationId } = useOrganization();
+
+  return useMutation({
+    mutationFn: (payload: OrganizationProfilePatch) =>
+      patchOrganizationProfile(payload),
+    onSuccess: async (data) => {
+      if (!currentOrganizationId) return;
+      if (data.organization_id !== currentOrganizationId) return;
+      await qc.invalidateQueries({
+        queryKey: queryKeys.orgProfile(currentOrganizationId),
+      });
     },
   });
 }

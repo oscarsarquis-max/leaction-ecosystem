@@ -95,13 +95,23 @@ function InsightCard({ insight }: { insight: OrganizationalInsight }) {
   );
 }
 
-export function OrgOrganizationalIntelligence() {
+export function OrgOrganizationalIntelligence({
+  analysisMayBeStale = false,
+  onAnalyzeSuccess,
+}: {
+  analysisMayBeStale?: boolean;
+  onAnalyzeSuccess?: () => void;
+}) {
   const latest = useLatestOrganizationalIntelligence();
   const analyze = useAnalyzeOrganizationalIntelligence();
 
   const onAnalyze = () => {
     analyze.reset();
-    analyze.mutate();
+    analyze.mutate(undefined, {
+      onSuccess: () => {
+        onAnalyzeSuccess?.();
+      },
+    });
   };
 
   if (latest.isLoading) {
@@ -158,6 +168,28 @@ export function OrgOrganizationalIntelligence() {
               : "Gerar análise"}
         </button>
       </div>
+
+      {analysisMayBeStale && run ? (
+        <div
+          className="rounded-md border border-[var(--qm-attention)] bg-[var(--qm-surface)] px-4 py-3"
+          role="status"
+          data-testid="oi-analysis-stale"
+        >
+          <p className="text-sm text-[var(--qm-ink)]">
+            O contexto da organização foi atualizado. Atualize a análise para
+            considerar as novas informações.
+          </p>
+          <button
+            type="button"
+            className="qm-btn-primary mt-3"
+            data-testid="oi-stale-analyze-button"
+            disabled={analyze.isPending}
+            onClick={onAnalyze}
+          >
+            {analyze.isPending ? "Atualizando…" : "Atualizar análise"}
+          </button>
+        </div>
+      ) : null}
 
       {analyze.isError ? (
         <ApiErrorBanner
