@@ -357,6 +357,54 @@ def _handle_school_gestor_credentials(payload: dict) -> dict:
     }
 
 
+def _handle_school_homologador_credentials(payload: dict) -> dict:
+    """Um e-mail: senha School + link Inove (homologação)."""
+    from mail import send_homologador_credentials_email
+
+    email = str(
+        payload.get("email") or payload.get("gestor_email") or payload.get("payer_email") or ""
+    ).strip().lower()
+    senha = str(payload.get("senha_temporaria") or payload.get("password") or "").strip()
+    nome = str(payload.get("nome") or payload.get("gestor_nome") or "").strip()
+    school_url = str(
+        payload.get("acesso_url") or "https://school.inove4us.com.br/acesso"
+    ).strip()
+    invite_url = str(
+        payload.get("invite_url") or payload.get("inove_invite_url") or ""
+    ).strip()
+    razao = str(payload.get("razao_social") or "").strip()
+    school_bypass = str(payload.get("school_bypass_url") or "").strip()
+    inove_bypass = str(payload.get("inove_bypass_url") or "").strip()
+    if not email or "@" not in email or not senha:
+        _log("SCHOOL_HOMOLOGADOR_CREDENTIALS sem e-mail ou senha — ignorado")
+        return {"handled": False, "reason": "missing_email_or_password"}
+    if not invite_url:
+        _log("SCHOOL_HOMOLOGADOR_CREDENTIALS sem invite_url — ignorado")
+        return {"handled": False, "reason": "missing_invite_url"}
+    info = send_homologador_credentials_email(
+        recipient=email,
+        nome=nome or email.split("@", 1)[0],
+        password=senha,
+        school_acesso_url=school_url,
+        inove_invite_url=invite_url,
+        razao_social=razao,
+        school_bypass_url=school_bypass or None,
+        inove_bypass_url=inove_bypass or None,
+    )
+    sent = bool(info.get("sent"))
+    _log(
+        f"SCHOOL_HOMOLOGADOR_CREDENTIALS email={email} sent={sent} "
+        f"channel={info.get('channel')}"
+    )
+    return {
+        "handled": True,
+        "event": "SCHOOL_HOMOLOGADOR_CREDENTIALS",
+        "sent": sent,
+        "channel": info.get("channel"),
+        "error": info.get("error"),
+    }
+
+
 @webhook_school_bp.post("/api/webhooks/school")
 @require_school_bridge_jwt
 def school_webhook():
@@ -377,6 +425,8 @@ def school_webhook():
             result = _handle_teacher_invite(payload)
         elif event_type == "SCHOOL_GESTOR_CREDENTIALS":
             result = _handle_school_gestor_credentials(payload)
+        elif event_type == "SCHOOL_HOMOLOGADOR_CREDENTIALS":
+            result = _handle_school_homologador_credentials(payload)
         else:
             _log(f"event_type desconhecido: {event_type or '(vazio)'}")
             print(

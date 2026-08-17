@@ -1,6 +1,7 @@
-"""Roteiro Guiado — respostas gravadas (homologação / treinamento).
+﻿"""Roteiro Guiado — respostas gravadas (homologação / treinamento).
 
-Melhoria futura (fora de escopo): painel/drawer flutuante sobre as telas reais.
+Homologação com sessão nomeada: respostas isoladas por sessao_id.
+Treinamento (e homologação legada sem sessão): escopo instituicao+gestor+tipo.
 """
 from __future__ import annotations
 
@@ -10,7 +11,13 @@ from typing import Any
 from flask import Blueprint, jsonify, request
 from psycopg2.extras import RealDictCursor
 
-from auth_guards import current_gestor, require_gestor, require_zona, resolve_instituicao_id
+from auth_guards import (
+    current_gestor,
+    require_gestor,
+    require_zona,
+    resolve_instituicao_id,
+    zona_permite,
+)
 from db import get_conn
 
 bp = Blueprint("roteiro_guiado", __name__)
@@ -74,23 +81,112 @@ def _session_ids():
     return instituicao_id, gestor_id
 
 
+def _parse_sessao_id(raw: Any) -> uuid.UUID | None | tuple:
+    if raw is None or str(raw).strip() == "":
+        return None
+    try:
+        return uuid.UUID(str(raw).strip())
+    except (ValueError, TypeError, AttributeError):
+        return (
+            jsonify({"error": "sessao_id inválido", "code": "INVALID_SESSAO"}),
+            400,
+        )
+
+
+def _assert_sessao_access(
+    cur,
+    *,
+    sessao_id: uuid.UUID,
+    instituicao_id: uuid.UUID,
+    gestor_id: uuid.UUID,
+    user: dict,
+    for_write: bool,
+) -> dict | tuple:
+    cur.execute(
+        """
+        SELECT s.id, s.gestor_id, s.homologador_id, s.status, s.codigo,
+               h.escopo_dados, h.gestor_id AS homologador_gestor_id
+        FROM public.school_homologacao_sessoes s
+        JOIN public.school_homologadores h ON h.id = s.homologador_id
+        WHERE s.id = %s AND s.instituicao_id = %s
+        LIMIT 1
+        """,
+        (str(sessao_id), str(instituicao_id)),
+    )
+    row = cur.fetchone()
+    if not row:
+        return (
+            jsonify(
+                {
+                    "error": "Sessão de homologação não encontrada",
+                    "code": "NOT_FOUND",
+                }
+            ),
+            404,
+        )
+
+    cur.execute(
+        """
+        SELECT escopo_dados FROM public.school_homologadores
+        WHERE instituicao_id = %s AND gestor_id = %s AND ativo = TRUE
+        LIMIT 1
+        """,
+        (str(instituicao_id), str(gestor_id)),
+    )
+    me_h = cur.fetchone()
+    owner = str(row["gestor_id"]) == str(gestor_id)
+    if me_h and str(me_h.get("escopo_dados") or "") == "proprio" and not owner:
+        return (
+            jsonify(
+                {
+                    "error": "Roteiro desta sessão é de outro homologador.",
+                    "code": "FORBIDDEN_SESSAO",
+                }
+            ),
+            403,
+        )
+    if not owner:
+        admin = zona_permite(user.get("zonas") or [], "administrativo")
+        todos = (me_h and str(me_h.get("escopo_dados")) == "todos") or (
+            str(row.get("escopo_dados") or "") == "todos"
+        )
+        if not (admin or todos):
+            return (
+                jsonify({"error": "Sem permissão nesta sessão", "code": "FORBIDDEN"}),
+                403,
+            )
+
+    if for_write and row["status"] in ("concluida", "cancelada"):
+        return (
+            jsonify(
+                {
+                    "error": "Sessão encerrada — roteiro somente leitura.",
+                    "code": "SESSAO_ENCERRADA",
+                }
+            ),
+            409,
+        )
+    return row
+
+
 def _serialize_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "passo_id": row["passo_id"],
         "concluido": bool(row.get("concluido")),
         "observacao": row.get("observacao") or "",
-        "atualizado_em": row["atualizado_em"].isoformat() if row.get("atualizado_em") else None,
+        "atualizado_em": row["atualizado_em"].isoformat()
+        if row.get("atualizado_em")
+        else None,
     }
 
 
 @bp.get("/api/roteiro-guiado/historico")
 @require_zona("administrativo")
 def historico():
-    """Lista simples da própria instituição — não é dashboard."""
     parsed = _session_ids()
     if isinstance(parsed[0], tuple) or not isinstance(parsed[0], uuid.UUID):
         return parsed
-    instituicao_id, _gestor_id = parsed
+    instituicao_id, gestor_id = parsed
 
     tipo_raw = request.args.get("tipo")
     tipo_filter = None
@@ -100,33 +196,52 @@ def historico():
             return tipo
         tipo_filter = tipo
 
-    sql = """
-        SELECT
-            g.id AS gestor_id,
-            g.nome AS gestor_nome,
-            g.email AS gestor_email,
-            i.razao_social AS instituicao,
-            r.tipo,
-            COUNT(*) FILTER (
-                WHERE r.passo_id = ANY(%s) AND r.concluido IS TRUE
-            )::int AS passos_concluidos,
-            MAX(r.atualizado_em) AS atualizado_em
-        FROM public.school_roteiro_respostas r
-        JOIN public.school_gestores g ON g.id = r.gestor_id
-        JOIN public.school_instituicoes i ON i.id = r.instituicao_id
-        WHERE r.instituicao_id = %s
-    """
-    params: list[Any] = [list(PASSOS_NUMERADOS), str(instituicao_id)]
-    if tipo_filter:
-        sql += " AND r.tipo = %s"
-        params.append(tipo_filter)
-    sql += """
-        GROUP BY g.id, g.nome, g.email, i.razao_social, r.tipo
-        ORDER BY atualizado_em DESC NULLS LAST, g.nome
-    """
-
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT id, escopo_dados FROM public.school_homologadores
+                WHERE instituicao_id = %s AND gestor_id = %s AND ativo = TRUE
+                LIMIT 1
+                """,
+                (str(instituicao_id), str(gestor_id)),
+            )
+            me_h = cur.fetchone()
+            only_mine = bool(
+                me_h and str(me_h.get("escopo_dados") or "") == "proprio"
+            )
+
+            sql = """
+                SELECT
+                    g.id AS gestor_id,
+                    g.nome AS gestor_nome,
+                    g.email AS gestor_email,
+                    i.razao_social AS instituicao,
+                    r.tipo,
+                    r.sessao_id,
+                    s.codigo AS sessao_codigo,
+                    COUNT(*) FILTER (
+                        WHERE r.passo_id = ANY(%s) AND r.concluido IS TRUE
+                    )::int AS passos_concluidos,
+                    MAX(r.atualizado_em) AS atualizado_em
+                FROM public.school_roteiro_respostas r
+                JOIN public.school_gestores g ON g.id = r.gestor_id
+                JOIN public.school_instituicoes i ON i.id = r.instituicao_id
+                LEFT JOIN public.school_homologacao_sessoes s ON s.id = r.sessao_id
+                WHERE r.instituicao_id = %s
+            """
+            params: list[Any] = [list(PASSOS_NUMERADOS), str(instituicao_id)]
+            if tipo_filter:
+                sql += " AND r.tipo = %s"
+                params.append(tipo_filter)
+            if only_mine:
+                sql += " AND r.gestor_id = %s"
+                params.append(str(gestor_id))
+            sql += """
+                GROUP BY g.id, g.nome, g.email, i.razao_social,
+                         r.tipo, r.sessao_id, s.codigo
+                ORDER BY atualizado_em DESC NULLS LAST, g.nome
+            """
             cur.execute(sql, params)
             rows = cur.fetchall()
 
@@ -140,10 +255,16 @@ def historico():
                 "email": row["gestor_email"],
                 "instituicao": row["instituicao"],
                 "tipo": row["tipo"],
+                "sessao_id": str(row["sessao_id"]) if row.get("sessao_id") else None,
+                "sessao_codigo": row.get("sessao_codigo"),
                 "passos_concluidos": concluidos,
                 "passos_total": TOTAL_PASSOS,
-                "percentual": round(100.0 * concluidos / TOTAL_PASSOS) if TOTAL_PASSOS else 0,
-                "atualizado_em": row["atualizado_em"].isoformat() if row.get("atualizado_em") else None,
+                "percentual": round(100.0 * concluidos / TOTAL_PASSOS)
+                if TOTAL_PASSOS
+                else 0,
+                "atualizado_em": row["atualizado_em"].isoformat()
+                if row.get("atualizado_em")
+                else None,
             }
         )
     return jsonify({"ok": True, "itens": itens})
@@ -156,28 +277,62 @@ def get_estado():
     if isinstance(parsed[0], tuple) or not isinstance(parsed[0], uuid.UUID):
         return parsed
     instituicao_id, gestor_id = parsed
+    user = current_gestor() or {}
 
     tipo = _parse_tipo(request.args.get("tipo"), default="homologacao")
     if isinstance(tipo, tuple):
         return tipo
 
+    sessao = _parse_sessao_id(request.args.get("sessao_id"))
+    if isinstance(sessao, tuple):
+        return sessao
+
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                """
-                SELECT passo_id, concluido, observacao, atualizado_em
-                FROM public.school_roteiro_respostas
-                WHERE instituicao_id = %s
-                  AND gestor_id = %s
-                  AND tipo = %s
-                ORDER BY passo_id
-                """,
-                (str(instituicao_id), str(gestor_id), tipo),
-            )
+            if sessao:
+                check = _assert_sessao_access(
+                    cur,
+                    sessao_id=sessao,
+                    instituicao_id=instituicao_id,
+                    gestor_id=gestor_id,
+                    user=user,
+                    for_write=False,
+                )
+                if isinstance(check, tuple):
+                    return check
+                cur.execute(
+                    """
+                    SELECT passo_id, concluido, observacao, atualizado_em
+                    FROM public.school_roteiro_respostas
+                    WHERE sessao_id = %s
+                    ORDER BY passo_id
+                    """,
+                    (str(sessao),),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT passo_id, concluido, observacao, atualizado_em
+                    FROM public.school_roteiro_respostas
+                    WHERE instituicao_id = %s
+                      AND gestor_id = %s
+                      AND tipo = %s
+                      AND sessao_id IS NULL
+                    ORDER BY passo_id
+                    """,
+                    (str(instituicao_id), str(gestor_id), tipo),
+                )
             rows = cur.fetchall()
 
     respostas = {row["passo_id"]: _serialize_row(row) for row in rows}
-    return jsonify({"ok": True, "tipo": tipo, "respostas": respostas})
+    return jsonify(
+        {
+            "ok": True,
+            "tipo": tipo,
+            "sessao_id": str(sessao) if sessao else None,
+            "respostas": respostas,
+        }
+    )
 
 
 @bp.patch("/api/roteiro-guiado/<passo_id>")
@@ -187,6 +342,7 @@ def patch_passo(passo_id: str):
     if isinstance(parsed[0], tuple) or not isinstance(parsed[0], uuid.UUID):
         return parsed
     instituicao_id, gestor_id = parsed
+    user = current_gestor() or {}
 
     pid = str(passo_id or "").strip()
     if pid not in PASSOS_PERSISTIVEIS:
@@ -197,6 +353,24 @@ def patch_passo(passo_id: str):
     if isinstance(tipo, tuple):
         return tipo
 
+    sessao = _parse_sessao_id(body.get("sessao_id"))
+    if isinstance(sessao, tuple):
+        return sessao
+
+    if tipo == "homologacao" and sessao is None:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "Homologação exige sessao_id. "
+                        "Abra /homologacao e vincule a sessão."
+                    ),
+                    "code": "SESSAO_REQUIRED",
+                }
+            ),
+            400,
+        )
+
     concluido = bool(body.get("concluido"))
     observacao = body.get("observacao")
     if observacao is None:
@@ -206,21 +380,110 @@ def patch_passo(passo_id: str):
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                """
-                INSERT INTO public.school_roteiro_respostas (
-                    instituicao_id, gestor_id, tipo, passo_id, concluido, observacao, atualizado_em
+            if sessao:
+                check = _assert_sessao_access(
+                    cur,
+                    sessao_id=sessao,
+                    instituicao_id=instituicao_id,
+                    gestor_id=gestor_id,
+                    user=user,
+                    for_write=True,
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-                ON CONFLICT (instituicao_id, gestor_id, tipo, passo_id)
-                DO UPDATE SET
-                    concluido = EXCLUDED.concluido,
-                    observacao = EXCLUDED.observacao,
-                    atualizado_em = CURRENT_TIMESTAMP
-                RETURNING passo_id, concluido, observacao, atualizado_em
-                """,
-                (str(instituicao_id), str(gestor_id), tipo, pid, concluido, observacao),
-            )
+                if isinstance(check, tuple):
+                    return check
+                cur.execute(
+                    """
+                    SELECT id FROM public.school_roteiro_respostas
+                    WHERE sessao_id = %s AND passo_id = %s
+                    LIMIT 1
+                    """,
+                    (str(sessao), pid),
+                )
+                existing = cur.fetchone()
+                if existing:
+                    cur.execute(
+                        """
+                        UPDATE public.school_roteiro_respostas
+                        SET concluido = %s,
+                            observacao = %s,
+                            atualizado_em = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                        RETURNING passo_id, concluido, observacao, atualizado_em
+                        """,
+                        (concluido, observacao, str(existing["id"])),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO public.school_roteiro_respostas (
+                            instituicao_id, gestor_id, tipo, passo_id,
+                            concluido, observacao, sessao_id, atualizado_em
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                        RETURNING passo_id, concluido, observacao, atualizado_em
+                        """,
+                        (
+                            str(instituicao_id),
+                            str(gestor_id),
+                            tipo,
+                            pid,
+                            concluido,
+                            observacao,
+                            str(sessao),
+                        ),
+                    )
+            else:
+                cur.execute(
+                    """
+                    SELECT id FROM public.school_roteiro_respostas
+                    WHERE instituicao_id = %s
+                      AND gestor_id = %s
+                      AND tipo = %s
+                      AND passo_id = %s
+                      AND sessao_id IS NULL
+                    LIMIT 1
+                    """,
+                    (str(instituicao_id), str(gestor_id), tipo, pid),
+                )
+                existing = cur.fetchone()
+                if existing:
+                    cur.execute(
+                        """
+                        UPDATE public.school_roteiro_respostas
+                        SET concluido = %s,
+                            observacao = %s,
+                            atualizado_em = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                        RETURNING passo_id, concluido, observacao, atualizado_em
+                        """,
+                        (concluido, observacao, str(existing["id"])),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO public.school_roteiro_respostas (
+                            instituicao_id, gestor_id, tipo, passo_id,
+                            concluido, observacao, atualizado_em
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                        RETURNING passo_id, concluido, observacao, atualizado_em
+                        """,
+                        (
+                            str(instituicao_id),
+                            str(gestor_id),
+                            tipo,
+                            pid,
+                            concluido,
+                            observacao,
+                        ),
+                    )
             row = cur.fetchone()
 
-    return jsonify({"ok": True, "tipo": tipo, "resposta": _serialize_row(row)})
+    return jsonify(
+        {
+            "ok": True,
+            "tipo": tipo,
+            "sessao_id": str(sessao) if sessao else None,
+            "resposta": _serialize_row(row),
+        }
+    )

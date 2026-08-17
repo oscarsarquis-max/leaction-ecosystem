@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { CHECKBOX_CLASS } from '../lib/buttons'
 import { hasAnyZona, ZONAS } from '../lib/rbac'
@@ -67,8 +68,11 @@ export default function RoteiroGuiado() {
   useRoteiroFonts()
   const { user } = useAuth()
   const isAdmin = hasAnyZona(user?.zonas || [], [ZONAS.administrativo])
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  const [tipo, setTipo] = useState('homologacao')
+  const [tipo, setTipo] = useState(() => searchParams.get('tipo') || 'homologacao')
+  const [sessaoId, setSessaoId] = useState(() => searchParams.get('sessao') || '')
+  const [sessoes, setSessoes] = useState([])
   const [respostas, setRespostas] = useState({})
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
@@ -82,11 +86,27 @@ export default function RoteiroGuiado() {
 
   tipoRef.current = tipo
 
-  const load = useCallback(async (tipoAlvo) => {
+  const loadSessoes = useCallback(async () => {
+    try {
+      const res = await fetch('/api/homologacao/sessoes', { credentials: 'include' })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setSessoes([])
+        return
+      }
+      setSessoes(body.itens || [])
+    } catch {
+      setSessoes([])
+    }
+  }, [])
+
+  const load = useCallback(async (tipoAlvo, sessaoAlvo) => {
     setLoading(true)
     setErro('')
     try {
-      const res = await fetch(`/api/roteiro-guiado?tipo=${encodeURIComponent(tipoAlvo)}`, {
+      const qs = new URLSearchParams({ tipo: tipoAlvo })
+      if (tipoAlvo === 'homologacao' && sessaoAlvo) qs.set('sessao_id', sessaoAlvo)
+      const res = await fetch(`/api/roteiro-guiado?${qs}`, {
         credentials: 'include',
       })
       const body = await res.json().catch(() => ({}))
@@ -129,9 +149,18 @@ export default function RoteiroGuiado() {
   useEffect(() => {
     Object.values(timersRef.current).forEach((t) => clearTimeout(t))
     timersRef.current = {}
-    load(tipo)
+    if (tipo === 'homologacao') loadSessoes()
+    load(tipo, sessaoId)
     loadHistorico(tipo)
-  }, [tipo, load, loadHistorico])
+  }, [tipo, sessaoId, load, loadHistorico, loadSessoes])
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams)
+    if (tipo) next.set('tipo', tipo)
+    if (tipo === 'homologacao' && sessaoId) next.set('sessao', sessaoId)
+    else next.delete('sessao')
+    setSearchParams(next, { replace: true })
+  }, [tipo, sessaoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const prev = document.title
@@ -152,6 +181,7 @@ export default function RoteiroGuiado() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tipo: snapshotTipo,
+          sessao_id: snapshotTipo === 'homologacao' ? sessaoId || undefined : undefined,
           concluido: Boolean(payload.concluido),
           observacao: payload.observacao || '',
         }),
@@ -170,7 +200,7 @@ export default function RoteiroGuiado() {
     if (tipoRef.current === snapshotTipo) {
       setSaveState(pendingRef.current === 0 ? 'saved' : 'saving')
     }
-  }, [])
+  }, [sessaoId])
 
   const scheduleSave = useCallback(
     (passoId, nextRespostas) => {
@@ -186,6 +216,10 @@ export default function RoteiroGuiado() {
   )
 
   const patchLocal = (passoId, patch) => {
+    if (tipo === 'homologacao' && !sessaoId) {
+      setErro('Selecione a sessão de homologação antes de marcar passos.')
+      return
+    }
     setRespostas((prev) => {
       const atual = prev[passoId] || emptyResposta()
       const nextItem = { ...atual, ...patch }
@@ -208,8 +242,23 @@ export default function RoteiroGuiado() {
           ? 'não foi possível salvar'
           : ''
 
+  const controleSessaoTo = sessaoId
+    ? `/homologacao?sessao=${encodeURIComponent(sessaoId)}`
+    : '/homologacao'
+
   return (
     <div className="roteiro-page">
+      {tipo === 'homologacao' ? (
+        <div className="roteiro-voltar">
+          <Link to={controleSessaoTo} className="roteiro-voltar-link">
+            ← Voltar ao controle da sessão
+          </Link>
+          <span className="roteiro-voltar-hint">
+            Pausar, registrar interrupção ou impressões sem perder o que já marcou.
+          </span>
+        </div>
+      ) : null}
+
       <span className="roteiro-badge">ROTEIRO GUIADO · VOCÊ NO COMANDO</span>
       <h1 className="roteiro-serif">Conheça o inove4us</h1>
       <p className="roteiro-sub">
@@ -229,6 +278,36 @@ export default function RoteiroGuiado() {
           </button>
         ))}
       </div>
+      {tipo === 'homologacao' ? (
+        <div className="roteiro-sessao-bar">
+          <label className="roteiro-obs-label" htmlFor="sessao-homolog">
+            Sessão de homologação
+          </label>
+          <div className="roteiro-sessao-row">
+            <select
+              id="sessao-homolog"
+              value={sessaoId}
+              onChange={(e) => setSessaoId(e.target.value)}
+            >
+              <option value="">Selecione…</option>
+              {sessoes.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.codigo} · {s.status} · {(s.roteiro && s.roteiro.percentual) || 0}%
+                </option>
+              ))}
+            </select>
+            <Link to={controleSessaoTo} className="roteiro-voltar-link">
+              Controle da sessão
+            </Link>
+          </div>
+          {!sessaoId ? (
+            <p className="roteiro-save erro" style={{ marginTop: '0.5rem' }}>
+              Para gravar homologação, escolha (ou crie) uma sessão em Homologação.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <p className={`roteiro-save ${saveState === 'saving' ? 'saving' : ''} ${saveState === 'saved' ? 'saved' : ''} ${saveState === 'error' ? 'erro' : ''}`}>
         {saveLabel}
       </p>
@@ -431,6 +510,16 @@ export default function RoteiroGuiado() {
         Dúvidas durante o percurso? Anote na caixa acima — o técnico da sessão também pode
         ajudar.
       </p>
+      {tipo === 'homologacao' ? (
+        <div className="roteiro-voltar roteiro-voltar-fim">
+          <Link to={controleSessaoTo} className="roteiro-voltar-link">
+            ← Voltar ao controle da sessão
+          </Link>
+          <span className="roteiro-voltar-hint">
+            Precisa parar agora? Registre a interrupção e retome depois sem criar outra sessão.
+          </span>
+        </div>
+      ) : null}
       <p className="roteiro-save">inove4us — Roteiro Guiado</p>
 
       {isAdmin ? (
@@ -446,7 +535,7 @@ export default function RoteiroGuiado() {
                   <th>Gestor</th>
                   <th>Instituição</th>
                   <th>Tipo</th>
-                  <th>Concluído</th>
+                  <th>Sessão / progresso</th>
                   <th>Atualizado</th>
                 </tr>
               </thead>
@@ -461,6 +550,8 @@ export default function RoteiroGuiado() {
                     <td>{row.instituicao}</td>
                     <td>{row.tipo === 'treinamento' ? 'Treinamento' : 'Homologação'}</td>
                     <td>
+                      {row.sessao_codigo || '—'}
+                      <br />
                       {row.percentual}% ({row.passos_concluidos}/{row.passos_total})
                     </td>
                     <td>{formatDate(row.atualizado_em)}</td>

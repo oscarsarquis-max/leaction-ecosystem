@@ -11,6 +11,7 @@ import SecretariaOperacional from './pages/SecretariaOperacional'
 import Market from './pages/Market'
 import SemPermissao from './pages/SemPermissao'
 import RoteiroGuiado from './pages/RoteiroGuiado'
+import HomologacaoAdmin from './pages/HomologacaoAdmin'
 
 function ZoneGate({ zonasRequired, children }) {
   const { user } = useAuth()
@@ -127,6 +128,14 @@ export default function App() {
               }
             />
             <Route path="roteiro-guiado" element={<RoteiroGuiado />} />
+            <Route
+              path="homologacao"
+              element={
+                <ZoneGate zonasRequired={['administrativo']}>
+                  <HomologacaoAdmin />
+                </ZoneGate>
+              }
+            />
             <Route path="*" element={<SemPermissao />} />
           </Route>
         </Routes>

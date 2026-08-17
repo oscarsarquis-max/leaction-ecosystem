@@ -36,6 +36,7 @@ export const NAV_ITEMS = [
   },
   { to: '/secretaria', label: 'Secretaria Acadêmica', zonas: [ZONAS.operacional] },
   { to: '/equipe', label: 'Minha Equipe', zonas: [ZONAS.administrativo] },
+  { to: '/homologacao', label: 'Homologação', zonas: [ZONAS.administrativo] },
 ]
 
 /** Rotas autenticadas fora do menu — qualquer zona ativa. */

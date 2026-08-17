@@ -31,6 +31,56 @@
   border-radius: 0.25rem;
 }
 
+.roteiro-voltar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: #fff;
+}
+
+.roteiro-voltar-fim {
+  margin-top: 1.25rem;
+}
+
+.roteiro-voltar-link {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--navy);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.roteiro-voltar-link:hover {
+  color: var(--verde);
+}
+
+.roteiro-voltar-hint {
+  font-size: 0.8rem;
+  color: var(--cinza);
+}
+
+.roteiro-sessao-bar {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.roteiro-sessao-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+  margin-top: 0.35rem;
+}
+
+.roteiro-sessao-row select {
+  min-width: min(100%, 16rem);
+  padding: 0.4rem 0.6rem;
+}
+
 .roteiro-page h1 {
   font-size: 1.85rem;
   color: var(--navy);

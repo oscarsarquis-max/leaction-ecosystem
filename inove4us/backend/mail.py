@@ -261,6 +261,207 @@ def send_school_gestor_credentials_email(
         return {"sent": False, "channel": "ses", "error": str(exc)}
 
 
+def send_homologador_credentials_email(
+    *,
+    recipient: str,
+    nome: str,
+    password: str,
+    school_acesso_url: str,
+    inove_invite_url: str,
+    razao_social: str | None = None,
+    school_bypass_url: str | None = None,
+    inove_bypass_url: str | None = None,
+) -> dict:
+    """Um único e-mail: credenciais + como iniciar a sessão de homologação."""
+    recipient = (recipient or "").strip().lower()
+    password = (password or "").strip()
+    nome = (nome or "").strip() or "Homologador(a)"
+    school_acesso_url = (
+        school_acesso_url or "https://school.inove4us.com.br/acesso"
+    ).strip()
+    inove_invite_url = (inove_invite_url or "").strip()
+    school_bypass_url = (school_bypass_url or "").strip()
+    inove_bypass_url = (inove_bypass_url or "").strip()
+    escola = (razao_social or "Escola Teste").strip() or "Escola Teste"
+    logo_url = _email_logo_url()
+    homologacao_url = "https://school.inove4us.com.br/homologacao"
+
+    if not recipient or "@" not in recipient or not password:
+        return {
+            "sent": False,
+            "channel": "none",
+            "error": "destinatário ou senha ausente",
+        }
+    if not inove_invite_url:
+        return {
+            "sent": False,
+            "channel": "none",
+            "error": "invite_url Inove ausente",
+        }
+
+    bypass_school_block = ""
+    if school_bypass_url:
+        bypass_school_block = (
+            f"\n        Primeiro libere o acesso (sistema ainda em lançamento):\n"
+            f"        {school_bypass_url}\n"
+        )
+    bypass_inove_block = ""
+    if inove_bypass_url:
+        bypass_inove_block = (
+            f"\n        Se o Inove mostrar “em breve”, abra antes:\n"
+            f"        {inove_bypass_url}\n"
+        )
+
+    subject = "Seu acesso de homologação | inove4us School + Inove"
+    body_text = textwrap.dedent(
+        f"""\
+        Olá, {nome}!
+
+        Você foi cadastrada(o) como homologadora(or) do inove4us
+        (instituição de teste: {escola}).
+
+        ================================
+        COMO INICIAR A HOMOLOGAÇÃO
+        ================================
+
+        A) School — Torre de Controle
+        {bypass_school_block}
+        1. Acesse: {school_acesso_url}
+        2. Entre com:
+           E-mail: {recipient}
+           Senha: {password}
+        3. No menu superior, abra “Homologação”
+           ({homologacao_url})
+        4. Clique em “Nova sessão”
+        5. Clique em “Iniciar” (começa a contar o tempo)
+        6. Clique em “Preencher roteiro desta sessão” e vá marcando
+           os passos (Escola → Professor → Ponte)
+        7. Se precisar parar: volte em Homologação → registre a
+           interrupção / pause → retome depois na mesma sessão
+           (não crie outra)
+
+        B) Inove — Mesa do Professor (persona professor)
+        {bypass_inove_block}
+        1. Abra o convite (mesmo e-mail):
+           {inove_invite_url}
+        2. Complete o cadastro rápido
+        3. Você receberá um CÓDIGO neste mesmo e-mail — digite na tela
+        4. Use a Mesa quando o roteiro pedir a parte do professor
+           (pode ser outra aba/janela)
+
+        Dica: faça School e Inove em abas separadas. Tudo que você
+        marcar no roteiro fica gravado na sua sessão.
+
+        Equipe inove4us
+        contato@inove4us.com.br
+        """
+    ).strip()
+
+    def _esc(s: str) -> str:
+        return (
+            (s or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\n", "<br/>")
+        )
+
+    bypass_school_html = ""
+    if school_bypass_url:
+        bypass_school_html = f"""
+  <p><strong>Antes do login</strong> (sistema ainda em lançamento), abra uma vez:</p>
+  <p><a href="{_esc(school_bypass_url)}" style="display:inline-block;background:#1e2a4a;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:700">Liberar School (bypass)</a></p>"""
+    bypass_inove_html = ""
+    if inove_bypass_url:
+        bypass_inove_html = f"""
+  <p>Se aparecer “em breve”, abra antes:</p>
+  <p><a href="{_esc(inove_bypass_url)}" style="display:inline-block;background:#1e2a4a;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:700">Liberar Inove (bypass)</a></p>"""
+
+    body_html = f"""<!DOCTYPE html>
+<html lang="pt-BR"><body style="font-family:Segoe UI,system-ui,sans-serif;color:#1c1917;line-height:1.55">
+  <p><img src="{logo_url}" alt="inove4us" width="180" height="48" style="display:block;max-width:180px;height:auto;border:0"/></p>
+  <p>Olá, <strong>{_esc(nome)}</strong>!</p>
+  <p>Você foi cadastrada(o) como <strong>homologadora(or)</strong> do inove4us
+  (instituição de teste: {_esc(escola)}).</p>
+
+  <h2 style="margin:1.4rem 0 0.6rem;font-size:1.05rem;color:#0f766e">Como iniciar a homologação</h2>
+
+  <h3 style="margin:1rem 0 0.4rem;font-size:1rem">A) School — Torre de Controle</h3>
+  {bypass_school_html}
+  <p>Login: <strong>{_esc(recipient)}</strong><br/>
+  Senha: <strong>{_esc(password)}</strong></p>
+  <p><a href="{_esc(school_acesso_url)}" style="display:inline-block;background:#0f766e;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:700">1. Abrir School / login</a></p>
+  <ol style="padding-left:1.2rem;margin:0.5rem 0">
+    <li>No menu, abra <strong>Homologação</strong></li>
+    <li>Clique em <strong>Nova sessão</strong></li>
+    <li>Clique em <strong>Iniciar</strong> (começa o tempo da sessão)</li>
+    <li>Clique em <strong>Preencher roteiro desta sessão</strong> e marque os passos</li>
+    <li>Se precisar parar: volte em Homologação → registre a <strong>interrupção</strong> ou <strong>Pause</strong> → retome na <em>mesma</em> sessão</li>
+  </ol>
+  <p><a href="{_esc(homologacao_url)}" style="display:inline-block;background:#0f766e;color:#fff;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:700">Abrir página Homologação</a></p>
+
+  <h3 style="margin:1.4rem 0 0.4rem;font-size:1rem">B) Inove — Mesa do Professor</h3>
+  {bypass_inove_html}
+  <p>Use o <strong>mesmo e-mail</strong>. Abra o convite, complete o cadastro e digite o
+  <strong>código</strong> que chegará nesta caixa.</p>
+  <p><a href="{_esc(inove_invite_url)}" style="display:inline-block;background:#9f1239;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:700">Abrir convite Inove</a></p>
+  <p style="font-size:13px;color:#57534e">Dica: School e Inove em abas separadas. O roteiro grava na sua sessão.</p>
+</body></html>"""
+
+    if _dev_mode():
+        print(
+            f"[inove4us][DEV-MAIL] Homologador {recipient} senha={password} "
+            f"school={school_acesso_url} inove={inove_invite_url}",
+            file=sys.stderr,
+        )
+        return {"sent": True, "channel": "dev_log"}
+
+    try:
+        import boto3
+
+        region = (
+            os.environ.get("SES_REGION")
+            or os.environ.get("AWS_REGION")
+            or os.environ.get("AWS_DEFAULT_REGION")
+            or "us-east-2"
+        )
+        sender = os.environ.get("EMAIL_SENDER") or os.environ.get("SES_SENDER")
+        if not sender:
+            print(
+                "[inove4us] EMAIL_SENDER ausente — pacote homologador não enviado.",
+                file=sys.stderr,
+            )
+            return {"sent": False, "channel": "dev_log", "error": "EMAIL_SENDER ausente"}
+
+        client = boto3.client("ses", region_name=region)
+        resp = client.send_email(
+            Source=sender,
+            Destination={"ToAddresses": [recipient]},
+            Message={
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
+                "Body": {
+                    "Text": {"Data": body_text.replace("\n", "\r\n"), "Charset": "UTF-8"},
+                    "Html": {"Data": body_html, "Charset": "UTF-8"},
+                },
+            },
+        )
+        message_id = resp.get("MessageId")
+        print(
+            f"[inove4us] Pacote homologador SES ({region}) de {sender} "
+            f"para {recipient} id={message_id}",
+            file=sys.stderr,
+        )
+        return {
+            "sent": True,
+            "channel": "ses",
+            "message_id": message_id,
+            "region": region,
+        }
+    except Exception as exc:
+        print(f"[inove4us] Falha SES homologador: {exc}", file=sys.stderr)
+        return {"sent": False, "channel": "ses", "error": str(exc)}
+
+
 def send_desafio_convite_email(
     *,
     recipient: str,

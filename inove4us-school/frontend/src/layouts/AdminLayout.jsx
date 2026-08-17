@@ -21,7 +21,7 @@ function iniciais(nome) {
 
 function navLinkClass({ isActive }) {
   return [
-    'whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition',
+    'whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-semibold transition lg:px-3 lg:py-2 lg:text-sm',
     isActive
       ? 'bg-school-700 text-white'
       : 'text-muted hover:bg-slate-50 hover:text-ink',
@@ -57,10 +57,10 @@ export default function AdminLayout({
               alt="inove4us School"
               className="relative z-10 -my-10 h-40 w-auto max-w-[min(340px,48vw)] object-contain object-left sm:-my-12 sm:h-48 sm:max-w-[380px]"
             />
-            <div className="min-w-0 hidden sm:block">
+            <div className="min-w-0 max-w-[9.5rem] hidden sm:block lg:max-w-[12rem]">
               <p className="truncate text-sm font-semibold text-ink">{escolaNome}</p>
               {zonaChips.length > 0 ? (
-                <div className="mt-0.5 flex flex-wrap gap-1">
+                <div className="mt-0.5 flex flex-col items-start gap-0.5">
                   {zonaChips.map((label) => (
                     <span
                       key={label}
@@ -76,7 +76,7 @@ export default function AdminLayout({
 
           {/* Centro: nav desktop */}
           <nav
-            className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex"
+            className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-0.5 lg:gap-1 md:flex"
             aria-label="Principal"
           >
             {nav.length === 0 ? (

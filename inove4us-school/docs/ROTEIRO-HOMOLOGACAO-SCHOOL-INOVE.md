@@ -30,7 +30,7 @@ Sistemas ainda podem estar em "em breve": use **bypass** nos dois hosts (cookie 
 | Em School já existe (ou você cria agora com prefixo `HOMOLOG-`): 1 unidade, 1 período, 1 curso, 1 disciplina, 1 turma, 2–3 alunos | ☐ |
 | Convite da professora ainda não aceito (ou reenviar na hora) | ☐ |
 | Se o check de RBAC (passo A1) for obrigatório: criar gestor **com zonas limitadas** para a pedagoga — o sysadmin `admin@i4uschool.com.br` tem as 3 zonas e mostra o menu completo | ☐ |
-| Avisar: isto é **homologação**, dados de demo (prefixo `HOMOLOG-`); instituição de piloto em prod: **Escola Teste** (`escolateste.edu.br`) — não confundir com a seed legada Horizonte (sysadmin) | ☐ |
+| Avisar: isto é **homologação**, dados de demo (prefixo `HOMOLOG-`); instituição atual em prod costuma ser a seed Horizonte | ☐ |
 
 ---
 
@@ -40,8 +40,8 @@ Ordem natural = o que a secretaria monta **antes** da aula existir.
 
 **1. Entrada**
 - [ ] Login em `/acesso`
-- [ ] Vê o menu permitido pelas zonas dela (Radar · Editor · Secretaria · Equipe — conforme RBAC; **administrativo** vê todas)
-- [ ] **Se a conta for só operacional ou só pedagógico:** confirma que **não** aparece o menu completo. Conta **administrativo** (ou sysadmin com 3 zonas) vê o menu completo por desenho — anote "N/A — administrativo/superset" e siga. Se travar: relogar; se persistir com conta limitada, checar `school_gestor_perfis` com o técnico
+- [ ] Vê o menu permitido pelas zonas dela (Radar · Editor · Secretaria · Equipe — conforme RBAC)
+- [ ] **Se a conta for de escopo limitado:** confirma que **não** aparece o menu completo de administrador. Se a conta for sysadmin, anote "N/A — 3 zonas" e siga. Se travar: relogar; se persistir com conta limitada, checar `school_gestor_perfis` com o técnico
 
 **2. Secretaria Acadêmica (`/secretaria`) — estrutura**
 - [ ] Confere/abre a Unidade (ficha: endereço/equipe se quiser)
@@ -126,7 +126,7 @@ Volta no School com a pedagoga (mesma sessão ou outra aba).
 | Import CSV alunos (se não fez no A2) | secretaria em escala | ☐ |
 | 2ª metodologia no Editor | repertório | ☐ |
 
-**Não priorize no 1º dia:** Action Hub, cobrança, unlock público, limpeza Escola Teste / Horizonte, criação de 2ª instituição só para isolamento (deixar para sessão dedicada).
+**Não priorize no 1º dia:** Action Hub, cobrança, unlock público, limpeza Horizonte, criação de 2ª instituição só para isolamento (deixar para sessão dedicada).
 
 ---
 
@@ -170,5 +170,5 @@ Para cada bloco (Secretaria / Equipe / Editor / Mesa / Radar), ela marca:
 1. **Grafo acadêmico vazio:** sem o bloco "Antes" (turma + convite + alocação), o percurso B/C não anda.
 2. **Fail-soft School→B2C:** falha de integração não trava o professor e muitas vezes **não avisa** na UI — por isso os checks "confirma que apareceu" são essenciais, não opcionais.
 3. **Convite:** entrega o link na School; não envia e-mail transacional neste fluxo.
-4. **RBAC:** menu = união das zonas em `school_gestor_perfis`, com **administrativo** como superset (vê/age em operacional + pedagógico). Sysadmin (`admin@i4uschool.com.br`, 3 zonas) ≠ teste de escopo com `operacional@` / `pedagogico@`.
-5. **Limpeza:** piloto **Escola Teste** — usar `scripts/cleanup_escolateste_dry_run.sql` (não executar sem confirmação). Não apagar a seed legada Horizonte / sysadmin sem decisão explícita; limpar só registros `HOMOLOG-*` da sessão se existirem.
+4. **RBAC:** menu = união das zonas em `school_gestor_perfis`. Sysadmin ≠ teste de escopo.
+5. **Limpeza:** não apagar a instituição Horizonte inteira sem decisão explícita — limpar só registros `HOMOLOG-*` da sessão.
