@@ -136,3 +136,16 @@ class OrganizationalInsights(StrictModel):
 
 def dump_jsonable(model: BaseModel) -> dict[str, Any]:
     return model.model_dump(mode="json")
+
+
+class OrganizationIntelligenceRunOut(BaseModel):
+    """Persisted successful OI run — envelope retained in ``insights`` JSONB."""
+
+    id: UUID
+    organization_id: UUID
+    schema_version: str
+    request_id: str
+    correlation_id: str
+    generated_at: datetime
+    insights: OrganizationalInsights
+    created_at: datetime
