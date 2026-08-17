@@ -20,6 +20,7 @@ import {
   phaseForStatus,
 } from "@/lib/auditJourney";
 import { OrgAgenda } from "@/components/OrgAgenda";
+import { OrgOrganizationalIntelligence } from "@/components/OrgOrganizationalIntelligence";
 import { OrgJourneyOverview } from "@/components/orgJourney/OrgJourneyOverview";
 import { useRegisterAssistantContext } from "@/assistant/AssistantProvider";
 import type { AssistantContext } from "@/assistant/types";
@@ -165,6 +166,8 @@ export function AssessmentsPage() {
       </ContextualHelp>
 
       <OrgJourneyOverview assessments={items} />
+
+      <OrgOrganizationalIntelligence />
 
       <OrgAgenda />
 

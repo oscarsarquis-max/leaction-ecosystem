@@ -75,6 +75,8 @@ export const queryKeys = {
     ["org", organizationId, "assessment", assessmentId, "evolution-map"] as const,
   orgProfile: (organizationId: string) =>
     ["org", organizationId, "profile"] as const,
+  orgIntelligenceLatest: (organizationId: string) =>
+    ["org", organizationId, "intelligence", "latest"] as const,
   health: ["health"] as const,
 };
 

@@ -1192,6 +1192,24 @@ export type DownloadUrlOut = {
 };
 
 /**
+ * EnvelopeMetadata
+ */
+export type EnvelopeMetadata = {
+    /**
+     * Environment
+     */
+    environment?: ('local' | 'test' | 'homolog' | 'prod') | null;
+    /**
+     * Producer Version
+     */
+    producer_version?: string | null;
+    /**
+     * Trace Id
+     */
+    trace_id?: string | null;
+};
+
+/**
  * ErrorBody
  * Uniform error envelope (ADR-003). No internal details.
  */
@@ -1320,6 +1338,20 @@ export type EvidenceOut = {
      * Version No
      */
     version_no: number;
+};
+
+/**
+ * EvidenceReference
+ */
+export type EvidenceReference = {
+    /**
+     * Source Id
+     */
+    source_id: string;
+    /**
+     * Source Type
+     */
+    source_type: string;
 };
 
 /**
@@ -2098,6 +2130,28 @@ export type HttpValidationError = {
 };
 
 /**
+ * InsightExplanation
+ */
+export type InsightExplanation = {
+    /**
+     * Evidence Refs
+     */
+    evidence_refs?: Array<EvidenceReference>;
+    /**
+     * Mechanism Version
+     */
+    mechanism_version?: string | null;
+    /**
+     * Reasons
+     */
+    reasons?: Array<string>;
+    /**
+     * Supporting Facts
+     */
+    supporting_facts?: Array<string>;
+};
+
+/**
  * InterviewCreate
  * Create interview — planning fields optional; answers still require in_progress.
  */
@@ -2658,6 +2712,42 @@ export type OrganizationDetailOut = {
 };
 
 /**
+ * OrganizationIntelligenceRunOut
+ * Persisted successful OI run — envelope retained in ``insights`` JSONB.
+ */
+export type OrganizationIntelligenceRunOut = {
+    /**
+     * Correlation Id
+     */
+    correlation_id: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Id
+     */
+    id: string;
+    insights: OrganizationalInsights;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version: string;
+};
+
+/**
  * OrganizationOut
  */
 export type OrganizationOut = {
@@ -2781,6 +2871,73 @@ export type OrganizationProfilePatch = {
  * OrganizationStatus
  */
 export type OrganizationStatus = 'active' | 'suspended' | 'closed';
+
+/**
+ * OrganizationalInsight
+ */
+export type OrganizationalInsight = {
+    /**
+     * Confidence
+     */
+    confidence?: number | null;
+    /**
+     * Evidence Refs
+     */
+    evidence_refs?: Array<EvidenceReference>;
+    explanation?: InsightExplanation | null;
+    /**
+     * Insight Id
+     */
+    insight_id: string;
+    /**
+     * Summary
+     */
+    summary: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Type
+     */
+    type: string;
+};
+
+/**
+ * OrganizationalInsights
+ * OI → Core envelope (schema 1.0).
+ */
+export type OrganizationalInsights = {
+    /**
+     * Core Organization Id
+     */
+    core_organization_id: string;
+    /**
+     * Correlation Id
+     */
+    correlation_id: string;
+    /**
+     * Explanations
+     */
+    explanations?: Array<InsightExplanation>;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Insights
+     */
+    insights?: Array<OrganizationalInsight>;
+    metadata?: EnvelopeMetadata | null;
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version: string;
+};
 
 /**
  * OverlapWarning
@@ -3644,9 +3801,17 @@ export type GetActionItemErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetActionItemError = GetActionItemErrors[keyof GetActionItemErrors];
@@ -3720,9 +3885,17 @@ export type CancelActionItemErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CancelActionItemError = CancelActionItemErrors[keyof CancelActionItemErrors];
@@ -3796,9 +3969,17 @@ export type CloseIneffectiveActionItemErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CloseIneffectiveActionItemError = CloseIneffectiveActionItemErrors[keyof CloseIneffectiveActionItemErrors];
@@ -3872,9 +4053,17 @@ export type ConfirmActionItemEfficacyErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ConfirmActionItemEfficacyError = ConfirmActionItemEfficacyErrors[keyof ConfirmActionItemEfficacyErrors];
@@ -3948,9 +4137,17 @@ export type FailActionItemEfficacyErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type FailActionItemEfficacyError = FailActionItemEfficacyErrors[keyof FailActionItemEfficacyErrors];
@@ -4024,9 +4221,17 @@ export type MarkActionItemImplementedErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type MarkActionItemImplementedError = MarkActionItemImplementedErrors[keyof MarkActionItemImplementedErrors];
@@ -4100,9 +4305,17 @@ export type RejectActionItemImplementationErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type RejectActionItemImplementationError = RejectActionItemImplementationErrors[keyof RejectActionItemImplementationErrors];
@@ -4176,9 +4389,17 @@ export type ReopenActionItemErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ReopenActionItemError = ReopenActionItemErrors[keyof ReopenActionItemErrors];
@@ -4252,9 +4473,17 @@ export type StartActionItemErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type StartActionItemError = StartActionItemErrors[keyof StartActionItemErrors];
@@ -4328,9 +4557,17 @@ export type ValidateActionItemErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ValidateActionItemError = ValidateActionItemErrors[keyof ValidateActionItemErrors];
@@ -4415,9 +4652,17 @@ export type ListActionPlansErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListActionPlansError = ListActionPlansErrors[keyof ListActionPlansErrors];
@@ -4492,9 +4737,17 @@ export type CreateActionPlanErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateActionPlanError = CreateActionPlanErrors[keyof CreateActionPlanErrors];
@@ -4568,9 +4821,17 @@ export type GetActionPlanErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetActionPlanError = GetActionPlanErrors[keyof GetActionPlanErrors];
@@ -4655,9 +4916,17 @@ export type ListActionItemsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListActionItemsError = ListActionItemsErrors[keyof ListActionItemsErrors];
@@ -4737,9 +5006,17 @@ export type CreateActionItemErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateActionItemError = CreateActionItemErrors[keyof CreateActionItemErrors];
@@ -4813,9 +5090,17 @@ export type ActivateActionPlanErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ActivateActionPlanError = ActivateActionPlanErrors[keyof ActivateActionPlanErrors];
@@ -4889,9 +5174,17 @@ export type CancelActionPlanErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CancelActionPlanError = CancelActionPlanErrors[keyof CancelActionPlanErrors];
@@ -4965,9 +5258,17 @@ export type CompleteActionPlanErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CompleteActionPlanError = CompleteActionPlanErrors[keyof CompleteActionPlanErrors];
@@ -5041,9 +5342,17 @@ export type GetAgendaBoardErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetAgendaBoardError = GetAgendaBoardErrors[keyof GetAgendaBoardErrors];
@@ -5118,9 +5427,17 @@ export type ListAgendaEventsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListAgendaEventsError = ListAgendaEventsErrors[keyof ListAgendaEventsErrors];
@@ -5195,9 +5512,17 @@ export type CreateAgendaEventErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateAgendaEventError = CreateAgendaEventErrors[keyof CreateAgendaEventErrors];
@@ -5271,9 +5596,17 @@ export type GetAgendaEventErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetAgendaEventError = GetAgendaEventErrors[keyof GetAgendaEventErrors];
@@ -5347,9 +5680,17 @@ export type UpdateAgendaEventErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type UpdateAgendaEventError = UpdateAgendaEventErrors[keyof UpdateAgendaEventErrors];
@@ -5418,9 +5759,17 @@ export type SyncAgendaAutoEventsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type SyncAgendaAutoEventsError = SyncAgendaAutoEventsErrors[keyof SyncAgendaAutoEventsErrors];
@@ -5497,9 +5846,17 @@ export type UpdateAnswerErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type UpdateAnswerError = UpdateAnswerErrors[keyof UpdateAnswerErrors];
@@ -5579,9 +5936,17 @@ export type ListAssessmentsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListAssessmentsError = ListAssessmentsErrors[keyof ListAssessmentsErrors];
@@ -5656,9 +6021,17 @@ export type CreateAssessmentErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateAssessmentError = CreateAssessmentErrors[keyof CreateAssessmentErrors];
@@ -5732,9 +6105,17 @@ export type GetAssessmentErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetAssessmentError = GetAssessmentErrors[keyof GetAssessmentErrors];
@@ -5808,9 +6189,17 @@ export type GetOrCreateAuditPlanErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetOrCreateAuditPlanError = GetOrCreateAuditPlanErrors[keyof GetOrCreateAuditPlanErrors];
@@ -5889,9 +6278,17 @@ export type PatchAuditPlanErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type PatchAuditPlanError = PatchAuditPlanErrors[keyof PatchAuditPlanErrors];
@@ -5973,9 +6370,17 @@ export type ConcludeAuditPlanningErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ConcludeAuditPlanningError = ConcludeAuditPlanningErrors[keyof ConcludeAuditPlanningErrors];
@@ -6057,9 +6462,17 @@ export type MarkAuditPlanReadyErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type MarkAuditPlanReadyError = MarkAuditPlanReadyErrors[keyof MarkAuditPlanReadyErrors];
@@ -6136,9 +6549,17 @@ export type RefreshAuditPlanFromPreparationErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type RefreshAuditPlanFromPreparationError = RefreshAuditPlanFromPreparationErrors[keyof RefreshAuditPlanFromPreparationErrors];
@@ -6212,9 +6633,17 @@ export type GetAuditPlanScheduleErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetAuditPlanScheduleError = GetAuditPlanScheduleErrors[keyof GetAuditPlanScheduleErrors];
@@ -6293,9 +6722,17 @@ export type CreateAuditPlanMeetingErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateAuditPlanMeetingError = CreateAuditPlanMeetingErrors[keyof CreateAuditPlanMeetingErrors];
@@ -6373,9 +6810,17 @@ export type UpdateAuditPlanMeetingErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type UpdateAuditPlanMeetingError = UpdateAuditPlanMeetingErrors[keyof UpdateAuditPlanMeetingErrors];
@@ -6461,9 +6906,17 @@ export type PerformOpeningMeetingErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type PerformOpeningMeetingError = PerformOpeningMeetingErrors[keyof PerformOpeningMeetingErrors];
@@ -6546,9 +6999,17 @@ export type WaiveOpeningMeetingErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type WaiveOpeningMeetingError = WaiveOpeningMeetingErrors[keyof WaiveOpeningMeetingErrors];
@@ -6627,9 +7088,17 @@ export type CreateAuditPlanMilestoneErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateAuditPlanMilestoneError = CreateAuditPlanMilestoneErrors[keyof CreateAuditPlanMilestoneErrors];
@@ -6707,9 +7176,17 @@ export type UpdateAuditPlanMilestoneErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type UpdateAuditPlanMilestoneError = UpdateAuditPlanMilestoneErrors[keyof UpdateAuditPlanMilestoneErrors];
@@ -6791,9 +7268,17 @@ export type StartAuditFieldExecutionErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type StartAuditFieldExecutionError = StartAuditFieldExecutionErrors[keyof StartAuditFieldExecutionErrors];
@@ -6867,9 +7352,17 @@ export type ListAssessmentEvidencesErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListAssessmentEvidencesError = ListAssessmentEvidencesErrors[keyof ListAssessmentEvidencesErrors];
@@ -6944,9 +7437,17 @@ export type GetAssessmentEvolutionMapErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetAssessmentEvolutionMapError = GetAssessmentEvolutionMapErrors[keyof GetAssessmentEvolutionMapErrors];
@@ -7029,9 +7530,17 @@ export type GenerateAssessmentEvolutionMapErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GenerateAssessmentEvolutionMapError = GenerateAssessmentEvolutionMapErrors[keyof GenerateAssessmentEvolutionMapErrors];
@@ -7105,9 +7614,17 @@ export type GetOrCreateGuidedSessionErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetOrCreateGuidedSessionError = GetOrCreateGuidedSessionErrors[keyof GetOrCreateGuidedSessionErrors];
@@ -7181,9 +7698,17 @@ export type PatchGuidedSessionErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type PatchGuidedSessionError = PatchGuidedSessionErrors[keyof PatchGuidedSessionErrors];
@@ -7261,9 +7786,17 @@ export type UpsertGuidedAnswerErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type UpsertGuidedAnswerError = UpsertGuidedAnswerErrors[keyof UpsertGuidedAnswerErrors];
@@ -7341,9 +7874,17 @@ export type ListGuidedAnswerEvidencesErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListGuidedAnswerEvidencesError = ListGuidedAnswerEvidencesErrors[keyof ListGuidedAnswerEvidencesErrors];
@@ -7422,9 +7963,17 @@ export type AuthorizeGuidedAnswerEvidenceUploadErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type AuthorizeGuidedAnswerEvidenceUploadError = AuthorizeGuidedAnswerEvidenceUploadErrors[keyof AuthorizeGuidedAnswerEvidenceUploadErrors];
@@ -7502,9 +8051,17 @@ export type LinkGuidedAnswerEvidenceErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type LinkGuidedAnswerEvidenceError = LinkGuidedAnswerEvidenceErrors[keyof LinkGuidedAnswerEvidenceErrors];
@@ -7582,9 +8139,17 @@ export type GetGuidedAnswerEvidenceStatusErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetGuidedAnswerEvidenceStatusError = GetGuidedAnswerEvidenceStatusErrors[keyof GetGuidedAnswerEvidenceStatusErrors];
@@ -7666,9 +8231,17 @@ export type UnlinkGuidedAnswerEvidenceErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type UnlinkGuidedAnswerEvidenceError = UnlinkGuidedAnswerEvidenceErrors[keyof UnlinkGuidedAnswerEvidenceErrors];
@@ -7750,9 +8323,17 @@ export type CompleteGuidedAnswerEvidenceLinkErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CompleteGuidedAnswerEvidenceLinkError = CompleteGuidedAnswerEvidenceLinkErrors[keyof CompleteGuidedAnswerEvidenceLinkErrors];
@@ -7826,9 +8407,17 @@ export type PatchGuidedPositionErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type PatchGuidedPositionError = PatchGuidedPositionErrors[keyof PatchGuidedPositionErrors];
@@ -7902,9 +8491,17 @@ export type ListAssessmentInterviewsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListAssessmentInterviewsError = ListAssessmentInterviewsErrors[keyof ListAssessmentInterviewsErrors];
@@ -7984,9 +8581,17 @@ export type CreateInterviewErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateInterviewError = CreateInterviewErrors[keyof CreateInterviewErrors];
@@ -8060,9 +8665,17 @@ export type ListAssessmentQuestionsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListAssessmentQuestionsError = ListAssessmentQuestionsErrors[keyof ListAssessmentQuestionsErrors];
@@ -8137,9 +8750,17 @@ export type ListAssessmentScopeOptionsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListAssessmentScopeOptionsError = ListAssessmentScopeOptionsErrors[keyof ListAssessmentScopeOptionsErrors];
@@ -8214,9 +8835,17 @@ export type ListAssessmentScopesErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListAssessmentScopesError = ListAssessmentScopesErrors[keyof ListAssessmentScopesErrors];
@@ -8291,9 +8920,17 @@ export type AddAssessmentScopeErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type AddAssessmentScopeError = AddAssessmentScopeErrors[keyof AddAssessmentScopeErrors];
@@ -8367,9 +9004,17 @@ export type EnsureAssessmentScopesErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type EnsureAssessmentScopesError = EnsureAssessmentScopesErrors[keyof EnsureAssessmentScopesErrors];
@@ -8448,9 +9093,17 @@ export type DeleteAssessmentScopeErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type DeleteAssessmentScopeError = DeleteAssessmentScopeErrors[keyof DeleteAssessmentScopeErrors];
@@ -8524,9 +9177,17 @@ export type ListAssessmentTeamErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListAssessmentTeamError = ListAssessmentTeamErrors[keyof ListAssessmentTeamErrors];
@@ -8601,9 +9262,17 @@ export type AddAssessmentTeamMemberErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type AddAssessmentTeamMemberError = AddAssessmentTeamMemberErrors[keyof AddAssessmentTeamMemberErrors];
@@ -8681,9 +9350,17 @@ export type RemoveAssessmentTeamMemberErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type RemoveAssessmentTeamMemberError = RemoveAssessmentTeamMemberErrors[keyof RemoveAssessmentTeamMemberErrors];
@@ -8757,9 +9434,17 @@ export type BeginAssessmentAnalysisErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type BeginAssessmentAnalysisError = BeginAssessmentAnalysisErrors[keyof BeginAssessmentAnalysisErrors];
@@ -8833,9 +9518,17 @@ export type BeginAssessmentReportErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type BeginAssessmentReportError = BeginAssessmentReportErrors[keyof BeginAssessmentReportErrors];
@@ -8909,9 +9602,17 @@ export type CancelAssessmentErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CancelAssessmentError = CancelAssessmentErrors[keyof CancelAssessmentErrors];
@@ -8988,9 +9689,17 @@ export type CloseAssessmentErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CloseAssessmentError = CloseAssessmentErrors[keyof CloseAssessmentErrors];
@@ -9064,9 +9773,17 @@ export type OpenAssessmentActionsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type OpenAssessmentActionsError = OpenAssessmentActionsErrors[keyof OpenAssessmentActionsErrors];
@@ -9140,9 +9857,17 @@ export type PlanAssessmentErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type PlanAssessmentError = PlanAssessmentErrors[keyof PlanAssessmentErrors];
@@ -9216,9 +9941,17 @@ export type ReopenAssessmentErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ReopenAssessmentError = ReopenAssessmentErrors[keyof ReopenAssessmentErrors];
@@ -9292,9 +10025,17 @@ export type ReopenDraftAssessmentErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ReopenDraftAssessmentError = ReopenDraftAssessmentErrors[keyof ReopenDraftAssessmentErrors];
@@ -9368,9 +10109,17 @@ export type StartAssessmentErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type StartAssessmentError = StartAssessmentErrors[keyof StartAssessmentErrors];
@@ -9444,9 +10193,17 @@ export type AuthorizeEvidenceUploadErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type AuthorizeEvidenceUploadError = AuthorizeEvidenceUploadErrors[keyof AuthorizeEvidenceUploadErrors];
@@ -9515,9 +10272,17 @@ export type CleanupExpiredEvidencesErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CleanupExpiredEvidencesError = CleanupExpiredEvidencesErrors[keyof CleanupExpiredEvidencesErrors];
@@ -9591,9 +10356,17 @@ export type GetEvidenceErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetEvidenceError = GetEvidenceErrors[keyof GetEvidenceErrors];
@@ -9667,9 +10440,17 @@ export type GetEvidenceBytesLocalErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetEvidenceBytesLocalError = GetEvidenceBytesLocalErrors[keyof GetEvidenceBytesLocalErrors];
@@ -9741,9 +10522,17 @@ export type PutEvidenceBytesLocalErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type PutEvidenceBytesLocalError = PutEvidenceBytesLocalErrors[keyof PutEvidenceBytesLocalErrors];
@@ -9817,9 +10606,17 @@ export type GetEvidenceDownloadUrlErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetEvidenceDownloadUrlError = GetEvidenceDownloadUrlErrors[keyof GetEvidenceDownloadUrlErrors];
@@ -9893,9 +10690,17 @@ export type ListEvidenceLinksErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListEvidenceLinksError = ListEvidenceLinksErrors[keyof ListEvidenceLinksErrors];
@@ -9970,9 +10775,17 @@ export type CreateEvidenceLinkErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateEvidenceLinkError = CreateEvidenceLinkErrors[keyof CreateEvidenceLinkErrors];
@@ -10050,9 +10863,17 @@ export type DeleteEvidenceLinkErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type DeleteEvidenceLinkError = DeleteEvidenceLinkErrors[keyof DeleteEvidenceLinkErrors];
@@ -10126,9 +10947,17 @@ export type AbandonEvidenceUploadErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type AbandonEvidenceUploadError = AbandonEvidenceUploadErrors[keyof AbandonEvidenceUploadErrors];
@@ -10202,9 +11031,17 @@ export type ReceiveEvidenceUploadErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ReceiveEvidenceUploadError = ReceiveEvidenceUploadErrors[keyof ReceiveEvidenceUploadErrors];
@@ -10278,9 +11115,17 @@ export type SecurityFailEvidenceErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type SecurityFailEvidenceError = SecurityFailEvidenceErrors[keyof SecurityFailEvidenceErrors];
@@ -10354,9 +11199,17 @@ export type SecurityPassEvidenceErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type SecurityPassEvidenceError = SecurityPassEvidenceErrors[keyof SecurityPassEvidenceErrors];
@@ -10430,9 +11283,17 @@ export type GetEvolutionSuggestionErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetEvolutionSuggestionError = GetEvolutionSuggestionErrors[keyof GetEvolutionSuggestionErrors];
@@ -10511,9 +11372,17 @@ export type AcceptEvolutionSuggestionErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type AcceptEvolutionSuggestionError = AcceptEvolutionSuggestionErrors[keyof AcceptEvolutionSuggestionErrors];
@@ -10592,9 +11461,17 @@ export type ConvertEvolutionSuggestionToActionErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ConvertEvolutionSuggestionToActionError = ConvertEvolutionSuggestionToActionErrors[keyof ConvertEvolutionSuggestionToActionErrors];
@@ -10673,9 +11550,17 @@ export type DismissEvolutionSuggestionErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type DismissEvolutionSuggestionError = DismissEvolutionSuggestionErrors[keyof DismissEvolutionSuggestionErrors];
@@ -10757,9 +11642,17 @@ export type InvestigateEvolutionSuggestionErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type InvestigateEvolutionSuggestionError = InvestigateEvolutionSuggestionErrors[keyof InvestigateEvolutionSuggestionErrors];
@@ -10848,9 +11741,17 @@ export type ListFindingsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListFindingsError = ListFindingsErrors[keyof ListFindingsErrors];
@@ -10925,9 +11826,17 @@ export type CreateFindingErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateFindingError = CreateFindingErrors[keyof CreateFindingErrors];
@@ -11001,9 +11910,17 @@ export type GetFindingErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetFindingError = GetFindingErrors[keyof GetFindingErrors];
@@ -11077,9 +11994,17 @@ export type UpdateFindingErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type UpdateFindingError = UpdateFindingErrors[keyof UpdateFindingErrors];
@@ -11153,9 +12078,17 @@ export type ApproveFindingErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ApproveFindingError = ApproveFindingErrors[keyof ApproveFindingErrors];
@@ -11232,9 +12165,17 @@ export type DiscardFindingErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type DiscardFindingError = DiscardFindingErrors[keyof DiscardFindingErrors];
@@ -11308,9 +12249,17 @@ export type RejectFindingErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type RejectFindingError = RejectFindingErrors[keyof RejectFindingErrors];
@@ -11384,9 +12333,17 @@ export type ReworkFindingErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ReworkFindingError = ReworkFindingErrors[keyof ReworkFindingErrors];
@@ -11460,9 +12417,17 @@ export type SubmitFindingErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type SubmitFindingError = SubmitFindingErrors[keyof SubmitFindingErrors];
@@ -11536,9 +12501,17 @@ export type WithdrawFindingErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type WithdrawFindingError = WithdrawFindingErrors[keyof WithdrawFindingErrors];
@@ -11612,9 +12585,17 @@ export type GetGuidedCatalogErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetGuidedCatalogError = GetGuidedCatalogErrors[keyof GetGuidedCatalogErrors];
@@ -11691,9 +12672,17 @@ export type GetInterviewErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetInterviewError = GetInterviewErrors[keyof GetInterviewErrors];
@@ -11772,9 +12761,17 @@ export type UpdateInterviewErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type UpdateInterviewError = UpdateInterviewErrors[keyof UpdateInterviewErrors];
@@ -11848,9 +12845,17 @@ export type ListInterviewAnswersErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListInterviewAnswersError = ListInterviewAnswersErrors[keyof ListInterviewAnswersErrors];
@@ -11925,9 +12930,17 @@ export type CreateAnswerErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateAnswerError = CreateAnswerErrors[keyof CreateAnswerErrors];
@@ -12001,9 +13014,17 @@ export type CancelInterviewErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CancelInterviewError = CancelInterviewErrors[keyof CancelInterviewErrors];
@@ -12077,9 +13098,17 @@ export type CompleteInterviewErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CompleteInterviewError = CompleteInterviewErrors[keyof CompleteInterviewErrors];
@@ -12153,9 +13182,17 @@ export type ConfirmInterviewErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ConfirmInterviewError = ConfirmInterviewErrors[keyof ConfirmInterviewErrors];
@@ -12229,9 +13266,17 @@ export type StartInterviewErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type StartInterviewError = StartInterviewErrors[keyof StartInterviewErrors];
@@ -12305,9 +13350,17 @@ export type GetJobErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetJobError = GetJobErrors[keyof GetJobErrors];
@@ -12392,9 +13445,17 @@ export type ListMaturityAssessmentsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListMaturityAssessmentsError = ListMaturityAssessmentsErrors[keyof ListMaturityAssessmentsErrors];
@@ -12469,9 +13530,17 @@ export type CreateMaturityAssessmentErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateMaturityAssessmentError = CreateMaturityAssessmentErrors[keyof CreateMaturityAssessmentErrors];
@@ -12545,9 +13614,17 @@ export type GetMaturityAssessmentErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetMaturityAssessmentError = GetMaturityAssessmentErrors[keyof GetMaturityAssessmentErrors];
@@ -12621,9 +13698,17 @@ export type UpsertMaturityScoresErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type UpsertMaturityScoresError = UpsertMaturityScoresErrors[keyof UpsertMaturityScoresErrors];
@@ -12697,9 +13782,17 @@ export type ApproveMaturityAssessmentErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ApproveMaturityAssessmentError = ApproveMaturityAssessmentErrors[keyof ApproveMaturityAssessmentErrors];
@@ -12776,9 +13869,17 @@ export type DiscardMaturityAssessmentErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type DiscardMaturityAssessmentError = DiscardMaturityAssessmentErrors[keyof DiscardMaturityAssessmentErrors];
@@ -12852,9 +13953,17 @@ export type RejectMaturityAssessmentErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type RejectMaturityAssessmentError = RejectMaturityAssessmentErrors[keyof RejectMaturityAssessmentErrors];
@@ -12928,9 +14037,17 @@ export type ReworkMaturityAssessmentErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ReworkMaturityAssessmentError = ReworkMaturityAssessmentErrors[keyof ReworkMaturityAssessmentErrors];
@@ -13004,9 +14121,17 @@ export type SubmitMaturityAssessmentErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type SubmitMaturityAssessmentError = SubmitMaturityAssessmentErrors[keyof SubmitMaturityAssessmentErrors];
@@ -13080,9 +14205,17 @@ export type SupersedeMaturityAssessmentErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type SupersedeMaturityAssessmentError = SupersedeMaturityAssessmentErrors[keyof SupersedeMaturityAssessmentErrors];
@@ -13152,9 +14285,17 @@ export type CreateOrganizationErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateOrganizationError = CreateOrganizationErrors[keyof CreateOrganizationErrors];
@@ -13223,9 +14364,17 @@ export type GetCurrentOrganizationErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetCurrentOrganizationError = GetCurrentOrganizationErrors[keyof GetCurrentOrganizationErrors];
@@ -13238,6 +14387,255 @@ export type GetCurrentOrganizationResponses = {
 };
 
 export type GetCurrentOrganizationResponse = GetCurrentOrganizationResponses[keyof GetCurrentOrganizationResponses];
+
+export type AnalyzeCurrentOrganizationIntelligenceData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/organizations/current/intelligence/analyze';
+};
+
+export type AnalyzeCurrentOrganizationIntelligenceErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type AnalyzeCurrentOrganizationIntelligenceError = AnalyzeCurrentOrganizationIntelligenceErrors[keyof AnalyzeCurrentOrganizationIntelligenceErrors];
+
+export type AnalyzeCurrentOrganizationIntelligenceResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrganizationalInsights;
+};
+
+export type AnalyzeCurrentOrganizationIntelligenceResponse = AnalyzeCurrentOrganizationIntelligenceResponses[keyof AnalyzeCurrentOrganizationIntelligenceResponses];
+
+export type ListCurrentOrganizationIntelligenceRunsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         * Maximum items to return (collections). Default 50, max 100.
+         */
+        limit?: number;
+    };
+    url: '/api/v1/organizations/current/intelligence/runs';
+};
+
+export type ListCurrentOrganizationIntelligenceRunsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListCurrentOrganizationIntelligenceRunsError = ListCurrentOrganizationIntelligenceRunsErrors[keyof ListCurrentOrganizationIntelligenceRunsErrors];
+
+export type ListCurrentOrganizationIntelligenceRunsResponses = {
+    /**
+     * Response Listcurrentorganizationintelligenceruns
+     * Successful Response
+     */
+    200: Array<OrganizationIntelligenceRunOut>;
+};
+
+export type ListCurrentOrganizationIntelligenceRunsResponse = ListCurrentOrganizationIntelligenceRunsResponses[keyof ListCurrentOrganizationIntelligenceRunsResponses];
+
+export type GetCurrentOrganizationIntelligenceRunData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/intelligence/runs/{run_id}';
+};
+
+export type GetCurrentOrganizationIntelligenceRunErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetCurrentOrganizationIntelligenceRunError = GetCurrentOrganizationIntelligenceRunErrors[keyof GetCurrentOrganizationIntelligenceRunErrors];
+
+export type GetCurrentOrganizationIntelligenceRunResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrganizationIntelligenceRunOut;
+};
+
+export type GetCurrentOrganizationIntelligenceRunResponse = GetCurrentOrganizationIntelligenceRunResponses[keyof GetCurrentOrganizationIntelligenceRunResponses];
 
 export type ListCurrentOrganizationMembersData = {
     body?: never;
@@ -13294,9 +14692,17 @@ export type ListCurrentOrganizationMembersErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListCurrentOrganizationMembersError = ListCurrentOrganizationMembersErrors[keyof ListCurrentOrganizationMembersErrors];
@@ -13366,9 +14772,17 @@ export type GetOrCreateOrganizationProfileErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetOrCreateOrganizationProfileError = GetOrCreateOrganizationProfileErrors[keyof GetOrCreateOrganizationProfileErrors];
@@ -13437,9 +14851,17 @@ export type PatchOrganizationProfileErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type PatchOrganizationProfileError = PatchOrganizationProfileErrors[keyof PatchOrganizationProfileErrors];
@@ -13504,9 +14926,17 @@ export type ListMyMembershipsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListMyMembershipsError = ListMyMembershipsErrors[keyof ListMyMembershipsErrors];
@@ -13592,9 +15022,17 @@ export type ListReportsErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ListReportsError = ListReportsErrors[keyof ListReportsErrors];
@@ -13669,9 +15107,17 @@ export type CreateReportErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type CreateReportError = CreateReportErrors[keyof CreateReportErrors];
@@ -13745,9 +15191,17 @@ export type GetReportErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetReportError = GetReportErrors[keyof GetReportErrors];
@@ -13826,9 +15280,17 @@ export type ExportReportPdfErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ExportReportPdfError = ExportReportPdfErrors[keyof ExportReportPdfErrors];
@@ -13902,9 +15364,17 @@ export type GetReportPdfBytesLocalErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetReportPdfBytesLocalError = GetReportPdfBytesLocalErrors[keyof GetReportPdfBytesLocalErrors];
@@ -13976,9 +15446,17 @@ export type GetReportPdfDownloadUrlErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetReportPdfDownloadUrlError = GetReportPdfDownloadUrlErrors[keyof GetReportPdfDownloadUrlErrors];
@@ -14052,9 +15530,17 @@ export type RefreshReportSnapshotErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type RefreshReportSnapshotError = RefreshReportSnapshotErrors[keyof RefreshReportSnapshotErrors];
@@ -14128,9 +15614,17 @@ export type ArchiveReportErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type ArchiveReportError = ArchiveReportErrors[keyof ArchiveReportErrors];
@@ -14207,9 +15701,17 @@ export type DiscardReportErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type DiscardReportError = DiscardReportErrors[keyof DiscardReportErrors];
@@ -14288,9 +15790,17 @@ export type PublishReportErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type PublishReportError = PublishReportErrors[keyof PublishReportErrors];
@@ -14364,9 +15874,17 @@ export type RequestReportChangesErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type RequestReportChangesError = RequestReportChangesErrors[keyof RequestReportChangesErrors];
@@ -14440,9 +15958,17 @@ export type SubmitReportErrors = {
      */
     422: HttpValidationError;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type SubmitReportError = SubmitReportErrors[keyof SubmitReportErrors];
@@ -14493,9 +16019,17 @@ export type GetHealthErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetHealthError = GetHealthErrors[keyof GetHealthErrors];
@@ -14549,9 +16083,17 @@ export type GetReadyErrors = {
      */
     422: ErrorBody;
     /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
      * Dependency unavailable
      */
     503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
 };
 
 export type GetReadyError = GetReadyErrors[keyof GetReadyErrors];
