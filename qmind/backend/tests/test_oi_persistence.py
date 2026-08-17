@@ -157,15 +157,16 @@ def test_two_runs_history_newest_first() -> None:
 
 
 def test_organization_id_from_org_context_not_envelope_tenant() -> None:
+    """Divergent OI core_organization_id is rejected (OI-011 guard) and not persisted."""
     client = TestClient(app)
     sub = f"oi-ctx-{uuid.uuid4()}"
     org_id = _create_org(client, sub)
     h = _headers(sub, org_id)
     client.get("/api/v1/organizations/current/profile", headers=h)
+    before = client.get(RUNS, headers=h).json()
     foreign = str(uuid.uuid4())
 
     def _fake(payload: OrganizationContextInput) -> OrganizationalInsights:
-        # OI echoes a different core_organization_id — Core must still persist OrgContext.
         return OrganizationalInsights.model_validate(
             _insights_payload(
                 org_id=foreign,
@@ -178,12 +179,11 @@ def test_organization_id_from_org_context_not_envelope_tenant() -> None:
         "app.modules.oi.service.OrganizationalIntelligenceClient"
     ) as mock_cls:
         mock_cls.return_value.analyze.side_effect = _fake
-        assert client.post(ANALYZE, headers=h).status_code == 200
+        response = client.post(ANALYZE, headers=h)
 
-    run = client.get(RUNS, headers=h).json()[0]
-    assert run["organization_id"] == org_id
-    # Envelope preserved as received (including foreign echo) — Core does not rewrite it.
-    assert run["insights"]["core_organization_id"] == foreign
+    assert response.status_code == 502
+    assert response.json()["code"] == "oi_organization_mismatch"
+    assert client.get(RUNS, headers=h).json() == before
 
 
 def test_http_isolation_tenant_a_cannot_read_tenant_b_runs() -> None:

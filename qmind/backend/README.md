@@ -48,6 +48,13 @@ alembic upgrade head   # inclui upload_expires_at
 - Drift CI: `python scripts/check_openapi_drift.py` ou `pytest tests/test_openapi_contract.py`
 - Freeze: tag **`openapi-v1-initial`** (após aceite deste contrato)
 
+## Contrato Core ↔ OI (v1)
+
+- Snapshots OI: `contracts/oi/v1/`
+- Check: `python scripts/check_oi_contract_compatibility.py`
+- Sync a partir do sibling `qmind-oi`: `python scripts/sync_oi_contract_schemas.py`
+- Doc: `../architecture/04_Docs/018_Core_OI_Contract_Compatibility_V1.md`
+
 ## Testes
 
 ```powershell

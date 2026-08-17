@@ -67,6 +67,7 @@ Mesma política de leitura do profile / analyze OI-009 (sem roles novas).
 - Sem tabelas normalizadas por insight.
 - Sem alteração no `qmind-oi`.
 
-## Dívida técnica (não resolvida)
+## Dívida técnica
 
-**TD — Contract Drift Core ↔ OI:** DTOs wire no Core espelham OI-001; falta validação automatizada de compatibilidade entre repositórios.
+**TD — Contract Drift Core ↔ OI:** **Mitigada** em OI-011 — ver [`018_Core_OI_Contract_Compatibility_V1.md`](018_Core_OI_Contract_Compatibility_V1.md).
+Check estrutural Core DTOs ↔ snapshots dos JSON Schemas públicos OI; CI único cross-repo ainda não existe.

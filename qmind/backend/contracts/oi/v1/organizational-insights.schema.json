@@ -1,0 +1,274 @@
+{
+  "$defs": {
+    "EnvelopeMetadata": {
+      "additionalProperties": false,
+      "description": "Technical transport metadata only — no business facts.",
+      "properties": {
+        "environment": {
+          "anyOf": [
+            {
+              "enum": [
+                "local",
+                "test",
+                "homolog",
+                "prod"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment"
+        },
+        "producer_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Software version of the producing system (not schema_version).",
+          "title": "Producer Version"
+        },
+        "trace_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional distributed-trace identifier distinct from correlation_id.",
+          "title": "Trace Id"
+        }
+      },
+      "title": "EnvelopeMetadata",
+      "type": "object"
+    },
+    "EvidenceReference": {
+      "additionalProperties": false,
+      "description": "Opaque pointer to a Core-owned fact. OI never resolves the underlying row.",
+      "properties": {
+        "source_id": {
+          "description": "Opaque id as known to Core; UUID string when Core uses UUID.",
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_type": {
+          "examples": [
+            "organization_profile",
+            "assessment",
+            "finding",
+            "action_item"
+          ],
+          "minLength": 1,
+          "title": "Source Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_type",
+        "source_id"
+      ],
+      "title": "EvidenceReference",
+      "type": "object"
+    },
+    "InsightExplanation": {
+      "additionalProperties": false,
+      "description": "Explainability payload for a single insight (no algorithm here).",
+      "properties": {
+        "evidence_refs": {
+          "items": {
+            "$ref": "#/$defs/EvidenceReference"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "mechanism_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Version id of the producing mechanism/ruleset (not schema_version).",
+          "title": "Mechanism Version"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "supporting_facts": {
+          "description": "Human-readable fact summaries that supported the conclusion.",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Supporting Facts",
+          "type": "array"
+        }
+      },
+      "title": "InsightExplanation",
+      "type": "object"
+    },
+    "OrganizationalInsight": {
+      "additionalProperties": false,
+      "description": "One derived interpretation unit. Taxonomy of `type` evolves in later sprints.",
+      "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "description": "Optional mechanism confidence in [0.0, 1.0]. Not priority, not a statistical guarantee — producer-defined degree of belief in the interpretation.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "evidence_refs": {
+          "items": {
+            "$ref": "#/$defs/EvidenceReference"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "explanation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InsightExplanation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "insight_id": {
+          "minLength": 1,
+          "title": "Insight Id",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "examples": [
+            "profile_observation",
+            "data_gap",
+            "recommendation"
+          ],
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "insight_id",
+        "type",
+        "title",
+        "summary"
+      ],
+      "title": "OrganizationalInsight",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Root envelope: OI → Core.",
+  "properties": {
+    "core_organization_id": {
+      "format": "uuid",
+      "title": "Core Organization Id",
+      "type": "string"
+    },
+    "correlation_id": {
+      "minLength": 1,
+      "title": "Correlation Id",
+      "type": "string"
+    },
+    "explanations": {
+      "description": "Optional envelope-level explanations not tied to a single insight. Prefer per-insight explanation when possible.",
+      "items": {
+        "$ref": "#/$defs/InsightExplanation"
+      },
+      "title": "Explanations",
+      "type": "array"
+    },
+    "generated_at": {
+      "description": "When OI produced this insights envelope (timezone-aware, prefer UTC).",
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "insights": {
+      "items": {
+        "$ref": "#/$defs/OrganizationalInsight"
+      },
+      "title": "Insights",
+      "type": "array"
+    },
+    "metadata": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EnvelopeMetadata"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "request_id": {
+      "description": "Echo of the inbound request_id when responding to a specific call.",
+      "minLength": 1,
+      "title": "Request Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "examples": [
+        "1.0"
+      ],
+      "minLength": 1,
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "core_organization_id",
+    "request_id",
+    "correlation_id",
+    "generated_at"
+  ],
+  "title": "OrganizationalInsights",
+  "type": "object"
+}

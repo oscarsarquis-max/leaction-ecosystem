@@ -152,5 +152,11 @@ def analyze_current_organization(
     )
     oi_client = client or OrganizationalIntelligenceClient(settings)
     result = oi_client.analyze(envelope)
+    if result.core_organization_id != ctx.organization_id:
+        raise AppError(
+            "oi_organization_mismatch",
+            "QMind OI response core_organization_id does not match the current organization",
+            status_code=502,
+        )
     persist_intelligence_run(ctx, result)
     return result
