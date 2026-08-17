@@ -5,3 +5,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 *.egg-info/
+
+# OI-016 local smoke output
+scripts/_oi016_smoke_results.json
+
