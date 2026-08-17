@@ -37,6 +37,12 @@ export function isOrgProfileFieldKey(value: string): value is OrgProfileFieldKey
   return (ORG_PROFILE_FIELD_KEYS as readonly string[]).includes(value);
 }
 
+/** Friendly label when known; otherwise returns the raw supporting_fact text. */
+export function labelForSupportingFact(fact: string): string {
+  if (isOrgProfileFieldKey(fact)) return ORG_PROFILE_FIELD_LABELS[fact];
+  return fact;
+}
+
 export const BUSINESS_MODEL_OPTIONS: { value: BusinessModel; label: string }[] = [
   { value: "", label: "Não informado" },
   { value: "b2b", label: "B2B (empresa para empresa)" },

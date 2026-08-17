@@ -27,6 +27,9 @@ import type {
 
 type Props = {
   onProfileSaved?: () => void;
+  /** When set, enter edit mode and focus this validated profile field. */
+  completeField?: OrgProfileFieldKey | null;
+  onCompleteFieldHandled?: () => void;
 };
 
 type FormState = {
@@ -40,6 +43,10 @@ type FormState = {
   certification_status: CertificationStatus;
   quality_structure: QualityStructure;
 };
+
+function controlId(fieldKey: OrgProfileFieldKey): string {
+  return `org-context-control-${fieldKey}`;
+}
 
 function toForm(profile: OrganizationProfile): FormState {
   return {
@@ -85,7 +92,7 @@ function FieldShell({
   children: ReactNode;
 }) {
   return (
-    <label
+    <div
       className={`block text-sm ${
         highlighted
           ? "rounded-md border border-[var(--qm-attention)] bg-[var(--qm-surface)] p-2"
@@ -94,9 +101,12 @@ function FieldShell({
       data-testid={`org-context-field-${fieldKey}`}
       data-needed={highlighted ? "true" : "false"}
     >
-      <span className="font-medium text-[var(--qm-ink)]">
+      <label
+        htmlFor={controlId(fieldKey)}
+        className="font-medium text-[var(--qm-ink)]"
+      >
         {ORG_PROFILE_FIELD_LABELS[fieldKey]}
-      </span>
+      </label>
       {highlighted ? (
         <span
           className="ml-2 text-xs font-semibold text-[var(--qm-attention)]"
@@ -106,11 +116,15 @@ function FieldShell({
         </span>
       ) : null}
       <div className="mt-1">{children}</div>
-    </label>
+    </div>
   );
 }
 
-export function OrgOrganizationContext({ onProfileSaved }: Props) {
+export function OrgOrganizationContext({
+  onProfileSaved,
+  completeField = null,
+  onCompleteFieldHandled,
+}: Props) {
   const org = useOrganization();
   const canEdit = canEditOrganizationProfile(org.currentOrganization?.roles);
   const profileQuery = useOrgProfile();
@@ -120,6 +134,9 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<FormState | null>(null);
   const [savedHint, setSavedHint] = useState(false);
+  const [pendingFocus, setPendingFocus] = useState<OrgProfileFieldKey | null>(
+    null,
+  );
 
   const missingKeys = useMemo(() => {
     const facts =
@@ -133,7 +150,38 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
     setEditing(false);
     setForm(null);
     setSavedHint(false);
+    setPendingFocus(null);
   }, [org.currentOrganizationId]);
+
+  const profile = profileQuery.data;
+
+  useEffect(() => {
+    if (!completeField) return;
+    if (!canEdit || !profile) {
+      onCompleteFieldHandled?.();
+      return;
+    }
+    setForm(toForm(profile));
+    setEditing(true);
+    setSavedHint(false);
+    setPendingFocus(completeField);
+    patch.reset();
+    onCompleteFieldHandled?.();
+    // Intentionally react only when a new completeField request arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completeField]);
+
+  useEffect(() => {
+    if (!editing || !pendingFocus || !form) return;
+    const el = document.getElementById(controlId(pendingFocus));
+    if (el instanceof HTMLElement) {
+      el.focus();
+      if (typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    }
+    setPendingFocus(null);
+  }, [editing, pendingFocus, form]);
 
   if (profileQuery.isLoading) {
     return <LoadingPanel title="Carregando contexto da organização…" />;
@@ -149,7 +197,6 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
     );
   }
 
-  const profile = profileQuery.data;
   if (!profile) {
     return null;
   }
@@ -158,12 +205,14 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
     setForm(toForm(profile));
     setEditing(true);
     setSavedHint(false);
+    setPendingFocus(null);
     patch.reset();
   };
 
   const cancelEdit = () => {
     setEditing(false);
     setForm(null);
+    setPendingFocus(null);
     patch.reset();
   };
 
@@ -173,6 +222,7 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
       onSuccess: () => {
         setEditing(false);
         setForm(null);
+        setPendingFocus(null);
         setSavedHint(true);
         onProfileSaved?.();
       },
@@ -261,10 +311,12 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
         >
           {ORG_PROFILE_FIELD_KEYS.map((key) => {
             const highlighted = missingKeys.has(key);
+            const id = controlId(key);
             if (key === "summary") {
               return (
                 <FieldShell key={key} fieldKey={key} highlighted={highlighted}>
                   <textarea
+                    id={id}
                     className="qm-field min-h-[88px] w-full"
                     value={form.summary}
                     onChange={(e) =>
@@ -278,6 +330,7 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
               return (
                 <FieldShell key={key} fieldKey={key} highlighted={highlighted}>
                   <select
+                    id={id}
                     className="qm-field w-full"
                     value={form.business_model}
                     onChange={(e) =>
@@ -300,6 +353,7 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
               return (
                 <FieldShell key={key} fieldKey={key} highlighted={highlighted}>
                   <select
+                    id={id}
                     className="qm-field w-full"
                     value={form.employee_range}
                     onChange={(e) =>
@@ -322,6 +376,7 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
               return (
                 <FieldShell key={key} fieldKey={key} highlighted={highlighted}>
                   <select
+                    id={id}
                     className="qm-field w-full"
                     value={form.certification_status}
                     onChange={(e) =>
@@ -345,6 +400,7 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
               return (
                 <FieldShell key={key} fieldKey={key} highlighted={highlighted}>
                   <select
+                    id={id}
                     className="qm-field w-full"
                     value={form.quality_structure}
                     onChange={(e) =>
@@ -367,6 +423,7 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
               return (
                 <FieldShell key={key} fieldKey={key} highlighted={highlighted}>
                   <input
+                    id={id}
                     type="number"
                     min={0}
                     className="qm-field w-full"
@@ -381,6 +438,7 @@ export function OrgOrganizationContext({ onProfileSaved }: Props) {
             return (
               <FieldShell key={key} fieldKey={key} highlighted={highlighted}>
                 <input
+                  id={id}
                   className="qm-field w-full"
                   value={form[key]}
                   onChange={(e) =>

@@ -10,6 +10,11 @@ import {
   insightReasonValue,
   type OrganizationalInsight,
 } from "@/api/organizationalIntelligenceApi";
+import {
+  isOrgProfileFieldKey,
+  labelForSupportingFact,
+  type OrgProfileFieldKey,
+} from "@/lib/orgProfileLabels";
 
 function formatDateTime(iso: string): string {
   try {
@@ -43,7 +48,15 @@ function analyzeErrorTitle(error: unknown): string {
   }
 }
 
-function InsightCard({ insight }: { insight: OrganizationalInsight }) {
+function InsightCard({
+  insight,
+  canCompleteFields,
+  onCompleteField,
+}: {
+  insight: OrganizationalInsight;
+  canCompleteFields: boolean;
+  onCompleteField?: (field: OrgProfileFieldKey) => void;
+}) {
   const clause = insightReasonValue(insight, "clause");
   const priority = insightReasonValue(insight, "priority");
   const missing = insight.explanation?.supporting_facts ?? [];
@@ -82,12 +95,33 @@ function InsightCard({ insight }: { insight: OrganizationalInsight }) {
       {missing.length > 0 ? (
         <div className="mt-3" data-testid="oi-insight-missing">
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--qm-ink)]">
-            Informações ausentes
+            Informações necessárias
           </p>
-          <ul className="mt-1 list-inside list-disc text-sm text-[var(--qm-muted)]">
-            {missing.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
+          <ul className="mt-2 space-y-2">
+            {missing.map((item) => {
+              const known = isOrgProfileFieldKey(item);
+              const label = labelForSupportingFact(item);
+              return (
+                <li
+                  key={item}
+                  className="flex flex-wrap items-center justify-between gap-2 text-sm text-[var(--qm-muted)]"
+                  data-testid={`oi-missing-row-${item}`}
+                  data-known={known ? "true" : "false"}
+                >
+                  <span data-testid={`oi-missing-label-${item}`}>{label}</span>
+                  {known && canCompleteFields && onCompleteField ? (
+                    <button
+                      type="button"
+                      className="qm-btn-secondary shrink-0 !px-2 !py-1 text-xs"
+                      data-testid={`oi-complete-${item}`}
+                      onClick={() => onCompleteField(item)}
+                    >
+                      Completar
+                    </button>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}
@@ -98,9 +132,13 @@ function InsightCard({ insight }: { insight: OrganizationalInsight }) {
 export function OrgOrganizationalIntelligence({
   analysisMayBeStale = false,
   onAnalyzeSuccess,
+  canCompleteFields = false,
+  onCompleteField,
 }: {
   analysisMayBeStale?: boolean;
   onAnalyzeSuccess?: () => void;
+  canCompleteFields?: boolean;
+  onCompleteField?: (field: OrgProfileFieldKey) => void;
 }) {
   const latest = useLatestOrganizationalIntelligence();
   const analyze = useAnalyzeOrganizationalIntelligence();
@@ -214,7 +252,11 @@ export function OrgOrganizationalIntelligence({
         <ul className="space-y-3" data-testid="oi-insights-list">
           {insights.map((insight) => (
             <li key={insight.insight_id}>
-              <InsightCard insight={insight} />
+              <InsightCard
+                insight={insight}
+                canCompleteFields={canCompleteFields}
+                onCompleteField={onCompleteField}
+              />
             </li>
           ))}
         </ul>

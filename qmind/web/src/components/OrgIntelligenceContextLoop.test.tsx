@@ -15,6 +15,7 @@ import {
   ORG_PROFILE_FIELD_LABELS,
   collectMissingProfileFields,
   formatProfileFieldDisplay,
+  labelForSupportingFact,
 } from "@/lib/orgProfileLabels";
 import { canEditOrganizationProfile } from "@/lib/permissions";
 import type { OrganizationProfile } from "@/api/orgProfileApi";
@@ -204,6 +205,10 @@ describe("org profile labels and permissions", () => {
     expect(ORG_PROFILE_FIELD_LABELS.employee_range).toBe(
       "Número de colaboradores",
     );
+    expect(labelForSupportingFact("employee_range")).toBe(
+      "Número de colaboradores",
+    );
+    expect(labelForSupportingFact("custom_gap_xyz")).toBe("custom_gap_xyz");
     expect(ORG_PROFILE_FIELD_LABELS.quality_structure).toBe(
       "Estrutura responsável pela qualidade",
     );
@@ -411,7 +416,65 @@ describe("OrgIntelligenceContextLoop", () => {
     expect(runs.some((r) => r.id === "run-aaaaaaaa-old")).toBe(true);
   });
 
-  it("hides edit for reader and isolates tenant switch", async () => {
+  it("Completar opens edit focused on the matching field; unknown gaps stay visible without action", async () => {
+    const user = userEvent.setup();
+    const profile = partialProfile(ORG_A);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = requestUrl(input);
+      if (url.includes("/memberships")) {
+        return jsonResponse(membershipsFor(["org_admin"]));
+      }
+      if (url.includes("/organizations/current/profile")) {
+        return jsonResponse(profile);
+      }
+      if (url.includes("/intelligence/runs")) {
+        return jsonResponse([
+          runFor(ORG_A, [
+            "employee_range",
+            "quality_structure",
+            "unknown_external_gap",
+          ]),
+        ]);
+      }
+      if (url.includes("/agenda/board")) return agendaEmpty();
+      if (url.includes("/assessments")) return jsonResponse([]);
+      return jsonResponse({ code: "not_found", message: url }, 404);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<Harness />);
+    await enterApp(user);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("oi-missing-label-employee_range").textContent).toBe(
+        "Número de colaboradores",
+      );
+    });
+    expect(screen.getByTestId("oi-complete-employee_range")).toBeTruthy();
+    expect(screen.getByTestId("oi-missing-label-unknown_external_gap").textContent).toBe(
+      "unknown_external_gap",
+    );
+    expect(screen.queryByTestId("oi-complete-unknown_external_gap")).toBeNull();
+
+    await user.click(screen.getByTestId("oi-complete-employee_range"));
+    await waitFor(() => {
+      expect(screen.getByTestId("org-context-form")).toBeTruthy();
+      expect(document.activeElement?.id).toBe("org-context-control-employee_range");
+    });
+
+    await user.click(screen.getByTestId("org-context-cancel"));
+    await waitFor(() => {
+      expect(screen.queryByTestId("org-context-form")).toBeNull();
+    });
+
+    await user.click(screen.getByTestId("oi-complete-quality_structure"));
+    await waitFor(() => {
+      expect(screen.getByTestId("org-context-form")).toBeTruthy();
+      expect(document.activeElement?.id).toBe("org-context-control-quality_structure");
+    });
+  });
+
+  it("hides edit and Completar for reader; isolates tenant switch", async () => {
     const user = userEvent.setup();
     const profiles: Record<string, OrganizationProfile> = {
       [ORG_A]: fullProfile(ORG_A),
@@ -445,6 +508,10 @@ describe("OrgIntelligenceContextLoop", () => {
       );
     });
     expect(screen.queryByTestId("org-context-edit")).toBeNull();
+    expect(screen.queryByTestId("oi-complete-employee_range")).toBeNull();
+    expect(screen.getByTestId("oi-missing-label-employee_range").textContent).toBe(
+      "Número de colaboradores",
+    );
 
     await user.click(screen.getByRole("button", { name: "Switch B" }));
     await waitFor(() => {

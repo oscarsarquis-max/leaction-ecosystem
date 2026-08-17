@@ -245,6 +245,9 @@ describe("OrgOrganizationalIntelligence", () => {
       /Cláusula 7/,
     );
     expect(within(cards[1]!).getByTestId("oi-insight-missing").textContent).toMatch(
+      /Nome da organização/,
+    );
+    expect(within(cards[1]!).getByTestId("oi-insight-missing").textContent).not.toMatch(
       /trade_name/,
     );
     expect(screen.getByTestId("oi-analyze-button").textContent).toMatch(
