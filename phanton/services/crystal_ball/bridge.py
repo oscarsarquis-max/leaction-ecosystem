@@ -2,6 +2,9 @@
 
 Em modo shadow, redireciona a leitura para crystal_shadow_phases sem alterar
 o código dos handlers — só durante o contexto de recálculo.
+
+IMPORTANTE: `phase_context` faz `from phase_artifacts import latest_phase_artifact`,
+então o patch precisa atualizar AMBOS os namespaces.
 """
 
 from __future__ import annotations
@@ -13,6 +16,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 import services.phase_artifacts as phase_artifacts
+import services.phase_context as phase_context
 from services.crystal_ball.models import CrystalShadowPhase, CrystalShadowRun
 
 
@@ -28,7 +32,9 @@ def _shadow_latest(
     run_uuid = _as_uuid(run_id)
     shadow = db_session.get(CrystalShadowRun, run_uuid)
     if shadow is None:
-        return phase_artifacts.latest_phase_artifact(db_session, run_id, phase_id)
+        return phase_artifacts._crystal_ball_original_latest(  # type: ignore[attr-defined]
+            db_session, run_id, phase_id
+        )
 
     row = (
         db_session.query(CrystalShadowPhase)
@@ -48,8 +54,15 @@ def _shadow_latest(
 def shadow_artifact_bridge() -> Iterator[None]:
     """Monkeypatch temporário — falha isolada: restaura sempre no finally."""
     original = phase_artifacts.latest_phase_artifact
+    # Guarda original para fallback quando run_id não é shadow
+    phase_artifacts._crystal_ball_original_latest = original  # type: ignore[attr-defined]
+
     phase_artifacts.latest_phase_artifact = _shadow_latest  # type: ignore[assignment]
+    phase_context.latest_phase_artifact = _shadow_latest  # type: ignore[assignment]
     try:
         yield
     finally:
         phase_artifacts.latest_phase_artifact = original
+        phase_context.latest_phase_artifact = original
+        if hasattr(phase_artifacts, "_crystal_ball_original_latest"):
+            delattr(phase_artifacts, "_crystal_ball_original_latest")

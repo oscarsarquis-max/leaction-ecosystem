@@ -1,0 +1,251 @@
+{
+  "shadow_run_id": "ad79c2ee-e31f-4945-8ede-463e0413add1",
+  "status": "experimental_done",
+  "metodologia": "Aprendizagem Baseada em Problemas",
+  "errors": [],
+  "lineage": {
+    "shadow_run_id": "ad79c2ee-e31f-4945-8ede-463e0413add1",
+    "is_simulation": true,
+    "experimental": true,
+    "status": "experimental_done",
+    "phase_order": [
+      "context7_mativas",
+      "methodology",
+      "synthesize",
+      "entrega_final"
+    ],
+    "nodes": [
+      {
+        "phase_id": "context7_mativas",
+        "name": "Context7 Mativas (experimental lookup)",
+        "type": "context7_search",
+        "status": "recalculated",
+        "has_artifact": true,
+        "inputs_used": [],
+        "quality_score": 100,
+        "origin": "experimental_lookup"
+      },
+      {
+        "phase_id": "methodology",
+        "name": "Methodology (guardrails)",
+        "type": "methodology",
+        "status": "recalculated",
+        "has_artifact": true,
+        "inputs_used": [
+          "context7_mativas"
+        ],
+        "quality_score": 100,
+        "origin": "experimental"
+      },
+      {
+        "phase_id": "synthesize",
+        "name": "Synthesize",
+        "type": "synthesize",
+        "status": "recalculated",
+        "has_artifact": true,
+        "inputs_used": [
+          "context7_mativas",
+          "methodology"
+        ],
+        "quality_score": 100,
+        "origin": "experimental"
+      },
+      {
+        "phase_id": "entrega_final",
+        "name": "Entrega final (roteiro)",
+        "type": "prompt",
+        "status": "recalculated",
+        "has_artifact": true,
+        "inputs_used": [
+          "context7_mativas",
+          "methodology",
+          "synthesize"
+        ],
+        "quality_score": 100,
+        "origin": "experimental"
+      }
+    ],
+    "edges": [
+      {
+        "from": "context7_mativas",
+        "to": "methodology"
+      },
+      {
+        "from": "context7_mativas",
+        "to": "synthesize"
+      },
+      {
+        "from": "methodology",
+        "to": "synthesize"
+      },
+      {
+        "from": "context7_mativas",
+        "to": "entrega_final"
+      },
+      {
+        "from": "methodology",
+        "to": "entrega_final"
+      },
+      {
+        "from": "synthesize",
+        "to": "entrega_final"
+      }
+    ]
+  },
+  "comparison_summary": {
+    "n_referencia": 8,
+    "n_gerado": 8,
+    "identical_count": 0,
+    "titulo_identical_count": 8,
+    "descricao_identical_count": 0,
+    "identical_ratio": 0.0,
+    "extracted_from": "entrega_final"
+  },
+  "comparison_details": [
+    {
+      "ordem": 1,
+      "identical": false,
+      "titulo_identical": true,
+      "descricao_identical": false,
+      "gerado_titulo": "Apresente a situação-problema",
+      "ref_imperativo": "Apresente a situação-problema",
+      "gerado_desc_preview": "**Descrição Base:** Escolha uma situação relacionada ao tema do curso ou disciplina e contextualize-a em aspectos históricos, sociais, técnicos, econômicos, culturais, éticos ou pr",
+      "ref_desc_preview": "Escolha uma situação relacionada ao tema do curso ou disciplina e contextualize-a em aspectos históricos, sociais, técnicos, econômicos, culturais, éticos ou profissionais. Formule"
+    },
+    {
+      "ordem": 2,
+      "identical": false,
+      "titulo_identical": true,
+      "descricao_identical": false,
+      "gerado_titulo": "Estabeleça um contrato didático com e entre os estudantes",
+      "ref_imperativo": "Estabeleça um contrato didático com e entre os estudantes",
+      "gerado_desc_preview": "**Descrição Base:** Defina com a turma as regras de trabalho, prazos, produtos esperados, critérios de participação, formas de registro, organização dos grupos, fontes de pesquisa ",
+      "ref_desc_preview": "Defina com a turma as regras de trabalho, prazos, produtos esperados, critérios de participação, formas de registro, organização dos grupos, fontes de pesquisa e instrumentos de av"
+    },
+    {
+      "ordem": 3,
+      "identical": false,
+      "titulo_identical": true,
+      "descricao_identical": false,
+      "gerado_titulo": "Oriente a exploração inicial",
+      "ref_imperativo": "Oriente a exploração inicial",
+      "gerado_desc_preview": "**Descrição Base:** Ofereça referências, casos, dados, fontes, vídeos, textos, bases de informação ou exemplos. O objetivo é apoiar a investigação sem entregar a solução para o pro",
+      "ref_desc_preview": "Ofereça referências, casos, dados, fontes, vídeos, textos, bases de informação ou exemplos. O objetivo é apoiar a investigação sem entregar a solução para o problema. Nessa etapa, "
+    },
+    {
+      "ordem": 4,
+      "identical": false,
+      "titulo_identical": true,
+      "descricao_identical": false,
+      "gerado_titulo": "Acompanhe a pesquisa e a produção individual",
+      "ref_imperativo": "Acompanhe a pesquisa e a produção individual",
+      "gerado_desc_preview": "**Descrição Base:** Peça que cada estudante pesquise em fontes teóricas, técnicas, empíricas ou digitais e produza uma síntese individual com achados, dúvidas, hipóteses ou propost",
+      "ref_desc_preview": "Peça que cada estudante pesquise em fontes teóricas, técnicas, empíricas ou digitais e produza uma síntese individual com achados, dúvidas, hipóteses ou proposta inicial de solução"
+    },
+    {
+      "ordem": 5,
+      "identical": false,
+      "titulo_identical": true,
+      "descricao_identical": false,
+      "gerado_titulo": "Promova a discussão coletiva",
+      "ref_imperativo": "Promova a discussão coletiva",
+      "gerado_desc_preview": "**Descrição Base:** Organize a socialização das pesquisas individuais. Estimule a comparação de descobertas, a argumentação, a escuta, a identificação de convergências e divergênci",
+      "ref_desc_preview": "Organize a socialização das pesquisas individuais. Estimule a comparação de descobertas, a argumentação, a escuta, a identificação de convergências e divergências e a negociação de"
+    },
+    {
+      "ordem": 6,
+      "identical": false,
+      "titulo_identical": true,
+      "descricao_identical": false,
+      "gerado_titulo": "Oriente a produção coletiva",
+      "ref_imperativo": "Oriente a produção coletiva",
+      "gerado_desc_preview": "**Descrição Base:** Apoie os grupos na construção da proposta de solução. Monitore a colaboração, a coerência conceitual, a integração das contribuições individuais e a justificati",
+      "ref_desc_preview": "Apoie os grupos na construção da proposta de solução. Monitore a colaboração, a coerência conceitual, a integração das contribuições individuais e a justificativa das escolhas. A p"
+    },
+    {
+      "ordem": 7,
+      "identical": false,
+      "titulo_identical": true,
+      "descricao_identical": false,
+      "gerado_titulo": "Coordene a apresentação e a avaliação da produção",
+      "ref_imperativo": "Coordene a apresentação e a avaliação da produção",
+      "gerado_desc_preview": "**Descrição Base:** Organize a apresentação das soluções e aplique uma rubrica de avaliação ou outro instrumento de sua preferência. Considere critérios como pertinência da solução",
+      "ref_desc_preview": "Organize a apresentação das soluções e aplique uma rubrica de avaliação ou outro instrumento de sua preferência. Considere critérios como pertinência da solução, fundamentação, via"
+    },
+    {
+      "ordem": 8,
+      "identical": false,
+      "titulo_identical": true,
+      "descricao_identical": false,
+      "gerado_titulo": "Conduza a avaliação da aprendizagem e do processo",
+      "ref_imperativo": "Conduza a avaliação da aprendizagem e do processo",
+      "gerado_desc_preview": "**Descrição Base:** Avalie domínio conceitual, raciocínio, investigação, participação, argumentação, colaboração e contribuição individual para o grupo. Proponha autoavaliação e/ou",
+      "ref_desc_preview": "Avalie domínio conceitual, raciocínio, investigação, participação, argumentação, colaboração e contribuição individual para o grupo. Proponha autoavaliação e/ou avaliação por pares"
+    }
+  ],
+  "artifacts_summary": {
+    "context7_mativas": {
+      "has_artifact": true,
+      "capability": "context7_search",
+      "inputs_used": [],
+      "meta": {
+        "experimental": true,
+        "is_simulation": true,
+        "provider": "crystal_ball.mativas_lookup",
+        "n_passos": 8,
+        "corpus_path": "C:/Projetos/phanton/services/context7/corpus/mativas_base_conhecimento.json"
+      }
+    },
+    "methodology": {
+      "has_artifact": true,
+      "capability": "methodology",
+      "inputs_used": [
+        "context7_mativas"
+      ],
+      "meta": {
+        "model": "gemini-3.5-flash",
+        "provider": "google",
+        "finish_reason": "FinishReason.STOP",
+        "is_simulation": true,
+        "experimental": true
+      }
+    },
+    "synthesize": {
+      "has_artifact": true,
+      "capability": "synthesize",
+      "inputs_used": [
+        "context7_mativas",
+        "methodology"
+      ],
+      "meta": {
+        "model": "gemini-3.5-flash",
+        "provider": "google",
+        "finish_reason": "FinishReason.STOP",
+        "attempts": [],
+        "used_response_json": true,
+        "used_max_output_tokens": 4096,
+        "is_simulation": true,
+        "experimental": true
+      }
+    },
+    "entrega_final": {
+      "has_artifact": true,
+      "capability": "prompt",
+      "inputs_used": [
+        "context7_mativas",
+        "methodology",
+        "synthesize"
+      ],
+      "meta": {
+        "model": "gemini-3.5-flash",
+        "provider": "google",
+        "finish_reason": "FinishReason.STOP",
+        "attempts": [],
+        "used_max_output_tokens": 16384,
+        "delivery_format": "markdown",
+        "is_simulation": true,
+        "experimental": true
+      }
+    }
+  }
+}

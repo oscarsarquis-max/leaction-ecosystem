@@ -57,6 +57,15 @@ if (Test-Path $CrystalSql) {
     docker exec $Container rm -f $remote2 | Out-Null
 }
 
+$CrystalNullable = Join-Path $ComposeDir '03_crystal_ball_nullable_source.sql'
+if (Test-Path $CrystalNullable) {
+    $remote3 = '/tmp/phanton_03_crystal_ball.sql'
+    docker cp $CrystalNullable "${Container}:${remote3}"
+    Write-Host "==> Aplicando Crystal Ball nullable source ($CrystalNullable) ..." -ForegroundColor Cyan
+    docker exec $Container psql -U $DbUser -d $Database -v ON_ERROR_STOP=1 -f $remote3
+    docker exec $Container rm -f $remote3 | Out-Null
+}
+
 Write-Host "==> Tabelas:" -ForegroundColor Green
 docker exec $Container psql -U $DbUser -d $Database -c `
     "SELECT relname AS table, n_live_tup AS rows_est FROM pg_stat_user_tables ORDER BY relname;"

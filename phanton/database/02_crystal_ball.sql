@@ -1,7 +1,8 @@
 -- Crystal Ball — tabelas isoladas (nunca escreve em pipeline_runs / phase_executions)
 CREATE TABLE IF NOT EXISTS crystal_shadow_runs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    source_run_id UUID NOT NULL REFERENCES pipeline_runs (id) ON DELETE CASCADE,
+    -- Nullable para experimentos shadow-only (sem pipeline_runs oficial).
+    source_run_id UUID REFERENCES pipeline_runs (id) ON DELETE CASCADE,
     fork_phase_id VARCHAR NOT NULL,
     status VARCHAR NOT NULL DEFAULT 'forked',
     spec JSONB NOT NULL,

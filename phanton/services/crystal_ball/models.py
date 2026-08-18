@@ -19,10 +19,11 @@ class CrystalShadowRun(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    source_run_id: Mapped[uuid.UUID] = mapped_column(
+    # Nullable: experimentos Crystal Ball puros (ex.: Mativas) sem run oficial.
+    source_run_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("pipeline_runs.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
     fork_phase_id: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="forked")

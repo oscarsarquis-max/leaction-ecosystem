@@ -11,6 +11,12 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from services.crystal_ball import service as cb
+from services.crystal_ball.experimental_run import (
+    ExperimentalRunError,
+    build_shadow_lineage,
+    experimental_edit_and_recalculate,
+    run_mativas_experimental,
+)
 from services.crystal_ball.service import CrystalBallError
 
 router = APIRouter(prefix="/api/crystal-ball", tags=["crystal-ball"])
@@ -29,6 +35,80 @@ class QuickPreviewRequest(BaseModel):
     text: Optional[str] = None
     structured_requirements: Optional[dict[str, Any]] = None
     link_source_run_id: Optional[UUID] = None
+
+
+class ExperimentalRunRequest(BaseModel):
+    user_prompt: str = Field(..., min_length=8)
+    metodologia: str = Field(..., min_length=2)
+
+
+class ExperimentalRecalculateRequest(BaseModel):
+    from_phase_id: str = Field(..., min_length=1)
+    artifact_data: Optional[dict[str, Any]] = None
+
+
+class RecalculateRequest(BaseModel):
+    shadow_run_id: UUID
+
+
+# Rotas estáticas ANTES de /{run_id}/… para não capturar "experimental-run" como UUID.
+
+
+@router.post("/experimental-run")
+async def crystal_experimental_run(
+    payload: ExperimentalRunRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Shadow-only: context7(Mativas) → methodology → synthesize → entrega_final."""
+    try:
+        return await run_mativas_experimental(
+            db,
+            user_prompt=payload.user_prompt,
+            metodologia=payload.metodologia,
+        )
+    except ExperimentalRunError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Crystal Ball experimental-run: {exc}"
+        ) from exc
+
+
+@router.post("/experimental-run/{shadow_run_id}/recalculate")
+async def crystal_experimental_recalculate(
+    shadow_run_id: UUID,
+    payload: ExperimentalRecalculateRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Edita (opcional) uma fase da Simulação e recalcula só o downstream."""
+    try:
+        return await experimental_edit_and_recalculate(
+            db,
+            shadow_run_id,
+            from_phase_id=payload.from_phase_id,
+            artifact_data=payload.artifact_data,
+        )
+    except ExperimentalRunError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Crystal Ball experimental recalculate: {exc}",
+        ) from exc
+
+
+@router.get("/shadow/{shadow_run_id}/lineage")
+def crystal_shadow_lineage(
+    shadow_run_id: UUID, db: Session = Depends(get_db)
+) -> dict[str, Any]:
+    try:
+        return build_shadow_lineage(db, shadow_run_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Crystal Ball shadow lineage: {exc}"
+        ) from exc
 
 
 @router.get("/{run_id}/lineage")
@@ -67,10 +147,6 @@ def crystal_edit_shadow(
         )
     except CrystalBallError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-class RecalculateRequest(BaseModel):
-    shadow_run_id: UUID
 
 
 @router.post("/{run_id}/recalculate")
