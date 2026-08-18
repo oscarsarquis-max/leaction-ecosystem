@@ -17,6 +17,7 @@ for _path in (str(_ROOT), str(_BACKEND)):
 
 from database import get_db
 from models import PhaseExecution, PipelineRun
+from crystal_ball_api import router as crystal_ball_router
 from schemas import (
     AcceptProjectRequest,
     AcceptProjectResponse,
@@ -118,6 +119,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Crystal Ball — subsistema aditivo (falha isolada do pipeline oficial)
+app.include_router(crystal_ball_router)
 
 
 @app.get("/health", response_model=HealthResponse)

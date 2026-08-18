@@ -83,9 +83,13 @@ async def execute_phase_L1(
     db_session: Optional[Session] = None,
     phase_id: str = "metodologia",
 ) -> dict[str, Any]:
-    del db_session
     spec = spec if isinstance(spec, dict) else {}
     cfg = phase_cfg(spec, phase_id)
+    inputs: dict[str, Any] = {}
+    if db_session is not None:
+        from services.phase_context import load_dependency_artifacts
+
+        inputs = load_dependency_artifacts(db_session, run_id, spec, phase_id)
     prompt = _build_prompt(spec, phase_id, cfg)
 
     try:
@@ -126,5 +130,6 @@ async def execute_phase_L1(
         "run_id": run_id,
         "pipeline_name": pipeline_label(spec),
         "artifact_data": artifact,
+        "inputs_used": list(inputs.keys()) if inputs else [],
         "meta": meta,
     }

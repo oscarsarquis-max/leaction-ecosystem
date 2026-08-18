@@ -48,6 +48,15 @@ Write-Host "==> Aplicando schema em $Database ..." -ForegroundColor Cyan
 docker exec $Container psql -U $DbUser -d $Database -v ON_ERROR_STOP=1 -f $remote
 docker exec $Container rm -f $remote | Out-Null
 
+$CrystalSql = Join-Path $ComposeDir '02_crystal_ball.sql'
+if (Test-Path $CrystalSql) {
+    $remote2 = '/tmp/phanton_02_crystal_ball.sql'
+    docker cp $CrystalSql "${Container}:${remote2}"
+    Write-Host "==> Aplicando Crystal Ball ($CrystalSql) ..." -ForegroundColor Cyan
+    docker exec $Container psql -U $DbUser -d $Database -v ON_ERROR_STOP=1 -f $remote2
+    docker exec $Container rm -f $remote2 | Out-Null
+}
+
 Write-Host "==> Tabelas:" -ForegroundColor Green
 docker exec $Container psql -U $DbUser -d $Database -c `
     "SELECT relname AS table, n_live_tup AS rows_est FROM pg_stat_user_tables ORDER BY relname;"

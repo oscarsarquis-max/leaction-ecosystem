@@ -21,6 +21,7 @@ import PipelineStatusBar from './components/PipelineStatusBar'
 import RequirementsDraftPanel from './components/RequirementsDraftPanel'
 import AcceptedProjectsPanel from './components/AcceptedProjectsPanel'
 import RunHistory from './components/RunHistory'
+import CrystalBallPanel from './components/CrystalBallPanel'
 import LinearExportButton from './components/LinearExportButton'
 import {
   PROMPT_COMPOSITION_HINTS,
@@ -887,6 +888,12 @@ function App() {
           onSelect={handleSelectHistory}
           onRefresh={fetchHistory}
           onNewCreation={handleNewCreation}
+        />
+
+        <CrystalBallPanel
+          apiBase={API_BASE}
+          activeRunId={runId}
+          onError={setError}
         />
 
         <AcceptedProjectsPanel
