@@ -15,6 +15,7 @@ import {
   FindingActionControls,
   ImprovementCaseActionsSection,
 } from "@/components/ImprovementCaseActions";
+import { ImprovementCaseEvolutionSection } from "@/components/ImprovementCaseEvolution";
 import {
   allowedImprovementCaseTransitions,
   labelHypothesisSupportStatus,
@@ -552,12 +553,12 @@ export function ImprovementCaseDetailPage() {
         />
       ) : null}
 
-      <div className="qm-panel qm-panel--soft" data-testid="ic-section-evolution">
-        <h2 className="text-base font-semibold text-slate-900">Evolução</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          A evolução será exibida após existirem análises e ações.
-        </p>
-      </div>
+      {caseId ? (
+        <ImprovementCaseEvolutionSection
+          caseId={caseId}
+          canWrite={canWrite}
+        />
+      ) : null}
     </section>
   );
 }

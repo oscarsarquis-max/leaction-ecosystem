@@ -74,7 +74,7 @@ Criação: `org_admin` | `consultant_auditor` | `quality_manager` (interseção 
 
 ## 8. UI
 
-Achado → Criar ação (form RO + owner/prazo) → Ação criada; seção Ações lista itens; link origem run/finding. Evolução permanece placeholder.
+Achado → Criar ação (form RO + owner/prazo) → Ação criada; seção Ações lista itens; link origem run/finding.
 
 ---
 
@@ -84,6 +84,7 @@ Criar/alterar ActionItem **não** altera fingerprint/stale da análise.
 
 ---
 
-## 10. Próximo (ISOI-005)
+## 10. Continuidade (ISOI-005)
 
-Evolução do caso após análises e ações (comparação de runs / resultado).
+Evolução do caso (OutcomeObservation + projeção de evolução):  
+[`026_ISO_Intelligence_V1_Improvement_Case_Evolution.md`](026_ISO_Intelligence_V1_Improvement_Case_Evolution.md).

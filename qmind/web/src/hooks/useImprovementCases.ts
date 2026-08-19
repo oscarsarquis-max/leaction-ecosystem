@@ -139,6 +139,12 @@ export function usePatchImprovementCase(caseId: string | undefined) {
             data.id,
           ),
         }),
+        qc.invalidateQueries({
+          queryKey: queryKeys.improvementCaseEvolution(
+            currentOrganizationId,
+            data.id,
+          ),
+        }),
       ]);
     },
   });

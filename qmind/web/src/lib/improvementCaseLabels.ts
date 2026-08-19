@@ -19,6 +19,18 @@ const SUPPORT_STATUS_LABEL: Record<string, string> = {
   supported_by_available_facts: "Sustentada pelos fatos disponíveis",
 };
 
+const RESULT_DIRECTION_LABEL: Record<string, string> = {
+  improved: "Melhorou",
+  unchanged: "Permaneceu igual",
+  worsened: "Piorou",
+  not_yet_measured: "Ainda não foi medido",
+};
+
+const CLOSURE_READINESS_LABEL: Record<string, string> = {
+  insufficient_information: "Ainda faltam elementos para revisar o caso",
+  ready_for_review: "O caso possui elementos para revisão",
+};
+
 export function labelImprovementCaseStatus(status: string | undefined): string {
   if (!status) return "—";
   return STATUS_LABEL[status] ?? status;
@@ -35,6 +47,23 @@ export function labelHypothesisSupportStatus(
   if (!status) return "—";
   return SUPPORT_STATUS_LABEL[status] ?? status;
 }
+
+export function labelResultDirection(direction: string | undefined): string {
+  if (!direction) return "—";
+  return RESULT_DIRECTION_LABEL[direction] ?? direction;
+}
+
+export function labelClosureReadiness(value: string | undefined): string {
+  if (!value) return "—";
+  return CLOSURE_READINESS_LABEL[value] ?? value;
+}
+
+export const RESULT_DIRECTION_OPTIONS = [
+  { value: "improved", label: "Melhorou" },
+  { value: "unchanged", label: "Permaneceu igual" },
+  { value: "worsened", label: "Piorou" },
+  { value: "not_yet_measured", label: "Ainda não foi medido" },
+] as const;
 
 export const IMPROVEMENT_CASE_STATUS_OPTIONS = [
   { value: "open", label: "Aberto" },

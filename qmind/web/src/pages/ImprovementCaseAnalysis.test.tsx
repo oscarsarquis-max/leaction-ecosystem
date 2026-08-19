@@ -217,9 +217,34 @@ function installFetch() {
       if (
         url.includes(`/improvement-cases/${caseRow.id}`) &&
         method === "GET" &&
-        !url.includes("analysis-runs")
+        !url.includes("analysis-runs") &&
+        !url.includes("/actions") &&
+        !url.includes("/evolution") &&
+        !url.includes("outcome")
       ) {
         return jsonResponse(caseRow);
+      }
+      if (url.includes("/evolution") && method === "GET") {
+        return jsonResponse({
+          case: caseRow,
+          analysis_summary: {
+            total_runs: runs.length,
+            latest_run: runs[0] ?? null,
+            previous_run: runs[1] ?? null,
+            comparison: null,
+          },
+          action_summary: {
+            total: 0,
+            by_status: [],
+            overdue: 0,
+            completed: 0,
+            items: [],
+            plan: null,
+          },
+          latest_outcome_observation: null,
+          outcome_observations: [],
+          closure_readiness: "insufficient_information",
+        });
       }
       if (url.includes("analysis-runs") && method === "GET") {
         return jsonResponse(runs);

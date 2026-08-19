@@ -212,6 +212,47 @@ export type ActionPlanTransitionResult = {
 };
 
 /**
+ * ActionStatusCount
+ */
+export type ActionStatusCount = {
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Status
+     */
+    status: string;
+};
+
+/**
+ * ActionSummary
+ */
+export type ActionSummary = {
+    /**
+     * By Status
+     */
+    by_status?: Array<ActionStatusCount>;
+    /**
+     * Completed
+     */
+    completed: number;
+    /**
+     * Items
+     */
+    items?: Array<ActionItemOut>;
+    /**
+     * Overdue
+     */
+    overdue: number;
+    plan?: ActionPlanOut | null;
+    /**
+     * Total
+     */
+    total: number;
+};
+
+/**
  * AgendaBoardOut
  */
 export type AgendaBoardOut = {
@@ -502,6 +543,61 @@ export type AgendaEventUpdate = {
      * Title
      */
     title?: string | null;
+};
+
+/**
+ * AnalysisRunComparison
+ */
+export type AnalysisRunComparison = {
+    /**
+     * Context Status After
+     */
+    context_status_after: string;
+    /**
+     * Context Status Before
+     */
+    context_status_before: string;
+    /**
+     * Findings Added
+     */
+    findings_added?: Array<string>;
+    /**
+     * Findings Persisting
+     */
+    findings_persisting?: Array<string>;
+    /**
+     * Findings Removed
+     */
+    findings_removed?: Array<string>;
+    /**
+     * Limitations Added
+     */
+    limitations_added?: Array<string>;
+    /**
+     * Limitations Removed
+     */
+    limitations_removed?: Array<string>;
+    /**
+     * Missing Information Added
+     */
+    missing_information_added?: Array<string>;
+    /**
+     * Missing Information Removed
+     */
+    missing_information_removed?: Array<string>;
+};
+
+/**
+ * AnalysisSummary
+ */
+export type AnalysisSummary = {
+    comparison?: AnalysisRunComparison | null;
+    latest_run?: ImprovementCaseAnalysisRunOut | null;
+    previous_run?: ImprovementCaseAnalysisRunOut | null;
+    /**
+     * Total Runs
+     */
+    total_runs: number;
 };
 
 /**
@@ -2234,6 +2330,24 @@ export type ImprovementCaseCreate = {
 };
 
 /**
+ * ImprovementCaseEvolutionOut
+ */
+export type ImprovementCaseEvolutionOut = {
+    action_summary: ActionSummary;
+    analysis_summary: AnalysisSummary;
+    case: ImprovementCaseOut;
+    /**
+     * Closure Readiness
+     */
+    closure_readiness: 'insufficient_information' | 'ready_for_review';
+    latest_outcome_observation?: OutcomeObservationOut | null;
+    /**
+     * Outcome Observations
+     */
+    outcome_observations?: Array<OutcomeObservationOut>;
+};
+
+/**
  * ImprovementCaseOut
  */
 export type ImprovementCaseOut = {
@@ -3105,6 +3219,70 @@ export type OrganizationalInsights = {
      * Schema Version
      */
     schema_version: string;
+};
+
+/**
+ * OutcomeObservationCreate
+ */
+export type OutcomeObservationCreate = {
+    /**
+     * Measurement Basis
+     */
+    measurement_basis: string;
+    /**
+     * Observation Statement
+     */
+    observation_statement: string;
+    /**
+     * Observed At
+     */
+    observed_at: string;
+    /**
+     * Result Direction
+     */
+    result_direction: 'improved' | 'unchanged' | 'worsened' | 'not_yet_measured';
+};
+
+/**
+ * OutcomeObservationOut
+ */
+export type OutcomeObservationOut = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Improvement Case Id
+     */
+    improvement_case_id: string;
+    /**
+     * Measurement Basis
+     */
+    measurement_basis: string;
+    /**
+     * Observation Statement
+     */
+    observation_statement: string;
+    /**
+     * Observed At
+     */
+    observed_at: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Result Direction
+     */
+    result_direction: 'improved' | 'unchanged' | 'worsened' | 'not_yet_measured';
 };
 
 /**
@@ -15466,6 +15644,265 @@ export type CreateActionFromImprovementCaseFindingResponses = {
 };
 
 export type CreateActionFromImprovementCaseFindingResponse = CreateActionFromImprovementCaseFindingResponses[keyof CreateActionFromImprovementCaseFindingResponses];
+
+export type GetCurrentOrganizationImprovementCaseEvolutionData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/evolution';
+};
+
+export type GetCurrentOrganizationImprovementCaseEvolutionErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetCurrentOrganizationImprovementCaseEvolutionError = GetCurrentOrganizationImprovementCaseEvolutionErrors[keyof GetCurrentOrganizationImprovementCaseEvolutionErrors];
+
+export type GetCurrentOrganizationImprovementCaseEvolutionResponses = {
+    /**
+     * Successful Response
+     */
+    200: ImprovementCaseEvolutionOut;
+};
+
+export type GetCurrentOrganizationImprovementCaseEvolutionResponse = GetCurrentOrganizationImprovementCaseEvolutionResponses[keyof GetCurrentOrganizationImprovementCaseEvolutionResponses];
+
+export type ListCurrentOrganizationImprovementCaseOutcomeObservationsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: {
+        /**
+         * Limit
+         * Maximum items to return (collections). Default 50, max 100.
+         */
+        limit?: number;
+    };
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/outcome-observations';
+};
+
+export type ListCurrentOrganizationImprovementCaseOutcomeObservationsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListCurrentOrganizationImprovementCaseOutcomeObservationsError = ListCurrentOrganizationImprovementCaseOutcomeObservationsErrors[keyof ListCurrentOrganizationImprovementCaseOutcomeObservationsErrors];
+
+export type ListCurrentOrganizationImprovementCaseOutcomeObservationsResponses = {
+    /**
+     * Response Listcurrentorganizationimprovementcaseoutcomeobservations
+     * Successful Response
+     */
+    200: Array<OutcomeObservationOut>;
+};
+
+export type ListCurrentOrganizationImprovementCaseOutcomeObservationsResponse = ListCurrentOrganizationImprovementCaseOutcomeObservationsResponses[keyof ListCurrentOrganizationImprovementCaseOutcomeObservationsResponses];
+
+export type CreateCurrentOrganizationImprovementCaseOutcomeObservationData = {
+    body: OutcomeObservationCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/outcome-observations';
+};
+
+export type CreateCurrentOrganizationImprovementCaseOutcomeObservationErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateCurrentOrganizationImprovementCaseOutcomeObservationError = CreateCurrentOrganizationImprovementCaseOutcomeObservationErrors[keyof CreateCurrentOrganizationImprovementCaseOutcomeObservationErrors];
+
+export type CreateCurrentOrganizationImprovementCaseOutcomeObservationResponses = {
+    /**
+     * Successful Response
+     */
+    201: OutcomeObservationOut;
+};
+
+export type CreateCurrentOrganizationImprovementCaseOutcomeObservationResponse = CreateCurrentOrganizationImprovementCaseOutcomeObservationResponses[keyof CreateCurrentOrganizationImprovementCaseOutcomeObservationResponses];
 
 export type AnalyzeCurrentOrganizationIntelligenceData = {
     body?: never;

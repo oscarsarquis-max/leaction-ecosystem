@@ -430,6 +430,71 @@
         "title": "ActionPlanTransitionResult",
         "type": "object"
       },
+      "ActionStatusCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "count"
+        ],
+        "title": "ActionStatusCount",
+        "type": "object"
+      },
+      "ActionSummary": {
+        "properties": {
+          "by_status": {
+            "items": {
+              "$ref": "#/components/schemas/ActionStatusCount"
+            },
+            "title": "By Status",
+            "type": "array"
+          },
+          "completed": {
+            "title": "Completed",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActionItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "integer"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionPlanOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "overdue",
+          "completed"
+        ],
+        "title": "ActionSummary",
+        "type": "object"
+      },
       "AgendaBoardOut": {
         "properties": {
           "in_progress_assessments": {
@@ -1103,6 +1168,116 @@
           }
         },
         "title": "AgendaEventUpdate",
+        "type": "object"
+      },
+      "AnalysisRunComparison": {
+        "properties": {
+          "context_status_after": {
+            "title": "Context Status After",
+            "type": "string"
+          },
+          "context_status_before": {
+            "title": "Context Status Before",
+            "type": "string"
+          },
+          "findings_added": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Findings Added",
+            "type": "array"
+          },
+          "findings_persisting": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Findings Persisting",
+            "type": "array"
+          },
+          "findings_removed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Findings Removed",
+            "type": "array"
+          },
+          "limitations_added": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations Added",
+            "type": "array"
+          },
+          "limitations_removed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations Removed",
+            "type": "array"
+          },
+          "missing_information_added": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Information Added",
+            "type": "array"
+          },
+          "missing_information_removed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Information Removed",
+            "type": "array"
+          }
+        },
+        "required": [
+          "context_status_before",
+          "context_status_after"
+        ],
+        "title": "AnalysisRunComparison",
+        "type": "object"
+      },
+      "AnalysisSummary": {
+        "properties": {
+          "comparison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisRunComparison"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImprovementCaseAnalysisRunOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImprovementCaseAnalysisRunOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_runs": {
+            "title": "Total Runs",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_runs"
+        ],
+        "title": "AnalysisSummary",
         "type": "object"
       },
       "AnswerCreate": {
@@ -4350,6 +4525,52 @@
         "title": "ImprovementCaseCreate",
         "type": "object"
       },
+      "ImprovementCaseEvolutionOut": {
+        "properties": {
+          "action_summary": {
+            "$ref": "#/components/schemas/ActionSummary"
+          },
+          "analysis_summary": {
+            "$ref": "#/components/schemas/AnalysisSummary"
+          },
+          "case": {
+            "$ref": "#/components/schemas/ImprovementCaseOut"
+          },
+          "closure_readiness": {
+            "enum": [
+              "insufficient_information",
+              "ready_for_review"
+            ],
+            "title": "Closure Readiness",
+            "type": "string"
+          },
+          "latest_outcome_observation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutcomeObservationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome_observations": {
+            "items": {
+              "$ref": "#/components/schemas/OutcomeObservationOut"
+            },
+            "title": "Outcome Observations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "case",
+          "analysis_summary",
+          "action_summary",
+          "closure_readiness"
+        ],
+        "title": "ImprovementCaseEvolutionOut",
+        "type": "object"
+      },
       "ImprovementCaseOut": {
         "properties": {
           "created_at": {
@@ -6111,6 +6332,111 @@
           "generated_at"
         ],
         "title": "OrganizationalInsights",
+        "type": "object"
+      },
+      "OutcomeObservationCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "measurement_basis": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Measurement Basis",
+            "type": "string"
+          },
+          "observation_statement": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Observation Statement",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "result_direction": {
+            "enum": [
+              "improved",
+              "unchanged",
+              "worsened",
+              "not_yet_measured"
+            ],
+            "title": "Result Direction",
+            "type": "string"
+          }
+        },
+        "required": [
+          "result_direction",
+          "observation_statement",
+          "measurement_basis",
+          "observed_at"
+        ],
+        "title": "OutcomeObservationCreate",
+        "type": "object"
+      },
+      "OutcomeObservationOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "format": "uuid",
+            "title": "Created By",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "improvement_case_id": {
+            "format": "uuid",
+            "title": "Improvement Case Id",
+            "type": "string"
+          },
+          "measurement_basis": {
+            "title": "Measurement Basis",
+            "type": "string"
+          },
+          "observation_statement": {
+            "title": "Observation Statement",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "result_direction": {
+            "enum": [
+              "improved",
+              "unchanged",
+              "worsened",
+              "not_yet_measured"
+            ],
+            "title": "Result Direction",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "organization_id",
+          "improvement_case_id",
+          "result_direction",
+          "observation_statement",
+          "measurement_basis",
+          "observed_at",
+          "created_by",
+          "created_at"
+        ],
+        "title": "OutcomeObservationOut",
         "type": "object"
       },
       "OverlapWarning": {
@@ -41304,6 +41630,731 @@
           }
         ],
         "summary": "Create an ActionItem from an analysis finding (human confirmation)",
+        "tags": [
+          "improvement-cases"
+        ]
+      }
+    },
+    "/api/v1/organizations/current/improvement-cases/{case_id}/evolution": {
+      "get": {
+        "operationId": "getCurrentOrganizationImprovementCaseEvolution",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImprovementCaseEvolutionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream dependency error (e.g. QMind OI)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream timeout (e.g. QMind OI)"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Read-only evolution projection for an improvement case",
+        "tags": [
+          "improvement-cases"
+        ]
+      }
+    },
+    "/api/v1/organizations/current/improvement-cases/{case_id}/outcome-observations": {
+      "get": {
+        "operationId": "listCurrentOrganizationImprovementCaseOutcomeObservations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (collections). Default 50, max 100.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Maximum items to return (collections). Default 50, max 100.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OutcomeObservationOut"
+                  },
+                  "title": "Response Listcurrentorganizationimprovementcaseoutcomeobservations",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream dependency error (e.g. QMind OI)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream timeout (e.g. QMind OI)"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List outcome observations for an improvement case (newest first)",
+        "tags": [
+          "improvement-cases"
+        ]
+      },
+      "post": {
+        "operationId": "createCurrentOrganizationImprovementCaseOutcomeObservation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutcomeObservationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeObservationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream dependency error (e.g. QMind OI)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream timeout (e.g. QMind OI)"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Register an observed outcome for an improvement case",
         "tags": [
           "improvement-cases"
         ]

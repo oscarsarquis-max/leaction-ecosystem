@@ -148,9 +148,33 @@ describe("Finding to Action UI", () => {
           url.includes("/improvement-cases/case-1") &&
           method === "GET" &&
           !url.includes("analysis") &&
-          !url.includes("actions")
+          !url.includes("actions") &&
+          !url.includes("evolution") &&
+          !url.includes("outcome")
         ) {
           return jsonResponse(caseRow);
+        }
+        if (url.includes("/evolution") && method === "GET") {
+          return jsonResponse({
+            case: caseRow,
+            analysis_summary: {
+              total_runs: 1,
+              latest_run: run,
+              previous_run: null,
+              comparison: null,
+            },
+            action_summary: {
+              total: actions.length,
+              by_status: [],
+              overdue: 0,
+              completed: 0,
+              items: actions,
+              plan: null,
+            },
+            latest_outcome_observation: null,
+            outcome_observations: [],
+            closure_readiness: "insufficient_information",
+          });
         }
         if (url.includes("analysis-runs") && method === "GET") {
           return jsonResponse([run]);

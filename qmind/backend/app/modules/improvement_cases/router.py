@@ -13,8 +13,14 @@ from app.modules.actions.schemas import (
     ImprovementCaseActionsOut,
 )
 from app.modules.improvement_cases import analysis_service
+from app.modules.improvement_cases import evolution_service
 from app.modules.improvement_cases import finding_actions
 from app.modules.improvement_cases import service
+from app.modules.improvement_cases.evolution_schemas import (
+    ImprovementCaseEvolutionOut,
+    OutcomeObservationCreate,
+    OutcomeObservationOut,
+)
 from app.modules.improvement_cases.problem_schemas import ImprovementCaseAnalysisRunOut
 from app.modules.improvement_cases.schemas import (
     ImprovementCaseCreate,
@@ -196,3 +202,61 @@ def list_current_organization_improvement_case_actions(
     ctx: OrgContextDep,
 ) -> ImprovementCaseActionsOut:
     return finding_actions.list_case_actions(ctx, case_id)
+
+
+@router.post(
+    "/current/improvement-cases/{case_id}/outcome-observations",
+    response_model=OutcomeObservationOut,
+    status_code=201,
+    operation_id="createCurrentOrganizationImprovementCaseOutcomeObservation",
+    responses={
+        401: ERROR_RESPONSES[401],
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+        422: ERROR_RESPONSES[422],
+    },
+    summary="Register an observed outcome for an improvement case",
+)
+def create_current_organization_improvement_case_outcome_observation(
+    case_id: UUID,
+    payload: OutcomeObservationCreate,
+    ctx: OrgContextDep,
+) -> OutcomeObservationOut:
+    return evolution_service.create_outcome_observation(ctx, case_id, payload)
+
+
+@router.get(
+    "/current/improvement-cases/{case_id}/outcome-observations",
+    response_model=list[OutcomeObservationOut],
+    operation_id="listCurrentOrganizationImprovementCaseOutcomeObservations",
+    responses={
+        401: ERROR_RESPONSES[401],
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+    },
+    summary="List outcome observations for an improvement case (newest first)",
+)
+def list_current_organization_improvement_case_outcome_observations(
+    case_id: UUID,
+    ctx: OrgContextDep,
+    limit: LimitQuery = 50,
+) -> list[OutcomeObservationOut]:
+    return evolution_service.list_outcome_observations(ctx, case_id, limit=limit)
+
+
+@router.get(
+    "/current/improvement-cases/{case_id}/evolution",
+    response_model=ImprovementCaseEvolutionOut,
+    operation_id="getCurrentOrganizationImprovementCaseEvolution",
+    responses={
+        401: ERROR_RESPONSES[401],
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+    },
+    summary="Read-only evolution projection for an improvement case",
+)
+def get_current_organization_improvement_case_evolution(
+    case_id: UUID,
+    ctx: OrgContextDep,
+) -> ImprovementCaseEvolutionOut:
+    return evolution_service.get_evolution(ctx, case_id)

@@ -42,5 +42,8 @@ export type {
   ImprovementCasePatch,
   ImprovementCaseAnalysisRunOut,
   ImprovementCaseActionsOut,
+  ImprovementCaseEvolutionOut,
   FindingActionCreate,
+  OutcomeObservationCreate,
+  OutcomeObservationOut,
 } from "./generated/types.gen.js";
