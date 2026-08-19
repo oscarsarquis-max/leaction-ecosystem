@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from auth import AuthUser, assert_shadow_owner, get_current_user
 from database import get_db
 from services.crystal_ball import service as cb
 from services.crystal_ball.experimental_run import (
@@ -58,6 +59,7 @@ class RecalculateRequest(BaseModel):
 async def crystal_experimental_run(
     payload: ExperimentalRunRequest,
     db: Session = Depends(get_db),
+    user: AuthUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Shadow-only: context7(Mativas) → methodology → synthesize → entrega_final."""
     try:
@@ -65,6 +67,7 @@ async def crystal_experimental_run(
             db,
             user_prompt=payload.user_prompt,
             metodologia=payload.metodologia,
+            owned_by_user_id=user.id,
         )
     except ExperimentalRunError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -79,8 +82,10 @@ async def crystal_experimental_recalculate(
     shadow_run_id: UUID,
     payload: ExperimentalRecalculateRequest,
     db: Session = Depends(get_db),
+    user: AuthUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Edita (opcional) uma fase da Simulação e recalcula só o downstream."""
+    assert_shadow_owner(db, shadow_run_id, user)
     try:
         return await experimental_edit_and_recalculate(
             db,
@@ -99,8 +104,11 @@ async def crystal_experimental_recalculate(
 
 @router.get("/shadow/{shadow_run_id}/lineage")
 def crystal_shadow_lineage(
-    shadow_run_id: UUID, db: Session = Depends(get_db)
+    shadow_run_id: UUID,
+    db: Session = Depends(get_db),
+    user: AuthUser = Depends(get_current_user),
 ) -> dict[str, Any]:
+    assert_shadow_owner(db, shadow_run_id, user)
     try:
         return build_shadow_lineage(db, shadow_run_id)
     except LookupError as exc:
@@ -188,8 +196,11 @@ async def crystal_recalculate_shadow(
 
 @router.get("/shadow/{shadow_run_id}")
 def crystal_get_shadow(
-    shadow_run_id: UUID, db: Session = Depends(get_db)
+    shadow_run_id: UUID,
+    db: Session = Depends(get_db),
+    user: AuthUser = Depends(get_current_user),
 ) -> dict[str, Any]:
+    assert_shadow_owner(db, shadow_run_id, user)
     try:
         return cb.get_shadow(db, shadow_run_id)
     except CrystalBallError as exc:

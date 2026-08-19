@@ -1,0 +1,28 @@
+  phanton_backend:
+    image: 253137917703.dkr.ecr.us-east-2.amazonaws.com/phanton-backend:latest
+    container_name: phanton_prod_backend
+    restart: always
+    expose:
+      - "8010"
+    environment:
+      - DB_HOST=paneldx-database.czqyam2auctn.us-east-2.rds.amazonaws.com
+      - DB_PORT=5432
+      - DB_NAME=phanton
+      - DB_USER=postgres
+      - "DB_PASSWORD=__DB_PASSWORD__"
+      - DB_SSLMODE=require
+      - CORS_ORIGINS=https://phanton.ia.br,https://www.phanton.ia.br
+      - "PHANTON_JWT_SECRET=__PHANTON_JWT_SECRET__"
+      - PHANTON_JWT_TTL_HOURS=12
+      - LLM_PROVIDER=google
+      - LLM_MODEL=gemini-3.5-flash
+      - "GEMINI_API_KEY=__GEMINI_API_KEY__"
+      - GEMINI_MODEL=gemini-3.5-flash
+      - CONTEXT7_PROVIDER=mock
+
+  phanton_frontend:
+    image: 253137917703.dkr.ecr.us-east-2.amazonaws.com/phanton-frontend:latest
+    container_name: phanton_prod_frontend
+    restart: always
+    expose:
+      - "80"

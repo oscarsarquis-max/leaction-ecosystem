@@ -246,6 +246,7 @@ async def run_mativas_experimental(
     *,
     user_prompt: str,
     metodologia: str,
+    owned_by_user_id: UUID | None = None,
 ) -> dict[str, Any]:
     """Orquestra context7(Mativas) → methodology → synthesize → entrega_final."""
     prompt = (user_prompt or "").strip()
@@ -269,6 +270,7 @@ async def run_mativas_experimental(
         fork_phase_id=PHASE_CONTEXT7,
         status="experimental_running",
         spec=spec,
+        owned_by_user_id=owned_by_user_id,
         notes=(
             "EXPERIMENTAL Mativas — shadow-only; não é run oficial; "
             "provider crystal_ball.mativas_lookup"
@@ -297,6 +299,20 @@ async def run_mativas_experimental(
             try:
                 art = await _run_handler(db, shadow.id, phase_id, capability, spec)
                 artifacts[phase_id] = art
+                # Handlers oficiais devolvem status=error sem exception — não marcar done.
+                if str(art.get("status") or "").lower() == "error":
+                    inner = art.get("artifact_data") if isinstance(art.get("artifact_data"), dict) else {}
+                    msg = (
+                        (inner or {}).get("erro")
+                        or art.get("error")
+                        or f"fase {phase_id} retornou status=error"
+                    )
+                    errors.append({"phase_id": phase_id, "error": str(msg)})
+                    shadow.status = "error"
+                    shadow.notes = f"erro em {phase_id}: {msg}"
+                    shadow.updated_at = datetime.now(UTC)
+                    db.commit()
+                    break
             except Exception as exc:
                 logger.exception("experimental phase failed: %s", phase_id)
                 errors.append({"phase_id": phase_id, "error": str(exc)})

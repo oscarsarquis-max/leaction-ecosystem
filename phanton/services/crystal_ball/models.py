@@ -38,6 +38,13 @@ class CrystalShadowRun(Base):
     predicted_quality_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     final_prompt_excerpt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Dono do shadow (Simulação / forks). Null = legado ou admin local.
+    # FK física em database/04_auth.sql (users.id) — sem ForeignKey ORM
+    # para não acoplar services/crystal_ball → auth no import.
+    owned_by_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+    )
 
     phases: Mapped[list["CrystalShadowPhase"]] = relationship(
         back_populates="shadow_run",

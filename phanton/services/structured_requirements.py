@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 from typing import Any, Optional
 
 from services.llm.json_utils import extract_json_payload
-from services.llm.runtime import generate_content
+from services.llm.runtime import generate, run_coro_sync
+
+logger = logging.getLogger(__name__)
+
+_DRAFT_MAX_ATTEMPTS = 3
 
 PERFIL_SOFTWARE = "software_saas"
 PERFIL_ARTEFATO = "artefato"
@@ -177,21 +183,87 @@ def empty_structured_requirements(*, perfil: str = PERFIL_ARTEFATO) -> dict[str,
     )
 
 
-def draft_structured_requirements(user_prompt: str) -> tuple[dict[str, Any], str]:
-    """Gera rascunho estruturado via Gemini (response_schema)."""
-    prompt = f"{_DRAFT_PROMPT}\n{(user_prompt or '').strip()}"
-    raw_text, meta = generate_content(
-        prompt,
-        enable_google_search=False,
-        response_json=True,
-        response_schema=STRUCTURED_REQUIREMENTS_SCHEMA,
-        temperature=0.2,
-        max_output_tokens=4096,
+def _is_transient_llm_error(exc: BaseException) -> bool:
+    """Erros de rede/quota/5xx do provider — vale retry curto."""
+    name = type(exc).__name__.lower()
+    text = str(exc).lower()
+    if any(k in name for k in ("servererror", "timeout", "unavailable", "connection")):
+        return True
+    markers = (
+        "429",
+        "500",
+        "502",
+        "503",
+        "504",
+        "resource_exhausted",
+        "rate",
+        "quota",
+        "unavailable",
+        "timeout",
+        "temporar",
+        "try again",
+        "texto vazio",
     )
-    parsed = extract_json_payload(raw_text)
-    if not isinstance(parsed, dict):
-        raise ValueError("O modelo não retornou requisitos estruturados válidos")
-    return normalize_structured_requirements(parsed), str(meta.get("model") or "")
+    return any(m in text for m in markers)
+
+
+async def draft_structured_requirements_async(
+    user_prompt: str,
+) -> tuple[dict[str, Any], str]:
+    """Gera rascunho estruturado via LLM (async, com retry)."""
+    prompt = f"{_DRAFT_PROMPT}\n{(user_prompt or '').strip()}"
+    last_exc: BaseException | None = None
+
+    for attempt in range(1, _DRAFT_MAX_ATTEMPTS + 1):
+        use_schema = attempt < _DRAFT_MAX_ATTEMPTS
+        try:
+            result = await generate(
+                prompt,
+                enable_google_search=False,
+                response_json=True,
+                response_schema=STRUCTURED_REQUIREMENTS_SCHEMA if use_schema else None,
+                temperature=0.2 if attempt == 1 else 0.15,
+                max_output_tokens=4096,
+            )
+            parsed = extract_json_payload(result.text)
+            if not isinstance(parsed, dict):
+                raise ValueError(
+                    "O modelo não retornou requisitos estruturados válidos"
+                )
+            meta = dict(result.meta or {})
+            return (
+                normalize_structured_requirements(parsed),
+                str(meta.get("model") or ""),
+            )
+        except ValueError as exc:
+            last_exc = exc
+            logger.warning(
+                "draft_requirements tentativa %s/%s: %s",
+                attempt,
+                _DRAFT_MAX_ATTEMPTS,
+                exc,
+            )
+        except Exception as exc:
+            last_exc = exc
+            logger.warning(
+                "draft_requirements tentativa %s/%s falhou: %s: %s",
+                attempt,
+                _DRAFT_MAX_ATTEMPTS,
+                type(exc).__name__,
+                exc,
+            )
+            if not _is_transient_llm_error(exc) and attempt >= 2:
+                break
+        if attempt < _DRAFT_MAX_ATTEMPTS:
+            await asyncio.sleep(0.6 * attempt)
+
+    assert last_exc is not None
+    raise last_exc
+
+
+def draft_structured_requirements(user_prompt: str) -> tuple[dict[str, Any], str]:
+    """Gera rascunho estruturado via LLM (sync — testes / callers síncronos)."""
+    return run_coro_sync(draft_structured_requirements_async(user_prompt))
 
 
 def format_structured_requirements_block(

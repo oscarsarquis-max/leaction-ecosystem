@@ -1,4 +1,6 @@
 import asyncio
+import logging
+import os
 import sys
 from pathlib import Path
 from typing import Optional
@@ -15,9 +17,13 @@ for _path in (str(_ROOT), str(_BACKEND)):
     if _path not in sys.path:
         sys.path.insert(0, _path)
 
+from auth_api import router as auth_router
+from auth_middleware import AuthAllowlistMiddleware
+from crystal_ball_api import router as crystal_ball_router
 from database import get_db
 from models import PhaseExecution, PipelineRun
-from crystal_ball_api import router as crystal_ball_router
+# Registra User no metadata (FK crystal_shadow_runs.owned_by_user_id)
+import auth as _auth  # noqa: F401
 from schemas import (
     AcceptProjectRequest,
     AcceptProjectResponse,
@@ -72,7 +78,7 @@ from services.state_engine import (
 )
 from services.structured_requirements import (
     PERFIL_ARTEFATO,
-    draft_structured_requirements,
+    draft_structured_requirements_async,
 )
 from services.text_to_spec import ensure_fixed_software_phases, generate_pipeline_spec
 from services.linear_export_helpers import (
@@ -105,22 +111,33 @@ app = FastAPI(
     version="1.1.0",
 )
 
+logger = logging.getLogger(__name__)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5175",
-        "http://127.0.0.1:5175",
+        o.strip()
+        for o in (
+            os.getenv(
+                "CORS_ORIGINS",
+                "http://localhost:3000,http://127.0.0.1:3000,"
+                "http://localhost:5173,http://127.0.0.1:5173,"
+                "http://localhost:5175,http://127.0.0.1:5175,"
+                "https://phanton.ia.br,https://www.phanton.ia.br",
+            )
+        ).split(",")
+        if o.strip()
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Crystal Ball — subsistema aditivo (falha isolada do pipeline oficial)
+# Auth allowlist (restricted_tester) — aditivo; sem token = admin local
+app.add_middleware(AuthAllowlistMiddleware)
+
+# Auth + Crystal Ball — subsistemas aditivos
+app.include_router(auth_router)
 app.include_router(crystal_ball_router)
 
 
@@ -142,18 +159,19 @@ async def draft_requirements(
         )
 
     try:
-        structured, model = await asyncio.to_thread(
-            draft_structured_requirements, prompt
-        )
+        # Async direto (evita asyncio.run aninhado via to_thread + generate_sync).
+        structured, model = await draft_structured_requirements_async(prompt)
     except RuntimeError as exc:
+        logger.exception("draft-requirements RuntimeError")
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
+        logger.warning("draft-requirements ValueError: %s", exc)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Falha ao rascunhar requisitos: {exc}",
-        ) from exc
+        logger.exception("draft-requirements falhou")
+        detail = f"Falha ao rascunhar requisitos: {type(exc).__name__}: {exc}"
+        status = 503 if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc).upper() else 500
+        raise HTTPException(status_code=status, detail=detail) from exc
 
     skip_panel = structured.get("perfil_sugerido") == PERFIL_ARTEFATO
     return DraftRequirementsResponse(

@@ -72,7 +72,7 @@ export default function PhaseCard({
   reopening = false,
   onReopen,
   runId = null,
-  apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:8010',
+  apiBase = (import.meta.env.VITE_API_BASE ?? 'http://localhost:8010'),
 }) {
   const meta = STATUS_META[status] || STATUS_META.PENDING
   const Icon = meta.Icon

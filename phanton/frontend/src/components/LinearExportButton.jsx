@@ -7,7 +7,7 @@ import { CheckCircle2, Loader2, Send } from 'lucide-react'
  */
 export default function LinearExportButton({
   runId,
-  apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:8010',
+  apiBase = (import.meta.env.VITE_API_BASE ?? 'http://localhost:8010'),
   epicCount = 0,
   className = '',
   compact = false,

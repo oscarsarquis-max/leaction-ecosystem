@@ -29,8 +29,9 @@ import {
   extractInitialPromptFromSpec,
 } from './lib/promptSufficiency'
 import { findLinearExportCandidate } from './lib/taskBreakdown'
+import { resolveApiBase } from './lib/apiBase'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8010'
+const API_BASE = resolveApiBase()
 
 /** Spec mínimo ao começar do zero — sem fases de exemplo. */
 const BLANK_SPEC = `{
@@ -582,6 +583,17 @@ function App() {
                 <span>Nenhum run ativo</span>
               )}
             </div>
+            <a
+              href="/"
+              onClick={(e) => {
+                e.preventDefault()
+                localStorage.removeItem('phanton_auth_token')
+                window.location.href = '/'
+              }}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-teal-300 hover:text-teal-800"
+            >
+              Sair / trocar conta
+            </a>
           </div>
         </div>
       </header>

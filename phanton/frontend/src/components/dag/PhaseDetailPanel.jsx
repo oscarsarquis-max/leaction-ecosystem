@@ -239,7 +239,7 @@ export default function PhaseDetailPanel({
   onApprove,
   immutable = false,
   runId = null,
-  apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:8010',
+  apiBase = (import.meta.env.VITE_API_BASE ?? 'http://localhost:8010'),
 }) {
   const status = String(phaseData?.status || 'PENDING').toUpperCase()
   const title = phaseData?.name || phaseData?.title || phaseId || 'Fase'

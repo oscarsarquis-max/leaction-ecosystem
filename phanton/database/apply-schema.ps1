@@ -29,7 +29,7 @@ if (-not (Test-Path $SqlFile)) {
 
 Write-Host "==> Garantindo container $Container ..." -ForegroundColor Cyan
 Push-Location $ComposeDir
-docker compose up -d | Out-Null
+cmd /c "docker compose up -d >nul 2>&1"
 Pop-Location
 
 $deadline = (Get-Date).AddSeconds(45)
@@ -64,6 +64,15 @@ if (Test-Path $CrystalNullable) {
     Write-Host "==> Aplicando Crystal Ball nullable source ($CrystalNullable) ..." -ForegroundColor Cyan
     docker exec $Container psql -U $DbUser -d $Database -v ON_ERROR_STOP=1 -f $remote3
     docker exec $Container rm -f $remote3 | Out-Null
+}
+
+$AuthSql = Join-Path $ComposeDir '04_auth.sql'
+if (Test-Path $AuthSql) {
+    $remote4 = '/tmp/phanton_04_auth.sql'
+    docker cp $AuthSql "${Container}:${remote4}"
+    Write-Host "==> Aplicando Auth ($AuthSql) ..." -ForegroundColor Cyan
+    docker exec $Container psql -U $DbUser -d $Database -v ON_ERROR_STOP=1 -f $remote4
+    docker exec $Container rm -f $remote4 | Out-Null
 }
 
 Write-Host "==> Tabelas:" -ForegroundColor Green

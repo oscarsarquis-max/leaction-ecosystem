@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from 'react'
-import axios from 'axios'
 import {
   AlertTriangle,
   Beaker,
@@ -8,6 +7,9 @@ import {
   Sparkles,
   Wand2,
 } from 'lucide-react'
+import CopyableBlock from './CopyableBlock'
+import { createAuthedAxios } from '../auth/AuthContext'
+import { formatArtifactPlainText } from '../lib/artifactPlainText'
 
 const SIM_PHASE_ORDER = [
   'context7_mativas',
@@ -22,9 +24,18 @@ const DEFAULT_SIM_PROMPT =
 /**
  * Crystal Ball — painel aditivo com abas separadas:
  * Proveniência (runs reais) · Simulação (Mativas) · Prévia rápida
+ *
+ * mode="restricted" → só Simulação (testadores externos).
  */
-export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
-  const [tab, setTab] = useState('proveniencia') // proveniencia | simulacao | previa
+export default function CrystalBallPanel({
+  apiBase,
+  activeRunId,
+  onError,
+  mode = 'full',
+}) {
+  const restricted = mode === 'restricted'
+  const api = useMemo(() => createAuthedAxios(apiBase), [apiBase])
+  const [tab, setTab] = useState(restricted ? 'simulacao' : 'proveniencia')
 
   // —— Proveniência (runs reais) ——
   const [lineage, setLineage] = useState(null)
@@ -59,7 +70,7 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
     setLoadingLineage(true)
     setCompare(null)
     try {
-      const { data } = await axios.get(
+      const { data } = await api.get(
         `${apiBase}/api/crystal-ball/${activeRunId}/lineage`,
       )
       setLineage(data)
@@ -78,7 +89,7 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
     if (!activeRunId || !selectedPhase) return
     setBusy('fork')
     try {
-      const { data } = await axios.post(
+      const { data } = await api.post(
         `${apiBase}/api/crystal-ball/${activeRunId}/fork`,
         { fork_phase_id: selectedPhase },
       )
@@ -103,11 +114,11 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
         setBusy(null)
         return
       }
-      await axios.post(
+      await api.post(
         `${apiBase}/api/crystal-ball/shadow/${shadowRunId}/edit`,
         { phase_id: selectedPhase, artifact_data: artifact },
       )
-      const { data } = await axios.post(
+      const { data } = await api.post(
         `${apiBase}/api/crystal-ball/shadow/${shadowRunId}/recalculate`,
       )
       setCompare(data)
@@ -121,7 +132,7 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
   const handlePreview = async () => {
     setBusy('preview')
     try {
-      const { data } = await axios.post(
+      const { data } = await api.post(
         `${apiBase}/api/crystal-ball/quick-preview`,
         {
           text: previewText,
@@ -153,11 +164,27 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
     }
   }
 
+  const hydrateSimFromShadow = async (shadowId, selectId) => {
+    const { data } = await api.get(
+      `${apiBase}/api/crystal-ball/shadow/${shadowId}`,
+      { timeout: 60000 },
+    )
+    if (data?.status) setSimStatus(data.status)
+    applySimPhases(data?.phases, selectId)
+    return data
+  }
+
+  const phaseCardStatus = (p) => {
+    const art = p?.artifact_data
+    if (art?.status === 'error' || art?.artifact_data?.erro) return 'error'
+    return p?.status || '—'
+  }
+
   const handleSimRun = async () => {
     setBusy('sim-run')
     setSimComparison(null)
     try {
-      const { data } = await axios.post(
+      const { data } = await api.post(
         `${apiBase}/api/crystal-ball/experimental-run`,
         { user_prompt: simPrompt, metodologia: simMetodologia },
         { timeout: 300000 },
@@ -165,10 +192,34 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
       setSimShadowId(data.shadow_run_id)
       setSimStatus(data.status)
       setSimComparison(data.comparison || null)
-      applySimPhases(data.phases, 'context7_mativas')
+      if (Array.isArray(data.phases) && data.phases.length > 0) {
+        applySimPhases(data.phases, 'context7_mativas')
+      } else if (data.shadow_run_id) {
+        // Fallback: POST sem phases (BE antigo) — hidrata do GET shadow
+        await hydrateSimFromShadow(data.shadow_run_id, 'context7_mativas')
+      }
+      if (Array.isArray(data.errors) && data.errors.length) {
+        onError?.(
+          `Simulação parcial: ${data.errors.map((e) => e.error || e.phase_id).join('; ')}`,
+        )
+      }
     } catch (err) {
       onError?.(
         err.response?.data?.detail || err.message || 'Falha experimental-run',
+      )
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleSimReload = async () => {
+    if (!simShadowId) return
+    setBusy('sim-reload')
+    try {
+      await hydrateSimFromShadow(simShadowId, simSelected || 'context7_mativas')
+    } catch (err) {
+      onError?.(
+        err.response?.data?.detail || err.message || 'Falha ao recarregar shadow',
       )
     } finally {
       setBusy(null)
@@ -195,7 +246,7 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
         setBusy(null)
         return
       }
-      const { data } = await axios.post(
+      const { data } = await api.post(
         `${apiBase}/api/crystal-ball/experimental-run/${simShadowId}/recalculate`,
         { from_phase_id: simSelected, artifact_data: artifact },
         { timeout: 300000 },
@@ -234,11 +285,23 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
     )
   }, [simPhases])
 
-  const tabs = [
-    { id: 'proveniencia', label: 'Proveniência', icon: GitBranch },
-    { id: 'simulacao', label: 'Simulação', icon: Beaker },
-    { id: 'previa', label: 'Prévia rápida', icon: Sparkles },
-  ]
+  const simPlainText = useMemo(() => {
+    try {
+      return formatArtifactPlainText(JSON.parse(simEditJson))
+    } catch {
+      return ''
+    }
+  }, [simEditJson])
+
+  const tabs = (
+    restricted
+      ? [{ id: 'simulacao', label: 'Simulação', icon: Beaker }]
+      : [
+          { id: 'proveniencia', label: 'Proveniência', icon: GitBranch },
+          { id: 'simulacao', label: 'Simulação', icon: Beaker },
+          { id: 'previa', label: 'Prévia rápida', icon: Sparkles },
+        ]
+  )
 
   return (
     <section
@@ -250,14 +313,18 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
           Crystal Ball
         </p>
         <h2 className="font-display mt-1 text-2xl font-semibold text-slate-950">
-          Proveniência · Simulação · Prévia
+          {restricted
+            ? 'Simulação Mativas'
+            : 'Proveniência · Simulação · Prévia'}
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-slate-600">
-          Subsistema aditivo. A aba Simulação é independente da Proveniência de
-          runs reais — edições shadow não alteram o pipeline oficial.
+          {restricted
+            ? 'Experimento shadow-only com grounding Mativas. Sem acesso ao pipeline oficial.'
+            : 'Subsistema aditivo. A aba Simulação é independente da Proveniência de runs reais — edições shadow não alteram o pipeline oficial.'}
         </p>
       </div>
 
+      {!restricted ? (
       <div className="mb-4 flex flex-wrap gap-2 border-b border-violet-200 pb-3">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
@@ -276,8 +343,9 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
           </button>
         ))}
       </div>
+      ) : null}
 
-      {tab === 'proveniencia' ? (
+      {!restricted && tab === 'proveniencia' ? (
         <div data-testid="crystal-tab-proveniencia-panel">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <button
@@ -414,7 +482,7 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
         </div>
       ) : null}
 
-      {tab === 'simulacao' ? (
+      {restricted || tab === 'simulacao' ? (
         <div data-testid="crystal-tab-simulacao-panel" className="space-y-4">
           <p className="text-sm text-slate-600">
             Experimento Mativas-grounded (shadow-only): lookup real → methodology →
@@ -459,15 +527,28 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
           </label>
 
           {simShadowId ? (
-            <p className="text-xs text-slate-500">
-              shadow experimental{' '}
-              <span className="font-mono">{simShadowId}</span>
-              {simStatus ? ` · ${simStatus}` : ''}
-            </p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <p>
+                shadow experimental{' '}
+                <span className="font-mono">{simShadowId}</span>
+                {simStatus ? ` · ${simStatus}` : ''}
+              </p>
+              <button
+                type="button"
+                disabled={!!busy}
+                onClick={handleSimReload}
+                className="rounded-md border border-teal-300 bg-white px-2 py-1 text-teal-900 hover:bg-teal-50 disabled:opacity-50"
+              >
+                {busy === 'sim-reload' ? 'Recarregando…' : 'Recarregar fases'}
+              </button>
+            </div>
           ) : null}
 
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {orderedSimPhases.map((p) => (
+            {orderedSimPhases.map((p) => {
+              const st = phaseCardStatus(p)
+              const isErr = st === 'error'
+              return (
               <button
                 key={p.phase_id}
                 type="button"
@@ -476,35 +557,60 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
                 className={`rounded-xl border px-3 py-3 text-left text-xs transition ${
                   simSelected === p.phase_id
                     ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-300'
-                    : 'border-slate-200 bg-white hover:border-teal-300'
+                    : isErr
+                      ? 'border-rose-300 bg-rose-50 hover:border-rose-400'
+                      : 'border-slate-200 bg-white hover:border-teal-300'
                 }`}
               >
                 <div className="font-semibold text-slate-800">{p.phase_id}</div>
-                <div className="mt-1 text-[10px] text-slate-500">
-                  {p.status || '—'}
+                <div className={`mt-1 text-[10px] ${isErr ? 'text-rose-700' : 'text-slate-500'}`}>
+                  {st}
                   {p.origin ? ` · ${p.origin}` : ''}
                   {p.quality_score != null ? ` · Q${p.quality_score}` : ''}
                 </div>
               </button>
-            ))}
+              )
+            })}
           </div>
 
           {simShadowId ? (
-            <div className="rounded-xl border border-teal-200 bg-white p-4">
-              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Editar artefato · {simSelected}
-              </label>
-              <textarea
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 p-2 font-mono text-xs"
-                rows={12}
-                value={simEditJson}
-                onChange={(e) => setSimEditJson(e.target.value)}
-              />
+            <div className="space-y-4 rounded-xl border border-teal-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Artefato · {simSelected}
+              </p>
+
+              <CopyableBlock label="Copiar texto" text={simPlainText || ''}>
+                <div>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-teal-800">
+                    Texto
+                  </p>
+                  <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-teal-100 bg-teal-50/40 p-3 text-xs leading-relaxed text-slate-800">
+                    {simPlainText ||
+                      '(sem texto legível — confira o JSON ou rode a simulação)'}
+                  </pre>
+                </div>
+              </CopyableBlock>
+
+              <CopyableBlock label="Copiar JSON" text={simEditJson || ''}>
+                <div>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    JSON (editável)
+                  </p>
+                  <textarea
+                    className="max-h-96 w-full resize-y overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2 font-mono text-xs leading-relaxed text-slate-800"
+                    rows={12}
+                    value={simEditJson}
+                    onChange={(e) => setSimEditJson(e.target.value)}
+                    aria-label={`JSON da fase ${simSelected}`}
+                  />
+                </div>
+              </CopyableBlock>
+
               <button
                 type="button"
                 disabled={busy || !simSelected}
                 onClick={handleSimEditRecalc}
-                className="mt-2 inline-flex items-center gap-2 rounded-lg bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-50"
               >
                 {busy === 'sim-recalc' ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -513,9 +619,10 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
                 )}
                 Editar e recalcular a partir daqui
               </button>
-              <p className="mt-2 text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-500">
                 Recalcula só as fases downstream. Editar{' '}
-                <code>context7_mativas</code> não reexecuta o lookup.
+                <code>context7_mativas</code> não reexecuta o lookup. O texto
+                acompanha o JSON quando este é válido.
               </p>
             </div>
           ) : null}
@@ -537,7 +644,7 @@ export default function CrystalBallPanel({ apiBase, activeRunId, onError }) {
         </div>
       ) : null}
 
-      {tab === 'previa' ? (
+      {!restricted && tab === 'previa' ? (
         <div data-testid="crystal-tab-previa-panel">
           <div className="flex items-start gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
