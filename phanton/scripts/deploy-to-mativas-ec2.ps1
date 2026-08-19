@@ -12,7 +12,8 @@ param(
     [string]$GeminiApiKey = '',
     [string]$JwtSecret = '',
     [string]$AdminPassword = '',
-    [string]$AndreaPassword = ''
+    [string]$AndreaPassword = '',
+    [switch]$SeedUsers
 )
 
 $ErrorActionPreference = 'Stop'
@@ -62,6 +63,39 @@ if (-not $GeminiApiKey) {
         if ($line) { $GeminiApiKey = $line.Matches[0].Groups[1].Value.Trim() }
     }
 }
+
+# Reutiliza secrets já publicados na EC2 — evita rotacionar senha/JWT a cada deploy
+$remoteSecrets = Join-Path $env:TEMP 'phanton-prod-secrets-remote.env'
+$hadRemoteSecrets = $false
+try {
+    scp -i $KeyPath -o StrictHostKeyChecking=no -o ConnectTimeout=8 `
+        "ubuntu@${Ec2Host}:/home/ubuntu/phanton-prod-secrets.env" $remoteSecrets 2>$null
+    if ((Test-Path $remoteSecrets) -and ((Get-Item $remoteSecrets).Length -gt 0)) {
+        $hadRemoteSecrets = $true
+        foreach ($line in Get-Content $remoteSecrets) {
+            if ($line -match '^GEMINI_API_KEY=(.+)$' -and -not $GeminiApiKey) {
+                $GeminiApiKey = $Matches[1].Trim()
+            }
+            elseif ($line -match '^PHANTON_JWT_SECRET=(.+)$' -and -not $JwtSecret) {
+                $JwtSecret = $Matches[1].Trim()
+            }
+            elseif ($line -match '^PHANTON_ADMIN_PASSWORD=(.+)$' -and -not $AdminPassword) {
+                $AdminPassword = $Matches[1].Trim()
+            }
+            elseif ($line -match '^PHANTON_ANDREA_PASSWORD=(.+)$' -and -not $AndreaPassword) {
+                $AndreaPassword = $Matches[1].Trim()
+            }
+        }
+        Write-Host '    reusando phanton-prod-secrets.env da EC2' -ForegroundColor DarkGray
+    }
+} catch {
+    Write-Host '    sem secrets remotos (primeiro deploy?)' -ForegroundColor DarkGray
+}
+
+$seedUsersExplicit = $PSBoundParameters.ContainsKey('AdminPassword') -or `
+    $PSBoundParameters.ContainsKey('AndreaPassword') -or `
+    $SeedUsers
+
 if (-not $JwtSecret) {
     $JwtSecret = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 48 | ForEach-Object { [char]$_ })
 }
@@ -93,12 +127,19 @@ Write-Host '==> Merge compose/Caddy + pull/up...' -ForegroundColor Cyan
 ssh -i $KeyPath -o StrictHostKeyChecking=no "ubuntu@${Ec2Host}" "chmod +x /home/ubuntu/merge-phanton-into-host.sh /home/ubuntu/deploy-phanton-prod.sh; bash /home/ubuntu/merge-phanton-into-host.sh; bash /home/ubuntu/deploy-phanton-prod.sh"
 if ($LASTEXITCODE -ne 0) { throw 'remote merge/deploy failed' }
 
-Write-Host '==> Seed users (oscar admin + andrea restricted)...' -ForegroundColor Cyan
-ssh -i $KeyPath -o StrictHostKeyChecking=no "ubuntu@${Ec2Host}" "set -a; source /home/ubuntu/phanton-prod-secrets.env; set +a; sudo docker exec -e PYTHONPATH=/app:/app/backend -e PHANTON_ADMIN_PASSWORD=`"`$PHANTON_ADMIN_PASSWORD`" -e PHANTON_ANDREA_PASSWORD=`"`$PHANTON_ANDREA_PASSWORD`" phanton_prod_backend python /app/backend/scripts/seed_prod_users.py"
-if ($LASTEXITCODE -ne 0) { throw 'seed users failed' }
-
-Write-Host ''
-Write-Host "Deploy concluído. URL: https://phanton.ia.br" -ForegroundColor Green
-Write-Host "Senhas em $secretsLocal (não commit)." -ForegroundColor Yellow
-Write-Host "admin (oscar) password: $AdminPassword"
-Write-Host "andrea password: $AndreaPassword"
+# Seed só no 1º deploy, ou se pediu -SeedUsers / passou senhas explicitamente
+if (-not $hadRemoteSecrets -or $seedUsersExplicit) {
+    Write-Host '==> Seed users (oscar admin + andrea restricted)...' -ForegroundColor Cyan
+    ssh -i $KeyPath -o StrictHostKeyChecking=no "ubuntu@${Ec2Host}" "set -a; source /home/ubuntu/phanton-prod-secrets.env; set +a; sudo docker exec -e PYTHONPATH=/app:/app/backend -e PHANTON_ADMIN_PASSWORD=`"`$PHANTON_ADMIN_PASSWORD`" -e PHANTON_ANDREA_PASSWORD=`"`$PHANTON_ANDREA_PASSWORD`" phanton_prod_backend python /app/backend/scripts/seed_prod_users.py"
+    if ($LASTEXITCODE -ne 0) { throw 'seed users failed' }
+    Write-Host ''
+    Write-Host "Deploy concluído. URL: https://phanton.ia.br" -ForegroundColor Green
+    Write-Host "Senhas em $secretsLocal (não commit)." -ForegroundColor Yellow
+    Write-Host "admin (oscar) password: $AdminPassword"
+    Write-Host "andrea password: $AndreaPassword"
+} else {
+    Write-Host '==> Seed users: pulado (senhas existentes preservadas). Use -SeedUsers para forçar.' -ForegroundColor DarkGray
+    Write-Host ''
+    Write-Host "Deploy concluído. URL: https://phanton.ia.br" -ForegroundColor Green
+    Write-Host "Senhas preservadas em /home/ubuntu/phanton-prod-secrets.env na EC2." -ForegroundColor Yellow
+}
