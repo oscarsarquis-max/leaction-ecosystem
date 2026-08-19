@@ -45,8 +45,12 @@ Evolução da gestão ≠ evolução do resultado empresarial.
 
 | Lado | Commit | Mensagem |
 |------|--------|----------|
-| **QMind Core** (HEAD funcional baseline) | `f189a11` | `feat(improvement-cases): track observed outcomes and evolution` |
-| **qmind-oi** (HEAD funcional baseline) | `2d78eff` | `feat(intelligence): analyze improvement case context` |
+| **QMind Core** (código funcional da baseline) | `f189a11` | `feat(improvement-cases): track observed outcomes and evolution` |
+| **QMind Core** (fechamento documental ISOI-006) | `338f44e` | `docs(iso-intelligence): establish improvement case loop v1 baseline` |
+| **qmind-oi** (código funcional da baseline) | `2d78eff` | `feat(intelligence): analyze improvement case context` |
+| **qmind-oi** (pointer documental ISOI-006) | `1bba6b3` | `docs(arch): link ISO Intelligence V1 baseline` |
+
+HEADs após ISOI-006 incluem commits **somente documentais** além dos pins funcionais acima. O pin de comportamento permanece `f189a11` (Core) e `2d78eff` (OI).
 
 ### Commits funcionais incluídos (Core)
 
