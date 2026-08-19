@@ -7,7 +7,9 @@ from uuid import UUID
 from fastapi import APIRouter
 
 from app.auth.deps import OrgContextDep
+from app.modules.improvement_cases import analysis_service
 from app.modules.improvement_cases import service
+from app.modules.improvement_cases.problem_schemas import ImprovementCaseAnalysisRunOut
 from app.modules.improvement_cases.schemas import (
     ImprovementCaseCreate,
     ImprovementCaseOut,
@@ -88,3 +90,59 @@ def patch_current_organization_improvement_case(
     ctx: OrgContextDep,
 ) -> ImprovementCaseOut:
     return service.patch_case(ctx, case_id, payload)
+
+
+@router.post(
+    "/current/improvement-cases/{case_id}/analysis-runs",
+    response_model=ImprovementCaseAnalysisRunOut,
+    status_code=201,
+    operation_id="createCurrentOrganizationImprovementCaseAnalysisRun",
+    responses={
+        401: ERROR_RESPONSES[401],
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+        502: ERROR_RESPONSES[502],
+        503: ERROR_RESPONSES[503],
+        504: ERROR_RESPONSES[504],
+    },
+    summary="Generate Problem Analysis for an improvement case (persist new run)",
+)
+def create_current_organization_improvement_case_analysis_run(
+    case_id: UUID,
+    ctx: OrgContextDep,
+) -> ImprovementCaseAnalysisRunOut:
+    return analysis_service.create_analysis_run(ctx, case_id)
+
+
+@router.get(
+    "/current/improvement-cases/{case_id}/analysis-runs",
+    response_model=list[ImprovementCaseAnalysisRunOut],
+    operation_id="listCurrentOrganizationImprovementCaseAnalysisRuns",
+    responses={401: ERROR_RESPONSES[401], 403: ERROR_RESPONSES[403], 404: ERROR_RESPONSES[404]},
+    summary="List analysis runs for an improvement case (newest first)",
+)
+def list_current_organization_improvement_case_analysis_runs(
+    case_id: UUID,
+    ctx: OrgContextDep,
+    limit: LimitQuery = 50,
+) -> list[ImprovementCaseAnalysisRunOut]:
+    return analysis_service.list_analysis_runs(ctx, case_id, limit=limit)
+
+
+@router.get(
+    "/current/improvement-cases/{case_id}/analysis-runs/{run_id}",
+    response_model=ImprovementCaseAnalysisRunOut,
+    operation_id="getCurrentOrganizationImprovementCaseAnalysisRun",
+    responses={
+        401: ERROR_RESPONSES[401],
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+    },
+    summary="Get one analysis run for an improvement case",
+)
+def get_current_organization_improvement_case_analysis_run(
+    case_id: UUID,
+    run_id: UUID,
+    ctx: OrgContextDep,
+) -> ImprovementCaseAnalysisRunOut:
+    return analysis_service.get_analysis_run(ctx, case_id, run_id)

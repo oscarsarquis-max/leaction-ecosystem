@@ -152,6 +152,12 @@ ISOI-001 recomendou agregado Core + pipeline OI futuro. ISOI-002 executa **somen
 
 ---
 
-## 11. Próximo incremento (ISOI-003 — não iniciado)
+## 11. Próximo incremento (ISOI-004 — não iniciado)
 
-Contrato e pipeline interpretativo `ProblemContextInput → ProblemAnalysis` no qmind-oi, sem alterar Context Readiness V1; UI de Contexto/Análise no detalhe do caso.
+ActionPlan XOR `assessment_id` | `improvement_case_id` e criação de Action Items a partir de achados aceitos; Evolução do caso.
+
+---
+
+## Continuidade ISOI-003
+
+Integração Problem Analysis documentada em [`024_ISO_Intelligence_V1_Problem_Analysis_Integration.md`](024_ISO_Intelligence_V1_Problem_Analysis_Integration.md).

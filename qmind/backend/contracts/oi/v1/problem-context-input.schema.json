@@ -1,0 +1,289 @@
+{
+  "$defs": {
+    "OrganizationProfileFacts": {
+      "additionalProperties": false,
+      "description": "Contractual view of persistent Organization Profile facts.\n\nOptional fields use null for 'not provided'. Empty string is a deliberate value\nonly where Core's controlled vocabulary allows '' (e.g. unset band).",
+      "properties": {
+        "business_model": {
+          "anyOf": [
+            {
+              "enum": [
+                "",
+                "b2b",
+                "b2c",
+                "b2b2c",
+                "services",
+                "manufacturing",
+                "mixed",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Business Model"
+        },
+        "certification_status": {
+          "anyOf": [
+            {
+              "enum": [
+                "unknown",
+                "none",
+                "in_progress",
+                "certified",
+                "expired",
+                "not_applicable"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Certification Status"
+        },
+        "employee_range": {
+          "anyOf": [
+            {
+              "enum": [
+                "",
+                "1-10",
+                "11-50",
+                "51-200",
+                "201-500",
+                "501-1000",
+                "1000+"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Employee Range"
+        },
+        "industry": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Industry"
+        },
+        "legal_name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Legal Name"
+        },
+        "quality_structure": {
+          "anyOf": [
+            {
+              "enum": [
+                "unknown",
+                "none",
+                "informal",
+                "formal_partial",
+                "formal"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quality Structure"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "trade_name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trade Name"
+        },
+        "unit_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit Count"
+        }
+      },
+      "title": "OrganizationProfileFacts",
+      "type": "object"
+    },
+    "ProblemFacts": {
+      "additionalProperties": false,
+      "description": "Declared business-problem facts (ImprovementCase). Not ISO interpretation.",
+      "properties": {
+        "impact_statement": {
+          "description": "Declared business impact as perceived by the user.",
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Impact Statement",
+          "type": "string"
+        },
+        "related_process": {
+          "description": "Declared related process name (free text — not a process catalog).",
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Related Process",
+          "type": "string"
+        },
+        "statement": {
+          "description": "Declared problem statement from the ImprovementCase.",
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "statement",
+        "impact_statement",
+        "related_process"
+      ],
+      "title": "ProblemFacts",
+      "type": "object"
+    },
+    "SourceRef": {
+      "additionalProperties": false,
+      "description": "Logical origin of a message — not a file/module path.",
+      "properties": {
+        "component": {
+          "examples": [
+            "organization-context",
+            "insight-producer"
+          ],
+          "minLength": 1,
+          "title": "Component",
+          "type": "string"
+        },
+        "system": {
+          "examples": [
+            "qmind-core",
+            "qmind-oi"
+          ],
+          "minLength": 1,
+          "title": "System",
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "component"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Root envelope: Core → OI for ImprovementCase problem analysis.",
+  "properties": {
+    "core_organization_id": {
+      "description": "Opaque Core Organization.id (UUID).",
+      "format": "uuid",
+      "title": "Core Organization Id",
+      "type": "string"
+    },
+    "correlation_id": {
+      "description": "Journey/flow id across Core↔OI calls.",
+      "minLength": 1,
+      "title": "Correlation Id",
+      "type": "string"
+    },
+    "improvement_case_id": {
+      "description": "Opaque Core ImprovementCase.id (UUID).",
+      "format": "uuid",
+      "title": "Improvement Case Id",
+      "type": "string"
+    },
+    "organization_profile": {
+      "$ref": "#/$defs/OrganizationProfileFacts",
+      "description": "Profile facts compatible with OrganizationProfileFacts (Context-OI)."
+    },
+    "problem": {
+      "$ref": "#/$defs/ProblemFacts"
+    },
+    "request_id": {
+      "description": "Id of this call instance (observability).",
+      "minLength": 1,
+      "title": "Request Id",
+      "type": "string"
+    },
+    "requested_at": {
+      "description": "When Core requested analysis (ISO-8601, timezone-aware, prefer UTC).",
+      "format": "date-time",
+      "title": "Requested At",
+      "type": "string"
+    },
+    "schema_version": {
+      "description": "ProblemAnalysis contract schema version (independent of product version).",
+      "examples": [
+        "1.0"
+      ],
+      "minLength": 1,
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/SourceRef"
+    }
+  },
+  "required": [
+    "schema_version",
+    "core_organization_id",
+    "improvement_case_id",
+    "request_id",
+    "correlation_id",
+    "requested_at",
+    "source",
+    "organization_profile",
+    "problem"
+  ],
+  "title": "ProblemContextInput",
+  "type": "object"
+}

@@ -17,6 +17,8 @@ TARGET = ROOT / "contracts" / "oi" / "v1"
 FILES = (
     "organization-context-input.schema.json",
     "organizational-insights.schema.json",
+    "problem-context-input.schema.json",
+    "problem-analysis.schema.json",
 )
 
 

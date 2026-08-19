@@ -1,4 +1,4 @@
-"""Thin HTTP client for QMind OI analyze endpoint — no business rules."""
+"""Thin HTTP client for QMind OI endpoints — no business rules."""
 
 from __future__ import annotations
 
@@ -6,18 +6,24 @@ import httpx
 
 from app.config import Settings, get_settings
 from app.errors import AppError
+from app.modules.improvement_cases.problem_schemas import (
+    ProblemAnalysis,
+    ProblemContextInput,
+    dump_jsonable as dump_problem,
+)
 from app.modules.oi.schemas import OrganizationContextInput, OrganizationalInsights, dump_jsonable
 
 ANALYZE_PATH = "/api/v1/organizational-intelligence/analyze"
+PROBLEM_ANALYSIS_PATH = "/api/v1/organizational-intelligence/problem-analysis"
 
 
 class OrganizationalIntelligenceClient:
-    """POST OrganizationContextInput → OrganizationalInsights over HTTP JSON."""
+    """HTTP JSON client for QMind OI public endpoints."""
 
     def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or get_settings()
 
-    def analyze(self, payload: OrganizationContextInput) -> OrganizationalInsights:
+    def _post_json(self, path: str, body: dict) -> dict:
         base = (self._settings.qmind_oi_base_url or "").rstrip("/")
         if not base:
             raise AppError(
@@ -26,9 +32,8 @@ class OrganizationalIntelligenceClient:
                 status_code=503,
             )
 
-        url = f"{base}{ANALYZE_PATH}"
+        url = f"{base}{path}"
         timeout = self._settings.qmind_oi_timeout_seconds
-        body = dump_jsonable(payload)
 
         try:
             with httpx.Client(timeout=timeout) as client:
@@ -60,10 +65,32 @@ class OrganizationalIntelligenceClient:
             )
 
         try:
-            return OrganizationalInsights.model_validate(response.json())
+            return response.json()
+        except Exception as exc:
+            raise AppError(
+                "oi_invalid_response",
+                "QMind OI returned invalid JSON",
+                status_code=502,
+            ) from exc
+
+    def analyze(self, payload: OrganizationContextInput) -> OrganizationalInsights:
+        raw = self._post_json(ANALYZE_PATH, dump_jsonable(payload))
+        try:
+            return OrganizationalInsights.model_validate(raw)
         except Exception as exc:
             raise AppError(
                 "oi_invalid_response",
                 "QMind OI returned an invalid OrganizationalInsights payload",
+                status_code=502,
+            ) from exc
+
+    def analyze_problem(self, payload: ProblemContextInput) -> ProblemAnalysis:
+        raw = self._post_json(PROBLEM_ANALYSIS_PATH, dump_problem(payload))
+        try:
+            return ProblemAnalysis.model_validate(raw)
+        except Exception as exc:
+            raise AppError(
+                "oi_invalid_response",
+                "QMind OI returned an invalid ProblemAnalysis payload",
                 status_code=502,
             ) from exc

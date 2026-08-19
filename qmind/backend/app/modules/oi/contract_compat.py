@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from app.modules.improvement_cases.problem_schemas import ProblemAnalysis, ProblemContextInput
 from app.modules.oi.schemas import OrganizationContextInput, OrganizationalInsights
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
@@ -26,6 +27,16 @@ CONTRACTS: tuple[tuple[str, type[Any], str], ...] = (
         "OrganizationalInsights",
         OrganizationalInsights,
         "organizational-insights.schema.json",
+    ),
+    (
+        "ProblemContextInput",
+        ProblemContextInput,
+        "problem-context-input.schema.json",
+    ),
+    (
+        "ProblemAnalysis",
+        ProblemAnalysis,
+        "problem-analysis.schema.json",
     ),
 )
 

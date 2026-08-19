@@ -5,15 +5,23 @@ import {
   useImprovementCase,
   usePatchImprovementCase,
 } from "@/hooks/useImprovementCases";
+import {
+  useCreateImprovementCaseAnalysisRun,
+  useImprovementCaseAnalysisRuns,
+} from "@/hooks/useImprovementCaseAnalysis";
+import { useOrgProfile } from "@/hooks/useOrgProfile";
 import { canManageImprovementCases } from "@/lib/permissions";
 import {
   allowedImprovementCaseTransitions,
+  labelHypothesisSupportStatus,
   labelImprovementCaseStatus,
+  labelProblemContextStatus,
 } from "@/lib/improvementCaseLabels";
 import { AccessDeniedPanel, LoadingPanel } from "@/components/StatePanels";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import { PageHeader } from "@/components/qm";
 import { QmindApiError } from "@/api/qmindApi";
+import type { ImprovementCaseAnalysisRunOut } from "@qmind/api-client";
 
 function formatUpdatedAt(iso: string): string {
   try {
@@ -32,14 +40,23 @@ export function ImprovementCaseDetailPage() {
   const canWrite = canManageImprovementCases(org.currentOrganization?.roles);
   const query = useImprovementCase(caseId);
   const patch = usePatchImprovementCase(caseId);
+  const profile = useOrgProfile();
+  const runsQuery = useImprovementCaseAnalysisRuns(caseId);
+  const createRun = useCreateImprovementCaseAnalysisRun(caseId);
 
   const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState("");
   const [impact, setImpact] = useState("");
   const [processName, setProcessName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isoOpen, setIsoOpen] = useState(false);
+  const [viewRunId, setViewRunId] = useState<string | null>(null);
 
   const data = query.data;
+  const runs = runsQuery.data ?? [];
+  const latest = runs[0] ?? null;
+  const viewed: ImprovementCaseAnalysisRunOut | null =
+    (viewRunId ? runs.find((r) => r.id === viewRunId) : null) ?? latest;
 
   useEffect(() => {
     if (!data) return;
@@ -47,6 +64,10 @@ export function ImprovementCaseDetailPage() {
     setImpact(data.impact_statement);
     setProcessName(data.related_process);
   }, [data]);
+
+  useEffect(() => {
+    setViewRunId(null);
+  }, [org.currentOrganizationId, caseId]);
 
   const nextStatuses = useMemo(
     () => (data ? allowedImprovementCaseTransitions(data.status) : []),
@@ -118,13 +139,33 @@ export function ImprovementCaseDetailPage() {
     }
   }
 
+  async function generateAnalysis() {
+    setError(null);
+    try {
+      const run = await createRun.mutateAsync();
+      setViewRunId(run.id);
+    } catch (err) {
+      setError(
+        err instanceof QmindApiError
+          ? err.message
+          : "Não foi possível gerar a análise.",
+      );
+    }
+  }
+
+  const analysis = viewed?.analysis;
+  const hypotheses = analysis?.hypotheses ?? [];
+  const findings = analysis?.findings ?? [];
+  const limitations = analysis?.limitations ?? [];
+  const isViewingLatest = !viewed || viewed.id === latest?.id;
+
   return (
     <section className="space-y-6" data-testid="improvement-case-detail">
       <PageHeader
         title={data.problem_statement}
         explanation={`Status: ${labelImprovementCaseStatus(data.status)}. Processo: ${data.related_process}. Atualizado em ${formatUpdatedAt(data.updated_at)}.`}
         expectedResult="Fatos do problema claros e prontos para a próxima etapa de inteligência."
-        nextStep="Manter o acompanhamento ou aguardar a análise do QMind."
+        nextStep="Manter o acompanhamento ou gerar a análise do QMind."
         actions={
           <Link to="/assessments" className="qm-btn-secondary">
             Voltar
@@ -242,21 +283,236 @@ export function ImprovementCaseDetailPage() {
         ) : null}
       </div>
 
-      <div className="qm-panel qm-panel--soft" data-testid="ic-section-context">
+      <div className="qm-panel" data-testid="ic-section-context">
         <h2 className="text-base font-semibold text-slate-900">Contexto</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          A análise de contexto deste problema será disponibilizada na próxima
-          etapa da ISO Intelligence.
-        </p>
+        <dl className="mt-3 space-y-2 text-sm">
+          <div>
+            <dt className="font-medium text-slate-700">Problema</dt>
+            <dd>{data.problem_statement}</dd>
+          </div>
+          <div>
+            <dt className="font-medium text-slate-700">Impacto</dt>
+            <dd>{data.impact_statement}</dd>
+          </div>
+          <div>
+            <dt className="font-medium text-slate-700">Processo relacionado</dt>
+            <dd>{data.related_process}</dd>
+          </div>
+          <div data-testid="ic-context-org-summary">
+            <dt className="font-medium text-slate-700">
+              Resumo organizacional
+            </dt>
+            <dd>
+              {[
+                profile.data?.trade_name,
+                profile.data?.industry,
+                profile.data?.business_model,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "Perfil organizacional ainda incompleto."}
+            </dd>
+          </div>
+          {latest ? (
+            <div>
+              <dt className="font-medium text-slate-700">
+                Status de contexto (análise mais recente)
+              </dt>
+              <dd data-testid="ic-context-status">
+                {labelProblemContextStatus(latest.analysis.context_status)}
+              </dd>
+            </div>
+          ) : (
+            <p className="text-slate-600" data-testid="ic-context-no-analysis">
+              Ainda não há análise para avaliar o contexto deste problema.
+            </p>
+          )}
+        </dl>
+        {latest?.analysis.hypotheses?.[0]?.missing_information?.length ? (
+          <ul
+            className="mt-3 list-disc pl-5 text-sm text-slate-600"
+            data-testid="ic-context-missing"
+          >
+            {latest.analysis.hypotheses[0].missing_information.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        ) : null}
       </div>
 
-      <div className="qm-panel qm-panel--soft" data-testid="ic-section-analysis">
-        <h2 className="text-base font-semibold text-slate-900">
-          Análise do QMind
-        </h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Nenhuma análise foi gerada para este problema.
-        </p>
+      <div className="qm-panel space-y-3" data-testid="ic-section-analysis">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-semibold text-slate-900">
+            Análise do QMind
+          </h2>
+          {canWrite ? (
+            <button
+              type="button"
+              className="qm-btn-primary"
+              data-testid="ic-generate-analysis"
+              disabled={createRun.isPending}
+              onClick={() => void generateAnalysis()}
+            >
+              {createRun.isPending
+                ? "Gerando…"
+                : latest
+                  ? "Atualizar análise"
+                  : "Gerar análise"}
+            </button>
+          ) : null}
+        </div>
+
+        {createRun.isPending ? (
+          <p data-testid="ic-analysis-loading">Gerando análise…</p>
+        ) : null}
+
+        {latest?.is_stale && isViewingLatest ? (
+          <div
+            className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-950"
+            data-testid="ic-analysis-stale"
+          >
+            <p>
+              O problema ou seu contexto foi atualizado. Gere uma nova análise
+              para considerar as informações atuais.
+            </p>
+            {canWrite ? (
+              <button
+                type="button"
+                className="qm-btn-secondary mt-2"
+                data-testid="ic-refresh-analysis"
+                disabled={createRun.isPending}
+                onClick={() => void generateAnalysis()}
+              >
+                Atualizar análise
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!analysis ? (
+          <p
+            className="text-sm text-slate-600"
+            data-testid="ic-analysis-empty"
+          >
+            Nenhuma análise foi gerada para este problema.
+          </p>
+        ) : (
+          <div className="space-y-4 text-sm" data-testid="ic-analysis-content">
+            <p className="text-xs text-slate-500">
+              {formatUpdatedAt(viewed!.generated_at)}
+              {!isViewingLatest ? " · snapshot histórico" : null}
+            </p>
+            <div>
+              <h3 className="font-medium text-slate-800">Interpretação</h3>
+              <p data-testid="ic-interpretation">
+                {analysis.interpretation_summary}
+              </p>
+            </div>
+
+            {hypotheses.map((h) => (
+              <div key={h.code} data-testid={`ic-hypothesis-${h.code}`}>
+                <h3 className="font-medium text-slate-800">Hipótese</h3>
+                <p>{h.statement}</p>
+                <p className="mt-1 text-slate-600">
+                  Sustentação: {labelHypothesisSupportStatus(h.support_status)}
+                </p>
+              </div>
+            ))}
+
+            {findings.map((f) => (
+              <div key={f.code} data-testid={`ic-finding-${f.code}`}>
+                <h3 className="font-medium text-slate-800">{f.title}</h3>
+                <p>{f.description}</p>
+                <p className="mt-1 text-slate-600">
+                  Relação com o problema: {f.relationship_to_problem}
+                </p>
+                <p className="text-slate-600">
+                  Impacto empresarial: {f.business_impact}
+                </p>
+                <p className="mt-1" data-testid="ic-recommended-next-step">
+                  Próximo passo: {f.recommended_next_step}
+                </p>
+              </div>
+            ))}
+
+            {limitations.length > 0 ? (
+              <div data-testid="ic-limitations">
+                <h3 className="font-medium text-slate-800">Limitações</h3>
+                <ul className="list-disc pl-5 text-slate-600">
+                  {limitations.map((lim) => (
+                    <li key={lim}>{lim}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            <div data-testid="ic-iso-basis">
+              <button
+                type="button"
+                className="text-sm font-medium text-slate-800 underline"
+                data-testid="ic-iso-toggle"
+                onClick={() => setIsoOpen((v) => !v)}
+              >
+                Fundamentação ISO {isoOpen ? "(ocultar)" : "(mostrar)"}
+              </button>
+              {isoOpen ? (
+                <div className="mt-2 space-y-2 text-slate-600">
+                  <p data-testid="ic-iso-disclaimer">
+                    Esta análise utiliza a ISO 9001 como estrutura de
+                    interpretação. Não representa auditoria, conformidade ou
+                    garantia de certificação.
+                  </p>
+                  <p>
+                    Bases:{" "}
+                    {[
+                      ...new Set(
+                        [
+                          ...hypotheses.flatMap((h) => h.iso_basis ?? []),
+                          ...findings.flatMap((f) => f.iso_basis ?? []),
+                        ].map(String),
+                      ),
+                    ].join(", ") || "—"}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="qm-panel" data-testid="ic-section-history">
+        <h2 className="text-base font-semibold text-slate-900">Histórico</h2>
+        {runs.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-600">
+            Nenhuma análise registrada ainda.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2 text-sm">
+            {runs.map((run, idx) => (
+              <li
+                key={run.id}
+                className="flex flex-wrap items-center justify-between gap-2"
+                data-testid={`ic-history-${run.id}`}
+              >
+                <span>
+                  {formatUpdatedAt(run.generated_at)} ·{" "}
+                  {labelProblemContextStatus(run.analysis.context_status)}
+                  {idx === 0
+                    ? run.is_stale
+                      ? " · desatualizada"
+                      : " · atual"
+                    : " · histórica"}
+                </span>
+                <button
+                  type="button"
+                  className="qm-btn-secondary"
+                  onClick={() => setViewRunId(run.id)}
+                >
+                  Ver snapshot
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="qm-panel qm-panel--soft" data-testid="ic-section-actions">

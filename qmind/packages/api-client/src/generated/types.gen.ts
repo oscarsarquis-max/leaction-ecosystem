@@ -2130,6 +2130,53 @@ export type HttpValidationError = {
 };
 
 /**
+ * ImprovementCaseAnalysisRunOut
+ */
+export type ImprovementCaseAnalysisRunOut = {
+    analysis: ProblemAnalysis;
+    /**
+     * Correlation Id
+     */
+    correlation_id: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Improvement Case Id
+     */
+    improvement_case_id: string;
+    /**
+     * Input Fingerprint
+     */
+    input_fingerprint: string;
+    /**
+     * Is Stale
+     */
+    is_stale?: boolean;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version: string;
+};
+
+/**
  * ImprovementCaseCreate
  */
 export type ImprovementCaseCreate = {
@@ -3061,6 +3108,140 @@ export type PresignedUploadOut = {
      * Url
      */
     url: string;
+};
+
+/**
+ * ProblemAnalysis
+ */
+export type ProblemAnalysis = {
+    /**
+     * Analysis Id
+     */
+    analysis_id: string;
+    /**
+     * Context Status
+     */
+    context_status: 'insufficient_context' | 'ready_for_initial_analysis';
+    /**
+     * Core Organization Id
+     */
+    core_organization_id: string;
+    /**
+     * Correlation Id
+     */
+    correlation_id: string;
+    /**
+     * Findings
+     */
+    findings?: Array<ProblemFinding>;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Hypotheses
+     */
+    hypotheses?: Array<ProblemHypothesis>;
+    /**
+     * Improvement Case Id
+     */
+    improvement_case_id: string;
+    /**
+     * Interpretation Summary
+     */
+    interpretation_summary: string;
+    /**
+     * Limitations
+     */
+    limitations?: Array<string>;
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version: string;
+};
+
+/**
+ * ProblemFinding
+ */
+export type ProblemFinding = {
+    /**
+     * Business Impact
+     */
+    business_impact: string;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Iso Basis
+     */
+    iso_basis: Array<'4.1' | '4.4'>;
+    /**
+     * Missing Information
+     */
+    missing_information?: Array<string>;
+    /**
+     * Recommended Next Step
+     */
+    recommended_next_step: string;
+    /**
+     * Relationship To Problem
+     */
+    relationship_to_problem: string;
+    /**
+     * Requires Human Validation
+     */
+    requires_human_validation?: boolean;
+    /**
+     * Supporting Facts
+     */
+    supporting_facts?: Array<string>;
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
+ * ProblemHypothesis
+ */
+export type ProblemHypothesis = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Iso Basis
+     */
+    iso_basis: Array<'4.1' | '4.4'>;
+    /**
+     * Missing Information
+     */
+    missing_information?: Array<string>;
+    /**
+     * Rationale
+     */
+    rationale: string;
+    /**
+     * Statement
+     */
+    statement: string;
+    /**
+     * Support Status
+     */
+    support_status: 'requires_validation' | 'partially_supported' | 'supported_by_available_facts';
+    /**
+     * Supporting Facts
+     */
+    supporting_facts?: Array<string>;
 };
 
 /**
@@ -14802,6 +14983,269 @@ export type PatchCurrentOrganizationImprovementCaseResponses = {
 };
 
 export type PatchCurrentOrganizationImprovementCaseResponse = PatchCurrentOrganizationImprovementCaseResponses[keyof PatchCurrentOrganizationImprovementCaseResponses];
+
+export type ListCurrentOrganizationImprovementCaseAnalysisRunsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: {
+        /**
+         * Limit
+         * Maximum items to return (collections). Default 50, max 100.
+         */
+        limit?: number;
+    };
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/analysis-runs';
+};
+
+export type ListCurrentOrganizationImprovementCaseAnalysisRunsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListCurrentOrganizationImprovementCaseAnalysisRunsError = ListCurrentOrganizationImprovementCaseAnalysisRunsErrors[keyof ListCurrentOrganizationImprovementCaseAnalysisRunsErrors];
+
+export type ListCurrentOrganizationImprovementCaseAnalysisRunsResponses = {
+    /**
+     * Response Listcurrentorganizationimprovementcaseanalysisruns
+     * Successful Response
+     */
+    200: Array<ImprovementCaseAnalysisRunOut>;
+};
+
+export type ListCurrentOrganizationImprovementCaseAnalysisRunsResponse = ListCurrentOrganizationImprovementCaseAnalysisRunsResponses[keyof ListCurrentOrganizationImprovementCaseAnalysisRunsResponses];
+
+export type CreateCurrentOrganizationImprovementCaseAnalysisRunData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/analysis-runs';
+};
+
+export type CreateCurrentOrganizationImprovementCaseAnalysisRunErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateCurrentOrganizationImprovementCaseAnalysisRunError = CreateCurrentOrganizationImprovementCaseAnalysisRunErrors[keyof CreateCurrentOrganizationImprovementCaseAnalysisRunErrors];
+
+export type CreateCurrentOrganizationImprovementCaseAnalysisRunResponses = {
+    /**
+     * Successful Response
+     */
+    201: ImprovementCaseAnalysisRunOut;
+};
+
+export type CreateCurrentOrganizationImprovementCaseAnalysisRunResponse = CreateCurrentOrganizationImprovementCaseAnalysisRunResponses[keyof CreateCurrentOrganizationImprovementCaseAnalysisRunResponses];
+
+export type GetCurrentOrganizationImprovementCaseAnalysisRunData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/analysis-runs/{run_id}';
+};
+
+export type GetCurrentOrganizationImprovementCaseAnalysisRunErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetCurrentOrganizationImprovementCaseAnalysisRunError = GetCurrentOrganizationImprovementCaseAnalysisRunErrors[keyof GetCurrentOrganizationImprovementCaseAnalysisRunErrors];
+
+export type GetCurrentOrganizationImprovementCaseAnalysisRunResponses = {
+    /**
+     * Successful Response
+     */
+    200: ImprovementCaseAnalysisRunOut;
+};
+
+export type GetCurrentOrganizationImprovementCaseAnalysisRunResponse = GetCurrentOrganizationImprovementCaseAnalysisRunResponses[keyof GetCurrentOrganizationImprovementCaseAnalysisRunResponses];
 
 export type AnalyzeCurrentOrganizationIntelligenceData = {
     body?: never;

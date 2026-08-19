@@ -143,6 +143,9 @@ function installFetch() {
         } as CaseRow;
         return jsonResponse(cases[idx]);
       }
+      if (url.includes("/analysis-runs")) {
+        return jsonResponse([]);
+      }
       if (url.includes("/profile")) {
         return jsonResponse({
           organization_id: ORG,
@@ -191,7 +194,7 @@ describe("OrgImprovementCasesPanel", () => {
     expect(
       screen.queryByTestId("register-improvement-case"),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/conforme|não conforme|certifica/i)).toBeNull();
+    expect(screen.queryByText(/não conforme|nao conforme/i)).toBeNull();
   });
 
   it("allows authorized user to register with three business questions", async () => {
@@ -256,7 +259,7 @@ describe("ImprovementCaseDetailPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows honest future sections and allows status transition", async () => {
+  it("shows functional context/analysis sections and allows status transition", async () => {
     const user = userEvent.setup();
     render(shell(<div />, "/improvement-cases/case-1"));
     await enterApp(user);
@@ -266,7 +269,7 @@ describe("ImprovementCaseDetailPage", () => {
     );
 
     expect(screen.getByTestId("ic-section-context")).toHaveTextContent(
-      /próxima etapa da ISO Intelligence/i,
+      /Ainda não há análise/i,
     );
     expect(screen.getByTestId("ic-section-analysis")).toHaveTextContent(
       /Nenhuma análise foi gerada/i,
@@ -277,7 +280,7 @@ describe("ImprovementCaseDetailPage", () => {
     expect(screen.getByTestId("ic-section-evolution")).toHaveTextContent(
       /após existirem análises e ações/i,
     );
-    expect(screen.queryByText(/conforme|não conforme|certifica/i)).toBeNull();
+    expect(screen.queryByText(/não conforme|nao conforme/i)).toBeNull();
 
     await user.click(screen.getByTestId("ic-status-analyzing"));
     await waitFor(() => {

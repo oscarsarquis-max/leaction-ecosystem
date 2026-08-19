@@ -133,6 +133,12 @@ export function usePatchImprovementCase(caseId: string | undefined) {
         qc.invalidateQueries({
           queryKey: queryKeys.improvementCase(currentOrganizationId, data.id),
         }),
+        qc.invalidateQueries({
+          queryKey: queryKeys.improvementCaseAnalysisRuns(
+            currentOrganizationId,
+            data.id,
+          ),
+        }),
       ]);
     },
   });
