@@ -120,6 +120,47 @@ function installFetch() {
         cases = [row, ...cases];
         return jsonResponse(row, 201);
       }
+      if (url.includes("/analysis-runs")) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/improvement-cases/") && url.includes("/actions")) {
+        return jsonResponse({ plan: null, items: [] });
+      }
+      if (url.includes("/evolution") && method === "GET") {
+        const caseId =
+          url.match(/improvement-cases\/([^/?]+)\/evolution/)?.[1] ?? "case-1";
+        const found = cases.find((c) => c.id === caseId) ?? {
+          id: caseId,
+          organization_id: ORG,
+          problem_statement: "Atrasos",
+          impact_statement: "SLA",
+          related_process: "Pedidos",
+          status: "open",
+          created_by: "user-1",
+          created_at: "2026-08-19T12:00:00Z",
+          updated_at: "2026-08-19T12:00:00Z",
+        };
+        return jsonResponse({
+          case: found,
+          analysis_summary: {
+            total_runs: 0,
+            latest_run: null,
+            previous_run: null,
+            comparison: null,
+          },
+          action_summary: {
+            total: 0,
+            by_status: [],
+            overdue: 0,
+            completed: 0,
+            items: [],
+            plan: null,
+          },
+          latest_outcome_observation: null,
+          outcome_observations: [],
+          closure_readiness: "insufficient_information",
+        });
+      }
       if (
         url.includes("/improvement-cases") &&
         method === "GET" &&
@@ -142,12 +183,6 @@ function installFetch() {
           updated_at: "2026-08-19T13:00:00Z",
         } as CaseRow;
         return jsonResponse(cases[idx]);
-      }
-      if (url.includes("/analysis-runs")) {
-        return jsonResponse([]);
-      }
-      if (url.includes("/improvement-cases/") && url.includes("/actions")) {
-        return jsonResponse({ plan: null, items: [] });
       }
       if (url.includes("/organizations/current/members")) {
         return jsonResponse([]);
@@ -283,8 +318,12 @@ describe("ImprovementCaseDetailPage", () => {
     expect(screen.getByTestId("ic-section-actions")).toHaveTextContent(
       /Nenhuma ação foi criada/i,
     );
-    expect(screen.getByTestId("ic-section-evolution")).toHaveTextContent(
-      /após existirem análises e ações/i,
+    expect(screen.getByTestId("ic-section-evolution")).toBeInTheDocument();
+    expect(screen.getByTestId("ic-evo-outcome-empty")).toHaveTextContent(
+      /Nenhum resultado foi registrado/i,
+    );
+    expect(screen.getByTestId("ic-evo-closure")).toHaveTextContent(
+      /faltam elementos/i,
     );
     expect(screen.queryByText(/não conforme|nao conforme/i)).toBeNull();
 
