@@ -7,7 +7,13 @@ from uuid import UUID
 from fastapi import APIRouter
 
 from app.auth.deps import OrgContextDep
+from app.modules.actions.schemas import (
+    ActionItemOut,
+    FindingActionCreate,
+    ImprovementCaseActionsOut,
+)
 from app.modules.improvement_cases import analysis_service
+from app.modules.improvement_cases import finding_actions
 from app.modules.improvement_cases import service
 from app.modules.improvement_cases.problem_schemas import ImprovementCaseAnalysisRunOut
 from app.modules.improvement_cases.schemas import (
@@ -146,3 +152,47 @@ def get_current_organization_improvement_case_analysis_run(
     ctx: OrgContextDep,
 ) -> ImprovementCaseAnalysisRunOut:
     return analysis_service.get_analysis_run(ctx, case_id, run_id)
+
+
+@router.post(
+    "/current/improvement-cases/{case_id}/analysis-runs/{run_id}/findings/{finding_code}/actions",
+    response_model=ActionItemOut,
+    status_code=201,
+    operation_id="createActionFromImprovementCaseFinding",
+    responses={
+        401: ERROR_RESPONSES[401],
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+        409: ERROR_RESPONSES[409],
+        422: ERROR_RESPONSES[422],
+    },
+    summary="Create an ActionItem from an analysis finding (human confirmation)",
+)
+def create_action_from_improvement_case_finding(
+    case_id: UUID,
+    run_id: UUID,
+    finding_code: str,
+    payload: FindingActionCreate,
+    ctx: OrgContextDep,
+) -> ActionItemOut:
+    return finding_actions.create_action_from_finding(
+        ctx, case_id, run_id, finding_code, payload
+    )
+
+
+@router.get(
+    "/current/improvement-cases/{case_id}/actions",
+    response_model=ImprovementCaseActionsOut,
+    operation_id="listCurrentOrganizationImprovementCaseActions",
+    responses={
+        401: ERROR_RESPONSES[401],
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+    },
+    summary="List ActionPlan and ActionItems for an improvement case",
+)
+def list_current_organization_improvement_case_actions(
+    case_id: UUID,
+    ctx: OrgContextDep,
+) -> ImprovementCaseActionsOut:
+    return finding_actions.list_case_actions(ctx, case_id)

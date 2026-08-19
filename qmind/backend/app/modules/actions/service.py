@@ -30,10 +30,12 @@ _EFFICACY_ROLES = ("org_admin", "quality_manager")
 _READ_ROLES = _PLAN_ROLES + ("process_owner", "action_owner", "reader")
 
 _PLAN_COLS = """
-    id, organization_id, assessment_id, status, empty_plan_rationale, created_at, updated_at
+    id, organization_id, assessment_id, improvement_case_id, status,
+    empty_plan_rationale, created_at, updated_at
 """
 _ITEM_COLS = """
     id, organization_id, action_plan_id, finding_id, source_evolution_suggestion_id,
+    source_analysis_run_id, source_finding_code,
     action_kind, description,
     owner_membership_id, due_at, status, is_overdue, efficacy_required,
     source_finding_withdrawn, validated_by, efficacy_confirmed_by,
@@ -47,6 +49,7 @@ def _plan_out(row) -> ActionPlanOut:
         id=row.id,
         organization_id=row.organization_id,
         assessment_id=row.assessment_id,
+        improvement_case_id=getattr(row, "improvement_case_id", None),
         status=row.status,
         empty_plan_rationale=row.empty_plan_rationale,
         created_at=row.created_at,
@@ -63,6 +66,8 @@ def _item_out(row) -> ActionItemOut:
         source_evolution_suggestion_id=getattr(
             row, "source_evolution_suggestion_id", None
         ),
+        source_analysis_run_id=getattr(row, "source_analysis_run_id", None),
+        source_finding_code=getattr(row, "source_finding_code", None),
         action_kind=row.action_kind,
         description=row.description,
         owner_membership_id=row.owner_membership_id,
@@ -148,8 +153,9 @@ def create_plan(ctx: OrgContext, payload: ActionPlanCreate) -> ActionPlanOut:
             text(
                 f"""
                 INSERT INTO action_plans (
-                  id, organization_id, assessment_id, status, empty_plan_rationale
-                ) VALUES (:id, :org, :assess, 'draft', :rationale)
+                  id, organization_id, assessment_id, improvement_case_id,
+                  status, empty_plan_rationale
+                ) VALUES (:id, :org, :assess, NULL, 'draft', :rationale)
                 RETURNING {_PLAN_COLS}
                 """
             ),
@@ -185,7 +191,11 @@ def get_plan(ctx: OrgContext, plan_id: UUID) -> ActionPlanOut:
         return _plan_out(_lock_plan(conn, ctx.organization_id, plan_id))
 
 
-def list_plans(ctx: OrgContext, assessment_id: UUID | None = None) -> list[ActionPlanOut]:
+def list_plans(
+    ctx: OrgContext,
+    assessment_id: UUID | None = None,
+    improvement_case_id: UUID | None = None,
+) -> list[ActionPlanOut]:
     require_role(ctx, *_READ_ROLES)
     with tenant_connection(ctx.organization_id) as conn:
         if assessment_id:
@@ -198,6 +208,17 @@ def list_plans(ctx: OrgContext, assessment_id: UUID | None = None) -> list[Actio
                     """
                 ),
                 {"org": ctx.organization_id, "aid": assessment_id},
+            ).all()
+        elif improvement_case_id:
+            rows = conn.execute(
+                text(
+                    f"""
+                    SELECT {_PLAN_COLS} FROM action_plans
+                    WHERE organization_id = :org AND improvement_case_id = :cid
+                    ORDER BY created_at DESC
+                    """
+                ),
+                {"org": ctx.organization_id, "cid": improvement_case_id},
             ).all()
         else:
             rows = conn.execute(
@@ -331,17 +352,19 @@ def cancel_plan(ctx: OrgContext, plan_id: UUID) -> ActionPlanTransitionResult:
                 f"cancel requires draft|active (current={row.status})",
                 status_code=409,
             )
-        published = conn.execute(
-            text(
-                """
-                SELECT count(*) FROM reports
-                WHERE assessment_id = :aid
-                  AND organization_id = :org
-                  AND status = 'published'
-                """
-            ),
-            {"aid": row.assessment_id, "org": ctx.organization_id},
-        ).scalar_one()
+        published = 0
+        if row.assessment_id is not None:
+            published = conn.execute(
+                text(
+                    """
+                    SELECT count(*) FROM reports
+                    WHERE assessment_id = :aid
+                      AND organization_id = :org
+                      AND status = 'published'
+                    """
+                ),
+                {"aid": row.assessment_id, "org": ctx.organization_id},
+            ).scalar_one()
         if published > 0:
             raise AppError(
                 "plan_cancel_blocked_published_report",
@@ -521,11 +544,12 @@ def create_item(ctx: OrgContext, plan_id: UUID, payload: ActionItemCreate) -> Ac
                 f"""
                 INSERT INTO action_items (
                   id, organization_id, action_plan_id, finding_id,
-                  source_evolution_suggestion_id, action_kind,
+                  source_evolution_suggestion_id, source_analysis_run_id,
+                  source_finding_code, action_kind,
                   description, owner_membership_id, due_at, status, efficacy_required
                 ) VALUES (
                   :id, :org, :plan, :fid,
-                  :esid, :kind,
+                  :esid, NULL, NULL, :kind,
                   :desc, :owner, :due, 'open', :efficacy
                 )
                 RETURNING {_ITEM_COLS}

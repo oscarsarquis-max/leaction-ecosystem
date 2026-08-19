@@ -34,6 +34,7 @@ Workspace documental do QMind, plataforma inteligente de apoio à consultoria, a
 - **ISO Intelligence V1 — inspeção Caso de Melhoria:** [`04_Docs/022_ISO_Intelligence_V1_Improvement_Case_Inspection.md`](04_Docs/022_ISO_Intelligence_V1_Improvement_Case_Inspection.md) — ISOI-001 (**Aprovado**; D1–D5).
 - **ISO Intelligence V1 — Improvement Case Core Foundation:** [`04_Docs/023_ISO_Intelligence_V1_Improvement_Case_Core_Foundation.md`](04_Docs/023_ISO_Intelligence_V1_Improvement_Case_Core_Foundation.md) — ISOI-002 (agregado Core + UI hub/detalhe; sem OI).
 - **ISO Intelligence V1 — Problem Analysis Integration:** [`04_Docs/024_ISO_Intelligence_V1_Problem_Analysis_Integration.md`](04_Docs/024_ISO_Intelligence_V1_Problem_Analysis_Integration.md) — ISOI-003 (Core ↔ OI problem analysis).
+- **ISO Intelligence V1 — Finding to Action:** [`04_Docs/025_ISO_Intelligence_V1_Finding_to_Action.md`](04_Docs/025_ISO_Intelligence_V1_Finding_to_Action.md) — ISOI-004 (ActionPlan XOR + ação a partir de achado).
 - Domínio documental **Aceito** e congelado: **`domain-docs-v0`** — `04_Docs/006_Domain_Acceptance_Checklist.md`.
 - Emenda implementação: `04_Docs/007_Domain_Docs_Amendment_001.md` (Alembic, porta 5433).
 - **DDL v0 + Alembic:** `03_Database/003_DDL_v0.md` → `qmind/backend/` (database `qmind` no cluster `leaction_db`).

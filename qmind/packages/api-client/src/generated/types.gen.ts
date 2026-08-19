@@ -94,9 +94,17 @@ export type ActionItemOut = {
      */
     reject_reason?: string | null;
     /**
+     * Source Analysis Run Id
+     */
+    source_analysis_run_id?: string | null;
+    /**
      * Source Evolution Suggestion Id
      */
     source_evolution_suggestion_id?: string | null;
+    /**
+     * Source Finding Code
+     */
+    source_finding_code?: string | null;
     /**
      * Source Finding Withdrawn
      */
@@ -137,6 +145,7 @@ export type ActionKind = 'correction' | 'corrective_action' | 'improvement';
 
 /**
  * ActionPlanCreate
+ * Assessment-scoped plan create (existing API). Case plans are created via finding→action.
  */
 export type ActionPlanCreate = {
     /**
@@ -156,7 +165,7 @@ export type ActionPlanOut = {
     /**
      * Assessment Id
      */
-    assessment_id: string;
+    assessment_id?: string | null;
     /**
      * Created At
      */
@@ -169,6 +178,10 @@ export type ActionPlanOut = {
      * Id
      */
     id: string;
+    /**
+     * Improvement Case Id
+     */
+    improvement_case_id?: string | null;
     /**
      * Organization Id
      */
@@ -1618,6 +1631,21 @@ export type FieldError = {
 };
 
 /**
+ * FindingActionCreate
+ * Human decision fields only — finding text comes from the immutable analysis run.
+ */
+export type FindingActionCreate = {
+    /**
+     * Due At
+     */
+    due_at: string;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id: string;
+};
+
+/**
  * FindingCreate
  */
 export type FindingCreate = {
@@ -2127,6 +2155,17 @@ export type HttpValidationError = {
      * Detail
      */
     detail?: Array<ValidationError>;
+};
+
+/**
+ * ImprovementCaseActionsOut
+ */
+export type ImprovementCaseActionsOut = {
+    /**
+     * Items
+     */
+    items?: Array<ActionItemOut>;
+    plan?: ActionPlanOut | null;
 };
 
 /**
@@ -4871,6 +4910,11 @@ export type ListActionPlansData = {
          * Filter by assessment
          */
         assessment_id?: string | null;
+        /**
+         * Improvement Case Id
+         * Filter by improvement case
+         */
+        improvement_case_id?: string | null;
         /**
          * Limit
          * Maximum items to return (collections). Default 50, max 100.
@@ -14984,6 +15028,90 @@ export type PatchCurrentOrganizationImprovementCaseResponses = {
 
 export type PatchCurrentOrganizationImprovementCaseResponse = PatchCurrentOrganizationImprovementCaseResponses[keyof PatchCurrentOrganizationImprovementCaseResponses];
 
+export type ListCurrentOrganizationImprovementCaseActionsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/actions';
+};
+
+export type ListCurrentOrganizationImprovementCaseActionsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListCurrentOrganizationImprovementCaseActionsError = ListCurrentOrganizationImprovementCaseActionsErrors[keyof ListCurrentOrganizationImprovementCaseActionsErrors];
+
+export type ListCurrentOrganizationImprovementCaseActionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ImprovementCaseActionsOut;
+};
+
+export type ListCurrentOrganizationImprovementCaseActionsResponse = ListCurrentOrganizationImprovementCaseActionsResponses[keyof ListCurrentOrganizationImprovementCaseActionsResponses];
+
 export type ListCurrentOrganizationImprovementCaseAnalysisRunsData = {
     body?: never;
     headers?: {
@@ -15246,6 +15374,98 @@ export type GetCurrentOrganizationImprovementCaseAnalysisRunResponses = {
 };
 
 export type GetCurrentOrganizationImprovementCaseAnalysisRunResponse = GetCurrentOrganizationImprovementCaseAnalysisRunResponses[keyof GetCurrentOrganizationImprovementCaseAnalysisRunResponses];
+
+export type CreateActionFromImprovementCaseFindingData = {
+    body: FindingActionCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+        /**
+         * Finding Code
+         */
+        finding_code: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/analysis-runs/{run_id}/findings/{finding_code}/actions';
+};
+
+export type CreateActionFromImprovementCaseFindingErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateActionFromImprovementCaseFindingError = CreateActionFromImprovementCaseFindingErrors[keyof CreateActionFromImprovementCaseFindingErrors];
+
+export type CreateActionFromImprovementCaseFindingResponses = {
+    /**
+     * Successful Response
+     */
+    201: ActionItemOut;
+};
+
+export type CreateActionFromImprovementCaseFindingResponse = CreateActionFromImprovementCaseFindingResponses[keyof CreateActionFromImprovementCaseFindingResponses];
 
 export type AnalyzeCurrentOrganizationIntelligenceData = {
     body?: never;

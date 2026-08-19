@@ -92,3 +92,5 @@ Write roles = ImprovementCase write. Reader lists/views only.
 ## 9. Limits
 
 No ActionPlan XOR, evidence, evolution, LLM, NC, scores, clauses 5–10 rules.
+
+**Continuidade:** Achado → Ação em [`025`](025_ISO_Intelligence_V1_Finding_to_Action.md) (ISOI-004).

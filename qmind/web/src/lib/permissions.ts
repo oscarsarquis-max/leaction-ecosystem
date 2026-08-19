@@ -40,6 +40,13 @@ export function canManageImprovementCases(
   return canEditOrganizationProfile(roles);
 }
 
+/** Create action from finding: case manage ∩ action-item create roles. */
+export function canCreateFindingActions(
+  roles: readonly string[] | undefined,
+): boolean {
+  return canManageImprovementCases(roles) && canMutateAssessments(roles);
+}
+
 export function canReadImprovementCases(
   roles: readonly string[] | undefined,
 ): boolean {

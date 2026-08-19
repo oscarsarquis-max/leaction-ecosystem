@@ -161,3 +161,5 @@ ActionPlan XOR `assessment_id` | `improvement_case_id` e criação de Action Ite
 ## Continuidade ISOI-003
 
 Integração Problem Analysis documentada em [`024_ISO_Intelligence_V1_Problem_Analysis_Integration.md`](024_ISO_Intelligence_V1_Problem_Analysis_Integration.md).
+
+**ISOI-004:** operacionalização Achado → Ação — [`025_ISO_Intelligence_V1_Finding_to_Action.md`](025_ISO_Intelligence_V1_Finding_to_Action.md).

@@ -48,11 +48,18 @@ def create_plan(
 def list_plans(
     ctx: OrgContextDep,
     assessment_id: UUID | None = Query(default=None, description="Filter by assessment"),
+    improvement_case_id: UUID | None = Query(
+        default=None, description="Filter by improvement case"
+    ),
     limit: LimitQuery = 50,
     cursor: CursorQuery = None,
 ) -> list[ActionPlanOut]:
     _ = cursor
-    return service.list_plans(ctx, assessment_id)[:limit]
+    return service.list_plans(
+        ctx,
+        assessment_id=assessment_id,
+        improvement_case_id=improvement_case_id,
+    )[:limit]
 
 
 @router.get(

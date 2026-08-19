@@ -224,6 +224,12 @@ function installFetch() {
       if (url.includes("analysis-runs") && method === "GET") {
         return jsonResponse(runs);
       }
+      if (url.includes("/actions") && method === "GET") {
+        return jsonResponse({ plan: null, items: [] });
+      }
+      if (url.includes("/members")) {
+        return jsonResponse([]);
+      }
       if (url.includes("analysis-runs") && method === "POST") {
         const run = makeRun({
           id: `run-${runs.length + 1}`,

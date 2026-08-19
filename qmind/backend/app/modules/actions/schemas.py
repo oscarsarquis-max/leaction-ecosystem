@@ -9,6 +9,8 @@ from app.schemas.enums import ActionItemStatus, ActionKind, ActionPlanStatus
 
 
 class ActionPlanCreate(BaseModel):
+    """Assessment-scoped plan create (existing API). Case plans are created via finding→action."""
+
     assessment_id: UUID
     empty_plan_rationale: str | None = None
 
@@ -16,7 +18,8 @@ class ActionPlanCreate(BaseModel):
 class ActionPlanOut(BaseModel):
     id: UUID
     organization_id: UUID
-    assessment_id: UUID
+    assessment_id: UUID | None = None
+    improvement_case_id: UUID | None = None
     status: ActionPlanStatus
     empty_plan_rationale: str | None
     created_at: datetime
@@ -40,12 +43,21 @@ class ActionItemCreate(BaseModel):
     efficacy_required: bool | None = None
 
 
+class FindingActionCreate(BaseModel):
+    """Human decision fields only — finding text comes from the immutable analysis run."""
+
+    owner_membership_id: UUID
+    due_at: datetime
+
+
 class ActionItemOut(BaseModel):
     id: UUID
     organization_id: UUID
     action_plan_id: UUID
     finding_id: UUID | None
     source_evolution_suggestion_id: UUID | None = None
+    source_analysis_run_id: UUID | None = None
+    source_finding_code: str | None = None
     action_kind: ActionKind
     description: str
     owner_membership_id: UUID
@@ -61,6 +73,11 @@ class ActionItemOut(BaseModel):
     efficacy_fail_reason: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class ImprovementCaseActionsOut(BaseModel):
+    plan: ActionPlanOut | None = None
+    items: list[ActionItemOut] = Field(default_factory=list)
 
 
 class ActionItemTransitionResult(BaseModel):

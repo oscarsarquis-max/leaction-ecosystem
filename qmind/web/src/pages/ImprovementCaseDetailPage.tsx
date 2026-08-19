@@ -12,6 +12,10 @@ import {
 import { useOrgProfile } from "@/hooks/useOrgProfile";
 import { canManageImprovementCases } from "@/lib/permissions";
 import {
+  FindingActionControls,
+  ImprovementCaseActionsSection,
+} from "@/components/ImprovementCaseActions";
+import {
   allowedImprovementCaseTransitions,
   labelHypothesisSupportStatus,
   labelImprovementCaseStatus,
@@ -51,6 +55,7 @@ export function ImprovementCaseDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isoOpen, setIsoOpen] = useState(false);
   const [viewRunId, setViewRunId] = useState<string | null>(null);
+  const [highlightFinding, setHighlightFinding] = useState<string | null>(null);
 
   const data = query.data;
   const runs = runsQuery.data ?? [];
@@ -419,7 +424,16 @@ export function ImprovementCaseDetailPage() {
             ))}
 
             {findings.map((f) => (
-              <div key={f.code} data-testid={`ic-finding-${f.code}`}>
+              <div
+                key={f.code}
+                id={`ic-finding-anchor-${f.code}`}
+                data-testid={`ic-finding-${f.code}`}
+                className={
+                  highlightFinding === f.code
+                    ? "rounded ring-2 ring-slate-400 p-2"
+                    : undefined
+                }
+              >
                 <h3 className="font-medium text-slate-800">{f.title}</h3>
                 <p>{f.description}</p>
                 <p className="mt-1 text-slate-600">
@@ -431,6 +445,13 @@ export function ImprovementCaseDetailPage() {
                 <p className="mt-1" data-testid="ic-recommended-next-step">
                   Próximo passo: {f.recommended_next_step}
                 </p>
+                {caseId && viewed ? (
+                  <FindingActionControls
+                    caseId={caseId}
+                    run={viewed}
+                    finding={f}
+                  />
+                ) : null}
               </div>
             ))}
 
@@ -515,18 +536,23 @@ export function ImprovementCaseDetailPage() {
         )}
       </div>
 
-      <div className="qm-panel qm-panel--soft" data-testid="ic-section-actions">
-        <h2 className="text-base font-semibold text-slate-900">Ações</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          As ações relacionadas ao problema serão disponibilizadas após a
-          primeira análise.
-        </p>
-      </div>
+      {caseId ? (
+        <ImprovementCaseActionsSection
+          caseId={caseId}
+          runs={runs}
+          onOpenRunFinding={(runId, findingCode) => {
+            setViewRunId(runId);
+            setHighlightFinding(findingCode);
+            window.setTimeout(() => {
+              document
+                .getElementById(`ic-finding-anchor-${findingCode}`)
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 50);
+          }}
+        />
+      ) : null}
 
-      <div
-        className="qm-panel qm-panel--soft"
-        data-testid="ic-section-evolution"
-      >
+      <div className="qm-panel qm-panel--soft" data-testid="ic-section-evolution">
         <h2 className="text-base font-semibold text-slate-900">Evolução</h2>
         <p className="mt-2 text-sm text-slate-600">
           A evolução será exibida após existirem análises e ações.

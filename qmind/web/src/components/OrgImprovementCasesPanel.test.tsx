@@ -146,6 +146,12 @@ function installFetch() {
       if (url.includes("/analysis-runs")) {
         return jsonResponse([]);
       }
+      if (url.includes("/improvement-cases/") && url.includes("/actions")) {
+        return jsonResponse({ plan: null, items: [] });
+      }
+      if (url.includes("/organizations/current/members")) {
+        return jsonResponse([]);
+      }
       if (url.includes("/profile")) {
         return jsonResponse({
           organization_id: ORG,
@@ -275,7 +281,7 @@ describe("ImprovementCaseDetailPage", () => {
       /Nenhuma análise foi gerada/i,
     );
     expect(screen.getByTestId("ic-section-actions")).toHaveTextContent(
-      /após a primeira análise/i,
+      /Nenhuma ação foi criada/i,
     );
     expect(screen.getByTestId("ic-section-evolution")).toHaveTextContent(
       /após existirem análises e ações/i,
