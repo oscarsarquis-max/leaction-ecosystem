@@ -37,4 +37,7 @@ export type {
   MaturityPackageOut,
   ActionPlanOut,
   ActionItemOut,
+  ImprovementCaseCreate,
+  ImprovementCaseOut,
+  ImprovementCasePatch,
 } from "./generated/types.gen.js";

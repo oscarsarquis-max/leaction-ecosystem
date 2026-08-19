@@ -21,6 +21,7 @@ import {
 } from "@/lib/auditJourney";
 import { OrgAgenda } from "@/components/OrgAgenda";
 import { OrgIntelligenceContextLoop } from "@/components/OrgIntelligenceContextLoop";
+import { OrgImprovementCasesPanel } from "@/components/OrgImprovementCasesPanel";
 import { OrgJourneyOverview } from "@/components/orgJourney/OrgJourneyOverview";
 import { useRegisterAssistantContext } from "@/assistant/AssistantProvider";
 import type { AssistantContext } from "@/assistant/types";
@@ -168,6 +169,8 @@ export function AssessmentsPage() {
       <OrgJourneyOverview assessments={items} />
 
       <OrgIntelligenceContextLoop />
+
+      <OrgImprovementCasesPanel />
 
       <OrgAgenda />
 

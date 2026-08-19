@@ -1,12 +1,13 @@
 # 022 — ISO Intelligence V1 — Caso de Melhoria: Inspection and Domain Model
 
-- Status: **Em revisão**
+- Status: **Aprovado**
 - Date: 2026-08-19
 - Sprint / atividade: **ISOI-001** (inspeção e modelagem — sem implementação)
 - Baseline de partida: **Context-OI V1** ([`021_Context_OI_V1_Baseline.md`](021_Context_OI_V1_Baseline.md))
 - Fonte estratégica (somente leitura): `Arquitetura QMind/QMind_Da_Auditoria_a_Inteligencia_Organizacional V2.docx`
+- Implementação Core da fundação: **ISOI-002** ([`023_ISO_Intelligence_V1_Improvement_Case_Core_Foundation.md`](023_ISO_Intelligence_V1_Improvement_Case_Core_Foundation.md))
 
-Documento de inspeção arquitetural. **Não altera comportamento do produto.**
+Documento de inspeção arquitetural. **Não altera comportamento do produto** (ISOI-001). Decisões D1–D5 aprovadas; a fundação exclusiva do Core está em ISOI-002.
 
 ---
 
@@ -443,18 +444,20 @@ Conformidade, NC automática, certificabilidade, maturidade, eficácia SGQ, LLM,
 
 ---
 
-## 15. Riscos e decisões pendentes
+## 15. Riscos e decisões (D1–D5 aprovadas)
 
 | ID | Tema | Status |
 |----|------|--------|
-| D1 | Nome de produto (Caso de Melhoria vs Problema em acompanhamento) | Pendente |
-| D2 | Novo envelope OI minor vs major | Pendente |
-| D3 | ActionPlan XOR `improvement_case_id` vs outro vínculo | Pendente |
-| D4 | Rota UI e IA copy | Pendente |
-| D5 | Persistência: estender `organization_intelligence_runs` vs tabela por caso | Pendente |
+| D1 | Nome interno `ImprovementCase`; UI “Problemas em acompanhamento” / “Registrar problema” | **Aprovada** |
+| D2 | Contrato OI futuro `ProblemContextInput → ProblemAnalysis` (`schema_version` 1.0 separado); sem alterar Context Readiness | **Aprovada** (não implementar em ISOI-002) |
+| D3 | ActionPlan futuro com XOR `assessment_id` XOR `improvement_case_id` | **Aprovada** (não implementar em ISOI-002) |
+| D4 | Hub `/assessments`; detalhe `/improvement-cases/:id`; seção independente | **Aprovada** |
+| D5 | Histórico de análises em tabela própria por caso; não reutilizar `organization_intelligence_runs` | **Aprovada** (não criar tabela em ISOI-002) |
 | R1 | Confundir readiness com conformidade na UI | Mitigar copy |
 | R2 | Reauditorizar o produto via Assessment | Evitar alt. A |
 | R3 | Cross-tenant via evidence_refs | Guards Core |
+
+**ISOI-002** implementa somente a fundação Core do agregado `ImprovementCase` (fatos + lifecycle). Interpretação OI, ActionPlan XOR e histórico de análises ficam para incrementos posteriores.
 
 ---
 
@@ -488,3 +491,5 @@ Escopo sugerido do próximo prompt:
 
 Inspeção concluída **sem implementação de funcionalidade**.  
 Artefato: este documento + entrada no índice `architecture/README.md`.
+
+**Pós-aprovação:** D1–D5 encerradas; execução da fundação Core em **ISOI-002** / doc [`023`](023_ISO_Intelligence_V1_Improvement_Case_Core_Foundation.md).

@@ -33,6 +33,19 @@ export function canEditOrganizationProfile(
   return (roles ?? []).some((r) => ORG_PROFILE_EDIT_ROLES.has(r));
 }
 
+/** Soft client hints — same write roles as Organization Profile PATCH. */
+export function canManageImprovementCases(
+  roles: readonly string[] | undefined,
+): boolean {
+  return canEditOrganizationProfile(roles);
+}
+
+export function canReadImprovementCases(
+  roles: readonly string[] | undefined,
+): boolean {
+  return (roles ?? []).some((r) => READ_ROLES.has(r));
+}
+
 export function canReadAssessments(roles: readonly string[] | undefined): boolean {
   return (roles ?? []).some((r) => READ_ROLES.has(r));
 }

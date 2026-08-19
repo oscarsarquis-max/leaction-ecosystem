@@ -2130,6 +2130,88 @@ export type HttpValidationError = {
 };
 
 /**
+ * ImprovementCaseCreate
+ */
+export type ImprovementCaseCreate = {
+    /**
+     * Impact Statement
+     */
+    impact_statement: string;
+    /**
+     * Problem Statement
+     */
+    problem_statement: string;
+    /**
+     * Related Process
+     */
+    related_process: string;
+};
+
+/**
+ * ImprovementCaseOut
+ */
+export type ImprovementCaseOut = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Impact Statement
+     */
+    impact_statement: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Problem Statement
+     */
+    problem_statement: string;
+    /**
+     * Related Process
+     */
+    related_process: string;
+    /**
+     * Status
+     */
+    status: 'open' | 'analyzing' | 'acting' | 'reviewing' | 'closed';
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * ImprovementCasePatch
+ */
+export type ImprovementCasePatch = {
+    /**
+     * Impact Statement
+     */
+    impact_statement?: string | null;
+    /**
+     * Problem Statement
+     */
+    problem_statement?: string | null;
+    /**
+     * Related Process
+     */
+    related_process?: string | null;
+    /**
+     * Status
+     */
+    status?: ('open' | 'analyzing' | 'acting' | 'reviewing' | 'closed') | null;
+};
+
+/**
  * InsightExplanation
  */
 export type InsightExplanation = {
@@ -14387,6 +14469,339 @@ export type GetCurrentOrganizationResponses = {
 };
 
 export type GetCurrentOrganizationResponse = GetCurrentOrganizationResponses[keyof GetCurrentOrganizationResponses];
+
+export type ListCurrentOrganizationImprovementCasesData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         * Maximum items to return (collections). Default 50, max 100.
+         */
+        limit?: number;
+    };
+    url: '/api/v1/organizations/current/improvement-cases';
+};
+
+export type ListCurrentOrganizationImprovementCasesErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListCurrentOrganizationImprovementCasesError = ListCurrentOrganizationImprovementCasesErrors[keyof ListCurrentOrganizationImprovementCasesErrors];
+
+export type ListCurrentOrganizationImprovementCasesResponses = {
+    /**
+     * Response Listcurrentorganizationimprovementcases
+     * Successful Response
+     */
+    200: Array<ImprovementCaseOut>;
+};
+
+export type ListCurrentOrganizationImprovementCasesResponse = ListCurrentOrganizationImprovementCasesResponses[keyof ListCurrentOrganizationImprovementCasesResponses];
+
+export type CreateCurrentOrganizationImprovementCaseData = {
+    body: ImprovementCaseCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases';
+};
+
+export type CreateCurrentOrganizationImprovementCaseErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateCurrentOrganizationImprovementCaseError = CreateCurrentOrganizationImprovementCaseErrors[keyof CreateCurrentOrganizationImprovementCaseErrors];
+
+export type CreateCurrentOrganizationImprovementCaseResponses = {
+    /**
+     * Successful Response
+     */
+    201: ImprovementCaseOut;
+};
+
+export type CreateCurrentOrganizationImprovementCaseResponse = CreateCurrentOrganizationImprovementCaseResponses[keyof CreateCurrentOrganizationImprovementCaseResponses];
+
+export type GetCurrentOrganizationImprovementCaseData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}';
+};
+
+export type GetCurrentOrganizationImprovementCaseErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetCurrentOrganizationImprovementCaseError = GetCurrentOrganizationImprovementCaseErrors[keyof GetCurrentOrganizationImprovementCaseErrors];
+
+export type GetCurrentOrganizationImprovementCaseResponses = {
+    /**
+     * Successful Response
+     */
+    200: ImprovementCaseOut;
+};
+
+export type GetCurrentOrganizationImprovementCaseResponse = GetCurrentOrganizationImprovementCaseResponses[keyof GetCurrentOrganizationImprovementCaseResponses];
+
+export type PatchCurrentOrganizationImprovementCaseData = {
+    body: ImprovementCasePatch;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}';
+};
+
+export type PatchCurrentOrganizationImprovementCaseErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type PatchCurrentOrganizationImprovementCaseError = PatchCurrentOrganizationImprovementCaseErrors[keyof PatchCurrentOrganizationImprovementCaseErrors];
+
+export type PatchCurrentOrganizationImprovementCaseResponses = {
+    /**
+     * Successful Response
+     */
+    200: ImprovementCaseOut;
+};
+
+export type PatchCurrentOrganizationImprovementCaseResponse = PatchCurrentOrganizationImprovementCaseResponses[keyof PatchCurrentOrganizationImprovementCaseResponses];
 
 export type AnalyzeCurrentOrganizationIntelligenceData = {
     body?: never;
