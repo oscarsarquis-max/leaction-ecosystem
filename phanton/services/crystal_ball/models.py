@@ -113,6 +113,10 @@ class CrystalCorpus(Base):
     nome: Mapped[str] = mapped_column(String, nullable=False)
     tipo_fonte: Mapped[str] = mapped_column(String, nullable=False)
     schema_config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    aplicacao_origem: Mapped[str] = mapped_column(
+        String, nullable=False, default="Mativas"
+    )
+    versao_atual: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
@@ -179,6 +183,8 @@ class CrystalResultadoReal(Base):
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     comparison: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     numero_ciclo: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    versao_corpus: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    versao_prompt_origem: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )

@@ -330,6 +330,10 @@ async def run_mativas_experimental(
         raise ExperimentalRunError(str(exc)) from exc
 
     from services.crystal_ball.campo_compare import compare_literal_fields
+    from services.crystal_ball.corpora import (
+        compute_corpus_content_hash,
+        ensure_mativas_corpus,
+    )
     from services.crystal_ball.experimental_providers.generic_corpus_lookup import (
         MATIVAS_SCHEMA_CONFIG,
     )
@@ -359,6 +363,17 @@ async def run_mativas_experimental(
         else campo_cmp.get("identical_ratio")
     )
 
+    corpus_row = ensure_mativas_corpus(db)
+    versao_corpus = (
+        (corpus_row.versao_atual or "").strip()
+        or compute_corpus_content_hash(MATIVAS_SCHEMA_CONFIG)
+    )
+    if not (corpus_row.versao_atual or "").strip():
+        corpus_row.versao_atual = versao_corpus
+        db.add(corpus_row)
+    comparison["versao_corpus"] = versao_corpus
+    comparison["aplicacao_origem"] = corpus_row.aplicacao_origem or "Mativas"
+
     if not errors:
         shadow.status = "experimental_done"
     shadow.updated_at = datetime.now(UTC)
@@ -366,6 +381,8 @@ async def run_mativas_experimental(
     spec_data = dict(shadow.spec or {})
     spec_data["comparison"] = comparison
     spec_data["corpus_slug"] = "mativas"
+    spec_data["versao_corpus"] = versao_corpus
+    spec_data["aplicacao_origem"] = corpus_row.aplicacao_origem or "Mativas"
     shadow.spec = spec_data
     # excerpt
     entrega = artifacts.get(PHASE_ENTREGA) or {}

@@ -84,6 +84,15 @@ if (Test-Path $CorporaSql) {
     docker exec $Container rm -f $remote5 | Out-Null
 }
 
+$IntegritySql = Join-Path $ComposeDir '06_crystal_ball_corpus_integrity.sql'
+if (Test-Path $IntegritySql) {
+    $remote6 = '/tmp/phanton_06_crystal_ball.sql'
+    docker cp $IntegritySql "${Container}:${remote6}"
+    Write-Host "==> Aplicando Crystal Ball corpus integrity ($IntegritySql) ..." -ForegroundColor Cyan
+    docker exec $Container psql -U $DbUser -d $Database -v ON_ERROR_STOP=1 -f $remote6
+    docker exec $Container rm -f $remote6 | Out-Null
+}
+
 Write-Host "==> Tabelas:" -ForegroundColor Green
 docker exec $Container psql -U $DbUser -d $Database -c `
     "SELECT relname AS table, n_live_tup AS rows_est FROM pg_stat_user_tables ORDER BY relname;"

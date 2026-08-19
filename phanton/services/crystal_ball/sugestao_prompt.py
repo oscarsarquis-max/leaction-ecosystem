@@ -194,15 +194,31 @@ def _aggregate(
     return nota_agregada, nota_por_campo, evidencias
 
 
+def _versao_from_cmp_or_shadow(
+    shadow: CrystalShadowRun, cmp_: dict[str, Any]
+) -> Optional[str]:
+    v = cmp_.get("versao_corpus")
+    if isinstance(v, str) and v.strip():
+        return v.strip()
+    spec = shadow.spec if isinstance(shadow.spec, dict) else {}
+    v2 = spec.get("versao_corpus")
+    if isinstance(v2, str) and v2.strip():
+        return v2.strip()
+    return None
+
+
 def _render_markdown(
     *,
     corpus_nome: str,
+    aplicacao_origem: str,
     numero_ciclo: int,
     nota_agregada: Optional[float],
     nota_por_campo: dict[str, Any],
     evidencias: list[str],
     prompt_mestre: Optional[str],
     n_sims: int,
+    aviso_versoes: Optional[str] = None,
+    versoes_shadow: Optional[list[tuple[str, str]]] = None,
 ) -> str:
     nota_line = (
         f"- Nota agregada (média identical_ratio): **{nota_agregada * 100:.1f}%**"
@@ -216,12 +232,39 @@ def _render_markdown(
         "sistemas externos. Copie e cole manualmente onde for usar.",
         "",
         f"- Corpus: **{corpus_nome}**",
+        f"- Aplicação de origem: **{aplicacao_origem}**",
         f"- Simulações agregadas: **{n_sims}**",
         nota_line,
         "",
-        "## Diagnóstico por campo (campos_copia_literal)",
-        "",
     ]
+    if aviso_versoes:
+        lines.extend(
+            [
+                "## ⚠️ Atenção: versões diferentes do corpus",
+                "",
+                aviso_versoes,
+                "",
+            ]
+        )
+        if versoes_shadow:
+            lines.append("| Shadow | versao_corpus |")
+            lines.append("|--------|---------------|")
+            for sid, ver in versoes_shadow:
+                short = (ver or "—")[:20] + ("…" if ver and len(ver) > 20 else "")
+                lines.append(f"| `{sid}` | `{short}` |")
+            lines.append("")
+            lines.append(
+                "_A nota abaixo **não deve ser lida como evolução confiável** "
+                "entre essas simulações._"
+            )
+            lines.append("")
+
+    lines.extend(
+        [
+            "## Diagnóstico por campo (campos_copia_literal)",
+            "",
+        ]
+    )
     if not nota_por_campo:
         lines.append("_Sem dados de campo suficientes._")
     else:
@@ -321,6 +364,7 @@ def gerar_sugestao_prompt_geral(
 
     comparisons: list[dict[str, Any]] = []
     ids_ok: list[str] = []
+    versoes: list[tuple[str, str]] = []
     for raw_id in shadow_run_ids:
         sid = UUID(str(raw_id))
         shadow = db.get(CrystalShadowRun, sid)
@@ -329,6 +373,23 @@ def gerar_sugestao_prompt_geral(
         cmp_ = comparison_for_shadow(db, shadow, schema)
         comparisons.append(cmp_)
         ids_ok.append(str(sid))
+        versoes.append((str(sid), _versao_from_cmp_or_shadow(shadow, cmp_) or ""))
+
+    versao_set = {v for _, v in versoes if v}
+    aviso_versoes = None
+    misturou_versoes = len(versao_set) > 1
+    if misturou_versoes:
+        aviso_versoes = (
+            "Atenção: comparando versões diferentes do corpus. "
+            "Os shadows abaixo não compartilham o mesmo `versao_corpus`."
+        )
+    # Sem hash gravado em alguns shadows legados: avisar se misturar vazio + hash
+    if any(not v for _, v in versoes) and any(v for _, v in versoes):
+        misturou_versoes = True
+        aviso_versoes = (
+            "Atenção: alguns shadows não têm `versao_corpus` gravado "
+            "(legado) e outros têm — agregação sem garantia de mesma fonte."
+        )
 
     nota_agregada, nota_por_campo, evidencias = _aggregate(comparisons)
     next_n = (
@@ -340,12 +401,15 @@ def gerar_sugestao_prompt_geral(
 
     md = _render_markdown(
         corpus_nome=corpus.nome,
+        aplicacao_origem=corpus.aplicacao_origem or "Mativas",
         numero_ciclo=numero_ciclo,
         nota_agregada=nota_agregada,
         nota_por_campo=nota_por_campo,
         evidencias=evidencias,
         prompt_mestre=prompt_mestre,
         n_sims=len(ids_ok),
+        aviso_versoes=aviso_versoes,
+        versoes_shadow=versoes if misturou_versoes else None,
     )
 
     artifact = CrystalSugestaoArtifact(
@@ -358,6 +422,10 @@ def gerar_sugestao_prompt_geral(
             "shadow_run_ids": ids_ok,
             "somente_copia_manual": True,
             "escreve_sistema_externo": False,
+            "versao_corpus_mistas": misturou_versoes,
+            "versoes_corpus": {sid: ver for sid, ver in versoes},
+            "aplicacao_origem": corpus.aplicacao_origem or "Mativas",
+            "comparavel_com_confianca": not misturou_versoes,
         },
     )
     db.add(artifact)
@@ -382,6 +450,11 @@ def gerar_sugestao_prompt_geral(
         "fase": "sugestao_prompt_geral",
         "corpus_id": str(corpus.id),
         "corpus_slug": corpus.slug,
+        "aplicacao_origem": corpus.aplicacao_origem or "Mativas",
+        "versao_corpus_mistas": misturou_versoes,
+        "versoes_corpus": {sid: ver for sid, ver in versoes},
+        "aviso_versoes": aviso_versoes,
+        "comparavel_com_confianca": not misturou_versoes,
         "ciclo": {
             "id": str(ciclo.id),
             "numero_ciclo": ciclo.numero_ciclo,
@@ -389,6 +462,7 @@ def gerar_sugestao_prompt_geral(
             "nota_por_campo": ciclo.nota_por_campo,
             "data": ciclo.data.isoformat() if ciclo.data else None,
             "shadow_run_ids": ids_ok,
+            "comparavel_com_confianca": not misturou_versoes,
         },
         "sugestao": {
             "id": str(artifact.id),
@@ -434,6 +508,29 @@ def list_ciclos(db: Session, corpus_id: UUID | str) -> list[dict[str, Any]]:
             nums = [float(x) for x in ratios if isinstance(x, (int, float))]
             if nums:
                 nota_real = sum(nums) / len(nums)
+        art_meta: dict[str, Any] = {}
+        if c.sugestao_artifact_id:
+            from services.crystal_ball.models import CrystalSugestaoArtifact
+
+            art = db.get(CrystalSugestaoArtifact, c.sugestao_artifact_id)
+            if art and isinstance(art.meta, dict):
+                art_meta = art.meta
+
+        reais_resumo = []
+        for r in reais[:5]:
+            cmp_r = r.comparison if isinstance(r.comparison, dict) else {}
+            reais_resumo.append(
+                {
+                    "id": str(r.id),
+                    "versao_corpus": r.versao_corpus,
+                    "versao_prompt_origem": r.versao_prompt_origem,
+                    "comparavel_com_confianca": cmp_r.get(
+                        "comparavel_com_confianca", True
+                    ),
+                    "avisos_integridade": cmp_r.get("avisos_integridade") or [],
+                }
+            )
+
         out.append(
             {
                 "id": str(c.id),
@@ -447,6 +544,11 @@ def list_ciclos(db: Session, corpus_id: UUID | str) -> list[dict[str, Any]]:
                 ),
                 "n_resultados_reais": len(reais),
                 "shadow_run_ids": c.shadow_run_ids,
+                "versao_corpus_mistas": bool(art_meta.get("versao_corpus_mistas")),
+                "comparavel_com_confianca": art_meta.get(
+                    "comparavel_com_confianca", True
+                ),
+                "resultados_reais": reais_resumo,
             }
         )
     return out

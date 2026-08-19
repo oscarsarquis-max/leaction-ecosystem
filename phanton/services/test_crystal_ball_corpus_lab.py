@@ -38,6 +38,29 @@ def db():
 
     eng = create_engine(DATABASE_URL, pool_pre_ping=True)
     Base.metadata.create_all(bind=eng)
+    # create_all não ALTER — garante colunas de integridade em DBs já existentes
+    with eng.begin() as conn:
+        conn.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS crystal_corpora
+                  ADD COLUMN IF NOT EXISTS versao_atual VARCHAR;
+                ALTER TABLE IF EXISTS crystal_corpora
+                  ADD COLUMN IF NOT EXISTS aplicacao_origem VARCHAR;
+                UPDATE crystal_corpora
+                SET aplicacao_origem = 'Mativas'
+                WHERE aplicacao_origem IS NULL OR btrim(aplicacao_origem) = '';
+                ALTER TABLE IF EXISTS crystal_resultados_reais
+                  ADD COLUMN IF NOT EXISTS versao_corpus VARCHAR;
+                ALTER TABLE IF EXISTS crystal_resultados_reais
+                  ADD COLUMN IF NOT EXISTS versao_prompt_origem VARCHAR;
+                UPDATE crystal_resultados_reais
+                SET versao_prompt_origem = 'legado-nao-declarado'
+                WHERE versao_prompt_origem IS NULL
+                   OR btrim(versao_prompt_origem) = '';
+                """
+            )
+        )
     Session = sessionmaker(bind=eng)
     session = Session()
     yield session
@@ -142,6 +165,7 @@ def test_register_second_corpus_and_sugestao(db):
         slug=slug,
         nome="Mini Corpus Teste",
         tipo_fonte="upload_json",
+        aplicacao_origem="MiniApp",
         schema_config={
             "campo_chave": "codigo",
             "lista_raiz": "itens",
@@ -228,6 +252,123 @@ def test_resultado_real_comparable(db):
         payload=payload,
         desafio_texto="desafio teste",
         numero_ciclo=1,
+        versao_prompt_origem="prompt mestre v1 teste",
     )
     assert out["comparison"]["nota_agregada"] == 1.0
     assert "manual" in out["disclaimer"].lower()
+    assert out["versao_prompt_origem"] == "prompt mestre v1 teste"
+    assert out["versao_corpus"]
+    assert out["comparavel_com_confianca"] is True
+
+
+def test_resultado_real_exige_versao_prompt_origem(db):
+    from services.crystal_ball.corpora import ensure_mativas_corpus
+    from services.crystal_ball.resultado_real import (
+        ResultadoRealError,
+        registrar_resultado_real,
+    )
+
+    corpus = ensure_mativas_corpus(db)
+    with pytest.raises(ResultadoRealError, match="versao_prompt_origem"):
+        registrar_resultado_real(
+            db,
+            corpus_id=corpus.id,
+            chave_valor="Aprendizagem Baseada em Problemas",
+            payload={"passos": []},
+            versao_prompt_origem="   ",
+        )
+
+
+def test_sugestao_aviso_versoes_corpus_mistas(db):
+    from services.crystal_ball.corpora import ensure_mativas_corpus, register_corpus
+    from services.crystal_ball.models import CrystalShadowRun
+    from services.crystal_ball.sugestao_prompt import gerar_sugestao_prompt_geral
+
+    ensure_mativas_corpus(db)
+    slug = f"mix-{uuid.uuid4().hex[:8]}"
+    corpus = register_corpus(
+        db,
+        slug=slug,
+        nome="Mix Versões",
+        tipo_fonte="upload_json",
+        aplicacao_origem="MiniApp",
+        schema_config={
+            "campo_chave": "codigo",
+            "lista_raiz": "itens",
+            "fonte_path": str(_FIXTURE_CORPUS).replace("\\", "/"),
+            "campos_copia_literal": [
+                {"campo": "texto_literal", "tipo": "texto"},
+            ],
+            "campos_sinteticos": ["nota_livre"],
+        },
+    )
+
+    ids = []
+    for ver in ("sha256:aaa", "sha256:bbb"):
+        sh = CrystalShadowRun(
+            id=uuid.uuid4(),
+            source_run_id=None,
+            fork_phase_id="context7_corpus",
+            status="experimental_done",
+            spec={
+                "metodologia": "ALPHA",
+                "versao_corpus": ver,
+                "comparison": {
+                    "versao_corpus": ver,
+                    "nota_agregada": 0.5,
+                    "identical_ratio": 0.5,
+                    "chave_valor": "ALPHA",
+                    "nota_por_campo": {
+                        "texto_literal": {
+                            "campo": "texto_literal",
+                            "tipo": "texto",
+                            "identical": False,
+                            "identical_ratio": 0.5,
+                        }
+                    },
+                },
+            },
+            notes=f"ver {ver}",
+        )
+        db.add(sh)
+        ids.append(sh.id)
+    db.commit()
+
+    result = gerar_sugestao_prompt_geral(
+        db, corpus_id=corpus.id, shadow_run_ids=ids
+    )
+    assert result["versao_corpus_mistas"] is True
+    assert result["comparavel_com_confianca"] is False
+    assert result["aviso_versoes"]
+    md = result["sugestao"]["markdown"]
+    assert "versões diferentes" in md.lower() or "atenção" in md.lower()
+    assert "não deve ser lida como evolução confiável" in md.lower()
+
+
+def test_resultado_real_corpus_divergente_nao_confiavel(db):
+    from services.crystal_ball.corpora import ensure_mativas_corpus
+    from services.crystal_ball.experimental_providers.mativas_lookup import (
+        lookup_metodologia_exata,
+    )
+    from services.crystal_ball.resultado_real import registrar_resultado_real
+
+    corpus = ensure_mativas_corpus(db)
+    reg = lookup_metodologia_exata("Aprendizagem Baseada em Problemas")
+    payload = {
+        "passos": [
+            {"titulo": p["imperativo"], "descricao": p["descricao_base"]}
+            for p in reg["passos"]
+        ]
+    }
+    out = registrar_resultado_real(
+        db,
+        corpus_id=corpus.id,
+        chave_valor="Aprendizagem Baseada em Problemas",
+        payload=payload,
+        versao_prompt_origem="prompt mestre v2 após ciclo 1",
+        numero_ciclo=1,
+        versao_corpus_simulacao="sha256:versao-antiga-diferente",
+    )
+    assert out["comparavel_com_confianca"] is False
+    assert out["comparison"]["comparavel_com_confianca"] is False
+    assert any("versões diferentes" in a.lower() for a in out["avisos_integridade"])

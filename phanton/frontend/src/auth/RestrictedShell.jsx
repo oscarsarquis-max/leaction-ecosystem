@@ -3,7 +3,7 @@ import CrystalBallPanel from '../components/CrystalBallPanel'
 import { useAuth } from './AuthContext'
 
 /**
- * Shell enxuto para restricted_tester — só Simulação Mativas.
+ * Shell enxuto para restricted_tester — só aba Simulação (corpus-grounded).
  */
 export default function RestrictedShell({ apiBase }) {
   const { user, logout } = useAuth()
@@ -18,7 +18,7 @@ export default function RestrictedShell({ apiBase }) {
             </p>
             <p className="text-sm text-slate-600">
               Olá, <span className="font-semibold">{user?.username}</span> ·
-              acesso restrito (Mativas)
+              acesso restrito (simulação)
             </p>
           </div>
           <button

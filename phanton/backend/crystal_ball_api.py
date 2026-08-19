@@ -67,6 +67,7 @@ class RegisterCorpusRequest(BaseModel):
     nome: str = Field(..., min_length=2, max_length=200)
     tipo_fonte: str = Field(default="upload_json")
     schema_config: dict[str, Any]
+    aplicacao_origem: str = Field(..., min_length=1, max_length=120)
 
 
 class SugestaoPromptRequest(BaseModel):
@@ -77,8 +78,10 @@ class SugestaoPromptRequest(BaseModel):
 class ResultadoRealRequest(BaseModel):
     chave_valor: str = Field(..., min_length=1)
     payload: Any
+    versao_prompt_origem: str = Field(..., min_length=1, max_length=500)
     desafio_texto: Optional[str] = None
     numero_ciclo: Optional[int] = None
+    versao_corpus_simulacao: Optional[str] = None
 
 
 # Rotas estáticas ANTES de /{run_id}/… para não capturar "experimental-run" como UUID.
@@ -154,6 +157,7 @@ def crystal_register_corpus(
             nome=payload.nome,
             tipo_fonte=payload.tipo_fonte,
             schema_config=payload.schema_config,
+            aplicacao_origem=payload.aplicacao_origem,
         )
         return {
             "id": str(row.id),
@@ -161,6 +165,8 @@ def crystal_register_corpus(
             "nome": row.nome,
             "tipo_fonte": row.tipo_fonte,
             "schema_config": row.schema_config,
+            "aplicacao_origem": row.aplicacao_origem,
+            "versao_atual": row.versao_atual,
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -220,8 +226,10 @@ def crystal_resultado_real(
             corpus_id=corpus_id,
             chave_valor=payload.chave_valor,
             payload=payload.payload,
+            versao_prompt_origem=payload.versao_prompt_origem,
             desafio_texto=payload.desafio_texto,
             numero_ciclo=payload.numero_ciclo,
+            versao_corpus_simulacao=payload.versao_corpus_simulacao,
         )
     except ResultadoRealError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

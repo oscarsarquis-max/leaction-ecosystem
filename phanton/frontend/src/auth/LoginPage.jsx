@@ -44,7 +44,7 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-slate-600">
             Acesso por usuário e senha. Contas{' '}
             <code className="text-xs">restricted_tester</code> só veem a
-            Simulação Mativas.
+            aba Simulação (experimento com corpus).
           </p>
         </div>
 

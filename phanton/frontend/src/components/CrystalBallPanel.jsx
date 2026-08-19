@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   Beaker,
@@ -23,7 +23,7 @@ const DEFAULT_SIM_PROMPT =
 
 /**
  * Crystal Ball — painel aditivo com abas separadas:
- * Proveniência (runs reais) · Simulação (Mativas) · Prévia rápida
+ * Proveniência (runs reais) · Simulação (corpus-grounded) · Prévia rápida
  *
  * mode="restricted" → só Simulação (testadores externos).
  */
@@ -50,7 +50,7 @@ export default function CrystalBallPanel({
   const [previewText, setPreviewText] = useState('')
   const [previewResult, setPreviewResult] = useState(null)
 
-  // —— Simulação Mativas ——
+  // —— Simulação (corpus-grounded) ——
   const [simPrompt, setSimPrompt] = useState(DEFAULT_SIM_PROMPT)
   const [simMetodologia, setSimMetodologia] = useState(
     'Aprendizagem Baseada em Problemas',
@@ -62,17 +62,68 @@ export default function CrystalBallPanel({
   const [simComparison, setSimComparison] = useState(null)
   const [simStatus, setSimStatus] = useState(null)
   // —— Prompt Lab (corpus genérico / ciclos) ——
-  const [simHistory, setSimHistory] = useState([]) // [{id, metodologia, nota}]
-  const [labCorpusId, setLabCorpusId] = useState('mativas')
+  const [simHistory, setSimHistory] = useState([]) // [{id, metodologia, nota, versao_corpus}]
+  const [labCorpusId, setLabCorpusId] = useState('')
+  const [labCorpora, setLabCorpora] = useState([])
   const [labSugestaoMd, setLabSugestaoMd] = useState('')
+  const [labSugestaoMeta, setLabSugestaoMeta] = useState(null)
   const [labCiclos, setLabCiclos] = useState([])
   const [labRealPayload, setLabRealPayload] = useState('')
   const [labRealChave, setLabRealChave] = useState(
     'Aprendizagem Baseada em Problemas',
   )
   const [labRealCiclo, setLabRealCiclo] = useState('')
+  const [labRealVersaoPrompt, setLabRealVersaoPrompt] = useState('')
   const [labRealResult, setLabRealResult] = useState(null)
   const [labPromptMestre, setLabPromptMestre] = useState('')
+
+  const labCorpusSelected = useMemo(() => {
+    const id = (labCorpusId || '').trim()
+    if (id) {
+      const hit = labCorpora.find((c) => c.slug === id || c.id === id)
+      if (hit) return hit
+    }
+    return labCorpora[0] || null
+  }, [labCorpora, labCorpusId])
+
+  const corpusAppLabel = useMemo(
+    () =>
+      (labCorpusSelected?.aplicacao_origem || '').trim() ||
+      (labCorpusSelected?.nome || '').trim() ||
+      'corpus',
+    [labCorpusSelected],
+  )
+
+  const corpusNomeLabel = useMemo(
+    () =>
+      (labCorpusSelected?.nome || '').trim() ||
+      (labCorpusSelected?.aplicacao_origem || '').trim() ||
+      'corpus selecionado',
+    [labCorpusSelected],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data } = await api.get(`${apiBase}/api/crystal-ball/corpora`)
+        if (cancelled) return
+        const items = data?.items || []
+        setLabCorpora(items)
+        setLabCorpusId((prev) => {
+          if (prev && items.some((c) => c.slug === prev || c.id === prev)) {
+            return prev
+          }
+          return items[0]?.slug || ''
+        })
+      } catch {
+        /* corpora opcional no load inicial */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [apiBase, api])
 
   const loadLineage = useCallback(async () => {
     if (!activeRunId) {
@@ -214,6 +265,7 @@ export default function CrystalBallPanel({
                 data.comparison?.nota_agregada ??
                 data.comparison?.identical_ratio ??
                 null,
+              versao_corpus: data.comparison?.versao_corpus || null,
             },
             ...prev.filter((x) => x.id !== data.shadow_run_id),
           ]
@@ -246,6 +298,7 @@ export default function CrystalBallPanel({
       return
     }
     setBusy('lab-sugestao')
+    setLabSugestaoMeta(null)
     try {
       const { data } = await api.post(
         `${apiBase}/api/crystal-ball/corpus/${labCorpusId}/sugestao-prompt`,
@@ -255,6 +308,12 @@ export default function CrystalBallPanel({
         },
       )
       setLabSugestaoMd(data?.sugestao?.markdown || '')
+      setLabSugestaoMeta({
+        comparavel_com_confianca: data?.comparavel_com_confianca,
+        aviso_versoes: data?.aviso_versoes,
+        versao_corpus_mistas: data?.versao_corpus_mistas,
+        aplicacao_origem: data?.aplicacao_origem,
+      })
       const { data: ciclos } = await api.get(
         `${apiBase}/api/crystal-ball/corpus/${labCorpusId}/ciclos`,
       )
@@ -283,6 +342,12 @@ export default function CrystalBallPanel({
   }
 
   const handleLabResultadoReal = async () => {
+    if (!labRealVersaoPrompt.trim()) {
+      onError?.(
+        'Informe versao_prompt_origem (obrigatório — de qual versão do prompt de origem veio este resultado).',
+      )
+      return
+    }
     setBusy('lab-real')
     setLabRealResult(null)
     try {
@@ -296,9 +361,17 @@ export default function CrystalBallPanel({
         chave_valor: labRealChave,
         payload,
         desafio_texto: simPrompt,
+        versao_prompt_origem: labRealVersaoPrompt.trim(),
       }
       if (labRealCiclo.trim()) {
         body.numero_ciclo = Number(labRealCiclo)
+      }
+      const versaoSim =
+        simComparison?.versao_corpus ||
+        simHistory.find((h) => h.versao_corpus)?.versao_corpus ||
+        null
+      if (versaoSim) {
+        body.versao_corpus_simulacao = versaoSim
       }
       const { data } = await api.post(
         `${apiBase}/api/crystal-ball/corpus/${labCorpusId}/resultado-real`,
@@ -417,12 +490,12 @@ export default function CrystalBallPanel({
         </p>
         <h2 className="font-display mt-1 text-2xl font-semibold text-slate-950">
           {restricted
-            ? 'Simulação Mativas'
+            ? `Simulação ${corpusAppLabel}`
             : 'Proveniência · Simulação · Prévia'}
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-slate-600">
           {restricted
-            ? 'Experimento shadow-only com grounding Mativas. Sem acesso ao pipeline oficial.'
+            ? `Experimento shadow-only com grounding em ${corpusNomeLabel}. Sem acesso ao pipeline oficial.`
             : 'Subsistema aditivo. A aba Simulação é independente da Proveniência de runs reais — edições shadow não alteram o pipeline oficial.'}
         </p>
       </div>
@@ -587,10 +660,31 @@ export default function CrystalBallPanel({
 
       {restricted || tab === 'simulacao' ? (
         <div data-testid="crystal-tab-simulacao-panel" className="space-y-4">
+          <label className="block text-sm">
+            <span className="font-semibold text-slate-700">Corpus ativo</span>
+            <select
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              value={labCorpusId}
+              onChange={(e) => setLabCorpusId(e.target.value)}
+              data-testid="sim-corpus-select"
+            >
+              {labCorpora.length === 0 ? (
+                <option value="">Carregando corpora…</option>
+              ) : (
+                labCorpora.map((c) => (
+                  <option key={c.id} value={c.slug}>
+                    {c.aplicacao_origem} — {c.nome} ({c.slug})
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+
           <p className="text-sm text-slate-600">
-            Experimento Mativas-grounded (shadow-only): lookup real → methodology →
-            synthesize → entrega. Edite qualquer card e recalcule só o
-            downstream — o corpus e os runs oficiais não são tocados.
+            Experimento {corpusAppLabel}-grounded (shadow-only): lookup no corpus
+            → methodology → synthesize → entrega. Edite qualquer card e
+            recalcule só o downstream — o corpus e os runs oficiais não são
+            tocados.
           </p>
 
           <div className="grid gap-3 lg:grid-cols-2">
@@ -614,7 +708,7 @@ export default function CrystalBallPanel({
                 ) : (
                   <Beaker className="h-4 w-4" />
                 )}
-                Rodar simulação Mativas
+                Rodar simulação {corpusNomeLabel}
               </button>
             </div>
           </div>
@@ -723,9 +817,9 @@ export default function CrystalBallPanel({
                 Editar e recalcular a partir daqui
               </button>
               <p className="text-[11px] text-slate-500">
-                Recalcula só as fases downstream. Editar{' '}
-                <code>context7_mativas</code> não reexecuta o lookup. O texto
-                acompanha o JSON quando este é válido.
+                Recalcula só as fases downstream. Editar a fase de lookup do
+                corpus não reexecuta o lookup. O texto acompanha o JSON quando
+                este é válido.
               </p>
             </div>
           ) : null}
@@ -733,7 +827,7 @@ export default function CrystalBallPanel({
           {simComparison ? (
             <div className="rounded-xl border border-teal-200 bg-teal-50/40 p-4">
               <p className="text-xs font-semibold uppercase text-teal-900">
-                Comparação vs Biblioteca de Passos
+                Comparação vs {corpusNomeLabel}
               </p>
               <p className="mt-1 text-sm text-slate-700">
                 idênticos {simComparison.identical_count ?? 0}/
@@ -742,6 +836,14 @@ export default function CrystalBallPanel({
                 {simComparison.descricao_identical_count ?? 0} · fonte{' '}
                 {simComparison.extracted_from || '—'}
               </p>
+              {simComparison.versao_corpus ? (
+                <p className="mt-1 font-mono text-[11px] text-slate-500">
+                  versao_corpus: {simComparison.versao_corpus.slice(0, 24)}…
+                  {simComparison.aplicacao_origem
+                    ? ` · app: ${simComparison.aplicacao_origem}`
+                    : ''}
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -754,8 +856,29 @@ export default function CrystalBallPanel({
             </p>
             <p className="text-xs text-slate-600">
               Sugestão de template a partir de 2+ simulações. O texto é só para
-              copiar — nunca escreve no Mativas nem em outro sistema.
+              copiar — nunca escreve no sistema de origem (
+              {corpusAppLabel}) nem em outro sistema externo.
             </p>
+            {labCorpusSelected ? (
+              <div
+                className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2"
+                data-testid="lab-aplicacao-origem"
+              >
+                <p className="text-sm font-semibold text-amber-950">
+                  Aplicação deste corpus: {labCorpusSelected.aplicacao_origem}
+                </p>
+                <p className="mt-0.5 text-[11px] text-amber-900/80">
+                  {labCorpusSelected.nome}
+                  {labCorpusSelected.versao_atual
+                    ? ` · versao_atual ${labCorpusSelected.versao_atual.slice(0, 18)}…`
+                    : ''}
+                </p>
+                <p className="mt-1 text-[11px] text-amber-800">
+                  Confirme que o resultado real que for colar veio desta
+                  aplicação — não misture corpora.
+                </p>
+              </div>
+            ) : null}
             <p className="text-xs text-slate-500">
               Simulações na sessão: {simHistory.length}
               {simHistory.length
@@ -764,15 +887,10 @@ export default function CrystalBallPanel({
                     .map((h) => h.metodologia)
                     .join('; ')})`
                 : ''}
+              {labCorpusSelected
+                ? ` · corpus: ${labCorpusSelected.slug}`
+                : ''}
             </p>
-            <label className="block text-xs text-slate-600">
-              Corpus id/slug
-              <input
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
-                value={labCorpusId}
-                onChange={(e) => setLabCorpusId(e.target.value)}
-              />
-            </label>
             <label className="block text-xs text-slate-600">
               Prompt mestre de referência (opcional)
               <textarea
@@ -806,6 +924,18 @@ export default function CrystalBallPanel({
                 Atualizar ciclos
               </button>
             </div>
+            {labSugestaoMeta?.versao_corpus_mistas ||
+            labSugestaoMeta?.comparavel_com_confianca === false ? (
+              <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-900">
+                <p className="font-semibold">
+                  Atenção: comparando versões diferentes do corpus
+                </p>
+                <p className="mt-1">
+                  {labSugestaoMeta.aviso_versoes ||
+                    'A nota desta sugestão não é comparável com confiança.'}
+                </p>
+              </div>
+            ) : null}
             {labSugestaoMd ? (
               <CopyableBlock label="Copiar sugestão" text={labSugestaoMd}>
                 <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg border border-indigo-100 bg-white p-3 text-xs text-slate-800">
@@ -825,7 +955,10 @@ export default function CrystalBallPanel({
               ) : (
                 <ul className="mt-2 space-y-1 text-xs text-slate-700">
                   {labCiclos.map((c) => (
-                    <li key={c.id} className="flex flex-wrap gap-2 border-t border-slate-100 pt-1">
+                    <li
+                      key={c.id}
+                      className="flex flex-wrap gap-2 border-t border-slate-100 pt-1"
+                    >
                       <span className="font-semibold">Ciclo {c.numero_ciclo}</span>
                       <span>
                         sim:{' '}
@@ -839,6 +972,12 @@ export default function CrystalBallPanel({
                           ? `${(c.nota_agregada_real * 100).toFixed(0)}%`
                           : '—'}
                       </span>
+                      {c.comparavel_com_confianca === false ||
+                      c.versao_corpus_mistas ? (
+                        <span className="font-medium text-red-700">
+                          não comparável com confiança
+                        </span>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -849,8 +988,14 @@ export default function CrystalBallPanel({
               <p className="text-xs font-semibold text-slate-700">
                 Colar resultado real (manual)
               </p>
+              {labCorpusSelected ? (
+                <p className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-950">
+                  Colando em: {labCorpusSelected.aplicacao_origem} (
+                  {labCorpusSelected.slug})
+                </p>
+              ) : null}
               <p className="text-[11px] text-slate-500">
-                Sem scraping/API do Mativas — só o que você colar aqui.
+                Sem scraping/API do sistema de origem — só o que você colar aqui.
               </p>
               <input
                 className="w-full rounded border border-slate-200 px-2 py-1 text-sm"
@@ -864,6 +1009,16 @@ export default function CrystalBallPanel({
                 onChange={(e) => setLabRealCiclo(e.target.value)}
                 placeholder="Nº ciclo (opcional)"
               />
+              <label className="block text-xs text-slate-600">
+                Versão do prompt de origem (obrigatório)
+                <input
+                  className="mt-1 w-full rounded border border-slate-200 px-2 py-1 text-sm"
+                  value={labRealVersaoPrompt}
+                  onChange={(e) => setLabRealVersaoPrompt(e.target.value)}
+                  placeholder='ex.: "prompt mestre v3, aplicado após ciclo 2"'
+                  data-testid="lab-versao-prompt-origem"
+                />
+              </label>
               <textarea
                 className="w-full rounded border border-slate-200 p-2 font-mono text-xs"
                 rows={5}
@@ -873,12 +1028,29 @@ export default function CrystalBallPanel({
               />
               <button
                 type="button"
-                disabled={busy || !labRealPayload.trim()}
+                disabled={
+                  busy ||
+                  !labRealPayload.trim() ||
+                  !labRealVersaoPrompt.trim()
+                }
                 onClick={handleLabResultadoReal}
                 className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm text-indigo-950 hover:bg-indigo-100 disabled:opacity-50"
               >
                 {busy === 'lab-real' ? 'Comparando…' : 'Comparar resultado real'}
               </button>
+              {labRealResult?.avisos_integridade?.length ? (
+                <div className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-950">
+                  {labRealResult.avisos_integridade.map((a) => (
+                    <p key={a}>{a}</p>
+                  ))}
+                </div>
+              ) : null}
+              {labRealResult?.comparavel_com_confianca === false ? (
+                <p className="text-xs font-semibold text-red-700">
+                  Nota marcada como não comparável com confiança (versões de
+                  corpus divergentes).
+                </p>
+              ) : null}
               {labRealResult?.comparison ? (
                 <p className="text-xs text-slate-700">
                   Nota real:{' '}
@@ -887,6 +1059,9 @@ export default function CrystalBallPanel({
                     : labRealResult.comparison.identical_ratio != null
                       ? `${(labRealResult.comparison.identical_ratio * 100).toFixed(0)}%`
                       : '—'}
+                  {labRealResult.versao_corpus
+                    ? ` · corpus ${labRealResult.versao_corpus.slice(0, 16)}…`
+                    : ''}
                 </p>
               ) : null}
             </div>
@@ -900,11 +1075,11 @@ export default function CrystalBallPanel({
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-slate-800">
-                Prévia rápida (sem Spec / sem grounding Mativas)
+                Prévia rápida (sem Spec / sem grounding de corpus)
               </p>
               <p className="text-xs text-slate-500">
                 Uma chamada reduzida — resultado efêmero com{' '}
-                <code>is_preview: true</code>. Não usa a Biblioteca de Passos.
+                <code>is_preview: true</code>. Não usa o corpus selecionado.
               </p>
               <textarea
                 className="mt-2 w-full rounded-lg border border-slate-200 bg-white p-2 text-sm"

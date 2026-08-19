@@ -42,6 +42,8 @@ def main() -> int:
             "02_crystal_ball.sql",
             "03_crystal_ball_nullable_source.sql",
             "04_auth.sql",
+            "05_crystal_ball_corpora.sql",
+            "06_crystal_ball_corpus_integrity.sql",
         ):
             path = sql_dir / name
             if not path.exists():
