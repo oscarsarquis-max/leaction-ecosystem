@@ -75,6 +75,15 @@ if (Test-Path $AuthSql) {
     docker exec $Container rm -f $remote4 | Out-Null
 }
 
+$CorporaSql = Join-Path $ComposeDir '05_crystal_ball_corpora.sql'
+if (Test-Path $CorporaSql) {
+    $remote5 = '/tmp/phanton_05_crystal_ball.sql'
+    docker cp $CorporaSql "${Container}:${remote5}"
+    Write-Host "==> Aplicando Crystal Ball corpora ($CorporaSql) ..." -ForegroundColor Cyan
+    docker exec $Container psql -U $DbUser -d $Database -v ON_ERROR_STOP=1 -f $remote5
+    docker exec $Container rm -f $remote5 | Out-Null
+}
+
 Write-Host "==> Tabelas:" -ForegroundColor Green
 docker exec $Container psql -U $DbUser -d $Database -c `
     "SELECT relname AS table, n_live_tup AS rows_est FROM pg_stat_user_tables ORDER BY relname;"

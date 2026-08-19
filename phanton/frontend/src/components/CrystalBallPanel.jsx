@@ -61,6 +61,18 @@ export default function CrystalBallPanel({
   const [simEditJson, setSimEditJson] = useState('')
   const [simComparison, setSimComparison] = useState(null)
   const [simStatus, setSimStatus] = useState(null)
+  // —— Prompt Lab (corpus genérico / ciclos) ——
+  const [simHistory, setSimHistory] = useState([]) // [{id, metodologia, nota}]
+  const [labCorpusId, setLabCorpusId] = useState('mativas')
+  const [labSugestaoMd, setLabSugestaoMd] = useState('')
+  const [labCiclos, setLabCiclos] = useState([])
+  const [labRealPayload, setLabRealPayload] = useState('')
+  const [labRealChave, setLabRealChave] = useState(
+    'Aprendizagem Baseada em Problemas',
+  )
+  const [labRealCiclo, setLabRealCiclo] = useState('')
+  const [labRealResult, setLabRealResult] = useState(null)
+  const [labPromptMestre, setLabPromptMestre] = useState('')
 
   const loadLineage = useCallback(async () => {
     if (!activeRunId) {
@@ -192,6 +204,22 @@ export default function CrystalBallPanel({
       setSimShadowId(data.shadow_run_id)
       setSimStatus(data.status)
       setSimComparison(data.comparison || null)
+      if (data.shadow_run_id) {
+        setSimHistory((prev) => {
+          const next = [
+            {
+              id: data.shadow_run_id,
+              metodologia: data.metodologia || simMetodologia,
+              nota:
+                data.comparison?.nota_agregada ??
+                data.comparison?.identical_ratio ??
+                null,
+            },
+            ...prev.filter((x) => x.id !== data.shadow_run_id),
+          ]
+          return next.slice(0, 20)
+        })
+      }
       if (Array.isArray(data.phases) && data.phases.length > 0) {
         applySimPhases(data.phases, 'context7_mativas')
       } else if (data.shadow_run_id) {
@@ -206,6 +234,81 @@ export default function CrystalBallPanel({
     } catch (err) {
       onError?.(
         err.response?.data?.detail || err.message || 'Falha experimental-run',
+      )
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleLabSugestao = async () => {
+    if (simHistory.length < 2) {
+      onError?.('Rode pelo menos 2 simulações antes de gerar a sugestão.')
+      return
+    }
+    setBusy('lab-sugestao')
+    try {
+      const { data } = await api.post(
+        `${apiBase}/api/crystal-ball/corpus/${labCorpusId}/sugestao-prompt`,
+        {
+          shadow_run_ids: simHistory.slice(0, 8).map((x) => x.id),
+          prompt_mestre: labPromptMestre || null,
+        },
+      )
+      setLabSugestaoMd(data?.sugestao?.markdown || '')
+      const { data: ciclos } = await api.get(
+        `${apiBase}/api/crystal-ball/corpus/${labCorpusId}/ciclos`,
+      )
+      setLabCiclos(ciclos?.items || [])
+    } catch (err) {
+      onError?.(
+        err.response?.data?.detail || err.message || 'Falha sugestão de prompt',
+      )
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleLabLoadCiclos = async () => {
+    setBusy('lab-ciclos')
+    try {
+      const { data } = await api.get(
+        `${apiBase}/api/crystal-ball/corpus/${labCorpusId}/ciclos`,
+      )
+      setLabCiclos(data?.items || [])
+    } catch (err) {
+      onError?.(err.response?.data?.detail || err.message || 'Falha ciclos')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleLabResultadoReal = async () => {
+    setBusy('lab-real')
+    setLabRealResult(null)
+    try {
+      let payload = labRealPayload
+      try {
+        payload = JSON.parse(labRealPayload)
+      } catch {
+        /* texto puro ok */
+      }
+      const body = {
+        chave_valor: labRealChave,
+        payload,
+        desafio_texto: simPrompt,
+      }
+      if (labRealCiclo.trim()) {
+        body.numero_ciclo = Number(labRealCiclo)
+      }
+      const { data } = await api.post(
+        `${apiBase}/api/crystal-ball/corpus/${labCorpusId}/resultado-real`,
+        body,
+      )
+      setLabRealResult(data)
+      await handleLabLoadCiclos()
+    } catch (err) {
+      onError?.(
+        err.response?.data?.detail || err.message || 'Falha resultado real',
       )
     } finally {
       setBusy(null)
@@ -641,6 +744,153 @@ export default function CrystalBallPanel({
               </p>
             </div>
           ) : null}
+
+          <div
+            className="space-y-4 rounded-xl border border-indigo-200 bg-indigo-50/40 p-4"
+            data-testid="prompt-lab"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-900">
+              Prompt Lab · corpus genérico
+            </p>
+            <p className="text-xs text-slate-600">
+              Sugestão de template a partir de 2+ simulações. O texto é só para
+              copiar — nunca escreve no Mativas nem em outro sistema.
+            </p>
+            <p className="text-xs text-slate-500">
+              Simulações na sessão: {simHistory.length}
+              {simHistory.length
+                ? ` (${simHistory
+                    .slice(0, 3)
+                    .map((h) => h.metodologia)
+                    .join('; ')})`
+                : ''}
+            </p>
+            <label className="block text-xs text-slate-600">
+              Corpus id/slug
+              <input
+                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1 text-sm"
+                value={labCorpusId}
+                onChange={(e) => setLabCorpusId(e.target.value)}
+              />
+            </label>
+            <label className="block text-xs text-slate-600">
+              Prompt mestre de referência (opcional)
+              <textarea
+                className="mt-1 w-full rounded border border-slate-200 bg-white p-2 text-sm"
+                rows={3}
+                value={labPromptMestre}
+                onChange={(e) => setLabPromptMestre(e.target.value)}
+              />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={busy || simHistory.length < 2}
+                onClick={handleLabSugestao}
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-700 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
+                data-testid="btn-sugestao-prompt"
+              >
+                {busy === 'lab-sugestao' ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                Gerar sugestão de prompt geral
+              </button>
+              <button
+                type="button"
+                disabled={!!busy}
+                onClick={handleLabLoadCiclos}
+                className="rounded-lg border border-indigo-300 bg-white px-3 py-2 text-sm text-indigo-900 hover:bg-indigo-50 disabled:opacity-50"
+              >
+                Atualizar ciclos
+              </button>
+            </div>
+            {labSugestaoMd ? (
+              <CopyableBlock label="Copiar sugestão" text={labSugestaoMd}>
+                <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg border border-indigo-100 bg-white p-3 text-xs text-slate-800">
+                  {labSugestaoMd}
+                </pre>
+              </CopyableBlock>
+            ) : null}
+
+            <div className="rounded-lg border border-indigo-100 bg-white p-3">
+              <p className="text-xs font-semibold text-slate-700">
+                Timeline de ciclos
+              </p>
+              {labCiclos.length === 0 ? (
+                <p className="mt-1 text-xs text-slate-500">
+                  Nenhum ciclo ainda. Gere uma sugestão após 2+ simulações.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-1 text-xs text-slate-700">
+                  {labCiclos.map((c) => (
+                    <li key={c.id} className="flex flex-wrap gap-2 border-t border-slate-100 pt-1">
+                      <span className="font-semibold">Ciclo {c.numero_ciclo}</span>
+                      <span>
+                        sim:{' '}
+                        {c.nota_agregada_simulada != null
+                          ? `${(c.nota_agregada_simulada * 100).toFixed(0)}%`
+                          : '—'}
+                      </span>
+                      <span>
+                        real:{' '}
+                        {c.nota_agregada_real != null
+                          ? `${(c.nota_agregada_real * 100).toFixed(0)}%`
+                          : '—'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="space-y-2 rounded-lg border border-indigo-100 bg-white p-3">
+              <p className="text-xs font-semibold text-slate-700">
+                Colar resultado real (manual)
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Sem scraping/API do Mativas — só o que você colar aqui.
+              </p>
+              <input
+                className="w-full rounded border border-slate-200 px-2 py-1 text-sm"
+                value={labRealChave}
+                onChange={(e) => setLabRealChave(e.target.value)}
+                placeholder="Metodologia / chave"
+              />
+              <input
+                className="w-full rounded border border-slate-200 px-2 py-1 text-sm"
+                value={labRealCiclo}
+                onChange={(e) => setLabRealCiclo(e.target.value)}
+                placeholder="Nº ciclo (opcional)"
+              />
+              <textarea
+                className="w-full rounded border border-slate-200 p-2 font-mono text-xs"
+                rows={5}
+                value={labRealPayload}
+                onChange={(e) => setLabRealPayload(e.target.value)}
+                placeholder='JSON {"passos":[...]} ou texto da entrega'
+              />
+              <button
+                type="button"
+                disabled={busy || !labRealPayload.trim()}
+                onClick={handleLabResultadoReal}
+                className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm text-indigo-950 hover:bg-indigo-100 disabled:opacity-50"
+              >
+                {busy === 'lab-real' ? 'Comparando…' : 'Comparar resultado real'}
+              </button>
+              {labRealResult?.comparison ? (
+                <p className="text-xs text-slate-700">
+                  Nota real:{' '}
+                  {labRealResult.comparison.nota_agregada != null
+                    ? `${(labRealResult.comparison.nota_agregada * 100).toFixed(0)}%`
+                    : labRealResult.comparison.identical_ratio != null
+                      ? `${(labRealResult.comparison.identical_ratio * 100).toFixed(0)}%`
+                      : '—'}
+                </p>
+              ) : null}
+            </div>
+          </div>
         </div>
       ) : null}
 

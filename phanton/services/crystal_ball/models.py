@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -101,3 +101,84 @@ class CrystalPrediction(Base):
         DateTime, nullable=False, server_default=func.now()
     )
     calibrated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class CrystalCorpus(Base):
+    __tablename__ = "crystal_corpora"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    slug: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    nome: Mapped[str] = mapped_column(String, nullable=False)
+    tipo_fonte: Mapped[str] = mapped_column(String, nullable=False)
+    schema_config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+
+class CrystalSugestaoArtifact(Base):
+    __tablename__ = "crystal_sugestao_artifacts"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    corpus_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("crystal_corpora.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    markdown: Mapped[str] = mapped_column(Text, nullable=False)
+    meta: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+
+class CrystalCicloMelhoria(Base):
+    __tablename__ = "crystal_ciclos_melhoria"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    corpus_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("crystal_corpora.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    numero_ciclo: Mapped[int] = mapped_column(Integer, nullable=False)
+    data: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    nota_agregada: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    nota_por_campo: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=True
+    )
+    sugestao_artifact_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("crystal_sugestao_artifacts.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    shadow_run_ids: Mapped[Optional[list[Any]]] = mapped_column(JSONB, nullable=True)
+
+
+class CrystalResultadoReal(Base):
+    __tablename__ = "crystal_resultados_reais"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    corpus_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("crystal_corpora.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    chave_valor: Mapped[str] = mapped_column(String, nullable=False)
+    desafio_texto: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    comparison: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    numero_ciclo: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )

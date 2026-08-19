@@ -329,19 +329,44 @@ async def run_mativas_experimental(
         db.commit()
         raise ExperimentalRunError(str(exc)) from exc
 
+    from services.crystal_ball.campo_compare import compare_literal_fields
+    from services.crystal_ball.experimental_providers.generic_corpus_lookup import (
+        MATIVAS_SCHEMA_CONFIG,
+    )
+
     # Comparação: preferir entrega; fallback síntese
     ref_passos = registro.get("passos") if isinstance(registro.get("passos"), list) else []
     gen_passos = extract_passos_from_artifact(artifacts.get(PHASE_ENTREGA) or {})
     source_of_passos = "entrega_final"
+    gen_art_for_cmp: Any = artifacts.get(PHASE_ENTREGA) or {}
     if not gen_passos:
         gen_passos = extract_passos_from_artifact(artifacts.get(PHASE_SYNTHESIZE) or {})
         source_of_passos = "synthesize"
+        gen_art_for_cmp = artifacts.get(PHASE_SYNTHESIZE) or {}
     comparison = compare_passos(gen_passos, ref_passos)
     comparison["extracted_from"] = source_of_passos
+    # Enriquecimento genérico (aditivo — não quebra consumidores de passos)
+    campo_cmp = compare_literal_fields(
+        generated_artifact=gen_art_for_cmp,
+        reference_record=registro,
+        schema_config=MATIVAS_SCHEMA_CONFIG,
+    )
+    comparison["nota_agregada"] = campo_cmp.get("nota_agregada")
+    comparison["nota_por_campo"] = campo_cmp.get("nota_por_campo")
+    comparison["identical_ratio"] = (
+        comparison.get("identical_ratio")
+        if comparison.get("identical_ratio") is not None
+        else campo_cmp.get("identical_ratio")
+    )
 
     if not errors:
         shadow.status = "experimental_done"
     shadow.updated_at = datetime.now(UTC)
+    # Persist comparison no spec para ciclos de sugestão
+    spec_data = dict(shadow.spec or {})
+    spec_data["comparison"] = comparison
+    spec_data["corpus_slug"] = "mativas"
+    shadow.spec = spec_data
     # excerpt
     entrega = artifacts.get(PHASE_ENTREGA) or {}
     inner = entrega.get("artifact_data") if isinstance(entrega.get("artifact_data"), dict) else {}

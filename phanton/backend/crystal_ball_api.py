@@ -18,6 +18,16 @@ from services.crystal_ball.experimental_run import (
     experimental_edit_and_recalculate,
     run_mativas_experimental,
 )
+from services.crystal_ball import corpora as corpora_svc
+from services.crystal_ball.resultado_real import (
+    ResultadoRealError,
+    registrar_resultado_real,
+)
+from services.crystal_ball.sugestao_prompt import (
+    SugestaoPromptError,
+    gerar_sugestao_prompt_geral,
+    list_ciclos,
+)
 from services.crystal_ball.service import CrystalBallError
 
 router = APIRouter(prefix="/api/crystal-ball", tags=["crystal-ball"])
@@ -50,6 +60,25 @@ class ExperimentalRecalculateRequest(BaseModel):
 
 class RecalculateRequest(BaseModel):
     shadow_run_id: UUID
+
+
+class RegisterCorpusRequest(BaseModel):
+    slug: str = Field(..., min_length=2, max_length=80)
+    nome: str = Field(..., min_length=2, max_length=200)
+    tipo_fonte: str = Field(default="upload_json")
+    schema_config: dict[str, Any]
+
+
+class SugestaoPromptRequest(BaseModel):
+    shadow_run_ids: list[UUID] = Field(..., min_length=2)
+    prompt_mestre: Optional[str] = None
+
+
+class ResultadoRealRequest(BaseModel):
+    chave_valor: str = Field(..., min_length=1)
+    payload: Any
+    desafio_texto: Optional[str] = None
+    numero_ciclo: Optional[int] = None
 
 
 # Rotas estáticas ANTES de /{run_id}/… para não capturar "experimental-run" como UUID.
@@ -99,6 +128,108 @@ async def crystal_experimental_recalculate(
         raise HTTPException(
             status_code=500,
             detail=f"Crystal Ball experimental recalculate: {exc}",
+        ) from exc
+
+
+@router.get("/corpora")
+def crystal_list_corpora(
+    db: Session = Depends(get_db),
+    user: AuthUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    _ = user
+    return {"items": corpora_svc.list_corpora(db)}
+
+
+@router.post("/corpora")
+def crystal_register_corpus(
+    payload: RegisterCorpusRequest,
+    db: Session = Depends(get_db),
+    user: AuthUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    _ = user
+    try:
+        row = corpora_svc.register_corpus(
+            db,
+            slug=payload.slug,
+            nome=payload.nome,
+            tipo_fonte=payload.tipo_fonte,
+            schema_config=payload.schema_config,
+        )
+        return {
+            "id": str(row.id),
+            "slug": row.slug,
+            "nome": row.nome,
+            "tipo_fonte": row.tipo_fonte,
+            "schema_config": row.schema_config,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/corpus/{corpus_id}/sugestao-prompt")
+def crystal_sugestao_prompt(
+    corpus_id: str,
+    payload: SugestaoPromptRequest,
+    db: Session = Depends(get_db),
+    user: AuthUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Fase sugestao_prompt_geral — texto copiável; nunca aplica em sistema externo."""
+    _ = user
+    try:
+        return gerar_sugestao_prompt_geral(
+            db,
+            corpus_id=corpus_id,
+            shadow_run_ids=list(payload.shadow_run_ids),
+            prompt_mestre=payload.prompt_mestre,
+        )
+    except SugestaoPromptError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"sugestao-prompt: {exc}"
+        ) from exc
+
+
+@router.get("/corpus/{corpus_id}/ciclos")
+def crystal_list_ciclos(
+    corpus_id: str,
+    db: Session = Depends(get_db),
+    user: AuthUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    _ = user
+    try:
+        return {"items": list_ciclos(db, corpus_id)}
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/corpus/{corpus_id}/resultado-real")
+def crystal_resultado_real(
+    corpus_id: str,
+    payload: ResultadoRealRequest,
+    db: Session = Depends(get_db),
+    user: AuthUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Cola resultado real (manual) e compara campo-a-campo — sem automação externa."""
+    _ = user
+    try:
+        return registrar_resultado_real(
+            db,
+            corpus_id=corpus_id,
+            chave_valor=payload.chave_valor,
+            payload=payload.payload,
+            desafio_texto=payload.desafio_texto,
+            numero_ciclo=payload.numero_ciclo,
+        )
+    except ResultadoRealError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"resultado-real: {exc}"
         ) from exc
 
 

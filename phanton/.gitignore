@@ -24,3 +24,6 @@ Thumbs.db
 
 # Ollama portable / local model tooling (não versionar)
 _tools/
+
+services/_fixture_mini_corpus.json
+
