@@ -203,8 +203,6 @@ disclaimer, tenant guard. Typecheck/build.
 ## 15. Recomendação de fechamento da ISO Intelligence V1
 
 Com ISOI-002…005, o ciclo vertical Context → Intelligence → Action → Evolution
-está utilizável no Core. Fechamento formal da V1 pode documentar o ciclo como
-entregue, **sem** expandir para eficácia automática, certificação ou novos
-motores OI — desde que homologação humana confirme o fluxo ponta a ponta.
+está utilizável no Core.
 
-**Não inicia** atividade de fechamento neste documento; apenas recomenda.
+**Fechamento formal:** [`027_ISO_Intelligence_V1_Improvement_Case_Loop_Baseline.md`](027_ISO_Intelligence_V1_Improvement_Case_Loop_Baseline.md) (ISOI-006).

@@ -12,3 +12,8 @@ scripts/_oi016_smoke_results.json
 # OI-018 local smoke output
 scripts/_oi018_smoke_results.json
 
+# ISOI-006 Improvement Case Loop smoke output
+scripts/_isoi006_smoke_results.json
+_isoi006_core.out.log
+_isoi006_core.err.log
+
