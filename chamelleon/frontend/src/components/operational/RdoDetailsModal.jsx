@@ -165,6 +165,45 @@ export default function RdoDetailsModal({ report, onClose }) {
           </section>
         )}
 
+        {sections.supplies?.length > 0 && (
+          <section className="mt-4 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-900">Materiais recebidos</h3>
+            {sections.supplies.map((sup) => (
+              <article key={sup.id} className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 text-sm">
+                <p className="font-semibold text-emerald-900">
+                  {sup.label}{sup.unit ? ` (${sup.unit})` : ''}
+                </p>
+                <p className="mt-1 text-slate-700">Quantidade: {sup.quantity ?? 0}</p>
+                {sup.details && <p className="mt-1 text-slate-600">{sup.details}</p>}
+              </article>
+            ))}
+          </section>
+        )}
+
+        {sections.workforce?.length > 0 && (
+          <section className="mt-4 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-900">Efetivo</h3>
+            {sections.workforce.map((row, idx) => (
+              <article key={row.role ? `${row.role}-${idx}` : idx} className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                <p className="font-semibold text-slate-900">
+                  {row.role} {row.type ? `(${row.type})` : ''}
+                </p>
+                <p className="mt-1 text-slate-700">
+                  Presentes: {row.headcount ?? 0} · Faltas: {row.absences_count ?? row.absences ?? 0}
+                </p>
+                {row.absences_details && <p className="mt-1 text-slate-600">Faltas: {row.absences_details}</p>}
+                {(row.extra_hours_count || row.extra_hours_details) && (
+                  <p className="mt-1 text-slate-600">
+                    Horas extras: {row.extra_hours_count ?? 0}
+                    {row.extra_hours_details ? ` — ${row.extra_hours_details}` : ''}
+                  </p>
+                )}
+                {row.general_remarks && <p className="mt-1 text-slate-600">{row.general_remarks}</p>}
+              </article>
+            ))}
+          </section>
+        )}
+
         {sections.ppe.compliant === false && (
           <section className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm">
             <h3 className="font-semibold text-red-900">EPI / Segurança</h3>

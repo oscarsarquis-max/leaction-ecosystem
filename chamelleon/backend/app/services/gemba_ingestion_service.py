@@ -12,15 +12,24 @@ from app.models.kaizen_models import (
     SOURCE_APP_DIARIO_OBRA,
     GembaEvent,
     KaizenTicket,
+    Restriction,
 )
 from app.services.andon_triage_service import AndonTriageService
 from app.services.operational_service import OperationalService
 
 
 class GembaIngestionResult:
-    def __init__(self, event: GembaEvent, tickets: list[KaizenTicket]):
+    def __init__(
+        self,
+        event: GembaEvent,
+        tickets: list[KaizenTicket],
+        restrictions: list[Restriction],
+        escalated_tickets: list[KaizenTicket] | None = None,
+    ):
         self.event = event
         self.tickets = tickets
+        self.restrictions = restrictions
+        self.escalated_tickets = escalated_tickets or []
 
 
 class GembaIngestionService:
@@ -34,7 +43,9 @@ class GembaIngestionService:
             raise ValueError(f"Tenant '{tenant_id}' não encontrado.")
 
         source_app = str(payload.get("source_app") or SOURCE_APP_DIARIO_OBRA).strip()
-        event_type = str(payload.get("event_type") or EVENT_TYPE_RDO_FINALIZED).strip()
+        event_type = (
+            str(payload.get("event_type") or EVENT_TYPE_RDO_FINALIZED).strip().replace(".", "_")
+        )
         event_date = self._parse_event_date(payload)
 
         event = GembaEvent(
@@ -48,15 +59,27 @@ class GembaIngestionService:
         db.session.add(event)
         db.session.flush()
 
-        tickets = AndonTriageService().create_tickets_from_event(event)
-        OperationalService().upsert_execution_report_from_rdo(
+        # Relatório primeiro — Restriction referencia site_id / report_id.
+        report = OperationalService().upsert_execution_report_from_rdo(
             tenant_id=tenant_id,
             event_id=event.id,
             event_date=event_date,
             payload=payload,
         )
+
+        triage = AndonTriageService().create_records_from_event(
+            event,
+            operational_site_id=report.operational_site_id if report else None,
+            daily_execution_report_id=report.id if report else None,
+        )
+
         db.session.commit()
-        return GembaIngestionResult(event=event, tickets=tickets)
+        return GembaIngestionResult(
+            event=event,
+            tickets=triage.tickets,
+            restrictions=triage.restrictions,
+            escalated_tickets=triage.escalated_tickets,
+        )
 
     @staticmethod
     def _resolve_tenant_id(payload: dict[str, Any]) -> uuid.UUID:

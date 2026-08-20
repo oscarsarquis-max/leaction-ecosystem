@@ -10,10 +10,12 @@ from app.extensions import db
 # Importa modelos para o metadata do SQLAlchemy registrar as tabelas.
 from app.models import (  # noqa: F401
     DailyLog,
+    DailyLogCommitment,
     EquipmentStatus,
     ExecutedService,
     Occurrence,
     ProjectDirectives,
+    ProjectRosterMember,
     ProjectSite,
     Workforce,
 )

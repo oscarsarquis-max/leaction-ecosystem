@@ -5,64 +5,17 @@
       "path": "."
     },
     {
-      "name": "PanelDX",
-      "path": "PanelDX"
+      "name": "QMind OI",
+      "path": "qmind-oi"
     },
     {
-      "name": "MudaEdu",
-      "path": "mudaedu"
-    },
-    {
-      "name": "Action Hub",
-      "path": "leaction-platform"
-    },
-    {
-      "name": "MAtivas",
-      "path": "MAtivas"
-    },
-    {
-      "name": "LASim",
-      "path": "LASim"
-    },
-    {
-      "name": "Chamelleon",
-      "path": "chamelleon"
-    },
-    {
-      "name": "Inove4us",
-      "path": "inove4us"
-    },
-    {
-      "name": "Phanton",
-      "path": "phanton"
-    },
-    {
-      "name": "LeActiona",
-      "path": "leactiona"
-    },
-    {
-      "name": "Prodinx",
-      "path": "prodinx"
-    },
-    {
-      "name": "Apps (Diário de Obra + infra)",
-      "path": "apps"
-    },
-    {
-      "name": "LeActionSys",
-      "path": "LeActionSys"
-    },
-    {
-      "name": "BK Sistemas",
-      "path": "bksistemas"
-    },
-    {
-      "name": "Docs",
-      "path": "docs"
+      "name": "QMind Core (ref)",
+      "path": "qmind"
     }
   ],
   "settings": {
     "git.repositoryScanMaxDepth": 2,
+    "git.autoRepositoryDetection": true,
     "files.exclude": {
       "inove4us_old": true
     },

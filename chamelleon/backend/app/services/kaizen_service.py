@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Any
 
 from flask import g
@@ -10,6 +11,7 @@ from flask import g
 from app.database.models import db
 from app.models.kaizen_models import (
     DEFAULT_ROOT_CAUSE_ANALYSIS,
+    KAIZEN_SEVERITIES,
     KAIZEN_WORKFLOW_STAGES,
     STAGE_ALERTA,
     STAGE_CINCO_PORQUES,
@@ -22,25 +24,37 @@ from app.models.kaizen_models import (
 
 
 class KaizenService:
-    def list_tickets(self, *, workflow_stage: str | None = None) -> list[dict[str, Any]]:
+    def list_tickets(
+        self,
+        *,
+        workflow_stage: str | None = None,
+        operational_site_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         tenant_id = self._tenant_id()
         query = KaizenTicket.query.filter_by(tenant_id=tenant_id)
         if workflow_stage:
             self._validate_workflow_stage(workflow_stage)
             query = query.filter_by(workflow_stage=workflow_stage)
+        if operational_site_id:
+            query = query.filter_by(
+                operational_site_id=self._parse_uuid(operational_site_id, "operational_site_id")
+            )
         tickets = query.order_by(
             KaizenTicket.workflow_stage.asc(),
             KaizenTicket.updated_at.desc(),
         ).all()
-        return [ticket.to_dict() for ticket in tickets]
+        return self._enrich([ticket.to_dict() for ticket in tickets])
 
-    def list_tickets_kanban(self) -> dict[str, list[dict[str, Any]]]:
+    def list_tickets_kanban(
+        self, *, operational_site_id: str | None = None
+    ) -> dict[str, list[dict[str, Any]]]:
         tenant_id = self._tenant_id()
-        tickets = (
-            KaizenTicket.query.filter_by(tenant_id=tenant_id)
-            .order_by(KaizenTicket.updated_at.desc())
-            .all()
-        )
+        query = KaizenTicket.query.filter_by(tenant_id=tenant_id)
+        if operational_site_id:
+            query = query.filter_by(
+                operational_site_id=self._parse_uuid(operational_site_id, "operational_site_id")
+            )
+        tickets = query.order_by(KaizenTicket.updated_at.desc()).all()
         board: dict[str, list[dict[str, Any]]] = {
             stage: [] for stage in KAIZEN_WORKFLOW_STAGES
         }
@@ -49,11 +63,13 @@ class KaizenService:
             if stage not in board:
                 board[stage] = []
             board[stage].append(ticket.to_dict())
+        for stage, items in board.items():
+            board[stage] = self._enrich(items)
         return board
 
     def get_ticket(self, ticket_id: str) -> dict[str, Any]:
         ticket = self._get_ticket_or_404(ticket_id)
-        return ticket.to_dict()
+        return self._enrich([ticket.to_dict()])[0]
 
     def create_ticket(self, payload: dict[str, Any]) -> KaizenTicket:
         tenant_id = self._tenant_id()
@@ -75,6 +91,10 @@ class KaizenService:
         ticket = KaizenTicket(
             tenant_id=tenant_id,
             origin_event_id=origin_event_id,
+            operational_site_id=self._resolve_operational_site_id(
+                payload.get("operational_site_id")
+            ),
+            severity=self._parse_optional_severity(payload.get("severity")),
             title=title,
             description=self._optional_text(payload.get("description")),
             workflow_stage=workflow_stage,
@@ -84,8 +104,14 @@ class KaizenService:
             root_cause_analysis=self._merge_root_cause(payload.get("root_cause_analysis")),
             standardization_action=self._optional_text(payload.get("standardization_action")),
             is_operator_retrained=bool(payload.get("is_operator_retrained", False)),
+            owner_user_id=self._resolve_owner_user_id(payload.get("owner_user_id")),
+            due_date=self._parse_optional_date(payload.get("due_date")),
         )
         db.session.add(ticket)
+        db.session.flush()
+        from app.services.compliance_service import ComplianceService
+
+        ComplianceService().sync_ticket_best_effort(ticket)
         db.session.commit()
         return ticket
 
@@ -100,6 +126,20 @@ class KaizenService:
 
         if "description" in payload:
             ticket.description = self._optional_text(payload.get("description"))
+
+        if "operational_site_id" in payload:
+            ticket.operational_site_id = self._resolve_operational_site_id(
+                payload.get("operational_site_id")
+            )
+
+        if "severity" in payload:
+            ticket.severity = self._parse_optional_severity(payload.get("severity"))
+
+        if "owner_user_id" in payload:
+            ticket.owner_user_id = self._resolve_owner_user_id(payload.get("owner_user_id"))
+
+        if "due_date" in payload:
+            ticket.due_date = self._parse_optional_date(payload.get("due_date"))
 
         if "workflow_stage" in payload:
             stage = str(payload.get("workflow_stage") or "").strip()
@@ -136,6 +176,9 @@ class KaizenService:
                     raise ValueError("origin_event_id inválido ou de outro tenant.")
             ticket.origin_event_id = origin_event_id
 
+        from app.services.compliance_service import ComplianceService
+
+        ComplianceService().sync_ticket_best_effort(ticket)
         db.session.commit()
         return ticket
 
@@ -210,12 +253,15 @@ class KaizenService:
 
         ticket.workflow_stage = STAGE_CONCLUIDO
         ticket.escalated_to_sprint_id = sprint.id
+        from app.services.compliance_service import ComplianceService
+
+        ComplianceService().sync_ticket_best_effort(ticket)
         db.session.commit()
         db.session.refresh(sprint)
         db.session.refresh(ticket)
 
         return {
-            "ticket": ticket.to_dict(),
+            "ticket": self._enrich([ticket.to_dict()])[0],
             "sprint": sprint.to_dict(),
         }
 
@@ -223,6 +269,33 @@ class KaizenService:
         ticket = self._get_ticket_or_404(ticket_id)
         db.session.delete(ticket)
         db.session.commit()
+
+    def _enrich(self, tickets_dicts: list[dict]) -> list[dict]:
+        from app.database.models import User
+        from app.models.operational_models import OperationalSite
+
+        site_ids = {t["operational_site_id"] for t in tickets_dicts if t.get("operational_site_id")}
+        owner_ids = {t["owner_user_id"] for t in tickets_dicts if t.get("owner_user_id")}
+        sites = (
+            {
+                str(s.id): s.name
+                for s in OperationalSite.query.filter(OperationalSite.id.in_(site_ids)).all()
+            }
+            if site_ids
+            else {}
+        )
+        owners = (
+            {
+                str(u.id): u.name
+                for u in User.query.filter(User.id.in_(owner_ids)).all()
+            }
+            if owner_ids
+            else {}
+        )
+        for t in tickets_dicts:
+            t["operational_site_name"] = sites.get(t.get("operational_site_id"))
+            t["owner_name"] = owners.get(t.get("owner_user_id"))
+        return tickets_dicts
 
     def _get_ticket_or_404(self, ticket_id: str) -> KaizenTicket:
         ticket_uuid = self._parse_uuid(ticket_id, "ticket_id")
@@ -260,6 +333,18 @@ class KaizenService:
             if not action:
                 raise ValueError("Informe a ação de contenção adotada para avançar para Contenção.")
 
+            owner_user_id = payload.get("owner_user_id") or (
+                str(ticket.owner_user_id) if ticket.owner_user_id else None
+            )
+            if not owner_user_id:
+                raise ValueError("Defina um responsável antes de avançar para Contenção.")
+
+            due_date = payload.get("due_date") or (
+                ticket.due_date.isoformat() if ticket.due_date else None
+            )
+            if not due_date:
+                raise ValueError("Defina um prazo antes de avançar para Contenção.")
+
         if target_stage == STAGE_CINCO_PORQUES:
             rca = self._merge_root_cause(
                 payload.get("root_cause_analysis"),
@@ -280,6 +365,51 @@ class KaizenService:
         if target_stage == STAGE_CONCLUIDO:
             if "is_operator_retrained" not in payload:
                 raise ValueError("Confirme se o operador foi retreinado antes de concluir o ticket.")
+
+    def _resolve_operational_site_id(self, value: Any) -> uuid.UUID | None:
+        site_id = self._parse_optional_uuid(value, "operational_site_id")
+        if not site_id:
+            return None
+        from app.models.operational_models import OperationalSite
+
+        site = OperationalSite.query.filter_by(
+            id=site_id, tenant_id=self._tenant_id()
+        ).first()
+        if not site:
+            raise ValueError("operational_site_id inválido ou de outro tenant.")
+        return site_id
+
+    def _resolve_owner_user_id(self, value: Any) -> uuid.UUID | None:
+        user_id = self._parse_optional_uuid(value, "owner_user_id")
+        if not user_id:
+            return None
+        from app.database.models import TenantUser
+
+        membership = TenantUser.query.filter_by(
+            tenant_id=self._tenant_id(), user_id=user_id
+        ).first()
+        if not membership:
+            raise ValueError("owner_user_id inválido ou de outro tenant.")
+        return user_id
+
+    @staticmethod
+    def _parse_optional_severity(value: Any) -> str | None:
+        if value is None or str(value).strip() == "":
+            return None
+        severity = str(value).strip()
+        if severity not in KAIZEN_SEVERITIES:
+            allowed = ", ".join(KAIZEN_SEVERITIES)
+            raise ValueError(f"severity inválida. Use: {allowed}.")
+        return severity
+
+    @staticmethod
+    def _parse_optional_date(value: Any) -> date | None:
+        if value is None or str(value).strip() == "":
+            return None
+        try:
+            return date.fromisoformat(str(value).strip()[:10])
+        except ValueError as exc:
+            raise ValueError("due_date inválida (use YYYY-MM-DD).") from exc
 
     @staticmethod
     def _optional_text(value: Any) -> str | None:

@@ -100,6 +100,28 @@ def receive_daily_goals():
         return jsonify({"error": "Erro ao aplicar metas diárias."}), 500
 
 
+@integration_bp.post("/roster")
+@require_integration_auth
+def receive_roster():
+    """
+    Recebe o roster qualificado (Engenheiro/Mestre de Obras) do Chamelleon.
+
+    Payload: { "tenant_id": "uuid", "project_id": "uuid", "roster": [{"id": "...", "name": "...", "role": "..."}] }
+    """
+    from app.services.roster_service import RosterService
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON inválido."}), 400
+    try:
+        result = RosterService().upsert_roster(payload)
+        return jsonify({"status": "ok", **result}), 200
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        return jsonify({"error": "Erro ao sincronizar roster."}), 500
+
+
 @integration_bp.post("/logs/reopen")
 @require_integration_auth
 def reopen_daily_log():

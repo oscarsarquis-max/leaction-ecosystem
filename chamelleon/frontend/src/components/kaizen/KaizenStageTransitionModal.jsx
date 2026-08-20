@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { KAIZEN_STAGES } from '../../constants/kaizen';
+import { listOperationalUsers } from '../../services/operationalApi';
 import { updateKaizenTicket } from '../../services/kaizenApi';
 import KaizenEscalatePanel from './KaizenEscalatePanel';
 
@@ -23,6 +24,9 @@ const STAGE_COPY = {
 export default function KaizenStageTransitionModal({ transition, onClose, onCompleted, onEscalated }) {
   const [textValue, setTextValue] = useState('');
   const [isRetrained, setIsRetrained] = useState(null);
+  const [ownerUserId, setOwnerUserId] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [users, setUsers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -42,8 +46,33 @@ export default function KaizenStageTransitionModal({ transition, onClose, onComp
     setIsRetrained(
       typeof ticket.is_operator_retrained === 'boolean' ? ticket.is_operator_retrained : null,
     );
+    setOwnerUserId(ticket.owner_user_id || '');
+    setDueDate(ticket.due_date || '');
     setError('');
   }, [ticket, toStage]);
+
+  useEffect(() => {
+    if (toStage !== 'Contencao') return;
+    let cancelled = false;
+    listOperationalUsers()
+      .then((res) => {
+        if (!cancelled) setUsers(res.users || []);
+      })
+      .catch(() => {
+        if (!cancelled) setUsers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [toStage]);
+
+  const ownerOptions = useMemo(() => {
+    if (!ticket?.operational_site_id) return users;
+    const sameSite = users.filter(
+      (u) => u.operational_site_id === ticket.operational_site_id,
+    );
+    return sameSite.length > 0 ? sameSite : users;
+  }, [users, ticket?.operational_site_id]);
 
   if (!transition || !ticket) return null;
 
@@ -60,7 +89,19 @@ export default function KaizenStageTransitionModal({ transition, onClose, onComp
         setSaving(false);
         return;
       }
+      if (!ownerUserId) {
+        setError('Defina um responsável antes de avançar para Contenção.');
+        setSaving(false);
+        return;
+      }
+      if (!dueDate) {
+        setError('Defina um prazo antes de avançar para Contenção.');
+        setSaving(false);
+        return;
+      }
       payload.temporary_containment_action = textValue.trim();
+      payload.owner_user_id = ownerUserId;
+      payload.due_date = dueDate;
     }
 
     if (toStage === 'Padronizacao') {
@@ -126,6 +167,38 @@ export default function KaizenStageTransitionModal({ transition, onClose, onComp
                 />
               </div>
             </>
+          )}
+
+          {toStage === 'Contencao' && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-semibold text-slate-700">Responsável</span>
+                <select
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                  value={ownerUserId}
+                  onChange={(e) => setOwnerUserId(e.target.value)}
+                  required
+                >
+                  <option value="">— Selecione —</option>
+                  {ownerOptions.map((u) => (
+                    <option key={u.user_id} value={u.user_id}>
+                      {u.name}
+                      {u.system_role ? ` (${u.system_role})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-semibold text-slate-700">Prazo</span>
+                <input
+                  type="date"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  required
+                />
+              </label>
+            </div>
           )}
 
           {toStage === 'Concluido' && (

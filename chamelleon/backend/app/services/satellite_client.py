@@ -43,8 +43,21 @@ class SatelliteClient:
         return data.get("site") or data
 
     def push_daily_goals(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """POST /api/integration/daily-goals — exige autenticação de integração."""
+        """POST /api/integration/daily-goals — goals: [{date, items:[{id, description}]}]."""
         url = f"{self.base_url}/api/integration/daily-goals"
+        response = requests.post(
+            url, json=payload, headers=self._headers(require_auth=True), timeout=30
+        )
+        data = response.json() if response.content else {}
+        if not response.ok:
+            raise RuntimeError(
+                data.get("error") or f"Satélite respondeu HTTP {response.status_code}"
+            )
+        return data
+
+    def push_roster(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """POST /api/integration/roster — exige autenticação de integração."""
+        url = f"{self.base_url}/api/integration/roster"
         response = requests.post(
             url, json=payload, headers=self._headers(require_auth=True), timeout=30
         )

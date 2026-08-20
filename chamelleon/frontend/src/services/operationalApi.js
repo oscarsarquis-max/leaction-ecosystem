@@ -28,6 +28,10 @@ export function syncOperationalSiteSatellite(siteId) {
   return apiRequest(`/operational/sites/${siteId}/sync-satellite`, { method: 'POST' });
 }
 
+export function syncOperationalSiteRoster(siteId) {
+  return apiRequest(`/operational/sites/${siteId}/sync-roster`, { method: 'POST' });
+}
+
 export function listOperationalUsers() {
   return apiRequest('/operational/users');
 }
@@ -86,6 +90,21 @@ export function getOperationalReportsSummary({ startDate, endDate, siteId } = {}
   if (siteId) params.set('site_id', siteId);
   const query = params.toString() ? `?${params.toString()}` : '';
   return apiRequest(`/operational/reports/summary${query}`);
+}
+
+export function getOperationalRestrictions({
+  startDate,
+  endDate,
+  siteId,
+  category,
+} = {}) {
+  const params = new URLSearchParams();
+  if (startDate) params.set('start_date', startDate);
+  if (endDate) params.set('end_date', endDate);
+  if (siteId) params.set('site_id', siteId);
+  if (category) params.set('category', category);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest(`/operational/restrictions${query}`);
 }
 
 export function reopenOperationalDay({ siteId, date }) {

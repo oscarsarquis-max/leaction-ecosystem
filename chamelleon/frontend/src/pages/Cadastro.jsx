@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { listSectors, registerLead } from '../services/api';
+import { formatCnpj } from '../utils/documentMask';
 
 export default function Cadastro() {
   const navigate = useNavigate();
@@ -131,8 +132,11 @@ export default function Cadastro() {
             <span className="font-medium text-slate-700">CNPJ / Documento (opcional)</span>
             <input
               value={form.document}
-              onChange={(e) => updateField('document', e.target.value)}
-              placeholder="Opcional — deixe em branco se já tentou antes"
+              onChange={(e) => updateField('document', formatCnpj(e.target.value))}
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={18}
+              placeholder="00.000.000/0000-00"
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
             />
           </label>

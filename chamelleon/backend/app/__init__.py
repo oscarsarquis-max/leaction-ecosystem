@@ -11,6 +11,8 @@ from app.api.auth_routes import auth_bp
 from app.api.framework_routes import framework_bp
 from app.api.kaizen_routes import kaizen_bp
 from app.api.operational_routes import operational_bp
+from app.api.organization_routes import organization_bp
+from app.api.compliance_routes import compliance_bp
 from app.api.questions_routes import questions_bp
 from app.api.td_routes import td_bp
 from app.api.okr_routes import okr_bp
@@ -21,7 +23,9 @@ from app.core.gemba_webhook_auth import resolve_gemba_webhook_secret
 from app.core.middlewares import load_tenant_context
 from app.database.models import db
 import app.models.capacity_models  # noqa: F401 — Pool de Talentos / SprintSquad
+import app.models.compliance_models  # noqa: F401 — treinamento / ASO / NC
 import app.models.kaizen_models  # noqa: F401 — registra tabelas Gemba-Kaizen
+import app.models.organization_models  # noqa: F401 — filiais/escritórios/depósitos
 import app.models.operational_models  # noqa: F401 — unidades operacionais e relatórios
 import app.models.okr_models  # noqa: F401 — Planejamento Estratégico (OKR)
 import app.models.td_models  # noqa: F401 — Transformação Digital (Plano + Sprints)
@@ -55,6 +59,8 @@ def create_app() -> Flask:
     app.register_blueprint(framework_bp, url_prefix="/api/framework")
     app.register_blueprint(kaizen_bp, url_prefix="/api/kaizen")
     app.register_blueprint(operational_bp, url_prefix="/api/operational")
+    app.register_blueprint(organization_bp, url_prefix="/api/organization")
+    app.register_blueprint(compliance_bp, url_prefix="/api/compliance")
     app.register_blueprint(td_bp, url_prefix="/api/td")
     app.register_blueprint(okr_bp, url_prefix="/api/okr")
     app.register_blueprint(users_bp, url_prefix="/api")
@@ -300,6 +306,42 @@ def _apply_schema_patches() -> None:
             )
             db.session.commit()
 
+    if "kaizen_tickets" in tables:
+        cols = {c["name"] for c in inspector.get_columns("kaizen_tickets")}
+        ticket_patches = {
+            "operational_site_id": "UUID REFERENCES operational_sites(id) ON DELETE SET NULL",
+            "owner_user_id": "UUID REFERENCES users(id) ON DELETE SET NULL",
+            "due_date": "DATE",
+            "severity": "VARCHAR(16)",
+        }
+        for col_name, col_def in ticket_patches.items():
+            if col_name not in cols:
+                db.session.execute(
+                    text(f"ALTER TABLE kaizen_tickets ADD COLUMN {col_name} {col_def}")
+                )
+        if "operational_site_id" not in cols:
+            db.session.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_kaizen_tickets_operational_site_id "
+                    "ON kaizen_tickets (operational_site_id)"
+                )
+            )
+        if "owner_user_id" not in cols:
+            db.session.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_kaizen_tickets_owner_user_id "
+                    "ON kaizen_tickets (owner_user_id)"
+                )
+            )
+        if "severity" not in cols:
+            db.session.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_kaizen_tickets_severity "
+                    "ON kaizen_tickets (severity)"
+                )
+            )
+        db.session.commit()
+
     if "td_sprints" in tables:
         cols = {c["name"] for c in inspector.get_columns("td_sprints")}
         sprint_patches = {
@@ -366,3 +408,42 @@ def _apply_schema_patches() -> None:
             )
         )
         db.session.commit()
+
+    # Filial/escritório/depósito → vínculo opcional em unidades operacionais
+    if "operational_sites" in tables and "organizational_units" in tables:
+        cols = {c["name"] for c in inspector.get_columns("operational_sites")}
+        if "organizational_unit_id" not in cols:
+            db.session.execute(
+                text(
+                    "ALTER TABLE operational_sites "
+                    "ADD COLUMN organizational_unit_id UUID "
+                    "REFERENCES organizational_units(id) ON DELETE SET NULL"
+                )
+            )
+            db.session.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_operational_sites_organizational_unit_id "
+                    "ON operational_sites (organizational_unit_id)"
+                )
+            )
+            db.session.commit()
+
+    # Conformidade: rubrica operacional pode exceder 16 chars (ex.: Absenteismo)
+    if "non_conformities" in tables:
+        cols = {c["name"]: c for c in inspector.get_columns("non_conformities")}
+        cat = cols.get("category")
+        if cat is not None:
+            col_type = str(cat.get("type") or "")
+            if "VARCHAR(16)" in col_type.upper() or "CHARACTER VARYING(16)" in col_type.upper():
+                db.session.execute(
+                    text("ALTER TABLE non_conformities ALTER COLUMN category TYPE VARCHAR(64)")
+                )
+                db.session.commit()
+        if "owner_source" not in cols:
+            db.session.execute(
+                text(
+                    "ALTER TABLE non_conformities "
+                    "ADD COLUMN owner_source VARCHAR(16) NOT NULL DEFAULT 'Herdado'"
+                )
+            )
+            db.session.commit()

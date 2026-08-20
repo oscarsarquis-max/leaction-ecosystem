@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -48,9 +48,15 @@ class OperationalSite(db.Model):
     manager_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    organizational_unit_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizational_units.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     satellite_site_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    # Cache local do planejamento semanal { "YYYY-MM-DD": "meta..." }
+    # Cache legado do planejamento semanal { "YYYY-MM-DD": "meta..." } — não remover.
     weekly_goals: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -68,9 +74,70 @@ class OperationalSite(db.Model):
             "location": self.location,
             "industry_type": industry,
             "manager_id": str(self.manager_id) if self.manager_id else None,
+            "organizational_unit_id": (
+                str(self.organizational_unit_id) if self.organizational_unit_id else None
+            ),
             "satellite_site_id": self.satellite_site_id,
             "is_active": self.is_active,
             "weekly_goals": self.weekly_goals or {},
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class WeeklyCommitment(db.Model):
+    """Compromisso diário estruturado do planejamento semanal (Last Planner System).
+
+    Cada linha é UMA tarefa prometida para UMA unidade em UMA data. Múltiplas linhas
+    por (site, date) representam múltiplos compromissos do mesmo dia.
+    """
+
+    __tablename__ = "weekly_commitments"
+    __table_args__ = (
+        Index(
+            "ix_weekly_commitments_tenant_site_date",
+            "tenant_id",
+            "operational_site_id",
+            "commitment_date",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    operational_site_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("operational_sites.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    commitment_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Null = ainda não avaliado. Preenchido pelo Sprint 3 (cálculo de PPC).
+    is_completed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "tenant_id": str(self.tenant_id),
+            "operational_site_id": str(self.operational_site_id),
+            "date": self.commitment_date.isoformat(),
+            "description": self.description,
+            "sequence": self.sequence,
+            "is_completed": self.is_completed,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

@@ -18,7 +18,11 @@ from app.core.journey_constants import (
     JOURNEY_PROJETO_OK,
     KANBAN_COLUMNS,
 )
-from app.database.models import AssessmentSubmission, Tenant, db
+from app.database.models import AssessmentSubmission, Tenant, User, db
+from app.models.operational_models import OperationalSite
+from app.models.organization_models import OrganizationalUnit
+
+ORG_PROFILE_KEY = "organization_profile"
 
 
 def _normalize_status(raw: str | None) -> str:
@@ -266,3 +270,78 @@ def build_td_readiness_status(tenant_id) -> dict[str, Any]:
         "survey_completed": survey_completed,
         "survey_progress_pct": round(survey_progress_pct, 1),
     }
+
+
+def get_organization_profile(tenant_id) -> dict[str, Any]:
+    tenant = db.session.get(Tenant, tenant_id)
+    if not tenant:
+        raise ValueError("Tenant não encontrado.")
+    profile = dict((tenant.context_data or {}).get(ORG_PROFILE_KEY) or {})
+
+    sites = OperationalSite.query.filter_by(tenant_id=tenant_id, is_active=True).all()
+    unit_map = {
+        str(u.id): u.name
+        for u in OrganizationalUnit.query.filter_by(tenant_id=tenant_id).all()
+    }
+    sites_by_industry: dict[str, int] = {}
+    site_managers = []
+    for site in sites:
+        sites_by_industry[site.industry_type] = sites_by_industry.get(site.industry_type, 0) + 1
+        manager = db.session.get(User, site.manager_id) if site.manager_id else None
+        site_managers.append(
+            {
+                "site_id": str(site.id),
+                "site_name": site.name,
+                "industry_type": site.industry_type,
+                "manager_name": manager.name if manager else None,
+                "organizational_unit_name": (
+                    unit_map.get(str(site.organizational_unit_id))
+                    if site.organizational_unit_id
+                    else None
+                ),
+            }
+        )
+
+    return {
+        "document": tenant.document,
+        "employee_count": profile.get("employee_count"),
+        "address": profile.get("address"),
+        "sites_total": len(sites),
+        "sites_by_industry": sites_by_industry,
+        "site_managers": site_managers,
+        "organizational_units_total": OrganizationalUnit.query.filter_by(
+            tenant_id=tenant_id, is_active=True
+        ).count(),
+    }
+
+
+def update_organization_profile(tenant_id, payload: dict[str, Any]) -> dict[str, Any]:
+    tenant = db.session.get(Tenant, tenant_id)
+    if not tenant:
+        raise ValueError("Tenant não encontrado.")
+
+    current = dict(tenant.context_data or {})
+    profile = dict(current.get(ORG_PROFILE_KEY) or {})
+
+    if "employee_count" in payload:
+        raw = payload.get("employee_count")
+        try:
+            profile["employee_count"] = int(raw) if raw not in (None, "") else None
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Número de colaboradores inválido.") from exc
+    if "address" in payload:
+        profile["address"] = str(payload.get("address") or "").strip() or None
+
+    current[ORG_PROFILE_KEY] = profile
+    tenant.context_data = current
+
+    if "document" in payload:
+        doc = str(payload.get("document") or "").strip() or None
+        if doc:
+            clash = Tenant.query.filter(Tenant.document == doc, Tenant.id != tenant.id).first()
+            if clash:
+                raise ValueError("Documento (CNPJ) já cadastrado em outro tenant.")
+        tenant.document = doc
+
+    db.session.commit()
+    return get_organization_profile(tenant_id)

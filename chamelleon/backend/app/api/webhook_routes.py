@@ -41,6 +41,14 @@ def ingest_rdo_webhook():
                     "andon_tickets_created": AndonTriageService.tickets_summary(
                         result.tickets
                     ),
+                    "restrictions_created": len(result.restrictions),
+                    "andon_restrictions_created": AndonTriageService.restrictions_summary(
+                        result.restrictions
+                    ),
+                    "escalated_tickets_created": len(result.escalated_tickets),
+                    "andon_escalated_tickets": AndonTriageService.tickets_summary(
+                        result.escalated_tickets
+                    ),
                 }
             ),
             201,

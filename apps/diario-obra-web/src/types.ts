@@ -2,6 +2,12 @@ export type WeatherPeriod = 'SOL' | 'CHUVA' | 'NUBLADO';
 export type CalendarStatus = 'empty' | 'draft' | 'finalized';
 export type DailyLogStatus = 'Rascunho' | 'Assinado' | 'Sincronizado';
 
+export interface RosterMember {
+  id: string;
+  name: string;
+  role?: string | null;
+}
+
 export interface ProjectSite {
   id: string;
   tenant_id: string;
@@ -9,6 +15,7 @@ export interface ProjectSite {
   location?: string | null;
   rt_engineer_name?: string | null;
   created_at?: string;
+  roster?: RosterMember[];
 }
 
 export interface WorkforceRow {
@@ -48,6 +55,15 @@ export interface OccurrenceRow {
   safety_ppe_notes?: string;
 }
 
+export interface CommitmentItem {
+  id: string;
+  source_commitment_id?: string;
+  description: string;
+  sequence?: number;
+  is_completed: boolean | null;
+  note?: string;
+}
+
 export interface DailyLogPayload {
   project_id: string;
   date: string;
@@ -67,6 +83,7 @@ export interface DailyLogPayload {
   impediment_details?: string;
   mitigation_action?: string;
   preventive_action?: string;
+  commitments?: CommitmentItem[];
   workforce?: WorkforceRow[];
   supplies?: SupplyRow[];
   equipment_statuses?: EquipmentRow[];

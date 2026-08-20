@@ -5,6 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from app.models.kaizen_models import (
+    RESTRICTION_EQUIPAMENTO,
+    RESTRICTION_FRENTE_DE_TRABALHO,
+    RESTRICTION_MAO_DE_OBRA,
+    RESTRICTION_MATERIAL,
+    SEVERITY_ALTA,
+    SEVERITY_BAIXA,
+    SEVERITY_CRITICA,
+    SEVERITY_MEDIA,
+)
+
 EQUIPMENT_BROKEN_STATUS = "parado por quebra"
 OCCURRENCE_ACCIDENT_TYPE = "acidente"
 
@@ -18,16 +29,51 @@ OCCURRENCE_ANDON_LABELS: dict[str, tuple[str, str]] = {
 WORKFORCE_ABSENCE_ROW_THRESHOLD = 3
 WORKFORCE_ABSENCE_TOTAL_THRESHOLD = 5
 
+ANOMALY_TYPE_TO_RESTRICTION_CATEGORY: dict[str, str] = {
+    "equipment_breakdown": RESTRICTION_EQUIPAMENTO,
+    "delay_material": RESTRICTION_MATERIAL,
+    "material_shortage": RESTRICTION_MATERIAL,
+    "excessive_absences": RESTRICTION_MAO_DE_OBRA,
+    "delay_front": RESTRICTION_FRENTE_DE_TRABALHO,
+}
+
+ANDON_SEVERITY: dict[str, str] = {
+    "accident": SEVERITY_CRITICA,
+    "ppe_non_compliance": SEVERITY_CRITICA,
+    "equipment_breakdown": SEVERITY_ALTA,
+    "excessive_absences": SEVERITY_ALTA,
+    "delay_material": SEVERITY_MEDIA,
+    "delay_rework": SEVERITY_MEDIA,
+    "delay_front": SEVERITY_MEDIA,
+    "power_outage": SEVERITY_MEDIA,
+    "material_shortage": SEVERITY_BAIXA,
+    "heavy_rain": SEVERITY_BAIXA,
+    "general_occurrence": SEVERITY_BAIXA,
+    "occurrence": SEVERITY_BAIXA,
+}
+
 
 @dataclass(frozen=True)
 class AndonAnomaly:
     anomaly_type: str
     title: str
     description: str
+    severity: str = SEVERITY_MEDIA
+    category: str | None = None
+
+
+def _anomaly(anomaly_type: str, title: str, description: str) -> AndonAnomaly:
+    return AndonAnomaly(
+        anomaly_type=anomaly_type,
+        title=title,
+        description=description,
+        severity=ANDON_SEVERITY.get(anomaly_type, SEVERITY_MEDIA),
+        category=ANOMALY_TYPE_TO_RESTRICTION_CATEGORY.get(anomaly_type),
+    )
 
 
 class RdoAndonParser:
-    """Analisa o RDO e retorna anomalias que exigem ticket Kaizen em estágio Alerta."""
+    """Analisa o RDO e retorna anomalias (restrição de planejamento ou alerta Kaizen)."""
 
     def detect_anomalies(self, payload: dict[str, Any]) -> list[AndonAnomaly]:
         rdo = self._extract_rdo_body(payload)
@@ -41,35 +87,46 @@ class RdoAndonParser:
         if not rdo.get("ppe_compliant", True) and rdo.get("ppe_compliant") is False:
             detail = (rdo.get("ppe_compliant_details") or "").strip()
             anomalies.append(
-                AndonAnomaly(
-                    anomaly_type="ppe_non_compliance",
-                    title="Alerta Crítico: Não conformidade de EPI",
-                    description=detail or "RDO registrou não conformidade de EPI no canteiro.",
+                _anomaly(
+                    "ppe_non_compliance",
+                    "Alerta Crítico: Não conformidade de EPI",
+                    detail or "RDO registrou não conformidade de EPI no canteiro.",
                 )
             )
 
         if rdo.get("delay_waiting_material"):
+            # quantity==0 = sem recebimento registrado hoje (não prova falta de estoque).
+            # Só enriquece a descrição; o disparo continua sendo delay_waiting_material.
+            zero_supplies = [
+                str(item.get("label") or item.get("key") or "").strip()
+                for item in (rdo.get("supplies") or [])
+                if isinstance(item, dict) and (item.get("quantity") or 0) == 0
+            ]
+            zero_supplies = [s for s in zero_supplies if s]
+            description = "O encarregado registrou espera por material no turno."
+            if zero_supplies:
+                description += f" Sem recebimento hoje de: {', '.join(zero_supplies)}."
             anomalies.append(
-                AndonAnomaly(
-                    anomaly_type="delay_material",
-                    title="Alerta: Equipe parada esperando material",
-                    description="O encarregado registrou espera por material no turno.",
+                _anomaly(
+                    "delay_material",
+                    "Alerta: Equipe parada esperando material",
+                    description,
                 )
             )
         if rdo.get("delay_rework"):
             anomalies.append(
-                AndonAnomaly(
-                    anomaly_type="delay_rework",
-                    title="Alerta: Retrabalho no canteiro",
-                    description="Foi necessário refazer serviço hoje.",
+                _anomaly(
+                    "delay_rework",
+                    "Alerta: Retrabalho no canteiro",
+                    "Foi necessário refazer serviço hoje.",
                 )
             )
         if rdo.get("delay_lack_of_front"):
             anomalies.append(
-                AndonAnomaly(
-                    anomaly_type="delay_front",
-                    title="Alerta: Falta de frente de trabalho",
-                    description="A equipe ficou sem frente de trabalho disponível.",
+                _anomaly(
+                    "delay_front",
+                    "Alerta: Falta de frente de trabalho",
+                    "A equipe ficou sem frente de trabalho disponível.",
                 )
             )
 
@@ -101,10 +158,10 @@ class RdoAndonParser:
             qty_text = f" ({qty} un.)" if qty > 1 else ""
             description = remarks or f"Equipamento reportado como parado por quebra no RDO.{qty_text}"
             anomalies.append(
-                AndonAnomaly(
-                    anomaly_type="equipment_breakdown",
-                    title=f"Alerta Crítico: {name} Parada por Quebra",
-                    description=description,
+                _anomaly(
+                    "equipment_breakdown",
+                    f"Alerta Crítico: {name} Parada por Quebra",
+                    description,
                 )
             )
         return anomalies
@@ -142,13 +199,7 @@ class RdoAndonParser:
             safety = (item.get("safety_ppe_notes") or "").strip()
             if safety:
                 description = f"{description} | EPI/Segurança: {safety}"
-            anomalies.append(
-                AndonAnomaly(
-                    anomaly_type=anomaly_type,
-                    title=title,
-                    description=description,
-                )
-            )
+            anomalies.append(_anomaly(anomaly_type, title, description))
         return anomalies
 
     def _scan_excessive_absences(self, rdo: dict[str, Any]) -> list[AndonAnomaly]:
@@ -177,10 +228,10 @@ class RdoAndonParser:
                 f"Total de faltas no efetivo: {total_absences} (limite {WORKFORCE_ABSENCE_TOTAL_THRESHOLD})."
             ]
             anomalies.append(
-                AndonAnomaly(
-                    anomaly_type="excessive_absences",
-                    title="Alerta Crítico: Faltas Excessivas no Efetivo",
-                    description=" | ".join(description_parts),
+                _anomaly(
+                    "excessive_absences",
+                    "Alerta Crítico: Faltas Excessivas no Efetivo",
+                    " | ".join(description_parts),
                 )
             )
         return anomalies

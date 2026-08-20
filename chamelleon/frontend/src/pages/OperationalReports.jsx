@@ -346,7 +346,7 @@ function ConsolidatedTab({
 
       {!loading && summary && (
         <>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm">
               <p className="text-2xl font-bold text-slate-900">{summary.total_days_planned ?? 0}</p>
               <p className="text-xs font-medium text-slate-600">Dias planejados / reportados</p>
@@ -361,6 +361,13 @@ function ConsolidatedTab({
               <p className="text-2xl font-bold text-indigo-700">{summary.success_rate ?? 0}%</p>
               <p className="text-xs font-medium text-indigo-800">Taxa de sucesso</p>
             </div>
+            <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 text-center">
+              <p className="text-2xl font-bold text-violet-700">{summary.ppc ?? 0}%</p>
+              <p className="text-xs font-medium text-violet-800">
+                PPC ({summary.total_commitments_completed ?? 0}/
+                {summary.total_commitments_promised ?? 0} compromissos)
+              </p>
+            </div>
           </div>
 
           <section className="space-y-4">
@@ -373,6 +380,27 @@ function ConsolidatedTab({
             <OccurrencesCharts
               occurrencesByType={summary.occurrences_by_type || []}
               occurrencesOverTime={summary.occurrences_over_time || []}
+            />
+          </section>
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                Restrições de planejamento (Last Planner)
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Bloqueios categorizados que impediram compromissos — material, mão de
+                obra, equipamento, frente de trabalho.
+              </p>
+            </div>
+            <OccurrencesCharts
+              occurrencesByType={summary.restrictions_by_category || []}
+              occurrencesOverTime={summary.restrictions_over_time || []}
+              typeTitle="Restrições por categoria"
+              typeSubtitle="Distribuição das restrições registradas no período."
+              timeTitle="Restrições ao longo do tempo"
+              timeSubtitle="Volume diário de restrições categorizadas."
+              emptyMessage="Nenhuma restrição categorizada no período selecionado."
             />
           </section>
 
@@ -405,6 +433,19 @@ function ConsolidatedTab({
                           <p className="mt-1 text-xs text-slate-600">
                             Meta: {item.sprint_daily_goal}
                           </p>
+                        )}
+                        {item.restrictions?.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {item.restrictions.map((restr, idx) => (
+                              <span
+                                key={`${item.id}-r-${idx}-${restr.category}`}
+                                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${TAG_TONE_STYLES.warning}`}
+                                title={restr.title || restr.category}
+                              >
+                                {restr.category}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
                       <button

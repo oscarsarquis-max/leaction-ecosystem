@@ -30,14 +30,22 @@ function formatChartDate(isoDate) {
   return `${day}/${month}`;
 }
 
-export default function OccurrencesCharts({ occurrencesByType = [], occurrencesOverTime = [] }) {
+export default function OccurrencesCharts({
+  occurrencesByType = [],
+  occurrencesOverTime = [],
+  typeTitle = 'Ocorrências por tipo',
+  typeSubtitle = 'Distribuição de falhas e alertas no período.',
+  timeTitle = 'Falhas ao longo do tempo',
+  timeSubtitle = 'Volume diário de ocorrências reportadas.',
+  emptyMessage = 'Nenhuma ocorrência registrada no período selecionado.',
+}) {
   const hasTypeData = occurrencesByType.some((item) => item.count > 0);
   const hasTimeData = occurrencesOverTime.some((item) => item.count > 0);
 
   if (!hasTypeData && !hasTimeData) {
     return (
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-        Nenhuma ocorrência registrada no período selecionado.
+        {emptyMessage}
       </div>
     );
   }
@@ -47,7 +55,9 @@ export default function OccurrencesCharts({ occurrencesByType = [], occurrencesO
     datasets: [
       {
         data: occurrencesByType.map((item) => item.count),
-        backgroundColor: occurrencesByType.map((_, index) => DOUGHNUT_COLORS[index % DOUGHNUT_COLORS.length]),
+        backgroundColor: occurrencesByType.map(
+          (_, index) => DOUGHNUT_COLORS[index % DOUGHNUT_COLORS.length],
+        ),
         borderWidth: 2,
         borderColor: '#ffffff',
       },
@@ -58,7 +68,7 @@ export default function OccurrencesCharts({ occurrencesByType = [], occurrencesO
     labels: occurrencesOverTime.map((item) => formatChartDate(item.date)),
     datasets: [
       {
-        label: 'Falhas registradas',
+        label: 'Registros',
         data: occurrencesOverTime.map((item) => item.count),
         backgroundColor: '#6366f1',
         borderRadius: 6,
@@ -80,8 +90,8 @@ export default function OccurrencesCharts({ occurrencesByType = [], occurrencesO
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-900">Ocorrências por tipo</h3>
-        <p className="mt-1 text-xs text-slate-500">Distribuição de falhas e alertas no período.</p>
+        <h3 className="text-sm font-semibold text-slate-900">{typeTitle}</h3>
+        <p className="mt-1 text-xs text-slate-500">{typeSubtitle}</p>
         <div className="mt-4 h-64">
           {hasTypeData ? (
             <Doughnut data={doughnutData} options={chartOptions} />
@@ -94,8 +104,8 @@ export default function OccurrencesCharts({ occurrencesByType = [], occurrencesO
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-900">Falhas ao longo do tempo</h3>
-        <p className="mt-1 text-xs text-slate-500">Volume diário de ocorrências reportadas.</p>
+        <h3 className="text-sm font-semibold text-slate-900">{timeTitle}</h3>
+        <p className="mt-1 text-xs text-slate-500">{timeSubtitle}</p>
         <div className="mt-4 h-64">
           {hasTimeData ? (
             <Bar

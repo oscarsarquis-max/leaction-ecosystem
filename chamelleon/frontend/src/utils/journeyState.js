@@ -2,7 +2,9 @@ import {
   CONTEXT_ORG_NAV,
   filterNavItems,
   GERENCIAL_NAV_ITEM,
+  hasRole,
   KAIZEN_NAV_ITEM,
+  MEU_TIME_NAV_ITEM,
   OPERATIONAL_AREA_NAV,
   ORGANIZATION_NAV_ITEM,
   ROLE_LED,
@@ -59,12 +61,11 @@ function withFilteredChildren(group, systemRole) {
  *
  * 1. Painel Gerencial
  * 2. Melhoria Contínua
- * 3. Configurações da Organização
+ * 3. Cadastro Organizacional
  * 4. Contexto Organizacional
- * 5. Gestão Operacional
- * 6. Estratégia e Transformação Digital
- *    - Estratégia e OKRs
- *    - Backlog / Kanban TD
+ * 5. Meu Time (só led — fora de Gestão Operacional)
+ * 6. Gestão Operacional
+ * 7. Estratégia e Transformação Digital
  */
 export function buildLeadNavItems(journeyFlags, journey, systemRole = ROLE_LED) {
   const submissionId = journey?.latest_submission_id || null;
@@ -82,7 +83,13 @@ export function buildLeadNavItems(journeyFlags, journey, systemRole = ROLE_LED) 
     systemRole,
   );
 
-  const operationalGroup = withFilteredChildren(OPERATIONAL_AREA_NAV, systemRole);
+  const operationalChildrenSemTime = (OPERATIONAL_AREA_NAV.children || []).filter(
+    (child) => child.to !== MEU_TIME_NAV_ITEM.to,
+  );
+  const operationalGroup = withFilteredChildren(
+    { ...OPERATIONAL_AREA_NAV, children: operationalChildrenSemTime },
+    systemRole,
+  );
   const tdGroup = withFilteredChildren(TD_AREA_NAV, systemRole);
 
   const base = [
@@ -92,6 +99,9 @@ export function buildLeadNavItems(journeyFlags, journey, systemRole = ROLE_LED) 
   ];
 
   if (contextGroup) base.push(contextGroup);
+  if (hasRole(systemRole || ROLE_LED, MEU_TIME_NAV_ITEM.roles)) {
+    base.push({ ...MEU_TIME_NAV_ITEM });
+  }
   if (operationalGroup) base.push(operationalGroup);
   if (tdGroup) base.push(tdGroup);
 

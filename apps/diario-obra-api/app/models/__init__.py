@@ -1,5 +1,6 @@
 from app.models.rdo_models import (
     DailyLog,
+    DailyLogCommitment,
     DailyLogStatus,
     EquipmentOperationalStatus,
     EquipmentStatus,
@@ -7,6 +8,7 @@ from app.models.rdo_models import (
     Occurrence,
     OccurrenceType,
     ProjectDirectives,
+    ProjectRosterMember,
     ProjectSite,
     WeatherPeriod,
     Workforce,
@@ -16,6 +18,7 @@ from app.models.rdo_models import (
 __all__ = [
     "ProjectSite",
     "DailyLog",
+    "DailyLogCommitment",
     "DailyLogStatus",
     "WeatherPeriod",
     "Workforce",
@@ -26,4 +29,5 @@ __all__ = [
     "Occurrence",
     "OccurrenceType",
     "ProjectDirectives",
+    "ProjectRosterMember",
 ]

@@ -1,7 +1,9 @@
 import { apiRequest } from './api';
 
-export function fetchKaizenKanban() {
-  return apiRequest('/kaizen/tickets?kanban=1');
+export function fetchKaizenKanban({ operationalSiteId } = {}) {
+  const params = new URLSearchParams({ kanban: '1' });
+  if (operationalSiteId) params.set('operational_site_id', operationalSiteId);
+  return apiRequest(`/kaizen/tickets?${params.toString()}`);
 }
 
 export function fetchKaizenTicket(ticketId) {

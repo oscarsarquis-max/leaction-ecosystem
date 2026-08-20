@@ -126,6 +126,17 @@ export function saveClientContext(payload) {
   });
 }
 
+export function getOrganizationProfile() {
+  return apiRequest('/client/organization-profile');
+}
+
+export function updateOrganizationProfile(payload) {
+  return apiRequest('/client/organization-profile', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function activateClientProject() {
   return apiRequest('/client/activate-project', { method: 'POST' });
 }

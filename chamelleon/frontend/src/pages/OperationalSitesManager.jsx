@@ -5,8 +5,11 @@ import {
   listOperationalSites,
   listOperationalUsers,
   syncOperationalSiteSatellite,
+  syncOperationalSiteRoster,
   updateOperationalSite,
 } from '../services/operationalApi';
+import { listOrganizationalUnits } from '../services/organizationApi';
+import { getSiteComplianceStatus } from '../services/complianceApi';
 import {
   getIndustryLabels,
   getLabelsFromSites,
@@ -18,11 +21,14 @@ const EMPTY_SITE = {
   location: '',
   industry_type: 'Construcao',
   manager_id: '',
+  organizational_unit_id: '',
 };
 
 export default function OperationalSitesManager() {
   const [sites, setSites] = useState([]);
   const [managers, setManagers] = useState([]);
+  const [organizationalUnits, setOrganizationalUnits] = useState([]);
+  const [siteCompliance, setSiteCompliance] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -34,14 +40,32 @@ export default function OperationalSitesManager() {
     setLoading(true);
     setError('');
     try {
-      const [sitesRes, usersRes] = await Promise.all([
+      const [sitesRes, usersRes, unitsRes] = await Promise.all([
         listOperationalSites(),
         listOperationalUsers(),
+        listOrganizationalUnits().catch(() => ({ units: [] })),
       ]);
       setSites(sitesRes.sites || []);
       setManagers(
         (usersRes.users || []).filter((u) => u.system_role === 'led' && u.is_active !== false),
       );
+      setOrganizationalUnits(unitsRes.units || []);
+      const constructionSites = (sitesRes.sites || []).filter((s) =>
+        String(s.industry_type || '')
+          .toLowerCase()
+          .startsWith('constr'),
+      );
+      const complianceEntries = await Promise.all(
+        constructionSites.map(async (site) => {
+          try {
+            const status = await getSiteComplianceStatus(site.id);
+            return [site.id, status];
+          } catch {
+            return [site.id, null];
+          }
+        }),
+      );
+      setSiteCompliance(Object.fromEntries(complianceEntries));
     } catch (err) {
       setError(err.message || 'Erro ao carregar unidades operacionais.');
     } finally {
@@ -58,6 +82,11 @@ export default function OperationalSitesManager() {
     () => getIndustryLabels(siteForm.industry_type),
     [siteForm.industry_type],
   );
+  const unitNameById = useMemo(() => {
+    const map = {};
+    for (const u of organizationalUnits) map[u.id] = u.name;
+    return map;
+  }, [organizationalUnits]);
 
   async function handleSaveSite(e) {
     e.preventDefault();
@@ -68,6 +97,7 @@ export default function OperationalSitesManager() {
       const payload = {
         ...siteForm,
         manager_id: siteForm.manager_id || null,
+        organizational_unit_id: siteForm.organizational_unit_id || null,
       };
       const labels = getIndustryLabels(payload.industry_type);
       if (editingSiteId) {
@@ -116,6 +146,26 @@ export default function OperationalSitesManager() {
     } catch (err) {
       setError(err.message || 'Falha ao sincronizar com o Diário de Obra.');
       await loadData();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSyncRoster(siteId) {
+    setSaving(true);
+    setError('');
+    setMessage('');
+    try {
+      const res = await syncOperationalSiteRoster(siteId);
+      const count = res.roster_count ?? 0;
+      setMessage(
+        count
+          ? `Equipe sincronizada com o Diário (${count} pessoa(s) no roster).`
+          : 'Equipe sincronizada — nenhum profissional de campo vinculado a este canteiro.',
+      );
+      await loadData();
+    } catch (err) {
+      setError(err.message || 'Falha ao sincronizar equipe com o Diário de Obra.');
     } finally {
       setSaving(false);
     }
@@ -204,6 +254,33 @@ export default function OperationalSitesManager() {
                   ))}
                 </select>
               </label>
+              <label className="block text-sm">
+                <span className="font-medium text-slate-700">Unidade organizacional / Filial</span>
+                <select
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                  value={siteForm.organizational_unit_id}
+                  onChange={(e) =>
+                    setSiteForm({ ...siteForm, organizational_unit_id: e.target.value })
+                  }
+                >
+                  <option value="">— Nenhuma —</option>
+                  {organizationalUnits
+                    .filter(
+                      (u) =>
+                        u.is_active !== false ||
+                        u.id === siteForm.organizational_unit_id,
+                    )
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.unit_type})
+                        {u.is_active === false ? ' — inativa' : ''}
+                      </option>
+                    ))}
+                </select>
+                <span className="mt-1 block text-xs text-slate-500">
+                  Opcional. Cadastre filiais em Cadastro Organizacional.
+                </span>
+              </label>
             </div>
             <div className="mt-4 flex gap-2">
               <button
@@ -241,6 +318,8 @@ export default function OperationalSitesManager() {
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                     <th className="px-1 py-2 font-semibold">{listLabels.nameColumn}</th>
+                    <th className="px-1 py-2 font-semibold">Filial</th>
+                    <th className="px-1 py-2 font-semibold">Equipe apta</th>
                     <th className="px-1 py-2 font-semibold">Setor</th>
                     <th className="px-1 py-2 font-semibold">Status</th>
                     <th className="px-1 py-2 font-semibold text-right">Ações</th>
@@ -249,13 +328,28 @@ export default function OperationalSitesManager() {
                 <tbody className="divide-y divide-slate-100">
                   {sites.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-4 text-slate-500">
+                      <td colSpan={6} className="py-4 text-slate-500">
                         Nenhum(a) {listLabels.unit.toLowerCase()} cadastrado(a).
                       </td>
                     </tr>
                   )}
                   {sites.map((site) => {
                     const siteLabels = getIndustryLabels(site.industry_type);
+                    const compliance = siteCompliance[site.id];
+                    let complianceBadge = '—';
+                    let complianceClass = 'text-slate-400';
+                    if (compliance) {
+                      const label = `${compliance.aptos ?? 0}/${compliance.total_professionals ?? 0}`;
+                      if ((compliance.pendentes || 0) > 0) {
+                        complianceClass = 'rounded-full bg-red-100 px-2 py-0.5 text-red-800';
+                      } else if ((compliance.atencao || 0) > 0) {
+                        complianceClass = 'rounded-full bg-amber-100 px-2 py-0.5 text-amber-900';
+                      } else if ((compliance.total_professionals || 0) > 0) {
+                        complianceClass =
+                          'rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800';
+                      }
+                      complianceBadge = label;
+                    }
                     return (
                       <tr key={site.id}>
                         <td className="px-1 py-3 align-top">
@@ -263,6 +357,14 @@ export default function OperationalSitesManager() {
                           {site.location && (
                             <p className="text-xs text-slate-500">{site.location}</p>
                           )}
+                        </td>
+                        <td className="px-1 py-3 align-top text-xs text-slate-600">
+                          {site.organizational_unit_id
+                            ? unitNameById[site.organizational_unit_id] || '—'
+                            : '—'}
+                        </td>
+                        <td className="px-1 py-3 align-top text-xs">
+                          <span className={complianceClass}>{complianceBadge}</span>
                         </td>
                         <td className="px-1 py-3 align-top text-xs text-slate-600">
                           {site.industry_type || '—'}
@@ -293,6 +395,7 @@ export default function OperationalSitesManager() {
                                   location: site.location || '',
                                   industry_type: site.industry_type,
                                   manager_id: site.manager_id || '',
+                                  organizational_unit_id: site.organizational_unit_id || '',
                                 });
                               }}
                             >
@@ -309,6 +412,19 @@ export default function OperationalSitesManager() {
                                   onClick={() => handleSyncSatellite(site.id)}
                                 >
                                   Sincronizar satélite
+                                </button>
+                              )}
+                            {site.satellite_site_id &&
+                              String(site.industry_type || '')
+                                .toLowerCase()
+                                .startsWith('constr') && (
+                                <button
+                                  type="button"
+                                  className="text-xs font-medium text-sky-700 hover:underline"
+                                  disabled={saving}
+                                  onClick={() => handleSyncRoster(site.id)}
+                                >
+                                  Sincronizar equipe
                                 </button>
                               )}
                             <button

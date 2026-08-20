@@ -10,6 +10,7 @@ from typing import Any
 from app.extensions import db
 from app.models import (
     DailyLog,
+    DailyLogCommitment,
     DailyLogStatus,
     EquipmentOperationalStatus,
     EquipmentStatus,
@@ -51,6 +52,13 @@ class RdoService:
         return query.order_by(ProjectSite.name.asc(), ProjectSite.created_at.desc()).all()
 
     def serialize_site(self, site: ProjectSite) -> dict[str, Any]:
+        from app.models import ProjectRosterMember
+
+        roster = (
+            ProjectRosterMember.query.filter_by(project_id=site.id, is_active=True)
+            .order_by(ProjectRosterMember.name.asc())
+            .all()
+        )
         return {
             "id": str(site.id),
             "tenant_id": site.tenant_id,
@@ -58,6 +66,9 @@ class RdoService:
             "location": site.location,
             "rt_engineer_name": site.rt_engineer_name,
             "created_at": site.created_at.isoformat() if site.created_at else None,
+            "roster": [
+                {"id": m.source_professional_id, "name": m.name, "role": m.role} for m in roster
+            ],
         }
 
     def get_month_calendar(
@@ -239,6 +250,17 @@ class RdoService:
             "reopened_at": log.reopened_at.isoformat() if log.reopened_at else None,
             "reopened_by": log.reopened_by,
             "supplies": log.supplies_data or [],
+            "commitments": [
+                {
+                    "id": str(row.id),
+                    "source_commitment_id": row.source_commitment_id,
+                    "description": row.description,
+                    "sequence": row.sequence,
+                    "is_completed": row.is_completed,
+                    "note": row.note,
+                }
+                for row in sorted(log.commitments, key=lambda r: r.sequence)
+            ],
             "is_signed": log.is_signed,
             "signed_by": log.signed_by,
             "signed_at": log.signed_at.isoformat() if log.signed_at else None,
@@ -344,6 +366,43 @@ class RdoService:
             daily_log.preventive_action = (raw or "").strip() or None
         if "supplies" in payload:
             daily_log.supplies_data = payload.get("supplies") or []
+
+        if "commitments" in payload:
+            items = payload.get("commitments") or []
+            for existing in list(daily_log.commitments):
+                db.session.delete(existing)
+            daily_log.commitments.clear()
+            db.session.flush()
+            new_rows: list[DailyLogCommitment] = []
+            for seq, item in enumerate(items):
+                if not isinstance(item, dict):
+                    continue
+                description = str(item.get("description") or "").strip()
+                # Preferir source_commitment_id (WeeklyCommitment) — id local não serve no hub.
+                source_id = str(
+                    item.get("source_commitment_id") or item.get("id") or ""
+                ).strip()
+                if not description or not source_id:
+                    continue
+                raw_completed = item.get("is_completed")
+                is_completed = None if raw_completed is None else bool(raw_completed)
+                row = DailyLogCommitment(
+                    source_commitment_id=source_id,
+                    description=description,
+                    sequence=seq,
+                    is_completed=is_completed,
+                    note=(item.get("note") or "").strip() or None,
+                )
+                daily_log.commitments.append(row)
+                new_rows.append(row)
+
+            if new_rows:
+                evaluated = [r for r in new_rows if r.is_completed is not None]
+                daily_log.goal_achieved = (
+                    None
+                    if len(evaluated) < len(new_rows)
+                    else all(bool(r.is_completed) for r in evaluated)
+                )
 
         if any(k in payload for k in ("workforce", "equipment_statuses", "executed_services", "occurrences")):
             self._replace_nested_collections(daily_log, payload)

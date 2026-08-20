@@ -45,7 +45,7 @@ export const ROUTE_PERMISSIONS = {
   '/questoes': [ROLE_SYSADMIN],
   '/diagnostico': [ROLE_LED],
   '/builder': [ROLE_SYSADMIN],
-  '/kaizen': [ROLE_SYSADMIN, ROLE_LED, ROLE_CONSULTOR],
+  '/kaizen': [ROLE_SYSADMIN, ROLE_LED, ROLE_CONSULTOR, ROLE_EXECUTOR],
   '/settings/organization': [ROLE_SYSADMIN, ROLE_LED],
   '/operational/sites': [ROLE_SYSADMIN, ROLE_LED],
   '/operational/planning': [ROLE_SYSADMIN, ROLE_LED],
@@ -66,6 +66,12 @@ export const OKR_NAV_ITEM = {
   roles: ROUTE_PERMISSIONS['/strategic-planning'],
 };
 
+export const MEU_TIME_NAV_ITEM = {
+  to: '/professionals-manager',
+  label: 'Meu Time',
+  roles: ROUTE_PERMISSIONS['/professionals-manager'],
+};
+
 export const GERENCIAL_NAV_ITEM = {
   to: '/',
   label: 'Painel Gerencial',
@@ -81,7 +87,7 @@ export const KAIZEN_NAV_ITEM = {
 
 export const ORGANIZATION_NAV_ITEM = {
   to: '/settings/organization',
-  label: 'Configurações da Organização',
+  label: 'Cadastro Organizacional',
   roles: ROUTE_PERMISSIONS['/settings/organization'],
 };
 
@@ -138,7 +144,7 @@ export const OPERATIONAL_AREA_NAV = {
     },
     {
       to: '/professionals-manager',
-      label: 'Pool de Talentos',
+      label: 'Equipe',
       roles: ROUTE_PERMISSIONS['/professionals-manager'],
     },
   ],

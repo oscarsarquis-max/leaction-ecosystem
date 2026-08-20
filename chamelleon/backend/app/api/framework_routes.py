@@ -7,6 +7,10 @@ from flask import Blueprint, current_app, jsonify, request
 
 from app.core.rbac import ROLE_SYSADMIN, require_auth, require_role
 from app.data.legacy_framework_loader import build_full_methodology_document
+from app.services.field_operations_profile_service import (
+    get_field_operations_profile,
+    update_field_operations_profile,
+)
 from app.services.framework_builder_service import FrameworkBuilderService
 from app.services.framework_question_import_service import FrameworkQuestionImportService
 
@@ -226,6 +230,28 @@ def get_framework_taxonomy_route(framework_id: str):
         return jsonify({"error": str(exc)}), 404
     except Exception as exc:
         return jsonify({"error": f"Erro ao carregar taxonomia: {exc}"}), 500
+
+
+@framework_bp.get("/<framework_id>/field-operations-profile")
+@require_auth
+@require_role(ROLE_SYSADMIN)
+def get_field_operations_profile_route(framework_id: str):
+    try:
+        return jsonify({"status": "ok", "profile": get_field_operations_profile(framework_id)}), 200
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 404
+
+
+@framework_bp.put("/<framework_id>/field-operations-profile")
+@require_auth
+@require_role(ROLE_SYSADMIN)
+def update_field_operations_profile_route(framework_id: str):
+    payload = request.get_json(silent=True) or {}
+    try:
+        profile = update_field_operations_profile(framework_id, payload)
+        return jsonify({"status": "ok", "profile": profile}), 200
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
 
 
 @framework_bp.get("/<framework_id>/methodology-document")

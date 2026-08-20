@@ -32,16 +32,29 @@ function formatDisplayDate(iso) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
-function emptyGoalsForWeek(dates) {
-  return Object.fromEntries((dates || []).map((d) => [d, '']));
+/** Um input vazio por dia da semana — permite limpar dia no replace. */
+function emptyCommitmentsForWeek(dates) {
+  return Object.fromEntries((dates || []).map((d) => [d, ['']]));
+}
+
+function descriptionsFromApi(dayItems) {
+  if (!Array.isArray(dayItems) || !dayItems.length) return [''];
+  const texts = dayItems
+    .map((item) => (typeof item === 'string' ? item : item?.description || ''))
+    .map((t) => String(t));
+  return texts.length ? texts : [''];
 }
 
 export default function OperationalPlanning() {
   const [sites, setSites] = useState([]);
   const [siteId, setSiteId] = useState('');
   const [weekDates, setWeekDates] = useState(() => weekIsoDates());
-  const [goals, setGoals] = useState(() => emptyGoalsForWeek(weekIsoDates()));
-  const [referenceDate, setReferenceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [commitments, setCommitments] = useState(() =>
+    emptyCommitmentsForWeek(weekIsoDates()),
+  );
+  const [referenceDate, setReferenceDate] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
   const [loading, setLoading] = useState(true);
   const [loadingGoals, setLoadingGoals] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -63,9 +76,9 @@ export default function OperationalPlanning() {
     }
   }, []);
 
-  const loadGoalsForWeek = useCallback(async (currentSiteId, dates) => {
+  const loadCommitmentsForWeek = useCallback(async (currentSiteId, dates) => {
     if (!currentSiteId || !dates?.length) {
-      setGoals(emptyGoalsForWeek(dates));
+      setCommitments(emptyCommitmentsForWeek(dates));
       return;
     }
     setLoadingGoals(true);
@@ -75,15 +88,15 @@ export default function OperationalPlanning() {
         startDate: dates[0],
         endDate: dates[dates.length - 1],
       });
-      const saved = res.goals || {};
-      const next = emptyGoalsForWeek(dates);
+      const saved = res.commitments || {};
+      const next = emptyCommitmentsForWeek(dates);
       dates.forEach((d) => {
-        if (saved[d]) next[d] = String(saved[d]);
+        next[d] = descriptionsFromApi(saved[d]);
       });
-      setGoals(next);
+      setCommitments(next);
     } catch (err) {
-      setGoals(emptyGoalsForWeek(dates));
-      setError(err.message || 'Não foi possível carregar metas salvas.');
+      setCommitments(emptyCommitmentsForWeek(dates));
+      setError(err.message || 'Não foi possível carregar compromissos salvos.');
     } finally {
       setLoadingGoals(false);
     }
@@ -97,11 +110,11 @@ export default function OperationalPlanning() {
     const dates = weekIsoDates(referenceDate);
     setWeekDates(dates);
     if (siteId) {
-      void loadGoalsForWeek(siteId, dates);
+      void loadCommitmentsForWeek(siteId, dates);
     } else {
-      setGoals(emptyGoalsForWeek(dates));
+      setCommitments(emptyCommitmentsForWeek(dates));
     }
-  }, [referenceDate, siteId, loadGoalsForWeek]);
+  }, [referenceDate, siteId, loadCommitmentsForWeek]);
 
   const selectedSite = useMemo(() => sites.find((s) => s.id === siteId), [sites, siteId]);
   const labels = useMemo(
@@ -118,6 +131,30 @@ export default function OperationalPlanning() {
     setReferenceDate(base.toISOString().slice(0, 10));
   }
 
+  function updateDayItem(iso, index, value) {
+    setCommitments((prev) => {
+      const list = [...(prev[iso] || [''])];
+      list[index] = value;
+      return { ...prev, [iso]: list };
+    });
+  }
+
+  function addDayItem(iso) {
+    setCommitments((prev) => {
+      const list = [...(prev[iso] || [''])];
+      list.push('');
+      return { ...prev, [iso]: list };
+    });
+  }
+
+  function removeDayItem(iso, index) {
+    setCommitments((prev) => {
+      const list = [...(prev[iso] || [''])];
+      list.splice(index, 1);
+      return { ...prev, [iso]: list.length ? list : [''] };
+    });
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     if (!siteId) {
@@ -125,13 +162,20 @@ export default function OperationalPlanning() {
       return;
     }
 
-    const payloadGoals = weekDates
-      .map((date) => ({ date, sprint_daily_goal: (goals[date] || '').trim() }))
-      .filter((g) => g.sprint_daily_goal);
+    // Envia todos os dias da semana (items [] limpa o dia no backend).
+    const payloadCommitments = weekDates.map((date) => ({
+      date,
+      items: (commitments[date] || [])
+        .map((t) => String(t || '').trim())
+        .filter(Boolean),
+    }));
 
-    if (!payloadGoals.length) {
-      setError('Informe ao menos uma meta diária.');
-      return;
+    const nonEmptyCount = payloadCommitments.reduce(
+      (acc, day) => acc + day.items.length,
+      0,
+    );
+    if (!nonEmptyCount) {
+      // Ainda envia (limpa a semana) — usuário pode ter apagado tudo de propósito.
     }
 
     setSaving(true);
@@ -140,26 +184,29 @@ export default function OperationalPlanning() {
     try {
       const data = await pushWeeklyGoals({
         site_id: siteId,
-        goals: payloadGoals,
+        commitments: payloadCommitments,
       });
-      const savedMap = data.goals || {};
-      setGoals((prev) => {
+      const savedMap = data.commitments || {};
+      setCommitments((prev) => {
         const next = { ...prev };
-        Object.entries(savedMap).forEach(([day, text]) => {
-          if (weekDates.includes(day)) next[day] = String(text || '');
+        weekDates.forEach((day) => {
+          next[day] = descriptionsFromApi(savedMap[day]);
         });
         return next;
       });
-      const localCount = data.saved_count || payloadGoals.length;
+      const localCount = data.saved_count ?? nonEmptyCount;
       if (data.satellite_warning) {
-        setMessage(`${localCount} meta(s) salvas. ${data.satellite_warning}`);
+        setMessage(`${localCount} compromisso(s) salvos. ${data.satellite_warning}`);
       } else {
         const sat = data?.satellite?.total || localCount;
-        setMessage(`Plano persistido (${localCount} meta(s) locais; ${sat} no Diário).`);
+        setMessage(
+          `Plano persistido (${localCount} compromisso(s) locais; ${sat} no Diário).`,
+        );
       }
-      // Atualiza satellite_site_id na lista se sync veio no site
       if (data.site) {
-        setSites((prev) => prev.map((s) => (s.id === data.site.id ? { ...s, ...data.site } : s)));
+        setSites((prev) =>
+          prev.map((s) => (s.id === data.site.id ? { ...s, ...data.site } : s)),
+        );
       }
     } catch (err) {
       setError(err.message || 'Erro ao salvar o planejamento semanal.');
@@ -195,8 +242,9 @@ export default function OperationalPlanning() {
       <header>
         <h1 className="text-2xl font-bold text-slate-900">Planejamento Semanal</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Defina as metas diárias (Sprint Goals) por {labels.unit.toLowerCase()}. As metas são
-          salvas no Chamelleon e publicadas no Diário de Obra quando o canteiro estiver sincronizado.
+          Defina os compromissos diários (Last Planner) por {labels.unit.toLowerCase()}.
+          Os compromissos são salvos no Chamelleon e publicados no Diário de Obra
+          quando o canteiro estiver sincronizado.
         </p>
       </header>
 
@@ -257,8 +305,9 @@ export default function OperationalPlanning() {
           {selectedSite && !selectedSite.satellite_site_id && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               <p>
-                Este(a) {labels.unit.toLowerCase()} ainda não está vinculado(a) ao Diário de Obra.
-                Você já pode salvar metas no Chamelleon; para publicar no Diário, sincronize:
+                Este(a) {labels.unit.toLowerCase()} ainda não está vinculado(a) ao
+                Diário de Obra. Você já pode salvar compromissos no Chamelleon; para
+                publicar no Diário, sincronize:
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -280,24 +329,56 @@ export default function OperationalPlanning() {
           )}
 
           {loadingGoals && (
-            <p className="text-xs text-slate-500">Carregando metas salvas da semana…</p>
+            <p className="text-xs text-slate-500">
+              Carregando compromissos salvos da semana…
+            </p>
           )}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {weekDates.map((iso, index) => (
-              <label key={iso} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {WEEKDAY_LABELS[index] || `D${index + 1}`} · {formatDisplayDate(iso)}
-                </span>
-                <textarea
-                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  rows={3}
-                  placeholder="Meta do dia (Sprint Goal)…"
-                  value={goals[iso] || ''}
-                  onChange={(e) => setGoals({ ...goals, [iso]: e.target.value })}
-                />
-              </label>
-            ))}
+            {weekDates.map((iso, index) => {
+              const items = commitments[iso] || [''];
+              return (
+                <div
+                  key={iso}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {WEEKDAY_LABELS[index] || `D${index + 1}`} · {formatDisplayDate(iso)}
+                  </span>
+                  <ul className="mt-2 space-y-2">
+                    {items.map((text, itemIndex) => (
+                      <li key={`${iso}-${itemIndex}`} className="flex gap-1">
+                        <input
+                          type="text"
+                          className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                          placeholder={`Compromisso ${itemIndex + 1}…`}
+                          value={text}
+                          onChange={(e) =>
+                            updateDayItem(iso, itemIndex, e.target.value)
+                          }
+                        />
+                        <button
+                          type="button"
+                          title="Remover compromisso"
+                          className="rounded-lg border border-slate-200 px-2 text-sm text-slate-500 hover:bg-slate-50"
+                          onClick={() => removeDayItem(iso, itemIndex)}
+                          disabled={items.length <= 1 && !String(text || '').trim()}
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    className="mt-2 text-xs font-semibold text-chameleon hover:underline"
+                    onClick={() => addDayItem(iso)}
+                  >
+                    + Adicionar compromisso
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
           <button

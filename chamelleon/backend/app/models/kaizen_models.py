@@ -41,6 +41,13 @@ KAIZEN_WORKFLOW_STAGES = (
     STAGE_CONCLUIDO,
 )
 
+# --- Severidade do ticket (herdada da anomalia Andon que o originou) ---
+SEVERITY_CRITICA = "Critica"
+SEVERITY_ALTA = "Alta"
+SEVERITY_MEDIA = "Media"
+SEVERITY_BAIXA = "Baixa"
+KAIZEN_SEVERITIES = (SEVERITY_CRITICA, SEVERITY_ALTA, SEVERITY_MEDIA, SEVERITY_BAIXA)
+
 DEFAULT_ROOT_CAUSE_ANALYSIS: dict[str, str] = {
     "why_1": "",
     "why_2": "",
@@ -151,6 +158,13 @@ class KaizenTicket(db.Model):
         nullable=True,
         index=True,
     )
+    operational_site_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("operational_sites.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    severity: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     workflow_stage: Mapped[str] = mapped_column(
@@ -162,6 +176,10 @@ class KaizenTicket(db.Model):
     )
     standardization_action: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_operator_retrained: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     escalated_to_sprint_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("td_sprints.id", ondelete="SET NULL"),
@@ -188,6 +206,10 @@ class KaizenTicket(db.Model):
             "id": str(self.id),
             "tenant_id": str(self.tenant_id),
             "origin_event_id": str(self.origin_event_id) if self.origin_event_id else None,
+            "operational_site_id": (
+                str(self.operational_site_id) if self.operational_site_id else None
+            ),
+            "severity": self.severity,
             "title": self.title,
             "description": self.description,
             "workflow_stage": self.workflow_stage,
@@ -195,12 +217,114 @@ class KaizenTicket(db.Model):
             "root_cause_analysis": self.root_cause_analysis or dict(DEFAULT_ROOT_CAUSE_ANALYSIS),
             "standardization_action": self.standardization_action,
             "is_operator_retrained": self.is_operator_retrained,
+            "owner_user_id": str(self.owner_user_id) if self.owner_user_id else None,
+            "due_date": self.due_date.isoformat() if self.due_date else None,
             "escalated_to_sprint_id": str(self.escalated_to_sprint_id)
             if self.escalated_to_sprint_id
             else None,
             "is_escalated": self.escalated_to_sprint_id is not None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+# --- Restrição (Last Planner System) ---
+RESTRICTION_MATERIAL = "MATERIAL"
+RESTRICTION_MAO_DE_OBRA = "MAO_DE_OBRA"
+RESTRICTION_EQUIPAMENTO = "EQUIPAMENTO"
+RESTRICTION_FRENTE_DE_TRABALHO = "FRENTE_DE_TRABALHO"
+RESTRICTION_TECNICA_PROJETO = "TECNICA_PROJETO"
+RESTRICTION_COMERCIAL_EXTERNA = "COMERCIAL_EXTERNA"
+RESTRICTION_CATEGORIES = (
+    RESTRICTION_MATERIAL,
+    RESTRICTION_MAO_DE_OBRA,
+    RESTRICTION_EQUIPAMENTO,
+    RESTRICTION_FRENTE_DE_TRABALHO,
+    RESTRICTION_TECNICA_PROJETO,
+    RESTRICTION_COMERCIAL_EXTERNA,
+)
+RESTRICTION_CATEGORY_LABELS = {
+    RESTRICTION_MATERIAL: "Material",
+    RESTRICTION_MAO_DE_OBRA: "Mão de obra",
+    RESTRICTION_EQUIPAMENTO: "Equipamento",
+    RESTRICTION_FRENTE_DE_TRABALHO: "Frente de trabalho",
+    RESTRICTION_TECNICA_PROJETO: "Técnica/Projeto",
+    RESTRICTION_COMERCIAL_EXTERNA: "Comercial/Externa",
+}
+# Escalonamento automático Restriction → Kaizen (IN 01).
+RESTRICTION_RECURRENCE_THRESHOLD = 3
+RESTRICTION_RECURRENCE_WINDOW_DAYS = 14
+
+
+class Restriction(db.Model):
+    """Restrição de planejamento (Last Planner System) — log estruturado de bloqueio
+    de execução categorizado, derivado do RDO. Append-only exceto por
+    ``escalated_ticket_id`` (preenchido por RestrictionEscalationService).
+    """
+
+    __tablename__ = "restrictions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    category: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    origin_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("gemba_events.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    operational_site_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("operational_sites.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    daily_execution_report_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("daily_execution_reports.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    occurrence_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    # Preenchido por RestrictionEscalationService quando a recorrência atinge o limiar.
+    escalated_ticket_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("kaizen_tickets.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "tenant_id": str(self.tenant_id),
+            "category": self.category,
+            "title": self.title,
+            "description": self.description,
+            "origin_event_id": str(self.origin_event_id) if self.origin_event_id else None,
+            "operational_site_id": (
+                str(self.operational_site_id) if self.operational_site_id else None
+            ),
+            "daily_execution_report_id": (
+                str(self.daily_execution_report_id)
+                if self.daily_execution_report_id
+                else None
+            ),
+            "occurrence_date": self.occurrence_date.isoformat(),
+            "escalated_ticket_id": (
+                str(self.escalated_ticket_id) if self.escalated_ticket_id else None
+            ),
+            "is_escalated": self.escalated_ticket_id is not None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 

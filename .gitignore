@@ -66,6 +66,9 @@ desktop.ini
 # Cópia local arquivada (fora do escopo do monorepo; manter só no disco)
 inove4us_old/
 
+# QMind OI — repositório Git independente (OI-000); fica no disco/workspace, fora do monorepo
+qmind-oi/
+
 # Toolchains portáteis locais (ex.: Node win-x64 baixado para builds)
 .tools/
 

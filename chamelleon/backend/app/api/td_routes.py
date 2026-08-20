@@ -271,7 +271,23 @@ def promote_sprint_planning(sprint_id: str):
         return jsonify({"error": "Erro ao promover sprint para planejamento."}), 500
 
 
-# ── Capacity Planning: Pool de Talentos + Sprint Squad ─────────────────
+# ── Capacity Planning: Equipe + Sprint Squad ───────────────────────────
+
+
+@td_bp.get("/professional-roles")
+@require_tenant_context
+@require_auth
+@require_role(*_TD_ROLES)
+def list_professional_roles():
+    from app.services.capacity_service import CapacityService
+
+    try:
+        service = CapacityService()
+        return jsonify({"status": "ok", "roles": service.list_role_catalog()}), 200
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
+    except Exception:
+        return jsonify({"error": "Erro ao carregar catálogo de papéis."}), 500
 
 
 @td_bp.get("/professionals")
@@ -289,7 +305,7 @@ def list_professionals():
             jsonify(
                 {
                     "status": "ok",
-                    "professionals": [p.to_dict() for p in items],
+                    "professionals": items,
                     "licenses": service.get_license_usage(),
                 }
             ),

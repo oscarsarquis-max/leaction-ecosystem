@@ -13,11 +13,18 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.security import generate_password_hash
 
-from app.core.rbac.constants import ROLE_SQUAD_MEMBER
-from app.database.models import TenantUser, User, db
+from app.core.professional_role_catalog import get_role_catalog, get_valid_roles
+from app.core.rbac.constants import (
+    ROLE_CONSULTOR,
+    ROLE_EXECUTOR,
+    ROLE_LABELS,
+    ROLE_LED,
+    ROLE_SQUAD_MEMBER,
+)
+from app.database.models import LeadAccess, TenantUser, User, db
+from app.infrastructure.email_service import dispatch_access_code_email
 from app.models.capacity_models import (
     PROFESSIONAL_LICENSE_LIMIT,
-    PROFESSIONAL_ROLES,
     SQUAD_MAX_EXECUTION_ALLOCATIONS,
     SQUAD_MAX_SPECIALISTS,
     SQUAD_MAX_TOTAL_MEMBERS,
@@ -26,9 +33,15 @@ from app.models.capacity_models import (
     SprintSquad,
     sprintsquad_members,
 )
+from app.models.operational_models import OperationalSite
 from app.models.td_models import TdKanbanStage, TdSprint
+from app.services.lead_auth_service import LeadAuthService
 
 logger = logging.getLogger(__name__)
+
+_ALLOWED_SYSTEM_ROLES = frozenset(
+    {ROLE_LED, ROLE_CONSULTOR, ROLE_EXECUTOR, ROLE_SQUAD_MEMBER}
+)
 
 
 class LicenseLimitError(Exception):
@@ -44,9 +57,9 @@ class LicenseLimitError(Exception):
 def send_welcome_email(email: str, password: str) -> None:
     """Mock de envio de credenciais — loga no terminal do backend."""
     print(
-        f"\n📧 [MOCK EMAIL] Welcome → {email}\n"
-        f"   Senha temporária: {password}\n"
-        f"   (Simulação — SES/SMTP ainda não ligado)\n",
+        f"\n[MOCK EMAIL] Welcome -> {email}\n"
+        f"   Senha temporaria: {password}\n"
+        f"   (Simulacao — SES/SMTP ainda nao ligado)\n",
         flush=True,
     )
     logger.info("Welcome email mock enviado para %s", email)
@@ -66,14 +79,43 @@ class CapacityService:
         except (TypeError, ValueError) as exc:
             raise ValueError(f"{field} inválido.") from exc
 
-    @staticmethod
-    def _validate_role(role: str) -> str:
+    def _tenant_industry_types(self) -> set[str]:
+        rows = (
+            db.session.query(OperationalSite.industry_type)
+            .filter_by(tenant_id=self._tenant_id(), is_active=True)
+            .distinct()
+            .all()
+        )
+        return {r[0] for r in rows if r[0]}
+
+    def list_role_catalog(self) -> list[dict[str, str]]:
+        return get_role_catalog(self._tenant_industry_types() or None)
+
+    def _validate_role(self, role: str) -> str:
         role = str(role or "").strip()
-        if role not in PROFESSIONAL_ROLES:
+        valid = get_valid_roles(self._tenant_industry_types() or None)
+        if role not in valid:
+            raise ValueError(f"role inválido. Use um de: {', '.join(valid)}")
+        return role
+
+    def _validate_system_role(self, value: Any) -> str:
+        role = str(value or ROLE_SQUAD_MEMBER).strip().lower()
+        if role not in _ALLOWED_SYSTEM_ROLES:
             raise ValueError(
-                f"role inválido. Use um de: {', '.join(PROFESSIONAL_ROLES)}"
+                "Papel de acesso inválido. Use: led, consultor, executor ou squad_member."
             )
         return role
+
+    def _optional_operational_site_id(self, value: Any) -> uuid.UUID | None:
+        if value in (None, ""):
+            return None
+        site_uuid = self._parse_uuid(value, "operational_site_id")
+        site = OperationalSite.query.filter_by(
+            id=site_uuid, tenant_id=self._tenant_id()
+        ).first()
+        if not site:
+            raise ValueError("Unidade operacional inválida.")
+        return site_uuid
 
     @staticmethod
     def _generate_temp_password(length: int = 8) -> str:
@@ -99,11 +141,76 @@ class CapacityService:
 
     # ── Professionals CRUD ─────────────────────────────────────────────
 
-    def list_professionals(self, *, active_only: bool = False) -> list[Professional]:
-        query = Professional.query.filter_by(tenant_id=self._tenant_id())
-        if active_only:
-            query = query.filter_by(is_active=True)
-        return query.order_by(Professional.name.asc()).all()
+    def list_professionals(self, *, active_only: bool = False) -> list[dict[str, Any]]:
+        tenant_id = self._tenant_id()
+        memberships = (
+            TenantUser.query.filter_by(tenant_id=tenant_id)
+            .join(User, TenantUser.user_id == User.id)
+            .order_by(User.name.asc())
+            .all()
+        )
+        professionals_by_user = {
+            p.user_id: p
+            for p in Professional.query.filter_by(tenant_id=tenant_id).all()
+            if p.user_id
+        }
+        site_map = {
+            str(s.id): s.name
+            for s in OperationalSite.query.filter_by(tenant_id=tenant_id).all()
+        }
+
+        results: list[dict[str, Any]] = []
+        for membership in memberships:
+            user = membership.user
+            professional = professionals_by_user.get(user.id)
+
+            # Sem Professional: "ativo" reflete o acesso (User.is_active).
+            is_active = professional.is_active if professional else user.is_active
+            if active_only and not is_active:
+                continue
+
+            site_id = (
+                str(membership.operational_site_id)
+                if membership.operational_site_id
+                else None
+            )
+            lead_access = None
+            if membership.role == ROLE_LED:
+                lead_access = (
+                    LeadAccess.query.filter_by(user_id=user.id, tenant_id=tenant_id)
+                    .order_by(LeadAccess.created_at.desc())
+                    .first()
+                )
+
+            base = (
+                professional.to_dict()
+                if professional
+                else {
+                    "id": None,
+                    "tenant_id": str(tenant_id),
+                    "name": user.name,
+                    "email": user.email,
+                    "observations": None,
+                    "role": None,
+                    "user_id": str(user.id),
+                    "is_active": user.is_active,
+                    "created_at": None,
+                    "updated_at": None,
+                }
+            )
+            base.update(
+                {
+                    "has_functional_role": professional is not None,
+                    "system_role": membership.role,
+                    "role_label": ROLE_LABELS.get(membership.role, membership.role),
+                    "operational_site_id": site_id,
+                    "operational_site_name": site_map.get(site_id or ""),
+                    "access_code": lead_access.access_code if lead_access else None,
+                    "has_password": bool(user.password_hash),
+                }
+            )
+            results.append(base)
+        return results
 
     def create_professional(self, payload: dict[str, Any]) -> Professional:
         name = str(payload.get("name") or "").strip()
@@ -115,6 +222,10 @@ class CapacityService:
             raise ValueError("Campo obrigatório: email corporativo válido.")
 
         role = self._validate_role(payload.get("role"))
+        system_role = self._validate_system_role(payload.get("system_role"))
+        site_id = self._optional_operational_site_id(
+            payload.get("operational_site_id") or payload.get("site_id")
+        )
         tenant_id = self._tenant_id()
 
         used = self.count_active_professionals()
@@ -134,7 +245,9 @@ class CapacityService:
             raise ValueError("Já existe um profissional com este e-mail neste tenant.")
 
         existing_user = User.query.filter(func.lower(User.email) == email).first()
-        temp_password: str | None
+        temp_password: str | None = None
+        access_code: str | None = None
+
         if existing_user:
             membership = TenantUser.query.filter_by(
                 tenant_id=tenant_id, user_id=existing_user.id
@@ -143,25 +256,64 @@ class CapacityService:
                 raise ValueError(
                     "Este e-mail já pertence a um utilizador de outro contexto. Use outro e-mail."
                 )
+            # Completar papel funcional: só altera TenantUser se o payload divergir.
+            if membership.role != system_role:
+                membership.role = system_role
+            if membership.operational_site_id != site_id:
+                membership.operational_site_id = site_id
             user = existing_user
-            temp_password = None
+            if system_role == ROLE_LED:
+                existing_lead = LeadAccess.query.filter_by(
+                    user_id=user.id, tenant_id=tenant_id
+                ).first()
+                if not existing_lead:
+                    access_code = LeadAuthService._generate_access_code()
+                    db.session.add(
+                        LeadAccess(
+                            tenant_id=tenant_id,
+                            user_id=user.id,
+                            access_code=access_code,
+                        )
+                    )
         else:
-            temp_password = self._generate_temp_password(8)
-            user = User(
-                name=name,
-                email=email,
-                password_hash=generate_password_hash(temp_password),
-                is_active=True,
-            )
-            db.session.add(user)
-            db.session.flush()
-            db.session.add(
-                TenantUser(
-                    tenant_id=tenant_id,
-                    user_id=user.id,
-                    role=ROLE_SQUAD_MEMBER,
+            if system_role == ROLE_LED:
+                user = User(name=name, email=email, is_active=True)
+                db.session.add(user)
+                db.session.flush()
+                db.session.add(
+                    TenantUser(
+                        tenant_id=tenant_id,
+                        user_id=user.id,
+                        role=system_role,
+                        operational_site_id=site_id,
+                    )
                 )
-            )
+                access_code = LeadAuthService._generate_access_code()
+                db.session.add(
+                    LeadAccess(
+                        tenant_id=tenant_id,
+                        user_id=user.id,
+                        access_code=access_code,
+                    )
+                )
+            else:
+                temp_password = self._generate_temp_password(8)
+                user = User(
+                    name=name,
+                    email=email,
+                    password_hash=generate_password_hash(temp_password),
+                    is_active=True,
+                )
+                db.session.add(user)
+                db.session.flush()
+                db.session.add(
+                    TenantUser(
+                        tenant_id=tenant_id,
+                        user_id=user.id,
+                        role=system_role,
+                        operational_site_id=site_id,
+                    )
+                )
 
         professional = Professional(
             tenant_id=tenant_id,
@@ -176,7 +328,9 @@ class CapacityService:
         db.session.commit()
         db.session.refresh(professional)
 
-        if temp_password:
+        if access_code:
+            dispatch_access_code_email(email, access_code)
+        elif temp_password:
             send_welcome_email(email, temp_password)
 
         return professional
@@ -221,6 +375,44 @@ class CapacityService:
                         limit=PROFESSIONAL_LICENSE_LIMIT,
                     )
             professional.is_active = becoming_active
+
+        if "system_role" in payload or "operational_site_id" in payload or "site_id" in payload:
+            if not professional.user_id:
+                raise ValueError("Este profissional não tem conta de acesso vinculada.")
+            membership = TenantUser.query.filter_by(
+                tenant_id=professional.tenant_id, user_id=professional.user_id
+            ).first()
+            if not membership:
+                raise ValueError("Vínculo de acesso não encontrado.")
+            if "system_role" in payload and payload["system_role"]:
+                role = self._validate_system_role(payload["system_role"])
+                membership.role = role
+                if role == ROLE_LED:
+                    existing_lead = LeadAccess.query.filter_by(
+                        user_id=professional.user_id,
+                        tenant_id=professional.tenant_id,
+                    ).first()
+                    if not existing_lead:
+                        access_code = LeadAuthService._generate_access_code()
+                        db.session.add(
+                            LeadAccess(
+                                tenant_id=professional.tenant_id,
+                                user_id=professional.user_id,
+                                access_code=access_code,
+                            )
+                        )
+                        if professional.email:
+                            dispatch_access_code_email(professional.email, access_code)
+            if "operational_site_id" in payload or "site_id" in payload:
+                raw_site = (
+                    payload["operational_site_id"]
+                    if "operational_site_id" in payload
+                    else payload.get("site_id")
+                )
+                membership.operational_site_id = self._optional_operational_site_id(
+                    raw_site
+                )
+
         db.session.commit()
         db.session.refresh(professional)
         return professional
@@ -381,12 +573,6 @@ class CapacityService:
                 exclude_squad_id=exclude_squad_id,
             )
             projected = count + (1 if counts_toward_execution else 0)
-            # Ao salvar squad de sprint já em execução, a própria squad é excluída
-            # do count e recontada via projected — ok.
-            # Ao salvar squad de sprint NÃO em execução, projected == count; o
-            # bloqueio só dispara se já estiver em 3+ outras (não pode entrar em
-            # mais uma execução depois). Para seleção preventiva: se count >= 3,
-            # bloquear mesmo fora de execução (não pode montar equipe sobrecarregada).
             if count >= SQUAD_MAX_EXECUTION_ALLOCATIONS:
                 raise ValueError(
                     "Este profissional já está alocado em 3 Sprints em execução."

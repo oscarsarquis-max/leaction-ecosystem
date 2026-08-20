@@ -3,18 +3,28 @@ import {
   buildFrameworkProposal,
   deleteFramework,
   fetchMethodologyStructure,
+  getFieldOperationsProfile,
   getFramework,
   getFrameworkTaxonomy,
   importFrameworkQuestionsJson,
   listFrameworks,
   publishFramework,
+  updateFieldOperationsProfile,
   updateFramework,
 } from '../services/frameworkApi';
 import { exportFrameworkDefinitionPdf } from '../utils/frameworkPdfExport';
+import { INDUSTRY_TYPE_OPTIONS } from '../utils/industryLabels';
 import FrameworkTaxonomyExplorer from '../components/FrameworkTaxonomyExplorer';
 
 const CANONICAL_EDUCATION_ID = 'educacao-v1';
 const EDUCATION_SECTOR_PATTERN = /^(educa[cç][aã]o|education|ensino|edu)$/i;
+
+const EMPTY_FIELD_PROFILE = {
+  industry_type: '',
+  satellite_type: '',
+  tracked_elements: [],
+  role_catalog: [],
+};
 
 const APPROVAL_STATUS_LABELS = {
   under_review: 'Em análise',
@@ -39,6 +49,7 @@ const FRAMEWORK_EDITOR_TABS = [
   { id: 'geral', label: 'Geral' },
   { id: 'fontes', label: 'Fontes' },
   { id: 'operacional', label: '5ª Dimensão' },
+  { id: 'perfil-campo', label: 'Perfil de Campo' },
   { id: 'blocos', label: 'Building Blocks' },
   { id: 'taxonomia', label: 'Taxonomia' },
   { id: 'exportar', label: 'Exportar' },
@@ -108,6 +119,9 @@ export default function FrameworkBuilder() {
   const [openingFrameworkId, setOpeningFrameworkId] = useState(null);
   const [taxonomy, setTaxonomy] = useState(null);
   const [loadingTaxonomy, setLoadingTaxonomy] = useState(false);
+  const [fieldProfile, setFieldProfile] = useState(EMPTY_FIELD_PROFILE);
+  const [loadingFieldProfile, setLoadingFieldProfile] = useState(false);
+  const [savingFieldProfile, setSavingFieldProfile] = useState(false);
   const [frameworkTab, setFrameworkTab] = useState('geral');
   const [importingJson, setImportingJson] = useState(false);
   const importFileInputRef = useRef(null);
@@ -162,6 +176,7 @@ export default function FrameworkBuilder() {
     setDuplicateConflict(null);
     setEditorMode('create');
     setEditingFrameworkId(null);
+    setFieldProfile(EMPTY_FIELD_PROFILE);
     setLoading(true);
     setProposal(null);
 
@@ -172,6 +187,7 @@ export default function FrameworkBuilder() {
         setEditorMode('view');
         setEditingFrameworkId(CANONICAL_EDUCATION_ID);
         await loadTaxonomyForFramework(CANONICAL_EDUCATION_ID, result.taxonomy);
+        await loadFieldProfileForFramework(CANONICAL_EDUCATION_ID);
         setSuccess(
           'Framework Educação carregado do catálogo base (sem pesquisa web nem IA).',
         );
@@ -295,6 +311,38 @@ export default function FrameworkBuilder() {
     }
   }, []);
 
+  const loadFieldProfileForFramework = useCallback(async (frameworkId) => {
+    if (!frameworkId) {
+      setFieldProfile(EMPTY_FIELD_PROFILE);
+      return;
+    }
+    setLoadingFieldProfile(true);
+    try {
+      const profile = await getFieldOperationsProfile(frameworkId);
+      setFieldProfile({
+        industry_type: profile?.industry_type || '',
+        satellite_type: profile?.satellite_type || '',
+        tracked_elements: Array.isArray(profile?.tracked_elements)
+          ? profile.tracked_elements.map((item) => ({
+              key: item.key || '',
+              label: item.label || '',
+              description: item.description || '',
+            }))
+          : [],
+        role_catalog: Array.isArray(profile?.role_catalog)
+          ? profile.role_catalog.map((item) => ({
+              value: item.value || '',
+              label: item.label || '',
+            }))
+          : [],
+      });
+    } catch {
+      setFieldProfile(EMPTY_FIELD_PROFILE);
+    } finally {
+      setLoadingFieldProfile(false);
+    }
+  }, []);
+
   const handleCloseEditor = () => {
     setProposal(null);
     setEditorMode(null);
@@ -302,6 +350,7 @@ export default function FrameworkBuilder() {
     setDuplicateConflict(null);
     setSector('');
     setTaxonomy(null);
+    setFieldProfile(EMPTY_FIELD_PROFILE);
   };
 
   const handleOpenFramework = async (frameworkId, mode) => {
@@ -321,6 +370,7 @@ export default function FrameworkBuilder() {
       setEditorMode(effectiveMode);
       setEditingFrameworkId(frameworkId);
       await loadTaxonomyForFramework(frameworkId, result.taxonomy);
+      await loadFieldProfileForFramework(frameworkId);
       window.scrollTo({ top: 320, behavior: 'smooth' });
     } catch (err) {
       setError(err.message || 'Erro ao carregar framework.');
@@ -346,6 +396,90 @@ export default function FrameworkBuilder() {
     } finally {
       setPublishing(false);
     }
+  };
+
+  const handleSaveFieldProfile = async () => {
+    if (!editingFrameworkId) return;
+    setError('');
+    setSuccess('');
+    setSavingFieldProfile(true);
+    try {
+      const saved = await updateFieldOperationsProfile(editingFrameworkId, {
+        industry_type: fieldProfile.industry_type || null,
+        satellite_type: fieldProfile.satellite_type || null,
+        tracked_elements: fieldProfile.tracked_elements,
+        role_catalog: fieldProfile.role_catalog,
+      });
+      setFieldProfile({
+        industry_type: saved?.industry_type || '',
+        satellite_type: saved?.satellite_type || '',
+        tracked_elements: Array.isArray(saved?.tracked_elements)
+          ? saved.tracked_elements.map((item) => ({
+              key: item.key || '',
+              label: item.label || '',
+              description: item.description || '',
+            }))
+          : [],
+        role_catalog: Array.isArray(saved?.role_catalog)
+          ? saved.role_catalog.map((item) => ({
+              value: item.value || '',
+              label: item.label || '',
+            }))
+          : [],
+      });
+      setSuccess('Perfil de Campo salvo.');
+    } catch (err) {
+      setError(err.message || 'Erro ao salvar Perfil de Campo.');
+    } finally {
+      setSavingFieldProfile(false);
+    }
+  };
+
+  const updateTrackedElement = (index, field, value) => {
+    setFieldProfile((prev) => {
+      const tracked_elements = [...(prev.tracked_elements || [])];
+      tracked_elements[index] = { ...tracked_elements[index], [field]: value };
+      return { ...prev, tracked_elements };
+    });
+  };
+
+  const addTrackedElement = () => {
+    setFieldProfile((prev) => ({
+      ...prev,
+      tracked_elements: [
+        ...(prev.tracked_elements || []),
+        { key: '', label: '', description: '' },
+      ],
+    }));
+  };
+
+  const removeTrackedElement = (index) => {
+    setFieldProfile((prev) => ({
+      ...prev,
+      tracked_elements: (prev.tracked_elements || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateRoleCatalogItem = (index, field, value) => {
+    setFieldProfile((prev) => {
+      const role_catalog = [...(prev.role_catalog || [])];
+      role_catalog[index] = { ...role_catalog[index], [field]: value };
+      return { ...prev, role_catalog };
+    });
+  };
+
+  const addRoleCatalogItem = () => {
+    setFieldProfile((prev) => ({
+      ...prev,
+      role_catalog: [...(prev.role_catalog || []), { value: '', label: '' }],
+    }));
+  };
+
+  const removeRoleCatalogItem = (index) => {
+    setFieldProfile((prev) => ({
+      ...prev,
+      role_catalog: (prev.role_catalog || []).filter((_, i) => i !== index),
+    }));
   };
 
   const buildPublishPayload = () => ({
@@ -1115,6 +1249,181 @@ export default function FrameworkBuilder() {
                       ),
                     )}
                   </div>
+                </section>
+              )}
+
+              {frameworkTab === 'perfil-campo' && (
+                <section className="space-y-5">
+                  {!editingFrameworkId ? (
+                    <p className="text-sm text-slate-500">
+                      O Perfil de Campo estará disponível após salvar o framework.
+                    </p>
+                  ) : loadingFieldProfile ? (
+                    <p className="text-sm text-slate-500">Carregando Perfil de Campo…</p>
+                  ) : (
+                    <>
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800">Perfil de Campo</h3>
+                        <p className="mt-1 max-w-3xl text-sm text-slate-600">
+                          Define satélite, elementos estilo RDO e catálogo de papéis operacionais
+                          desta indústria. Gravação independente do publish/salvar do framework.
+                        </p>
+                      </div>
+
+                      <label className="block max-w-md text-sm">
+                        <span className="font-medium text-slate-700">Indústria</span>
+                        <select
+                          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                          value={fieldProfile.industry_type}
+                          onChange={(e) =>
+                            setFieldProfile({ ...fieldProfile, industry_type: e.target.value })
+                          }
+                        >
+                          <option value="">— Selecione —</option>
+                          {INDUSTRY_TYPE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block max-w-md text-sm">
+                        <span className="font-medium text-slate-700">Satélite associado</span>
+                        <input
+                          type="text"
+                          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                          value={fieldProfile.satellite_type}
+                          onChange={(e) =>
+                            setFieldProfile({ ...fieldProfile, satellite_type: e.target.value })
+                          }
+                          placeholder="Ex.: diario_obra"
+                        />
+                        <span className="mt-1 block text-xs text-slate-500">
+                          Ex.: diario_obra. Deixe em branco se esta indústria ainda não tem
+                          satélite/app de campo.
+                        </span>
+                      </label>
+
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-800">
+                          Elementos acompanhados (estilo RDO)
+                        </h4>
+                        <ul className="mt-2 space-y-2">
+                          {(fieldProfile.tracked_elements || []).map((item, index) => (
+                            <li
+                              key={`tracked-${index}`}
+                              className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50/60 p-3 sm:flex-row sm:items-start"
+                            >
+                              <input
+                                type="text"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm sm:w-36"
+                                placeholder="key"
+                                value={item.key}
+                                onChange={(e) =>
+                                  updateTrackedElement(index, 'key', e.target.value)
+                                }
+                              />
+                              <input
+                                type="text"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm sm:w-44"
+                                placeholder="rótulo"
+                                value={item.label}
+                                onChange={(e) =>
+                                  updateTrackedElement(index, 'label', e.target.value)
+                                }
+                              />
+                              <input
+                                type="text"
+                                className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                placeholder="descrição (opcional)"
+                                value={item.description || ''}
+                                onChange={(e) =>
+                                  updateTrackedElement(index, 'description', e.target.value)
+                                }
+                              />
+                              <button
+                                type="button"
+                                title="Remover elemento"
+                                className="rounded-lg border border-slate-200 px-2 py-2 text-sm text-slate-500 hover:bg-white"
+                                onClick={() => removeTrackedElement(index)}
+                              >
+                                ×
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                        <button
+                          type="button"
+                          className="mt-2 text-xs font-semibold text-chameleon hover:underline"
+                          onClick={addTrackedElement}
+                        >
+                          + Adicionar elemento
+                        </button>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-800">
+                          Catálogo de papéis operacionais
+                        </h4>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Os papéis de Squad (PO, Dev, Scrum Master, etc.) já existem por padrão e
+                          não precisam ser repetidos aqui — liste só os papéis específicos desta
+                          indústria (ex.: Engenheiro, Mestre de Obras).
+                        </p>
+                        <ul className="mt-2 space-y-2">
+                          {(fieldProfile.role_catalog || []).map((item, index) => (
+                            <li key={`role-${index}`} className="flex gap-2">
+                              <input
+                                type="text"
+                                className="w-40 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                placeholder="value (ex.: Engenheiro)"
+                                value={item.value}
+                                onChange={(e) =>
+                                  updateRoleCatalogItem(index, 'value', e.target.value)
+                                }
+                              />
+                              <input
+                                type="text"
+                                className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                placeholder="rótulo exibido"
+                                value={item.label}
+                                onChange={(e) =>
+                                  updateRoleCatalogItem(index, 'label', e.target.value)
+                                }
+                              />
+                              <button
+                                type="button"
+                                title="Remover papel"
+                                className="rounded-lg border border-slate-200 px-2 text-sm text-slate-500 hover:bg-slate-50"
+                                onClick={() => removeRoleCatalogItem(index)}
+                              >
+                                ×
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                        <button
+                          type="button"
+                          className="mt-2 text-xs font-semibold text-chameleon hover:underline"
+                          onClick={addRoleCatalogItem}
+                        >
+                          + Adicionar papel
+                        </button>
+                      </div>
+
+                      <div>
+                        <button
+                          type="button"
+                          onClick={handleSaveFieldProfile}
+                          disabled={savingFieldProfile || isCanonicalReadOnly}
+                          className="rounded-lg bg-chameleon px-5 py-2.5 text-sm font-semibold text-white hover:bg-chameleon-dark disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {savingFieldProfile ? 'Salvando…' : 'Salvar Perfil de Campo'}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </section>
               )}
 

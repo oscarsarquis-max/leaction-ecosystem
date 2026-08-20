@@ -76,6 +76,10 @@ export function listProfessionals({ activeOnly = false } = {}) {
   return apiRequest(`/td/professionals${query}`);
 }
 
+export function listProfessionalRoles() {
+  return apiRequest('/td/professional-roles');
+}
+
 export function createProfessional(payload) {
   return apiRequest('/td/professionals', {
     method: 'POST',

@@ -32,12 +32,13 @@ def list_tickets():
     """
     try:
         service = KaizenService()
+        site_id = request.args.get("operational_site_id", "").strip() or None
         if request.args.get("kanban", "").strip() in ("1", "true", "yes"):
-            board = service.list_tickets_kanban()
+            board = service.list_tickets_kanban(operational_site_id=site_id)
             return jsonify({"status": "ok", "kanban": board}), 200
 
         stage = request.args.get("workflow_stage", "").strip() or None
-        tickets = service.list_tickets(workflow_stage=stage)
+        tickets = service.list_tickets(workflow_stage=stage, operational_site_id=site_id)
         return jsonify({"status": "ok", "tickets": tickets, "total": len(tickets)}), 200
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
@@ -70,8 +71,9 @@ def get_ticket(ticket_id: str):
 def create_ticket():
     payload = request.get_json(silent=True) or {}
     try:
-        ticket = KaizenService().create_ticket(payload)
-        return jsonify({"status": "ok", "ticket": ticket.to_dict()}), 201
+        service = KaizenService()
+        ticket = service.create_ticket(payload)
+        return jsonify({"status": "ok", "ticket": service.get_ticket(str(ticket.id))}), 201
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except PermissionError as exc:
@@ -88,8 +90,9 @@ def update_ticket(ticket_id: str):
     """Atualiza campos do ticket e avança ``workflow_stage`` na jornada Lean."""
     payload = request.get_json(silent=True) or {}
     try:
-        ticket = KaizenService().update_ticket(ticket_id, payload)
-        return jsonify({"status": "ok", "ticket": ticket.to_dict()}), 200
+        service = KaizenService()
+        ticket = service.update_ticket(ticket_id, payload)
+        return jsonify({"status": "ok", "ticket": service.get_ticket(str(ticket.id))}), 200
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except PermissionError as exc:

@@ -15,6 +15,12 @@ from app.models.operational_models import (
     DailyExecutionReport,
     IndustryType,
     OperationalSite,
+    WeeklyCommitment,
+)
+from app.models.kaizen_models import (
+    RESTRICTION_CATEGORIES,
+    RESTRICTION_CATEGORY_LABELS,
+    Restriction,
 )
 from app.services.satellite_client import SatelliteClient
 
@@ -45,6 +51,9 @@ class OperationalService:
 
         industry_type = self._parse_industry_type(payload.get("industry_type"))
         manager_id = self._resolve_manager_id(payload.get("manager_id"))
+        organizational_unit_id = self._resolve_organizational_unit_id(
+            payload.get("organizational_unit_id")
+        )
         location = (payload.get("location") or "").strip() or None
 
         site = OperationalSite(
@@ -53,6 +62,7 @@ class OperationalService:
             location=location,
             industry_type=industry_type.value if isinstance(industry_type, IndustryType) else str(industry_type),
             manager_id=manager_id,
+            organizational_unit_id=organizational_unit_id,
         )
         db.session.add(site)
         db.session.flush()
@@ -79,6 +89,11 @@ class OperationalService:
             site.industry_type = parsed.value if isinstance(parsed, IndustryType) else str(parsed)
         if "manager_id" in payload:
             site.manager_id = self._resolve_manager_id(payload.get("manager_id"))
+        if "organizational_unit_id" in payload:
+            site.organizational_unit_id = self._resolve_organizational_unit_id(
+                payload.get("organizational_unit_id"),
+                current_id=site.organizational_unit_id,
+            )
         if "is_active" in payload:
             site.is_active = bool(payload["is_active"])
         db.session.commit()
@@ -108,61 +123,130 @@ class OperationalService:
         result["message"] = "Canteiro sincronizado com o Diário de Obra."
         return result
 
+    def sync_site_roster(self, site_id: str) -> dict[str, Any]:
+        site = self._get_site(site_id)
+        if not self._is_construction(site.industry_type):
+            raise ValueError(
+                "Somente unidades de Construção sincronizam equipe com o Diário de Obra."
+            )
+        if not site.satellite_site_id:
+            raise ValueError("Sincronize a unidade com o satélite antes de enviar a equipe.")
+        roster = self._build_site_roster(site)
+        SatelliteClient().push_roster(
+            {
+                "tenant_id": str(site.tenant_id),
+                "project_id": site.satellite_site_id,
+                "roster": roster,
+            }
+        )
+        return {"site_id": str(site.id), "roster_count": len(roster)}
+
     def push_weekly_plan(self, payload: dict[str, Any]) -> dict[str, Any]:
         site_id = payload.get("operational_site_id") or payload.get("site_id")
         site = self._get_site(site_id)
+        tenant_id = g.tenant_id
 
-        goals = payload.get("goals") or []
-        if not isinstance(goals, list) or not goals:
-            raise ValueError("Informe ao menos uma meta diária em 'goals'.")
+        raw_commitments = payload.get("commitments")
+        if not isinstance(raw_commitments, list) or not raw_commitments:
+            raise ValueError("Informe ao menos um dia em 'commitments'.")
 
-        normalized = []
-        for item in goals:
-            if not isinstance(item, dict):
+        # Por data: lista de textos (pode ser vazia = limpar o dia)
+        by_date: dict[str, list[str]] = {}
+        for entry in raw_commitments:
+            if not isinstance(entry, dict):
                 continue
-            goal_date = self._parse_date(item.get("date"))
-            goal_text = (item.get("sprint_daily_goal") or item.get("goal") or "").strip()
-            if not goal_date or not goal_text:
+            commitment_date = self._parse_date(entry.get("date"))
+            if not commitment_date:
                 continue
-            normalized.append({"date": goal_date.isoformat(), "sprint_daily_goal": goal_text})
+            day_key = commitment_date.isoformat()
+            items_raw = entry.get("items")
+            if items_raw is None:
+                items_raw = []
+            if not isinstance(items_raw, list):
+                continue
+            items = [str(text).strip() for text in items_raw if str(text or "").strip()]
+            by_date[day_key] = items
 
-        if not normalized:
-            raise ValueError("Nenhuma meta válida informada.")
+        if not by_date:
+            raise ValueError("Nenhuma data válida informada em 'commitments'.")
 
-        # 1) Persiste localmente no hub (sobrevive a refresh / Diário offline)
-        cached = dict(site.weekly_goals or {})
-        for item in normalized:
-            cached[item["date"]] = item["sprint_daily_goal"]
-        site.weekly_goals = cached
+        saved_rows: list[WeeklyCommitment] = []
+        satellite_goals: list[dict[str, Any]] = []
+
+        for day_key, items in sorted(by_date.items()):
+            day = date.fromisoformat(day_key)
+            # Replace completo por (site, date) — inclusive limpeza quando items=[]
+            existing = WeeklyCommitment.query.filter_by(
+                tenant_id=tenant_id,
+                operational_site_id=site.id,
+                commitment_date=day,
+            ).all()
+            for row in existing:
+                db.session.delete(row)
+            db.session.flush()
+
+            for seq, description in enumerate(items):
+                row = WeeklyCommitment(
+                    tenant_id=tenant_id,
+                    operational_site_id=site.id,
+                    commitment_date=day,
+                    description=description,
+                    sequence=seq,
+                    is_completed=None,
+                )
+                db.session.add(row)
+                saved_rows.append(row)
+
+        db.session.flush()
+
+        for day_key, items in sorted(by_date.items()):
+            if not items:
+                continue
+            satellite_goals.append(
+                {
+                    "date": day_key,
+                    "items": [
+                        {"id": str(row.id), "description": row.description}
+                        for row in saved_rows
+                        if row.commitment_date.isoformat() == day_key
+                    ],
+                }
+            )
+
         db.session.commit()
-        db.session.refresh(site)
+        for row in saved_rows:
+            db.session.refresh(row)
 
-        # 2) Espelha no Diário de Obra quando houver vínculo
+        commitments_out = self._group_commitments_by_date(saved_rows)
+
         satellite_result: dict[str, Any] | None = None
         satellite_warning: str | None = None
         if site.satellite_site_id:
-            try:
-                satellite_result = SatelliteClient().push_daily_goals(
-                    {
-                        "tenant_id": str(site.tenant_id),
-                        "project_id": site.satellite_site_id,
-                        "goals": normalized,
-                    }
-                )
-            except Exception as exc:
-                satellite_warning = (
-                    f"Metas salvas no Chamelleon, mas falhou o envio ao Diário: {exc}"
-                )
+            if satellite_goals:
+                try:
+                    satellite_result = SatelliteClient().push_daily_goals(
+                        {
+                            "tenant_id": str(site.tenant_id),
+                            "project_id": site.satellite_site_id,
+                            "goals": satellite_goals,
+                        }
+                    )
+                except Exception as exc:
+                    satellite_warning = (
+                        "Compromissos salvos no Chamelleon, mas falhou o envio ao "
+                        f"Diário: {exc}"
+                    )
         else:
             satellite_warning = (
-                "Metas salvas no Chamelleon. Sincronize o canteiro para publicar no Diário de Obra."
+                "Compromissos salvos no Chamelleon. Sincronize o canteiro para "
+                "publicar no Diário de Obra."
             )
 
         result: dict[str, Any] = {
             "status": "ok",
             "site": self._site_dict(site),
-            "goals": cached,
-            "saved_count": len(normalized),
+            "commitments": commitments_out,
+            "saved_count": len(saved_rows),
         }
         if satellite_result is not None:
             result["satellite"] = satellite_result
@@ -178,24 +262,102 @@ class OperationalService:
         end_date: str | None = None,
     ) -> dict[str, Any]:
         site = self._get_site(site_id)
-        cached = dict(site.weekly_goals or {})
+        tenant_id = g.tenant_id
+        query = WeeklyCommitment.query.filter_by(
+            tenant_id=tenant_id,
+            operational_site_id=site.id,
+        )
         start = self._parse_date(start_date)
         end = self._parse_date(end_date)
-        if start and end:
-            filtered = {
-                day: text
-                for day, text in cached.items()
-                if start <= date.fromisoformat(str(day)[:10]) <= end
-            }
-        else:
-            filtered = cached
+        if start:
+            query = query.filter(WeeklyCommitment.commitment_date >= start)
+        if end:
+            query = query.filter(WeeklyCommitment.commitment_date <= end)
+
+        rows = query.order_by(
+            WeeklyCommitment.commitment_date.asc(),
+            WeeklyCommitment.sequence.asc(),
+        ).all()
+        filtered = self._group_commitments_by_date(rows)
+
+        all_rows = (
+            WeeklyCommitment.query.filter_by(
+                tenant_id=tenant_id,
+                operational_site_id=site.id,
+            )
+            .order_by(
+                WeeklyCommitment.commitment_date.asc(),
+                WeeklyCommitment.sequence.asc(),
+            )
+            .all()
+        )
+        all_commitments = self._group_commitments_by_date(all_rows)
+
         return {
             "status": "ok",
             "site_id": str(site.id),
             "satellite_site_id": site.satellite_site_id,
-            "goals": filtered,
-            "all_goals": cached,
+            "commitments": filtered,
+            "all_commitments": all_commitments,
         }
+
+    def list_restrictions(
+        self,
+        *,
+        start_date: date,
+        end_date: date,
+        site_id: str | None = None,
+        category: str | None = None,
+    ) -> dict[str, Any]:
+        if end_date < start_date:
+            raise ValueError("end_date deve ser igual ou posterior a start_date.")
+
+        tenant_id = g.tenant_id
+        query = Restriction.query.filter(
+            Restriction.tenant_id == tenant_id,
+            Restriction.occurrence_date >= start_date,
+            Restriction.occurrence_date <= end_date,
+        )
+        if site_id:
+            query = query.filter_by(operational_site_id=self._as_uuid(site_id))
+        if category:
+            cat = str(category).strip().upper()
+            if cat not in RESTRICTION_CATEGORIES:
+                raise ValueError(
+                    "category inválida. Use: " + ", ".join(RESTRICTION_CATEGORIES)
+                )
+            query = query.filter_by(category=cat)
+
+        rows = query.order_by(
+            Restriction.occurrence_date.desc(),
+            Restriction.created_at.desc(),
+        ).all()
+        return {
+            "status": "ok",
+            "restrictions": [row.to_dict() for row in rows],
+            "total": len(rows),
+        }
+
+    @staticmethod
+    def _format_consolidated_goal(items: list[str]) -> str:
+        return "\n".join(f"{idx}) {text}" for idx, text in enumerate(items, start=1))
+
+    @staticmethod
+    def _group_commitments_by_date(
+        rows: list[WeeklyCommitment],
+    ) -> dict[str, list[dict[str, Any]]]:
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            day_key = row.commitment_date.isoformat()
+            grouped.setdefault(day_key, []).append(
+                {
+                    "id": str(row.id),
+                    "description": row.description,
+                    "sequence": row.sequence,
+                    "is_completed": row.is_completed,
+                }
+            )
+        return grouped
 
     def list_execution_reports(
         self, *, report_date: date | None = None, site_id: str | None = None
@@ -276,9 +438,16 @@ class OperationalService:
             operational_site_id=site.id,
             report_date=report_date,
         ).first()
+        # Reabrir = avaliação ainda desconhecida; o plano (WeeklyCommitment) permanece.
+        self._sync_commitments_completion(
+            tenant_id=g.tenant_id,
+            operational_site_id=site.id,
+            commitment_date=report_date,
+            goal_achieved=None,
+        )
         if report:
             db.session.delete(report)
-            db.session.commit()
+        db.session.commit()
 
         return {
             "status": "ok",
@@ -320,6 +489,56 @@ class OperationalService:
             round((total_goals_achieved / len(answered)) * 100, 1) if answered else 0.0
         )
 
+        # --- PPC (Last Planner): aproximação honesta dia inteiro ---
+        # O satélite devolve um único boolean por dia (goal_achieved), não por
+        # compromisso. Todos os WeeklyCommitment do (site, data) recebem o mesmo
+        # is_completed; não correlacionamos Restriction ↔ compromisso individual.
+        commitments_query = WeeklyCommitment.query.filter(
+            WeeklyCommitment.tenant_id == tenant_id,
+            WeeklyCommitment.commitment_date >= start_date,
+            WeeklyCommitment.commitment_date <= end_date,
+        )
+        if site_id:
+            commitments_query = commitments_query.filter_by(
+                operational_site_id=self._as_uuid(site_id)
+            )
+        commitments = commitments_query.all()
+        evaluated = [c for c in commitments if c.is_completed is not None]
+        completed = sum(1 for c in evaluated if c.is_completed)
+        ppc = (
+            round((completed / len(evaluated)) * 100, 1) if evaluated else 0.0
+        )
+
+        restrictions_query = Restriction.query.filter(
+            Restriction.tenant_id == tenant_id,
+            Restriction.occurrence_date >= start_date,
+            Restriction.occurrence_date <= end_date,
+        )
+        if site_id:
+            restrictions_query = restrictions_query.filter_by(
+                operational_site_id=self._as_uuid(site_id)
+            )
+        restrictions = restrictions_query.all()
+
+        restrictions_by_category_counts: dict[str, int] = {}
+        restrictions_over_time_counts: dict[str, int] = {}
+        restrictions_by_site_date: dict[tuple[str, str], list[dict[str, str]]] = {}
+        for r in restrictions:
+            restrictions_by_category_counts[r.category] = (
+                restrictions_by_category_counts.get(r.category, 0) + 1
+            )
+            day_key = r.occurrence_date.isoformat()
+            restrictions_over_time_counts[day_key] = (
+                restrictions_over_time_counts.get(day_key, 0) + 1
+            )
+            site_key = (
+                str(r.operational_site_id) if r.operational_site_id else "",
+                day_key,
+            )
+            restrictions_by_site_date.setdefault(site_key, []).append(
+                {"category": r.category, "title": r.title}
+            )
+
         consolidated_impediments: list[dict[str, Any]] = []
         occurrences_by_type: dict[str, int] = {}
         occurrences_over_time: dict[str, int] = {}
@@ -336,12 +555,13 @@ class OperationalService:
             if report.goal_achieved is not False:
                 continue
             site = site_map.get(str(report.operational_site_id) if report.operational_site_id else "")
+            site_id_str = (
+                str(report.operational_site_id) if report.operational_site_id else None
+            )
             consolidated_impediments.append(
                 {
                     "id": str(report.id),
-                    "site_id": str(report.operational_site_id)
-                    if report.operational_site_id
-                    else None,
+                    "site_id": site_id_str,
                     "site_name": site.name if site else "Unidade",
                     "industry_type": str(site.industry_type) if site else None,
                     "date": report.report_date.isoformat(),
@@ -352,6 +572,10 @@ class OperationalService:
                     "mitigation_action": report.mitigation_action,
                     "preventive_action": report.preventive_action,
                     "raw_payload": report.raw_payload,
+                    "restrictions": restrictions_by_site_date.get(
+                        (site_id_str or "", report.report_date.isoformat()),
+                        [],
+                    ),
                 }
             )
 
@@ -378,6 +602,25 @@ class OperationalService:
             "total_goals_failed": sum(1 for r in reports if r.goal_achieved is False),
             "total_unanswered": sum(1 for r in reports if r.goal_achieved is None),
             "success_rate": success_rate,
+            "ppc": ppc,
+            "total_commitments_promised": len(evaluated),
+            "total_commitments_completed": completed,
+            "total_commitments_pending_evaluation": len(commitments) - len(evaluated),
+            "restrictions_by_category": [
+                {
+                    "category": k,
+                    "label": RESTRICTION_CATEGORY_LABELS.get(k, k),
+                    "count": v,
+                }
+                for k, v in sorted(
+                    restrictions_by_category_counts.items(),
+                    key=lambda i: (-i[1], i[0]),
+                )
+            ],
+            "restrictions_over_time": [
+                {"date": k, "count": v}
+                for k, v in sorted(restrictions_over_time_counts.items())
+            ],
             "consolidated_impediments": consolidated_impediments,
             "occurrences_by_type": occurrences_by_type_list,
             "occurrences_over_time": occurrences_over_time_list,
@@ -506,7 +749,54 @@ class OperationalService:
         report.preventive_action = (rdo.get("preventive_action") or "").strip() or None
         report.raw_payload = rdo
         db.session.flush()
+
+        # Preferir resolução por item (Prompt 6). Fallback: booleano do dia (Prompt 3).
+        commitments_payload = rdo.get("commitments")
+        if isinstance(commitments_payload, list) and commitments_payload and site_id:
+            for item in commitments_payload:
+                if not isinstance(item, dict):
+                    continue
+                source_id = item.get("source_commitment_id") or item.get("id")
+                is_completed = item.get("is_completed")
+                if not source_id:
+                    continue
+                try:
+                    commitment_uuid = uuid.UUID(str(source_id))
+                except ValueError:
+                    continue
+                WeeklyCommitment.query.filter_by(
+                    tenant_id=tenant_id, id=commitment_uuid
+                ).update(
+                    {
+                        "is_completed": (
+                            None if is_completed is None else bool(is_completed)
+                        )
+                    },
+                    synchronize_session=False,
+                )
+        elif site_id:
+            # Fallback pra RDOs antigos/sem commitments — aproximação dia inteiro.
+            self._sync_commitments_completion(
+                tenant_id=tenant_id,
+                operational_site_id=site_id,
+                commitment_date=event_date,
+                goal_achieved=report.goal_achieved,
+            )
         return report
+
+    @staticmethod
+    def _sync_commitments_completion(
+        *,
+        tenant_id: uuid.UUID,
+        operational_site_id: uuid.UUID,
+        commitment_date: date,
+        goal_achieved: bool | None,
+    ) -> None:
+        WeeklyCommitment.query.filter_by(
+            tenant_id=tenant_id,
+            operational_site_id=operational_site_id,
+            commitment_date=commitment_date,
+        ).update({"is_completed": goal_achieved}, synchronize_session=False)
 
     def _resolve_site_from_payload(
         self, tenant_id: uuid.UUID, rdo: dict[str, Any], payload: dict[str, Any]
@@ -526,12 +816,60 @@ class OperationalService:
         """Tenta criar canteiro no satélite. Em falha, mantém a unidade no hub."""
         try:
             site.satellite_site_id = self._sync_construction_site_to_satellite(site)
-            return None
         except Exception as exc:
             return (
                 "Unidade criada no hub, mas falhou a sincronização com o Diário de Obra: "
                 f"{exc}. Use 'Sincronizar satélite' para tentar de novo."
             )
+        try:
+            roster = self._build_site_roster(site)
+            if roster:
+                SatelliteClient().push_roster(
+                    {
+                        "tenant_id": str(site.tenant_id),
+                        "project_id": site.satellite_site_id,
+                        "roster": roster,
+                    }
+                )
+        except Exception:
+            pass  # equipe pode ser sincronizada depois via botão dedicado
+        return None
+
+    def get_field_professionals_for_site(self, site_id: str | uuid.UUID) -> list[Any]:
+        """Professionals com papel de campo alocados ao canteiro (via TenantUser)."""
+        from app.core.professional_role_catalog import get_role_catalog
+        from app.models.capacity_models import Professional
+
+        site = self._get_site(site_id)
+        field_roles = {
+            item["value"]
+            for item in get_role_catalog({site.industry_type})
+            if item.get("group") == site.industry_type
+        }
+        if not field_roles:
+            return []
+
+        memberships = TenantUser.query.filter_by(
+            tenant_id=site.tenant_id, operational_site_id=site.id
+        ).all()
+        user_ids = [m.user_id for m in memberships]
+        if not user_ids:
+            return []
+
+        return (
+            Professional.query.filter(
+                Professional.tenant_id == site.tenant_id,
+                Professional.user_id.in_(user_ids),
+                Professional.role.in_(field_roles),
+                Professional.is_active.is_(True),
+            )
+            .order_by(Professional.name.asc())
+            .all()
+        )
+
+    def _build_site_roster(self, site: OperationalSite) -> list[dict[str, Any]]:
+        professionals = self.get_field_professionals_for_site(site.id)
+        return [{"id": str(p.id), "name": p.name, "role": p.role} for p in professionals]
 
     def _sync_construction_site_to_satellite(self, site: OperationalSite) -> str:
         satellite = SatelliteClient().create_rdo_site(
@@ -556,6 +894,27 @@ class OperationalService:
         if not membership:
             raise ValueError("Gestor responsável deve ser um lead do mesmo tenant.")
         return manager_id
+
+    def _resolve_organizational_unit_id(
+        self,
+        value: Any,
+        *,
+        current_id: uuid.UUID | None = None,
+    ) -> uuid.UUID | None:
+        if not value:
+            return None
+        from app.models.organization_models import OrganizationalUnit
+
+        unit_uuid = self._as_uuid(value)
+        unit = OrganizationalUnit.query.filter_by(
+            id=unit_uuid, tenant_id=g.tenant_id
+        ).first()
+        if not unit:
+            raise ValueError("Unidade organizacional inválida.")
+        # Soft-delete mantém o vínculo; só bloqueia *nova* atribuição a unidade inativa.
+        if not unit.is_active and (current_id is None or unit_uuid != current_id):
+            raise ValueError("Unidade organizacional inválida.")
+        return unit_uuid
 
     @staticmethod
     def _parse_industry_type(value: Any) -> IndustryType:

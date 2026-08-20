@@ -18,6 +18,7 @@ import {
   saveLocalDraft,
 } from '../services/rdoDraftStorage';
 import type {
+  CommitmentItem,
   EquipmentRow,
   OccurrenceRow,
   ProjectSite,
@@ -38,6 +39,28 @@ interface Props {
   readOnly: boolean;
   onBack: () => void;
   onSaved: () => void;
+}
+
+function normalizeCommitments(raw: unknown): CommitmentItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+    .map((item, index) => {
+      const id = String(item.id || `tmp-${index}`);
+      const source = String(item.source_commitment_id || item.id || '').trim();
+      return {
+        id,
+        source_commitment_id: source || id,
+        description: String(item.description || '').trim(),
+        sequence: typeof item.sequence === 'number' ? item.sequence : index,
+        is_completed:
+          item.is_completed === null || item.is_completed === undefined
+            ? null
+            : Boolean(item.is_completed),
+        note: item.note ? String(item.note) : '',
+      };
+    })
+    .filter((c) => c.description);
 }
 
 const WEATHER_OPTIONS: { value: WeatherPeriod; label: string; icon: string }[] = [
@@ -154,11 +177,13 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
   const [sprintDailyGoal, setSprintDailyGoal] = useState('');
   const [sprintGoalLocked, setSprintGoalLocked] = useState(false);
   const [goalAchieved, setGoalAchieved] = useState<boolean | null>(null);
+  const [commitments, setCommitments] = useState<CommitmentItem[]>([]);
   const [impedimentDetails, setImpedimentDetails] = useState('');
   const [mitigationAction, setMitigationAction] = useState('');
   const [preventiveAction, setPreventiveAction] = useState('');
   const [saving, setSaving] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [signedByName, setSignedByName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [serverEditable, setServerEditable] = useState<boolean | null>(null);
@@ -197,6 +222,7 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
     setSprintDailyGoal(log.sprint_daily_goal || '');
     setSprintGoalLocked(Boolean((log as { sprint_goal_locked?: boolean }).sprint_goal_locked));
     setGoalAchieved(log.goal_achieved ?? null);
+    setCommitments(normalizeCommitments(log.commitments));
     setImpedimentDetails(log.impediment_details || '');
     setMitigationAction(log.mitigation_action || '');
     setPreventiveAction(log.preventive_action || '');
@@ -248,6 +274,7 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
           setSprintDailyGoal(String(p.sprint_daily_goal || ''));
           setSprintGoalLocked(Boolean(p.sprint_goal_locked));
           setGoalAchieved((p.goal_achieved as boolean | null) ?? null);
+          setCommitments(normalizeCommitments(p.commitments));
           setImpedimentDetails(String(p.impediment_details || ''));
           setMitigationAction(String(p.mitigation_action || ''));
           setPreventiveAction(String(p.preventive_action || ''));
@@ -258,6 +285,7 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
           setWorkforce(DEFAULT_WORKFORCE);
           setSupplies(DEFAULT_SUPPLIES);
           setEquipment(DEFAULT_EQUIPMENT);
+          setCommitments([]);
         }
       } catch (err) {
         if (!cancelled) {
@@ -287,6 +315,7 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
             setSprintDailyGoal(String(p.sprint_daily_goal || ''));
             setSprintGoalLocked(Boolean(p.sprint_goal_locked));
             setGoalAchieved((p.goal_achieved as boolean | null) ?? null);
+            setCommitments(normalizeCommitments(p.commitments));
             setImpedimentDetails(String(p.impediment_details || ''));
             setMitigationAction(String(p.mitigation_action || ''));
             setPreventiveAction(String(p.preventive_action || ''));
@@ -340,6 +369,7 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
     endShiftLooseMaterials,
     sprintDailyGoal,
     goalAchieved,
+    commitments,
     impedimentDetails,
     mitigationAction,
     preventiveAction,
@@ -380,6 +410,13 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
       impediment_details: goalAchieved === false ? impedimentDetails.trim() || undefined : undefined,
       mitigation_action: goalAchieved === false ? mitigationAction.trim() || undefined : undefined,
       preventive_action: goalAchieved === false ? preventiveAction.trim() || undefined : undefined,
+      commitments: commitments.map(({ id, source_commitment_id, description, is_completed, note }) => ({
+        id,
+        source_commitment_id: source_commitment_id || id,
+        description,
+        is_completed,
+        note: note || undefined,
+      })),
       workforce,
       supplies,
       equipment_statuses: equipment,
@@ -390,7 +427,9 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
         immediate_action_taken: o.immediate_action_taken?.trim() || undefined,
       })),
       ...extra,
-      signed_by: extra.finalize ? 'Encarregado de obra' : undefined,
+      signed_by: extra.finalize
+        ? signedByName.trim() || 'Encarregado de obra'
+        : undefined,
     };
   }
 
@@ -427,12 +466,17 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
     impedimentDetails,
     mitigationAction,
     preventiveAction,
+    commitments,
   });
 
   async function handleSign() {
     if (!editable) return;
-    if (requiresDaily && !dailyGoalAnswered(goalAchieved)) {
-      setError('Responda a Daily Ágil: atingiu o resultado de hoje?');
+    if (requiresDaily && !dailyGoalAnswered(goalAchieved, commitments)) {
+      setError(
+        commitments.length > 0
+          ? 'Responda todos os compromissos da Daily Ágil antes de assinar.'
+          : 'Responda a Daily Ágil: atingiu o resultado de hoje?',
+      );
       return;
     }
     if (!endShiftComplete(endShiftClean, endShiftToolsStored, endShiftLooseMaterials)) {
@@ -726,6 +770,28 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
                 onImpedimentDetailsChange={setImpedimentDetails}
                 onMitigationActionChange={setMitigationAction}
                 onPreventiveActionChange={setPreventiveAction}
+                commitments={commitments}
+                onToggleCommitment={(id, value) => {
+                  setCommitments((prev) =>
+                    prev.map((c) =>
+                      c.id === id
+                        ? { ...c, is_completed: value, note: value ? '' : c.note }
+                        : c,
+                    ),
+                  );
+                }}
+                onCommitmentNoteChange={(id, note) => {
+                  setCommitments((prev) =>
+                    prev.map((c) => (c.id === id ? { ...c, note } : c)),
+                  );
+                }}
+                onMarkAllCompleted={() => {
+                  setCommitments((prev) =>
+                    prev.map((c) =>
+                      c.is_completed === null ? { ...c, is_completed: true, note: '' } : c,
+                    ),
+                  );
+                }}
                 sprintGoalLocked={sprintGoalLocked}
                 disabled={!editable}
                 dictationSupported={voice.supported}
@@ -783,6 +849,24 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
           >
             {saving ? 'Salvando…' : 'Salvar Rascunho'}
           </button>
+          {site.roster && site.roster.length > 0 && (
+            <label className="mb-2 block text-sm">
+              <span className="mb-1 block font-semibold text-slate-800">Quem está assinando?</span>
+              <select
+                className="w-full min-h-12 rounded-2xl border-2 border-slate-300 bg-white px-3 text-base text-slate-900"
+                value={signedByName}
+                onChange={(e) => setSignedByName(e.target.value)}
+                disabled={signing || saving}
+              >
+                <option value="">— Selecione —</option>
+                {site.roster.map((m) => (
+                  <option key={m.id} value={m.name}>
+                    {m.role ? `${m.name} (${m.role})` : m.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             type="button"
             disabled={
@@ -791,20 +875,28 @@ export default function DailyLogForm({ site, date, readOnly, onBack, onSaved }: 
               loading ||
               !weatherMorning ||
               !weatherAfternoon ||
-              (requiresDaily && !dailyGoalAnswered(goalAchieved)) ||
-              !endShiftComplete(endShiftClean, endShiftToolsStored, endShiftLooseMaterials)
+              (requiresDaily && !dailyGoalAnswered(goalAchieved, commitments)) ||
+              !endShiftComplete(endShiftClean, endShiftToolsStored, endShiftLooseMaterials) ||
+              Boolean(site.roster?.length && !signedByName.trim())
             }
             onClick={handleSign}
             className="w-full min-h-14 rounded-2xl bg-emerald-600 text-lg font-bold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
           >
             {signing ? 'Assinando…' : 'Finalizar e Assinar'}
           </button>
-          {requiresDaily && !dailyGoalAnswered(goalAchieved) && (
+          {site.roster && site.roster.length > 0 && !signedByName.trim() && (
             <p className="mt-2 text-center text-xs text-amber-800">
-              Responda a Daily Ágil (meta atingida?) para habilitar a assinatura.
+              Selecione quem está assinando para habilitar a assinatura.
             </p>
           )}
-          {(!requiresDaily || dailyGoalAnswered(goalAchieved)) &&
+          {requiresDaily && !dailyGoalAnswered(goalAchieved, commitments) && (
+            <p className="mt-2 text-center text-xs text-amber-800">
+              {commitments.length > 0
+                ? 'Responda todos os compromissos da Daily Ágil para habilitar a assinatura.'
+                : 'Responda a Daily Ágil (meta atingida?) para habilitar a assinatura.'}
+            </p>
+          )}
+          {(!requiresDaily || dailyGoalAnswered(goalAchieved, commitments)) &&
             !endShiftComplete(endShiftClean, endShiftToolsStored, endShiftLooseMaterials) && (
             <p className="mt-2 text-center text-xs text-amber-800">
               Responda o Fechamento do Canteiro para habilitar a assinatura.

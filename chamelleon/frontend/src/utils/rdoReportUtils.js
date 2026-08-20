@@ -94,6 +94,14 @@ export function buildRdoDetailSections(report) {
     remarks: item?.remarks || '',
   }));
 
+  const supplies = (rdo.supplies || []).map((item, index) => ({
+    id: `sup-${index}`,
+    label: item?.label || item?.key || 'Material',
+    quantity: item?.quantity,
+    unit: item?.unit || '',
+    details: item?.details || '',
+  }));
+
   const delays = [];
   if (rdo.delay_waiting_material) delays.push('Equipe parada esperando material');
   if (rdo.delay_rework) delays.push('Retrabalho no turno');
@@ -110,6 +118,7 @@ export function buildRdoDetailSections(report) {
     },
     occurrences,
     equipment,
+    supplies,
     delays,
     ppe: {
       compliant: rdo.ppe_compliant,

@@ -117,6 +117,22 @@ def sync_site_satellite(site_id: str):
         return jsonify({"error": "Erro ao sincronizar unidade com o satélite."}), 500
 
 
+@operational_bp.post("/sites/<site_id>/sync-roster")
+@require_tenant_context
+@require_auth
+@require_role(ROLE_SYSADMIN, ROLE_LED)
+def sync_site_roster(site_id: str):
+    try:
+        result = OperationalService().sync_site_roster(site_id)
+        return jsonify({"status": "ok", **result}), 200
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 502
+    except Exception:
+        return jsonify({"error": "Erro ao sincronizar equipe com o satélite."}), 500
+
+
 @operational_bp.post("/planning/weekly-goals")
 @require_tenant_context
 @require_auth
@@ -152,7 +168,7 @@ def get_weekly_goals():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception:
-        return jsonify({"error": "Erro ao carregar metas do planejamento."}), 500
+        return jsonify({"error": "Erro ao carregar compromissos do planejamento."}), 500
 
 
 @operational_bp.get("/planning/week-dates")
@@ -167,6 +183,32 @@ def get_week_dates():
         base = date.today()
     dates = [d.isoformat() for d in week_dates(base)]
     return jsonify({"status": "ok", "dates": dates}), 200
+
+
+@operational_bp.get("/restrictions")
+@require_tenant_context
+@require_auth
+@require_role(*_MANAGER_ROLES)
+def list_restrictions():
+    start_raw = request.args.get("start_date", "").strip()
+    end_raw = request.args.get("end_date", "").strip()
+    site_id = request.args.get("site_id", "").strip() or None
+    category = request.args.get("category", "").strip() or None
+    try:
+        today = date.today()
+        start_date = date.fromisoformat(start_raw[:10]) if start_raw else today.replace(day=1)
+        end_date = date.fromisoformat(end_raw[:10]) if end_raw else today
+        result = OperationalService().list_restrictions(
+            start_date=start_date,
+            end_date=end_date,
+            site_id=site_id,
+            category=category,
+        )
+        return jsonify(result), 200
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        return jsonify({"error": "Erro ao listar restrições."}), 500
 
 
 @operational_bp.get("/reports/summary")

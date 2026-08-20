@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -134,6 +134,11 @@ class DailyLog(db.Model):
     occurrences: Mapped[list[Occurrence]] = relationship(
         "Occurrence", back_populates="daily_log", cascade="all, delete-orphan"
     )
+    commitments: Mapped[list[DailyLogCommitment]] = relationship(
+        "DailyLogCommitment",
+        back_populates="daily_log",
+        cascade="all, delete-orphan",
+    )
 
 
 class Workforce(db.Model):
@@ -244,6 +249,53 @@ class Occurrence(db.Model):
     safety_ppe_notes: Mapped[str | None] = mapped_column(Text)
 
     daily_log: Mapped[DailyLog] = relationship("DailyLog", back_populates="occurrences")
+
+
+class DailyLogCommitment(db.Model):
+    """Compromisso individual do dia, espelhado do WeeklyCommitment do Chamelleon."""
+
+    __tablename__ = "daily_log_commitments"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    daily_log_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("daily_logs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # id do WeeklyCommitment no Chamelleon — string, sem FK cross-banco.
+    source_commitment_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_completed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    daily_log: Mapped[DailyLog] = relationship("DailyLog", back_populates="commitments")
+
+
+class ProjectRosterMember(db.Model):
+    """Pessoa qualificada (empurrada pelo hub) apta a assinar o RDO desse canteiro."""
+
+    __tablename__ = "project_roster_members"
+    __table_args__ = (
+        UniqueConstraint(
+            "project_id", "source_professional_id", name="uq_roster_project_professional"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("project_sites.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    source_professional_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
 
 
 class ProjectDirectives(db.Model):

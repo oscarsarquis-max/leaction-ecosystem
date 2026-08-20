@@ -36,6 +36,24 @@ export async function getFrameworkTaxonomy(frameworkId) {
   return data.taxonomy;
 }
 
+export async function getFieldOperationsProfile(frameworkId) {
+  const data = await apiRequest(
+    `/framework/${encodeURIComponent(frameworkId)}/field-operations-profile`,
+  );
+  return data.profile;
+}
+
+export async function updateFieldOperationsProfile(frameworkId, profile) {
+  const data = await apiRequest(
+    `/framework/${encodeURIComponent(frameworkId)}/field-operations-profile`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(profile),
+    },
+  );
+  return data.profile;
+}
+
 export async function getFrameworkMethodology(frameworkId) {
   const data = await apiRequest(
     `/framework/${encodeURIComponent(frameworkId)}/methodology-document`,
