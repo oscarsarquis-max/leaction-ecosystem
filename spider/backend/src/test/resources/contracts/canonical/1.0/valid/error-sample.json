@@ -1,0 +1,19 @@
+{
+  "errorId": "err-1",
+  "code": "VAL_FIELD_REQUIRED",
+  "category": "VALIDATION",
+  "severity": "ERROR",
+  "message": "Field is required",
+  "retryable": false,
+  "occurredAt": "2026-08-21T12:00:00Z",
+  "source": {
+    "component": "canonical-validator"
+  },
+  "fieldViolations": [
+    {
+      "fieldPath": "execution.executionId",
+      "reasonCode": "VAL_FIELD_REQUIRED",
+      "message": "executionId is required"
+    }
+  ]
+}

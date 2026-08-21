@@ -1,0 +1,29 @@
+spider:
+  console:
+    enabled: true
+    http:
+      enabled: true
+    local-demo:
+      enabled: true
+    safe-projections:
+      enabled: true
+  canonical:
+    http:
+      enabled: true
+      status-query-enabled: true
+    persistence:
+      mode: memory
+  adapter:
+    mock:
+      enabled: true
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:spider_presentation;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect

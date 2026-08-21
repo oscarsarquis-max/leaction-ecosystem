@@ -1,0 +1,45 @@
+{
+  "contract": {
+    "schemaVersion": "1.0",
+    "contractVersion": "1.0.0"
+  },
+  "execution": {
+    "executionId": "exec-018f-example",
+    "timestamp": "2026-08-21T12:00:00Z",
+    "idempotencyKey": "originador:operacao:123"
+  },
+  "contextRef": {
+    "contextId": "ctx-123",
+    "intentId": "INTENT_EXAMPLE@1.0.0",
+    "capabilityId": "CAP_EXAMPLE@1.0.0",
+    "productServiceId": "PRODUCT_EXAMPLE@1.0.0",
+    "journeyId": "JOURNEY_EXAMPLE@1.0.0"
+  },
+  "origin": {
+    "channel": "ASSISTED_CHANNEL",
+    "originatorId": "originator-logical-id",
+    "interactionRef": "interaction-456"
+  },
+  "trace": {
+    "correlationId": "corr-789",
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+  },
+  "target": {
+    "capability": "CONSULTAR_LANCAMENTO",
+    "operation": "consultar"
+  },
+  "payload": {
+    "canonicalData": {
+      "reference": "LAN-001"
+    }
+  },
+  "executionPolicy": {
+    "timeout": "PT3S",
+    "retryPolicyRef": "policy:retry:default@1.0.0",
+    "resiliencePolicyRef": null
+  },
+  "callbackRef": {
+    "ref": "callback:originator-default",
+    "version": "1.0.0"
+  }
+}

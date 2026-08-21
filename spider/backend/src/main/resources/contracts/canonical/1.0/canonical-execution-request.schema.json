@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spider.leaction.local/contracts/canonical/1.0/canonical-execution-request.schema.json",
+  "title": "CanonicalExecutionRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "execution",
+    "contextRef",
+    "origin",
+    "trace",
+    "target",
+    "payload",
+    "executionPolicy"
+  ],
+  "properties": {
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "contractVersion"],
+      "properties": {
+        "schemaVersion": { "type": "string", "minLength": 1 },
+        "contractVersion": { "type": "string", "minLength": 1 }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executionId", "timestamp"],
+      "properties": {
+        "executionId": { "type": "string", "minLength": 1 },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "idempotencyKey": { "type": ["string", "null"], "minLength": 1 }
+      }
+    },
+    "contextRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contextId",
+        "intentId",
+        "capabilityId",
+        "productServiceId",
+        "journeyId"
+      ],
+      "properties": {
+        "contextId": { "type": "string", "minLength": 1 },
+        "intentId": { "type": "string", "minLength": 1 },
+        "capabilityId": { "type": "string", "minLength": 1 },
+        "productServiceId": { "type": "string", "minLength": 1 },
+        "journeyId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["channel", "originatorId"],
+      "properties": {
+        "channel": { "type": "string", "minLength": 1 },
+        "originatorId": { "type": "string", "minLength": 1 },
+        "interactionRef": { "type": ["string", "null"] }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["correlationId", "traceparent"],
+      "properties": {
+        "correlationId": { "type": "string", "minLength": 1 },
+        "traceparent": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+        },
+        "tracestate": { "type": ["string", "null"] }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "operation"],
+      "properties": {
+        "capability": { "type": "string", "minLength": 1 },
+        "operation": { "type": "string", "minLength": 1 }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonicalData"],
+      "properties": {
+        "canonicalData": true
+      }
+    },
+    "executionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timeout": { "type": ["string", "null"] },
+        "retryPolicyRef": { "type": ["string", "null"] },
+        "resiliencePolicyRef": { "type": ["string", "null"] }
+      }
+    },
+    "callbackRef": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["ref"],
+      "properties": {
+        "ref": { "type": "string", "minLength": 1 },
+        "version": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

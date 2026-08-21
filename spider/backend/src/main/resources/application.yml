@@ -54,6 +54,102 @@ spider:
   http:
     connect-timeout-ms: 2000
     response-timeout-ms: 3000
+  adapter:
+    mock:
+      enabled: true
+    bindings:
+      mock-ref: binding:mock-universal@1.0
+  canonical:
+    route:
+      max-steps: 8
+    execution:
+      budget: PT60S
+    mapping:
+      max-depth: 8
+      max-bytes: 65536
+    http:
+      enabled: false
+      status-query-enabled: false
+      max-request-bytes: 65536
+      max-canonical-data-bytes: 32768
+      request-timeout: PT30S
+    signal-http:
+      enabled: false
+      max-request-bytes: 32768
+    persistence:
+      mode: memory
+      result:
+        max-bytes: 65536
+        ttl: PT24H
+      idempotency:
+        ttl: PT24H
+      startup-inspection:
+        enabled: false
+  callback:
+    reconciliation:
+      enabled: false
+      batch-size: 25
+      lease-duration: PT30S
+      max-batch-size: 100
+    recovery:
+      enabled: false
+  security:
+    integrity:
+      enabled: false
+    replay-guard:
+      enabled: false
+      cleanup-enabled: false
+      cleanup-batch-size: 100
+    sensitive-fingerprint-v2:
+      enabled: false
+    mock-key-provider:
+      enabled: false
+  governance:
+    mode: STATIC
+    control-plane:
+      enabled: false
+    scope: DEFAULT
+    bootstrap:
+      enabled: false
+      activate: false
+      classpath-resource: ""
+      allowed-prefix: governance/bootstrap/
+    cache:
+      enabled: true
+      max-snapshots: 100
+    revocation-check:
+      enabled: true
+    require-distinct-publisher: true
+    require-distinct-activator: true
+    max-artifact-bytes: 262144
+    max-artifacts-per-bundle: 500
+    historical-context-cache:
+      enabled: true
+      max-snapshots: 100
+    in-flight-revocation-check:
+      enabled: true
+    revoked-in-flight-policy: STOP_BEFORE_NEXT_EXTERNAL_EFFECT
+  signal:
+    ingress:
+      durable-application:
+        enabled: false
+    continuation-token:
+      enabled: false
+      legacy-lookup-enabled: true
+      require-for-durable: true
+    envelope-protection:
+      enabled: false
+      mock-key-provider:
+        enabled: false
+      max-plaintext-bytes: 262144
+      retention-enabled: false
+      retention-batch-size: 100
+    application:
+      batch-size: 25
+      lease-duration: PT30S
+      max-attempts: 5
+      recovery-enabled: false
+    max-envelope-bytes: 262144
   originator:
     base-url: http://localhost:8081
     callback-path: /api/callback
@@ -64,6 +160,17 @@ spider:
     secret: ${SPIDER_JWT_SECRET:change-me-spider-local-dev-secret-key-32b-min}
     issuer: leaction-spider
     ttl-seconds: 300
+  console:
+    enabled: false
+    http:
+      enabled: false
+    local-demo:
+      enabled: false
+    max-page-size: 50
+    default-page-size: 20
+    polling-min-interval: PT1S
+    safe-projections:
+      enabled: false
 
 resilience4j:
   circuitbreaker:

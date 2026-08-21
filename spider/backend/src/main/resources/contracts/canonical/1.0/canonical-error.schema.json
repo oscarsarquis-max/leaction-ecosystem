@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spider.leaction.local/contracts/canonical/1.0/canonical-error.schema.json",
+  "title": "CanonicalError",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "errorId",
+    "code",
+    "category",
+    "severity",
+    "message",
+    "retryable",
+    "occurredAt",
+    "source"
+  ],
+  "properties": {
+    "errorId": { "type": "string", "minLength": 1 },
+    "code": { "type": "string", "minLength": 1 },
+    "category": {
+      "type": "string",
+      "enum": [
+        "VALIDATION",
+        "AUTHENTICATION",
+        "AUTHORIZATION",
+        "RESOLUTION",
+        "CONTRACT",
+        "IDEMPOTENCY",
+        "TIMEOUT",
+        "UNAVAILABLE",
+        "RATE_LIMITED",
+        "BUSINESS_OUTCOME",
+        "INTERNAL"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["INFO", "WARNING", "ERROR", "FATAL"]
+    },
+    "message": { "type": "string", "minLength": 1 },
+    "retryable": { "type": "boolean" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component"],
+      "properties": {
+        "component": { "type": "string", "minLength": 1 },
+        "stepId": { "type": ["string", "null"] },
+        "adapterId": { "type": ["string", "null"] },
+        "targetRef": { "type": ["string", "null"] }
+      }
+    },
+    "causeRef": { "type": ["string", "null"] },
+    "detailsRef": { "type": ["string", "null"] },
+    "fieldViolations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fieldPath", "reasonCode", "message"],
+        "properties": {
+          "fieldPath": { "type": "string", "minLength": 1 },
+          "reasonCode": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

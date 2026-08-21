@@ -1,0 +1,10 @@
+package br.com.banco.spider.governance;
+
+public enum GovernedEffectType {
+  STEP_ADAPTER_CALL,
+  CALLBACK_DELIVERY,
+  CALLBACK_STATUS_QUERY,
+  SIGNAL_APPLICATION,
+  WAIT_EXPIRY_EXTERNAL_EFFECT,
+  RECOVERY_EXTERNAL_EFFECT
+}

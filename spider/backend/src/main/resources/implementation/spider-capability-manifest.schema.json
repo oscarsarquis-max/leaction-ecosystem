@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spider.leaction.local/schemas/capability-manifest-1.0.json",
+  "title": "SpiderCapabilityManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestVersion",
+    "productVersion",
+    "lastVerifiedAt",
+    "baseline",
+    "currentPrompt",
+    "currentGroup",
+    "capabilities",
+    "externalBoundaries"
+  ],
+  "properties": {
+    "manifestVersion": { "type": "string", "minLength": 1 },
+    "productVersion": { "type": "string", "minLength": 1 },
+    "lastVerifiedAt": { "type": "string", "minLength": 1 },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backendTests", "frontendTests", "failures", "errors", "skipped"],
+      "properties": {
+        "backendTests": { "type": "integer", "minimum": 0 },
+        "frontendTests": { "type": "integer", "minimum": 0 },
+        "failures": { "type": "integer", "minimum": 0 },
+        "errors": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "currentPrompt": { "type": "string", "pattern": "^SPIDER-PROMPT-[0-9]{3}$" },
+    "currentGroup": { "type": "string", "minLength": 1 },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/capability" }
+    },
+    "externalBoundaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["boundaryCode", "description", "active"],
+        "properties": {
+          "boundaryCode": { "type": "string" },
+          "description": { "type": "string" },
+          "active": { "type": "boolean" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capabilityCode",
+        "groupCode",
+        "promptRef",
+        "title",
+        "objective",
+        "status",
+        "runtimeAvailability",
+        "integrationLevel",
+        "architectureRefs",
+        "technicalDocRefs",
+        "featureFlags",
+        "evidenceRefs",
+        "testSummary",
+        "dependencies",
+        "limitations"
+      ],
+      "properties": {
+        "capabilityCode": { "type": "string", "pattern": "^CAP-[0-9]{3}$" },
+        "groupCode": { "type": "string" },
+        "promptRef": { "type": "string", "pattern": "^SPIDER-PROMPT-[0-9]{3}$" },
+        "title": { "type": "string", "minLength": 1 },
+        "objective": { "type": "string", "minLength": 1 },
+        "status": {
+          "type": "string",
+          "enum": ["PLANNED", "IN_PROGRESS", "IMPLEMENTED", "VERIFIED", "BLOCKED", "DEPRECATED"]
+        },
+        "runtimeAvailability": {
+          "type": "string",
+          "enum": [
+            "OFF_BY_DEFAULT",
+            "LOCAL_DEMO_ONLY",
+            "TEST_ONLY",
+            "RUNTIME_OPT_IN",
+            "RUNTIME_DEFAULT",
+            "NOT_IMPLEMENTED"
+          ]
+        },
+        "integrationLevel": {
+          "type": "string",
+          "enum": [
+            "MOCK_ONLY",
+            "SIMULATED_INFRASTRUCTURE",
+            "CORPORATE_SANDBOX",
+            "REAL_PILOT",
+            "PRODUCTION"
+          ]
+        },
+        "architectureRefs": { "type": "array", "items": { "type": "string" } },
+        "technicalDocRefs": { "type": "array", "items": { "type": "string" } },
+        "featureFlags": { "type": "array", "items": { "type": "string" } },
+        "evidenceRefs": { "type": "array", "items": { "type": "string" } },
+        "testSummary": { "type": "string" },
+        "dependencies": { "type": "array", "items": { "type": "string" } },
+        "limitations": { "type": "array", "items": { "type": "string" } },
+        "lastVerifiedAt": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

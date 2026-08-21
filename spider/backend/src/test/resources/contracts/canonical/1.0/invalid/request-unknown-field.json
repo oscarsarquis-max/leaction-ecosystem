@@ -1,0 +1,34 @@
+{
+  "contract": {
+    "schemaVersion": "1.0",
+    "contractVersion": "1.0.0"
+  },
+  "execution": {
+    "executionId": "exec-018f-example",
+    "timestamp": "2026-08-21T12:00:00Z"
+  },
+  "contextRef": {
+    "contextId": "ctx-123",
+    "intentId": "INTENT_EXAMPLE@1.0.0",
+    "capabilityId": "CAP_EXAMPLE@1.0.0",
+    "productServiceId": "PRODUCT_EXAMPLE@1.0.0",
+    "journeyId": "JOURNEY_EXAMPLE@1.0.0"
+  },
+  "origin": {
+    "channel": "ASSISTED_CHANNEL",
+    "originatorId": "originator-logical-id"
+  },
+  "trace": {
+    "correlationId": "corr-789",
+    "traceparent": "not-a-valid-traceparent"
+  },
+  "target": {
+    "capability": "CONSULTAR_LANCAMENTO",
+    "operation": "consultar"
+  },
+  "payload": {
+    "canonicalData": null
+  },
+  "executionPolicy": {},
+  "extraForbidden": true
+}

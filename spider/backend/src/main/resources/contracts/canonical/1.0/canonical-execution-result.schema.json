@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spider.leaction.local/contracts/canonical/1.0/canonical-execution-result.schema.json",
+  "title": "CanonicalExecutionResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "execution",
+    "contextRef",
+    "trace",
+    "errors",
+    "evidenceRefs"
+  ],
+  "properties": {
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "contractVersion"],
+      "properties": {
+        "schemaVersion": { "type": "string", "minLength": 1 },
+        "contractVersion": { "type": "string", "minLength": 1 }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executionId", "state", "lastUpdatedAt"],
+      "properties": {
+        "executionId": { "type": "string", "minLength": 1 },
+        "state": {
+          "type": "string",
+          "enum": [
+            "RECEIVED",
+            "VALIDATED",
+            "RESOLVED",
+            "PLANNED",
+            "RUNNING",
+            "WAITING_EXTERNAL",
+            "COMPENSATING",
+            "SUCCEEDED",
+            "PARTIALLY_SUCCEEDED",
+            "COMPENSATED",
+            "FAILED",
+            "TIMED_OUT",
+            "REJECTED",
+            "CANCELLED"
+          ]
+        },
+        "startedAt": { "type": ["string", "null"], "format": "date-time" },
+        "completedAt": { "type": ["string", "null"], "format": "date-time" },
+        "lastUpdatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "contextRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contextId", "intentId", "capabilityId", "journeyId"],
+      "properties": {
+        "contextId": { "type": "string", "minLength": 1 },
+        "intentId": { "type": "string", "minLength": 1 },
+        "capabilityId": { "type": "string", "minLength": 1 },
+        "journeyId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["correlationId", "traceparent"],
+      "properties": {
+        "correlationId": { "type": "string", "minLength": 1 },
+        "traceparent": { "type": "string", "minLength": 1 }
+      }
+    },
+    "resolution": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["routeId", "routeVersion"],
+      "properties": {
+        "routeId": { "type": "string", "minLength": 1 },
+        "routeVersion": { "type": "string", "minLength": 1 },
+        "executionPlanRef": { "type": ["string", "null"] }
+      }
+    },
+    "outcome": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["technicalStatus"],
+      "properties": {
+        "technicalStatus": {
+          "type": "string",
+          "enum": ["SUCCESS", "PARTIAL", "FAILURE", "PENDING", "REJECTED"]
+        },
+        "businessOutcome": true,
+        "canonicalData": true
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "canonical-error.schema.json"
+      }
+    },
+    "callback": { "type": ["object", "null"] },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evidenceId"],
+        "properties": {
+          "evidenceId": { "type": "string", "minLength": 1 },
+          "kind": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

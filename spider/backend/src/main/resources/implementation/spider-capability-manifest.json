@@ -1,0 +1,752 @@
+{
+  "manifestVersion": "1.0.1",
+  "productVersion": "0.15.0",
+  "lastVerifiedAt": "2026-08-21T21:20:00Z",
+  "baseline": {
+    "backendTests": 186,
+    "frontendTests": 10,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "currentPrompt": "SPIDER-PROMPT-015",
+  "currentGroup": "GROUP_A_VISIBILITY_OBSERVABILITY",
+  "capabilities": [
+    {
+      "capabilityCode": "CAP-001",
+      "groupCode": "GROUP_A_CANONICAL_CORE",
+      "promptRef": "SPIDER-PROMPT-001",
+      "title": "Canonical Foundation",
+      "objective": "Entrega incremental Canonical Foundation.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-003-contrato-canonico-e-modelo-de-execucao.md",
+        "docs/architecture/SPIDER-ARCH-005-definicao-de-rotas-execution-plan-e-maquina-de-estados.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-001-canonical-foundation.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-002",
+      "groupCode": "GROUP_A_CANONICAL_CORE",
+      "promptRef": "SPIDER-PROMPT-002",
+      "title": "Canonical Engine",
+      "objective": "Entrega incremental Canonical Engine.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-003-contrato-canonico-e-modelo-de-execucao.md",
+        "docs/architecture/SPIDER-ARCH-005-definicao-de-rotas-execution-plan-e-maquina-de-estados.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-002-canonical-engine.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-001"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-003",
+      "groupCode": "GROUP_A_CANONICAL_CORE",
+      "promptRef": "SPIDER-PROMPT-003",
+      "title": "Persistence & Idempotency",
+      "objective": "Entrega incremental Persistence & Idempotency.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-003-contrato-canonico-e-modelo-de-execucao.md",
+        "docs/architecture/SPIDER-ARCH-005-definicao-de-rotas-execution-plan-e-maquina-de-estados.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-003-persistence-idempotency.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-002"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-004",
+      "groupCode": "GROUP_A_CANONICAL_CORE",
+      "promptRef": "SPIDER-PROMPT-004",
+      "title": "Multi-step & Retry",
+      "objective": "Entrega incremental Multi-step & Retry.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-003-contrato-canonico-e-modelo-de-execucao.md",
+        "docs/architecture/SPIDER-ARCH-005-definicao-de-rotas-execution-plan-e-maquina-de-estados.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-004-multistep-retry.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-003"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-005",
+      "groupCode": "GROUP_A_CANONICAL_CORE",
+      "promptRef": "SPIDER-PROMPT-005",
+      "title": "Waiting External & Resume",
+      "objective": "Entrega incremental Waiting External & Resume.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-003-contrato-canonico-e-modelo-de-execucao.md",
+        "docs/architecture/SPIDER-ARCH-005-definicao-de-rotas-execution-plan-e-maquina-de-estados.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-005-waiting-external-resume.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-004"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-006",
+      "groupCode": "GROUP_A_CANONICAL_CORE",
+      "promptRef": "SPIDER-PROMPT-006",
+      "title": "Canonical HTTP Profile",
+      "objective": "Entrega incremental Canonical HTTP Profile.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-006-protocolo-universal-engine-adapter-e-perfis-de-integracao.md",
+        "docs/architecture/SPIDER-ARCH-008-persistencia-tecnica-idempotencia-evidencias-e-retencao.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-006-canonical-http-profile.md"
+      ],
+      "featureFlags": [
+        "spider.canonical.http.enabled"
+      ],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-005"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-007",
+      "groupCode": "GROUP_B_ASYNC_CALLBACK",
+      "promptRef": "SPIDER-PROMPT-007",
+      "title": "Callback Outbox",
+      "objective": "Entrega incremental Callback Outbox.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-006-protocolo-universal-engine-adapter-e-perfis-de-integracao.md",
+        "docs/architecture/SPIDER-ARCH-008-persistencia-tecnica-idempotencia-evidencias-e-retencao.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-007-callback-outbox.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-006"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-008",
+      "groupCode": "GROUP_B_ASYNC_CALLBACK",
+      "promptRef": "SPIDER-PROMPT-008",
+      "title": "Callback Reconciliation",
+      "objective": "Entrega incremental Callback Reconciliation.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-006-protocolo-universal-engine-adapter-e-perfis-de-integracao.md",
+        "docs/architecture/SPIDER-ARCH-008-persistencia-tecnica-idempotencia-evidencias-e-retencao.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-008-callback-reconciliation.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-007"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-009",
+      "groupCode": "GROUP_B_ASYNC_CALLBACK",
+      "promptRef": "SPIDER-PROMPT-009",
+      "title": "Integrity HMAC & Replay",
+      "objective": "Entrega incremental Integrity HMAC & Replay.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-009-seguranca-identidade-autorizacao-e-protecao-de-dados.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-009-integrity-hmac-replay.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-008"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-010",
+      "groupCode": "GROUP_C_GOVERNANCE_SECURITY",
+      "promptRef": "SPIDER-PROMPT-010",
+      "title": "Control Plane",
+      "objective": "Entrega incremental Control Plane.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-009-seguranca-identidade-autorizacao-e-protecao-de-dados.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-010-control-plane.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-009"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-011",
+      "groupCode": "GROUP_C_GOVERNANCE_SECURITY",
+      "promptRef": "SPIDER-PROMPT-011",
+      "title": "Control Plane Runtime Wiring",
+      "objective": "Entrega incremental Control Plane Runtime Wiring.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-009-seguranca-identidade-autorizacao-e-protecao-de-dados.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-011-control-plane-runtime-wiring.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-010"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-012",
+      "groupCode": "GROUP_C_GOVERNANCE_SECURITY",
+      "promptRef": "SPIDER-PROMPT-012",
+      "title": "Governance Async Runtime",
+      "objective": "Entrega incremental Governance Async Runtime.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-009-seguranca-identidade-autorizacao-e-protecao-de-dados.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-012-governance-async-runtime.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-011"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-013",
+      "groupCode": "GROUP_C_GOVERNANCE_SECURITY",
+      "promptRef": "SPIDER-PROMPT-013",
+      "title": "Signal Ingress",
+      "objective": "Entrega incremental Signal Ingress.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-009-seguranca-identidade-autorizacao-e-protecao-de-dados.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-013-signal-ingress.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-012"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-014",
+      "groupCode": "GROUP_C_GOVERNANCE_SECURITY",
+      "promptRef": "SPIDER-PROMPT-014",
+      "title": "Token & Protected Envelope",
+      "objective": "Entrega incremental Token & Protected Envelope.",
+      "status": "VERIFIED",
+      "runtimeAvailability": "RUNTIME_OPT_IN",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-009-seguranca-identidade-autorizacao-e-protecao-de-dados.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-014-token-protected-envelope.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-013"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T20:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-015",
+      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
+      "promptRef": "SPIDER-PROMPT-015",
+      "title": "Console Operacional Canônico e Visualização da Execução",
+      "objective": "Console, cockpit e apresentação dinâmica",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/architecture/SPIDER-ARCH-010-observabilidade-slos-operacao-e-resposta-a-falhas.md",
+        "docs/architecture/SPIDER-ARCH-012-estrategia-de-testes-certificacao-e-qualidade-arquitetural.md"
+      ],
+      "technicalDocRefs": [
+        "docs/technical/SPIDER-PROMPT-015-operational-console.md"
+      ],
+      "featureFlags": [
+        "spider.console.enabled",
+        "spider.console.http.enabled",
+        "spider.console.local-demo.enabled"
+      ],
+      "evidenceRefs": [
+        "docs/technical/screenshots/015-implementation-cockpit-desktop.png",
+        "docs/technical/screenshots/015-presentation-readiness-desktop.png",
+        "docs/technical/screenshots/015-live-execution-desktop.png",
+        "docs/technical/screenshots/015-implementation-cockpit-mobile.png"
+      ],
+      "testSummary": "Covered by backend suite and/or console E2E",
+      "dependencies": [
+        "CAP-014"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": "2026-08-21T21:00:00Z"
+    },
+    {
+      "capabilityCode": "CAP-016",
+      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
+      "promptRef": "SPIDER-PROMPT-016",
+      "title": "Telemetria Canônica e Operational Events",
+      "objective": "Logs, métricas, traces e eventos correlacionados",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "technicalDocRefs": [
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Not started — PLANNED in official roadmap",
+      "dependencies": [
+        "CAP-015"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": null
+    },
+    {
+      "capabilityCode": "CAP-017",
+      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
+      "promptRef": "SPIDER-PROMPT-017",
+      "title": "Saúde, SLIs, SLOs Provisórios e Cockpit Operacional",
+      "objective": "Health, SLIs/SLOs simulados, error budget e dashboards",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "technicalDocRefs": [
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Not started — PLANNED in official roadmap",
+      "dependencies": [
+        "CAP-016"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": null
+    },
+    {
+      "capabilityCode": "CAP-018",
+      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
+      "promptRef": "SPIDER-PROMPT-018",
+      "title": "Laboratório de Falhas e Jornadas Operacionais",
+      "objective": "Fault injection visual, evidências e runbooks Mock",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "technicalDocRefs": [
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Not started — PLANNED in official roadmap",
+      "dependencies": [
+        "CAP-017"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": null
+    },
+    {
+      "capabilityCode": "CAP-019",
+      "groupCode": "GROUP_B_RUNTIME_OPERATIONS",
+      "promptRef": "SPIDER-PROMPT-019",
+      "title": "Runtime de Workers Duráveis e Scheduling",
+      "objective": "Workers, leases, fencing, drain e backlog",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "technicalDocRefs": [
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Not started — PLANNED in official roadmap",
+      "dependencies": [
+        "CAP-018"
+      ],
+      "limitations": [
+        "PLANNED_SIMULATED_INFRASTRUCTURE",
+        "NOT_ACTIVE"
+      ],
+      "lastVerifiedAt": null
+    },
+    {
+      "capabilityCode": "CAP-020",
+      "groupCode": "GROUP_B_RUNTIME_OPERATIONS",
+      "promptRef": "SPIDER-PROMPT-020",
+      "title": "Capacidade, Backpressure e Resiliência Governada",
+      "objective": "Limits, bulkheads, circuits, quotas e load shedding",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "technicalDocRefs": [
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Not started — PLANNED in official roadmap",
+      "dependencies": [
+        "CAP-019"
+      ],
+      "limitations": [
+        "PLANNED_SIMULATED_INFRASTRUCTURE",
+        "NOT_ACTIVE"
+      ],
+      "lastVerifiedAt": null
+    },
+    {
+      "capabilityCode": "CAP-021",
+      "groupCode": "GROUP_B_RUNTIME_OPERATIONS",
+      "promptRef": "SPIDER-PROMPT-021",
+      "title": "Operações Governadas e Reconciliation Workbench",
+      "objective": "Commands seguros e workbench operacional",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "technicalDocRefs": [
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Not started — PLANNED in official roadmap",
+      "dependencies": [
+        "CAP-020"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": null
+    },
+    {
+      "capabilityCode": "CAP-022",
+      "groupCode": "GROUP_C_PLATFORM_READINESS",
+      "promptRef": "SPIDER-PROMPT-022",
+      "title": "Topologia, Alta Disponibilidade e Continuidade Simulada",
+      "objective": "Multi-instância, convergência, restore e DR simulado",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "technicalDocRefs": [
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Not started — PLANNED in official roadmap",
+      "dependencies": [
+        "CAP-021"
+      ],
+      "limitations": [
+        "PLANNED_SIMULATED_INFRASTRUCTURE",
+        "NOT_ACTIVE"
+      ],
+      "lastVerifiedAt": null
+    },
+    {
+      "capabilityCode": "CAP-023",
+      "groupCode": "GROUP_C_PLATFORM_READINESS",
+      "promptRef": "SPIDER-PROMPT-023",
+      "title": "SDK da Porta Universal e Kit de Certificação de Adapters",
+      "objective": "SDK, harness, simuladores e conformidade",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "MOCK_ONLY",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "technicalDocRefs": [
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Not started — PLANNED in official roadmap",
+      "dependencies": [
+        "CAP-022"
+      ],
+      "limitations": [
+        "MOCK_ONLY"
+      ],
+      "lastVerifiedAt": null
+    },
+    {
+      "capabilityCode": "CAP-024",
+      "groupCode": "GROUP_C_PLATFORM_READINESS",
+      "promptRef": "SPIDER-PROMPT-024",
+      "title": "Certificação, Quality Gates e Readiness Review",
+      "objective": "Gates objetivos e decisão READY_FOR_PILOT",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "technicalDocRefs": [
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Not started — PLANNED in official roadmap",
+      "dependencies": [
+        "CAP-023"
+      ],
+      "limitations": [
+        "PLANNED_SIMULATED_INFRASTRUCTURE",
+        "NOT_ACTIVE"
+      ],
+      "lastVerifiedAt": null
+    },
+    {
+      "capabilityCode": "CAP-025",
+      "groupCode": "GROUP_D_REAL_INTEGRATION",
+      "promptRef": "SPIDER-PROMPT-025",
+      "title": "Fundações Corporativas de Segurança e Transporte",
+      "objective": "IdP, mTLS, KMS e primeiro binding em sandbox",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "CORPORATE_SANDBOX",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "technicalDocRefs": [
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Not started — PLANNED in official roadmap",
+      "dependencies": [
+        "CAP-024"
+      ],
+      "limitations": [
+        "PLANNED_CORPORATE_SANDBOX",
+        "NOT_ACTIVE"
+      ],
+      "lastVerifiedAt": null
+    },
+    {
+      "capabilityCode": "CAP-026",
+      "groupCode": "GROUP_D_REAL_INTEGRATION",
+      "promptRef": "SPIDER-PROMPT-026",
+      "title": "Primeiro Legado Real, Canary e Migração Controlada",
+      "objective": "Piloto real, canary, reconciliação e rollback",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "REAL_PILOT",
+      "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "technicalDocRefs": [
+        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+      ],
+      "featureFlags": [],
+      "evidenceRefs": [],
+      "testSummary": "Not started — PLANNED in official roadmap",
+      "dependencies": [
+        "CAP-025"
+      ],
+      "limitations": [
+        "PLANNED_REAL_PILOT",
+        "NOT_ACTIVE",
+        "NEVER_PRODUCTION_IN_THIS_ROADMAP",
+        "REQUIRES_FORMAL_PILOT_APPROVAL"
+      ],
+      "lastVerifiedAt": null
+    }
+  ],
+  "externalBoundaries": [
+    {
+      "boundaryCode": "MOCK_ONLY",
+      "description": "Active boundary: no real IdP/KMS/legacy adapters.",
+      "active": true
+    },
+    {
+      "boundaryCode": "CORPORATE_SANDBOX",
+      "description": "Planned at CAP-025 — not active.",
+      "active": false
+    },
+    {
+      "boundaryCode": "REAL_PILOT",
+      "description": "Planned at CAP-026 — not active; never PRODUCTION in this roadmap.",
+      "active": false
+    },
+    {
+      "boundaryCode": "LEGACY_ORCHESTRATE_PRESERVED",
+      "description": "POST /v1/products/orchestrate remains outside canonical console journey.",
+      "active": true
+    }
+  ]
+}

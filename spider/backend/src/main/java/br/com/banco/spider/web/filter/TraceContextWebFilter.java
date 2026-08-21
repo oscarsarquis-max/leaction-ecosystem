@@ -24,6 +24,7 @@ public class TraceContextWebFilter implements WebFilter {
 
   public static final String TRACEPARENT_HEADER = "traceparent";
   public static final String CONTEXT_KEY = "traceparent";
+  public static final String CLIENT_PROVIDED_ATTR = "spider.traceparent.clientProvided";
 
   private static final Logger log = LoggerFactory.getLogger(TraceContextWebFilter.class);
   private static final SecureRandom RANDOM = new SecureRandom();
@@ -33,13 +34,15 @@ public class TraceContextWebFilter implements WebFilter {
   public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
     ServerHttpRequest request = exchange.getRequest();
     String incoming = request.getHeaders().getFirst(TRACEPARENT_HEADER);
-    String traceparent = isValidTraceparent(incoming) ? incoming.trim() : generateTraceparent();
+    boolean clientProvided = isValidTraceparent(incoming);
+    String traceparent = clientProvided ? incoming.trim() : generateTraceparent();
 
     ServerWebExchange mutated =
         exchange
             .mutate()
             .request(builder -> builder.header(TRACEPARENT_HEADER, traceparent))
             .build();
+    mutated.getAttributes().put(CLIENT_PROVIDED_ATTR, clientProvided);
     mutated.getResponse().getHeaders().set(TRACEPARENT_HEADER, traceparent);
 
     return chain

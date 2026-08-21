@@ -29,3 +29,6 @@ services/**/node_modules/
 # Logs
 *.log
 logs/
+
+scripts/.presentation-logs/
+

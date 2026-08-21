@@ -1,0 +1,19 @@
+package br.com.banco.spider.execution.signal;
+
+public enum ExternalSignalIngressOutcome {
+  ACCEPTED_PENDING_APPLICATION,
+  DUPLICATE_ALREADY_ACCEPTED,
+  DUPLICATE_ALREADY_APPLIED,
+  REPLAY_CONFLICT,
+  INVALID_PROOF,
+  UNAUTHORIZED,
+  LATE,
+  ORPHAN,
+  CONTRACT_MISMATCH,
+  EVENT_TYPE_NOT_ALLOWED,
+  REVOKED,
+  CAPACITY_REJECTED,
+  /** Compat: fluxo legado aplicou inline. */
+  APPLIED_INLINE,
+  REJECTED
+}

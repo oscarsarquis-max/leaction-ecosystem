@@ -2,7 +2,7 @@ package br.com.banco.spider.web.controller;
 
 import br.com.banco.spider.domain.OrchestrationOutcome;
 import br.com.banco.spider.domain.ProductOrchestrateRequest;
-import br.com.banco.spider.orchestrator.OrchestrationService;
+import br.com.banco.spider.execution.application.OrchestrationCompatibilityService;
 import br.com.banco.spider.web.filter.TraceContextWebFilter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,10 +23,11 @@ import reactor.core.publisher.Mono;
 @Tag(name = "Product Orchestrator")
 public class ProductOrchestratorController {
 
-  private final OrchestrationService orchestrationService;
+  private final OrchestrationCompatibilityService orchestrationCompatibilityService;
 
-  public ProductOrchestratorController(OrchestrationService orchestrationService) {
-    this.orchestrationService = orchestrationService;
+  public ProductOrchestratorController(
+      OrchestrationCompatibilityService orchestrationCompatibilityService) {
+    this.orchestrationCompatibilityService = orchestrationCompatibilityService;
   }
 
   @PostMapping(
@@ -45,7 +46,7 @@ public class ProductOrchestratorController {
                   ctx.getOrDefault(
                       TraceContextWebFilter.CONTEXT_KEY,
                       headerTp != null ? headerTp : TraceContextWebFilter.generateTraceparent());
-              return orchestrationService.orchestrate(request, traceparent);
+              return orchestrationCompatibilityService.orchestrate(request, traceparent);
             })
         .map(this::toProblemDetail);
   }

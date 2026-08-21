@@ -63,3 +63,48 @@ spider/
 ```
 
 Diretrizes para a IA: ver `.cursorrules`.
+
+## Documentação
+
+- Arquitetura normativa: `docs/architecture/SPIDER-ARCH-*.md`
+- **Console operacional (ARCH-013):** `docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md`
+- **Roadmap oficial 016–026:** `docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md`
+- Console / Prompt 015: `docs/technical/SPIDER-PROMPT-015-operational-console.md`
+- Guia de apresentação Mock: `docs/presentation/SPIDER-PRESENTATION-GUIDE.md`
+- Fundação canônica (PROMPT-001): `docs/technical/SPIDER-PROMPT-001-canonical-foundation.md`
+- Engine canônica mínima (PROMPT-002): `docs/technical/SPIDER-PROMPT-002-canonical-engine.md`
+- Persistência e idempotência (PROMPT-003): `docs/technical/SPIDER-PROMPT-003-persistence-idempotency.md`
+- Multi-step e retry (PROMPT-004): `docs/technical/SPIDER-PROMPT-004-multistep-retry.md`
+- Waiting external e retomada (PROMPT-005): `docs/technical/SPIDER-PROMPT-005-waiting-external-resume.md`
+- Perfil HTTP canônico (PROMPT-006): `docs/technical/SPIDER-PROMPT-006-canonical-http-profile.md`
+- Callback Outbox (PROMPT-007): `docs/technical/SPIDER-PROMPT-007-callback-outbox.md`
+
+## Console operacional (PROMPT-015)
+
+Frontend ativo: `frontend/src/console/*` (ConsoleShell). Flags (default **false**):
+
+```properties
+spider.console.enabled=false
+spider.console.http.enabled=false
+spider.console.local-demo.enabled=false
+```
+
+Local-demo exige profile Spring `local-demo` **e** flag. Endpoints: `GET /v1/console/executions`, `/{id}`, `/implementation`, `/presentation/readiness`.
+
+Apresentação:
+
+```powershell
+.\scripts\validate-presentation.ps1
+.\scripts\start-presentation.ps1
+```
+
+### Matriz decisão → componente → endpoint → teste
+
+| Decisão | Componente | Endpoint | Teste |
+|--------|------------|----------|-------|
+| Read model seguro | `OperationalConsoleQueryService` | `GET /v1/console/executions*` | `OperationalConsoleE2EReadModelTest` |
+| DenyAll console | `OperationalConsoleSecurityDefaultsConfig` | todos `/v1/console/*` | `DenyAllConsoleAuthBeansPresentTest` |
+| Manifesto capabilities | `ImplementationManifestLoader` | `GET /v1/console/implementation` | `ImplementationManifestLoaderTest` |
+| Presentation readiness | `PresentationReadinessUseCase` | `GET /v1/console/presentation/readiness` | E2E readiness |
+| UI cockpit/apresentação | `ImplementationCockpit` / `PresentationMode` | consome API (não JSON local) | `ConsoleShell.test.jsx` |
+| Legado intacto | orchestrate controller | `POST /v1/products/orchestrate` | `OrchestrateEndpointRegressionTest` |
