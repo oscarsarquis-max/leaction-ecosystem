@@ -1,0 +1,26 @@
+:root {
+  --panne-bege: #e5e4d6;
+  --panne-bege-elevado: #f3f2ea;
+  --panne-bege-escuro: #d4d3c4;
+  --panne-grafite: #323334;
+  --panne-grafite-suave: #4a4b4c;
+  --panne-linha: #c8c7b8;
+  --panne-sucesso: #2f5d3a;
+  --panne-atencao: #8a5a12;
+  --panne-erro: #8b2e2e;
+  --panne-info: #2f4a5d;
+  --panne-foco: #1d4f73;
+  --panne-fonte: "Segoe UI", "Helvetica Neue", sans-serif;
+  --panne-espaco: 0.75rem;
+  --panne-alvo: 2.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

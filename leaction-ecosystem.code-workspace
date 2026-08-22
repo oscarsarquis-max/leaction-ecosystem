@@ -11,6 +11,10 @@
     {
       "name": "QMind Core (ref)",
       "path": "qmind"
+    },
+    {
+      "name": "Panne",
+      "path": "panne"
     }
   ],
   "settings": {

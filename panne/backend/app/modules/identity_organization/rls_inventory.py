@@ -1,0 +1,126 @@
+"""Classificação de tabelas para RLS. Fonte da matriz e dos testes de inventário."""
+
+ORGANIZATIONAL_TABLES = frozenset(
+    {
+        "establishment",
+        "organization_membership",
+        "ingredient",
+        "ingredient_version",
+        "ingredient_composition",
+        "ingredient_nutrient",
+        "ingredient_allergen",
+        "supplier",
+        "supplier_item",
+        "technical_product",
+        "recipe_reference",
+        "formulation",
+        "formulation_recipe_reference",
+        "formulation_version",
+        "formulation_item",
+        "process_step",
+        "scale_calculation",
+        "scale_calculation_item",
+        "trial",
+        "trial_measurement",
+        "approval",
+        "nutrition_calculation",
+        "nutrition_calculation_item",
+        "calculation_evidence",
+        "ai_interaction",
+        "ai_proposal",
+        "ai_proposal_item",
+        "ai_proposal_process_step",
+        "ai_proposal_citation",
+        "ai_proposal_review",
+        "compliance_profile",
+        "compliance_assessment",
+        "compliance_finding",
+        "compliance_evidence",
+        "compliance_review",
+    }
+)
+
+PRODUCTION_TABLES = frozenset(
+    {
+        "production_code_counter",
+        "production_plan",
+        "production_plan_item",
+        "production_order",
+        "production_order_dependency",
+        "production_batch",
+        "production_order_material",
+        "production_order_step",
+        "production_batch_material",
+        "production_event",
+    }
+)
+
+PRODUCTION_EXECUTION_TABLES = frozenset(
+    {
+        "production_execution_policy",
+        "production_weighing_session",
+        "production_weighing_entry",
+        "production_weighing_verification",
+        "production_material_consumption",
+        "production_step_execution",
+        "production_step_execution_event",
+        "production_yield_measurement",
+        "production_occurrence",
+        "production_occurrence_event",
+        "production_dependency_override",
+        "production_sheet_issue",
+    }
+)
+
+HYBRID_TABLES = frozenset(
+    {
+        "organization",
+        "audit_event",
+        "knowledge_source",
+        "knowledge_source_version",
+        "knowledge_fragment",
+        "grounding_query",
+        "nutrition_expectation_profile",
+        "compliance_framework",
+        "compliance_framework_version",
+        "compliance_requirement",
+        "compliance_requirement_source",
+    }
+)
+
+INHERITED_TABLES = frozenset(
+    {
+        "supplier_item_price",
+        "knowledge_source_tag",
+        "nutrition_expectation_profile_item",
+        "grounding_result",
+        "grounding_citation",
+    }
+)
+
+GLOBAL_TABLES = frozenset(
+    {
+        "measurement_unit",
+        "unit_conversion",
+        "nutrient_definition",
+        "allergen",
+        "data_source",
+        "knowledge_tag",
+        "permission",
+        "role_permission",
+    }
+)
+
+IDENTITY_TABLES = frozenset({"app_user", "auth_identity"})
+MEMBERSHIP_ROLE_TABLES = frozenset({"organization_membership_role"})
+
+PRE_PRODUCTION_RLS_TABLES = (
+    ORGANIZATIONAL_TABLES | HYBRID_TABLES | INHERITED_TABLES | GLOBAL_TABLES | IDENTITY_TABLES
+)
+RLS_TABLES = (
+    PRE_PRODUCTION_RLS_TABLES
+    | PRODUCTION_TABLES
+    | PRODUCTION_EXECUTION_TABLES
+    | MEMBERSHIP_ROLE_TABLES
+)
+UNMANAGED_TABLES = frozenset({"alembic_version"})
