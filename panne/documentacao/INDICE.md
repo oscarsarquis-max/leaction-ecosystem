@@ -110,7 +110,8 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Limitações da interface](produto/LIMITACOES-INTERFACE-015.md)
 - [Prompt CURSOR-015](prompts/CURSOR-015-implementar-interface-panne.md)
 - [Retorno CURSOR-015](retornos/CURSOR-015-retorno-execucao.md) — ciclo concluído
-- [Prompt CHECKPOINT-GIT-001](prompts/CHECKPOINT-GIT-001-commit-push.md) — em execução
+- [Prompt CHECKPOINT-GIT-001](prompts/CHECKPOINT-GIT-001-commit-push.md)
+- [Retorno CHECKPOINT-GIT-001](retornos/CHECKPOINT-GIT-001-retorno.md) — concluído
 - CURSOR-016 — pendente e não iniciado
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
 - [Retorno CURSOR-011](retornos/CURSOR-011-retorno-execucao.md)
