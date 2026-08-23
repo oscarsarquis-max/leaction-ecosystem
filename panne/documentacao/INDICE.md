@@ -196,6 +196,7 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Limitações 019](produto/LIMITACOES-019.md)
 - [Retorno CURSOR-019](retornos/CURSOR-019-retorno.md)
 - [Prompt CHECKPOINT-GIT-005](prompts/CHECKPOINT-GIT-005-cursor-018-019.md)
+- [Retorno CHECKPOINT-GIT-005](retornos/CHECKPOINT-GIT-005-retorno.md) — concluído
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
 - [Retorno CURSOR-011](retornos/CURSOR-011-retorno-execucao.md)
 
