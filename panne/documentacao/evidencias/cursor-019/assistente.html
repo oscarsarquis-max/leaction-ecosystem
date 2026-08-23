@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Panne — evidências Assistente de receitas</title>
+  <style>
+    body { font-family: Georgia, serif; background: #f3ead8; color: #2b2118; margin: 0; }
+    header { display: flex; gap: 1rem; align-items: center; padding: .6rem 1rem; background: #2b2118; color: #f3ead8; }
+    nav a { color: #f3ead8; margin-right: 1rem; }
+    .sub { padding: .4rem 1rem; background: #e4d3b4; }
+    main { padding: 1rem 1.2rem 2rem; }
+    .badge { display: inline-block; border: 1px solid #2b2118; padding: .1rem .4rem; margin-right: .3rem; }
+    .panel { background: #fff; padding: 1rem; margin: 1.2rem 0; }
+    .warn { border: 2px solid #2b2118; padding: .5rem; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { border-bottom: 1px solid #2b2118; text-align: left; padding: .3rem; }
+    .drawer { position: fixed; top: 4rem; right: 0; width: 18rem; background: #fff8ea; border-left: 3px solid #2b2118; padding: 1rem; }
+    @media (max-width: 900px) { .drawer { position: static; width: auto; } }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Panne</strong>
+    <nav>
+      <a>Receitas</a>
+      <span>Produção</span>
+      <span>Componentes</span>
+    </nav>
+  </header>
+  <div class="sub">Assistente de receitas · Histórico de propostas</div>
+  <main>
+    <section class="panel" id="entrada">
+      <h1>Criar com assistência</h1>
+      <p><span class="badge">Assistido por IA</span> Entrada guiada. Sem chat livre.</p>
+      <p>Objetivo: criar pão com farinha de trigo</p>
+      <p>Restrições: crosta crocante · evitar amendoim (sem promessa de ausência)</p>
+    </section>
+    <section class="panel" id="grounding">
+      <h2>Grounding insuficiente</h2>
+      <p class="warn">Não há evidência suficiente para gerar a proposta.</p>
+    </section>
+    <section class="panel" id="proposta">
+      <h2>Proposta</h2>
+      <p>Título: Pão de teste assistivo</p>
+      <p>Justificativa: hipótese técnica a partir das evidências.</p>
+    </section>
+    <section class="panel" id="comparacao">
+      <h2>Comparação</h2>
+      <table>
+        <tr><th>Tipo</th><th>Antes</th><th>Depois</th><th>Citação</th></tr>
+        <tr><td>adicionado</td><td>—</td><td>Farinha 100 g</td><td>items[1].rationale</td></tr>
+        <tr><td>não resolvido</td><td>—</td><td>ingrediente desconhecido</td><td>—</td></tr>
+      </table>
+    </section>
+    <section class="panel" id="revisao">
+      <h2>Revisão</h2>
+      <p>Aceitar · Rejeitar · Aceite em conjunto · Comentário humano</p>
+      <p>Guardrail: bloqueio de alegação médica e promessa de ausência de alergênico.</p>
+    </section>
+    <section class="panel" id="rascunho">
+      <h2>Rascunho materializado</h2>
+      <p>Receita AI-abc12345 · versão 1 · rascunho. Base preservada. Sem publicação.</p>
+    </section>
+    <section class="panel" id="historico">
+      <h2>Histórico</h2>
+      <p>Pão de teste assistivo · aguardando revisão · criar</p>
+    </section>
+  </main>
+  <aside class="drawer">
+    <h2>Mentoria do assistente</h2>
+    <ol>
+      <li>Finalidade</li>
+      <li>Objetivo e restrições</li>
+      <li>Receita-base</li>
+      <li>Fontes</li>
+      <li>Grounding</li>
+      <li>Geração</li>
+      <li>Validação</li>
+      <li>Comparação</li>
+      <li>Revisão</li>
+      <li>Rascunho criado</li>
+    </ol>
+  </aside>
+</body>
+</html>

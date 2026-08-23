@@ -10,6 +10,16 @@ import type {
   IngredientDossier,
   IngredientPage,
   IngredientVersion,
+  ApprovalRow,
+  NutritionPreview,
+  RecipeCard,
+  RecipeDossier,
+  RecipePage,
+  RecipeAiProposal,
+  RecipeReferenceLink,
+  RecipeVersion,
+  ScaleRow,
+  TrialRow,
   SupplierCard,
   SupplierItemCard,
   Dependency,
@@ -175,6 +185,77 @@ export class ApiClient {
 
   getCatalogSources() {
     return this.catalogGet<{ data: CatalogItem[] }>("/catalog/sources");
+  }
+
+  listRecipes(query: Query = {}) {
+    return this.catalogGet<RecipePage>("/recipes", query);
+  }
+
+  getRecipe(recipeId: string) {
+    return this.catalogGet<Envelope<RecipeCard & { versions: RecipeVersion[] }>>(
+      `/recipes/${recipeId}`,
+    );
+  }
+
+  getRecipeVersion(recipeId: string, versionId: string) {
+    return this.catalogGet<Envelope<RecipeDossier>>(`/recipes/${recipeId}/versions/${versionId}`);
+  }
+
+  getRecipeSheet(recipeId: string, versionId: string) {
+    return this.catalogGet<Envelope<Record<string, unknown>>>(
+      `/recipes/${recipeId}/versions/${versionId}/sheet`,
+    );
+  }
+
+  listRecipeAiProposals() {
+    return this.catalogGet<{ items: RecipeAiProposal[]; total: number }>("/recipe-ai/proposals");
+  }
+
+  getRecipeAiProposal(proposalId: string) {
+    return this.catalogGet<Envelope<RecipeAiProposal>>(`/recipe-ai/proposals/${proposalId}`);
+  }
+
+  getRecipeAiGrounding(proposalId: string) {
+    return this.catalogGet<Envelope<{ results: Array<Record<string, string | null>> }>>(
+      `/recipe-ai/proposals/${proposalId}/grounding`,
+    );
+  }
+
+  getRecipeAiComparison(proposalId: string) {
+    return this.catalogGet<Envelope<{ changes: RecipeAiProposal["changes"] }>>(
+      `/recipe-ai/proposals/${proposalId}/comparison`,
+    );
+  }
+
+  listRecipeReferences(query: Query = {}) {
+    return this.catalogGet<{ data: Array<{ id: string; title: string; source_type: string }> }>(
+      "/recipe-references",
+      query,
+    );
+  }
+
+  getRecipeTrials(recipeId: string, versionId: string) {
+    return this.catalogGet<{ data: TrialRow[] }>(`/recipes/${recipeId}/versions/${versionId}/trials`);
+  }
+
+  getRecipeNutrition(recipeId: string, versionId: string) {
+    return this.catalogGet<{ data: NutritionPreview | null; disclaimer?: string }>(
+      `/recipes/${recipeId}/versions/${versionId}/nutrition`,
+    );
+  }
+
+  getRecipeApprovals(recipeId: string, versionId: string) {
+    return this.catalogGet<{ data: ApprovalRow[] }>(
+      `/recipes/${recipeId}/versions/${versionId}/approvals`,
+    );
+  }
+
+  getRecipeScales(recipeId: string, versionId: string) {
+    return this.catalogGet<{ data: ScaleRow[] }>(`/recipes/${recipeId}/versions/${versionId}/scales`);
+  }
+
+  getLinkedReferences(recipeId: string) {
+    return this.catalogGet<{ data: RecipeReferenceLink[] }>(`/recipes/${recipeId}/references`);
   }
 
   catalogCommand<T>(

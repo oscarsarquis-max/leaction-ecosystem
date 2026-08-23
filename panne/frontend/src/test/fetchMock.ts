@@ -8,6 +8,10 @@ import {
   executionFixture,
   materialsFixture,
   meFixture,
+  PROPOSAL_ID,
+  proposalFixture,
+  RECIPE_ID,
+  RECIPE_VERSION_ID,
   ordersFixture,
   planDetailFixture,
   plansFixture,
@@ -34,6 +38,223 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
       if (path.includes(prefix)) return fn(url, request);
     }
     if (path === "/api/v1/me") return json(meFixture);
+    if (path.includes("/recipe-ai/proposals") && path.endsWith("/grounding")) {
+      return json({
+        data: {
+          results: [
+            {
+              title: "Manual de pão",
+              source_kind: "technical",
+              locator: "paragraph:1",
+              excerpt: "Criar pão com farinha de trigo.",
+            },
+          ],
+        },
+      });
+    }
+    if (path.includes("/recipe-ai/proposals") && path.endsWith("/comparison")) {
+      return json({ data: { changes: proposalFixture.changes, items: proposalFixture.items } });
+    }
+    if (path.includes("/recipe-ai/proposals") && path.endsWith("/changes") && request.method !== "GET") {
+      return json({
+        data: {
+          ...proposalFixture,
+          changes: proposalFixture.changes.map((item) => ({ ...item, decision: "accepted" })),
+          row_version: 2,
+        },
+        row_version: 2,
+      });
+    }
+    if (path.includes("/recipe-ai/proposals") && path.endsWith("/review") && request.method !== "GET") {
+      return json({ data: { ...proposalFixture, status: "accepted", status_label: "aceito", row_version: 3 }, row_version: 3 });
+    }
+    if (path.includes("/recipe-ai/proposals") && path.endsWith("/materialize")) {
+      return json({
+        data: {
+          ...proposalFixture,
+          status: "materialized",
+          status_label: "materializado",
+          materialized_formulation_version_id: RECIPE_VERSION_ID,
+          materialized: { formulation_id: RECIPE_ID, version_id: RECIPE_VERSION_ID, status: "draft" },
+          row_version: 4,
+        },
+        row_version: 4,
+      });
+    }
+    if (path.endsWith("/recipe-ai/proposals") && request.method === "GET") {
+      return json({ items: [proposalFixture], total: 1 });
+    }
+    if (path.endsWith("/recipe-ai/proposals") && request.method === "POST") {
+      return json({ data: proposalFixture, row_version: 1 });
+    }
+    if (path.includes(`/recipe-ai/proposals/${PROPOSAL_ID}`)) {
+      return json({ data: proposalFixture, row_version: 1 });
+    }
+    if (path.endsWith("/recipes") && request.method === "GET") {
+      return json({
+        items: [
+          {
+            id: RECIPE_ID,
+            code: "PAO-1",
+            display_name: "Pão francês",
+            status: "development",
+            technical_product_id: "tp-1",
+            row_version: 1,
+            current_version: { id: RECIPE_VERSION_ID, version_number: 1, status: "draft" },
+          },
+        ],
+        total: 1,
+        limit: 20,
+        offset: 0,
+      });
+    }
+    if (path.endsWith("/recipes") && request.method === "POST") {
+      return json({
+        data: {
+          id: RECIPE_ID,
+          code: "PAO-9",
+          display_name: "Pão novo",
+          status: "development",
+          current_version: { id: RECIPE_VERSION_ID, version_number: 1, status: "draft" },
+        },
+        row_version: 1,
+      });
+    }
+    if (path.includes("/recipes/") && path.endsWith("/trials")) {
+      return json({ data: [] });
+    }
+    if (path.includes("/recipes/") && path.endsWith("/nutrition")) {
+      return json({
+        data: null,
+        disclaimer: "Prévia técnica incompleta e não validada regulatoriamente.",
+      });
+    }
+    if (path.includes("/recipes/") && path.endsWith("/approvals")) {
+      return json({ data: [] });
+    }
+    if (path.includes("/recipes/") && path.endsWith("/scales")) {
+      return json({ data: [] });
+    }
+    if (path.includes("/recipes/") && path.endsWith("/references")) {
+      return json({ data: [] });
+    }
+    if (path.includes("/recipes/") && path.endsWith("/sheet")) {
+      return json({
+        data: {
+          kind: "ficha_tecnica_derivada",
+          disclaimer: "Prévia técnica incompleta e não validada regulatoriamente.",
+          payload_sha256: "abc123",
+          identity: { display_name: "Pão francês", code: "PAO-1", status: "development" },
+          version: { version_number: 1, status: "draft" },
+          organization: { display_name: "Padaria Central" },
+          responsible: { display_name: "Ana Padeiro" },
+          components: [{ sequence: 1, label: "Farinha", net_quantity: "1000", bakers_percentage: "100" }],
+          steps: [{ sequence: 1, title: "Mistura", instructions: "Juntar." }],
+          completeness: { ready_to_publish: false, complete_dossier: false, items: [] },
+        },
+      });
+    }
+    if (path.includes("/recipes/") && request.method !== "GET") {
+      return json({
+        data: { id: RECIPE_ID, status: "draft", decision: "approved", persisted: false, row_version: 2 },
+        row_version: 2,
+      });
+    }
+    if (path.includes("/recipes/")) {
+      return json({
+        data: {
+          id: RECIPE_ID,
+          code: "PAO-1",
+          display_name: "Pão francês",
+          status: "development",
+          technical_product_id: "tp-1",
+          row_version: 1,
+          versions: [
+            {
+              id: RECIPE_VERSION_ID,
+              formulation_id: RECIPE_ID,
+              version_number: 1,
+              status: "draft",
+              yield_units: 10,
+              target_unit_weight_g: "50",
+              expected_bake_loss_rate: "0.12",
+              notes: null,
+              published_at: null,
+              row_version: 1,
+            },
+          ],
+          identity: {
+            id: RECIPE_ID,
+            code: "PAO-1",
+            display_name: "Pão francês",
+            status: "development",
+            technical_product_id: "tp-1",
+            row_version: 1,
+            current_version: { id: RECIPE_VERSION_ID, version_number: 1, status: "draft" },
+          },
+          version: {
+            id: RECIPE_VERSION_ID,
+            formulation_id: RECIPE_ID,
+            version_number: 1,
+            status: "draft",
+            yield_units: 10,
+            target_unit_weight_g: "50",
+            expected_bake_loss_rate: "0.12",
+            notes: null,
+            published_at: null,
+            row_version: 1,
+          },
+          items: [
+            {
+              id: "ri1",
+              ingredient_version_id: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+              sequence: 1,
+              net_quantity: "1000",
+              gross_quantity: "1000",
+              measurement_unit_id: "u1",
+              correction_factor: "1",
+              is_flour_basis: true,
+              role: "ingredient",
+              notes: null,
+              bakers_percentage: "100",
+            },
+          ],
+          steps: [
+            {
+              id: "rs1",
+              sequence: 1,
+              title: "Mistura",
+              instructions: "Juntar farinha e água.",
+              duration_seconds: 600,
+              temperature_celsius: "24",
+            },
+          ],
+          bakers: {
+            flour_mass: "1000",
+            explained_absence: false,
+            items: [{ id: "ri1", net_quantity: "1000", gross_quantity: "1000", is_flour_basis: true, bakers_percentage: "100" }],
+          },
+          yield: {
+            base_net_mass: "1000",
+            yield_units: 10,
+            target_unit_weight_g: "50",
+            expected_bake_loss_rate: "0.12",
+            expected_final_mass_g: "500",
+            portion_mass_g: null,
+          },
+          completeness: {
+            ready_to_publish: false,
+            complete_dossier: false,
+            items: [
+              { code: "aprovacao", label: "Aprovação válida mais recente ausente", blocking: true, origin: "approval" },
+              { code: "nutricao", label: "Prévia nutricional técnica ausente", blocking: false, origin: "nutrition_calculation" },
+            ],
+          },
+        },
+        row_version: 1,
+      });
+    }
+    if (path.endsWith("/recipe-references")) return json({ data: [{ id: "ref-1", title: "Manual interno", source_type: "internal" }] });
     if (path.endsWith("/ingredients") && request.method === "GET") {
       return json({
         items: [

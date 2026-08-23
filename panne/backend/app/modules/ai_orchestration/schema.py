@@ -27,6 +27,7 @@ class ProposedItem(StrictModel):
     rationale: str = Field(min_length=1, max_length=2_000)
     confidence_note: str = Field(min_length=1, max_length=500)
     cited_evidence_tokens: list[str] = Field(default_factory=list)
+    measurement_unit_code: Literal["g", "kg", "mg"] = "g"
 
 
 class ProposedStep(StrictModel):
@@ -43,6 +44,8 @@ class ProposalOutput(StrictModel):
     proposal_type: Literal["create", "adapt"]
     title: str = Field(min_length=1, max_length=200)
     objective: str = Field(min_length=1, max_length=2_000)
+    summary: str = Field(min_length=1, max_length=2_000)
+    justification: str = Field(min_length=1, max_length=4_000)
     assistive_disclaimer: str
     items: list[ProposedItem] = Field(min_length=1)
     steps: list[ProposedStep] = Field(default_factory=list)
@@ -50,6 +53,12 @@ class ProposalOutput(StrictModel):
     unresolved_questions: list[str]
     warnings: list[str]
     cited_evidence_tokens: list[str]
+    yield_hypothesis: str | None = None
+    loss_hypothesis: str | None = None
+    constraints_met: list[str] = Field(default_factory=list)
+    constraints_unmet: list[str] = Field(default_factory=list)
+    gaps: list[str] = Field(default_factory=list)
+    alerts: list[str] = Field(default_factory=list)
 
 
 class ExplanationOutput(StrictModel):

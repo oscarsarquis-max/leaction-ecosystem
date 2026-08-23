@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Panne — evidências Receitas</title>
+  <style>
+    body { font-family: Georgia, serif; background: #f3ead8; color: #2b2118; margin: 0; }
+    header { display: flex; gap: 1rem; align-items: center; padding: .6rem 1rem; background: #2b2118; color: #f3ead8; }
+    nav a { color: #f3ead8; margin-right: 1rem; }
+    .sub { padding: .4rem 1rem; background: #e4d3b4; }
+    main { padding: 1rem 1.2rem 2rem; }
+    .badge { display: inline-block; border: 1px solid #2b2118; padding: .1rem .4rem; margin-right: .3rem; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { border-bottom: 1px solid #2b2118; text-align: left; padding: .3rem; }
+    .warn { border: 2px solid #2b2118; padding: .5rem; font-weight: 700; }
+    section { margin: 1.4rem 0; padding: 1rem; background: #fff; }
+    h1 { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Panne</strong>
+    <nav>
+      <a href="#lista">Receitas</a>
+      <span>Produção</span>
+      <span>Componentes</span>
+    </nav>
+  </header>
+  <div class="sub">Minhas receitas</div>
+  <main>
+    <section id="lista">
+      <h1>Minhas receitas</h1>
+      <p><strong>Nova receita</strong></p>
+      <p>Pesquisa · Situação · Versão · Filtrar</p>
+      <table>
+        <tr><th>Código</th><th>Nome</th><th>Versão</th></tr>
+        <tr><td>PAO-1</td><td>Pão francês</td><td><span class="badge">rascunho</span></td></tr>
+      </table>
+    </section>
+    <section id="nova">
+      <h1>Nova receita</h1>
+      <p>Cria produto técnico, formulação e primeira versão em rascunho.</p>
+      <p>Código · Nome · Criar rascunho</p>
+    </section>
+    <section id="atelier">
+      <h1>Pão francês</h1>
+      <p>
+        <span class="badge">rascunho</span>
+        <span class="badge">nutrição incompleta</span>
+        <span class="badge">prontidão incompleta</span>
+      </p>
+      <h2>Componentes</h2>
+      <p>Farinha 1000 · líquido · bruto · 100% · farinha-base sim</p>
+      <h2>Percentual do padeiro</h2>
+      <p>Total de farinha: 1000. A soma dos componentes não precisa resultar em 100%.</p>
+      <h2>Processo</h2>
+      <p>1. Mistura — Juntar farinha e água.</p>
+      <h2>Rendimento e porção</h2>
+      <p>10 unidades de 50 g, perda 0.12.</p>
+      <h2>Escala</h2>
+      <p>Gravar escala por massa total. Motor no servidor.</p>
+      <h2>Ensaios</h2>
+      <p>Ensaio não é ordem de produção. Planejar ensaio.</p>
+      <h2>Nutrição técnica</h2>
+      <p class="warn">Prévia técnica incompleta e não validada regulatoriamente.</p>
+      <h2>Referências</h2>
+      <p>Manual interno</p>
+      <h2>Revisão e aprovação</h2>
+      <p>Enviar para revisão · Aprovar · Rejeitar</p>
+      <h2>Histórico</h2>
+      <p>v1 rascunho · Criar nova versão · Publicar versão · Ver ficha técnica</p>
+    </section>
+    <section id="assistente">
+      <h2>Assistente de receita</h2>
+      <ol>
+        <li>Objetivo e produto</li>
+        <li>Componentes</li>
+        <li>Quantidades e percentual</li>
+        <li>Processo</li>
+        <li>Rendimento, perda e porção</li>
+        <li>Cálculo técnico</li>
+        <li>Ensaio</li>
+        <li>Revisão e aprovação</li>
+        <li>Publicação</li>
+      </ol>
+      <p>Sem inteligência artificial. Completude não é conformidade.</p>
+    </section>
+    <section id="ficha" class="sheet">
+      <h1>Ficha técnica</h1>
+      <p class="warn">Prévia técnica incompleta e não validada regulatoriamente.</p>
+      <p>PAO-1 · v1 · hash abc123</p>
+      <p>Imprimir A4</p>
+    </section>
+    <section id="conflito">
+      <h2>Conflito</h2>
+      <p>A versão do recurso mudou. Recarregue e tente de novo.</p>
+    </section>
+  </main>
+</body>
+</html>

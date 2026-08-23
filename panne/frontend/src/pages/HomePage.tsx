@@ -30,6 +30,15 @@ export function HomePage() {
               </Link>
             </article>
           ) : null}
+          {hasPermission("recipe.read") ? (
+            <article className="card">
+              <h2>Receitas</h2>
+              <p>Fichas técnicas derivadas da versão da receita.</p>
+              <Link className="primary" to="/receitas">
+                Abrir receitas
+              </Link>
+            </article>
+          ) : null}
         </div>
       </div>
       <aside className="panel">

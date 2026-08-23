@@ -17,6 +17,13 @@ import { CatalogsPage } from "./pages/CatalogsPage";
 import { HomePage } from "./pages/HomePage";
 import { IngredientEditorPage } from "./pages/IngredientEditorPage";
 import { IngredientsPage } from "./pages/IngredientsPage";
+import { RecipeAiDetailPage } from "./pages/RecipeAiDetailPage";
+import { RecipeAiHistoryPage } from "./pages/RecipeAiHistoryPage";
+import { RecipeAiHubPage } from "./pages/RecipeAiHubPage";
+import { RecipeAiWizardPage } from "./pages/RecipeAiWizardPage";
+import { RecipeEditorPage } from "./pages/RecipeEditorPage";
+import { RecipeSheetPage } from "./pages/RecipeSheetPage";
+import { RecipesPage } from "./pages/RecipesPage";
 import { SuppliersPage } from "./pages/SuppliersPage";
 import { OrganizationProvider } from "./session/OrganizationContext";
 
@@ -73,6 +80,78 @@ export function AppRoutes() {
                 element={
                   <RequirePermission code="ingredient.read">
                     <CatalogsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/receitas"
+                element={
+                  <RequirePermission code="recipe.read">
+                    <RecipesPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/receitas/assistente"
+                element={
+                  <RequirePermission code="recipe.read">
+                    <RecipeAiHubPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/receitas/assistente/criar"
+                element={
+                  <RequirePermission code="recipe.ai.propose">
+                    <RecipeAiWizardPage mode="create" />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/receitas/assistente/adaptar"
+                element={
+                  <RequirePermission code="recipe.ai.propose">
+                    <RecipeAiWizardPage mode="adapt" />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/receitas/assistente/historico"
+                element={
+                  <RequirePermission code="recipe.read">
+                    <RecipeAiHistoryPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/receitas/assistente/:proposalId"
+                element={
+                  <RequirePermission code="recipe.read">
+                    <RecipeAiDetailPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/receitas/novo"
+                element={
+                  <RequirePermission code="recipe.create">
+                    <RecipeEditorPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/receitas/:recipeId"
+                element={
+                  <RequirePermission code="recipe.read">
+                    <RecipeEditorPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/receitas/:recipeId/versoes/:versionId/ficha"
+                element={
+                  <RequirePermission code="recipe.technical_sheet.read">
+                    <RecipeSheetPage />
                   </RequirePermission>
                 }
               />

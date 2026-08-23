@@ -22,10 +22,15 @@ from app.modules.ai_orchestration.models import (
     AiProposalProcessStep,
 )
 from app.modules.ai_orchestration.preview import preview_proposal_items
-from app.modules.ai_orchestration.prompt import (
-    EXPLAIN_SYSTEM_PROMPT,
+from app.modules.ai_orchestration.diff import build_proposal_diff
+from app.modules.ai_orchestration.limits import (
     MAX_EVIDENCE_CHARS,
     MAX_EVIDENCE_FRAGMENTS,
+    PROMPT_TEMPLATE_NAME,
+    runtime_limits,
+)
+from app.modules.ai_orchestration.prompt import (
+    EXPLAIN_SYSTEM_PROMPT,
     MAX_OBJECTIVE_CHARS,
     PROMPT_TEMPLATE_VERSION,
     SYSTEM_PROMPT,
@@ -65,6 +70,13 @@ class ProposalCommand:
     created_by_user_id: UUID | None = None
     allow_unverified: bool = False
     expires_at: datetime | None = None
+    intent: str | None = None
+    constraints: tuple[str, ...] = ()
+    retrieval_profile: dict | None = None
+    guided_input: dict | None = None
+    jurisdiction: str | None = None
+    regulatory_purpose: str | None = None
+    selected_knowledge_source_ids: tuple[UUID, ...] = ()
 
 
 @dataclass
@@ -161,17 +173,26 @@ def _load_allowed_ingredients(
 
 
 def _grounding_request(command: ProposalCommand, objective: str) -> RetrievalRequest:
-    authority = None if command.allow_unverified else ("official", "curated", "user_provided")
+    profile = command.retrieval_profile or {}
+    kinds = tuple(profile.get("source_kinds") or FORMULATION_SOURCE_KINDS)
+    if command.regulatory_purpose:
+        kinds = tuple(dict.fromkeys(kinds + ("normative",)))
+    authority = profile.get("authority_levels")
+    if authority is None:
+        authority = None if command.allow_unverified else ("official", "curated", "user_provided")
+    else:
+        authority = tuple(authority)
     return RetrievalRequest(
         query_text=objective,
         organization_id=command.organization_id,
-        source_kinds=FORMULATION_SOURCE_KINDS,
+        source_kinds=kinds,
         authority_levels=authority,
-        review_statuses=("reviewed",),
+        jurisdiction=command.jurisdiction or profile.get("jurisdiction"),
+        review_statuses=tuple(profile.get("review_statuses") or ("reviewed",)),
         include_consultation=False,
-        include_historical=False,
+        include_historical=bool(profile.get("include_historical", False)),
         normative_defaults=False,
-        limit=MAX_EVIDENCE_FRAGMENTS,
+        limit=int(profile.get("limit") or MAX_EVIDENCE_FRAGMENTS),
         created_by_user_id=command.created_by_user_id,
     )
 
@@ -183,8 +204,15 @@ def _authorized_ranked(session: Session, command: ProposalCommand, objective: st
     for row in ranked:
         if row.source.source_kind not in FORMULATION_SOURCE_KINDS:
             continue
-        if row.source.source_kind == "normative":
+        if row.source.source_kind == "normative" and not command.regulatory_purpose:
             continue
+        if row.source.source_kind == "normative" and row.source.authority_level == "unverified":
+            continue
+        if command.selected_knowledge_source_ids and row.source.id not in set(
+            command.selected_knowledge_source_ids
+        ):
+            if row.source.source_kind != "normative":
+                continue
         if row.version.review_status != "reviewed":
             continue
         if not command.allow_unverified and row.source.authority_level == "unverified":
@@ -279,6 +307,8 @@ def _validate_output(output: ProposalOutput, evidence_tokens: set[str], allowed)
             raise OrchestrationError("quantidade inválida")
         if item.correction_factor is not None and item.correction_factor <= 0:
             raise OrchestrationError("fator de correção inválido")
+        if getattr(item, "measurement_unit_code", "g") not in {"g", "kg", "mg"}:
+            raise OrchestrationError("unidade incompatível")
     for step in output.steps:
         tokens.update(step.cited_evidence_tokens)
     if not tokens <= evidence_tokens:
@@ -450,6 +480,8 @@ def run_proposal(
     warnings = list(parsed.warnings) + list(preview.warnings)
     if ASSISTIVE_DISCLAIMER not in warnings:
         warnings.append(ASSISTIVE_DISCLAIMER)
+    output_canonical = parsed.model_dump(mode="json")
+    limits = runtime_limits()
     proposal = AiProposal(
         organization_id=command.organization_id,
         ai_interaction_id=interaction.id,
@@ -460,7 +492,27 @@ def run_proposal(
         status="draft",
         assumptions=list(parsed.assumptions),
         unresolved_questions=list(parsed.unresolved_questions),
-        warnings=warnings,
+        warnings=warnings + list(getattr(parsed, "alerts", []) or []),
+        intent=command.intent
+        or ("adapt_recipe" if proposal_type == "adapt" else "create_recipe"),
+        constraints=list(command.constraints),
+        retrieval_profile=command.retrieval_profile or {},
+        guided_input=command.guided_input or {},
+        prompt_template_name=PROMPT_TEMPLATE_NAME,
+        model_parameters={
+            "temperature": limits["temperature"],
+            "max_output_tokens": limits["max_output_tokens"],
+            "prompt_template_version": PROMPT_TEMPLATE_VERSION,
+        },
+        input_canonical={
+            "objective": objective,
+            "intent": command.intent,
+            "guided_input": command.guided_input or {},
+        },
+        output_canonical=output_canonical,
+        output_hash=_request_hash(output_canonical),
+        guardrail_result={"provider": response.provider, "blocked": False},
+        missing_data=list(getattr(parsed, "gaps", []) or []),
         expires_at=command.expires_at,
     )
     session.add(proposal)
@@ -516,6 +568,7 @@ def run_proposal(
             )
         )
     session.flush()
+    build_proposal_diff(session, proposal)
     return OrchestrationResult(
         interaction=interaction,
         proposal=proposal,

@@ -178,7 +178,24 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Retorno CURSOR-017](retornos/CURSOR-017-retorno.md) — aceito condicionalmente; versionado neste checkpoint
 - [Prompt CHECKPOINT-GIT-004](prompts/CHECKPOINT-GIT-004-cursor-017.md)
 - [Retorno CHECKPOINT-GIT-004](retornos/CHECKPOINT-GIT-004-retorno.md) — concluído
-- CURSOR-018 — não iniciado
+- [Prompt CURSOR-018](prompts/CURSOR-018-implementar-receitas-fichas.md)
+- [Auditoria 018](arquitetura/AUDITORIA-018-RECEITAS.md)
+- [Contratos de receitas](arquitetura/CONTRATOS-RECEITAS-018.md)
+- [Permissões e RLS de receitas](decisoes/PERMISSOES-E-RLS-RECEITAS.md)
+- [Ciclo de vida da receita](arquitetura/CICLO-DE-VIDA-RECEITA.md)
+- [Ficha técnica derivada](arquitetura/FICHA-TECNICA-DERIVADA.md)
+- [Completude da receita](arquitetura/COMPLETUDE-RECEITA.md)
+- [Assistente de receita](arquitetura/ASSISTENTE-RECEITA.md)
+- [Evidências visuais 018](arquitetura/EVIDENCIAS-VISUAIS-018.md)
+- [Limitações 018](produto/LIMITACOES-018.md)
+- [Retorno CURSOR-018](retornos/CURSOR-018-retorno.md)
+- [Prompt CURSOR-019](prompts/CURSOR-019-assistente-ia-receitas.md)
+- [Assistente de IA de receitas](arquitetura/ASSISTENTE-IA-RECEITAS.md)
+- [Referências por versão](arquitetura/REFERENCIAS-POR-VERSAO.md)
+- [Evidências visuais 019](arquitetura/EVIDENCIAS-VISUAIS-019.md)
+- [Limitações 019](produto/LIMITACOES-019.md)
+- [Retorno CURSOR-019](retornos/CURSOR-019-retorno.md)
+- [Prompt CHECKPOINT-GIT-005](prompts/CHECKPOINT-GIT-005-cursor-018-019.md)
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
 - [Retorno CURSOR-011](retornos/CURSOR-011-retorno-execucao.md)
 

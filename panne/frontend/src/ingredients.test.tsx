@@ -24,7 +24,7 @@ describe("componentes e shell", () => {
     );
     expect(screen.getByRole("link", { name: "Produção" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Componentes" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Receitas" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Receitas" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Cadastros" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Gestão" })).not.toBeInTheDocument();
   });

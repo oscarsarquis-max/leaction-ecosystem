@@ -18,6 +18,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -50,6 +51,7 @@ class TechnicalProduct(Base):
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'development'"))
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
 
@@ -69,6 +71,7 @@ class RecipeReference(Base):
     license_or_usage_notes: Mapped[str | None] = mapped_column(Text)
     accessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     notes: Mapped[str | None] = mapped_column(Text)
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     created_at: Mapped[datetime] = _created_at()
     created_by_user_id: Mapped[UUID | None] = mapped_column(
         Uuid, ForeignKey("app_user.id", ondelete="RESTRICT")
@@ -93,6 +96,7 @@ class Formulation(Base):
     code: Mapped[str] = mapped_column(Text, nullable=False)
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'development'"))
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
 
@@ -158,6 +162,65 @@ class FormulationVersion(Base):
         Uuid, ForeignKey("app_user.id", ondelete="RESTRICT")
     )
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+
+
+class FormulationVersionRecipeReference(Base):
+    __tablename__ = "formulation_version_recipe_reference"
+    __table_args__ = (
+        Index(
+            "uq_formulation_version_recipe_reference",
+            "formulation_version_id",
+            "recipe_reference_id",
+            unique=True,
+            postgresql_where=text("recipe_reference_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_formulation_version_fragment_ref",
+            "formulation_version_id",
+            "knowledge_fragment_id",
+            unique=True,
+            postgresql_where=text("knowledge_fragment_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_formulation_version_ref_id_org",
+            "id",
+            "organization_id",
+            unique=True,
+        ),
+        ForeignKeyConstraint(
+            ["formulation_version_id", "organization_id"],
+            ["formulation_version.id", "formulation_version.organization_id"],
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["recipe_reference_id", "organization_id"],
+            ["recipe_reference.id", "recipe_reference.organization_id"],
+            ondelete="RESTRICT",
+        ),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    organization_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    formulation_version_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    recipe_reference_id: Mapped[UUID | None] = mapped_column(Uuid)
+    knowledge_source_version_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("knowledge_source_version.id", ondelete="RESTRICT")
+    )
+    knowledge_fragment_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("knowledge_fragment.id", ondelete="RESTRICT")
+    )
+    role: Mapped[str] = mapped_column(Text, nullable=False)
+    source_version_label: Mapped[str | None] = mapped_column(Text)
+    locator_type: Mapped[str | None] = mapped_column(Text)
+    locator_value: Mapped[str | None] = mapped_column(Text)
+    content_hash: Mapped[str | None] = mapped_column(Text)
+    accessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    snapshot: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    copied_from_version_id: Mapped[UUID | None] = mapped_column(Uuid)
+    created_at: Mapped[datetime] = _created_at()
 
 
 class FormulationItem(Base):
@@ -368,3 +431,29 @@ class Approval(Base):
     )
     notes: Mapped[str | None] = mapped_column(Text)
     correlation_id: Mapped[UUID | None] = mapped_column(Uuid)
+
+
+class FormulationCommand(Base):
+    __tablename__ = "formulation_command"
+    __table_args__ = (
+        Index(
+            "uq_formulation_command_idempotency",
+            "organization_id",
+            "idempotency_key",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    organization_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("organization.id", ondelete="RESTRICT"), nullable=False
+    )
+    idempotency_key: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    command: Mapped[str] = mapped_column(Text, nullable=False)
+    payload_digest: Mapped[str] = mapped_column(Text, nullable=False)
+    resource_type: Mapped[str] = mapped_column(Text, nullable=False)
+    resource_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    actor_user_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("app_user.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = _created_at()

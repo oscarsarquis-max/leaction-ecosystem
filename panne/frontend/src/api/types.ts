@@ -492,3 +492,205 @@ export type IngredientDossier = {
   allergens: AllergenLine[];
   completeness: Completeness;
 };
+
+export type RecipeCard = {
+  id: string;
+  code: string;
+  display_name: string;
+  status: string;
+  technical_product_id: string;
+  row_version: number;
+  current_version: { id: string; version_number: number; status: string } | null;
+};
+
+export type RecipeVersion = {
+  id: string;
+  formulation_id: string;
+  version_number: number;
+  status: string;
+  yield_units: number | null;
+  target_unit_weight_g: string | null;
+  expected_bake_loss_rate: string | null;
+  notes: string | null;
+  published_at: string | null;
+  row_version: number;
+};
+
+export type RecipeItem = {
+  id: string;
+  ingredient_version_id: string;
+  sequence: number;
+  net_quantity: string;
+  gross_quantity: string | null;
+  measurement_unit_id: string;
+  correction_factor: string;
+  is_flour_basis: boolean;
+  role: string;
+  notes: string | null;
+  bakers_percentage: string | null;
+};
+
+export type RecipeStep = {
+  id: string;
+  sequence: number;
+  title: string;
+  instructions: string;
+  duration_seconds: number | null;
+  temperature_celsius: string | null;
+};
+
+export type BakersView = {
+  flour_mass: string | null;
+  explained_absence: boolean;
+  items: Array<{
+    id: string;
+    net_quantity: string;
+    gross_quantity: string;
+    is_flour_basis: boolean;
+    bakers_percentage: string | null;
+  }>;
+};
+
+export type YieldView = {
+  base_net_mass: string | null;
+  yield_units: number | null;
+  target_unit_weight_g: string | null;
+  expected_bake_loss_rate: string | null;
+  expected_final_mass_g: string | null;
+  portion_mass_g: string | null;
+};
+
+export type ScaleRow = {
+  id?: string;
+  calculation_mode: string;
+  scale_factor: string | null;
+  base_total_net_mass: string | null;
+  required_pre_bake_mass: string | null;
+  algorithm_code?: string;
+  algorithm_version?: string;
+  persisted?: boolean;
+  items?: Array<{
+    sequence: number;
+    scaled_net_quantity: string | null;
+    scaled_gross_quantity: string | null;
+    bakers_percentage: string | null;
+  }>;
+};
+
+export type TrialRow = {
+  id: string;
+  code: string;
+  status: string;
+  notes: string | null;
+  measurements?: Array<{
+    id: string;
+    measurement_type: string;
+    value: string | null;
+  }>;
+};
+
+export type ApprovalRow = {
+  id: string;
+  decision: string;
+  notes: string | null;
+  occurred_at: string;
+};
+
+export type RecipeReference = {
+  id: string;
+  title: string;
+  source_type: string;
+  source_url: string | null;
+  author: string | null;
+  notes: string | null;
+};
+
+export type RecipeReferenceLink = {
+  id: string;
+  recipe_reference_id: string;
+  role: string;
+};
+
+export type NutritionPreview = {
+  id: string;
+  status: string;
+  formula_net_mass_g: string | null;
+  expected_final_mass_g: string | null;
+  portion_mass_g: string | null;
+  disclaimer: string;
+  items?: Array<{
+    nutrient_definition_id: string;
+    whole_formula_amount: string | null;
+    per_100g_amount: string | null;
+    technical_portion_amount: string | null;
+    completeness_status: string;
+  }>;
+};
+
+export type TechnicalSheet = {
+  kind: string;
+  disclaimer: string;
+  payload_sha256: string;
+  identity: RecipeCard & { product_name?: string | null };
+  version: RecipeVersion;
+  organization: { display_name: string };
+  responsible: { display_name: string | null };
+  components: RecipeItem[];
+  steps: RecipeStep[];
+  completeness: Completeness;
+};
+
+export type RecipePage = {
+  items: RecipeCard[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type RecipeDossier = {
+  identity: RecipeCard;
+  version: RecipeVersion;
+  items: RecipeItem[];
+  steps: RecipeStep[];
+  bakers: BakersView;
+  yield: YieldView;
+  completeness: Completeness;
+};
+
+export type RecipeAiChange = {
+  change_key: string;
+  change_kind: "added" | "removed" | "changed" | "unresolved";
+  path: string;
+  before_value: Record<string, unknown> | null;
+  after_value: Record<string, unknown> | null;
+  decision: "pending" | "accepted" | "rejected";
+};
+
+export type RecipeAiProposal = {
+  id: string;
+  intent: "create_recipe" | "adapt_recipe";
+  title: string;
+  objective_summary: string;
+  status: string;
+  status_label: string;
+  assisted_by_ai: boolean;
+  base_formulation_version_id: string | null;
+  materialized_formulation_version_id: string | null;
+  warnings: string[];
+  missing_data: string[];
+  row_version: number;
+  items?: Array<{
+    id: string;
+    sequence: number;
+    ingredient_version_id: string | null;
+    proposed_ingredient_name: string;
+    resolution_status: string;
+    net_quantity_g: string | null;
+    rationale: string;
+  }>;
+  steps?: Array<{ sequence: number; title: string; instructions: string }>;
+  citations?: Array<{ id: string; claim_path: string }>;
+  changes?: RecipeAiChange[];
+  materialized?: { formulation_id: string; version_id: string; status: string } | null;
+  guided_input?: Record<string, unknown>;
+};

@@ -97,7 +97,12 @@ EXPECTED_0011 = set(EXPECTED) | {
     "production_sheet_issue",
 }
 EXPECTED_0013 = set(EXPECTED_0011) | {"organization_membership_role"}
-EXPECTED = set(EXPECTED_0013) | {"ingredient_command"}
+EXPECTED_0014 = set(EXPECTED_0013) | {"ingredient_command"}
+EXPECTED_0015 = set(EXPECTED_0014) | {"formulation_command"}
+EXPECTED = set(EXPECTED_0015) | {
+    "formulation_version_recipe_reference",
+    "ai_proposal_change",
+}
 
 
 def _alembic() -> Config:
@@ -188,6 +193,25 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
     command.downgrade(_alembic(), "0013_legacy_role_label")
     assert "ingredient_command" not in set(inspect(engine).get_table_names())
     command.upgrade(_alembic(), "0014_ingredient_http")
+    command.upgrade(_alembic(), "0015_formulation_http")
+    tables_0015 = set(inspect(engine).get_table_names())
+    assert "formulation_command" in tables_0015
+    cols_form = {col["name"] for col in inspect(engine).get_columns("formulation")}
+    assert "row_version" in cols_form
+    command.downgrade(_alembic(), "0014_ingredient_http")
+    assert "formulation_command" not in set(inspect(engine).get_table_names())
+    command.upgrade(_alembic(), "0015_formulation_http")
+    command.downgrade(_alembic(), "0014_ingredient_http")
+    command.upgrade(_alembic(), "0015_formulation_http")
+    command.upgrade(_alembic(), "0016_recipe_ai_assistant")
+    tables_0016 = set(inspect(engine).get_table_names())
+    assert "formulation_version_recipe_reference" in tables_0016
+    assert "ai_proposal_change" in tables_0016
+    command.downgrade(_alembic(), "0015_formulation_http")
+    assert "formulation_version_recipe_reference" not in set(inspect(engine).get_table_names())
+    command.upgrade(_alembic(), "0016_recipe_ai_assistant")
+    command.downgrade(_alembic(), "0015_formulation_http")
+    command.upgrade(_alembic(), "0016_recipe_ai_assistant")
 
     command.downgrade(_alembic(), "0012_production_api_roles")
     cols_back = {col["name"] for col in inspect(engine).get_columns("organization_membership")}
@@ -239,5 +263,5 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
             .scalars()
             .all()
         )
-    assert current == "0014_ingredient_http"
+    assert current == "0016_recipe_ai_assistant"
     assert "mysql" not in "".join(other).lower()

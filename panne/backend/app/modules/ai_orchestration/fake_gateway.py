@@ -24,6 +24,8 @@ def default_proposal_payload(request: ModelRequest) -> dict[str, Any]:
         "proposal_type": proposal_type,
         "title": "Pão de teste assistivo",
         "objective": request.user_payload.get("objective") or "proposta sintética",
+        "summary": "Sugestão assistiva de massa para revisão humana.",
+        "justification": "Hipótese técnica a partir das evidências fornecidas.",
         "assistive_disclaimer": ASSISTIVE_DISCLAIMER,
         "items": [
             {
@@ -37,6 +39,7 @@ def default_proposal_payload(request: ModelRequest) -> dict[str, Any]:
                 "rationale": "Sugestão a partir da evidência fornecida.",
                 "confidence_note": "baixa, depende de revisão humana",
                 "cited_evidence_tokens": [token] if evidence else [],
+                "measurement_unit_code": "g",
             }
         ],
         "steps": [

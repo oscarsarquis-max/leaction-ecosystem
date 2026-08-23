@@ -18,6 +18,12 @@ const COMPONENTS = [
   { to: "/componentes/catalogos", label: "Fontes técnicas", permission: "ingredient.read", end: false },
 ];
 
+const RECIPES = [
+  { to: "/receitas", label: "Minhas receitas", permission: "recipe.read", end: true },
+  { to: "/receitas/assistente", label: "Assistente de receitas", permission: "recipe.read", end: false },
+  { to: "/receitas/assistente/historico", label: "Histórico de propostas", permission: "recipe.ai.review", end: false },
+];
+
 export function Shell() {
   const { session, logout } = useAuth();
   const { me, associations, active, selectOrganization, status, hasPermission } = useOrganization();
@@ -41,19 +47,23 @@ export function Shell() {
 
   const showProduction = PRODUCTION.some((item) => hasPermission(item.permission));
   const showComponents = COMPONENTS.some((item) => hasPermission(item.permission));
+  const showRecipes = RECIPES.some((item) => hasPermission(item.permission));
   const productionActive = location.pathname.startsWith("/producao")
     || location.pathname.startsWith("/planejamento")
     || location.pathname.startsWith("/ordens")
     || location.pathname.startsWith("/rastreabilidade");
   const componentsActive = location.pathname.startsWith("/componentes");
+  const recipesActive = location.pathname.startsWith("/receitas");
   const operational = location.pathname.includes("/executar");
-  const submenu = productionActive
-    ? PRODUCTION.filter((item) => hasPermission(item.permission))
-    : componentsActive
-      ? COMPONENTS.filter((item) => hasPermission(item.permission))
-      : showProduction
-        ? PRODUCTION.filter((item) => hasPermission(item.permission))
-        : [];
+  const submenu = recipesActive
+    ? RECIPES.filter((item) => hasPermission(item.permission))
+    : productionActive
+      ? PRODUCTION.filter((item) => hasPermission(item.permission))
+      : componentsActive
+        ? COMPONENTS.filter((item) => hasPermission(item.permission))
+        : showProduction
+          ? PRODUCTION.filter((item) => hasPermission(item.permission))
+          : [];
 
   return (
     <div className={operational ? "shell shell-ops" : "shell"}>
@@ -80,6 +90,11 @@ export function Shell() {
           {showComponents ? (
             <NavLink to="/componentes/ingredientes" aria-current={componentsActive ? "page" : undefined}>
               Componentes
+            </NavLink>
+          ) : null}
+          {showRecipes ? (
+            <NavLink to="/receitas" aria-current={recipesActive ? "page" : undefined}>
+              Receitas
             </NavLink>
           ) : null}
         </nav>
@@ -134,7 +149,7 @@ export function Shell() {
       )}
       <p className="crumb">
         Início
-        {componentsActive ? " / Componentes" : productionActive ? " / Produção" : ""}
+        {recipesActive ? " / Receitas" : componentsActive ? " / Componentes" : productionActive ? " / Produção" : ""}
       </p>
       <main className="main">
         {status.kind === "erro" ? (

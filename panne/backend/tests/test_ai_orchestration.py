@@ -157,7 +157,11 @@ def test_unresolved_item_and_pending_accept_rejected(db_session: Session) -> Non
     assert result.proposal is not None
     from app.modules.ai_orchestration.models import AiProposalItem
 
-    item = db_session.query(AiProposalItem).one()
+    item = (
+        db_session.query(AiProposalItem)
+        .filter_by(ai_proposal_id=result.proposal.id)
+        .one()
+    )
     assert item.resolution_status == "unresolved"
     actor = helpers.user(db_session, "pendente-ai@panne.test")
     with pytest.raises(Exception, match="pendentes"):

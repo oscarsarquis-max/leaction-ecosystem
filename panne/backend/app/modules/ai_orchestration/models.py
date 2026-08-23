@@ -103,6 +103,43 @@ class AiProposal(Base):
     warnings: Mapped[list] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
     )
+    intent: Mapped[str | None] = mapped_column(Text)
+    constraints: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    retrieval_profile: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    guided_input: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    prompt_template_name: Mapped[str | None] = mapped_column(Text)
+    model_parameters: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    input_canonical: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    output_canonical: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    output_hash: Mapped[str | None] = mapped_column(Text)
+    guardrail_result: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    missing_data: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    human_decisions: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    accepted_changes: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    rejected_changes: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     created_at: Mapped[datetime] = _created_at()
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -219,3 +256,35 @@ class AiProposalReview(Base):
         DateTime(timezone=True), nullable=False, server_default=text("clock_timestamp()")
     )
     notes: Mapped[str | None] = mapped_column(Text)
+
+
+class AiProposalChange(Base):
+    __tablename__ = "ai_proposal_change"
+    __table_args__ = (
+        Index(
+            "uq_ai_proposal_change_key",
+            "ai_proposal_id",
+            "change_key",
+            unique=True,
+        ),
+        ForeignKeyConstraint(
+            ["ai_proposal_id", "organization_id"],
+            ["ai_proposal.id", "ai_proposal.organization_id"],
+            ondelete="RESTRICT",
+        ),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    organization_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    ai_proposal_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    change_key: Mapped[str] = mapped_column(Text, nullable=False)
+    change_kind: Mapped[str] = mapped_column(Text, nullable=False)
+    path: Mapped[str] = mapped_column(Text, nullable=False)
+    before_value: Mapped[dict | list | None] = mapped_column(JSONB)
+    after_value: Mapped[dict | list | None] = mapped_column(JSONB)
+    citation_tokens: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    decision: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()

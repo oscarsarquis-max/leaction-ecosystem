@@ -14,6 +14,9 @@ from app.modules.production_http.errors import sanitized_exception_handler
 from app.modules.production_http.reads import router as production_reads
 from app.modules.production_http.roles_http import router as membership_roles
 from app.modules.production_http.writes import router as production_writes
+from app.modules.recipe_ai_http.router import router as recipe_ai
+from app.modules.recipe_http.reads import router as recipe_reads
+from app.modules.recipe_http.writes import router as recipe_writes
 from app.ready import ReadyResponse, assert_database_ready
 
 settings = get_settings()
@@ -48,6 +51,18 @@ app.include_router(
 )
 app.include_router(
     ingredient_writes,
+    prefix="/api/v1/organizations/{organization_id}",
+)
+app.include_router(
+    recipe_reads,
+    prefix="/api/v1/organizations/{organization_id}",
+)
+app.include_router(
+    recipe_writes,
+    prefix="/api/v1/organizations/{organization_id}",
+)
+app.include_router(
+    recipe_ai,
     prefix="/api/v1/organizations/{organization_id}",
 )
 

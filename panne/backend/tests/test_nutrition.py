@@ -230,7 +230,11 @@ def test_decimal_precision_and_reconstruction(db_session: Session) -> None:
     helpers.formulation_item(db_session, version, flour, unit, 1, Decimal("30"))
     result = calculate_nutrition(db_session, version)
     persisted = persist_nutrition_calculation(db_session, version, result)
-    item = db_session.query(NutritionCalculationItem).one()
+    item = (
+        db_session.query(NutritionCalculationItem)
+        .filter_by(nutrition_calculation_id=persisted.id)
+        .one()
+    )
     rows = db_session.query(CalculationEvidence).all()
     rebuilt = reconstruct_whole_formula(rows, protein.id, item.id)
     assert rebuilt == item.whole_formula_amount
@@ -274,7 +278,12 @@ def test_immutability_and_invalidation(db_session: Session) -> None:
     first = persist_nutrition_calculation(
         db_session, version, calculate_nutrition(db_session, version)
     )
-    first_total = db_session.query(NutritionCalculationItem).one().whole_formula_amount
+    first_total = (
+        db_session.query(NutritionCalculationItem)
+        .filter_by(nutrition_calculation_id=first.id)
+        .one()
+        .whole_formula_amount
+    )
     second = persist_nutrition_calculation(
         db_session,
         version,
@@ -297,8 +306,14 @@ def test_item_and_evidence_not_updatable(db_session: Session) -> None:
         db_session, organization, unit, "FAR-UPD", {protein: Decimal("3")}
     )
     helpers.formulation_item(db_session, version, flour, unit, 1, Decimal("50"))
-    persist_nutrition_calculation(db_session, version, calculate_nutrition(db_session, version))
-    item = db_session.query(NutritionCalculationItem).one()
+    persisted = persist_nutrition_calculation(
+        db_session, version, calculate_nutrition(db_session, version)
+    )
+    item = (
+        db_session.query(NutritionCalculationItem)
+        .filter_by(nutrition_calculation_id=persisted.id)
+        .one()
+    )
     item.whole_formula_amount = Decimal("99")
     with pytest.raises(Exception, match="append_only"):
         db_session.flush()
@@ -317,7 +332,12 @@ def test_invalidation_preserves_history(db_session: Session) -> None:
     invalidate_nutrition_calculation(persisted)
     db_session.flush()
     assert persisted.status == "invalidated"
-    assert db_session.query(NutritionCalculationItem).count() == 1
+    assert (
+        db_session.query(NutritionCalculationItem)
+        .filter_by(nutrition_calculation_id=persisted.id)
+        .count()
+        == 1
+    )
     persisted.warnings = ["nao"]
     with pytest.raises(Exception, match="append_only"):
         db_session.flush()
