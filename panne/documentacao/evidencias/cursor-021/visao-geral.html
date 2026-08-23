@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Panne — Custos e preços</title>
+  <style>
+    body { font-family: Georgia, serif; background: #f3ead8; color: #2b2118; margin: 0; }
+    header { display: flex; gap: 1rem; align-items: center; padding: .6rem 1rem; background: #2b2118; color: #f3ead8; }
+    nav a { color: #f3ead8; margin-right: 1rem; text-decoration: none; }
+    .sub { padding: .4rem 1rem; background: #e4d3b4; }
+    main { padding: 1rem 1.2rem 2rem; display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+    .card, .panel { background: #fff; padding: 1rem; border: 1px solid #2b2118; }
+    .badge { border: 1px solid #2b2118; padding: .1rem .4rem; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Panne</strong>
+    <nav>
+      <a>Produção</a>
+      <a>Componentes</a>
+      <a>Receitas</a>
+      <a>Conformidade</a>
+      <a>Gestão</a>
+    </nav>
+  </header>
+  <div class="sub">Visão geral · Políticas de custeio · Custos previstos · Custos realizados · Simulações · Preços praticados</div>
+  <main>
+    <section>
+      <h1>Custos e preços</h1>
+      <p>Custo previsto, padrão e realizado são memórias versionadas. O preço sugerido não é publicado automaticamente. Markup não é margem bruta; margem bruta não é margem de contribuição.</p>
+      <div class="card">
+        <h2>Políticas</h2>
+        <p>Premissas, categorias e critério de preço vigente.</p>
+      </div>
+      <div class="card">
+        <h2>Custos previstos</h2>
+        <p>Projeção antes da execução, com snapshots.</p>
+      </div>
+      <div class="card">
+        <h2>Custos realizados</h2>
+        <p>Consumo, desperdício e rendimento persistidos.</p>
+      </div>
+    </section>
+    <aside class="panel">
+      <h2>Assistente de custos e preços</h2>
+      <p><span class="badge">progresso coletivo</span></p>
+      <p>Markup incide sobre o custo. Margem bruta incide sobre o preço. Sem ranking individual.</p>
+    </aside>
+  </main>
+</body>
+</html>

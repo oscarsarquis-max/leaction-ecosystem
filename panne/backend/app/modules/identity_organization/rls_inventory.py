@@ -141,6 +141,23 @@ LABELING_TABLES = frozenset(
         "labeling_command",
     }
 )
+COSTING_TABLES = frozenset(
+    {
+        "costing_policy",
+        "costing_policy_version",
+        "costing_assumption",
+        "costing_calculation",
+        "costing_component",
+        "costing_evidence",
+        "costing_gap",
+        "costing_invalidation",
+        "pricing_simulation",
+        "pricing_simulation_component",
+        "pricing_decision",
+        "practiced_price",
+        "costing_command",
+    }
+)
 
 PRE_PRODUCTION_RLS_TABLES = (
     ORGANIZATIONAL_TABLES | HYBRID_TABLES | INHERITED_TABLES | GLOBAL_TABLES | IDENTITY_TABLES
@@ -154,5 +171,6 @@ RLS_TABLES = (
     | FORMULATION_HTTP_TABLES
     | RECIPE_AI_TABLES
     | LABELING_TABLES
+    | COSTING_TABLES
 )
 UNMANAGED_TABLES = frozenset({"alembic_version"})

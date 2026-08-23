@@ -47,7 +47,7 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Permissões futuras](decisoes/PERMISSOES-E-RLS-PRODUCAO.md)
 - [pip-audit](decisoes/DEPENDENCIAS-E-PIP-AUDIT.md)
 - [DDL produção — limitação](legado/DDL-PRODUCAO-LIMITACAO.md)
-- [Custos e formação de preços](produto/CUSTOS-E-FORMACAO-DE-PRECOS.md) — descoberta, sem implementação
+- [Custos e formação de preços](produto/CUSTOS-E-FORMACAO-DE-PRECOS.md) — descoberta 012; implementação 021
 - [Reconciliação 012](decisoes/RECONCILIACAO-CURSOR-012.md)
 - [ADR fundação de produção](decisoes/FUNDACAO-PLANEJAMENTO-PRODUCAO.md)
 - [Modelo físico 0010](arquitetura/MODELO-FISICO-0010-PRODUCAO.md)
@@ -213,6 +213,22 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Retorno CURSOR-020](retornos/CURSOR-020-retorno.md)
 - [Prompt CHECKPOINT-GIT-006](prompts/CHECKPOINT-GIT-006-cursor-020.md)
 - [Retorno CHECKPOINT-GIT-006](retornos/CHECKPOINT-GIT-006-retorno.md) — concluído
+- [Prompt CURSOR-021](prompts/CURSOR-021-implementar-custos-e-precos.md)
+- [ADR custos e preços](decisoes/ADR-CUSTOS-E-PRECOS.md)
+- [Vocabulário de custos](produto/VOCABULARIO-CUSTOS-E-PRECOS.md)
+- [Reconciliação 021](decisoes/RECONCILIACAO-CURSOR-021.md)
+- [Modelo de dados 0018](arquitetura/MODELO-DADOS-CUSTOS-E-PRECOS.md)
+- [Política de custeio](arquitetura/POLITICA-DE-CUSTEIO.md)
+- [Seleção de preços](arquitetura/SELECAO-DE-PRECOS-CUSTEIO.md)
+- [Custos previsto, padrão e realizado](arquitetura/CUSTOS-PREVISTO-PADRAO-REALIZADO.md)
+- [Perdas, rendimento e retrabalho](arquitetura/PERDAS-RENDIMENTO-E-RETRABALHO.md)
+- [Markup e margens](arquitetura/MARKUP-E-MARGENS.md)
+- [Canais e vigência](arquitetura/CANAIS-E-VIGENCIA-PRECOS.md)
+- [Segurança e RLS de custos](decisoes/SEGURANCA-E-RLS-CUSTOS.md)
+- [Permissões de custos](decisoes/PERMISSOES-CUSTOS-E-PRECOS.md)
+- [Evidências visuais 021](arquitetura/EVIDENCIAS-VISUAIS-021.md)
+- [Limitações 021](produto/LIMITACOES-021.md)
+- [Retorno CURSOR-021](retornos/CURSOR-021-retorno.md)
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
 - [Retorno CURSOR-011](retornos/CURSOR-011-retorno-execucao.md)
 

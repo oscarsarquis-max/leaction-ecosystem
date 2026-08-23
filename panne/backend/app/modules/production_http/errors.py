@@ -63,6 +63,10 @@ _MESSAGES = {
     "burla_aprovacao": "Não é permitido burlar aprovação ou publicação.",
     "segredo_recusado": "A entrada não pode registrar segredo.",
     "unidade_incompativel": "Unidade incompatível. Use apenas massa.",
+    "moeda_incompativel": "Moeda incompatível. Não há conversão cambial nesta versão.",
+    "dupla_contagem": "A origem já foi incluída neste cálculo.",
+    "denominador_invalido": "Denominador inválido para a fórmula de preço.",
+    "confirmacao_reforcada_obrigatoria": "Cálculo parcial exige confirmação reforçada e justificativa.",
 }
 
 

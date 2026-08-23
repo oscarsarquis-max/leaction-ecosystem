@@ -48,6 +48,15 @@ export function HomePage() {
               </Link>
             </article>
           ) : null}
+          {hasPermission("costing.read") ? (
+            <article className="card">
+              <h2>Custos e preços</h2>
+              <p>Custeio versionado e formação de preços sob Gestão. Sem publicação automática.</p>
+              <Link className="primary" to="/gestao/custos">
+                Abrir custos e preços
+              </Link>
+            </article>
+          ) : null}
         </div>
       </div>
       <aside className="panel">

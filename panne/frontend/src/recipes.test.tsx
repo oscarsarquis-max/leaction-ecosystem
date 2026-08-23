@@ -20,7 +20,7 @@ describe("receitas", () => {
     expect(screen.getByRole("link", { name: "Produção" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Componentes" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Cadastros" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Gestão" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Gestão" })).toBeInTheDocument();
   });
 
   it("lista receitas com pesquisa, filtros e paginação na URL", async () => {

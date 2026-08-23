@@ -764,3 +764,49 @@ export type LabelingDossier = {
     reviews: Array<{ decision: string; notes: string | null }>;
   } | null;
 };
+
+export type CostingPolicy = {
+  id: string;
+  code: string;
+  display_name: string;
+  status: string;
+  row_version: number;
+  version?: {
+    id: string;
+    version_number: number;
+    status: string;
+    currency: string;
+    price_criterion: string;
+    enabled_categories: string[];
+  };
+};
+
+export type CostingCalculation = {
+  id: string;
+  kind: string;
+  completeness: string;
+  currency: string;
+  total_amount: string | null;
+  sellable_unit_amount: string | null;
+  auto_published?: boolean;
+  components?: Array<{ category: string; amount: string | null; quality: string; share_percent: string | null }>;
+  gaps?: Array<{ code: string; message: string }>;
+};
+
+export type PricingSimulation = {
+  id: string;
+  kind: string;
+  channel: string;
+  suggested_price: string | null;
+  warning: string | null;
+  disclaimer: string;
+};
+
+export type PracticedPrice = {
+  id: string;
+  channel: string;
+  amount: string;
+  status: string;
+  row_version: number;
+  justification: string | null;
+};

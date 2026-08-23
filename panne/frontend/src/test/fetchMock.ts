@@ -11,6 +11,11 @@ import {
   PROPOSAL_ID,
   DOSSIER_ID,
   labelingDossierFixture,
+  costingPolicyFixture,
+  costingCalculationFixture,
+  pricingSimulationFixture,
+  practicedPriceFixture,
+  CALC_ID,
   proposalFixture,
   RECIPE_ID,
   RECIPE_VERSION_ID,
@@ -312,6 +317,50 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
     }
     if (path.endsWith("/labeling/portions")) {
       return json({ items: [{ code: "pao", label: "Pães", reference_g: "50.000000", confirmation_required: true }] });
+    }
+    if (path.endsWith("/costing/policies") && request.method === "GET") {
+      return json({ items: [costingPolicyFixture] });
+    }
+    if (path.endsWith("/costing/policies") && request.method === "POST") {
+      return json({ data: costingPolicyFixture, row_version: 1 });
+    }
+    if (path.includes("/costing/policies/") && path.endsWith("/publish")) {
+      return json({ data: { ...costingPolicyFixture, status: "published" }, row_version: 2 });
+    }
+    if (path.endsWith("/costing/calculations") && request.method === "GET") {
+      return json({ items: [costingCalculationFixture] });
+    }
+    if (path.endsWith("/costing/calculations") && request.method === "POST") {
+      return json({ data: costingCalculationFixture });
+    }
+    if (path.includes(`/costing/calculations/${CALC_ID}`) && path.endsWith("/simulations")) {
+      return json({ data: pricingSimulationFixture });
+    }
+    if (path.includes(`/costing/calculations/${CALC_ID}/compare/`)) {
+      return json({
+        data: {
+          left_kind: "planned",
+          right_kind: "actual",
+          total_delta: "1.50",
+          sellable_delta: null,
+          sensitivity: { cost_plus_10: "13.750000", note: "Projeção determinística." },
+        },
+      });
+    }
+    if (path.includes(`/costing/calculations/${CALC_ID}`)) {
+      return json({ data: costingCalculationFixture });
+    }
+    if (path.endsWith("/pricing/simulations")) {
+      return json({ items: [pricingSimulationFixture] });
+    }
+    if (path.endsWith("/pricing/practiced") && request.method === "GET") {
+      return json({ items: [practicedPriceFixture] });
+    }
+    if (path.endsWith("/pricing/practiced") && request.method === "POST") {
+      return json({ data: practicedPriceFixture, row_version: 1 });
+    }
+    if (path.includes("/pricing/practiced/") && path.endsWith("/decide")) {
+      return json({ data: { ...practicedPriceFixture, status: "active" }, row_version: 2 });
     }
     if (path.endsWith("/recipe-references")) return json({ data: [{ id: "ref-1", title: "Manual interno", source_type: "internal" }] });
     if (path.endsWith("/ingredients") && request.method === "GET") {

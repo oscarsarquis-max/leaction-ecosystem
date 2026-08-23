@@ -17,6 +17,10 @@ import type {
   RecipePage,
   RecipeAiProposal,
   LabelingDossier,
+  CostingCalculation,
+  CostingPolicy,
+  PracticedPrice,
+  PricingSimulation,
   RecipeReferenceLink,
   RecipeVersion,
   ScaleRow,
@@ -281,6 +285,32 @@ export class ApiClient {
 
   listLabelingSources() {
     return this.catalogGet<{ items: Array<Record<string, string | boolean>> }>("/labeling/sources");
+  }
+
+  listCostingPolicies() {
+    return this.catalogGet<{ items: CostingPolicy[] }>("/costing/policies");
+  }
+
+  listCostingCalculations(kind?: string) {
+    return this.catalogGet<{ items: CostingCalculation[] }>("/costing/calculations", kind ? { kind } : {});
+  }
+
+  getCostingCalculation(id: string) {
+    return this.catalogGet<Envelope<CostingCalculation>>(`/costing/calculations/${id}`);
+  }
+
+  compareCostingCalculations(leftId: string, rightId: string) {
+    return this.catalogGet<{ data: Record<string, string | null | Record<string, string>> }>(
+      `/costing/calculations/${leftId}/compare/${rightId}`,
+    );
+  }
+
+  listPricingSimulations() {
+    return this.catalogGet<{ items: PricingSimulation[] }>("/pricing/simulations");
+  }
+
+  listPracticedPrices() {
+    return this.catalogGet<{ items: PracticedPrice[] }>("/pricing/practiced");
   }
 
   listLabelingPortions() {

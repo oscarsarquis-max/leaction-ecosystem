@@ -1,6 +1,6 @@
 # Custos, markup e formação de preços
 
-Ciclo: CURSOR-012. **Descoberta canônica — sem implementação.** Domínio futuro, separado do chão de fábrica.
+Ciclo: CURSOR-012 (descoberta). Implementação produtiva: **CURSOR-021**. Este texto permanece como origem de descoberta; o vocabulário e o modelo vigentes estão em `VOCABULARIO-CUSTOS-E-PRECOS.md` e `ADR-CUSTOS-E-PRECOS.md`.
 
 Custos **não** aparecem ao padeiro por padrão. A permissão `costing.read` não é concedida automaticamente e não entra neste ciclo.
 

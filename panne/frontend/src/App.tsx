@@ -33,6 +33,14 @@ import {
   LabelingSourcesPage,
 } from "./pages/LabelingListsPage";
 import { LabelingOverviewPage } from "./pages/LabelingOverviewPage";
+import { CostingOverviewPage } from "./pages/CostingOverviewPage";
+import {
+  CostingCalculationPage,
+  CostingListPage,
+  CostingPoliciesPage,
+  CostingPricesPage,
+  CostingSimulationsPage,
+} from "./pages/CostingPages";
 import { SuppliersPage } from "./pages/SuppliersPage";
 import { OrganizationProvider } from "./session/OrganizationContext";
 
@@ -293,6 +301,62 @@ export function AppRoutes() {
                 element={
                   <RequirePermission code="regulatory.source.read">
                     <LabelingSourcesPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/custos"
+                element={
+                  <RequirePermission code="costing.read">
+                    <CostingOverviewPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/custos/politicas"
+                element={
+                  <RequirePermission code="costing.read">
+                    <CostingPoliciesPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/custos/previstos"
+                element={
+                  <RequirePermission code="costing.read">
+                    <CostingListPage kind="planned" title="Custos previstos" />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/custos/realizados"
+                element={
+                  <RequirePermission code="costing.read">
+                    <CostingListPage kind="actual" title="Custos realizados" />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/custos/calculos/:calcId"
+                element={
+                  <RequirePermission code="costing.read">
+                    <CostingCalculationPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/custos/simulacoes"
+                element={
+                  <RequirePermission code="pricing.simulation.manage">
+                    <CostingSimulationsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/custos/precos"
+                element={
+                  <RequirePermission code="pricing.review">
+                    <CostingPricesPage />
                   </RequirePermission>
                 }
               />

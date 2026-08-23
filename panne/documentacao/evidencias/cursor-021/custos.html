@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Panne — Cálculos de custo</title>
+  <style>
+    body { font-family: Georgia, serif; background: #f3ead8; color: #2b2118; margin: 0; }
+    header { padding: .6rem 1rem; background: #2b2118; color: #f3ead8; }
+    main { padding: 1rem 1.2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .card { background: #fff; padding: 1rem; border: 1px solid #2b2118; }
+    .badge { border: 1px solid #2b2118; padding: .1rem .4rem; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>Gestão / Custos previstos e realizados</header>
+  <main>
+    <section class="card">
+      <h1>Custo previsto</h1>
+      <p>Total 12,50 · <span class="badge">parcial</span></p>
+      <h2>Composição</h2>
+      <p>ingredientes 12,50 (preço vigente · 100%)</p>
+      <h2>Lacunas</h2>
+      <p>Sem rendimento vendável confiável o custo por unidade vendável permanece ausente.</p>
+      <p>Ausência não é zero.</p>
+    </section>
+    <section class="card">
+      <h1>Custo realizado</h1>
+      <p>Consumo líquido de retornos. Desperdício distinto. Sobra registrada sem valoração automática.</p>
+      <h2>Previsto versus realizado</h2>
+      <p>Variação de total +1,50. Sensibilidade +10% = 13,75. Sem ranking de padeiros.</p>
+    </section>
+  </main>
+</body>
+</html>

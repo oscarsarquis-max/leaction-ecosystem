@@ -121,6 +121,22 @@ EXPECTED = set(EXPECTED_0016) | {
     "labeling_invalidation",
     "labeling_command",
 }
+EXPECTED_0017 = set(EXPECTED)
+EXPECTED = set(EXPECTED_0017) | {
+    "costing_policy",
+    "costing_policy_version",
+    "costing_assumption",
+    "costing_calculation",
+    "costing_component",
+    "costing_evidence",
+    "costing_gap",
+    "costing_invalidation",
+    "pricing_simulation",
+    "pricing_simulation_component",
+    "pricing_decision",
+    "practiced_price",
+    "costing_command",
+}
 
 
 def _alembic() -> Config:
@@ -239,6 +255,15 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
     command.upgrade(_alembic(), "0017_labeling_compliance")
     command.downgrade(_alembic(), "0016_recipe_ai_assistant")
     command.upgrade(_alembic(), "0017_labeling_compliance")
+    command.upgrade(_alembic(), "0018_costing_pricing")
+    tables_0018 = set(inspect(engine).get_table_names())
+    assert "costing_policy" in tables_0018
+    assert "practiced_price" in tables_0018
+    command.downgrade(_alembic(), "0017_labeling_compliance")
+    assert "costing_policy" not in set(inspect(engine).get_table_names())
+    command.upgrade(_alembic(), "0018_costing_pricing")
+    command.downgrade(_alembic(), "0017_labeling_compliance")
+    command.upgrade(_alembic(), "0018_costing_pricing")
 
     command.downgrade(_alembic(), "0012_production_api_roles")
     cols_back = {col["name"] for col in inspect(engine).get_columns("organization_membership")}
@@ -290,5 +315,5 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
             .scalars()
             .all()
         )
-    assert current == "0017_labeling_compliance"
+    assert current == "0018_costing_pricing"
     assert "mysql" not in "".join(other).lower()

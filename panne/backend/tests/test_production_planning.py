@@ -441,7 +441,8 @@ def test_permissions_baker_cannot_manage(db_session: Session) -> None:
     assert PERMISSION_PRODUCTION_ORDER_RELEASE not in permissions_for_role("baker_operator")
     assert PERMISSION_PRODUCTION_ORDER_RELEASE in permissions_for_role("production_manager")
     assert PERMISSION_PRODUCTION_ORDER_RELEASE not in permissions_for_role("technical_responsible")
-    assert "costing.read" not in permissions_for_role("owner")
+    assert "costing.read" in permissions_for_role("owner")
+    assert "costing.read" not in permissions_for_role("baker_operator")
 
 
 def test_editable_states_and_units_require_weight(db_session: Session) -> None:

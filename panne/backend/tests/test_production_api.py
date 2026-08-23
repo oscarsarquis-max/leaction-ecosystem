@@ -292,7 +292,10 @@ def test_catalog_and_execution_endpoints(engine) -> None:
         assert view["readiness"]["steps"]["ok"] is False
         assert view["readiness"]["consumptions"]["ok"] is False
         assert view["readiness"]["yields"]["ok"] is False
-        assert "cost" not in execution.text.lower()
+        lowered = execution.text.lower()
+        assert "preço" not in lowered
+        assert "total_amount" not in lowered
+        assert "custo previsto" not in lowered
         denied = client.get(
             f"{prefix}/catalog",
             headers=_headers(token, org_id, extra={"Authorization": "Bearer missing"}),

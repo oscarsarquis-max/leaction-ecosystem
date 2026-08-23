@@ -24,6 +24,15 @@ const RECIPES = [
   { to: "/receitas/assistente/historico", label: "Histórico de propostas", permission: "recipe.ai.review", end: false },
 ];
 
+const MANAGEMENT = [
+  { to: "/gestao/custos", label: "Visão geral", permission: "costing.read", end: true },
+  { to: "/gestao/custos/politicas", label: "Políticas de custeio", permission: "costing.read", end: false },
+  { to: "/gestao/custos/previstos", label: "Custos previstos", permission: "costing.read", end: false },
+  { to: "/gestao/custos/realizados", label: "Custos realizados", permission: "costing.read", end: false },
+  { to: "/gestao/custos/simulacoes", label: "Simulações", permission: "pricing.simulation.manage", end: false },
+  { to: "/gestao/custos/precos", label: "Preços praticados", permission: "pricing.review", end: false },
+];
+
 const COMPLIANCE = [
   { to: "/conformidade", label: "Visão geral", permission: "labeling.read", end: true },
   { to: "/conformidade/dossies", label: "Dossiês", permission: "labeling.read", end: false },
@@ -57,6 +66,7 @@ export function Shell() {
   const showComponents = COMPONENTS.some((item) => hasPermission(item.permission));
   const showRecipes = RECIPES.some((item) => hasPermission(item.permission));
   const showCompliance = COMPLIANCE.some((item) => hasPermission(item.permission));
+  const showManagement = MANAGEMENT.some((item) => hasPermission(item.permission));
   const productionActive = location.pathname.startsWith("/producao")
     || location.pathname.startsWith("/planejamento")
     || location.pathname.startsWith("/ordens")
@@ -64,8 +74,11 @@ export function Shell() {
   const componentsActive = location.pathname.startsWith("/componentes");
   const recipesActive = location.pathname.startsWith("/receitas");
   const complianceActive = location.pathname.startsWith("/conformidade");
+  const managementActive = location.pathname.startsWith("/gestao");
   const operational = location.pathname.includes("/executar");
-  const submenu = complianceActive
+  const submenu = managementActive
+    ? MANAGEMENT.filter((item) => hasPermission(item.permission))
+    : complianceActive
     ? COMPLIANCE.filter((item) => hasPermission(item.permission))
     : recipesActive
     ? RECIPES.filter((item) => hasPermission(item.permission))
@@ -112,6 +125,11 @@ export function Shell() {
           {showCompliance ? (
             <NavLink to="/conformidade" aria-current={complianceActive ? "page" : undefined}>
               Conformidade
+            </NavLink>
+          ) : null}
+          {showManagement ? (
+            <NavLink to="/gestao/custos" aria-current={managementActive ? "page" : undefined}>
+              Gestão
             </NavLink>
           ) : null}
         </nav>
@@ -166,7 +184,7 @@ export function Shell() {
       )}
       <p className="crumb">
         Início
-        {complianceActive ? " / Conformidade" : recipesActive ? " / Receitas" : componentsActive ? " / Componentes" : productionActive ? " / Produção" : ""}
+        {managementActive ? " / Gestão / Custos e preços" : complianceActive ? " / Conformidade" : recipesActive ? " / Receitas" : componentsActive ? " / Componentes" : productionActive ? " / Produção" : ""}
       </p>
       <main className="main">
         {status.kind === "erro" ? (

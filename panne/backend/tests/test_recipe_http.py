@@ -31,6 +31,7 @@ def _setup(engine, slug_prefix: str, role: str = "owner", fake=None, client=None
         "unit": unit,
         "protein": protein,
         "token": token,
+        "fake": fake,
     }
 
 

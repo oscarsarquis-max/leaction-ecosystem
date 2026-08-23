@@ -71,6 +71,14 @@ export const meFixture: Me = {
         "labeling.render",
         "labeling.invalidate",
         "regulatory.source.read",
+        "costing.read",
+        "costing.policy.manage",
+        "costing.assumption.manage",
+        "costing.calculate.planned",
+        "costing.calculate.actual",
+        "pricing.simulation.manage",
+        "pricing.review",
+        "pricing.publish",
       ],
     },
     {
@@ -132,7 +140,66 @@ export const meFixture: Me = {
     "labeling.render",
     "labeling.invalidate",
     "regulatory.source.read",
+    "costing.read",
+    "costing.policy.manage",
+    "costing.assumption.manage",
+    "costing.calculate.planned",
+    "costing.calculate.actual",
+    "pricing.simulation.manage",
+    "pricing.review",
+    "pricing.publish",
   ],
+};
+
+export const POLICY_ID = "c0c0c0c0-c0c0-c0c0-c0c0-c0c0c0c0c0c0";
+export const CALC_ID = "c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1";
+export const SIM_ID = "c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2";
+export const PRICE_ID = "c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3";
+
+export const costingPolicyFixture = {
+  id: POLICY_ID,
+  code: "POL-1",
+  display_name: "Custeio padrão",
+  status: "published",
+  row_version: 2,
+  version: {
+    id: "c4c4c4c4-c4c4-c4c4-c4c4-c4c4c4c4c4c4",
+    version_number: 1,
+    status: "published",
+    currency: "BRL",
+    price_criterion: "latest_observed",
+    enabled_categories: ["ingredient", "waste"],
+  },
+};
+
+export const costingCalculationFixture = {
+  id: CALC_ID,
+  kind: "planned",
+  completeness: "partial",
+  currency: "BRL",
+  total_amount: "12.50",
+  sellable_unit_amount: null,
+  auto_published: false,
+  components: [{ category: "ingredient", amount: "12.50", quality: "current_price", share_percent: "100" }],
+  gaps: [{ code: "rendimento_ausente", message: "Sem rendimento vendável confiável." }],
+};
+
+export const pricingSimulationFixture = {
+  id: SIM_ID,
+  kind: "markup_factor",
+  channel: "own_counter",
+  suggested_price: "25.00",
+  warning: "Simulação sobre cálculo parcial. Publicação exige confirmação reforçada.",
+  disclaimer: "Preço sugerido não é preço publicado.",
+};
+
+export const practicedPriceFixture = {
+  id: PRICE_ID,
+  channel: "own_counter",
+  amount: "25.00",
+  status: "draft",
+  row_version: 1,
+  justification: "revisão humana",
 };
 
 export const RECIPE_ID = "99999999-9999-9999-9999-999999999999";
@@ -474,6 +541,17 @@ export const catalogFixture: Envelope<Catalog> = {
   },
 };
 
+export const COSTING_PERMS = [
+  "costing.read",
+  "costing.policy.manage",
+  "costing.assumption.manage",
+  "costing.calculate.planned",
+  "costing.calculate.actual",
+  "pricing.simulation.manage",
+  "pricing.review",
+  "pricing.publish",
+] as const;
+
 export const operatorMeFixture: Me = {
   ...meFixture,
   associations: meFixture.associations.map((item, index) =>
@@ -482,7 +560,7 @@ export const operatorMeFixture: Me = {
           ...item,
           roles: ["baker_operator"],
           permissions: [
-            ...item.permissions,
+            ...item.permissions.filter((code) => !code.startsWith("costing.") && !code.startsWith("pricing.")),
             "production.weighing.record",
             "production.weighing.verify",
             "production.consumption.record",
@@ -497,7 +575,7 @@ export const operatorMeFixture: Me = {
       : item,
   ),
   permissions: [
-    ...meFixture.permissions,
+    ...meFixture.permissions.filter((code) => !code.startsWith("costing.") && !code.startsWith("pricing.")),
     "production.weighing.record",
     "production.weighing.verify",
     "production.consumption.record",
