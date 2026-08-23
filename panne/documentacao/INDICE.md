@@ -156,6 +156,7 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Retorno UX-002](retornos/UX-002-retorno.md) — aceito
 - Direção canônica: Oficina (estrutura) + Atelier (página central)
 - [Prompt CHECKPOINT-GIT-003](prompts/CHECKPOINT-GIT-003-ux-canonica.md)
+- [Retorno CHECKPOINT-GIT-003](retornos/CHECKPOINT-GIT-003-retorno.md) — concluído
 - Laboratório isolado: `panne/design/ux-001/` — direção aprovada é o padrão; Atelier, Oficina e Mesa ficam como histórico
 - Nenhuma proposta aplicada à interface produtiva
 - CURSOR-017 — pendente e não iniciado
