@@ -38,6 +38,8 @@ _MESSAGES = {
     "ultimo_proprietario": "Não é possível revogar o último proprietário ativo.",
     "ultimo_papel_ativo": "A associação precisa manter ao menos um papel ativo.",
     "conversao_massa_volume_proibida": "Conversão entre massa e volume não é permitida.",
+    "published_frozen": "Versão publicada é imutável. Crie outra versão para editar.",
+    "composicao_ciclica": "A composição formaria um ciclo e foi rejeitada.",
 }
 
 
@@ -68,9 +70,7 @@ def raise_domain(exc: Exception) -> None:
         if _hidden_resource(reason):
             raise HTTPException(status_code=404, detail=public_error("recurso_nao_encontrado"))
         code = reason if reason in _MESSAGES else "regra_de_dominio"
-        raise HTTPException(
-            status_code=422, detail=public_error(code, _MESSAGES.get(code, reason))
-        )
+        raise HTTPException(status_code=422, detail=public_error(code, _MESSAGES.get(code, reason)))
     raise HTTPException(status_code=400, detail=public_error("contrato_invalido"))
 
 

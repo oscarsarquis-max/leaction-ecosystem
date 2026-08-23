@@ -392,3 +392,103 @@ export type Traceability = {
   sheet_issues: Array<{ id: string; issue_number: number; payload_sha256: string }>;
   events: EventRow[];
 };
+
+export type IngredientCard = {
+  id: string;
+  code: string;
+  display_name: string;
+  ingredient_type: string;
+  status: string;
+  row_version: number;
+  current_version: { id: string; version_number: number; status: string } | null;
+};
+
+export type IngredientVersion = {
+  id: string;
+  ingredient_id: string;
+  version_number: number;
+  status: string;
+  data_source_id: string | null;
+  notes: string | null;
+  row_version: number;
+  nutrition_basis_unit_id: string;
+  created_by_user_id?: string | null;
+};
+
+export type Completeness = {
+  ready_to_publish: boolean;
+  complete_dossier: boolean;
+  items: Array<{ code: string; label: string; blocking: boolean; origin: string }>;
+};
+
+export type IngredientPage = {
+  items: IngredientCard[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type SupplierCard = {
+  id: string;
+  code: string;
+  display_name: string;
+  status: string;
+  row_version: number;
+};
+
+export type CatalogItem = {
+  id: string;
+  code?: string;
+  name?: string;
+  title?: string;
+  access: string;
+};
+
+export type CompositionLine = {
+  id: string;
+  component_version_id: string;
+  component_type: string;
+  quantity: string;
+  measurement_unit_id: string;
+  sequence: number;
+};
+
+export type NutrientLine = {
+  id: string;
+  nutrient_id: string;
+  value: string | null;
+  value_status: string;
+  limit_of_quantification: string | null;
+  loq_unit_id: string | null;
+  method_or_source: string | null;
+};
+
+export type AllergenLine = {
+  id: string;
+  allergen_id: string;
+  presence: string;
+  data_source_id: string | null;
+  evidence_note: string | null;
+};
+
+export type SupplierItemCard = {
+  id: string;
+  supplier_id: string;
+  ingredient_id: string;
+  supplier_sku: string;
+  description: string | null;
+  package_quantity: string;
+  measurement_unit_id: string;
+  status: string;
+  row_version: number;
+  latest_purchase: { unit_price: string; currency: string; observed_at: string } | null;
+};
+
+export type IngredientDossier = {
+  identity: IngredientCard;
+  version: IngredientVersion;
+  composition: CompositionLine[];
+  nutrients: NutrientLine[];
+  allergens: AllergenLine[];
+  completeness: Completeness;
+};

@@ -1,4 +1,4 @@
-"""Catálogo técnico de ingredientes. Sem ficha, CRUD ou API de negócio."""
+"""Catálogo técnico de ingredientes. Comandos HTTP ficam em ingredient_http."""
 
 from datetime import date, datetime
 from decimal import Decimal
@@ -141,6 +141,7 @@ class Ingredient(Base):
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     ingredient_type: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'active'"))
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
 
@@ -187,6 +188,7 @@ class IngredientVersion(Base):
     created_by_user_id: Mapped[UUID | None] = mapped_column(
         Uuid, ForeignKey("app_user.id", ondelete="RESTRICT")
     )
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     updated_at: Mapped[datetime] = _updated_at()
 
 
@@ -303,6 +305,7 @@ class Supplier(Base):
     code: Mapped[str] = mapped_column(Text, nullable=False)
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'active'"))
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
 
@@ -334,6 +337,7 @@ class SupplierItem(Base):
         Uuid, ForeignKey("measurement_unit.id", ondelete="RESTRICT"), nullable=False
     )
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'active'"))
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
 
@@ -349,4 +353,30 @@ class SupplierItemPrice(Base):
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     source: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+
+
+class IngredientCommand(Base):
+    __tablename__ = "ingredient_command"
+    __table_args__ = (
+        Index(
+            "uq_ingredient_command_idempotency",
+            "organization_id",
+            "idempotency_key",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    organization_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("organization.id", ondelete="RESTRICT"), nullable=False
+    )
+    idempotency_key: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    command: Mapped[str] = mapped_column(Text, nullable=False)
+    payload_digest: Mapped[str] = mapped_column(Text, nullable=False)
+    resource_type: Mapped[str] = mapped_column(Text, nullable=False)
+    resource_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    actor_user_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("app_user.id", ondelete="RESTRICT"), nullable=False
+    )
     created_at: Mapped[datetime] = _created_at()

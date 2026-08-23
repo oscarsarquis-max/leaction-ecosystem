@@ -96,7 +96,8 @@ EXPECTED_0011 = set(EXPECTED) | {
     "production_dependency_override",
     "production_sheet_issue",
 }
-EXPECTED = set(EXPECTED_0011) | {"organization_membership_role"}
+EXPECTED_0013 = set(EXPECTED_0011) | {"organization_membership_role"}
+EXPECTED = set(EXPECTED_0013) | {"ingredient_command"}
 
 
 def _alembic() -> Config:
@@ -169,7 +170,7 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
 
     command.upgrade(_alembic(), "0012_production_api_roles")
     tables = set(inspect(engine).get_table_names())
-    assert EXPECTED <= tables
+    assert EXPECTED_0013 <= tables
     cols_0012 = {col["name"] for col in inspect(engine).get_columns("organization_membership")}
     assert "role" in cols_0012
     assert "legacy_role_label" not in cols_0012
@@ -178,6 +179,15 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
     cols_0013 = {col["name"] for col in inspect(engine).get_columns("organization_membership")}
     assert "legacy_role_label" in cols_0013
     assert "role" not in cols_0013
+
+    command.upgrade(_alembic(), "0014_ingredient_http")
+    tables_0014 = set(inspect(engine).get_table_names())
+    assert "ingredient_command" in tables_0014
+    cols_ing = {col["name"] for col in inspect(engine).get_columns("ingredient")}
+    assert "row_version" in cols_ing
+    command.downgrade(_alembic(), "0013_legacy_role_label")
+    assert "ingredient_command" not in set(inspect(engine).get_table_names())
+    command.upgrade(_alembic(), "0014_ingredient_http")
 
     command.downgrade(_alembic(), "0012_production_api_roles")
     cols_back = {col["name"] for col in inspect(engine).get_columns("organization_membership")}
@@ -229,5 +239,5 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
             .scalars()
             .all()
         )
-    assert current == "0013_legacy_role_label"
+    assert current == "0014_ingredient_http"
     assert "mysql" not in "".join(other).lower()

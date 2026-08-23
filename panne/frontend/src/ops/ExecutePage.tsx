@@ -119,7 +119,7 @@ export function ExecutePage() {
   const conflict = command.error instanceof ApiError && command.error.code === "conflito";
 
   return (
-    <article className="ops" key={active?.organization_id ?? "org"}>
+    <article className="ops ops-grid" key={active?.organization_id ?? "org"}>
       <header className="ops-bar">
         <p>
           <Link to="/producao">← Quadro</Link>

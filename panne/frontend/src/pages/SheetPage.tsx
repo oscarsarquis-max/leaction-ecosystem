@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import logoPreto from "../../images/pannepreto.png";
+import logoCompleto from "../../images/aprovados/horizontal-escuro.png";
 import type { SheetIssue } from "../api/types";
 import { ErrorState, LoadingState } from "../components/Feedback";
 import { formatDecimal, statusLabel } from "../format";
@@ -50,7 +50,7 @@ export function SheetPage() {
         </button>
       </div>
       <header className="sheet-running">
-        <img className="sheet-brand" src={logoPreto} alt="panne" width={2000} height={2000} />
+        <img className="sheet-brand" src={logoCompleto} alt="Panne" />
         <div>
           <strong>Panne</strong> · ficha {issue.issue_number} · {order.public_code ?? orderId}
         </div>

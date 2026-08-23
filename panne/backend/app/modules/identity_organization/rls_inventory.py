@@ -113,6 +113,7 @@ GLOBAL_TABLES = frozenset(
 
 IDENTITY_TABLES = frozenset({"app_user", "auth_identity"})
 MEMBERSHIP_ROLE_TABLES = frozenset({"organization_membership_role"})
+INGREDIENT_HTTP_TABLES = frozenset({"ingredient_command"})
 
 PRE_PRODUCTION_RLS_TABLES = (
     ORGANIZATIONAL_TABLES | HYBRID_TABLES | INHERITED_TABLES | GLOBAL_TABLES | IDENTITY_TABLES
@@ -122,5 +123,6 @@ RLS_TABLES = (
     | PRODUCTION_TABLES
     | PRODUCTION_EXECUTION_TABLES
     | MEMBERSHIP_ROLE_TABLES
+    | INGREDIENT_HTTP_TABLES
 )
 UNMANAGED_TABLES = frozenset({"alembic_version"})

@@ -4,7 +4,14 @@ import type {
   BoardCard,
   BoardFilters,
   Catalog,
+  CatalogItem,
   Consumption,
+  IngredientCard,
+  IngredientDossier,
+  IngredientPage,
+  IngredientVersion,
+  SupplierCard,
+  SupplierItemCard,
   Dependency,
   Envelope,
   EventRow,
@@ -132,6 +139,68 @@ export class ApiClient {
     return this.orgGet<Envelope<ExecutionView>>(`/orders/${orderId}/execution`, {}, false);
   }
 
+  listIngredients(query: Query = {}) {
+    return this.catalogGet<IngredientPage>("/ingredients", query);
+  }
+
+  getIngredient(ingredientId: string) {
+    return this.catalogGet<Envelope<IngredientCard & { versions: IngredientVersion[] }>>(
+      `/ingredients/${ingredientId}`,
+    );
+  }
+
+  getIngredientVersion(ingredientId: string, versionId: string) {
+    return this.catalogGet<Envelope<IngredientDossier>>(`/ingredients/${ingredientId}/versions/${versionId}`);
+  }
+
+  listIngredientItems(ingredientId: string) {
+    return this.catalogGet<{ data: SupplierItemCard[] }>(`/ingredients/${ingredientId}/items`);
+  }
+
+  listSuppliers(query: Query = {}) {
+    return this.catalogGet<{ data: SupplierCard[] }>("/suppliers", query);
+  }
+
+  getCatalogUnits() {
+    return this.catalogGet<{ data: CatalogItem[] }>("/catalog/units");
+  }
+
+  getCatalogNutrients() {
+    return this.catalogGet<{ data: CatalogItem[] }>("/catalog/nutrients");
+  }
+
+  getCatalogAllergens() {
+    return this.catalogGet<{ data: CatalogItem[] }>("/catalog/allergens");
+  }
+
+  getCatalogSources() {
+    return this.catalogGet<{ data: CatalogItem[] }>("/catalog/sources");
+  }
+
+  catalogCommand<T>(
+    path: string,
+    options: {
+      method?: "POST" | "PATCH" | "DELETE";
+      body?: unknown;
+      idempotencyKey?: string;
+      ifMatch?: number | null;
+    },
+  ): Promise<T> {
+    return this.request<T>(this.catalogPath(path), {
+      method: options.method ?? "POST",
+      body: options.body,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.idempotencyKey ? { "Idempotency-Key": options.idempotencyKey } : {}),
+        ...(options.ifMatch != null ? { "If-Match": String(options.ifMatch) } : {}),
+      },
+      cache: false,
+    }).then((result) => {
+      this.clear();
+      return result;
+    });
+  }
+
   command<T>(
     path: string,
     options: {
@@ -161,6 +230,17 @@ export class ApiClient {
       throw new ApiError("nao_autorizado", "Selecione uma organização.", 403);
     }
     return `/api/v1/organizations/${this.organizationId}/production${path}`;
+  }
+
+  private catalogPath(path: string): string {
+    if (!this.organizationId) {
+      throw new ApiError("nao_autorizado", "Selecione uma organização.", 403);
+    }
+    return `/api/v1/organizations/${this.organizationId}${path}`;
+  }
+
+  private catalogGet<T>(path: string, query: Query = {}, cache = true): Promise<T> {
+    return this.request<T>(this.catalogPath(path), { query, cache });
   }
 
   private orgGet<T>(path: string, query: Query = {}, cache = true): Promise<T> {

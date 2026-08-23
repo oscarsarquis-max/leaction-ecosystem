@@ -34,6 +34,133 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
       if (path.includes(prefix)) return fn(url, request);
     }
     if (path === "/api/v1/me") return json(meFixture);
+    if (path.endsWith("/ingredients") && request.method === "GET") {
+      return json({
+        items: [
+          {
+            id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+            code: "FAR-1",
+            display_name: "Farinha de trigo tipo 1",
+            ingredient_type: "simple",
+            status: "active",
+            row_version: 1,
+            current_version: { id: "ffffffff-ffff-ffff-ffff-ffffffffffff", version_number: 1, status: "draft" },
+          },
+        ],
+        total: 1,
+        limit: 20,
+        offset: 0,
+      });
+    }
+    if (path.endsWith("/ingredients") && request.method === "POST") {
+      return json({
+        data: { id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee", versions: [] },
+        row_version: 1,
+      });
+    }
+    if (path.includes("/ingredients/") && path.endsWith("/items") && request.method === "GET") {
+      return json({
+        data: [
+          {
+            id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            supplier_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            ingredient_id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+            supplier_sku: "SKU-1",
+            description: "saco 25 kg",
+            package_quantity: "25",
+            measurement_unit_id: "u1",
+            status: "active",
+            row_version: 1,
+            latest_purchase: { unit_price: "18.40", currency: "BRL", observed_at: "2026-08-23T10:00:00Z" },
+          },
+        ],
+      });
+    }
+    if (path.includes("/ingredients/") && path.endsWith("/publish") && request.method === "POST") {
+      return json({ data: { id: "ffffffff-ffff-ffff-ffff-ffffffffffff", status: "published", row_version: 2 }, row_version: 2 });
+    }
+    if (path.includes("/ingredients/") && request.method !== "GET") {
+      return json({ data: { id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee", versions: [] }, row_version: 1 });
+    }
+    if (path.includes("/ingredients/")) {
+      return json({
+        data: {
+          id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+          code: "FAR-1",
+          display_name: "Farinha de trigo tipo 1",
+          ingredient_type: "simple",
+          status: "active",
+          row_version: 1,
+          versions: [
+            {
+              id: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+              ingredient_id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+              version_number: 1,
+              status: "draft",
+              data_source_id: null,
+              notes: null,
+              row_version: 1,
+              nutrition_basis_unit_id: "u1",
+            },
+          ],
+          identity: { display_name: "Farinha de trigo tipo 1" },
+          version: {
+            id: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+            status: "draft",
+            row_version: 1,
+            notes: null,
+          },
+          composition: [
+            {
+              id: "c1",
+              component_version_id: "v-comp",
+              component_type: "constituent",
+              quantity: "80",
+              measurement_unit_id: "u1",
+              sequence: 1,
+            },
+          ],
+          nutrients: [
+            {
+              id: "n-row",
+              nutrient_id: "n1",
+              value: null,
+              value_status: "below_loq",
+              limit_of_quantification: "0.1",
+              loq_unit_id: "u1",
+              method_or_source: "laudo",
+            },
+          ],
+          allergens: [
+            {
+              id: "a-row",
+              allergen_id: "a1",
+              presence: "contains",
+              data_source_id: null,
+              evidence_note: "rótulo",
+            },
+          ],
+          completeness: {
+            ready_to_publish: true,
+            complete_dossier: false,
+            items: [
+              {
+                code: "fonte_pendente",
+                label: "Versão sem fonte técnica associada.",
+                blocking: false,
+                origin: "ingredient_version.data_source_id",
+              },
+            ],
+          },
+        },
+        row_version: 1,
+      });
+    }
+    if (path.endsWith("/suppliers")) return json({ data: [] });
+    if (path.endsWith("/catalog/units")) return json({ data: [{ id: "u1", code: "g", name: "grama", access: "somente_leitura" }] });
+    if (path.endsWith("/catalog/nutrients")) return json({ data: [{ id: "n1", code: "protein", name: "proteína", access: "somente_leitura" }] });
+    if (path.endsWith("/catalog/allergens")) return json({ data: [{ id: "a1", code: "gluten", name: "glúten", access: "somente_leitura" }] });
+    if (path.endsWith("/catalog/sources")) return json({ data: [] });
     if (path.endsWith("/production/catalog")) return json(catalogFixture);
     if (path.endsWith(`/orders/${ORDER_ID}/execution`)) return json(executionFixture);
     if (path.endsWith("/production/board")) return json({ data: boardFixture });

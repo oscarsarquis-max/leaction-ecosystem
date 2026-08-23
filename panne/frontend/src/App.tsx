@@ -13,6 +13,11 @@ import { SelectOrgPage } from "./pages/SelectOrgPage";
 import { SheetPage } from "./pages/SheetPage";
 import { TraceabilityHubPage, TraceabilityPage } from "./pages/TraceabilityPage";
 import { ExecutePage } from "./ops/ExecutePage";
+import { CatalogsPage } from "./pages/CatalogsPage";
+import { HomePage } from "./pages/HomePage";
+import { IngredientEditorPage } from "./pages/IngredientEditorPage";
+import { IngredientsPage } from "./pages/IngredientsPage";
+import { SuppliersPage } from "./pages/SuppliersPage";
 import { OrganizationProvider } from "./session/OrganizationContext";
 
 export function AppRoutes() {
@@ -30,6 +35,47 @@ export function AppRoutes() {
               }
             >
               <Route path="/organizacao" element={<SelectOrgPage />} />
+              <Route path="/inicio" element={<HomePage />} />
+              <Route
+                path="/componentes/ingredientes"
+                element={
+                  <RequirePermission code="ingredient.read">
+                    <IngredientsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/ingredientes/novo"
+                element={
+                  <RequirePermission code="ingredient.create">
+                    <IngredientEditorPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/ingredientes/:ingredientId"
+                element={
+                  <RequirePermission code="ingredient.read">
+                    <IngredientEditorPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/fornecedores"
+                element={
+                  <RequirePermission code="supplier.read">
+                    <SuppliersPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/catalogos"
+                element={
+                  <RequirePermission code="ingredient.read">
+                    <CatalogsPage />
+                  </RequirePermission>
+                }
+              />
               <Route
                 path="/producao"
                 element={

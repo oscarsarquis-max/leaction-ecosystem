@@ -35,19 +35,30 @@ a {
 .shell-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  min-height: 3.25rem;
-  padding: 0.4rem 1rem;
+  gap: 0.6rem;
+  min-height: 2.7rem;
+  padding: 0 0.6rem;
   background: var(--panne-grafite);
   color: var(--panne-bege);
+  font-family: var(--panne-fonte-chrome);
 }
 
 .brand {
-  font-size: 1.15rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
   text-decoration: none;
-  white-space: nowrap;
+}
+
+.brand img.horizontal {
+  height: 1.85rem;
+  width: auto;
+  display: block;
+}
+
+.brand img.compacto {
+  display: none;
+  height: 1.7rem;
+  width: auto;
 }
 
 .nav-toggle {
@@ -61,22 +72,54 @@ a {
 
 .shell-nav {
   display: flex;
-  gap: 0.25rem;
+  gap: 0;
   flex: 1;
 }
 
+.shell-nav button,
 .shell-nav a {
   display: inline-flex;
   align-items: center;
   min-height: var(--panne-alvo);
   padding: 0 0.7rem;
   text-decoration: none;
-  border-bottom: 2px solid transparent;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--panne-fonte-chrome);
+  font-size: 0.86rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
+.shell-nav button[aria-current="true"],
 .shell-nav a[aria-current="page"] {
-  border-bottom-color: var(--panne-bege);
-  font-weight: 650;
+  background: #1f2021;
+  box-shadow: inset 0 -3px 0 var(--panne-bege);
+}
+
+.submenu {
+  display: flex;
+  gap: 0.2rem;
+  padding: 0.2rem 0.5rem;
+  background: #3b3c3d;
+  color: var(--panne-bege);
+}
+
+.submenu a {
+  color: inherit;
+  min-height: 2.2rem;
+  padding: 0 0.6rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.crumb {
+  padding: 0.75rem 8vw 0;
+  color: var(--panne-grafite-suave);
+  font-size: 0.85rem;
 }
 
 .shell-tools {
@@ -121,7 +164,7 @@ a {
 
 .main {
   flex: 1;
-  padding: 0.85rem 1rem 1.4rem;
+  padding: 0.4rem 8vw 4rem;
 }
 
 .page-head {
@@ -132,10 +175,72 @@ a {
   margin-bottom: 0.75rem;
 }
 
-.page-head h1 {
-  margin: 0;
-  font-size: 1.35rem;
-  font-weight: 650;
+.page-head h1,
+.stage h1 {
+  margin: 0.4rem 0 0.9rem;
+  font-family: var(--panne-fonte-display);
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  font-weight: 400;
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 20rem);
+  gap: 1.4rem;
+  align-items: start;
+}
+
+.lede {
+  max-width: 40rem;
+  margin-bottom: 1.4rem;
+  line-height: 1.5;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.1rem;
+}
+
+.card,
+.panel {
+  background: var(--panne-bege-elevado);
+  border-radius: var(--panne-raio-conteudo);
+  padding: var(--panne-espaco-conteudo);
+  border: 1px solid var(--panne-linha);
+}
+
+.ops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.1rem;
+}
+
+.drawer-assist {
+  position: fixed;
+  top: 5.4rem;
+  right: 0;
+  width: min(22rem, 92vw);
+  bottom: 0;
+  z-index: 8;
+  border-left: 3px solid var(--panne-grafite);
+  overflow: auto;
+  border-radius: 0;
+  background: var(--panne-bege-elevado);
+  padding: 1rem;
+}
+
+.progress {
+  height: 0.55rem;
+  background: var(--panne-bege-escuro);
+  border: 1px solid var(--panne-linha);
+  margin: 0.6rem 0;
+}
+
+.progress > span {
+  display: block;
+  height: 100%;
+  background: var(--panne-grafite);
 }
 
 .filters {
@@ -363,6 +468,12 @@ tbody tr:focus-visible {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+@media (max-width: 980px) {
+  .stage { grid-template-columns: 1fr; }
+  .brand img.horizontal { display: none; }
+  .brand img.compacto { display: block; }
 }
 
 @media (max-width: 900px) {

@@ -11,7 +11,12 @@
   --panne-info: #2f4a5d;
   --panne-foco: #1d4f73;
   --panne-fonte: "Segoe UI", "Helvetica Neue", sans-serif;
+  --panne-fonte-chrome: "Segoe UI", sans-serif;
+  --panne-fonte-display: Georgia, "Times New Roman", serif;
   --panne-espaco: 0.75rem;
+  --panne-espaco-conteudo: 1.6rem;
+  --panne-raio-chrome: 0.12rem;
+  --panne-raio-conteudo: 1.15rem;
   --panne-alvo: 2.5rem;
 }
 

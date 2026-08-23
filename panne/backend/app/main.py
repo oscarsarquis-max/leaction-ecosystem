@@ -7,8 +7,10 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.health import HealthResponse, build_health
 from app.modules.identity_organization.http import router as identity_router
-from app.modules.production_http.errors import sanitized_exception_handler
+from app.modules.ingredient_http.reads import router as ingredient_reads
+from app.modules.ingredient_http.writes import router as ingredient_writes
 from app.modules.production_http.catalog import router as production_catalog
+from app.modules.production_http.errors import sanitized_exception_handler
 from app.modules.production_http.reads import router as production_reads
 from app.modules.production_http.roles_http import router as membership_roles
 from app.modules.production_http.writes import router as production_writes
@@ -39,6 +41,14 @@ app.include_router(
 app.include_router(
     membership_roles,
     prefix="/api/v1/organizations/{organization_id}/memberships",
+)
+app.include_router(
+    ingredient_reads,
+    prefix="/api/v1/organizations/{organization_id}",
+)
+app.include_router(
+    ingredient_writes,
+    prefix="/api/v1/organizations/{organization_id}",
 )
 
 app.add_middleware(

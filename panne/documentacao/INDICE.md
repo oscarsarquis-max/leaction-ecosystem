@@ -158,8 +158,27 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Prompt CHECKPOINT-GIT-003](prompts/CHECKPOINT-GIT-003-ux-canonica.md)
 - [Retorno CHECKPOINT-GIT-003](retornos/CHECKPOINT-GIT-003-retorno.md) — concluído
 - Laboratório isolado: `panne/design/ux-001/` — direção aprovada é o padrão; Atelier, Oficina e Mesa ficam como histórico
-- Nenhuma proposta aplicada à interface produtiva
-- CURSOR-017 — pendente e não iniciado
+- [Prompt CURSOR-017](prompts/CURSOR-017-implementar-componentes-ingredientes.md)
+- [Auditoria 017](arquitetura/AUDITORIA-017-INGREDIENTES.md)
+- [ADR shell Oficina + Atelier](decisoes/ADR-SHELL-OFICINA-ATELIER.md)
+- [Contratos de ingredientes](arquitetura/CONTRATOS-INGREDIENTES-017.md)
+- [Permissões e RLS de ingredientes](decisoes/PERMISSOES-E-RLS-INGREDIENTES.md)
+- [Ciclo de vida](arquitetura/CICLO-DE-VIDA-INGREDIENTE.md)
+- [Composição](arquitetura/COMPOSICAO-INGREDIENTE.md)
+- [Nutrição e LQ](arquitetura/NUTRICAO-E-LOQ.md)
+- [Alergênicos](arquitetura/ALERGENICOS-INGREDIENTE.md)
+- [Fontes](arquitetura/FONTES-INGREDIENTE.md)
+- [Fornecedores e valores de compra](arquitetura/FORNECEDORES-E-PRECOS.md)
+- [Completude](arquitetura/COMPLETUDE-INGREDIENTE.md)
+- [Assistente](arquitetura/ASSISTENTE-INGREDIENTE.md)
+- [Sistema de design aplicado](decisoes/SISTEMA-DE-DESIGN-APLICADO-017.md)
+- [Acessibilidade 017](decisoes/ACESSIBILIDADE-017.md)
+- [Evidências visuais 017](arquitetura/EVIDENCIAS-VISUAIS-017.md)
+- [Limitações 017](produto/LIMITACOES-017.md)
+- [Retorno CURSOR-017](retornos/CURSOR-017-retorno.md) — aceito condicionalmente
+- [Prompt CHECKPOINT-GIT-004](prompts/CHECKPOINT-GIT-004-cursor-017.md)
+- CHECKPOINT-GIT-004 — em validação
+- CURSOR-018 — não iniciado
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
 - [Retorno CURSOR-011](retornos/CURSOR-011-retorno-execucao.md)
 

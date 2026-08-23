@@ -52,7 +52,11 @@ def assert_acyclic_composition(
     session: Session,
     parent_version_id: UUID,
     component_version_id: UUID,
+    organization_id: UUID | None = None,
 ) -> None:
-    rows = session.scalars(select(IngredientComposition)).all()
+    query = select(IngredientComposition)
+    if organization_id is not None:
+        query = query.where(IngredientComposition.organization_id == organization_id)
+    rows = session.scalars(query).all()
     if composition_would_cycle(rows, parent_version_id, component_version_id):
         raise CompositionCycleError("composição cíclica rejeitada")

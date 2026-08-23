@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import logoBege from "../../images/pannebege.png";
+import logoCompleto from "../../images/aprovados/horizontal-claro.png";
 import { useAuth } from "../auth/AuthContext";
 import { config } from "../config";
 
@@ -23,7 +23,7 @@ export function LoginPage() {
 
   return (
     <main className="login-card">
-      <img className="login-brand" src={logoBege} alt="panne — quality recipes" width={2000} height={2000} />
+      <img className="login-brand" src={logoCompleto} alt="Panne" />
       <h1>Entrar na Panne</h1>
       <p>
         A autorização visual usa as permissões de `/api/v1/me`. Grupos do provedor de identidade não
