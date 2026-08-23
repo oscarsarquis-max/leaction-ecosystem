@@ -175,9 +175,9 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Acessibilidade 017](decisoes/ACESSIBILIDADE-017.md)
 - [Evidências visuais 017](arquitetura/EVIDENCIAS-VISUAIS-017.md)
 - [Limitações 017](produto/LIMITACOES-017.md)
-- [Retorno CURSOR-017](retornos/CURSOR-017-retorno.md) — aceito condicionalmente
+- [Retorno CURSOR-017](retornos/CURSOR-017-retorno.md) — aceito condicionalmente; versionado neste checkpoint
 - [Prompt CHECKPOINT-GIT-004](prompts/CHECKPOINT-GIT-004-cursor-017.md)
-- CHECKPOINT-GIT-004 — em validação
+- [Retorno CHECKPOINT-GIT-004](retornos/CHECKPOINT-GIT-004-retorno.md) — concluído
 - CURSOR-018 — não iniciado
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
 - [Retorno CURSOR-011](retornos/CURSOR-011-retorno-execucao.md)
