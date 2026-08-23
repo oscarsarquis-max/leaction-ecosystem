@@ -128,7 +128,8 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Limitações da interface 016](produto/LIMITACOES-INTERFACE-016.md)
 - [Prompt CURSOR-016](prompts/CURSOR-016-implementar-modo-operacional.md)
 - [Retorno CURSOR-016](retornos/CURSOR-016-retorno-execucao.md) — aceito funcionalmente
-- [Prompt CHECKPOINT-GIT-002](prompts/CHECKPOINT-GIT-002-cursor-016.md) — em execução
+- [Prompt CHECKPOINT-GIT-002](prompts/CHECKPOINT-GIT-002-cursor-016.md)
+- [Retorno CHECKPOINT-GIT-002](retornos/CHECKPOINT-GIT-002-retorno.md) — concluído
 - Projeto de UX/UI — pendente e não iniciado
 - CURSOR-017 — pendente e não iniciado
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
