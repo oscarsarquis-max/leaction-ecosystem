@@ -82,7 +82,8 @@ $DefaultDatabases = @(
     'inove4us_school',
     'prodinx',
     'LASim',
-    'diario-obra'
+    'diario-obra',
+    'panne'
 )
 
 $Databases = if ($Database -and $Database.Count -gt 0) { @($Database) } else { $DefaultDatabases }

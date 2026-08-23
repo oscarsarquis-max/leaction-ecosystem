@@ -4,7 +4,7 @@
 
 .DESCRIPTION
   1) Bancos no leaction_db (hub, MAtivas, chamelleon, inove4us, inove4us_school,
-     prodinx, LASim, diario-obra)
+     prodinx, LASim, diario-obra, panne)
      via infra\sync-ecosystem-db-from-lan.ps1 (porta 5433)
   2) Banco Phanton (orquestrador) via phanton\database\sync-phanton-db-from-lan.ps1 (porta 5435)
 

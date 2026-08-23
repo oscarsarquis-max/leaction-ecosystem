@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   Bancos típicos neste container: leaction_hub, MAtivas, chamelleon, inove4us,
-  inove4us_school, prodinx, LASim, diario-obra.
+  inove4us_school, prodinx, LASim, diario-obra, panne.
 
   Para o Phanton (porta 5435, container separado), rode também:
     ..\phanton\database\open-phanton-db-lan.ps1
@@ -33,6 +33,12 @@ Pop-Location
 
 $status = docker ps --filter name=leaction_db --format "{{.Status}}"
 $ports = docker port leaction_db 5432 2>$null
+$mapped = @($ports | ForEach-Object {
+    if ($_ -match ':(\d+)$') { [int]$Matches[1] }
+} | Select-Object -Unique)
+if ($mapped.Count -gt 0 -and -not $PSBoundParameters.ContainsKey('Port')) {
+    $Port = $mapped[0]
+}
 Write-Host "Container: $status" -ForegroundColor Green
 Write-Host "Port map:  $ports"
 
@@ -63,7 +69,7 @@ Write-Host "IP LAN (192.168.*): $($lan -join ', ')"
 Write-Host "Porta: $Port | User: admin | Senha: password123 (compose)"
 Write-Host "Na outra máquina (destino), puxar TODAS as apps:"
 foreach ($ip in $lan) {
-    Write-Host "  .\sync-db-from-lan.ps1 -SourceHost $ip -Force"
+    Write-Host "  .\sync-db-from-lan.ps1 -SourceHost $ip -SourcePort $Port -Force"
 }
 Write-Host "Phanton (opcional, se ainda não liberou):"
 Write-Host "  ..\phanton\database\open-phanton-db-lan.ps1"
