@@ -130,7 +130,34 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Retorno CURSOR-016](retornos/CURSOR-016-retorno-execucao.md) — aceito funcionalmente
 - [Prompt CHECKPOINT-GIT-002](prompts/CHECKPOINT-GIT-002-cursor-016.md)
 - [Retorno CHECKPOINT-GIT-002](retornos/CHECKPOINT-GIT-002-retorno.md) — concluído
-- Projeto de UX/UI — pendente e não iniciado
+- [Prompt UX-001](prompts/UX-001-auditar-e-prototipar.md)
+- [Auditoria da interface](ux/AUDITORIA-INTERFACE.md)
+- [Auditoria dos logos](ux/AUDITORIA-LOGOS.md)
+- [Atores e dispositivos](ux/ATORES-E-DISPOSITIVOS.md)
+- [Arquitetura da informação](ux/ARQUITETURA-DA-INFORMACAO.md)
+- [Três direções](ux/TRES-DIRECOES.md)
+- [Sistema de design](ux/SISTEMA-DE-DESIGN.md)
+- [Interfaces dinâmicas](ux/INTERFACES-DINAMICAS.md)
+- [Badges e gamificação](ux/BADGES-E-GAMIFICACAO.md)
+- [Assistentes](ux/ASSISTENTES.md)
+- [Acessibilidade UX](ux/ACESSIBILIDADE.md)
+- [Mapa de migração](ux/MAPA-MIGRACAO.md)
+- [Instruções do laboratório](ux/INSTRUCOES-LABORATORIO.md)
+- [Evidências UX-001](ux/EVIDENCIAS.md)
+- [Retorno UX-001](retornos/UX-001-retorno.md) — aceito
+- [Prompt UX-002](prompts/UX-002-consolidar-oficina-atelier.md)
+- [Decisão Oficina + Atelier](ux/DECISAO-OFICINA-ATELIER.md)
+- [Especificação canônica](ux/ESPECIFICACAO-CANONICA.md)
+- [Manual dos logos derivados](ux/MANUAL-LOGOS-DERIVADOS.md)
+- [Componentes e tokens](ux/COMPONENTES-E-TOKENS.md)
+- [Responsividade](ux/RESPONSIVIDADE.md)
+- [Mapa de handoff 017](ux/MAPA-HANDOFF-017.md)
+- [Evidências UX-002](ux/EVIDENCIAS-002.md)
+- [Retorno UX-002](retornos/UX-002-retorno.md) — aceito
+- Direção canônica: Oficina (estrutura) + Atelier (página central)
+- [Prompt CHECKPOINT-GIT-003](prompts/CHECKPOINT-GIT-003-ux-canonica.md)
+- Laboratório isolado: `panne/design/ux-001/` — direção aprovada é o padrão; Atelier, Oficina e Mesa ficam como histórico
+- Nenhuma proposta aplicada à interface produtiva
 - CURSOR-017 — pendente e não iniciado
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
 - [Retorno CURSOR-011](retornos/CURSOR-011-retorno-execucao.md)

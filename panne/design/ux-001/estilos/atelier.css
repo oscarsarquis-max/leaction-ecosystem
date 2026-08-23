@@ -1,0 +1,109 @@
+[data-direcao="atelier"] {
+  --fonte-display: Georgia, "Times New Roman", serif;
+  --fonte-corpo: "Segoe UI", "Helvetica Neue", sans-serif;
+  --raio: 1.15rem;
+  --espaco: 1.6rem;
+}
+
+[data-direcao="atelier"] .shell-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 1.1rem 1.8rem 0.4rem;
+  background: var(--bege);
+  color: var(--grafite);
+  border-bottom: 0;
+}
+
+[data-direcao="atelier"] .brand img {
+  height: 3.4rem;
+  width: auto;
+  display: block;
+}
+
+[data-direcao="atelier"] .domains {
+  display: flex;
+  gap: 1.4rem;
+  justify-content: center;
+}
+
+[data-direcao="atelier"] .domains button {
+  border: 0;
+  background: transparent;
+  font-family: var(--fonte-display);
+  font-size: 1.15rem;
+  min-height: var(--alvo);
+}
+
+[data-direcao="atelier"] .domains button[aria-current="true"] {
+  border-bottom: 2px solid var(--grafite);
+}
+
+[data-direcao="atelier"] .submenu {
+  margin: 0 1.8rem 1rem;
+  padding: 1rem 1.2rem;
+  background: var(--bege-alto);
+  border-radius: var(--raio);
+}
+
+[data-direcao="atelier"] .submenu a,
+[data-direcao="atelier"] .submenu button.linkish {
+  margin-right: 1.2rem;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+}
+
+[data-direcao="atelier"] .main {
+  padding: 0 8vw 4rem;
+}
+
+[data-direcao="atelier"] h1 {
+  font-family: var(--fonte-display);
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  font-weight: 400;
+}
+
+[data-direcao="atelier"] .cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.1rem;
+}
+
+[data-direcao="atelier"] .card,
+[data-direcao="atelier"] .panel,
+[data-direcao="atelier"] .login {
+  background: var(--bege-alto);
+  border-radius: var(--raio);
+  padding: var(--espaco);
+  border: 1px solid var(--linha);
+}
+
+[data-direcao="atelier"] .login {
+  max-width: 28rem;
+  margin: 8vh auto;
+  text-align: center;
+}
+
+[data-direcao="atelier"] .login img { width: min(22rem, 100%); }
+
+[data-direcao="atelier"] .sheet-assist {
+  position: fixed;
+  left: 8vw;
+  right: 8vw;
+  bottom: 1rem;
+  z-index: 8;
+}
+
+[data-direcao="atelier"] table { width: 100%; border-collapse: collapse; }
+[data-direcao="atelier"] th, [data-direcao="atelier"] td {
+  padding: 0.85rem 0.4rem;
+  border-bottom: 1px solid var(--linha);
+  text-align: left;
+}
+
+@media (max-width: 900px) {
+  [data-direcao="atelier"] .shell-header { grid-template-columns: 1fr; }
+  [data-direcao="atelier"] .domains { justify-content: flex-start; overflow: auto; }
+}

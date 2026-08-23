@@ -1,0 +1,140 @@
+:root {
+  --bege: #e5e4d6;
+  --bege-alto: #f4f3eb;
+  --bege-baixo: #d5d4c5;
+  --grafite: #323334;
+  --grafite-suave: #4a4b4c;
+  --linha: #c8c7b8;
+  --ok: #2f5d3a;
+  --atencao: #8a5a12;
+  --erro: #8b2e2e;
+  --info: #2f4a5d;
+  --foco: #1d4f73;
+  --alvo: 2.5rem;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bege);
+  color: var(--grafite);
+}
+
+body {
+  font-family: var(--fonte-corpo);
+}
+
+:focus-visible {
+  outline: 3px solid var(--foco);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.lab-meta {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+  padding: 0.45rem 0.75rem;
+  background: #fff;
+  border-bottom: 2px solid var(--grafite);
+  font-size: 0.82rem;
+}
+
+.lab-meta label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.lab-meta select,
+.lab-meta button {
+  min-height: var(--alvo);
+}
+
+.prototype {
+  min-height: calc(100vh - 4.5rem);
+}
+
+button, select, input, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  min-height: var(--alvo);
+  padding: 0 0.8rem;
+  cursor: pointer;
+}
+
+a { color: inherit; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.6rem;
+  padding: 0 0.45rem;
+  border: 1px solid currentColor;
+  font-size: 0.75rem;
+}
+
+.badge::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge-ok { color: var(--ok); }
+.badge-atencao { color: var(--atencao); }
+.badge-erro { color: var(--erro); }
+.badge-info { color: var(--info); }
+.badge-neutro { color: var(--grafite-suave); }
+
+.progress {
+  height: 0.55rem;
+  background: var(--bege-baixo);
+  border: 1px solid var(--linha);
+}
+
+.progress > span {
+  display: block;
+  height: 100%;
+  background: var(--grafite);
+}
+
+.skip {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  background: #fff;
+  padding: 0.4rem;
+}
+
+.skip:focus { top: 0.5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media print {
+  .lab-meta, .no-print { display: none !important; }
+  body { background: #fff; color: #000; }
+}

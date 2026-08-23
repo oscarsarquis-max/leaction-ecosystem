@@ -1,0 +1,115 @@
+[data-direcao="mesa"] {
+  --fonte-display: Palatino, Georgia, serif;
+  --fonte-corpo: "Segoe UI", "Helvetica Neue", sans-serif;
+  --raio: 0.65rem;
+  --espaco: 1rem;
+}
+
+[data-direcao="mesa"] .shell-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  background: var(--grafite);
+  color: var(--bege);
+}
+
+[data-direcao="mesa"] .brand img {
+  height: 2.3rem;
+  width: auto;
+}
+
+[data-direcao="mesa"] .domains {
+  display: flex;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+[data-direcao="mesa"] .domains button {
+  border: 1px solid #6a6b6c;
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 0 0.9rem;
+}
+
+[data-direcao="mesa"] .domains button[aria-current="true"] {
+  background: var(--bege);
+  color: var(--grafite);
+}
+
+[data-direcao="mesa"] .submenu {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem 0;
+  flex-wrap: wrap;
+}
+
+[data-direcao="mesa"] .submenu a,
+[data-direcao="mesa"] .submenu button.linkish {
+  border: 1px solid var(--linha);
+  background: var(--bege-alto);
+  border-radius: 999px;
+  min-height: 2.2rem;
+}
+
+[data-direcao="mesa"] .workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+  gap: 0.8rem;
+  padding: 0.6rem 1rem 3rem;
+}
+
+[data-direcao="mesa"] .main { padding: 0.6rem 1rem 3rem; }
+
+[data-direcao="mesa"] h1 {
+  font-family: var(--fonte-display);
+  font-size: 1.7rem;
+  margin: 0.2rem 0 0.6rem;
+}
+
+[data-direcao="mesa"] .cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.7rem;
+}
+
+[data-direcao="mesa"] .card,
+[data-direcao="mesa"] .panel,
+[data-direcao="mesa"] .inspector {
+  background: var(--bege-alto);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: 0.85rem;
+}
+
+[data-direcao="mesa"] .login {
+  max-width: 26rem;
+  margin: 10vh auto;
+  padding: 1.4rem;
+  background: var(--bege-alto);
+  border-radius: var(--raio);
+  border: 1px solid var(--grafite);
+}
+
+[data-direcao="mesa"] .login img { width: min(18rem, 100%); display: block; margin: 0 auto; }
+
+[data-direcao="mesa"] .overlay-assist {
+  position: fixed;
+  inset: 12vh 18vw auto;
+  z-index: 9;
+  max-width: 40rem;
+  margin: auto;
+}
+
+[data-direcao="mesa"] table { width: 100%; border-collapse: collapse; }
+[data-direcao="mesa"] th, [data-direcao="mesa"] td {
+  padding: 0.55rem 0.4rem;
+  border-bottom: 1px solid var(--linha);
+  text-align: left;
+}
+
+@media (max-width: 980px) {
+  [data-direcao="mesa"] .workbench { grid-template-columns: 1fr; }
+  [data-direcao="mesa"] .domains { overflow: auto; }
+}
