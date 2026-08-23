@@ -229,6 +229,8 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Evidências visuais 021](arquitetura/EVIDENCIAS-VISUAIS-021.md)
 - [Limitações 021](produto/LIMITACOES-021.md)
 - [Retorno CURSOR-021](retornos/CURSOR-021-retorno.md)
+- [Prompt CHECKPOINT-GIT-007](prompts/CHECKPOINT-GIT-007-cursor-021.md)
+- [Retorno CHECKPOINT-GIT-007](retornos/CHECKPOINT-GIT-007-retorno.md) — concluído
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
 - [Retorno CURSOR-011](retornos/CURSOR-011-retorno-execucao.md)
 
