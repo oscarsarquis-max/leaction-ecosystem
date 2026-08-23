@@ -12,6 +12,7 @@ import { PlansPage } from "./pages/PlansPage";
 import { SelectOrgPage } from "./pages/SelectOrgPage";
 import { SheetPage } from "./pages/SheetPage";
 import { TraceabilityHubPage, TraceabilityPage } from "./pages/TraceabilityPage";
+import { ExecutePage } from "./ops/ExecutePage";
 import { OrganizationProvider } from "./session/OrganizationContext";
 
 export function AppRoutes() {
@@ -66,6 +67,14 @@ export function AppRoutes() {
                 element={
                   <RequirePermission code="production.order.read">
                     <OrderDetailPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/producao/ordens/:orderId/executar"
+                element={
+                  <RequirePermission code="production.order.read">
+                    <ExecutePage />
                   </RequirePermission>
                 }
               />

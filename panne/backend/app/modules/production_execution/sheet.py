@@ -19,6 +19,7 @@ from app.modules.production_execution.policy import policy_canonical, require_po
 from app.modules.production_planning.constants import CODE_KIND_SHEET, ORDER_STATUS_CANCELLED
 from app.modules.production_planning.errors import InvalidStateError, ValidationError
 from app.modules.production_planning.events import append_event, existing_idempotent
+from app.modules.identity_organization.models import AppUser, Establishment, Organization
 from app.modules.production_planning.models import (
     ProductionBatch,
     ProductionCodeCounter,
@@ -60,7 +61,13 @@ def _next_issue_number(session: Session, organization_id: UUID) -> int:
 
 
 def _canonical_sheet(
-    session: Session, order: ProductionOrder, policy: ProductionExecutionPolicy
+    session: Session,
+    order: ProductionOrder,
+    policy: ProductionExecutionPolicy,
+    *,
+    issuer_user_id,
+    issuer_display_name: str,
+    issued_at,
 ) -> dict:
     materials = [
         {
@@ -101,6 +108,8 @@ def _canonical_sheet(
             .order_by(ProductionBatch.sequence)
         )
     ]
+    establishment = session.get(Establishment, order.establishment_id)
+    organization = session.get(Organization, order.organization_id)
     return {
         "schema_version": SHEET_TEMPLATE_VERSION,
         "order": {
@@ -113,6 +122,21 @@ def _canonical_sheet(
             "steps_hash": order.steps_hash,
             "snapshot_hash": order.snapshot_hash,
             "policy_hash": policy.policy_hash,
+        },
+        "establishment": {
+            "id": str(establishment.id) if establishment else None,
+            "code": establishment.code if establishment else None,
+            "display_name": establishment.display_name if establishment else None,
+        },
+        "organization": {
+            "id": str(organization.id) if organization else None,
+            "slug": organization.slug if organization else None,
+            "display_name": organization.display_name if organization else None,
+        },
+        "issuer": {
+            "user_id": str(issuer_user_id),
+            "display_name": issuer_display_name,
+            "issued_at": issued_at.isoformat(),
         },
         "policy": policy_canonical(policy),
         "materials": materials,
@@ -154,7 +178,16 @@ def issue_sheet(
         if batch is None or batch.production_order_id != order.id:
             raise ValidationError("batelada inválida")
     policy = require_policy(session, order.id)
-    payload = _canonical_sheet(session, order, policy)
+    issuer = session.get(AppUser, principal.user_id)
+    issued_at = now()
+    payload = _canonical_sheet(
+        session,
+        order,
+        policy,
+        issuer_user_id=principal.user_id,
+        issuer_display_name=issuer.display_name if issuer else principal.display_name,
+        issued_at=issued_at,
+    )
     payload_hash = digest(payload)
     previous = session.scalar(
         select(ProductionSheetIssue)
@@ -172,7 +205,7 @@ def issue_sheet(
         canonical_payload=payload,
         payload_sha256=payload_hash,
         issued_by_user_id=principal.user_id,
-        issued_at=now(),
+        issued_at=issued_at,
         purpose=purpose,
         order_status_at_issue=order.status,
         previous_issue_id=previous.id if previous is not None else None,

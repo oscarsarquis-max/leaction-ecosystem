@@ -10,6 +10,7 @@
 | `/planejamento/:id` | detalhe do plano | `production.plan.read` |
 | `/ordens` | lista de ordens | `production.order.read` |
 | `/ordens/:id` | detalhe operacional | `production.order.read` |
+| `/producao/ordens/:orderId/executar` | modo operacional do padeiro | `production.order.read` |
 | `/ordens/:id/fichas/:issueId` | ficha imprimível | `production.order.read` |
 | `/rastreabilidade` | busca | `production.traceability.read` |
 | `/rastreabilidade/:id` | rastreio | `production.traceability.read` (negado ≠ vazio) |

@@ -4,6 +4,8 @@ import {
   ORDER_ID,
   PLAN_ID,
   boardFixture,
+  catalogFixture,
+  executionFixture,
   materialsFixture,
   meFixture,
   ordersFixture,
@@ -22,14 +24,18 @@ export function json(data: unknown, status = 200): Response {
   });
 }
 
-export function installApiMock(overrides: Record<string, (url: URL) => Response> = {}) {
-  const handler = async (input: RequestInfo | URL) => {
-    const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url);
+export function installApiMock(overrides: Record<string, (url: URL, request: Request) => Response> = {}) {
+  const handler = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request =
+      input instanceof Request ? input : new Request(typeof input === "string" ? input : input.toString(), init);
+    const url = new URL(request.url);
     const path = url.pathname;
     for (const [prefix, fn] of Object.entries(overrides)) {
-      if (path.includes(prefix)) return fn(url);
+      if (path.includes(prefix)) return fn(url, request);
     }
     if (path === "/api/v1/me") return json(meFixture);
+    if (path.endsWith("/production/catalog")) return json(catalogFixture);
+    if (path.endsWith(`/orders/${ORDER_ID}/execution`)) return json(executionFixture);
     if (path.endsWith("/production/board")) return json({ data: boardFixture });
     if (path.endsWith("/production/plans") && !path.includes(PLAN_ID)) return json(plansFixture);
     if (path.includes(`/plans/${PLAN_ID}`)) return json(planDetailFixture);
@@ -50,6 +56,9 @@ export function installApiMock(overrides: Record<string, (url: URL) => Response>
     }
     if (path.endsWith(`/orders/${ORDER_ID}/traceability`)) return json(traceFixture);
     if (path.endsWith(`/orders/${ORDER_ID}`)) return json({ data: ordersFixture.items[0], row_version: 4 });
+    if (request.method !== "GET" && path.includes("/production")) {
+      return json({ data: { id: "cmd-1" } });
+    }
     if (path.includes("/organizations/") && path.includes("/production")) {
       return json({ items: [], next_cursor: null });
     }

@@ -3,10 +3,12 @@ import { ApiError, errorFromResponse } from "./errors";
 import type {
   BoardCard,
   BoardFilters,
+  Catalog,
   Consumption,
   Dependency,
   Envelope,
   EventRow,
+  ExecutionView,
   MaterialsView,
   Me,
   Occurrence,
@@ -122,6 +124,38 @@ export class ApiClient {
     return this.orgGet<Envelope<BoardCard[]>>("/board", query);
   }
 
+  getCatalog() {
+    return this.orgGet<Envelope<Catalog>>("/catalog");
+  }
+
+  getExecution(orderId: string) {
+    return this.orgGet<Envelope<ExecutionView>>(`/orders/${orderId}/execution`, {}, false);
+  }
+
+  command<T>(
+    path: string,
+    options: {
+      method?: "POST" | "PATCH" | "DELETE";
+      body?: unknown;
+      idempotencyKey: string;
+      ifMatch?: number | null;
+    },
+  ): Promise<T> {
+    return this.request<T>(this.orgPath(path), {
+      method: options.method ?? "POST",
+      body: options.body,
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": options.idempotencyKey,
+        ...(options.ifMatch != null ? { "If-Match": String(options.ifMatch) } : {}),
+      },
+      cache: false,
+    }).then((result) => {
+      this.clear();
+      return result;
+    });
+  }
+
   private orgPath(path: string): string {
     if (!this.organizationId) {
       throw new ApiError("nao_autorizado", "Selecione uma organização.", 403);
@@ -129,8 +163,8 @@ export class ApiClient {
     return `/api/v1/organizations/${this.organizationId}/production${path}`;
   }
 
-  private orgGet<T>(path: string, query: Query = {}): Promise<T> {
-    return this.request<T>(this.orgPath(path), { query });
+  private orgGet<T>(path: string, query: Query = {}, cache = true): Promise<T> {
+    return this.request<T>(this.orgPath(path), { query, cache });
   }
 
   private async request<T>(
@@ -139,10 +173,13 @@ export class ApiClient {
       query?: Query;
       headers?: Record<string, string>;
       cache?: boolean;
+      method?: string;
+      body?: unknown;
     } = {},
   ): Promise<T> {
     const url = this.url(path, options.query);
-    const cacheKey = url;
+    const method = options.method ?? "GET";
+    const cacheKey = `${method}:${url}`;
     if (options.cache !== false && this.cache.has(cacheKey)) {
       return this.cache.get(cacheKey) as T;
     }
@@ -157,7 +194,12 @@ export class ApiClient {
     const token = this.tokenReader();
     if (token) headers.set("Authorization", `Bearer ${token}`);
     try {
-      const response = await fetch(url, { headers, signal: controller.signal });
+      const response = await fetch(url, {
+        method,
+        headers,
+        signal: controller.signal,
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      });
       const body = await readBody(response);
       if (!response.ok) {
         throw errorFromResponse(response.status, body);

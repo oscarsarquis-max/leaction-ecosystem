@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/errors";
 import type { BoardCard, BoardFilters } from "../api/types";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
@@ -205,7 +205,17 @@ export function BoardPage() {
                     {card.blocked ? "Bloqueada" : "Livre"}
                     {card.open_occurrences ? ` · ${card.open_occurrences} ocorrência(s)` : ""}
                   </td>
-                  <td>{actionLabel(card.next_action)}</td>
+                  <td>
+                    {actionLabel(card.next_action)}
+                    <div>
+                      <Link
+                        to={`/producao/ordens/${card.order.id}/executar`}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        Executar
+                      </Link>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

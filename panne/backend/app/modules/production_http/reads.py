@@ -26,6 +26,7 @@ from app.modules.production_execution.projections import (
     project_consumption,
 )
 from app.modules.production_http.board import project_board
+from app.modules.production_http.execution import build_execution
 from app.modules.production_http.deps import DEFAULT_PAGE, MAX_PAGE, get_runtime_principal
 from app.modules.production_http.errors import raise_domain
 from app.modules.production_http.schemas import decimal_str, envelope
@@ -555,6 +556,16 @@ def get_sheet_payload(
             "canonical_payload": issue.canonical_payload,
         }
     )
+
+
+@router.get("/orders/{order_id}/execution")
+def get_execution(
+    organization_id: UUID,
+    order_id: UUID,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+):
+    return envelope(build_execution(session, principal, organization_id, order_id))
 
 
 @router.get("/orders/{order_id}/traceability")

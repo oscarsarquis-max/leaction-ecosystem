@@ -16,7 +16,7 @@ function text(value: unknown): string {
 
 export function SheetPage() {
   const { orderId = "", issueId = "" } = useParams();
-  const { api, active } = useOrganization();
+  const { api } = useOrganization();
   const [issue, setIssue] = useState<SheetIssue | null>(null);
   const [error, setError] = useState<unknown>(null);
 
@@ -62,8 +62,18 @@ export function SheetPage() {
         </p>
       ) : null}
       <h1>Ficha de produção {order.public_code ?? ""}</h1>
-      <p>Empresa: {active?.display_name || "não informado nesta emissão"}</p>
-      <p>Estabelecimento: não informado no payload canônico</p>
+      <p>
+        Empresa:{" "}
+        {payload.organization?.display_name ||
+          payload.organization?.slug ||
+          "não informado"}
+      </p>
+      <p>
+        Estabelecimento:{" "}
+        {payload.establishment?.display_name ||
+          payload.establishment?.code ||
+          "não informado"}
+      </p>
       <p>Finalidade: {issue.purpose}</p>
       <p>Estado na emissão: {statusLabel(issue.order_status_at_issue)}</p>
       <p>Emissão anterior: {issue.previous_issue_id ?? "nenhuma"}</p>
@@ -134,7 +144,10 @@ export function SheetPage() {
       </section>
       <section>
         <h2>Responsável, data e hora</h2>
-        <p>Não constam no payload canônico desta emissão. Não foram inventados.</p>
+        <p>
+          {payload.issuer?.display_name || "não informado"}
+          {payload.issuer?.issued_at ? ` · ${payload.issuer.issued_at}` : ""}
+        </p>
       </section>
     </article>
   );

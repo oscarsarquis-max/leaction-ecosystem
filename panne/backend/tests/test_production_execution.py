@@ -797,8 +797,13 @@ def test_sheet_issue_reissue_and_cancel_block(db_session: Session) -> None:
     )
     assert second.issue_number == first.issue_number + 1
     assert second.previous_issue_id == first.id
-    assert first.payload_sha256 == second.payload_sha256
+    assert first.canonical_payload["establishment"]["code"] == ctx["establishment"].code
+    assert first.canonical_payload["issuer"]["user_id"] == str(ctx["actor"].id)
+    assert "email" not in str(first.canonical_payload["issuer"])
     assert "cost" not in first.canonical_payload
+    first_hash = first.payload_sha256
+    db_session.refresh(first)
+    assert first.payload_sha256 == first_hash
     cancel_order(
         db_session,
         ctx["principal"],
@@ -918,3 +923,81 @@ def test_no_external_calls_imported() -> None:
     assert "bedrock" not in source.lower()
     assert "cognito" not in source.lower()
     assert "boto3" not in source
+
+
+def test_sheet_payload_snapshots_and_stability(db_session: Session) -> None:
+    from app.modules.production_execution.models import ProductionSheetIssue
+    from app.modules.production_planning.support import digest
+
+    ctx = _context(db_session, "org-ex-snp")
+    _, _, order = _plan_and_order(db_session, ctx, batches=1)
+    release_order(db_session, ctx["principal"], order_id=order.id, idempotency_key=uuid4())
+    first = issue_sheet(
+        db_session,
+        ctx["principal"],
+        order_id=order.id,
+        purpose=SHEET_OPERATIONAL,
+        idempotency_key=uuid4(),
+    )
+    assert first.canonical_payload["establishment"]["display_name"] == ctx["establishment"].display_name
+    assert first.canonical_payload["organization"]["slug"] == ctx["organization"].slug
+    assert first.canonical_payload["issuer"]["display_name"] == ctx["actor"].display_name
+    assert "production_responsible" not in first.canonical_payload
+    original_hash = first.payload_sha256
+    original_payload = dict(first.canonical_payload)
+    ctx["establishment"].display_name = "Nome vivo alterado"
+    ctx["actor"].display_name = "Outro nome"
+    db_session.flush()
+    db_session.refresh(first)
+    assert first.canonical_payload["establishment"]["display_name"] == original_payload["establishment"][
+        "display_name"
+    ]
+    assert first.canonical_payload["issuer"]["display_name"] == original_payload["issuer"]["display_name"]
+    assert first.payload_sha256 == original_hash
+    second = issue_sheet(
+        db_session,
+        ctx["principal"],
+        order_id=order.id,
+        purpose=SHEET_OPERATIONAL,
+        idempotency_key=uuid4(),
+    )
+    assert second.canonical_payload["establishment"]["display_name"] == "Nome vivo alterado"
+    assert second.payload_sha256 != original_hash
+    old = ProductionSheetIssue(
+        organization_id=order.organization_id,
+        establishment_id=order.establishment_id,
+        production_order_id=order.id,
+        issue_number=90,
+        template_version="1",
+        canonical_payload={"schema_version": "1", "order": {"public_code": order.public_code}},
+        payload_sha256=digest({"schema_version": "1"}),
+        issued_by_user_id=ctx["actor"].id,
+        purpose=SHEET_OPERATIONAL,
+        order_status_at_issue=order.status,
+        idempotency_key=uuid4(),
+    )
+    db_session.add(old)
+    db_session.flush()
+    db_session.refresh(old)
+    assert "establishment" not in old.canonical_payload
+    assert old.canonical_payload["order"]["public_code"] == order.public_code
+
+
+def test_no_legacy_role_label_authorization() -> None:
+    from pathlib import Path
+
+    auth = (
+        Path(__file__).resolve().parents[1]
+        / "app"
+        / "modules"
+        / "identity_organization"
+        / "authorization.py"
+    ).read_text(encoding="utf-8")
+    http = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (Path(__file__).resolve().parents[1] / "app" / "modules" / "production_http").glob(
+            "*.py"
+        )
+    )
+    assert "legacy_role_label" not in auth
+    assert "legacy_role_label" not in http

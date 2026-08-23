@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Panne — execução operacional</title>
+    <style>
+      :root { --bege:#e5e4d6; --grafite:#323334; --linha:#c8c7b8; --erro:#8b2e2e; --info:#2f4a5d; }
+      * { box-sizing: border-box; }
+      body { margin:0; background:var(--bege); color:var(--grafite); font-family:"Segoe UI",sans-serif; }
+      header { display:flex; align-items:center; gap:1rem; min-height:3.25rem; padding:0 .8rem; background:var(--grafite); color:var(--bege); }
+      nav a { color:var(--bege); text-decoration:none; margin-right:.8rem; padding:.5rem 0; }
+      main { padding:.7rem 1rem 1.2rem; }
+      h1 { font-size:1.25rem; margin:.2rem 0; }
+      section { background:#f3f2ea; border:1px solid var(--linha); padding:.7rem; margin:.6rem 0; }
+      .blocked { box-shadow: inset 3px 0 0 var(--erro); }
+      .short { border:2px solid var(--erro); }
+      button { min-height:40px; padding:0 .7rem; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>Panne</strong>
+      <nav aria-label="Principal">
+        <a href="#">Produção</a>
+        <a href="#">Planejamento</a>
+        <a href="#">Ordens</a>
+        <a href="#">Rastreabilidade</a>
+      </nav>
+      <span>Padaria Central · Ana Padeiro</span>
+    </header>
+    <main>
+      <p>← Quadro · Detalhe</p>
+      <h1>Executar OP-2026-0001</h1>
+      <p>Em execução · Pão tradicional · Batelada B1</p>
+      <section>
+        <h2>2. Materiais e pesagem</h2>
+        <p>Farinha: informado 7 kg → 7000 g · fora da tolerância · aguardando conferência por outro usuário</p>
+        <label>Quantidade <input inputmode="decimal" value="7,250" /></label>
+        <button>Registrar pesagem</button>
+      </section>
+      <section>
+        <h2>3. Etapas</h2>
+        <p>Fermentação · Em execução · cronômetro 12:40 · Manter 24 °C</p>
+        <button>Concluir</button>
+      </section>
+      <section class="blocked">
+        <h2>4. Ocorrências</h2>
+        <p>Qualidade · Alta · bloqueante · Crosta irregular</p>
+      </section>
+      <section>
+        <h2>6. Encerramento</h2>
+        <p>Pesagem: incompleta · Ocorrências bloqueantes: ocorrência bloqueante aberta</p>
+        <button>Concluir ordem</button>
+        <div class="short">
+          <p>Encerramento parcial não é conclusão normal.</p>
+          <button>Encerrar parcialmente</button>
+        </div>
+      </section>
+      <section>
+        <h2>7. Ficha</h2>
+        <p>Estabelecimento: Padaria Central · Responsável: Ana Padeiro</p>
+        <button>Reemitir ficha</button>
+      </section>
+    </main>
+  </body>
+</html>

@@ -257,6 +257,52 @@ def test_production_reads_commands_board_and_security(engine) -> None:
         admin.close()
 
 
+def test_catalog_and_execution_endpoints(engine) -> None:
+    data = _setup_http(engine, "api-ex")
+    client, admin, token, org_id, order = (
+        data["client"],
+        data["admin"],
+        data["token"],
+        data["org_id"],
+        data["order"],
+    )
+    try:
+        from tests import helpers
+
+        helpers.kilogram(admin)
+        admin.commit()
+        prefix = f"/api/v1/organizations/{org_id}/production"
+        catalog = client.get(f"{prefix}/catalog", headers=_headers(token, org_id))
+        assert catalog.status_code == 200
+        body = catalog.json()["data"]
+        codes = {item["code"] for item in body["mass_units"]}
+        assert "g" in codes
+        assert "kg" in codes
+        assert "pre_bake_mass" in body["yield_types"]
+        assert "quality" in body["occurrence_categories"]
+        assert "ml" not in codes
+        release_order(admin, data["ctx"]["principal"], order_id=order.id, idempotency_key=uuid4())
+        admin.commit()
+        execution = client.get(f"{prefix}/orders/{order.id}/execution", headers=_headers(token, org_id))
+        assert execution.status_code == 200
+        view = execution.json()["data"]
+        assert view["order"]["id"] == str(order.id)
+        assert view["policy"]["weighing_policy"] == "optional"
+        assert view["readiness"]["weighing"]["ok"] is True
+        assert view["readiness"]["steps"]["ok"] is False
+        assert view["readiness"]["consumptions"]["ok"] is False
+        assert view["readiness"]["yields"]["ok"] is False
+        assert "cost" not in execution.text.lower()
+        denied = client.get(
+            f"{prefix}/catalog",
+            headers=_headers(token, org_id, extra={"Authorization": "Bearer missing"}),
+        )
+        assert denied.status_code in {401, 403}
+    finally:
+        _cleanup(client)
+        admin.close()
+
+
 def test_no_forbidden_external_calls_in_http_layer() -> None:
     from pathlib import Path
 

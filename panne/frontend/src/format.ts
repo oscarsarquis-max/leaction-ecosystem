@@ -59,6 +59,51 @@ export const STATUS_LABEL: Record<string, string> = {
   rejected: "Rejeitada",
 };
 
+export const YIELD_LABEL: Record<string, string> = {
+  pre_bake_mass: "Massa pré-forno",
+  post_bake_mass: "Massa pós-forno",
+  good_units: "Unidades boas",
+  rejected_units: "Unidades rejeitadas",
+  leftover: "Sobra",
+  scrap: "Descarte",
+  other: "Outro",
+};
+
+export const OCCURRENCE_LABEL: Record<string, string> = {
+  material: "Material",
+  substitution: "Substituição",
+  equipment: "Equipamento",
+  quality: "Qualidade",
+  process: "Processo",
+  safety: "Segurança",
+  allergen: "Alergênico",
+  time: "Tempo",
+  temperature: "Temperatura",
+  other: "Outro",
+};
+
+export const SEVERITY_LABEL: Record<string, string> = {
+  low: "Baixa",
+  medium: "Média",
+  high: "Alta",
+  critical: "Crítica",
+};
+
+export const CONSUMPTION_LABEL: Record<string, string> = {
+  consume: "Consumo",
+  return: "Retorno",
+  waste: "Desperdício",
+  correction: "Correção",
+};
+
+export const WEIGH_STATE_LABEL: Record<string, string> = {
+  pending: "Pendente",
+  recorded: "Registrada",
+  awaiting_verification: "Aguardando conferência",
+  accepted: "Aceita",
+  rejected: "Rejeitada",
+};
+
 export const ACTION_LABEL: Record<string, string> = {
   schedule_order: "Programar ordem",
   release_order: "Liberar ordem",
@@ -89,4 +134,9 @@ export function actionLabel(value: string | null | undefined): string {
 export function shiftLabel(value: string | null | undefined): string {
   if (!value) return "—";
   return SHIFT_LABEL[value] ?? value;
+}
+
+export function catalogLabel(map: Record<string, string>, value: string | null | undefined): string {
+  if (!value) return "—";
+  return map[value] ?? value;
 }

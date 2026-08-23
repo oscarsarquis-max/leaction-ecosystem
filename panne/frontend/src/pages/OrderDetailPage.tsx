@@ -95,6 +95,8 @@ export function OrderDetailPage() {
     <article>
       <p>
         <Link to="/ordens">← Ordens</Link>
+        {" · "}
+        <Link to={`/producao/ordens/${orderId}/executar`}>Executar</Link>
       </p>
       <h1>{detail.order.public_code}</h1>
       <p>

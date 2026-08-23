@@ -32,9 +32,10 @@ export function Shell() {
   }
 
   const visibleLinks = LINKS.filter((item) => hasPermission(item.permission));
+  const operational = location.pathname.includes("/executar");
 
   return (
-    <div className="shell">
+    <div className={operational ? "shell shell-ops" : "shell"}>
       <header className="shell-header">
         <NavLink to="/producao" className="brand">
           Panne

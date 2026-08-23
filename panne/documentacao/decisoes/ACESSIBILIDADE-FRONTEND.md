@@ -11,3 +11,4 @@
 - datas e decimais em pt-BR
 - `prefers-reduced-motion`
 - testes com axe-core / vitest-axe (violações críticas = 0)
+- modo operacional: labels distintos por formulário, alvos ≥ 40 px, teclado numérico (`inputMode=decimal`), confirmações com diálogo, feedback persistente além de toast, `prefers-reduced-motion`, tablet horizontal e vertical

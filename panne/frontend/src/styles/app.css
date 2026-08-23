@@ -277,6 +277,77 @@ tbody tr:focus-visible {
   box-shadow: inset 3px 0 0 var(--panne-erro);
 }
 
+.shell-ops .shell-nav,
+.shell-ops .nav-toggle {
+  display: none;
+}
+
+.shell-ops .main {
+  padding: 0.5rem 0.75rem 1.25rem;
+}
+
+.ops-bar h1 {
+  margin: 0.2rem 0;
+  font-size: 1.25rem;
+}
+
+.ops-form,
+.ops-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+  margin-top: 0.6rem;
+}
+
+.ops-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+}
+
+.ops-field input,
+.ops-field select,
+.ops-field textarea {
+  min-height: var(--panne-alvo);
+  min-width: 8rem;
+  border: 1px solid var(--panne-linha);
+  background: #fff;
+  color: var(--panne-grafite);
+  padding: 0 0.5rem;
+  font-size: 1rem;
+}
+
+.ops-entry {
+  margin-top: 0.6rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--panne-linha);
+}
+
+.short-close {
+  margin-top: 0.75rem;
+  padding: 0.6rem;
+  border: 2px solid var(--panne-erro);
+}
+
+.danger {
+  min-height: var(--panne-alvo);
+  border: 1px solid var(--panne-erro);
+  background: #fff;
+  color: var(--panne-erro);
+  padding: 0 0.75rem;
+}
+
+.confirm {
+  position: fixed;
+  inset: auto 1rem 1rem;
+  background: var(--panne-bege-elevado);
+  border: 2px solid var(--panne-grafite);
+  padding: 1rem;
+  z-index: 6;
+}
+
 .meta {
   color: var(--panne-grafite-suave);
   font-size: 0.85rem;

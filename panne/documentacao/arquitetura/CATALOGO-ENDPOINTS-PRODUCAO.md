@@ -13,6 +13,8 @@ Prefixo: `/api/v1/organizations/{organization_id}/production`
 | GET | `/orders/{id}/sheets/{issue_id}` | `production.order.read` |
 | GET | `/orders/{id}/traceability` | `production.traceability.read` |
 | GET | `/board` | `production.board.read` |
+| GET | `/catalog` | `production.order.read` |
+| GET | `/orders/{id}/execution` | `production.order.read` |
 
 ## Comandos de planejamento
 

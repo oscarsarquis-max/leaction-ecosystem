@@ -112,7 +112,25 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Retorno CURSOR-015](retornos/CURSOR-015-retorno-execucao.md) — ciclo concluído
 - [Prompt CHECKPOINT-GIT-001](prompts/CHECKPOINT-GIT-001-commit-push.md)
 - [Retorno CHECKPOINT-GIT-001](retornos/CHECKPOINT-GIT-001-retorno.md) — concluído
-- CURSOR-016 — pendente e não iniciado
+- [ADR modo operacional](decisoes/ADR-MODO-OPERACIONAL.md)
+- [Modo operacional](arquitetura/MODO-OPERACIONAL.md)
+- [Fluxo por ator](produto/FLUXO-POR-ATOR.md)
+- [Comandos e feedback](arquitetura/COMANDOS-E-FEEDBACK.md)
+- [Pesagem e conferência](arquitetura/PESAGEM-E-CONFERENCIA.md)
+- [Consumo operacional](arquitetura/CONSUMO-OPERACIONAL.md)
+- [Etapas operacionais](arquitetura/ETAPAS-OPERACIONAIS.md)
+- [Ocorrências operacionais](arquitetura/OCORRENCIAS-OPERACIONAIS.md)
+- [Rendimento operacional](arquitetura/RENDIMENTO-OPERACIONAL.md)
+- [Ficha e snapshots](arquitetura/FICHA-E-SNAPSHOTS.md)
+- [Atualização operacional](arquitetura/ATUALIZACAO-OPERACIONAL.md)
+- [Segurança e idempotência](decisoes/SEGURANCA-E-IDEMPOTENCIA.md)
+- [Evidências visuais 016](arquitetura/EVIDENCIAS-VISUAIS-016.md)
+- [Limitações da interface 016](produto/LIMITACOES-INTERFACE-016.md)
+- [Prompt CURSOR-016](prompts/CURSOR-016-implementar-modo-operacional.md)
+- [Retorno CURSOR-016](retornos/CURSOR-016-retorno-execucao.md) — aceito funcionalmente
+- [Prompt CHECKPOINT-GIT-002](prompts/CHECKPOINT-GIT-002-cursor-016.md) — em execução
+- Projeto de UX/UI — pendente e não iniciado
+- CURSOR-017 — pendente e não iniciado
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
 - [Retorno CURSOR-011](retornos/CURSOR-011-retorno-execucao.md)
 

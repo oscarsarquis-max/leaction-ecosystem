@@ -176,8 +176,152 @@ export type SheetSummary = {
   purpose: string;
 };
 
+export type Catalog = {
+  mass_units: Array<{
+    id: string;
+    code: string;
+    name: string;
+    symbol: string;
+    dimension: string;
+  }>;
+  yield_types: string[];
+  occurrence_categories: string[];
+  occurrence_severities: string[];
+  consumption_types: string[];
+  verification_decisions: string[];
+  sheet_purposes: string[];
+  weighing_policies: string[];
+  verification_policies: string[];
+  order_statuses: string[];
+  batch_statuses: string[];
+  step_statuses: string[];
+};
+
+export type ReadinessItem = { ok: boolean; reason: string | null };
+
+export type ExecutionMaterial = {
+  id: string;
+  batch_id: string;
+  name: string;
+  measurement_unit_id: string | null;
+  unit: string | null;
+  planned_gross: DecimalString;
+  weighed_canonical: DecimalString;
+  weigh_state: string;
+  consumption: Record<string, DecimalString>;
+};
+
+export type ExecutionWeighing = {
+  id: string;
+  session_id: string;
+  batch_material_id: string;
+  entry_type: string;
+  measurement_unit_id: string;
+  operator_user_id: string;
+  operator_name: string | null;
+  lot_code: string | null;
+  justification: string | null;
+  planned_quantity: DecimalString | null;
+  absolute_difference: DecimalString | null;
+  percent_difference: DecimalString | null;
+  within_tolerance: boolean;
+  verification: {
+    id: string;
+    decision: string;
+    verifier_user_id: string;
+    verifier_name: string | null;
+    justification: string | null;
+  } | null;
+} & Conversion;
+
+export type ExecutionStep = {
+  order_step_id: string;
+  batch_id: string;
+  title: string;
+  instructions: string;
+  sequence: number;
+  duration_seconds: number | null;
+  temperature_value: DecimalString | null;
+  temperature_unit: string | null;
+  execution_id: string | null;
+  status: string;
+  row_version: number | null;
+  operator_user_id: string | null;
+  operator_name: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  measured_duration_seconds: number | null;
+  measured_temperature: DecimalString | null;
+  notes: string | null;
+};
+
+export type ExecutionBatch = Batch & {
+  materials: ExecutionMaterial[];
+  sessions: Array<{ id: string; status: string; row_version: number; opened_by_user_id: string }>;
+  weighings: ExecutionWeighing[];
+  steps: ExecutionStep[];
+  yields: Array<{
+    id: string;
+    type: string;
+    quantity: DecimalString;
+    unit: string;
+    measurement_unit_id: string;
+    notes: string | null;
+  }>;
+  yield_projection: {
+    final_mass: DecimalString | null;
+    sellable_units: DecimalString | null;
+    rejected_units: DecimalString | null;
+    leftover: DecimalString | null;
+    scrap: DecimalString | null;
+    loss_absolute: DecimalString | null;
+    loss_percent: DecimalString | null;
+    target_deviation: DecimalString | null;
+    completeness: string;
+    within_tolerance: boolean | null;
+  };
+};
+
+export type ExecutionView = {
+  viewer: { user_id: string; display_name: string; permissions: string[] };
+  order: Order;
+  product: { id: string; code: string; display_name: string } | null;
+  establishment: { id: string; code: string; display_name: string } | null;
+  policy: Record<string, unknown> | null;
+  batches: ExecutionBatch[];
+  occurrences: Array<{
+    id: string;
+    category: string;
+    severity: string;
+    status: string;
+    description: string;
+    is_blocking: boolean;
+    batch_id: string | null;
+    order_step_id: string | null;
+  }>;
+  dependencies: Dependency[];
+  sheets: Array<SheetSummary & { previous_issue_id: string | null }>;
+  blocked: boolean;
+  open_session: boolean;
+  next_action: string | null;
+  readiness: {
+    weighing: ReadinessItem;
+    verifications: ReadinessItem;
+    steps: ReadinessItem;
+    consumptions: ReadinessItem;
+    yields: ReadinessItem;
+    dependencies: ReadinessItem;
+    blocking_occurrences: ReadinessItem;
+    permissions: Record<string, boolean>;
+  };
+  updated_at: string;
+};
+
 export type SheetPayload = {
   schema_version?: string;
+  establishment?: { id?: string | null; code?: string | null; display_name?: string | null };
+  organization?: { id?: string | null; slug?: string | null; display_name?: string | null };
+  issuer?: { user_id?: string; display_name?: string | null; issued_at?: string | null };
   order?: {
     id?: string;
     public_code?: string;
