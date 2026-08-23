@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Panne — Conformidade</title>
+  <style>
+    body { font-family: Georgia, serif; background: #f3ead8; color: #2b2118; margin: 0; }
+    header { display: flex; gap: 1rem; align-items: center; padding: .6rem 1rem; background: #2b2118; color: #f3ead8; }
+    nav a { color: #f3ead8; margin-right: 1rem; text-decoration: none; }
+    .sub { padding: .4rem 1rem; background: #e4d3b4; }
+    main { padding: 1rem 1.2rem 2rem; display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+    .card, .panel { background: #fff; padding: 1rem; border: 1px solid #2b2118; }
+    .badge { border: 1px solid #2b2118; padding: .1rem .4rem; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Panne</strong>
+    <nav>
+      <a>Produção</a>
+      <a>Componentes</a>
+      <a>Receitas</a>
+      <a>Conformidade</a>
+    </nav>
+  </header>
+  <div class="sub">Visão geral · Dossiês · Avaliações · Rótulos candidatos · Fontes e normas</div>
+  <main>
+    <section>
+      <h1>Conformidade</h1>
+      <p>Propostas técnicas para revisão humana. O sistema não declara conformidade e não emite certificado.</p>
+      <div class="card">
+        <h2>Dossiês</h2>
+        <p>Perfil de aplicabilidade, avaliação e candidato de rótulo.</p>
+      </div>
+    </section>
+    <aside class="panel">
+      <p><span class="badge">proposta técnica</span></p>
+      <p>Não há selo automático de conformidade.</p>
+    </aside>
+  </main>
+</body>
+</html>

@@ -9,6 +9,8 @@ import {
   materialsFixture,
   meFixture,
   PROPOSAL_ID,
+  DOSSIER_ID,
+  labelingDossierFixture,
   proposalFixture,
   RECIPE_ID,
   RECIPE_VERSION_ID,
@@ -253,6 +255,63 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
         },
         row_version: 1,
       });
+    }
+    if (path.endsWith("/labeling/dossiers") && request.method === "GET") {
+      return json({ items: [labelingDossierFixture], total: 1 });
+    }
+    if (path.endsWith("/labeling/dossiers") && request.method === "POST") {
+      return json({ data: labelingDossierFixture, row_version: 1 });
+    }
+    if (path.includes("/labeling/dossiers/") && path.endsWith("/profile")) {
+      return json({ data: { completeness: "incomplete", id: "p1" }, row_version: 2 });
+    }
+    if (path.includes("/labeling/dossiers/") && path.endsWith("/evaluate")) {
+      return json({ data: { id: "v2", version_number: 2, status: "evaluated" }, row_version: 3 });
+    }
+    if (path.includes("/labeling/dossiers/") && path.endsWith("/review")) {
+      return json({ data: { id: "v2", version_number: 2, status: "reviewed" }, row_version: 4 });
+    }
+    if (path.includes("/labeling/dossiers/") && path.endsWith("/invalidate")) {
+      return json({ data: { id: "v2", version_number: 2, status: "invalidated" }, row_version: 5 });
+    }
+    if (path.includes("/labeling/dossiers/") && path.endsWith("/mandatory")) {
+      return json({ data: { id: "v2", version_number: 2, status: "evaluated" }, row_version: 3 });
+    }
+    if (path.includes("/labeling/dossiers/") && path.endsWith("/compare")) {
+      return json({ data: { left: labelingDossierFixture.current, right: labelingDossierFixture.current } });
+    }
+    if (path.includes("/labeling/dossiers/") && path.endsWith("/render")) {
+      return json({
+        data: {
+          html: "<p>Candidato para conferência. Não é rótulo final.</p>",
+          candidate: labelingDossierFixture.current,
+        },
+      });
+    }
+    if (path.includes(`/labeling/dossiers/${DOSSIER_ID}`)) {
+      return json({ data: labelingDossierFixture, row_version: labelingDossierFixture.row_version });
+    }
+    if (path.endsWith("/labeling/assessments")) {
+      return json({ items: [{ id: "a1", status: "evaluated", proposal_summary: labelingDossierFixture.current.assessment.proposal_summary }], total: 1 });
+    }
+    if (path.endsWith("/labeling/candidates")) {
+      return json({ items: [{ id: "c1", watermark: "Proposta técnica para revisão", payload_sha256: "bbb" }], total: 1 });
+    }
+    if (path.endsWith("/labeling/sources")) {
+      return json({
+        items: [
+          {
+            code: "rdc-429-2020",
+            title: "RDC nº 429/2020 — Rotulagem nutricional",
+            force: "in_force_act",
+            normative: true,
+            accessed_at: "2026-08-23",
+          },
+        ],
+      });
+    }
+    if (path.endsWith("/labeling/portions")) {
+      return json({ items: [{ code: "pao", label: "Pães", reference_g: "50.000000", confirmation_required: true }] });
     }
     if (path.endsWith("/recipe-references")) return json({ data: [{ id: "ref-1", title: "Manual interno", source_type: "internal" }] });
     if (path.endsWith("/ingredients") && request.method === "GET") {

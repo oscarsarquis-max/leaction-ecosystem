@@ -99,9 +99,27 @@ EXPECTED_0011 = set(EXPECTED) | {
 EXPECTED_0013 = set(EXPECTED_0011) | {"organization_membership_role"}
 EXPECTED_0014 = set(EXPECTED_0013) | {"ingredient_command"}
 EXPECTED_0015 = set(EXPECTED_0014) | {"formulation_command"}
-EXPECTED = set(EXPECTED_0015) | {
+EXPECTED_0016 = set(EXPECTED_0015) | {
     "formulation_version_recipe_reference",
     "ai_proposal_change",
+}
+EXPECTED = set(EXPECTED_0016) | {
+    "labeling_dossier",
+    "labeling_applicability_profile",
+    "labeling_dossier_version",
+    "labeling_assessment",
+    "labeling_finding",
+    "labeling_evidence",
+    "labeling_review",
+    "labeling_nutrition_candidate",
+    "labeling_nutrition_line",
+    "labeling_front_of_pack",
+    "labeling_ingredient_candidate",
+    "labeling_warning_candidate",
+    "labeling_mandatory_item",
+    "labeling_label_candidate",
+    "labeling_invalidation",
+    "labeling_command",
 }
 
 
@@ -212,6 +230,15 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
     command.upgrade(_alembic(), "0016_recipe_ai_assistant")
     command.downgrade(_alembic(), "0015_formulation_http")
     command.upgrade(_alembic(), "0016_recipe_ai_assistant")
+    command.upgrade(_alembic(), "0017_labeling_compliance")
+    tables_0017 = set(inspect(engine).get_table_names())
+    assert "labeling_dossier" in tables_0017
+    assert "labeling_label_candidate" in tables_0017
+    command.downgrade(_alembic(), "0016_recipe_ai_assistant")
+    assert "labeling_dossier" not in set(inspect(engine).get_table_names())
+    command.upgrade(_alembic(), "0017_labeling_compliance")
+    command.downgrade(_alembic(), "0016_recipe_ai_assistant")
+    command.upgrade(_alembic(), "0017_labeling_compliance")
 
     command.downgrade(_alembic(), "0012_production_api_roles")
     cols_back = {col["name"] for col in inspect(engine).get_columns("organization_membership")}
@@ -263,5 +290,5 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
             .scalars()
             .all()
         )
-    assert current == "0016_recipe_ai_assistant"
+    assert current == "0017_labeling_compliance"
     assert "mysql" not in "".join(other).lower()

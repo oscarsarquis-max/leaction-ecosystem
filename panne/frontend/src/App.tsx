@@ -24,6 +24,15 @@ import { RecipeAiWizardPage } from "./pages/RecipeAiWizardPage";
 import { RecipeEditorPage } from "./pages/RecipeEditorPage";
 import { RecipeSheetPage } from "./pages/RecipeSheetPage";
 import { RecipesPage } from "./pages/RecipesPage";
+import { LabelingCreatePage } from "./pages/LabelingCreatePage";
+import { LabelingDossierPage } from "./pages/LabelingDossierPage";
+import { LabelingDossiersPage } from "./pages/LabelingDossiersPage";
+import {
+  LabelingAssessmentsPage,
+  LabelingCandidatesPage,
+  LabelingSourcesPage,
+} from "./pages/LabelingListsPage";
+import { LabelingOverviewPage } from "./pages/LabelingOverviewPage";
 import { SuppliersPage } from "./pages/SuppliersPage";
 import { OrganizationProvider } from "./session/OrganizationContext";
 
@@ -222,6 +231,70 @@ export function AppRoutes() {
               <Route
                 path="/rastreabilidade/:orderId"
                 element={<TraceabilityPage />}
+              />
+              <Route
+                path="/conformidade"
+                element={
+                  <RequirePermission code="labeling.read">
+                    <LabelingOverviewPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/conformidade/dossies"
+                element={
+                  <RequirePermission code="labeling.read">
+                    <LabelingDossiersPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/conformidade/dossies/novo"
+                element={
+                  <RequirePermission code="labeling.dossier.create">
+                    <LabelingCreatePage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/conformidade/dossies/:dossierId"
+                element={
+                  <RequirePermission code="labeling.read">
+                    <LabelingDossierPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/conformidade/dossies/:dossierId/imprimir"
+                element={
+                  <RequirePermission code="labeling.render">
+                    <LabelingDossierPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/conformidade/avaliacoes"
+                element={
+                  <RequirePermission code="labeling.read">
+                    <LabelingAssessmentsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/conformidade/rotulos"
+                element={
+                  <RequirePermission code="labeling.read">
+                    <LabelingCandidatesPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/conformidade/fontes"
+                element={
+                  <RequirePermission code="regulatory.source.read">
+                    <LabelingSourcesPage />
+                  </RequirePermission>
+                }
               />
               <Route path="/" element={<Navigate to="/producao" replace />} />
             </Route>

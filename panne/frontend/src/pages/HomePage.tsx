@@ -39,6 +39,15 @@ export function HomePage() {
               </Link>
             </article>
           ) : null}
+          {hasPermission("labeling.read") ? (
+            <article className="card">
+              <h2>Conformidade</h2>
+              <p>Dossiês e candidatos de rotulagem para revisão humana.</p>
+              <Link className="primary" to="/conformidade">
+                Abrir conformidade
+              </Link>
+            </article>
+          ) : null}
         </div>
       </div>
       <aside className="panel">

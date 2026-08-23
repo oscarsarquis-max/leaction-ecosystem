@@ -16,6 +16,7 @@ import type {
   RecipeDossier,
   RecipePage,
   RecipeAiProposal,
+  LabelingDossier,
   RecipeReferenceLink,
   RecipeVersion,
   ScaleRow,
@@ -256,6 +257,42 @@ export class ApiClient {
 
   getLinkedReferences(recipeId: string) {
     return this.catalogGet<{ data: RecipeReferenceLink[] }>(`/recipes/${recipeId}/references`);
+  }
+
+  listLabelingDossiers() {
+    return this.catalogGet<{ items: LabelingDossier[]; total: number }>("/labeling/dossiers");
+  }
+
+  getLabelingDossier(dossierId: string) {
+    return this.catalogGet<Envelope<LabelingDossier>>(`/labeling/dossiers/${dossierId}`);
+  }
+
+  listLabelingAssessments() {
+    return this.catalogGet<{ items: Array<{ id: string; proposal_summary: string; status: string }>; total: number }>(
+      "/labeling/assessments",
+    );
+  }
+
+  listLabelingCandidates() {
+    return this.catalogGet<{ items: Array<{ id: string; watermark: string; payload_sha256: string }>; total: number }>(
+      "/labeling/candidates",
+    );
+  }
+
+  listLabelingSources() {
+    return this.catalogGet<{ items: Array<Record<string, string | boolean>> }>("/labeling/sources");
+  }
+
+  listLabelingPortions() {
+    return this.catalogGet<{ items: Array<Record<string, string | boolean>> }>("/labeling/portions");
+  }
+
+  compareLabelingVersions(dossierId: string, left: string, right: string) {
+    return this.catalogGet<{ data: { left: unknown; right: unknown } }>(
+      `/labeling/dossiers/${dossierId}/compare`,
+      { left, right },
+      false,
+    );
   }
 
   catalogCommand<T>(

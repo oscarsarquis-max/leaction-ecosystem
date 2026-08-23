@@ -17,9 +17,18 @@
     color: #111;
   }
 
-  .sheet {
+  .sheet,
+  .labeling-print {
     box-shadow: none;
     border: 0;
+  }
+
+  .labeling-print .watermark {
+    position: fixed;
+    inset: 30%;
+    font-size: 2rem;
+    transform: rotate(-18deg);
+    opacity: 0.12;
   }
 
   .sheet-running {

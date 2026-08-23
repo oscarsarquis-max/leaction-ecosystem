@@ -63,6 +63,14 @@ export const meFixture: Me = {
         "recipe.ai.propose",
         "recipe.ai.review",
         "recipe.ai.materialize",
+        "labeling.read",
+        "labeling.dossier.create",
+        "labeling.evaluate",
+        "labeling.candidate.edit",
+        "labeling.review",
+        "labeling.render",
+        "labeling.invalidate",
+        "regulatory.source.read",
       ],
     },
     {
@@ -116,12 +124,116 @@ export const meFixture: Me = {
     "recipe.ai.propose",
     "recipe.ai.review",
     "recipe.ai.materialize",
+    "labeling.read",
+    "labeling.dossier.create",
+    "labeling.evaluate",
+    "labeling.candidate.edit",
+    "labeling.review",
+    "labeling.render",
+    "labeling.invalidate",
+    "regulatory.source.read",
   ],
 };
 
 export const RECIPE_ID = "99999999-9999-9999-9999-999999999999";
 export const RECIPE_VERSION_ID = "88888888-8888-8888-8888-888888888888";
 export const PROPOSAL_ID = "77777777-7777-7777-7777-777777777777";
+export const DOSSIER_ID = "55555555-5555-5555-5555-555555555555";
+
+export const labelingDossierFixture = {
+  id: DOSSIER_ID,
+  status: "evaluated",
+  formulation_id: RECIPE_ID,
+  formulation_version_id: RECIPE_VERSION_ID,
+  row_version: 2,
+  disclaimer: "Proposta técnica para revisão. Não é declaração de conformidade.",
+  certified: false,
+  conforme_anvisa: false,
+  profile: {
+    completeness: "complete",
+    jurisdiction: "BR",
+    packed_food: true,
+    physical_state: "solid",
+    regulatory_category_code: "pao",
+    category_confirmed: true,
+  },
+  versions: [
+    { id: "v1", version_number: 1, status: "evaluated", content_hash: "aaa" },
+    { id: "v2", version_number: 2, status: "evaluated", content_hash: "bbb" },
+  ],
+  current: {
+    version: { id: "v2", version_number: 2, status: "evaluated", content_hash: "bbb" },
+    assessment: {
+      status: "evaluated",
+      proposal_summary: "Proposta técnica para revisão humana. Não é declaração de conformidade.",
+    },
+    findings: [
+      {
+        rule_code: "fop_added_sugars",
+        result: "fail",
+        fact: "limite da lupa",
+        expected_value: ">= 15",
+        found_value: "16",
+        source_code: "in-75-2020",
+        source_locator: "Anexo XV IN 75",
+        explanation: "Ausência de nutriente não presume ausência de lupa.",
+        action_needed: true,
+      },
+    ],
+    nutrition: {
+      portion_g: "50.000000",
+      household_measure: "1 unidade",
+      footnotes: ["Valores declarados são projeção regulatória, não certificado."],
+      lines: [
+        {
+          nutrient_code: "energy_kcal",
+          technical_per_100g: "280",
+          declared_per_100g: "280",
+          declared_per_serving: "140",
+          daily_value_percent: "14",
+          completeness: "complete",
+          presented: "280",
+        },
+        {
+          nutrient_code: "added_sugars",
+          technical_per_100g: null,
+          declared_per_100g: null,
+          declared_per_serving: null,
+          daily_value_percent: null,
+          completeness: "insufficient_evidence",
+          presented: null,
+        },
+      ],
+    },
+    front_of_pack: {
+      added_sugars_result: "insufficient_evidence",
+      saturated_fat_result: "below",
+      sodium_result: "below",
+      magnifier_required: null,
+      nutrients_high: [],
+      compared: { thresholds: { added_sugars: "15", saturated_fat: "6", sodium: "600" } },
+      disclaimer: "Representação candidata da lupa. Não é arte-final certificada.",
+    },
+    ingredients: [{ sequence: 1, display_name: "Farinha de trigo", compound: false, components: [], gap: null }],
+    warnings: [
+      {
+        code: "gluten_unknown",
+        statement: "Declaração de glúten pendente. Ausência na fórmula não prova ausência.",
+        result: "insufficient_evidence",
+      },
+    ],
+    mandatory: [
+      { code: "lote", label: "Lote", value: null, status: "pending", claim: false },
+      { code: "lista_ingredientes", label: "Lista de ingredientes", value: "lista gerada", status: "filled", claim: false },
+    ],
+    candidate: {
+      watermark: "Proposta técnica para revisão",
+      payload_sha256: "bbb",
+      payload: { title: "Pão francês", disclaimer: "Candidato para conferência." },
+    },
+    reviews: [],
+  },
+};
 
 export const proposalFixture = {
   id: PROPOSAL_ID,

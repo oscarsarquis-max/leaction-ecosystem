@@ -121,6 +121,26 @@ RECIPE_AI_TABLES = frozenset(
         "ai_proposal_change",
     }
 )
+LABELING_TABLES = frozenset(
+    {
+        "labeling_dossier",
+        "labeling_applicability_profile",
+        "labeling_dossier_version",
+        "labeling_assessment",
+        "labeling_finding",
+        "labeling_evidence",
+        "labeling_review",
+        "labeling_nutrition_candidate",
+        "labeling_nutrition_line",
+        "labeling_front_of_pack",
+        "labeling_ingredient_candidate",
+        "labeling_warning_candidate",
+        "labeling_mandatory_item",
+        "labeling_label_candidate",
+        "labeling_invalidation",
+        "labeling_command",
+    }
+)
 
 PRE_PRODUCTION_RLS_TABLES = (
     ORGANIZATIONAL_TABLES | HYBRID_TABLES | INHERITED_TABLES | GLOBAL_TABLES | IDENTITY_TABLES
@@ -133,5 +153,6 @@ RLS_TABLES = (
     | INGREDIENT_HTTP_TABLES
     | FORMULATION_HTTP_TABLES
     | RECIPE_AI_TABLES
+    | LABELING_TABLES
 )
 UNMANAGED_TABLES = frozenset({"alembic_version"})

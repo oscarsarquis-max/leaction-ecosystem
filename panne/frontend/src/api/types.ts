@@ -694,3 +694,73 @@ export type RecipeAiProposal = {
   materialized?: { formulation_id: string; version_id: string; status: string } | null;
   guided_input?: Record<string, unknown>;
 };
+
+export type LabelingFinding = {
+  rule_code: string;
+  result: string;
+  fact: string;
+  expected_value: string | null;
+  found_value: string | null;
+  source_code: string;
+  source_locator: string;
+  explanation: string;
+  action_needed: boolean;
+};
+
+export type LabelingDossier = {
+  id: string;
+  status: string;
+  formulation_id: string;
+  formulation_version_id: string;
+  row_version: number;
+  disclaimer: string;
+  certified?: boolean;
+  conforme_anvisa?: boolean;
+  profile?: Record<string, unknown>;
+  versions?: Array<{ id: string; version_number: number; status: string; content_hash: string }>;
+  current?: {
+    version: { id: string; version_number: number; status: string; content_hash: string };
+    assessment: { proposal_summary: string; status: string } | null;
+    findings: LabelingFinding[];
+    nutrition: {
+      portion_g: string | null;
+      household_measure: string | null;
+      footnotes: string[];
+      lines: Array<{
+        nutrient_code: string;
+        technical_per_100g: string | null;
+        declared_per_100g: string | null;
+        declared_per_serving: string | null;
+        daily_value_percent: string | null;
+        completeness: string;
+        presented: string | null;
+      }>;
+    } | null;
+    front_of_pack: {
+      magnifier_required: boolean | null;
+      nutrients_high: string[];
+      compared: Record<string, unknown>;
+      added_sugars_result: string;
+      saturated_fat_result: string;
+      sodium_result: string;
+      disclaimer: string;
+    } | null;
+    ingredients: Array<{
+      sequence: number;
+      display_name: string;
+      compound: boolean;
+      components: Array<{ name?: string | null }>;
+      gap: string | null;
+    }>;
+    warnings: Array<{ code: string; statement: string; result: string }>;
+    mandatory: Array<{
+      code: string;
+      label: string;
+      value: string | null;
+      status: string;
+      claim: boolean;
+    }>;
+    candidate: { watermark: string; payload_sha256: string; payload: Record<string, unknown> } | null;
+    reviews: Array<{ decision: string; notes: string | null }>;
+  } | null;
+};

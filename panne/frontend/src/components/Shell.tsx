@@ -24,6 +24,14 @@ const RECIPES = [
   { to: "/receitas/assistente/historico", label: "Histórico de propostas", permission: "recipe.ai.review", end: false },
 ];
 
+const COMPLIANCE = [
+  { to: "/conformidade", label: "Visão geral", permission: "labeling.read", end: true },
+  { to: "/conformidade/dossies", label: "Dossiês", permission: "labeling.read", end: false },
+  { to: "/conformidade/avaliacoes", label: "Avaliações", permission: "labeling.read", end: false },
+  { to: "/conformidade/rotulos", label: "Rótulos candidatos", permission: "labeling.read", end: false },
+  { to: "/conformidade/fontes", label: "Fontes e normas", permission: "regulatory.source.read", end: false },
+];
+
 export function Shell() {
   const { session, logout } = useAuth();
   const { me, associations, active, selectOrganization, status, hasPermission } = useOrganization();
@@ -48,14 +56,18 @@ export function Shell() {
   const showProduction = PRODUCTION.some((item) => hasPermission(item.permission));
   const showComponents = COMPONENTS.some((item) => hasPermission(item.permission));
   const showRecipes = RECIPES.some((item) => hasPermission(item.permission));
+  const showCompliance = COMPLIANCE.some((item) => hasPermission(item.permission));
   const productionActive = location.pathname.startsWith("/producao")
     || location.pathname.startsWith("/planejamento")
     || location.pathname.startsWith("/ordens")
     || location.pathname.startsWith("/rastreabilidade");
   const componentsActive = location.pathname.startsWith("/componentes");
   const recipesActive = location.pathname.startsWith("/receitas");
+  const complianceActive = location.pathname.startsWith("/conformidade");
   const operational = location.pathname.includes("/executar");
-  const submenu = recipesActive
+  const submenu = complianceActive
+    ? COMPLIANCE.filter((item) => hasPermission(item.permission))
+    : recipesActive
     ? RECIPES.filter((item) => hasPermission(item.permission))
     : productionActive
       ? PRODUCTION.filter((item) => hasPermission(item.permission))
@@ -95,6 +107,11 @@ export function Shell() {
           {showRecipes ? (
             <NavLink to="/receitas" aria-current={recipesActive ? "page" : undefined}>
               Receitas
+            </NavLink>
+          ) : null}
+          {showCompliance ? (
+            <NavLink to="/conformidade" aria-current={complianceActive ? "page" : undefined}>
+              Conformidade
             </NavLink>
           ) : null}
         </nav>
@@ -149,7 +166,7 @@ export function Shell() {
       )}
       <p className="crumb">
         Início
-        {recipesActive ? " / Receitas" : componentsActive ? " / Componentes" : productionActive ? " / Produção" : ""}
+        {complianceActive ? " / Conformidade" : recipesActive ? " / Receitas" : componentsActive ? " / Componentes" : productionActive ? " / Produção" : ""}
       </p>
       <main className="main">
         {status.kind === "erro" ? (
