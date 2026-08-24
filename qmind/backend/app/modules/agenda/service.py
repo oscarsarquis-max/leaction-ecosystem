@@ -801,6 +801,39 @@ def list_events(ctx: OrgContext, day: date) -> list[AgendaEventOut]:
     return _enrich(ctx, rows, tz_name)
 
 
+def list_sprint_events(ctx: OrgContext, sprint_id: UUID) -> list[AgendaEventOut]:
+    """Every agenda event bound to one sprint, in chronological order.
+
+    Sprint-scoped, so the caller never has to fan out one request per day and the
+    result does not depend on the reader's timezone.
+    """
+    require_role(ctx, *_READ)
+    with tenant_connection(ctx.organization_id) as conn:
+        sprint = conn.execute(
+            text(
+                """
+                SELECT id FROM agile_sprints
+                WHERE id = :id AND organization_id = :org
+                """
+            ),
+            {"id": sprint_id, "org": ctx.organization_id},
+        ).first()
+        if sprint is None:
+            raise AppError("not_found", "Sprint não encontrada", status_code=404)
+        tz_name = _org_timezone(conn, ctx.organization_id)
+        rows = conn.execute(
+            text(
+                """
+                SELECT * FROM agenda_events
+                WHERE organization_id = :org AND sprint_id = :sid
+                ORDER BY starts_at ASC, created_at ASC
+                """
+            ),
+            {"org": ctx.organization_id, "sid": sprint_id},
+        ).all()
+    return _enrich(ctx, list(rows), tz_name)
+
+
 def get_event(ctx: OrgContext, event_id: UUID) -> AgendaEventOut:
     require_role(ctx, *_READ)
     with tenant_connection(ctx.organization_id) as conn:

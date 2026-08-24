@@ -7,6 +7,8 @@ from uuid import UUID
 from fastapi import APIRouter, Query
 
 from app.auth.deps import OrgContextDep
+from app.modules.agenda import service as agenda_service
+from app.modules.agenda.schemas import AgendaEventOut
 from app.modules.agile import board, ceremonies, execution, service
 from app.modules.agile.schemas import (
     BoardMoveIn,
@@ -254,6 +256,19 @@ def reposition_card(
 )
 def sprint_metrics(sprint_id: UUID, ctx: OrgContextDep) -> SprintMetricsOut:
     return service.get_sprint_metrics(ctx, sprint_id)
+
+
+@router.get(
+    "/current/agile/sprints/{sprint_id}/agenda-events",
+    response_model=list[AgendaEventOut],
+    operation_id="listAgileSprintAgendaEvents",
+    summary="Agenda events of one sprint (single call, no per-day fan-out)",
+    responses={404: ERROR_RESPONSES[404]},
+)
+def list_sprint_agenda_events(
+    sprint_id: UUID, ctx: OrgContextDep
+) -> list[AgendaEventOut]:
+    return agenda_service.list_sprint_events(ctx, sprint_id)
 
 
 @router.post(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Query, Request, Response
 
 from app.auth.deps import OrgContextDep
 from app.modules.evidence import service
@@ -10,15 +10,80 @@ from app.modules.evidence.schemas import (
     AuthorizeUploadIn,
     AuthorizeUploadOut,
     CleanupResult,
+    ContextualAuthorizeUploadIn,
     DownloadUrlOut,
+    EvidenceAttachmentOut,
     EvidenceLinkCreate,
     EvidenceLinkOut,
+    EvidenceLinkRemoveIn,
     EvidenceOut,
     EvidenceTransitionResult,
 )
 from app.schemas.common import ERROR_RESPONSES, IdempotencyKeyHeader
+from app.schemas.enums import EvidenceLinkTargetType
 
 router = APIRouter(tags=["evidences"])
+
+
+@router.post(
+    "/organizations/current/actions/{action_item_id}/evidences/authorize",
+    response_model=AuthorizeUploadOut,
+    status_code=201,
+    operation_id="authorizeActionItemEvidenceUpload",
+    responses={404: ERROR_RESPONSES[404], 409: ERROR_RESPONSES[409], 422: ERROR_RESPONSES[422]},
+    summary="Authorize an evidence for one action and link it in the same step",
+)
+def authorize_action_item_evidence(
+    action_item_id: UUID,
+    payload: ContextualAuthorizeUploadIn,
+    ctx: OrgContextDep,
+    _idempotency_key: IdempotencyKeyHeader = None,
+) -> AuthorizeUploadOut:
+    if _idempotency_key and not payload.idempotency_key:
+        payload = payload.model_copy(update={"idempotency_key": _idempotency_key})
+    return service.authorize_action_item_upload(ctx, action_item_id, payload)
+
+
+@router.post(
+    "/organizations/current/improvement-cases/{case_id}/evidences/authorize",
+    response_model=AuthorizeUploadOut,
+    status_code=201,
+    operation_id="authorizeImprovementCaseEvidenceUpload",
+    responses={404: ERROR_RESPONSES[404], 409: ERROR_RESPONSES[409], 422: ERROR_RESPONSES[422]},
+    summary="Authorize an evidence that belongs to an improvement case",
+)
+def authorize_improvement_case_evidence(
+    case_id: UUID,
+    payload: ContextualAuthorizeUploadIn,
+    ctx: OrgContextDep,
+    _idempotency_key: IdempotencyKeyHeader = None,
+) -> AuthorizeUploadOut:
+    if _idempotency_key and not payload.idempotency_key:
+        payload = payload.model_copy(update={"idempotency_key": _idempotency_key})
+    return service.authorize_improvement_case_upload(ctx, case_id, payload)
+
+
+@router.get(
+    "/organizations/current/evidence-links",
+    response_model=list[EvidenceAttachmentOut],
+    operation_id="listEvidenceLinksForTarget",
+    summary="Evidences attached to one domain object, with the document summary",
+)
+def list_evidence_links_for_target(
+    ctx: OrgContextDep,
+    target_type: EvidenceLinkTargetType = Query(...),
+    target_id: UUID = Query(...),
+    include_removed: bool = Query(
+        default=False,
+        description="Include soft-removed links (history); operators only",
+    ),
+) -> list[EvidenceAttachmentOut]:
+    return service.list_links_for_target(
+        ctx,
+        target_type=target_type.value,
+        target_id=target_id,
+        include_removed=include_removed,
+    )
 
 
 @router.get(
@@ -148,9 +213,16 @@ def create_evidence_link(
     responses={404: ERROR_RESPONSES[404]},
 )
 def list_evidence_links(
-    evidence_id: UUID, ctx: OrgContextDep
+    evidence_id: UUID,
+    ctx: OrgContextDep,
+    include_removed: bool = Query(
+        default=False,
+        description="Include soft-removed links (history); operators only",
+    ),
 ) -> list[EvidenceLinkOut]:
-    return service.list_evidence_links(ctx, evidence_id)
+    return service.list_evidence_links(
+        ctx, evidence_id, include_removed=include_removed
+    )
 
 
 @evidences_router.delete(
@@ -158,11 +230,20 @@ def list_evidence_links(
     status_code=204,
     operation_id="deleteEvidenceLink",
     responses={404: ERROR_RESPONSES[404]},
+    summary="Soft-remove an evidence link (history is preserved)",
 )
 def delete_evidence_link(
-    evidence_id: UUID, link_id: UUID, ctx: OrgContextDep
+    evidence_id: UUID,
+    link_id: UUID,
+    ctx: OrgContextDep,
+    payload: EvidenceLinkRemoveIn | None = None,
 ) -> None:
-    service.delete_evidence_link(ctx, evidence_id, link_id)
+    service.delete_evidence_link(
+        ctx,
+        evidence_id,
+        link_id,
+        removal_reason=payload.removal_reason if payload else "",
+    )
 
 
 @evidences_router.post(

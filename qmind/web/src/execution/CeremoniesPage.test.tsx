@@ -92,6 +92,7 @@ function installFetch(
           ? jsonResponse({ id: "cer-1" }, 201)
           : jsonResponse(records);
       }
+      if (url.includes("/agenda-events")) return jsonResponse(events);
       if (url.includes("/agile/sprints")) {
         return jsonResponse([sprintPayload({ status: "active" })]);
       }
@@ -160,6 +161,28 @@ describe("CeremoniesPage", () => {
     expect(screen.queryByPlaceholderText(/agenda_event_id/i)).toBeNull();
     expect(screen.queryByText(/Usar ID de evento existente/i)).toBeNull();
     expectNoVisibleUuid();
+  });
+
+  it("loads the sprint agenda in a single request, not one per day", async () => {
+    installFetch();
+    const user = userEvent.setup();
+    renderExecution(<CeremoniesPage />, { path: ROUTE });
+    await enterApp(user);
+    await selectSprint(user);
+
+    await waitFor(() =>
+      expect(
+        optionLabels(screen.getByLabelText(/Compromisso da sprint/i)).join(" "),
+      ).toContain("Daily da Sprint 1"),
+    );
+    const agendaReads = calls.filter(
+      (c) => c.method === "GET" && c.url.includes("agenda-events"),
+    );
+    expect(agendaReads).toHaveLength(1);
+    expect(agendaReads[0]?.url).toContain(`/agile/sprints/${SPRINT_ID}/agenda-events`);
+    expect(
+      calls.some((c) => c.method === "GET" && /\/agenda\/events\?/.test(c.url)),
+    ).toBe(false);
   });
 
   it("records a ceremony against the selected event and derives its type", async () => {

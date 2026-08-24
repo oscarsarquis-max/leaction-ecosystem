@@ -27,6 +27,8 @@ import {
   originLinkLabel,
   STATUS_LABELS,
 } from "@/execution/labels";
+import { EvidenceSection } from "@/execution/EvidenceSection";
+import { MeasurementSection } from "@/execution/MeasurementSection";
 import type { BoardCard, BoardColumnKey, CheckInHealth } from "@/execution/api";
 import { QmindApiError } from "@/api/qmindApi";
 
@@ -393,6 +395,15 @@ export function CardDetailPage() {
           ))}
         </ul>
       </section>
+
+      {actionItemId ? (
+        <EvidenceSection actionItemId={actionItemId} canMutate={canMutate} />
+      ) : null}
+
+      <MeasurementSection
+        actionPlanId={item.action_plan_id}
+        canMutate={canMutate}
+      />
 
       <section className="qm-panel px-6 py-5">
         <h3 className="font-semibold text-[var(--qm-ink)]">Impedimentos</h3>

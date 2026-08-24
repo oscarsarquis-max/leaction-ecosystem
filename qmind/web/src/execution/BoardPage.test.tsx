@@ -201,6 +201,92 @@ describe("BoardPage", () => {
     expect(screen.queryByText("Card com check-in antigo")).toBeNull();
   });
 
+  it("badges evidence and measurement posture straight from the board payload", async () => {
+    installFetch(
+      undefined,
+      boardPayload({
+        in_progress: [
+          boardCard({
+            evidence_count_total: 2,
+            evidence_count_approved: 1,
+            indicator_count: 1,
+            measurement_posture: "overdue",
+            target_posture: "not_met",
+          }),
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+    renderExecution(<BoardPage />);
+    await enterApp(user);
+
+    const badges = await waitFor(() =>
+      screen.getByTestId(`execution-result-badges-${ACTION_ID}`),
+    );
+    expect(badges).toHaveTextContent("2 evidências · 1 aprovada");
+    expect(badges).toHaveTextContent("Medição atrasada");
+    expect(badges).toHaveTextContent("Meta não atingida");
+
+    expect(calls.filter((c) => c.url.includes("evidence-links"))).toHaveLength(0);
+    expect(calls.filter((c) => c.url.includes("measurement"))).toHaveLength(0);
+    expect(calls.filter((c) => c.url.includes("/agile/board"))).toHaveLength(1);
+    expectNoVisibleUuid();
+  });
+
+  it("says so when a card carries no evidence at all", async () => {
+    installFetch(undefined, boardPayload({ in_progress: [boardCard()] }));
+    const user = userEvent.setup();
+    renderExecution(<BoardPage />);
+    await enterApp(user);
+
+    const badges = await waitFor(() =>
+      screen.getByTestId(`execution-result-badges-${ACTION_ID}`),
+    );
+    expect(badges).toHaveTextContent("Sem evidência");
+    expect(badges).toHaveTextContent("Sem medição planejada");
+  });
+
+  it("filters overdue measurement and unmet target independently", async () => {
+    installFetch(
+      undefined,
+      boardPayload({
+        in_progress: [
+          boardCard({
+            action_item_id: ACTION_ID,
+            description: "Card com medição atrasada",
+            measurement_posture: "overdue",
+            target_posture: "unknown",
+          }),
+          boardCard({
+            action_item_id: STALE_ACTION_ID,
+            description: "Card com meta não atingida",
+            measurement_posture: "on_time",
+            target_posture: "not_met",
+          }),
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+    renderExecution(<BoardPage />);
+    await enterApp(user);
+
+    await waitFor(() =>
+      expect(screen.getByText("Card com medição atrasada")).toBeInTheDocument(),
+    );
+
+    const overdueFilter = screen.getByRole("checkbox", { name: /Medição atrasada/i });
+    const targetFilter = screen.getByRole("checkbox", { name: /Meta não atingida/i });
+
+    await user.click(overdueFilter);
+    expect(screen.getByText("Card com medição atrasada")).toBeInTheDocument();
+    expect(screen.queryByText("Card com meta não atingida")).toBeNull();
+
+    await user.click(overdueFilter);
+    await user.click(targetFilter);
+    expect(screen.getByText("Card com meta não atingida")).toBeInTheDocument();
+    expect(screen.queryByText("Card com medição atrasada")).toBeNull();
+  });
+
   it("shows keyboard move controls on compact layout without drag", async () => {
     installFetch(undefined, boardPayload({ in_progress: [boardCard()] }));
     const user = userEvent.setup();

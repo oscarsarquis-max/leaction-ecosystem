@@ -30,6 +30,7 @@ from app.modules.interviews.router import router as interviews_router
 from app.modules.improvement_cases.router import router as improvement_cases_router
 from app.modules.jobs.router import router as jobs_router
 from app.modules.maturity.router import router as maturity_router
+from app.modules.measurements.router import router as measurements_router
 from app.modules.oi.router import router as oi_router
 from app.modules.orgs.router import router as orgs_router
 from app.modules.reports.router import router as reports_router
@@ -89,6 +90,7 @@ app.include_router(evidence_router, prefix=settings.api_prefix)
 app.include_router(findings_router, prefix=settings.api_prefix)
 app.include_router(actions_router, prefix=settings.api_prefix)
 app.include_router(maturity_router, prefix=settings.api_prefix)
+app.include_router(measurements_router, prefix=settings.api_prefix)
 app.include_router(reports_router, prefix=settings.api_prefix)
 app.include_router(jobs_router, prefix=settings.api_prefix)
 app.include_router(evolution_map_router, prefix=settings.api_prefix)

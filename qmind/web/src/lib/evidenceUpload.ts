@@ -220,6 +220,75 @@ export async function uploadEvidenceFile(options: {
   }
 }
 
+/**
+ * Evidence attached to an action item. The context (assessment or improvement
+ * case) comes from the action itself on the server, and the link is created in
+ * the same authorize call — so the browser never has to name a target.
+ */
+export async function uploadActionEvidenceFile(options: {
+  actionItemId: string;
+  file: File;
+  onPhase?: (phase: EvidenceUploadPhase) => void;
+}): Promise<EvidenceUploadResult> {
+  const validationError = validateEvidenceFile(options.file);
+  if (validationError) {
+    throw new QmindApiError(422, {
+      code: "validation_error",
+      message: validationError,
+      correlation_id: "",
+    });
+  }
+
+  const controller = createTrackedAbortController();
+  const { signal } = controller;
+  const client = getQmindClient();
+  const onPhase = options.onPhase ?? (() => undefined);
+  const gen = getRequestGeneration();
+  const orgId = getActiveOrganizationId();
+
+  try {
+    onPhase("authorizing");
+    const auth = await client.api.authorizeActionItemEvidenceUpload({
+      path: { action_item_id: options.actionItemId },
+      body: {
+        content_type: options.file.type,
+        declared_byte_size: options.file.size,
+        classification: "confidential",
+      },
+      headers: { "Idempotency-Key": newIdempotencyKey("ev-action-auth") },
+    });
+    assertTenantFresh(gen, orgId);
+
+    const authData = auth.data!;
+    const evidence = authData.evidence;
+    // Ephemeral — do not assign upload.url to React state / storage.
+    const upload = authData.upload;
+
+    onPhase("uploading");
+    await putObject(
+      upload.url,
+      upload.method,
+      { ...upload.headers },
+      options.file,
+      evidence.id,
+      signal,
+    );
+    assertTenantFresh(gen, orgId);
+
+    onPhase("confirming");
+    const received = await client.api.receiveEvidenceUpload({
+      path: { evidence_id: evidence.id },
+    });
+    assertTenantFresh(gen, orgId);
+
+    onPhase("done");
+    return { evidenceId: evidence.id, status: received.data!.evidence.status };
+  } catch (err) {
+    onPhase("failed");
+    throw err;
+  }
+}
+
 export async function openEvidencePreview(evidenceId: string): Promise<void> {
   const client = getQmindClient();
   const gen = getRequestGeneration();

@@ -23,9 +23,21 @@ import type {
   CheckInOut,
   DependencyCreate,
   DependencyOut,
+  EvidenceLinkOut,
+  EvidenceLinkTargetType,
+  EvidenceOut,
   ImpedimentCreate,
   ImpedimentOut,
   ImpedimentUpdate,
+  IndicatorCreate,
+  IndicatorOut,
+  IndicatorReviseIn,
+  MeasurementCorrectionIn,
+  MeasurementPlanCreate,
+  MeasurementPlanOut,
+  MeasurementRecordCreate,
+  MeasurementRecordOut,
+  MeasurementSummaryOut,
   SprintCreate,
   SprintMetricsOut,
   SprintOut,
@@ -47,8 +59,20 @@ export type {
   CeremonyRecordCreate,
   CheckInCreate,
   DependencyCreate,
+  EvidenceLinkOut,
+  EvidenceLinkTargetType,
+  EvidenceOut,
   ImpedimentCreate,
   ImpedimentUpdate,
+  IndicatorCreate,
+  IndicatorOut,
+  IndicatorReviseIn,
+  MeasurementCorrectionIn,
+  MeasurementPlanCreate,
+  MeasurementPlanOut,
+  MeasurementRecordCreate,
+  MeasurementRecordOut,
+  MeasurementSummaryOut,
   SprintCreate,
   SquadCreate,
   SquadMembershipCreate,
@@ -84,6 +108,33 @@ export type Dependency = DependencyOut;
 export type CeremonyRecord = CeremonyRecordOut;
 export type ActionItemDetail = ActionItemOut;
 export type BoardMovePayload = BoardMoveIn;
+
+export type MeasurementPosture = NonNullable<BoardCardOut["measurement_posture"]>;
+export type TargetPosture = NonNullable<BoardCardOut["target_posture"]>;
+export type MeasurementSummary = MeasurementSummaryOut;
+export type MeasurementPlan = MeasurementPlanOut;
+export type Indicator = IndicatorOut;
+export type MeasurementRecord = MeasurementRecordOut;
+export type TargetEvaluation = NonNullable<
+  MeasurementSummaryOut["evaluations"]
+>[number];
+export type TargetEvaluationState = TargetEvaluation["state"];
+export type SubstantiationLevel = TargetEvaluation["substantiation"];
+export type IndicatorDirection = TargetEvaluation["direction"];
+export type IndicatorUnitKind = TargetEvaluation["unit_kind"];
+export type BaselineStatus = TargetEvaluation["baseline_status"];
+export type MeasurementKind = MeasurementRecordOut["measurement_kind"];
+export type EvidenceStatus = EvidenceOut["status"];
+
+/**
+ * An evidence link plus the evidence it points to. The link alone only knows
+ * identifiers, and a person needs to read type, situation and date — so the
+ * two reads are joined here instead of leaking ids into the UI.
+ */
+export type EvidenceAttachment = {
+  link: EvidenceLinkOut;
+  evidence: EvidenceOut | null;
+};
 
 /** Ceremony types are also agenda event types — no separate mapping needed. */
 export const CEREMONY_EVENT_TYPES: readonly CeremonyType[] = [
@@ -404,11 +455,26 @@ export async function deleteDependency(
   );
 }
 
-/** Agenda events for a single day — used to build the sprint ceremony picker. */
+/** Agenda events for a single day. */
 export async function listAgendaEventsForDay(day: string) {
   const client = getQmindClient();
   return withTenantGeneration(async () => {
     const res = await client.api.listAgendaEvents({ query: { day } });
+    return res.data ?? [];
+  });
+}
+
+/**
+ * Every agenda event of one sprint, in one request. Asking the sprint instead
+ * of asking each day removes the timezone guesswork the day-by-day version
+ * needed to avoid missing an event scheduled just past midnight.
+ */
+export async function listSprintAgendaEvents(sprintId: string) {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.api.listAgileSprintAgendaEvents({
+      path: { sprint_id: sprintId },
+    });
     return res.data ?? [];
   });
 }
@@ -433,5 +499,157 @@ export async function createCeremonyAgendaEvent(body: {
       headers: { "Idempotency-Key": crypto.randomUUID() },
     });
     return res.data as AgendaEventOut;
+  });
+}
+
+/* --- Evidence attached to execution objects (ISOI-008) --- */
+
+/**
+ * Attachments of one object: link plus the document it points at, resolved by
+ * the server in a single query. The browser no longer walks the links to read
+ * each evidence, so a card with attachments costs exactly one round trip.
+ */
+export async function listEvidenceAttachments(
+  targetType: EvidenceLinkTargetType,
+  targetId: string,
+): Promise<EvidenceAttachment[]> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.api.listEvidenceLinksForTarget({
+      query: { target_type: targetType, target_id: targetId, include_removed: false },
+    });
+    return (res.data ?? []).map((attachment) => ({
+      link: attachment.link,
+      evidence: attachment.evidence ?? null,
+    }));
+  });
+}
+
+/* --- Measurement of the result (ISOI-008) --- */
+
+export async function fetchMeasurementSummary(
+  actionPlanId: string,
+): Promise<MeasurementSummaryOut> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.api.getActionPlanMeasurementSummary({
+      path: { action_plan_id: actionPlanId },
+    });
+    return res.data as MeasurementSummaryOut;
+  });
+}
+
+export async function createMeasurementPlan(
+  body: MeasurementPlanCreate,
+): Promise<MeasurementPlanOut> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.api.createMeasurementPlan({
+      body: { ...body, objective: body.objective ?? "" },
+    });
+    return res.data as MeasurementPlanOut;
+  });
+}
+
+export async function activateMeasurementPlan(
+  planId: string,
+): Promise<MeasurementPlanOut> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.api.activateMeasurementPlan({
+      path: { plan_id: planId },
+    });
+    return res.data as MeasurementPlanOut;
+  });
+}
+
+export async function listIndicators(planId: string): Promise<IndicatorOut[]> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.api.listIndicatorDefinitions({
+      path: { plan_id: planId },
+      query: { include_superseded: false },
+    });
+    return res.data ?? [];
+  });
+}
+
+export async function createIndicator(
+  planId: string,
+  body: IndicatorCreate,
+): Promise<IndicatorOut> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.api.createIndicatorDefinition({
+      path: { plan_id: planId },
+      body,
+    });
+    return res.data as IndicatorOut;
+  });
+}
+
+/** Registering a baseline after the fact is a revision — the reason is kept. */
+export async function reviseIndicator(
+  indicatorId: string,
+  body: IndicatorReviseIn,
+): Promise<IndicatorOut> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.api.reviseIndicatorDefinition({
+      path: { indicator_id: indicatorId },
+      body,
+    });
+    return res.data as IndicatorOut;
+  });
+}
+
+export async function listMeasurementRecords(
+  planId: string,
+  options?: { indicatorId?: string },
+): Promise<MeasurementRecordOut[]> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.api.listMeasurementRecords({
+      path: { plan_id: planId },
+      query: {
+        indicator_definition_id: options?.indicatorId ?? null,
+        include_superseded: false,
+      },
+    });
+    return res.data ?? [];
+  });
+}
+
+/**
+ * Values travel as strings: a measurement is audit evidence and must reach the
+ * server exactly as the person typed it, without a float rounding it first.
+ */
+export async function createMeasurementRecord(
+  planId: string,
+  body: MeasurementRecordCreate,
+): Promise<MeasurementRecordOut> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.api.createMeasurementRecord({
+      path: { plan_id: planId },
+      body,
+      headers: { "Idempotency-Key": crypto.randomUUID() },
+    });
+    return res.data as MeasurementRecordOut;
+  });
+}
+
+/** A correction never rewrites history — it supersedes the previous reading. */
+export async function correctMeasurementRecord(
+  recordId: string,
+  body: MeasurementCorrectionIn,
+): Promise<MeasurementRecordOut> {
+  const client = getQmindClient();
+  return withTenantGeneration(async () => {
+    const res = await client.api.correctMeasurementRecord({
+      path: { record_id: recordId },
+      body,
+    });
+    return res.data as MeasurementRecordOut;
   });
 }

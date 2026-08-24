@@ -647,6 +647,184 @@ def test_closure_readiness_matrix(client: TestClient):
     assert evo_stale["closure_readiness"] == "insufficient_information"
 
 
+# --- ISOI-008: measurement changes what "we can close this" means ---------
+
+MEASUREMENT_PLANS = "/api/v1/organizations/current/measurement-plans"
+
+
+def _ready_for_review_case(client: TestClient) -> tuple[dict, str, str, str]:
+    """A case that satisfies every pre-measurement closure gate."""
+    sub = f"evo-meas-{uuid.uuid4()}"
+    org = _create_org(client, sub)
+    h = _headers(sub, org)
+    _fill_profile(client, h)
+    case = _create_case(client, h)
+    run = _create_run(client, h, case["id"], org)
+    mid = _membership_id(org, sub)
+    created = client.post(
+        f"{CASES}/{case['id']}/analysis-runs/{run['id']}/findings/F-1/actions",
+        headers=h,
+        json={
+            "owner_membership_id": mid,
+            "due_at": (datetime.now(UTC) + timedelta(days=7)).isoformat(),
+        },
+    )
+    assert created.status_code == 201, created.text
+    plan_id = client.get(f"{CASES}/{case['id']}/actions", headers=h).json()["plan"]["id"]
+    _mark_items_done(plan_id)
+    obs = client.post(
+        f"{CASES}/{case['id']}/outcome-observations",
+        headers=h,
+        json=_obs_payload(result_direction="improved"),
+    )
+    assert obs.status_code == 201, obs.text
+    evo = client.get(f"{CASES}/{case['id']}/evolution", headers=h).json()
+    assert evo["closure_readiness"] == "ready_for_review"
+    return h, org, case["id"], plan_id
+
+
+def _measurement_plan(
+    client: TestClient, h: dict, action_plan_id: str, **indicator_overrides
+) -> tuple[str, str]:
+    plan_id = client.post(
+        MEASUREMENT_PLANS, headers=h, json={"action_plan_id": action_plan_id}
+    ).json()["id"]
+    indicator = {
+        "code": "TMA",
+        "name": "Tempo médio",
+        "unit": "min",
+        "direction": "decrease_is_better",
+        "baseline_value": "40.000000",
+        "target_value": "20.000000",
+        "target_due_at": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
+    }
+    indicator.update(indicator_overrides)
+    created = client.post(
+        f"{MEASUREMENT_PLANS}/{plan_id}/indicators", headers=h, json=indicator
+    )
+    assert created.status_code == 201, created.text
+    activated = client.post(
+        f"{MEASUREMENT_PLANS}/{plan_id}/transitions/activate", headers=h
+    )
+    assert activated.status_code == 200, activated.text
+    return plan_id, created.json()["id"]
+
+
+def _record(client: TestClient, h: dict, plan_id: str, indicator_id: str, value: str):
+    r = client.post(
+        f"{MEASUREMENT_PLANS}/{plan_id}/measurements",
+        headers=h,
+        json={
+            "indicator_definition_id": indicator_id,
+            "value": value,
+            "measured_at": (datetime.now(UTC) - timedelta(days=1)).isoformat(),
+        },
+    )
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def test_case_without_measurement_plan_stays_closable(client: TestClient):
+    """Not planning measurement is a choice, not missing information."""
+    h, _org, case_id, _plan_id = _ready_for_review_case(client)
+    evo = client.get(f"{CASES}/{case_id}/evolution", headers=h).json()
+    assert evo["measurement_summary"]["measurement_posture"] == "not_planned"
+    assert evo["measurement_summary"]["indicator_count"] == 0
+    assert evo["closure_readiness"] == "ready_for_review"
+
+
+def test_promised_but_missing_measurement_blocks_review(client: TestClient):
+    h, _org, case_id, action_plan_id = _ready_for_review_case(client)
+    plan_id, indicator_id = _measurement_plan(client, h, action_plan_id)
+
+    pending = client.get(f"{CASES}/{case_id}/evolution", headers=h).json()
+    assert pending["measurement_summary"]["measurement_posture"] == "awaiting_measurement"
+    assert pending["closure_readiness"] == "insufficient_information"
+    assert "medido" in pending["closure_readiness_reason"].lower()
+
+    _record(client, h, plan_id, indicator_id, "15.000000")
+    measured = client.get(f"{CASES}/{case_id}/evolution", headers=h).json()
+    summary = measured["measurement_summary"]
+    assert summary["measurement_posture"] == "on_time"
+    assert summary["target_posture"] == "met"
+    # Rev001: the number alone is a claim. Substantiation only rises when an
+    # approved document is attached to the measurement.
+    assert summary["substantiation"] == "none"
+    assert summary["evaluations"][0]["latest_value"] == "15.000000"
+    assert measured["closure_readiness"] == "ready_for_review"
+
+
+def test_overdue_measurement_blocks_review(client: TestClient):
+    h, _org, case_id, action_plan_id = _ready_for_review_case(client)
+    plan_id, indicator_id = _measurement_plan(
+        client, h, action_plan_id, measurement_frequency_days=1
+    )
+    _record(client, h, plan_id, indicator_id, "15.000000")  # measured 1 day ago
+    evo = client.get(f"{CASES}/{case_id}/evolution", headers=h).json()
+    assert evo["measurement_summary"]["measurement_posture"] == "overdue"
+    assert evo["measurement_summary"]["overdue_indicator_count"] == 1
+    assert evo["closure_readiness"] == "insufficient_information"
+    assert "atrasada" in evo["closure_readiness_reason"].lower()
+
+
+def test_missed_target_does_not_fail_efficacy_by_itself(client: TestClient):
+    """A number never decides efficacy — it only informs the person who does."""
+    h, _org, case_id, action_plan_id = _ready_for_review_case(client)
+    plan_id, indicator_id = _measurement_plan(
+        client,
+        h,
+        action_plan_id,
+        target_due_at=(datetime.now(UTC) - timedelta(days=2)).isoformat(),
+    )
+    _record(client, h, plan_id, indicator_id, "39.000000")
+    evo = client.get(f"{CASES}/{case_id}/evolution", headers=h).json()
+    assert evo["measurement_summary"]["target_posture"] == "not_met"
+    assert evo["closure_readiness"] == "ready_for_review"
+    assert evo["case"]["status"] != "closed"
+
+
+def test_observation_can_cite_measurements_of_its_own_case(client: TestClient):
+    h, _org, case_id, action_plan_id = _ready_for_review_case(client)
+    plan_id, indicator_id = _measurement_plan(client, h, action_plan_id)
+    record = _record(client, h, plan_id, indicator_id, "15.000000")
+
+    created = client.post(
+        f"{CASES}/{case_id}/outcome-observations",
+        headers=h,
+        json=_obs_payload(measurement_record_ids=[record["id"]]),
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["measurement_record_ids"] == [record["id"]]
+
+    listed = client.get(f"{CASES}/{case_id}/outcome-observations", headers=h).json()
+    assert listed[0]["measurement_record_ids"] == [record["id"]]
+
+
+def test_observation_rejects_measurement_from_another_case(client: TestClient):
+    h_a, _org_a, case_a, plan_a = _ready_for_review_case(client)
+    h_b, _org_b, _case_b, plan_b = _ready_for_review_case(client)
+    plan_id_b, indicator_b = _measurement_plan(client, h_b, plan_b)
+    foreign = _record(client, h_b, plan_id_b, indicator_b, "10.000000")
+
+    denied = client.post(
+        f"{CASES}/{case_a}/outcome-observations",
+        headers=h_a,
+        json=_obs_payload(measurement_record_ids=[foreign["id"]]),
+    )
+    assert denied.status_code == 422
+    assert denied.json()["code"] == "measurement_case_mismatch"
+
+    plan_id_a, indicator_a = _measurement_plan(client, h_a, plan_a)
+    mine = _record(client, h_a, plan_id_a, indicator_a, "10.000000")
+    mixed = client.post(
+        f"{CASES}/{case_a}/outcome-observations",
+        headers=h_a,
+        json=_obs_payload(measurement_record_ids=[mine["id"], foreign["id"]]),
+    )
+    assert mixed.status_code == 422
+    assert mixed.json()["code"] == "measurement_case_mismatch"
+
+
 def test_openapi_evolution_paths(client: TestClient):
     paths = client.get("/openapi.json").json()["paths"]
     assert f"{CASES}/{{case_id}}/outcome-observations" in paths

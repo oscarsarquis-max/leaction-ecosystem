@@ -13,6 +13,7 @@ import {
 } from "@/lib/improvementCaseLabels";
 import { ApiErrorBanner } from "@/components/ApiErrorBanner";
 import { LoadingPanel } from "@/components/StatePanels";
+import { MeasurementSummaryPanel } from "@/execution/MeasurementSummaryPanel";
 import { QmindApiError } from "@/api/qmindApi";
 
 type ResultDirection =
@@ -201,6 +202,9 @@ export function ImprovementCaseEvolutionSection({ caseId, canWrite }: Props) {
             </li>
             <li data-testid="ic-evo-closure">
               {labelClosureReadiness(evo.closure_readiness)}
+              {evo.closure_readiness_reason
+                ? ` — ${evo.closure_readiness_reason}`
+                : ""}
             </li>
           </ul>
           {latest?.is_stale ? (
@@ -214,6 +218,20 @@ export function ImprovementCaseEvolutionSection({ caseId, canWrite }: Props) {
           ) : null}
         </div>
       </div>
+
+      {evo.measurement_summary ? (
+        <div className="qm-panel space-y-3" data-testid="ic-evo-measurement">
+          <h3 className="font-medium text-slate-800">Medição do resultado</h3>
+          <p className="text-sm text-slate-600">
+            O que os indicadores das ações deste problema dizem sobre a mudança —
+            antes de qualquer declaração de eficácia.
+          </p>
+          <MeasurementSummaryPanel
+            summary={evo.measurement_summary}
+            testId="ic-evo-measurement-summary"
+          />
+        </div>
+      ) : null}
 
       <div className="qm-panel space-y-3" data-testid="ic-evo-outcome">
         <h3 className="font-medium text-slate-800">Resultado observado</h3>

@@ -6,7 +6,9 @@ import uuid
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.engine import make_url
 
+from app.config import get_settings
 from app.main import app
 
 
@@ -20,7 +22,10 @@ def test_health(client: TestClient):
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok"
-    assert body["database"] == "qmind"
+    # The logical database name is deployment configuration (qmind, qmind_dev,
+    # a CI scratch database), so health only has to agree with what we connected
+    # to — never with a hardcoded name.
+    assert body["database"] == make_url(get_settings().database_url_admin).database
 
 
 def test_create_org_and_current_with_dev_auth(client: TestClient):

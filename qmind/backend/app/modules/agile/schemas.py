@@ -8,7 +8,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.schemas.enums import ActionItemStatus, ActionKind
+from app.schemas.enums import (
+    ActionItemStatus,
+    ActionKind,
+    MeasurementPosture,
+    TargetPosture,
+)
 
 SquadStatus = Literal["active", "inactive"]
 AgileRole = Literal["value_owner", "facilitator", "execution_member", "stakeholder"]
@@ -211,6 +216,11 @@ class BoardCardOut(BaseModel):
     finding_id: UUID | None = None
     card_id: UUID | None = None
     position: int | None = None
+    evidence_count_total: int = 0
+    evidence_count_approved: int = 0
+    indicator_count: int = 0
+    measurement_posture: MeasurementPosture = MeasurementPosture.not_planned
+    target_posture: TargetPosture = TargetPosture.unknown
 
 
 class BoardColumnOut(BaseModel):

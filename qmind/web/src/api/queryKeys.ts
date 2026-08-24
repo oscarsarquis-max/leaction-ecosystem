@@ -126,6 +126,41 @@ export const queryKeys = {
     ["org", organizationId, "execution", "action-item", actionItemId, "impediments"] as const,
   executionDependencies: (organizationId: string, actionItemId: string) =>
     ["org", organizationId, "execution", "action-item", actionItemId, "dependencies"] as const,
+  executionEvidence: (
+    organizationId: string,
+    targetType: string,
+    targetId: string,
+  ) =>
+    ["org", organizationId, "execution", "evidence", targetType, targetId] as const,
+  executionMeasurementSummary: (organizationId: string, actionPlanId: string) =>
+    [
+      "org",
+      organizationId,
+      "execution",
+      "measurement",
+      "action-plan",
+      actionPlanId,
+    ] as const,
+  executionMeasurementIndicators: (organizationId: string, planId: string) =>
+    [
+      "org",
+      organizationId,
+      "execution",
+      "measurement",
+      "plan",
+      planId,
+      "indicators",
+    ] as const,
+  executionMeasurementRecords: (organizationId: string, planId: string) =>
+    [
+      "org",
+      organizationId,
+      "execution",
+      "measurement",
+      "plan",
+      planId,
+      "measurements",
+    ] as const,
   health: ["health"] as const,
 };
 

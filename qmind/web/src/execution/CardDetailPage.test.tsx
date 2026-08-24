@@ -345,8 +345,8 @@ describe("CardDetailPage", () => {
     expect(screen.queryByRole("button", { name: "Vincular" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Registrar" })).toBeNull();
     expect(
-      screen.getByText(/Seu perfil é somente leitura/i),
-    ).toBeInTheDocument();
+      screen.getAllByText(/Seu perfil é somente leitura/i).length,
+    ).toBeGreaterThan(0);
   });
 
   it("surfaces stale QMind analysis with a link back to the analysis", async () => {

@@ -21,7 +21,9 @@ from app.modules.agile.schemas import (
     BoardOut,
     SprintCardAllocateIn,
 )
+from app.modules.measurements import service as measurements_service
 from app.modules.orgs.service import require_role
+from app.schemas.enums import MeasurementPosture, TargetPosture
 
 _READ = (
     "org_admin",
@@ -230,6 +232,8 @@ def get_board(
                   ) AS blocking_dependency_count,
                   ci.reported_at AS latest_check_in_at,
                   ci.health AS latest_check_in_health,
+                  coalesce(ev.total, 0) AS evidence_count_total,
+                  coalesce(ev.approved, 0) AS evidence_count_approved,
                   CASE
                     WHEN sc.removed_at IS NULL
                       AND sp.status = 'active'
@@ -258,6 +262,17 @@ def get_board(
                   ORDER BY c.reported_at DESC
                   LIMIT 1
                 ) ci ON true
+                LEFT JOIN LATERAL (
+                  SELECT count(*) AS total,
+                         count(*) FILTER (WHERE e.status = 'approved') AS approved
+                  FROM evidence_links el
+                  JOIN evidences e ON e.id = el.evidence_id
+                    AND e.organization_id = el.organization_id
+                  WHERE el.organization_id = ai.organization_id
+                    AND el.target_type = 'action_item'
+                    AND el.target_id = ai.id
+                    AND el.removed_at IS NULL
+                ) ev ON true
                 WHERE ai.organization_id = :org
                   AND ai.status NOT IN ('cancelled', 'ineffective_closed')
                   {squad_clause}
@@ -266,6 +281,10 @@ def get_board(
             ),
             {**params, "active_sprint": active_sprint_id},
         ).all()
+
+        postures = measurements_service.postures_by_action_plan(
+            conn, org_id, list({r.action_plan_id for r in rows})
+        )
 
     owner_ids = list({r.owner_membership_id for r in rows})
     labels = _owner_labels(org_id, owner_ids)
@@ -296,6 +315,14 @@ def get_board(
         label = labels.get(r.owner_membership_id, ("", ""))
         open_impediments = int(r.open_impediment_count or 0)
         blocking_deps = int(r.blocking_dependency_count or 0)
+        measurement_posture, target_posture, indicator_count = postures.get(
+            r.action_plan_id,
+            (
+                MeasurementPosture.not_planned.value,
+                TargetPosture.unknown.value,
+                0,
+            ),
+        )
         card = BoardCardOut(
             action_item_id=r.action_item_id,
             action_plan_id=r.action_plan_id,
@@ -327,6 +354,11 @@ def get_board(
             finding_id=r.finding_id,
             card_id=r.card_id,
             position=r.position,
+            evidence_count_total=int(r.evidence_count_total or 0),
+            evidence_count_approved=int(r.evidence_count_approved or 0),
+            indicator_count=indicator_count,
+            measurement_posture=measurement_posture,
+            target_posture=target_posture,
         )
         columns[col].append(card)
         if col == "in_progress":

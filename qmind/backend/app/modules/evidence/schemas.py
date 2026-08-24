@@ -13,6 +13,8 @@ from app.schemas.enums import (
 
 
 class AuthorizeUploadIn(BaseModel):
+    """Assessment-scoped authorize (original API, kept verbatim)."""
+
     assessment_id: UUID
     classification: EvidenceClassification = EvidenceClassification.confidential
     content_type: str = Field(..., max_length=200)
@@ -21,9 +23,20 @@ class AuthorizeUploadIn(BaseModel):
     supersedes_evidence_id: UUID | None = None
 
 
+class ContextualAuthorizeUploadIn(BaseModel):
+    """Authorize where the context (assessment XOR case) comes from the URL."""
+
+    classification: EvidenceClassification = EvidenceClassification.confidential
+    content_type: str = Field(..., max_length=200)
+    declared_byte_size: int = Field(..., ge=1, le=100_000_000)
+    supersedes_evidence_id: UUID | None = None
+    idempotency_key: str | None = Field(default=None, max_length=128)
+
+
 class AuthorizeUploadOut(BaseModel):
     evidence: "EvidenceOut"
     upload: "PresignedUploadOut"
+    link: "EvidenceLinkOut | None" = None
 
 
 class PresignedUploadOut(BaseModel):
@@ -37,6 +50,7 @@ class EvidenceOut(BaseModel):
     id: UUID
     organization_id: UUID
     assessment_id: UUID | None
+    improvement_case_id: UUID | None = None
     status: EvidenceStatus
     classification: EvidenceClassification
     content_type: str | None
@@ -75,6 +89,10 @@ class EvidenceLinkCreate(BaseModel):
     target_id: UUID
 
 
+class EvidenceLinkRemoveIn(BaseModel):
+    removal_reason: str = Field(default="", max_length=2000)
+
+
 class EvidenceLinkOut(BaseModel):
     id: UUID
     organization_id: UUID
@@ -82,3 +100,19 @@ class EvidenceLinkOut(BaseModel):
     target_type: EvidenceLinkTargetType
     target_id: UUID
     created_at: datetime
+    removed_at: datetime | None = None
+    removed_by: UUID | None = None
+    removal_reason: str | None = None
+
+
+class EvidenceAttachmentOut(BaseModel):
+    """A link together with the document it points at.
+
+    The link on its own only knows identifiers. A person looking at an action
+    needs to see what the file is, whether it was already approved and when it
+    was collected, so the two are resolved server-side in one query instead of
+    making the browser ask again for every attachment.
+    """
+
+    link: EvidenceLinkOut
+    evidence: EvidenceOut | None = None

@@ -2,61 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from alembic import command
-from alembic.config import Config
-from sqlalchemy import create_engine, text
-
-from tests.conftest import ADMIN_URL
-
-BACKEND = Path(__file__).resolve().parents[1]
+from tests.alembic_support import has_column, roundtrip
 
 
-def _alembic_cfg() -> Config:
-    cfg = Config(str(BACKEND / "alembic.ini"))
-    cfg.set_main_option("script_location", str(BACKEND / "alembic"))
-    cfg.set_main_option("sqlalchemy.url", ADMIN_URL)
-    return cfg
+def _at_head(conn):
+    assert has_column(conn, "evidences", "upload_expires_at")
+
+
+def _at_down(conn):
+    assert not has_column(conn, "evidences", "upload_expires_at")
 
 
 def test_0002_downgrade_and_upgrade_roundtrip():
-    eng = create_engine(ADMIN_URL)
-    cfg = _alembic_cfg()
-
-    command.upgrade(cfg, "head")
-    with eng.connect() as conn:
-        assert conn.execute(
-            text(
-                """
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'evidences' AND column_name = 'upload_expires_at'
-                """
-            )
-        ).first()
-
-    command.downgrade(cfg, "20260803_0001")
-    with eng.connect() as conn:
-        assert (
-            conn.execute(
-                text(
-                    """
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_name = 'evidences' AND column_name = 'upload_expires_at'
-                    """
-                )
-            ).first()
-            is None
-        )
-
-    command.upgrade(cfg, "head")
-    with eng.connect() as conn:
-        assert conn.execute(
-            text(
-                """
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'evidences' AND column_name = 'upload_expires_at'
-                """
-            )
-        ).first()
-    eng.dispose()
+    roundtrip("20260803_0001", at_head=_at_head, at_down=_at_down)

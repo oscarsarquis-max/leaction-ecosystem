@@ -78,6 +78,123 @@ class EvidenceLinkTargetType(str, Enum):
     action_item = "action_item"
     interview = "interview"
     answer = "answer"
+    action_check_in = "action_check_in"
+    action_impediment = "action_impediment"
+    measurement_record = "measurement_record"
+    outcome_observation = "outcome_observation"
+    improvement_case = "improvement_case"
+
+
+class MeasurementPlanStatus(str, Enum):
+    draft = "draft"
+    active = "active"
+    closed = "closed"
+
+
+class IndicatorDirection(str, Enum):
+    """What "better" means for this indicator.
+
+    `within_range` wants the value inside the band; `maintain_range` wants it to
+    stay where it already is and treats leaving the band as the failure. They
+    evaluate identically but say different things to the reader, which is why
+    both exist.
+    """
+
+    higher_is_better = "higher_is_better"
+    lower_is_better = "lower_is_better"
+    within_range = "within_range"
+    maintain_range = "maintain_range"
+
+
+# The first draft of ISOI-008 named directions after the arithmetic. Callers
+# built against it keep working; the canonical value is always the new one.
+INDICATOR_DIRECTION_ALIASES = {
+    "increase_is_better": IndicatorDirection.higher_is_better,
+    "decrease_is_better": IndicatorDirection.lower_is_better,
+    "stay_within_range": IndicatorDirection.within_range,
+}
+
+RANGE_DIRECTIONS = frozenset(
+    {IndicatorDirection.within_range.value, IndicatorDirection.maintain_range.value}
+)
+
+
+class IndicatorValueType(str, Enum):
+    """Only decimal for now: an indicator is audit evidence and must be exact."""
+
+    decimal = "decimal"
+
+
+class IndicatorUnitKind(str, Enum):
+    percentage = "percentage"
+    count = "count"
+    currency = "currency"
+    ratio = "ratio"
+    score = "score"
+    duration_minutes = "duration_minutes"
+    duration_hours = "duration_hours"
+    duration_days = "duration_days"
+    dimensionless = "dimensionless"
+    custom = "custom"
+
+
+class IndicatorStatus(str, Enum):
+    active = "active"
+    superseded = "superseded"
+    retired = "retired"
+
+
+class MeasurementKind(str, Enum):
+    """A baseline is a measurement; it is just the first one."""
+
+    baseline = "baseline"
+    observation = "observation"
+
+
+class MeasurementRecordStatus(str, Enum):
+    """Derived, never stored: a reading is superseded once a correction exists."""
+
+    active = "active"
+    superseded = "superseded"
+
+
+class BaselineStatus(str, Enum):
+    """Whether we know where the indicator started."""
+
+    missing = "missing"
+    unavailable_justified = "unavailable_justified"
+    recorded = "recorded"
+
+
+class TargetEvaluationState(str, Enum):
+    not_planned = "not_planned"
+    awaiting_baseline = "awaiting_baseline"
+    awaiting_measurement = "awaiting_measurement"
+    on_track = "on_track"
+    target_met = "target_met"
+    target_not_met = "target_not_met"
+    inconclusive = "inconclusive"
+
+
+class SubstantiationLevel(str, Enum):
+    none = "none"
+    partial = "partial"
+    verified = "verified"
+
+
+class MeasurementPosture(str, Enum):
+    not_planned = "not_planned"
+    awaiting_baseline = "awaiting_baseline"
+    awaiting_measurement = "awaiting_measurement"
+    on_time = "on_time"
+    overdue = "overdue"
+
+
+class TargetPosture(str, Enum):
+    unknown = "unknown"
+    met = "met"
+    not_met = "not_met"
+    mixed = "mixed"
 
 
 class MaturityStatus(str, Enum):

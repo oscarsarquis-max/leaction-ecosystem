@@ -24,6 +24,12 @@ import {
   PRIORITY_LABELS,
   STATUS_LABELS,
 } from "@/execution/labels";
+import {
+  MEASUREMENT_POSTURE_LABELS,
+  measurementPostureTone,
+  TARGET_POSTURE_LABELS,
+  targetPostureTone,
+} from "@/execution/measurementLabels";
 
 type BoardFilters = {
   squadId: string;
@@ -35,6 +41,8 @@ type BoardFilters = {
   showOverdue: boolean;
   showStaleCheckIn: boolean;
   showStaleAnalysis: boolean;
+  showMeasurementOverdue: boolean;
+  showTargetNotMet: boolean;
 };
 
 function useCompactLayout(): boolean {
@@ -87,7 +95,61 @@ function filterCard(card: BoardCard, filters: BoardFilters): boolean {
   if (filters.showOverdue && !card.is_overdue) return false;
   if (filters.showStaleCheckIn && !isCheckInStale(card.latest_check_in_at)) return false;
   if (filters.showStaleAnalysis && card.source_analysis_is_stale !== true) return false;
+  if (filters.showMeasurementOverdue && card.measurement_posture !== "overdue") {
+    return false;
+  }
+  if (filters.showTargetNotMet && card.target_posture !== "not_met") return false;
   return true;
+}
+
+/**
+ * Evidence and measurement come already counted on the board payload, so the
+ * badges cost nothing extra — no per-card request is issued to draw them.
+ */
+function ResultBadges({ card }: { card: BoardCard }) {
+  const evidenceTotal = card.evidence_count_total ?? 0;
+  const evidenceApproved = card.evidence_count_approved ?? 0;
+  const measurement = card.measurement_posture ?? "not_planned";
+  const target = card.target_posture ?? "unknown";
+
+  return (
+    <div data-testid={`execution-result-badges-${card.action_item_id}`}>
+      {evidenceTotal > 0 ? (
+        <span className="execution-badge execution-badge--muted">
+          {evidenceTotal} evidência{evidenceTotal > 1 ? "s" : ""}
+          {evidenceApproved > 0 ? ` · ${evidenceApproved} aprovada` : ""}
+        </span>
+      ) : (
+        <span className="execution-badge execution-badge--muted">Sem evidência</span>
+      )}
+      {measurement !== "on_time" ? (
+        <span
+          className={
+            measurementPostureTone(measurement) === "danger"
+              ? "execution-badge execution-badge--danger"
+              : measurementPostureTone(measurement) === "warn"
+                ? "execution-badge execution-badge--warn"
+                : "execution-badge execution-badge--muted"
+          }
+        >
+          {MEASUREMENT_POSTURE_LABELS[measurement]}
+        </span>
+      ) : null}
+      {target !== "unknown" ? (
+        <span
+          className={
+            targetPostureTone(target) === "danger"
+              ? "execution-badge execution-badge--danger"
+              : targetPostureTone(target) === "warn"
+                ? "execution-badge execution-badge--warn"
+                : "execution-badge"
+          }
+        >
+          {TARGET_POSTURE_LABELS[target]}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 function ExecutionCard({
@@ -224,6 +286,7 @@ function ExecutionCard({
           </span>
         ) : null}
       </div>
+      <ResultBadges card={card} />
       {analysisStale && provenance ? (
         <p className="execution-card__meta">
           <Link to={provenance.href} className="underline">
@@ -287,6 +350,8 @@ export function BoardPage() {
     showOverdue: false,
     showStaleCheckIn: false,
     showStaleAnalysis: false,
+    showMeasurementOverdue: false,
+    showTargetNotMet: false,
   });
 
   const boardQuery = useExecutionBoard({
@@ -585,6 +650,26 @@ function BoardFiltersBar({
             }
           />
           Inteligência desatualizada
+        </label>
+        <label className="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={filters.showMeasurementOverdue}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, showMeasurementOverdue: e.target.checked }))
+            }
+          />
+          Medição atrasada
+        </label>
+        <label className="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={filters.showTargetNotMet}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, showTargetNotMet: e.target.checked }))
+            }
+          />
+          Meta não atingida
         </label>
       </div>
     </div>

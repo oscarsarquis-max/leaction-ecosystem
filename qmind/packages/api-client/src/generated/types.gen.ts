@@ -1127,6 +1127,7 @@ export type AuditPlanSite = {
 
 /**
  * AuthorizeUploadIn
+ * Assessment-scoped authorize (original API, kept verbatim).
  */
 export type AuthorizeUploadIn = {
     /**
@@ -1153,8 +1154,15 @@ export type AuthorizeUploadIn = {
  */
 export type AuthorizeUploadOut = {
     evidence: EvidenceOut;
+    link?: EvidenceLinkOut | null;
     upload: PresignedUploadOut;
 };
+
+/**
+ * BaselineStatus
+ * Whether we know where the indicator started.
+ */
+export type BaselineStatus = 'missing' | 'unavailable_justified' | 'recorded';
 
 /**
  * BoardCardOut
@@ -1194,6 +1202,14 @@ export type BoardCardOut = {
      */
     estimate_points?: number | null;
     /**
+     * Evidence Count Approved
+     */
+    evidence_count_approved?: number;
+    /**
+     * Evidence Count Total
+     */
+    evidence_count_total?: number;
+    /**
      * Finding Id
      */
     finding_id?: string | null;
@@ -1210,6 +1226,10 @@ export type BoardCardOut = {
      */
     improvement_case_id?: string | null;
     /**
+     * Indicator Count
+     */
+    indicator_count?: number;
+    /**
      * Is Overdue
      */
     is_overdue: boolean;
@@ -1221,6 +1241,7 @@ export type BoardCardOut = {
      * Latest Check In Health
      */
     latest_check_in_health?: ('on_track' | 'attention' | 'blocked') | null;
+    measurement_posture?: MeasurementPosture;
     /**
      * Open Impediment Count
      */
@@ -1274,6 +1295,7 @@ export type BoardCardOut = {
      */
     squad_name?: string | null;
     status: ActionItemStatus;
+    target_posture?: TargetPosture;
 };
 
 /**
@@ -1588,6 +1610,30 @@ export type ConcludePlanningOut = {
 };
 
 /**
+ * ContextualAuthorizeUploadIn
+ * Authorize where the context (assessment XOR case) comes from the URL.
+ */
+export type ContextualAuthorizeUploadIn = {
+    classification?: EvidenceClassification;
+    /**
+     * Content Type
+     */
+    content_type: string;
+    /**
+     * Declared Byte Size
+     */
+    declared_byte_size: number;
+    /**
+     * Idempotency Key
+     */
+    idempotency_key?: string | null;
+    /**
+     * Supersedes Evidence Id
+     */
+    supersedes_evidence_id?: string | null;
+};
+
+/**
  * ConvertSuggestionToActionIn
  */
 export type ConvertSuggestionToActionIn = {
@@ -1795,6 +1841,20 @@ export type ErrorBody = {
 };
 
 /**
+ * EvidenceAttachmentOut
+ * A link together with the document it points at.
+ *
+ * The link on its own only knows identifiers. A person looking at an action
+ * needs to see what the file is, whether it was already approved and when it
+ * was collected, so the two are resolved server-side in one query instead of
+ * making the browser ask again for every attachment.
+ */
+export type EvidenceAttachmentOut = {
+    evidence?: EvidenceOut | null;
+    link: EvidenceLinkOut;
+};
+
+/**
  * EvidenceClassification
  */
 export type EvidenceClassification = 'public' | 'internal' | 'confidential' | 'restricted';
@@ -1831,6 +1891,18 @@ export type EvidenceLinkOut = {
      */
     organization_id: string;
     /**
+     * Removal Reason
+     */
+    removal_reason?: string | null;
+    /**
+     * Removed At
+     */
+    removed_at?: string | null;
+    /**
+     * Removed By
+     */
+    removed_by?: string | null;
+    /**
      * Target Id
      */
     target_id: string;
@@ -1838,9 +1910,19 @@ export type EvidenceLinkOut = {
 };
 
 /**
+ * EvidenceLinkRemoveIn
+ */
+export type EvidenceLinkRemoveIn = {
+    /**
+     * Removal Reason
+     */
+    removal_reason?: string;
+};
+
+/**
  * EvidenceLinkTargetType
  */
-export type EvidenceLinkTargetType = 'requirement' | 'question' | 'finding' | 'action_item' | 'interview' | 'answer';
+export type EvidenceLinkTargetType = 'requirement' | 'question' | 'finding' | 'action_item' | 'interview' | 'answer' | 'action_check_in' | 'action_impediment' | 'measurement_record' | 'outcome_observation' | 'improvement_case';
 
 /**
  * EvidenceOut
@@ -1887,6 +1969,10 @@ export type EvidenceOut = {
      * Id
      */
     id: string;
+    /**
+     * Improvement Case Id
+     */
+    improvement_case_id?: string | null;
     /**
      * Legal Hold
      */
@@ -2919,7 +3005,12 @@ export type ImprovementCaseEvolutionOut = {
      * Closure Readiness
      */
     closure_readiness: 'insufficient_information' | 'ready_for_review';
+    /**
+     * Closure Readiness Reason
+     */
+    closure_readiness_reason?: string;
     latest_outcome_observation?: OutcomeObservationOut | null;
+    measurement_summary: MeasurementSummary;
     /**
      * Outcome Observations
      */
@@ -2989,6 +3080,359 @@ export type ImprovementCasePatch = {
      */
     status?: ('open' | 'analyzing' | 'acting' | 'reviewing' | 'closed') | null;
 };
+
+/**
+ * IndicatorCreate
+ */
+export type IndicatorCreate = {
+    /**
+     * Baseline At
+     */
+    baseline_at?: string | null;
+    /**
+     * Baseline Unavailable Reason
+     */
+    baseline_unavailable_reason?: string | null;
+    /**
+     * Baseline Value
+     */
+    baseline_value?: number | string | null;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Collection Method
+     */
+    collection_method?: string;
+    /**
+     * Currency Code
+     */
+    currency_code?: string | null;
+    /**
+     * Custom Unit Label
+     */
+    custom_unit_label?: string | null;
+    /**
+     * Data Source
+     */
+    data_source?: string;
+    /**
+     * Decimal Places
+     */
+    decimal_places?: number | null;
+    direction: IndicatorDirection;
+    /**
+     * Measurement Frequency Days
+     */
+    measurement_frequency_days?: number | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Question
+     */
+    question?: string;
+    /**
+     * Target Due At
+     */
+    target_due_at?: string | null;
+    /**
+     * Target Max
+     */
+    target_max?: number | string | null;
+    /**
+     * Target Min
+     */
+    target_min?: number | string | null;
+    /**
+     * Target Value
+     */
+    target_value?: number | string | null;
+    /**
+     * Unit
+     * Deprecated free-text unit; use unit_kind/custom_unit_label.
+     * @deprecated
+     */
+    unit?: string | null;
+    unit_kind?: IndicatorUnitKind | null;
+};
+
+/**
+ * IndicatorDirection
+ * What "better" means for this indicator.
+ *
+ * `within_range` wants the value inside the band; `maintain_range` wants it to
+ * stay where it already is and treats leaving the band as the failure. They
+ * evaluate identically but say different things to the reader, which is why
+ * both exist.
+ */
+export type IndicatorDirection = 'higher_is_better' | 'lower_is_better' | 'within_range' | 'maintain_range';
+
+/**
+ * IndicatorOut
+ * The baseline block is a read-only projection.
+ *
+ * The baseline itself lives in `measurement_records` as the indicator's first
+ * reading; it is echoed here so a form can show "started at X" without a
+ * second request. Writing to it is done by recording a baseline measurement,
+ * never by patching the definition.
+ */
+export type IndicatorOut = {
+    /**
+     * Baseline At
+     */
+    baseline_at?: string | null;
+    /**
+     * Baseline Measurement Id
+     */
+    baseline_measurement_id?: string | null;
+    baseline_status: BaselineStatus;
+    /**
+     * Baseline Unavailable Reason
+     */
+    baseline_unavailable_reason?: string | null;
+    /**
+     * Baseline Value
+     */
+    baseline_value?: string | null;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Collection Method
+     */
+    collection_method: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Currency Code
+     */
+    currency_code?: string | null;
+    /**
+     * Custom Unit Label
+     */
+    custom_unit_label?: string | null;
+    /**
+     * Data Source
+     */
+    data_source: string;
+    /**
+     * Decimal Places
+     */
+    decimal_places: number;
+    direction: IndicatorDirection;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Latest Measured At
+     */
+    latest_measured_at?: string | null;
+    /**
+     * Latest Value
+     */
+    latest_value?: string | null;
+    /**
+     * Lineage Id
+     */
+    lineage_id: string;
+    /**
+     * Measurement Count
+     */
+    measurement_count?: number;
+    /**
+     * Measurement Frequency Days
+     */
+    measurement_frequency_days?: number | null;
+    /**
+     * Measurement Plan Id
+     */
+    measurement_plan_id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Owner Display Name
+     */
+    owner_display_name?: string | null;
+    /**
+     * Owner Email
+     */
+    owner_email?: string | null;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Question
+     */
+    question: string;
+    /**
+     * Retired Reason
+     */
+    retired_reason?: string | null;
+    /**
+     * Revision Reason
+     */
+    revision_reason?: string | null;
+    status: IndicatorStatus;
+    /**
+     * Supersedes Indicator Id
+     */
+    supersedes_indicator_id?: string | null;
+    /**
+     * Target Due At
+     */
+    target_due_at?: string | null;
+    /**
+     * Target Max
+     */
+    target_max?: string | null;
+    /**
+     * Target Min
+     */
+    target_min?: string | null;
+    /**
+     * Target Value
+     */
+    target_value?: string | null;
+    unit_kind: IndicatorUnitKind;
+    /**
+     * Unit Label
+     */
+    unit_label: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    value_type?: IndicatorValueType;
+    /**
+     * Version
+     */
+    version: number;
+};
+
+/**
+ * IndicatorRetireIn
+ */
+export type IndicatorRetireIn = {
+    /**
+     * Retired Reason
+     */
+    retired_reason: string;
+};
+
+/**
+ * IndicatorReviseIn
+ * Revising an indicator that already has data creates a new version.
+ *
+ * Absent fields are left alone; fields explicitly set to `null` are cleared.
+ */
+export type IndicatorReviseIn = {
+    /**
+     * Baseline Unavailable Reason
+     */
+    baseline_unavailable_reason?: string | null;
+    /**
+     * Collection Method
+     */
+    collection_method?: string | null;
+    /**
+     * Currency Code
+     */
+    currency_code?: string | null;
+    /**
+     * Custom Unit Label
+     */
+    custom_unit_label?: string | null;
+    /**
+     * Data Source
+     */
+    data_source?: string | null;
+    /**
+     * Decimal Places
+     */
+    decimal_places?: number | null;
+    direction?: IndicatorDirection | null;
+    /**
+     * Measurement Frequency Days
+     */
+    measurement_frequency_days?: number | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Question
+     */
+    question?: string | null;
+    /**
+     * Revision Reason
+     */
+    revision_reason: string;
+    /**
+     * Target Due At
+     */
+    target_due_at?: string | null;
+    /**
+     * Target Max
+     */
+    target_max?: number | string | null;
+    /**
+     * Target Min
+     */
+    target_min?: number | string | null;
+    /**
+     * Target Value
+     */
+    target_value?: number | string | null;
+    /**
+     * Unit
+     * Deprecated free-text unit; use unit_kind/custom_unit_label.
+     * @deprecated
+     */
+    unit?: string | null;
+    unit_kind?: IndicatorUnitKind | null;
+};
+
+/**
+ * IndicatorStatus
+ */
+export type IndicatorStatus = 'active' | 'superseded' | 'retired';
+
+/**
+ * IndicatorUnitKind
+ */
+export type IndicatorUnitKind = 'percentage' | 'count' | 'currency' | 'ratio' | 'score' | 'duration_minutes' | 'duration_hours' | 'duration_days' | 'dimensionless' | 'custom';
+
+/**
+ * IndicatorValueType
+ * Only decimal for now: an indicator is audit evidence and must be exact.
+ */
+export type IndicatorValueType = 'decimal';
 
 /**
  * InsightExplanation
@@ -3428,6 +3872,399 @@ export type MaturityTransitionResult = {
 };
 
 /**
+ * MeasurementCorrectionIn
+ * A correction never rewrites a value — it records a superseding one.
+ */
+export type MeasurementCorrectionIn = {
+    /**
+     * Correction Reason
+     */
+    correction_reason: string;
+    /**
+     * Evidence Ids
+     */
+    evidence_ids?: Array<string>;
+    /**
+     * Idempotency Key
+     */
+    idempotency_key?: string | null;
+    /**
+     * Measured At
+     */
+    measured_at?: string | null;
+    /**
+     * Note
+     */
+    note?: string;
+    /**
+     * Value
+     */
+    value: number | string;
+};
+
+/**
+ * MeasurementKind
+ * A baseline is a measurement; it is just the first one.
+ */
+export type MeasurementKind = 'baseline' | 'observation';
+
+/**
+ * MeasurementPlanCloseIn
+ */
+export type MeasurementPlanCloseIn = {
+    /**
+     * Closure Reason
+     */
+    closure_reason: string;
+};
+
+/**
+ * MeasurementPlanCreate
+ */
+export type MeasurementPlanCreate = {
+    /**
+     * Action Plan Id
+     */
+    action_plan_id: string;
+    /**
+     * Next Review At
+     */
+    next_review_at?: string | null;
+    /**
+     * Objective
+     */
+    objective?: string;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Purpose
+     * Deprecated alias for `objective`.
+     * @deprecated
+     */
+    purpose?: string | null;
+    /**
+     * Review Cadence Days
+     */
+    review_cadence_days?: number | null;
+};
+
+/**
+ * MeasurementPlanOut
+ */
+export type MeasurementPlanOut = {
+    /**
+     * Action Plan Id
+     */
+    action_plan_id: string;
+    /**
+     * Activated At
+     */
+    activated_at?: string | null;
+    /**
+     * Activated By
+     */
+    activated_by?: string | null;
+    /**
+     * Active Indicator Count
+     */
+    active_indicator_count?: number;
+    /**
+     * Assessment Id
+     */
+    assessment_id?: string | null;
+    /**
+     * Closed At
+     */
+    closed_at?: string | null;
+    /**
+     * Closed By
+     */
+    closed_by?: string | null;
+    /**
+     * Closure Reason
+     */
+    closure_reason?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Improvement Case Id
+     */
+    improvement_case_id?: string | null;
+    /**
+     * Indicator Count
+     */
+    indicator_count?: number;
+    /**
+     * Next Review At
+     */
+    next_review_at?: string | null;
+    /**
+     * Objective
+     */
+    objective: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Owner Display Name
+     */
+    owner_display_name?: string | null;
+    /**
+     * Owner Email
+     */
+    owner_email?: string | null;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Review Cadence Days
+     */
+    review_cadence_days?: number | null;
+    status: MeasurementPlanStatus;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * MeasurementPlanStatus
+ */
+export type MeasurementPlanStatus = 'draft' | 'active' | 'closed';
+
+/**
+ * MeasurementPlanUpdate
+ * Only the fields actually present in the request are applied.
+ */
+export type MeasurementPlanUpdate = {
+    /**
+     * Next Review At
+     */
+    next_review_at?: string | null;
+    /**
+     * Objective
+     */
+    objective?: string | null;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Purpose
+     * Deprecated alias for `objective`.
+     * @deprecated
+     */
+    purpose?: string | null;
+    /**
+     * Review Cadence Days
+     */
+    review_cadence_days?: number | null;
+};
+
+/**
+ * MeasurementPosture
+ */
+export type MeasurementPosture = 'not_planned' | 'awaiting_baseline' | 'awaiting_measurement' | 'on_time' | 'overdue';
+
+/**
+ * MeasurementRecordCreate
+ */
+export type MeasurementRecordCreate = {
+    /**
+     * Collection Method
+     */
+    collection_method?: string;
+    /**
+     * Evidence Ids
+     * Already-authorized evidences to attach to this reading. A reading with no evidence is recorded, but it is not substantiated.
+     */
+    evidence_ids?: Array<string>;
+    /**
+     * Idempotency Key
+     */
+    idempotency_key?: string | null;
+    /**
+     * Indicator Definition Id
+     */
+    indicator_definition_id: string;
+    /**
+     * Measured At
+     */
+    measured_at: string;
+    measurement_kind?: MeasurementKind;
+    /**
+     * Note
+     */
+    note?: string;
+    /**
+     * Value
+     */
+    value: number | string;
+    /**
+     * Window End
+     */
+    window_end?: string | null;
+    /**
+     * Window Start
+     */
+    window_start?: string | null;
+};
+
+/**
+ * MeasurementRecordOut
+ */
+export type MeasurementRecordOut = {
+    /**
+     * Collection Method
+     */
+    collection_method: string;
+    /**
+     * Correction Reason
+     */
+    correction_reason?: string | null;
+    /**
+     * Evidence Link Count
+     */
+    evidence_link_count?: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Indicator Definition Id
+     */
+    indicator_definition_id: string;
+    /**
+     * Measured At
+     */
+    measured_at: string;
+    measurement_kind: MeasurementKind;
+    /**
+     * Measurement Plan Id
+     */
+    measurement_plan_id: string;
+    /**
+     * Note
+     */
+    note: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Recorded At
+     */
+    recorded_at: string;
+    /**
+     * Recorded By
+     */
+    recorded_by: string;
+    status: MeasurementRecordStatus;
+    substantiation?: SubstantiationLevel;
+    /**
+     * Superseded By Measurement Id
+     */
+    superseded_by_measurement_id?: string | null;
+    /**
+     * Supersedes Measurement Id
+     */
+    supersedes_measurement_id?: string | null;
+    /**
+     * Value
+     */
+    value: string;
+    /**
+     * Verified Evidence Count
+     */
+    verified_evidence_count?: number;
+    /**
+     * Window End
+     */
+    window_end?: string | null;
+    /**
+     * Window Start
+     */
+    window_start?: string | null;
+};
+
+/**
+ * MeasurementRecordStatus
+ * Derived, never stored: a reading is superseded once a correction exists.
+ */
+export type MeasurementRecordStatus = 'active' | 'superseded';
+
+/**
+ * MeasurementSummary
+ * What the numbers say across every measurement plan of this case.
+ */
+export type MeasurementSummary = {
+    /**
+     * Evaluations
+     */
+    evaluations?: Array<TargetEvaluationOut>;
+    /**
+     * Indicator Count
+     */
+    indicator_count?: number;
+    measurement_posture: MeasurementPosture;
+    /**
+     * Overdue Indicator Count
+     */
+    overdue_indicator_count?: number;
+    substantiation: SubstantiationLevel;
+    target_posture: TargetPosture;
+};
+
+/**
+ * MeasurementSummaryOut
+ */
+export type MeasurementSummaryOut = {
+    /**
+     * Action Plan Id
+     */
+    action_plan_id: string;
+    baseline_status?: BaselineStatus;
+    /**
+     * Evaluations
+     */
+    evaluations?: Array<TargetEvaluationOut>;
+    /**
+     * Headline
+     */
+    headline: string;
+    /**
+     * Indicator Count
+     */
+    indicator_count?: number;
+    measurement_posture: MeasurementPosture;
+    /**
+     * Overdue Indicator Count
+     */
+    overdue_indicator_count?: number;
+    plan?: MeasurementPlanOut | null;
+    substantiation: SubstantiationLevel;
+    target_posture: TargetPosture;
+    /**
+     * What To Do Next
+     */
+    what_to_do_next: string;
+};
+
+/**
  * MembershipOut
  */
 export type MembershipOut = {
@@ -3809,6 +4646,11 @@ export type OutcomeObservationCreate = {
      */
     measurement_basis: string;
     /**
+     * Measurement Record Ids
+     * Measurements that back this observation. They must belong to this improvement case through its action plans.
+     */
+    measurement_record_ids?: Array<string>;
+    /**
      * Observation Statement
      */
     observation_statement: string;
@@ -3846,6 +4688,10 @@ export type OutcomeObservationOut = {
      * Measurement Basis
      */
     measurement_basis: string;
+    /**
+     * Measurement Record Ids
+     */
+    measurement_record_ids?: Array<string>;
     /**
      * Observation Statement
      */
@@ -5244,6 +6090,125 @@ export type StartFieldOut = {
 };
 
 /**
+ * SubstantiationLevel
+ */
+export type SubstantiationLevel = 'none' | 'partial' | 'verified';
+
+/**
+ * TargetEvaluationOut
+ * What the numbers say about one indicator, in plain language.
+ */
+export type TargetEvaluationOut = {
+    /**
+     * Baseline At
+     */
+    baseline_at?: string | null;
+    baseline_status: BaselineStatus;
+    /**
+     * Baseline Value
+     */
+    baseline_value?: string | null;
+    /**
+     * Decimal Places
+     */
+    decimal_places: number;
+    direction: IndicatorDirection;
+    /**
+     * Evidence Link Count
+     */
+    evidence_link_count?: number;
+    /**
+     * Headline
+     */
+    headline: string;
+    /**
+     * Indicator Code
+     */
+    indicator_code: string;
+    /**
+     * Indicator Definition Id
+     */
+    indicator_definition_id: string;
+    /**
+     * Indicator Name
+     */
+    indicator_name: string;
+    /**
+     * Is Measurement Overdue
+     */
+    is_measurement_overdue?: boolean;
+    /**
+     * Latest Measured At
+     */
+    latest_measured_at?: string | null;
+    /**
+     * Latest Measurement Id
+     */
+    latest_measurement_id?: string | null;
+    /**
+     * Latest Value
+     */
+    latest_value?: string | null;
+    /**
+     * Measurement Count
+     */
+    measurement_count?: number;
+    /**
+     * Next Measurement Due At
+     */
+    next_measurement_due_at?: string | null;
+    /**
+     * Owner Display Name
+     */
+    owner_display_name?: string | null;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    state: TargetEvaluationState;
+    substantiation: SubstantiationLevel;
+    /**
+     * Target Due At
+     */
+    target_due_at?: string | null;
+    /**
+     * Target Max
+     */
+    target_max?: string | null;
+    /**
+     * Target Min
+     */
+    target_min?: string | null;
+    /**
+     * Target Value
+     */
+    target_value?: string | null;
+    unit_kind: IndicatorUnitKind;
+    /**
+     * Unit Label
+     */
+    unit_label: string;
+    /**
+     * Verified Evidence Count
+     */
+    verified_evidence_count?: number;
+    /**
+     * What To Do Next
+     */
+    what_to_do_next: string;
+};
+
+/**
+ * TargetEvaluationState
+ */
+export type TargetEvaluationState = 'not_planned' | 'awaiting_baseline' | 'awaiting_measurement' | 'on_track' | 'target_met' | 'target_not_met' | 'inconclusive';
+
+/**
+ * TargetPosture
+ */
+export type TargetPosture = 'unknown' | 'met' | 'not_met' | 'mixed';
+
+/**
  * TeamMemberIn
  */
 export type TeamMemberIn = {
@@ -6349,6 +7314,90 @@ export type CreateActionPlanResponses = {
 };
 
 export type CreateActionPlanResponse = CreateActionPlanResponses[keyof CreateActionPlanResponses];
+
+export type GetActionPlanMeasurementSummaryData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Action Plan Id
+         */
+        action_plan_id: string;
+    };
+    query?: never;
+    url: '/api/v1/action-plans/{action_plan_id}/measurement-summary';
+};
+
+export type GetActionPlanMeasurementSummaryErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetActionPlanMeasurementSummaryError = GetActionPlanMeasurementSummaryErrors[keyof GetActionPlanMeasurementSummaryErrors];
+
+export type GetActionPlanMeasurementSummaryResponses = {
+    /**
+     * Successful Response
+     */
+    200: MeasurementSummaryOut;
+};
+
+export type GetActionPlanMeasurementSummaryResponse = GetActionPlanMeasurementSummaryResponses[keyof GetActionPlanMeasurementSummaryResponses];
 
 export type GetActionPlanData = {
     body?: never;
@@ -12245,7 +13294,13 @@ export type ListEvidenceLinksData = {
          */
         evidence_id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Include Removed
+         * Include soft-removed links (history); operators only
+         */
+        include_removed?: boolean;
+    };
     url: '/api/v1/evidences/{evidence_id}/links';
 };
 
@@ -12389,7 +13444,10 @@ export type CreateEvidenceLinkResponses = {
 export type CreateEvidenceLinkResponse = CreateEvidenceLinkResponses[keyof CreateEvidenceLinkResponses];
 
 export type DeleteEvidenceLinkData = {
-    body?: never;
+    /**
+     * Payload
+     */
+    body?: EvidenceLinkRemoveIn | null;
     headers?: {
         /**
          * X-Organization-Id
@@ -16414,6 +17472,95 @@ export type DeleteActionDependencyResponses = {
 
 export type DeleteActionDependencyResponse = DeleteActionDependencyResponses[keyof DeleteActionDependencyResponses];
 
+export type AuthorizeActionItemEvidenceUploadData = {
+    body: ContextualAuthorizeUploadIn;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Action Item Id
+         */
+        action_item_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/actions/{action_item_id}/evidences/authorize';
+};
+
+export type AuthorizeActionItemEvidenceUploadErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type AuthorizeActionItemEvidenceUploadError = AuthorizeActionItemEvidenceUploadErrors[keyof AuthorizeActionItemEvidenceUploadErrors];
+
+export type AuthorizeActionItemEvidenceUploadResponses = {
+    /**
+     * Successful Response
+     */
+    201: AuthorizeUploadOut;
+};
+
+export type AuthorizeActionItemEvidenceUploadResponse = AuthorizeActionItemEvidenceUploadResponses[keyof AuthorizeActionItemEvidenceUploadResponses];
+
 export type ListActionImpedimentsData = {
     body?: never;
     headers?: {
@@ -17260,6 +18407,91 @@ export type ActivateAgileSprintResponses = {
 };
 
 export type ActivateAgileSprintResponse = ActivateAgileSprintResponses[keyof ActivateAgileSprintResponses];
+
+export type ListAgileSprintAgendaEventsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Sprint Id
+         */
+        sprint_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/sprints/{sprint_id}/agenda-events';
+};
+
+export type ListAgileSprintAgendaEventsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListAgileSprintAgendaEventsError = ListAgileSprintAgendaEventsErrors[keyof ListAgileSprintAgendaEventsErrors];
+
+export type ListAgileSprintAgendaEventsResponses = {
+    /**
+     * Response Listagilesprintagendaevents
+     * Successful Response
+     */
+    200: Array<AgendaEventOut>;
+};
+
+export type ListAgileSprintAgendaEventsResponse = ListAgileSprintAgendaEventsResponses[keyof ListAgileSprintAgendaEventsResponses];
 
 export type AllocateAgileSprintCardData = {
     body: SprintCardAllocateIn;
@@ -18455,6 +19687,97 @@ export type PatchAgileSquadMembershipResponses = {
 
 export type PatchAgileSquadMembershipResponse = PatchAgileSquadMembershipResponses[keyof PatchAgileSquadMembershipResponses];
 
+export type ListEvidenceLinksForTargetData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query: {
+        target_type: EvidenceLinkTargetType;
+        /**
+         * Target Id
+         */
+        target_id: string;
+        /**
+         * Include Removed
+         * Include soft-removed links (history); operators only
+         */
+        include_removed?: boolean;
+    };
+    url: '/api/v1/organizations/current/evidence-links';
+};
+
+export type ListEvidenceLinksForTargetErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListEvidenceLinksForTargetError = ListEvidenceLinksForTargetErrors[keyof ListEvidenceLinksForTargetErrors];
+
+export type ListEvidenceLinksForTargetResponses = {
+    /**
+     * Response Listevidencelinksfortarget
+     * Successful Response
+     */
+    200: Array<EvidenceAttachmentOut>;
+};
+
+export type ListEvidenceLinksForTargetResponse = ListEvidenceLinksForTargetResponses[keyof ListEvidenceLinksForTargetResponses];
+
 export type ListCurrentOrganizationImprovementCasesData = {
     body?: never;
     headers?: {
@@ -19227,6 +20550,95 @@ export type CreateActionFromImprovementCaseFindingResponses = {
 
 export type CreateActionFromImprovementCaseFindingResponse = CreateActionFromImprovementCaseFindingResponses[keyof CreateActionFromImprovementCaseFindingResponses];
 
+export type AuthorizeImprovementCaseEvidenceUploadData = {
+    body: ContextualAuthorizeUploadIn;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/evidences/authorize';
+};
+
+export type AuthorizeImprovementCaseEvidenceUploadErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type AuthorizeImprovementCaseEvidenceUploadError = AuthorizeImprovementCaseEvidenceUploadErrors[keyof AuthorizeImprovementCaseEvidenceUploadErrors];
+
+export type AuthorizeImprovementCaseEvidenceUploadResponses = {
+    /**
+     * Successful Response
+     */
+    201: AuthorizeUploadOut;
+};
+
+export type AuthorizeImprovementCaseEvidenceUploadResponse = AuthorizeImprovementCaseEvidenceUploadResponses[keyof AuthorizeImprovementCaseEvidenceUploadResponses];
+
 export type GetCurrentOrganizationImprovementCaseEvolutionData = {
     body?: never;
     headers?: {
@@ -19486,6 +20898,174 @@ export type CreateCurrentOrganizationImprovementCaseOutcomeObservationResponses 
 
 export type CreateCurrentOrganizationImprovementCaseOutcomeObservationResponse = CreateCurrentOrganizationImprovementCaseOutcomeObservationResponses[keyof CreateCurrentOrganizationImprovementCaseOutcomeObservationResponses];
 
+export type RetireIndicatorDefinitionData = {
+    body: IndicatorRetireIn;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Indicator Id
+         */
+        indicator_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/indicators/{indicator_id}/retire';
+};
+
+export type RetireIndicatorDefinitionErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type RetireIndicatorDefinitionError = RetireIndicatorDefinitionErrors[keyof RetireIndicatorDefinitionErrors];
+
+export type RetireIndicatorDefinitionResponses = {
+    /**
+     * Successful Response
+     */
+    200: IndicatorOut;
+};
+
+export type RetireIndicatorDefinitionResponse = RetireIndicatorDefinitionResponses[keyof RetireIndicatorDefinitionResponses];
+
+export type ReviseIndicatorDefinitionData = {
+    body: IndicatorReviseIn;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Indicator Id
+         */
+        indicator_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/indicators/{indicator_id}/revise';
+};
+
+export type ReviseIndicatorDefinitionErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ReviseIndicatorDefinitionError = ReviseIndicatorDefinitionErrors[keyof ReviseIndicatorDefinitionErrors];
+
+export type ReviseIndicatorDefinitionResponses = {
+    /**
+     * Successful Response
+     */
+    200: IndicatorOut;
+};
+
+export type ReviseIndicatorDefinitionResponse = ReviseIndicatorDefinitionResponses[keyof ReviseIndicatorDefinitionResponses];
+
 export type AnalyzeCurrentOrganizationIntelligenceData = {
     body?: never;
     headers?: {
@@ -19734,6 +21314,953 @@ export type GetCurrentOrganizationIntelligenceRunResponses = {
 };
 
 export type GetCurrentOrganizationIntelligenceRunResponse = GetCurrentOrganizationIntelligenceRunResponses[keyof GetCurrentOrganizationIntelligenceRunResponses];
+
+export type ListMeasurementPlansData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Action Plan Id
+         */
+        action_plan_id?: string | null;
+        /**
+         * Status
+         */
+        status?: string | null;
+    };
+    url: '/api/v1/organizations/current/measurement-plans';
+};
+
+export type ListMeasurementPlansErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListMeasurementPlansError = ListMeasurementPlansErrors[keyof ListMeasurementPlansErrors];
+
+export type ListMeasurementPlansResponses = {
+    /**
+     * Response Listmeasurementplans
+     * Successful Response
+     */
+    200: Array<MeasurementPlanOut>;
+};
+
+export type ListMeasurementPlansResponse = ListMeasurementPlansResponses[keyof ListMeasurementPlansResponses];
+
+export type CreateMeasurementPlanData = {
+    body: MeasurementPlanCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/organizations/current/measurement-plans';
+};
+
+export type CreateMeasurementPlanErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateMeasurementPlanError = CreateMeasurementPlanErrors[keyof CreateMeasurementPlanErrors];
+
+export type CreateMeasurementPlanResponses = {
+    /**
+     * Successful Response
+     */
+    201: MeasurementPlanOut;
+};
+
+export type CreateMeasurementPlanResponse = CreateMeasurementPlanResponses[keyof CreateMeasurementPlanResponses];
+
+export type GetMeasurementPlanData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Plan Id
+         */
+        plan_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/measurement-plans/{plan_id}';
+};
+
+export type GetMeasurementPlanErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetMeasurementPlanError = GetMeasurementPlanErrors[keyof GetMeasurementPlanErrors];
+
+export type GetMeasurementPlanResponses = {
+    /**
+     * Successful Response
+     */
+    200: MeasurementPlanOut;
+};
+
+export type GetMeasurementPlanResponse = GetMeasurementPlanResponses[keyof GetMeasurementPlanResponses];
+
+export type PatchMeasurementPlanData = {
+    body: MeasurementPlanUpdate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Plan Id
+         */
+        plan_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/measurement-plans/{plan_id}';
+};
+
+export type PatchMeasurementPlanErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type PatchMeasurementPlanError = PatchMeasurementPlanErrors[keyof PatchMeasurementPlanErrors];
+
+export type PatchMeasurementPlanResponses = {
+    /**
+     * Successful Response
+     */
+    200: MeasurementPlanOut;
+};
+
+export type PatchMeasurementPlanResponse = PatchMeasurementPlanResponses[keyof PatchMeasurementPlanResponses];
+
+export type ListIndicatorDefinitionsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Plan Id
+         */
+        plan_id: string;
+    };
+    query?: {
+        /**
+         * Include Superseded
+         * Include superseded/retired versions (history)
+         */
+        include_superseded?: boolean;
+    };
+    url: '/api/v1/organizations/current/measurement-plans/{plan_id}/indicators';
+};
+
+export type ListIndicatorDefinitionsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListIndicatorDefinitionsError = ListIndicatorDefinitionsErrors[keyof ListIndicatorDefinitionsErrors];
+
+export type ListIndicatorDefinitionsResponses = {
+    /**
+     * Response Listindicatordefinitions
+     * Successful Response
+     */
+    200: Array<IndicatorOut>;
+};
+
+export type ListIndicatorDefinitionsResponse = ListIndicatorDefinitionsResponses[keyof ListIndicatorDefinitionsResponses];
+
+export type CreateIndicatorDefinitionData = {
+    body: IndicatorCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Plan Id
+         */
+        plan_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/measurement-plans/{plan_id}/indicators';
+};
+
+export type CreateIndicatorDefinitionErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateIndicatorDefinitionError = CreateIndicatorDefinitionErrors[keyof CreateIndicatorDefinitionErrors];
+
+export type CreateIndicatorDefinitionResponses = {
+    /**
+     * Successful Response
+     */
+    201: IndicatorOut;
+};
+
+export type CreateIndicatorDefinitionResponse = CreateIndicatorDefinitionResponses[keyof CreateIndicatorDefinitionResponses];
+
+export type ListMeasurementRecordsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Plan Id
+         */
+        plan_id: string;
+    };
+    query?: {
+        /**
+         * Indicator Definition Id
+         */
+        indicator_definition_id?: string | null;
+        /**
+         * Include Superseded
+         * Include corrected (superseded) readings
+         */
+        include_superseded?: boolean;
+    };
+    url: '/api/v1/organizations/current/measurement-plans/{plan_id}/measurements';
+};
+
+export type ListMeasurementRecordsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListMeasurementRecordsError = ListMeasurementRecordsErrors[keyof ListMeasurementRecordsErrors];
+
+export type ListMeasurementRecordsResponses = {
+    /**
+     * Response Listmeasurementrecords
+     * Successful Response
+     */
+    200: Array<MeasurementRecordOut>;
+};
+
+export type ListMeasurementRecordsResponse = ListMeasurementRecordsResponses[keyof ListMeasurementRecordsResponses];
+
+export type CreateMeasurementRecordData = {
+    body: MeasurementRecordCreate;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Plan Id
+         */
+        plan_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/measurement-plans/{plan_id}/measurements';
+};
+
+export type CreateMeasurementRecordErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateMeasurementRecordError = CreateMeasurementRecordErrors[keyof CreateMeasurementRecordErrors];
+
+export type CreateMeasurementRecordResponses = {
+    /**
+     * Successful Response
+     */
+    201: MeasurementRecordOut;
+};
+
+export type CreateMeasurementRecordResponse = CreateMeasurementRecordResponses[keyof CreateMeasurementRecordResponses];
+
+export type ActivateMeasurementPlanData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Plan Id
+         */
+        plan_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/measurement-plans/{plan_id}/transitions/activate';
+};
+
+export type ActivateMeasurementPlanErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ActivateMeasurementPlanError = ActivateMeasurementPlanErrors[keyof ActivateMeasurementPlanErrors];
+
+export type ActivateMeasurementPlanResponses = {
+    /**
+     * Successful Response
+     */
+    200: MeasurementPlanOut;
+};
+
+export type ActivateMeasurementPlanResponse = ActivateMeasurementPlanResponses[keyof ActivateMeasurementPlanResponses];
+
+export type CloseMeasurementPlanData = {
+    body: MeasurementPlanCloseIn;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Plan Id
+         */
+        plan_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/measurement-plans/{plan_id}/transitions/close';
+};
+
+export type CloseMeasurementPlanErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CloseMeasurementPlanError = CloseMeasurementPlanErrors[keyof CloseMeasurementPlanErrors];
+
+export type CloseMeasurementPlanResponses = {
+    /**
+     * Successful Response
+     */
+    200: MeasurementPlanOut;
+};
+
+export type CloseMeasurementPlanResponse = CloseMeasurementPlanResponses[keyof CloseMeasurementPlanResponses];
+
+export type CorrectMeasurementRecordData = {
+    body: MeasurementCorrectionIn;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Record Id
+         */
+        record_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/measurements/{record_id}/correct';
+};
+
+export type CorrectMeasurementRecordErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CorrectMeasurementRecordError = CorrectMeasurementRecordErrors[keyof CorrectMeasurementRecordErrors];
+
+export type CorrectMeasurementRecordResponses = {
+    /**
+     * Successful Response
+     */
+    201: MeasurementRecordOut;
+};
+
+export type CorrectMeasurementRecordResponse = CorrectMeasurementRecordResponses[keyof CorrectMeasurementRecordResponses];
 
 export type ListCurrentOrganizationMembersData = {
     body?: never;

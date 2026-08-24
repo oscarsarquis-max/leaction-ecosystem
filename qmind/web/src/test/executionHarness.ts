@@ -20,6 +20,11 @@ export const ACTION_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 export const PLAN_ID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 export const SQUAD_ID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 export const SPRINT_ID = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+export const MEASUREMENT_PLAN_ID = "12121212-1212-4212-8212-121212121212";
+export const INDICATOR_ID = "13131313-1313-4313-8313-131313131313";
+export const MEASUREMENT_ID = "14141414-1414-4414-8414-141414141414";
+export const EVIDENCE_ID = "15151515-1515-4515-8515-151515151515";
+export const EVIDENCE_LINK_ID = "16161616-1616-4616-8616-161616161616";
 
 /** Canonical UUID shape — used by the "no operational id on screen" guards. */
 export const UUID_RE =
@@ -121,6 +126,11 @@ export function boardCard(overrides: Partial<BoardCard> = {}): BoardCard {
     finding_id: null,
     card_id: null,
     position: 0,
+    evidence_count_total: 0,
+    evidence_count_approved: 0,
+    indicator_count: 0,
+    measurement_posture: "not_planned",
+    target_posture: "unknown",
     ...overrides,
   };
 }
@@ -208,6 +218,202 @@ export function sprintMetricsPayload(
     cards_without_recent_check_in: 2,
     check_in_stale_window_hours: 72,
     review_outcome: "Meta parcialmente atingida",
+    ...overrides,
+  };
+}
+
+export function measurementPlanPayload(overrides: Record<string, unknown> = {}) {
+  const now = new Date().toISOString();
+  return {
+    id: MEASUREMENT_PLAN_ID,
+    organization_id: ORG_ID,
+    action_plan_id: PLAN_ID,
+    assessment_id: null,
+    improvement_case_id: null,
+    objective: "Provar que o retrabalho caiu",
+    owner_membership_id: OWNER_ID,
+    owner_display_name: "Ana Silva",
+    owner_email: "ana@example.com",
+    review_cadence_days: null,
+    next_review_at: null,
+    status: "active",
+    activated_by: OWNER_ID,
+    activated_at: now,
+    closed_by: null,
+    closed_at: null,
+    closure_reason: null,
+    created_by: OWNER_ID,
+    created_at: now,
+    updated_at: now,
+    indicator_count: 1,
+    active_indicator_count: 1,
+    ...overrides,
+  };
+}
+
+export function indicatorPayload(overrides: Record<string, unknown> = {}) {
+  const now = new Date().toISOString();
+  return {
+    id: INDICATOR_ID,
+    organization_id: ORG_ID,
+    measurement_plan_id: MEASUREMENT_PLAN_ID,
+    code: "RETRABALHO-LINHA-2",
+    name: "Retrabalho na linha 2",
+    question: "Quantas peças voltam por semana?",
+    owner_membership_id: OWNER_ID,
+    owner_display_name: "Ana Silva",
+    owner_email: "ana@example.com",
+    value_type: "decimal",
+    unit_kind: "custom",
+    custom_unit_label: "peças/semana",
+    currency_code: null,
+    decimal_places: 2,
+    unit_label: "peças/semana",
+    direction: "lower_is_better",
+    baseline_status: "recorded",
+    baseline_value: "18.50",
+    baseline_at: now,
+    baseline_measurement_id: MEASUREMENT_ID,
+    baseline_unavailable_reason: null,
+    target_value: "9.25",
+    target_min: null,
+    target_max: null,
+    target_due_at: null,
+    measurement_frequency_days: 7,
+    data_source: "",
+    collection_method: "",
+    status: "active",
+    version: 1,
+    lineage_id: INDICATOR_ID,
+    supersedes_indicator_id: null,
+    revision_reason: null,
+    retired_reason: null,
+    created_by: OWNER_ID,
+    created_at: now,
+    updated_at: now,
+    measurement_count: 1,
+    latest_value: "9.10",
+    latest_measured_at: now,
+    ...overrides,
+  };
+}
+
+export function measurementRecordPayload(overrides: Record<string, unknown> = {}) {
+  const now = new Date().toISOString();
+  return {
+    id: MEASUREMENT_ID,
+    organization_id: ORG_ID,
+    measurement_plan_id: MEASUREMENT_PLAN_ID,
+    indicator_definition_id: INDICATOR_ID,
+    measurement_kind: "observation",
+    value: "9.10",
+    measured_at: now,
+    window_start: null,
+    window_end: null,
+    note: "Contagem semanal",
+    collection_method: "",
+    status: "active",
+    supersedes_measurement_id: null,
+    superseded_by_measurement_id: null,
+    correction_reason: null,
+    evidence_link_count: 0,
+    verified_evidence_count: 0,
+    substantiation: "none",
+    recorded_by: OWNER_ID,
+    recorded_at: now,
+    ...overrides,
+  };
+}
+
+export function targetEvaluationPayload(overrides: Record<string, unknown> = {}) {
+  return {
+    indicator_definition_id: INDICATOR_ID,
+    indicator_code: "RETRABALHO-LINHA-2",
+    indicator_name: "Retrabalho na linha 2",
+    unit_kind: "custom",
+    unit_label: "peças/semana",
+    decimal_places: 2,
+    direction: "lower_is_better",
+    state: "target_met",
+    baseline_status: "recorded",
+    substantiation: "verified",
+    baseline_value: "18.50",
+    baseline_at: new Date().toISOString(),
+    target_value: "9.25",
+    target_min: null,
+    target_max: null,
+    target_due_at: null,
+    latest_value: "9.10",
+    latest_measured_at: new Date().toISOString(),
+    latest_measurement_id: MEASUREMENT_ID,
+    measurement_count: 1,
+    evidence_link_count: 1,
+    verified_evidence_count: 1,
+    next_measurement_due_at: null,
+    is_measurement_overdue: false,
+    owner_membership_id: OWNER_ID,
+    owner_display_name: "Ana Silva",
+    headline: "Retrabalho na linha 2: meta atingida (9.10 peças/semana).",
+    what_to_do_next:
+      "Leve este resultado para a decisão de eficácia — a meta atingida é uma evidência, não a conclusão.",
+    ...overrides,
+  };
+}
+
+export function measurementSummaryPayload(overrides: Record<string, unknown> = {}) {
+  return {
+    action_plan_id: PLAN_ID,
+    plan: measurementPlanPayload(),
+    measurement_posture: "on_time",
+    target_posture: "met",
+    substantiation: "verified",
+    baseline_status: "recorded",
+    indicator_count: 1,
+    overdue_indicator_count: 0,
+    evaluations: [targetEvaluationPayload()],
+    headline: "A ação tem medição que sustenta o resultado.",
+    what_to_do_next: "Leve o resultado para a decisão de eficácia.",
+    ...overrides,
+  };
+}
+
+export function evidenceLinkPayload(overrides: Record<string, unknown> = {}) {
+  return {
+    id: EVIDENCE_LINK_ID,
+    organization_id: ORG_ID,
+    evidence_id: EVIDENCE_ID,
+    target_type: "action_item",
+    target_id: ACTION_ID,
+    created_at: new Date().toISOString(),
+    removed_at: null,
+    removed_by: null,
+    removal_reason: null,
+    ...overrides,
+  };
+}
+
+export function evidencePayload(overrides: Record<string, unknown> = {}) {
+  const now = new Date().toISOString();
+  return {
+    id: EVIDENCE_ID,
+    organization_id: ORG_ID,
+    assessment_id: null,
+    improvement_case_id: null,
+    status: "approved",
+    classification: "confidential",
+    content_type: "application/pdf",
+    byte_size: 20480,
+    content_hash: null,
+    storage_key: "org/aaaa/evidence/secret-object-key.pdf",
+    version_no: 1,
+    legal_hold: false,
+    upload_expires_at: null,
+    collected_phase: null,
+    collected_at: null,
+    collected_by: null,
+    collection_origin: null,
+    created_at: now,
+    updated_at: now,
     ...overrides,
   };
 }

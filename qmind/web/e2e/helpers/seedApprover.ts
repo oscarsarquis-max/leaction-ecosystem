@@ -20,9 +20,11 @@ export function seedSecondApprover(orgId: string): {
     FROM u
     RETURNING id;
   `;
+  // The gate runs against whichever database the API is pointed at.
+  const database = process.env.QMIND_E2E_DB || "qmind";
   const out = execFileSync(
     "docker",
-    ["exec", "-i", "leaction_db", "psql", "-U", "admin", "-d", "qmind", "-t", "-A", "-c", sql],
+    ["exec", "-i", "leaction_db", "psql", "-U", "admin", "-d", database, "-t", "-A", "-c", sql],
     { encoding: "utf8" },
   );
   const membershipId = out

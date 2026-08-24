@@ -20,11 +20,14 @@ from app.modules.improvement_cases.evolution_schemas import (
     AnalysisSummary,
     ClosureReadiness,
     ImprovementCaseEvolutionOut,
+    MeasurementSummary,
     OutcomeObservationCreate,
     OutcomeObservationOut,
 )
 from app.modules.improvement_cases.problem_schemas import ImprovementCaseAnalysisRunOut
+from app.modules.measurements import service as measurements_service
 from app.modules.orgs.service import require_role
+from app.schemas.enums import MeasurementPosture
 
 _READ_ROLES = (
     "org_admin",
@@ -53,7 +56,7 @@ _COMPLETED_STATUSES = frozenset(
 )
 
 
-def _obs_out(row) -> OutcomeObservationOut:
+def _obs_out(row, measurement_ids: list[UUID] | None = None) -> OutcomeObservationOut:
     return OutcomeObservationOut(
         id=row.id,
         organization_id=row.organization_id,
@@ -64,7 +67,30 @@ def _obs_out(row) -> OutcomeObservationOut:
         observed_at=row.observed_at,
         created_by=row.created_by,
         created_at=row.created_at,
+        measurement_record_ids=measurement_ids or [],
     )
+
+
+def _measurement_ids_by_observation(
+    conn, org_id: UUID, observation_ids: list[UUID]
+) -> dict[UUID, list[UUID]]:
+    if not observation_ids:
+        return {}
+    rows = conn.execute(
+        text(
+            """
+            SELECT outcome_observation_id, measurement_record_id
+            FROM outcome_observation_measurements
+            WHERE organization_id = :org AND outcome_observation_id = ANY(:ids)
+            ORDER BY created_at
+            """
+        ),
+        {"org": org_id, "ids": observation_ids},
+    ).all()
+    out: dict[UUID, list[UUID]] = {}
+    for r in rows:
+        out.setdefault(r.outcome_observation_id, []).append(r.measurement_record_id)
+    return out
 
 
 def create_outcome_observation(
@@ -74,7 +100,20 @@ def create_outcome_observation(
 ) -> OutcomeObservationOut:
     require_role(ctx, *_WRITE_ROLES)
     cases_service.get_case(ctx, case_id)
+    requested = list(dict.fromkeys(payload.measurement_record_ids))
     with tenant_connection(ctx.organization_id) as conn:
+        if requested:
+            valid = measurements_service.measurement_ids_for_case(
+                conn, ctx.organization_id, case_id, requested
+            )
+            unknown = [m for m in requested if m not in valid]
+            if unknown:
+                raise AppError(
+                    "measurement_case_mismatch",
+                    "Estas medições não pertencem a este caso de melhoria: "
+                    + ", ".join(str(m) for m in unknown),
+                    status_code=422,
+                )
         row = conn.execute(
             text(
                 f"""
@@ -97,8 +136,26 @@ def create_outcome_observation(
                 "author": ctx.principal.user_id,
             },
         ).one()
+        for measurement_id in requested:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO outcome_observation_measurements (
+                      organization_id, outcome_observation_id,
+                      measurement_record_id, created_by
+                    ) VALUES (:org, :oid, :mid, :uid)
+                    ON CONFLICT DO NOTHING
+                    """
+                ),
+                {
+                    "org": ctx.organization_id,
+                    "oid": row.id,
+                    "mid": measurement_id,
+                    "uid": ctx.principal.user_id,
+                },
+            )
         conn.commit()
-    return _obs_out(row)
+    return _obs_out(row, requested)
 
 
 def list_outcome_observations(
@@ -122,7 +179,10 @@ def list_outcome_observations(
             ),
             {"case_id": case_id, "org": ctx.organization_id, "lim": limit},
         ).all()
-    return [_obs_out(r) for r in rows]
+        by_obs = _measurement_ids_by_observation(
+            conn, ctx.organization_id, [r.id for r in rows]
+        )
+    return [_obs_out(r, by_obs.get(r.id, [])) for r in rows]
 
 
 def _missing_from_analysis(analysis: dict) -> set[str]:
@@ -191,25 +251,89 @@ def _action_summary(ctx: OrgContext, case_id: UUID) -> ActionSummary:
     )
 
 
+# A planned-but-unproven measurement is missing information. `not_planned` is
+# deliberately absent: a case that never planned measurement is judged by the
+# other gates, exactly as it was before measurement existed.
+_BLOCKING_POSTURES = frozenset(
+    {
+        MeasurementPosture.awaiting_baseline.value,
+        MeasurementPosture.awaiting_measurement.value,
+        MeasurementPosture.overdue.value,
+    }
+)
+
+_POSTURE_REASON = {
+    MeasurementPosture.awaiting_baseline.value: (
+        "Falta a linha de base de um indicador planejado."
+    ),
+    MeasurementPosture.awaiting_measurement.value: (
+        "Um indicador planejado ainda não foi medido depois da ação."
+    ),
+    MeasurementPosture.overdue.value: (
+        "Há medição atrasada em um indicador planejado."
+    ),
+}
+
+
 def _closure_readiness(
     *,
     latest_run: ImprovementCaseAnalysisRunOut | None,
     action_summary: ActionSummary,
     latest_obs: OutcomeObservationOut | None,
-) -> ClosureReadiness:
+    measurement_posture: str,
+) -> tuple[ClosureReadiness, str]:
+    """Readiness to *review* closure — never a verdict on efficacy.
+
+    A met target does not close a case on its own, and a missed target does not
+    fail it: both are inputs a human weighs. What blocks review is missing
+    information, including a measurement that was promised and never taken.
+    """
     if latest_run is None:
-        return "insufficient_information"
+        return "insufficient_information", "Ainda não há análise para este caso."
     if latest_run.is_stale:
-        return "insufficient_information"
+        return (
+            "insufficient_information",
+            "O contexto mudou desde a última análise — rode a análise novamente.",
+        )
     if action_summary.total < 1:
-        return "insufficient_information"
+        return "insufficient_information", "Nenhuma ação foi criada a partir da análise."
     if any(i.status not in _COMPLETED_STATUSES for i in action_summary.items):
-        return "insufficient_information"
+        return "insufficient_information", "Há ações que ainda não foram concluídas."
     if latest_obs is None:
-        return "insufficient_information"
+        return (
+            "insufficient_information",
+            "Ninguém registrou ainda o que aconteceu com o problema.",
+        )
     if latest_obs.result_direction == "not_yet_measured":
-        return "insufficient_information"
-    return "ready_for_review"
+        return (
+            "insufficient_information",
+            "A última observação diz que o resultado ainda não foi medido.",
+        )
+    if measurement_posture in _BLOCKING_POSTURES:
+        return "insufficient_information", _POSTURE_REASON[measurement_posture]
+    return (
+        "ready_for_review",
+        "Ações concluídas e resultado observado: leve o caso para revisão de encerramento.",
+    )
+
+
+def _measurement_summary(ctx: OrgContext, case_id: UUID) -> MeasurementSummary:
+    with tenant_connection(ctx.organization_id) as conn:
+        posture, targets, substantiation, evaluations = (
+            measurements_service.summarize_case_measurements(
+                conn, ctx.organization_id, case_id
+            )
+        )
+    return MeasurementSummary(
+        measurement_posture=posture,
+        target_posture=targets,
+        substantiation=substantiation,
+        indicator_count=len(evaluations),
+        overdue_indicator_count=sum(
+            1 for e in evaluations if e.is_measurement_overdue
+        ),
+        evaluations=evaluations,
+    )
 
 
 def get_evolution(ctx: OrgContext, case_id: UUID) -> ImprovementCaseEvolutionOut:
@@ -224,10 +348,12 @@ def get_evolution(ctx: OrgContext, case_id: UUID) -> ImprovementCaseEvolutionOut
     action_summary = _action_summary(ctx, case_id)
     observations = list_outcome_observations(ctx, case_id, limit=50)
     latest_obs = observations[0] if observations else None
-    readiness = _closure_readiness(
+    measurement_summary = _measurement_summary(ctx, case_id)
+    readiness, reason = _closure_readiness(
         latest_run=latest,
         action_summary=action_summary,
         latest_obs=latest_obs,
+        measurement_posture=measurement_summary.measurement_posture,
     )
     return ImprovementCaseEvolutionOut(
         case=case,
@@ -238,7 +364,9 @@ def get_evolution(ctx: OrgContext, case_id: UUID) -> ImprovementCaseEvolutionOut
             comparison=comparison,
         ),
         action_summary=action_summary,
+        measurement_summary=measurement_summary,
         latest_outcome_observation=latest_obs,
         outcome_observations=observations,
         closure_readiness=readiness,
+        closure_readiness_reason=reason,
     )

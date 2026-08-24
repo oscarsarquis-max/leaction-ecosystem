@@ -18,6 +18,7 @@ from app.config import Settings
 from app.main import app
 from app.modules.reports import service as report_service
 from app.storage.memory import InMemoryObjectStorage
+from tests.alembic_support import alembic_head
 from tests.conftest import ADMIN_URL, APP_URL
 from tests.test_assessment_ops import _second_membership
 from tests.test_assessments import _bootstrap_org, _catalog_ids, _dev_headers
@@ -697,9 +698,15 @@ def test_mvp_prod_config_forbids_dev_auth_and_simulated_security():
         )
 
 
-def test_mvp_alembic_head_is_0006():
+def test_database_is_migrated_to_the_current_head():
+    """The database under test must be at whatever head the scripts declare.
+
+    Pinning a literal revision here only meant the assertion had to be edited on
+    every migration; what actually matters is that nobody is running the suite
+    against a half-migrated database.
+    """
     eng = create_engine(ADMIN_URL)
     with eng.connect() as conn:
         ver = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
     eng.dispose()
-    assert ver == "20260804_0006"
+    assert ver == alembic_head()

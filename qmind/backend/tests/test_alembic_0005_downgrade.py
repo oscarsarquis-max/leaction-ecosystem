@@ -2,60 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from tests.alembic_support import has_index, roundtrip
 
-from alembic import command
-from alembic.config import Config
-from sqlalchemy import create_engine, text
-
-from tests.conftest import ADMIN_URL
-
-BACKEND = Path(__file__).resolve().parents[1]
+INDEX = "uq_reports_one_published_per_assessment"
 
 
-def _cfg() -> Config:
-    cfg = Config(str(BACKEND / "alembic.ini"))
-    cfg.set_main_option("script_location", str(BACKEND / "alembic"))
-    cfg.set_main_option("sqlalchemy.url", ADMIN_URL)
-    return cfg
+def _at_head(conn):
+    assert has_index(conn, INDEX)
+
+
+def _at_down(conn):
+    assert not has_index(conn, INDEX)
 
 
 def test_0005_roundtrip():
-    eng = create_engine(ADMIN_URL)
-    cfg = _cfg()
-    command.upgrade(cfg, "head")
-    with eng.connect() as conn:
-        assert conn.execute(
-            text(
-                """
-                SELECT 1 FROM pg_indexes
-                WHERE indexname = 'uq_reports_one_published_per_assessment'
-                """
-            )
-        ).first()
-
-    command.downgrade(cfg, "20260803_0004")
-    with eng.connect() as conn:
-        assert (
-            conn.execute(
-                text(
-                    """
-                    SELECT 1 FROM pg_indexes
-                    WHERE indexname = 'uq_reports_one_published_per_assessment'
-                    """
-                )
-            ).first()
-            is None
-        )
-
-    command.upgrade(cfg, "head")
-    with eng.connect() as conn:
-        assert conn.execute(
-            text(
-                """
-                SELECT 1 FROM pg_indexes
-                WHERE indexname = 'uq_reports_one_published_per_assessment'
-                """
-            )
-        ).first()
-    eng.dispose()
+    roundtrip("20260803_0004", at_head=_at_head, at_down=_at_down)

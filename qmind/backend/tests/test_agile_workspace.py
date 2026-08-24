@@ -1602,3 +1602,87 @@ def test_e2e_oi_finding_to_efficacy_via_board(client: TestClient):
     ).json()
     assert [d["status"] for d in history] == ["removed"]
     assert client.get(f"/api/v1/action-items/{iid}", headers=h).json()["status"] == "done"
+
+
+# --- sprint agenda events (ISOI-008: one call instead of a day fan-out) ---
+
+
+def test_sprint_agenda_events_empty_sprint(client: TestClient):
+    h, _org, _sid, spid, _iid, _owner = _agile_base(client)
+    r = client.get(f"{AGILE}/sprints/{spid}/agenda-events", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json() == []
+
+
+def test_sprint_agenda_events_are_chronological_and_sprint_scoped(client: TestClient):
+    h, _org, sid, spid, _iid, _owner = _agile_base(client)
+    other_sprint = _new_sprint(client, h, sid, "Sprint vizinha")
+
+    later = _ceremony_event(client, h, sprint_id=spid, event_type="retrospective")
+    assert later.status_code == 201, later.text
+    earlier_start = datetime.now(timezone.utc) - timedelta(days=1)
+    earlier = client.post(
+        "/api/v1/agenda/events",
+        json={
+            "title": "Planejamento da sprint",
+            "event_type": "sprint_planning",
+            "starts_at": earlier_start.isoformat(),
+            "ends_at": (earlier_start + timedelta(hours=1)).isoformat(),
+            "sprint_id": spid,
+        },
+        headers=h,
+    )
+    assert earlier.status_code == 201, earlier.text
+    # An event in a different sprint must never leak into this list.
+    neighbour = _ceremony_event(client, h, sprint_id=other_sprint)
+    assert neighbour.status_code == 201, neighbour.text
+    # ...nor must an event with no sprint at all.
+    loose = client.post(
+        "/api/v1/agenda/events",
+        json={
+            "title": "Reunião solta",
+            "event_type": "meeting",
+            "starts_at": datetime.now(timezone.utc).isoformat(),
+        },
+        headers=h,
+    )
+    assert loose.status_code == 201, loose.text
+
+    listed = client.get(f"{AGILE}/sprints/{spid}/agenda-events", headers=h)
+    assert listed.status_code == 200, listed.text
+    rows = listed.json()
+    assert [e["id"] for e in rows] == [earlier.json()["id"], later.json()["id"]]
+    assert {e["sprint_id"] for e in rows} == {spid}
+    assert rows[0]["title"] == "Planejamento da sprint"
+
+
+def test_sprint_agenda_events_ignore_the_readers_day(client: TestClient):
+    """The filter is the sprint, not a calendar day, so a far-future ceremony
+    still shows up without asking for its date."""
+    h, _org, _sid, spid, _iid, _owner = _agile_base(client)
+    far = datetime.now(timezone.utc) + timedelta(days=200)
+    created = client.post(
+        "/api/v1/agenda/events",
+        json={
+            "title": "Revisão distante",
+            "event_type": "sprint_review",
+            "starts_at": far.isoformat(),
+            "ends_at": (far + timedelta(hours=1)).isoformat(),
+            "sprint_id": spid,
+            "timezone": "Pacific/Kiritimati",
+        },
+        headers=h,
+    )
+    assert created.status_code == 201, created.text
+    rows = client.get(f"{AGILE}/sprints/{spid}/agenda-events", headers=h).json()
+    assert [e["id"] for e in rows] == [created.json()["id"]]
+
+
+def test_sprint_agenda_events_cross_org_is_not_found(client: TestClient):
+    h, _org, _sid, spid, _iid, _owner = _agile_base(client)
+    assert _ceremony_event(client, h, sprint_id=spid).status_code == 201
+    other = _second_org(client)
+    denied = client.get(f"{AGILE}/sprints/{spid}/agenda-events", headers=other)
+    assert denied.status_code == 404
+    unknown = client.get(f"{AGILE}/sprints/{uuid.uuid4()}/agenda-events", headers=h)
+    assert unknown.status_code == 404

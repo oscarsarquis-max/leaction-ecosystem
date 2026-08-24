@@ -38,6 +38,7 @@ Workspace documental do QMind, plataforma inteligente de apoio à consultoria, a
 - **ISO Intelligence V1 — Improvement Case Evolution:** [`04_Docs/026_ISO_Intelligence_V1_Improvement_Case_Evolution.md`](04_Docs/026_ISO_Intelligence_V1_Improvement_Case_Evolution.md) — ISOI-005 (OutcomeObservation + evolução).
 - **ISO Intelligence V1 — Improvement Case Loop Baseline:** [`04_Docs/027_ISO_Intelligence_V1_Improvement_Case_Loop_Baseline.md`](04_Docs/027_ISO_Intelligence_V1_Improvement_Case_Loop_Baseline.md) — ISOI-006 (fechamento da baseline; pins Core `f189a11` / OI `2d78eff`).
 - **ISO Intelligence V1 — Action Execution Workspace Ágil:** [`04_Docs/028_ISO_Intelligence_V1_Action_Execution_Workspace.md`](04_Docs/028_ISO_Intelligence_V1_Action_Execution_Workspace.md) — ISOI-007 (**Core-only**; prepara Execution Intelligence futura; OI sem mudança funcional).
+- **ISO Intelligence V1 — Evidência e Medição do Resultado:** [`04_Docs/029_ISO_Intelligence_V1_Evidence_Measurement.md`](04_Docs/029_ISO_Intelligence_V1_Evidence_Measurement.md) — ISOI-008 (**Core-only**, **em revisão**: revisão 001 aplicada; evidência contextual + plano de medição; linha de base é medição; meta atingida ≠ eficácia confirmada; OI sem mudança funcional).
 - Domínio documental **Aceito** e congelado: **`domain-docs-v0`** — `04_Docs/006_Domain_Acceptance_Checklist.md`.
 - Emenda implementação: `04_Docs/007_Domain_Docs_Amendment_001.md` (Alembic, porta 5433).
 - **DDL v0 + Alembic:** `03_Database/003_DDL_v0.md` → `qmind/backend/` (database `qmind` no cluster `leaction_db`).
