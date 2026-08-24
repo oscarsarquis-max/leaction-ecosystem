@@ -57,6 +57,21 @@ export function canReadAssessments(roles: readonly string[] | undefined): boolea
   return (roles ?? []).some((r) => READ_ROLES.has(r));
 }
 
+/** Agile execution workspace — mirrors backend _MUTATE (excludes reader). */
+const AGILE_MUTATE_ROLES = new Set([
+  "org_admin",
+  "quality_manager",
+  "process_owner",
+  "action_owner",
+  "consultant_auditor",
+]);
+
+export function canMutateAgileExecution(
+  roles: readonly string[] | undefined,
+): boolean {
+  return (roles ?? []).some((r) => AGILE_MUTATE_ROLES.has(r));
+}
+
 /** Draft-only mutations (scope/team/plan) require mutate role + draft status. */
 export function canEditAssessmentSetup(
   roles: readonly string[] | undefined,

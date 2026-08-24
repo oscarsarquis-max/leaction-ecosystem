@@ -326,7 +326,7 @@ export type AgendaEventCreate = {
     /**
      * Event Type
      */
-    event_type: 'interview' | 'meeting' | 'visit' | 'reminder' | 'milestone' | 'deadline' | 'other';
+    event_type: 'interview' | 'meeting' | 'visit' | 'reminder' | 'milestone' | 'deadline' | 'other' | 'sprint_planning' | 'daily_check_in' | 'sprint_review' | 'retrospective';
     /**
      * Guidance
      */
@@ -351,6 +351,10 @@ export type AgendaEventCreate = {
      * Related Action
      */
     related_action?: string;
+    /**
+     * Sprint Id
+     */
+    sprint_id?: string | null;
     /**
      * Starts At
      */
@@ -392,7 +396,7 @@ export type AgendaEventOut = {
     /**
      * Event Type
      */
-    event_type: 'interview' | 'meeting' | 'visit' | 'reminder' | 'milestone' | 'deadline' | 'other';
+    event_type: 'interview' | 'meeting' | 'visit' | 'reminder' | 'milestone' | 'deadline' | 'other' | 'sprint_planning' | 'daily_check_in' | 'sprint_review' | 'retrospective';
     /**
      * Guidance
      */
@@ -458,6 +462,10 @@ export type AgendaEventOut = {
      */
     source_kind?: string | null;
     /**
+     * Sprint Id
+     */
+    sprint_id?: string | null;
+    /**
      * Starts At
      */
     starts_at: string;
@@ -502,7 +510,7 @@ export type AgendaEventUpdate = {
     /**
      * Event Type
      */
-    event_type?: ('interview' | 'meeting' | 'visit' | 'reminder' | 'milestone' | 'deadline' | 'other') | null;
+    event_type?: ('interview' | 'meeting' | 'visit' | 'reminder' | 'milestone' | 'deadline' | 'other' | 'sprint_planning' | 'daily_check_in' | 'sprint_review' | 'retrospective') | null;
     /**
      * Guidance
      */
@@ -527,6 +535,10 @@ export type AgendaEventUpdate = {
      * Related Action
      */
     related_action?: string | null;
+    /**
+     * Sprint Id
+     */
+    sprint_id?: string | null;
     /**
      * Starts At
      */
@@ -1145,6 +1157,391 @@ export type AuthorizeUploadOut = {
 };
 
 /**
+ * BoardCardOut
+ */
+export type BoardCardOut = {
+    /**
+     * Action Item Id
+     */
+    action_item_id: string;
+    action_kind: ActionKind;
+    /**
+     * Action Plan Id
+     */
+    action_plan_id: string;
+    /**
+     * Assessment Id
+     */
+    assessment_id?: string | null;
+    /**
+     * Blocking Dependency Count
+     */
+    blocking_dependency_count?: number;
+    /**
+     * Card Id
+     */
+    card_id?: string | null;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Due At
+     */
+    due_at: string;
+    /**
+     * Estimate Points
+     */
+    estimate_points?: number | null;
+    /**
+     * Finding Id
+     */
+    finding_id?: string | null;
+    /**
+     * Has Blocking Dependency
+     */
+    has_blocking_dependency?: boolean;
+    /**
+     * Has Open Impediment
+     */
+    has_open_impediment?: boolean;
+    /**
+     * Improvement Case Id
+     */
+    improvement_case_id?: string | null;
+    /**
+     * Is Overdue
+     */
+    is_overdue: boolean;
+    /**
+     * Latest Check In At
+     */
+    latest_check_in_at?: string | null;
+    /**
+     * Latest Check In Health
+     */
+    latest_check_in_health?: ('on_track' | 'attention' | 'blocked') | null;
+    /**
+     * Open Impediment Count
+     */
+    open_impediment_count?: number;
+    /**
+     * Owner Display Name
+     */
+    owner_display_name: string;
+    /**
+     * Owner Email
+     */
+    owner_email: string;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id: string;
+    /**
+     * Position
+     */
+    position?: number | null;
+    /**
+     * Priority
+     */
+    priority?: ('critical' | 'high' | 'medium' | 'low') | null;
+    /**
+     * Source Analysis Is Stale
+     */
+    source_analysis_is_stale?: boolean | null;
+    /**
+     * Source Analysis Run Id
+     */
+    source_analysis_run_id?: string | null;
+    /**
+     * Source Finding Code
+     */
+    source_finding_code?: string | null;
+    /**
+     * Sprint Id
+     */
+    sprint_id?: string | null;
+    /**
+     * Sprint Name
+     */
+    sprint_name?: string | null;
+    /**
+     * Squad Id
+     */
+    squad_id?: string | null;
+    /**
+     * Squad Name
+     */
+    squad_name?: string | null;
+    status: ActionItemStatus;
+};
+
+/**
+ * BoardColumnOut
+ */
+export type BoardColumnOut = {
+    /**
+     * Cards
+     */
+    cards?: Array<BoardCardOut>;
+    /**
+     * Key
+     */
+    key: 'backlog' | 'selected' | 'in_progress' | 'implemented' | 'validated' | 'ineffective' | 'done';
+    /**
+     * Label
+     */
+    label: string;
+};
+
+/**
+ * BoardMoveIn
+ */
+export type BoardMoveIn = {
+    /**
+     * Action Item Id
+     */
+    action_item_id: string;
+    /**
+     * Efficacy Fail Reason
+     */
+    efficacy_fail_reason?: string | null;
+    /**
+     * Impediment Override Justification
+     */
+    impediment_override_justification?: string | null;
+    /**
+     * Reject Reason
+     */
+    reject_reason?: string | null;
+    /**
+     * Sprint Id
+     * Required when moving to/from selected column
+     */
+    sprint_id?: string | null;
+    /**
+     * Target Column
+     */
+    target_column: 'backlog' | 'selected' | 'in_progress' | 'implemented' | 'validated' | 'ineffective' | 'done';
+};
+
+/**
+ * BoardMoveOut
+ */
+export type BoardMoveOut = {
+    /**
+     * Action Item Id
+     */
+    action_item_id: string;
+    /**
+     * From Column
+     */
+    from_column: ('backlog' | 'selected' | 'in_progress' | 'implemented' | 'validated' | 'ineffective' | 'done') | null;
+    item_status: ActionItemStatus;
+    /**
+     * To Column
+     */
+    to_column: 'backlog' | 'selected' | 'in_progress' | 'implemented' | 'validated' | 'ineffective' | 'done';
+    /**
+     * Transition Event
+     */
+    transition_event?: string | null;
+};
+
+/**
+ * BoardOut
+ */
+export type BoardOut = {
+    /**
+     * Active Sprint Id
+     */
+    active_sprint_id?: string | null;
+    /**
+     * Columns
+     */
+    columns: Array<BoardColumnOut>;
+    /**
+     * In Progress Count
+     */
+    in_progress_count?: number;
+    /**
+     * Sprint Id
+     */
+    sprint_id?: string | null;
+    /**
+     * Squad Id
+     */
+    squad_id?: string | null;
+    /**
+     * Wip Limit In Progress
+     */
+    wip_limit_in_progress?: number | null;
+    /**
+     * Wip Signal
+     */
+    wip_signal?: boolean;
+};
+
+/**
+ * CarryDecisionIn
+ */
+export type CarryDecisionIn = {
+    /**
+     * Action Item Id
+     */
+    action_item_id: string;
+    /**
+     * Decision
+     * backlog or target sprint UUID for carry-over
+     */
+    decision: string;
+};
+
+/**
+ * CeremonyRecordCreate
+ */
+export type CeremonyRecordCreate = {
+    /**
+     * Agenda Event Id
+     */
+    agenda_event_id: string;
+    /**
+     * Ceremony Type
+     */
+    ceremony_type: 'sprint_planning' | 'daily_check_in' | 'sprint_review' | 'retrospective';
+    /**
+     * Decisions
+     */
+    decisions?: string;
+    /**
+     * Follow Up
+     */
+    follow_up?: string;
+    /**
+     * Summary
+     */
+    summary?: string;
+};
+
+/**
+ * CeremonyRecordOut
+ */
+export type CeremonyRecordOut = {
+    /**
+     * Agenda Event Id
+     */
+    agenda_event_id: string;
+    /**
+     * Ceremony Type
+     */
+    ceremony_type: 'sprint_planning' | 'daily_check_in' | 'sprint_review' | 'retrospective';
+    /**
+     * Decisions
+     */
+    decisions: string;
+    /**
+     * Follow Up
+     */
+    follow_up: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Recorded At
+     */
+    recorded_at: string;
+    /**
+     * Recorded By
+     */
+    recorded_by: string;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Sprint Id
+     */
+    sprint_id: string;
+    /**
+     * Summary
+     */
+    summary: string;
+};
+
+/**
+ * CheckInCreate
+ */
+export type CheckInCreate = {
+    /**
+     * Health
+     */
+    health: 'on_track' | 'attention' | 'blocked';
+    /**
+     * Idempotency Key
+     */
+    idempotency_key?: string | null;
+    /**
+     * Next Step
+     */
+    next_step?: string;
+    /**
+     * Progress Note
+     */
+    progress_note: string;
+    /**
+     * Sprint Id
+     */
+    sprint_id?: string | null;
+};
+
+/**
+ * CheckInOut
+ */
+export type CheckInOut = {
+    /**
+     * Action Item Id
+     */
+    action_item_id: string;
+    /**
+     * Health
+     */
+    health: 'on_track' | 'attention' | 'blocked';
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Next Step
+     */
+    next_step: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Progress Note
+     */
+    progress_note: string;
+    /**
+     * Reported At
+     */
+    reported_at: string;
+    /**
+     * Reported By
+     */
+    reported_by: string;
+    /**
+     * Sprint Id
+     */
+    sprint_id: string | null;
+};
+
+/**
  * CleanupResult
  */
 export type CleanupResult = {
@@ -1238,6 +1635,74 @@ export type ConvertSuggestionToActionOut = {
      */
     action_plan_id: string;
     suggestion: EvolutionSuggestionOut;
+};
+
+/**
+ * DependencyCreate
+ */
+export type DependencyCreate = {
+    /**
+     * Dependency Type
+     */
+    dependency_type: 'blocks' | 'relates_to';
+    /**
+     * Dependent Action Item Id
+     */
+    dependent_action_item_id: string;
+    /**
+     * Predecessor Action Item Id
+     */
+    predecessor_action_item_id: string;
+};
+
+/**
+ * DependencyOut
+ */
+export type DependencyOut = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Dependency Type
+     */
+    dependency_type: 'blocks' | 'relates_to';
+    /**
+     * Dependent Action Item Id
+     */
+    dependent_action_item_id: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Predecessor Action Item Id
+     */
+    predecessor_action_item_id: string;
+    /**
+     * Removal Reason
+     */
+    removal_reason?: string | null;
+    /**
+     * Removed At
+     */
+    removed_at?: string | null;
+    /**
+     * Removed By
+     */
+    removed_by?: string | null;
+    /**
+     * Status
+     */
+    status?: 'active' | 'removed';
 };
 
 /**
@@ -2251,6 +2716,120 @@ export type HttpValidationError = {
      * Detail
      */
     detail?: Array<ValidationError>;
+};
+
+/**
+ * ImpedimentCreate
+ */
+export type ImpedimentCreate = {
+    /**
+     * Description
+     */
+    description?: string;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Severity
+     */
+    severity?: 'low' | 'medium' | 'high' | 'critical';
+    /**
+     * Sprint Id
+     */
+    sprint_id?: string | null;
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
+ * ImpedimentOut
+ */
+export type ImpedimentOut = {
+    /**
+     * Action Item Id
+     */
+    action_item_id: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Opened At
+     */
+    opened_at: string;
+    /**
+     * Opened By
+     */
+    opened_by: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id: string | null;
+    /**
+     * Resolution Note
+     */
+    resolution_note: string | null;
+    /**
+     * Resolved At
+     */
+    resolved_at: string | null;
+    /**
+     * Resolved By
+     */
+    resolved_by: string | null;
+    /**
+     * Severity
+     */
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    /**
+     * Sprint Id
+     */
+    sprint_id: string | null;
+    /**
+     * Status
+     */
+    status: 'open' | 'resolved' | 'cancelled';
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * ImpedimentUpdate
+ */
+export type ImpedimentUpdate = {
+    /**
+     * Owner Membership Id
+     */
+    owner_membership_id?: string | null;
+    /**
+     * Resolution Note
+     */
+    resolution_note?: string | null;
+    /**
+     * Severity
+     */
+    severity?: ('low' | 'medium' | 'high' | 'critical') | null;
+    /**
+     * Status
+     */
+    status?: ('open' | 'resolved' | 'cancelled') | null;
 };
 
 /**
@@ -4112,6 +4691,531 @@ export type SourceReference = {
      * Question Version
      */
     question_version?: string | null;
+};
+
+/**
+ * SprintActivateIn
+ */
+export type SprintActivateIn = {
+    /**
+     * Activation Skip Cards Rationale
+     */
+    activation_skip_cards_rationale?: string | null;
+};
+
+/**
+ * SprintCardAllocateIn
+ */
+export type SprintCardAllocateIn = {
+    /**
+     * Action Item Id
+     */
+    action_item_id: string;
+    /**
+     * Estimate Points
+     */
+    estimate_points?: number | null;
+    /**
+     * Position
+     */
+    position?: number | null;
+    /**
+     * Priority
+     */
+    priority?: 'critical' | 'high' | 'medium' | 'low';
+};
+
+/**
+ * SprintCardOut
+ */
+export type SprintCardOut = {
+    /**
+     * Action Item Id
+     */
+    action_item_id: string;
+    /**
+     * Carried From Sprint Id
+     */
+    carried_from_sprint_id: string | null;
+    /**
+     * Committed At
+     */
+    committed_at: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Estimate Points
+     */
+    estimate_points: number | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Position
+     */
+    position: number;
+    /**
+     * Priority
+     */
+    priority: 'critical' | 'high' | 'medium' | 'low';
+    /**
+     * Removal Reason
+     */
+    removal_reason: string | null;
+    /**
+     * Removed At
+     */
+    removed_at: string | null;
+    /**
+     * Sprint Id
+     */
+    sprint_id: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * SprintCardPositionIn
+ */
+export type SprintCardPositionIn = {
+    /**
+     * Position
+     */
+    position: number;
+};
+
+/**
+ * SprintCardRemoveIn
+ */
+export type SprintCardRemoveIn = {
+    /**
+     * Removal Reason
+     */
+    removal_reason?: string;
+};
+
+/**
+ * SprintCompleteIn
+ */
+export type SprintCompleteIn = {
+    /**
+     * Carry Decisions
+     */
+    carry_decisions?: Array<CarryDecisionIn>;
+};
+
+/**
+ * SprintCreate
+ */
+export type SprintCreate = {
+    /**
+     * Capacity Points
+     */
+    capacity_points?: number | null;
+    /**
+     * Ends At
+     */
+    ends_at: string;
+    /**
+     * Goal
+     */
+    goal?: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Squad Id
+     */
+    squad_id: string;
+    /**
+     * Starts At
+     */
+    starts_at: string;
+    /**
+     * Timezone
+     */
+    timezone?: string;
+    /**
+     * Wip Limit In Progress
+     */
+    wip_limit_in_progress?: number | null;
+};
+
+/**
+ * SprintMetricsOut
+ */
+export type SprintMetricsOut = {
+    /**
+     * Average Cycle Time Hours
+     */
+    average_cycle_time_hours?: number | null;
+    /**
+     * Blocked Time Hours
+     */
+    blocked_time_hours?: number | null;
+    /**
+     * Cards Without Recent Check In
+     */
+    cards_without_recent_check_in?: number;
+    /**
+     * Carry Over Cards
+     */
+    carry_over_cards: number;
+    /**
+     * Check In Stale Window Hours
+     */
+    check_in_stale_window_hours?: number;
+    /**
+     * Completed Cards
+     */
+    completed_cards: number;
+    /**
+     * Goal
+     */
+    goal: string;
+    /**
+     * In Progress Count
+     */
+    in_progress_count: number;
+    /**
+     * Median Cycle Time Hours
+     */
+    median_cycle_time_hours?: number | null;
+    /**
+     * Oldest In Progress Age Hours
+     */
+    oldest_in_progress_age_hours?: number | null;
+    /**
+     * Open Impediments
+     */
+    open_impediments: number;
+    /**
+     * Overdue Actions
+     */
+    overdue_actions: number;
+    /**
+     * Planned Cards
+     */
+    planned_cards: number;
+    /**
+     * Review Outcome
+     */
+    review_outcome?: string | null;
+    /**
+     * Sprint Id
+     */
+    sprint_id: string;
+    /**
+     * Squad Id
+     */
+    squad_id: string;
+    /**
+     * Status
+     */
+    status: 'planned' | 'active' | 'completed' | 'cancelled';
+    /**
+     * Throughput
+     */
+    throughput: number;
+};
+
+/**
+ * SprintOut
+ */
+export type SprintOut = {
+    /**
+     * Activated At
+     */
+    activated_at: string | null;
+    /**
+     * Activated By
+     */
+    activated_by: string | null;
+    /**
+     * Activation Skip Cards Rationale
+     */
+    activation_skip_cards_rationale: string | null;
+    /**
+     * Capacity Points
+     */
+    capacity_points: number | null;
+    /**
+     * Closed At
+     */
+    closed_at: string | null;
+    /**
+     * Closed By
+     */
+    closed_by: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Ends At
+     */
+    ends_at: string;
+    /**
+     * Goal
+     */
+    goal: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Squad Id
+     */
+    squad_id: string;
+    /**
+     * Starts At
+     */
+    starts_at: string;
+    /**
+     * Status
+     */
+    status: 'planned' | 'active' | 'completed' | 'cancelled';
+    /**
+     * Timezone
+     */
+    timezone: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    /**
+     * Wip Limit In Progress
+     */
+    wip_limit_in_progress: number | null;
+};
+
+/**
+ * SprintUpdate
+ */
+export type SprintUpdate = {
+    /**
+     * Capacity Points
+     */
+    capacity_points?: number | null;
+    /**
+     * Ends At
+     */
+    ends_at?: string | null;
+    /**
+     * Goal
+     */
+    goal?: string | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Starts At
+     */
+    starts_at?: string | null;
+    /**
+     * Status
+     */
+    status?: ('planned' | 'active' | 'completed' | 'cancelled') | null;
+    /**
+     * Timezone
+     */
+    timezone?: string | null;
+    /**
+     * Wip Limit In Progress
+     */
+    wip_limit_in_progress?: number | null;
+};
+
+/**
+ * SquadCreate
+ */
+export type SquadCreate = {
+    /**
+     * Default Sprint Length Days
+     */
+    default_sprint_length_days?: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Purpose
+     */
+    purpose?: string;
+    /**
+     * Value Owner Membership Id
+     * Active org membership that answers for the squad value stream
+     */
+    value_owner_membership_id: string;
+};
+
+/**
+ * SquadMembershipCreate
+ */
+export type SquadMembershipCreate = {
+    /**
+     * Agile Role
+     */
+    agile_role: 'value_owner' | 'facilitator' | 'execution_member' | 'stakeholder';
+    /**
+     * Membership Id
+     */
+    membership_id: string;
+};
+
+/**
+ * SquadMembershipOut
+ */
+export type SquadMembershipOut = {
+    /**
+     * Agile Role
+     */
+    agile_role: 'value_owner' | 'facilitator' | 'execution_member' | 'stakeholder';
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Member Display Name
+     */
+    member_display_name?: string | null;
+    /**
+     * Member Email
+     */
+    member_email?: string | null;
+    /**
+     * Membership Id
+     */
+    membership_id: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Squad Id
+     */
+    squad_id: string;
+    /**
+     * Status
+     */
+    status: 'active' | 'inactive';
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * SquadMembershipUpdate
+ */
+export type SquadMembershipUpdate = {
+    /**
+     * Agile Role
+     */
+    agile_role?: ('value_owner' | 'facilitator' | 'execution_member' | 'stakeholder') | null;
+    /**
+     * Status
+     */
+    status?: ('active' | 'inactive') | null;
+};
+
+/**
+ * SquadOut
+ */
+export type SquadOut = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Default Sprint Length Days
+     */
+    default_sprint_length_days: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Purpose
+     */
+    purpose: string;
+    /**
+     * Status
+     */
+    status: 'active' | 'inactive';
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * SquadUpdate
+ */
+export type SquadUpdate = {
+    /**
+     * Default Sprint Length Days
+     */
+    default_sprint_length_days?: number | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Purpose
+     */
+    purpose?: string | null;
+    /**
+     * Status
+     */
+    status?: ('active' | 'inactive') | null;
 };
 
 /**
@@ -14872,6 +15976,2484 @@ export type GetCurrentOrganizationResponses = {
 };
 
 export type GetCurrentOrganizationResponse = GetCurrentOrganizationResponses[keyof GetCurrentOrganizationResponses];
+
+export type ListActionExecutionCheckInsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Action Item Id
+         */
+        action_item_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/actions/{action_item_id}/check-ins';
+};
+
+export type ListActionExecutionCheckInsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListActionExecutionCheckInsError = ListActionExecutionCheckInsErrors[keyof ListActionExecutionCheckInsErrors];
+
+export type ListActionExecutionCheckInsResponses = {
+    /**
+     * Response Listactionexecutioncheckins
+     * Successful Response
+     */
+    200: Array<CheckInOut>;
+};
+
+export type ListActionExecutionCheckInsResponse = ListActionExecutionCheckInsResponses[keyof ListActionExecutionCheckInsResponses];
+
+export type CreateActionExecutionCheckInData = {
+    body: CheckInCreate;
+    headers?: {
+        /**
+         * Idempotency-Key
+         * Optional client idempotency key for safely retrying create/command operations (ADR-003). Scope is the organization. Max 128 chars.
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Action Item Id
+         */
+        action_item_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/actions/{action_item_id}/check-ins';
+};
+
+export type CreateActionExecutionCheckInErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateActionExecutionCheckInError = CreateActionExecutionCheckInErrors[keyof CreateActionExecutionCheckInErrors];
+
+export type CreateActionExecutionCheckInResponses = {
+    /**
+     * Successful Response
+     */
+    201: CheckInOut;
+};
+
+export type CreateActionExecutionCheckInResponse = CreateActionExecutionCheckInResponses[keyof CreateActionExecutionCheckInResponses];
+
+export type ListActionDependenciesData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Action Item Id
+         */
+        action_item_id: string;
+    };
+    query?: {
+        /**
+         * Include Removed
+         * Include soft-removed dependencies (history)
+         */
+        include_removed?: boolean;
+    };
+    url: '/api/v1/organizations/current/actions/{action_item_id}/dependencies';
+};
+
+export type ListActionDependenciesErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListActionDependenciesError = ListActionDependenciesErrors[keyof ListActionDependenciesErrors];
+
+export type ListActionDependenciesResponses = {
+    /**
+     * Response Listactiondependencies
+     * Successful Response
+     */
+    200: Array<DependencyOut>;
+};
+
+export type ListActionDependenciesResponse = ListActionDependenciesResponses[keyof ListActionDependenciesResponses];
+
+export type CreateActionDependencyData = {
+    body: DependencyCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Action Item Id
+         */
+        action_item_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/actions/{action_item_id}/dependencies';
+};
+
+export type CreateActionDependencyErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateActionDependencyError = CreateActionDependencyErrors[keyof CreateActionDependencyErrors];
+
+export type CreateActionDependencyResponses = {
+    /**
+     * Successful Response
+     */
+    201: DependencyOut;
+};
+
+export type CreateActionDependencyResponse = CreateActionDependencyResponses[keyof CreateActionDependencyResponses];
+
+export type DeleteActionDependencyData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Action Item Id
+         */
+        action_item_id: string;
+        /**
+         * Dependency Id
+         */
+        dependency_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/actions/{action_item_id}/dependencies/{dependency_id}';
+};
+
+export type DeleteActionDependencyErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type DeleteActionDependencyError = DeleteActionDependencyErrors[keyof DeleteActionDependencyErrors];
+
+export type DeleteActionDependencyResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteActionDependencyResponse = DeleteActionDependencyResponses[keyof DeleteActionDependencyResponses];
+
+export type ListActionImpedimentsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Action Item Id
+         */
+        action_item_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/actions/{action_item_id}/impediments';
+};
+
+export type ListActionImpedimentsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListActionImpedimentsError = ListActionImpedimentsErrors[keyof ListActionImpedimentsErrors];
+
+export type ListActionImpedimentsResponses = {
+    /**
+     * Response Listactionimpediments
+     * Successful Response
+     */
+    200: Array<ImpedimentOut>;
+};
+
+export type ListActionImpedimentsResponse = ListActionImpedimentsResponses[keyof ListActionImpedimentsResponses];
+
+export type CreateActionImpedimentData = {
+    body: ImpedimentCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Action Item Id
+         */
+        action_item_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/actions/{action_item_id}/impediments';
+};
+
+export type CreateActionImpedimentErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateActionImpedimentError = CreateActionImpedimentErrors[keyof CreateActionImpedimentErrors];
+
+export type CreateActionImpedimentResponses = {
+    /**
+     * Successful Response
+     */
+    201: ImpedimentOut;
+};
+
+export type CreateActionImpedimentResponse = CreateActionImpedimentResponses[keyof CreateActionImpedimentResponses];
+
+export type PatchActionImpedimentData = {
+    body: ImpedimentUpdate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Action Item Id
+         */
+        action_item_id: string;
+        /**
+         * Impediment Id
+         */
+        impediment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/actions/{action_item_id}/impediments/{impediment_id}';
+};
+
+export type PatchActionImpedimentErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type PatchActionImpedimentError = PatchActionImpedimentErrors[keyof PatchActionImpedimentErrors];
+
+export type PatchActionImpedimentResponses = {
+    /**
+     * Successful Response
+     */
+    200: ImpedimentOut;
+};
+
+export type PatchActionImpedimentResponse = PatchActionImpedimentResponses[keyof PatchActionImpedimentResponses];
+
+export type GetAgileBoardData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Squad Id
+         */
+        squad_id?: string | null;
+        /**
+         * Sprint Id
+         */
+        sprint_id?: string | null;
+    };
+    url: '/api/v1/organizations/current/agile/board';
+};
+
+export type GetAgileBoardErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetAgileBoardError = GetAgileBoardErrors[keyof GetAgileBoardErrors];
+
+export type GetAgileBoardResponses = {
+    /**
+     * Successful Response
+     */
+    200: BoardOut;
+};
+
+export type GetAgileBoardResponse = GetAgileBoardResponses[keyof GetAgileBoardResponses];
+
+export type MoveAgileBoardCardData = {
+    body: BoardMoveIn;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/organizations/current/agile/board/move';
+};
+
+export type MoveAgileBoardCardErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type MoveAgileBoardCardError = MoveAgileBoardCardErrors[keyof MoveAgileBoardCardErrors];
+
+export type MoveAgileBoardCardResponses = {
+    /**
+     * Successful Response
+     */
+    200: BoardMoveOut;
+};
+
+export type MoveAgileBoardCardResponse = MoveAgileBoardCardResponses[keyof MoveAgileBoardCardResponses];
+
+export type ListAgileSprintsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Squad Id
+         */
+        squad_id?: string | null;
+        /**
+         * Status
+         */
+        status?: string | null;
+    };
+    url: '/api/v1/organizations/current/agile/sprints';
+};
+
+export type ListAgileSprintsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListAgileSprintsError = ListAgileSprintsErrors[keyof ListAgileSprintsErrors];
+
+export type ListAgileSprintsResponses = {
+    /**
+     * Response Listagilesprints
+     * Successful Response
+     */
+    200: Array<SprintOut>;
+};
+
+export type ListAgileSprintsResponse = ListAgileSprintsResponses[keyof ListAgileSprintsResponses];
+
+export type CreateAgileSprintData = {
+    body: SprintCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/organizations/current/agile/sprints';
+};
+
+export type CreateAgileSprintErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateAgileSprintError = CreateAgileSprintErrors[keyof CreateAgileSprintErrors];
+
+export type CreateAgileSprintResponses = {
+    /**
+     * Successful Response
+     */
+    201: SprintOut;
+};
+
+export type CreateAgileSprintResponse = CreateAgileSprintResponses[keyof CreateAgileSprintResponses];
+
+export type GetAgileSprintData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Sprint Id
+         */
+        sprint_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/sprints/{sprint_id}';
+};
+
+export type GetAgileSprintErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetAgileSprintError = GetAgileSprintErrors[keyof GetAgileSprintErrors];
+
+export type GetAgileSprintResponses = {
+    /**
+     * Successful Response
+     */
+    200: SprintOut;
+};
+
+export type GetAgileSprintResponse = GetAgileSprintResponses[keyof GetAgileSprintResponses];
+
+export type PatchAgileSprintData = {
+    body: SprintUpdate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Sprint Id
+         */
+        sprint_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/sprints/{sprint_id}';
+};
+
+export type PatchAgileSprintErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type PatchAgileSprintError = PatchAgileSprintErrors[keyof PatchAgileSprintErrors];
+
+export type PatchAgileSprintResponses = {
+    /**
+     * Successful Response
+     */
+    200: SprintOut;
+};
+
+export type PatchAgileSprintResponse = PatchAgileSprintResponses[keyof PatchAgileSprintResponses];
+
+export type ActivateAgileSprintData = {
+    /**
+     * Payload
+     */
+    body?: SprintActivateIn | null;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Sprint Id
+         */
+        sprint_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/sprints/{sprint_id}/activate';
+};
+
+export type ActivateAgileSprintErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ActivateAgileSprintError = ActivateAgileSprintErrors[keyof ActivateAgileSprintErrors];
+
+export type ActivateAgileSprintResponses = {
+    /**
+     * Successful Response
+     */
+    200: SprintOut;
+};
+
+export type ActivateAgileSprintResponse = ActivateAgileSprintResponses[keyof ActivateAgileSprintResponses];
+
+export type AllocateAgileSprintCardData = {
+    body: SprintCardAllocateIn;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Sprint Id
+         */
+        sprint_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/sprints/{sprint_id}/cards';
+};
+
+export type AllocateAgileSprintCardErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type AllocateAgileSprintCardError = AllocateAgileSprintCardErrors[keyof AllocateAgileSprintCardErrors];
+
+export type AllocateAgileSprintCardResponses = {
+    /**
+     * Successful Response
+     */
+    201: SprintCardOut;
+};
+
+export type AllocateAgileSprintCardResponse = AllocateAgileSprintCardResponses[keyof AllocateAgileSprintCardResponses];
+
+export type RemoveAgileSprintCardData = {
+    /**
+     * Payload
+     */
+    body?: SprintCardRemoveIn | null;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Sprint Id
+         */
+        sprint_id: string;
+        /**
+         * Action Item Id
+         */
+        action_item_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/sprints/{sprint_id}/cards/{action_item_id}';
+};
+
+export type RemoveAgileSprintCardErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type RemoveAgileSprintCardError = RemoveAgileSprintCardErrors[keyof RemoveAgileSprintCardErrors];
+
+export type RemoveAgileSprintCardResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type RemoveAgileSprintCardResponse = RemoveAgileSprintCardResponses[keyof RemoveAgileSprintCardResponses];
+
+export type RepositionAgileSprintCardData = {
+    body: SprintCardPositionIn;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Sprint Id
+         */
+        sprint_id: string;
+        /**
+         * Action Item Id
+         */
+        action_item_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/sprints/{sprint_id}/cards/{action_item_id}/position';
+};
+
+export type RepositionAgileSprintCardErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type RepositionAgileSprintCardError = RepositionAgileSprintCardErrors[keyof RepositionAgileSprintCardErrors];
+
+export type RepositionAgileSprintCardResponses = {
+    /**
+     * Successful Response
+     */
+    200: SprintCardOut;
+};
+
+export type RepositionAgileSprintCardResponse = RepositionAgileSprintCardResponses[keyof RepositionAgileSprintCardResponses];
+
+export type ListAgileCeremonyRecordsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Sprint Id
+         */
+        sprint_id: string;
+    };
+    query?: {
+        /**
+         * Ceremony Type
+         */
+        ceremony_type?: string | null;
+    };
+    url: '/api/v1/organizations/current/agile/sprints/{sprint_id}/ceremony-records';
+};
+
+export type ListAgileCeremonyRecordsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListAgileCeremonyRecordsError = ListAgileCeremonyRecordsErrors[keyof ListAgileCeremonyRecordsErrors];
+
+export type ListAgileCeremonyRecordsResponses = {
+    /**
+     * Response Listagileceremonyrecords
+     * Successful Response
+     */
+    200: Array<CeremonyRecordOut>;
+};
+
+export type ListAgileCeremonyRecordsResponse = ListAgileCeremonyRecordsResponses[keyof ListAgileCeremonyRecordsResponses];
+
+export type CreateAgileCeremonyRecordData = {
+    body: CeremonyRecordCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Sprint Id
+         */
+        sprint_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/sprints/{sprint_id}/ceremony-records';
+};
+
+export type CreateAgileCeremonyRecordErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateAgileCeremonyRecordError = CreateAgileCeremonyRecordErrors[keyof CreateAgileCeremonyRecordErrors];
+
+export type CreateAgileCeremonyRecordResponses = {
+    /**
+     * Successful Response
+     */
+    201: CeremonyRecordOut;
+};
+
+export type CreateAgileCeremonyRecordResponse = CreateAgileCeremonyRecordResponses[keyof CreateAgileCeremonyRecordResponses];
+
+export type CompleteAgileSprintData = {
+    body: SprintCompleteIn;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Sprint Id
+         */
+        sprint_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/sprints/{sprint_id}/complete';
+};
+
+export type CompleteAgileSprintErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CompleteAgileSprintError = CompleteAgileSprintErrors[keyof CompleteAgileSprintErrors];
+
+export type CompleteAgileSprintResponses = {
+    /**
+     * Successful Response
+     */
+    200: SprintOut;
+};
+
+export type CompleteAgileSprintResponse = CompleteAgileSprintResponses[keyof CompleteAgileSprintResponses];
+
+export type GetAgileSprintMetricsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Sprint Id
+         */
+        sprint_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/sprints/{sprint_id}/metrics';
+};
+
+export type GetAgileSprintMetricsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetAgileSprintMetricsError = GetAgileSprintMetricsErrors[keyof GetAgileSprintMetricsErrors];
+
+export type GetAgileSprintMetricsResponses = {
+    /**
+     * Successful Response
+     */
+    200: SprintMetricsOut;
+};
+
+export type GetAgileSprintMetricsResponse = GetAgileSprintMetricsResponses[keyof GetAgileSprintMetricsResponses];
+
+export type ListAgileSquadsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: string | null;
+    };
+    url: '/api/v1/organizations/current/agile/squads';
+};
+
+export type ListAgileSquadsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListAgileSquadsError = ListAgileSquadsErrors[keyof ListAgileSquadsErrors];
+
+export type ListAgileSquadsResponses = {
+    /**
+     * Response Listagilesquads
+     * Successful Response
+     */
+    200: Array<SquadOut>;
+};
+
+export type ListAgileSquadsResponse = ListAgileSquadsResponses[keyof ListAgileSquadsResponses];
+
+export type CreateAgileSquadData = {
+    body: SquadCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/organizations/current/agile/squads';
+};
+
+export type CreateAgileSquadErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateAgileSquadError = CreateAgileSquadErrors[keyof CreateAgileSquadErrors];
+
+export type CreateAgileSquadResponses = {
+    /**
+     * Successful Response
+     */
+    201: SquadOut;
+};
+
+export type CreateAgileSquadResponse = CreateAgileSquadResponses[keyof CreateAgileSquadResponses];
+
+export type GetAgileSquadData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Squad Id
+         */
+        squad_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/squads/{squad_id}';
+};
+
+export type GetAgileSquadErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetAgileSquadError = GetAgileSquadErrors[keyof GetAgileSquadErrors];
+
+export type GetAgileSquadResponses = {
+    /**
+     * Successful Response
+     */
+    200: SquadOut;
+};
+
+export type GetAgileSquadResponse = GetAgileSquadResponses[keyof GetAgileSquadResponses];
+
+export type PatchAgileSquadData = {
+    body: SquadUpdate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Squad Id
+         */
+        squad_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/squads/{squad_id}';
+};
+
+export type PatchAgileSquadErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type PatchAgileSquadError = PatchAgileSquadErrors[keyof PatchAgileSquadErrors];
+
+export type PatchAgileSquadResponses = {
+    /**
+     * Successful Response
+     */
+    200: SquadOut;
+};
+
+export type PatchAgileSquadResponse = PatchAgileSquadResponses[keyof PatchAgileSquadResponses];
+
+export type ListAgileSquadMembershipsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Squad Id
+         */
+        squad_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/squads/{squad_id}/memberships';
+};
+
+export type ListAgileSquadMembershipsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListAgileSquadMembershipsError = ListAgileSquadMembershipsErrors[keyof ListAgileSquadMembershipsErrors];
+
+export type ListAgileSquadMembershipsResponses = {
+    /**
+     * Response Listagilesquadmemberships
+     * Successful Response
+     */
+    200: Array<SquadMembershipOut>;
+};
+
+export type ListAgileSquadMembershipsResponse = ListAgileSquadMembershipsResponses[keyof ListAgileSquadMembershipsResponses];
+
+export type AddAgileSquadMembershipData = {
+    body: SquadMembershipCreate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Squad Id
+         */
+        squad_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/squads/{squad_id}/memberships';
+};
+
+export type AddAgileSquadMembershipErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type AddAgileSquadMembershipError = AddAgileSquadMembershipErrors[keyof AddAgileSquadMembershipErrors];
+
+export type AddAgileSquadMembershipResponses = {
+    /**
+     * Successful Response
+     */
+    201: SquadMembershipOut;
+};
+
+export type AddAgileSquadMembershipResponse = AddAgileSquadMembershipResponses[keyof AddAgileSquadMembershipResponses];
+
+export type PatchAgileSquadMembershipData = {
+    body: SquadMembershipUpdate;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Squad Id
+         */
+        squad_id: string;
+        /**
+         * Membership Id
+         */
+        membership_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/agile/squads/{squad_id}/memberships/{membership_id}';
+};
+
+export type PatchAgileSquadMembershipErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type PatchAgileSquadMembershipError = PatchAgileSquadMembershipErrors[keyof PatchAgileSquadMembershipErrors];
+
+export type PatchAgileSquadMembershipResponses = {
+    /**
+     * Successful Response
+     */
+    200: SquadMembershipOut;
+};
+
+export type PatchAgileSquadMembershipResponse = PatchAgileSquadMembershipResponses[keyof PatchAgileSquadMembershipResponses];
 
 export type ListCurrentOrganizationImprovementCasesData = {
     body?: never;

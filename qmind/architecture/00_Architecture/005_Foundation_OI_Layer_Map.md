@@ -9,7 +9,7 @@
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │                     Experiência (Web)                         │
-│   Shell · Tour · Plan · Field · Map · Actions · Assistant   │
+│   Shell · Tour · Plan · Field · Map · Execução · Actions · Assistant   │
 └────────────────────────────┬────────────────────────────────┘
                              │
          ┌───────────────────┴───────────────────┐
@@ -38,6 +38,8 @@ Foundation
 ```
 
 - **Foundation → OI:** a OI conhece contratos públicos da Foundation.
+- **OI → Foundation:** insights e recomendações; escrita operacional só via comandos humanos na Foundation.
+- **ISOI-007 (2026-08-24):** workspace de execução (board/sprints/squads) é **somente Foundation/Core**; fatos de execução (check-ins, impedimentos, métricas de sprint) serão insumos futuros para Execution Intelligence no OI (ISOI-009), sem contrato OI alterado neste marco.
 - **OI → Foundation:** apenas via APIs/comandos estáveis; sem acesso privilegiado a engines internos.
 - **Foundation ↛ OI:** nenhum import, feature flag obrigatória ou acoplamento de schema OI dentro de módulos Foundation.
 

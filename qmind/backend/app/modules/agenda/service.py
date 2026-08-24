@@ -33,7 +33,15 @@ _TYPE_LABEL = {
     "milestone": "Marco",
     "deadline": "Prazo",
     "other": "Compromisso",
+    "sprint_planning": "Planning da sprint",
+    "daily_check_in": "Daily check-in",
+    "sprint_review": "Review da sprint",
+    "retrospective": "Retrospectiva",
 }
+
+_CEREMONY_EVENT_TYPES = frozenset(
+    {"sprint_planning", "daily_check_in", "sprint_review", "retrospective"}
+)
 
 _ASSESSMENT_TYPE_LABEL = {
     "diagnosis": "Diagnóstico",
@@ -53,6 +61,16 @@ _ASSESSMENT_STATUS_LABEL = {
     "closed": "Concluída",
     "cancelled": "Cancelada",
 }
+
+
+def _assert_ceremony_sprint(event_type: str | None, sprint_id: UUID | None) -> None:
+    """Ceremonies only make sense inside a sprint — refuse a dangling ceremony."""
+    if event_type in _CEREMONY_EVENT_TYPES and sprint_id is None:
+        raise AppError(
+            "ceremony_sprint_required",
+            "Cerimônias de sprint exigem uma sprint vinculada.",
+            status_code=422,
+        )
 
 
 def _assessment_public_label(assessment_type: str, status: str) -> str:
@@ -149,6 +167,26 @@ def _guidance_pack(event_type: str, title: str) -> tuple[str, str, str]:
             "Confirme horário, pessoas e o resultado esperado.",
             f"Compromisso: {title}.",
         ),
+        "sprint_planning": (
+            "O planning alinha o time sobre o objetivo e as ações da sprint.",
+            "Revise o backlog e confirme quem fará cada ação.",
+            f"Planning: {title}.",
+        ),
+        "daily_check_in": (
+            "O acompanhamento diário mantém visibilidade sem burocracia.",
+            "Registre progresso, bloqueios e próximo passo.",
+            f"Check-in: {title}.",
+        ),
+        "sprint_review": (
+            "A review inspeciona o que foi entregue na sprint.",
+            "Prepare demonstração do que foi implementado.",
+            f"Review: {title}.",
+        ),
+        "retrospective": (
+            "A retrospectiva melhora como o time trabalha na próxima sprint.",
+            "Liste o que funcionou, o que atrapalhou e uma melhoria concreta.",
+            f"Retrospectiva: {title}.",
+        ),
     }
     return packs.get(event_type, packs["other"])
 
@@ -212,6 +250,7 @@ def _row_to_out(
         source_id=row.source_id,
         is_auto=bool(row.is_auto),
         plan_activity_kind=getattr(row, "plan_activity_kind", None),
+        sprint_id=getattr(row, "sprint_id", None),
         is_overdue=overdue,
         primary_action_label=action_label if not overdue else f"{action_label} (atrasado)",
         primary_action_href=href,
@@ -782,6 +821,7 @@ def get_event(ctx: OrgContext, event_id: UUID) -> AgendaEventOut:
 
 def create_event(ctx: OrgContext, payload: AgendaEventCreate) -> AgendaEventOut:
     require_role(ctx, *_MUTATE)
+    _assert_ceremony_sprint(payload.event_type, payload.sprint_id)
     with tenant_connection(ctx.organization_id) as conn:
         tz_name = payload.timezone or _org_timezone(conn, ctx.organization_id)
         if payload.assessment_id:
@@ -796,6 +836,18 @@ def create_event(ctx: OrgContext, payload: AgendaEventCreate) -> AgendaEventOut:
             ).first()
             if not ok:
                 raise AppError("invalid_assessment", "Avaliação inválida nesta organização", status_code=400)
+        if payload.sprint_id:
+            ok = conn.execute(
+                text(
+                    """
+                    SELECT 1 FROM agile_sprints
+                    WHERE id = :id AND organization_id = :org
+                    """
+                ),
+                {"id": payload.sprint_id, "org": ctx.organization_id},
+            ).first()
+            if not ok:
+                raise AppError("invalid_sprint", "Sprint inválida nesta organização", status_code=400)
 
         row = conn.execute(
             text(
@@ -804,13 +856,13 @@ def create_event(ctx: OrgContext, payload: AgendaEventCreate) -> AgendaEventOut:
                   organization_id, assessment_id, title, description, event_type,
                   starts_at, ends_at, timezone, owner_membership_id,
                   participant_membership_ids, location_or_link, status,
-                  guidance, related_action, plan_activity_kind, is_auto,
+                  guidance, related_action, plan_activity_kind, sprint_id, is_auto,
                   created_by_user_id, updated_by_user_id
                 ) VALUES (
                   :org, :aid, :title, :desc, :etype,
                   :starts, :ends, :tz, :owner,
                   :parts, :loc, 'scheduled',
-                  :guidance, :raction, :pak, false,
+                  :guidance, :raction, :pak, :sid, false,
                   :uid, :uid
                 )
                 RETURNING *
@@ -831,6 +883,7 @@ def create_event(ctx: OrgContext, payload: AgendaEventCreate) -> AgendaEventOut:
                 "guidance": payload.guidance or "",
                 "raction": payload.related_action or "",
                 "pak": payload.plan_activity_kind,
+                "sid": payload.sprint_id,
                 "uid": ctx.principal.user_id,
             },
         ).one()
@@ -934,7 +987,25 @@ def update_event(ctx: OrgContext, event_id: UUID, payload: AgendaEventUpdate) ->
                 if payload.plan_activity_kind is not None
                 else getattr(cur, "plan_activity_kind", None)
             ),
+            "sprint_id": (
+                payload.sprint_id if payload.sprint_id is not None else getattr(cur, "sprint_id", None)
+            ),
         }
+
+        _assert_ceremony_sprint(fields["event_type"], fields["sprint_id"])
+
+        if fields["sprint_id"]:
+            ok = conn.execute(
+                text(
+                    """
+                    SELECT 1 FROM agile_sprints
+                    WHERE id = :id AND organization_id = :org
+                    """
+                ),
+                {"id": fields["sprint_id"], "org": ctx.organization_id},
+            ).first()
+            if not ok:
+                raise AppError("invalid_sprint", "Sprint inválida nesta organização", status_code=400)
 
         row = conn.execute(
             text(
@@ -954,6 +1025,7 @@ def update_event(ctx: OrgContext, event_id: UUID, payload: AgendaEventUpdate) ->
                   assessment_id = :assessment_id,
                   status = :status,
                   plan_activity_kind = :plan_activity_kind,
+                  sprint_id = :sprint_id,
                   updated_at = now(),
                   updated_by_user_id = :uid
                 WHERE id = :id AND organization_id = :org

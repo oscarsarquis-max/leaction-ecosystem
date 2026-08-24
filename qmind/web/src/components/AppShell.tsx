@@ -77,6 +77,17 @@ export function AppShell() {
                   Minhas avaliações
                 </NavLink>
                 <NavLink
+                  to="/execution"
+                  data-testid="nav-execution"
+                  className={({ isActive }) =>
+                    isActive
+                      ? "text-[var(--qm-ink)] underline decoration-2 underline-offset-4"
+                      : "text-[var(--qm-muted)] hover:text-[var(--qm-ink)]"
+                  }
+                >
+                  Execução
+                </NavLink>
+                <NavLink
                   to="/guided-tour"
                   data-testid="nav-guided-tour"
                   className={({ isActive }) =>

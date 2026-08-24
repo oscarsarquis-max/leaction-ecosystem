@@ -7,7 +7,17 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 EventType = Literal[
-    "interview", "meeting", "visit", "reminder", "milestone", "deadline", "other"
+    "interview",
+    "meeting",
+    "visit",
+    "reminder",
+    "milestone",
+    "deadline",
+    "other",
+    "sprint_planning",
+    "daily_check_in",
+    "sprint_review",
+    "retrospective",
 ]
 EventStatus = Literal["scheduled", "completed", "cancelled", "waived"]
 
@@ -41,6 +51,7 @@ class AgendaEventCreate(BaseModel):
     guidance: str = Field(default="", max_length=2000)
     related_action: str = Field(default="", max_length=200)
     plan_activity_kind: PlanActivityKind | None = None
+    sprint_id: UUID | None = None
 
 
 class AgendaEventUpdate(BaseModel):
@@ -58,6 +69,7 @@ class AgendaEventUpdate(BaseModel):
     related_action: str | None = Field(default=None, max_length=200)
     status: EventStatus | None = None
     plan_activity_kind: PlanActivityKind | None = None
+    sprint_id: UUID | None = None
 
 
 class AgendaEventOut(BaseModel):
@@ -82,6 +94,7 @@ class AgendaEventOut(BaseModel):
     source_id: UUID | None = None
     is_auto: bool
     plan_activity_kind: PlanActivityKind | None = None
+    sprint_id: UUID | None = None
     is_overdue: bool = False
     primary_action_label: str
     primary_action_href: str | None = None

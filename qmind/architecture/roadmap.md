@@ -36,10 +36,10 @@
 
 ## Linha Organization Intelligence (desde 2026-08-17)
 
-A Foundation **v1.0** está baselineada (ADR-012). A linha **OI Alpha** adiciona compreensão organizacional sem substituir a operação.
+A Foundation **v1.0** está baselineada (ADR-012). A sequência **OI Alpha** original (Pain / Fit / Journey em `014`) permanece **histórica/orientativa**; o eixo produto vigente é **ISO Intelligence** (Improvement Case → Execution Workspace).
 
-Roadmap detalhado: [`04_Docs/014_OI_Architectural_Roadmap.md`](04_Docs/014_OI_Architectural_Roadmap.md).
+- Roadmap OI (histórico): [`04_Docs/014_OI_Architectural_Roadmap.md`](04_Docs/014_OI_Architectural_Roadmap.md).
+- Baseline loop: [`04_Docs/027_…`](04_Docs/027_ISO_Intelligence_V1_Improvement_Case_Loop_Baseline.md) (ISOI-006).
+- Execution Workspace: [`04_Docs/028_…`](04_Docs/028_ISO_Intelligence_V1_Action_Execution_Workspace.md) (ISOI-007, Core-only).
 
-Próximo passo de produto OI: bridge Profile ↔ guided (OI-0).
-
-Datas e metas serão definidas após a descoberta inicial e a estimativa do produto mínimo viável.
+Próximos: ISOI-008 (evidências/indicadores), ISOI-009 (Execution Intelligence no OI), ISOI-010 (cockpit).

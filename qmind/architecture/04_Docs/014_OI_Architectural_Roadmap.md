@@ -1,14 +1,16 @@
 # Roadmap arquitetural inicial — QMind OI (Organization Intelligence)
 
-- Status: **Aprovado** (somente documentação)
-- Data: 2026-08-17
-- Linha: **OI Alpha**
+- Status: **Histórico / orientativo** (substituído operacionalmente pela linha ISO Intelligence)
+- Data: 2026-08-17 (marcação histórica 2026-08-24)
+- Linha: **OI Alpha** (original)
 - ADR: [`../05_ADR/ADR-012-foundation-and-organization-intelligence.md`](../05_ADR/ADR-012-foundation-and-organization-intelligence.md)
 - Baseline: [`../00_Architecture/004_Foundation_Baseline_v1.md`](../00_Architecture/004_Foundation_Baseline_v1.md)
 
+**Nota (2026-08-24):** a sequência Pain/Fit/Journey abaixo permanece como orientação arquitetural. O eixo de produto ativo é ISO Intelligence (ISOI-001…007+). ISOI-007 é **Core-only** e prepara o contrato futuro de Execution Intelligence (ISOI-009) — ver [`028`](028_ISO_Intelligence_V1_Action_Execution_Workspace.md).
+
 ## Princípio
 
-Nenhuma etapa abaixo está implementada neste marco. Cada etapa deve ser uma sprint (ou série) **aditiva**, preservando Foundation v1.0.
+Cada etapa deve ser uma sprint (ou série) **aditiva**, preservando Foundation v1.0. As fases OI-2…OI-5 abaixo **não** são o backlog imediato pós-ISOI-007.
 
 ## Fases propostas
 

@@ -57,6 +57,24 @@ const ImprovementCaseDetailPage = lazy(() =>
 const GuidedTourPage = lazy(() =>
   import("@/pages/GuidedTourPage").then((m) => ({ default: m.GuidedTourPage })),
 );
+const ExecutionLayout = lazy(() =>
+  import("@/execution/ExecutionLayout").then((m) => ({ default: m.ExecutionLayout })),
+);
+const BoardPage = lazy(() =>
+  import("@/execution/BoardPage").then((m) => ({ default: m.BoardPage })),
+);
+const SquadsPage = lazy(() =>
+  import("@/execution/SquadsPage").then((m) => ({ default: m.SquadsPage })),
+);
+const SprintsPage = lazy(() =>
+  import("@/execution/SprintsPage").then((m) => ({ default: m.SprintsPage })),
+);
+const CeremoniesPage = lazy(() =>
+  import("@/execution/CeremoniesPage").then((m) => ({ default: m.CeremoniesPage })),
+);
+const CardDetailPage = lazy(() =>
+  import("@/execution/CardDetailPage").then((m) => ({ default: m.CardDetailPage })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,6 +102,13 @@ export default function App() {
               <Route element={<AppShell />}>
                 <Route path="guided-tour" element={<GuidedTourPage />} />
                 <Route path="assessments" element={<AssessmentsPage />} />
+                <Route path="execution" element={<ExecutionLayout />}>
+                  <Route index element={<BoardPage />} />
+                  <Route path="sprints" element={<SprintsPage />} />
+                  <Route path="squads" element={<SquadsPage />} />
+                  <Route path="ceremonies" element={<CeremoniesPage />} />
+                </Route>
+                <Route path="execution/cards/:actionItemId" element={<CardDetailPage />} />
                 <Route
                   path="improvement-cases/:caseId"
                   element={<ImprovementCaseDetailPage />}

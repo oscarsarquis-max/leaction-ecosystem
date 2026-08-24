@@ -19,6 +19,7 @@ from app.errors import (
 )
 from app.modules.actions.router import router as actions_router
 from app.modules.agenda.router import router as agenda_router
+from app.modules.agile.router import router as agile_router
 from app.modules.assessments.router import router as assessments_router
 from app.modules.evidence.router import router as evidence_router
 from app.modules.evolution_map.router import router as evolution_map_router
@@ -77,6 +78,7 @@ if settings.cors_origin_list:
 app.include_router(health_router)
 app.include_router(orgs_router, prefix=settings.api_prefix)
 app.include_router(improvement_cases_router, prefix=settings.api_prefix)
+app.include_router(agile_router, prefix=settings.api_prefix)
 app.include_router(oi_router, prefix=settings.api_prefix)
 app.include_router(agenda_router, prefix=settings.api_prefix)
 app.include_router(assessments_router, prefix=settings.api_prefix)

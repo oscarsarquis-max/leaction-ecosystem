@@ -47,7 +47,8 @@ def _row_to_run(row, *, is_stale: bool = False) -> ImprovementCaseAnalysisRunOut
     )
 
 
-def _current_fingerprint(ctx: OrgContext, case_id: UUID) -> str:
+def current_context_fingerprint(ctx: OrgContext, case_id: UUID) -> str:
+    """Fingerprint of the case context as it stands now (stale detection)."""
     case = cases_service.get_case(ctx, case_id)
     profile = orgs_service.get_or_create_organization_profile(ctx)
     payload = build_problem_context_input(
@@ -106,7 +107,7 @@ def list_analysis_runs(
     limit: int = 50,
 ) -> list[ImprovementCaseAnalysisRunOut]:
     cases_service.get_case(ctx, case_id)  # read gate + 404
-    current_fp = _current_fingerprint(ctx, case_id)
+    current_fp = current_context_fingerprint(ctx, case_id)
     with tenant_connection(ctx.organization_id) as conn:
         rows = conn.execute(
             text(
@@ -133,7 +134,7 @@ def get_analysis_run(
     run_id: UUID,
 ) -> ImprovementCaseAnalysisRunOut:
     cases_service.get_case(ctx, case_id)
-    current_fp = _current_fingerprint(ctx, case_id)
+    current_fp = current_context_fingerprint(ctx, case_id)
     with tenant_connection(ctx.organization_id) as conn:
         row = conn.execute(
             text(

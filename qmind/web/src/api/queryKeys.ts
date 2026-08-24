@@ -87,6 +87,45 @@ export const queryKeys = {
     ["org", organizationId, "improvement-case", caseId, "actions"] as const,
   improvementCaseEvolution: (organizationId: string, caseId: string) =>
     ["org", organizationId, "improvement-case", caseId, "evolution"] as const,
+  executionBoard: (
+    organizationId: string,
+    filters: { squadId?: string; sprintId?: string },
+  ) =>
+    [
+      "org",
+      organizationId,
+      "execution",
+      "board",
+      filters.squadId ?? "",
+      filters.sprintId ?? "",
+    ] as const,
+  executionSquads: (organizationId: string) =>
+    ["org", organizationId, "execution", "squads"] as const,
+  executionSquadMemberships: (organizationId: string, squadId: string) =>
+    ["org", organizationId, "execution", "squads", squadId, "memberships"] as const,
+  executionSprints: (organizationId: string, squadId?: string) =>
+    ["org", organizationId, "execution", "sprints", squadId ?? ""] as const,
+  executionSprintMetrics: (organizationId: string, sprintId: string) =>
+    ["org", organizationId, "execution", "sprints", sprintId, "metrics"] as const,
+  executionCeremonies: (organizationId: string, sprintId: string) =>
+    ["org", organizationId, "execution", "sprints", sprintId, "ceremonies"] as const,
+  executionCeremonyEvents: (organizationId: string, sprintId: string) =>
+    [
+      "org",
+      organizationId,
+      "execution",
+      "sprints",
+      sprintId,
+      "ceremony-events",
+    ] as const,
+  executionActionItem: (organizationId: string, actionItemId: string) =>
+    ["org", organizationId, "execution", "action-item", actionItemId] as const,
+  executionCheckIns: (organizationId: string, actionItemId: string) =>
+    ["org", organizationId, "execution", "action-item", actionItemId, "check-ins"] as const,
+  executionImpediments: (organizationId: string, actionItemId: string) =>
+    ["org", organizationId, "execution", "action-item", actionItemId, "impediments"] as const,
+  executionDependencies: (organizationId: string, actionItemId: string) =>
+    ["org", organizationId, "execution", "action-item", actionItemId, "dependencies"] as const,
   health: ["health"] as const,
 };
 
