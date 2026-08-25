@@ -5,10 +5,10 @@
 | Identificador | SPIDER-ARCH-014 |
 | Título | Arquitetura Funcional do Produto |
 | Natureza | Espelho documental vivo do Spider |
-| Baseline funcional | Spider 0.15.0 — SPIDER-PROMPT-015 VERIFIED |
+| Baseline funcional | Spider 0.16.0 — SPIDER-PROMPT-016 VERIFIED |
 | Boundary ativo | MOCK_ONLY |
-| Estado documental | BASELINE 015 — sincronização obrigatória após a verificação do SPIDER-PROMPT-016 |
-| Fontes autoritativas | SPIDER-ARCH-001–013, SPIDER-PROMPT-001–015, manifesto de capabilities, contrato anti-drift e roadmap 016–026 |
+| Estado documental | BASELINE 016 — espelho sincronizado com CAP-016 (Operational Events) |
+| Fontes autoritativas | SPIDER-ARCH-001–013, SPIDER-PROMPT-001–016, manifesto de capabilities, contrato anti-drift e roadmap 016–026 |
 
 > **Razão da numeração:** o número `SPIDER-ARCH-005` já está ocupado por “Definição de Rotas, Execution Plan e Máquina de Estados”. Como a série existente prossegue até `SPIDER-ARCH-013`, este documento recebe o próximo identificador coerente: `SPIDER-ARCH-014`.
 
@@ -16,7 +16,7 @@
 
 O Spider é uma plataforma de orquestração contextual que recebe uma intenção operacional de um canal ou produto, resolve de forma determinística uma rota governada, materializa um plano imutável, coordena interações com sistemas de destino por uma porta universal e devolve um resultado canônico, preservando estado, correlação, idempotência e evidências técnicas.
 
-Este documento é o **espelho funcional do produto real**. Ele descreve o que o Spider efetivamente oferece no baseline 0.15.0, como suas capacidades colaboram, por quais superfícies são acessadas e como aparecem no produto. Não substitui especificações normativas detalhadas nem prompts de implementação; oferece a visão integrada que permite compreender o Spider como produto.
+Este documento é o **espelho funcional do produto real**. Ele descreve o que o Spider efetivamente oferece no baseline 0.16.0, como suas capacidades colaboram, por quais superfícies são acessadas e como aparecem no produto. Não substitui especificações normativas detalhadas nem prompts de implementação; oferece a visão integrada que permite compreender o Spider como produto.
 
 ### 1.1 Público e linguagem
 
@@ -64,15 +64,15 @@ Este documento separa quatro categorias:
 
 | Categoria | Significado neste documento |
 |---|---|
-| Atual e verificada | Entregue por SPIDER-PROMPT-001–015 e declarada VERIFIED no manifesto do baseline 0.15.0 |
+| Atual e verificada | Entregue por SPIDER-PROMPT-001–016 e declarada VERIFIED no manifesto do baseline 0.16.0 |
 | Atual, mas opt-in | Implementada, porém protegida por flag, modo, autorização ou profile; não se presume ativa |
 | Preservada por compatibilidade | Existe no produto, mas não integra a jornada canônica principal |
 | Planejada | Pertence ao roadmap 016–026; não é descrita como funcionalidade atual |
 
 O estado oficial do baseline é:
 
-- `productVersion = 0.15.0`;
-- `currentPrompt = SPIDER-PROMPT-015`;
+- `productVersion = 0.16.0`;
+- `currentPrompt = SPIDER-PROMPT-016`;
 - `currentGroup = GROUP_A_VISIBILITY_OBSERVABILITY`;
 - `activeBoundary = MOCK_ONLY`;
 - 001–015 `VERIFIED`;
@@ -506,21 +506,19 @@ Para cada incremento posterior:
 6. capturar evidência visual real da implementação;
 7. atualizar manifesto, documentação e readiness sem antecipar status.
 
-### 10.3 Sincronização visual esperada após o 016
+### 10.3 Operational Events no baseline 016
 
-Somente quando o `SPIDER-PROMPT-016` for formalmente verificado, este documento deverá registrar:
+Com `SPIDER-PROMPT-016` VERIFIED, este documento registra:
 
-- o modelo canônico de Operational Event efetivamente implementado;
-- produtores e pontos de emissão reais;
-- store, retenção e consulta efetivos;
-- correlação com execution/step/attempt/wait/outbox/reconciliation;
-- filtros, paginação e redaction reais;
-- enriquecimento da timeline do Console com origem canônica;
-- screenshots desktop/mobile correspondentes;
-- flags, endpoints, métricas e testes exatamente como entregues;
+- contrato `OperationalEvent` (`schemaVersion = 1`) com categorias e outcomes fechados;
+- emissão fail-open via `OperationalEventPublisher` (engine, signal, callback);
+- store memory/JPA (`tb_operational_event`) e consulta `GET /v1/console/executions/{id}/events`;
+- metadata allowlist + redaction do console 015;
+- seção **Operational Timeline** no Console (read-only), distinta da timeline projetada do estado;
+- flag `spider.telemetry.enabled` (OFF_BY_DEFAULT);
 - garantia testada de que falha de telemetria não altera a semântica da Engine.
 
-Até essa verificação, telemetria canônica, logs/métricas/traces correlacionados adicionais e Operational Events persistidos são **planejados**, não capacidades do baseline 015.
+Telemetria observa; não controla. Não há broker nem event sourcing neste baseline.
 
 ## 11. Limites de escopo atuais
 
@@ -671,8 +669,8 @@ Todos permanecem `MOCK_ONLY`. “VERIFIED” indica entrega/testes no baseline, 
 
 | Prompt | Papel no Grupo A | Relação com o baseline atual | Atualização esperada deste ARCH |
 |---|---|---|---|
-| 016 | Telemetria Canônica e Operational Events | Depende do Console 015; planejado no manifesto vigente | Incorporar eventos reais, correlação, store/read model e timeline visual após verificação |
-| 017 | Saúde, SLIs, SLOs provisórios e cockpit operacional | Depende do 016 | Registrar SLIs/SLOs simulados, health e dashboards somente após implementação |
+| 016 | Telemetria Canônica e Operational Events | VERIFIED no manifesto 0.16.0; OFF_BY_DEFAULT | Eventos reais, store, API console e Operational Timeline |
+| 017 | Saúde, SLIs, SLOs provisórios e cockpit operacional | Depende do 016; PLANNED | Registrar SLIs/SLOs simulados, health e dashboards somente após implementação |
 | 018 | Laboratório de Falhas e Jornadas Operacionais | Depende do 017; fecha o Grupo A | Registrar fault injection visual, evidências e runbooks Mock somente após implementação |
 
 O 016 não deve alterar semântica da Engine. O 017 não deve transformar SLO provisório em compromisso produtivo. O 018 não deve conectar infraestrutura ou legado real.
@@ -828,11 +826,11 @@ O glossário descreve a semântica do produto, não uma obrigação tecnológica
 - `SPIDER-ARCH-011` — topologia e disponibilidade;
 - `SPIDER-ARCH-012` — testes e certificação;
 - `SPIDER-ARCH-013` — Console e visualização;
-- `SPIDER-PROMPT-001–015` — evidência técnica dos incrementos verificados;
+- `SPIDER-PROMPT-001–016` — evidência técnica dos incrementos verificados;
 - `SPIDER-ROADMAP-IMPLEMENTACAO-016-026` — sequência oficial futura;
 - `spider-capability-manifest.json` — estado versionado de capabilities;
 - `spider-roadmap-015-026-contract.json` — contrato anti-drift.
 
 ---
 
-**Declaração de baseline:** este documento reflete o Spider 0.15.0 / SPIDER-PROMPT-015 VERIFIED, com `MOCK_ONLY` ativo. Ele foi preparado para sincronização imediata após a verificação formal do SPIDER-PROMPT-016, mas não antecipa a entrega do 016, 017 ou 018.
+**Declaração de baseline:** este documento reflete o Spider 0.16.0 / SPIDER-PROMPT-016 VERIFIED, com `MOCK_ONLY` ativo. O 017 (SLOs/health) e o 018 (Failure Lab) permanecem planejados e fora deste espelho funcional.
