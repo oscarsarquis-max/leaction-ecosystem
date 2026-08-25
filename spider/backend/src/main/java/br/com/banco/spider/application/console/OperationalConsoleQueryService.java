@@ -19,7 +19,9 @@ import br.com.banco.spider.execution.step.StepAttemptRecord;
 import br.com.banco.spider.execution.step.StepState;
 import br.com.banco.spider.execution.wait.ExecutionWaitRecord;
 import br.com.banco.spider.governance.port.ExecutionGovernanceFixationStorePort;
+import br.com.banco.spider.operational.events.OperationalEventStorePort;
 import br.com.banco.spider.operational.readmodel.ListOperationalExecutionsQuery;
+import br.com.banco.spider.operational.readmodel.OperationalEventView;
 import br.com.banco.spider.operational.readmodel.OperationalExecutionDetail;
 import br.com.banco.spider.operational.readmodel.OperationalExecutionListItem;
 import br.com.banco.spider.operational.readmodel.OperationalRedactionService;
@@ -52,6 +54,7 @@ public class OperationalConsoleQueryService {
   private final ObjectProvider<CallbackReconciliationStorePort> reconciliationStore;
   private final ObjectProvider<ExecutionGovernanceFixationStorePort> fixationStore;
   private final OperationalRedactionService redaction;
+  private OperationalEventStorePort operationalEventStore;
   private final int maxPageSize;
   private final int defaultPageSize;
   private final boolean safeProjectionsEnabled;
@@ -85,12 +88,44 @@ public class OperationalConsoleQueryService {
     this.safeProjectionsEnabled = safeProjectionsEnabled;
   }
 
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  void setOperationalEventStore(OperationalEventStorePort store) {
+    this.operationalEventStore = store;
+  }
+
   public Mono<ListPage> list(ListOperationalExecutionsQuery query) {
     return Mono.fromCallable(() -> listBlocking(query)).subscribeOn(Schedulers.boundedElastic());
   }
 
   public Mono<Optional<OperationalExecutionDetail>> getDetail(String executionId) {
     return Mono.fromCallable(() -> Optional.ofNullable(detailBlocking(executionId)))
+        .subscribeOn(Schedulers.boundedElastic());
+  }
+
+  public Mono<List<OperationalEventView>> listOperationalEvents(String executionId) {
+    return Mono.fromCallable(
+            () -> {
+              if (operationalEventStore == null) {
+                return List.<OperationalEventView>of();
+              }
+              return operationalEventStore.findByExecutionId(executionId).stream()
+                  .map(
+                      event ->
+                          new OperationalEventView(
+                              event.eventId(),
+                              event.schemaVersion(),
+                              event.eventType(),
+                              event.category(),
+                              event.occurredAt(),
+                              event.executionId(),
+                              event.interactionId(),
+                              event.correlationId(),
+                              event.source(),
+                              event.outcome(),
+                              event.durationMs(),
+                              event.metadata()))
+                  .toList();
+            })
         .subscribeOn(Schedulers.boundedElastic());
   }
 

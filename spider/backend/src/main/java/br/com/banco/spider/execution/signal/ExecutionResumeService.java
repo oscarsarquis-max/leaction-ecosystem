@@ -40,6 +40,11 @@ import br.com.banco.spider.infrastructure.persistence.memory.InMemoryExecutionCo
 import br.com.banco.spider.integration.binding.AdapterBindingResolverPort;
 import br.com.banco.spider.integration.port.AdapterDispositionMode;
 import br.com.banco.spider.integration.port.UniversalAdapterRequest;
+import br.com.banco.spider.operational.events.OperationalEventAttributes;
+import br.com.banco.spider.operational.events.OperationalEventEmit;
+import br.com.banco.spider.operational.events.OperationalEventOutcome;
+import br.com.banco.spider.operational.events.OperationalEventPublisher;
+import br.com.banco.spider.operational.events.OperationalEventType;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.time.Instant;
@@ -70,6 +75,7 @@ public class ExecutionResumeService {
   private final IntegrityDigestPort digest;
   private final SpiderClock clock;
   private final br.com.banco.spider.governance.GovernedRuntimeSupport governedRuntime;
+  private OperationalEventPublisher events = OperationalEventPublisher.noop();
 
   @org.springframework.beans.factory.annotation.Autowired
   public ExecutionResumeService(
@@ -156,6 +162,13 @@ public class ExecutionResumeService {
     this.governedRuntime = governedRuntime;
   }
 
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  void setOperationalEventPublisher(OperationalEventPublisher publisher) {
+    if (publisher != null) {
+      this.events = publisher;
+    }
+  }
+
   public record ResumeOutcome(
       ExternalSignalProcessingStatus status,
       CanonicalExecutionResult result,
@@ -226,6 +239,37 @@ public class ExecutionResumeService {
                                   ExternalSignalProcessingStatus.REJECTED,
                                   null,
                                   error(ex.reasonCode(), ex.getMessage()))));
+            })
+        .doOnNext(
+            outcome -> {
+              if (outcome.status() == ExternalSignalProcessingStatus.ACCEPTED_AND_RESUMED
+                  || outcome.status() == ExternalSignalProcessingStatus.ACCEPTED_AND_TERMINATED) {
+                OperationalEventAttributes attributes =
+                    OperationalEventAttributes.builder()
+                        .waitId(wait.waitId())
+                        .signalOutcome(outcome.status().name())
+                        .build();
+                OperationalEventEmit.publish(
+                    events,
+                    OperationalEventEmit.draft(
+                        OperationalEventType.SIGNAL_ACCEPTED,
+                        wait.executionId(),
+                        signal.trace().correlationId(),
+                        "execution-resume",
+                        OperationalEventOutcome.SUCCESS,
+                        null,
+                        attributes));
+                OperationalEventEmit.publish(
+                    events,
+                    OperationalEventEmit.draft(
+                        OperationalEventType.EXECUTION_RESUMED,
+                        wait.executionId(),
+                        signal.trace().correlationId(),
+                        "execution-resume",
+                        OperationalEventOutcome.SUCCESS,
+                        null,
+                        attributes));
+              }
             });
   }
 

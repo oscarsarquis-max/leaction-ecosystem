@@ -58,7 +58,9 @@ Classpath: `implementation/spider-capability-manifest.json` + schema. Status: PL
 Roadmap oficial 015–026: `docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md`  
 Contrato anti-drift: `implementation/spider-roadmap-015-026-contract.json`
 
-Grupos oficiais da jornada: A Visibilidade (015–018), B Runtime (019–021), C Plataforma (022–024), D Integração real (025–026). `currentGroup` após 015 = `GROUP_A_VISIBILITY_OBSERVABILITY`.
+Grupos oficiais da jornada: A Visibilidade (015–018), B Runtime (019–021), C Plataforma (022–024), D Integração real (025–026). `currentGroup` após 016 = `GROUP_A_VISIBILITY_OBSERVABILITY`.
+
+O detalhe da execução também consome Operational Events (PROMPT-016) via `GET /v1/console/executions/{id}/events` — fatos de telemetria distintos da timeline projetada do estado persistido. Telemetria é opt-in (`spider.telemetry.enabled`) e fail-open.
 
 ## 8. Modo Apresentação
 

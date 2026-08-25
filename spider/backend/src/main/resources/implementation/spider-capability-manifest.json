@@ -1,15 +1,15 @@
 {
   "manifestVersion": "1.0.1",
-  "productVersion": "0.15.0",
-  "lastVerifiedAt": "2026-08-21T21:20:00Z",
+  "productVersion": "0.16.0",
+  "lastVerifiedAt": "2026-08-25T12:00:00Z",
   "baseline": {
-    "backendTests": 186,
-    "frontendTests": 10,
+    "backendTests": 192,
+    "frontendTests": 11,
     "failures": 0,
     "errors": 0,
     "skipped": 0
   },
-  "currentPrompt": "SPIDER-PROMPT-015",
+  "currentPrompt": "SPIDER-PROMPT-016",
   "currentGroup": "GROUP_A_VISIBILITY_OBSERVABILITY",
   "capabilities": [
     {
@@ -427,26 +427,31 @@
       "promptRef": "SPIDER-PROMPT-016",
       "title": "Telemetria Canônica e Operational Events",
       "objective": "Logs, métricas, traces e eventos correlacionados",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
       "integrationLevel": "MOCK_ONLY",
       "architectureRefs": [
-        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
-        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+        "docs/architecture/SPIDER-ARCH-010-observabilidade-slos-operacao-e-resposta-a-falhas.md",
+        "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md"
       ],
       "technicalDocRefs": [
-        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+        "docs/technical/SPIDER-PROMPT-016-operational-events.md"
       ],
-      "featureFlags": [],
+      "featureFlags": [
+        "spider.telemetry.enabled"
+      ],
       "evidenceRefs": [],
-      "testSummary": "Not started — PLANNED in official roadmap",
+      "testSummary": "Operational events publisher/store/console endpoint + engine fail-open + FE Operational Timeline",
       "dependencies": [
         "CAP-015"
       ],
       "limitations": [
-        "MOCK_ONLY"
+        "MOCK_ONLY",
+        "No broker",
+        "No OpenTelemetry end-to-end",
+        "No SLO engine (017)"
       ],
-      "lastVerifiedAt": null
+      "lastVerifiedAt": "2026-08-25T12:00:00Z"
     },
     {
       "capabilityCode": "CAP-017",

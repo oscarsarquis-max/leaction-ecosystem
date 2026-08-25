@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import ConsoleShell from "../console/ConsoleShell.jsx";
-import { JourneyMap, SecurityPosturePanel, TimelineView } from "../console/components.jsx";
+import { JourneyMap, SecurityPosturePanel, TimelineView, OperationalTimelineView } from "../console/components.jsx";
 import { isTerminalState } from "../console/api.js";
 import { MOCK_SCENARIOS, buildCanonicalRequest } from "../console/scenarios.js";
 
@@ -94,6 +94,32 @@ describe("TimelineView", () => {
   });
 });
 
+describe("OperationalTimelineView", () => {
+  it("renders timestamp, category, type, source, outcome and duration", () => {
+    render(
+      <OperationalTimelineView
+        events={[
+          {
+            eventId: "oev-1",
+            occurredAt: "2026-08-25T12:00:00Z",
+            category: "EXECUTION",
+            eventType: "EXECUTION_SUCCEEDED",
+            source: "canonical-engine",
+            outcome: "SUCCESS",
+            durationMs: 42,
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByLabelText("Operational Timeline")).toBeInTheDocument();
+    expect(screen.getByText("EXECUTION")).toBeInTheDocument();
+    expect(screen.getByText("EXECUTION_SUCCEEDED")).toBeInTheDocument();
+    expect(screen.getByText("canonical-engine")).toBeInTheDocument();
+    expect(screen.getByText("SUCCESS")).toBeInTheDocument();
+    expect(screen.getByText("42 ms")).toBeInTheDocument();
+  });
+});
+
 describe("ConsoleShell", () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -103,7 +129,27 @@ describe("ConsoleShell", () => {
           throw new Error("legacy must not be called");
         }
         if (String(url).includes("/v1/console/executions") && (!init || init.method !== "POST")) {
-          if (String(url).match(/\/executions\/[^?]+$/)) {
+          if (String(url).includes("/events")) {
+            return {
+              ok: true,
+              status: 200,
+              text: async () =>
+                JSON.stringify({
+                  executionId: "ex-1",
+                  items: [
+                    {
+                      eventId: "oev-1",
+                      category: "EXECUTION",
+                      eventType: "EXECUTION_STARTED",
+                      source: "canonical-engine",
+                      outcome: "INFO",
+                      occurredAt: "2026-08-25T12:00:00Z",
+                    },
+                  ],
+                }),
+            };
+          }
+          if (String(url).match(/\/executions\/[^?/]+$/)) {
             return {
               ok: true,
               status: 200,

@@ -18,8 +18,14 @@ import br.com.banco.spider.execution.step.ExecutionStepRecord;
 import br.com.banco.spider.execution.step.StepAttemptRecord;
 import br.com.banco.spider.execution.step.StepState;
 import br.com.banco.spider.execution.persistence.port.StepAttemptStorePort;
+import br.com.banco.spider.operational.events.OperationalEvent;
+import br.com.banco.spider.operational.events.OperationalEventCategory;
+import br.com.banco.spider.operational.events.OperationalEventOutcome;
+import br.com.banco.spider.operational.events.OperationalEventStorePort;
+import br.com.banco.spider.operational.events.OperationalEventType;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +64,7 @@ class OperationalConsoleE2EReadModelTest {
   @Autowired ExecutionStepStorePort stepStore;
   @Autowired StepAttemptStorePort attemptStore;
   @Autowired ExecutionTransitionStorePort transitionStore;
+  @Autowired OperationalEventStorePort operationalEventStore;
 
   @TestConfiguration
   static class PermissiveConsoleAuth {
@@ -170,6 +177,20 @@ class OperationalConsoleE2EReadModelTest {
             "DONE",
             now.plusSeconds(3),
             null));
+    operationalEventStore.append(
+        new OperationalEvent(
+            "oev-e2e-1",
+            1,
+            OperationalEventType.EXECUTION_SUCCEEDED,
+            OperationalEventCategory.EXECUTION,
+            now.plusSeconds(3),
+            id,
+            null,
+            "corr-e2e-retry-001-full",
+            "test-seed",
+            OperationalEventOutcome.SUCCESS,
+            3000L,
+            Map.of("routeCode", "RETRY_THEN_SUCCESS")));
   }
 
   @Test
@@ -210,6 +231,25 @@ class OperationalConsoleE2EReadModelTest {
   }
 
   @Test
+  void operationalEventsEndpointReturnsOrderedNoStoreProjection() {
+    client
+        .get()
+        .uri("/v1/console/executions/e2e-retry-001/events")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectHeader()
+        .valueEquals("Cache-Control", "no-store")
+        .expectBody()
+        .jsonPath("$.executionId")
+        .isEqualTo("e2e-retry-001")
+        .jsonPath("$.items[0].eventType")
+        .isEqualTo("EXECUTION_SUCCEEDED")
+        .jsonPath("$.items[0].metadata.routeCode")
+        .isEqualTo("RETRY_THEN_SUCCESS");
+  }
+
+  @Test
   void implementationAndReadinessEndpointsProtectedNoStore() {
     client
         .get()
@@ -221,7 +261,7 @@ class OperationalConsoleE2EReadModelTest {
         .valueEquals("Cache-Control", "no-store")
         .expectBody()
         .jsonPath("$.currentPrompt")
-        .isEqualTo("SPIDER-PROMPT-015")
+        .isEqualTo("SPIDER-PROMPT-016")
         .jsonPath("$.capabilities.length()")
         .isEqualTo(26)
         .jsonPath("$.mockRealBoundary")

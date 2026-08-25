@@ -140,6 +140,30 @@ public class OperationalConsoleHttpController {
             });
   }
 
+  @GetMapping(value = "/executions/{executionId}/events", produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<?>> operationalEvents(
+      @PathVariable String executionId,
+      @RequestHeader(value = "X-Spider-Credential-Ref", required = false) String credentialRef) {
+    if (!props.isEnabled()) {
+      return Mono.just(ResponseEntity.notFound().build());
+    }
+    return authenticateAndAuthorize(credentialRef, OperationalConsoleAction.VIEW_OPERATIONAL_EVENTS)
+        .flatMap(
+            allowed -> {
+              if (!allowed) {
+                return Mono.just(denied());
+              }
+              return queryService
+                  .listOperationalEvents(executionId)
+                  .map(
+                      items ->
+                          ResponseEntity.ok()
+                              .cacheControl(CacheControl.noStore())
+                              .<Object>body(
+                                  Map.of("executionId", executionId, "items", items)));
+            });
+  }
+
   @GetMapping(value = "/implementation", produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<?>> implementation(
       @RequestHeader(value = "X-Spider-Credential-Ref", required = false) String credentialRef) {

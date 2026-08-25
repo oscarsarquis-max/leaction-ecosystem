@@ -97,6 +97,45 @@ export function TimelineView({ timeline, phaseFilter }) {
   );
 }
 
+/** Telemetry facts (016) — distinct from the persisted-state timeline projection. */
+export function OperationalTimelineView({ events, error }) {
+  if (error) {
+    return <p className="muted">Operational Timeline indisponível ({error.message || "erro"}).</p>;
+  }
+  if (!events) {
+    return <p className="muted">Carregando Operational Timeline…</p>;
+  }
+  if (!events.length) {
+    return (
+      <p className="muted">
+        Nenhum Operational Event para esta execução (telemetria off ou ainda sem emissão).
+      </p>
+    );
+  }
+  return (
+    <ol className="timeline-list" tabIndex={0} aria-label="Operational Timeline">
+      {events.map((e) => (
+        <li key={e.eventId} className="tl-item severity-info" data-testid="operational-event-row">
+          <div className="tl-meta">
+            <time dateTime={e.occurredAt} title={e.occurredAt ? `${e.occurredAt} (UTC)` : undefined}>
+              {formatWhen(e.occurredAt)}
+            </time>
+            <span className="pill">{e.category || "—"}</span>
+            <span className="pill muted">{e.eventType || "—"}</span>
+            <span className="pill muted">{e.source || "—"}</span>
+            {e.outcome ? <span className="pill">{e.outcome}</span> : null}
+          </div>
+          <div className="muted">
+            {e.durationMs != null ? formatDuration(e.durationMs) : "—"}
+            {e.interactionId ? ` · interaction ${shortId(e.interactionId)}` : ""}
+            {e.correlationId ? ` · corr ${shortId(e.correlationId)}` : ""}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function SecurityPosturePanel({ section }) {
   if (!section?.available) {
     return <p className="muted">Postura de segurança indisponível.</p>;

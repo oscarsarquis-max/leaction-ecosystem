@@ -60,6 +60,10 @@ export function getExecutionDetail(executionId, { signal } = {}) {
   return request(`/v1/console/executions/${encodeURIComponent(executionId)}`, { signal });
 }
 
+export function getExecutionOperationalEvents(executionId, { signal } = {}) {
+  return request(`/v1/console/executions/${encodeURIComponent(executionId)}/events`, { signal });
+}
+
 export function submitMockScenario(httpBody, { idempotencyKey, traceparent, signal } = {}) {
   return request("/v1/canonical/executions", {
     method: "POST",

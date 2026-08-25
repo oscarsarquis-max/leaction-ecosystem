@@ -9,6 +9,11 @@ import br.com.banco.spider.execution.persistence.port.InboxStorePort;
 import br.com.banco.spider.execution.support.SpiderClock;
 import br.com.banco.spider.governance.GovernedEffectType;
 import br.com.banco.spider.governance.GovernanceInFlightDecisionService;
+import br.com.banco.spider.operational.events.OperationalEventAttributes;
+import br.com.banco.spider.operational.events.OperationalEventEmit;
+import br.com.banco.spider.operational.events.OperationalEventOutcome;
+import br.com.banco.spider.operational.events.OperationalEventPublisher;
+import br.com.banco.spider.operational.events.OperationalEventType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -51,6 +56,7 @@ public class ExternalSignalIngressUseCase {
   private final br.com.banco.spider.execution.fingerprint.Sha256IdempotencyKeyHash sha256;
   private final SpiderClock clock;
   private final int maxEnvelopeBytes;
+  private OperationalEventPublisher events = OperationalEventPublisher.noop();
 
   public ExternalSignalIngressUseCase(
       @Value("${spider.signal.ingress.durable-application.enabled:false}")
@@ -99,15 +105,79 @@ public class ExternalSignalIngressUseCase {
     this.maxEnvelopeBytes = Math.max(1024, maxEnvelopeBytes);
   }
 
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  void setOperationalEventPublisher(OperationalEventPublisher publisher) {
+    if (publisher != null) {
+      this.events = publisher;
+    }
+  }
+
   public Mono<ExternalSignalIngressResult> ingest(ExternalSignalEnvelope envelope) {
     if (envelope == null || envelope.messageId() == null || envelope.messageId().isBlank()) {
       log.info("event=signal_structurally_rejected reasonCode=MESSAGE_ID");
       return Mono.just(ExternalSignalIngressResult.of(ExternalSignalIngressOutcome.REJECTED, "STRUCTURAL"));
     }
+    emitSignal(
+        OperationalEventType.SIGNAL_RECEIVED,
+        envelope,
+        OperationalEventOutcome.INFO,
+        "RECEIVED");
+    Mono<ExternalSignalIngressResult> result;
     if (!durableApplication) {
-      return legacyApplication.process(envelope).map(ExternalSignalIngressResult::legacy);
+      result = legacyApplication.process(envelope).map(ExternalSignalIngressResult::legacy);
+    } else {
+      result = ingestDurable(envelope);
     }
-    return ingestDurable(envelope);
+    return result.doOnNext(value -> emitSignalResult(envelope, value));
+  }
+
+  private void emitSignalResult(
+      ExternalSignalEnvelope envelope, ExternalSignalIngressResult result) {
+    OperationalEventType type =
+        switch (result.outcome()) {
+          case REPLAY_CONFLICT -> OperationalEventType.SECURITY_REPLAY_REJECTED;
+          case INVALID_PROOF -> OperationalEventType.SECURITY_INTEGRITY_REJECTED;
+          case UNAUTHORIZED -> OperationalEventType.SECURITY_TOKEN_REJECTED;
+          case ACCEPTED_PENDING_APPLICATION,
+              DUPLICATE_ALREADY_ACCEPTED,
+              DUPLICATE_ALREADY_APPLIED,
+              APPLIED_INLINE -> OperationalEventType.SIGNAL_ACCEPTED;
+          default ->
+              result.safeReasonCategory() != null
+                      && result.safeReasonCategory().toUpperCase().contains("TOKEN")
+                  ? OperationalEventType.SECURITY_TOKEN_REJECTED
+                  : OperationalEventType.SIGNAL_REJECTED;
+        };
+    OperationalEventOutcome outcome =
+        type == OperationalEventType.SIGNAL_ACCEPTED
+            ? OperationalEventOutcome.SUCCESS
+            : OperationalEventOutcome.REJECTED;
+    emitSignal(type, envelope, outcome, result.safeReasonCategory());
+  }
+
+  private void emitSignal(
+      OperationalEventType type,
+      ExternalSignalEnvelope envelope,
+      OperationalEventOutcome outcome,
+      String reason) {
+    OperationalEventEmit.publish(
+        events,
+        OperationalEventEmit.draft(
+            type,
+            envelope.executionId(),
+            envelope.trace() == null ? null : envelope.trace().correlationId(),
+            "signal-ingress",
+            outcome,
+            null,
+            OperationalEventAttributes.builder()
+                .reasonCode(reason)
+                .signalOutcome(type.name())
+                .integrityReason(
+                    type.category()
+                            == br.com.banco.spider.operational.events.OperationalEventCategory.SECURITY
+                        ? reason
+                        : null)
+                .build()));
   }
 
   private Mono<ExternalSignalIngressResult> ingestDurable(ExternalSignalEnvelope envelope) {

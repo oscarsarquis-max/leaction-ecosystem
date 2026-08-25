@@ -9,6 +9,11 @@ import br.com.banco.spider.execution.persistence.port.CallbackOutboxStorePort;
 import br.com.banco.spider.execution.persistence.port.ExecutionCallbackContextStorePort;
 import br.com.banco.spider.execution.support.IdentifierGenerator;
 import br.com.banco.spider.execution.support.SpiderClock;
+import br.com.banco.spider.operational.events.OperationalEventAttributes;
+import br.com.banco.spider.operational.events.OperationalEventEmit;
+import br.com.banco.spider.operational.events.OperationalEventOutcome;
+import br.com.banco.spider.operational.events.OperationalEventPublisher;
+import br.com.banco.spider.operational.events.OperationalEventType;
 import br.com.banco.spider.web.filter.TraceContextWebFilter;
 import java.time.Duration;
 import java.time.Instant;
@@ -39,6 +44,7 @@ public class CallbackOutboxProcessor {
   private final IdentifierGenerator ids;
   private final SpiderClock clock;
   private final br.com.banco.spider.governance.GovernedRuntimeSupport governedRuntime;
+  private OperationalEventPublisher events = OperationalEventPublisher.noop();
 
   public CallbackOutboxProcessor(
       CallbackOutboxStorePort outboxStore,
@@ -165,6 +171,13 @@ public class CallbackOutboxProcessor {
     this.ids = ids;
     this.clock = clock;
     this.governedRuntime = governedRuntime;
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  void setOperationalEventPublisher(OperationalEventPublisher publisher) {
+    if (publisher != null) {
+      this.events = publisher;
+    }
   }
 
   public Mono<List<CallbackOutboxRecord>> findReady(Instant now, int limit) {
@@ -558,7 +571,14 @@ public class CallbackOutboxProcessor {
                   now,
                   attemptNumber,
                   null,
-                  now));
+                  now))
+          .doOnSuccess(
+              updated ->
+                  emitCallback(
+                      updated,
+                      OperationalEventType.CALLBACK_ACCEPTED,
+                      OperationalEventOutcome.SUCCESS,
+                      "DELIVERED"));
     }
 
     if (deliveryResult.disposition() == CallbackDeliveryDisposition.UNKNOWN
@@ -613,15 +633,22 @@ public class CallbackOutboxProcessor {
     log.info(
         "event=callback_dead_lettered outboxId={} reasonCode=EXHAUSTED", claimed.outboxId());
     return Mono.fromCallable(
-        () ->
-            outboxStore.updateState(
-                claimed.outboxId(),
-                claimed.stateVersion(),
-                CallbackOutboxState.DEAD_LETTERED,
-                now,
-                attemptNumber,
-                deliveryResult.error() != null ? deliveryResult.error().code() : "DEAD_LETTER",
-                now));
+            () ->
+                outboxStore.updateState(
+                    claimed.outboxId(),
+                    claimed.stateVersion(),
+                    CallbackOutboxState.DEAD_LETTERED,
+                    now,
+                    attemptNumber,
+                    deliveryResult.error() != null ? deliveryResult.error().code() : "DEAD_LETTER",
+                    now))
+        .doOnSuccess(
+            updated ->
+                emitCallback(
+                    updated,
+                    OperationalEventType.CALLBACK_REJECTED,
+                    OperationalEventOutcome.FAILURE,
+                    updated.lastErrorCode()));
   }
 
   private Mono<CallbackOutboxRecord> failTerminal(
@@ -641,15 +668,42 @@ public class CallbackOutboxProcessor {
         retryableHint,
         List.of());
     return Mono.fromCallable(
-        () ->
-            outboxStore.updateState(
-                claimed.outboxId(),
-                claimed.stateVersion(),
-                CallbackOutboxState.DEAD_LETTERED,
-                now,
-                attemptNumber,
-                errorCode,
-                now));
+            () ->
+                outboxStore.updateState(
+                    claimed.outboxId(),
+                    claimed.stateVersion(),
+                    CallbackOutboxState.DEAD_LETTERED,
+                    now,
+                    attemptNumber,
+                    errorCode,
+                    now))
+        .doOnSuccess(
+            updated ->
+                emitCallback(
+                    updated,
+                    OperationalEventType.CALLBACK_REJECTED,
+                    OperationalEventOutcome.FAILURE,
+                    errorCode));
+  }
+
+  private void emitCallback(
+      CallbackOutboxRecord record,
+      OperationalEventType type,
+      OperationalEventOutcome outcome,
+      String reasonCode) {
+    OperationalEventEmit.publish(
+        events,
+        OperationalEventEmit.draft(
+            type,
+            record.executionId(),
+            null,
+            "callback-outbox",
+            outcome,
+            null,
+            OperationalEventAttributes.builder()
+                .reasonCode(reasonCode)
+                .disposition(record.state().name())
+                .build()));
   }
 
   private void maybeCreateReconciliation(

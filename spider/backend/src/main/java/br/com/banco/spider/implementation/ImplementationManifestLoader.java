@@ -74,8 +74,8 @@ public class ImplementationManifestLoader {
     if (!"GROUP_A_VISIBILITY_OBSERVABILITY".equals(manifest.currentGroup())) {
       problems.add("currentGroup must be GROUP_A_VISIBILITY_OBSERVABILITY");
     }
-    if (!"SPIDER-PROMPT-015".equals(manifest.currentPrompt())) {
-      problems.add("currentPrompt must be SPIDER-PROMPT-015");
+    if (!"SPIDER-PROMPT-016".equals(manifest.currentPrompt())) {
+      problems.add("currentPrompt must be SPIDER-PROMPT-016");
     }
     for (ImplementationCapability c : manifest.capabilities()) {
       if ("PRODUCTION".equals(c.integrationLevel())) {
@@ -85,13 +85,13 @@ public class ImplementationManifestLoader {
         continue;
       }
       int n = Integer.parseInt(c.promptRef().substring("SPIDER-PROMPT-".length()));
-      if (n <= 15 && !"VERIFIED".equals(c.status())) {
+      if (n <= 16 && !"VERIFIED".equals(c.status())) {
         problems.add(c.capabilityCode() + " expected VERIFIED");
       }
-      if (n >= 16 && n <= 26 && !"PLANNED".equals(c.status())) {
+      if (n >= 17 && n <= 26 && !"PLANNED".equals(c.status())) {
         problems.add(c.capabilityCode() + " expected PLANNED");
       }
-      if (n <= 15 && !"MOCK_ONLY".equals(c.integrationLevel())) {
+      if (n <= 16 && !"MOCK_ONLY".equals(c.integrationLevel())) {
         problems.add(c.capabilityCode() + " must be MOCK_ONLY while verified in Mock phase");
       }
       if (n == 25) {

@@ -49,6 +49,11 @@ import br.com.banco.spider.integration.port.AdapterDispositionMode;
 import br.com.banco.spider.integration.port.UniversalAdapterPort;
 import br.com.banco.spider.integration.port.UniversalAdapterRequest;
 import br.com.banco.spider.integration.port.UniversalAdapterResult;
+import br.com.banco.spider.operational.events.OperationalEventAttributes;
+import br.com.banco.spider.operational.events.OperationalEventEmit;
+import br.com.banco.spider.operational.events.OperationalEventOutcome;
+import br.com.banco.spider.operational.events.OperationalEventPublisher;
+import br.com.banco.spider.operational.events.OperationalEventType;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.time.Instant;
@@ -92,6 +97,7 @@ public class DefaultCanonicalExecutionEngine implements CanonicalExecutionEngine
   private final br.com.banco.spider.governance.DefaultGovernanceResolutionContextProvider
       governanceContextProvider;
   private final br.com.banco.spider.execution.route.RouteDefinitionValidator routeValidator;
+  private OperationalEventPublisher events = OperationalEventPublisher.noop();
 
   @org.springframework.beans.factory.annotation.Autowired
   public DefaultCanonicalExecutionEngine(
@@ -216,6 +222,13 @@ public class DefaultCanonicalExecutionEngine implements CanonicalExecutionEngine
   @Override
   public Mono<CanonicalExecutionResult> execute(CanonicalExecutionRequest request) {
     return execute(request, null);
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  void setOperationalEventPublisher(OperationalEventPublisher publisher) {
+    if (publisher != null) {
+      this.events = publisher;
+    }
   }
 
   @Override
@@ -465,32 +478,46 @@ public class DefaultCanonicalExecutionEngine implements CanonicalExecutionEngine
                                     null,
                                     null))
                             .flatMap(
-                                running ->
-                                    executeStepsSequentially(
-                                            request,
-                                            plan,
-                                            deadline,
-                                            effectiveKey,
-                                            running,
-                                            scopeHash,
-                                            keyHash,
-                                            effectiveBinding,
-                                            effectiveRetry)
-                                        .onErrorResume(
-                                            ex -> {
-                                              log.info(
-                                                  "event=persistence_failure executionId={} reasonCode=ENGINE_ERROR",
-                                                  executionId);
-                                              return Mono.just(
-                                                  buildRejected(
-                                                      request,
-                                                      summary(plan),
-                                                      List.of(
-                                                          error(
-                                                              "ENGINE_INTERNAL",
-                                                              "Execution failed internally",
-                                                              ErrorCategory.INTERNAL))));
-                                            }));
+                                running -> {
+                                  OperationalEventEmit.publish(
+                                      events,
+                                      OperationalEventEmit.draft(
+                                          OperationalEventType.EXECUTION_STARTED,
+                                          executionId,
+                                          request.trace().correlationId(),
+                                          "canonical-engine",
+                                          OperationalEventOutcome.INFO,
+                                          null,
+                                          OperationalEventAttributes.builder()
+                                              .routeCode(plan.routeRef().routeCode())
+                                              .technicalStatus(TechnicalStatus.PENDING.name())
+                                              .build()));
+                                  return executeStepsSequentially(
+                                          request,
+                                          plan,
+                                          deadline,
+                                          effectiveKey,
+                                          running,
+                                          scopeHash,
+                                          keyHash,
+                                          effectiveBinding,
+                                          effectiveRetry)
+                                      .onErrorResume(
+                                          ex -> {
+                                            log.info(
+                                                "event=persistence_failure executionId={} reasonCode=ENGINE_ERROR",
+                                                executionId);
+                                            return Mono.just(
+                                                buildRejected(
+                                                    request,
+                                                    summary(plan),
+                                                    List.of(
+                                                        error(
+                                                            "ENGINE_INTERNAL",
+                                                            "Execution failed internally",
+                                                            ErrorCategory.INTERNAL))));
+                                          });
+                                });
                       });
             });
   }
@@ -741,7 +768,22 @@ public class DefaultCanonicalExecutionEngine implements CanonicalExecutionEngine
         .then(
             persistence.persistTerminalResult(
                 result, IdempotencyRecordState.COMPLETED, scopeHash, keyHash))
-        .thenReturn(result);
+        .thenReturn(result)
+        .doOnSuccess(
+            ignored ->
+                OperationalEventEmit.publish(
+                    events,
+                    OperationalEventEmit.draft(
+                        OperationalEventType.EXECUTION_SUCCEEDED,
+                        request.execution().executionId(),
+                        request.trace().correlationId(),
+                        "canonical-engine",
+                        OperationalEventOutcome.SUCCESS,
+                        OperationalEventEmit.durationMs(running.startedAt(), now),
+                        OperationalEventAttributes.builder()
+                            .routeCode(plan.routeRef().routeCode())
+                            .technicalStatus(TechnicalStatus.SUCCESS.name())
+                            .build())));
   }
 
   private Mono<CanonicalExecutionResult> finalizeFailure(
@@ -805,7 +847,24 @@ public class DefaultCanonicalExecutionEngine implements CanonicalExecutionEngine
         .then(
             persistence.persistTerminalResult(
                 result, IdempotencyRecordState.FAILED_REUSABLE, scopeHash, keyHash))
-        .thenReturn(result);
+        .thenReturn(result)
+        .doOnSuccess(
+            ignored ->
+                OperationalEventEmit.publish(
+                    events,
+                    OperationalEventEmit.draft(
+                        OperationalEventType.EXECUTION_FAILED,
+                        request.execution().executionId(),
+                        request.trace().correlationId(),
+                        "canonical-engine",
+                        OperationalEventOutcome.FAILURE,
+                        OperationalEventEmit.durationMs(running.startedAt(), now),
+                        OperationalEventAttributes.builder()
+                            .reasonCode(
+                                errors.isEmpty() ? "STEP_TERMINAL_FAILURE" : errors.getFirst().code())
+                            .routeCode(plan.routeRef().routeCode())
+                            .technicalStatus(tech.name())
+                            .build())));
   }
 
   private Mono<CanonicalExecutionResult> finalizeWaiting(
@@ -890,7 +949,24 @@ public class DefaultCanonicalExecutionEngine implements CanonicalExecutionEngine
                 : "UNKNOWN")
         .then(
             persistence.persistTerminalResult(result, idemState, scopeHash, keyHash))
-        .thenReturn(result);
+        .thenReturn(result)
+        .doOnSuccess(
+            ignored ->
+                OperationalEventEmit.publish(
+                    events,
+                    OperationalEventEmit.draft(
+                        OperationalEventType.EXECUTION_WAITING,
+                        request.execution().executionId(),
+                        request.trace().correlationId(),
+                        "canonical-engine",
+                        OperationalEventOutcome.WAITING,
+                        OperationalEventEmit.durationMs(running.startedAt(), now),
+                        OperationalEventAttributes.builder()
+                            .stepRef(last.node.stepId())
+                            .waitId(created.waitRecord().waitId())
+                            .routeCode(plan.routeRef().routeCode())
+                            .technicalStatus(TechnicalStatus.PENDING.name())
+                            .build())));
   }
 
   private List<EvidenceReference> aggregateEvidence(List<StepRun> runs) {
@@ -1041,7 +1117,22 @@ public class DefaultCanonicalExecutionEngine implements CanonicalExecutionEngine
                                           null,
                                           null));
                         }))
-        .thenReturn(buildRejected(request, null, errors));
+        .thenReturn(buildRejected(request, null, errors))
+        .doOnSuccess(
+            ignored ->
+                OperationalEventEmit.publish(
+                    events,
+                    OperationalEventEmit.draft(
+                        OperationalEventType.EXECUTION_REJECTED,
+                        request.execution().executionId(),
+                        request.trace().correlationId(),
+                        "canonical-engine",
+                        OperationalEventOutcome.REJECTED,
+                        null,
+                        OperationalEventAttributes.builder()
+                            .reasonCode(reason)
+                            .technicalStatus(TechnicalStatus.REJECTED.name())
+                            .build())));
   }
 
   private CanonicalExecutionResult buildRejected(

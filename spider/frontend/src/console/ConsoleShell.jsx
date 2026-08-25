@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listExecutions, isTerminalState } from "./api";
+import { listExecutions, isTerminalState, getExecutionOperationalEvents } from "./api";
 import {
   MOCK_SCENARIOS,
   buildCanonicalRequest,
@@ -12,6 +12,7 @@ import {
   StateBadge,
   JourneyMap,
   TimelineView,
+  OperationalTimelineView,
   InspectorTabs,
   shortId,
   formatDuration,
@@ -42,6 +43,8 @@ export default function ConsoleShell() {
   const [lastListAt, setLastListAt] = useState(null);
   const [labMsg, setLabMsg] = useState(null);
   const [labBusy, setLabBusy] = useState(false);
+  const [operationalEvents, setOperationalEvents] = useState(null);
+  const [operationalEventsError, setOperationalEventsError] = useState(null);
 
   const refreshList = useCallback(
     async (nextCursor = {}) => {
@@ -70,6 +73,28 @@ export default function ConsoleShell() {
   useEffect(() => {
     refreshList({});
   }, [refreshList]);
+
+  useEffect(() => {
+    if (view !== "detail" || !selectedId) {
+      setOperationalEvents(null);
+      setOperationalEventsError(null);
+      return undefined;
+    }
+    const controller = new AbortController();
+    setOperationalEvents(null);
+    setOperationalEventsError(null);
+    getExecutionOperationalEvents(selectedId, { signal: controller.signal })
+      .then((data) => {
+        setOperationalEvents(data.items || []);
+        setOperationalEventsError(null);
+      })
+      .catch((e) => {
+        if (e.name === "AbortError") return;
+        setOperationalEvents([]);
+        setOperationalEventsError(e);
+      });
+    return () => controller.abort();
+  }, [view, selectedId, pollPaused]);
 
   const pollingEnabled = view === "detail" && Boolean(selectedId);
   const { detail, error: detailError, updatedAt, status: pollStatus } = useExecutionPolling(
@@ -325,6 +350,11 @@ export default function ConsoleShell() {
               <JourneyMap plan={detail.plan} steps={detail.steps} />
               <h3>Timeline</h3>
               <TimelineView timeline={detail.timeline} />
+              <h3>Operational Timeline</h3>
+              <OperationalTimelineView
+                events={operationalEvents}
+                error={operationalEventsError}
+              />
               <h3>Inspectors</h3>
               <InspectorTabs detail={detail} />
             </>
