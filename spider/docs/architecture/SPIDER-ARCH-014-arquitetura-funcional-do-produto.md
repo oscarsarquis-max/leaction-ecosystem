@@ -131,7 +131,7 @@ Isso não exige uma tela artificial para cada classe ou endpoint. Exige que esta
 | Apresentador/demonstrador | Executar cenários controlados e mostrar evolução | Modo Apresentação e laboratório Mock do Console | `DEMONSTRAÇÃO MOCK`, preflight e profile local-demo |
 | Governador/publicador | Registrar, validar, publicar e ativar artefatos governados | Use cases internos do Control Plane | Sem UI/admin HTTP; authz deny-by-default; modo STATIC é default |
 | Revisor/auditor técnico | Conferir manifesto, readiness, integridade e rastreabilidade | Cockpit, documentos, manifesto e testes | Não recebe dados sensíveis nem controle operacional implícito |
-| Worker/processador lógico | Processar outbox, reconciliação, expiry ou aplicação de sinal | Processors invocáveis | Sem scheduler/worker deployment durável no baseline 015 |
+| Worker/processador lógico | Processar outbox, reconciliação, expiry ou aplicação de sinal | Processors invocáveis | Sem scheduler/worker deployment durável no baseline 016 |
 
 ### 4.1 O que cada público deve conseguir responder
 
