@@ -1,16 +1,16 @@
 {
   "manifestVersion": "1.0.1",
-  "productVersion": "0.18.0",
-  "lastVerifiedAt": "2026-08-25T18:00:00Z",
+  "productVersion": "0.19.0",
+  "lastVerifiedAt": "2026-08-25T20:00:00Z",
   "baseline": {
-    "backendTests": 240,
-    "frontendTests": 25,
+    "backendTests": 297,
+    "frontendTests": 41,
     "failures": 0,
     "errors": 0,
     "skipped": 0
   },
-  "currentPrompt": "SPIDER-PROMPT-018",
-  "currentGroup": "GROUP_A_VISIBILITY_OBSERVABILITY",
+  "currentPrompt": "SPIDER-PROMPT-019",
+  "currentGroup": "GROUP_B_RUNTIME_OPERATIONS",
   "capabilities": [
     {
       "capabilityCode": "CAP-001",
@@ -531,27 +531,40 @@
       "promptRef": "SPIDER-PROMPT-019",
       "title": "Runtime de Workers Duráveis e Scheduling",
       "objective": "Workers, leases, fencing, drain e backlog",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
       "integrationLevel": "SIMULATED_INFRASTRUCTURE",
       "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-010-observabilidade-slos-operacao-e-resposta-a-falhas.md",
+        "docs/architecture/SPIDER-ARCH-011-topologia-implantacao-escalabilidade-e-alta-disponibilidade.md",
         "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/architecture/SPIDER-ARCH-014-arquitetura-funcional-do-produto.md",
         "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
       ],
       "technicalDocRefs": [
-        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+        "docs/technical/SPIDER-PROMPT-019-durable-workers-scheduling.md"
       ],
-      "featureFlags": [],
-      "evidenceRefs": [],
-      "testSummary": "Not started — PLANNED in official roadmap",
+      "featureFlags": [
+        "spider.worker-runtime.enabled",
+        "spider.worker-runtime.http.enabled",
+        "spider.worker-runtime.local-demo.enabled"
+      ],
+      "evidenceRefs": [
+        "docs/technical/screenshots/019-worker-runtime-overview-desktop.png",
+        "docs/technical/screenshots/019-worker-runtime-backlog-desktop.png",
+        "docs/technical/screenshots/019-worker-runtime-draining-desktop.png",
+        "docs/technical/screenshots/019-worker-runtime-stale-recovery-desktop.png",
+        "docs/technical/screenshots/019-worker-runtime-mobile.png"
+      ],
+      "testSummary": "Durable schedule CAS, fencing, drain, backlog, runtime HTTP, Failure Lab worker scenarios and WorkerRuntime UI covered by backend and frontend suites",
       "dependencies": [
         "CAP-018"
       ],
       "limitations": [
-        "PLANNED_SIMULATED_INFRASTRUCTURE",
-        "NOT_ACTIVE"
+        "SIMULATED_INFRASTRUCTURE",
+        "MOCK_ONLY_INTEGRATIONS"
       ],
-      "lastVerifiedAt": null
+      "lastVerifiedAt": "2026-08-25T20:00:00Z"
     },
     {
       "capabilityCode": "CAP-020",

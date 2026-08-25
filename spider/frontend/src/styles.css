@@ -501,3 +501,13 @@ th, td { text-align:left; padding:0.55rem 0.45rem; border-bottom:1px solid var(-
 .state-muted { color: var(--muted); }
 .check-confirm { display:flex; align-items:center; gap:0.45rem; margin:0.6rem 0; font-size:0.9rem; }
 .panel-card .panel-card { background: rgba(8,14,24,0.45); margin-top:1rem; }
+
+/* PROMPT-019 runtime de workers */
+.sr-caption {
+  position:absolute; width:1px; height:1px; overflow:hidden;
+  clip-path:inset(50%); white-space:nowrap;
+}
+.wr-worker-id { display:block; font-size:0.72rem; font-weight:400; word-break:break-all; }
+.wr-drain-actions { display:inline-flex; flex-wrap:wrap; gap:0.35rem; align-items:center; }
+.wr-drain-actions .cta { padding:0.4rem 0.7rem; font-size:0.78rem; box-shadow:none; }
+td .status-chip, th .status-chip { white-space:nowrap; }

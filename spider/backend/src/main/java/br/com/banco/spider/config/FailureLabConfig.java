@@ -26,6 +26,7 @@ import br.com.banco.spider.operational.failurelab.FailureLabRunStorePort;
 import br.com.banco.spider.operational.failurelab.FailureLabSubmitSupport;
 import br.com.banco.spider.operational.failurelab.InMemoryFailureLabRunStore;
 import br.com.banco.spider.operational.health.OperationalHealthQueryService;
+import br.com.banco.spider.operational.workers.FailureLabWorkerHarness;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import org.slf4j.Logger;
@@ -142,7 +143,8 @@ public class FailureLabConfig {
       IdentifierGenerator ids,
       ObjectProvider<ExecutionWaitStorePort> waits,
       ObjectProvider<ExecutionResumeService> resume,
-      ObjectProvider<ExternalSignalIngressUseCase> signalIngress) {
+      ObjectProvider<ExternalSignalIngressUseCase> signalIngress,
+      ObjectProvider<FailureLabWorkerHarness> workerHarness) {
     return new FailureLabOrchestrator(
         properties,
         catalog,
@@ -154,7 +156,8 @@ public class FailureLabConfig {
         ids,
         waits,
         resume,
-        signalIngress);
+        signalIngress,
+        workerHarness);
   }
 
   @Bean

@@ -261,7 +261,7 @@ class OperationalConsoleE2EReadModelTest {
         .valueEquals("Cache-Control", "no-store")
         .expectBody()
         .jsonPath("$.currentPrompt")
-        .isEqualTo("SPIDER-PROMPT-018")
+        .isEqualTo("SPIDER-PROMPT-019")
         .jsonPath("$.capabilities.length()")
         .isEqualTo(26)
         .jsonPath("$.mockRealBoundary")

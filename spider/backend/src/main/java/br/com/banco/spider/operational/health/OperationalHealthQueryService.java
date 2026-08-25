@@ -10,6 +10,11 @@ import br.com.banco.spider.execution.support.SpiderClock;
 import br.com.banco.spider.execution.wait.ExecutionWaitRecord;
 import br.com.banco.spider.operational.events.OperationalEvent;
 import br.com.banco.spider.operational.events.OperationalEventStorePort;
+import br.com.banco.spider.operational.workers.ScheduleOutcome;
+import br.com.banco.spider.operational.workers.WorkerBacklogStatus;
+import br.com.banco.spider.operational.workers.WorkerRuntimeQueryService;
+import br.com.banco.spider.operational.workers.WorkerRuntimeSnapshot;
+import br.com.banco.spider.operational.workers.WorkerRuntimeStatus;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -29,6 +34,7 @@ public class OperationalHealthQueryService {
   private final ObjectProvider<ExecutionWaitStorePort> waitProvider;
   private final ObjectProvider<CallbackOutboxStorePort> callbackProvider;
   private final ObjectProvider<OperationalEventStorePort> eventProvider;
+  private final ObjectProvider<WorkerRuntimeQueryService> workerRuntimeProvider;
 
   public OperationalHealthQueryService(
       OperationalHealthProperties properties,
@@ -37,7 +43,8 @@ public class OperationalHealthQueryService {
       ObjectProvider<ExecutionControlStorePort> controlProvider,
       ObjectProvider<ExecutionWaitStorePort> waitProvider,
       ObjectProvider<CallbackOutboxStorePort> callbackProvider,
-      ObjectProvider<OperationalEventStorePort> eventProvider) {
+      ObjectProvider<OperationalEventStorePort> eventProvider,
+      ObjectProvider<WorkerRuntimeQueryService> workerRuntimeProvider) {
     this.properties = properties;
     this.clock = clock;
     this.loader = loader;
@@ -46,6 +53,7 @@ public class OperationalHealthQueryService {
     this.waitProvider = waitProvider;
     this.callbackProvider = callbackProvider;
     this.eventProvider = eventProvider;
+    this.workerRuntimeProvider = workerRuntimeProvider;
   }
 
   public OperationalHealthSnapshot getSnapshot(String requestedWindow) {
@@ -131,6 +139,7 @@ public class OperationalHealthQueryService {
               1, sli.dimension(), toHealthStatus(slo.status()), List.of(sli.code()),
               slo.explanation()));
     }
+    dimensions.addAll(workerRuntimeDimensions());
     boolean capped =
         executions.size() == limit
             || waits.size() == limit
@@ -147,6 +156,88 @@ public class OperationalHealthQueryService {
 
   public Map<String, Object> definitions() {
     return Map.of("definitions", loader.definitions(), "profile", loader.profile());
+  }
+
+  /**
+   * Dimensões do runtime de workers. Quando o runtime está desligado nenhuma dimensão é acrescida —
+   * a leitura de 017 permanece exatamente a mesma de antes de 019.
+   */
+  private List<HealthDimensionStatus> workerRuntimeDimensions() {
+    WorkerRuntimeQueryService runtime = workerRuntimeProvider.getIfAvailable();
+    if (runtime == null || !runtime.enabled()) {
+      return List.of();
+    }
+    WorkerRuntimeSnapshot snapshot;
+    try {
+      snapshot = runtime.getSnapshot();
+    } catch (RuntimeException unavailable) {
+      return List.of();
+    }
+    if (snapshot.runtimeStatus() == WorkerRuntimeStatus.DISABLED) {
+      return List.of();
+    }
+    List<HealthDimensionStatus> dimensions = new ArrayList<>();
+    dimensions.add(
+        dimension(
+            HealthDimensionCode.WORKER_RUNTIME,
+            switch (snapshot.runtimeStatus()) {
+              case HEALTHY -> HealthStatus.HEALTHY;
+              case DEGRADED, DRAINING -> HealthStatus.DEGRADED;
+              case STOPPED -> HealthStatus.UNHEALTHY;
+              case UNKNOWN, DISABLED -> HealthStatus.UNKNOWN;
+            },
+            "Runtime de workers em estado " + snapshot.runtimeStatus().name() + "."));
+
+    boolean anyFailed =
+        snapshot.schedules().stream()
+            .anyMatch(schedule -> schedule.lastOutcome() == ScheduleOutcome.FAILED);
+    dimensions.add(
+        dimension(
+            HealthDimensionCode.SCHEDULING,
+            snapshot.schedules().isEmpty()
+                ? HealthStatus.INSUFFICIENT_DATA
+                : anyFailed ? HealthStatus.DEGRADED : HealthStatus.HEALTHY,
+            snapshot.schedules().isEmpty()
+                ? "Nenhum agendamento durável registrado na janela."
+                : anyFailed
+                    ? "Ao menos um agendamento terminou o último ciclo em falha."
+                    : "Agendamentos duráveis concluindo os ciclos sem falha."));
+
+    boolean backlogDegraded =
+        snapshot.backlogs().stream()
+            .anyMatch(
+                backlog ->
+                    backlog.status() == WorkerBacklogStatus.ACCUMULATING
+                        || backlog.status() == WorkerBacklogStatus.STALE);
+    boolean backlogUnknown =
+        !snapshot.backlogs().isEmpty()
+            && snapshot.backlogs().stream()
+                .allMatch(backlog -> backlog.status() == WorkerBacklogStatus.UNKNOWN);
+    dimensions.add(
+        dimension(
+            HealthDimensionCode.BACKLOG,
+            snapshot.backlogs().isEmpty() || backlogUnknown
+                ? HealthStatus.INSUFFICIENT_DATA
+                : backlogDegraded ? HealthStatus.DEGRADED : HealthStatus.HEALTHY,
+            backlogDegraded
+                ? "Backlog acumulando ou envelhecido em ao menos um tipo de worker."
+                : "Backlog dentro do esperado para os tipos de worker observados."));
+
+    dimensions.add(
+        dimension(
+            HealthDimensionCode.LEASE_SAFETY,
+            snapshot.expiredLeases() > 0 || snapshot.staleWorkers() > 0
+                ? HealthStatus.DEGRADED
+                : HealthStatus.HEALTHY,
+            snapshot.expiredLeases() > 0 || snapshot.staleWorkers() > 0
+                ? "Há leases vencidos ou workers sem sinal de vida recente."
+                : "Nenhum lease vencido e nenhum worker sem sinal de vida."));
+    return List.copyOf(dimensions);
+  }
+
+  private static HealthDimensionStatus dimension(
+      HealthDimensionCode code, HealthStatus status, String explanation) {
+    return new HealthDimensionStatus(1, code, status, List.of(), explanation);
   }
 
   private Duration parseWindow(String value) {
@@ -172,6 +263,8 @@ public class OperationalHealthQueryService {
             case CALLBACK_DELIVERY -> callbacks == null;
             case SIGNAL_INGRESS -> events == null;
             case TELEMETRY_COVERAGE -> controls == null || events == null;
+            // Dimensões do runtime de workers não vêm dos SLIs provisórios.
+            case WORKER_RUNTIME, SCHEDULING, BACKLOG, LEASE_SAFETY -> false;
           };
       output.add(
           missing

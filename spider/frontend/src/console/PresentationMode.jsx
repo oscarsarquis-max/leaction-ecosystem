@@ -22,13 +22,19 @@ const CHAPTERS = [
     body:
       "Jornada operacional Mock: cenário RETRY_THEN_SUCCESS (falha transitória e sucesso) → timeline da execução → leitura no Cockpit Operacional → evidência segura com digest e completude. Cenários vêm de catálogo versionado; ausência de observação nunca vira sucesso.",
   },
-  { id: 7, title: "Segurança / governança", body: "DenyAll, redaction, posture REDACTED — sem JWT." },
-  { id: 8, title: "Mock versus real", body: "Boundary ativa MOCK_ONLY. CORPORATE_SANDBOX (025) e REAL_PILOT (026) são planejados, não ativos." },
   {
-    id: 9,
+    id: 7,
+    title: "Runtime de workers",
+    body:
+      "Agendamentos duráveis com posse por lease e fencing token monotônico: um dono antigo nunca conclui um claim novo. O console lê instâncias, heartbeat, backlog elegível e leases expirados; a drenagem é simulada no local-demo e apenas para de aceitar novos claims. Infraestrutura simulada, integrações MOCK_ONLY — nada produtivo.",
+  },
+  { id: 8, title: "Segurança / governança", body: "DenyAll, redaction, posture REDACTED — sem JWT." },
+  { id: 9, title: "Mock versus real", body: "Boundary ativa MOCK_ONLY. CORPORATE_SANDBOX (025) e REAL_PILOT (026) são planejados, não ativos." },
+  {
+    id: 10,
     title: "Roadmap",
     body:
-      "Grupos oficiais: A Visibilidade (015–018) → B Runtime (019–021) → C Plataforma (022–024) → D Integração real (025–026). Fonte: docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md + manifesto. Atual: 018 Failure Lab (VERIFIED); Grupo A 4/4 completo; 019 elegível (PLANNED, não iniciado).",
+      "Grupos oficiais: A Visibilidade (015–018) → B Runtime (019–021) → C Plataforma (022–024) → D Integração real (025–026). Fonte: docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md + manifesto. Atual: Grupo A 4/4 completo; 019 Runtime de Workers em implementação com infraestrutura simulada e integrações MOCK_ONLY.",
   },
 ];
 

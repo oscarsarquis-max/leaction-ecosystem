@@ -19,7 +19,9 @@ public final class OperationalEventAttributes {
           "disposition",
           "signalOutcome",
           "integrityReason",
-          "component");
+          "component",
+          "workerType",
+          "scheduleCode");
 
   private final Map<String, String> values;
 
@@ -80,6 +82,14 @@ public final class OperationalEventAttributes {
 
     public Builder component(String value) {
       return put("component", value);
+    }
+
+    public Builder workerType(String value) {
+      return put("workerType", value);
+    }
+
+    public Builder scheduleCode(String value) {
+      return put("scheduleCode", value);
     }
 
     public Builder put(String key, String value) {

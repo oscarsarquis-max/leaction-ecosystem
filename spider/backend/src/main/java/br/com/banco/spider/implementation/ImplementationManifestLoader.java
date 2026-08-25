@@ -71,11 +71,11 @@ public class ImplementationManifestLoader {
 
   private void validateBusinessRules(SpiderImplementationManifest manifest) {
     List<String> problems = new ArrayList<>();
-    if (!"GROUP_A_VISIBILITY_OBSERVABILITY".equals(manifest.currentGroup())) {
-      problems.add("currentGroup must be GROUP_A_VISIBILITY_OBSERVABILITY");
+    if (!"GROUP_B_RUNTIME_OPERATIONS".equals(manifest.currentGroup())) {
+      problems.add("currentGroup must be GROUP_B_RUNTIME_OPERATIONS");
     }
-    if (!"SPIDER-PROMPT-018".equals(manifest.currentPrompt())) {
-      problems.add("currentPrompt must be SPIDER-PROMPT-018");
+    if (!"SPIDER-PROMPT-019".equals(manifest.currentPrompt())) {
+      problems.add("currentPrompt must be SPIDER-PROMPT-019");
     }
     for (ImplementationCapability c : manifest.capabilities()) {
       if ("PRODUCTION".equals(c.integrationLevel())) {
@@ -85,14 +85,17 @@ public class ImplementationManifestLoader {
         continue;
       }
       int n = Integer.parseInt(c.promptRef().substring("SPIDER-PROMPT-".length()));
-      if (n <= 18 && !"VERIFIED".equals(c.status())) {
+      if (n <= 19 && !"VERIFIED".equals(c.status())) {
         problems.add(c.capabilityCode() + " expected VERIFIED");
       }
-      if (n >= 19 && n <= 26 && !"PLANNED".equals(c.status())) {
+      if (n >= 20 && n <= 26 && !"PLANNED".equals(c.status())) {
         problems.add(c.capabilityCode() + " expected PLANNED");
       }
       if (n <= 18 && !"MOCK_ONLY".equals(c.integrationLevel())) {
         problems.add(c.capabilityCode() + " must be MOCK_ONLY while verified in Mock phase");
+      }
+      if (n == 19 && !"SIMULATED_INFRASTRUCTURE".equals(c.integrationLevel())) {
+        problems.add(c.capabilityCode() + " must be SIMULATED_INFRASTRUCTURE");
       }
       if (n == 25) {
         if (!"CORPORATE_SANDBOX".equals(c.integrationLevel())) {

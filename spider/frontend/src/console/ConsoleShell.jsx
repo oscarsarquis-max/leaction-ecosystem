@@ -22,6 +22,7 @@ import ImplementationCockpit from "./ImplementationCockpit";
 import PresentationMode from "./PresentationMode";
 import OperationalCockpit from "./OperationalCockpit";
 import FailureLab from "./FailureLab";
+import WorkerRuntime from "./WorkerRuntime";
 
 const NAV = [
   { id: "overview", label: "Visão geral" },
@@ -29,6 +30,7 @@ const NAV = [
   { id: "detail", label: "Detalhe" },
   { id: "operational-health", label: "Cockpit Operacional" },
   { id: "failure-lab", label: "Failure Lab" },
+  { id: "worker-runtime", label: "Runtime de Workers" },
   { id: "implementation", label: "Implementação" },
   { id: "presentation", label: "Apresentação" },
   { id: "lab", label: "Laboratório Mock" },
@@ -379,6 +381,8 @@ export default function ConsoleShell() {
           }}
         />
       )}
+
+      {view === "worker-runtime" && <WorkerRuntime />}
 
       {view === "presentation" && (
         <PresentationMode

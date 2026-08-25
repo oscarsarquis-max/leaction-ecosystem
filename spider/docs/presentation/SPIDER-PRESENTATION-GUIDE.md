@@ -31,7 +31,7 @@ Flags: profile `local-demo` + `spider.console.*` + canonical HTTP conforme scrip
 ## Roteiro 3 minutos
 
 1. Badge **DEMONSTRAÇÃO MOCK** no topo.
-2. Aba **Implementação**: grupos A–D, CAP-015–018 VERIFIED (Grupo A completo), 019–026 PLANNED, baseline 240/25.
+2. Aba **Implementação**: grupos A–D, CAP-015–019 VERIFIED (Grupo A 4/4; Grupo B 1/3), 020–026 PLANNED, baseline 297/41.
 3. Aba **Apresentação**: preflight readiness; se READY, capítulo 4 → `RETRY_THEN_SUCCESS`.
 4. Abrir detalhe: journey map + timeline persistidos (2 attempts).
 
@@ -54,6 +54,16 @@ Quando as flags `spider.failure-lab.*` estiverem ligadas no local-demo:
 4. Acompanhar status do run → predicados → runbook provisório → evidência redigida.
 5. Enfatizar: fault injection **só via mocks**; o lab **não** controla a Engine nem toca legado real.
 
+## Capítulo Runtime de Workers (PROMPT-019)
+
+Quando as flags `spider.worker-runtime.*` estiverem ligadas no local-demo:
+
+1. Abrir a aba **Runtime de Workers** — banner de infraestrutura simulada / sem legado real.
+2. Mostrar resumo (status, stale, leases), tabela dos 7 tipos, schedules e backlogs.
+3. Demonstrar drain com confirmação explícita (quando permitido).
+4. Opcional: Failure Lab cenários `WORKER_*` (crash após claim, contenção, drain, backlog, restart).
+5. Enfatizar: runtime dá **posse** (lease/fencing); processors continuam com a **semântica**; OFF_BY_DEFAULT.
+
 ## Roteiro 15 minutos
 
 1. ARCH-013 + manifesto como fonte do roadmap.
@@ -61,7 +71,8 @@ Quando as flags `spider.failure-lab.*` estiverem ligadas no local-demo:
 3. Comparar endpoint legado preservado vs jornada canônica (não usar legado na demo).
 4. Callback/reconciliation cenário.
 5. Capítulo Failure Lab (acima).
-6. Troubleshooting (abaixo) e encerramento.
+6. Capítulo Runtime de Workers (acima).
+7. Troubleshooting (abaixo) e encerramento.
 
 ## Perguntas esperadas
 
@@ -70,6 +81,7 @@ Quando as flags `spider.failure-lab.*` estiverem ligadas no local-demo:
 | É produção? | Não — MOCK_ONLY, flags off by default. |
 | Tem SLO? | SLOs do Cockpit Operacional são **provisórios** (017), não contratuais. |
 | Failure Lab quebra produção? | Não — só mocks; OFF_BY_DEFAULT; sem legado real. |
+| Workers são cluster produtivo? | Não — SIMULATED_INFRASTRUCTURE no store; OFF_BY_DEFAULT; sem Kafka/K8s. |
 | JWT na UI? | Não no caminho canônico. |
 | Dados inventados? | Não — timeline/plan persistidos; evidência do lab é redigida. |
 

@@ -17,6 +17,7 @@ import br.com.banco.spider.execution.wait.ExecutionWaitRecord;
 import br.com.banco.spider.execution.wait.WaitState;
 import br.com.banco.spider.integration.binding.ConfiguredAdapterBindingResolver;
 import br.com.banco.spider.integration.port.AdapterDispositionMode;
+import br.com.banco.spider.operational.workers.FailureLabWorkerHarness;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -60,6 +61,7 @@ public class FailureLabOrchestrator {
   private final ObjectProvider<ExecutionWaitStorePort> waitProvider;
   private final ObjectProvider<ExecutionResumeService> resumeProvider;
   private final ObjectProvider<ExternalSignalIngressUseCase> signalIngressProvider;
+  private final ObjectProvider<FailureLabWorkerHarness> workerHarnessProvider;
 
   public FailureLabOrchestrator(
       FailureLabProperties properties,
@@ -72,7 +74,8 @@ public class FailureLabOrchestrator {
       IdentifierGenerator ids,
       ObjectProvider<ExecutionWaitStorePort> waitProvider,
       ObjectProvider<ExecutionResumeService> resumeProvider,
-      ObjectProvider<ExternalSignalIngressUseCase> signalIngressProvider) {
+      ObjectProvider<ExternalSignalIngressUseCase> signalIngressProvider,
+      ObjectProvider<FailureLabWorkerHarness> workerHarnessProvider) {
     this.properties = properties;
     this.catalog = catalog;
     this.store = store;
@@ -84,6 +87,7 @@ public class FailureLabOrchestrator {
     this.waitProvider = waitProvider;
     this.resumeProvider = resumeProvider;
     this.signalIngressProvider = signalIngressProvider;
+    this.workerHarnessProvider = workerHarnessProvider;
   }
 
   private record Dispatch(List<String> executionRefs, Map<String, String> safeFacts) {
@@ -152,8 +156,33 @@ public class FailureLabOrchestrator {
       case "OPERATIONAL_DEGRADATION" -> repeatedSubmit(scenario, labRunId);
       case "WAIT_AND_RESUME" -> waitAndResume(scenario, labRunId);
       case "SIGNAL_SECURITY_REJECTED" -> signalSecurityRejected(scenario, labRunId);
+      case "WORKER_CRASH_AFTER_CLAIM" -> workerRuntime(FailureLabWorkerHarness::crashAfterClaim);
+      case "WORKER_DUAL_CONTENTION" -> workerRuntime(FailureLabWorkerHarness::dualContention);
+      case "WORKER_GRACEFUL_DRAIN" -> workerRuntime(FailureLabWorkerHarness::gracefulDrain);
+      case "WORKER_BACKLOG_ACCUMULATION" ->
+          workerRuntime(FailureLabWorkerHarness::backlogAccumulation);
+      case "WORKER_RESTART_RECOVERY" -> workerRuntime(FailureLabWorkerHarness::restartRecovery);
       default -> singleSubmit(scenario, labRunId);
     };
+  }
+
+  /**
+   * Cenários do runtime de workers não submetem execução à Engine: o harness publica fatos seguros
+   * e o veredito sai da comparação declarada no catálogo. Sem harness disponível o cenário é
+   * inconclusivo, jamais aprovado.
+   */
+  private Mono<Dispatch> workerRuntime(
+      java.util.function.Function<FailureLabWorkerHarness, Map<String, String>> demonstration) {
+    return Mono.fromCallable(
+        () -> {
+          FailureLabWorkerHarness harness = workerHarnessProvider.getIfAvailable();
+          if (harness == null) {
+            return new Dispatch(List.of(), Map.of("workerRuntime", "HARNESS_UNAVAILABLE"));
+          }
+          Map<String, String> facts = new LinkedHashMap<>(demonstration.apply(harness));
+          facts.put("workerRuntime", "AVAILABLE");
+          return new Dispatch(List.of(), FailureLabRedaction.sanitize(facts));
+        });
   }
 
   private Mono<Dispatch> singleSubmit(FailureScenarioDefinition scenario, String labRunId) {

@@ -842,14 +842,27 @@ Injeção deve possuir escopo, owner, janela e kill switch. Não pode alcançar 
 
 Implementação verificada do laboratório de falhas **somente via mocks**:
 
-- Catálogo versionado de 7 cenários (`failure-lab-scenarios-v1.json`) e runbooks provisórios (`failure-lab-runbooks-v1.json`).
-- Fault injection restrita a adapters/mocks e sinais simulados — sem atingir infraestrutura produtiva nem legado real.
+- Catálogo versionado de cenários (`failure-lab-scenarios-v1.json`) e runbooks provisórios (`failure-lab-runbooks-v1.json`), incluindo categoria `WORKER_RUNTIME` (019).
+- Fault injection restrita a adapters/mocks, sinais simulados e harness de workers — sem atingir infraestrutura produtiva nem legado real.
 - Verificação por predicados fechados; pacote de evidência redigido (`FailureLabEvidenceBundle`).
 - Superfície console OFF_BY_DEFAULT (`spider.failure-lab.enabled`); API sob `/v1/console/failure-lab/*`.
 - O Failure Lab **não** controla a Engine: observa o Data Plane e emite veredito com evidência.
 - Boundary permanente: **MOCK_ONLY**.
 
 Detalhe técnico: `docs/technical/SPIDER-PROMPT-018-failure-lab-operational-journeys.md`.
+
+### Runtime de Workers e dimensões de saúde (SPIDER-PROMPT-019)
+
+Com `spider.worker-runtime.enabled=true`, o Cockpit Operacional incorpora dimensões adicionais (sem alterar a leitura 017 quando o runtime está off):
+
+| Dimensão | Leitura |
+|----------|---------|
+| `WORKER_RUNTIME` | Estado agregado do runtime (`HEALTHY` / `DEGRADED` / `DRAINING` / …) |
+| `SCHEDULING` | Agendamentos duráveis e último desfecho |
+| `BACKLOG` | Filas observadas por tipo (acumulando / stale / …) |
+| `LEASE_SAFETY` | Leases vencidos e workers sem heartbeat recente |
+
+Backlog e saturação de workers permanecem sinais de operação; o runtime não inventa trabalho nem duplica a semântica dos processors. Detalhe: `docs/technical/SPIDER-PROMPT-019-durable-workers-scheduling.md`.
 
 ## 45. Testes de observabilidade
 

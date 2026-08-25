@@ -4,7 +4,7 @@
 |-------|--------|
 | Artefato | Vivo — fonte alinhada ao manifesto `spider-capability-manifest.json` |
 | Escopo | Jornada oficial pós-console (015) até piloto controlado (026) |
-| Boundary atual | `MOCK_ONLY` (ativo). `CORPORATE_SANDBOX` / `REAL_PILOT` são **planejados**, não ativos. |
+| Boundary atual | Integrações `MOCK_ONLY` (ativo). CAP-019 usa `SIMULATED_INFRASTRUCTURE`. `CORPORATE_SANDBOX` / `REAL_PILOT` são **planejados**, não ativos. |
 
 ## Regra de artefato vivo
 
@@ -33,7 +33,7 @@ Integração planejada ≠ ativa: `MOCK_ONLY`, `SIMULATED_INFRASTRUCTURE`, `CORP
 | `GROUP_C_PLATFORM_READINESS` | 022–024 | Prontidão de plataforma |
 | `GROUP_D_REAL_INTEGRATION` | 025–026 | Integração real |
 
-`currentGroup` após 018: **`GROUP_A_VISIBILITY_OBSERVABILITY`** (Grupo A **4/4 VERIFIED** — fechado).
+`currentGroup` = **`GROUP_B_RUNTIME_OPERATIONS`** (Grupo B **1/3** — CAP-019 VERIFIED). Grupo A permanece **4/4 VERIFIED**.
 
 Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem substituir estes grupos.
 
@@ -45,7 +45,7 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 | 016 | A | Telemetria Canônica e Operational Events | Logs, métricas, traces e eventos correlacionados | VERIFIED | OFF_BY_DEFAULT | MOCK_ONLY |
 | 017 | A | Saúde, SLIs, SLOs Provisórios e Cockpit Operacional | Health, SLIs/SLOs simulados, error budget e dashboards | VERIFIED | OFF_BY_DEFAULT | MOCK_ONLY |
 | 018 | A | Laboratório de Falhas e Jornadas Operacionais | Fault injection visual, evidências e runbooks Mock | VERIFIED | OFF_BY_DEFAULT | MOCK_ONLY |
-| 019 | B | Runtime de Workers Duráveis e Scheduling | Workers, leases, fencing, drain e backlog | PLANNED | NOT_IMPLEMENTED | SIMULATED_INFRASTRUCTURE |
+| 019 | B | Runtime de Workers Duráveis e Scheduling | Workers, leases, fencing, drain e backlog | VERIFIED | OFF_BY_DEFAULT | SIMULATED_INFRASTRUCTURE |
 | 020 | B | Capacidade, Backpressure e Resiliência Governada | Limits, bulkheads, circuits, quotas e load shedding | PLANNED | NOT_IMPLEMENTED | SIMULATED_INFRASTRUCTURE |
 | 021 | B | Operações Governadas e Reconciliation Workbench | Commands seguros e workbench operacional | PLANNED | NOT_IMPLEMENTED | MOCK_ONLY |
 | 022 | C | Topologia, Alta Disponibilidade e Continuidade Simulada | Multi-instância, convergência, restore e DR simulado | PLANNED | NOT_IMPLEMENTED | SIMULATED_INFRASTRUCTURE |
@@ -54,11 +54,12 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 | 025 | D | Fundações Corporativas de Segurança e Transporte | IdP, mTLS, KMS e primeiro binding em sandbox | PLANNED | NOT_IMPLEMENTED | CORPORATE_SANDBOX |
 | 026 | D | Primeiro Legado Real, Canary e Migração Controlada | Piloto real, canary, reconciliação e rollback | PLANNED | NOT_IMPLEMENTED | REAL_PILOT |
 
-### Contagens após 018
+### Contagens após 019
 
 - Grupo A: **4/4 VERIFIED** (completo)
-- 019 elegível (gate do Grupo A cumprido), **não iniciado** — permanece PLANNED
-- Grupos B–D: todos PLANNED
+- Grupo B: **1/3 VERIFIED** (019); 020–021 PLANNED
+- 020 elegível (gate 019 cumprido), **não iniciado**
+- Grupos C–D: todos PLANNED
 
 ## Dependências
 
@@ -79,7 +80,7 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 ## Pontos de revisão
 
 1. 018 concluído e verificado; Grupo A fechado (4/4).
-2. 019 elegível, ainda não iniciado — gate do Grupo A cumprido.
+2. 019 VERIFIED — abre o Grupo B (1/3); runtime OFF_BY_DEFAULT / SIMULATED_INFRASTRUCTURE.
 3. Fechamento Grupo B (021): gate para 022.
 4. 024 = READY_FOR_PILOT: gate para 025.
 5. 025 sandbox: gate para 026 piloto; nunca pular para PRODUCTION neste roadmap.
@@ -91,3 +92,4 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 - ARCH-013: `docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md`
 - Técnico 015: `docs/technical/SPIDER-PROMPT-015-operational-console.md`
 - Técnico 018: `docs/technical/SPIDER-PROMPT-018-failure-lab-operational-journeys.md`
+- Técnico 019: `docs/technical/SPIDER-PROMPT-019-durable-workers-scheduling.md`

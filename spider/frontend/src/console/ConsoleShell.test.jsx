@@ -327,6 +327,85 @@ describe("ConsoleShell", () => {
     expect(screen.getByRole("button", { name: "Laboratório Mock" })).toBeInTheDocument();
   });
 
+  it("renders the worker runtime surface from the runtime API", async () => {
+    fetch.mockImplementation(async (url) => {
+      if (String(url).endsWith("/v1/console/runtime")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              schemaVersion: 1,
+              calculatedAt: "2026-08-25T12:00:00Z",
+              boundary: "SIMULATED_INFRASTRUCTURE",
+              integrationBoundary: "MOCK_ONLY",
+              runtimeStatus: "HEALTHY",
+              workers: [
+                {
+                  workerId: "wrk-inst-1:wait_expiry",
+                  runtimeInstanceId: "wrk-inst-1",
+                  workerType: "WAIT_EXPIRY",
+                  status: "RUNNING",
+                  lastHeartbeatAt: "2026-08-25T11:59:58Z",
+                  currentClaims: 0,
+                  processedCount: 4,
+                  failureCount: 0,
+                  version: 3,
+                },
+              ],
+              schedules: [
+                {
+                  scheduleCode: "schedule:wait-expiry",
+                  version: 2,
+                  scheduleVersion: "1.0",
+                  workerType: "WAIT_EXPIRY",
+                  enabled: true,
+                  interval: "PT10S",
+                  nextEligibleAt: "2026-08-25T12:00:10Z",
+                  lastOutcome: "SUCCESS",
+                  ownerWorkerId: null,
+                  leaseUntil: null,
+                  fencingToken: 5,
+                },
+              ],
+              backlogs: [
+                {
+                  schemaVersion: 1,
+                  workerType: "WAIT_EXPIRY",
+                  status: "EMPTY",
+                  eligibleCount: 0,
+                  oldestEligibleAgeMs: null,
+                  approximate: false,
+                  explanation: "",
+                },
+              ],
+              staleWorkers: 0,
+              expiredLeases: 0,
+              oldestPendingAgeMs: null,
+              dataQuality: { complete: true, missingSources: [], warnings: [] },
+            }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({ items: [], nextCursorStartedAt: "", nextCursorExecutionId: "" }),
+      };
+    });
+    render(<ConsoleShell />);
+    fireEvent.click(screen.getByRole("button", { name: "Runtime de Workers" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("worker-runtime-worker-wrk-inst-1:wait_expiry")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("worker-runtime-boundary-banner")).toHaveTextContent(
+      "INFRAESTRUTURA SIMULADA",
+    );
+    expect(screen.getByTestId("worker-runtime-schedule-schedule:wait-expiry")).toHaveTextContent(
+      "schedule:wait-expiry",
+    );
+  });
+
   it("lab submits to canonical endpoint", async () => {
     const spy = fetch;
     spy.mockImplementation(async (url, init) => {

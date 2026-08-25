@@ -22,7 +22,17 @@ public enum OperationalEventType {
   SECURITY_INTEGRITY_REJECTED(OperationalEventCategory.SECURITY),
   SECURITY_REPLAY_REJECTED(OperationalEventCategory.SECURITY),
   SECURITY_TOKEN_REJECTED(OperationalEventCategory.SECURITY),
-  SECURITY_ENVELOPE_REJECTED(OperationalEventCategory.SECURITY);
+  SECURITY_ENVELOPE_REJECTED(OperationalEventCategory.SECURITY),
+  WORKER_STARTED(OperationalEventCategory.SYSTEM),
+  WORKER_DRAIN_REQUESTED(OperationalEventCategory.SYSTEM),
+  WORKER_DRAINED(OperationalEventCategory.SYSTEM),
+  WORKER_STOPPED(OperationalEventCategory.SYSTEM),
+  SCHEDULE_CLAIMED(OperationalEventCategory.SYSTEM),
+  SCHEDULE_COMPLETED(OperationalEventCategory.SYSTEM),
+  SCHEDULE_FAILED(OperationalEventCategory.SYSTEM),
+  WORK_ITEM_FENCED_OUT(OperationalEventCategory.SYSTEM),
+  LEASE_EXPIRED(OperationalEventCategory.SYSTEM),
+  BACKLOG_OBSERVED(OperationalEventCategory.SYSTEM);
 
   private final OperationalEventCategory category;
 

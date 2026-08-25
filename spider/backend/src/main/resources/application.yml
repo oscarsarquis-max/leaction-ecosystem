@@ -192,6 +192,25 @@ spider:
     max-run-duration: PT5M
     evidence:
       enabled: true
+  worker-runtime:
+    enabled: false
+    http:
+      enabled: false
+    local-demo:
+      enabled: false
+    instance-id: ""
+    heartbeat-interval: PT5S
+    stale-after: PT20S
+    tick-interval: PT1S
+    default-batch-size: 25
+    default-lease-duration: PT30S
+    default-execution-timeout: PT20S
+    max-concurrency: 4
+    drain-timeout: PT30S
+    max-attempts: 3
+    allow-drain: false
+    recovery:
+      enabled: false
 
 resilience4j:
   circuitbreaker:

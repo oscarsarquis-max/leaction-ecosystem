@@ -351,5 +351,240 @@
     "runbookRef": "runbook:failure-lab:health@1.0",
     "mockScenario": "TECHNICAL_FAILURE",
     "operationCode": "OPERATIONAL_DEGRADATION"
+  },
+  {
+    "schemaVersion": 1,
+    "code": "WORKER_CRASH_AFTER_CLAIM",
+    "version": "1.0",
+    "title": "Worker interrompido depois de assumir o trabalho",
+    "functionalDescription": "Demonstra que um worker que para logo após assumir um agendamento não trava a operação: a posse vence por tempo, outro worker assume e a conclusão atrasada do worker antigo é recusada.",
+    "category": "WORKER_RUNTIME",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Runtime de workers habilitado",
+      "Failure Lab habilitado"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "CLAIM_ACQUIRED",
+        "description": "O primeiro worker assume o agendamento.",
+        "sourceType": "WORKER_RUNTIME",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "workerClaim:ACQUIRED",
+        "required": true
+      },
+      {
+        "code": "LEASE_EXPIRED_BY_TIME",
+        "description": "A posse é perdida por vencimento de prazo, não por exclusão.",
+        "sourceType": "WORKER_RUNTIME",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "workerLease:EXPIRED",
+        "required": true
+      },
+      {
+        "code": "RECLAIMED_BY_SECOND_WORKER",
+        "description": "Outro worker assume o mesmo agendamento após o vencimento.",
+        "sourceType": "WORKER_RUNTIME",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "workerReclaim:ACQUIRED_AFTER_LEASE_EXPIRY",
+        "required": true
+      },
+      {
+        "code": "STALE_COMPLETION_REJECTED",
+        "description": "A conclusão tardia do worker antigo é recusada pela proteção de posse.",
+        "sourceType": "WORKER_RUNTIME",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "workerFencing:STALE_COMPLETION_REJECTED",
+        "required": true
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT1M",
+    "maximumExecutions": 0,
+    "runbookRef": "runbook:failure-lab:worker-runtime@1.0",
+    "mockScenario": null,
+    "operationCode": null
+  },
+  {
+    "schemaVersion": 1,
+    "code": "WORKER_DUAL_CONTENTION",
+    "version": "1.0",
+    "title": "Dois workers disputam o mesmo agendamento",
+    "functionalDescription": "Demonstra que dois workers concorrentes nunca executam o mesmo agendamento ao mesmo tempo: apenas um vence a disputa de posse.",
+    "category": "WORKER_RUNTIME",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Runtime de workers habilitado",
+      "Failure Lab habilitado"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "SINGLE_WINNER",
+        "description": "Somente um dos workers assume o agendamento.",
+        "sourceType": "WORKER_RUNTIME",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "workerContention:SINGLE_WINNER",
+        "required": true
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT1M",
+    "maximumExecutions": 0,
+    "runbookRef": "runbook:failure-lab:worker-runtime@1.0",
+    "mockScenario": null,
+    "operationCode": null
+  },
+  {
+    "schemaVersion": 1,
+    "code": "WORKER_GRACEFUL_DRAIN",
+    "version": "1.0",
+    "title": "Drenagem ordenada de um worker",
+    "functionalDescription": "Demonstra que um worker marcado para drenagem deixa de aceitar trabalho novo sem interromper o ciclo em andamento.",
+    "category": "WORKER_RUNTIME",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Runtime de workers habilitado",
+      "Failure Lab habilitado"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "WORKER_DRAINING",
+        "description": "O worker entra em estado de drenagem.",
+        "sourceType": "WORKER_RUNTIME",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "workerDrain:DRAINING",
+        "required": true
+      },
+      {
+        "code": "NO_NEW_CLAIMS",
+        "description": "Nenhum trabalho novo é assumido durante a drenagem.",
+        "sourceType": "WORKER_RUNTIME",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "workerDrainClaims:NO_NEW_CLAIMS",
+        "required": true
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT1M",
+    "maximumExecutions": 0,
+    "runbookRef": "runbook:failure-lab:worker-runtime@1.0",
+    "mockScenario": null,
+    "operationCode": null
+  },
+  {
+    "schemaVersion": 1,
+    "code": "WORKER_BACKLOG_ACCUMULATION",
+    "version": "1.0",
+    "title": "Fila de trabalho acumulando",
+    "functionalDescription": "Observa a fila de trabalho pendente por tipo de worker nas fontes canônicas. Sem trabalho pendente na configuração atual o cenário é declarado inconclusivo, nunca aprovado por omissão.",
+    "category": "WORKER_RUNTIME",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Runtime de workers habilitado",
+      "Failure Lab habilitado"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "BACKLOG_ACCUMULATING",
+        "description": "Ao menos um tipo de worker apresenta fila acumulando.",
+        "sourceType": "WORKER_RUNTIME",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "workerBacklog:ACCUMULATING",
+        "required": true
+      },
+      {
+        "code": "BACKLOG_READ_FROM_CANONICAL_SOURCES",
+        "description": "A leitura vem das fontes canônicas, sem inserir trabalho artificial.",
+        "sourceType": "WORKER_RUNTIME",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "workerBacklogSeeded:NOT_SEEDED_READ_ONLY_OBSERVATION",
+        "required": true
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT1M",
+    "maximumExecutions": 0,
+    "runbookRef": "runbook:failure-lab:worker-runtime@1.0",
+    "mockScenario": null,
+    "operationCode": null
+  },
+  {
+    "schemaVersion": 1,
+    "code": "WORKER_RESTART_RECOVERY",
+    "version": "1.0",
+    "title": "Reinício sem perda de agendamento",
+    "functionalDescription": "Demonstra que o estado do agendamento sobrevive a uma nova leitura: a próxima elegibilidade e o desfecho do último ciclo continuam registrados de forma durável.",
+    "category": "WORKER_RUNTIME",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Runtime de workers habilitado",
+      "Failure Lab habilitado"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "SCHEDULE_STATE_SURVIVED",
+        "description": "O agendamento mantém próxima elegibilidade e desfecho após recarga.",
+        "sourceType": "WORKER_RUNTIME",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "workerRestart:SCHEDULE_STATE_SURVIVED",
+        "required": true
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT1M",
+    "maximumExecutions": 0,
+    "runbookRef": "runbook:failure-lab:worker-runtime@1.0",
+    "mockScenario": null,
+    "operationCode": null
   }
 ]

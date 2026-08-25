@@ -105,7 +105,7 @@ Geração: `frontend/scripts/capture-failure-lab-screenshots.mjs` (com local-dem
 
 ## Fechamento do Grupo A
 
-Com CAP-015–018 **VERIFIED**, o `GROUP_A_VISIBILITY_OBSERVABILITY` fecha **4/4**. Próximo elegível: **SPIDER-PROMPT-019** (Grupo B) — ainda **PLANNED**, não iniciado.
+Com CAP-015–018 **VERIFIED**, o `GROUP_A_VISIBILITY_OBSERVABILITY` fecha **4/4**. Sequência: **SPIDER-PROMPT-019** (Grupo B) — **VERIFIED** no baseline 0.19.0.
 
 ## Referências
 

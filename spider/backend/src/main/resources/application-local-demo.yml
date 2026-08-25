@@ -23,6 +23,23 @@ spider:
     max-run-duration: PT2M
     evidence:
       enabled: true
+  worker-runtime:
+    enabled: true
+    http:
+      enabled: true
+    local-demo:
+      enabled: true
+    heartbeat-interval: PT1S
+    stale-after: PT6S
+    tick-interval: PT0.5S
+    default-batch-size: 10
+    default-lease-duration: PT10S
+    default-execution-timeout: PT5S
+    max-concurrency: 4
+    drain-timeout: PT10S
+    allow-drain: true
+    recovery:
+      enabled: true
   canonical:
     http:
       enabled: true

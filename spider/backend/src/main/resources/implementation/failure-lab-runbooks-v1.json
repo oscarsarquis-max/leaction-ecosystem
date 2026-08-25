@@ -203,5 +203,52 @@
     ],
     "escalationGuidance": "Acionar a equipe de operação quando a degradação persistir fora do período das execuções controladas.",
     "limitations": "Runbook provisório de laboratório: os indicadores são provisórios e derivam apenas do parceiro simulado."
+  },
+  {
+    "schemaVersion": 1,
+    "code": "runbook:failure-lab:worker-runtime",
+    "version": "1.0",
+    "title": "Runtime de workers: posse, drenagem e fila",
+    "purpose": "Orientar a leitura de casos em que um worker para, dois workers disputam o mesmo trabalho, um worker é drenado ou a fila de trabalho pendente cresce.",
+    "applicableScenarioRefs": [
+      "WORKER_CRASH_AFTER_CLAIM@1.0",
+      "WORKER_DUAL_CONTENTION@1.0",
+      "WORKER_GRACEFUL_DRAIN@1.0",
+      "WORKER_BACKLOG_ACCUMULATION@1.0",
+      "WORKER_RESTART_RECOVERY@1.0"
+    ],
+    "symptoms": [
+      "Um trabalho recorrente deixa de avançar por alguns instantes e depois retoma sozinho.",
+      "O painel mostra um worker sem sinal de vida recente.",
+      "A fila de trabalho pendente cresce sem que o número de conclusões acompanhe.",
+      "Um worker aparece em drenagem e não assume trabalho novo."
+    ],
+    "checks": [
+      "Confirmar qual worker detém a posse do trabalho recorrente e até quando ela é válida.",
+      "Confirmar que a posse foi perdida por vencimento de prazo, não por remoção manual.",
+      "Confirmar que apenas um worker por vez conclui cada ciclo do mesmo trabalho.",
+      "Confirmar que a fila pendente lida vem das fontes canônicas e não de contagem estimada sem limite.",
+      "Confirmar que o worker em drenagem termina o ciclo em andamento antes de parar."
+    ],
+    "expectedEvidence": [
+      "Registro de posse assumida e depois vencida por prazo.",
+      "Registro de nova posse assumida por outro worker após o vencimento.",
+      "Recusa da conclusão enviada pelo worker que já havia perdido a posse.",
+      "Estado de drenagem sem novos ciclos assumidos.",
+      "Próxima elegibilidade e desfecho do último ciclo preservados após recarga."
+    ],
+    "safeActions": [
+      "Registrar o caso como recuperação automática esperada quando outro worker assume o trabalho.",
+      "Acompanhar a fila pendente por tipo de trabalho ao longo do dia.",
+      "Solicitar drenagem antes de qualquer manutenção planejada de instância."
+    ],
+    "stopConditions": [
+      "Dois workers concluem o mesmo ciclo do mesmo trabalho.",
+      "A posse é liberada sem que o prazo tenha vencido.",
+      "A fila pendente cresce continuamente sem nenhuma conclusão registrada.",
+      "Um worker em drenagem continua assumindo trabalho novo."
+    ],
+    "escalationGuidance": "Se a fila pendente crescer de forma contínua ou se houver indício de dois workers concluindo o mesmo ciclo, acionar a equipe de operação da plataforma antes de qualquer intervenção manual.",
+    "limitations": "Runbook provisório de laboratório: o runtime de workers está em fronteira de infraestrutura simulada e as integrações permanecem exclusivamente simuladas."
   }
 ]

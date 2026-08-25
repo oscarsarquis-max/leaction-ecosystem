@@ -9,5 +9,6 @@ public enum FailureScenarioCategory {
   SIGNAL,
   SECURITY,
   TELEMETRY,
-  OPERATIONAL_HEALTH
+  OPERATIONAL_HEALTH,
+  WORKER_RUNTIME
 }

@@ -103,6 +103,7 @@ public class FailureLabObservationVerifier {
         case SLI_STATUS_EQUALS -> sliStatus(observation, health);
         case HEALTH_OVERALL_STATUS -> healthOverall(observation, health);
         case NO_SECRET_EXPOSED -> noSecretExposed(run, observation, accumulated);
+        case WORKER_FACT_EQUALS -> workerFact(observation, facts);
       };
     } catch (RuntimeException failure) {
       return result(
@@ -422,6 +423,39 @@ public class FailureLabObservationVerifier {
           "Leitura consolidada no estado esperado.");
     }
     return inconclusiveHealth(observation, observed);
+  }
+
+  /**
+   * Compara um fato seguro publicado pelo harness do runtime, no formato {@code chave:VALOR}. Sem o
+   * fato correspondente a observação é NOT_OBSERVED — nunca PASSED por omissão.
+   */
+  private VerificationResult workerFact(
+      ExpectedObservation observation, Map<String, String> facts) {
+    String raw = observation.expectedValue() == null ? "" : observation.expectedValue().trim();
+    int separator = raw.indexOf(':');
+    if (separator <= 0) {
+      return notObserved(observation, "Observação do runtime sem chave de fato declarada.");
+    }
+    String key = raw.substring(0, separator);
+    String expected = raw.substring(separator + 1);
+    String observed = facts.get(key);
+    if (observed == null) {
+      return notObserved(observation, "O runtime de workers não publicou o fato esperado.");
+    }
+    if (observed.equals(expected)) {
+      return result(
+          observation,
+          VerificationStatus.PASSED,
+          observed,
+          Map.of("reasonCode", FailureLabRedaction.safeReason(observed)),
+          "O runtime de workers confirmou o comportamento esperado.");
+    }
+    return result(
+        observation,
+        VerificationStatus.INCONCLUSIVE,
+        observed,
+        Map.of("reasonCode", FailureLabRedaction.safeReason(observed)),
+        "O runtime respondeu com desfecho diferente do declarado no cenário.");
   }
 
   private VerificationResult noSecretExposed(

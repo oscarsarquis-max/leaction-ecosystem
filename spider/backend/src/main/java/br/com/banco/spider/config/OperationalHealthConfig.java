@@ -7,6 +7,7 @@ import br.com.banco.spider.execution.support.SpiderClock;
 import br.com.banco.spider.operational.events.OperationalEventStorePort;
 import br.com.banco.spider.operational.health.OperationalHealthQueryService;
 import br.com.banco.spider.operational.health.ProvisionalHealthDefinitionLoader;
+import br.com.banco.spider.operational.workers.WorkerRuntimeQueryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import org.springframework.beans.factory.ObjectProvider;
@@ -76,8 +77,9 @@ public class OperationalHealthConfig {
       ObjectProvider<ExecutionControlStorePort> control,
       ObjectProvider<ExecutionWaitStorePort> waits,
       ObjectProvider<CallbackOutboxStorePort> callbacks,
-      ObjectProvider<OperationalEventStorePort> events) {
+      ObjectProvider<OperationalEventStorePort> events,
+      ObjectProvider<WorkerRuntimeQueryService> workerRuntime) {
     return new OperationalHealthQueryService(
-        properties, clock, loader, control, waits, callbacks, events);
+        properties, clock, loader, control, waits, callbacks, events, workerRuntime);
   }
 }

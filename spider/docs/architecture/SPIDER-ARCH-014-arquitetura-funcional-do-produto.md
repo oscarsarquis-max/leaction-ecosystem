@@ -5,10 +5,10 @@
 | Identificador | SPIDER-ARCH-014 |
 | Título | Arquitetura Funcional do Produto |
 | Natureza | Espelho documental vivo do Spider |
-| Baseline funcional | Spider 0.18.0 — SPIDER-PROMPT-018 VERIFIED |
-| Boundary ativo | MOCK_ONLY |
-| Estado documental | BASELINE 018 — espelho sincronizado com CAP-018 (Failure Lab); Grupo A 4/4 |
-| Fontes autoritativas | SPIDER-ARCH-001–013, SPIDER-PROMPT-001–018, manifesto de capabilities, contrato anti-drift e roadmap 016–026 |
+| Baseline funcional | Spider 0.19.0 — SPIDER-PROMPT-019 VERIFIED |
+| Boundary ativo | MOCK_ONLY (integrações); CAP-019 = SIMULATED_INFRASTRUCTURE |
+| Estado documental | BASELINE 019 — espelho sincronizado com CAP-019 (Workers); Grupo B 1/3 |
+| Fontes autoritativas | SPIDER-ARCH-001–013, SPIDER-PROMPT-001–019, manifesto de capabilities, contrato anti-drift e roadmap 016–026 |
 
 > **Razão da numeração:** o número `SPIDER-ARCH-005` já está ocupado por “Definição de Rotas, Execution Plan e Máquina de Estados”. Como a série existente prossegue até `SPIDER-ARCH-013`, este documento recebe o próximo identificador coerente: `SPIDER-ARCH-014`.
 
@@ -16,7 +16,7 @@
 
 O Spider é uma plataforma de orquestração contextual que recebe uma intenção operacional de um canal ou produto, resolve de forma determinística uma rota governada, materializa um plano imutável, coordena interações com sistemas de destino por uma porta universal e devolve um resultado canônico, preservando estado, correlação, idempotência e evidências técnicas.
 
-Este documento é o **espelho funcional do produto real**. Ele descreve o que o Spider efetivamente oferece no baseline 0.18.0, como suas capacidades colaboram, por quais superfícies são acessadas e como aparecem no produto. Não substitui especificações normativas detalhadas nem prompts de implementação; oferece a visão integrada que permite compreender o Spider como produto.
+Este documento é o **espelho funcional do produto real**. Ele descreve o que o Spider efetivamente oferece no baseline 0.19.0, como suas capacidades colaboram, por quais superfícies são acessadas e como aparecem no produto. Não substitui especificações normativas detalhadas nem prompts de implementação; oferece a visão integrada que permite compreender o Spider como produto.
 
 ### 1.1 Público e linguagem
 
@@ -64,24 +64,24 @@ Este documento separa quatro categorias:
 
 | Categoria | Significado neste documento |
 |---|---|
-| Atual e verificada | Entregue por SPIDER-PROMPT-001–018 e declarada VERIFIED no manifesto do baseline 0.18.0 |
+| Atual e verificada | Entregue por SPIDER-PROMPT-001–019 e declarada VERIFIED no manifesto do baseline 0.19.0 |
 | Atual, mas opt-in | Implementada, porém protegida por flag, modo, autorização ou profile; não se presume ativa |
 | Preservada por compatibilidade | Existe no produto, mas não integra a jornada canônica principal |
 | Planejada | Pertence ao roadmap 016–026; não é descrita como funcionalidade atual |
 
 O estado oficial do baseline é:
 
-- `productVersion = 0.18.0`;
-- `currentPrompt = SPIDER-PROMPT-018`;
-- `currentGroup = GROUP_A_VISIBILITY_OBSERVABILITY`;
-- `activeBoundary = MOCK_ONLY`;
-- 001–018 `VERIFIED`;
-- 019–026 `PLANNED` no manifesto vigente;
-- Console 015, telemetria 016, saúde operacional 017 e Failure Lab 018 `OFF_BY_DEFAULT`;
-- Grupo A (015–018) **completo** (4/4);
+- `productVersion = 0.19.0`;
+- `currentPrompt = SPIDER-PROMPT-019`;
+- `currentGroup = GROUP_B_RUNTIME_OPERATIONS`;
+- `activeBoundary = MOCK_ONLY` (integrações); CAP-019 = `SIMULATED_INFRASTRUCTURE`;
+- 001–019 `VERIFIED`;
+- 020–026 `PLANNED` no manifesto vigente;
+- Console 015, telemetria 016, saúde operacional 017, Failure Lab 018 e worker-runtime 019 `OFF_BY_DEFAULT`;
+- Grupo A (015–018) **completo** (4/4); Grupo B **1/3** (019);
 - integrações corporativas, sandbox corporativo, piloto real e produção não estão ativos.
 
-O 019 está elegível pelo gate do Grupo A, mas permanece PLANNED até emissão formal. A seção 18 define como incorporar novos prompts após o aceite.
+O 020 está elegível pelo gate do 019, mas permanece PLANNED até emissão formal. A seção 18 define como incorporar novos prompts após o aceite.
 
 ## 3. Princípios funcionais do produto
 
@@ -132,7 +132,7 @@ Isso não exige uma tela artificial para cada classe ou endpoint. Exige que esta
 | Apresentador/demonstrador | Executar cenários controlados e mostrar evolução | Modo Apresentação e laboratório Mock do Console | `DEMONSTRAÇÃO MOCK`, preflight e profile local-demo |
 | Governador/publicador | Registrar, validar, publicar e ativar artefatos governados | Use cases internos do Control Plane | Sem UI/admin HTTP; authz deny-by-default; modo STATIC é default |
 | Revisor/auditor técnico | Conferir manifesto, readiness, integridade e rastreabilidade | Cockpit, documentos, manifesto e testes | Não recebe dados sensíveis nem controle operacional implícito |
-| Worker/processador lógico | Processar outbox, reconciliação, expiry ou aplicação de sinal | Processors invocáveis | Sem scheduler/worker deployment durável no baseline 016 |
+| Worker/processador lógico | Processar outbox, reconciliação, expiry ou aplicação de sinal | Processors + runtime de workers (019, opt-in) | Semântica no processor; posse/lease no runtime |
 
 ### 4.1 O que cada público deve conseguir responder
 
@@ -444,7 +444,7 @@ Essas portas preservam a neutralidade de protocolo. Uma implementação futura p
 - Modo Apresentação / laboratório Mock;
 - evidências visuais versionadas em `docs/technical/screenshots`.
 
-Não há no baseline UI de administração do Control Plane, workbench de requeue, dashboards de SLO ou Failure Lab.
+Não há no baseline UI de administração do Control Plane, workbench de requeue genérico ou dashboards de SLO produtivos. Cockpit Operacional, Failure Lab e Runtime de Workers existem como superfícies opt-in (OFF_BY_DEFAULT).
 
 ## 9. Modelo de execução e correlação
 
@@ -539,9 +539,10 @@ Esses indicadores apoiam diagnóstico e conversa operacional; não são compromi
 - Console/cockpit/apresentação Mock read-only;
 - Cockpit Operacional com SLIs, SLOs provisórios e error budgets Mock read-only;
 - Failure Lab com catálogo de cenários mock, runbooks provisórios e evidência redigida (OFF_BY_DEFAULT);
+- Runtime de workers duráveis com lease, fencing, drain e backlog (OFF_BY_DEFAULT, SIMULATED_INFRASTRUCTURE);
 - endpoint legado preservado;
 - memory/JPA conforme modos documentados;
-- testes e manifesto do baseline 0.18.0.
+- testes e manifesto do baseline 0.19.0.
 
 ### 11.2 Explicitamente fora do baseline
 
@@ -549,7 +550,7 @@ Esses indicadores apoiam diagnóstico e conversa operacional; não são compromi
 - IdP/OAuth/OIDC corporativo, mTLS corporativo e KMS/Vault/HSM;
 - callback/status query em transporte real;
 - broker, Kafka, RabbitMQ ou mensageria produtiva;
-- scheduler e runtime de workers duráveis implantado;
+- cluster/HA multi-instância de workers (além do runtime simulado 019);
 - paralelismo/fork-join, DAG genérico ou compensation automática;
 - WebSocket/SSE;
 - operações administrativas via UI/API;
@@ -570,7 +571,7 @@ Esses indicadores apoiam diagnóstico e conversa operacional; não são compromi
 | Mock de domínio/destino | Ativo/permitido | Mock Universal Adapter, cadastro/crédito simulados |
 | Mock assíncrono | Ativo/permitido | callback delivery, status query, signals e cenários determinísticos |
 | Mock de segurança | Opt-in/test/local-demo | HMAC key provider e AES key provider Mock |
-| Infraestrutura simulada | Planejada para 019/020/022/024 | workers, backpressure, HA, DR, gates de piloto |
+| Infraestrutura simulada | 019 VERIFIED (workers); 020/022/024 planejados | workers/lease/fencing (019), backpressure, HA, DR, gates de piloto |
 | Sandbox corporativo | Planejada apenas para 025 | IdP, mTLS, KMS e primeiro binding não produtivo |
 | Piloto real | Planejado apenas para 026 | primeiro legado real com canary e rollback |
 | Produção | Fora do roadmap atual | Não autorizada nem inferível |
@@ -674,29 +675,42 @@ REAL: somente planejado para sandbox 025 e piloto 026; PRODUÇÃO fora do roadma
 
 Todos permanecem `MOCK_ONLY`. “VERIFIED” indica entrega/testes no baseline, não ativação automática nem prontidão para legado real.
 
-## 16. Relação com 016–018
+## 16. Relação com 016–019
 
 | Prompt | Papel no Grupo A | Relação com o baseline atual | Atualização esperada deste ARCH |
 |---|---|---|---|
 | 016 | Telemetria Canônica e Operational Events | VERIFIED no manifesto; OFF_BY_DEFAULT | Eventos reais, store, API console e Operational Timeline |
 | 017 | Saúde, SLIs, SLOs provisórios e cockpit operacional | VERIFIED no manifesto; OFF_BY_DEFAULT | SLIs calculados, SLOs provisórios, error budgets, API e Cockpit Operacional |
-| 018 | Laboratório de Falhas e Jornadas Operacionais | VERIFIED no manifesto 0.18.0; OFF_BY_DEFAULT; fecha o Grupo A (4/4) | Failure Lab: fault injection só via mocks, predicados, evidência e runbooks provisórios |
+| 018 | Laboratório de Falhas e Jornadas Operacionais | VERIFIED; OFF_BY_DEFAULT; fecha o Grupo A (4/4) | Failure Lab: fault injection só via mocks, predicados, evidência e runbooks provisórios |
+| 019 | Runtime de Workers Duráveis e Scheduling | VERIFIED no manifesto 0.19.0; OFF_BY_DEFAULT; abre o Grupo B (1/3) | Schedules, lease, fencing, drain, backlog; handlers finos sobre processors |
 
 ### O que o Failure Lab significa para o negócio
 
 Em linguagem simples: o laboratório permite **ensaiar falhas controladas** (parceiro lento, resposta inválida, sinal rejeitado, amostra insuficiente) sem tocar legado real. Cada ensaio gera evidência redigida e um runbook provisório — útil para treinar operação e demonstrar resiliência. **Não** muda a regra de negócio nem a Engine; permanece **MOCK_ONLY**.
 
-O 016 não deve alterar semântica da Engine. O 017 não deve transformar SLO provisório em compromisso produtivo. O 018 não deve conectar infraestrutura ou legado real.
+### O que workers, lease, fencing e drain significam para o negócio
+
+Em linguagem simples: o Spider já sabia **o que** fazer (aplicar sinal, entregar callback, expirar espera). O 019 acrescenta **quem está com a bola e por quanto tempo**:
+
+- **Worker** — um “operário” que periodicamente assume um tipo de trabalho já existente;
+- **Lease** — a posse temporária: se o operário some, a bola volta para o jogo após o prazo;
+- **Fencing** — o “crachá numerado”: um operário atrasado não conclui depois que outro já assumiu;
+- **Drain** — pedido para parar de pegar trabalho novo, sem derrubar o ciclo em andamento;
+- **Backlog** — quanto trabalho ainda está esperando, lido das filas reais (sem inventar fila para a demo).
+
+Isso é **infraestrutura simulada** no store do Spider, não cluster de produção. Integrações continuam mock. O runtime **não** reescreve a regra do processor.
+
+O 016 não deve alterar semântica da Engine. O 017 não deve transformar SLO provisório em compromisso produtivo. O 018 não deve conectar infraestrutura ou legado real. O 019 não deve duplicar semântica de processors nem promover HA multi-célula.
 
 ## 17. Roadmap funcional 016–026
 
 ```text
 Grupo A — Visibilidade e observabilidade
 015 VERIFIED → 016 VERIFIED → 017 VERIFIED → 018 VERIFIED (Grupo A completo)
-                                                   │ gate cumprido; 019 elegível (não iniciado)
+                                                   │
                                                    ▼
 Grupo B — Operações de runtime
-019 Workers duráveis → 020 Backpressure/resiliência → 021 Ops/workbench
+019 Workers duráveis VERIFIED → 020 Backpressure/resiliência → 021 Ops/workbench
                                                    │ gate
                                                    ▼
 Grupo C — Prontidão de plataforma
@@ -710,7 +724,7 @@ Grupo D — Integração real
 Interpretação funcional:
 
 - 016–018 completam observabilidade e demonstração operacional ainda em `MOCK_ONLY`;
-- 019–021 introduzem runtime e operações, principalmente com infraestrutura simulada;
+- 019 VERIFIED inicia o Grupo B com runtime simulado; 020–021 seguem planejados;
 - 022–024 demonstram prontidão, certificação e continuidade antes de qualquer integração corporativa;
 - 025 é o primeiro passo em `CORPORATE_SANDBOX`, não produção;
 - 026 é `REAL_PILOT`, condicionado a aprovação, canary, reconciliação e rollback;
@@ -839,11 +853,11 @@ O glossário descreve a semântica do produto, não uma obrigação tecnológica
 - `SPIDER-ARCH-011` — topologia e disponibilidade;
 - `SPIDER-ARCH-012` — testes e certificação;
 - `SPIDER-ARCH-013` — Console e visualização;
-- `SPIDER-PROMPT-001–018` — evidência técnica dos incrementos verificados;
+- `SPIDER-PROMPT-001–019` — evidência técnica dos incrementos verificados;
 - `SPIDER-ROADMAP-IMPLEMENTACAO-016-026` — sequência oficial futura;
 - `spider-capability-manifest.json` — estado versionado de capabilities;
 - `spider-roadmap-015-026-contract.json` — contrato anti-drift.
 
 ---
 
-**Declaração de baseline:** este documento reflete o Spider 0.18.0 / SPIDER-PROMPT-018 VERIFIED, com `MOCK_ONLY` ativo. O Grupo A (015–018) está completo; o 019 permanece PLANNED (elegível, não iniciado).
+**Declaração de baseline:** este documento reflete o Spider 0.19.0 / SPIDER-PROMPT-019 VERIFIED, com integrações `MOCK_ONLY` e runtime de workers em `SIMULATED_INFRASTRUCTURE` (OFF_BY_DEFAULT). O Grupo A (015–018) está completo; o Grupo B está em 1/3; o 020 permanece PLANNED.

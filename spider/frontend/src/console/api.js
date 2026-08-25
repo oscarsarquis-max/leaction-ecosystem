@@ -122,6 +122,22 @@ export function getFailureLabEvidence(labRunId, { signal } = {}) {
   });
 }
 
+export function getWorkerRuntime({ signal } = {}) {
+  return request("/v1/console/runtime", { signal });
+}
+
+export function listWorkerRuntimeWorkers({ signal } = {}) {
+  return request("/v1/console/runtime/workers", { signal });
+}
+
+export function drainWorker(workerId, { signal } = {}) {
+  return request(`/v1/console/runtime/workers/${encodeURIComponent(workerId)}/drain`, {
+    method: "POST",
+    signal,
+    headers: { "X-Spider-Credential-Ref": "local-demo-console" },
+  });
+}
+
 export const TERMINAL_STATES = new Set([
   "SUCCEEDED",
   "PARTIALLY_SUCCEEDED",
