@@ -108,6 +108,18 @@ public class JpaExecutionWaitStoreAdapter implements ExecutionWaitStorePort {
         .toList();
   }
 
+  @Override
+  public List<ExecutionWaitRecord> listActive(int maxResults) {
+    return repo
+        .findByStateIn(
+            List.of(WaitState.WAITING, WaitState.SIGNALLED, WaitState.EXPIRING, WaitState.RESUMING))
+        .stream()
+        .sorted(java.util.Comparator.comparing(ExecutionWaitEntity::getCreatedAt))
+        .limit(Math.max(0, maxResults))
+        .map(this::toModel)
+        .toList();
+  }
+
   private ExecutionWaitEntity toEntity(ExecutionWaitRecord w) {
     ExecutionWaitEntity e = new ExecutionWaitEntity();
     e.setWaitId(w.waitId());

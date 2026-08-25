@@ -33,7 +33,7 @@ Integração planejada ≠ ativa: `MOCK_ONLY`, `SIMULATED_INFRASTRUCTURE`, `CORP
 | `GROUP_C_PLATFORM_READINESS` | 022–024 | Prontidão de plataforma |
 | `GROUP_D_REAL_INTEGRATION` | 025–026 | Integração real |
 
-`currentGroup` após 016: **`GROUP_A_VISIBILITY_OBSERVABILITY`**.
+`currentGroup` após 017: **`GROUP_A_VISIBILITY_OBSERVABILITY`**.
 
 Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem substituir estes grupos.
 
@@ -43,7 +43,7 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 |--------|-------|--------|----------|--------|---------|----------------------|
 | 015 | A | Console Operacional Canônico e Visualização da Execução | Console, cockpit e apresentação dinâmica | VERIFIED | OFF_BY_DEFAULT | MOCK_ONLY |
 | 016 | A | Telemetria Canônica e Operational Events | Logs, métricas, traces e eventos correlacionados | VERIFIED | OFF_BY_DEFAULT | MOCK_ONLY |
-| 017 | A | Saúde, SLIs, SLOs Provisórios e Cockpit Operacional | Health, SLIs/SLOs simulados, error budget e dashboards | PLANNED | NOT_IMPLEMENTED | MOCK_ONLY |
+| 017 | A | Saúde, SLIs, SLOs Provisórios e Cockpit Operacional | Health, SLIs/SLOs simulados, error budget e dashboards | VERIFIED | OFF_BY_DEFAULT | MOCK_ONLY |
 | 018 | A | Laboratório de Falhas e Jornadas Operacionais | Fault injection visual, evidências e runbooks Mock | PLANNED | NOT_IMPLEMENTED | MOCK_ONLY |
 | 019 | B | Runtime de Workers Duráveis e Scheduling | Workers, leases, fencing, drain e backlog | PLANNED | NOT_IMPLEMENTED | SIMULATED_INFRASTRUCTURE |
 | 020 | B | Capacidade, Backpressure e Resiliência Governada | Limits, bulkheads, circuits, quotas e load shedding | PLANNED | NOT_IMPLEMENTED | SIMULATED_INFRASTRUCTURE |
@@ -54,9 +54,9 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 | 025 | D | Fundações Corporativas de Segurança e Transporte | IdP, mTLS, KMS e primeiro binding em sandbox | PLANNED | NOT_IMPLEMENTED | CORPORATE_SANDBOX |
 | 026 | D | Primeiro Legado Real, Canary e Migração Controlada | Piloto real, canary, reconciliação e rollback | PLANNED | NOT_IMPLEMENTED | REAL_PILOT |
 
-### Contagens após 016
+### Contagens após 017
 
-- Grupo A: **2/4 VERIFIED**, **2/4 PLANNED**
+- Grupo A: **3/4 VERIFIED**, **1/4 PLANNED**
 - Grupos B–D: todos PLANNED
 
 ## Dependências
@@ -77,7 +77,7 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 
 ## Pontos de revisão
 
-1. Antes de iniciar 017: emitir prompt formalmente (017 permanece PLANNED até lá).
+1. 017 concluído e verificado; 018 permanece PLANNED até emissão formal.
 2. Fechamento Grupo A (018): gate para 019.
 3. Fechamento Grupo B (021): gate para 022.
 4. 024 = READY_FOR_PILOT: gate para 025.

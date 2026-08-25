@@ -62,6 +62,10 @@ Grupos oficiais da jornada: A Visibilidade (015–018), B Runtime (019–021), C
 
 O detalhe da execução também consome Operational Events (PROMPT-016) via `GET /v1/console/executions/{id}/events` — fatos de telemetria distintos da timeline projetada do estado persistido. Telemetria é opt-in (`spider.telemetry.enabled`) e fail-open.
 
+### Cockpit Operacional (PROMPT-017)
+
+Superfície distinta do Cockpit de Implementação. Consome `GET /v1/console/operational-health` com banner permanente `MOCK_ONLY` / SLOs provisórios. Flag `spider.operational-health.enabled` (exige telemetria). Não emite comandos à Engine.
+
 ## 8. Modo Apresentação
 
 Modo guiado rotulado **DEMONSTRAÇÃO MOCK**. Preflight via readiness. Jornada ao vivo usa submit canônico e detalhe/polling reais. Sem legado `/v1/products/orchestrate`.

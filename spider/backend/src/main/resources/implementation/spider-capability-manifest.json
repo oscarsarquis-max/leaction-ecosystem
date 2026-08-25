@@ -1,15 +1,15 @@
 {
   "manifestVersion": "1.0.1",
-  "productVersion": "0.16.0",
-  "lastVerifiedAt": "2026-08-25T12:00:00Z",
+  "productVersion": "0.17.0",
+  "lastVerifiedAt": "2026-08-25T15:00:00Z",
   "baseline": {
-    "backendTests": 192,
-    "frontendTests": 11,
+    "backendTests": 203,
+    "frontendTests": 12,
     "failures": 0,
     "errors": 0,
     "skipped": 0
   },
-  "currentPrompt": "SPIDER-PROMPT-016",
+  "currentPrompt": "SPIDER-PROMPT-017",
   "currentGroup": "GROUP_A_VISIBILITY_OBSERVABILITY",
   "capabilities": [
     {
@@ -459,26 +459,34 @@
       "promptRef": "SPIDER-PROMPT-017",
       "title": "Saúde, SLIs, SLOs Provisórios e Cockpit Operacional",
       "objective": "Health, SLIs/SLOs simulados, error budget e dashboards",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
       "integrationLevel": "MOCK_ONLY",
       "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-010-observabilidade-slos-operacao-e-resposta-a-falhas.md",
         "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
-        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+        "docs/architecture/SPIDER-ARCH-014-arquitetura-funcional-do-produto.md"
       ],
       "technicalDocRefs": [
-        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+        "docs/technical/SPIDER-PROMPT-017-operational-health-sli-slo.md"
       ],
-      "featureFlags": [],
-      "evidenceRefs": [],
-      "testSummary": "Not started — PLANNED in official roadmap",
+      "featureFlags": [
+        "spider.operational-health.enabled"
+      ],
+      "evidenceRefs": [
+        "docs/technical/screenshots/017-operational-cockpit-healthy-desktop.png",
+        "docs/technical/screenshots/017-operational-cockpit-degraded-desktop.png",
+        "docs/technical/screenshots/017-operational-cockpit-insufficient-data-desktop.png",
+        "docs/technical/screenshots/017-operational-cockpit-mobile.png"
+      ],
+      "testSummary": "Operational health aggregator, provisional SLI/SLO calculator, console API, flag matrix and Cockpit Operacional covered by backend and frontend suites",
       "dependencies": [
         "CAP-016"
       ],
       "limitations": [
         "MOCK_ONLY"
       ],
-      "lastVerifiedAt": null
+      "lastVerifiedAt": "2026-08-25T15:00:00Z"
     },
     {
       "capabilityCode": "CAP-018",

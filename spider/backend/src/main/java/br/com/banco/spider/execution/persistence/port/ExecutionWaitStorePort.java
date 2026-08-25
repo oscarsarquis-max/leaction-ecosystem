@@ -32,4 +32,6 @@ public interface ExecutionWaitStorePort {
   List<ExecutionWaitRecord> findExpiredWaiting(Instant now);
 
   List<ExecutionWaitRecord> findRecoverable();
+
+  List<ExecutionWaitRecord> listActive(int maxResults);
 }

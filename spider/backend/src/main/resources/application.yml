@@ -171,6 +171,16 @@ spider:
     polling-min-interval: PT1S
     safe-projections:
       enabled: false
+  telemetry:
+    enabled: false
+  operational-health:
+    enabled: false
+    default-window: PT24H
+    max-window: P7D
+    allowed-windows: [PT15M, PT1H, PT24H, P7D]
+    minimum-sample-size: 20
+    max-results: 5000
+    aged-wait-threshold: PT5M
 
 resilience4j:
   circuitbreaker:

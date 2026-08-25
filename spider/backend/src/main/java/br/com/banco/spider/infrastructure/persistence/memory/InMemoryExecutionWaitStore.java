@@ -114,6 +114,15 @@ public class InMemoryExecutionWaitStore implements ExecutionWaitStorePort {
         .toList();
   }
 
+  @Override
+  public List<ExecutionWaitRecord> listActive(int maxResults) {
+    return byId.values().stream()
+        .filter(wait -> wait.state().isActive())
+        .sorted(java.util.Comparator.comparing(ExecutionWaitRecord::createdAt))
+        .limit(Math.max(0, maxResults))
+        .toList();
+  }
+
   public void clear() {
     byId.clear();
   }

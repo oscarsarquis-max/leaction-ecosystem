@@ -7,6 +7,11 @@ spider:
       enabled: true
     safe-projections:
       enabled: true
+  telemetry:
+    enabled: true
+  operational-health:
+    enabled: true
+    minimum-sample-size: 1
   canonical:
     http:
       enabled: true

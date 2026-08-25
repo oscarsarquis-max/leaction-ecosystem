@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
@@ -50,6 +51,20 @@ public class JpaOperationalEventStoreAdapter implements OperationalEventStorePor
     return repository
         .findByExecutionIdAndOccurredAtBetweenOrderByOccurredAtAscEventIdAsc(
             executionId, from, to)
+        .stream()
+        .map(this::toModel)
+        .toList();
+  }
+
+  @Override
+  public List<OperationalEvent> findOccurredBetween(
+      Instant fromInclusive, Instant toInclusive, int maxResults) {
+    if (maxResults <= 0) {
+      return List.of();
+    }
+    return repository
+        .findByOccurredAtBetweenOrderByOccurredAtAscEventIdAsc(
+            fromInclusive, toInclusive, PageRequest.of(0, maxResults))
         .stream()
         .map(this::toModel)
         .toList();

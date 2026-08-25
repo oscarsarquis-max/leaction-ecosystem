@@ -1,0 +1,74 @@
+[
+  {
+    "schemaVersion": 1,
+    "code": "EXECUTION_TECHNICAL_RELIABILITY",
+    "version": 1,
+    "title": "Confiabilidade técnica de execução",
+    "functionalDescription": "Execuções SUCCEEDED entre terminações técnicas elegíveis.",
+    "dimension": "EXECUTION_FLOW",
+    "unit": "ratio",
+    "minimumSampleSize": 1,
+    "higherIsBetter": true,
+    "reliabilityStyle": true
+  },
+  {
+    "schemaVersion": 1,
+    "code": "EXECUTION_LATENCY_P95_MS",
+    "version": 1,
+    "title": "Latência técnica p95",
+    "functionalDescription": "Percentil 95 da duração de execuções terminais.",
+    "dimension": "EXECUTION_LATENCY",
+    "unit": "ms",
+    "minimumSampleSize": 1,
+    "higherIsBetter": false,
+    "reliabilityStyle": false
+  },
+  {
+    "schemaVersion": 1,
+    "code": "ASYNC_WAIT_AGED",
+    "version": 1,
+    "title": "Waits assíncronos envelhecidos",
+    "functionalDescription": "Razão de waits ativos acima do limiar provisório.",
+    "dimension": "ASYNC_WAIT",
+    "unit": "ratio",
+    "minimumSampleSize": 1,
+    "higherIsBetter": false,
+    "reliabilityStyle": false
+  },
+  {
+    "schemaVersion": 1,
+    "code": "CALLBACK_CONFIRMATION_RATIO",
+    "version": 1,
+    "title": "Confirmação de callbacks",
+    "functionalDescription": "Callbacks DELIVERED entre callbacks terminais.",
+    "dimension": "CALLBACK_DELIVERY",
+    "unit": "ratio",
+    "minimumSampleSize": 1,
+    "higherIsBetter": true,
+    "reliabilityStyle": true
+  },
+  {
+    "schemaVersion": 1,
+    "code": "SIGNAL_ACCEPTANCE_RATIO",
+    "version": 1,
+    "title": "Aceitação de sinais",
+    "functionalDescription": "Sinais aceitos entre aceitos e rejeitados.",
+    "dimension": "SIGNAL_INGRESS",
+    "unit": "ratio",
+    "minimumSampleSize": 1,
+    "higherIsBetter": true,
+    "reliabilityStyle": true
+  },
+  {
+    "schemaVersion": 1,
+    "code": "TELEMETRY_COVERAGE",
+    "version": 1,
+    "title": "Cobertura de telemetria",
+    "functionalDescription": "Execuções com ao menos um evento operacional.",
+    "dimension": "TELEMETRY_COVERAGE",
+    "unit": "ratio",
+    "minimumSampleSize": 1,
+    "higherIsBetter": true,
+    "reliabilityStyle": true
+  }
+]

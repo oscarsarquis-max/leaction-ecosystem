@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "profileCode": "SPIDER-PROVISIONAL-SLO-MOCK-V1",
+  "integrationLevel": "MOCK_ONLY",
+  "provisional": true,
+  "objectives": [
+    {"code":"SLO_EXECUTION_RELIABILITY","sliCode":"EXECUTION_TECHNICAL_RELIABILITY","target":0.99,"threshold":null,"higherIsBetter":true,"atRiskFactor":0.95},
+    {"code":"SLO_EXECUTION_LATENCY","sliCode":"EXECUTION_LATENCY_P95_MS","target":null,"threshold":"PT5S","higherIsBetter":false,"atRiskFactor":0.9},
+    {"code":"SLO_ASYNC_WAIT_AGED","sliCode":"ASYNC_WAIT_AGED","target":0.05,"threshold":null,"higherIsBetter":false,"atRiskFactor":0.8},
+    {"code":"SLO_CALLBACK_CONFIRMATION","sliCode":"CALLBACK_CONFIRMATION_RATIO","target":0.99,"threshold":null,"higherIsBetter":true,"atRiskFactor":0.95},
+    {"code":"SLO_SIGNAL_ACCEPTANCE","sliCode":"SIGNAL_ACCEPTANCE_RATIO","target":0.99,"threshold":null,"higherIsBetter":true,"atRiskFactor":0.95},
+    {"code":"SLO_TELEMETRY_COVERAGE","sliCode":"TELEMETRY_COVERAGE","target":0.99,"threshold":null,"higherIsBetter":true,"atRiskFactor":0.95}
+  ]
+}

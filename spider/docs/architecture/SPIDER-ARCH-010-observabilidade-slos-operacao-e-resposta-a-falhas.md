@@ -256,9 +256,27 @@ ServiceClass
 
 Uma capability pode ter classes distintas por operation ou canal. A classe não incorpora regra bancária.
 
-## 12. SLIs
+## 12. Health (implementação SPIDER-PROMPT-017)
 
-### 12.1 Disponibilidade
+A saúde operacional do Spider é um **snapshot read-only** calculado a partir de stores e Operational Events.
+Não substitui `/actuator/health` (prontidão de processo). Não emite comandos à Engine.
+
+### 12.1 SLIs provisórios Mock
+
+Indicadores mínimos: confiabilidade técnica, latência p95, waits envelhecidos, callback, signal ingress e cobertura de telemetria.
+Objetivos são **PROVISÓRIOS · MOCK_ONLY · NÃO CONTRATUAIS**. Amostra insuficiente não vira falso verde.
+
+### 12.2 Error budget
+
+Para SLIs de sucesso: consumo = falha observada / falha permitida pelo alvo provisório. Exibido no Cockpit como “tolerância técnica provisória”.
+
+### 12.3 Cockpit
+
+Console: `GET /v1/console/operational-health` → superfície **Cockpit Operacional** (distinta do Cockpit de Implementação e do Failure Lab 018).
+
+## 13. SLIs
+
+### 13.1 Disponibilidade
 
 Proporção de solicitações elegíveis que recebem resposta tecnicamente correta dentro do contrato da classe. Rejeição válida por autenticação, autorização ou contrato pode ser excluída do denominador conforme definição explícita; falha interna não pode.
 
@@ -270,19 +288,19 @@ Distribuição do tempo desde a aceitação na fronteira definida até resposta 
 
 Proporção de execuções sem erro interno, contrato inválido produzido pelo Spider, duplicidade indevida ou transição inconsistente.
 
-### 12.4 Durabilidade
+### 13.4 Durabilidade
 
 Proporção de estados e eventos duráveis recuperáveis após confirmação.
 
-### 12.5 Atualidade
+### 13.5 Atualidade
 
 Idade de backlog, wait vencido, outbox pendente, snapshot não convergido ou reconciliação aberta.
 
-### 12.6 SLI de Adapter
+### 13.6 SLI de Adapter
 
 Mede disponibilidade, latência, contrato, certainty e resultado técnico na Porta Universal, separado do SLI end-to-end.
 
-## 13. SLOs
+## 14. SLOs
 
 Todo SLO deve declarar:
 
@@ -306,7 +324,7 @@ SLO numérico somente deve ser aprovado após baseline com simuladores represent
 
 SLO de Spider não pode incluir indiscriminadamente tempo de decisão humana ou processamento externo fora da responsabilidade definida.
 
-## 14. Error budgets
+## 15. Error budgets
 
 Error budget é calculado a partir do SLO e da janela. Sua política pode:
 

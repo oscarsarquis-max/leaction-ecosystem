@@ -20,11 +20,13 @@ import {
 } from "./components";
 import ImplementationCockpit from "./ImplementationCockpit";
 import PresentationMode from "./PresentationMode";
+import OperationalCockpit from "./OperationalCockpit";
 
 const NAV = [
   { id: "overview", label: "Visão geral" },
   { id: "executions", label: "Execuções" },
   { id: "detail", label: "Detalhe" },
+  { id: "operational-health", label: "Cockpit Operacional" },
   { id: "implementation", label: "Implementação" },
   { id: "presentation", label: "Apresentação" },
   { id: "lab", label: "Laboratório Mock" },
@@ -363,6 +365,8 @@ export default function ConsoleShell() {
       )}
 
       {view === "implementation" && <ImplementationCockpit />}
+
+      {view === "operational-health" && <OperationalCockpit />}
 
       {view === "presentation" && (
         <PresentationMode

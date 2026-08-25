@@ -114,6 +114,14 @@ public class InMemoryCallbackOutboxStore implements CallbackOutboxStorePort {
   }
 
   @Override
+  public List<CallbackOutboxRecord> listAllBounded(int maxResults) {
+    return byId.values().stream()
+        .sorted(Comparator.comparing(CallbackOutboxRecord::createdAt))
+        .limit(Math.max(0, maxResults))
+        .toList();
+  }
+
+  @Override
   public synchronized CallbackOutboxRecord updateState(
       String outboxId,
       long expectedVersion,

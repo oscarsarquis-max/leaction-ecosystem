@@ -79,6 +79,7 @@ Diretrizes para a IA: ver `.cursorrules`.
 - Perfil HTTP canônico (PROMPT-006): `docs/technical/SPIDER-PROMPT-006-canonical-http-profile.md`
 - Callback Outbox (PROMPT-007): `docs/technical/SPIDER-PROMPT-007-callback-outbox.md`
 - Telemetria / Operational Events (PROMPT-016): `docs/technical/SPIDER-PROMPT-016-operational-events.md`
+- Saúde operacional / SLIs e SLOs provisórios (PROMPT-017): `docs/technical/SPIDER-PROMPT-017-operational-health-sli-slo.md`
 
 ## Console operacional (PROMPT-015)
 
@@ -89,9 +90,10 @@ spider.console.enabled=false
 spider.console.http.enabled=false
 spider.console.local-demo.enabled=false
 spider.telemetry.enabled=false
+spider.operational-health.enabled=false
 ```
 
-Local-demo exige profile Spring `local-demo` **e** flag. Endpoints: `GET /v1/console/executions`, `/{id}`, `/{id}/events`, `/implementation`, `/presentation/readiness`.
+Local-demo exige profile Spring `local-demo` **e** flag. O Cockpit Operacional exige também `spider.telemetry.enabled=true`. Endpoints: `GET /v1/console/executions`, `/{id}`, `/{id}/events`, `/implementation`, `/presentation/readiness`, `/operational-health` e `/operational-health/definitions`.
 
 Apresentação:
 
@@ -106,6 +108,7 @@ Apresentação:
 |--------|------------|----------|-------|
 | Read model seguro | `OperationalConsoleQueryService` | `GET /v1/console/executions*` | `OperationalConsoleE2EReadModelTest` |
 | Operational Events | `SafeOperationalEventPublisher` / store | `GET /v1/console/executions/{id}/events` | `OperationalEventPublisherTest` + E2E |
+| Saúde, SLIs/SLOs provisórios | `OperationalHealthAggregator` / `ProvisionalSliCalculator` / `OperationalCockpit` | `GET /v1/console/operational-health*` | `OperationalHealthAggregatorTest` + `ProvisionalSliCalculatorTest` + E2E + `ConsoleShell.test.jsx` |
 | DenyAll console | `OperationalConsoleSecurityDefaultsConfig` | todos `/v1/console/*` | `DenyAllConsoleAuthBeansPresentTest` |
 | Manifesto capabilities | `ImplementationManifestLoader` | `GET /v1/console/implementation` | `ImplementationManifestLoaderTest` |
 | Presentation readiness | `PresentationReadinessUseCase` | `GET /v1/console/presentation/readiness` | E2E readiness |

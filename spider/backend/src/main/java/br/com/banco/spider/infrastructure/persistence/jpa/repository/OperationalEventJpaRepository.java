@@ -4,6 +4,7 @@ import br.com.banco.spider.infrastructure.persistence.jpa.entity.OperationalEven
 import java.time.Instant;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Pageable;
 
 public interface OperationalEventJpaRepository
     extends JpaRepository<OperationalEventEntity, String> {
@@ -14,4 +15,7 @@ public interface OperationalEventJpaRepository
   List<OperationalEventEntity>
       findByExecutionIdAndOccurredAtBetweenOrderByOccurredAtAscEventIdAsc(
           String executionId, Instant from, Instant to);
+
+  List<OperationalEventEntity> findByOccurredAtBetweenOrderByOccurredAtAscEventIdAsc(
+      Instant from, Instant to, Pageable pageable);
 }

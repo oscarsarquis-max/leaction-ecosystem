@@ -145,6 +145,25 @@ public final class JpaCanonicalPersistenceAdapters {
       return all;
     }
 
+    @Override
+    public List<ExecutionControlRecord> listStartedBetween(
+        Instant fromInclusive, Instant toInclusive, int maxResults) {
+      // Bounded after filtering; replace with a pageable repository query when JPA volume grows.
+      return repo.findAll().stream()
+          .map(ControlAdapter::toModel)
+          .filter(
+              record ->
+                  inRange(record.startedAt(), fromInclusive, toInclusive)
+                      || inRange(record.lastUpdatedAt(), fromInclusive, toInclusive))
+          .sorted(java.util.Comparator.comparing(ExecutionControlRecord::lastUpdatedAt))
+          .limit(Math.max(0, maxResults))
+          .toList();
+    }
+
+    private static boolean inRange(Instant value, Instant from, Instant to) {
+      return value != null && !value.isBefore(from) && !value.isAfter(to);
+    }
+
     static ExecutionControlEntity toEntity(ExecutionControlRecord r) {
       ExecutionControlEntity e = new ExecutionControlEntity();
       e.setExecutionId(r.executionId());

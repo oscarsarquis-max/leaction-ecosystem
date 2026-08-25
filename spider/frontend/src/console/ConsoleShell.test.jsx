@@ -128,6 +128,30 @@ describe("ConsoleShell", () => {
         if (String(url).includes("/v1/products/orchestrate")) {
           throw new Error("legacy must not be called");
         }
+        if (String(url).includes("/v1/console/operational-health")) {
+          return {
+            ok: true,
+            status: 200,
+            text: async () =>
+              JSON.stringify({
+                schemaVersion: 1,
+                integrationLevel: "MOCK_ONLY",
+                provisional: true,
+                overallStatus: "HEALTHY",
+                window: { duration: "PT24H" },
+                slis: [
+                  {
+                    code: "EXECUTION_TECHNICAL_RELIABILITY",
+                    status: "AVAILABLE",
+                    value: 0.99,
+                    unit: "ratio",
+                    sampleSize: 100,
+                  },
+                ],
+                dataQuality: { complete: true, missingSources: [] },
+              }),
+          };
+        }
         if (String(url).includes("/v1/console/executions") && (!init || init.method !== "POST")) {
           if (String(url).includes("/events")) {
             return {
@@ -242,6 +266,18 @@ describe("ConsoleShell", () => {
     }));
     render(<ConsoleShell />);
     await waitFor(() => expect(screen.getByText(/Console indisponível/i)).toBeInTheDocument());
+  });
+
+  it("renders operational cockpit from canonical health API", async () => {
+    render(<ConsoleShell />);
+    fireEvent.click(screen.getByRole("button", { name: "Cockpit Operacional" }));
+    await waitFor(() =>
+      expect(screen.getByText("Confiabilidade técnica")).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/MOCK_ONLY/)).toBeInTheDocument();
+    expect(screen.getByText(/PROVISÓRIOS/)).toBeInTheDocument();
+    expect(screen.getByText(/99.0%/)).toBeInTheDocument();
+    expect(fetch.mock.calls.some((call) => String(call[0]).includes("window=PT24H"))).toBe(true);
   });
 
   it("lab submits to canonical endpoint", async () => {

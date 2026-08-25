@@ -4,6 +4,7 @@ import br.com.banco.spider.execution.domain.ExecutionState;
 import br.com.banco.spider.execution.persistence.model.ExecutionControlRecord;
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
 
 /** Porta de controle de execução — sem JPA. */
 public interface ExecutionControlStorePort {
@@ -33,4 +34,11 @@ public interface ExecutionControlStorePort {
    */
   List<ExecutionControlRecord> listRecent(
       int limit, java.time.Instant cursorStartedAt, String cursorExecutionId);
+
+  /**
+   * Bounded operational query. Implementations may include records updated in the interval so
+   * executions that started before the window but terminated inside it remain observable.
+   */
+  List<ExecutionControlRecord> listStartedBetween(
+      Instant fromInclusive, Instant toInclusive, int maxResults);
 }

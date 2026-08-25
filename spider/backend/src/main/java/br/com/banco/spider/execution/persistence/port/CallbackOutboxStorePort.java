@@ -28,6 +28,8 @@ public interface CallbackOutboxStorePort {
 
   List<CallbackOutboxRecord> findInterruptedDispatching(Instant leaseExpiredBefore);
 
+  List<CallbackOutboxRecord> listAllBounded(int maxResults);
+
   CallbackOutboxRecord updateState(
       String outboxId,
       long expectedVersion,

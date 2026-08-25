@@ -99,6 +99,15 @@ public class JpaCallbackOutboxStoreAdapter implements CallbackOutboxStorePort {
   }
 
   @Override
+  public List<CallbackOutboxRecord> listAllBounded(int maxResults) {
+    return repo.findAll().stream()
+        .sorted(java.util.Comparator.comparing(CallbackOutboxEntity::getCreatedAt))
+        .limit(Math.max(0, maxResults))
+        .map(this::toModel)
+        .toList();
+  }
+
+  @Override
   @Transactional
   public CallbackOutboxRecord updateState(
       String outboxId,

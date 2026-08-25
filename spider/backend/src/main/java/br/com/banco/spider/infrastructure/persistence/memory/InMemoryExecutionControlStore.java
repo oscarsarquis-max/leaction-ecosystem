@@ -108,6 +108,23 @@ public class InMemoryExecutionControlStore implements ExecutionControlStorePort 
         .toList();
   }
 
+  @Override
+  public List<ExecutionControlRecord> listStartedBetween(
+      Instant fromInclusive, Instant toInclusive, int maxResults) {
+    return byId.values().stream()
+        .filter(
+            record ->
+                inRange(record.startedAt(), fromInclusive, toInclusive)
+                    || inRange(record.lastUpdatedAt(), fromInclusive, toInclusive))
+        .sorted(java.util.Comparator.comparing(ExecutionControlRecord::lastUpdatedAt))
+        .limit(Math.max(0, maxResults))
+        .toList();
+  }
+
+  private static boolean inRange(Instant value, Instant from, Instant to) {
+    return value != null && !value.isBefore(from) && !value.isAfter(to);
+  }
+
   public void clear() {
     byId.clear();
   }

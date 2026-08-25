@@ -94,6 +94,11 @@ export function getPresentationReadiness({ signal } = {}) {
   return request("/v1/console/presentation/readiness", { signal });
 }
 
+export function getOperationalHealth(window = "PT24H", { signal } = {}) {
+  const query = new URLSearchParams({ window });
+  return request(`/v1/console/operational-health?${query}`, { signal });
+}
+
 export const TERMINAL_STATES = new Set([
   "SUCCEEDED",
   "PARTIALLY_SUCCEEDED",
