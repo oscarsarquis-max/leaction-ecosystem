@@ -532,7 +532,7 @@ Telemetria observa; não controla. Não há broker nem event sourcing neste base
 - Console/cockpit/apresentação Mock read-only;
 - endpoint legado preservado;
 - memory/JPA conforme modos documentados;
-- testes e manifesto do baseline 0.15.0.
+- testes e manifesto do baseline 0.16.0.
 
 ### 11.2 Explicitamente fora do baseline
 
