@@ -9,7 +9,7 @@
 - Produto de partida: **Spider 0.19.0**; produto pós-entrega: **0.20.0** (CAP-020 VERIFIED).
 - Commit de referência: `d94aa3c9c6aa0d3b82ee513c96d6eec0639c431e` (`feat(spider): add durable worker runtime with lease fencing`).
 - Estado Git observado na emissão: branch `main`, **ahead 9** de `origin/main`, sem push; alterações alheias ao Spider no monorepo devem ser preservadas.
-- Baseline de partida: **297 testes backend + 41 testes frontend**; pós-entrega ver manifesto (`backendTests` 374; `frontendTests` 55 placeholder até suíte FE 020).
+- Baseline de partida: **297 testes backend + 41 testes frontend**; pós-entrega confirmado no manifesto: **374 backend + 67 frontend**, com `npm run build` verde.
 - Predecessor obrigatório: **CAP-019 / SPIDER-PROMPT-019 VERIFIED**.
 - Grupo: `GROUP_B_RUNTIME_OPERATIONS` — CAP-020 é o segundo incremento (**2/3** após VERIFIED).
 - Título oficial: **Capacidade, Backpressure e Resiliência Governada**.

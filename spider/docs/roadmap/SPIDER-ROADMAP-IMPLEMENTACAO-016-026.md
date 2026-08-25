@@ -60,7 +60,7 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 - Grupo B: **2/3 VERIFIED** (019–020); 021 PLANNED
 - 021 elegível (gate 020 cumprido), **não iniciado**
 - Grupos C–D: todos PLANNED
-- Produto: **0.20.0** · baseline manifesto: 374 backend / 55 frontend (placeholder FE até suíte Capacidade)
+- Produto: **0.20.0** · baseline confirmado: **374 backend / 67 frontend** · `npm run build` verde
 
 ## Dependências
 
@@ -97,3 +97,4 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 - Técnico 018: `docs/technical/SPIDER-PROMPT-018-failure-lab-operational-journeys.md`
 - Técnico 019: `docs/technical/SPIDER-PROMPT-019-durable-workers-scheduling.md`
 - Técnico 020: `docs/technical/SPIDER-PROMPT-020-capacity-backpressure-resilience.md`
+- Técnico 021 (autorização de implementação; CAP-021 ainda PLANNED): `docs/technical/SPIDER-PROMPT-021-governed-operations-reconciliation-workbench.md`

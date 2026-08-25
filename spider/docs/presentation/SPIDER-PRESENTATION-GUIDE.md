@@ -31,7 +31,7 @@ Flags: profile `local-demo` + `spider.console.*` + canonical HTTP conforme scrip
 ## Roteiro 3 minutos
 
 1. Badge **DEMONSTRAÇÃO MOCK** no topo.
-2. Aba **Implementação**: grupos A–D, CAP-015–020 VERIFIED (Grupo A 4/4; Grupo B 2/3), 021–026 PLANNED, baseline 374/55 (FE 55 placeholder até suíte Capacidade).
+2. Aba **Implementação**: grupos A–D, CAP-015–020 VERIFIED (Grupo A 4/4; Grupo B 2/3), 021–026 PLANNED, baseline confirmado 374/67.
 3. Aba **Apresentação**: preflight readiness; se READY, capítulo 4 → `RETRY_THEN_SUCCESS`.
 4. Abrir detalhe: journey map + timeline persistidos (2 attempts).
 

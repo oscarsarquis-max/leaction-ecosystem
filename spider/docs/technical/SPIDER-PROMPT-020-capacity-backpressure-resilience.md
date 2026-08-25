@@ -5,7 +5,7 @@
 - Produto: **0.20.0** · capability boundary **SIMULATED_INFRASTRUCTURE** · integrações **MOCK_ONLY**
 - Predecessor: SPIDER-PROMPT-019 VERIFIED (Grupo B 1/3 → 2/3)
 - Grupo corrente: `GROUP_B_RUNTIME_OPERATIONS` (**2/3**)
-- Baseline de testes: **374** backend · **55** frontend (placeholder até a suíte FE de Capacidade aterrissar; vitest atual ainda reporta **41** sem superfície 020)
+- Baseline final confirmado: **374** backend · **67** frontend · `npm run build` verde
 - Flags (default **false**): `spider.capacity.enabled`; superfícies `spider.capacity.http.enabled`, `spider.capacity.local-demo.enabled`, `spider.capacity.enforcement.enabled` (exigem o master ligado)
 - HTTP de capacidade exige também `spider.console.http.enabled=true`
 - Autorização original / escopo: `docs/technical/SPIDER-PROMPT-020-capacity-backpressure-governed-resilience.md`
