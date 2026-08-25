@@ -40,6 +40,14 @@ spider:
     allow-drain: true
     recovery:
       enabled: true
+  capacity:
+    enabled: true
+    http:
+      enabled: true
+    local-demo:
+      enabled: true
+    enforcement:
+      enabled: true
   canonical:
     http:
       enabled: true

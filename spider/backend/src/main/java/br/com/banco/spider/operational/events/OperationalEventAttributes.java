@@ -6,6 +6,8 @@ import java.util.Set;
 
 public final class OperationalEventAttributes {
 
+  // A allowlist tem exatamente MAX_ENTRIES chaves: um evento pode, no limite, carregar todas elas,
+  // e nenhuma chave nova entra sem revisão consciente deste teto.
   private static final int MAX_ENTRIES = 16;
   private static final int MAX_VALUE_LENGTH = 200;
   private static final Set<String> ALLOWED =
@@ -21,7 +23,11 @@ public final class OperationalEventAttributes {
           "integrityReason",
           "component",
           "workerType",
-          "scheduleCode");
+          "scheduleCode",
+          "policyRef",
+          "admissionResult",
+          "circuitPhase",
+          "capacityScope");
 
   private final Map<String, String> values;
 
@@ -90,6 +96,22 @@ public final class OperationalEventAttributes {
 
     public Builder scheduleCode(String value) {
       return put("scheduleCode", value);
+    }
+
+    public Builder policyRef(String value) {
+      return put("policyRef", value);
+    }
+
+    public Builder admissionResult(String value) {
+      return put("admissionResult", value);
+    }
+
+    public Builder circuitPhase(String value) {
+      return put("circuitPhase", value);
+    }
+
+    public Builder capacityScope(String value) {
+      return put("capacityScope", value);
     }
 
     public Builder put(String key, String value) {

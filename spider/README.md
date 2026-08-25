@@ -82,6 +82,7 @@ Diretrizes para a IA: ver `.cursorrules`.
 - Saúde operacional / SLIs e SLOs provisórios (PROMPT-017): `docs/technical/SPIDER-PROMPT-017-operational-health-sli-slo.md`
 - Failure Lab / jornadas operacionais (PROMPT-018): `docs/technical/SPIDER-PROMPT-018-failure-lab-operational-journeys.md`
 - Runtime de workers / scheduling (PROMPT-019): `docs/technical/SPIDER-PROMPT-019-durable-workers-scheduling.md`
+- Capacidade / backpressure / resiliência (PROMPT-020): `docs/technical/SPIDER-PROMPT-020-capacity-backpressure-resilience.md`
 
 ## Console operacional (PROMPT-015)
 
@@ -99,9 +100,13 @@ spider.failure-lab.local-demo.enabled=false
 spider.worker-runtime.enabled=false
 spider.worker-runtime.http.enabled=false
 spider.worker-runtime.local-demo.enabled=false
+spider.capacity.enabled=false
+spider.capacity.http.enabled=false
+spider.capacity.local-demo.enabled=false
+spider.capacity.enforcement.enabled=false
 ```
 
-Local-demo exige profile Spring `local-demo` **e** flag. O Cockpit Operacional exige também `spider.telemetry.enabled=true`. O Failure Lab exige `spider.failure-lab.enabled=true` (e `http`/`local-demo` conforme a superfície). O Runtime de Workers exige `spider.worker-runtime.enabled=true` (e `http`/`local-demo`; drain HTTP também exige `allow-drain` ou local-demo). Endpoints: `GET /v1/console/executions`, `/{id}`, `/{id}/events`, `/implementation`, `/presentation/readiness`, `/operational-health`, `/operational-health/definitions`, `/failure-lab/scenarios`, `POST /failure-lab/runs`, `GET /failure-lab/runs/{id}` e `/failure-lab/runs/{id}/evidence`, `GET /runtime`, `/runtime/workers`, `/runtime/schedules`, `/runtime/backlogs`, `POST /runtime/workers/{id}/drain`.
+Local-demo exige profile Spring `local-demo` **e** flag. O Cockpit Operacional exige também `spider.telemetry.enabled=true`. O Failure Lab exige `spider.failure-lab.enabled=true` (e `http`/`local-demo` conforme a superfície). O Runtime de Workers exige `spider.worker-runtime.enabled=true` (e `http`/`local-demo`; drain HTTP também exige `allow-drain` ou local-demo). Capacidade exige `spider.capacity.enabled=true` (e `http`/`local-demo`; bloqueio real exige `enforcement.enabled`). Endpoints: `GET /v1/console/executions`, `/{id}`, `/{id}/events`, `/implementation`, `/presentation/readiness`, `/operational-health`, `/operational-health/definitions`, `/failure-lab/scenarios`, `POST /failure-lab/runs`, `GET /failure-lab/runs/{id}` e `/failure-lab/runs/{id}/evidence`, `GET /runtime`, `/runtime/workers`, `/runtime/schedules`, `/runtime/backlogs`, `POST /runtime/workers/{id}/drain`, `GET /capacity`, `/capacity/policies`, `/capacity/pressure`, `/capacity/bulkheads`, `/capacity/circuits`, `/capacity/decisions`.
 
 Apresentação:
 
@@ -119,6 +124,7 @@ Apresentação:
 | Saúde, SLIs/SLOs provisórios | `OperationalHealthAggregator` / `ProvisionalSliCalculator` / `OperationalCockpit` | `GET /v1/console/operational-health*` | `OperationalHealthAggregatorTest` + `ProvisionalSliCalculatorTest` + E2E + `ConsoleShell.test.jsx` |
 | Failure Lab | `FailureLabOrchestrator` / `FailureLab` | `/v1/console/failure-lab/*` | `FailureLabEndpointE2ETest` + `FailureLab.test.jsx` |
 | Runtime de Workers | `WorkerRuntimeCoordinator` / `WorkerRuntime` | `/v1/console/runtime/*` | `WorkerRuntimeEndpointE2ETest` + `WorkerRuntime.test.jsx` |
+| Capacidade / backpressure | `CapacityAdmissionService` / `CapacityHttpController` | `/v1/console/capacity/*` | `CapacityHttpEndpointE2ETest` + `CapacityFailureLabE2ETest` |
 | DenyAll console | `OperationalConsoleSecurityDefaultsConfig` | todos `/v1/console/*` | `DenyAllConsoleAuthBeansPresentTest` |
 | Manifesto capabilities | `ImplementationManifestLoader` | `GET /v1/console/implementation` | `ImplementationManifestLoaderTest` |
 | Presentation readiness | `PresentationReadinessUseCase` | `GET /v1/console/presentation/readiness` | E2E readiness |

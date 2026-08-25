@@ -10,6 +10,8 @@ import br.com.banco.spider.execution.step.StepAttemptRecord;
 import br.com.banco.spider.execution.support.SpiderClock;
 import br.com.banco.spider.execution.wait.ExecutionWaitRecord;
 import br.com.banco.spider.execution.wait.WaitState;
+import br.com.banco.spider.operational.capacity.AdmissionResult;
+import br.com.banco.spider.operational.capacity.CircuitPhase;
 import br.com.banco.spider.operational.events.OperationalEvent;
 import br.com.banco.spider.operational.events.OperationalEventCategory;
 import br.com.banco.spider.operational.events.OperationalEventStorePort;
@@ -34,6 +36,7 @@ public class FailureLabObservationVerifier {
 
   private static final String HEALTH_WINDOW = "PT24H";
   private static final String ENTRY_STEP_ID = "step-1";
+  private static final String FENCING_UNCHANGED = "UNCHANGED";
 
   private final SpiderClock clock;
   private final ObjectProvider<ExecutionControlStorePort> controlProvider;
@@ -104,6 +107,9 @@ public class FailureLabObservationVerifier {
         case HEALTH_OVERALL_STATUS -> healthOverall(observation, health);
         case NO_SECRET_EXPOSED -> noSecretExposed(run, observation, accumulated);
         case WORKER_FACT_EQUALS -> workerFact(observation, facts);
+        case ADMISSION_RESULT_EQUALS -> admissionResult(observation, facts);
+        case CIRCUIT_PHASE_EQUALS -> circuitPhase(observation, facts);
+        case FENCING_TOKEN_UNCHANGED -> fencingTokenUnchanged(observation, facts);
       };
     } catch (RuntimeException failure) {
       return result(
@@ -456,6 +462,114 @@ public class FailureLabObservationVerifier {
         observed,
         Map.of("reasonCode", FailureLabRedaction.safeReason(observed)),
         "O runtime respondeu com desfecho diferente do declarado no cenário.");
+  }
+
+  /**
+   * Desfecho de admissão publicado pelo governo de capacidade, no formato {@code chave:RESULTADO}. O
+   * valor esperado precisa pertencer ao conjunto fechado de {@link AdmissionResult} — um cenário que
+   * declare um desfecho inexistente é inconclusivo, não aprovado.
+   */
+  private VerificationResult admissionResult(
+      ExpectedObservation observation, Map<String, String> facts) {
+    return closedEnumFact(
+        observation,
+        facts,
+        expected -> {
+          try {
+            AdmissionResult.valueOf(expected);
+            return true;
+          } catch (IllegalArgumentException unknown) {
+            return false;
+          }
+        },
+        "desfecho de admissão");
+  }
+
+  /** Fase do disjuntor publicada pelo governo de capacidade, no formato {@code chave:FASE}. */
+  private VerificationResult circuitPhase(
+      ExpectedObservation observation, Map<String, String> facts) {
+    return closedEnumFact(
+        observation,
+        facts,
+        expected -> {
+          try {
+            CircuitPhase.valueOf(expected);
+            return true;
+          } catch (IllegalArgumentException unknown) {
+            return false;
+          }
+        },
+        "fase de disjuntor");
+  }
+
+  /**
+   * Token de fencing preservado: o cenário declara apenas a chave do fato e a comparação é contra
+   * {@value #FENCING_UNCHANGED}. Qualquer outro valor é recusa explícita, nunca omissão.
+   */
+  private VerificationResult fencingTokenUnchanged(
+      ExpectedObservation observation, Map<String, String> facts) {
+    String key = observation.expectedValue() == null ? "" : observation.expectedValue().trim();
+    if (key.isEmpty()) {
+      return notObserved(observation, "Observação de fencing sem chave de fato declarada.");
+    }
+    String observed = facts.get(key);
+    if (observed == null) {
+      return notObserved(observation, "O governo de capacidade não publicou o fato de fencing.");
+    }
+    if (FENCING_UNCHANGED.equals(observed)) {
+      return result(
+          observation,
+          VerificationStatus.PASSED,
+          observed,
+          Map.of("reasonCode", FailureLabRedaction.safeReason(observed)),
+          "A recusa aconteceu antes da posse: a marca de posse do agendamento ficou intacta.");
+    }
+    return result(
+        observation,
+        VerificationStatus.FAILED,
+        observed,
+        Map.of("reasonCode", FailureLabRedaction.safeReason(observed)),
+        "A marca de posse do agendamento mudou apesar da recusa de admissão.");
+  }
+
+  private VerificationResult closedEnumFact(
+      ExpectedObservation observation,
+      Map<String, String> facts,
+      java.util.function.Predicate<String> knownValue,
+      String subject) {
+    String raw = observation.expectedValue() == null ? "" : observation.expectedValue().trim();
+    int separator = raw.indexOf(':');
+    if (separator <= 0) {
+      return notObserved(observation, "Observação de capacidade sem chave de fato declarada.");
+    }
+    String key = raw.substring(0, separator);
+    String expected = raw.substring(separator + 1).toUpperCase(Locale.ROOT);
+    if (!knownValue.test(expected)) {
+      return result(
+          observation,
+          VerificationStatus.INCONCLUSIVE,
+          "",
+          Map.of("reasonCode", "UNKNOWN_EXPECTED_VALUE"),
+          "O cenário declara " + subject + " fora do conjunto fechado conhecido.");
+    }
+    String observed = facts.get(key);
+    if (observed == null) {
+      return notObserved(observation, "O governo de capacidade não publicou o fato esperado.");
+    }
+    if (observed.equals(expected)) {
+      return result(
+          observation,
+          VerificationStatus.PASSED,
+          observed,
+          Map.of("reasonCode", FailureLabRedaction.safeReason(observed)),
+          "O governo de capacidade confirmou o " + subject + " esperado.");
+    }
+    return result(
+        observation,
+        VerificationStatus.INCONCLUSIVE,
+        observed,
+        Map.of("reasonCode", FailureLabRedaction.safeReason(observed)),
+        "O governo de capacidade respondeu com " + subject + " diferente do declarado.");
   }
 
   private VerificationResult noSecretExposed(

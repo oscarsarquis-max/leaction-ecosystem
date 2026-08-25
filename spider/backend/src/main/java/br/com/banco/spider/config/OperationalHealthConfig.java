@@ -4,6 +4,7 @@ import br.com.banco.spider.execution.persistence.port.CallbackOutboxStorePort;
 import br.com.banco.spider.execution.persistence.port.ExecutionControlStorePort;
 import br.com.banco.spider.execution.persistence.port.ExecutionWaitStorePort;
 import br.com.banco.spider.execution.support.SpiderClock;
+import br.com.banco.spider.operational.capacity.CapacityQueryService;
 import br.com.banco.spider.operational.events.OperationalEventStorePort;
 import br.com.banco.spider.operational.health.OperationalHealthQueryService;
 import br.com.banco.spider.operational.health.ProvisionalHealthDefinitionLoader;
@@ -78,8 +79,9 @@ public class OperationalHealthConfig {
       ObjectProvider<ExecutionWaitStorePort> waits,
       ObjectProvider<CallbackOutboxStorePort> callbacks,
       ObjectProvider<OperationalEventStorePort> events,
-      ObjectProvider<WorkerRuntimeQueryService> workerRuntime) {
+      ObjectProvider<WorkerRuntimeQueryService> workerRuntime,
+      ObjectProvider<CapacityQueryService> capacity) {
     return new OperationalHealthQueryService(
-        properties, clock, loader, control, waits, callbacks, events, workerRuntime);
+        properties, clock, loader, control, waits, callbacks, events, workerRuntime, capacity);
   }
 }

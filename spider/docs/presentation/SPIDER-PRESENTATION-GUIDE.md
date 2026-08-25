@@ -31,7 +31,7 @@ Flags: profile `local-demo` + `spider.console.*` + canonical HTTP conforme scrip
 ## Roteiro 3 minutos
 
 1. Badge **DEMONSTRAÇÃO MOCK** no topo.
-2. Aba **Implementação**: grupos A–D, CAP-015–019 VERIFIED (Grupo A 4/4; Grupo B 1/3), 020–026 PLANNED, baseline 297/41.
+2. Aba **Implementação**: grupos A–D, CAP-015–020 VERIFIED (Grupo A 4/4; Grupo B 2/3), 021–026 PLANNED, baseline 374/55 (FE 55 placeholder até suíte Capacidade).
 3. Aba **Apresentação**: preflight readiness; se READY, capítulo 4 → `RETRY_THEN_SUCCESS`.
 4. Abrir detalhe: journey map + timeline persistidos (2 attempts).
 
@@ -64,6 +64,16 @@ Quando as flags `spider.worker-runtime.*` estiverem ligadas no local-demo:
 4. Opcional: Failure Lab cenários `WORKER_*` (crash após claim, contenção, drain, backlog, restart).
 5. Enfatizar: runtime dá **posse** (lease/fencing); processors continuam com a **semântica**; OFF_BY_DEFAULT.
 
+## Capítulo Capacidade & Resiliência (PROMPT-020)
+
+Quando as flags `spider.capacity.*` estiverem ligadas no local-demo:
+
+1. Abrir a superfície **Capacidade & Resiliência** — banner de infraestrutura simulada / sem capacidade produtiva aferida.
+2. Mostrar modo (`MONITOR_ONLY` vs `ENFORCED`), pressão por escopo, bulkheads e circuits.
+3. Drill-down de uma decisão recente → policy/version → reason code.
+4. Opcional: Failure Lab cenários `CAPACITY_*` (bulkhead, backlog, circuit, quota, load shedding com fencing intacto).
+5. Enfatizar: admissão **antes** do claim; sem HA multi-instância; estado de pressão em memória; OFF_BY_DEFAULT.
+
 ## Roteiro 15 minutos
 
 1. ARCH-013 + manifesto como fonte do roadmap.
@@ -72,7 +82,8 @@ Quando as flags `spider.worker-runtime.*` estiverem ligadas no local-demo:
 4. Callback/reconciliation cenário.
 5. Capítulo Failure Lab (acima).
 6. Capítulo Runtime de Workers (acima).
-7. Troubleshooting (abaixo) e encerramento.
+7. Capítulo Capacidade & Resiliência (acima).
+8. Troubleshooting (abaixo) e encerramento.
 
 ## Perguntas esperadas
 
@@ -82,6 +93,7 @@ Quando as flags `spider.worker-runtime.*` estiverem ligadas no local-demo:
 | Tem SLO? | SLOs do Cockpit Operacional são **provisórios** (017), não contratuais. |
 | Failure Lab quebra produção? | Não — só mocks; OFF_BY_DEFAULT; sem legado real. |
 | Workers são cluster produtivo? | Não — SIMULATED_INFRASTRUCTURE no store; OFF_BY_DEFAULT; sem Kafka/K8s. |
+| Capacidade é autoscaling real? | Não — governo simulado (bulkhead/circuit/quota); sem HA; estado em memória. |
 | JWT na UI? | Não no caminho canônico. |
 | Dados inventados? | Não — timeline/plan persistidos; evidência do lab é redigida. |
 

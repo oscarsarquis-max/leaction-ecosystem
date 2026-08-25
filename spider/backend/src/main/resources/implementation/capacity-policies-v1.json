@@ -1,0 +1,86 @@
+[
+  {
+    "code": "capacity:global",
+    "version": "1.0",
+    "scopeType": "GLOBAL",
+    "scopeRef": "GLOBAL",
+    "state": "ACTIVE",
+    "limits": {
+      "maxConcurrency": 8,
+      "softBacklogLimit": 200,
+      "hardBacklogLimit": 2000,
+      "quotaPerWindow": 600,
+      "window": "PT1M",
+      "acquireTimeout": "PT0S"
+    },
+    "circuitFailureThreshold": 8,
+    "circuitWindow": "PT1M",
+    "circuitOpenDuration": "PT30S",
+    "circuitProbeLimit": 1,
+    "precedence": 10,
+    "enforced": true
+  },
+  {
+    "code": "capacity:worker:callback-delivery",
+    "version": "1.0",
+    "scopeType": "WORKER_TYPE",
+    "scopeRef": "CALLBACK_DELIVERY",
+    "state": "ACTIVE",
+    "limits": {
+      "maxConcurrency": 2,
+      "softBacklogLimit": 100,
+      "hardBacklogLimit": 1000,
+      "quotaPerWindow": 240,
+      "window": "PT1M",
+      "acquireTimeout": "PT0S"
+    },
+    "circuitFailureThreshold": 4,
+    "circuitWindow": "PT1M",
+    "circuitOpenDuration": "PT30S",
+    "circuitProbeLimit": 1,
+    "precedence": 30,
+    "enforced": true
+  },
+  {
+    "code": "capacity:worker:signal-application",
+    "version": "1.0",
+    "scopeType": "WORKER_TYPE",
+    "scopeRef": "SIGNAL_APPLICATION",
+    "state": "ACTIVE",
+    "limits": {
+      "maxConcurrency": 2,
+      "softBacklogLimit": 150,
+      "hardBacklogLimit": 1500,
+      "quotaPerWindow": 360,
+      "window": "PT1M",
+      "acquireTimeout": "PT0S"
+    },
+    "circuitFailureThreshold": 5,
+    "circuitWindow": "PT1M",
+    "circuitOpenDuration": "PT30S",
+    "circuitProbeLimit": 1,
+    "precedence": 31,
+    "enforced": true
+  },
+  {
+    "code": "capacity:schedule:callback-reconciliation",
+    "version": "1.0",
+    "scopeType": "SCHEDULE",
+    "scopeRef": "sched:callback-reconciliation@1",
+    "state": "MONITOR_ONLY",
+    "limits": {
+      "maxConcurrency": 1,
+      "softBacklogLimit": 50,
+      "hardBacklogLimit": 500,
+      "quotaPerWindow": 120,
+      "window": "PT1M",
+      "acquireTimeout": "PT0S"
+    },
+    "circuitFailureThreshold": 3,
+    "circuitWindow": "PT1M",
+    "circuitOpenDuration": "PT30S",
+    "circuitProbeLimit": 1,
+    "precedence": 40,
+    "enforced": false
+  }
+]

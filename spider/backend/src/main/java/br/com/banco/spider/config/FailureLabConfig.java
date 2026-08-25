@@ -25,6 +25,7 @@ import br.com.banco.spider.operational.failurelab.FailureLabRouteSupport;
 import br.com.banco.spider.operational.failurelab.FailureLabRunStorePort;
 import br.com.banco.spider.operational.failurelab.FailureLabSubmitSupport;
 import br.com.banco.spider.operational.failurelab.InMemoryFailureLabRunStore;
+import br.com.banco.spider.operational.capacity.FailureLabCapacityHarness;
 import br.com.banco.spider.operational.health.OperationalHealthQueryService;
 import br.com.banco.spider.operational.workers.FailureLabWorkerHarness;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -144,7 +145,8 @@ public class FailureLabConfig {
       ObjectProvider<ExecutionWaitStorePort> waits,
       ObjectProvider<ExecutionResumeService> resume,
       ObjectProvider<ExternalSignalIngressUseCase> signalIngress,
-      ObjectProvider<FailureLabWorkerHarness> workerHarness) {
+      ObjectProvider<FailureLabWorkerHarness> workerHarness,
+      ObjectProvider<FailureLabCapacityHarness> capacityHarness) {
     return new FailureLabOrchestrator(
         properties,
         catalog,
@@ -157,7 +159,8 @@ public class FailureLabConfig {
         waits,
         resume,
         signalIngress,
-        workerHarness);
+        workerHarness,
+        capacityHarness);
   }
 
   @Bean

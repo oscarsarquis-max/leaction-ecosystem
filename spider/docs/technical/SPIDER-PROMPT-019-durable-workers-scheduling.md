@@ -142,7 +142,7 @@ Geração: `frontend/scripts/capture-worker-runtime-screenshots.mjs` (com local-
 
 ## Abertura do Grupo B
 
-Com CAP-019 **VERIFIED**, o `GROUP_B_RUNTIME_OPERATIONS` inicia **1/3**. Próximo elegível: **SPIDER-PROMPT-020** (capacidade / backpressure) — permanece **PLANNED**.
+Com CAP-019 **VERIFIED**, o `GROUP_B_RUNTIME_OPERATIONS` inicia **1/3**. Sucessor **SPIDER-PROMPT-020** (capacidade / backpressure) está **VERIFIED** no baseline 0.20.0 (Grupo B **2/3**).
 
 ## Referências
 

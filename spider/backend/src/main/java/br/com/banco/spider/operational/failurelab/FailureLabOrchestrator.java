@@ -17,6 +17,7 @@ import br.com.banco.spider.execution.wait.ExecutionWaitRecord;
 import br.com.banco.spider.execution.wait.WaitState;
 import br.com.banco.spider.integration.binding.ConfiguredAdapterBindingResolver;
 import br.com.banco.spider.integration.port.AdapterDispositionMode;
+import br.com.banco.spider.operational.capacity.FailureLabCapacityHarness;
 import br.com.banco.spider.operational.workers.FailureLabWorkerHarness;
 import java.time.Duration;
 import java.time.Instant;
@@ -62,6 +63,7 @@ public class FailureLabOrchestrator {
   private final ObjectProvider<ExecutionResumeService> resumeProvider;
   private final ObjectProvider<ExternalSignalIngressUseCase> signalIngressProvider;
   private final ObjectProvider<FailureLabWorkerHarness> workerHarnessProvider;
+  private final ObjectProvider<FailureLabCapacityHarness> capacityHarnessProvider;
 
   public FailureLabOrchestrator(
       FailureLabProperties properties,
@@ -75,7 +77,8 @@ public class FailureLabOrchestrator {
       ObjectProvider<ExecutionWaitStorePort> waitProvider,
       ObjectProvider<ExecutionResumeService> resumeProvider,
       ObjectProvider<ExternalSignalIngressUseCase> signalIngressProvider,
-      ObjectProvider<FailureLabWorkerHarness> workerHarnessProvider) {
+      ObjectProvider<FailureLabWorkerHarness> workerHarnessProvider,
+      ObjectProvider<FailureLabCapacityHarness> capacityHarnessProvider) {
     this.properties = properties;
     this.catalog = catalog;
     this.store = store;
@@ -88,6 +91,7 @@ public class FailureLabOrchestrator {
     this.resumeProvider = resumeProvider;
     this.signalIngressProvider = signalIngressProvider;
     this.workerHarnessProvider = workerHarnessProvider;
+    this.capacityHarnessProvider = capacityHarnessProvider;
   }
 
   private record Dispatch(List<String> executionRefs, Map<String, String> safeFacts) {
@@ -162,8 +166,34 @@ public class FailureLabOrchestrator {
       case "WORKER_BACKLOG_ACCUMULATION" ->
           workerRuntime(FailureLabWorkerHarness::backlogAccumulation);
       case "WORKER_RESTART_RECOVERY" -> workerRuntime(FailureLabWorkerHarness::restartRecovery);
+      case "CAPACITY_BULKHEAD_SATURATION" ->
+          capacity(FailureLabCapacityHarness::bulkheadSaturation);
+      case "CAPACITY_BACKLOG_HARD_LIMIT" -> capacity(FailureLabCapacityHarness::backlogHardLimit);
+      case "CAPACITY_CIRCUIT_OPEN_RECOVER" ->
+          capacity(FailureLabCapacityHarness::circuitOpenAndRecover);
+      case "CAPACITY_QUOTA_EXHAUSTION" -> capacity(FailureLabCapacityHarness::quotaExhaustion);
+      case "CAPACITY_LOAD_SHEDDING" ->
+          capacity(FailureLabCapacityHarness::loadSheddingKeepsFencing);
       default -> singleSubmit(scenario, labRunId);
     };
+  }
+
+  /**
+   * Cenários de capacidade também não submetem execução à Engine: o harness exercita as proteções em
+   * escopos dedicados e publica fatos seguros. Sem harness o cenário é inconclusivo, nunca aprovado.
+   */
+  private Mono<Dispatch> capacity(
+      java.util.function.Function<FailureLabCapacityHarness, Map<String, String>> demonstration) {
+    return Mono.fromCallable(
+        () -> {
+          FailureLabCapacityHarness harness = capacityHarnessProvider.getIfAvailable();
+          if (harness == null) {
+            return new Dispatch(List.of(), Map.of("capacityGovernance", "HARNESS_UNAVAILABLE"));
+          }
+          Map<String, String> facts = new LinkedHashMap<>(demonstration.apply(harness));
+          facts.put("capacityGovernance", "AVAILABLE");
+          return new Dispatch(List.of(), FailureLabRedaction.sanitize(facts));
+        });
   }
 
   /**

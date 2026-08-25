@@ -32,7 +32,16 @@ public enum OperationalEventType {
   SCHEDULE_FAILED(OperationalEventCategory.SYSTEM),
   WORK_ITEM_FENCED_OUT(OperationalEventCategory.SYSTEM),
   LEASE_EXPIRED(OperationalEventCategory.SYSTEM),
-  BACKLOG_OBSERVED(OperationalEventCategory.SYSTEM);
+  BACKLOG_OBSERVED(OperationalEventCategory.SYSTEM),
+  CAPACITY_ADMISSION_ADMITTED(OperationalEventCategory.SYSTEM),
+  CAPACITY_ADMISSION_REJECTED(OperationalEventCategory.SYSTEM),
+  CAPACITY_ADMISSION_SHED(OperationalEventCategory.SYSTEM),
+  CAPACITY_CIRCUIT_OPENED(OperationalEventCategory.SYSTEM),
+  CAPACITY_CIRCUIT_HALF_OPEN(OperationalEventCategory.SYSTEM),
+  CAPACITY_CIRCUIT_CLOSED(OperationalEventCategory.SYSTEM),
+  CAPACITY_BULKHEAD_SATURATED(OperationalEventCategory.SYSTEM),
+  CAPACITY_QUOTA_EXHAUSTED(OperationalEventCategory.SYSTEM),
+  CAPACITY_LOAD_SHED(OperationalEventCategory.SYSTEM);
 
   private final OperationalEventCategory category;
 

@@ -211,6 +211,15 @@ spider:
     allow-drain: false
     recovery:
       enabled: false
+  capacity:
+    enabled: false
+    http:
+      enabled: false
+    local-demo:
+      enabled: false
+    enforcement:
+      enabled: false
+    decision-log-size: 200
 
 resilience4j:
   circuitbreaker:

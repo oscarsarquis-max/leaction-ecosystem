@@ -23,6 +23,7 @@ import PresentationMode from "./PresentationMode";
 import OperationalCockpit from "./OperationalCockpit";
 import FailureLab from "./FailureLab";
 import WorkerRuntime from "./WorkerRuntime";
+import CapacityResilience from "./CapacityResilience";
 
 const NAV = [
   { id: "overview", label: "Visão geral" },
@@ -31,6 +32,7 @@ const NAV = [
   { id: "operational-health", label: "Cockpit Operacional" },
   { id: "failure-lab", label: "Failure Lab" },
   { id: "worker-runtime", label: "Runtime de Workers" },
+  { id: "capacity", label: "Capacidade & Resiliência" },
   { id: "implementation", label: "Implementação" },
   { id: "presentation", label: "Apresentação" },
   { id: "lab", label: "Laboratório Mock" },
@@ -383,6 +385,8 @@ export default function ConsoleShell() {
       )}
 
       {view === "worker-runtime" && <WorkerRuntime />}
+
+      {view === "capacity" && <CapacityResilience />}
 
       {view === "presentation" && (
         <PresentationMode

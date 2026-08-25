@@ -250,5 +250,51 @@
     ],
     "escalationGuidance": "Se a fila pendente crescer de forma contínua ou se houver indício de dois workers concluindo o mesmo ciclo, acionar a equipe de operação da plataforma antes de qualquer intervenção manual.",
     "limitations": "Runbook provisório de laboratório: o runtime de workers está em fronteira de infraestrutura simulada e as integrações permanecem exclusivamente simuladas."
+  },
+  {
+    "schemaVersion": 1,
+    "code": "runbook:failure-lab:capacity",
+    "version": "1.0",
+    "title": "Capacidade: recusa na entrada, disjuntor e quota",
+    "purpose": "Orientar a leitura de casos em que a plataforma recusa trabalho na entrada — por concorrência ocupada, fila pendente no limite, quota da janela esgotada ou disjuntor aberto — em vez de aceitar e degradar.",
+    "applicableScenarioRefs": [
+      "CAPACITY_BULKHEAD_SATURATION@1.0",
+      "CAPACITY_BACKLOG_HARD_LIMIT@1.0",
+      "CAPACITY_CIRCUIT_OPEN_RECOVER@1.0",
+      "CAPACITY_QUOTA_EXHAUSTION@1.0",
+      "CAPACITY_LOAD_SHEDDING@1.0"
+    ],
+    "symptoms": [
+      "Pedidos aparecem recusados na entrada, sem nenhum efeito externo tentado.",
+      "Um escopo aparece com a concorrência declarada totalmente ocupada.",
+      "Um escopo deixa de aceitar pedidos até a virada da janela de quota.",
+      "Um escopo aparece com o disjuntor aberto pouco depois de uma sequência de falhas."
+    ],
+    "checks": [
+      "Confirmar qual política de capacidade respondeu pelo escopo e em qual versão.",
+      "Confirmar se a plataforma está apenas observando ou efetivamente aplicando limites.",
+      "Confirmar que a recusa aconteceu antes de qualquer tomada de posse de trabalho recorrente.",
+      "Confirmar que a ocupação do escopo volta a zero depois dos ciclos em andamento terminarem.",
+      "Confirmar que o disjuntor aberto tem prova prevista e não ficou aberto sem prazo."
+    ],
+    "expectedEvidence": [
+      "Decisão de admissão registrada com o desfecho e o motivo declarados.",
+      "Ocupação do escopo devolvida ao fim do ciclo, sem sobra.",
+      "Token de posse do agendamento durável inalterado após a recusa.",
+      "Registro de abertura, prova e fechamento do disjuntor do escopo."
+    ],
+    "safeActions": [
+      "Registrar a recusa como proteção esperada quando o escopo está no limite declarado.",
+      "Acompanhar a pressão por escopo antes de considerar alterar qualquer limite.",
+      "Aguardar a virada da janela de quota antes de repetir o pedido."
+    ],
+    "stopConditions": [
+      "A ocupação de um escopo não volta a zero depois de os ciclos terminarem.",
+      "O token de posse do agendamento muda em uma recusa de admissão.",
+      "Um disjuntor permanece aberto sem nenhuma prova admitida.",
+      "A recusa persiste sem que nenhum limite declarado esteja atingido."
+    ],
+    "escalationGuidance": "Se a recusa persistir sem limite atingido, ou se a ocupação de um escopo não voltar a zero, acionar a equipe de operação da plataforma antes de afrouxar qualquer limite.",
+    "limitations": "Runbook provisório de laboratório: as proteções são demonstradas em escopos dedicados, o estado de capacidade é mantido apenas em memória e as integrações permanecem exclusivamente simuladas."
   }
 ]

@@ -406,6 +406,66 @@ describe("ConsoleShell", () => {
     );
   });
 
+  it("renders the capacity and resilience surface from the capacity API", async () => {
+    fetch.mockImplementation(async (url) => {
+      if (String(url).endsWith("/v1/console/capacity")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              schemaVersion: 1,
+              calculatedAt: new Date().toISOString(),
+              boundary: "SIMULATED_INFRASTRUCTURE",
+              integrationBoundary: "MOCK_ONLY",
+              mode: "MONITOR_ONLY",
+              policies: [],
+              pressure: [
+                {
+                  schemaVersion: 1,
+                  scopeKey: "GLOBAL:GLOBAL",
+                  scopeType: "GLOBAL",
+                  scopeRef: "GLOBAL",
+                  policyRef: "capacity:global@1.0",
+                  level: "NORMAL",
+                  occupied: 0,
+                  capacity: 8,
+                  utilizationPercent: 0,
+                  backlogCount: 0,
+                  softBacklogLimit: 20,
+                  hardBacklogLimit: 50,
+                  quotaUsed: 0,
+                  quotaLimit: 0,
+                  circuitPhase: "CLOSED",
+                  observedAt: new Date().toISOString(),
+                  explanation: "Escopo dentro dos limites declarados.",
+                },
+              ],
+              bulkheads: [],
+              circuits: [],
+              recentDecisions: [],
+              dataQuality: { complete: true, missingSources: [], warnings: [] },
+            }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({ items: [], nextCursorStartedAt: "", nextCursorExecutionId: "" }),
+      };
+    });
+    render(<ConsoleShell />);
+    fireEvent.click(screen.getByRole("button", { name: "Capacidade & Resiliência" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("capacity-pressure-GLOBAL:GLOBAL")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("capacity-boundary-banner")).toHaveTextContent(
+      "SEM CAPACIDADE PRODUTIVA AFERIDA",
+    );
+    expect(screen.getByTestId("capacity-mode")).toHaveTextContent("Somente observação");
+  });
+
   it("lab submits to canonical endpoint", async () => {
     const spy = fetch;
     spy.mockImplementation(async (url, init) => {

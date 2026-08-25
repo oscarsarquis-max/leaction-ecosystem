@@ -21,7 +21,7 @@ public class FailureLabCatalogLoader {
 
   private static final Duration MAX_SCENARIO_DURATION = Duration.ofMinutes(5);
   private static final int MAX_SCENARIO_EXECUTIONS = 10;
-  private static final int MINIMUM_SCENARIOS = 12;
+  private static final int MINIMUM_SCENARIOS = 17;
 
   private final List<FailureScenarioDefinition> scenarios;
   private final List<MockOperationalRunbook> runbooks;

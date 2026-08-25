@@ -586,5 +586,245 @@
     "runbookRef": "runbook:failure-lab:worker-runtime@1.0",
     "mockScenario": null,
     "operationCode": null
+  },
+  {
+    "schemaVersion": 1,
+    "code": "CAPACITY_BULKHEAD_SATURATION",
+    "version": "1.0",
+    "title": "Concorrência do escopo esgotada",
+    "functionalDescription": "Demonstra que, com a concorrência do escopo já ocupada, o pedido seguinte é recusado na admissão e a vaga reservada é devolvida sem sobra.",
+    "category": "CAPACITY_RESILIENCE",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Governo de capacidade habilitado",
+      "Aplicação de limites habilitada",
+      "Failure Lab habilitado"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "ADMISSION_REJECTED_BY_CAPACITY",
+        "description": "A admissão recusa o pedido por concorrência esgotada.",
+        "sourceType": "CAPACITY_GOVERNANCE",
+        "predicateType": "ADMISSION_RESULT_EQUALS",
+        "expectedValue": "capacityBulkhead:REJECTED_CAPACITY",
+        "required": true
+      },
+      {
+        "code": "NO_CONCURRENCY_LEAK",
+        "description": "A vaga reservada na demonstração é devolvida ao fim.",
+        "sourceType": "CAPACITY_GOVERNANCE",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "capacityBulkheadReleased:RELEASED_WITHOUT_LEAK",
+        "required": true
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT1M",
+    "maximumExecutions": 0,
+    "runbookRef": "runbook:failure-lab:capacity@1.0",
+    "mockScenario": null,
+    "operationCode": null
+  },
+  {
+    "schemaVersion": 1,
+    "code": "CAPACITY_BACKLOG_HARD_LIMIT",
+    "version": "1.0",
+    "title": "Fila pendente no limite duro",
+    "functionalDescription": "Demonstra que, ao atingir o limite duro de fila declarado para o escopo, a carga é descartada na entrada em vez de entrar no runtime e agravar o acúmulo.",
+    "category": "CAPACITY_RESILIENCE",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Governo de capacidade habilitado",
+      "Aplicação de limites habilitada",
+      "Fonte de fila pendente disponível"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "LOAD_SHED_ON_HARD_LIMIT",
+        "description": "A admissão descarta a carga ao atingir o limite duro de fila.",
+        "sourceType": "CAPACITY_GOVERNANCE",
+        "predicateType": "ADMISSION_RESULT_EQUALS",
+        "expectedValue": "capacityBacklog:SHED",
+        "required": true
+      },
+      {
+        "code": "SHED_REASON_IS_BACKLOG",
+        "description": "O motivo declarado do descarte é o limite duro de fila.",
+        "sourceType": "CAPACITY_GOVERNANCE",
+        "predicateType": "WORKER_FACT_EQUALS",
+        "expectedValue": "capacityShedReason:BACKLOG_HARD_LIMIT",
+        "required": true
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT1M",
+    "maximumExecutions": 0,
+    "runbookRef": "runbook:failure-lab:capacity@1.0",
+    "mockScenario": null,
+    "operationCode": null
+  },
+  {
+    "schemaVersion": 1,
+    "code": "CAPACITY_CIRCUIT_OPEN_RECOVER",
+    "version": "1.0",
+    "title": "Disjuntor abre e volta a fechar",
+    "functionalDescription": "Demonstra que uma sequência de falhas técnicas abre o disjuntor do escopo, que a admissão passa a recusar enquanto ele está aberto, e que uma prova bem-sucedida devolve o escopo ao estado normal.",
+    "category": "CAPACITY_RESILIENCE",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Governo de capacidade habilitado",
+      "Aplicação de limites habilitada",
+      "Failure Lab habilitado"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "CIRCUIT_OPENED_BY_FAILURES",
+        "description": "O disjuntor do escopo abre após as falhas declaradas.",
+        "sourceType": "CAPACITY_GOVERNANCE",
+        "predicateType": "CIRCUIT_PHASE_EQUALS",
+        "expectedValue": "capacityCircuitPhase:OPEN",
+        "required": true
+      },
+      {
+        "code": "ADMISSION_REJECTED_WHILE_OPEN",
+        "description": "Enquanto aberto, o disjuntor recusa a admissão do escopo.",
+        "sourceType": "CAPACITY_GOVERNANCE",
+        "predicateType": "ADMISSION_RESULT_EQUALS",
+        "expectedValue": "capacityCircuitAdmission:REJECTED_CIRCUIT_OPEN",
+        "required": true
+      },
+      {
+        "code": "CIRCUIT_CLOSED_AFTER_PROBE",
+        "description": "A prova bem-sucedida fecha o disjuntor de novo.",
+        "sourceType": "CAPACITY_GOVERNANCE",
+        "predicateType": "CIRCUIT_PHASE_EQUALS",
+        "expectedValue": "capacityCircuitRecovery:CLOSED",
+        "required": true
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT1M",
+    "maximumExecutions": 0,
+    "runbookRef": "runbook:failure-lab:capacity@1.0",
+    "mockScenario": null,
+    "operationCode": null
+  },
+  {
+    "schemaVersion": 1,
+    "code": "CAPACITY_QUOTA_EXHAUSTION",
+    "version": "1.0",
+    "title": "Quota da janela esgotada",
+    "functionalDescription": "Demonstra que, esgotada a quota declarada para a janela, o escopo passa a recusar novos pedidos até a janela virar — sem enfileirar espera dentro do runtime.",
+    "category": "CAPACITY_RESILIENCE",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Governo de capacidade habilitado",
+      "Aplicação de limites habilitada",
+      "Failure Lab habilitado"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "ADMISSION_REJECTED_BY_QUOTA",
+        "description": "A admissão recusa o pedido por quota esgotada.",
+        "sourceType": "CAPACITY_GOVERNANCE",
+        "predicateType": "ADMISSION_RESULT_EQUALS",
+        "expectedValue": "capacityQuota:REJECTED_QUOTA",
+        "required": true
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT1M",
+    "maximumExecutions": 0,
+    "runbookRef": "runbook:failure-lab:capacity@1.0",
+    "mockScenario": null,
+    "operationCode": null
+  },
+  {
+    "schemaVersion": 1,
+    "code": "CAPACITY_LOAD_SHEDDING",
+    "version": "1.0",
+    "title": "Descarte de carga sem queimar posse",
+    "functionalDescription": "Demonstra que a recusa acontece antes da tomada de posse do trabalho recorrente: o token de posse do agendamento durável permanece intacto depois da recusa.",
+    "category": "CAPACITY_RESILIENCE",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Governo de capacidade habilitado",
+      "Aplicação de limites habilitada",
+      "Runtime de workers habilitado"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "ADMISSION_REJECTED_BEFORE_CLAIM",
+        "description": "A admissão recusa o pedido antes de qualquer tomada de posse.",
+        "sourceType": "CAPACITY_GOVERNANCE",
+        "predicateType": "ADMISSION_RESULT_EQUALS",
+        "expectedValue": "capacityShedAdmission:REJECTED_CAPACITY",
+        "required": true
+      },
+      {
+        "code": "FENCING_TOKEN_PRESERVED",
+        "description": "O token de posse do agendamento durável não muda com a recusa.",
+        "sourceType": "CAPACITY_GOVERNANCE",
+        "predicateType": "FENCING_TOKEN_UNCHANGED",
+        "expectedValue": "capacityFencing",
+        "required": true
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT1M",
+    "maximumExecutions": 0,
+    "runbookRef": "runbook:failure-lab:capacity@1.0",
+    "mockScenario": null,
+    "operationCode": null
   }
 ]

@@ -1,127 +1,127 @@
-{
-  "currentGroup": "GROUP_B_RUNTIME_OPERATIONS",
-  "currentPrompt": "SPIDER-PROMPT-019",
-  "activeBoundary": "MOCK_ONLY",
-  "capabilities": [
-    {
-      "promptRef": "SPIDER-PROMPT-015",
-      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
-      "title": "Console Operacional Canônico e Visualização da Execução",
-      "objective": "Console, cockpit e apresentação dinâmica",
-      "status": "VERIFIED",
-      "runtimeAvailability": "OFF_BY_DEFAULT",
-      "integrationLevel": "MOCK_ONLY",
-      "dependencies": ["CAP-014"]
-    },
-    {
-      "promptRef": "SPIDER-PROMPT-016",
-      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
-      "title": "Telemetria Canônica e Operational Events",
-      "objective": "Logs, métricas, traces e eventos correlacionados",
-      "status": "VERIFIED",
-      "runtimeAvailability": "OFF_BY_DEFAULT",
-      "integrationLevel": "MOCK_ONLY",
-      "dependencies": ["CAP-015"]
-    },
-    {
-      "promptRef": "SPIDER-PROMPT-017",
-      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
-      "title": "Saúde, SLIs, SLOs Provisórios e Cockpit Operacional",
-      "objective": "Health, SLIs/SLOs simulados, error budget e dashboards",
-      "status": "VERIFIED",
-      "runtimeAvailability": "OFF_BY_DEFAULT",
-      "integrationLevel": "MOCK_ONLY",
-      "dependencies": ["CAP-016"]
-    },
-    {
-      "promptRef": "SPIDER-PROMPT-018",
-      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
-      "title": "Laboratório de Falhas e Jornadas Operacionais",
-      "objective": "Fault injection visual, evidências e runbooks Mock",
-      "status": "VERIFIED",
-      "runtimeAvailability": "OFF_BY_DEFAULT",
-      "integrationLevel": "MOCK_ONLY",
-      "dependencies": ["CAP-017"]
-    },
-    {
-      "promptRef": "SPIDER-PROMPT-019",
-      "groupCode": "GROUP_B_RUNTIME_OPERATIONS",
-      "title": "Runtime de Workers Duráveis e Scheduling",
-      "objective": "Workers, leases, fencing, drain e backlog",
-      "status": "VERIFIED",
-      "runtimeAvailability": "OFF_BY_DEFAULT",
-      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
-      "dependencies": ["CAP-018"]
-    },
-    {
-      "promptRef": "SPIDER-PROMPT-020",
-      "groupCode": "GROUP_B_RUNTIME_OPERATIONS",
-      "title": "Capacidade, Backpressure e Resiliência Governada",
-      "objective": "Limits, bulkheads, circuits, quotas e load shedding",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
-      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
-      "dependencies": ["CAP-019"]
-    },
-    {
-      "promptRef": "SPIDER-PROMPT-021",
-      "groupCode": "GROUP_B_RUNTIME_OPERATIONS",
-      "title": "Operações Governadas e Reconciliation Workbench",
-      "objective": "Commands seguros e workbench operacional",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
-      "integrationLevel": "MOCK_ONLY",
-      "dependencies": ["CAP-020"]
-    },
-    {
-      "promptRef": "SPIDER-PROMPT-022",
-      "groupCode": "GROUP_C_PLATFORM_READINESS",
-      "title": "Topologia, Alta Disponibilidade e Continuidade Simulada",
-      "objective": "Multi-instância, convergência, restore e DR simulado",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
-      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
-      "dependencies": ["CAP-021"]
-    },
-    {
-      "promptRef": "SPIDER-PROMPT-023",
-      "groupCode": "GROUP_C_PLATFORM_READINESS",
-      "title": "SDK da Porta Universal e Kit de Certificação de Adapters",
-      "objective": "SDK, harness, simuladores e conformidade",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
-      "integrationLevel": "MOCK_ONLY",
-      "dependencies": ["CAP-022"]
-    },
-    {
-      "promptRef": "SPIDER-PROMPT-024",
-      "groupCode": "GROUP_C_PLATFORM_READINESS",
-      "title": "Certificação, Quality Gates e Readiness Review",
-      "objective": "Gates objetivos e decisão READY_FOR_PILOT",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
-      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
-      "dependencies": ["CAP-023"]
-    },
-    {
-      "promptRef": "SPIDER-PROMPT-025",
-      "groupCode": "GROUP_D_REAL_INTEGRATION",
-      "title": "Fundações Corporativas de Segurança e Transporte",
-      "objective": "IdP, mTLS, KMS e primeiro binding em sandbox",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
-      "integrationLevel": "CORPORATE_SANDBOX",
-      "dependencies": ["CAP-024"]
-    },
-    {
-      "promptRef": "SPIDER-PROMPT-026",
-      "groupCode": "GROUP_D_REAL_INTEGRATION",
-      "title": "Primeiro Legado Real, Canary e Migração Controlada",
-      "objective": "Piloto real, canary, reconciliação e rollback",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
-      "integrationLevel": "REAL_PILOT",
-      "dependencies": ["CAP-025"]
-    }
-  ]
-}
+{
+  "currentGroup": "GROUP_B_RUNTIME_OPERATIONS",
+  "currentPrompt": "SPIDER-PROMPT-020",
+  "activeBoundary": "MOCK_ONLY",
+  "capabilities": [
+    {
+      "promptRef": "SPIDER-PROMPT-015",
+      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
+      "title": "Console Operacional Canônico e Visualização da Execução",
+      "objective": "Console, cockpit e apresentação dinâmica",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
+      "integrationLevel": "MOCK_ONLY",
+      "dependencies": ["CAP-014"]
+    },
+    {
+      "promptRef": "SPIDER-PROMPT-016",
+      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
+      "title": "Telemetria Canônica e Operational Events",
+      "objective": "Logs, métricas, traces e eventos correlacionados",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
+      "integrationLevel": "MOCK_ONLY",
+      "dependencies": ["CAP-015"]
+    },
+    {
+      "promptRef": "SPIDER-PROMPT-017",
+      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
+      "title": "Saúde, SLIs, SLOs Provisórios e Cockpit Operacional",
+      "objective": "Health, SLIs/SLOs simulados, error budget e dashboards",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
+      "integrationLevel": "MOCK_ONLY",
+      "dependencies": ["CAP-016"]
+    },
+    {
+      "promptRef": "SPIDER-PROMPT-018",
+      "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
+      "title": "Laboratório de Falhas e Jornadas Operacionais",
+      "objective": "Fault injection visual, evidências e runbooks Mock",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
+      "integrationLevel": "MOCK_ONLY",
+      "dependencies": ["CAP-017"]
+    },
+    {
+      "promptRef": "SPIDER-PROMPT-019",
+      "groupCode": "GROUP_B_RUNTIME_OPERATIONS",
+      "title": "Runtime de Workers Duráveis e Scheduling",
+      "objective": "Workers, leases, fencing, drain e backlog",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
+      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
+      "dependencies": ["CAP-018"]
+    },
+    {
+      "promptRef": "SPIDER-PROMPT-020",
+      "groupCode": "GROUP_B_RUNTIME_OPERATIONS",
+      "title": "Capacidade, Backpressure e Resiliência Governada",
+      "objective": "Limits, bulkheads, circuits, quotas e load shedding",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
+      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
+      "dependencies": ["CAP-019"]
+    },
+    {
+      "promptRef": "SPIDER-PROMPT-021",
+      "groupCode": "GROUP_B_RUNTIME_OPERATIONS",
+      "title": "Operações Governadas e Reconciliation Workbench",
+      "objective": "Commands seguros e workbench operacional",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "MOCK_ONLY",
+      "dependencies": ["CAP-020"]
+    },
+    {
+      "promptRef": "SPIDER-PROMPT-022",
+      "groupCode": "GROUP_C_PLATFORM_READINESS",
+      "title": "Topologia, Alta Disponibilidade e Continuidade Simulada",
+      "objective": "Multi-instância, convergência, restore e DR simulado",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
+      "dependencies": ["CAP-021"]
+    },
+    {
+      "promptRef": "SPIDER-PROMPT-023",
+      "groupCode": "GROUP_C_PLATFORM_READINESS",
+      "title": "SDK da Porta Universal e Kit de Certificação de Adapters",
+      "objective": "SDK, harness, simuladores e conformidade",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "MOCK_ONLY",
+      "dependencies": ["CAP-022"]
+    },
+    {
+      "promptRef": "SPIDER-PROMPT-024",
+      "groupCode": "GROUP_C_PLATFORM_READINESS",
+      "title": "Certificação, Quality Gates e Readiness Review",
+      "objective": "Gates objetivos e decisão READY_FOR_PILOT",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "SIMULATED_INFRASTRUCTURE",
+      "dependencies": ["CAP-023"]
+    },
+    {
+      "promptRef": "SPIDER-PROMPT-025",
+      "groupCode": "GROUP_D_REAL_INTEGRATION",
+      "title": "Fundações Corporativas de Segurança e Transporte",
+      "objective": "IdP, mTLS, KMS e primeiro binding em sandbox",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "CORPORATE_SANDBOX",
+      "dependencies": ["CAP-024"]
+    },
+    {
+      "promptRef": "SPIDER-PROMPT-026",
+      "groupCode": "GROUP_D_REAL_INTEGRATION",
+      "title": "Primeiro Legado Real, Canary e Migração Controlada",
+      "objective": "Piloto real, canary, reconciliação e rollback",
+      "status": "PLANNED",
+      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "integrationLevel": "REAL_PILOT",
+      "dependencies": ["CAP-025"]
+    }
+  ]
+}

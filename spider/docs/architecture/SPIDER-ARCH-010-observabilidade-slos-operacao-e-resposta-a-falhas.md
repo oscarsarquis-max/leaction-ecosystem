@@ -842,8 +842,8 @@ Injeção deve possuir escopo, owner, janela e kill switch. Não pode alcançar 
 
 Implementação verificada do laboratório de falhas **somente via mocks**:
 
-- Catálogo versionado de cenários (`failure-lab-scenarios-v1.json`) e runbooks provisórios (`failure-lab-runbooks-v1.json`), incluindo categoria `WORKER_RUNTIME` (019).
-- Fault injection restrita a adapters/mocks, sinais simulados e harness de workers — sem atingir infraestrutura produtiva nem legado real.
+- Catálogo versionado de cenários (`failure-lab-scenarios-v1.json`) e runbooks provisórios (`failure-lab-runbooks-v1.json`), incluindo categorias `WORKER_RUNTIME` (019) e `CAPACITY_RESILIENCE` (020).
+- Fault injection restrita a adapters/mocks, sinais simulados, harness de workers e harness de capacidade — sem atingir infraestrutura produtiva nem legado real.
 - Verificação por predicados fechados; pacote de evidência redigido (`FailureLabEvidenceBundle`).
 - Superfície console OFF_BY_DEFAULT (`spider.failure-lab.enabled`); API sob `/v1/console/failure-lab/*`.
 - O Failure Lab **não** controla a Engine: observa o Data Plane e emite veredito com evidência.
@@ -863,6 +863,19 @@ Com `spider.worker-runtime.enabled=true`, o Cockpit Operacional incorpora dimens
 | `LEASE_SAFETY` | Leases vencidos e workers sem heartbeat recente |
 
 Backlog e saturação de workers permanecem sinais de operação; o runtime não inventa trabalho nem duplica a semântica dos processors. Detalhe: `docs/technical/SPIDER-PROMPT-019-durable-workers-scheduling.md`.
+
+### Capacidade, backpressure e dimensões de saúde (SPIDER-PROMPT-020)
+
+Com `spider.capacity.enabled=true`, o Cockpit Operacional incorpora dimensões adicionais (sem alterar a leitura 017/019 quando o módulo está off):
+
+| Dimensão | Leitura |
+|----------|---------|
+| `CAPACITY` | Policies publicadas e modo (`MONITOR_ONLY` / `ENFORCED`) |
+| `BACKPRESSURE` | Pressão por escopo (CRITICAL / HIGH / …) |
+| `BULKHEAD_SAFETY` | Concorrência esgotada em algum bulkhead |
+| `CIRCUIT_HEALTH` | Circuit `OPEN` / `HALF_OPEN` / fechado |
+
+Operational Events tipados incluem admissão (`CAPACITY_ADMISSION_*`), shedding e transições de circuit. Admissão ocorre **antes** do claim do worker — recusa não consome fencing token. Estado de decisões/bulkhead/circuit/quota é **em memória** (reinício esvazia o histórico; sem HA). Detalhe: `docs/technical/SPIDER-PROMPT-020-capacity-backpressure-resilience.md`.
 
 ## 45. Testes de observabilidade
 

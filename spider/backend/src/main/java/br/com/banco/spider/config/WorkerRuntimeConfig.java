@@ -19,6 +19,8 @@ import br.com.banco.spider.infrastructure.persistence.jpa.repository.RuntimeSche
 import br.com.banco.spider.infrastructure.persistence.jpa.repository.RuntimeWorkerInstanceJpaRepository;
 import br.com.banco.spider.infrastructure.persistence.memory.InMemoryDurableScheduleStore;
 import br.com.banco.spider.infrastructure.persistence.memory.InMemoryWorkerInstanceStore;
+import br.com.banco.spider.operational.capacity.BulkheadService;
+import br.com.banco.spider.operational.capacity.CapacityAdmissionService;
 import br.com.banco.spider.operational.events.OperationalEventPublisher;
 import br.com.banco.spider.operational.workers.DurableScheduleStorePort;
 import br.com.banco.spider.operational.workers.FailureLabWorkerHarness;
@@ -206,14 +208,21 @@ public class WorkerRuntimeConfig {
       return new ProtectedEnvelopeMaintenanceWorkerHandler(retention);
     }
 
+    /**
+     * A admissão de capacidade entra por {@code ObjectProvider}: com {@code spider.capacity.enabled}
+     * desligado nenhum bean existe e o ciclo é idêntico ao de 019.
+     */
     @Bean
     WorkerScheduleRunner workerScheduleRunner(
         WorkerRuntimeCatalog catalog,
         DurableScheduleStorePort scheduleStore,
         WorkerInstanceStorePort instanceStore,
         WorkerRuntimeTelemetry telemetry,
-        SpiderClock clock) {
-      return new WorkerScheduleRunner(catalog, scheduleStore, instanceStore, telemetry, clock);
+        SpiderClock clock,
+        ObjectProvider<CapacityAdmissionService> admission,
+        ObjectProvider<BulkheadService> bulkheads) {
+      return new WorkerScheduleRunner(
+          catalog, scheduleStore, instanceStore, telemetry, clock, admission, bulkheads);
     }
 
     @Bean

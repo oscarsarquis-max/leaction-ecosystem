@@ -138,6 +138,14 @@ export function drainWorker(workerId, { signal } = {}) {
   });
 }
 
+export function getCapacitySnapshot({ signal } = {}) {
+  return request("/v1/console/capacity", { signal });
+}
+
+export function getCapacityDecisions(limit = 50, { signal } = {}) {
+  return request(`/v1/console/capacity/decisions?limit=${limit}`, { signal });
+}
+
 export const TERMINAL_STATES = new Set([
   "SUCCEEDED",
   "PARTIALLY_SUCCEEDED",

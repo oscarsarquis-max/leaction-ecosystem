@@ -216,9 +216,11 @@ Processam outbox, callbacks e mensagens respeitando idempotência, ordering e ba
 
 Podem permanecer no runtime principal ou ser isolados por perfil, risco, dependência ou escala. A Porta Universal permanece a mesma.
 
-### 11.6 Estado verificado (SPIDER-PROMPT-019)
+### 11.6 Estado verificado (SPIDER-PROMPT-019 / 020)
 
-No baseline 0.19.0, o **Runtime de Workers Duráveis** (`CAP-019`, `OFF_BY_DEFAULT`, `SIMULATED_INFRASTRUCTURE`) materializa schedules com lease/fencing para os sete tipos canônicos (sinal, wait expiry, callback delivery/reconciliação/recovery, signal recovery, envelope). Não é cluster/Kafka produtivo: a posse é simulada no store do Spider; integrações permanecem `MOCK_ONLY`. Drain ordenado e leitura de backlog são superfícies de operação, não HA multi-célula (022).
+No baseline 0.20.0, o **Runtime de Workers Duráveis** (`CAP-019`, `OFF_BY_DEFAULT`, `SIMULATED_INFRASTRUCTURE`) materializa schedules com lease/fencing para os sete tipos canônicos (sinal, wait expiry, callback delivery/reconciliação/recovery, signal recovery, envelope). Não é cluster/Kafka produtivo: a posse é simulada no store do Spider; integrações permanecem `MOCK_ONLY`. Drain ordenado e leitura de backlog são superfícies de operação, não HA multi-célula (022).
+
+Sobre esse runtime, o **governo de capacidade** (`CAP-020`, `OFF_BY_DEFAULT`, `SIMULATED_INFRASTRUCTURE`) condiciona **novos claims** via admissão tipada (bulkheads, circuits, quotas, load shedding). Não há autoscaling real, pool distribuído nem HA: o estado de pressão/decisões vive em memória no processo; reinício não reconstitui histórico. Capacidade protege saturação; não substitui topologia multi-instância (022).
 
 ## 12. Estado local
 

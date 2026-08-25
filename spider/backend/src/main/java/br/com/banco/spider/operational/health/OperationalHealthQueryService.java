@@ -8,6 +8,12 @@ import br.com.banco.spider.execution.persistence.port.ExecutionControlStorePort;
 import br.com.banco.spider.execution.persistence.port.ExecutionWaitStorePort;
 import br.com.banco.spider.execution.support.SpiderClock;
 import br.com.banco.spider.execution.wait.ExecutionWaitRecord;
+import br.com.banco.spider.operational.capacity.BulkheadState;
+import br.com.banco.spider.operational.capacity.CapacityMode;
+import br.com.banco.spider.operational.capacity.CapacityPressureLevel;
+import br.com.banco.spider.operational.capacity.CapacityQueryService;
+import br.com.banco.spider.operational.capacity.CapacityRuntimeSnapshot;
+import br.com.banco.spider.operational.capacity.CircuitPhase;
 import br.com.banco.spider.operational.events.OperationalEvent;
 import br.com.banco.spider.operational.events.OperationalEventStorePort;
 import br.com.banco.spider.operational.workers.ScheduleOutcome;
@@ -35,6 +41,7 @@ public class OperationalHealthQueryService {
   private final ObjectProvider<CallbackOutboxStorePort> callbackProvider;
   private final ObjectProvider<OperationalEventStorePort> eventProvider;
   private final ObjectProvider<WorkerRuntimeQueryService> workerRuntimeProvider;
+  private final ObjectProvider<CapacityQueryService> capacityProvider;
 
   public OperationalHealthQueryService(
       OperationalHealthProperties properties,
@@ -44,7 +51,8 @@ public class OperationalHealthQueryService {
       ObjectProvider<ExecutionWaitStorePort> waitProvider,
       ObjectProvider<CallbackOutboxStorePort> callbackProvider,
       ObjectProvider<OperationalEventStorePort> eventProvider,
-      ObjectProvider<WorkerRuntimeQueryService> workerRuntimeProvider) {
+      ObjectProvider<WorkerRuntimeQueryService> workerRuntimeProvider,
+      ObjectProvider<CapacityQueryService> capacityProvider) {
     this.properties = properties;
     this.clock = clock;
     this.loader = loader;
@@ -54,6 +62,7 @@ public class OperationalHealthQueryService {
     this.callbackProvider = callbackProvider;
     this.eventProvider = eventProvider;
     this.workerRuntimeProvider = workerRuntimeProvider;
+    this.capacityProvider = capacityProvider;
   }
 
   public OperationalHealthSnapshot getSnapshot(String requestedWindow) {
@@ -140,6 +149,7 @@ public class OperationalHealthQueryService {
               slo.explanation()));
     }
     dimensions.addAll(workerRuntimeDimensions());
+    dimensions.addAll(capacityDimensions());
     boolean capped =
         executions.size() == limit
             || waits.size() == limit
@@ -235,6 +245,83 @@ public class OperationalHealthQueryService {
     return List.copyOf(dimensions);
   }
 
+  /**
+   * Dimensões do governo de capacidade. Ausente o módulo, nenhuma dimensão é acrescida — a leitura
+   * permanece exatamente a de 019.
+   */
+  private List<HealthDimensionStatus> capacityDimensions() {
+    CapacityQueryService capacity = capacityProvider.getIfAvailable();
+    if (capacity == null || !capacity.enabled()) {
+      return List.of();
+    }
+    CapacityRuntimeSnapshot snapshot;
+    try {
+      snapshot = capacity.getSnapshot();
+    } catch (RuntimeException unavailable) {
+      return List.of();
+    }
+    if (snapshot.mode() == CapacityMode.DISABLED) {
+      return List.of();
+    }
+    List<HealthDimensionStatus> dimensions = new ArrayList<>();
+    dimensions.add(
+        dimension(
+            HealthDimensionCode.CAPACITY,
+            snapshot.policies().isEmpty()
+                ? HealthStatus.INSUFFICIENT_DATA
+                : HealthStatus.HEALTHY,
+            snapshot.policies().isEmpty()
+                ? "Nenhuma política de capacidade publicada."
+                : "Governo de capacidade em modo " + snapshot.mode().name() + "."));
+
+    boolean anyCritical =
+        snapshot.pressure().stream()
+            .anyMatch(item -> item.level() == CapacityPressureLevel.CRITICAL);
+    boolean anyHigh =
+        snapshot.pressure().stream().anyMatch(item -> item.level() == CapacityPressureLevel.HIGH);
+    boolean allUnknown =
+        !snapshot.pressure().isEmpty()
+            && snapshot.pressure().stream()
+                .allMatch(item -> item.level() == CapacityPressureLevel.UNKNOWN);
+    dimensions.add(
+        dimension(
+            HealthDimensionCode.BACKPRESSURE,
+            snapshot.pressure().isEmpty() || allUnknown
+                ? HealthStatus.INSUFFICIENT_DATA
+                : anyCritical
+                    ? HealthStatus.UNHEALTHY
+                    : anyHigh ? HealthStatus.DEGRADED : HealthStatus.HEALTHY,
+            anyCritical
+                ? "Ao menos um escopo em pressão crítica."
+                : anyHigh
+                    ? "Ao menos um escopo próximo do limite declarado."
+                    : "Pressão dentro dos limites declarados nos escopos observados."));
+
+    boolean saturated = snapshot.bulkheads().stream().anyMatch(BulkheadState::saturated);
+    dimensions.add(
+        dimension(
+            HealthDimensionCode.BULKHEAD_SAFETY,
+            saturated ? HealthStatus.DEGRADED : HealthStatus.HEALTHY,
+            saturated
+                ? "Ao menos um bulkhead está com a concorrência esgotada."
+                : "Nenhum bulkhead com a concorrência esgotada."));
+
+    boolean open =
+        snapshot.circuits().stream().anyMatch(circuit -> circuit.phase() == CircuitPhase.OPEN);
+    boolean halfOpen =
+        snapshot.circuits().stream().anyMatch(circuit -> circuit.phase() == CircuitPhase.HALF_OPEN);
+    dimensions.add(
+        dimension(
+            HealthDimensionCode.CIRCUIT_HEALTH,
+            open ? HealthStatus.UNHEALTHY : halfOpen ? HealthStatus.DEGRADED : HealthStatus.HEALTHY,
+            open
+                ? "Há disjuntor aberto recusando admissão no escopo."
+                : halfOpen
+                    ? "Há disjuntor em prova depois de um período aberto."
+                    : "Nenhum disjuntor aberto nos escopos observados."));
+    return List.copyOf(dimensions);
+  }
+
   private static HealthDimensionStatus dimension(
       HealthDimensionCode code, HealthStatus status, String explanation) {
     return new HealthDimensionStatus(1, code, status, List.of(), explanation);
@@ -263,8 +350,9 @@ public class OperationalHealthQueryService {
             case CALLBACK_DELIVERY -> callbacks == null;
             case SIGNAL_INGRESS -> events == null;
             case TELEMETRY_COVERAGE -> controls == null || events == null;
-            // Dimensões do runtime de workers não vêm dos SLIs provisórios.
+            // Dimensões de runtime e de capacidade não vêm dos SLIs provisórios.
             case WORKER_RUNTIME, SCHEDULING, BACKLOG, LEASE_SAFETY -> false;
+            case CAPACITY, BACKPRESSURE, BULKHEAD_SAFETY, CIRCUIT_HEALTH -> false;
           };
       output.add(
           missing

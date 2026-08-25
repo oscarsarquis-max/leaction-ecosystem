@@ -16,11 +16,34 @@ class FailureLabCatalogLoaderTest {
   private final FailureLabCatalogLoader loader =
       new FailureLabCatalogLoader(new ObjectMapper().findAndRegisterModules());
 
+  private static final int MINIMUM_SCENARIOS = 17;
+
   @Test
   void loadsAtLeastTheMinimumScenarioSet() {
     assertTrue(
-        loader.scenarios().size() >= 7,
-        "catálogo deve declarar ao menos 7 cenários, encontrado " + loader.scenarios().size());
+        loader.scenarios().size() >= MINIMUM_SCENARIOS,
+        "catálogo deve declarar ao menos "
+            + MINIMUM_SCENARIOS
+            + " cenários, encontrado "
+            + loader.scenarios().size());
+  }
+
+  @Test
+  void publishesEveryCapacityResilienceScenarioWithItsRunbook() {
+    List<String> expected =
+        List.of(
+            "CAPACITY_BULKHEAD_SATURATION",
+            "CAPACITY_BACKLOG_HARD_LIMIT",
+            "CAPACITY_CIRCUIT_OPEN_RECOVER",
+            "CAPACITY_QUOTA_EXHAUSTION",
+            "CAPACITY_LOAD_SHEDDING");
+    for (String code : expected) {
+      FailureScenarioDefinition scenario =
+          loader.findScenario(code, "1.0").orElseThrow(() -> new AssertionError("ausente: " + code));
+      assertEquals(FailureScenarioCategory.CAPACITY_RESILIENCE, scenario.category());
+      assertEquals("runbook:failure-lab:capacity@1.0", scenario.runbookRef());
+      assertTrue(loader.findRunbook(scenario.runbookRef()).isPresent());
+    }
   }
 
   @Test

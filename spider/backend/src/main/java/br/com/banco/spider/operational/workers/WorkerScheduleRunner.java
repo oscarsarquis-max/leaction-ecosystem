@@ -1,6 +1,12 @@
 package br.com.banco.spider.operational.workers;
 
 import br.com.banco.spider.execution.support.SpiderClock;
+import br.com.banco.spider.operational.capacity.AdmissionDecision;
+import br.com.banco.spider.operational.capacity.AdmissionRequest;
+import br.com.banco.spider.operational.capacity.BulkheadAcquisition;
+import br.com.banco.spider.operational.capacity.BulkheadService;
+import br.com.banco.spider.operational.capacity.CapacityAdmissionService;
+import br.com.banco.spider.operational.capacity.ShedReason;
 import br.com.banco.spider.operational.events.OperationalEventOutcome;
 import br.com.banco.spider.operational.events.OperationalEventType;
 import java.time.Duration;
@@ -8,15 +14,20 @@ import java.time.Instant;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 
 /**
- * Executa um ciclo completo de um agendamento: claim, execução do processador e conclusão com
- * fencing.
+ * Executa um ciclo completo de um agendamento: admissão, claim, execução do processador e conclusão
+ * com fencing.
  *
  * <p>Os processadores canônicos são reativos. Este runner é invocado sempre a partir de uma thread
  * do {@code ScheduledExecutorService} do runtime — nunca de uma thread de event-loop do Reactor
  * Netty — por isso o {@code block(executionTimeout)} é seguro aqui e não bloquearia o servidor
  * reativo.
+ *
+ * <p>A admissão de capacidade, quando presente, decide <em>antes</em> do {@code tryClaim}. Isso não é
+ * detalhe de ordem: um claim recusado depois de acontecer já teria incrementado o token de fencing e
+ * a versão do agendamento, e cada recusa acabaria queimando posse sem trabalho executado.
  */
 public class WorkerScheduleRunner {
 
@@ -27,6 +38,8 @@ public class WorkerScheduleRunner {
   private final WorkerInstanceStorePort instanceStore;
   private final WorkerRuntimeTelemetry telemetry;
   private final SpiderClock clock;
+  private final ObjectProvider<CapacityAdmissionService> admissionProvider;
+  private final ObjectProvider<BulkheadService> bulkheadProvider;
 
   public WorkerScheduleRunner(
       WorkerRuntimeCatalog catalog,
@@ -34,11 +47,24 @@ public class WorkerScheduleRunner {
       WorkerInstanceStorePort instanceStore,
       WorkerRuntimeTelemetry telemetry,
       SpiderClock clock) {
+    this(catalog, scheduleStore, instanceStore, telemetry, clock, absent(), absent());
+  }
+
+  public WorkerScheduleRunner(
+      WorkerRuntimeCatalog catalog,
+      DurableScheduleStorePort scheduleStore,
+      WorkerInstanceStorePort instanceStore,
+      WorkerRuntimeTelemetry telemetry,
+      SpiderClock clock,
+      ObjectProvider<CapacityAdmissionService> admissionProvider,
+      ObjectProvider<BulkheadService> bulkheadProvider) {
     this.catalog = catalog;
     this.scheduleStore = scheduleStore;
     this.instanceStore = instanceStore;
     this.telemetry = telemetry;
     this.clock = clock;
+    this.admissionProvider = admissionProvider;
+    this.bulkheadProvider = bulkheadProvider;
   }
 
   /** Retorna vazio quando não havia trabalho elegível ou o claim foi perdido para outro worker. */
@@ -49,10 +75,69 @@ public class WorkerScheduleRunner {
     if (current.isEmpty() || !current.get().eligibleAt(now) || current.get().leaseHeldAt(now)) {
       return Optional.empty();
     }
+
+    CapacityAdmissionService admission = admissionProvider.getIfAvailable();
+    AdmissionDecision decision = null;
+    String reservedScopeKey = null;
+    if (admission != null) {
+      decision = admission.evaluate(admissionRequest(worker, definition, now));
+      if (!decision.allowsWork()) {
+        telemetry.emit(
+            OperationalEventType.CAPACITY_ADMISSION_REJECTED,
+            worker.workerType(),
+            definition.scheduleCode(),
+            decision.reasonCode(),
+            OperationalEventOutcome.REJECTED,
+            null);
+        return Optional.empty();
+      }
+      if (!decision.monitorOnly()) {
+        BulkheadService bulkheads = bulkheadProvider.getIfAvailable();
+        if (bulkheads != null) {
+          BulkheadAcquisition acquisition = bulkheads.acquire(decision.scopeKey());
+          if (acquisition == BulkheadAcquisition.SATURATED) {
+            admission.recordShed(decision, ShedReason.CONCURRENCY_EXHAUSTED);
+            telemetry.emit(
+                OperationalEventType.CAPACITY_ADMISSION_SHED,
+                worker.workerType(),
+                definition.scheduleCode(),
+                ShedReason.CONCURRENCY_EXHAUSTED.name(),
+                OperationalEventOutcome.REJECTED,
+                null);
+            return Optional.empty();
+          }
+          if (acquisition.held()) {
+            reservedScopeKey = decision.scopeKey();
+          }
+        }
+      }
+    }
+
+    try {
+      return runClaimedCycle(
+          worker, handler, definition, current.get().version(), now, admission, decision);
+    } finally {
+      if (reservedScopeKey != null) {
+        BulkheadService bulkheads = bulkheadProvider.getIfAvailable();
+        if (bulkheads != null) {
+          bulkheads.release(reservedScopeKey);
+        }
+      }
+    }
+  }
+
+  private Optional<ScheduleOutcome> runClaimedCycle(
+      WorkerInstance worker,
+      WorkerTypeHandler handler,
+      WorkerTypeDefinition definition,
+      long observedVersion,
+      Instant now,
+      CapacityAdmissionService admission,
+      AdmissionDecision decision) {
     Optional<DurableSchedule> claimed =
         scheduleStore.tryClaim(
             definition.scheduleCode(),
-            current.get().version(),
+            observedVersion,
             worker.workerId(),
             now,
             now.plus(definition.leaseDuration()));
@@ -69,7 +154,30 @@ public class WorkerScheduleRunner {
 
     ScheduleOutcome outcome = invoke(worker, handler, definition, now);
     Instant finishedAt = clock.now();
-    return Optional.of(finalizeCycle(worker, definition, claim, outcome, now, finishedAt));
+    ScheduleOutcome settled = finalizeCycle(worker, definition, claim, outcome, now, finishedAt);
+    recordCircuitOutcome(admission, decision, settled);
+    return Optional.of(settled);
+  }
+
+  /**
+   * O disjuntor só reage a falha técnica. {@code SKIPPED} é neutro — não havia trabalho — e
+   * {@code FENCED_OUT} também, porque perder a posse é disputa saudável, não indisponibilidade.
+   */
+  private void recordCircuitOutcome(
+      CapacityAdmissionService admission, AdmissionDecision decision, ScheduleOutcome outcome) {
+    if (admission == null || decision == null) {
+      return;
+    }
+    if (outcome == ScheduleOutcome.SKIPPED || outcome == ScheduleOutcome.FENCED_OUT) {
+      return;
+    }
+    admission.recordOutcome(decision, outcome == ScheduleOutcome.FAILED);
+  }
+
+  private AdmissionRequest admissionRequest(
+      WorkerInstance worker, WorkerTypeDefinition definition, Instant now) {
+    return AdmissionRequest.forWorkerSchedule(
+        worker.workerType().name(), definition.scheduleCode(), now, worker.workerId());
   }
 
   private ScheduleOutcome invoke(
@@ -184,5 +292,30 @@ public class WorkerScheduleRunner {
               }
               instanceStore.upsert(updated);
             });
+  }
+
+  /** Provider vazio para o wiring sem capacidade — mantém o runner idêntico ao de 019. */
+  private static <T> ObjectProvider<T> absent() {
+    return new ObjectProvider<>() {
+      @Override
+      public T getObject() {
+        throw new IllegalStateException("no capacity bean available");
+      }
+
+      @Override
+      public T getObject(Object... args) {
+        return getObject();
+      }
+
+      @Override
+      public T getIfAvailable() {
+        return null;
+      }
+
+      @Override
+      public T getIfUnique() {
+        return null;
+      }
+    };
   }
 }

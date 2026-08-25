@@ -28,10 +28,16 @@ const CHAPTERS = [
     body:
       "Agendamentos duráveis com posse por lease e fencing token monotônico: um dono antigo nunca conclui um claim novo. O console lê instâncias, heartbeat, backlog elegível e leases expirados; a drenagem é simulada no local-demo e apenas para de aceitar novos claims. Infraestrutura simulada, integrações MOCK_ONLY — nada produtivo.",
   },
-  { id: 8, title: "Segurança / governança", body: "DenyAll, redaction, posture REDACTED — sem JWT." },
-  { id: 9, title: "Mock versus real", body: "Boundary ativa MOCK_ONLY. CORPORATE_SANDBOX (025) e REAL_PILOT (026) são planejados, não ativos." },
   {
-    id: 10,
+    id: 8,
+    title: "Capacidade e resiliência",
+    body:
+      "Admissão antes do trabalho: cada pedido é avaliado contra a política publicada do escopo — bulkhead com vaga, cota da janela e disjuntor fechado. Sem vaga o pedido é adiado ou descartado com motivo fechado; o disjuntor abre por falhas na janela e só volta por prova bem-sucedida. Em modo observação nada é recusado: o console mostra o desfecho que teria sido aplicado. Infraestrutura simulada, integrações mock, sem capacidade produtiva aferida.",
+  },
+  { id: 9, title: "Segurança / governança", body: "DenyAll, redaction, posture REDACTED — sem JWT." },
+  { id: 10, title: "Mock versus real", body: "Boundary ativa MOCK_ONLY. CORPORATE_SANDBOX (025) e REAL_PILOT (026) são planejados, não ativos." },
+  {
+    id: 11,
     title: "Roadmap",
     body:
       "Grupos oficiais: A Visibilidade (015–018) → B Runtime (019–021) → C Plataforma (022–024) → D Integração real (025–026). Fonte: docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md + manifesto. Atual: Grupo A 4/4 completo; 019 Runtime de Workers em implementação com infraestrutura simulada e integrações MOCK_ONLY.",

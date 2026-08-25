@@ -49,7 +49,7 @@ Projeções opt-in (`spider.console.safe-projections.enabled`). Redaction remove
 
 Portas `OperationalConsoleAuthenticationPort` / `AuthorizationPort`. Default DenyAll. Execução inexistente e não autorizada → resposta externa equivalente. Profile `local-demo` + flag explícita apenas para demo local.
 
-Ações incluem: `LIST_EXECUTIONS`, `VIEW_EXECUTION_*`, `VIEW_SAFE_PROJECTIONS`, `VIEW_GOVERNANCE_REFERENCE`, `SUBMIT_MOCK_SCENARIO`, `VIEW_IMPLEMENTATION_STATUS`, `VIEW_PRESENTATION_READINESS`.
+Ações incluem: `LIST_EXECUTIONS`, `VIEW_EXECUTION_*`, `VIEW_SAFE_PROJECTIONS`, `VIEW_GOVERNANCE_REFERENCE`, `SUBMIT_MOCK_SCENARIO`, `VIEW_IMPLEMENTATION_STATUS`, `VIEW_PRESENTATION_READINESS`, `VIEW_WORKER_RUNTIME`, `DRAIN_WORKER`, `VIEW_CAPACITY`.
 
 ## 7. Manifesto de capabilities
 
@@ -58,21 +58,25 @@ Classpath: `implementation/spider-capability-manifest.json` + schema. Status: PL
 Roadmap oficial 015–026: `docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md`  
 Contrato anti-drift: `implementation/spider-roadmap-015-026-contract.json`
 
-Grupos oficiais da jornada: A Visibilidade (015–018), B Runtime (019–021), C Plataforma (022–024), D Integração real (025–026). `currentGroup` = `GROUP_B_RUNTIME_OPERATIONS` (Grupo B **1/3** — CAP-019 VERIFIED; Grupo A **4/4**).
+Grupos oficiais da jornada: A Visibilidade (015–018), B Runtime (019–021), C Plataforma (022–024), D Integração real (025–026). `currentGroup` = `GROUP_B_RUNTIME_OPERATIONS` (Grupo B **2/3** — CAP-019 e CAP-020 VERIFIED; Grupo A **4/4**). `currentPrompt` = `SPIDER-PROMPT-020`.
 
 O detalhe da execução também consome Operational Events (PROMPT-016) via `GET /v1/console/executions/{id}/events` — fatos de telemetria distintos da timeline projetada do estado persistido. Telemetria é opt-in (`spider.telemetry.enabled`) e fail-open.
 
 ### Cockpit Operacional (PROMPT-017)
 
-Superfície distinta do Cockpit de Implementação. Consome `GET /v1/console/operational-health` com banner permanente `MOCK_ONLY` / SLOs provisórios. Flag `spider.operational-health.enabled` (exige telemetria). Não emite comandos à Engine. Com worker-runtime ligado, inclui dimensões `WORKER_RUNTIME` / `SCHEDULING` / `BACKLOG` / `LEASE_SAFETY`.
+Superfície distinta do Cockpit de Implementação. Consome `GET /v1/console/operational-health` com banner permanente `MOCK_ONLY` / SLOs provisórios. Flag `spider.operational-health.enabled` (exige telemetria). Não emite comandos à Engine. Com worker-runtime ligado, inclui dimensões `WORKER_RUNTIME` / `SCHEDULING` / `BACKLOG` / `LEASE_SAFETY`. Com capacity ligado, inclui `CAPACITY` / `BACKPRESSURE` / `BULKHEAD_SAFETY` / `CIRCUIT_HEALTH`.
 
 ### Failure Lab (PROMPT-018)
 
-Superfície **Failure Lab** no console (`FailureLab.jsx`): catálogo de cenários mock, execução controlada, verificação de observações, runbook provisório e evidência redigida. Flags `spider.failure-lab.enabled` (+ `http` / `local-demo`). Endpoints: `GET/POST /v1/console/failure-lab/*`. Authz: `VIEW_FAILURE_LAB`, `EXECUTE_MOCK_FAILURE_SCENARIO`, `VIEW_FAILURE_LAB_EVIDENCE`. Banner permanente MOCK_ONLY. Não decide dentro da Engine; fault injection apenas via mocks. Inclui cenários `WORKER_RUNTIME` quando o runtime 019 está habilitado.
+Superfície **Failure Lab** no console (`FailureLab.jsx`): catálogo de cenários mock, execução controlada, verificação de observações, runbook provisório e evidência redigida. Flags `spider.failure-lab.enabled` (+ `http` / `local-demo`). Endpoints: `GET/POST /v1/console/failure-lab/*`. Authz: `VIEW_FAILURE_LAB`, `EXECUTE_MOCK_FAILURE_SCENARIO`, `VIEW_FAILURE_LAB_EVIDENCE`. Banner permanente MOCK_ONLY. Não decide dentro da Engine; fault injection apenas via mocks. Inclui cenários `WORKER_RUNTIME` quando o runtime 019 está habilitado e `CAPACITY_RESILIENCE` quando capacity 020 está habilitado.
 
 ### Runtime de Workers (PROMPT-019)
 
 Superfície **Runtime de Workers** (`WorkerRuntime.jsx`): snapshot de workers, schedules, backlogs e drain com confirmação. Flags `spider.worker-runtime.enabled` (+ `http` / `local-demo`). Endpoints: `GET /v1/console/runtime`, `/workers`, `/schedules`, `/backlogs`; `POST /workers/{id}/drain`. Authz: `VIEW_WORKER_RUNTIME`, `DRAIN_WORKER`. Boundary: `SIMULATED_INFRASTRUCTURE` + integrações `MOCK_ONLY`. Não duplica processors — só posse/scheduling.
+
+### Capacidade & Resiliência (PROMPT-020)
+
+Superfície **Capacidade & Resiliência**: pressão, policies, bulkheads, circuits, quotas/shedding e decisões recentes. Flags `spider.capacity.enabled` (+ `http` / `local-demo` / `enforcement`). Endpoints: `GET /v1/console/capacity`, `/policies`, `/pressure`, `/bulkheads`, `/circuits`, `/decisions`. Authz: `VIEW_CAPACITY`. Boundary: `SIMULATED_INFRASTRUCTURE` + integrações `MOCK_ONLY`. Sem force-open/reset/requeue (021). Screenshots: `020-capacity-*.png`.
 
 ## 8. Modo Apresentação
 
