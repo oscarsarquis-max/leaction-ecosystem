@@ -17,15 +17,15 @@ class ImplementationManifestLoaderTest {
   @Test
   void loadsValidManifestWithCorrectStatuses() {
     var m = loader.loadAndValidate();
-    assertEquals("SPIDER-PROMPT-017", m.currentPrompt());
+    assertEquals("SPIDER-PROMPT-018", m.currentPrompt());
     assertEquals("GROUP_A_VISIBILITY_OBSERVABILITY", m.currentGroup());
     assertEquals(26, m.capabilities().size());
-    assertEquals(203, m.baseline().backendTests());
-    assertEquals(12, m.baseline().frontendTests());
+    assertEquals(240, m.baseline().backendTests());
+    assertEquals(25, m.baseline().frontendTests());
     assertEquals(0, m.baseline().skipped());
     for (var c : m.capabilities()) {
       int n = Integer.parseInt(c.promptRef().substring("SPIDER-PROMPT-".length()));
-      if (n <= 17) {
+      if (n <= 18) {
         assertEquals("VERIFIED", c.status(), c.capabilityCode());
         assertEquals("MOCK_ONLY", c.integrationLevel(), c.capabilityCode());
       } else {

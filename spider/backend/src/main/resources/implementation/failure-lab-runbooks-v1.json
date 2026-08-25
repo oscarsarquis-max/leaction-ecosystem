@@ -1,0 +1,207 @@
+[
+  {
+    "schemaVersion": 1,
+    "code": "runbook:failure-lab:retry",
+    "version": "1.0",
+    "title": "Retentativa após falha transitória",
+    "purpose": "Orientar a leitura de um caso em que o parceiro simulado falha momentaneamente e a operação se recupera sozinha.",
+    "applicableScenarioRefs": [
+      "RETRY_THEN_SUCCESS@1.0"
+    ],
+    "symptoms": [
+      "A execução demora um pouco mais do que o habitual antes de concluir.",
+      "O painel mostra mais de uma tentativa para o mesmo passo."
+    ],
+    "checks": [
+      "Confirmar que a execução terminou em sucesso.",
+      "Confirmar que o número de tentativas registradas é maior que um.",
+      "Confirmar que nenhuma tentativa duplicou efeito junto ao parceiro."
+    ],
+    "expectedEvidence": [
+      "Estado final da execução igual a sucesso.",
+      "Contagem de tentativas do primeiro passo maior ou igual a dois.",
+      "Evento operacional de conclusão bem-sucedida, quando a telemetria está ligada."
+    ],
+    "safeActions": [
+      "Registrar o caso como recuperação automática esperada.",
+      "Acompanhar a frequência desse padrão ao longo do dia."
+    ],
+    "stopConditions": [
+      "A execução não conclui dentro do tempo máximo do cenário.",
+      "O número de tentativas cresce sem que a execução conclua."
+    ],
+    "escalationGuidance": "Se o padrão se repetir com alta frequência, tratar como indício de instabilidade do parceiro e acionar a equipe responsável pela integração.",
+    "limitations": "Runbook provisório de laboratório: aplica-se apenas ao parceiro simulado e não descreve procedimento de produção."
+  },
+  {
+    "schemaVersion": 1,
+    "code": "runbook:failure-lab:execution",
+    "version": "1.0",
+    "title": "Falha técnica terminal",
+    "purpose": "Orientar a leitura de um caso em que a resposta recebida é inválida e a operação encerra em falha sem nova tentativa.",
+    "applicableScenarioRefs": [
+      "TECHNICAL_TERMINAL_FAILURE@1.0"
+    ],
+    "symptoms": [
+      "A execução encerra rapidamente em falha.",
+      "Não há novas tentativas registradas para o passo."
+    ],
+    "checks": [
+      "Confirmar que o estado final da execução é falha.",
+      "Confirmar que a falha foi classificada como não retentável.",
+      "Confirmar que nenhuma solicitação adicional foi enviada ao parceiro."
+    ],
+    "expectedEvidence": [
+      "Estado final da execução igual a falha.",
+      "Evento operacional de falha, quando a telemetria está ligada.",
+      "Ausência de tentativas adicionais após a resposta inválida."
+    ],
+    "safeActions": [
+      "Registrar a ocorrência com o código de motivo apresentado.",
+      "Solicitar nova submissão pelo canal de origem quando o caso for legítimo."
+    ],
+    "stopConditions": [
+      "A execução aparece com novas tentativas apesar da classificação não retentável.",
+      "O mesmo pedido gera efeito duplicado no parceiro."
+    ],
+    "escalationGuidance": "Encaminhar à equipe de integração quando a resposta inválida se repetir para a mesma operação.",
+    "limitations": "Runbook provisório de laboratório: aplica-se apenas ao parceiro simulado e não descreve procedimento de produção."
+  },
+  {
+    "schemaVersion": 1,
+    "code": "runbook:failure-lab:wait",
+    "version": "1.0",
+    "title": "Espera assíncrona e retomada",
+    "purpose": "Orientar a leitura de um caso em que a operação fica aguardando uma confirmação externa e depois retoma.",
+    "applicableScenarioRefs": [
+      "WAIT_AND_RESUME@1.0"
+    ],
+    "symptoms": [
+      "A execução permanece aguardando resposta externa.",
+      "O painel mostra uma espera aberta associada à execução."
+    ],
+    "checks": [
+      "Confirmar que a espera foi aberta com prazo definido.",
+      "Confirmar se o sinal externo chegou dentro do prazo.",
+      "Confirmar o estado final da execução após a retomada."
+    ],
+    "expectedEvidence": [
+      "Registro de espera aberta para a execução.",
+      "Registro de espera resolvida quando o sinal é aplicado.",
+      "Estado final de sucesso após a retomada."
+    ],
+    "safeActions": [
+      "Aguardar o prazo da espera antes de qualquer intervenção.",
+      "Registrar o caso quando o prazo se esgotar sem sinal."
+    ],
+    "stopConditions": [
+      "A espera expira sem sinal e sem tratamento definido.",
+      "A execução retoma sem evidência de sinal válido."
+    ],
+    "escalationGuidance": "Acionar a equipe responsável pelo canal de sinal quando esperas expirarem de forma recorrente.",
+    "limitations": "Runbook provisório de laboratório: a retomada é simulada e não representa o comportamento de um parceiro real."
+  },
+  {
+    "schemaVersion": 1,
+    "code": "runbook:failure-lab:security",
+    "version": "1.0",
+    "title": "Sinal externo recusado por segurança",
+    "purpose": "Orientar a leitura de um caso em que uma confirmação externa é recusada por credencial inválida.",
+    "applicableScenarioRefs": [
+      "SIGNAL_SECURITY_REJECTED@1.0"
+    ],
+    "symptoms": [
+      "A execução continua aguardando mesmo após uma tentativa de confirmação.",
+      "O painel registra recusa de sinal por motivo de segurança."
+    ],
+    "checks": [
+      "Confirmar que a espera continua aberta após a recusa.",
+      "Confirmar que a recusa foi classificada como motivo de segurança.",
+      "Confirmar que nenhuma credencial foi registrada em log ou evidência."
+    ],
+    "expectedEvidence": [
+      "Registro de espera ainda aberta.",
+      "Registro de recusa com motivo de segurança, quando a telemetria está ligada.",
+      "Evidência sem qualquer credencial, token ou prova de integridade."
+    ],
+    "safeActions": [
+      "Registrar a tentativa recusada com o código de motivo apresentado.",
+      "Confirmar com o parceiro qual credencial publicada deve ser usada."
+    ],
+    "stopConditions": [
+      "A execução retoma apesar da recusa de segurança.",
+      "Qualquer credencial aparece em log, painel ou evidência."
+    ],
+    "escalationGuidance": "Acionar imediatamente a equipe de segurança se um sinal recusado provocar efeito na execução ou se houver exposição de credencial.",
+    "limitations": "Runbook provisório de laboratório: a credencial inválida é gerada pelo próprio laboratório e não representa tentativa externa real."
+  },
+  {
+    "schemaVersion": 1,
+    "code": "runbook:failure-lab:callback",
+    "version": "1.0",
+    "title": "Desfecho externo incerto",
+    "purpose": "Orientar a leitura de um caso em que não é possível afirmar se a operação foi concluída no parceiro.",
+    "applicableScenarioRefs": [
+      "CALLBACK_UNCERTAIN@1.0"
+    ],
+    "symptoms": [
+      "A execução não aparece nem como concluída nem como falha.",
+      "O painel indica necessidade de reconciliação."
+    ],
+    "checks": [
+      "Confirmar que a execução não foi declarada concluída sem evidência.",
+      "Confirmar que existe um registro de reconciliação pendente.",
+      "Confirmar que nenhuma nova solicitação foi enviada ao parceiro por conta da incerteza."
+    ],
+    "expectedEvidence": [
+      "Execução aguardando desfecho externo.",
+      "Registro de reconciliação pendente.",
+      "Ausência de conclusão afirmada sem evidência."
+    ],
+    "safeActions": [
+      "Aguardar o ciclo de reconciliação antes de qualquer decisão.",
+      "Registrar o caso como incerto e informar o canal de origem."
+    ],
+    "stopConditions": [
+      "A execução é declarada concluída sem evidência do parceiro.",
+      "Uma nova solicitação é enviada sem garantia de idempotência."
+    ],
+    "escalationGuidance": "Acionar a equipe de integração quando a incerteza permanecer após o ciclo de reconciliação previsto.",
+    "limitations": "Runbook provisório de laboratório: a incerteza é produzida pelo parceiro simulado e não reflete um caso real de conciliação."
+  },
+  {
+    "schemaVersion": 1,
+    "code": "runbook:failure-lab:health",
+    "version": "1.0",
+    "title": "Leitura operacional com dados limitados",
+    "purpose": "Orientar a leitura de indicadores operacionais quando a amostra é pequena ou quando surge degradação observável.",
+    "applicableScenarioRefs": [
+      "INSUFFICIENT_SAMPLE@1.0",
+      "OPERATIONAL_DEGRADATION@1.0"
+    ],
+    "symptoms": [
+      "Indicadores aparecem como amostra insuficiente.",
+      "Dimensões operacionais deixam de aparecer como saudáveis após uma sequência de falhas."
+    ],
+    "checks": [
+      "Confirmar o tamanho da amostra usada na leitura.",
+      "Confirmar quais fontes canônicas estavam disponíveis na janela.",
+      "Confirmar se a degradação corresponde às execuções controladas do laboratório."
+    ],
+    "expectedEvidence": [
+      "Indicador com amostra insuficiente quando não há volume mínimo.",
+      "Leitura consolidada que não afirma saúde sem dados.",
+      "Dimensão ou objetivo fora do alvo quando há falhas suficientes."
+    ],
+    "safeActions": [
+      "Registrar a leitura como provisória e informar a limitação de amostra.",
+      "Repetir a leitura em janela maior antes de qualquer conclusão."
+    ],
+    "stopConditions": [
+      "A leitura afirma saúde sem amostra mínima.",
+      "A degradação persiste após o fim das execuções controladas."
+    ],
+    "escalationGuidance": "Acionar a equipe de operação quando a degradação persistir fora do período das execuções controladas.",
+    "limitations": "Runbook provisório de laboratório: os indicadores são provisórios e derivam apenas do parceiro simulado."
+  }
+]

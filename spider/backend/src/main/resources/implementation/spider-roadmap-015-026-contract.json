@@ -1,6 +1,6 @@
 {
   "currentGroup": "GROUP_A_VISIBILITY_OBSERVABILITY",
-  "currentPrompt": "SPIDER-PROMPT-017",
+  "currentPrompt": "SPIDER-PROMPT-018",
   "activeBoundary": "MOCK_ONLY",
   "capabilities": [
     {
@@ -38,8 +38,8 @@
       "groupCode": "GROUP_A_VISIBILITY_OBSERVABILITY",
       "title": "Laboratório de Falhas e Jornadas Operacionais",
       "objective": "Fault injection visual, evidências e runbooks Mock",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
       "integrationLevel": "MOCK_ONLY",
       "dependencies": ["CAP-017"]
     },

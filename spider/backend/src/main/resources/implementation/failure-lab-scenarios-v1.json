@@ -1,0 +1,355 @@
+[
+  {
+    "schemaVersion": 1,
+    "code": "RETRY_THEN_SUCCESS",
+    "version": "1.0",
+    "title": "Falha transitória seguida de sucesso",
+    "functionalDescription": "Demonstra que uma indisponibilidade momentânea do parceiro simulado é absorvida pela política de retentativa e a execução conclui com sucesso.",
+    "category": "RETRY",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Adapter mock habilitado",
+      "Failure Lab habilitado"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "EXECUTION_SUCCEEDED",
+        "description": "A execução termina em sucesso técnico após a retentativa.",
+        "sourceType": "EXECUTION_CONTROL",
+        "predicateType": "EXECUTION_REACHED_STATE",
+        "expectedValue": "SUCCEEDED",
+        "required": true
+      },
+      {
+        "code": "AT_LEAST_TWO_ATTEMPTS",
+        "description": "O primeiro passo registra pelo menos duas tentativas.",
+        "sourceType": "STEP_ATTEMPT",
+        "predicateType": "ATTEMPT_COUNT_AT_LEAST",
+        "expectedValue": "2",
+        "required": true
+      },
+      {
+        "code": "TELEMETRY_EXECUTION_SUCCEEDED",
+        "description": "Evento operacional de sucesso é emitido quando a telemetria está ativa.",
+        "sourceType": "OPERATIONAL_EVENT",
+        "predicateType": "OPERATIONAL_EVENT_EMITTED",
+        "expectedValue": "EXECUTION_SUCCEEDED",
+        "required": false
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT2M",
+    "maximumExecutions": 1,
+    "runbookRef": "runbook:failure-lab:retry@1.0",
+    "mockScenario": "RETRY_THEN_SUCCESS",
+    "operationCode": "RETRY_THEN_SUCCESS"
+  },
+  {
+    "schemaVersion": 1,
+    "code": "TECHNICAL_TERMINAL_FAILURE",
+    "version": "1.0",
+    "title": "Falha técnica terminal não retentável",
+    "functionalDescription": "Demonstra que uma resposta inválida do parceiro simulado encerra a execução em falha, sem retentativa e sem efeito colateral.",
+    "category": "EXECUTION",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Adapter mock habilitado",
+      "Failure Lab habilitado"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "EXECUTION_FAILED",
+        "description": "A execução termina em falha técnica.",
+        "sourceType": "EXECUTION_CONTROL",
+        "predicateType": "EXECUTION_REACHED_STATE",
+        "expectedValue": "FAILED",
+        "required": true
+      },
+      {
+        "code": "TELEMETRY_EXECUTION_FAILED",
+        "description": "Evento operacional de falha é emitido quando a telemetria está ativa.",
+        "sourceType": "OPERATIONAL_EVENT",
+        "predicateType": "OPERATIONAL_EVENT_EMITTED",
+        "expectedValue": "EXECUTION_FAILED",
+        "required": false
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT2M",
+    "maximumExecutions": 1,
+    "runbookRef": "runbook:failure-lab:execution@1.0",
+    "mockScenario": "INVALID_RESPONSE",
+    "operationCode": "TECHNICAL_TERMINAL_FAILURE"
+  },
+  {
+    "schemaVersion": 1,
+    "code": "WAIT_AND_RESUME",
+    "version": "1.0",
+    "title": "Espera assíncrona e retomada controlada",
+    "functionalDescription": "Demonstra que uma resposta assíncrona do parceiro simulado abre uma espera governada e que a chegada do sinal retoma a execução até a conclusão.",
+    "category": "WAIT_RESUME",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Adapter mock habilitado",
+      "Política de espera assíncrona publicada"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "WAIT_OPENED",
+        "description": "Uma espera assíncrona é aberta para a execução.",
+        "sourceType": "EXECUTION_WAIT",
+        "predicateType": "WAIT_OPENED",
+        "expectedValue": "true",
+        "required": true
+      },
+      {
+        "code": "WAIT_RESUMED",
+        "description": "A espera é resolvida pela chegada do sinal simulado.",
+        "sourceType": "EXECUTION_WAIT",
+        "predicateType": "WAIT_RESUMED",
+        "expectedValue": "true",
+        "required": false
+      },
+      {
+        "code": "EXECUTION_SUCCEEDED_AFTER_RESUME",
+        "description": "A execução conclui em sucesso após a retomada.",
+        "sourceType": "EXECUTION_CONTROL",
+        "predicateType": "EXECUTION_REACHED_STATE",
+        "expectedValue": "SUCCEEDED",
+        "required": false
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT3M",
+    "maximumExecutions": 1,
+    "runbookRef": "runbook:failure-lab:wait@1.0",
+    "mockScenario": "ACCEPTED_ASYNC",
+    "operationCode": "WAIT_AND_RESUME"
+  },
+  {
+    "schemaVersion": 1,
+    "code": "SIGNAL_SECURITY_REJECTED",
+    "version": "1.0",
+    "title": "Sinal externo rejeitado por segurança",
+    "functionalDescription": "Demonstra que um sinal externo com credencial inválida é recusado, que a espera permanece intacta e que nenhum dado sensível é registrado.",
+    "category": "SECURITY",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Adapter mock habilitado",
+      "Ingestão de sinal disponível no processo"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "WAIT_OPENED",
+        "description": "Uma espera assíncrona é aberta antes da tentativa de sinal.",
+        "sourceType": "EXECUTION_WAIT",
+        "predicateType": "WAIT_OPENED",
+        "expectedValue": "true",
+        "required": true
+      },
+      {
+        "code": "SIGNAL_REJECTED_SECURITY",
+        "description": "A tentativa de sinal inválido é recusada por motivo de segurança.",
+        "sourceType": "SIGNAL_INGRESS",
+        "predicateType": "SIGNAL_REJECTED_WITH_CATEGORY",
+        "expectedValue": "SECURITY",
+        "required": false
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhuma credencial, token ou prova de integridade aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT3M",
+    "maximumExecutions": 1,
+    "runbookRef": "runbook:failure-lab:security@1.0",
+    "mockScenario": "ACCEPTED_ASYNC",
+    "operationCode": "SIGNAL_SECURITY_REJECTED"
+  },
+  {
+    "schemaVersion": 1,
+    "code": "CALLBACK_UNCERTAIN",
+    "version": "1.0",
+    "title": "Desfecho externo incerto",
+    "functionalDescription": "Demonstra que um desfecho incerto do parceiro simulado não é interpretado como sucesso nem como falha, permanecendo em reconciliação até evidência conclusiva.",
+    "category": "CALLBACK",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Adapter mock habilitado",
+      "Política de reconciliação publicada"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "EXECUTION_WAITING_EXTERNAL",
+        "description": "A execução permanece aguardando desfecho externo.",
+        "sourceType": "EXECUTION_CONTROL",
+        "predicateType": "EXECUTION_REACHED_STATE",
+        "expectedValue": "WAITING_EXTERNAL",
+        "required": false
+      },
+      {
+        "code": "RECONCILIATION_WAIT_OPENED",
+        "description": "Uma espera de reconciliação é registrada para o desfecho incerto.",
+        "sourceType": "EXECUTION_WAIT",
+        "predicateType": "WAIT_OPENED",
+        "expectedValue": "true",
+        "required": false
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT2M",
+    "maximumExecutions": 1,
+    "runbookRef": "runbook:failure-lab:callback@1.0",
+    "mockScenario": "UNKNOWN",
+    "operationCode": "CALLBACK_UNCERTAIN"
+  },
+  {
+    "schemaVersion": 1,
+    "code": "INSUFFICIENT_SAMPLE",
+    "version": "1.0",
+    "title": "Amostra insuficiente para conclusão operacional",
+    "functionalDescription": "Demonstra que, sem volume mínimo de observações, os indicadores operacionais declaram amostra insuficiente em vez de afirmar saúde.",
+    "category": "OPERATIONAL_HEALTH",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Saúde operacional habilitada para leitura",
+      "Nenhuma execução é submetida por este cenário"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "SLI_INSUFFICIENT_DATA",
+        "description": "Ao menos um indicador declara amostra insuficiente.",
+        "sourceType": "OPERATIONAL_HEALTH",
+        "predicateType": "SLI_STATUS_EQUALS",
+        "expectedValue": "INSUFFICIENT_DATA",
+        "required": false
+      },
+      {
+        "code": "HEALTH_OVERALL_INSUFFICIENT_DATA",
+        "description": "A leitura consolidada não afirma saúde quando faltam dados.",
+        "sourceType": "OPERATIONAL_HEALTH",
+        "predicateType": "HEALTH_OVERALL_STATUS",
+        "expectedValue": "INSUFFICIENT_DATA",
+        "required": false
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT1M",
+    "maximumExecutions": 0,
+    "runbookRef": "runbook:failure-lab:health@1.0",
+    "mockScenario": null,
+    "operationCode": null
+  },
+  {
+    "schemaVersion": 1,
+    "code": "OPERATIONAL_DEGRADATION",
+    "version": "1.0",
+    "title": "Degradação operacional observável",
+    "functionalDescription": "Demonstra que uma sequência de falhas técnicas simuladas se reflete na leitura operacional, ou é declarada inconclusiva quando a amostra ainda é pequena.",
+    "category": "OPERATIONAL_HEALTH",
+    "targetBoundary": "MOCK_ONLY",
+    "preconditions": [
+      "Adapter mock habilitado",
+      "Saúde operacional habilitada para leitura"
+    ],
+    "allowedParameterKeys": [
+      "note"
+    ],
+    "expectedObservations": [
+      {
+        "code": "EXECUTION_FAILED",
+        "description": "As execuções controladas terminam em falha técnica.",
+        "sourceType": "EXECUTION_CONTROL",
+        "predicateType": "EXECUTION_REACHED_STATE",
+        "expectedValue": "FAILED",
+        "required": true
+      },
+      {
+        "code": "EXECUTION_FLOW_DEGRADED",
+        "description": "A dimensão de fluxo de execução deixa de ser saudável.",
+        "sourceType": "OPERATIONAL_HEALTH",
+        "predicateType": "HEALTH_DIMENSION_REACHED_STATUS",
+        "expectedValue": "EXECUTION_FLOW:UNHEALTHY",
+        "required": false
+      },
+      {
+        "code": "SLO_NOT_MET",
+        "description": "Ao menos um objetivo provisório deixa de ser atendido.",
+        "sourceType": "OPERATIONAL_HEALTH",
+        "predicateType": "SLO_EVALUATION_REACHED_STATUS",
+        "expectedValue": "MISSED",
+        "required": false
+      },
+      {
+        "code": "NO_SECRET_EXPOSED",
+        "description": "Nenhum dado sensível aparece na evidência.",
+        "sourceType": "FAILURE_LAB_RUN",
+        "predicateType": "NO_SECRET_EXPOSED",
+        "expectedValue": "true",
+        "required": true
+      }
+    ],
+    "maximumDuration": "PT4M",
+    "maximumExecutions": 3,
+    "runbookRef": "runbook:failure-lab:health@1.0",
+    "mockScenario": "TECHNICAL_FAILURE",
+    "operationCode": "OPERATIONAL_DEGRADATION"
+  }
+]

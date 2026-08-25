@@ -492,3 +492,12 @@ th, td { text-align:left; padding:0.55rem 0.45rem; border-bottom:1px solid var(-
 .presentation-mode { max-width: 1100px; }
 
 .row-next { background: rgba(91,140,255,0.08); }
+
+/* PROMPT-018 failure lab */
+.state-ok { color: var(--ok); }
+.state-warn { color: var(--warn); }
+.state-danger { color: var(--bad); }
+.state-running { color: var(--accent); }
+.state-muted { color: var(--muted); }
+.check-confirm { display:flex; align-items:center; gap:0.45rem; margin:0.6rem 0; font-size:0.9rem; }
+.panel-card .panel-card { background: rgba(8,14,24,0.45); margin-top:1rem; }

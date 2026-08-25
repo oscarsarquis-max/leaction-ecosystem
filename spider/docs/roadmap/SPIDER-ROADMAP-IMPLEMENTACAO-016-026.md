@@ -33,7 +33,7 @@ Integração planejada ≠ ativa: `MOCK_ONLY`, `SIMULATED_INFRASTRUCTURE`, `CORP
 | `GROUP_C_PLATFORM_READINESS` | 022–024 | Prontidão de plataforma |
 | `GROUP_D_REAL_INTEGRATION` | 025–026 | Integração real |
 
-`currentGroup` após 017: **`GROUP_A_VISIBILITY_OBSERVABILITY`**.
+`currentGroup` após 018: **`GROUP_A_VISIBILITY_OBSERVABILITY`** (Grupo A **4/4 VERIFIED** — fechado).
 
 Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem substituir estes grupos.
 
@@ -44,7 +44,7 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 | 015 | A | Console Operacional Canônico e Visualização da Execução | Console, cockpit e apresentação dinâmica | VERIFIED | OFF_BY_DEFAULT | MOCK_ONLY |
 | 016 | A | Telemetria Canônica e Operational Events | Logs, métricas, traces e eventos correlacionados | VERIFIED | OFF_BY_DEFAULT | MOCK_ONLY |
 | 017 | A | Saúde, SLIs, SLOs Provisórios e Cockpit Operacional | Health, SLIs/SLOs simulados, error budget e dashboards | VERIFIED | OFF_BY_DEFAULT | MOCK_ONLY |
-| 018 | A | Laboratório de Falhas e Jornadas Operacionais | Fault injection visual, evidências e runbooks Mock | PLANNED | NOT_IMPLEMENTED | MOCK_ONLY |
+| 018 | A | Laboratório de Falhas e Jornadas Operacionais | Fault injection visual, evidências e runbooks Mock | VERIFIED | OFF_BY_DEFAULT | MOCK_ONLY |
 | 019 | B | Runtime de Workers Duráveis e Scheduling | Workers, leases, fencing, drain e backlog | PLANNED | NOT_IMPLEMENTED | SIMULATED_INFRASTRUCTURE |
 | 020 | B | Capacidade, Backpressure e Resiliência Governada | Limits, bulkheads, circuits, quotas e load shedding | PLANNED | NOT_IMPLEMENTED | SIMULATED_INFRASTRUCTURE |
 | 021 | B | Operações Governadas e Reconciliation Workbench | Commands seguros e workbench operacional | PLANNED | NOT_IMPLEMENTED | MOCK_ONLY |
@@ -54,9 +54,10 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 | 025 | D | Fundações Corporativas de Segurança e Transporte | IdP, mTLS, KMS e primeiro binding em sandbox | PLANNED | NOT_IMPLEMENTED | CORPORATE_SANDBOX |
 | 026 | D | Primeiro Legado Real, Canary e Migração Controlada | Piloto real, canary, reconciliação e rollback | PLANNED | NOT_IMPLEMENTED | REAL_PILOT |
 
-### Contagens após 017
+### Contagens após 018
 
-- Grupo A: **3/4 VERIFIED**, **1/4 PLANNED**
+- Grupo A: **4/4 VERIFIED** (completo)
+- 019 elegível (gate do Grupo A cumprido), **não iniciado** — permanece PLANNED
 - Grupos B–D: todos PLANNED
 
 ## Dependências
@@ -77,8 +78,8 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 
 ## Pontos de revisão
 
-1. 017 concluído e verificado; 018 permanece PLANNED até emissão formal.
-2. Fechamento Grupo A (018): gate para 019.
+1. 018 concluído e verificado; Grupo A fechado (4/4).
+2. 019 elegível, ainda não iniciado — gate do Grupo A cumprido.
 3. Fechamento Grupo B (021): gate para 022.
 4. 024 = READY_FOR_PILOT: gate para 025.
 5. 025 sandbox: gate para 026 piloto; nunca pular para PRODUCTION neste roadmap.
@@ -89,3 +90,4 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 - Contrato anti-drift: `backend/src/main/resources/implementation/spider-roadmap-015-026-contract.json`
 - ARCH-013: `docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md`
 - Técnico 015: `docs/technical/SPIDER-PROMPT-015-operational-console.md`
+- Técnico 018: `docs/technical/SPIDER-PROMPT-018-failure-lab-operational-journeys.md`

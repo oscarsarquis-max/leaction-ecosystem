@@ -12,6 +12,17 @@ spider:
   operational-health:
     enabled: true
     minimum-sample-size: 1
+  failure-lab:
+    enabled: true
+    http:
+      enabled: true
+    local-demo:
+      enabled: true
+    max-concurrent-runs: 1
+    max-executions-per-run: 3
+    max-run-duration: PT2M
+    evidence:
+      enabled: true
   canonical:
     http:
       enabled: true

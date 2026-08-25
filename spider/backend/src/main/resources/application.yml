@@ -181,6 +181,17 @@ spider:
     minimum-sample-size: 20
     max-results: 5000
     aged-wait-threshold: PT5M
+  failure-lab:
+    enabled: false
+    http:
+      enabled: false
+    local-demo:
+      enabled: false
+    max-concurrent-runs: 1
+    max-executions-per-run: 10
+    max-run-duration: PT5M
+    evidence:
+      enabled: true
 
 resilience4j:
   circuitbreaker:

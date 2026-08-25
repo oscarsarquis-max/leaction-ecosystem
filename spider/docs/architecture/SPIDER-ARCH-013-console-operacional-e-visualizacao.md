@@ -58,13 +58,17 @@ Classpath: `implementation/spider-capability-manifest.json` + schema. Status: PL
 Roadmap oficial 015–026: `docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md`  
 Contrato anti-drift: `implementation/spider-roadmap-015-026-contract.json`
 
-Grupos oficiais da jornada: A Visibilidade (015–018), B Runtime (019–021), C Plataforma (022–024), D Integração real (025–026). `currentGroup` após 016 = `GROUP_A_VISIBILITY_OBSERVABILITY`.
+Grupos oficiais da jornada: A Visibilidade (015–018), B Runtime (019–021), C Plataforma (022–024), D Integração real (025–026). `currentGroup` após 018 = `GROUP_A_VISIBILITY_OBSERVABILITY` (Grupo A **4/4 VERIFIED**).
 
 O detalhe da execução também consome Operational Events (PROMPT-016) via `GET /v1/console/executions/{id}/events` — fatos de telemetria distintos da timeline projetada do estado persistido. Telemetria é opt-in (`spider.telemetry.enabled`) e fail-open.
 
 ### Cockpit Operacional (PROMPT-017)
 
 Superfície distinta do Cockpit de Implementação. Consome `GET /v1/console/operational-health` com banner permanente `MOCK_ONLY` / SLOs provisórios. Flag `spider.operational-health.enabled` (exige telemetria). Não emite comandos à Engine.
+
+### Failure Lab (PROMPT-018)
+
+Superfície **Failure Lab** no console (`FailureLab.jsx`): catálogo de cenários mock, execução controlada, verificação de observações, runbook provisório e evidência redigida. Flags `spider.failure-lab.enabled` (+ `http` / `local-demo`). Endpoints: `GET/POST /v1/console/failure-lab/*`. Authz: `VIEW_FAILURE_LAB`, `EXECUTE_MOCK_FAILURE_SCENARIO`, `VIEW_FAILURE_LAB_EVIDENCE`. Banner permanente MOCK_ONLY. Não decide dentro da Engine; fault injection apenas via mocks.
 
 ## 8. Modo Apresentação
 

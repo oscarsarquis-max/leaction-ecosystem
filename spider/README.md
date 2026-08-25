@@ -80,6 +80,7 @@ Diretrizes para a IA: ver `.cursorrules`.
 - Callback Outbox (PROMPT-007): `docs/technical/SPIDER-PROMPT-007-callback-outbox.md`
 - Telemetria / Operational Events (PROMPT-016): `docs/technical/SPIDER-PROMPT-016-operational-events.md`
 - Saúde operacional / SLIs e SLOs provisórios (PROMPT-017): `docs/technical/SPIDER-PROMPT-017-operational-health-sli-slo.md`
+- Failure Lab / jornadas operacionais (PROMPT-018): `docs/technical/SPIDER-PROMPT-018-failure-lab-operational-journeys.md`
 
 ## Console operacional (PROMPT-015)
 
@@ -91,9 +92,12 @@ spider.console.http.enabled=false
 spider.console.local-demo.enabled=false
 spider.telemetry.enabled=false
 spider.operational-health.enabled=false
+spider.failure-lab.enabled=false
+spider.failure-lab.http.enabled=false
+spider.failure-lab.local-demo.enabled=false
 ```
 
-Local-demo exige profile Spring `local-demo` **e** flag. O Cockpit Operacional exige também `spider.telemetry.enabled=true`. Endpoints: `GET /v1/console/executions`, `/{id}`, `/{id}/events`, `/implementation`, `/presentation/readiness`, `/operational-health` e `/operational-health/definitions`.
+Local-demo exige profile Spring `local-demo` **e** flag. O Cockpit Operacional exige também `spider.telemetry.enabled=true`. O Failure Lab exige `spider.failure-lab.enabled=true` (e `http`/`local-demo` conforme a superfície). Endpoints: `GET /v1/console/executions`, `/{id}`, `/{id}/events`, `/implementation`, `/presentation/readiness`, `/operational-health`, `/operational-health/definitions`, `/failure-lab/scenarios`, `POST /failure-lab/runs`, `GET /failure-lab/runs/{id}` e `/failure-lab/runs/{id}/evidence`.
 
 Apresentação:
 
@@ -109,6 +113,7 @@ Apresentação:
 | Read model seguro | `OperationalConsoleQueryService` | `GET /v1/console/executions*` | `OperationalConsoleE2EReadModelTest` |
 | Operational Events | `SafeOperationalEventPublisher` / store | `GET /v1/console/executions/{id}/events` | `OperationalEventPublisherTest` + E2E |
 | Saúde, SLIs/SLOs provisórios | `OperationalHealthAggregator` / `ProvisionalSliCalculator` / `OperationalCockpit` | `GET /v1/console/operational-health*` | `OperationalHealthAggregatorTest` + `ProvisionalSliCalculatorTest` + E2E + `ConsoleShell.test.jsx` |
+| Failure Lab | `FailureLabOrchestrator` / `FailureLab` | `/v1/console/failure-lab/*` | `FailureLabEndpointE2ETest` + `FailureLab.test.jsx` |
 | DenyAll console | `OperationalConsoleSecurityDefaultsConfig` | todos `/v1/console/*` | `DenyAllConsoleAuthBeansPresentTest` |
 | Manifesto capabilities | `ImplementationManifestLoader` | `GET /v1/console/implementation` | `ImplementationManifestLoaderTest` |
 | Presentation readiness | `PresentationReadinessUseCase` | `GET /v1/console/presentation/readiness` | E2E readiness |

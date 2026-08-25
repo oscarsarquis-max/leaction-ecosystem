@@ -1,0 +1,17 @@
+package br.com.banco.spider.operational.failurelab;
+
+/** Predicados fechados de verificação — nenhuma expressão livre é aceita. */
+public enum ObservationPredicateType {
+  EXECUTION_REACHED_STATE,
+  OPERATIONAL_EVENT_EMITTED,
+  WAIT_OPENED,
+  WAIT_RESUMED,
+  ATTEMPT_COUNT_AT_LEAST,
+  CALLBACK_REACHED_STATUS,
+  SIGNAL_REJECTED_WITH_CATEGORY,
+  HEALTH_DIMENSION_REACHED_STATUS,
+  SLO_EVALUATION_REACHED_STATUS,
+  SLI_STATUS_EQUALS,
+  NO_SECRET_EXPOSED,
+  HEALTH_OVERALL_STATUS
+}

@@ -99,6 +99,29 @@ export function getOperationalHealth(window = "PT24H", { signal } = {}) {
   return request(`/v1/console/operational-health?${query}`, { signal });
 }
 
+export function listFailureLabScenarios({ signal } = {}) {
+  return request("/v1/console/failure-lab/scenarios", { signal });
+}
+
+export function startFailureLabRun(body, { signal } = {}) {
+  return request("/v1/console/failure-lab/runs", {
+    method: "POST",
+    body,
+    signal,
+    headers: { "X-Spider-Credential-Ref": "local-demo-console" },
+  });
+}
+
+export function getFailureLabRun(labRunId, { signal } = {}) {
+  return request(`/v1/console/failure-lab/runs/${encodeURIComponent(labRunId)}`, { signal });
+}
+
+export function getFailureLabEvidence(labRunId, { signal } = {}) {
+  return request(`/v1/console/failure-lab/runs/${encodeURIComponent(labRunId)}/evidence`, {
+    signal,
+  });
+}
+
 export const TERMINAL_STATES = new Set([
   "SUCCEEDED",
   "PARTIALLY_SUCCEEDED",

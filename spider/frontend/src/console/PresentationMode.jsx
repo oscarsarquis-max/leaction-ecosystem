@@ -13,16 +13,22 @@ import {
 const CHAPTERS = [
   { id: 1, title: "Propósito universal", body: "Spider orquestra contexto canônico entre canais e adapters Mock nesta fase." },
   { id: 2, title: "Arquitetura", body: "Console é consumidor read-only do Data Plane (ARCH-013)." },
-  { id: 3, title: "Estado da implementação", body: "015–017 VERIFIED no Grupo A; saúde e SLOs provisórios permanecem MOCK_ONLY e OFF_BY_DEFAULT." },
+  { id: 3, title: "Estado da implementação", body: "015–018 VERIFIED no Grupo A (4/4); Failure Lab e SLOs provisórios permanecem MOCK_ONLY e OFF_BY_DEFAULT." },
   { id: 4, title: "Jornada ao vivo", body: "Submit canônico real → executionId → detalhe/polling." },
   { id: 5, title: "Plano / steps / retries / assíncrono", body: "Journey map e timeline vêm de dados persistidos." },
-  { id: 6, title: "Segurança / governança", body: "DenyAll, redaction, posture REDACTED — sem JWT." },
-  { id: 7, title: "Mock versus real", body: "Boundary ativa MOCK_ONLY. CORPORATE_SANDBOX (025) e REAL_PILOT (026) são planejados, não ativos." },
   {
-    id: 8,
+    id: 6,
+    title: "Failure Lab",
+    body:
+      "Jornada operacional Mock: cenário RETRY_THEN_SUCCESS (falha transitória e sucesso) → timeline da execução → leitura no Cockpit Operacional → evidência segura com digest e completude. Cenários vêm de catálogo versionado; ausência de observação nunca vira sucesso.",
+  },
+  { id: 7, title: "Segurança / governança", body: "DenyAll, redaction, posture REDACTED — sem JWT." },
+  { id: 8, title: "Mock versus real", body: "Boundary ativa MOCK_ONLY. CORPORATE_SANDBOX (025) e REAL_PILOT (026) são planejados, não ativos." },
+  {
+    id: 9,
     title: "Roadmap",
     body:
-      "Grupos oficiais: A Visibilidade (015–018) → B Runtime (019–021) → C Plataforma (022–024) → D Integração real (025–026). Fonte: docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md + manifesto. Atual: 017 Saúde Operacional (VERIFIED); 018 permanece PLANNED.",
+      "Grupos oficiais: A Visibilidade (015–018) → B Runtime (019–021) → C Plataforma (022–024) → D Integração real (025–026). Fonte: docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md + manifesto. Atual: 018 Failure Lab (VERIFIED); Grupo A 4/4 completo; 019 elegível (PLANNED, não iniciado).",
   },
 ];
 

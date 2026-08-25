@@ -21,12 +21,14 @@ import {
 import ImplementationCockpit from "./ImplementationCockpit";
 import PresentationMode from "./PresentationMode";
 import OperationalCockpit from "./OperationalCockpit";
+import FailureLab from "./FailureLab";
 
 const NAV = [
   { id: "overview", label: "Visão geral" },
   { id: "executions", label: "Execuções" },
   { id: "detail", label: "Detalhe" },
   { id: "operational-health", label: "Cockpit Operacional" },
+  { id: "failure-lab", label: "Failure Lab" },
   { id: "implementation", label: "Implementação" },
   { id: "presentation", label: "Apresentação" },
   { id: "lab", label: "Laboratório Mock" },
@@ -367,6 +369,16 @@ export default function ConsoleShell() {
       {view === "implementation" && <ImplementationCockpit />}
 
       {view === "operational-health" && <OperationalCockpit />}
+
+      {view === "failure-lab" && (
+        <FailureLab
+          onOpenExecution={(id) => {
+            setSelectedId(id);
+            setPollPaused(false);
+            setView("detail");
+          }}
+        />
+      )}
 
       {view === "presentation" && (
         <PresentationMode

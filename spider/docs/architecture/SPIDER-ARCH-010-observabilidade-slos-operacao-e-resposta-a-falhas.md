@@ -838,6 +838,19 @@ Mocks e infraestrutura de teste devem permitir injetar:
 
 Injeção deve possuir escopo, owner, janela e kill switch. Não pode alcançar ambiente real nesta fase.
 
+### Failure Lab (SPIDER-PROMPT-018)
+
+Implementação verificada do laboratório de falhas **somente via mocks**:
+
+- Catálogo versionado de 7 cenários (`failure-lab-scenarios-v1.json`) e runbooks provisórios (`failure-lab-runbooks-v1.json`).
+- Fault injection restrita a adapters/mocks e sinais simulados — sem atingir infraestrutura produtiva nem legado real.
+- Verificação por predicados fechados; pacote de evidência redigido (`FailureLabEvidenceBundle`).
+- Superfície console OFF_BY_DEFAULT (`spider.failure-lab.enabled`); API sob `/v1/console/failure-lab/*`.
+- O Failure Lab **não** controla a Engine: observa o Data Plane e emite veredito com evidência.
+- Boundary permanente: **MOCK_ONLY**.
+
+Detalhe técnico: `docs/technical/SPIDER-PROMPT-018-failure-lab-operational-journeys.md`.
+
 ## 45. Testes de observabilidade
 
 Devem comprovar:

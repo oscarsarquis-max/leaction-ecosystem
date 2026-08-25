@@ -1,15 +1,15 @@
 {
   "manifestVersion": "1.0.1",
-  "productVersion": "0.17.0",
-  "lastVerifiedAt": "2026-08-25T15:00:00Z",
+  "productVersion": "0.18.0",
+  "lastVerifiedAt": "2026-08-25T18:00:00Z",
   "baseline": {
-    "backendTests": 203,
-    "frontendTests": 12,
+    "backendTests": 240,
+    "frontendTests": 25,
     "failures": 0,
     "errors": 0,
     "skipped": 0
   },
-  "currentPrompt": "SPIDER-PROMPT-017",
+  "currentPrompt": "SPIDER-PROMPT-018",
   "currentGroup": "GROUP_A_VISIBILITY_OBSERVABILITY",
   "capabilities": [
     {
@@ -494,26 +494,36 @@
       "promptRef": "SPIDER-PROMPT-018",
       "title": "Laboratório de Falhas e Jornadas Operacionais",
       "objective": "Fault injection visual, evidências e runbooks Mock",
-      "status": "PLANNED",
-      "runtimeAvailability": "NOT_IMPLEMENTED",
+      "status": "VERIFIED",
+      "runtimeAvailability": "OFF_BY_DEFAULT",
       "integrationLevel": "MOCK_ONLY",
       "architectureRefs": [
+        "docs/architecture/SPIDER-ARCH-010-observabilidade-slos-operacao-e-resposta-a-falhas.md",
         "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md",
+        "docs/architecture/SPIDER-ARCH-014-arquitetura-funcional-do-produto.md",
         "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
       ],
       "technicalDocRefs": [
-        "docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md"
+        "docs/technical/SPIDER-PROMPT-018-failure-lab-operational-journeys.md"
       ],
-      "featureFlags": [],
-      "evidenceRefs": [],
-      "testSummary": "Not started — PLANNED in official roadmap",
+      "featureFlags": [
+        "spider.failure-lab.enabled"
+      ],
+      "evidenceRefs": [
+        "docs/technical/screenshots/018-failure-lab-catalog-desktop.png",
+        "docs/technical/screenshots/018-failure-lab-running-desktop.png",
+        "docs/technical/screenshots/018-failure-lab-verified-desktop.png",
+        "docs/technical/screenshots/018-failure-lab-runbook-evidence-desktop.png",
+        "docs/technical/screenshots/018-failure-lab-mobile.png"
+      ],
+      "testSummary": "Failure Lab catalog/orchestrator/evidence + console API and Failure Lab E2E covered by backend and frontend suites",
       "dependencies": [
         "CAP-017"
       ],
       "limitations": [
         "MOCK_ONLY"
       ],
-      "lastVerifiedAt": null
+      "lastVerifiedAt": "2026-08-25T18:00:00Z"
     },
     {
       "capabilityCode": "CAP-019",

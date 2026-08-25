@@ -280,6 +280,53 @@ describe("ConsoleShell", () => {
     expect(fetch.mock.calls.some((call) => String(call[0]).includes("window=PT24H"))).toBe(true);
   });
 
+  it("renders failure lab surface from the catalog API", async () => {
+    fetch.mockImplementation(async (url) => {
+      if (String(url).includes("/v1/console/failure-lab/scenarios")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              schemaVersion: 1,
+              boundary: "MOCK_ONLY",
+              scenarios: [
+                {
+                  schemaVersion: 1,
+                  code: "RETRY_THEN_SUCCESS",
+                  version: "1.0",
+                  title: "Falha transitória seguida de sucesso",
+                  functionalDescription: "Retentativa absorve a indisponibilidade momentânea.",
+                  category: "RETRY",
+                  targetBoundary: "MOCK_ONLY",
+                  expectedObservations: [],
+                  maximumDuration: "PT2M",
+                  maximumExecutions: 1,
+                  runbookRef: "runbook:failure-lab:retry@1.0",
+                },
+              ],
+              runbooks: [],
+            }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({ items: [], nextCursorStartedAt: "", nextCursorExecutionId: "" }),
+      };
+    });
+    render(<ConsoleShell />);
+    fireEvent.click(screen.getByRole("button", { name: "Failure Lab" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("failure-lab-scenario-RETRY_THEN_SUCCESS")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("failure-lab-boundary-banner")).toHaveTextContent(
+      "FALHAS SIMULADAS",
+    );
+    expect(screen.getByRole("button", { name: "Laboratório Mock" })).toBeInTheDocument();
+  });
+
   it("lab submits to canonical endpoint", async () => {
     const spy = fetch;
     spy.mockImplementation(async (url, init) => {

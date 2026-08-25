@@ -19,7 +19,7 @@ class Roadmap015026ContractFreezeTest {
   void freezesOfficialRoadmapFieldsAgainstContract() {
     var m = loader.loadAndValidate();
     assertEquals("GROUP_A_VISIBILITY_OBSERVABILITY", m.currentGroup());
-    assertEquals("SPIDER-PROMPT-017", m.currentPrompt());
+    assertEquals("SPIDER-PROMPT-018", m.currentPrompt());
 
     Map<String, ImplementationCapability> journey =
         m.capabilities().stream()
@@ -37,6 +37,8 @@ class Roadmap015026ContractFreezeTest {
     assertEquals(List.of("CAP-015"), journey.get("SPIDER-PROMPT-016").dependencies());
     assertEquals("VERIFIED", journey.get("SPIDER-PROMPT-017").status());
     assertEquals("OFF_BY_DEFAULT", journey.get("SPIDER-PROMPT-017").runtimeAvailability());
+    assertEquals("VERIFIED", journey.get("SPIDER-PROMPT-018").status());
+    assertEquals("OFF_BY_DEFAULT", journey.get("SPIDER-PROMPT-018").runtimeAvailability());
 
     assertEquals(
         "SDK da Porta Universal e Kit de Certificação de Adapters",
@@ -66,8 +68,8 @@ class Roadmap015026ContractFreezeTest {
             .filter(c -> "GROUP_A_VISIBILITY_OBSERVABILITY".equals(c.groupCode()))
             .filter(c -> "PLANNED".equals(c.status()))
             .count();
-    assertEquals(3, aVerified);
-    assertEquals(1, aPlanned);
+    assertEquals(4, aVerified);
+    assertEquals(0, aPlanned);
 
     assertEquals(List.of("CAP-018"), journey.get("SPIDER-PROMPT-019").dependencies());
     assertEquals(List.of("CAP-021"), journey.get("SPIDER-PROMPT-022").dependencies());

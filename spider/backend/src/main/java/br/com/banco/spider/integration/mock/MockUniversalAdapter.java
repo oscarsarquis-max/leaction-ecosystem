@@ -18,6 +18,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -33,6 +35,8 @@ public class MockUniversalAdapter implements UniversalAdapterPort {
   public static final String ADAPTER_ID = "mock-universal-adapter";
 
   private final ObjectMapper objectMapper;
+  /** Contagem de invocações por executionId+stepId — somente para cenários Mock determinísticos. */
+  private final ConcurrentHashMap<String, AtomicInteger> invocationCounts = new ConcurrentHashMap<>();
 
   public MockUniversalAdapter(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
@@ -139,6 +143,34 @@ public class MockUniversalAdapter implements UniversalAdapterPort {
                                   "adapter", request.stepId(), ADAPTER_ID, request.bindingRef()))
                           .build()))
               .build();
+      case RETRY_THEN_SUCCESS -> {
+        String key = request.executionId() + "::" + request.stepId();
+        int n = invocationCounts.computeIfAbsent(key, k -> new AtomicInteger()).incrementAndGet();
+        if (n == 1) {
+          yield builder
+              .dispositionMode(AdapterDispositionMode.REJECTED)
+              .outcome(CanonicalOutcome.technical(TechnicalStatus.FAILURE))
+              .errors(
+                  List.of(
+                      CanonicalError.builder()
+                          .errorId("err-" + UUID.randomUUID())
+                          .code("UNAV_MOCK_TRANSIENT")
+                          .category(ErrorCategory.UNAVAILABLE)
+                          .severity(ErrorSeverity.ERROR)
+                          .message("Simulated transient technical failure before retry")
+                          .retryable(true)
+                          .occurredAt(Instant.now())
+                          .source(
+                              new CanonicalError.ErrorSource(
+                                  "adapter", request.stepId(), ADAPTER_ID, request.bindingRef()))
+                          .build()))
+              .build();
+        }
+        yield builder
+            .dispositionMode(AdapterDispositionMode.COMPLETED)
+            .outcome(CanonicalOutcome.technical(TechnicalStatus.SUCCESS))
+            .build();
+      }
       case INVALID_RESPONSE ->
           builder
               .dispositionMode(AdapterDispositionMode.REJECTED)

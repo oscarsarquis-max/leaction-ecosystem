@@ -8,5 +8,7 @@ public enum MockAdapterScenario {
   TIMEOUT,
   INVALID_RESPONSE,
   UNKNOWN,
-  ACCEPTED_ASYNC
+  ACCEPTED_ASYNC,
+  /** Primeira invocação do step falha transitória; segunda sucede. Determinístico por executionId+stepId. */
+  RETRY_THEN_SUCCESS
 }

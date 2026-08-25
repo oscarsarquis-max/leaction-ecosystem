@@ -5,10 +5,10 @@
 | Identificador | SPIDER-ARCH-014 |
 | Título | Arquitetura Funcional do Produto |
 | Natureza | Espelho documental vivo do Spider |
-| Baseline funcional | Spider 0.17.0 — SPIDER-PROMPT-017 VERIFIED |
+| Baseline funcional | Spider 0.18.0 — SPIDER-PROMPT-018 VERIFIED |
 | Boundary ativo | MOCK_ONLY |
-| Estado documental | BASELINE 017 — espelho sincronizado com CAP-017 (Saúde Operacional) |
-| Fontes autoritativas | SPIDER-ARCH-001–013, SPIDER-PROMPT-001–017, manifesto de capabilities, contrato anti-drift e roadmap 016–026 |
+| Estado documental | BASELINE 018 — espelho sincronizado com CAP-018 (Failure Lab); Grupo A 4/4 |
+| Fontes autoritativas | SPIDER-ARCH-001–013, SPIDER-PROMPT-001–018, manifesto de capabilities, contrato anti-drift e roadmap 016–026 |
 
 > **Razão da numeração:** o número `SPIDER-ARCH-005` já está ocupado por “Definição de Rotas, Execution Plan e Máquina de Estados”. Como a série existente prossegue até `SPIDER-ARCH-013`, este documento recebe o próximo identificador coerente: `SPIDER-ARCH-014`.
 
@@ -16,7 +16,7 @@
 
 O Spider é uma plataforma de orquestração contextual que recebe uma intenção operacional de um canal ou produto, resolve de forma determinística uma rota governada, materializa um plano imutável, coordena interações com sistemas de destino por uma porta universal e devolve um resultado canônico, preservando estado, correlação, idempotência e evidências técnicas.
 
-Este documento é o **espelho funcional do produto real**. Ele descreve o que o Spider efetivamente oferece no baseline 0.17.0, como suas capacidades colaboram, por quais superfícies são acessadas e como aparecem no produto. Não substitui especificações normativas detalhadas nem prompts de implementação; oferece a visão integrada que permite compreender o Spider como produto.
+Este documento é o **espelho funcional do produto real**. Ele descreve o que o Spider efetivamente oferece no baseline 0.18.0, como suas capacidades colaboram, por quais superfícies são acessadas e como aparecem no produto. Não substitui especificações normativas detalhadas nem prompts de implementação; oferece a visão integrada que permite compreender o Spider como produto.
 
 ### 1.1 Público e linguagem
 
@@ -64,23 +64,24 @@ Este documento separa quatro categorias:
 
 | Categoria | Significado neste documento |
 |---|---|
-| Atual e verificada | Entregue por SPIDER-PROMPT-001–017 e declarada VERIFIED no manifesto do baseline 0.17.0 |
+| Atual e verificada | Entregue por SPIDER-PROMPT-001–018 e declarada VERIFIED no manifesto do baseline 0.18.0 |
 | Atual, mas opt-in | Implementada, porém protegida por flag, modo, autorização ou profile; não se presume ativa |
 | Preservada por compatibilidade | Existe no produto, mas não integra a jornada canônica principal |
 | Planejada | Pertence ao roadmap 016–026; não é descrita como funcionalidade atual |
 
 O estado oficial do baseline é:
 
-- `productVersion = 0.17.0`;
-- `currentPrompt = SPIDER-PROMPT-017`;
+- `productVersion = 0.18.0`;
+- `currentPrompt = SPIDER-PROMPT-018`;
 - `currentGroup = GROUP_A_VISIBILITY_OBSERVABILITY`;
 - `activeBoundary = MOCK_ONLY`;
-- 001–017 `VERIFIED`;
-- 018–026 `PLANNED` no manifesto vigente;
-- Console 015, telemetria 016 e saúde operacional 017 `OFF_BY_DEFAULT`;
+- 001–018 `VERIFIED`;
+- 019–026 `PLANNED` no manifesto vigente;
+- Console 015, telemetria 016, saúde operacional 017 e Failure Lab 018 `OFF_BY_DEFAULT`;
+- Grupo A (015–018) **completo** (4/4);
 - integrações corporativas, sandbox corporativo, piloto real e produção não estão ativos.
 
-Alterações de implementação do 018 ainda não verificadas não integram esta baseline. A seção 18 define como incorporá-las após o aceite formal.
+O 019 está elegível pelo gate do Grupo A, mas permanece PLANNED até emissão formal. A seção 18 define como incorporar novos prompts após o aceite.
 
 ## 3. Princípios funcionais do produto
 
@@ -537,9 +538,10 @@ Esses indicadores apoiam diagnóstico e conversa operacional; não são compromi
 - Control Plane e contexto histórico em modo opt-in;
 - Console/cockpit/apresentação Mock read-only;
 - Cockpit Operacional com SLIs, SLOs provisórios e error budgets Mock read-only;
+- Failure Lab com catálogo de cenários mock, runbooks provisórios e evidência redigida (OFF_BY_DEFAULT);
 - endpoint legado preservado;
 - memory/JPA conforme modos documentados;
-- testes e manifesto do baseline 0.17.0.
+- testes e manifesto do baseline 0.18.0.
 
 ### 11.2 Explicitamente fora do baseline
 
@@ -552,7 +554,7 @@ Esses indicadores apoiam diagnóstico e conversa operacional; não são compromi
 - WebSocket/SSE;
 - operações administrativas via UI/API;
 - SLOs contratuais/produtivos e dashboards conectados a infraestrutura corporativa;
-- Failure Lab, runbooks operacionais e fault injection visual;
+- fault injection em infraestrutura produtiva (o Failure Lab 018 injeta falha **somente** via mocks);
 - HA, multi-instância, DR e restore comprovados;
 - SDK/certificação externa de Adapter;
 - produção em qualquer ponto do roadmap 016–026.
@@ -677,8 +679,12 @@ Todos permanecem `MOCK_ONLY`. “VERIFIED” indica entrega/testes no baseline, 
 | Prompt | Papel no Grupo A | Relação com o baseline atual | Atualização esperada deste ARCH |
 |---|---|---|---|
 | 016 | Telemetria Canônica e Operational Events | VERIFIED no manifesto; OFF_BY_DEFAULT | Eventos reais, store, API console e Operational Timeline |
-| 017 | Saúde, SLIs, SLOs provisórios e cockpit operacional | VERIFIED no manifesto 0.17.0; OFF_BY_DEFAULT | SLIs calculados, SLOs provisórios, error budgets, API e Cockpit Operacional |
-| 018 | Laboratório de Falhas e Jornadas Operacionais | Depende do 017; fecha o Grupo A | Registrar fault injection visual, evidências e runbooks Mock somente após implementação |
+| 017 | Saúde, SLIs, SLOs provisórios e cockpit operacional | VERIFIED no manifesto; OFF_BY_DEFAULT | SLIs calculados, SLOs provisórios, error budgets, API e Cockpit Operacional |
+| 018 | Laboratório de Falhas e Jornadas Operacionais | VERIFIED no manifesto 0.18.0; OFF_BY_DEFAULT; fecha o Grupo A (4/4) | Failure Lab: fault injection só via mocks, predicados, evidência e runbooks provisórios |
+
+### O que o Failure Lab significa para o negócio
+
+Em linguagem simples: o laboratório permite **ensaiar falhas controladas** (parceiro lento, resposta inválida, sinal rejeitado, amostra insuficiente) sem tocar legado real. Cada ensaio gera evidência redigida e um runbook provisório — útil para treinar operação e demonstrar resiliência. **Não** muda a regra de negócio nem a Engine; permanece **MOCK_ONLY**.
 
 O 016 não deve alterar semântica da Engine. O 017 não deve transformar SLO provisório em compromisso produtivo. O 018 não deve conectar infraestrutura ou legado real.
 
@@ -686,8 +692,8 @@ O 016 não deve alterar semântica da Engine. O 017 não deve transformar SLO pr
 
 ```text
 Grupo A — Visibilidade e observabilidade
-015 VERIFIED → 016 VERIFIED → 017 VERIFIED → 018 Failure Lab
-                                                   │ gate
+015 VERIFIED → 016 VERIFIED → 017 VERIFIED → 018 VERIFIED (Grupo A completo)
+                                                   │ gate cumprido; 019 elegível (não iniciado)
                                                    ▼
 Grupo B — Operações de runtime
 019 Workers duráveis → 020 Backpressure/resiliência → 021 Ops/workbench
@@ -750,7 +756,7 @@ Uma atualização só pode promover algo de “planejado” para “atual” ap�
 - [ ] redaction, DenyAll e no-enumeration confirmados;
 - [ ] falha de telemetria comprovadamente não altera outcome/estado da Engine;
 - [ ] screenshots reais desktop/mobile referenciadas;
-- [ ] 017 e 018 mantidos como planejados;
+- [ ] 017 e 018 já VERIFIED neste baseline (checklist histórico do 016);
 - [ ] boundary `MOCK_ONLY` preservado.
 
 ### 18.4 Controle de drift
@@ -833,11 +839,11 @@ O glossário descreve a semântica do produto, não uma obrigação tecnológica
 - `SPIDER-ARCH-011` — topologia e disponibilidade;
 - `SPIDER-ARCH-012` — testes e certificação;
 - `SPIDER-ARCH-013` — Console e visualização;
-- `SPIDER-PROMPT-001–017` — evidência técnica dos incrementos verificados;
+- `SPIDER-PROMPT-001–018` — evidência técnica dos incrementos verificados;
 - `SPIDER-ROADMAP-IMPLEMENTACAO-016-026` — sequência oficial futura;
 - `spider-capability-manifest.json` — estado versionado de capabilities;
 - `spider-roadmap-015-026-contract.json` — contrato anti-drift.
 
 ---
 
-**Declaração de baseline:** este documento reflete o Spider 0.17.0 / SPIDER-PROMPT-017 VERIFIED, com `MOCK_ONLY` ativo. O 018 (Failure Lab) permanece planejado e fora deste espelho funcional.
+**Declaração de baseline:** este documento reflete o Spider 0.18.0 / SPIDER-PROMPT-018 VERIFIED, com `MOCK_ONLY` ativo. O Grupo A (015–018) está completo; o 019 permanece PLANNED (elegível, não iniciado).
