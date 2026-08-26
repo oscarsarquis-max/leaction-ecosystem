@@ -89,6 +89,19 @@ export function AuthProvider({ apiBase, children }) {
     [apiBase, applyToken],
   )
 
+  const register = useCallback(
+    async ({ codigo, nome, email, senha }) => {
+      setError(null)
+      const { data } = await axios.post(
+        `${apiBase}/api/auth/register`,
+        { codigo, nome, email, senha },
+        { timeout: 20000 },
+      )
+      return data
+    },
+    [apiBase],
+  )
+
   const logout = useCallback(async () => {
     try {
       if (token) {
@@ -117,14 +130,16 @@ export function AuthProvider({ apiBase, children }) {
       error,
       setError,
       login,
+      register,
       logout,
       clearSession,
       authHeaders,
-      isRestricted: user?.role === 'restricted_tester',
+      isRestricted:
+        user?.role === 'restricted_tester' || user?.nivel === 'usuario_executor',
       isAdmin: user?.role === 'admin',
       isAuthenticated: Boolean(user),
     }),
-    [token, user, booting, error, login, logout, clearSession, authHeaders],
+    [token, user, booting, error, login, register, logout, clearSession, authHeaders],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

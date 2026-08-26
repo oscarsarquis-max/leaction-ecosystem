@@ -36,6 +36,19 @@ def upsert(username: str, password: str, role: str) -> None:
             row.role = role
             print(f"updated {username} role={role}")
         db.commit()
+        from hub_client import nivel_from_legacy_role, sync_usuario_hub
+
+        email = row.email or (
+            row.username if "@" in row.username else f"{row.username}@phanton.local"
+        )
+        ok, err = sync_usuario_hub(
+            email=email,
+            nome=row.nome or row.username,
+            nivel=row.nivel or nivel_from_legacy_role(row.role or ""),
+            funcao=row.funcao,
+        )
+        if not ok:
+            print(f"AVISO: sync Hub falhou ({username}): {err}", file=sys.stderr)
     finally:
         db.close()
 

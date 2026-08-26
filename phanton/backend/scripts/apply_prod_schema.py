@@ -44,14 +44,24 @@ def main() -> int:
             "04_auth.sql",
             "05_crystal_ball_corpora.sql",
             "06_crystal_ball_corpus_integrity.sql",
+            "07_identidade.sql",
         ):
             path = sql_dir / name
             if not path.exists():
                 continue
             # CREATE IF NOT EXISTS already; ignore errors on ALTER duplicates
+            sql = path.read_text(encoding="utf-8")
             try:
-                conn.execute(text(path.read_text(encoding="utf-8")))
-                print(f"applied {name}")
+                if name == "07_identidade.sql":
+                    for stmt in [s.strip() for s in sql.split(";") if s.strip()]:
+                        try:
+                            conn.execute(text(stmt))
+                        except Exception as inner:
+                            print(f"skip/partial {name}: {inner}")
+                    print(f"applied {name}")
+                else:
+                    conn.execute(text(sql))
+                    print(f"applied {name}")
             except Exception as exc:
                 print(f"skip/partial {name}: {exc}")
     print("schema OK")

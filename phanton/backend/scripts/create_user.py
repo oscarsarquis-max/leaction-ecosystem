@@ -49,6 +49,19 @@ def main() -> int:
             role=args.role,
         )
         print(f"OK id={row.id} username={row.username} role={row.role}")
+        from hub_client import nivel_from_legacy_role, sync_usuario_hub
+
+        email = row.email or (
+            row.username if "@" in row.username else f"{row.username}@phanton.local"
+        )
+        ok, err = sync_usuario_hub(
+            email=email,
+            nome=row.nome or row.username,
+            nivel=row.nivel or nivel_from_legacy_role(row.role or ""),
+            funcao=row.funcao,
+        )
+        if not ok:
+            print(f"AVISO: sync Hub falhou: {err}", file=sys.stderr)
         return 0
     except ValueError as exc:
         print(f"ERRO: {exc}", file=sys.stderr)
