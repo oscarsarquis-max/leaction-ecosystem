@@ -54,6 +54,7 @@ const { registerCmsPostsRoutes } = require('./domain/cms-posts');
 const { registerCmsAssistenteChatRoutes } = require('./domain/cms-assistente-chat');
 const { registerCmsSiteConfigRoutes } = require('./domain/cms-site-config');
 const { registerCmsUploadRoutes } = require('./domain/cms-upload');
+const { registerIdentidadeRoutes } = require('./domain/identidade-api');
 const { versionPayload } = require('./version-info');
 const { createGatekeeper } = require('./domain/gatekeeper');
 
@@ -1443,6 +1444,7 @@ registerCmsPostsRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerCmsAssistenteChatRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerCmsSiteConfigRoutes(app, pool, { jwtSecret: JWT_SECRET });
 registerCmsUploadRoutes(app, { jwtSecret: JWT_SECRET });
+registerIdentidadeRoutes(app, pool, { jwtSecret: JWT_SECRET });
 startOutboxWorker(pool);
 
 // API na 4001; Action Hub (Next.js) na 4000

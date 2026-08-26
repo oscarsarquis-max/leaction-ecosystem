@@ -1,6 +1,8 @@
-"""Middleware de autorização — allowlist para restricted_tester."""
+"""Middleware de autorização — allowlist por role legado e por nível."""
 
 from __future__ import annotations
+
+from typing import Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -8,12 +10,19 @@ from starlette.responses import JSONResponse, Response
 
 from auth import (
     AuthUser,
+    NIVEL_ADMIN,
+    NIVEL_EXECUTOR,
+    NIVEL_GESTOR,
+    executor_has_permission,
     is_public_path,
+    path_allowed_for_nivel,
     path_allowed_for_restricted,
+    permission_for_executor_route,
     resolve_auth_user,
 )
 from database import SessionLocal
 from fastapi.security import HTTPAuthorizationCredentials
+from hub_client import resolve_perfil_cached
 
 
 class AuthAllowlistMiddleware(BaseHTTPMiddleware):
@@ -52,7 +61,58 @@ class AuthAllowlistMiddleware(BaseHTTPMiddleware):
                             )
                         },
                     )
+            elif user.is_nivel_user:
+                denied = _deny_nivel_user(user, request.method, path)
+                if denied is not None:
+                    return denied
         finally:
             db.close()
 
         return await call_next(request)
+
+
+def _deny_nivel_user(user: AuthUser, method: str, path: str) -> Optional[JSONResponse]:
+    email = user.email or user.username
+    perfil, err = resolve_perfil_cached(email)
+    if perfil is None:
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": (
+                    "Não foi possível confirmar o perfil no Hub e não há "
+                    "cache local para este usuário. Tente de novo em instantes."
+                    + (f" ({err})" if err else "")
+                )
+            },
+        )
+    if str(perfil.get("status") or "ativo") == "inativo":
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "Perfil inativo no catálogo de identidade."},
+        )
+    nivel = str(perfil.get("nivel") or user.nivel or "")
+    if nivel in (NIVEL_ADMIN, NIVEL_GESTOR):
+        if path_allowed_for_nivel(nivel, method, path):
+            return None
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "Acesso negado para este nível."},
+        )
+    if nivel == NIVEL_EXECUTOR:
+        permissoes = perfil.get("permissoes") or []
+        if executor_has_permission(permissoes, method, path):
+            return None
+        required = permission_for_executor_route(method, path)
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": (
+                    "Permissão insuficiente no catálogo de identidade."
+                    + (f" Exige '{required}'." if required else "")
+                )
+            },
+        )
+    return JSONResponse(
+        status_code=403,
+        content={"detail": "Nível não autorizado no catálogo de identidade."},
+    )

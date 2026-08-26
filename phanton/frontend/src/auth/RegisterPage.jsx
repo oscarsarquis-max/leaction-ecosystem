@@ -1,27 +1,35 @@
 import { useState } from 'react'
-import { Beaker, Loader2, Lock } from 'lucide-react'
+import { Beaker, Loader2, UserPlus } from 'lucide-react'
 import { useAuth } from './AuthContext'
 
-export default function LoginPage({ onGoRegister }) {
-  const { login, setError, error } = useAuth()
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
+export default function RegisterPage({ onGoLogin }) {
+  const { register, setError, error } = useAuth()
+  const [codigo, setCodigo] = useState('')
+  const [nome, setNome] = useState('')
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
   const [busy, setBusy] = useState(false)
   const [localError, setLocalError] = useState(null)
+  const [okMsg, setOkMsg] = useState(null)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setBusy(true)
     setLocalError(null)
+    setOkMsg(null)
     setError?.(null)
     try {
-      await login(username.trim(), password)
-      if (typeof window !== 'undefined' && window.location.search) {
-        window.history.replaceState({}, '', window.location.pathname)
-      }
+      await register({
+        codigo: codigo.trim(),
+        nome: nome.trim(),
+        email: email.trim(),
+        senha,
+      })
+      setOkMsg('Conta criada. Entre com o e-mail e a senha.')
+      setTimeout(() => onGoLogin?.(), 1200)
     } catch (err) {
       const msg =
-        err.response?.data?.detail || err.message || 'Falha no login'
+        err.response?.data?.detail || err.message || 'Falha no cadastro'
       setLocalError(typeof msg === 'string' ? msg : JSON.stringify(msg))
     } finally {
       setBusy(false)
@@ -39,22 +47,44 @@ export default function LoginPage({ onGoRegister }) {
             <Beaker className="h-6 w-6" />
           </div>
           <h1 className="font-display text-2xl font-semibold text-slate-950">
-            Phanton
+            Criar conta
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Acesso por usuário e senha. Contas{' '}
-            <code className="text-xs">restricted_tester</code> só veem a
-            aba Simulação (experimento com corpus).
+            Use o código de acesso que você recebeu. O login continua local no
+            Phanton.
           </p>
         </div>
 
         <label className="block text-sm">
-          <span className="font-semibold text-slate-700">Usuário</span>
+          <span className="font-semibold text-slate-700">Código de acesso</span>
           <input
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value)}
+            autoComplete="one-time-code"
+            required
+          />
+        </label>
+
+        <label className="mt-3 block text-sm">
+          <span className="font-semibold text-slate-700">Nome</span>
+          <input
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            autoComplete="name"
+            required
+          />
+        </label>
+
+        <label className="mt-3 block text-sm">
+          <span className="font-semibold text-slate-700">E-mail</span>
+          <input
+            type="email"
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
             required
           />
         </label>
@@ -64,12 +94,19 @@ export default function LoginPage({ onGoRegister }) {
           <input
             type="password"
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-400"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            autoComplete="new-password"
             required
+            minLength={4}
           />
         </label>
+
+        {okMsg ? (
+          <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            {okMsg}
+          </p>
+        ) : null}
 
         {(localError || error) && (
           <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
@@ -79,22 +116,23 @@ export default function LoginPage({ onGoRegister }) {
 
         <button
           type="submit"
-          disabled={busy || !username.trim() || !password}
+          disabled={busy || !codigo.trim() || !nome.trim() || !email.trim() || !senha}
           className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
         >
           {busy ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Lock className="h-4 w-4" />
+            <UserPlus className="h-4 w-4" />
           )}
-          Entrar
+          Cadastrar
         </button>
+
         <button
           type="button"
-          onClick={() => onGoRegister?.()}
+          onClick={() => onGoLogin?.()}
           className="mt-3 w-full text-center text-sm font-medium text-teal-800 hover:underline"
         >
-          Tenho um código — criar conta
+          Já tenho conta — entrar
         </button>
       </form>
     </div>
