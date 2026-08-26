@@ -10,3 +10,4 @@ SELECT 'CREATE DATABASE "LASim"' WHERE NOT EXISTS (SELECT FROM pg_database WHERE
 SELECT 'CREATE DATABASE "diario-obra"' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'diario-obra')\gexec
 SELECT 'CREATE DATABASE qmind' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'qmind')\gexec
 SELECT 'CREATE DATABASE panne' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'panne')\gexec
+SELECT 'CREATE DATABASE leaction_vault' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'leaction_vault')\gexec

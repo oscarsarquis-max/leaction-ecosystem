@@ -21,6 +21,8 @@ function SiteHeaderInner() {
   if (
     pathname.startsWith('/dashboard/admin') ||
     pathname.startsWith('/dashboard/cms') ||
+    pathname.startsWith('/dashboard/identidade') ||
+    pathname.startsWith('/dashboard/vault') ||
     pathname.startsWith('/dashboard/marketplace/curadoria') ||
     pathname.startsWith('/dashboard/crm')
   ) {

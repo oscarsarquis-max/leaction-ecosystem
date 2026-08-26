@@ -1,0 +1,24 @@
+{
+  "name": "vault-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cofre de credenciais de infraestrutura — isolado do Action Hub",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "schema": "node scripts/apply-schema.js",
+    "seed-admin": "node scripts/seed-admin.js",
+    "smoke": "node scripts/smoke-vault-api.js",
+    "smoke:http": "node scripts/smoke-vault-http.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.20.0"
+  }
+}

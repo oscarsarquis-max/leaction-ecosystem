@@ -9,6 +9,8 @@ import {
   ExternalLink,
   HelpCircle,
   Home,
+  IdCard,
+  KeyRound,
   Newspaper,
   Package,
   Radio,
@@ -69,6 +71,8 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
     !pathname.startsWith('/dashboard/admin') &&
     !pathname.startsWith('/dashboard/cms') &&
     !pathname.startsWith('/dashboard/crm') &&
+    !pathname.startsWith('/dashboard/identidade') &&
+    !pathname.startsWith('/dashboard/vault') &&
     !pathname.startsWith('/dashboard/marketplace') &&
     !pathname.startsWith('/dashboard/monitor');
 
@@ -236,6 +240,30 @@ export function LoggedAreaSidebar({ active, onNavigate }: LoggedAreaSidebarProps
                     aria-hidden
                   />
                   Conteúdo (CMS)
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/dashboard/identidade"
+                  className={adminLinkClass(pathActive('/dashboard/identidade'))}
+                >
+                  <IdCard
+                    className={adminIconClass(pathActive('/dashboard/identidade'))}
+                    aria-hidden
+                  />
+                  Gestão de Identidade
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/dashboard/vault"
+                  className={adminLinkClass(pathActive('/dashboard/vault'))}
+                >
+                  <KeyRound
+                    className={adminIconClass(pathActive('/dashboard/vault'))}
+                    aria-hidden
+                  />
+                  Cofre de Credenciais
                 </Link>
               </li>
               <li>

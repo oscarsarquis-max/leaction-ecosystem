@@ -429,3 +429,153 @@ export async function saveCmsAssistenteChat(
   );
   return data.assistente_chat;
 }
+
+export type IdentidadeNivel = 'admin' | 'gestor_produtivo' | 'usuario_executor';
+export type IdentidadeStatus = 'ativo' | 'inativo';
+
+export type IdentidadeUsuario = {
+  id: number;
+  nome: string;
+  email: string;
+  sistema: string;
+  nivel: IdentidadeNivel | string;
+  funcao: string | null;
+  status: IdentidadeStatus | string;
+  criado_em?: string;
+  atualizado_em?: string;
+};
+
+export type IdentidadeFuncao = {
+  id: number;
+  sistema: string;
+  nome: string;
+  nivel_associado: IdentidadeNivel | string;
+  permissoes: string[];
+};
+
+export type IdentidadePermissao = {
+  id: number;
+  sistema: string;
+  chave: string;
+  descricao: string;
+};
+
+export const IDENTIDADE_NIVEIS: IdentidadeNivel[] = [
+  'admin',
+  'gestor_produtivo',
+  'usuario_executor',
+];
+
+/** Extrai mensagens da API admin em lista (nunca JSON cru). */
+export function parseAdminApiErrors(err: unknown): string[] {
+  const data = (err as { response?: { data?: unknown } })?.response?.data;
+  const out: string[] = [];
+
+  const push = (value: unknown) => {
+    if (typeof value === 'string') {
+      const text = value.trim();
+      if (text && text !== '[object Object]') out.push(text);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach(push);
+      return;
+    }
+    if (value && typeof value === 'object') {
+      const rec = value as Record<string, unknown>;
+      if (typeof rec.error === 'string') push(rec.error);
+      else if (typeof rec.message === 'string') push(rec.message);
+    }
+  };
+
+  if (data && typeof data === 'object') {
+    const rec = data as Record<string, unknown>;
+    push(rec.error);
+    push(rec.errors);
+    if (rec.message !== rec.error) push(rec.message);
+  }
+
+  const unique = [...new Set(out)];
+  if (unique.length) return unique;
+
+  const fallback = err instanceof Error ? err.message.trim() : '';
+  return [fallback || 'Falha inesperada na API'];
+}
+
+export async function fetchIdentidadeUsuarios(
+  token: string,
+  sistema: string
+): Promise<IdentidadeUsuario[]> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{ usuarios: IdentidadeUsuario[] }>(
+    '/api/identidade/usuarios',
+    { params: { sistema } }
+  );
+  return Array.isArray(data?.usuarios) ? data.usuarios : [];
+}
+
+export async function updateIdentidadeUsuario(
+  token: string,
+  id: number,
+  body: Partial<{ nivel: string; funcao: string | null; status: string }>
+): Promise<IdentidadeUsuario> {
+  const client = createAdminClient(token);
+  const { data } = await client.put<{ usuario: IdentidadeUsuario }>(
+    `/api/identidade/usuarios/${encodeURIComponent(String(id))}`,
+    body
+  );
+  return data.usuario;
+}
+
+export async function fetchIdentidadeFuncoes(
+  token: string,
+  sistema: string
+): Promise<IdentidadeFuncao[]> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{ funcoes: IdentidadeFuncao[] }>(
+    '/api/identidade/funcoes',
+    { params: { sistema } }
+  );
+  return Array.isArray(data?.funcoes) ? data.funcoes : [];
+}
+
+export async function upsertIdentidadeFuncao(
+  token: string,
+  body: {
+    sistema: string;
+    nome: string;
+    nivel_associado: string;
+    permissoes: string[];
+  }
+): Promise<IdentidadeFuncao> {
+  const client = createAdminClient(token);
+  const { data } = await client.post<{ funcao: IdentidadeFuncao }>(
+    '/api/identidade/funcoes',
+    body
+  );
+  return data.funcao;
+}
+
+export async function fetchIdentidadePermissoes(
+  token: string,
+  sistema: string
+): Promise<IdentidadePermissao[]> {
+  const client = createAdminClient(token);
+  const { data } = await client.get<{ permissoes: IdentidadePermissao[] }>(
+    '/api/identidade/permissoes',
+    { params: { sistema } }
+  );
+  return Array.isArray(data?.permissoes) ? data.permissoes : [];
+}
+
+export async function createIdentidadePermissao(
+  token: string,
+  body: { sistema: string; chave: string; descricao: string }
+): Promise<IdentidadePermissao> {
+  const client = createAdminClient(token);
+  const { data } = await client.post<{ permissao: IdentidadePermissao }>(
+    '/api/identidade/permissoes',
+    body
+  );
+  return data.permissao;
+}
