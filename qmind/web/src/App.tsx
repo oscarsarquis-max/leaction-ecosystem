@@ -54,6 +54,9 @@ const ImprovementCaseDetailPage = lazy(() =>
     default: m.ImprovementCaseDetailPage,
   })),
 );
+const CockpitPage = lazy(() =>
+  import("@/pages/CockpitPage").then((m) => ({ default: m.CockpitPage })),
+);
 const GuidedTourPage = lazy(() =>
   import("@/pages/GuidedTourPage").then((m) => ({ default: m.GuidedTourPage })),
 );
@@ -101,6 +104,7 @@ export default function App() {
 
               <Route element={<AppShell />}>
                 <Route path="guided-tour" element={<GuidedTourPage />} />
+                <Route path="cockpit" element={<CockpitPage />} />
                 <Route path="assessments" element={<AssessmentsPage />} />
                 <Route path="execution" element={<ExecutionLayout />}>
                   <Route index element={<BoardPage />} />

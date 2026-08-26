@@ -10,6 +10,7 @@ import {
   canElaborateMaturity,
   canMutateAssessments,
   canReadAssessments,
+  canReadCockpit,
   canReviewFindings,
   canReviewMaturity,
   canStartAssessment,
@@ -57,5 +58,12 @@ describe("assessment permissions", () => {
     expect(canApproveMaturity(["quality_manager"], "a", "a")).toBe(false);
     expect(maturityEvidenceHint(3)).toMatch(/aprovada/i);
     expect(maturityEvidenceHint(5)).toMatch(/melhoria/i);
+  });
+
+  it("allows action_owner and platform_admin on cockpit read", () => {
+    expect(canReadCockpit(["action_owner"])).toBe(true);
+    expect(canReadCockpit(["platform_admin"])).toBe(true);
+    expect(canReadCockpit(["reader"])).toBe(true);
+    expect(canReadCockpit([])).toBe(false);
   });
 });

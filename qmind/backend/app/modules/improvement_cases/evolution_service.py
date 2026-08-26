@@ -31,7 +31,6 @@ from app.modules.improvement_cases.execution_intelligence_schemas import (
 from app.modules.improvement_cases.problem_schemas import ImprovementCaseAnalysisRunOut
 from app.modules.measurements import service as measurements_service
 from app.modules.orgs.service import require_role
-from app.schemas.enums import MeasurementPosture
 
 _READ_ROLES = (
     "org_admin",
@@ -258,27 +257,6 @@ def _action_summary(ctx: OrgContext, case_id: UUID) -> ActionSummary:
 # A planned-but-unproven measurement is missing information. `not_planned` is
 # deliberately absent: a case that never planned measurement is judged by the
 # other gates, exactly as it was before measurement existed.
-_BLOCKING_POSTURES = frozenset(
-    {
-        MeasurementPosture.awaiting_baseline.value,
-        MeasurementPosture.awaiting_measurement.value,
-        MeasurementPosture.overdue.value,
-    }
-)
-
-_POSTURE_REASON = {
-    MeasurementPosture.awaiting_baseline.value: (
-        "Falta a linha de base de um indicador planejado."
-    ),
-    MeasurementPosture.awaiting_measurement.value: (
-        "Um indicador planejado ainda não foi medido depois da ação."
-    ),
-    MeasurementPosture.overdue.value: (
-        "Há medição atrasada em um indicador planejado."
-    ),
-}
-
-
 def _closure_readiness(
     *,
     latest_run: ImprovementCaseAnalysisRunOut | None,
@@ -286,38 +264,19 @@ def _closure_readiness(
     latest_obs: OutcomeObservationOut | None,
     measurement_posture: str,
 ) -> tuple[ClosureReadiness, str]:
-    """Readiness to *review* closure — never a verdict on efficacy.
+    """Thin adapter — policy lives in ``evaluate_closure_readiness``."""
+    from app.modules.improvement_cases.closure_readiness import evaluate_closure_readiness
 
-    A met target does not close a case on its own, and a missed target does not
-    fail it: both are inputs a human weighs. What blocks review is missing
-    information, including a measurement that was promised and never taken.
-    """
-    if latest_run is None:
-        return "insufficient_information", "Ainda não há análise para este caso."
-    if latest_run.is_stale:
-        return (
-            "insufficient_information",
-            "O contexto mudou desde a última análise — rode a análise novamente.",
-        )
-    if action_summary.total < 1:
-        return "insufficient_information", "Nenhuma ação foi criada a partir da análise."
-    if any(i.status not in _COMPLETED_STATUSES for i in action_summary.items):
-        return "insufficient_information", "Há ações que ainda não foram concluídas."
-    if latest_obs is None:
-        return (
-            "insufficient_information",
-            "Ninguém registrou ainda o que aconteceu com o problema.",
-        )
-    if latest_obs.result_direction == "not_yet_measured":
-        return (
-            "insufficient_information",
-            "A última observação diz que o resultado ainda não foi medido.",
-        )
-    if measurement_posture in _BLOCKING_POSTURES:
-        return "insufficient_information", _POSTURE_REASON[measurement_posture]
-    return (
-        "ready_for_review",
-        "Ações concluídas e resultado observado: leve o caso para revisão de encerramento.",
+    return evaluate_closure_readiness(
+        has_problem_analysis=latest_run is not None,
+        problem_analysis_is_stale=bool(latest_run is not None and latest_run.is_stale),
+        action_count=action_summary.total,
+        has_incomplete_actions=any(
+            i.status not in _COMPLETED_STATUSES for i in action_summary.items
+        ),
+        has_outcome=latest_obs is not None,
+        outcome_direction=latest_obs.result_direction if latest_obs else None,
+        measurement_posture=measurement_posture,
     )
 
 

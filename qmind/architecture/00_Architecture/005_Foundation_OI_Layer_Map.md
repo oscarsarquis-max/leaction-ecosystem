@@ -9,7 +9,7 @@
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │                     Experiência (Web)                         │
-│   Shell · Tour · Plan · Field · Map · Execução · Actions · Assistant   │
+│   Shell · Tour · Plan · Field · Map · Execução · Cockpit · Actions · Assistant   │
 └────────────────────────────┬────────────────────────────────┘
                              │
          ┌───────────────────┴───────────────────┐

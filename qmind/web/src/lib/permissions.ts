@@ -53,6 +53,22 @@ export function canReadImprovementCases(
   return (roles ?? []).some((r) => READ_ROLES.has(r));
 }
 
+/**
+ * Cockpit read gate — mirrors improvement_cases.evolution_service._READ_ROLES
+ * (includes action_owner + platform_admin beyond assessment READ_ROLES).
+ */
+const COCKPIT_READ_ROLES = new Set([
+  ...READ_ROLES,
+  "action_owner",
+  "platform_admin",
+]);
+
+export function canReadCockpit(
+  roles: readonly string[] | undefined,
+): boolean {
+  return (roles ?? []).some((r) => COCKPIT_READ_ROLES.has(r));
+}
+
 const EXECUTION_INTELLIGENCE_ROLES = new Set([
   "org_admin",
   "quality_manager",

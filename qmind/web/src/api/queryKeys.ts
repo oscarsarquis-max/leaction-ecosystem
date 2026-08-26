@@ -98,6 +98,32 @@ export const queryKeys = {
       caseId,
       "execution-intelligence",
     ] as const,
+  isoIntelligenceCockpitSummary: (organizationId: string) =>
+    ["org", organizationId, "iso-intelligence", "cockpit", "summary"] as const,
+  isoIntelligenceCockpitCases: (
+    organizationId: string,
+    filters: Record<string, string | undefined>,
+  ) =>
+    [
+      "org",
+      organizationId,
+      "iso-intelligence",
+      "cockpit",
+      "cases",
+      filters,
+    ] as const,
+  isoIntelligenceCockpitActivity: (
+    organizationId: string,
+    filters?: { activity_window_days?: number; limit?: number },
+  ) =>
+    [
+      "org",
+      organizationId,
+      "iso-intelligence",
+      "cockpit",
+      "activity",
+      filters ?? {},
+    ] as const,
   executionBoard: (
     organizationId: string,
     filters: { squadId?: string; sprintId?: string },

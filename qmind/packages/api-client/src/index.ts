@@ -114,3 +114,22 @@ export type {
   TargetEvaluationState,
   TargetPosture,
 } from "./generated/types.gen.js";
+
+/** ISO Intelligence Cockpit (ISOI-010). */
+export type {
+  CockpitActivityItemOut,
+  CockpitActivityPageOut,
+  CockpitCaseItemOut,
+  CockpitCasesPageOut,
+  CockpitCoverage,
+  CockpitScopeOut,
+  CockpitSummaryOut,
+  CaseTotalsOut,
+  EvidenceTotalsOut,
+  ExecutionTotalsOut,
+  IntelligenceCoverageOut,
+  LabeledCount,
+  MeasurementTotalsOut,
+  PriorityReasonOut,
+  SignalCountOut,
+} from "./generated/types.gen.js";

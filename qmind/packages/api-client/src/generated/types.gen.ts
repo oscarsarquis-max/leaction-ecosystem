@@ -1420,6 +1420,36 @@ export type CarryDecisionIn = {
 };
 
 /**
+ * CaseTotalsOut
+ */
+export type CaseTotalsOut = {
+    /**
+     * Active
+     */
+    active: number;
+    /**
+     * Closed
+     */
+    closed: number;
+    /**
+     * Ready For Review
+     */
+    ready_for_review: number;
+    /**
+     * Reviewing
+     */
+    reviewing: number;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Unit
+     */
+    unit?: string;
+};
+
+/**
  * CeremonyRecordCreate
  */
 export type CeremonyRecordCreate = {
@@ -1581,6 +1611,280 @@ export type CloseIn = {
      * Waiver Reason
      */
     waiver_reason?: string | null;
+};
+
+/**
+ * CockpitActivityItemOut
+ */
+export type CockpitActivityItemOut = {
+    /**
+     * Action Item Id
+     */
+    action_item_id?: string | null;
+    /**
+     * Case Id
+     */
+    case_id?: string | null;
+    /**
+     * Event Type
+     */
+    event_type: 'check_in_recorded' | 'impediment_opened' | 'impediment_resolved' | 'measurement_recorded' | 'measurement_corrected' | 'outcome_observed' | 'execution_intelligence_run' | 'case_status_changed' | 'action_status_changed';
+    /**
+     * Event Type Label
+     */
+    event_type_label: string;
+    /**
+     * Occurred At
+     */
+    occurred_at: string;
+    /**
+     * Summary
+     */
+    summary: string;
+};
+
+/**
+ * CockpitActivityPageOut
+ */
+export type CockpitActivityPageOut = {
+    /**
+     * Activity Window Days
+     */
+    activity_window_days: 7 | 30 | 90;
+    /**
+     * As Of
+     */
+    as_of: string;
+    coverage: CockpitCoverage;
+    /**
+     * Items
+     */
+    items?: Array<CockpitActivityItemOut>;
+    /**
+     * Limit
+     */
+    limit: number;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
+};
+
+/**
+ * CockpitCaseItemOut
+ */
+export type CockpitCaseItemOut = {
+    /**
+     * Action Count
+     */
+    action_count: number;
+    /**
+     * Active Impediment Count
+     */
+    active_impediment_count: number;
+    /**
+     * Case Id
+     */
+    case_id: string;
+    /**
+     * Case Status
+     */
+    case_status: 'open' | 'analyzing' | 'acting' | 'reviewing' | 'closed';
+    /**
+     * Closure Readiness
+     */
+    closure_readiness: 'insufficient_information' | 'ready_for_review';
+    /**
+     * Closure Readiness Reason
+     */
+    closure_readiness_reason?: string;
+    /**
+     * Completed Action Count
+     */
+    completed_action_count: number;
+    /**
+     * Current Attention Signal Count
+     */
+    current_attention_signal_count?: number;
+    /**
+     * Execution Posture
+     */
+    execution_posture?: ('insufficient_information' | 'not_started' | 'progressing' | 'attention_required' | 'stalled' | 'awaiting_result_evaluation' | 'result_observed') | null;
+    /**
+     * Intelligence Freshness
+     */
+    intelligence_freshness: 'current' | 'stale' | 'never_analyzed';
+    /**
+     * Intelligence Freshness Label
+     */
+    intelligence_freshness_label: string;
+    /**
+     * Intelligence Generated At
+     */
+    intelligence_generated_at?: string | null;
+    /**
+     * Intelligence Mechanism Version
+     */
+    intelligence_mechanism_version?: string | null;
+    /**
+     * Intelligence Signal Count
+     */
+    intelligence_signal_count?: number;
+    /**
+     * Last Activity At
+     */
+    last_activity_at?: string | null;
+    measurement_posture: MeasurementPosture;
+    /**
+     * Oldest Due At
+     */
+    oldest_due_at?: string | null;
+    /**
+     * Open Dependency Count
+     */
+    open_dependency_count: number;
+    /**
+     * Outcome Observed At
+     */
+    outcome_observed_at?: string | null;
+    /**
+     * Outcome Result Direction
+     */
+    outcome_result_direction?: ('improved' | 'unchanged' | 'worsened' | 'not_yet_measured') | null;
+    /**
+     * Overdue Action Count
+     */
+    overdue_action_count: number;
+    /**
+     * Overdue Dependency Count
+     */
+    overdue_dependency_count: number;
+    /**
+     * Priority Band
+     */
+    priority_band: 'immediate_attention' | 'attention' | 'follow_up' | 'on_course' | 'completed_or_observed';
+    /**
+     * Priority Band Label
+     */
+    priority_band_label: string;
+    /**
+     * Priority Reasons
+     */
+    priority_reasons?: Array<PriorityReasonOut>;
+    /**
+     * Problem Label
+     */
+    problem_label: string;
+    /**
+     * Related Process
+     */
+    related_process?: string | null;
+    substantiation: SubstantiationLevel;
+    target_posture: TargetPosture;
+};
+
+/**
+ * CockpitCasesPageOut
+ */
+export type CockpitCasesPageOut = {
+    /**
+     * As Of
+     */
+    as_of: string;
+    coverage: CockpitCoverage;
+    /**
+     * Items
+     */
+    items?: Array<CockpitCaseItemOut>;
+    /**
+     * Limit
+     */
+    limit: number;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
+};
+
+/**
+ * CockpitCoverage
+ */
+export type CockpitCoverage = {
+    /**
+     * Analyzed Count
+     */
+    analyzed_count: number;
+    /**
+     * Complete
+     */
+    complete?: boolean;
+    /**
+     * Excluded Count
+     */
+    excluded_count?: number;
+    /**
+     * Included Count
+     */
+    included_count: number;
+};
+
+/**
+ * CockpitScopeOut
+ */
+export type CockpitScopeOut = {
+    /**
+     * Activity Window Days
+     */
+    activity_window_days?: 7 | 30 | 90;
+    /**
+     * Case Status Filter
+     */
+    case_status_filter?: Array<'open' | 'analyzing' | 'acting' | 'reviewing' | 'closed'> | null;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+};
+
+/**
+ * CockpitSummaryOut
+ */
+export type CockpitSummaryOut = {
+    /**
+     * As Of
+     */
+    as_of: string;
+    case_totals: CaseTotalsOut;
+    coverage: CockpitCoverage;
+    evidence: EvidenceTotalsOut;
+    execution: ExecutionTotalsOut;
+    /**
+     * Execution Posture Distribution Current
+     */
+    execution_posture_distribution_current?: Array<LabeledCount>;
+    /**
+     * Execution Posture Distribution Stale
+     */
+    execution_posture_distribution_stale?: Array<LabeledCount>;
+    intelligence_coverage: IntelligenceCoverageOut;
+    measurement: MeasurementTotalsOut;
+    /**
+     * Priority Distribution
+     */
+    priority_distribution?: Array<LabeledCount>;
+    /**
+     * Recent Activity
+     */
+    recent_activity?: Array<CockpitActivityItemOut>;
+    scope: CockpitScopeOut;
+    /**
+     * Signals Current
+     */
+    signals_current?: Array<SignalCountOut>;
+    /**
+     * Signals Stale
+     */
+    signals_stale?: Array<SignalCountOut>;
 };
 
 /**
@@ -2018,6 +2322,28 @@ export type EvidenceReference = {
  * EvidenceStatus
  */
 export type EvidenceStatus = 'upload_pending' | 'quarantined' | 'rejected' | 'approved' | 'superseded' | 'pending_disposal' | 'disposed';
+
+/**
+ * EvidenceTotalsOut
+ */
+export type EvidenceTotalsOut = {
+    /**
+     * Claims Execution Actions
+     */
+    claims_execution_actions: number;
+    /**
+     * Unit
+     */
+    unit?: string;
+    /**
+     * With Approved Evidence
+     */
+    with_approved_evidence: number;
+    /**
+     * Without Approved Evidence
+     */
+    without_approved_evidence: number;
+};
 
 /**
  * EvidenceTransitionResult
@@ -2653,6 +2979,52 @@ export type ExecutionSignal = {
      * Title
      */
     title: string;
+};
+
+/**
+ * ExecutionTotalsOut
+ */
+export type ExecutionTotalsOut = {
+    /**
+     * Actions Without Recent Check In
+     */
+    actions_without_recent_check_in: number;
+    /**
+     * Active Actions
+     */
+    active_actions: number;
+    /**
+     * Active Impediments
+     */
+    active_impediments: number;
+    /**
+     * Blocked Cases
+     */
+    blocked_cases: number;
+    /**
+     * Completed Actions
+     */
+    completed_actions: number;
+    /**
+     * Open Dependencies
+     */
+    open_dependencies: number;
+    /**
+     * Overdue Actions
+     */
+    overdue_actions: number;
+    /**
+     * Overdue Dependencies
+     */
+    overdue_dependencies: number;
+    /**
+     * Unit Actions
+     */
+    unit_actions?: string;
+    /**
+     * Unit Cases
+     */
+    unit_cases?: string;
 };
 
 /**
@@ -3478,10 +3850,6 @@ export type IndicatorCreate = {
      */
     baseline_at?: string | null;
     /**
-     * Baseline Status
-     */
-    baseline_status?: 'missing' | 'recorded' | 'unavailable_justified';
-    /**
      * Baseline Unavailable Reason
      */
     baseline_unavailable_reason?: string | null;
@@ -3849,6 +4217,28 @@ export type InsightExplanation = {
 };
 
 /**
+ * IntelligenceCoverageOut
+ */
+export type IntelligenceCoverageOut = {
+    /**
+     * Current
+     */
+    current: number;
+    /**
+     * Never Analyzed
+     */
+    never_analyzed: number;
+    /**
+     * Stale
+     */
+    stale: number;
+    /**
+     * Unit
+     */
+    unit?: string;
+};
+
+/**
  * InterviewCreate
  * Create interview — planning fields optional; answers still require in_progress.
  */
@@ -4161,6 +4551,28 @@ export type JobOut = {
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
 /**
+ * LabeledCount
+ */
+export type LabeledCount = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Unit
+     */
+    unit?: string;
+};
+
+/**
  * MaturityPackageCreate
  */
 export type MaturityPackageCreate = {
@@ -4316,6 +4728,10 @@ export type MeasurementIndicatorFacts = {
      * Baseline At
      */
     baseline_at?: string | null;
+    /**
+     * Baseline Status
+     */
+    baseline_status: 'missing' | 'recorded' | 'unavailable_justified';
     /**
      * Baseline Value
      */
@@ -4760,6 +5176,36 @@ export type MeasurementSummaryOut = {
      * What To Do Next
      */
     what_to_do_next: string;
+};
+
+/**
+ * MeasurementTotalsOut
+ */
+export type MeasurementTotalsOut = {
+    /**
+     * By Measurement Posture
+     */
+    by_measurement_posture?: Array<LabeledCount>;
+    /**
+     * By Substantiation
+     */
+    by_substantiation?: Array<LabeledCount>;
+    /**
+     * By Target Posture
+     */
+    by_target_posture?: Array<LabeledCount>;
+    /**
+     * Overdue Indicators
+     */
+    overdue_indicators: number;
+    /**
+     * Unit Cases
+     */
+    unit_cases?: string;
+    /**
+     * Unit Indicators
+     */
+    unit_indicators?: string;
 };
 
 /**
@@ -5274,6 +5720,20 @@ export type PresignedUploadOut = {
      * Url
      */
     url: string;
+};
+
+/**
+ * PriorityReasonOut
+ */
+export type PriorityReasonOut = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Label
+     */
+    label: string;
 };
 
 /**
@@ -6031,6 +6491,28 @@ export type ScoresUpsertIn = {
      * Scores
      */
     scores: Array<ScoreUpsert>;
+};
+
+/**
+ * SignalCountOut
+ */
+export type SignalCountOut = {
+    /**
+     * Category
+     */
+    category?: ('flow' | 'schedule' | 'blocker' | 'dependency' | 'evidence' | 'measurement' | 'outcome') | null;
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Level
+     */
+    level?: ('information' | 'watch' | 'attention') | null;
+    /**
+     * Unit
+     */
+    unit?: string;
 };
 
 /**
@@ -22203,6 +22685,318 @@ export type GetCurrentOrganizationIntelligenceRunResponses = {
 };
 
 export type GetCurrentOrganizationIntelligenceRunResponse = GetCurrentOrganizationIntelligenceRunResponses[keyof GetCurrentOrganizationIntelligenceRunResponses];
+
+export type ListCurrentOrganizationIsoIntelligenceCockpitActivityData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Activity Window Days
+         */
+        activity_window_days?: 7 | 30 | 90;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Cursor
+         */
+        cursor?: string | null;
+    };
+    url: '/api/v1/organizations/current/iso-intelligence/cockpit/activity';
+};
+
+export type ListCurrentOrganizationIsoIntelligenceCockpitActivityErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListCurrentOrganizationIsoIntelligenceCockpitActivityError = ListCurrentOrganizationIsoIntelligenceCockpitActivityErrors[keyof ListCurrentOrganizationIsoIntelligenceCockpitActivityErrors];
+
+export type ListCurrentOrganizationIsoIntelligenceCockpitActivityResponses = {
+    /**
+     * Successful Response
+     */
+    200: CockpitActivityPageOut;
+};
+
+export type ListCurrentOrganizationIsoIntelligenceCockpitActivityResponse = ListCurrentOrganizationIsoIntelligenceCockpitActivityResponses[keyof ListCurrentOrganizationIsoIntelligenceCockpitActivityResponses];
+
+export type ListCurrentOrganizationIsoIntelligenceCockpitCasesData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Case Status
+         */
+        case_status?: Array<'open' | 'analyzing' | 'acting' | 'reviewing' | 'closed'> | null;
+        /**
+         * Priority Band
+         */
+        priority_band?: ('immediate_attention' | 'attention' | 'follow_up' | 'on_course' | 'completed_or_observed') | null;
+        /**
+         * Execution Posture
+         */
+        execution_posture?: ('insufficient_information' | 'not_started' | 'progressing' | 'attention_required' | 'stalled' | 'awaiting_result_evaluation' | 'result_observed') | null;
+        /**
+         * Intelligence Freshness
+         */
+        intelligence_freshness?: ('current' | 'stale' | 'never_analyzed') | null;
+        /**
+         * Measurement Posture
+         */
+        measurement_posture?: MeasurementPosture | null;
+        /**
+         * Target Posture
+         */
+        target_posture?: TargetPosture | null;
+        /**
+         * Signal Category
+         */
+        signal_category?: ('flow' | 'schedule' | 'blocker' | 'dependency' | 'evidence' | 'measurement' | 'outcome') | null;
+        /**
+         * Related Process
+         */
+        related_process?: string | null;
+        /**
+         * Search
+         */
+        search?: string | null;
+        /**
+         * Ready For Review
+         */
+        ready_for_review?: boolean | null;
+        /**
+         * Has Overdue Actions
+         */
+        has_overdue_actions?: boolean | null;
+        /**
+         * Has Active Impediment
+         */
+        has_active_impediment?: boolean | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Cursor
+         */
+        cursor?: string | null;
+    };
+    url: '/api/v1/organizations/current/iso-intelligence/cockpit/cases';
+};
+
+export type ListCurrentOrganizationIsoIntelligenceCockpitCasesErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListCurrentOrganizationIsoIntelligenceCockpitCasesError = ListCurrentOrganizationIsoIntelligenceCockpitCasesErrors[keyof ListCurrentOrganizationIsoIntelligenceCockpitCasesErrors];
+
+export type ListCurrentOrganizationIsoIntelligenceCockpitCasesResponses = {
+    /**
+     * Successful Response
+     */
+    200: CockpitCasesPageOut;
+};
+
+export type ListCurrentOrganizationIsoIntelligenceCockpitCasesResponse = ListCurrentOrganizationIsoIntelligenceCockpitCasesResponses[keyof ListCurrentOrganizationIsoIntelligenceCockpitCasesResponses];
+
+export type GetCurrentOrganizationIsoIntelligenceCockpitSummaryData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Activity Window Days
+         */
+        activity_window_days?: 7 | 30 | 90;
+    };
+    url: '/api/v1/organizations/current/iso-intelligence/cockpit/summary';
+};
+
+export type GetCurrentOrganizationIsoIntelligenceCockpitSummaryErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetCurrentOrganizationIsoIntelligenceCockpitSummaryError = GetCurrentOrganizationIsoIntelligenceCockpitSummaryErrors[keyof GetCurrentOrganizationIsoIntelligenceCockpitSummaryErrors];
+
+export type GetCurrentOrganizationIsoIntelligenceCockpitSummaryResponses = {
+    /**
+     * Successful Response
+     */
+    200: CockpitSummaryOut;
+};
+
+export type GetCurrentOrganizationIsoIntelligenceCockpitSummaryResponse = GetCurrentOrganizationIsoIntelligenceCockpitSummaryResponses[keyof GetCurrentOrganizationIsoIntelligenceCockpitSummaryResponses];
 
 export type ListMeasurementPlansData = {
     body?: never;

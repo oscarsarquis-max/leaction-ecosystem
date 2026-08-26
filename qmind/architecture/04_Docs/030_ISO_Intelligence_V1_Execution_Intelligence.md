@@ -4,7 +4,7 @@
 - Data: 2026-08-26
 - Mecanismo OI: `execution-intelligence-rules-v1`
 - Pin OI: **`34ead2e`** (`feat(oi): add execution intelligence v1`)
-- Pin de entrega (Core): este commit — `feat(qmind): integrate execution intelligence`
+- Pin de entrega (Core): **`21df383`** (`feat(qmind): integrate execution intelligence`)
 
 ## Fronteira
 

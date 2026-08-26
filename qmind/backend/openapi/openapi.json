@@ -2926,6 +2926,50 @@
         "title": "CarryDecisionIn",
         "type": "object"
       },
+      "CaseTotalsOut": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "minimum": 0.0,
+            "title": "Active",
+            "type": "integer"
+          },
+          "closed": {
+            "minimum": 0.0,
+            "title": "Closed",
+            "type": "integer"
+          },
+          "ready_for_review": {
+            "minimum": 0.0,
+            "title": "Ready For Review",
+            "type": "integer"
+          },
+          "reviewing": {
+            "minimum": 0.0,
+            "title": "Reviewing",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "unit": {
+            "default": "cases",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "total",
+          "active",
+          "reviewing",
+          "closed",
+          "ready_for_review"
+        ],
+        "title": "CaseTotalsOut",
+        "type": "object"
+      },
       "CeremonyRecordCreate": {
         "properties": {
           "agenda_event_id": {
@@ -3199,6 +3243,584 @@
           }
         },
         "title": "CloseIn",
+        "type": "object"
+      },
+      "CockpitActivityItemOut": {
+        "additionalProperties": false,
+        "properties": {
+          "action_item_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Item Id"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "event_type": {
+            "enum": [
+              "check_in_recorded",
+              "impediment_opened",
+              "impediment_resolved",
+              "measurement_recorded",
+              "measurement_corrected",
+              "outcome_observed",
+              "execution_intelligence_run",
+              "case_status_changed",
+              "action_status_changed"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "event_type_label": {
+            "title": "Event Type Label",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_type",
+          "event_type_label",
+          "occurred_at",
+          "summary"
+        ],
+        "title": "CockpitActivityItemOut",
+        "type": "object"
+      },
+      "CockpitActivityPageOut": {
+        "additionalProperties": false,
+        "properties": {
+          "activity_window_days": {
+            "enum": [
+              7,
+              30,
+              90
+            ],
+            "title": "Activity Window Days",
+            "type": "integer"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/CockpitCoverage"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CockpitActivityItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "as_of",
+          "activity_window_days",
+          "limit",
+          "coverage"
+        ],
+        "title": "CockpitActivityPageOut",
+        "type": "object"
+      },
+      "CockpitCaseItemOut": {
+        "additionalProperties": false,
+        "properties": {
+          "action_count": {
+            "minimum": 0.0,
+            "title": "Action Count",
+            "type": "integer"
+          },
+          "active_impediment_count": {
+            "minimum": 0.0,
+            "title": "Active Impediment Count",
+            "type": "integer"
+          },
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "case_status": {
+            "enum": [
+              "open",
+              "analyzing",
+              "acting",
+              "reviewing",
+              "closed"
+            ],
+            "title": "Case Status",
+            "type": "string"
+          },
+          "closure_readiness": {
+            "enum": [
+              "insufficient_information",
+              "ready_for_review"
+            ],
+            "title": "Closure Readiness",
+            "type": "string"
+          },
+          "closure_readiness_reason": {
+            "default": "",
+            "title": "Closure Readiness Reason",
+            "type": "string"
+          },
+          "completed_action_count": {
+            "minimum": 0.0,
+            "title": "Completed Action Count",
+            "type": "integer"
+          },
+          "current_attention_signal_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Current Attention Signal Count",
+            "type": "integer"
+          },
+          "execution_posture": {
+            "anyOf": [
+              {
+                "enum": [
+                  "insufficient_information",
+                  "not_started",
+                  "progressing",
+                  "attention_required",
+                  "stalled",
+                  "awaiting_result_evaluation",
+                  "result_observed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Posture"
+          },
+          "intelligence_freshness": {
+            "enum": [
+              "current",
+              "stale",
+              "never_analyzed"
+            ],
+            "title": "Intelligence Freshness",
+            "type": "string"
+          },
+          "intelligence_freshness_label": {
+            "title": "Intelligence Freshness Label",
+            "type": "string"
+          },
+          "intelligence_generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intelligence Generated At"
+          },
+          "intelligence_mechanism_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intelligence Mechanism Version"
+          },
+          "intelligence_signal_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Intelligence Signal Count",
+            "type": "integer"
+          },
+          "last_activity_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Activity At"
+          },
+          "measurement_posture": {
+            "$ref": "#/components/schemas/MeasurementPosture"
+          },
+          "oldest_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Due At"
+          },
+          "open_dependency_count": {
+            "minimum": 0.0,
+            "title": "Open Dependency Count",
+            "type": "integer"
+          },
+          "outcome_observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome Observed At"
+          },
+          "outcome_result_direction": {
+            "anyOf": [
+              {
+                "enum": [
+                  "improved",
+                  "unchanged",
+                  "worsened",
+                  "not_yet_measured"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome Result Direction"
+          },
+          "overdue_action_count": {
+            "minimum": 0.0,
+            "title": "Overdue Action Count",
+            "type": "integer"
+          },
+          "overdue_dependency_count": {
+            "minimum": 0.0,
+            "title": "Overdue Dependency Count",
+            "type": "integer"
+          },
+          "priority_band": {
+            "enum": [
+              "immediate_attention",
+              "attention",
+              "follow_up",
+              "on_course",
+              "completed_or_observed"
+            ],
+            "title": "Priority Band",
+            "type": "string"
+          },
+          "priority_band_label": {
+            "title": "Priority Band Label",
+            "type": "string"
+          },
+          "priority_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/PriorityReasonOut"
+            },
+            "title": "Priority Reasons",
+            "type": "array"
+          },
+          "problem_label": {
+            "title": "Problem Label",
+            "type": "string"
+          },
+          "related_process": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Process"
+          },
+          "substantiation": {
+            "$ref": "#/components/schemas/SubstantiationLevel"
+          },
+          "target_posture": {
+            "$ref": "#/components/schemas/TargetPosture"
+          }
+        },
+        "required": [
+          "case_id",
+          "problem_label",
+          "case_status",
+          "priority_band",
+          "priority_band_label",
+          "action_count",
+          "completed_action_count",
+          "overdue_action_count",
+          "active_impediment_count",
+          "open_dependency_count",
+          "overdue_dependency_count",
+          "measurement_posture",
+          "target_posture",
+          "substantiation",
+          "intelligence_freshness",
+          "intelligence_freshness_label",
+          "closure_readiness"
+        ],
+        "title": "CockpitCaseItemOut",
+        "type": "object"
+      },
+      "CockpitCasesPageOut": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/CockpitCoverage"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CockpitCaseItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "as_of",
+          "limit",
+          "coverage"
+        ],
+        "title": "CockpitCasesPageOut",
+        "type": "object"
+      },
+      "CockpitCoverage": {
+        "additionalProperties": false,
+        "properties": {
+          "analyzed_count": {
+            "minimum": 0.0,
+            "title": "Analyzed Count",
+            "type": "integer"
+          },
+          "complete": {
+            "default": true,
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "excluded_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Excluded Count",
+            "type": "integer"
+          },
+          "included_count": {
+            "minimum": 0.0,
+            "title": "Included Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "analyzed_count",
+          "included_count"
+        ],
+        "title": "CockpitCoverage",
+        "type": "object"
+      },
+      "CockpitScopeOut": {
+        "additionalProperties": false,
+        "properties": {
+          "activity_window_days": {
+            "default": 30,
+            "enum": [
+              7,
+              30,
+              90
+            ],
+            "title": "Activity Window Days",
+            "type": "integer"
+          },
+          "case_status_filter": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "open",
+                    "analyzing",
+                    "acting",
+                    "reviewing",
+                    "closed"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Status Filter"
+          },
+          "organization_id": {
+            "format": "uuid",
+            "title": "Organization Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization_id"
+        ],
+        "title": "CockpitScopeOut",
+        "type": "object"
+      },
+      "CockpitSummaryOut": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "case_totals": {
+            "$ref": "#/components/schemas/CaseTotalsOut"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/CockpitCoverage"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/EvidenceTotalsOut"
+          },
+          "execution": {
+            "$ref": "#/components/schemas/ExecutionTotalsOut"
+          },
+          "execution_posture_distribution_current": {
+            "items": {
+              "$ref": "#/components/schemas/LabeledCount"
+            },
+            "title": "Execution Posture Distribution Current",
+            "type": "array"
+          },
+          "execution_posture_distribution_stale": {
+            "items": {
+              "$ref": "#/components/schemas/LabeledCount"
+            },
+            "title": "Execution Posture Distribution Stale",
+            "type": "array"
+          },
+          "intelligence_coverage": {
+            "$ref": "#/components/schemas/IntelligenceCoverageOut"
+          },
+          "measurement": {
+            "$ref": "#/components/schemas/MeasurementTotalsOut"
+          },
+          "priority_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/LabeledCount"
+            },
+            "title": "Priority Distribution",
+            "type": "array"
+          },
+          "recent_activity": {
+            "items": {
+              "$ref": "#/components/schemas/CockpitActivityItemOut"
+            },
+            "title": "Recent Activity",
+            "type": "array"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/CockpitScopeOut"
+          },
+          "signals_current": {
+            "items": {
+              "$ref": "#/components/schemas/SignalCountOut"
+            },
+            "title": "Signals Current",
+            "type": "array"
+          },
+          "signals_stale": {
+            "items": {
+              "$ref": "#/components/schemas/SignalCountOut"
+            },
+            "title": "Signals Stale",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "scope",
+          "case_totals",
+          "execution",
+          "evidence",
+          "measurement",
+          "intelligence_coverage",
+          "coverage"
+        ],
+        "title": "CockpitSummaryOut",
         "type": "object"
       },
       "ConcludePlanningIn": {
@@ -4064,6 +4686,38 @@
         ],
         "title": "EvidenceStatus",
         "type": "string"
+      },
+      "EvidenceTotalsOut": {
+        "additionalProperties": false,
+        "properties": {
+          "claims_execution_actions": {
+            "minimum": 0.0,
+            "title": "Claims Execution Actions",
+            "type": "integer"
+          },
+          "unit": {
+            "default": "actions",
+            "title": "Unit",
+            "type": "string"
+          },
+          "with_approved_evidence": {
+            "minimum": 0.0,
+            "title": "With Approved Evidence",
+            "type": "integer"
+          },
+          "without_approved_evidence": {
+            "minimum": 0.0,
+            "title": "Without Approved Evidence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "claims_execution_actions",
+          "with_approved_evidence",
+          "without_approved_evidence"
+        ],
+        "title": "EvidenceTotalsOut",
+        "type": "object"
       },
       "EvidenceTransitionResult": {
         "properties": {
@@ -5303,6 +5957,73 @@
           "recommended_next_step"
         ],
         "title": "ExecutionSignal",
+        "type": "object"
+      },
+      "ExecutionTotalsOut": {
+        "additionalProperties": false,
+        "properties": {
+          "actions_without_recent_check_in": {
+            "minimum": 0.0,
+            "title": "Actions Without Recent Check In",
+            "type": "integer"
+          },
+          "active_actions": {
+            "minimum": 0.0,
+            "title": "Active Actions",
+            "type": "integer"
+          },
+          "active_impediments": {
+            "minimum": 0.0,
+            "title": "Active Impediments",
+            "type": "integer"
+          },
+          "blocked_cases": {
+            "minimum": 0.0,
+            "title": "Blocked Cases",
+            "type": "integer"
+          },
+          "completed_actions": {
+            "minimum": 0.0,
+            "title": "Completed Actions",
+            "type": "integer"
+          },
+          "open_dependencies": {
+            "minimum": 0.0,
+            "title": "Open Dependencies",
+            "type": "integer"
+          },
+          "overdue_actions": {
+            "minimum": 0.0,
+            "title": "Overdue Actions",
+            "type": "integer"
+          },
+          "overdue_dependencies": {
+            "minimum": 0.0,
+            "title": "Overdue Dependencies",
+            "type": "integer"
+          },
+          "unit_actions": {
+            "default": "actions",
+            "title": "Unit Actions",
+            "type": "string"
+          },
+          "unit_cases": {
+            "default": "cases",
+            "title": "Unit Cases",
+            "type": "string"
+          }
+        },
+        "required": [
+          "active_actions",
+          "completed_actions",
+          "overdue_actions",
+          "blocked_cases",
+          "active_impediments",
+          "open_dependencies",
+          "overdue_dependencies",
+          "actions_without_recent_check_in"
+        ],
+        "title": "ExecutionTotalsOut",
         "type": "object"
       },
       "FieldError": {
@@ -7800,6 +8521,38 @@
         "title": "InsightExplanation",
         "type": "object"
       },
+      "IntelligenceCoverageOut": {
+        "additionalProperties": false,
+        "properties": {
+          "current": {
+            "minimum": 0.0,
+            "title": "Current",
+            "type": "integer"
+          },
+          "never_analyzed": {
+            "minimum": 0.0,
+            "title": "Never Analyzed",
+            "type": "integer"
+          },
+          "stale": {
+            "minimum": 0.0,
+            "title": "Stale",
+            "type": "integer"
+          },
+          "unit": {
+            "default": "cases",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current",
+          "stale",
+          "never_analyzed"
+        ],
+        "title": "IntelligenceCoverageOut",
+        "type": "object"
+      },
       "InterviewCreate": {
         "description": "Create interview — planning fields optional; answers still require in_progress.",
         "properties": {
@@ -8458,6 +9211,36 @@
         ],
         "title": "JobStatus",
         "type": "string"
+      },
+      "LabeledCount": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "unit": {
+            "default": "cases",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "count"
+        ],
+        "title": "LabeledCount",
+        "type": "object"
       },
       "MaturityPackageCreate": {
         "properties": {
@@ -9729,6 +10512,52 @@
         "title": "MeasurementSummaryOut",
         "type": "object"
       },
+      "MeasurementTotalsOut": {
+        "additionalProperties": false,
+        "properties": {
+          "by_measurement_posture": {
+            "items": {
+              "$ref": "#/components/schemas/LabeledCount"
+            },
+            "title": "By Measurement Posture",
+            "type": "array"
+          },
+          "by_substantiation": {
+            "items": {
+              "$ref": "#/components/schemas/LabeledCount"
+            },
+            "title": "By Substantiation",
+            "type": "array"
+          },
+          "by_target_posture": {
+            "items": {
+              "$ref": "#/components/schemas/LabeledCount"
+            },
+            "title": "By Target Posture",
+            "type": "array"
+          },
+          "overdue_indicators": {
+            "minimum": 0.0,
+            "title": "Overdue Indicators",
+            "type": "integer"
+          },
+          "unit_cases": {
+            "default": "cases",
+            "title": "Unit Cases",
+            "type": "string"
+          },
+          "unit_indicators": {
+            "default": "indicators",
+            "title": "Unit Indicators",
+            "type": "string"
+          }
+        },
+        "required": [
+          "overdue_indicators"
+        ],
+        "title": "MeasurementTotalsOut",
+        "type": "object"
+      },
       "MembershipOut": {
         "properties": {
           "id": {
@@ -10688,6 +11517,25 @@
           "expires_in_seconds"
         ],
         "title": "PresignedUploadOut",
+        "type": "object"
+      },
+      "PriorityReasonOut": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "PriorityReasonOut",
         "type": "object"
       },
       "ProblemAnalysis": {
@@ -12246,6 +13094,62 @@
           "scores"
         ],
         "title": "ScoresUpsertIn",
+        "type": "object"
+      },
+      "SignalCountOut": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "flow",
+                  "schedule",
+                  "blocker",
+                  "dependency",
+                  "evidence",
+                  "measurement",
+                  "outcome"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "information",
+                  "watch",
+                  "attention"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "unit": {
+            "default": "signals",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "title": "SignalCountOut",
         "type": "object"
       },
       "SourceRef": {
@@ -58687,6 +59591,1010 @@
         "summary": "Get one organizational intelligence run by id (current tenant)",
         "tags": [
           "organizational-intelligence"
+        ]
+      }
+    },
+    "/api/v1/organizations/current/iso-intelligence/cockpit/activity": {
+      "get": {
+        "operationId": "listCurrentOrganizationIsoIntelligenceCockpitActivity",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "activity_window_days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "enum": [
+                7,
+                30,
+                90
+              ],
+              "title": "Activity Window Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CockpitActivityPageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream dependency error (e.g. QMind OI)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream timeout (e.g. QMind OI)"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Recent safe operational activity for the cockpit",
+        "tags": [
+          "iso-intelligence-cockpit"
+        ]
+      }
+    },
+    "/api/v1/organizations/current/iso-intelligence/cockpit/cases": {
+      "get": {
+        "operationId": "listCurrentOrganizationIsoIntelligenceCockpitCases",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "case_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "enum": [
+                      "open",
+                      "analyzing",
+                      "acting",
+                      "reviewing",
+                      "closed"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Case Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "priority_band",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "immediate_attention",
+                    "attention",
+                    "follow_up",
+                    "on_course",
+                    "completed_or_observed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Priority Band"
+            }
+          },
+          {
+            "in": "query",
+            "name": "execution_posture",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "insufficient_information",
+                    "not_started",
+                    "progressing",
+                    "attention_required",
+                    "stalled",
+                    "awaiting_result_evaluation",
+                    "result_observed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Execution Posture"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intelligence_freshness",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "current",
+                    "stale",
+                    "never_analyzed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intelligence Freshness"
+            }
+          },
+          {
+            "in": "query",
+            "name": "measurement_posture",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/MeasurementPosture"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Measurement Posture"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_posture",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TargetPosture"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Posture"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal_category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "flow",
+                    "schedule",
+                    "blocker",
+                    "dependency",
+                    "evidence",
+                    "measurement",
+                    "outcome"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "related_process",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 400,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Related Process"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ready_for_review",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ready For Review"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_overdue_actions",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Overdue Actions"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_active_impediment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Active Impediment"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CockpitCasesPageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream dependency error (e.g. QMind OI)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream timeout (e.g. QMind OI)"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Paginated cockpit attention queue",
+        "tags": [
+          "iso-intelligence-cockpit"
+        ]
+      }
+    },
+    "/api/v1/organizations/current/iso-intelligence/cockpit/summary": {
+      "get": {
+        "operationId": "getCurrentOrganizationIsoIntelligenceCockpitSummary",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "activity_window_days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "enum": [
+                7,
+                30,
+                90
+              ],
+              "title": "Activity Window Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Organization-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-sub",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Sub"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-dev-user-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dev-User-Email"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CockpitSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad request / domain guard"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Missing or invalid authentication"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden / SoD / role"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not found (or cross-tenant hide)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict / invalid transition"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gone (e.g. upload expired)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream dependency error (e.g. QMind OI)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Dependency unavailable"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "code": "not_found",
+                  "correlation_id": "11111111-2222-4333-8444-555555555555",
+                  "message": "Resource not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Upstream timeout (e.g. QMind OI)"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Organizational ISO Intelligence cockpit summary",
+        "tags": [
+          "iso-intelligence-cockpit"
         ]
       }
     },

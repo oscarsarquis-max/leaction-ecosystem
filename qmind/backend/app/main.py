@@ -27,6 +27,7 @@ from app.modules.findings.router import router as findings_router
 from app.modules.guided.router import router as guided_router
 from app.modules.audit_plan.router import router as audit_plan_router
 from app.modules.interviews.router import router as interviews_router
+from app.modules.cockpit.router import router as cockpit_router
 from app.modules.improvement_cases.router import router as improvement_cases_router
 from app.modules.jobs.router import router as jobs_router
 from app.modules.maturity.router import router as maturity_router
@@ -79,6 +80,7 @@ if settings.cors_origin_list:
 app.include_router(health_router)
 app.include_router(orgs_router, prefix=settings.api_prefix)
 app.include_router(improvement_cases_router, prefix=settings.api_prefix)
+app.include_router(cockpit_router, prefix=settings.api_prefix)
 app.include_router(agile_router, prefix=settings.api_prefix)
 app.include_router(oi_router, prefix=settings.api_prefix)
 app.include_router(agenda_router, prefix=settings.api_prefix)
