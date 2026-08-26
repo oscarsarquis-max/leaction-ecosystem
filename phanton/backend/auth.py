@@ -231,6 +231,7 @@ _PUBLIC_PATHS = frozenset(
         "/health",
         "/api/auth/login",
         "/api/auth/register",
+        "/api/webhooks/contas",
     }
 )
 
