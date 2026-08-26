@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react'
+import { useAuth } from '../auth/AuthContext'
 
 function formatWhen(value) {
   if (!value) return '—'
@@ -35,6 +36,7 @@ export default function AcceptedProjectsPanel({
   onSubstituteCreated,
   onError,
 }) {
+  const { authHeaders } = useAuth()
   const [query, setQuery] = useState('')
   const [version, setVersion] = useState('')
   const [items, setItems] = useState([])
@@ -53,7 +55,9 @@ export default function AcceptedProjectsPanel({
       if (query.trim()) params.q = query.trim()
       if (version.trim()) params.version = version.trim()
       const qs = new URLSearchParams(params).toString()
-      const res = await fetch(`${apiBase}/api/projects/search?${qs}`)
+      const res = await fetch(`${apiBase}/api/projects/search?${qs}`, {
+        headers: { ...authHeaders },
+      })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.detail || `HTTP ${res.status}`)
@@ -65,7 +69,7 @@ export default function AcceptedProjectsPanel({
     } finally {
       setLoading(false)
     }
-  }, [apiBase, query, version, onError])
+  }, [apiBase, authHeaders, query, version, onError])
 
   useEffect(() => {
     search()
@@ -100,7 +104,7 @@ export default function AcceptedProjectsPanel({
         mode === 'retorno' ? { content: trimmed } : { request: trimmed }
       const res = await fetch(path, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(body),
       })
       const data = await res.json().catch(() => ({}))
@@ -135,7 +139,7 @@ export default function AcceptedProjectsPanel({
         `${apiBase}/api/phanton-improvements/${phantonProposal.id}/decide`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({ decision }),
         },
       )
