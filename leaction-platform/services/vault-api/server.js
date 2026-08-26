@@ -27,6 +27,7 @@ const { createRequireVaultAuth } = require('./lib/auth');
 const { registerAuthRoutes } = require('./domain/auth-routes');
 const { registerSistemasRoutes } = require('./domain/sistemas');
 const { registerSecretsRoutes } = require('./domain/secrets');
+const { registerContasRoutes } = require('./domain/contas');
 
 function createApp(pool) {
   const app = express();
@@ -45,6 +46,7 @@ function createApp(pool) {
   const requireAuth = createRequireVaultAuth(pool);
   registerSistemasRoutes(app, pool, { requireAuth });
   registerSecretsRoutes(app, pool, { requireAuth });
+  registerContasRoutes(app, pool, { requireAuth });
 
   app.use((req, res) => {
     res.status(404).json({ error: 'Rota não encontrada no cofre' });

@@ -70,6 +70,30 @@ function rewriteDbName(url, dbName) {
   for (const stmt of sql.split(';').map((s) => s.trim()).filter(Boolean)) {
     await vault.query(stmt);
   }
+
+  // Banco já existente: CREATE TABLE IF NOT EXISTS não adiciona colunas/constraints novas.
+  await vault.query(`ALTER TABLE secrets ADD COLUMN IF NOT EXISTS usuario_email TEXT NULL`);
+  await vault.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_secrets_conta_ativa
+      ON secrets (sistema, usuario_email)
+      WHERE status = 'ativo' AND usuario_email IS NOT NULL
+  `);
+  await vault.query(
+    `ALTER TABLE sistemas_rotacao ADD COLUMN IF NOT EXISTS conta_webhook_url TEXT NULL`
+  );
+  await vault.query(
+    `ALTER TABLE sistemas_rotacao ADD COLUMN IF NOT EXISTS conta_secret TEXT NULL`
+  );
+  await vault.query(
+    `ALTER TABLE secrets_audit_log DROP CONSTRAINT IF EXISTS chk_secrets_audit_acao`
+  );
+  await vault.query(`
+    ALTER TABLE secrets_audit_log
+      ADD CONSTRAINT chk_secrets_audit_acao CHECK (
+        acao IN ('criado', 'lido', 'rotacionado', 'revogado', 'falha_rotacao', 'falha_criacao')
+      )
+  `);
+
   await vault.query(`GRANT ALL ON SCHEMA public TO ${VAULT_ROLE}`);
   await vault.query(`GRANT ALL ON ALL TABLES IN SCHEMA public TO ${VAULT_ROLE}`);
   await vault.query(`GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO ${VAULT_ROLE}`);

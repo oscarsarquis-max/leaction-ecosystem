@@ -5,9 +5,12 @@ const { clientIp } = require('../lib/auth');
 const {
   generateSecretValue,
   notifySatelliteRotation,
+  notifySatelliteConta,
 } = require('../lib/rotation-s2s');
 
 const STATUSES = new Set(['ativo', 'pendente_aplicacao', 'revogado']);
+const SECRET_META_COLS = `id, sistema, tipo, versao, status, criado_em, atualizado_em,
+                atualizado_por, expira_em, usuario_email`;
 
 function serializeSecretMeta(row) {
   if (!row) return null;
@@ -21,7 +24,12 @@ function serializeSecretMeta(row) {
     atualizado_em: row.atualizado_em,
     atualizado_por: row.atualizado_por,
     expira_em: row.expira_em,
+    usuario_email: row.usuario_email || null,
   };
+}
+
+function isContaSecret(row) {
+  return Boolean(row && row.usuario_email);
 }
 
 async function writeAudit(pool, { secretId, acao, ator, ip, detalhe }) {
@@ -47,10 +55,9 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
       }
 
       const result = await pool.query(
-        `SELECT id, sistema, tipo, versao, status, criado_em, atualizado_em,
-                atualizado_por, expira_em
+        `SELECT ${SECRET_META_COLS}
          FROM secrets
-         WHERE sistema = $1
+         WHERE sistema = $1 AND usuario_email IS NULL
          ORDER BY tipo ASC, id ASC`,
         [sistema]
       );
@@ -103,8 +110,7 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
         `INSERT INTO secrets
            (sistema, tipo, valor_cifrado, versao, status, atualizado_por)
          VALUES ($1, $2, $3, 1, 'ativo', $4)
-         RETURNING id, sistema, tipo, versao, status, criado_em, atualizado_em,
-                   atualizado_por, expira_em`,
+         RETURNING ${SECRET_META_COLS}`,
         [sistema, tipo, cifrado, ator]
       );
 
@@ -136,7 +142,7 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
 
       const result = await pool.query(
         `SELECT id, sistema, tipo, valor_cifrado, versao, status, criado_em,
-                atualizado_em, atualizado_por, expira_em
+                atualizado_em, atualizado_por, expira_em, usuario_email
          FROM secrets
          WHERE id = $1
          LIMIT 1`,
@@ -166,6 +172,7 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
           sistema: row.sistema,
           tipo: row.tipo,
           versao: row.versao,
+          ...(row.usuario_email ? { usuario_email: row.usuario_email } : {}),
         },
       });
 
@@ -205,9 +212,11 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
 
       const pending = await pool.query(
         `SELECT id FROM secrets
-         WHERE sistema = $1 AND tipo = $2 AND status = 'pendente_aplicacao'
+         WHERE sistema = $1 AND tipo = $2
+           AND usuario_email IS NOT DISTINCT FROM $3
+           AND status = 'pendente_aplicacao'
          LIMIT 1`,
-        [anterior.sistema, anterior.tipo]
+        [anterior.sistema, anterior.tipo, anterior.usuario_email || null]
       );
       if (pending.rows[0]) {
         return res.status(409).json({
@@ -223,8 +232,10 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
 
       const maxV = await pool.query(
         `SELECT COALESCE(MAX(versao), 0)::int AS v
-         FROM secrets WHERE sistema = $1 AND tipo = $2`,
-        [anterior.sistema, anterior.tipo]
+         FROM secrets
+         WHERE sistema = $1 AND tipo = $2
+           AND usuario_email IS NOT DISTINCT FROM $3`,
+        [anterior.sistema, anterior.tipo, anterior.usuario_email || null]
       );
       const nextVersao = Number(maxV.rows[0].v) + 1;
       const ator = req.vaultAdmin.email;
@@ -233,34 +244,53 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
 
       const inserted = await pool.query(
         `INSERT INTO secrets
-           (sistema, tipo, valor_cifrado, versao, status, atualizado_por)
-         VALUES ($1, $2, $3, $4, 'pendente_aplicacao', $5)
-         RETURNING id, sistema, tipo, versao, status, criado_em, atualizado_em,
-                   atualizado_por, expira_em`,
-        [anterior.sistema, anterior.tipo, cifrado, nextVersao, ator]
+           (sistema, tipo, valor_cifrado, versao, status, atualizado_por, usuario_email)
+         VALUES ($1, $2, $3, $4, 'pendente_aplicacao', $5, $6)
+         RETURNING ${SECRET_META_COLS}`,
+        [
+          anterior.sistema,
+          anterior.tipo,
+          cifrado,
+          nextVersao,
+          ator,
+          anterior.usuario_email || null,
+        ]
       );
       const nova = inserted.rows[0];
 
       const sistemaRow = await pool.query(
-        `SELECT sistema, rotation_webhook_url, rotation_secret, suporta_rotacao_automatica
+        `SELECT sistema, rotation_webhook_url, rotation_secret, suporta_rotacao_automatica,
+                conta_webhook_url, conta_secret
          FROM sistemas_rotacao
          WHERE sistema = $1
          LIMIT 1`,
         [anterior.sistema]
       );
       const cfg = sistemaRow.rows[0] || null;
-      const auto =
-        Boolean(cfg?.suporta_rotacao_automatica) &&
-        Boolean(String(cfg?.rotation_webhook_url || '').trim());
+      const conta = isContaSecret(anterior);
+      const auto = conta
+        ? Boolean(String(cfg?.conta_webhook_url || '').trim())
+        : Boolean(cfg?.suporta_rotacao_automatica) &&
+          Boolean(String(cfg?.rotation_webhook_url || '').trim());
 
       if (auto) {
         try {
-          const notify = await notifySatelliteRotation({
-            url: cfg.rotation_webhook_url,
-            rotationSecret: cfg.rotation_secret,
-            tipo: anterior.tipo,
-            novo_valor: novoValor,
-          });
+          const notify = conta
+            ? await notifySatelliteConta({
+                url: cfg.conta_webhook_url,
+                contaSecret: cfg.conta_secret,
+                payload: {
+                  acao: 'rotacionar_senha',
+                  email: anterior.usuario_email,
+                  novo_valor: novoValor,
+                },
+              })
+            : await notifySatelliteRotation({
+                url: cfg.rotation_webhook_url,
+                rotationSecret: cfg.rotation_secret,
+                tipo: anterior.tipo,
+                novo_valor: novoValor,
+              });
           await pool.query(
             `UPDATE secrets
              SET status = 'revogado', atualizado_em = CURRENT_TIMESTAMP, atualizado_por = $2
@@ -271,8 +301,7 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
             `UPDATE secrets
              SET status = 'ativo', atualizado_em = CURRENT_TIMESTAMP, atualizado_por = $2
              WHERE id = $1
-             RETURNING id, sistema, tipo, versao, status, criado_em, atualizado_em,
-                       atualizado_por, expira_em`,
+             RETURNING ${SECRET_META_COLS}`,
             [nova.id, ator]
           );
           await writeAudit(pool, {
@@ -287,6 +316,8 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
               versao_nova: nextVersao,
               secret_anterior_id: anterior.id,
               satelite_http: notify.status,
+              canal: conta ? 'conta' : 'infraestrutura',
+              ...(conta ? { usuario_email: anterior.usuario_email } : {}),
             },
           });
           return res.status(200).json({
@@ -306,6 +337,8 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
               erro: String(err.message || err).slice(0, 400),
               versao_anterior: anterior.versao,
               versao_nova: nextVersao,
+              canal: conta ? 'conta' : 'infraestrutura',
+              ...(conta ? { usuario_email: anterior.usuario_email } : {}),
             },
           });
           return res.status(502).json({
@@ -384,10 +417,12 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
       const ator = req.vaultAdmin.email;
       const anterior = await pool.query(
         `SELECT id, versao, status FROM secrets
-         WHERE sistema = $1 AND tipo = $2 AND status = 'ativo' AND id <> $3
+         WHERE sistema = $1 AND tipo = $2
+           AND usuario_email IS NOT DISTINCT FROM $4
+           AND status = 'ativo' AND id <> $3
          ORDER BY versao DESC
          LIMIT 1`,
-        [pendente.sistema, pendente.tipo, pendente.id]
+        [pendente.sistema, pendente.tipo, pendente.id, pendente.usuario_email || null]
       );
 
       if (anterior.rows[0]) {
@@ -403,8 +438,7 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
         `UPDATE secrets
          SET status = 'ativo', atualizado_em = CURRENT_TIMESTAMP, atualizado_por = $2
          WHERE id = $1
-         RETURNING id, sistema, tipo, versao, status, criado_em, atualizado_em,
-                   atualizado_por, expira_em`,
+         RETURNING ${SECRET_META_COLS}`,
         [pendente.id, ator]
       );
 
@@ -446,7 +480,7 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
       }
 
       const current = await pool.query(
-        `SELECT id, sistema, tipo FROM secrets WHERE id = $1 LIMIT 1`,
+        `SELECT id, sistema, tipo, usuario_email FROM secrets WHERE id = $1 LIMIT 1`,
         [id]
       );
       if (!current.rows[0]) {
@@ -454,17 +488,22 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
       }
 
       const result = await pool.query(
-        `SELECT id, sistema, tipo, versao, status, criado_em, atualizado_em,
-                atualizado_por, expira_em
+        `SELECT ${SECRET_META_COLS}
          FROM secrets
          WHERE sistema = $1 AND tipo = $2
+           AND usuario_email IS NOT DISTINCT FROM $3
          ORDER BY versao DESC, id DESC`,
-        [current.rows[0].sistema, current.rows[0].tipo]
+        [
+          current.rows[0].sistema,
+          current.rows[0].tipo,
+          current.rows[0].usuario_email || null,
+        ]
       );
 
       return res.status(200).json({
         sistema: current.rows[0].sistema,
         tipo: current.rows[0].tipo,
+        usuario_email: current.rows[0].usuario_email || null,
         versoes: result.rows.map(serializeSecretMeta),
       });
     } catch (err) {
@@ -474,4 +513,4 @@ function registerSecretsRoutes(app, pool, { requireAuth }) {
   });
 }
 
-module.exports = { registerSecretsRoutes, serializeSecretMeta };
+module.exports = { registerSecretsRoutes, serializeSecretMeta, writeAudit };

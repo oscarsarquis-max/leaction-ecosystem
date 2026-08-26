@@ -4,6 +4,8 @@ Cofre de credenciais de infraestrutura do ecossistema LeAction. Serviço **separ
 
 Rotação: automática (webhook S2S do satélite) ou manual (revelação única + confirmar aplicação). Versões `revogado` permanecem no banco.
 
+Canais S2S isolados em `sistemas_rotacao`: `rotation_webhook_url`/`rotation_secret` só para secrets de infraestrutura (`usuario_email` nulo); `conta_webhook_url`/`conta_secret` só para senhas de contas privilegiadas (`tipo = senha_conta`). Nível e função da conta não são duplicados no cofre — ficam na Gestão de Identidade do Hub.
+
 ## Isolamento
 
 - Banco Postgres **`leaction_vault`** na instância local `:5434` (mesmo container `leaction_db`, database distinto de `leaction_hub`).
@@ -55,3 +57,5 @@ Health: `http://127.0.0.1:4020/health`
 | POST | `/api/secrets/:id/rotacionar` `{ novo_valor? }` | JWT vault — auto (S2S) ou manual (valor uma vez, `no-store`) |
 | POST | `/api/secrets/:id/confirmar-aplicacao` | JWT vault — fecha rotação manual |
 | GET | `/api/secrets/:id/historico` | JWT vault — versões (metadados, sem valor) |
+| POST | `/api/contas` `{ sistema, email, nivel, funcao?, senha? }` | JWT vault — cria senha de conta privilegiada (`senha_conta`) |
+| GET | `/api/contas?sistema=` | JWT vault — contas privilegiadas, senha mascarada; nível/função ficam na Gestão de Identidade |
