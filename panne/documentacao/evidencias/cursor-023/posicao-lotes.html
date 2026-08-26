@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Posição e lotes — Panne</title>
+  <style>
+    body { margin: 0; font-family: Georgia, serif; background: #E5E4D6; color: #323334; }
+    header, nav.sub { padding: 12px 24px; border-bottom: 1px solid #323334; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { border: 1px solid #323334; padding: 8px; text-align: left; }
+    .badge { border: 1px solid #323334; padding: 2px 6px; }
+    main { padding: 24px; }
+  </style>
+</head>
+<body>
+  <header><strong>Panne</strong> · Componentes · Estoque</header>
+  <nav class="sub">Posição · Lotes e validade</nav>
+  <main>
+    <h1>Posição de estoque</h1>
+    <table>
+      <caption>Item / local / lote</caption>
+      <thead><tr><th>Item</th><th>Local</th><th>Lote</th><th>Físico</th><th>Reservado</th><th>Disponível</th></tr></thead>
+      <tbody><tr><td>Farinha</td><td>Almoxarifado</td><td>LOT-000001</td><td>1000</td><td>200</td><td>800</td></tr></tbody>
+    </table>
+    <h2>Validade e bloqueio</h2>
+    <p>LOT-000001 <span class="badge">available</span> validade 2026-09-10</p>
+    <p>LOT-000002 <span class="badge">blocked</span> validade ausente — não inferida</p>
+  </main>
+</body>
+</html>

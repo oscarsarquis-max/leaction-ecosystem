@@ -1,0 +1,2523 @@
+{
+  "health": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "service": "panne",
+      "versao": "0.1.0",
+      "ambiente": "demo"
+    }
+  },
+  "ready": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "service": "panne"
+    }
+  },
+  "profiles": {
+    "demo-owner": {
+      "status": 200,
+      "body": {
+        "user_id": "7e31dc2b-461e-5b2d-a859-7232de387069",
+        "display_name": "Proprietário Demo",
+        "status": "active",
+        "selected_organization_id": null,
+        "associations": [
+          {
+            "organization_id": "45104a8c-d590-5946-b8dd-f5534e89e338",
+            "display_name": "Panne Demonstração",
+            "slug": "panne-demonstracao",
+            "roles": [
+              "owner"
+            ],
+            "status": "active",
+            "permissions": [
+              "compliance.review",
+              "costing.assumption.manage",
+              "costing.calculate.actual",
+              "costing.calculate.planned",
+              "costing.policy.manage",
+              "costing.read",
+              "identity.read_me",
+              "ingredient.create",
+              "ingredient.publish",
+              "ingredient.read",
+              "ingredient.retire",
+              "ingredient.update_draft",
+              "inventory.adjust",
+              "inventory.count",
+              "inventory.count.approve",
+              "inventory.expired.override",
+              "inventory.item.manage",
+              "inventory.lot.manage",
+              "inventory.move",
+              "inventory.policy.manage",
+              "inventory.read",
+              "inventory.reserve",
+              "inventory.separate",
+              "labeling.candidate.edit",
+              "labeling.dossier.create",
+              "labeling.evaluate",
+              "labeling.invalidate",
+              "labeling.read",
+              "labeling.render",
+              "labeling.review",
+              "membership.read",
+              "membership.role.manage",
+              "organization.read",
+              "pricing.publish",
+              "pricing.review",
+              "pricing.simulation.manage",
+              "procurement.order.approve",
+              "procurement.order.manage",
+              "procurement.quotation.manage",
+              "procurement.read",
+              "procurement.receive",
+              "procurement.requisition.approve",
+              "procurement.requisition.create",
+              "procurement.return",
+              "production.batch.complete",
+              "production.batch.manage",
+              "production.board.read",
+              "production.consumption.record",
+              "production.occurrence.record",
+              "production.occurrence.resolve",
+              "production.order.cancel",
+              "production.order.complete",
+              "production.order.manage",
+              "production.order.policy_adopt",
+              "production.order.read",
+              "production.order.release",
+              "production.order.short_close",
+              "production.plan.manage",
+              "production.plan.read",
+              "production.sheet.issue",
+              "production.step.execute",
+              "production.traceability.read",
+              "production.weighing.record",
+              "production.weighing.verify",
+              "recipe.ai.materialize",
+              "recipe.ai.propose",
+              "recipe.ai.review",
+              "recipe.approve",
+              "recipe.create",
+              "recipe.publish",
+              "recipe.read",
+              "recipe.reference.manage",
+              "recipe.retire",
+              "recipe.review",
+              "recipe.scale",
+              "recipe.technical_sheet.read",
+              "recipe.trial.manage",
+              "recipe.update_draft",
+              "recipe.version.create",
+              "regulatory.source.read",
+              "reporting.compliance.read",
+              "reporting.costing.read",
+              "reporting.dashboard.read",
+              "reporting.data_quality.read",
+              "reporting.export",
+              "reporting.inventory.read",
+              "reporting.pricing.read",
+              "reporting.production.read",
+              "reporting.saved_view.manage",
+              "reporting.snapshot.create",
+              "reporting.traceability.read",
+              "supplier.manage",
+              "supplier.price.record",
+              "supplier.read"
+            ]
+          },
+          {
+            "organization_id": "5547c13b-3ad2-50ea-9bbf-bdb711e1d8b9",
+            "display_name": "Padaria Horizonte Demo",
+            "slug": "padaria-horizonte-demo",
+            "roles": [
+              "viewer"
+            ],
+            "status": "active",
+            "permissions": [
+              "identity.read_me",
+              "ingredient.read",
+              "inventory.read",
+              "labeling.read",
+              "membership.read",
+              "organization.read",
+              "procurement.read",
+              "production.board.read",
+              "production.order.read",
+              "production.plan.read",
+              "recipe.read",
+              "recipe.technical_sheet.read",
+              "regulatory.source.read",
+              "reporting.compliance.read",
+              "reporting.dashboard.read",
+              "reporting.data_quality.read",
+              "reporting.production.read",
+              "reporting.traceability.read",
+              "supplier.read"
+            ]
+          }
+        ],
+        "roles": [
+          "owner",
+          "viewer"
+        ],
+        "permissions": [
+          "compliance.review",
+          "costing.assumption.manage",
+          "costing.calculate.actual",
+          "costing.calculate.planned",
+          "costing.policy.manage",
+          "costing.read",
+          "identity.read_me",
+          "ingredient.create",
+          "ingredient.publish",
+          "ingredient.read",
+          "ingredient.retire",
+          "ingredient.update_draft",
+          "inventory.adjust",
+          "inventory.count",
+          "inventory.count.approve",
+          "inventory.expired.override",
+          "inventory.item.manage",
+          "inventory.lot.manage",
+          "inventory.move",
+          "inventory.policy.manage",
+          "inventory.read",
+          "inventory.reserve",
+          "inventory.separate",
+          "labeling.candidate.edit",
+          "labeling.dossier.create",
+          "labeling.evaluate",
+          "labeling.invalidate",
+          "labeling.read",
+          "labeling.render",
+          "labeling.review",
+          "membership.read",
+          "membership.role.manage",
+          "organization.read",
+          "pricing.publish",
+          "pricing.review",
+          "pricing.simulation.manage",
+          "procurement.order.approve",
+          "procurement.order.manage",
+          "procurement.quotation.manage",
+          "procurement.read",
+          "procurement.receive",
+          "procurement.requisition.approve",
+          "procurement.requisition.create",
+          "procurement.return",
+          "production.batch.complete",
+          "production.batch.manage",
+          "production.board.read",
+          "production.consumption.record",
+          "production.occurrence.record",
+          "production.occurrence.resolve",
+          "production.order.cancel",
+          "production.order.complete",
+          "production.order.manage",
+          "production.order.policy_adopt",
+          "production.order.read",
+          "production.order.release",
+          "production.order.short_close",
+          "production.plan.manage",
+          "production.plan.read",
+          "production.sheet.issue",
+          "production.step.execute",
+          "production.traceability.read",
+          "production.weighing.record",
+          "production.weighing.verify",
+          "recipe.ai.materialize",
+          "recipe.ai.propose",
+          "recipe.ai.review",
+          "recipe.approve",
+          "recipe.create",
+          "recipe.publish",
+          "recipe.read",
+          "recipe.reference.manage",
+          "recipe.retire",
+          "recipe.review",
+          "recipe.scale",
+          "recipe.technical_sheet.read",
+          "recipe.trial.manage",
+          "recipe.update_draft",
+          "recipe.version.create",
+          "regulatory.source.read",
+          "reporting.compliance.read",
+          "reporting.costing.read",
+          "reporting.dashboard.read",
+          "reporting.data_quality.read",
+          "reporting.export",
+          "reporting.inventory.read",
+          "reporting.pricing.read",
+          "reporting.production.read",
+          "reporting.saved_view.manage",
+          "reporting.snapshot.create",
+          "reporting.traceability.read",
+          "supplier.manage",
+          "supplier.price.record",
+          "supplier.read"
+        ]
+      }
+    },
+    "demo-manager": {
+      "status": 200,
+      "body": {
+        "user_id": "95f50a18-6da1-5fb2-836e-017fe83c51f1",
+        "display_name": "Gestor de Produção Demo",
+        "status": "active",
+        "selected_organization_id": null,
+        "associations": [
+          {
+            "organization_id": "45104a8c-d590-5946-b8dd-f5534e89e338",
+            "display_name": "Panne Demonstração",
+            "slug": "panne-demonstracao",
+            "roles": [
+              "production_manager"
+            ],
+            "status": "active",
+            "permissions": [
+              "identity.read_me",
+              "ingredient.read",
+              "inventory.count",
+              "inventory.move",
+              "inventory.read",
+              "inventory.reserve",
+              "inventory.separate",
+              "labeling.read",
+              "membership.read",
+              "organization.read",
+              "production.batch.complete",
+              "production.batch.manage",
+              "production.board.read",
+              "production.consumption.record",
+              "production.occurrence.record",
+              "production.occurrence.resolve",
+              "production.order.cancel",
+              "production.order.complete",
+              "production.order.manage",
+              "production.order.policy_adopt",
+              "production.order.read",
+              "production.order.release",
+              "production.order.short_close",
+              "production.plan.manage",
+              "production.plan.read",
+              "production.sheet.issue",
+              "production.step.execute",
+              "production.traceability.read",
+              "production.weighing.record",
+              "production.weighing.verify",
+              "recipe.read",
+              "recipe.technical_sheet.read",
+              "regulatory.source.read",
+              "reporting.dashboard.read",
+              "reporting.data_quality.read",
+              "reporting.export",
+              "reporting.inventory.read",
+              "reporting.production.read",
+              "reporting.saved_view.manage",
+              "reporting.snapshot.create",
+              "reporting.traceability.read",
+              "supplier.read"
+            ]
+          }
+        ],
+        "roles": [
+          "production_manager"
+        ],
+        "permissions": [
+          "identity.read_me",
+          "ingredient.read",
+          "inventory.count",
+          "inventory.move",
+          "inventory.read",
+          "inventory.reserve",
+          "inventory.separate",
+          "labeling.read",
+          "membership.read",
+          "organization.read",
+          "production.batch.complete",
+          "production.batch.manage",
+          "production.board.read",
+          "production.consumption.record",
+          "production.occurrence.record",
+          "production.occurrence.resolve",
+          "production.order.cancel",
+          "production.order.complete",
+          "production.order.manage",
+          "production.order.policy_adopt",
+          "production.order.read",
+          "production.order.release",
+          "production.order.short_close",
+          "production.plan.manage",
+          "production.plan.read",
+          "production.sheet.issue",
+          "production.step.execute",
+          "production.traceability.read",
+          "production.weighing.record",
+          "production.weighing.verify",
+          "recipe.read",
+          "recipe.technical_sheet.read",
+          "regulatory.source.read",
+          "reporting.dashboard.read",
+          "reporting.data_quality.read",
+          "reporting.export",
+          "reporting.inventory.read",
+          "reporting.production.read",
+          "reporting.saved_view.manage",
+          "reporting.snapshot.create",
+          "reporting.traceability.read",
+          "supplier.read"
+        ]
+      }
+    },
+    "demo-formulator": {
+      "status": 200,
+      "body": {
+        "user_id": "f287c05c-6091-5419-b31e-3b278771ff5d",
+        "display_name": "Formulador Demo",
+        "status": "active",
+        "selected_organization_id": null,
+        "associations": [
+          {
+            "organization_id": "45104a8c-d590-5946-b8dd-f5534e89e338",
+            "display_name": "Panne Demonstração",
+            "slug": "panne-demonstracao",
+            "roles": [
+              "technical_responsible"
+            ],
+            "status": "active",
+            "permissions": [
+              "costing.assumption.manage",
+              "costing.calculate.actual",
+              "costing.calculate.planned",
+              "costing.policy.manage",
+              "costing.read",
+              "identity.read_me",
+              "ingredient.create",
+              "ingredient.publish",
+              "ingredient.read",
+              "ingredient.retire",
+              "ingredient.update_draft",
+              "inventory.adjust",
+              "inventory.count",
+              "inventory.count.approve",
+              "inventory.expired.override",
+              "inventory.item.manage",
+              "inventory.lot.manage",
+              "inventory.move",
+              "inventory.policy.manage",
+              "inventory.read",
+              "inventory.reserve",
+              "inventory.separate",
+              "labeling.candidate.edit",
+              "labeling.dossier.create",
+              "labeling.evaluate",
+              "labeling.invalidate",
+              "labeling.read",
+              "labeling.render",
+              "labeling.review",
+              "membership.read",
+              "organization.read",
+              "pricing.review",
+              "pricing.simulation.manage",
+              "procurement.order.approve",
+              "procurement.order.manage",
+              "procurement.quotation.manage",
+              "procurement.read",
+              "procurement.receive",
+              "procurement.requisition.approve",
+              "procurement.requisition.create",
+              "procurement.return",
+              "production.board.read",
+              "production.order.read",
+              "production.plan.read",
+              "production.traceability.read",
+              "recipe.ai.materialize",
+              "recipe.ai.propose",
+              "recipe.ai.review",
+              "recipe.approve",
+              "recipe.create",
+              "recipe.publish",
+              "recipe.read",
+              "recipe.reference.manage",
+              "recipe.retire",
+              "recipe.review",
+              "recipe.scale",
+              "recipe.technical_sheet.read",
+              "recipe.trial.manage",
+              "recipe.update_draft",
+              "recipe.version.create",
+              "regulatory.source.read",
+              "reporting.compliance.read",
+              "reporting.costing.read",
+              "reporting.dashboard.read",
+              "reporting.data_quality.read",
+              "reporting.export",
+              "reporting.inventory.read",
+              "reporting.pricing.read",
+              "reporting.production.read",
+              "reporting.saved_view.manage",
+              "reporting.snapshot.create",
+              "reporting.traceability.read",
+              "supplier.manage",
+              "supplier.price.record",
+              "supplier.read"
+            ]
+          }
+        ],
+        "roles": [
+          "technical_responsible"
+        ],
+        "permissions": [
+          "costing.assumption.manage",
+          "costing.calculate.actual",
+          "costing.calculate.planned",
+          "costing.policy.manage",
+          "costing.read",
+          "identity.read_me",
+          "ingredient.create",
+          "ingredient.publish",
+          "ingredient.read",
+          "ingredient.retire",
+          "ingredient.update_draft",
+          "inventory.adjust",
+          "inventory.count",
+          "inventory.count.approve",
+          "inventory.expired.override",
+          "inventory.item.manage",
+          "inventory.lot.manage",
+          "inventory.move",
+          "inventory.policy.manage",
+          "inventory.read",
+          "inventory.reserve",
+          "inventory.separate",
+          "labeling.candidate.edit",
+          "labeling.dossier.create",
+          "labeling.evaluate",
+          "labeling.invalidate",
+          "labeling.read",
+          "labeling.render",
+          "labeling.review",
+          "membership.read",
+          "organization.read",
+          "pricing.review",
+          "pricing.simulation.manage",
+          "procurement.order.approve",
+          "procurement.order.manage",
+          "procurement.quotation.manage",
+          "procurement.read",
+          "procurement.receive",
+          "procurement.requisition.approve",
+          "procurement.requisition.create",
+          "procurement.return",
+          "production.board.read",
+          "production.order.read",
+          "production.plan.read",
+          "production.traceability.read",
+          "recipe.ai.materialize",
+          "recipe.ai.propose",
+          "recipe.ai.review",
+          "recipe.approve",
+          "recipe.create",
+          "recipe.publish",
+          "recipe.read",
+          "recipe.reference.manage",
+          "recipe.retire",
+          "recipe.review",
+          "recipe.scale",
+          "recipe.technical_sheet.read",
+          "recipe.trial.manage",
+          "recipe.update_draft",
+          "recipe.version.create",
+          "regulatory.source.read",
+          "reporting.compliance.read",
+          "reporting.costing.read",
+          "reporting.dashboard.read",
+          "reporting.data_quality.read",
+          "reporting.export",
+          "reporting.inventory.read",
+          "reporting.pricing.read",
+          "reporting.production.read",
+          "reporting.saved_view.manage",
+          "reporting.snapshot.create",
+          "reporting.traceability.read",
+          "supplier.manage",
+          "supplier.price.record",
+          "supplier.read"
+        ]
+      }
+    },
+    "demo-baker": {
+      "status": 200,
+      "body": {
+        "user_id": "05352431-1e8a-59ec-bc18-c8fdac043b50",
+        "display_name": "Padeiro Demo",
+        "status": "active",
+        "selected_organization_id": null,
+        "associations": [
+          {
+            "organization_id": "45104a8c-d590-5946-b8dd-f5534e89e338",
+            "display_name": "Panne Demonstração",
+            "slug": "panne-demonstracao",
+            "roles": [
+              "baker_operator"
+            ],
+            "status": "active",
+            "permissions": [
+              "identity.read_me",
+              "ingredient.read",
+              "inventory.read",
+              "inventory.separate",
+              "labeling.read",
+              "membership.read",
+              "organization.read",
+              "production.board.read",
+              "production.consumption.record",
+              "production.occurrence.record",
+              "production.order.read",
+              "production.step.execute",
+              "production.traceability.read",
+              "production.weighing.record",
+              "production.weighing.verify",
+              "recipe.read",
+              "recipe.technical_sheet.read",
+              "regulatory.source.read",
+              "reporting.production.read",
+              "reporting.traceability.read"
+            ]
+          }
+        ],
+        "roles": [
+          "baker_operator"
+        ],
+        "permissions": [
+          "identity.read_me",
+          "ingredient.read",
+          "inventory.read",
+          "inventory.separate",
+          "labeling.read",
+          "membership.read",
+          "organization.read",
+          "production.board.read",
+          "production.consumption.record",
+          "production.occurrence.record",
+          "production.order.read",
+          "production.step.execute",
+          "production.traceability.read",
+          "production.weighing.record",
+          "production.weighing.verify",
+          "recipe.read",
+          "recipe.technical_sheet.read",
+          "regulatory.source.read",
+          "reporting.production.read",
+          "reporting.traceability.read"
+        ]
+      }
+    },
+    "demo-reviewer": {
+      "status": 200,
+      "body": {
+        "user_id": "79418679-f05e-5c1f-99b2-1632bf282850",
+        "display_name": "Revisor Regulatório Demo",
+        "status": "active",
+        "selected_organization_id": null,
+        "associations": [
+          {
+            "organization_id": "45104a8c-d590-5946-b8dd-f5534e89e338",
+            "display_name": "Panne Demonstração",
+            "slug": "panne-demonstracao",
+            "roles": [
+              "regulatory_reviewer"
+            ],
+            "status": "active",
+            "permissions": [
+              "compliance.review",
+              "costing.read",
+              "identity.read_me",
+              "ingredient.read",
+              "labeling.evaluate",
+              "labeling.read",
+              "labeling.render",
+              "labeling.review",
+              "membership.read",
+              "organization.read",
+              "recipe.ai.review",
+              "recipe.approve",
+              "recipe.read",
+              "recipe.review",
+              "recipe.technical_sheet.read",
+              "regulatory.source.read",
+              "reporting.compliance.read",
+              "reporting.data_quality.read",
+              "reporting.export",
+              "reporting.snapshot.create",
+              "supplier.read"
+            ]
+          }
+        ],
+        "roles": [
+          "regulatory_reviewer"
+        ],
+        "permissions": [
+          "compliance.review",
+          "costing.read",
+          "identity.read_me",
+          "ingredient.read",
+          "labeling.evaluate",
+          "labeling.read",
+          "labeling.render",
+          "labeling.review",
+          "membership.read",
+          "organization.read",
+          "recipe.ai.review",
+          "recipe.approve",
+          "recipe.read",
+          "recipe.review",
+          "recipe.technical_sheet.read",
+          "regulatory.source.read",
+          "reporting.compliance.read",
+          "reporting.data_quality.read",
+          "reporting.export",
+          "reporting.snapshot.create",
+          "supplier.read"
+        ]
+      }
+    },
+    "demo-buyer": {
+      "status": 200,
+      "body": {
+        "user_id": "20311145-ca00-507f-b7cc-15cb836163ff",
+        "display_name": "Compras Demo",
+        "status": "active",
+        "selected_organization_id": null,
+        "associations": [
+          {
+            "organization_id": "45104a8c-d590-5946-b8dd-f5534e89e338",
+            "display_name": "Panne Demonstração",
+            "slug": "panne-demonstracao",
+            "roles": [
+              "commercial"
+            ],
+            "status": "active",
+            "permissions": [
+              "costing.read",
+              "identity.read_me",
+              "ingredient.read",
+              "inventory.read",
+              "labeling.read",
+              "membership.read",
+              "organization.read",
+              "pricing.publish",
+              "pricing.review",
+              "pricing.simulation.manage",
+              "procurement.order.approve",
+              "procurement.order.manage",
+              "procurement.quotation.manage",
+              "procurement.read",
+              "procurement.receive",
+              "procurement.requisition.approve",
+              "procurement.requisition.create",
+              "procurement.return",
+              "recipe.read",
+              "recipe.technical_sheet.read",
+              "regulatory.source.read",
+              "reporting.costing.read",
+              "reporting.dashboard.read",
+              "reporting.data_quality.read",
+              "reporting.export",
+              "reporting.inventory.read",
+              "reporting.pricing.read",
+              "reporting.saved_view.manage",
+              "reporting.snapshot.create",
+              "supplier.manage",
+              "supplier.price.record",
+              "supplier.read"
+            ]
+          }
+        ],
+        "roles": [
+          "commercial"
+        ],
+        "permissions": [
+          "costing.read",
+          "identity.read_me",
+          "ingredient.read",
+          "inventory.read",
+          "labeling.read",
+          "membership.read",
+          "organization.read",
+          "pricing.publish",
+          "pricing.review",
+          "pricing.simulation.manage",
+          "procurement.order.approve",
+          "procurement.order.manage",
+          "procurement.quotation.manage",
+          "procurement.read",
+          "procurement.receive",
+          "procurement.requisition.approve",
+          "procurement.requisition.create",
+          "procurement.return",
+          "recipe.read",
+          "recipe.technical_sheet.read",
+          "regulatory.source.read",
+          "reporting.costing.read",
+          "reporting.dashboard.read",
+          "reporting.data_quality.read",
+          "reporting.export",
+          "reporting.inventory.read",
+          "reporting.pricing.read",
+          "reporting.saved_view.manage",
+          "reporting.snapshot.create",
+          "supplier.manage",
+          "supplier.price.record",
+          "supplier.read"
+        ]
+      }
+    },
+    "demo-reader": {
+      "status": 200,
+      "body": {
+        "user_id": "950e7d2f-ebfd-5a95-ba87-dbb99d20e0f6",
+        "display_name": "Leitor Demo",
+        "status": "active",
+        "selected_organization_id": null,
+        "associations": [
+          {
+            "organization_id": "45104a8c-d590-5946-b8dd-f5534e89e338",
+            "display_name": "Panne Demonstração",
+            "slug": "panne-demonstracao",
+            "roles": [
+              "viewer"
+            ],
+            "status": "active",
+            "permissions": [
+              "identity.read_me",
+              "ingredient.read",
+              "inventory.read",
+              "labeling.read",
+              "membership.read",
+              "organization.read",
+              "procurement.read",
+              "production.board.read",
+              "production.order.read",
+              "production.plan.read",
+              "recipe.read",
+              "recipe.technical_sheet.read",
+              "regulatory.source.read",
+              "reporting.compliance.read",
+              "reporting.dashboard.read",
+              "reporting.data_quality.read",
+              "reporting.production.read",
+              "reporting.traceability.read",
+              "supplier.read"
+            ]
+          }
+        ],
+        "roles": [
+          "viewer"
+        ],
+        "permissions": [
+          "identity.read_me",
+          "ingredient.read",
+          "inventory.read",
+          "labeling.read",
+          "membership.read",
+          "organization.read",
+          "procurement.read",
+          "production.board.read",
+          "production.order.read",
+          "production.plan.read",
+          "recipe.read",
+          "recipe.technical_sheet.read",
+          "regulatory.source.read",
+          "reporting.compliance.read",
+          "reporting.dashboard.read",
+          "reporting.data_quality.read",
+          "reporting.production.read",
+          "reporting.traceability.read",
+          "supplier.read"
+        ]
+      }
+    }
+  },
+  "live": {
+    "ingredientes": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "0c2d415d-1f7a-4107-ab42-1d4a19fcc8af",
+            "code": "ACUCAR",
+            "display_name": "Açúcar cristal (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "23f99906-5360-47ea-88dd-5f48b1d410e4",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "62ce26e6-1953-4d0f-86e4-954573d553e1",
+            "code": "AGUA",
+            "display_name": "Água (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "db5ee852-3f5d-4302-8758-121f82a66cb9",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "7a42e72c-d7a8-4b10-8627-d6bdce9e7a74",
+            "code": "CALDA",
+            "display_name": "Calda de açúcar (Demo)",
+            "ingredient_type": "preparation",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "4c1913fa-7c9d-43d5-802a-a4ec7fe13662",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "480cd9de-3cbc-4d83-b1b6-1e1b7b6cc459",
+            "code": "FAR-TRIGO",
+            "display_name": "Farinha de trigo tipo 1 (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "b69f57b4-7fc9-411b-ac6d-c380432a36a3",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "ae95cfbc-0cc6-48b3-b893-b1b900291694",
+            "code": "FAR-RET",
+            "display_name": "Farinha especial retirada (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "a23c5cdf-0a48-4771-9139-f2d9e0dc419a",
+              "version_number": 1,
+              "status": "retired"
+            }
+          },
+          {
+            "id": "9488b6fc-13a3-4196-8c51-70e011b02059",
+            "code": "FAR-INT",
+            "display_name": "Farinha integral (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "b19a1ae7-e461-40b9-ab69-d5ab8583e223",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "c3add847-8be7-4a8f-b6dc-284a56964af1",
+            "code": "FER-BIO",
+            "display_name": "Fermento biológico fresco (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "b208f437-44c0-4ab1-90c3-041a8f670c4d",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "d7164efc-66ac-40fa-9a83-783c97b67ed4",
+            "code": "GERGELIM",
+            "display_name": "Gergelim (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "3795b49d-860f-4388-ad2d-fe61e7390c52",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "81a4a1d3-62aa-445d-9640-47ecbc906da4",
+            "code": "LEITE-PO",
+            "display_name": "Leite em pó (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "80af021e-b8b0-4407-b9c7-3d0e2f8ff7db",
+              "version_number": 1,
+              "status": "draft"
+            }
+          },
+          {
+            "id": "6632776b-e412-4fe5-bdca-35324b482582",
+            "code": "LEITE",
+            "display_name": "Leite integral (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "2411ad17-51f5-447d-985e-5db11de50126",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "75266324-0638-4274-a846-f7c46f179665",
+            "code": "MANTEIGA",
+            "display_name": "Manteiga (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "1b462699-67cd-4524-997e-28ea5471c14e",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "0e1a6bce-3540-4618-ba2a-6fd208f3a62b",
+            "code": "MARGARINA",
+            "display_name": "Margarina (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "dd3af39d-13a3-4650-9d8e-9a1b5095d300",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "8738567d-e62b-4307-801e-ca12009a3af9",
+            "code": "MELHOR",
+            "display_name": "Melhorador de farinha (Demo)",
+            "ingredient_type": "composite",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "c27cdb77-0f8d-4ca7-9a7c-a68ba71ea56e",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "2a80cc6a-d8a1-4ab5-b425-2bd446879b0b",
+            "code": "OLEO",
+            "display_name": "Óleo de soja (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "412fc8f2-d073-4a6d-bd17-fed9a1ee9682",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "1c08a935-ec6a-4906-bb5f-96535871d641",
+            "code": "OVO",
+            "display_name": "Ovo (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "13fbe229-cfdd-445d-bd24-d75bce4e242e",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "b8a4c022-8dff-4776-9cd7-632fa0db8bcf",
+            "code": "LEV-POOL",
+            "display_name": "Poolish (Demo)",
+            "ingredient_type": "preparation",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "c671c5e5-88ed-4bbb-91ed-73767ca0515f",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "f755fb5e-05ff-4709-8335-3895b6e1418c",
+            "code": "RECHEIO",
+            "display_name": "Recheio de goiabada (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "2d8a3b0a-41a3-4169-8efa-fb79532aa400",
+              "version_number": 1,
+              "status": "draft"
+            }
+          },
+          {
+            "id": "8aa8eb54-d0e0-4672-b9f5-50ce2dc64cce",
+            "code": "SAL",
+            "display_name": "Sal refinado (Demo)",
+            "ingredient_type": "simple",
+            "status": "active",
+            "row_version": 1,
+            "current_version": {
+              "id": "a77757d6-93e8-420a-9ef5-3fb0103f06d1",
+              "version_number": 1,
+              "status": "published"
+            }
+          }
+        ],
+        "total": 18,
+        "limit": 20,
+        "offset": 0
+      }
+    },
+    "receitas": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "e16051da-97d4-4db8-b6b3-ebc02b1cce33",
+            "code": "F-BOLO",
+            "display_name": "Bolo simples (Demo)",
+            "status": "active",
+            "technical_product_id": "48429979-bb9e-4e15-94ea-8abf49ae87ca",
+            "row_version": 1,
+            "current_version": {
+              "id": "f864ae84-c899-44b5-88e0-071e3f26a913",
+              "version_number": 1,
+              "status": "draft"
+            }
+          },
+          {
+            "id": "5ae4af25-a6aa-4466-93dc-7fd6fd1ca121",
+            "code": "F-BRIOCHE",
+            "display_name": "Brioche (Demo)",
+            "status": "active",
+            "technical_product_id": "aba2f02c-ea62-4f8c-84e7-d7a4744b5bdf",
+            "row_version": 1,
+            "current_version": {
+              "id": "6ff8d06c-4597-4e95-8d52-9519eb963a87",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "ffaef915-3f0d-4ea3-9649-97e8a60dd52d",
+            "code": "F-FOCACCIA",
+            "display_name": "Focaccia (Demo)",
+            "status": "active",
+            "technical_product_id": "bf8b3b12-85a2-4339-a71a-43a2f62a8b69",
+            "row_version": 1,
+            "current_version": {
+              "id": "5891c203-f0f9-49a7-99dd-05a02f34bf7b",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "60c49249-567f-4b06-8130-414efd53964c",
+            "code": "AI-507c72c8",
+            "display_name": "Pão de teste assistivo",
+            "status": "development",
+            "technical_product_id": "595edd01-7d84-4bd7-8f4a-88837add4914",
+            "row_version": 1,
+            "current_version": {
+              "id": "f9276258-2e16-4655-b1ea-2858405633ae",
+              "version_number": 1,
+              "status": "draft"
+            }
+          },
+          {
+            "id": "7787d110-f4af-409f-9f9b-030bf6ea7f5b",
+            "code": "F-PAO-FR",
+            "display_name": "Pão francês (Demo)",
+            "status": "active",
+            "technical_product_id": "f9ffc56e-18ee-4d6c-8b57-adfb65698431",
+            "row_version": 1,
+            "current_version": {
+              "id": "2e52f81d-cde3-4af9-a8cf-dff08f510da1",
+              "version_number": 1,
+              "status": "published"
+            }
+          },
+          {
+            "id": "2046bb67-b12b-4581-9d26-f0b3b6ca994e",
+            "code": "F-PAO-INT",
+            "display_name": "Pão integral (Demo)",
+            "status": "active",
+            "technical_product_id": "f13296b1-5fa9-4f4c-ba3d-1d9088308479",
+            "row_version": 1,
+            "current_version": {
+              "id": "cda04a94-0f56-4a36-a2ca-55ee88701afa",
+              "version_number": 1,
+              "status": "published"
+            }
+          }
+        ],
+        "total": 6,
+        "limit": 20,
+        "offset": 0
+      }
+    },
+    "ordens": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "0b86090a-25c2-4fc0-9065-947d3f5bcaf4",
+            "public_code": "ORD-20260824-0004",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "plan_id": "e90f89ed-64fb-4359-af49-cf88cf44c7ad",
+            "technical_product_id": "f9ffc56e-18ee-4d6c-8b57-adfb65698431",
+            "target_mode": "mass",
+            "target_quantity": "3300.000000",
+            "priority": 90,
+            "status": "in_weighing",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "row_version": 5,
+            "materials_hash": "637199e47d84d86359ed737e612ba52127636a917dcb11b76f8e38669515aceb",
+            "steps_hash": "8e0375d9f6157d7d2ad0f5f5b916c2d036c64456875dbed0a86436558c1ffe86",
+            "snapshot_hash": "bd9abde8057e64492eead6d3f5b29d0430ccc5c0f32d34ca004156b2f0d9c333"
+          },
+          {
+            "id": "3e9dee6f-08f8-4113-955f-d5c82a2a512f",
+            "public_code": "ORD-20260825-0001",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "plan_id": "25e9a8b7-a440-4179-a925-46102977e2cf",
+            "technical_product_id": "aba2f02c-ea62-4f8c-84e7-d7a4744b5bdf",
+            "target_mode": "mass",
+            "target_quantity": "3300.000000",
+            "priority": 50,
+            "status": "ready",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "row_version": 6,
+            "materials_hash": "e34bfb34a95b818fbb48af05fc80ede521192e80fa4d6ce1f2cbb154709c4f4e",
+            "steps_hash": "8e0375d9f6157d7d2ad0f5f5b916c2d036c64456875dbed0a86436558c1ffe86",
+            "snapshot_hash": "02dc3b850c688d20dbac34b835223400059af602d0350672d2b12db5ab2a9b7e"
+          },
+          {
+            "id": "450249e3-6060-4d32-ac05-531045b2c688",
+            "public_code": "ORD-20260825-0003",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "plan_id": "65786191-27c8-44a3-90ac-82d8afa9f910",
+            "technical_product_id": "f9ffc56e-18ee-4d6c-8b57-adfb65698431",
+            "target_mode": "mass",
+            "target_quantity": "3300.000000",
+            "priority": 20,
+            "status": "cancelled",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "row_version": 3,
+            "materials_hash": null,
+            "steps_hash": null,
+            "snapshot_hash": null
+          },
+          {
+            "id": "472cea65-adcd-43d9-81c5-67055782b3b0",
+            "public_code": "ORD-20260824-0002",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "plan_id": "c619c7e8-4517-4a2f-905d-99ed937ebc96",
+            "technical_product_id": "f13296b1-5fa9-4f4c-ba3d-1d9088308479",
+            "target_mode": "mass",
+            "target_quantity": "3300.000000",
+            "priority": 60,
+            "status": "scheduled",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "row_version": 2,
+            "materials_hash": null,
+            "steps_hash": null,
+            "snapshot_hash": null
+          },
+          {
+            "id": "76540556-907c-442e-9375-ed758d6bacfe",
+            "public_code": "ORD-20260823-0002",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "plan_id": "e58ccc83-c63f-430b-a4e6-3b07517566be",
+            "technical_product_id": "aba2f02c-ea62-4f8c-84e7-d7a4744b5bdf",
+            "target_mode": "mass",
+            "target_quantity": "3300.000000",
+            "priority": 35,
+            "status": "short_closed",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "row_version": 8,
+            "materials_hash": "e34bfb34a95b818fbb48af05fc80ede521192e80fa4d6ce1f2cbb154709c4f4e",
+            "steps_hash": "8e0375d9f6157d7d2ad0f5f5b916c2d036c64456875dbed0a86436558c1ffe86",
+            "snapshot_hash": "02dc3b850c688d20dbac34b835223400059af602d0350672d2b12db5ab2a9b7e"
+          },
+          {
+            "id": "79ebe016-0cc5-4363-a9a0-9604109d52b3",
+            "public_code": "ORD-20260824-0001",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "plan_id": "7c923991-a69e-4357-934a-c44421d5da70",
+            "technical_product_id": "f9ffc56e-18ee-4d6c-8b57-adfb65698431",
+            "target_mode": "mass",
+            "target_quantity": "3300.000000",
+            "priority": 80,
+            "status": "draft",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "row_version": 1,
+            "materials_hash": null,
+            "steps_hash": null,
+            "snapshot_hash": null
+          },
+          {
+            "id": "85925109-2398-470b-8cf5-769434b1dd69",
+            "public_code": "ORD-20260823-0001",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "plan_id": "af6796aa-86a6-4c0c-8fac-e0b3c01c12ad",
+            "technical_product_id": "bf8b3b12-85a2-4339-a71a-43a2f62a8b69",
+            "target_mode": "mass",
+            "target_quantity": "3300.000000",
+            "priority": 55,
+            "status": "completed",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "row_version": 8,
+            "materials_hash": "4973d39fc0e01a09c75dad197adcdc46a20e078d301b2212e5a63a24301c876f",
+            "steps_hash": "8e0375d9f6157d7d2ad0f5f5b916c2d036c64456875dbed0a86436558c1ffe86",
+            "snapshot_hash": "ac0b37142fb80e02f6ec7c86cdeb616be80d7559352731f7a2a26db3401bd420"
+          },
+          {
+            "id": "a89b5066-1b62-449f-9be6-1f21edfcda00",
+            "public_code": "ORD-20260825-0002",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "plan_id": "9bfa644d-fce5-4e38-ad67-5ab7d4994037",
+            "technical_product_id": "f13296b1-5fa9-4f4c-ba3d-1d9088308479",
+            "target_mode": "mass",
+            "target_quantity": "3300.000000",
+            "priority": 40,
+            "status": "on_hold",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "row_version": 8,
+            "materials_hash": "70b0436c7305a877d7031bd94500a0eed5b8a8707415f79ef59249880738172a",
+            "steps_hash": "8e0375d9f6157d7d2ad0f5f5b916c2d036c64456875dbed0a86436558c1ffe86",
+            "snapshot_hash": "c880192a8cc20b9e544babd801074fea362fb1d700ac2859a2dd55c434a4096f"
+          },
+          {
+            "id": "b1892335-7b7e-4abf-8d4f-7217c87f5b51",
+            "public_code": "ORD-20260824-0005",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "plan_id": "53f2bfd9-30e6-4611-83df-a2e6d7db6804",
+            "technical_product_id": "f9ffc56e-18ee-4d6c-8b57-adfb65698431",
+            "target_mode": "mass",
+            "target_quantity": "3300.000000",
+            "priority": 85,
+            "status": "in_progress",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "row_version": 7,
+            "materials_hash": "637199e47d84d86359ed737e612ba52127636a917dcb11b76f8e38669515aceb",
+            "steps_hash": "8e0375d9f6157d7d2ad0f5f5b916c2d036c64456875dbed0a86436558c1ffe86",
+            "snapshot_hash": "bd9abde8057e64492eead6d3f5b29d0430ccc5c0f32d34ca004156b2f0d9c333"
+          },
+          {
+            "id": "f63284ce-26f6-495e-a601-1e3c9b0f0acd",
+            "public_code": "ORD-20260824-0003",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "plan_id": "8666ce11-803f-4522-b67e-48cd0e742245",
+            "technical_product_id": "bf8b3b12-85a2-4339-a71a-43a2f62a8b69",
+            "target_mode": "mass",
+            "target_quantity": "3300.000000",
+            "priority": 70,
+            "status": "released",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "row_version": 4,
+            "materials_hash": "4973d39fc0e01a09c75dad197adcdc46a20e078d301b2212e5a63a24301c876f",
+            "steps_hash": "8e0375d9f6157d7d2ad0f5f5b916c2d036c64456875dbed0a86436558c1ffe86",
+            "snapshot_hash": "ac0b37142fb80e02f6ec7c86cdeb616be80d7559352731f7a2a26db3401bd420"
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    "planos": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "25e9a8b7-a440-4179-a925-46102977e2cf",
+            "public_code": "PLN-20260825-0001",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "operational_date": "2026-08-25",
+            "shift": "afternoon",
+            "status": "scheduled",
+            "notes": "Plano demo ready",
+            "row_version": 2,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "updated_at": "2026-08-24T23:03:19.029354+00:00",
+            "scheduled_at": "2026-08-24T23:03:19.029347+00:00"
+          },
+          {
+            "id": "53f2bfd9-30e6-4611-83df-a2e6d7db6804",
+            "public_code": "PLN-20260824-0005",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "operational_date": "2026-08-24",
+            "shift": "night",
+            "status": "scheduled",
+            "notes": "Plano demo in_progress",
+            "row_version": 2,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "updated_at": "2026-08-24T23:03:19.293232+00:00",
+            "scheduled_at": "2026-08-24T23:03:19.293225+00:00"
+          },
+          {
+            "id": "65786191-27c8-44a3-90ac-82d8afa9f910",
+            "public_code": "PLN-20260825-0003",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "operational_date": "2026-08-25",
+            "shift": "night",
+            "status": "scheduled",
+            "notes": "Plano demo cancelled",
+            "row_version": 2,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "updated_at": "2026-08-24T23:03:20.972861+00:00",
+            "scheduled_at": "2026-08-24T23:03:20.972854+00:00"
+          },
+          {
+            "id": "7c923991-a69e-4357-934a-c44421d5da70",
+            "public_code": "PLN-20260824-0001",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "operational_date": "2026-08-24",
+            "shift": "morning",
+            "status": "scheduled",
+            "notes": "Plano demo draft",
+            "row_version": 2,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "updated_at": "2026-08-24T23:03:18.655895+00:00",
+            "scheduled_at": "2026-08-24T23:03:18.655884+00:00"
+          },
+          {
+            "id": "8666ce11-803f-4522-b67e-48cd0e742245",
+            "public_code": "PLN-20260824-0003",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "operational_date": "2026-08-24",
+            "shift": "morning",
+            "status": "scheduled",
+            "notes": "Plano demo released",
+            "row_version": 2,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "updated_at": "2026-08-24T23:03:18.746971+00:00",
+            "scheduled_at": "2026-08-24T23:03:18.746963+00:00"
+          },
+          {
+            "id": "9bfa644d-fce5-4e38-ad67-5ab7d4994037",
+            "public_code": "PLN-20260825-0002",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "operational_date": "2026-08-25",
+            "shift": "morning",
+            "status": "scheduled",
+            "notes": "Plano demo on_hold",
+            "row_version": 2,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "updated_at": "2026-08-24T23:03:19.593459+00:00",
+            "scheduled_at": "2026-08-24T23:03:19.593452+00:00"
+          },
+          {
+            "id": "af6796aa-86a6-4c0c-8fac-e0b3c01c12ad",
+            "public_code": "PLN-20260823-0001",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "operational_date": "2026-08-23",
+            "shift": "morning",
+            "status": "scheduled",
+            "notes": "Plano demo completed",
+            "row_version": 2,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "updated_at": "2026-08-24T23:03:19.905331+00:00",
+            "scheduled_at": "2026-08-24T23:03:19.905324+00:00"
+          },
+          {
+            "id": "c619c7e8-4517-4a2f-905d-99ed937ebc96",
+            "public_code": "PLN-20260824-0002",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "operational_date": "2026-08-24",
+            "shift": "afternoon",
+            "status": "scheduled",
+            "notes": "Plano demo scheduled",
+            "row_version": 2,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "updated_at": "2026-08-24T23:03:18.698970+00:00",
+            "scheduled_at": "2026-08-24T23:03:18.698963+00:00"
+          },
+          {
+            "id": "e58ccc83-c63f-430b-a4e6-3b07517566be",
+            "public_code": "PLN-20260823-0002",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "operational_date": "2026-08-23",
+            "shift": "afternoon",
+            "status": "scheduled",
+            "notes": "Plano demo short_closed",
+            "row_version": 2,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "updated_at": "2026-08-24T23:03:20.505550+00:00",
+            "scheduled_at": "2026-08-24T23:03:20.505543+00:00"
+          },
+          {
+            "id": "e90f89ed-64fb-4359-af49-cf88cf44c7ad",
+            "public_code": "PLN-20260824-0004",
+            "establishment_id": "8f941e25-d6a5-5b27-93aa-cbc4c7fa1ce8",
+            "operational_date": "2026-08-24",
+            "shift": "morning",
+            "status": "scheduled",
+            "notes": "Plano demo in_weighing",
+            "row_version": 2,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "updated_at": "2026-08-24T23:03:18.887068+00:00",
+            "scheduled_at": "2026-08-24T23:03:18.887060+00:00"
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    "quadro": {
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "order": {
+              "id": "450249e3-6060-4d32-ac05-531045b2c688",
+              "public_code": "ORD-20260825-0003",
+              "status": "cancelled",
+              "priority": 20,
+              "row_version": 3
+            },
+            "batches": [],
+            "product": {
+              "id": "f9ffc56e-18ee-4d6c-8b57-adfb65698431",
+              "code": "PAO-FR",
+              "display_name": "Pão francês (Demo)"
+            },
+            "quantity": "3300.000000",
+            "target_mode": "mass",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "operational_date": "2026-08-25",
+            "shift": "night",
+            "current_step": null,
+            "dependencies": [],
+            "blocked": false,
+            "open_occurrences": 0,
+            "delayed": false,
+            "next_action": null,
+            "has_execution_facts": false
+          },
+          {
+            "order": {
+              "id": "b1892335-7b7e-4abf-8d4f-7217c87f5b51",
+              "public_code": "ORD-20260824-0005",
+              "status": "in_progress",
+              "priority": 85,
+              "row_version": 7
+            },
+            "batches": [
+              {
+                "id": "63b87e5a-762b-4c35-9a18-57c77e8d581c",
+                "production_order_id": "b1892335-7b7e-4abf-8d4f-7217c87f5b51",
+                "sequence": 1,
+                "operational_code": "ORD-20260824-0005-B01",
+                "target_mode": "mass",
+                "target_quantity": "3300.000000",
+                "status": "in_progress",
+                "row_version": 4,
+                "planned_start_at": null,
+                "planned_end_at": null
+              }
+            ],
+            "product": {
+              "id": "f9ffc56e-18ee-4d6c-8b57-adfb65698431",
+              "code": "PAO-FR",
+              "display_name": "Pão francês (Demo)"
+            },
+            "quantity": "3300.000000",
+            "target_mode": "mass",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "operational_date": "2026-08-24",
+            "shift": "night",
+            "current_step": "Misturar",
+            "dependencies": [],
+            "blocked": false,
+            "open_occurrences": 0,
+            "delayed": false,
+            "next_action": "complete_step",
+            "has_execution_facts": true
+          },
+          {
+            "order": {
+              "id": "0b86090a-25c2-4fc0-9065-947d3f5bcaf4",
+              "public_code": "ORD-20260824-0004",
+              "status": "in_weighing",
+              "priority": 90,
+              "row_version": 5
+            },
+            "batches": [
+              {
+                "id": "ec9ea950-d23b-4ecd-9208-7969d99438b0",
+                "production_order_id": "0b86090a-25c2-4fc0-9065-947d3f5bcaf4",
+                "sequence": 1,
+                "operational_code": "ORD-20260824-0004-B01",
+                "target_mode": "mass",
+                "target_quantity": "3300.000000",
+                "status": "in_weighing",
+                "row_version": 2,
+                "planned_start_at": null,
+                "planned_end_at": null
+              }
+            ],
+            "product": {
+              "id": "f9ffc56e-18ee-4d6c-8b57-adfb65698431",
+              "code": "PAO-FR",
+              "display_name": "Pão francês (Demo)"
+            },
+            "quantity": "3300.000000",
+            "target_mode": "mass",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "operational_date": "2026-08-24",
+            "shift": "morning",
+            "current_step": "Misturar",
+            "dependencies": [],
+            "blocked": false,
+            "open_occurrences": 0,
+            "delayed": false,
+            "next_action": "record_weighing",
+            "has_execution_facts": false
+          },
+          {
+            "order": {
+              "id": "79ebe016-0cc5-4363-a9a0-9604109d52b3",
+              "public_code": "ORD-20260824-0001",
+              "status": "draft",
+              "priority": 80,
+              "row_version": 1
+            },
+            "batches": [],
+            "product": {
+              "id": "f9ffc56e-18ee-4d6c-8b57-adfb65698431",
+              "code": "PAO-FR",
+              "display_name": "Pão francês (Demo)"
+            },
+            "quantity": "3300.000000",
+            "target_mode": "mass",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "operational_date": "2026-08-24",
+            "shift": "morning",
+            "current_step": null,
+            "dependencies": [],
+            "blocked": false,
+            "open_occurrences": 0,
+            "delayed": false,
+            "next_action": "schedule_order",
+            "has_execution_facts": false
+          },
+          {
+            "order": {
+              "id": "a89b5066-1b62-449f-9be6-1f21edfcda00",
+              "public_code": "ORD-20260825-0002",
+              "status": "on_hold",
+              "priority": 40,
+              "row_version": 8
+            },
+            "batches": [
+              {
+                "id": "4845ad3a-ae9c-47ca-918f-ae7da4d3b377",
+                "production_order_id": "a89b5066-1b62-449f-9be6-1f21edfcda00",
+                "sequence": 1,
+                "operational_code": "ORD-20260825-0002-B01",
+                "target_mode": "mass",
+                "target_quantity": "3300.000000",
+                "status": "in_progress",
+                "row_version": 4,
+                "planned_start_at": null,
+                "planned_end_at": null
+              }
+            ],
+            "product": {
+              "id": "f13296b1-5fa9-4f4c-ba3d-1d9088308479",
+              "code": "PAO-INT",
+              "display_name": "Pão integral (Demo)"
+            },
+            "quantity": "3300.000000",
+            "target_mode": "mass",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "operational_date": "2026-08-25",
+            "shift": "morning",
+            "current_step": "Misturar",
+            "dependencies": [],
+            "blocked": true,
+            "open_occurrences": 1,
+            "delayed": false,
+            "next_action": "resume_order",
+            "has_execution_facts": true
+          },
+          {
+            "order": {
+              "id": "472cea65-adcd-43d9-81c5-67055782b3b0",
+              "public_code": "ORD-20260824-0002",
+              "status": "scheduled",
+              "priority": 60,
+              "row_version": 2
+            },
+            "batches": [],
+            "product": {
+              "id": "f13296b1-5fa9-4f4c-ba3d-1d9088308479",
+              "code": "PAO-INT",
+              "display_name": "Pão integral (Demo)"
+            },
+            "quantity": "3300.000000",
+            "target_mode": "mass",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "operational_date": "2026-08-24",
+            "shift": "afternoon",
+            "current_step": null,
+            "dependencies": [],
+            "blocked": false,
+            "open_occurrences": 0,
+            "delayed": false,
+            "next_action": "release_order",
+            "has_execution_facts": false
+          },
+          {
+            "order": {
+              "id": "85925109-2398-470b-8cf5-769434b1dd69",
+              "public_code": "ORD-20260823-0001",
+              "status": "completed",
+              "priority": 55,
+              "row_version": 8
+            },
+            "batches": [
+              {
+                "id": "e982978c-64c8-40d0-9beb-8c76dab30c93",
+                "production_order_id": "85925109-2398-470b-8cf5-769434b1dd69",
+                "sequence": 1,
+                "operational_code": "ORD-20260823-0001-B01",
+                "target_mode": "mass",
+                "target_quantity": "3300.000000",
+                "status": "completed",
+                "row_version": 5,
+                "planned_start_at": null,
+                "planned_end_at": null
+              }
+            ],
+            "product": {
+              "id": "bf8b3b12-85a2-4339-a71a-43a2f62a8b69",
+              "code": "FOCACCIA",
+              "display_name": "Focaccia (Demo)"
+            },
+            "quantity": "3300.000000",
+            "target_mode": "mass",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "operational_date": "2026-08-23",
+            "shift": "morning",
+            "current_step": "Misturar",
+            "dependencies": [],
+            "blocked": false,
+            "open_occurrences": 0,
+            "delayed": false,
+            "next_action": null,
+            "has_execution_facts": true
+          },
+          {
+            "order": {
+              "id": "f63284ce-26f6-495e-a601-1e3c9b0f0acd",
+              "public_code": "ORD-20260824-0003",
+              "status": "released",
+              "priority": 70,
+              "row_version": 4
+            },
+            "batches": [
+              {
+                "id": "15263d2d-9c3b-4200-a067-39fb335878b6",
+                "production_order_id": "f63284ce-26f6-495e-a601-1e3c9b0f0acd",
+                "sequence": 1,
+                "operational_code": "ORD-20260824-0003-B01",
+                "target_mode": "mass",
+                "target_quantity": "3300.000000",
+                "status": "pending",
+                "row_version": 1,
+                "planned_start_at": null,
+                "planned_end_at": null
+              }
+            ],
+            "product": {
+              "id": "bf8b3b12-85a2-4339-a71a-43a2f62a8b69",
+              "code": "FOCACCIA",
+              "display_name": "Focaccia (Demo)"
+            },
+            "quantity": "3300.000000",
+            "target_mode": "mass",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "operational_date": "2026-08-24",
+            "shift": "morning",
+            "current_step": "Misturar",
+            "dependencies": [],
+            "blocked": false,
+            "open_occurrences": 0,
+            "delayed": false,
+            "next_action": "open_weighing_session",
+            "has_execution_facts": false
+          },
+          {
+            "order": {
+              "id": "76540556-907c-442e-9375-ed758d6bacfe",
+              "public_code": "ORD-20260823-0002",
+              "status": "short_closed",
+              "priority": 35,
+              "row_version": 8
+            },
+            "batches": [
+              {
+                "id": "644c34fa-6276-4cd6-8183-f0e7b44ddb6a",
+                "production_order_id": "76540556-907c-442e-9375-ed758d6bacfe",
+                "sequence": 1,
+                "operational_code": "ORD-20260823-0002-B01",
+                "target_mode": "mass",
+                "target_quantity": "3300.000000",
+                "status": "short_closed",
+                "row_version": 5,
+                "planned_start_at": null,
+                "planned_end_at": null
+              }
+            ],
+            "product": {
+              "id": "aba2f02c-ea62-4f8c-84e7-d7a4744b5bdf",
+              "code": "BRIOCHE",
+              "display_name": "Brioche (Demo)"
+            },
+            "quantity": "3300.000000",
+            "target_mode": "mass",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "operational_date": "2026-08-23",
+            "shift": "afternoon",
+            "current_step": "Misturar",
+            "dependencies": [],
+            "blocked": false,
+            "open_occurrences": 0,
+            "delayed": false,
+            "next_action": null,
+            "has_execution_facts": true
+          },
+          {
+            "order": {
+              "id": "3e9dee6f-08f8-4113-955f-d5c82a2a512f",
+              "public_code": "ORD-20260825-0001",
+              "status": "ready",
+              "priority": 50,
+              "row_version": 6
+            },
+            "batches": [
+              {
+                "id": "76873c70-99f6-4fb6-8f01-2b5a9ffcae41",
+                "production_order_id": "3e9dee6f-08f8-4113-955f-d5c82a2a512f",
+                "sequence": 1,
+                "operational_code": "ORD-20260825-0001-B01",
+                "target_mode": "mass",
+                "target_quantity": "3300.000000",
+                "status": "ready",
+                "row_version": 3,
+                "planned_start_at": null,
+                "planned_end_at": null
+              }
+            ],
+            "product": {
+              "id": "aba2f02c-ea62-4f8c-84e7-d7a4744b5bdf",
+              "code": "BRIOCHE",
+              "display_name": "Brioche (Demo)"
+            },
+            "quantity": "3300.000000",
+            "target_mode": "mass",
+            "planned_start_at": null,
+            "planned_end_at": null,
+            "operational_date": "2026-08-25",
+            "shift": "afternoon",
+            "current_step": "Misturar",
+            "dependencies": [],
+            "blocked": false,
+            "open_occurrences": 0,
+            "delayed": false,
+            "next_action": "start_step",
+            "has_execution_facts": true
+          }
+        ]
+      }
+    },
+    "dossies": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "74fb3138-58e0-4ea1-a1fa-fd4edeeb19f8",
+            "status": "evaluated",
+            "formulation_id": "7787d110-f4af-409f-9f9b-030bf6ea7f5b",
+            "formulation_version_id": "2e52f81d-cde3-4af9-a8cf-dff08f510da1",
+            "nutrition_calculation_id": null,
+            "row_version": 3,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "disclaimer": "Proposta técnica para revisão. Não é declaração de conformidade.",
+            "certified": false,
+            "conforme_anvisa": false
+          },
+          {
+            "id": "ff891796-932a-4274-92ce-f281f7679e9c",
+            "status": "draft",
+            "formulation_id": "e16051da-97d4-4db8-b6b3-ebc02b1cce33",
+            "formulation_version_id": "f864ae84-c899-44b5-88e0-071e3f26a913",
+            "nutrition_calculation_id": null,
+            "row_version": 2,
+            "created_at": "2026-08-24T23:03:17.844253+00:00",
+            "disclaimer": "Proposta técnica para revisão. Não é declaração de conformidade.",
+            "certified": false,
+            "conforme_anvisa": false
+          }
+        ],
+        "total": 2
+      }
+    },
+    "custos": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "084621a8-c412-4a70-996d-980843b5489c",
+            "kind": "planned",
+            "completeness": "partial",
+            "currency": "BRL",
+            "total_amount": "0.001026",
+            "batch_amount": null,
+            "mass_amount": null,
+            "produced_unit_amount": null,
+            "sellable_unit_amount": null,
+            "produced_quantity": null,
+            "sellable_quantity": null,
+            "content_hash": "e0ff4ac6572a9cfeb82caaed58cf2f6e7b7f2e4df8b2e10e45a096b54ab47893",
+            "valuation_at": "2026-08-24T12:00:00+00:00",
+            "algorithm_name": "costing_pricing",
+            "algorithm_version": "1",
+            "auto_published": false
+          },
+          {
+            "id": "4ab39dce-9999-460e-975d-ffa96ba16adf",
+            "kind": "actual",
+            "completeness": "partial",
+            "currency": "BRL",
+            "total_amount": "0.000934",
+            "batch_amount": null,
+            "mass_amount": "0.000000",
+            "produced_unit_amount": "0.000000",
+            "sellable_unit_amount": null,
+            "produced_quantity": "3300.000000",
+            "sellable_quantity": null,
+            "content_hash": "5a210fe8a1821b8a0e8136d4a1012647465c3327f908ec0fdc964b1b9fcfbf6c",
+            "valuation_at": "2026-08-24T12:00:00+00:00",
+            "algorithm_name": "costing_pricing",
+            "algorithm_version": "1",
+            "auto_published": false
+          }
+        ]
+      }
+    },
+    "lotes": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "10be9cd5-4e40-4d6a-9666-27df265ce8ae",
+            "internal_lot_code": "LOT-000002",
+            "supplier_lot_code": null,
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Almoxarifado Central",
+            "expires_on": "2026-08-27",
+            "status": "available",
+            "received_quantity": "4000.000000",
+            "unit_code": "g",
+            "row_version": 1
+          },
+          {
+            "id": "3eac578d-0290-4685-bb82-f62166cbe84f",
+            "internal_lot_code": "LOT-000004",
+            "supplier_lot_code": null,
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "07adf342-c02d-4e60-a6a6-d0cbdf8741b9",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Quarentena",
+            "expires_on": "2026-09-08",
+            "status": "quarantined",
+            "received_quantity": "800.000000",
+            "unit_code": "g",
+            "row_version": 2
+          },
+          {
+            "id": "7beaae41-e17e-460c-8e82-ebdb41a9c36b",
+            "internal_lot_code": "LOT-000003",
+            "supplier_lot_code": null,
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Almoxarifado Central",
+            "expires_on": "2026-09-13",
+            "status": "blocked",
+            "received_quantity": "1500.000000",
+            "unit_code": "g",
+            "row_version": 2
+          },
+          {
+            "id": "434f934a-32a0-46ad-9279-168a6b2cce77",
+            "internal_lot_code": "LOT-000005",
+            "supplier_lot_code": "DEMO-RCP",
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Almoxarifado Central",
+            "expires_on": "2026-09-23",
+            "status": "available",
+            "received_quantity": "4000.000000",
+            "unit_code": "g",
+            "row_version": 1
+          },
+          {
+            "id": "c4289667-d9a6-4753-a404-dbd0fb320776",
+            "internal_lot_code": "LOT-000001",
+            "supplier_lot_code": null,
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Almoxarifado Central",
+            "expires_on": "2026-10-03",
+            "status": "available",
+            "received_quantity": "20000.000000",
+            "unit_code": "g",
+            "row_version": 1
+          },
+          {
+            "id": "18d642b6-d12e-481e-ab7a-6163af28d035",
+            "internal_lot_code": "LOT-000006",
+            "supplier_lot_code": "DEMO-RCP-FULL",
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Almoxarifado Central",
+            "expires_on": "2026-10-08",
+            "status": "available",
+            "received_quantity": "3000.000000",
+            "unit_code": "g",
+            "row_version": 1
+          }
+        ]
+      }
+    },
+    "posicao": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "c408b6fa-114b-4996-bf05-8977b706f69b",
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+            "inventory_lot_id": "c4289667-d9a6-4753-a404-dbd0fb320776",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Almoxarifado Central",
+            "lot_code": "LOT-000001",
+            "unit_code": "g",
+            "physical_quantity": "20000.000000",
+            "reserved_quantity": "20000.000000",
+            "available_quantity": "0.000000"
+          },
+          {
+            "id": "fd1f0740-b31c-4456-8817-8d3d1fa757fb",
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+            "inventory_lot_id": "10be9cd5-4e40-4d6a-9666-27df265ce8ae",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Almoxarifado Central",
+            "lot_code": "LOT-000002",
+            "unit_code": "g",
+            "physical_quantity": "4000.000000",
+            "reserved_quantity": "4000.000000",
+            "available_quantity": "0.000000"
+          },
+          {
+            "id": "1aa82ce7-8b3d-44ba-b19a-dce8d4c0f638",
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+            "inventory_lot_id": "7beaae41-e17e-460c-8e82-ebdb41a9c36b",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Almoxarifado Central",
+            "lot_code": "LOT-000003",
+            "unit_code": "g",
+            "physical_quantity": "1500.000000",
+            "reserved_quantity": "0.000000",
+            "available_quantity": "1500.000000"
+          },
+          {
+            "id": "961d2712-b4ed-4191-a866-3558eeb878af",
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "07adf342-c02d-4e60-a6a6-d0cbdf8741b9",
+            "inventory_lot_id": "3eac578d-0290-4685-bb82-f62166cbe84f",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Quarentena",
+            "lot_code": "LOT-000004",
+            "unit_code": "g",
+            "physical_quantity": "800.000000",
+            "reserved_quantity": "0.000000",
+            "available_quantity": "800.000000"
+          },
+          {
+            "id": "e7d74869-642a-4f13-a46b-4f499ee3892d",
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+            "inventory_lot_id": "434f934a-32a0-46ad-9279-168a6b2cce77",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Almoxarifado Central",
+            "lot_code": "LOT-000005",
+            "unit_code": "g",
+            "physical_quantity": "3800.000000",
+            "reserved_quantity": "0.000000",
+            "available_quantity": "3800.000000"
+          },
+          {
+            "id": "a6afa9db-1fbf-4b2e-ab63-405f0241f146",
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "inventory_location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+            "inventory_lot_id": "18d642b6-d12e-481e-ab7a-6163af28d035",
+            "item_label": "Farinha de trigo tipo 1 (Demo)",
+            "location_label": "Almoxarifado Central",
+            "lot_code": "LOT-000006",
+            "unit_code": "g",
+            "physical_quantity": "3000.000000",
+            "reserved_quantity": "0.000000",
+            "available_quantity": "3000.000000"
+          }
+        ]
+      }
+    },
+    "reservas": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "7ec35eef-22fa-42dc-a4fd-c69bca42c12d",
+            "production_order_id": "f63284ce-26f6-495e-a601-1e3c9b0f0acd",
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "required_quantity": "90000.000000",
+            "reserved_quantity": "21500.000000",
+            "shortage_quantity": "68500.000000",
+            "status": "partial",
+            "adopted": true,
+            "row_version": 1,
+            "allocations": [
+              {
+                "lot_id": "10be9cd5-4e40-4d6a-9666-27df265ce8ae",
+                "location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+                "quantity": "1500.000000"
+              },
+              {
+                "lot_id": "c4289667-d9a6-4753-a404-dbd0fb320776",
+                "location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+                "quantity": "20000.000000"
+              }
+            ]
+          },
+          {
+            "id": "72cfd6be-83db-4143-b78e-ae70688089ce",
+            "production_order_id": "f63284ce-26f6-495e-a601-1e3c9b0f0acd",
+            "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+            "required_quantity": "2500.000000",
+            "reserved_quantity": "2500.000000",
+            "shortage_quantity": "0.000000",
+            "status": "reserved",
+            "adopted": true,
+            "row_version": 1,
+            "allocations": [
+              {
+                "lot_id": "10be9cd5-4e40-4d6a-9666-27df265ce8ae",
+                "location_id": "6e12074e-f9fb-4fc1-bdea-7191de4aa825",
+                "quantity": "2500.000000"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "requisicoes": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "10a6e340-b976-4a14-8286-aafba2e5acec",
+            "public_code": "REQ-000001",
+            "status": "draft",
+            "justification": "rascunho de cobertura demo",
+            "needed_by": null,
+            "row_version": 1,
+            "items": [
+              {
+                "id": "f2df129c-23ee-47a6-a39c-fd77802f8357",
+                "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+                "quantity": "2000.000000",
+                "unit_code": "g"
+              }
+            ]
+          },
+          {
+            "id": "de3dec39-568e-451e-bb1a-4c3b18a7e44e",
+            "public_code": "REQ-000002",
+            "status": "submitted",
+            "justification": "requisição submetida demo",
+            "needed_by": null,
+            "row_version": 2,
+            "items": [
+              {
+                "id": "4fcab07c-f4ad-40ea-96c0-2a58cf483065",
+                "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+                "quantity": "3000.000000",
+                "unit_code": "g"
+              }
+            ]
+          },
+          {
+            "id": "73e0c7df-dfa6-4ee2-830d-c9e2aa9c161a",
+            "public_code": "REQ-000003",
+            "status": "approved",
+            "justification": "requisição aprovada e mantida demo",
+            "needed_by": null,
+            "row_version": 3,
+            "items": [
+              {
+                "id": "122b9f21-8875-4de8-9cfb-06c2bf1637c9",
+                "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+                "quantity": "4000.000000",
+                "unit_code": "g"
+              }
+            ]
+          },
+          {
+            "id": "8c2c6e61-6644-498b-bdf2-797006df6492",
+            "public_code": "REQ-000004",
+            "status": "converted",
+            "justification": "cobertura abaixo do ponto demo",
+            "needed_by": null,
+            "row_version": 4,
+            "items": [
+              {
+                "id": "7096c7bf-2592-4f92-8a77-946744aac466",
+                "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+                "quantity": "10000.000000",
+                "unit_code": "g"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "cotacoes": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "87440be1-75d8-4b02-abfe-a1c4fdcd0fc2",
+            "supplier_id": "7a6a4dea-5a9f-405b-8763-d2d8504e015e",
+            "supplier_name": "Moinho Demo",
+            "valid_until": null,
+            "lead_time_days": 4,
+            "row_version": 1,
+            "items": [
+              {
+                "id": "a9d95ff5-b389-4e0f-85c3-0bb4f38c8538",
+                "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+                "quantity": "10000.000000",
+                "unit_price": "12.800000",
+                "unit_code": "g"
+              }
+            ]
+          },
+          {
+            "id": "526eaad0-07d8-4923-b8d4-ae67ac4df922",
+            "supplier_id": "e9b04cbe-8363-4004-81b8-09ad05d96038",
+            "supplier_name": "Laticínio Demo",
+            "valid_until": null,
+            "lead_time_days": 6,
+            "row_version": 1,
+            "items": [
+              {
+                "id": "301f1493-d5ea-4d72-ad31-d08ca00818f3",
+                "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+                "quantity": "10000.000000",
+                "unit_price": "13.400000",
+                "unit_code": "g"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "pedidos": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "f73b58dc-b710-4884-8b11-a95823f63410",
+            "public_code": "PO-000001",
+            "supplier_id": "7a6a4dea-5a9f-405b-8763-d2d8504e015e",
+            "supplier_name": "Moinho Demo",
+            "status": "partially_received",
+            "current_revision": 1,
+            "currency": "BRL",
+            "row_version": 4,
+            "items": [
+              {
+                "id": "c1a23186-d3f0-4228-8717-b1975475795c",
+                "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+                "quantity": "8000.000000",
+                "unit_price": "12.900000",
+                "unit_code": "g"
+              }
+            ]
+          },
+          {
+            "id": "ff78564c-a04f-4589-8e09-4f5998f96386",
+            "public_code": "PO-000002",
+            "supplier_id": "7a6a4dea-5a9f-405b-8763-d2d8504e015e",
+            "supplier_name": "Moinho Demo",
+            "status": "received",
+            "current_revision": 1,
+            "currency": "BRL",
+            "row_version": 4,
+            "items": [
+              {
+                "id": "e0d91a91-57ea-4fed-890c-9056909476dc",
+                "inventory_item_id": "4465fd2d-898e-4646-91bc-ff8a7a3bed24",
+                "quantity": "3000.000000",
+                "unit_price": "12.700000",
+                "unit_code": "g"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "recebimentos": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "5b2809d0-d052-40d9-84b7-3b6c5f3005a6",
+            "public_code": "RCP-000001",
+            "procurement_order_id": "f73b58dc-b710-4884-8b11-a95823f63410",
+            "status": "posted",
+            "row_version": 1,
+            "items": [
+              {
+                "id": "c75a5728-6590-4c6c-a1c7-bd80968131e3",
+                "inventory_lot_id": "434f934a-32a0-46ad-9279-168a6b2cce77",
+                "quantity": "4000.000000",
+                "observed_unit_price": "13.000000",
+                "divergence": {
+                  "price": true,
+                  "quantity": true
+                }
+              }
+            ]
+          },
+          {
+            "id": "c3a8195b-9346-418a-a2e3-9643eef2f0d8",
+            "public_code": "RCP-000002",
+            "procurement_order_id": "ff78564c-a04f-4589-8e09-4f5998f96386",
+            "status": "posted",
+            "row_version": 1,
+            "items": [
+              {
+                "id": "5b63ad2a-0f9c-4b9c-862d-6a5c62bf91ea",
+                "inventory_lot_id": "18d642b6-d12e-481e-ab7a-6163af28d035",
+                "quantity": "3000.000000",
+                "observed_unit_price": "12.700000",
+                "divergence": {}
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "devolucoes": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "f8c6d92b-2b99-4c1a-90e8-192404a7d61e",
+            "public_code": "RET-000001",
+            "procurement_receipt_id": "5b2809d0-d052-40d9-84b7-3b6c5f3005a6",
+            "inventory_lot_id": "434f934a-32a0-46ad-9279-168a6b2cce77",
+            "quantity": "200.000000",
+            "reason": "embalagem avariada demo",
+            "status": "posted"
+          }
+        ]
+      }
+    },
+    "relatorios": {
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "code": "executive",
+            "name": "Visão executiva",
+            "description": "Síntese de produção, custos autorizados, preços e conformidade, sem tratar margem como venda.",
+            "version": "2",
+            "metrics": [
+              "orders_by_status",
+              "planned_quantity",
+              "actual_quantity",
+              "yield_actual",
+              "loss_actual",
+              "cost_variance",
+              "cost_per_sellable_unit",
+              "price_coverage",
+              "compliance_coverage",
+              "data_coverage"
+            ]
+          },
+          {
+            "code": "production",
+            "name": "Planejamento e produção",
+            "description": "Plano versus ordens, estados distintos e cumprimento de quantidade.",
+            "version": "2",
+            "metrics": [
+              "orders_by_status",
+              "quantity_adherence",
+              "normal_completion_rate",
+              "short_close_rate",
+              "blocking_occurrences"
+            ]
+          },
+          {
+            "code": "consumption",
+            "name": "Consumo de componentes",
+            "description": "Planejado versus consumido, retorno, desperdício e consumo líquido.",
+            "version": "2",
+            "metrics": [
+              "net_consumption",
+              "consumption_variance",
+              "price_coverage"
+            ]
+          },
+          {
+            "code": "yield_losses",
+            "name": "Rendimento e perdas",
+            "description": "Massa pré e pós-forno, unidades vendáveis e perdas distinguíveis.",
+            "version": "2",
+            "metrics": [
+              "yield_actual",
+              "loss_actual",
+              "yield_coverage"
+            ]
+          },
+          {
+            "code": "costing",
+            "name": "Custos de produção",
+            "description": "Previsto, padrão e realizado com cobertura. Sem inventar venda.",
+            "version": "2",
+            "metrics": [
+              "cost_variance",
+              "cost_per_sellable_unit"
+            ]
+          },
+          {
+            "code": "pricing",
+            "name": "Formação de preços",
+            "description": "Preço sugerido versus praticado, markup e margens estimadas.",
+            "version": "2",
+            "metrics": [
+              "markup_percent",
+              "gross_margin",
+              "contribution_margin",
+              "price_coverage"
+            ]
+          },
+          {
+            "code": "compliance",
+            "name": "Conformidade e rotulagem",
+            "description": "Dossiês, achados e evidência insuficiente. Não é certificado.",
+            "version": "2",
+            "metrics": [
+              "compliance_coverage"
+            ]
+          },
+          {
+            "code": "traceability",
+            "name": "Rastreabilidade e auditoria",
+            "description": "Timeline de ordem, batelada, eventos, ocorrências e emissões.",
+            "version": "2",
+            "metrics": []
+          },
+          {
+            "code": "inventory",
+            "name": "Estoque e compras",
+            "description": "Posição física, disponível, validade, movimentações e necessidades. Sem valor contábil.",
+            "version": "2",
+            "metrics": [
+              "physical_on_hand",
+              "available_quantity",
+              "reserved_quantity",
+              "in_transit_quantity",
+              "expiring_lots",
+              "blocked_lots",
+              "count_variance",
+              "replenishment_need",
+              "inventory_data_quality"
+            ]
+          },
+          {
+            "code": "data_quality",
+            "name": "Qualidade dos dados",
+            "description": "Pendências acionáveis por domínio, sem ranking individual.",
+            "version": "2",
+            "metrics": [
+              "price_coverage",
+              "nutrition_coverage",
+              "yield_coverage",
+              "compliance_coverage",
+              "data_coverage"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "ids": {
+    "ingredientId": "0c2d415d-1f7a-4107-ab42-1d4a19fcc8af",
+    "recipeId": "e16051da-97d4-4db8-b6b3-ebc02b1cce33",
+    "orderId": "0b86090a-25c2-4fc0-9065-947d3f5bcaf4",
+    "planId": "25e9a8b7-a440-4179-a925-46102977e2cf",
+    "dossierId": "74fb3138-58e0-4ea1-a1fa-fd4edeeb19f8"
+  }
+}

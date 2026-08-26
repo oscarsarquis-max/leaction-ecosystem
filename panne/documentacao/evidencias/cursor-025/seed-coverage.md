@@ -1,0 +1,228 @@
+# Cobertura do cenário 025.1
+
+- Alembic: `0020_inventory_procurement`
+- Data-âncora: 2026-08-24
+- Duração: 0.401s
+- Verificação: ok
+
+## Organizações
+
+- Panne Demonstração
+- Padaria Horizonte Demo
+
+## Jornadas
+
+- aplicação: migrations, reference, /me, troca de organização
+- ingrediente/receita: versão, publicação, formulação, escala
+- produção: plano, ordem, pesagem, consumo, etapas, ficha
+- conformidade/custos: dossiê, revisão, cálculo, simulação
+- estoque/compras: lote, reserva, inventário, pedido
+- relatórios/interface: visão salva, snapshot, quadro, assistente
+
+## Contagem por tabela
+
+- `ai_interaction`: 2
+- `ai_proposal`: 2
+- `ai_proposal_change`: 1
+- `ai_proposal_citation`: 2
+- `ai_proposal_item`: 1
+- `ai_proposal_process_step`: 1
+- `ai_proposal_review`: 1
+- `alembic_version`: 1
+- `allergen`: 5
+- `app_user`: 8
+- `approval`: 5
+- `audit_event`: 6
+- `auth_identity`: 8
+- `calculation_evidence`: 0
+- `compliance_assessment`: 0
+- `compliance_evidence`: 0
+- `compliance_finding`: 0
+- `compliance_framework`: 0
+- `compliance_framework_version`: 0
+- `compliance_profile`: 0
+- `compliance_requirement`: 0
+- `compliance_requirement_source`: 0
+- `compliance_review`: 0
+- `costing_assumption`: 0
+- `costing_calculation`: 1
+- `costing_command`: 6
+- `costing_component`: 4
+- `costing_evidence`: 4
+- `costing_gap`: 3
+- `costing_invalidation`: 0
+- `costing_policy`: 1
+- `costing_policy_version`: 1
+- `data_source`: 0
+- `establishment`: 3
+- `formulation`: 6
+- `formulation_command`: 8
+- `formulation_item`: 21
+- `formulation_recipe_reference`: 0
+- `formulation_version`: 6
+- `formulation_version_recipe_reference`: 1
+- `grounding_citation`: 1
+- `grounding_query`: 2
+- `grounding_result`: 1
+- `ingredient`: 19
+- `ingredient_allergen`: 2
+- `ingredient_command`: 0
+- `ingredient_composition`: 1
+- `ingredient_nutrient`: 48
+- `ingredient_version`: 19
+- `inventory_balance`: 4
+- `inventory_code_counter`: 2
+- `inventory_command`: 16
+- `inventory_consumption_posting`: 0
+- `inventory_count_entry`: 0
+- `inventory_count_review`: 0
+- `inventory_count_scope`: 0
+- `inventory_count_session`: 0
+- `inventory_item`: 1
+- `inventory_location`: 4
+- `inventory_lot`: 4
+- `inventory_movement`: 4
+- `inventory_pick`: 0
+- `inventory_pick_line`: 0
+- `inventory_policy`: 1
+- `inventory_policy_version`: 1
+- `inventory_replenishment_item`: 1
+- `inventory_replenishment_suggestion`: 1
+- `inventory_reservation`: 2
+- `inventory_reservation_allocation`: 3
+- `knowledge_fragment`: 1
+- `knowledge_source`: 1
+- `knowledge_source_tag`: 0
+- `knowledge_source_version`: 1
+- `knowledge_tag`: 0
+- `labeling_applicability_profile`: 2
+- `labeling_assessment`: 1
+- `labeling_command`: 3
+- `labeling_dossier`: 2
+- `labeling_dossier_version`: 1
+- `labeling_evidence`: 26
+- `labeling_finding`: 26
+- `labeling_front_of_pack`: 1
+- `labeling_ingredient_candidate`: 4
+- `labeling_invalidation`: 0
+- `labeling_label_candidate`: 1
+- `labeling_mandatory_item`: 11
+- `labeling_nutrition_candidate`: 1
+- `labeling_nutrition_line`: 10
+- `labeling_review`: 0
+- `labeling_warning_candidate`: 3
+- `measurement_unit`: 5
+- `nutrient_definition`: 8
+- `nutrition_calculation`: 0
+- `nutrition_calculation_item`: 0
+- `nutrition_expectation_profile`: 0
+- `nutrition_expectation_profile_item`: 0
+- `organization`: 2
+- `organization_membership`: 9
+- `organization_membership_role`: 9
+- `permission`: 94
+- `practiced_price`: 1
+- `pricing_decision`: 1
+- `pricing_simulation`: 1
+- `pricing_simulation_component`: 2
+- `process_step`: 16
+- `procurement_order`: 0
+- `procurement_order_item`: 0
+- `procurement_order_revision`: 0
+- `procurement_quotation`: 0
+- `procurement_quotation_item`: 0
+- `procurement_receipt`: 0
+- `procurement_receipt_item`: 0
+- `procurement_requisition`: 0
+- `procurement_requisition_item`: 0
+- `procurement_return`: 0
+- `production_batch`: 7
+- `production_batch_material`: 28
+- `production_code_counter`: 7
+- `production_dependency_override`: 0
+- `production_event`: 168
+- `production_execution_policy`: 7
+- `production_material_consumption`: 8
+- `production_occurrence`: 1
+- `production_occurrence_event`: 1
+- `production_order`: 10
+- `production_order_dependency`: 0
+- `production_order_material`: 28
+- `production_order_step`: 21
+- `production_plan`: 10
+- `production_plan_item`: 10
+- `production_sheet_issue`: 4
+- `production_step_execution`: 8
+- `production_step_execution_event`: 23
+- `production_weighing_entry`: 20
+- `production_weighing_session`: 6
+- `production_weighing_verification`: 20
+- `production_yield_measurement`: 2
+- `recipe_reference`: 0
+- `reporting_command`: 2
+- `reporting_coverage_item`: 10
+- `reporting_dashboard_preference`: 0
+- `reporting_execution`: 1
+- `reporting_export`: 0
+- `reporting_saved_view`: 1
+- `reporting_snapshot`: 1
+- `role_permission`: 627
+- `scale_calculation`: 5
+- `scale_calculation_item`: 20
+- `supplier`: 4
+- `supplier_item`: 4
+- `supplier_item_price`: 6
+- `technical_product`: 6
+- `trial`: 3
+- `trial_measurement`: 0
+- `unit_conversion`: 0
+
+## Tabelas vazias
+
+- `calculation_evidence` (0): Sem linha neste recorte; ausência legítima.
+- `compliance_assessment` (0): Sem linha neste recorte; ausência legítima.
+- `compliance_evidence` (0): Sem linha neste recorte; ausência legítima.
+- `compliance_finding` (0): Sem linha neste recorte; ausência legítima.
+- `compliance_framework` (0): Sem linha neste recorte; ausência legítima.
+- `compliance_framework_version` (0): Sem linha neste recorte; ausência legítima.
+- `compliance_profile` (0): Sem linha neste recorte; ausência legítima.
+- `compliance_requirement` (0): Sem linha neste recorte; ausência legítima.
+- `compliance_requirement_source` (0): Sem linha neste recorte; ausência legítima.
+- `compliance_review` (0): Sem linha neste recorte; ausência legítima.
+- `costing_assumption` (0): Sem linha neste recorte; ausência legítima.
+- `costing_invalidation` (0): Sem linha neste recorte; ausência legítima.
+- `data_source` (0): Sem linha neste recorte; ausência legítima.
+- `formulation_recipe_reference` (0): Sem linha neste recorte; ausência legítima.
+- `ingredient_command` (0): Sem linha neste recorte; ausência legítima.
+- `inventory_consumption_posting` (0): Sem linha neste recorte; ausência legítima.
+- `inventory_count_entry` (0): Sem linha neste recorte; ausência legítima.
+- `inventory_count_review` (0): Sem linha neste recorte; ausência legítima.
+- `inventory_count_scope` (0): Sem linha neste recorte; ausência legítima.
+- `inventory_count_session` (0): Sem linha neste recorte; ausência legítima.
+- `inventory_pick` (0): Sem linha neste recorte; ausência legítima.
+- `inventory_pick_line` (0): Sem linha neste recorte; ausência legítima.
+- `knowledge_source_tag` (0): Sem linha neste recorte; ausência legítima.
+- `knowledge_tag` (0): Sem linha neste recorte; ausência legítima.
+- `labeling_invalidation` (0): Sem linha neste recorte; ausência legítima.
+- `labeling_review` (0): Sem linha neste recorte; ausência legítima.
+- `nutrition_calculation` (0): Sem linha neste recorte; ausência legítima.
+- `nutrition_calculation_item` (0): Sem linha neste recorte; ausência legítima.
+- `nutrition_expectation_profile` (0): Sem linha neste recorte; ausência legítima.
+- `nutrition_expectation_profile_item` (0): Sem linha neste recorte; ausência legítima.
+- `procurement_order` (0): Sem linha neste recorte; ausência legítima.
+- `procurement_order_item` (0): Sem linha neste recorte; ausência legítima.
+- `procurement_order_revision` (0): Sem linha neste recorte; ausência legítima.
+- `procurement_quotation` (0): Sem linha neste recorte; ausência legítima.
+- `procurement_quotation_item` (0): Sem linha neste recorte; ausência legítima.
+- `procurement_receipt` (0): Sem linha neste recorte; ausência legítima.
+- `procurement_receipt_item` (0): Sem linha neste recorte; ausência legítima.
+- `procurement_requisition` (0): Sem linha neste recorte; ausência legítima.
+- `procurement_requisition_item` (0): Sem linha neste recorte; ausência legítima.
+- `procurement_return` (0): Sem linha neste recorte; ausência legítima.
+- `production_dependency_override` (0): Sem linha neste recorte; ausência legítima.
+- `production_order_dependency` (0): Sem linha neste recorte; ausência legítima.
+- `recipe_reference` (0): Sem linha neste recorte; ausência legítima.
+- `reporting_dashboard_preference` (0): Sem linha neste recorte; ausência legítima.
+- `reporting_export` (0): Sem linha neste recorte; ausência legítima.
+- `trial_measurement` (0): Sem linha neste recorte; ausência legítima.
+- `unit_conversion` (0): Sem linha neste recorte; ausência legítima.

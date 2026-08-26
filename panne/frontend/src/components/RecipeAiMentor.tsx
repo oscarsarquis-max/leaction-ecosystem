@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import { useAssistant } from "../assistant/AssistantContext";
+
 const STEPS = [
   "Finalidade",
   "Objetivo e restrições",
@@ -25,6 +28,17 @@ export function RecipeAiMentor({
   onCancel: () => void;
 }) {
   const progress = Math.round(((step + 1) / STEPS.length) * 100);
+  const { setFlow, openAssistant } = useAssistant();
+  useEffect(() => {
+    setFlow({
+      code: "panne.recipe.ai.mentor",
+      title: "Mentoria do assistente",
+      steps: STEPS,
+      step,
+      note: "A IA não publica, não aprova e não cria ingrediente.",
+    });
+    return () => setFlow(null);
+  }, [setFlow, step]);
   if (minimized) {
     return (
       <p className="meta">
@@ -35,7 +49,7 @@ export function RecipeAiMentor({
     );
   }
   return (
-    <div className="drawer-assist panel" role="dialog" aria-labelledby="ai-mentor-title">
+    <div className="mentor-inline panel" role="dialog" aria-labelledby="ai-mentor-title">
       <h2 id="ai-mentor-title">Mentoria do assistente</h2>
       <p>
         <span className="badge">Assistido por IA</span> A IA não publica, não aprova e não cria
@@ -60,6 +74,9 @@ export function RecipeAiMentor({
       </ol>
       <p>Etapa atual: {STEPS[step]}</p>
       <div>
+        <button type="button" className="ghost" onClick={openAssistant}>
+          Abrir no assistente
+        </button>
         <button type="button" onClick={onMinimize}>
           Minimizar
         </button>

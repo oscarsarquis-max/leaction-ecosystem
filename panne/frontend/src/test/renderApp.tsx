@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { AppRoutes } from "../App";
 import { FakeAuthProvider } from "../auth/FakeAuthProvider";
 import { AuthProviderTree } from "../auth/AuthContext";
+import { AssistantProvider } from "../assistant/AssistantContext";
 import { OrganizationProvider } from "../session/OrganizationContext";
 
 export async function renderApp(
@@ -15,7 +16,9 @@ export async function renderApp(
     <AuthProviderTree provider={provider}>
       <OrganizationProvider>
         <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[path]}>
-          <AppRoutes />
+          <AssistantProvider>
+            <AppRoutes />
+          </AssistantProvider>
         </MemoryRouter>
       </OrganizationProvider>
     </AuthProviderTree>,

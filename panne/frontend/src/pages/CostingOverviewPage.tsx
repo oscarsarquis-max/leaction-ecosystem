@@ -7,12 +7,16 @@ export function CostingOverviewPage() {
   return (
     <div className="stage">
       <div>
-        <h1>Custos e preços</h1>
-        <p className="lede">
-          Custo previsto, padrão e realizado são memórias versionadas. O preço sugerido não é
-          publicado automaticamente. Markup não é margem bruta; margem bruta não é margem de
-          contribuição.
-        </p>
+        <div className="page-head">
+          <div>
+            <h1>Custos e preços</h1>
+            <p className="lede">
+              Custo previsto, padrão e realizado são memórias versionadas. O preço sugerido não é
+              publicado automaticamente. Markup não é margem bruta; margem bruta não é margem de
+              contribuição.
+            </p>
+          </div>
+        </div>
         <div className="cards">
           <article className="card">
             <h2>Políticas</h2>

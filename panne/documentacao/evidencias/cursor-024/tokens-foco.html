@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Tokens, contraste e foco</title>
+  <style>
+    body { margin: 0; font-family: "Segoe UI", sans-serif; background: #E5E4D6; color: #323334; padding: 24px; }
+    .sw { display: inline-block; width: 8rem; height: 4rem; margin: 8px; padding: 8px; }
+    button:focus { outline: 3px solid #5A3D2C; outline-offset: 2px; }
+    .ok { color: #3D5A3A; }
+    .warn { color: #8A5A12; }
+    .err { color: #8B3A2A; }
+  </style>
+</head>
+<body>
+  <h1>Paleta oficial e semântica</h1>
+  <div class="sw" style="background:#323334;color:#F7F2E8">Grafite</div>
+  <div class="sw" style="background:#E5E4D6">Bege</div>
+  <div class="sw" style="background:#49352A;color:#F7F2E8">Espresso</div>
+  <div class="sw" style="background:#6B4A3A;color:#F7F2E8">Castanho</div>
+  <div class="sw" style="background:#A06F49;color:#F7F2E8">Caramelo</div>
+  <div class="sw" style="background:#C7A878">Trigo</div>
+  <div class="sw" style="background:#F7F2E8">Creme</div>
+  <div class="sw" style="background:#D8C9AF">Areia</div>
+  <p><span class="ok">Oliva · concluído</span> · <span class="warn">Ocre · atenção</span> · <span class="err">Terracota · bloqueio</span></p>
+  <p>Cor nunca é o único sinal. <button autofocus>Foco visível</button></p>
+</body>
+</html>

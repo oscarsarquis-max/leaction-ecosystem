@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Relatórios e painéis — Panne</title>
+  <style>
+    body { margin: 0; font-family: Georgia, serif; background: #E5E4D6; color: #323334; }
+    header { display: flex; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid #323334; }
+    nav.sub { display: flex; flex-wrap: wrap; gap: 16px; padding: 8px 24px; }
+    main { display: grid; grid-template-columns: 1fr 280px; gap: 24px; padding: 24px; }
+    .card { background: #fff; padding: 16px; border: 1px solid #323334; margin-bottom: 12px; }
+    .meta { font-size: 14px; }
+    .filters { background: #F3F2EA; padding: 8px; border: 1px solid #323334; margin-bottom: 12px; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Panne</strong>
+    <nav>Produção · Componentes · Receitas · Conformidade · Gestão · Relatórios</nav>
+  </header>
+  <nav class="sub" aria-label="Submenu">Visão executiva · Produção · Componentes e perdas · Custos e preços · Conformidade · Rastreabilidade · Qualidade dos dados · Relatórios salvos</nav>
+  <p class="meta" style="padding:0 24px">Início / Gestão / Relatórios e painéis</p>
+  <main>
+    <div>
+      <h1>Visão executiva</h1>
+      <p>Dados até 24/08/2026 12:00. Hash abc123def456. Não é tempo real.</p>
+      <form class="filters">Início · Fim · Comparar com o período anterior · Aplicar filtros · Atualizar agora</form>
+      <div class="card"><h2>Ordens por estado</h2><p>disponível · 3</p><p class="meta">Cobertura 3/3. Ausentes: 0.</p><p>Planejadas 1 · Em execução 1 · Concluídas 1</p></div>
+      <div class="card"><h2>Taxa de conclusão normal</h2><p>indisponível · conjunto vazio</p></div>
+      <div class="card"><h2>Variação de custo</h2><p>indisponível · par previsto/realizado ausente</p></div>
+    </div>
+    <section class="card">
+      <h2>Assistente de análise</h2>
+      <p>Ausência não é zero. Markup não é margem bruta. Variação não é causa.</p>
+    </section>
+  </main>
+</body>
+</html>

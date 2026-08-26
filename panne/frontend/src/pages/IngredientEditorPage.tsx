@@ -118,7 +118,7 @@ export function IngredientEditorPage() {
             label: `${item.display_name} (${item.code})`,
           })),
       );
-    });
+    }).catch(() => undefined);
   }, [api, active, ingredientId]);
 
   useEffect(() => {

@@ -45,3 +45,4 @@ Mesmas vars no `.env` do Hub local. Sem bucket = comportamento antigo (só Postg
 
 - Não espelhar `leaction_hub` inteiro de local → prod “por causa do CMS”.
 - Não apagar o prefixo `cms/site/` no S3 em scripts de limpeza.
+- Nunca persistir `http://localhost:4000/images/...` no JSON. Upload e `normalizeCmsLanding` reescrevem loopback para a URL pública do S3 (`paneldx-cms-assets-2026`).

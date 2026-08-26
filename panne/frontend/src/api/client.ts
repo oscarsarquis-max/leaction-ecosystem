@@ -2,6 +2,7 @@ import { config } from "../config";
 import { ApiError, errorFromResponse } from "./errors";
 import type {
   BoardCard,
+  BoardContextCatalog,
   BoardFilters,
   Catalog,
   CatalogItem,
@@ -21,6 +22,9 @@ import type {
   CostingPolicy,
   PracticedPrice,
   PricingSimulation,
+  ReportPayload,
+  ReportSnapshot,
+  SavedReportView,
   RecipeReferenceLink,
   RecipeVersion,
   ScaleRow,
@@ -144,6 +148,10 @@ export class ApiClient {
   getBoard(filters: BoardFilters) {
     const query: Query = { ...filters };
     return this.orgGet<Envelope<BoardCard[]>>("/board", query);
+  }
+
+  getBoardContext() {
+    return this.orgGet<Envelope<BoardContextCatalog>>("/board/context");
   }
 
   getCatalog() {
@@ -311,6 +319,34 @@ export class ApiClient {
 
   listPracticedPrices() {
     return this.catalogGet<{ items: PracticedPrice[] }>("/pricing/practiced");
+  }
+
+  listInventory<T = Record<string, unknown>>(path: string, query: Query = {}) {
+    return this.catalogGet<{ items: T[] }>(path, query);
+  }
+
+  reportingCatalog() {
+    return this.catalogGet<{ items: Array<{ code: string; name: string; description: string }> }>("/reporting/catalog");
+  }
+
+  reportingReport(code: string, query: Query = {}) {
+    return this.catalogGet<Envelope<ReportPayload>>(`/reporting/reports/${code}`, query, false);
+  }
+
+  reportingDrillDown(report: string, metric: string, query: Query = {}) {
+    return this.catalogGet<{ data: { rows: Array<Record<string, unknown>>; reconciled: boolean } }>(
+      `/reporting/reports/${report}/metrics/${metric}/drill-down`,
+      query,
+      false,
+    );
+  }
+
+  reportingSnapshots() {
+    return this.catalogGet<{ items: ReportSnapshot[] }>("/reporting/snapshots");
+  }
+
+  reportingSavedViews() {
+    return this.catalogGet<{ items: SavedReportView[] }>("/reporting/saved-views");
   }
 
   listLabelingPortions() {

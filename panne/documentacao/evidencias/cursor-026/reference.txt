@@ -1,0 +1,2 @@
+Alvo resolvido: panne_demo em host.docker.internal:5434 (env=demo)
+{'units': 5, 'nutrients': 8, 'allergens': 5}

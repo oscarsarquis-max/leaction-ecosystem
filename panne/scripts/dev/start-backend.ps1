@@ -8,4 +8,8 @@ if (-not (Test-Path $Py)) {
     throw "Crie o ambiente: cd $Backend; python -m venv .venv; .\.venv\Scripts\python.exe -m pip install -e `".[dev]`""
 }
 Set-Location $Backend
+$Bootstrap = Join-Path $Root 'scripts\dev\bootstrap-local-dev.py'
+if (Test-Path $Bootstrap) {
+    & $Py $Bootstrap
+}
 & $Py -m uvicorn app.main:app --host 127.0.0.1 --port 5080

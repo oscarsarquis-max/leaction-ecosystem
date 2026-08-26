@@ -35,6 +35,12 @@ import {
 import { LabelingOverviewPage } from "./pages/LabelingOverviewPage";
 import { CostingOverviewPage } from "./pages/CostingOverviewPage";
 import {
+  ReportingOverviewPage,
+  ReportingReportPage,
+  ReportingSavedPage,
+  ReportingSnapshotPage,
+} from "./pages/ReportingPages";
+import {
   CostingCalculationPage,
   CostingListPage,
   CostingPoliciesPage,
@@ -42,6 +48,19 @@ import {
   CostingSimulationsPage,
 } from "./pages/CostingPages";
 import { SuppliersPage } from "./pages/SuppliersPage";
+import {
+  InventoryCountsPage,
+  InventoryLotsPage,
+  InventoryMovementsPage,
+  InventoryOverviewPage,
+  InventoryPicksPage,
+  InventoryPositionPage,
+  InventoryReservationsPage,
+  ProcurementListPage,
+  ProcurementNeedsPage,
+  ProcurementQuotesPage,
+} from "./pages/InventoryPages";
+import { AssistantProvider } from "./assistant/AssistantContext";
 import { OrganizationProvider } from "./session/OrganizationContext";
 
 export function AppRoutes() {
@@ -81,6 +100,54 @@ export function AppRoutes() {
                 element={
                   <RequirePermission code="ingredient.read">
                     <IngredientEditorPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/estoque"
+                element={
+                  <RequirePermission code="inventory.read">
+                    <InventoryOverviewPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/estoque/posicao"
+                element={
+                  <RequirePermission code="inventory.read">
+                    <InventoryPositionPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/estoque/reservas"
+                element={
+                  <RequirePermission code="inventory.read">
+                    <InventoryReservationsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/estoque/movimentacoes"
+                element={
+                  <RequirePermission code="inventory.read">
+                    <InventoryMovementsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/estoque/separacao"
+                element={
+                  <RequirePermission code="inventory.separate">
+                    <InventoryPicksPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/lotes"
+                element={
+                  <RequirePermission code="inventory.read">
+                    <InventoryLotsPage />
                   </RequirePermission>
                 }
               />
@@ -360,6 +427,146 @@ export function AppRoutes() {
                   </RequirePermission>
                 }
               />
+              <Route
+                path="/gestao/compras/necessidades"
+                element={
+                  <RequirePermission code="procurement.read">
+                    <ProcurementNeedsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/compras/requisicoes"
+                element={
+                  <RequirePermission code="procurement.read">
+                    <ProcurementListPage title="Requisições" path="/procurement/requisitions" lede="Requisição manual ou derivada da sugestão. Aprovação humana." />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/compras/cotacoes"
+                element={
+                  <RequirePermission code="procurement.read">
+                    <ProcurementQuotesPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/compras/pedidos"
+                element={
+                  <RequirePermission code="procurement.read">
+                    <ProcurementListPage title="Pedidos" path="/procurement/orders" lede="Pedido interno versionado. Emitido não é enviado ao fornecedor." />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/compras/recebimentos"
+                element={
+                  <RequirePermission code="procurement.receive">
+                    <ProcurementListPage title="Recebimentos" path="/procurement/receipts" lede="Recebimento parcial ou total cria lote interno." />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/compras/devolucoes"
+                element={
+                  <RequirePermission code="procurement.return">
+                    <ProcurementListPage title="Devoluções" path="/procurement/returns" lede="Devolução gera saída vinculada ao lote. Sem crédito financeiro." />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/inventarios"
+                element={
+                  <RequirePermission code="inventory.count">
+                    <InventoryCountsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/relatorios"
+                element={<ReportingOverviewPage />}
+              />
+              <Route
+                path="/gestao/relatorios/executivo"
+                element={
+                  <RequirePermission code="reporting.dashboard.read">
+                    <ReportingReportPage code="executive" title="Visão executiva" />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/relatorios/producao"
+                element={
+                  <RequirePermission code="reporting.production.read">
+                    <ReportingReportPage code="production" title="Produção" />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/relatorios/componentes"
+                element={
+                  <RequirePermission code="reporting.production.read">
+                    <ReportingReportPage code="consumption" title="Componentes e perdas" extraCodes={["yield_losses"]} />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/relatorios/custos"
+                element={
+                  <RequirePermission code="reporting.costing.read">
+                    <ReportingReportPage code="costing" title="Custos e preços" extraCodes={["pricing"]} />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/relatorios/conformidade"
+                element={
+                  <RequirePermission code="reporting.compliance.read">
+                    <ReportingReportPage code="compliance" title="Conformidade" />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/relatorios/rastreabilidade"
+                element={
+                  <RequirePermission code="reporting.traceability.read">
+                    <ReportingReportPage code="traceability" title="Rastreabilidade" />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/relatorios/estoque"
+                element={
+                  <RequirePermission code="reporting.inventory.read">
+                    <ReportingReportPage code="inventory" title="Estoque e compras" />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/relatorios/qualidade"
+                element={
+                  <RequirePermission code="reporting.data_quality.read">
+                    <ReportingReportPage code="data_quality" title="Qualidade dos dados" />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/relatorios/salvos"
+                element={
+                  <RequirePermission code="reporting.saved_view.manage">
+                    <ReportingSavedPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/gestao/relatorios/snapshots/:snapshotId"
+                element={
+                  <RequirePermission code="reporting.snapshot.create">
+                    <ReportingSnapshotPage />
+                  </RequirePermission>
+                }
+              />
               <Route path="/" element={<Navigate to="/producao" replace />} />
             </Route>
           </Routes>
@@ -371,7 +578,9 @@ export function App() {
     <AuthProviderTree>
       <OrganizationProvider>
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <AppRoutes />
+          <AssistantProvider>
+            <AppRoutes />
+          </AssistantProvider>
         </BrowserRouter>
       </OrganizationProvider>
     </AuthProviderTree>

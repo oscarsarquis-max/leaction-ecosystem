@@ -35,6 +35,14 @@ export function formatDate(value: string | null | undefined): string {
   return dateOnly.format(parsed);
 }
 
+export function formatContextDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return formatDate(value);
+  const months = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  return `${Number(match[3])} ${months[Number(match[2]) - 1]} ${match[1]}`;
+}
+
 export function todayIso(): string {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -57,6 +65,24 @@ export const STATUS_LABEL: Record<string, string> = {
   resolved: "Resolvida",
   accepted: "Aceita",
   rejected: "Rejeitada",
+  available: "Disponível",
+  posted: "Lançado",
+  approved: "Aprovado",
+  issued: "Emitido",
+  received: "Recebido",
+  reserved: "Reservado",
+  closed: "Encerrado",
+  partial: "Parcial",
+  partially_received: "Recebido em parte",
+  submitted: "Enviado",
+  converted: "Convertido",
+  counting: "Em contagem",
+  review: "Em revisão",
+  blocked: "Bloqueado",
+  expired: "Vencido",
+  failed: "Falhou",
+  quarantined: "Em quarentena",
+  confirmed: "Confirmado",
 };
 
 export const YIELD_LABEL: Record<string, string> = {

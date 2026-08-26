@@ -5,6 +5,8 @@
  * (Blog scrape runtime permanece no PanelDX até cutover autorizado.)
  */
 
+const { rewriteLandingMedia } = require('../lib/cms-media-url');
+
 function defaultColuna1() {
   return {
     visibility: true,
@@ -525,7 +527,7 @@ function normalizeCmsLanding(landing, defaultsSource = null) {
     columns.push(merged);
   }
 
-  return {
+  return rewriteLandingMedia({
     hero,
     columns,
     coluna1,
@@ -538,7 +540,7 @@ function normalizeCmsLanding(landing, defaultsSource = null) {
     },
     insights_section: insightsSection,
     insights,
-  };
+  });
 }
 
 function defaultInove4usSchoolLanding() {

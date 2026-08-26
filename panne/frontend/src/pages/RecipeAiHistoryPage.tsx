@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError } from "../api/errors";
 import type { RecipeAiProposal } from "../api/types";
-import { EmptyState, ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
+import { EmptyState, ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
 import { useOrganization } from "../session/OrganizationContext";
 
 export function RecipeAiHistoryPage() {
@@ -31,6 +31,12 @@ export function RecipeAiHistoryPage() {
 
   return (
     <div className="stage">
+      <ListLive
+        kind={state.kind}
+        empty={state.kind === "ok" && state.items.length === 0}
+        entityLabel="proposta"
+        status={state.kind === "ok" ? `${state.items.length} itens` : undefined}
+      />
       <div>
         <h1>Histórico de propostas</h1>
         <p className="lede">

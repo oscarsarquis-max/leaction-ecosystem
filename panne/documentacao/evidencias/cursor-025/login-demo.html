@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Login demo — CURSOR-025</title>
+  <style>
+    body { font-family: Georgia, serif; background: #2b2118; color: #f4efe6; margin: 0; display: grid; grid-template-columns: 1fr 22rem 1fr; min-height: 100vh; }
+    aside, section { padding: 2rem; }
+    section { background: #f4efe6; color: #2b2118; }
+    .demo { border: 1px solid #c4a574; padding: .2rem .5rem; }
+    .avatar { position: fixed; right: 1rem; bottom: 1rem; width: 3.25rem; height: 3.25rem; border-radius: 50%; border: 2px solid #f4efe6; display: grid; place-items: center; }
+  </style>
+</head>
+<body>
+  <aside><p>Coluna editorial esquerda (estática local)</p></aside>
+  <section>
+    <h1>Entrar na Panne</h1>
+    <p class="demo">Ambiente de demonstração</p>
+    <label>Perfil de demonstração
+      <select>
+        <option>Proprietário</option>
+        <option>Gestor de produção</option>
+        <option>Técnico / formulador</option>
+        <option>Padeiro</option>
+        <option>Revisor regulatório</option>
+        <option>Comercial / compras</option>
+        <option>Leitor</option>
+      </select>
+    </label>
+    <p><button type="button">Entrar em desenvolvimento</button></p>
+  </section>
+  <aside><p>Coluna editorial direita (estática local)</p></aside>
+  <button class="avatar" type="button" aria-label="Abrir ajuda para entrar">P</button>
+</body>
+</html>

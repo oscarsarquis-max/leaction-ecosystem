@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Visões e vazios do quadro</title>
+  <style>
+    body { margin: 0; font-family: "Segoe UI", sans-serif; background: #E5E4D6; color: #323334; }
+    header { background: #323334; color: #F7F2E8; padding: 16px 24px; }
+    main { padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .panel { background: #F7F2E8; padding: 16px; border-radius: 12px; border: 1px solid #D8C9AF; }
+    @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>Panne · Quadro · Dados até 24 ago 2026 18:02 · Atualizar</header>
+  <main>
+    <section class="panel">
+      <h2>Fluxo por estado</h2>
+      <p>Aguardando · Em pesagem · Prontas · Em execução · Bloqueadas · Concluídas · Encerradas parciais</p>
+    </section>
+    <section class="panel">
+      <h2>Lista gerencial</h2>
+      <p>Tabela densa com código, produto, quantidade, batelada, horário, estado, prioridade, estação, progresso, bloqueio e próxima ação.</p>
+    </section>
+    <section class="panel">
+      <h2>Por estação</h2>
+      <p>Fornos · Masseira · Bancada · Embalagem</p>
+    </section>
+    <section class="panel">
+      <h2>Estados vazios distintos</h2>
+      <ul>
+        <li>Contexto ainda não definido → Definir contexto</li>
+        <li>Nenhuma ordem planejada → Abrir planejamento</li>
+        <li>Filtros eliminaram os resultados → Limpar filtros</li>
+        <li>Sem acesso ao estabelecimento → Voltar ao início</li>
+        <li>Serviço indisponível → Atualizar</li>
+        <li>Erro recuperável → Tentar de novo</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

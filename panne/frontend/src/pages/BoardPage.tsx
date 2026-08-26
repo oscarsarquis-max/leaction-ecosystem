@@ -1,10 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/errors";
-import type { BoardCard, BoardFilters } from "../api/types";
+import type { BoardCard, BoardContextCatalog, BoardFilters } from "../api/types";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
-import { actionLabel, formatDateTime, formatDecimal, shiftLabel, statusLabel, todayIso } from "../format";
+import {
+  actionLabel,
+  formatContextDate,
+  formatDateTime,
+  formatDecimal,
+  shiftLabel,
+  statusLabel,
+  todayIso,
+} from "../format";
+import {
+  readOperationalContext,
+  writeOperationalContext,
+  type OperationalContext,
+} from "../session/operationalContext";
+import { useAssistant } from "../assistant/AssistantContext";
 import { useOrganization } from "../session/OrganizationContext";
+
+const BUCKETS = [
+  { id: "awaiting", label: "Aguardando liberação", match: (card: BoardCard) => ["draft", "scheduled", "released"].includes(card.order.status) },
+  { id: "weighing", label: "Em pesagem", match: (card: BoardCard) => card.order.status === "in_weighing" },
+  { id: "ready", label: "Prontas", match: (card: BoardCard) => card.order.status === "ready" && !card.blocked },
+  { id: "running", label: "Em execução", match: (card: BoardCard) => card.order.status === "in_progress" },
+  { id: "blocked", label: "Bloqueadas", match: (card: BoardCard) => card.blocked },
+  { id: "done", label: "Concluídas", match: (card: BoardCard) => card.order.status === "completed" },
+  { id: "short", label: "Encerradas parciais", match: (card: BoardCard) => card.order.status === "short_closed" },
+] as const;
 
 function toneForStatus(status: string): "sucesso" | "atencao" | "erro" | "info" | "neutro" {
   if (status === "completed") return "sucesso";
@@ -14,10 +38,22 @@ function toneForStatus(status: string): "sucesso" | "atencao" | "erro" | "info" 
   return "neutro";
 }
 
+function stationOf(card: BoardCard): string {
+  return card.current_step || "Sem estação";
+}
+
 export function BoardPage() {
-  const { api, active } = useOrganization();
+  const { api, active, me } = useOrganization();
+  const { publishLive } = useAssistant();
   const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
+  const userHint = me?.display_name || "sessao";
+  const [catalog, setCatalog] = useState<BoardContextCatalog | null>(null);
+  const [context, setContext] = useState<OperationalContext | null>(null);
+  const [editingContext, setEditingContext] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [view, setView] = useState<"fluxo" | "lista" | "estacao">("lista");
+  const [selected, setSelected] = useState<BoardCard | null>(null);
+  const [confirmChange, setConfirmChange] = useState(false);
   const [state, setState] = useState<
     | { kind: "carregando" }
     | { kind: "ok"; cards: BoardCard[]; updatedAt: string }
@@ -26,16 +62,16 @@ export function BoardPage() {
 
   const filters = useMemo<BoardFilters>(
     () => ({
-      operational_date: params.get("operational_date") ?? todayIso(),
-      establishment_id: params.get("establishment_id") ?? undefined,
-      shift: params.get("shift") ?? undefined,
-      area: params.get("area") ?? undefined,
+      operational_date: params.get("operational_date") ?? context?.operational_date ?? todayIso(),
+      establishment_id: params.get("establishment_id") ?? context?.establishment_id ?? undefined,
+      shift: params.get("shift") ?? context?.shift ?? undefined,
+      area: params.get("area") ?? context?.area ?? undefined,
       product_id: params.get("product_id") ?? undefined,
       status: params.get("status") ?? undefined,
       priority: params.get("priority") ?? undefined,
       q: params.get("q") ?? undefined,
     }),
-    [params],
+    [params, context],
   );
 
   function setFilter(key: keyof BoardFilters, value: string) {
@@ -43,10 +79,27 @@ export function BoardPage() {
     if (value) next.set(key, value);
     else next.delete(key);
     if (key !== "operational_date" && !next.get("operational_date")) {
-      next.set("operational_date", todayIso());
+      next.set("operational_date", filters.operational_date || todayIso());
     }
     setParams(next, { replace: true });
   }
+
+  useEffect(() => {
+    if (!active?.organization_id) return;
+    setContext(readOperationalContext(active.organization_id, userHint));
+    void api.getBoardContext().then((row) => setCatalog(row.data)).catch(() => setCatalog({
+      establishments: [],
+      shifts: [
+        { code: "morning", label: "Manhã" },
+        { code: "afternoon", label: "Tarde" },
+        { code: "night", label: "Noite" },
+      ],
+      areas: [
+        { code: "fornos", label: "Fornos" },
+        { code: "masseira", label: "Masseira" },
+      ],
+    }));
+  }, [api, active?.organization_id, userHint]);
 
   async function load() {
     setState({ kind: "carregando" });
@@ -62,96 +115,303 @@ export function BoardPage() {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, active?.organization_id, params.toString()]);
+  }, [api, active?.organization_id, params.toString(), context?.establishment_id, context?.shift, context?.area, context?.operational_date]);
+
+  function saveContext(next: OperationalContext) {
+    if (!active?.organization_id) return;
+    writeOperationalContext(active.organization_id, userHint, next);
+    setContext(next);
+    setEditingContext(false);
+    const url = new URLSearchParams(params);
+    url.set("operational_date", next.operational_date);
+    url.set("establishment_id", next.establishment_id);
+    url.set("shift", next.shift);
+    url.set("area", next.area);
+    setParams(url, { replace: true });
+  }
+
+  function requestChangeContext() {
+    if (selected) {
+      setConfirmChange(true);
+      return;
+    }
+    setEditingContext(true);
+  }
+
+  useEffect(() => {
+    if (state.kind === "carregando") {
+      publishLive({ pageKind: "loading", next: "Aguardar o quadro." });
+      return;
+    }
+    if (state.kind === "erro") {
+      publishLive({ pageKind: "error", blocked: "Quadro indisponível.", next: "Atualizar." });
+      return;
+    }
+    if (selected) {
+      publishLive({
+        pageKind: "ok",
+        entityLabel: selected.order.public_code,
+        status: statusLabel(selected.order.status),
+        blocked: selected.blocked ? "Ordem bloqueada." : "",
+        next: actionLabel(selected.next_action),
+      });
+      return;
+    }
+    if (!context) {
+      publishLive({ pageKind: "empty", pending: "Contexto do turno ausente.", next: "Definir contexto." });
+      return;
+    }
+    if (state.kind === "ok" && state.cards.length === 0) {
+      publishLive({ pageKind: "empty", pending: "Nenhuma ordem neste recorte.", next: "Limpar filtros ou abrir planejamento." });
+      return;
+    }
+    publishLive({ pageKind: "ok", entityLabel: "turno", next: "Abrir uma ordem ou filtrar o quadro." });
+  }, [state, selected, context, publishLive]);
+
+  const cards = state.kind === "ok" ? state.cards : [];
+  const filteredEmpty = state.kind === "ok" && cards.length === 0 && Boolean(filters.q || filters.status || filters.product_id);
+  const noPlan = state.kind === "ok" && cards.length === 0 && !filteredEmpty;
+  const establishments = catalog?.establishments ?? [];
+  const noAccess = Boolean(context?.establishment_id) && establishments.length > 0 && !establishments.some((row) => row.id === context?.establishment_id);
 
   return (
     <section>
       <div className="page-head">
         <div>
           <h1>Quadro de produção</h1>
-          <p className="meta">
-            {active?.display_name}. Projeção operacional, sem custos. Linhas compactas para
-            aproveitar a área útil.
-          </p>
+          <p className="lede">Central do turno: contexto primeiro, filtros depois. Sem custos.</p>
         </div>
         <div>
           <button type="button" className="ghost" onClick={() => void load()}>
             Atualizar
           </button>
           {state.kind === "ok" ? (
-            <p className="meta">Atualizado às {formatDateTime(state.updatedAt)}</p>
+            <p className="meta">Dados até {formatDateTime(state.updatedAt)}</p>
           ) : null}
         </div>
       </div>
+
+      {context && !editingContext ? (
+        <p className="context-strip">
+          {formatContextDate(context.operational_date)} · {context.establishment_name} · {shiftLabel(context.shift)} · {catalog?.areas.find((row) => row.code === context.area)?.label || context.area}
+          {" "}
+          <button type="button" className="ghost" onClick={requestChangeContext}>
+            Trocar contexto
+          </button>
+        </p>
+      ) : (
+        <form
+          className="panel"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget);
+            const establishmentId = String(data.get("establishment_id") || "");
+            const place = establishments.find((row) => row.id === establishmentId);
+            if (!place) return;
+            saveContext({
+              operational_date: String(data.get("operational_date") || todayIso()),
+              establishment_id: place.id,
+              establishment_name: place.display_name,
+              shift: String(data.get("shift") || "morning"),
+              area: String(data.get("area") || "fornos"),
+            });
+          }}
+        >
+          <h2>Definir contexto do turno</h2>
+          <p>Escolha catálogos. Sem digitar identificador.</p>
+          <div className="grid-2">
+            <label>
+              Data operacional
+              <input name="operational_date" type="date" defaultValue={filters.operational_date || todayIso()} required />
+            </label>
+            <label>
+              Estabelecimento
+              <select name="establishment_id" defaultValue={context?.establishment_id || establishments[0]?.id || ""} required>
+                {establishments.map((row) => (
+                  <option key={row.id} value={row.id}>{row.display_name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Turno
+              <select name="shift" defaultValue={context?.shift || "morning"}>
+                {(catalog?.shifts ?? []).map((row) => (
+                  <option key={row.code} value={row.code}>{row.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Área ou estação
+              <select name="area" defaultValue={context?.area || "fornos"}>
+                {(catalog?.areas ?? []).map((row) => (
+                  <option key={row.code} value={row.code}>{row.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <button type="submit" className="primary">Usar este contexto</button>
+        </form>
+      )}
+
+      <div className="stat-grid">
+        {BUCKETS.map((bucket) => {
+          const count = cards.filter(bucket.match).length;
+          const on = filters.status === bucket.id;
+          return (
+            <button
+              key={bucket.id}
+              type="button"
+              className={`stat-card ${on ? "is-on" : ""}`}
+              onClick={() => {
+                if (bucket.id === "blocked") setFilter("status", on ? "" : "on_hold");
+                else if (bucket.id === "awaiting") setFilter("status", on ? "" : "released");
+                else if (bucket.id === "weighing") setFilter("status", on ? "" : "in_weighing");
+                else if (bucket.id === "ready") setFilter("status", on ? "" : "ready");
+                else if (bucket.id === "running") setFilter("status", on ? "" : "in_progress");
+                else if (bucket.id === "done") setFilter("status", on ? "" : "completed");
+                else setFilter("status", on ? "" : "short_closed");
+              }}
+            >
+              <span>{bucket.label}</span>
+              <strong>{count}</strong>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="view-toggle" role="group" aria-label="Visualização">
+        <button type="button" className={`chip ${view === "fluxo" ? "is-on" : ""}`} aria-pressed={view === "fluxo"} onClick={() => setView("fluxo")}>Fluxo por estado</button>
+        <button type="button" className={`chip ${view === "lista" ? "is-on" : ""}`} aria-pressed={view === "lista"} onClick={() => setView("lista")}>Lista gerencial</button>
+        <button type="button" className={`chip ${view === "estacao" ? "is-on" : ""}`} aria-pressed={view === "estacao"} onClick={() => setView("estacao")}>Por estação</button>
+      </div>
+
       <form className="filters" onSubmit={(event) => event.preventDefault()}>
-        <label>
-          Data
-          <input
-            type="date"
-            value={filters.operational_date ?? ""}
-            onChange={(event) => setFilter("operational_date", event.target.value)}
-          />
-        </label>
-        <label>
-          Estabelecimento
-          <input
-            value={filters.establishment_id ?? ""}
-            onChange={(event) => setFilter("establishment_id", event.target.value)}
-          />
-        </label>
-        <label>
-          Turno
-          <select value={filters.shift ?? ""} onChange={(event) => setFilter("shift", event.target.value)}>
-            <option value="">Todos</option>
-            <option value="morning">Manhã</option>
-            <option value="afternoon">Tarde</option>
-            <option value="night">Noite</option>
-          </select>
-        </label>
-        <label>
-          Área/estação
-          <input value={filters.area ?? ""} onChange={(event) => setFilter("area", event.target.value)} />
-        </label>
-        <label>
-          Produto
-          <input
-            value={filters.product_id ?? ""}
-            onChange={(event) => setFilter("product_id", event.target.value)}
-          />
-        </label>
-        <label>
-          Estado
-          <select
-            value={filters.status ?? ""}
-            onChange={(event) => setFilter("status", event.target.value)}
-          >
-            <option value="">Todos</option>
-            <option value="released">Liberada</option>
-            <option value="in_weighing">Em pesagem</option>
-            <option value="in_progress">Em execução</option>
-            <option value="on_hold">Em espera</option>
-            <option value="completed">Concluída</option>
-          </select>
-        </label>
-        <label>
-          Prioridade
-          <input
-            inputMode="numeric"
-            value={filters.priority ?? ""}
-            onChange={(event) => setFilter("priority", event.target.value)}
-          />
-        </label>
         <label>
           Código ou texto
           <input value={filters.q ?? ""} onChange={(event) => setFilter("q", event.target.value)} />
         </label>
+        <button type="button" className="chip" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>
+          {filtersOpen ? "Recolher filtros" : "Filtros temporários"}
+        </button>
+        {filters.q || filters.status || filters.product_id ? (
+          <button type="button" className="ghost" onClick={() => {
+            const next = new URLSearchParams(params);
+            next.delete("q");
+            next.delete("status");
+            next.delete("product_id");
+            next.delete("priority");
+            setParams(next, { replace: true });
+          }}>
+            Limpar filtros
+          </button>
+        ) : null}
+        {filtersOpen ? (
+          <>
+            <label>
+              Produto
+              <input value={filters.product_id ?? ""} onChange={(event) => setFilter("product_id", event.target.value)} list="board-products" />
+              <datalist id="board-products">
+                {[...new Set(cards.map((card) => card.product.display_name))].map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            </label>
+            <label>
+              Estado
+              <select value={filters.status ?? ""} onChange={(event) => setFilter("status", event.target.value)}>
+                <option value="">Todos</option>
+                <option value="released">Liberada</option>
+                <option value="in_weighing">Em pesagem</option>
+                <option value="ready">Pronta</option>
+                <option value="in_progress">Em execução</option>
+                <option value="on_hold">Em espera</option>
+                <option value="completed">Concluída</option>
+                <option value="short_closed">Encerrada parcial</option>
+              </select>
+            </label>
+            <label>
+              Prioridade
+              <input inputMode="numeric" value={filters.priority ?? ""} onChange={(event) => setFilter("priority", event.target.value)} />
+            </label>
+            <label>
+              Bloqueio
+              <select value={filters.status === "on_hold" ? "blocked" : ""} onChange={(event) => setFilter("status", event.target.value === "blocked" ? "on_hold" : "")}>
+                <option value="">Todos</option>
+                <option value="blocked">Com bloqueio ou ocorrência</option>
+              </select>
+            </label>
+          </>
+        ) : null}
       </form>
+
       {state.kind === "carregando" ? <LoadingState>Carregando o quadro…</LoadingState> : null}
       {state.kind === "erro" ? <ErrorState error={state.error} onRetry={() => void load()} /> : null}
-      {state.kind === "ok" && state.cards.length === 0 ? (
-        <EmptyState>Não há ordens para os filtros atuais nesta organização.</EmptyState>
+      {noAccess ? (
+        <div className="empty-card" role="status">
+          Sem acesso a este estabelecimento.
+          <div><Link to="/inicio">Voltar ao início</Link></div>
+        </div>
       ) : null}
-      {state.kind === "ok" && state.cards.length > 0 ? (
+      {!context && !editingContext ? (
+        <div className="empty-card" role="status">
+          Contexto ainda não definido. O quadro lê a organização, mas o turno fica mais claro com a faixa.
+          <div><button type="button" className="primary" onClick={() => setEditingContext(true)}>Definir contexto</button></div>
+        </div>
+      ) : null}
+      {filteredEmpty ? (
+        <EmptyState>
+          Os filtros eliminaram os resultados. <button type="button" className="ghost" onClick={() => setParams(new URLSearchParams(), { replace: true })}>Limpar filtros</button>
+        </EmptyState>
+      ) : null}
+      {noPlan && !filteredEmpty ? (
+        <EmptyState>
+          Não há ordens para os filtros atuais nesta organização. <Link to="/planejamento">Abrir planejamento</Link>
+        </EmptyState>
+      ) : null}
+
+      {state.kind === "ok" && cards.length > 0 && view === "fluxo" ? (
+        <div className="cards">
+          {BUCKETS.map((bucket) => {
+            const rows = cards.filter(bucket.match);
+            if (!rows.length) return null;
+            return (
+              <article key={bucket.id} className="card">
+                <h2>{bucket.label}</h2>
+                <ul className="list">
+                  {rows.map((card) => (
+                    <li key={card.order.id}>
+                      <button type="button" className="ghost" onClick={() => setSelected(card)}>
+                        {card.order.public_code} · {card.product.display_name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {state.kind === "ok" && cards.length > 0 && view === "estacao" ? (
+        <div className="cards">
+          {[...new Set(cards.map(stationOf))].map((station) => (
+            <article key={station} className="card">
+              <h2>{station}</h2>
+              <ul className="list">
+                {cards.filter((card) => stationOf(card) === station).map((card) => (
+                  <li key={card.order.id}>
+                    <button type="button" className="ghost" onClick={() => setSelected(card)}>
+                      {card.order.public_code} · {statusLabel(card.order.status)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      {state.kind === "ok" && cards.length > 0 ? (
         <div className="table-wrap">
           <table>
             <caption className="visually-hidden">Ordens do quadro de produção</caption>
@@ -168,14 +428,14 @@ export function BoardPage() {
               </tr>
             </thead>
             <tbody>
-              {state.cards.map((card) => (
+              {cards.map((card) => (
                 <tr
                   key={card.order.id}
                   className={card.blocked ? "blocked" : undefined}
                   tabIndex={0}
-                  onClick={() => navigate(`/ordens/${card.order.id}`)}
+                  onClick={() => setSelected(card)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") navigate(`/ordens/${card.order.id}`);
+                    if (event.key === "Enter") setSelected(card);
                   }}
                 >
                   <td>{card.product.display_name}</td>
@@ -222,6 +482,40 @@ export function BoardPage() {
           </table>
         </div>
       ) : null}
+
+      {selected ? (
+        <>
+          <button type="button" className="order-drawer-mask" aria-label="Fechar ordem" onClick={() => setSelected(null)} />
+          <aside className="order-drawer" role="dialog" aria-label="Ordem selecionada">
+            <h2>{selected.order.public_code}</h2>
+            <p>{selected.product.display_name}</p>
+            <p className="meta">
+              {formatDecimal(selected.quantity)} {selected.target_mode === "mass" ? "g" : selected.target_mode} · prioridade {selected.order.priority}
+            </p>
+            <p>
+              <StatusBadge tone={toneForStatus(selected.order.status)} label={statusLabel(selected.order.status)} />
+              {" "}
+              {selected.blocked ? <StatusBadge tone="erro" label="Bloqueada" /> : <StatusBadge tone="sucesso" label="Livre" />}
+            </p>
+            <p>Próxima ação: {actionLabel(selected.next_action)}</p>
+            <p>
+              <Link className="primary" to={`/producao/ordens/${selected.order.id}/executar`}>Executar</Link>
+              {" "}
+              <Link className="ghost" to={`/ordens/${selected.order.id}`}>Detalhe</Link>
+            </p>
+            <button type="button" className="ghost" onClick={() => setSelected(null)}>Fechar</button>
+          </aside>
+        </>
+      ) : null}
+
+      {confirmChange ? (
+        <div className="confirm" role="alertdialog" aria-label="Confirmar troca de contexto">
+          <p>Há uma ordem aberta na gaveta. Trocar o contexto agora?</p>
+          <button type="button" className="primary" onClick={() => { setSelected(null); setConfirmChange(false); setEditingContext(true); }}>Trocar</button>
+          <button type="button" className="ghost" onClick={() => setConfirmChange(false)}>Cancelar</button>
+        </div>
+      ) : null}
+
     </section>
   );
 }

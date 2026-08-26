@@ -14,6 +14,7 @@ export const config = {
   oidcLogoutUri: read("VITE_OIDC_LOGOUT_URI"),
   apiBase: read("VITE_API_BASE"),
   evidence: read("VITE_EVIDENCE") === "1",
+  demoMode: !import.meta.env.PROD && read("VITE_DEMO_MODE") === "1",
 };
 
 export function isFakeBlockedInProduction(

@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import type { Completeness } from "../api/types";
+import { useAssistant } from "../assistant/AssistantContext";
 
 const STEPS: Array<{ id: string; label: string; codes: string[] }> = [
   { id: "objetivo", label: "Objetivo e produto", codes: ["identidade"] },
@@ -35,6 +37,17 @@ export function RecipeAssistant({
     (step) => step.codes.length > 0 && !pending.some((item) => step.codes.includes(item.code)),
   ).length;
   const progress = completeness?.complete_dossier ? 100 : Math.round((done / STEPS.length) * 100);
+  const { setFlow, openAssistant } = useAssistant();
+  useEffect(() => {
+    setFlow({
+      code: "panne.recipe.assistant",
+      title: "Assistente de receita",
+      steps: STEPS.map((step) => step.label),
+      step: Math.max(0, currentIndex),
+      note: "Concluir a receita sem inteligência artificial. Completude não é conformidade.",
+    });
+    return () => setFlow(null);
+  }, [setFlow, currentIndex]);
   if (minimized) {
     return (
       <p className="meta">
@@ -45,7 +58,7 @@ export function RecipeAssistant({
     );
   }
   return (
-    <div className="drawer-assist panel" role="dialog" aria-labelledby="rec-ass-title">
+    <div className="mentor-inline panel" role="dialog" aria-labelledby="rec-ass-title">
       <h2 id="rec-ass-title">Assistente de receita</h2>
       <p>Objetivo: concluir a receita sem inteligência artificial. Completude não é conformidade.</p>
       <div
@@ -69,6 +82,9 @@ export function RecipeAssistant({
       <p>Bloqueios: {blocking.length ? blocking.map((item) => item.label).join(" ") : "nenhum"}</p>
       <p>Ajuda: o percentual do padeiro não precisa somar 100%. Publicação é humana.</p>
       <div>
+        <button type="button" className="ghost" onClick={openAssistant}>
+          Abrir no assistente
+        </button>
         <button type="button" onClick={onMinimize}>
           Minimizar
         </button>

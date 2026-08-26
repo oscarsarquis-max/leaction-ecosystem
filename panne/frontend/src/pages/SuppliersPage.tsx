@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { SupplierCard } from "../api/types";
-import { EmptyState, ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
+import { EmptyState, ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
 import { useCommand } from "../ops/useCommand";
 import { useOrganization } from "../session/OrganizationContext";
 
@@ -29,6 +29,12 @@ export function SuppliersPage() {
 
   return (
     <div className="stage">
+      <ListLive
+        kind={state.kind}
+        empty={state.kind === "ok" && state.items.length === 0}
+        entityLabel={state.kind === "ok" && state.items[0] ? state.items[0].display_name : "fornecedor"}
+        status={state.kind === "ok" ? `${state.items.length} itens` : undefined}
+      />
       <div>
         <h1>Fornecedores e itens</h1>
         <p className="lede">

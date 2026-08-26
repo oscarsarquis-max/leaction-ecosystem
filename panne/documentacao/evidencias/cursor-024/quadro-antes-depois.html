@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Quadro — antes e depois</title>
+  <style>
+    body { margin: 0; font-family: "Segoe UI", sans-serif; background: #E5E4D6; color: #323334; }
+    header { background: #323334; color: #F7F2E8; padding: 16px 24px; }
+    main { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 24px; }
+    article { background: #F7F2E8; padding: 16px; border: 1px solid #D8C9AF; border-radius: 12px; }
+    .old label { display: block; margin: 8px 0; }
+    .strip { background: #49352A; color: #F7F2E8; padding: 8px 12px; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .card { border: 1px solid #A06F49; padding: 8px; }
+    h1 { font-family: Georgia, serif; font-weight: 400; }
+    @media (max-width: 900px) { main, .cards { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>Panne · Produção · Quadro de produção</header>
+  <main>
+    <article class="old">
+      <h1>Antes</h1>
+      <p>Fileira permanente de caixas vazias. Sem faixa de turno.</p>
+      <label>Data <input /></label>
+      <label>Estabelecimento <input placeholder="uuid" /></label>
+      <label>Turno <input /></label>
+      <label>Área <input /></label>
+      <label>Produto <input /></label>
+      <label>Estado <input /></label>
+    </article>
+    <article>
+      <h1>Depois</h1>
+      <p>Central do turno: contexto primeiro, filtros depois. Sem custos.</p>
+      <p class="strip">24 ago 2026 · Padaria Central · Manhã · Fornos · Trocar contexto</p>
+      <div class="cards">
+        <div class="card">Aguardando liberação<br /><strong>1</strong></div>
+        <div class="card">Em pesagem<br /><strong>1</strong></div>
+        <div class="card">Bloqueadas<br /><strong>1</strong></div>
+      </div>
+    </article>
+  </main>
+</body>
+</html>

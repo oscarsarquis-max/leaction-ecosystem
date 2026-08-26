@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Contexto e filtros do quadro</title>
+  <style>
+    body { margin: 0; font-family: "Segoe UI", sans-serif; background: #E5E4D6; color: #323334; }
+    header { background: #323334; color: #F7F2E8; padding: 16px 24px; }
+    main { padding: 24px; display: grid; gap: 16px; }
+    .panel { background: #F7F2E8; padding: 16px; border-radius: 12px; border: 1px solid #D8C9AF; }
+    .chip { display: inline-block; margin: 4px; padding: 6px 10px; border: 2px solid #A06F49; border-radius: 999px; }
+    .chip.on { background: #6B4A3A; color: #F7F2E8; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-top: 1px solid #D8C9AF; text-align: left; padding: 8px; }
+    .badge { display: inline-block; padding: 2px 8px; }
+    .ok { color: #3D5A3A; }
+    .warn { color: #8A5A12; }
+    .err { color: #8B3A2A; }
+  </style>
+</head>
+<body>
+  <header>Panne · Assistente · Padaria Central</header>
+  <main>
+    <section class="panel">
+      <h1>Definir contexto do turno</h1>
+      <p>Catálogos reais. Sem digitar identificador.</p>
+      <p>Data 24/08/2026 · Estabelecimento Padaria Central · Turno Manhã · Área Fornos</p>
+      <button>Usar este contexto</button>
+    </section>
+    <section class="panel">
+      <p>24 ago 2026 · Padaria Central · Manhã · Fornos</p>
+      <p>Filtros recolhidos: <span class="chip">Filtros temporários</span></p>
+      <p>Filtros abertos:
+        <span class="chip on">Estado: bloqueio</span>
+        <span class="chip">Prioridade</span>
+        <span class="chip">Produto</span>
+      </p>
+      <p>URL compartilhada: <code>/producao?q=OP-2026&amp;status=on_hold</code></p>
+    </section>
+    <section class="panel">
+      <h2>Ordem bloqueada</h2>
+      <table>
+        <thead><tr><th>Código</th><th>Produto</th><th>Estado</th><th>Próxima ação</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>OP-2026-0002</td>
+            <td>Broa de milho</td>
+            <td><span class="badge err">Bloqueada · ocorrência</span></td>
+            <td>Registrar ocorrência e retomar</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

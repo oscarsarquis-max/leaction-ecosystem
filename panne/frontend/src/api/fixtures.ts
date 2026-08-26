@@ -1,5 +1,6 @@
 import type {
   BoardCard,
+  BoardContextCatalog,
   Catalog,
   Envelope,
   ExecutionView,
@@ -79,6 +80,36 @@ export const meFixture: Me = {
         "pricing.simulation.manage",
         "pricing.review",
         "pricing.publish",
+        "reporting.dashboard.read",
+        "reporting.production.read",
+        "reporting.traceability.read",
+        "reporting.costing.read",
+        "reporting.pricing.read",
+        "reporting.compliance.read",
+        "reporting.data_quality.read",
+        "reporting.snapshot.create",
+        "reporting.export",
+        "reporting.saved_view.manage",
+        "reporting.inventory.read",
+        "inventory.read",
+        "inventory.policy.manage",
+        "inventory.item.manage",
+        "inventory.lot.manage",
+        "inventory.reserve",
+        "inventory.separate",
+        "inventory.move",
+        "inventory.adjust",
+        "inventory.count",
+        "inventory.count.approve",
+        "inventory.expired.override",
+        "procurement.read",
+        "procurement.requisition.create",
+        "procurement.requisition.approve",
+        "procurement.quotation.manage",
+        "procurement.order.manage",
+        "procurement.order.approve",
+        "procurement.receive",
+        "procurement.return",
       ],
     },
     {
@@ -148,6 +179,36 @@ export const meFixture: Me = {
     "pricing.simulation.manage",
     "pricing.review",
     "pricing.publish",
+    "reporting.dashboard.read",
+    "reporting.production.read",
+    "reporting.traceability.read",
+    "reporting.costing.read",
+    "reporting.pricing.read",
+    "reporting.compliance.read",
+    "reporting.data_quality.read",
+    "reporting.snapshot.create",
+    "reporting.export",
+    "reporting.saved_view.manage",
+    "reporting.inventory.read",
+    "inventory.read",
+    "inventory.policy.manage",
+    "inventory.item.manage",
+    "inventory.lot.manage",
+    "inventory.reserve",
+    "inventory.separate",
+    "inventory.move",
+    "inventory.adjust",
+    "inventory.count",
+    "inventory.count.approve",
+    "inventory.expired.override",
+    "procurement.read",
+    "procurement.requisition.create",
+    "procurement.requisition.approve",
+    "procurement.quotation.manage",
+    "procurement.order.manage",
+    "procurement.order.approve",
+    "procurement.receive",
+    "procurement.return",
   ],
 };
 
@@ -380,6 +441,30 @@ export const boardFixture: BoardCard[] = [
     next_action: "complete_step",
     has_execution_facts: true,
   },
+  {
+    order: {
+      id: "order-ready",
+      public_code: "OP-2026-0002",
+      status: "ready",
+      priority: 2,
+      row_version: 1,
+    },
+    batches: [],
+    product: { id: "prod-2", code: "BROA", display_name: "Broa de milho" },
+    quantity: "4000",
+    target_mode: "mass",
+    planned_start_at: "2026-08-22T12:00:00+00:00",
+    planned_end_at: "2026-08-22T13:00:00+00:00",
+    operational_date: "2026-08-22",
+    shift: "morning",
+    current_step: "Fornos",
+    dependencies: [],
+    blocked: true,
+    open_occurrences: 1,
+    delayed: false,
+    next_action: "start_step",
+    has_execution_facts: false,
+  },
 ];
 
 export const plansFixture: Page<Plan> = {
@@ -514,6 +599,23 @@ export const sheetFixture: Envelope<SheetIssue> = {
   },
 };
 
+export const boardContextFixture: Envelope<BoardContextCatalog> = {
+  data: {
+    establishments: [{ id: "est-1", code: "E1", display_name: "Padaria Central" }],
+    shifts: [
+      { code: "morning", label: "Manhã" },
+      { code: "afternoon", label: "Tarde" },
+      { code: "night", label: "Noite" },
+    ],
+    areas: [
+      { code: "fornos", label: "Fornos" },
+      { code: "masseira", label: "Masseira" },
+      { code: "bancada", label: "Bancada" },
+      { code: "embalagem", label: "Embalagem" },
+    ],
+  },
+};
+
 export const catalogFixture: Envelope<Catalog> = {
   data: {
     mass_units: [
@@ -560,7 +662,14 @@ export const operatorMeFixture: Me = {
           ...item,
           roles: ["baker_operator"],
           permissions: [
-            ...item.permissions.filter((code) => !code.startsWith("costing.") && !code.startsWith("pricing.")),
+            ...item.permissions.filter(
+              (code) =>
+                !code.startsWith("costing.") &&
+                !code.startsWith("pricing.") &&
+                !code.startsWith("procurement.") &&
+                !(code.startsWith("inventory.") && !["inventory.read", "inventory.separate"].includes(code)) &&
+                !["reporting.dashboard.read", "reporting.costing.read", "reporting.pricing.read", "reporting.inventory.read"].includes(code),
+            ),
             "production.weighing.record",
             "production.weighing.verify",
             "production.consumption.record",
@@ -575,7 +684,14 @@ export const operatorMeFixture: Me = {
       : item,
   ),
   permissions: [
-    ...meFixture.permissions.filter((code) => !code.startsWith("costing.") && !code.startsWith("pricing.")),
+    ...meFixture.permissions.filter(
+      (code) =>
+        !code.startsWith("costing.") &&
+        !code.startsWith("pricing.") &&
+        !code.startsWith("procurement.") &&
+        !(code.startsWith("inventory.") && !["inventory.read", "inventory.separate"].includes(code)) &&
+        !["reporting.dashboard.read", "reporting.costing.read", "reporting.pricing.read", "reporting.inventory.read"].includes(code),
+    ),
     "production.weighing.record",
     "production.weighing.verify",
     "production.consumption.record",
@@ -821,4 +937,62 @@ export const traceFixture: Envelope<Traceability> = {
       },
     ],
   },
+};
+
+export const SNAPSHOT_ID = "d0d0d0d0-d0d0-d0d0-d0d0-d0d0d0d0d0d0";
+
+export const reportingPayloadFixture = {
+  report_code: "executive",
+  report_version: "1",
+  data_cutoff_at: "2026-08-24T15:00:00+00:00",
+  completeness: "partial",
+  content_hash: "abc123def456",
+  not_realtime: true,
+  indicators: [
+    {
+      code: "orders_by_status",
+      name: "Ordens por estado",
+      status: "available",
+      value: "3",
+      unit: "count",
+      coverage: { universe: 3, valid_count: 3, missing_count: 0 },
+      by_group: { planned: 1, released: 0, in_execution: 1, completed: 1, short_closed: 0, cancelled: 0 },
+    },
+    {
+      code: "normal_completion_rate",
+      name: "Taxa de conclusão normal",
+      status: "unavailable",
+      value: null,
+      reason: "conjunto_vazio",
+      coverage: { universe: 0, valid_count: 0, missing_count: 0 },
+    },
+    {
+      code: "cost_variance",
+      name: "Variação de custo",
+      status: "unavailable",
+      value: null,
+      reason: "par_previsto_realizado_ausente",
+    },
+  ],
+  tables: [{ code: "orders", rows: [{ id: ORDER_ID, public_code: "OP-1", status: "draft", include: "ancora_no_periodo" }] }],
+  gaps: [{ domain: "ingredient_price", id: "ing-1", reason: "sem_preco_vigente" }],
+  impossible: ["faturamento", "vendas", "lucro_liquido"],
+};
+
+export const reportingSnapshotFixture = {
+  id: SNAPSHOT_ID,
+  execution_id: "e0e0e0e0-e0e0-e0e0-e0e0-e0e0e0e0e0e0",
+  content_hash: "abc123def456",
+  created_at: "2026-08-24T15:00:00+00:00",
+  auto_recalculated: false,
+  payload: reportingPayloadFixture,
+};
+
+export const reportingViewFixture = {
+  id: "v0v0v0v0-v0v0-v0v0-v0v0-v0v0v0v0v0v0",
+  code: "turno-manha",
+  display_name: "Turno da manhã",
+  report_code: "production",
+  filters: { timezone: "America/Sao_Paulo" },
+  row_version: 1,
 };

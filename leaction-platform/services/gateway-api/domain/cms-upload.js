@@ -94,16 +94,13 @@ function registerCmsUploadRoutes(app, options = {}) {
         }
 
         const url = cmsS3.getCmsPersistedUrl(req.file.filename);
-        const publicBase = (
-          process.env.ACTION_HUB_PUBLIC_URL ||
-          process.env.HUB_PUBLIC_URL ||
-          `http://127.0.0.1:${process.env.GATEWAY_PORT || 4001}`
-        ).replace(/\/$/, '');
-        console.log(`📤 [CMS Upload local] ${req.file.originalname} -> ${url}`);
+        const { canonicalizeCmsMediaUrl } = require('../lib/cms-media-url');
+        const publicUrl = canonicalizeCmsMediaUrl(`${process.env.ACTION_HUB_PUBLIC_URL || 'http://localhost:4000'}${url}`);
+        console.log(`📤 [CMS Upload local] ${req.file.originalname} -> ${publicUrl || url}`);
         return res.json({
           success: true,
           url,
-          public_url: `${publicBase}${url}`,
+          public_url: publicUrl || url,
           storage: 'local',
         });
       } catch (uploadErr) {

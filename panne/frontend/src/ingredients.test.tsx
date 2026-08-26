@@ -140,11 +140,17 @@ describe("componentes e shell", () => {
           associations: meFixture.associations.map((item) => ({
             ...item,
             permissions: item.permissions.filter(
-              (code) => !code.startsWith("ingredient") && !code.startsWith("supplier"),
+              (code) =>
+                !code.startsWith("ingredient") &&
+                !code.startsWith("supplier") &&
+                !code.startsWith("inventory"),
             ),
           })),
           permissions: meFixture.permissions.filter(
-            (code) => !code.startsWith("ingredient") && !code.startsWith("supplier"),
+            (code) =>
+              !code.startsWith("ingredient") &&
+              !code.startsWith("supplier") &&
+              !code.startsWith("inventory"),
           ),
         }),
     });

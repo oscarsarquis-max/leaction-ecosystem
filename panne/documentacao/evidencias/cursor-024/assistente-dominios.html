@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Assistente global e glossário</title>
+  <style>
+    body { margin: 0; font-family: "Segoe UI", sans-serif; background: #E5E4D6; color: #323334; }
+    header { background: #323334; color: #F7F2E8; padding: 16px 24px; display: flex; justify-content: space-between; }
+    main { display: grid; grid-template-columns: 1fr 320px; min-height: 80vh; }
+    .page { padding: 24px; }
+    aside { background: #F7F2E8; border-left: 3px solid #323334; padding: 16px; }
+    .inline { border-left: 4px solid #6B4A3A; background: #F7F2E8; padding: 12px; margin-top: 16px; }
+    @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <span>Panne · Produção · Receitas · Componentes · Conformidade · Gestão · Relatórios</span>
+    <strong>Assistente</strong>
+  </header>
+  <main>
+    <section class="page">
+      <h1>Você está em Quadro de produção</h1>
+      <p>O mesmo acionador existe em Estoque, Receitas, Conformidade, Custos e Relatórios.</p>
+      <div class="inline">
+        <h2>Assistente de reposição e compra</h2>
+        <p>Cartão inline. Abrir no assistente reusa a gaveta. Sem superfície concorrente.</p>
+      </div>
+    </section>
+    <aside>
+      <h2>Assistente</h2>
+      <p>Onde estou, o que significa, o que posso, o que falta, para onde seguir.</p>
+      <h3>Ir para</h3>
+      <ul>
+        <li>Cadastrar ingrediente</li>
+        <li>Criar receita</li>
+        <li>Planejar produção</li>
+        <li>Executar ordem</li>
+        <li>Consultar lote</li>
+        <li>Registrar recebimento</li>
+        <li>Calcular custo</li>
+        <li>Simular preço</li>
+        <li>Revisar rótulo</li>
+        <li>Abrir relatório</li>
+      </ul>
+      <h3>Glossário</h3>
+      <p><strong>Ordem.</strong> Unidade executável do plano. Custos ficam fora do quadro.</p>
+      <p><button>Voltar à orientação</button> <button>Fechar</button></p>
+    </aside>
+  </main>
+</body>
+</html>

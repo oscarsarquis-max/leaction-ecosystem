@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Reserva e separação — Panne</title>
+  <style>
+    body { margin: 0; font-family: Georgia, serif; background: #E5E4D6; color: #323334; }
+    header, nav.sub { padding: 12px 24px; border-bottom: 1px solid #323334; }
+    main { padding: 24px; display: grid; gap: 16px; }
+    .card { background: #fff; border: 1px solid #323334; padding: 16px; }
+    .badge { border: 1px solid #323334; padding: 2px 6px; }
+  </style>
+</head>
+<body>
+  <header><strong>Panne</strong> · Componentes · Estoque</header>
+  <nav class="sub">Reservas · Separação · Movimentações</nav>
+  <main>
+    <section class="card">
+      <h1>Reserva</h1>
+      <p><span class="badge">partial</span> necessário 100 · reservado 40 · adoção histórica</p>
+      <p>Reserva não altera o saldo físico. Ordem anterior ao 0020 exige comando humano.</p>
+    </section>
+    <section class="card">
+      <h2>Separação</h2>
+      <p>PICK-000001 <span class="badge">confirmed</span></p>
+      <p>FEFO sugere. A pessoa confirma o lote real. Sem QR obrigatório.</p>
+      <button type="button">Imprimir lista</button>
+    </section>
+    <section class="card">
+      <h2>Movimento e rastreabilidade</h2>
+      <ol>
+        <li>receipt · 1000 · opening</li>
+        <li>production_consume · 30 · production_material_consumption</li>
+      </ol>
+      <p>fornecedor → pedido → recebimento → lote → local → reserva → ordem → consumo</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -10,6 +10,7 @@ import {
 import { ApiClient } from "../api/client";
 import { ApiError } from "../api/errors";
 import type { Association, Me } from "../api/types";
+import { clearOperationalContext } from "./operationalContext";
 import { useAuth } from "../auth/AuthContext";
 
 const PREF_KEY = "panne.activeOrganization";
@@ -58,6 +59,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const load = useCallback(async () => {
     if (!session) {
       api.clear();
+      clearOperationalContext();
       setStatus({ kind: "carregando" });
       setActiveId(null);
       return;
@@ -65,7 +67,17 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     setStatus({ kind: "carregando" });
     try {
       const preferred = readPreference();
-      const me = await api.me(preferred);
+      let me: Me;
+      try {
+        me = await api.me(preferred);
+      } catch (error) {
+        if (preferred && error instanceof ApiError && error.status === 403) {
+          writePreference(null);
+          me = await api.me(null);
+        } else {
+          throw error;
+        }
+      }
       const activeIds = me.associations
         .filter((item) => item.status === "active")
         .map((item) => item.organization_id);
@@ -92,6 +104,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const selectOrganization = useCallback(
     async (organizationId: string) => {
       api.clear();
+      clearOperationalContext();
       api.setOrganization(organizationId);
       setActiveId(organizationId);
       writePreference(organizationId);
