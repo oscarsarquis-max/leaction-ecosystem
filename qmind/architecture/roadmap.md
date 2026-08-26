@@ -43,6 +43,7 @@ A Foundation **v1.0** está baselineada (ADR-012). A sequência **OI Alpha** ori
 - Execution Workspace: [`04_Docs/028_…`](04_Docs/028_ISO_Intelligence_V1_Action_Execution_Workspace.md) (ISOI-007, Core-only).
 - Evidência e medição do resultado: [`04_Docs/029_…`](04_Docs/029_ISO_Intelligence_V1_Evidence_Measurement.md) (ISOI-008, Core-only, **implementado/baseline**, pin `2d09b81`; revisão 001 e gate final concluídos).
 - Execution Intelligence: [`04_Docs/030_…`](04_Docs/030_ISO_Intelligence_V1_Execution_Intelligence.md) (ISOI-009, **implementado/baseline**, Core pin `21df383`, OI pin `34ead2e`).
-- Cockpit organizacional: [`04_Docs/031_…`](04_Docs/031_ISO_Intelligence_V1_Cockpit.md) (ISOI-010 — implementado, aguardando revisão de gate; Core-only; OI pin `34ead2e`).
+- Cockpit organizacional: [`04_Docs/031_…`](04_Docs/031_ISO_Intelligence_V1_Cockpit.md) (ISOI-010 — **implementado/baseline**, Core pin `9d17fee`, OI pin `34ead2e`).
+- Hotpage e Jornada Pública V2: [`04_Docs/032_…`](04_Docs/032_ISO_Intelligence_V1_Hotpage_Public_Journey.md) (ISOI-011 — **em revisão**; Core frontend + docs; OI sem alteração).
 
-Próximo após ISOI-010: ISOI-011 (hotpage / jornada pública — futuro; não iniciado).
+Próximo após ISOI-011 (somente após gate/commit): ISOI-012 — **não iniciado**.

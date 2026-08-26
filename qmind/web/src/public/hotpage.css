@@ -137,9 +137,30 @@
   margin: 0 0 14px;
   color: var(--hp-teal);
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   font-size: 0.78rem;
+}
+
+.qm-hotpage__human-note {
+  margin: 0 0 1.25rem;
+  color: var(--hp-teal-deep);
+  font-size: 0.95rem;
+  font-weight: 500;
+  max-width: 38rem;
+}
+
+.qm-hotpage__badge {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--hp-amber);
+  color: var(--hp-amber);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
 }
 
 .qm-hotpage__hero h1 {

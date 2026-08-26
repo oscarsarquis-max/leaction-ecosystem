@@ -1,6 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import { useOrganization } from "@/org/OrganizationProvider";
-import { isGuidedTourActive, readGuidedTourStepIndex } from "@/lib/guidedTour";
+import {
+  chapterIdFromStepIndex,
+  isGuidedTourActive,
+  readGuidedTourStepIndex,
+} from "@/lib/guidedTour";
+import { guidedTourPathForChapter, JOURNEY_V2_CHAPTERS } from "@/journeyV2";
 
 /**
  * Ação discreta para retornar à apresentação guiada após “Abrir no produto”.
@@ -12,7 +17,11 @@ export function GuidedTourReturnBanner() {
   if (location.pathname.startsWith("/guided-tour")) return null;
   if (!isGuidedTourActive(org.currentOrganizationId)) return null;
 
-  const step = readGuidedTourStepIndex() + 1;
+  const stepIndex = readGuidedTourStepIndex();
+  const chapterId = chapterIdFromStepIndex(stepIndex);
+  const chapter =
+    JOURNEY_V2_CHAPTERS.find((c) => c.id === chapterId) ?? JOURNEY_V2_CHAPTERS[0]!;
+  const returnTo = guidedTourPathForChapter(chapterId);
 
   return (
     <div
@@ -21,10 +30,10 @@ export function GuidedTourReturnBanner() {
       role="status"
     >
       <span className="text-[var(--qm-muted)]">
-        Apresentação guiada em andamento (etapa {step}).
+        Apresentação guiada em andamento — capítulo {stepIndex + 1}: {chapter.label}.
       </span>
       <Link
-        to="/guided-tour"
+        to={returnTo}
         className="font-medium text-[var(--qm-accent)] underline-offset-2 hover:underline"
       >
         Voltar à apresentação guiada

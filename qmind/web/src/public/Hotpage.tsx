@@ -2,12 +2,19 @@ import { useEffect, useId, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
 import { writeReturnUrl } from "@/lib/returnUrl";
+import {
+  ILLUSTRATIVE_EXAMPLE,
+  ILLUSTRATIVE_EXAMPLE_BADGE,
+  JOURNEY_V2_CHAPTERS,
+  PRODUCT_CAPABILITIES,
+  guidedTourPathForChapter,
+  type JourneyChapterId,
+} from "@/journeyV2";
 import { HotpageIcon } from "./HotpageIcons";
 import {
-  DIFFERENTIALS,
   EVIDENCE_POINTS,
+  HERO_COPY,
   HERO_PROMISE,
-  JOURNEY_STEPS,
   OUTCOMES,
   PRINCIPLES,
   QUALITY_CONTROL_POINTS,
@@ -15,21 +22,40 @@ import {
 import "./hotpage.css";
 
 const META_DESCRIPTION =
-  "QMind — plataforma de autoavaliação assistida, preparação para auditorias, organização de evidências e evolução empresarial.";
+  "QMind — qualidade, execução e aprendizado: avaliar, reconhecer problemas, executar ações, medir, interpretar e decidir com fatos rastreáveis.";
+
+function cycleId<T extends string>(ids: readonly T[], current: T, delta: number): T {
+  const idx = ids.indexOf(current);
+  const next = (idx + delta + ids.length) % ids.length;
+  return ids[next]!;
+}
 
 export function Hotpage() {
   const auth = useAuth();
   const navigate = useNavigate();
   const authenticated = auth.status === "authenticated";
-  const [featureId, setFeatureId] = useState(DIFFERENTIALS[0]!.id);
-  const [journeyId, setJourneyId] = useState(JOURNEY_STEPS[0]!.id);
-  const feature = DIFFERENTIALS.find((d) => d.id === featureId) ?? DIFFERENTIALS[0]!;
-  const journey = JOURNEY_STEPS.find((s) => s.id === journeyId) ?? JOURNEY_STEPS[0]!;
+  const [featureId, setFeatureId] = useState(PRODUCT_CAPABILITIES[0]!.id);
+  const [journeyId, setJourneyId] = useState<JourneyChapterId>(
+    JOURNEY_V2_CHAPTERS[0]!.id,
+  );
+  const [exampleId, setExampleId] = useState<string>(
+    ILLUSTRATIVE_EXAMPLE.steps[0]!.id,
+  );
+  const feature =
+    PRODUCT_CAPABILITIES.find((d) => d.id === featureId) ?? PRODUCT_CAPABILITIES[0]!;
+  const journey =
+    JOURNEY_V2_CHAPTERS.find((s) => s.id === journeyId) ?? JOURNEY_V2_CHAPTERS[0]!;
+  const example =
+    ILLUSTRATIVE_EXAMPLE.steps.find((s) => s.id === exampleId) ??
+    ILLUSTRATIVE_EXAMPLE.steps[0]!;
   const tabPrefix = useId();
+  const journeyIds = JOURNEY_V2_CHAPTERS.map((c) => c.id);
+  const exampleIds = ILLUSTRATIVE_EXAMPLE.steps.map((s) => s.id);
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "QMind — Quality Mind · Qualidade com método";
+    document.title =
+      "QMind — Quality Mind · Da compreensão à decisão";
     let meta = document.querySelector('meta[name="description"]');
     const created = !meta;
     if (!meta) {
@@ -51,12 +77,13 @@ export function Hotpage() {
     void navigate(`/login?return=${encodeURIComponent(returnPath)}`);
   };
 
-  const goGuided = () => {
+  const goGuided = (chapter?: JourneyChapterId) => {
+    const path = guidedTourPathForChapter(chapter);
     if (authenticated) {
-      void navigate("/guided-tour");
+      void navigate(path);
       return;
     }
-    goLogin("/guided-tour");
+    goLogin(path);
   };
 
   const goApp = () => {
@@ -69,7 +96,10 @@ export function Hotpage() {
 
   return (
     <div className="qm-hotpage" data-testid="qmind-hotpage">
-      <a href="#qm-conteudo" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">
+      <a
+        href="#qm-conteudo"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2"
+      >
         Ir para o conteúdo
       </a>
 
@@ -86,13 +116,13 @@ export function Hotpage() {
         </Link>
         <div className="qm-hotpage__navlinks">
           <a href="#qm-principios">Princípios</a>
-          <a href="#qm-metodo">Método</a>
-          <a href="#qm-diferenciais">Diferenciais</a>
-          <a href="#qm-evidencias">Evidências</a>
+          <a href="#qm-metodo">Jornada</a>
+          <a href="#qm-exemplo">Exemplo</a>
+          <a href="#qm-capacidades">Capacidades</a>
           {authenticated ? (
             <>
               <Link to="/guided-tour" className="qm-hotpage__ghost">
-                Continuar apresentação guiada
+                Continuar apresentação
               </Link>
               <Link to="/assessments" className="qm-hotpage__enter">
                 Abrir meu QMind
@@ -114,30 +144,20 @@ export function Hotpage() {
         <section className="qm-hotpage__hero" aria-labelledby="qm-hero-title">
           <div>
             <p className="qm-hotpage__kicker">Quality Mind · Qualidade com método</p>
-            <h1 id="qm-hero-title">
-              Prepare a organização{" "}
-              <span className="qm-hotpage__quality">antes</span> que a auditoria
-              comece.
-            </h1>
-            <p className="qm-hotpage__hero-copy">
-              O QMind conduz a autoavaliação, organiza evidências e transforma cada
-              etapa em aprendizado prático — reduzindo improviso, tempo de preparação
-              e dependência de horas externas.
-            </p>
+            <h1 id="qm-hero-title">{HERO_COPY.title}</h1>
+            <p className="qm-hotpage__hero-copy">{HERO_COPY.copy}</p>
+            <p className="qm-hotpage__human-note">{HERO_COPY.humanDecision}</p>
             <div className="qm-hotpage__actions">
               <a className="qm-hotpage__primary" href="#qm-metodo">
-                Conheça o percurso <HotpageIcon name="arrowDown" />
-              </a>
-              <a className="qm-hotpage__ghost" href="#qm-diferenciais">
-                Ver os diferenciais
+                Conhecer a jornada <HotpageIcon name="arrowDown" />
               </a>
               {authenticated ? (
                 <>
                   <Link className="qm-hotpage__ghost" to="/assessments">
-                    Abrir meu QMind
+                    Entrar no QMind
                   </Link>
                   <Link className="qm-hotpage__ghost" to="/guided-tour">
-                    Continuar apresentação guiada
+                    Continuar apresentação
                   </Link>
                 </>
               ) : (
@@ -152,7 +172,8 @@ export function Hotpage() {
                   <button
                     type="button"
                     className="qm-hotpage__ghost"
-                    onClick={goGuided}
+                    onClick={() => goGuided()}
+                    data-testid="hotpage-start-tour"
                   >
                     Iniciar apresentação guiada
                   </button>
@@ -162,7 +183,7 @@ export function Hotpage() {
           </div>
 
           <aside className="qm-hotpage__promise" aria-label="Declaração de princípios">
-            <h2>A qualidade começa por dentro.</h2>
+            <h2>O que o produto faz — e o que não promete.</h2>
             <ul>
               {HERO_PROMISE.map((item) => (
                 <li key={item.title}>
@@ -184,12 +205,11 @@ export function Hotpage() {
           aria-labelledby="qm-principios-title"
         >
           <div className="qm-hotpage__section-head">
-            <p className="qm-hotpage__kicker">Declaração de princípios</p>
-            <h2 id="qm-principios-title">A qualidade começa por dentro.</h2>
+            <p className="qm-hotpage__kicker">Princípios</p>
+            <h2 id="qm-principios-title">Verdade do produto</h2>
             <p>
-              A auditoria formal não deveria começar pela organização de arquivos
-              dispersos. O QMind prepara contexto, pessoas, evidências e prioridades
-              para que o tempo especializado seja utilizado onde gera mais valor.
+              Descrevemos apenas capacidades verificáveis. Exemplos públicos são
+              fictícios. Dados reais só após autenticação e organização selecionada.
             </p>
           </div>
           <div className="qm-hotpage__principles">
@@ -208,22 +228,30 @@ export function Hotpage() {
           aria-labelledby="qm-metodo-title"
         >
           <div className="qm-hotpage__section-head">
-            <p className="qm-hotpage__kicker">Percurso QMind</p>
+            <p className="qm-hotpage__kicker">Jornada V2</p>
             <h2 id="qm-metodo-title">
-              Compreender → Planejar → Entrevistar → Evidenciar → Analisar → Evoluir
-              → Demonstrar
+              Do problema ao aprendizado — com fatos, execução e revisão humana
             </h2>
             <p>
-              Sem telas concorrentes, sem jargão na frente e sem perder a origem de
-              cada informação.
+              Selecione um capítulo. Teclado: setas esquerda/direita no foco da
+              lista.
             </p>
           </div>
           <div
             className="qm-hotpage__flow"
             role="tablist"
-            aria-label="Etapas do percurso QMind"
+            aria-label="Capítulos da Jornada V2"
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight") {
+                e.preventDefault();
+                setJourneyId((cur) => cycleId(journeyIds, cur, 1));
+              } else if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                setJourneyId((cur) => cycleId(journeyIds, cur, -1));
+              }
+            }}
           >
-            {JOURNEY_STEPS.map((step) => {
+            {JOURNEY_V2_CHAPTERS.map((step) => {
               const selected = step.id === journey.id;
               return (
                 <button
@@ -232,9 +260,11 @@ export function Hotpage() {
                   role="tab"
                   className="qm-hotpage__flow-step"
                   aria-selected={selected}
+                  tabIndex={selected ? 0 : -1}
                   id={`${tabPrefix}-journey-${step.id}`}
                   aria-controls={`${tabPrefix}-journey-panel`}
                   onClick={() => setJourneyId(step.id)}
+                  data-testid={`journey-tab-${step.id}`}
                 >
                   <HotpageIcon name={step.icon} />
                   <span>{step.label}</span>
@@ -247,38 +277,109 @@ export function Hotpage() {
             role="tabpanel"
             id={`${tabPrefix}-journey-panel`}
             aria-labelledby={`${tabPrefix}-journey-${journey.id}`}
+            data-testid="journey-panel"
           >
+            <h3>{journey.title}</h3>
             <p>
-              <strong>Definição:</strong> {journey.definition}
+              <strong>Situação:</strong> {journey.situation}
             </p>
             <p>
-              <strong>Resultado:</strong> {journey.result}
+              <strong>O QMind organiza ou interpreta:</strong> {journey.organizes}
+            </p>
+            <p>
+              <strong>Evidência / fato:</strong> {journey.evidence}
+            </p>
+            <p>
+              <strong>Ação humana:</strong> {journey.humanAction}
+            </p>
+            <p>
+              <strong>Resultado observável:</strong> {journey.observableResult}
             </p>
           </div>
         </section>
 
         <section
           className="qm-hotpage__section"
-          id="qm-diferenciais"
-          aria-labelledby="qm-diferenciais-title"
+          id="qm-exemplo"
+          aria-labelledby="qm-exemplo-title"
         >
           <div className="qm-hotpage__section-head">
-            <p className="qm-hotpage__kicker">Diferenciação fundamental</p>
-            <h2 id="qm-diferenciais-title">
-              Mais que um checklist. Um sistema de preparação guiada.
+            <p className="qm-hotpage__kicker">
+              <span className="qm-hotpage__badge">{ILLUSTRATIVE_EXAMPLE_BADGE}</span>
+            </p>
+            <h2 id="qm-exemplo-title">{ILLUSTRATIVE_EXAMPLE.title}</h2>
+            <p>{ILLUSTRATIVE_EXAMPLE.subtitle}</p>
+          </div>
+          <div
+            className="qm-hotpage__flow"
+            role="tablist"
+            aria-label="Passos do exemplo ilustrativo"
+            data-testid="illustrative-example"
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight") {
+                e.preventDefault();
+                setExampleId((cur) => cycleId(exampleIds, cur, 1));
+              } else if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                setExampleId((cur) => cycleId(exampleIds, cur, -1));
+              }
+            }}
+          >
+            {ILLUSTRATIVE_EXAMPLE.steps.map((step) => {
+              const selected = step.id === example.id;
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  role="tab"
+                  className="qm-hotpage__flow-step"
+                  aria-selected={selected}
+                  tabIndex={selected ? 0 : -1}
+                  id={`${tabPrefix}-ex-${step.id}`}
+                  aria-controls={`${tabPrefix}-ex-panel`}
+                  onClick={() => setExampleId(step.id)}
+                >
+                  <span>{step.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div
+            className="qm-hotpage__flow-detail"
+            role="tabpanel"
+            id={`${tabPrefix}-ex-panel`}
+            aria-labelledby={`${tabPrefix}-ex-${example.id}`}
+          >
+            <p className="qm-hotpage__badge" aria-hidden="true">
+              {ILLUSTRATIVE_EXAMPLE_BADGE}
+            </p>
+            <h3>{example.label}</h3>
+            <p>{example.detail}</p>
+          </div>
+        </section>
+
+        <section
+          className="qm-hotpage__section"
+          id="qm-capacidades"
+          aria-labelledby="qm-capacidades-title"
+        >
+          <div className="qm-hotpage__section-head">
+            <p className="qm-hotpage__kicker">Capacidades atuais</p>
+            <h2 id="qm-capacidades-title">
+              O que o produto entrega hoje — com limites explícitos
             </h2>
             <p>
-              Selecione um diferencial para ver definição, benefício e ponto da
-              apresentação guiada.
+              Cada capacidade aponta o capítulo correspondente da apresentação
+              guiada autenticada.
             </p>
           </div>
           <div className="qm-hotpage__showcase">
             <div
               className="qm-hotpage__feature-list"
               role="tablist"
-              aria-label="Diferenciais QMind"
+              aria-label="Capacidades QMind"
             >
-              {DIFFERENTIALS.map((d) => {
+              {PRODUCT_CAPABILITIES.map((d) => {
                 const selected = d.id === feature.id;
                 return (
                   <button
@@ -308,17 +409,23 @@ export function Hotpage() {
                 <HotpageIcon name={feature.icon} />
               </div>
               <h3>{feature.name}</h3>
-              <p>{feature.definition}</p>
-              <p className="qm-hotpage__benefit">
-                <strong>Ganho:</strong> {feature.benefit}
+              <p>
+                <strong>Problema:</strong> {feature.problem}
               </p>
               <p className="qm-hotpage__benefit">
-                <strong>Na apresentação:</strong> {feature.tourPoint}
+                <strong>Evidência no produto:</strong> {feature.productEvidence}
+              </p>
+              <p className="qm-hotpage__benefit">
+                <strong>Limite / decisão humana:</strong> {feature.humanLimit}
+              </p>
+              <p className="qm-hotpage__benefit">
+                <strong>Na apresentação:</strong>{" "}
+                {JOURNEY_V2_CHAPTERS.find((c) => c.id === feature.chapterId)?.title}
               </p>
               <button
                 type="button"
                 className="qm-hotpage__route"
-                onClick={goGuided}
+                onClick={() => goGuided(feature.chapterId)}
               >
                 Ver na apresentação guiada <HotpageIcon name="arrowRight" />
               </button>
@@ -332,15 +439,10 @@ export function Hotpage() {
           aria-labelledby="qm-ganhos-title"
         >
           <div className="qm-hotpage__section-head">
-            <p className="qm-hotpage__kicker">Ganhos antes da auditoria formal</p>
+            <p className="qm-hotpage__kicker">Resultados observáveis</p>
             <h2 id="qm-ganhos-title">
-              A organização chega mais preparada — e já começa a melhorar.
+              Ganhos de clareza e rastreabilidade — sem percentuais inventados
             </h2>
-            <p>
-              Linguagem responsável: o QMind ajuda a reduzir improviso e pode
-              contribuir para melhor preparação — sem garantir certificação ou
-              percentuais de economia.
-            </p>
           </div>
           <div className="qm-hotpage__outcomes">
             {OUTCOMES.map((o) => (
@@ -361,7 +463,7 @@ export function Hotpage() {
           <div className="qm-hotpage__section-head">
             <p className="qm-hotpage__kicker">Evidências</p>
             <h2 id="qm-evidencias-title">
-              A evidência certa, ligada à pergunta certa, no momento certo.
+              Evidência contextual, ligada ao fato certo
             </h2>
           </div>
           <ul className="qm-hotpage__list-grid">
@@ -380,14 +482,10 @@ export function Hotpage() {
           aria-labelledby="qm-qc-title"
         >
           <div className="qm-hotpage__section-head">
-            <p className="qm-hotpage__kicker">Quality Control</p>
+            <p className="qm-hotpage__kicker">Rastreabilidade</p>
             <h2 id="qm-qc-title">
-              Cada informação tem origem. Cada decisão deixa um rastro.
+              Cada informação tem origem. Cada decisão deixa rastro.
             </h2>
-            <p>
-              O quality control ocorre durante todo o percurso, não somente no
-              final.
-            </p>
           </div>
           <ul className="qm-hotpage__list-grid">
             {QUALITY_CONTROL_POINTS.map((item) => (
@@ -401,33 +499,29 @@ export function Hotpage() {
 
         <section
           className="qm-hotpage__section"
-          id="qm-evolucao"
-          aria-labelledby="qm-evolucao-title"
+          id="qm-oi-contrato"
+          aria-labelledby="qm-oi-title"
         >
           <div className="qm-hotpage__section-head">
-            <p className="qm-hotpage__kicker">Mapa de Evolução</p>
-            <h2 id="qm-evolucao-title">
-              A avaliação termina com próximos passos, não apenas com um
-              diagnóstico.
-            </h2>
+            <p className="qm-hotpage__kicker">Core ↔ QMind OI</p>
+            <h2 id="qm-oi-title">Interpretação sem misturar fronteiras</h2>
           </div>
           <div className="qm-hotpage__callout">
             <p>
-              Respostas e evidências alimentam sugestões rastreáveis, agrupadas por
-              tema empresarial. A prioridade considera impacto, urgência, esforço e
-              confiança. A revisão humana é obrigatória; sugestões aceitas podem
-              virar ações e entrar no relatório. O sistema não cria conformidade
-              automaticamente.
+              Core conserva fatos e decisões → contrato HTTP versionado → OI
+              interpreta sem ler o banco do Core → resultado explicável → Core
+              persiste histórico, fatos de suporte e limitações. O OI não é um
+              chatbot genérico nesta jornada.
             </p>
           </div>
         </section>
 
         <footer className="qm-hotpage__final">
           <div>
-            <h2>Quality Mind: pensar qualidade antes de provar qualidade.</h2>
+            <h2>Apresente o ciclo completo — com dados reais só no tour autenticado.</h2>
             <p>
-              Comece pela autoavaliação. Chegue à auditoria com contexto, evidências
-              e prioridades claras.
+              A página pública ilustra. A apresentação guiada demonstra fatos da
+              organização autorizada, sem mutações.
             </p>
           </div>
           <div className="qm-hotpage__final-actions">
@@ -437,7 +531,7 @@ export function Hotpage() {
                   Abrir meu QMind <HotpageIcon name="arrowRight" />
                 </Link>
                 <Link className="qm-hotpage__ghost" to="/guided-tour">
-                  Continuar apresentação guiada
+                  Continuar apresentação
                 </Link>
               </>
             ) : (
@@ -452,7 +546,7 @@ export function Hotpage() {
                 <button
                   type="button"
                   className="qm-hotpage__ghost"
-                  onClick={goGuided}
+                  onClick={() => goGuided()}
                 >
                   Iniciar apresentação guiada
                 </button>

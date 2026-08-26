@@ -141,8 +141,8 @@ Regenerar: `npx playwright test e2e/iso-intelligence-cockpit-screenshots.spec.ts
 - Sem tendência histórica inventada; snapshot `as_of` apenas.
 - Closure readiness do cockpit compartilha `evaluate_closure_readiness` com Evolution (análise + stale fingerprint inclusos).
 - Activity não cobre todas as transições de auditoria de status.
-- ISOI-011 (hotpage pública) **não** iniciado.
+- ISOI-011 (hotpage / jornada pública V2) documentado em [`032_ISO_Intelligence_V1_Hotpage_Public_Journey.md`](032_ISO_Intelligence_V1_Hotpage_Public_Journey.md) — **em revisão**; este documento (031) permanece baseline do Cockpit no Core `9d17fee`.
 
-## 12. Preparação ISOI-011
+## 12. Preparação ISOI-011 (cumprida na documentação)
 
-Manter cockpit Core-only e contratos OI estáveis. A jornada pública futura consome o mesmo vocabulário humano (faixas/motivos), sem antecipar hotpage, marketing site ou deploy.
+ISOI-010 pinado como baseline Core `9d17fee` / OI `34ead2e`. A jornada pública V2 consome o mesmo vocabulário humano (faixas/motivos, meta ≠ eficácia, decisão humana), sem expor Cockpit anonimamente e sem alterar contratos OI.

@@ -14,12 +14,14 @@ describe("returnUrl", () => {
   it("aceita apenas paths relativos seguros", () => {
     expect(isSafeReturnUrl("/assessments")).toBe(true);
     expect(isSafeReturnUrl("/guided-tour")).toBe(true);
+    expect(isSafeReturnUrl("/guided-tour?chapter=control")).toBe(true);
     expect(isSafeReturnUrl("/assessments/abc/guided")).toBe(true);
     expect(isSafeReturnUrl("https://evil.com")).toBe(false);
     expect(isSafeReturnUrl("//evil.com")).toBe(false);
     expect(isSafeReturnUrl("/login")).toBe(false);
     expect(isSafeReturnUrl("/")).toBe(false);
     expect(isSafeReturnUrl("/auth/callback")).toBe(false);
+    expect(isSafeReturnUrl("javascript:alert(1)")).toBe(false);
   });
 
   it("persiste e consome uma única vez", () => {

@@ -64,14 +64,19 @@ export async function createApi(
   return { baseURL, orgId, membershipId: mine.id as string, request };
 }
 
-export async function createSecondOrg(baseURL: string): Promise<{ orgId: string; name: string }> {
+export async function createSecondOrg(
+  baseURL: string,
+  identity?: { sub: string; email: string },
+): Promise<{ orgId: string; name: string }> {
+  const sub = identity?.sub ?? "dev-local-user";
+  const email = identity?.email ?? "dev@example.com";
   const name = `QMind E2E Org B ${Date.now()}`;
   const res = await fetch(`${baseURL}/api/v1/organizations`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Dev-User-Sub": "dev-local-user",
-      "X-Dev-User-Email": "dev@example.com",
+      "X-Dev-User-Sub": sub,
+      "X-Dev-User-Email": email,
       "Idempotency-Key": `e2e-org-${crypto.randomUUID()}`,
     },
     body: JSON.stringify({ name, timezone: "America/Sao_Paulo" }),
