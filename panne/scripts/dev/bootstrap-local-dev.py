@@ -75,7 +75,13 @@ def main() -> None:
     _write_env(ENV_PATH, updates)
 
     from app.config import get_settings
-    from app.modules.identity_organization.models import AuthIdentity
+    from app.modules.identity_organization.models import (
+        AuthIdentity,
+        Establishment,
+        Organization,
+        OrganizationMembership,
+        OrganizationMembershipRole,
+    )
     from app.modules.identity_organization.services import (
         IdentityResolutionError,
         bootstrap_first_owner,
@@ -100,7 +106,7 @@ def main() -> None:
         )
         if existing is None:
             try:
-                bootstrap_first_owner(
+                organization, _user, _membership, _identity = bootstrap_first_owner(
                     session,
                     issuer=issuer,
                     subject=subject,
@@ -111,12 +117,54 @@ def main() -> None:
                     organization_display_name="Padaria Central",
                     role="owner",
                 )
-                session.commit()
             except IdentityResolutionError:
                 session.rollback()
                 raise
         else:
-            session.rollback()
+            membership = session.scalar(
+                select(OrganizationMembership).where(
+                    OrganizationMembership.user_id == existing.user_id,
+                    OrganizationMembership.status == "active",
+                )
+            )
+            if membership is None:
+                raise IdentityResolutionError("proprietario_sem_organizacao")
+            organization = session.get(Organization, membership.organization_id)
+            if organization is None:
+                raise IdentityResolutionError("organizacao_ausente")
+            role = session.scalar(
+                select(OrganizationMembershipRole).where(
+                    OrganizationMembershipRole.membership_id == membership.id,
+                    OrganizationMembershipRole.role == "owner",
+                    OrganizationMembershipRole.revoked_at.is_(None),
+                )
+            )
+            if role is None:
+                session.add(
+                    OrganizationMembershipRole(
+                        organization_id=organization.id,
+                        membership_id=membership.id,
+                        role="owner",
+                        granted_by_user_id=existing.user_id,
+                        reason="bootstrap",
+                    )
+                )
+        place = session.scalar(
+            select(Establishment).where(
+                Establishment.organization_id == organization.id,
+                Establishment.status == "active",
+            )
+        )
+        if place is None:
+            session.add(
+                Establishment(
+                    organization_id=organization.id,
+                    code="E1",
+                    display_name="Padaria Central",
+                    status="active",
+                )
+            )
+        session.commit()
     finally:
         session.close()
         engine.dispose()

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Plan } from "../api/types";
-import { EmptyState, ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
+import { EmptyState, ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
 import { formatDate, shiftLabel, statusLabel } from "../format";
 import { useOrganization } from "../session/OrganizationContext";
 
@@ -35,6 +35,12 @@ export function PlansPage() {
 
   return (
     <section>
+      <ListLive
+        kind={state}
+        empty={state === "ok" && items.length === 0}
+        entityLabel={items[0]?.public_code || "plano"}
+        status={state === "ok" ? `${items.length} itens` : undefined}
+      />
       <div className="page-head">
         <h1>Planos</h1>
       </div>

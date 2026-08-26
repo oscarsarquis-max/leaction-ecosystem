@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAssistant } from "../assistant/AssistantContext";
 
 const STEPS = [
   "Identificar produto",
@@ -23,11 +24,23 @@ export function LabelingMentor({
   step: number;
   pending: string[];
 }) {
+  const { setFlow, openAssistant } = useAssistant();
   const [mode, setMode] = useState<"aberto" | "minimizado" | "dispensado">("aberto");
   useEffect(() => {
     const stored = localStorage.getItem(KEY);
     if (stored === "minimizado" || stored === "dispensado") setMode(stored);
   }, []);
+  const pendingNote = pending.length ? pending.join(" · ") : "nenhuma listada";
+  useEffect(() => {
+    setFlow({
+      code: KEY,
+      title: "Assistente de rotulagem",
+      steps: STEPS,
+      step,
+      note: `Pendências: ${pendingNote}. Não declara conformidade.`,
+    });
+    return () => setFlow(null);
+  }, [setFlow, step, pendingNote]);
   function persist(next: typeof mode) {
     setMode(next);
     localStorage.setItem(KEY, next);
@@ -44,7 +57,7 @@ export function LabelingMentor({
   }
   const progress = Math.round(((step + 1) / STEPS.length) * 100);
   return (
-    <div className="drawer-assist panel" role="dialog" aria-labelledby="lab-mentor">
+    <div className="mentor-inline panel" role="dialog" aria-labelledby="lab-mentor">
       <h2 id="lab-mentor">Assistente de rotulagem</h2>
       <p>Guia determinístico. Não declara aprovação nem conformidade.</p>
       <div
@@ -67,6 +80,9 @@ export function LabelingMentor({
       <p>Próxima ação: {STEPS[step]}.</p>
       <p>Pendências: {pending.length ? pending.join(" · ") : "nenhuma listada"}</p>
       <div>
+        <button type="button" className="ghost" onClick={openAssistant}>
+          Abrir no assistente
+        </button>
         <button type="button" onClick={() => persist("minimizado")}>
           Minimizar
         </button>

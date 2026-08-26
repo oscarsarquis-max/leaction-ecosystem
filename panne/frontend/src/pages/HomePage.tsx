@@ -7,10 +7,14 @@ export function HomePage() {
   return (
     <div className="stage">
       <div>
-        <h1>Início</h1>
-        <p className="lede">
-          A marca permanece no cabeçalho. Organização ativa: <strong>{active?.display_name}</strong>.
-        </p>
+        <div className="page-head">
+          <div>
+            <h1>Início</h1>
+            <p className="lede">
+              A marca permanece no cabeçalho. Organização ativa: <strong>{active?.display_name}</strong>.
+            </p>
+          </div>
+        </div>
         <div className="cards">
           {hasPermission("production.board.read") ? (
             <article className="card">
@@ -45,6 +49,33 @@ export function HomePage() {
               <p>Dossiês e candidatos de rotulagem para revisão humana.</p>
               <Link className="primary" to="/conformidade">
                 Abrir conformidade
+              </Link>
+            </article>
+          ) : null}
+          {hasPermission("reporting.production.read") || hasPermission("reporting.dashboard.read") ? (
+            <article className="card">
+              <h2>Relatórios e painéis</h2>
+              <p>Indicadores com cobertura. Ausência não é zero. Sem faturamento inventado.</p>
+              <Link className="primary" to="/gestao/relatorios">
+                Abrir relatórios
+              </Link>
+            </article>
+          ) : null}
+          {hasPermission("inventory.read") ? (
+            <article className="card">
+              <h2>Estoque</h2>
+              <p>Posição, lotes, reservas e movimentações. Sem valor contábil.</p>
+              <Link className="primary" to="/componentes/estoque">
+                Abrir estoque
+              </Link>
+            </article>
+          ) : null}
+          {hasPermission("procurement.read") ? (
+            <article className="card">
+              <h2>Compras</h2>
+              <p>Necessidades, requisições e pedidos internos. Sem envio automático.</p>
+              <Link className="primary" to="/gestao/compras/necessidades">
+                Abrir compras
               </Link>
             </article>
           ) : null}

@@ -24,7 +24,9 @@ SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSe
 try:
     _runtime_url = configured_runtime_url(_settings.database_url, _settings.runtime_database_url)
 except RuntimeUrlError:
-    _runtime_url = None
+    _runtime_url = _settings.database_url if _settings.env == "demo" else None
+if _runtime_url is None and _settings.env == "demo":
+    _runtime_url = _settings.database_url
 
 runtime_engine = (
     create_engine(_sync_url(_runtime_url), echo=False, pool_pre_ping=True, pool_size=5)

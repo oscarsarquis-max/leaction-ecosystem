@@ -137,6 +137,49 @@ EXPECTED = set(EXPECTED_0017) | {
     "practiced_price",
     "costing_command",
 }
+EXPECTED_0018 = set(EXPECTED)
+EXPECTED = set(EXPECTED_0018) | {
+    "reporting_saved_view",
+    "reporting_dashboard_preference",
+    "reporting_execution",
+    "reporting_snapshot",
+    "reporting_coverage_item",
+    "reporting_export",
+    "reporting_command",
+}
+EXPECTED_0019 = set(EXPECTED)
+EXPECTED = set(EXPECTED_0019) | {
+    "inventory_policy",
+    "inventory_policy_version",
+    "inventory_location",
+    "inventory_item",
+    "inventory_lot",
+    "inventory_movement",
+    "inventory_balance",
+    "inventory_reservation",
+    "inventory_reservation_allocation",
+    "inventory_pick",
+    "inventory_pick_line",
+    "inventory_consumption_posting",
+    "inventory_count_session",
+    "inventory_count_scope",
+    "inventory_count_entry",
+    "inventory_count_review",
+    "inventory_replenishment_suggestion",
+    "inventory_replenishment_item",
+    "procurement_requisition",
+    "procurement_requisition_item",
+    "procurement_quotation",
+    "procurement_quotation_item",
+    "procurement_order",
+    "procurement_order_revision",
+    "procurement_order_item",
+    "procurement_receipt",
+    "procurement_receipt_item",
+    "procurement_return",
+    "inventory_command",
+    "inventory_code_counter",
+}
 
 
 def _alembic() -> Config:
@@ -264,6 +307,24 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
     command.upgrade(_alembic(), "0018_costing_pricing")
     command.downgrade(_alembic(), "0017_labeling_compliance")
     command.upgrade(_alembic(), "0018_costing_pricing")
+    command.upgrade(_alembic(), "0019_reporting_analytics")
+    tables_0019 = set(inspect(engine).get_table_names())
+    assert "reporting_execution" in tables_0019
+    assert "reporting_snapshot" in tables_0019
+    command.downgrade(_alembic(), "0018_costing_pricing")
+    assert "reporting_execution" not in set(inspect(engine).get_table_names())
+    command.upgrade(_alembic(), "0019_reporting_analytics")
+    command.downgrade(_alembic(), "0018_costing_pricing")
+    command.upgrade(_alembic(), "0019_reporting_analytics")
+    command.upgrade(_alembic(), "0020_inventory_procurement")
+    tables_0020 = set(inspect(engine).get_table_names())
+    assert "inventory_movement" in tables_0020
+    assert "procurement_order" in tables_0020
+    command.downgrade(_alembic(), "0019_reporting_analytics")
+    assert "inventory_movement" not in set(inspect(engine).get_table_names())
+    command.upgrade(_alembic(), "0020_inventory_procurement")
+    command.downgrade(_alembic(), "0019_reporting_analytics")
+    command.upgrade(_alembic(), "0020_inventory_procurement")
 
     command.downgrade(_alembic(), "0012_production_api_roles")
     cols_back = {col["name"] for col in inspect(engine).get_columns("organization_membership")}
@@ -315,5 +376,5 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
             .scalars()
             .all()
         )
-    assert current == "0018_costing_pricing"
+    assert current == "0020_inventory_procurement"
     assert "mysql" not in "".join(other).lower()

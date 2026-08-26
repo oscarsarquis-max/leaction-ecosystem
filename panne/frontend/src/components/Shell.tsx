@@ -2,6 +2,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import logoCompacto from "../../images/aprovados/compacto-escuro.png";
 import logoHorizontal from "../../images/aprovados/horizontal-escuro.png";
+import { AssistantAvatar } from "../assistant/AssistantAvatar";
+import { GlobalAssistant } from "../assistant/GlobalAssistant";
+import { useAssistant } from "../assistant/AssistantContext";
+import { config } from "../config";
 import { useAuth } from "../auth/AuthContext";
 import { useOrganization } from "../session/OrganizationContext";
 
@@ -14,8 +18,32 @@ const PRODUCTION = [
 
 const COMPONENTS = [
   { to: "/componentes/ingredientes", label: "Ingredientes", permission: "ingredient.read", end: false },
+  { to: "/componentes/estoque", label: "Estoque", permission: "inventory.read", end: false },
+  { to: "/componentes/lotes", label: "Lotes e validade", permission: "inventory.read", end: false },
   { to: "/componentes/fornecedores", label: "Fornecedores e itens", permission: "supplier.read", end: false },
   { to: "/componentes/catalogos", label: "Fontes técnicas", permission: "ingredient.read", end: false },
+];
+
+const INVENTORY = [
+  { to: "/componentes/estoque", label: "Visão geral", permission: "inventory.read", end: true },
+  { to: "/componentes/estoque/posicao", label: "Posição", permission: "inventory.read", end: false },
+  { to: "/componentes/estoque/reservas", label: "Reservas", permission: "inventory.read", end: false },
+  { to: "/componentes/estoque/movimentacoes", label: "Movimentações", permission: "inventory.read", end: false },
+  { to: "/componentes/lotes", label: "Validades", permission: "inventory.read", end: false },
+  { to: "/componentes/estoque/separacao", label: "Separação", permission: "inventory.separate", end: false },
+];
+
+const PROCUREMENT = [
+  { to: "/gestao/compras/necessidades", label: "Necessidades", permission: "procurement.read", end: false },
+  { to: "/gestao/compras/requisicoes", label: "Requisições", permission: "procurement.read", end: false },
+  { to: "/gestao/compras/cotacoes", label: "Cotações", permission: "procurement.read", end: false },
+  { to: "/gestao/compras/pedidos", label: "Pedidos", permission: "procurement.read", end: false },
+  { to: "/gestao/compras/recebimentos", label: "Recebimentos", permission: "procurement.read", end: false },
+  { to: "/gestao/compras/devolucoes", label: "Devoluções", permission: "procurement.read", end: false },
+];
+
+const COUNTS = [
+  { to: "/gestao/inventarios", label: "Sessões", permission: "inventory.count", end: true },
 ];
 
 const RECIPES = [
@@ -31,6 +59,20 @@ const MANAGEMENT = [
   { to: "/gestao/custos/realizados", label: "Custos realizados", permission: "costing.read", end: false },
   { to: "/gestao/custos/simulacoes", label: "Simulações", permission: "pricing.simulation.manage", end: false },
   { to: "/gestao/custos/precos", label: "Preços praticados", permission: "pricing.review", end: false },
+  { to: "/gestao/compras/necessidades", label: "Compras", permission: "procurement.read", end: false },
+  { to: "/gestao/inventarios", label: "Inventários", permission: "inventory.count", end: false },
+];
+
+const REPORTING = [
+  { to: "/gestao/relatorios/executivo", label: "Visão executiva", permission: "reporting.dashboard.read", end: false },
+  { to: "/gestao/relatorios/producao", label: "Produção", permission: "reporting.production.read", end: false },
+  { to: "/gestao/relatorios/componentes", label: "Componentes e perdas", permission: "reporting.production.read", end: false },
+  { to: "/gestao/relatorios/custos", label: "Custos e preços", permission: "reporting.costing.read", end: false },
+  { to: "/gestao/relatorios/conformidade", label: "Conformidade", permission: "reporting.compliance.read", end: false },
+  { to: "/gestao/relatorios/rastreabilidade", label: "Rastreabilidade", permission: "reporting.traceability.read", end: false },
+  { to: "/gestao/relatorios/estoque", label: "Estoque e compras", permission: "reporting.inventory.read", end: false },
+  { to: "/gestao/relatorios/qualidade", label: "Qualidade dos dados", permission: "reporting.data_quality.read", end: false },
+  { to: "/gestao/relatorios/salvos", label: "Relatórios salvos", permission: "reporting.saved_view.manage", end: false },
 ];
 
 const COMPLIANCE = [
@@ -44,6 +86,7 @@ const COMPLIANCE = [
 export function Shell() {
   const { session, logout } = useAuth();
   const { me, associations, active, selectOrganization, status, hasPermission } = useOrganization();
+  const { open } = useAssistant();
   const [menuOpen, setMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const navigate = useNavigate();
@@ -66,7 +109,16 @@ export function Shell() {
   const showComponents = COMPONENTS.some((item) => hasPermission(item.permission));
   const showRecipes = RECIPES.some((item) => hasPermission(item.permission));
   const showCompliance = COMPLIANCE.some((item) => hasPermission(item.permission));
-  const showManagement = MANAGEMENT.some((item) => hasPermission(item.permission));
+  const showManagement =
+    MANAGEMENT.some((item) => hasPermission(item.permission))
+    || PROCUREMENT.some((item) => hasPermission(item.permission))
+    || COUNTS.some((item) => hasPermission(item.permission));
+  const showReporting = REPORTING.some((item) => hasPermission(item.permission));
+  const gestaoHome = hasPermission("costing.read")
+    ? "/gestao/custos"
+    : hasPermission("procurement.read")
+      ? "/gestao/compras/necessidades"
+      : "/gestao/inventarios";
   const productionActive = location.pathname.startsWith("/producao")
     || location.pathname.startsWith("/planejamento")
     || location.pathname.startsWith("/ordens")
@@ -74,10 +126,23 @@ export function Shell() {
   const componentsActive = location.pathname.startsWith("/componentes");
   const recipesActive = location.pathname.startsWith("/receitas");
   const complianceActive = location.pathname.startsWith("/conformidade");
-  const managementActive = location.pathname.startsWith("/gestao");
+  const costingActive = location.pathname.startsWith("/gestao/custos");
+  const procurementActive = location.pathname.startsWith("/gestao/compras");
+  const countsActive = location.pathname.startsWith("/gestao/inventarios");
+  const inventoryActive = location.pathname.startsWith("/componentes/estoque") || location.pathname.startsWith("/componentes/lotes");
+  const reportingActive = location.pathname.startsWith("/gestao/relatorios");
+  const gestaoActive = costingActive || procurementActive || countsActive;
   const operational = location.pathname.includes("/executar");
-  const submenu = managementActive
+  const submenu = reportingActive
+    ? REPORTING.filter((item) => hasPermission(item.permission))
+    : costingActive
     ? MANAGEMENT.filter((item) => hasPermission(item.permission))
+    : procurementActive
+    ? PROCUREMENT.filter((item) => hasPermission(item.permission))
+    : countsActive
+    ? COUNTS.filter((item) => hasPermission(item.permission))
+    : inventoryActive
+    ? INVENTORY.filter((item) => hasPermission(item.permission))
     : complianceActive
     ? COMPLIANCE.filter((item) => hasPermission(item.permission))
     : recipesActive
@@ -128,12 +193,18 @@ export function Shell() {
             </NavLink>
           ) : null}
           {showManagement ? (
-            <NavLink to="/gestao/custos" aria-current={managementActive ? "page" : undefined}>
+            <NavLink to={gestaoHome} aria-current={gestaoActive ? "page" : undefined}>
               Gestão
+            </NavLink>
+          ) : null}
+          {showReporting ? (
+            <NavLink to="/gestao/relatorios" aria-current={reportingActive ? "page" : undefined}>
+              Relatórios
             </NavLink>
           ) : null}
         </nav>
         <div className="shell-tools">
+          {config.demoMode ? <span className="demo-banner">Ambiente de demonstração</span> : null}
           {associations.length > 1 ? (
             <label>
               <span className="visually-hidden">Organização ativa</span>
@@ -184,7 +255,7 @@ export function Shell() {
       )}
       <p className="crumb">
         Início
-        {managementActive ? " / Gestão / Custos e preços" : complianceActive ? " / Conformidade" : recipesActive ? " / Receitas" : componentsActive ? " / Componentes" : productionActive ? " / Produção" : ""}
+        {reportingActive ? " / Gestão / Relatórios e painéis" : costingActive ? " / Gestão / Custos e preços" : procurementActive ? " / Gestão / Compras" : countsActive ? " / Gestão / Inventários" : inventoryActive ? " / Componentes / Estoque" : complianceActive ? " / Conformidade" : recipesActive ? " / Receitas" : componentsActive ? " / Componentes" : productionActive ? " / Produção" : ""}
       </p>
       <main className="main">
         {status.kind === "erro" ? (
@@ -193,6 +264,8 @@ export function Shell() {
           <Outlet />
         )}
       </main>
+      <AssistantAvatar />
+      {open ? <GlobalAssistant /> : null}
     </div>
   );
 }

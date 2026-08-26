@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/errors";
 import type { RecipeCard } from "../api/types";
-import { EmptyState, ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
+import { EmptyState, ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
 import { useOrganization } from "../session/OrganizationContext";
 
 function tone(status: string): "sucesso" | "atencao" | "info" | "neutro" {
@@ -74,8 +74,18 @@ export function RecipesPage() {
 
   return (
     <div className="stage">
+      <ListLive
+        kind={state.kind}
+        empty={state.kind === "ok" && state.items.length === 0}
+        entityLabel={state.kind === "ok" && state.items[0] ? state.items[0].display_name : "receita"}
+        status={state.kind === "ok" ? `${state.total} itens` : undefined}
+      />
       <div>
-        <h1>Minhas receitas</h1>
+        <div className="page-head">
+          <div>
+            <h1>Minhas receitas</h1>
+          </div>
+        </div>
         <p className="lede">
           {hasPermission("recipe.create") ? (
             <Link className="primary" to="/receitas/novo">

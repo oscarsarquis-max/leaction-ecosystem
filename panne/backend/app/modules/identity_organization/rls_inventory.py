@@ -158,6 +158,51 @@ COSTING_TABLES = frozenset(
         "costing_command",
     }
 )
+INVENTORY_TABLES = frozenset(
+    {
+        "inventory_policy",
+        "inventory_policy_version",
+        "inventory_location",
+        "inventory_item",
+        "inventory_lot",
+        "inventory_movement",
+        "inventory_balance",
+        "inventory_reservation",
+        "inventory_reservation_allocation",
+        "inventory_pick",
+        "inventory_pick_line",
+        "inventory_consumption_posting",
+        "inventory_count_session",
+        "inventory_count_scope",
+        "inventory_count_entry",
+        "inventory_count_review",
+        "inventory_replenishment_suggestion",
+        "inventory_replenishment_item",
+        "procurement_requisition",
+        "procurement_requisition_item",
+        "procurement_quotation",
+        "procurement_quotation_item",
+        "procurement_order",
+        "procurement_order_revision",
+        "procurement_order_item",
+        "procurement_receipt",
+        "procurement_receipt_item",
+        "procurement_return",
+        "inventory_command",
+        "inventory_code_counter",
+    }
+)
+REPORTING_TABLES = frozenset(
+    {
+        "reporting_saved_view",
+        "reporting_dashboard_preference",
+        "reporting_execution",
+        "reporting_snapshot",
+        "reporting_coverage_item",
+        "reporting_export",
+        "reporting_command",
+    }
+)
 
 PRE_PRODUCTION_RLS_TABLES = (
     ORGANIZATIONAL_TABLES | HYBRID_TABLES | INHERITED_TABLES | GLOBAL_TABLES | IDENTITY_TABLES
@@ -172,5 +217,7 @@ RLS_TABLES = (
     | RECIPE_AI_TABLES
     | LABELING_TABLES
     | COSTING_TABLES
+    | REPORTING_TABLES
+    | INVENTORY_TABLES
 )
 UNMANAGED_TABLES = frozenset({"alembic_version"})

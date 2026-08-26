@@ -126,6 +126,12 @@ export type BoardCard = {
   has_execution_facts: boolean;
 };
 
+export type BoardContextCatalog = {
+  establishments: Array<{ id: string; code: string; display_name: string }>;
+  shifts: Array<{ code: string; label: string }>;
+  areas: Array<{ code: string; label: string }>;
+};
+
 export type BoardFilters = {
   operational_date?: string;
   date_from?: string;
@@ -809,4 +815,52 @@ export type PracticedPrice = {
   status: string;
   row_version: number;
   justification: string | null;
+};
+
+export type ReportIndicator = {
+  code: string;
+  name: string;
+  status: string;
+  value: string | null;
+  unit?: string;
+  reason?: string | null;
+  coverage?: {
+    universe?: number;
+    valid_count?: number;
+    missing_count?: number;
+    percent?: string | null;
+  };
+  by_status?: Record<string, number>;
+  by_group?: Record<string, number>;
+};
+
+export type ReportPayload = {
+  report_code: string;
+  report_version: string;
+  data_cutoff_at: string;
+  completeness: string;
+  content_hash: string;
+  not_realtime: boolean;
+  indicators: ReportIndicator[];
+  tables: Array<{ code: string; rows: Array<Record<string, unknown>> }>;
+  gaps: Array<Record<string, string>>;
+  impossible: string[];
+};
+
+export type ReportSnapshot = {
+  id: string;
+  execution_id: string;
+  content_hash: string;
+  created_at: string;
+  auto_recalculated: boolean;
+  payload: ReportPayload;
+};
+
+export type SavedReportView = {
+  id: string;
+  code: string;
+  display_name: string;
+  report_code: string;
+  filters: Record<string, string | number | null>;
+  row_version: number;
 };

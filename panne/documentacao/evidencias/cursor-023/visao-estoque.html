@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Estoque — Panne</title>
+  <style>
+    body { margin: 0; font-family: Georgia, serif; background: #E5E4D6; color: #323334; }
+    header { display: flex; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid #323334; }
+    nav.sub { display: flex; flex-wrap: wrap; gap: 16px; padding: 8px 24px; }
+    main { display: grid; grid-template-columns: 1fr 280px; gap: 24px; padding: 24px; }
+    .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .card { background: #fff; padding: 16px; border: 1px solid #323334; }
+    .meta { font-size: 14px; }
+    @media (max-width: 900px) { main, .cards { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header><strong>Panne</strong><nav>Produção · Componentes · Receitas · Conformidade · Gestão · Relatórios</nav></header>
+  <nav class="sub">Visão geral · Posição · Reservas · Movimentações · Validades · Separação</nav>
+  <p class="meta" style="padding:0 24px">Início / Componentes / Estoque</p>
+  <main>
+    <div>
+      <h1>Estoque</h1>
+      <p>Saldo físico é a soma das movimentações. Reservado ainda está no local. Disponível é físico menos reserva. Em trânsito não entra no físico.</p>
+      <div class="cards">
+        <article class="card"><h2>Físico</h2><p>1000 g</p></article>
+        <article class="card"><h2>Reservado</h2><p>200 g</p></article>
+        <article class="card"><h2>Disponível</h2><p>800 g</p></article>
+        <article class="card"><h2>Em trânsito</h2><p>pedido emitido, sem ingresso</p></article>
+      </div>
+    </div>
+    <section class="card"><h2>Completude coletiva</h2><p>Sem ranking individual. Sem pressão por menor compra.</p></section>
+  </main>
+</body>
+</html>

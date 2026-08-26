@@ -16,7 +16,7 @@ def resolve_gateway(environ: dict[str, str] | None = None) -> ModelGateway:
     env = environ if environ is not None else os.environ
     mode = (env.get("PANNE_AI_GATEWAY") or "").strip().lower()
     settings_env = env.get("PANNE_ENV") or get_settings().env
-    if mode == "fake" or (mode == "" and settings_env in {"test", "local"}):
+    if mode == "fake" or (mode == "" and settings_env in {"test", "local", "demo"}):
         return FakeModelGateway()
     settings = load_bedrock_settings(env)
     require_production_guardrail(settings, env)

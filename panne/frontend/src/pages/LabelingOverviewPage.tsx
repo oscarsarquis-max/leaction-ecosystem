@@ -7,10 +7,14 @@ export function LabelingOverviewPage() {
   return (
     <div className="stage">
       <div>
-        <h1>Conformidade</h1>
-        <p className="lede">
-          Propostas técnicas para revisão humana. O sistema não declara conformidade e não emite certificado.
-        </p>
+        <div className="page-head">
+          <div>
+            <h1>Conformidade</h1>
+            <p className="lede">
+              Propostas técnicas para revisão humana. O sistema não declara conformidade e não emite certificado.
+            </p>
+          </div>
+        </div>
         <div className="cards">
           <article className="card">
             <h2>Dossiês</h2>

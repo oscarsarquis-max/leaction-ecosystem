@@ -12,6 +12,8 @@ from app.modules.ingredient_catalog import models as _ingredient_models  # noqa:
 from app.modules.knowledge_grounding import models as _knowledge_models  # noqa: F401
 from app.modules.labeling_compliance import models as _labeling_models  # noqa: F401
 from app.modules.costing_pricing import models as _costing_models  # noqa: F401
+from app.modules.reporting_analytics import models as _reporting_models  # noqa: F401
+from app.modules.inventory_procurement import models as _inventory_models  # noqa: F401
 from app.modules.nutrition_calculation import models as _nutrition_models  # noqa: F401
 from app.modules.production_execution import models as _execution_models  # noqa: F401
 from app.modules.production_planning import models as _production_models  # noqa: F401

@@ -91,6 +91,10 @@ try {
         throw "Export ausente: $exportFile"
     }
 
+    Write-Host "==> Reescrevendo localhost → S3 no JSON exportado" -ForegroundColor Cyan
+    node .\scripts\rewrite-cms-loopback-media.js --file=$exportFile
+    if ($LASTEXITCODE -ne 0) { throw "rewrite de mídia falhou ($LASTEXITCODE)" }
+
     Write-Host "==> Sincronizando imagens referenciadas → S3" -ForegroundColor Cyan
     # Precisa AWS_* / CMS_S3_* do .env do Hub (dotenv no script).
     node .\scripts\sync-cms-images-from-json.js --file=$exportFile

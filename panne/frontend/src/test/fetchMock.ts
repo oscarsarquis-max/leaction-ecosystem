@@ -4,6 +4,7 @@ import {
   ORDER_ID,
   PLAN_ID,
   boardFixture,
+  boardContextFixture,
   catalogFixture,
   executionFixture,
   materialsFixture,
@@ -15,7 +16,11 @@ import {
   costingCalculationFixture,
   pricingSimulationFixture,
   practicedPriceFixture,
+  reportingPayloadFixture,
+  reportingSnapshotFixture,
+  reportingViewFixture,
   CALC_ID,
+  SNAPSHOT_ID,
   proposalFixture,
   RECIPE_ID,
   RECIPE_VERSION_ID,
@@ -356,6 +361,176 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
     if (path.endsWith("/pricing/practiced") && request.method === "GET") {
       return json({ items: [practicedPriceFixture] });
     }
+    if (path.endsWith("/inventory/balances")) {
+      return json({
+        items: [
+          {
+            id: "bal-1",
+            inventory_item_id: "item-1",
+            inventory_location_id: "loc-1",
+            inventory_lot_id: "lot-1",
+            item_label: "Farinha de trigo tipo 1",
+            location_label: "Almoxarifado Central",
+            lot_code: "LOT-000001",
+            physical_quantity: "1000",
+            reserved_quantity: "200",
+            available_quantity: "800",
+            unit_code: "g",
+          },
+        ],
+      });
+    }
+    if (path.endsWith("/inventory/lots")) {
+      return json({
+        items: [
+          {
+            id: "lot-1",
+            internal_lot_code: "LOT-000001",
+            item_label: "Farinha de trigo tipo 1",
+            status: "available",
+            expires_on: "2026-09-10",
+          },
+        ],
+      });
+    }
+    if (path.endsWith("/inventory/reservations")) {
+      return json({
+        items: [{ id: "res-1", status: "partial", required_quantity: "100", reserved_quantity: "40", adopted: true }],
+      });
+    }
+    if (path.endsWith("/inventory/movements")) {
+      return json({
+        items: [{ id: "mov-1", movement_type: "receipt", canonical_quantity: "1000", origin_type: "opening" }],
+      });
+    }
+    if (path.endsWith("/inventory/picks") && request.method === "GET") {
+      return json({ items: [{ id: "pick-1", public_code: "PICK-000001", status: "confirmed" }] });
+    }
+    if (path.endsWith("/inventory/counts")) {
+      return json({
+        items: [{ id: "cnt-1", public_code: "CNT-000001", status: "review", row_version: 2, variances: [{ scope_id: "s1", variance: "-10" }] }],
+      });
+    }
+    if (path.endsWith("/inventory/replenishment")) {
+      return json({
+        data: {
+          public_code: "RPL-000001",
+          items: [
+            {
+              inventory_item_id: "item-1",
+              item_label: "Farinha de trigo tipo 1",
+              suggested_quantity: "500",
+              gaps: ["embalagem_ausente"],
+            },
+          ],
+        },
+      });
+    }
+    if (path.includes("/procurement/quotations/compare")) {
+      return json({
+        items: [
+          {
+            quotation_id: "q1",
+            supplier_id: "s1",
+            supplier_name: "Moinho Demo",
+            unit_price: "0.02",
+            lead_time_days: 3,
+            chosen: false,
+          },
+        ],
+      });
+    }
+    if (path.endsWith("/procurement/quotations")) {
+      return json({
+        items: [
+          {
+            id: "q1",
+            supplier_id: "s1",
+            supplier_name: "Moinho Demo",
+            lead_time_days: 3,
+            items: [{ id: "qi1", inventory_item_id: "item-1", unit_price: "0.02" }],
+          },
+          {
+            id: "q2",
+            supplier_id: "s2",
+            supplier_name: "Laticínio Demo",
+            lead_time_days: 6,
+            items: [{ id: "qi2", inventory_item_id: "item-1", unit_price: "0.03" }],
+          },
+        ],
+      });
+    }
+    if (path.endsWith("/procurement/requisitions")) {
+      return json({
+        items: [
+          { id: "req-1", public_code: "REQ-000001", status: "draft" },
+          { id: "req-2", public_code: "REQ-000002", status: "submitted" },
+          { id: "req-3", public_code: "REQ-000003", status: "approved" },
+          { id: "req-4", public_code: "REQ-000004", status: "converted" },
+        ],
+      });
+    }
+    if (path.endsWith("/procurement/orders")) {
+      return json({
+        items: [
+          {
+            id: "po-1",
+            public_code: "PO-000001",
+            status: "partially_received",
+            supplier_name: "Moinho Demo",
+            items: [{ id: "poi1", unit_price: "0.02" }],
+          },
+          {
+            id: "po-2",
+            public_code: "PO-000002",
+            status: "received",
+            supplier_name: "Moinho Demo",
+            items: [{ id: "poi2", unit_price: "0.03" }],
+          },
+        ],
+      });
+    }
+    if (path.endsWith("/procurement/receipts")) {
+      return json({ items: [{ id: "rcp-1", public_code: "RCP-000001", status: "posted" }] });
+    }
+    if (path.endsWith("/procurement/returns")) {
+      return json({ items: [{ id: "ret-1", public_code: "RET-000001", status: "posted", reason: "embalagem avariada demo" }] });
+    }
+    if (path.includes("/inventory/") && request.method !== "GET") {
+      return json({ data: { id: "inv-cmd", public_code: "CMD-1", status: "draft" }, row_version: 2 });
+    }
+    if (path.includes("/procurement/") && request.method !== "GET") {
+      return json({ data: { id: "proc-cmd", public_code: "CMD-2", status: "draft" }, row_version: 2 });
+    }
+    if (path.endsWith("/reporting/catalog")) {
+      return json({
+        items: [
+          { code: "executive", name: "Visão executiva", description: "Síntese" },
+          { code: "production", name: "Produção", description: "Ordens" },
+        ],
+      });
+    }
+    if (path.includes("/reporting/reports/") && path.includes("/drill-down")) {
+      return json({ data: { rows: reportingPayloadFixture.tables[0].rows, reconciled: true } });
+    }
+    if (path.includes("/reporting/reports/")) {
+      return json({ data: reportingPayloadFixture });
+    }
+    if (path.endsWith("/reporting/snapshots") && request.method === "POST") {
+      return json({ data: reportingSnapshotFixture });
+    }
+    if (path.endsWith("/reporting/snapshots")) {
+      return json({ items: [reportingSnapshotFixture] });
+    }
+    if (path.includes(`/reporting/snapshots/${SNAPSHOT_ID}`)) {
+      return json({ data: reportingSnapshotFixture });
+    }
+    if (path.endsWith("/reporting/saved-views") && request.method === "POST") {
+      return json({ data: reportingViewFixture });
+    }
+    if (path.endsWith("/reporting/saved-views")) {
+      return json({ items: [reportingViewFixture] });
+    }
     if (path.endsWith("/pricing/practiced") && request.method === "POST") {
       return json({ data: practicedPriceFixture, row_version: 1 });
     }
@@ -492,6 +667,7 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
     if (path.endsWith("/catalog/sources")) return json({ data: [] });
     if (path.endsWith("/production/catalog")) return json(catalogFixture);
     if (path.endsWith(`/orders/${ORDER_ID}/execution`)) return json(executionFixture);
+    if (path.endsWith("/production/board/context")) return json(boardContextFixture);
     if (path.endsWith("/production/board")) return json({ data: boardFixture });
     if (path.endsWith("/production/plans") && !path.includes(PLAN_ID)) return json(plansFixture);
     if (path.includes(`/plans/${PLAN_ID}`)) return json(planDetailFixture);

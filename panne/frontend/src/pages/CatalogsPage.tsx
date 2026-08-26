@@ -22,7 +22,7 @@ export function CatalogsPage() {
       setNutrients(nutrientPage.data);
       setAllergens(allergenPage.data);
       setSources(sourcePage.data);
-    });
+    }).catch(() => undefined);
   }, [api, active]);
 
   if (!units) return <LoadingState />;

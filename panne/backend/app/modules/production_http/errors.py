@@ -67,6 +67,22 @@ _MESSAGES = {
     "dupla_contagem": "A origem já foi incluída neste cálculo.",
     "denominador_invalido": "Denominador inválido para a fórmula de preço.",
     "confirmacao_reforcada_obrigatoria": "Cálculo parcial exige confirmação reforçada e justificativa.",
+    "periodo_excedido": "O período solicitado excede o limite síncrono de 90 dias.",
+    "filtro_invalido": "Filtro inválido para este relatório.",
+    "relatorio_desconhecido": "Relatório não autorizado ou inexistente.",
+    "metrica_desconhecida": "Métrica não autorizada ou inexistente.",
+    "snapshot_imutavel": "Snapshot emitido não é recalculado.",
+    "exportacao_excedida": "A exportação excede o limite de linhas autorizado.",
+    "conjunto_indisponivel": "O indicador está indisponível por ausência de denominador ou conjunto vazio.",
+    "saldo_insuficiente": "Não há saldo disponível para esta saída ou reserva.",
+    "lote_indisponivel": "O lote está vencido, bloqueado, em quarentena ou encerrado.",
+    "lote_obrigatorio": "A política exige lote para este item.",
+    "politica_nao_publicada": "Não há política de estoque publicada.",
+    "compra_automatica_proibida": "A Panne não emite compra automática neste ciclo.",
+    "preco_nao_atualizado": "O preço observado não atualiza o cadastro sem confirmação humana.",
+    "inventario_fechado": "Inventário fechado é imutável. Abra um novo ciclo para corrigir.",
+    "adocao_historica": "Ordem anterior ao estoque exige comando humano de adoção.",
+    "codigo_duplicado": "Já existe um registro com este código nesta organização.",
 }
 
 

@@ -5,11 +5,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { AppRoutes } from "./App";
 import { errorFromResponse } from "./api/errors";
-import { cancelledSheetFixture, meFixture } from "./api/fixtures";
+import { cancelledSheetFixture, meFixture, ORG_A } from "./api/fixtures";
 import { AuthProviderTree } from "./auth/AuthContext";
 import { FakeAuthProvider } from "./auth/FakeAuthProvider";
 import { isFakeBlockedInProduction } from "./config";
 import { formatDecimal } from "./format";
+import { AssistantProvider } from "./assistant/AssistantContext";
 import { OrganizationProvider } from "./session/OrganizationContext";
 import { installApiMock, json } from "./test/fetchMock";
 import { renderApp } from "./test/renderApp";
@@ -45,7 +46,9 @@ describe("autenticação", () => {
             future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
             initialEntries={["/entrar"]}
           >
-            <AppRoutes />
+            <AssistantProvider>
+              <AppRoutes />
+            </AssistantProvider>
           </MemoryRouter>
         </OrganizationProvider>
       </AuthProviderTree>,
@@ -64,6 +67,24 @@ describe("autenticação", () => {
       expect(authorization).toMatch(/^Bearer panne-fake-access-token$/);
     });
     expect(await screen.findByRole("heading", { name: "Quadro de produção" })).toBeInTheDocument();
+  });
+
+  it("descarta organização preferida inválida e recarrega o perfil", async () => {
+    localStorage.setItem("panne.activeOrganization", "99999999-9999-9999-9999-999999999999");
+    let meCalls = 0;
+    installApiMock({
+      "/api/v1/me": (_url, request) => {
+        meCalls += 1;
+        if (request.headers.get("X-Panne-Organization-Id") === "99999999-9999-9999-9999-999999999999") {
+          return json({ code: "nao_autorizado", message: "Não autorizado." }, 403);
+        }
+        return json(meFixture);
+      },
+    });
+    await renderApp("/producao");
+    expect(await screen.findByRole("heading", { name: "Quadro de produção" })).toBeInTheDocument();
+    expect(meCalls).toBeGreaterThanOrEqual(2);
+    expect(localStorage.getItem("panne.activeOrganization")).toBe(ORG_A);
   });
 
   it("simula callback do provedor falso", async () => {

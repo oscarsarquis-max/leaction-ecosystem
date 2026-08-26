@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAssistant } from "../assistant/AssistantContext";
 
 const STEPS = [
   "Escolher produto, formulação ou ordem",
@@ -16,11 +17,23 @@ const STEPS = [
 const KEY = "panne.costing.mentor";
 
 export function CostingMentor({ step, pending }: { step: number; pending: string[] }) {
+  const { setFlow, openAssistant } = useAssistant();
   const [mode, setMode] = useState<"aberto" | "minimizado" | "dispensado">("aberto");
   useEffect(() => {
     const stored = localStorage.getItem(KEY);
     if (stored === "minimizado" || stored === "dispensado") setMode(stored);
   }, []);
+  const pendingNote = pending.length ? pending.join(" · ") : "nenhuma listada";
+  useEffect(() => {
+    setFlow({
+      code: KEY,
+      title: "Assistente de custos e preços",
+      steps: STEPS,
+      step,
+      note: `Pendências: ${pendingNote}. O assistente não publica preço.`,
+    });
+    return () => setFlow(null);
+  }, [setFlow, step, pendingNote]);
   function persist(next: typeof mode) {
     setMode(next);
     localStorage.setItem(KEY, next);
@@ -37,7 +50,7 @@ export function CostingMentor({ step, pending }: { step: number; pending: string
   }
   const progress = Math.round(((step + 1) / STEPS.length) * 100);
   return (
-    <div className="drawer-assist panel" role="dialog" aria-labelledby="cost-mentor">
+    <div className="mentor-inline panel" role="dialog" aria-labelledby="cost-mentor">
       <h2 id="cost-mentor">Assistente de custos e preços</h2>
       <p>
         Markup incide sobre o custo. Margem bruta incide sobre o preço. Margem de contribuição
@@ -64,6 +77,9 @@ export function CostingMentor({ step, pending }: { step: number; pending: string
       <p>Pendências: {pending.length ? pending.join(" · ") : "nenhuma listada"}</p>
       <p className="meta">Gamificação educativa coletiva: completude e qualidade dos dados. Sem ranking individual.</p>
       <div>
+        <button type="button" className="ghost" onClick={openAssistant}>
+          Abrir no assistente
+        </button>
         <button type="button" onClick={() => persist("minimizado")}>
           Minimizar
         </button>

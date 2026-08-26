@@ -7,11 +7,13 @@ from sqlalchemy.orm import Session
 
 from app.db import get_runtime_session
 from app.modules.identity_organization.authorization import (
+    PERMISSION_PRODUCTION_BOARD_READ,
     PERMISSION_PRODUCTION_ORDER_READ,
     PERMISSION_PRODUCTION_PLAN_READ,
     Principal,
     require_permission,
 )
+from app.modules.identity_organization.models import Establishment
 from app.modules.production_execution.models import (
     ProductionMaterialConsumption,
     ProductionOccurrence,
@@ -42,6 +44,7 @@ from app.modules.production_http.serialize import (
     plan_out,
 )
 from app.modules.production_http.traceability import build_traceability
+from app.modules.production_planning.constants import SHIFTS
 from app.modules.production_planning.errors import ValidationError
 from app.modules.production_planning.models import (
     ProductionBatch,
@@ -576,6 +579,46 @@ def get_traceability(
     session: Annotated[Session, Depends(get_runtime_session)],
 ):
     return envelope(build_traceability(session, principal, organization_id, order_id))
+
+
+_SHIFT_LABEL = {"morning": "Manhã", "afternoon": "Tarde", "night": "Noite"}
+_AREAS = (
+    ("fornos", "Fornos"),
+    ("masseira", "Masseira"),
+    ("bancada", "Bancada"),
+    ("embalagem", "Embalagem"),
+)
+
+
+@router.get("/board/context")
+def get_board_context(
+    organization_id: UUID,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+):
+    try:
+        require_permission(principal, PERMISSION_PRODUCTION_BOARD_READ)
+    except Exception as exc:
+        raise_domain(exc)
+    places = list(
+        session.scalars(
+            select(Establishment)
+            .where(
+                Establishment.organization_id == organization_id,
+                Establishment.status == "active",
+            )
+            .order_by(Establishment.display_name)
+        )
+    )
+    return envelope(
+        {
+            "establishments": [
+                {"id": str(row.id), "code": row.code, "display_name": row.display_name} for row in places
+            ],
+            "shifts": [{"code": code, "label": _SHIFT_LABEL[code]} for code in SHIFTS],
+            "areas": [{"code": code, "label": label} for code, label in _AREAS],
+        }
+    )
 
 
 @router.get("/board")

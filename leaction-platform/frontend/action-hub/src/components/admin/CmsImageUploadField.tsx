@@ -4,6 +4,26 @@ import { useRef, useState } from 'react';
 import { ImagePlus, Loader2, Upload } from 'lucide-react';
 import { uploadCmsImage } from '@/lib/admin-api';
 
+function isLoopbackCmsUrl(raw: string) {
+  const value = raw.trim();
+  if (!value || (value.startsWith('/') && !value.startsWith('//'))) return false;
+  try {
+    return /^(localhost|127\.0\.0\.1)$/i.test(new URL(value).hostname);
+  } catch {
+    return /localhost|127\.0\.0\.1/i.test(value);
+  }
+}
+
+function pickPersistableCmsUrl(
+  result: { url?: string; public_url?: string },
+  preferPublicUrl: boolean
+) {
+  const publicUrl = String(result.public_url || '').trim();
+  const relative = String(result.url || '').trim();
+  const ordered = preferPublicUrl ? [publicUrl, relative] : [relative, publicUrl];
+  return ordered.find((candidate) => candidate && !isLoopbackCmsUrl(candidate)) || '';
+}
+
 type CmsImageUploadFieldProps = {
   label: string;
   value: string;
@@ -35,11 +55,9 @@ export function CmsImageUploadField({
     setError(null);
     try {
       const result = await uploadCmsImage(token, file);
-      const next = preferPublicUrl
-        ? result.public_url || result.url
-        : result.url || result.public_url;
+      const next = pickPersistableCmsUrl(result, preferPublicUrl);
       if (!next) {
-        throw new Error('Upload sem URL retornada');
+        throw new Error('Upload sem URL pública (localhost não é persistido)');
       }
       onChange(next);
     } catch (err) {

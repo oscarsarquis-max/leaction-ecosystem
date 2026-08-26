@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Tela de acesso</title>
+  <style>
+    body { margin: 0; font-family: "Segoe UI", sans-serif; background: #E5E4D6; color: #323334; }
+    .stage { display: grid; grid-template-columns: 1fr minmax(20rem, 28rem) 1fr; min-height: 100vh; }
+    .col { padding: 0; }
+    .col img, .ph { height: 180px; width: 100%; object-fit: cover; background: #D8C9AF; display: block; }
+    .col-body, .center { padding: 24px; }
+    .center { background: #F7F2E8; display: flex; flex-direction: column; justify-content: center; }
+    .logo { height: 48px; background: #323334; color: #F7F2E8; display: flex; align-items: center; justify-content: center; }
+    .fallback { height: 180px; background: #49352A; color: #F7F2E8; display: flex; align-items: center; justify-content: center; }
+    h1, h2 { font-family: Georgia, serif; font-weight: 400; }
+    @media (max-width: 1366px) { .col-body p { font-size: 14px; } }
+    @media (max-width: 900px) { .stage { grid-template-columns: 1fr; } .center { order: -1; min-height: 60vh; } }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <article class="col">
+      <div class="ph" role="img" aria-label="Marca Panne em fundo claro."></div>
+      <div class="col-body">
+        <p>Oficina</p>
+        <h2>O turno cabe no quadro</h2>
+        <p>Produção, componentes e conformidade no recorte da padaria.</p>
+      </div>
+    </article>
+    <section class="center">
+      <div class="logo">Panne</div>
+      <h1>Entrar na Panne</h1>
+      <p>A autorização usa as permissões da sessão. O conteúdo ao lado não altera o acesso.</p>
+      <button>Entrar em desenvolvimento</button>
+      <p><button>Ajuda para entrar</button></p>
+    </section>
+    <article class="col">
+      <div class="fallback">Fallback da marca Panne</div>
+      <div class="col-body">
+        <p>Atelier</p>
+        <h2>Ficha antes do palpite</h2>
+        <p>Provider indisponível recolhe laterais. O centro permanece.</p>
+      </div>
+    </article>
+  </div>
+</body>
+</html>

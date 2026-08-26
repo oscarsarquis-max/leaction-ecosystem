@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { Order } from "../api/types";
-import { EmptyState, ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
+import { EmptyState, ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
 import { formatDecimal, statusLabel } from "../format";
 import { useOrganization } from "../session/OrganizationContext";
 
@@ -35,6 +35,12 @@ export function OrdersPage() {
 
   return (
     <section>
+      <ListLive
+        kind={state}
+        empty={state === "ok" && items.length === 0}
+        entityLabel={items[0]?.public_code || "ordem"}
+        status={state === "ok" ? `${items.length} itens` : undefined}
+      />
       <div className="page-head">
         <h1>Ordens</h1>
       </div>

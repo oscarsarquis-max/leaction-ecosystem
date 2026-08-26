@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { LabelingDossier } from "../api/types";
-import { EmptyState, ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
+import { EmptyState, ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
 import { useOrganization } from "../session/OrganizationContext";
 
 function tone(status: string) {
@@ -38,6 +38,12 @@ export function LabelingDossiersPage() {
 
   return (
     <div className="stage">
+      <ListLive
+        kind={state.kind}
+        empty={state.kind === "ok" && state.items.length === 0}
+        entityLabel="dossiê"
+        status={state.kind === "ok" ? `${state.items.length} itens` : undefined}
+      />
       <div>
         <h1>Dossiês de rotulagem</h1>
         <p className="lede">

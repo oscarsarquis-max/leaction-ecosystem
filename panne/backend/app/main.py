@@ -16,6 +16,9 @@ from app.modules.production_http.roles_http import router as membership_roles
 from app.modules.production_http.writes import router as production_writes
 from app.modules.labeling_http.router import router as labeling
 from app.modules.costing_http.router import router as costing
+from app.modules.reporting_http.router import router as reporting
+from app.modules.inventory_http.router import router as inventory
+from app.modules.login_editorial.http import router as login_editorial
 from app.modules.recipe_ai_http.router import router as recipe_ai
 from app.modules.recipe_http.reads import router as recipe_reads
 from app.modules.recipe_http.writes import router as recipe_writes
@@ -31,6 +34,7 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 app.include_router(identity_router)
+app.include_router(login_editorial)
 app.include_router(
     production_reads,
     prefix="/api/v1/organizations/{organization_id}/production",
@@ -75,6 +79,14 @@ app.include_router(
     costing,
     prefix="/api/v1/organizations/{organization_id}",
 )
+app.include_router(
+    reporting,
+    prefix="/api/v1/organizations/{organization_id}",
+)
+app.include_router(
+    inventory,
+    prefix="/api/v1/organizations/{organization_id}",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -103,7 +115,7 @@ def _custom_openapi():
         "type": "http",
         "scheme": "bearer",
     }
-    public = {"/health", "/ready"}
+    public = {"/health", "/ready", "/api/v1/public/login-editorial"}
     for path, methods in schema.get("paths", {}).items():
         if path in public:
             continue

@@ -13,10 +13,11 @@ export class FakeAuthProvider implements AuthProvider {
   }
 
   async login(): Promise<void> {
+    const subject = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("panne.demoSubject") : null;
     this.session = {
-      accessToken: FAKE_TOKEN,
+      accessToken: subject ? `panne-demo:${subject}` : FAKE_TOKEN,
       expiresAt: Date.now() + 60 * 60 * 1000,
-      displayHint: "desenvolvimento",
+      displayHint: subject ? `demonstração:${subject}` : "desenvolvimento",
     };
   }
 

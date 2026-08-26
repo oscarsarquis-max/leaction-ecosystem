@@ -1,0 +1,2 @@
+Alvo resolvido: panne_demo em host.docker.internal:5434 (env=demo)
+{'org': 'panne-demonstracao', 'gaps': []}
