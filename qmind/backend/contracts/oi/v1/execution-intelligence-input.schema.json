@@ -1,0 +1,829 @@
+{
+  "$defs": {
+    "EnvelopeMetadata": {
+      "additionalProperties": false,
+      "description": "Technical transport metadata only — no business facts.",
+      "properties": {
+        "environment": {
+          "anyOf": [
+            {
+              "enum": [
+                "local",
+                "test",
+                "homolog",
+                "prod"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment"
+        },
+        "producer_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Software version of the producing system (not schema_version).",
+          "title": "Producer Version"
+        },
+        "trace_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional distributed-trace identifier distinct from correlation_id.",
+          "title": "Trace Id"
+        }
+      },
+      "title": "EnvelopeMetadata",
+      "type": "object"
+    },
+    "ExecutionActionFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "action_ref": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Action Ref",
+          "type": "string"
+        },
+        "active_impediment_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Active Impediment Count",
+          "type": "integer"
+        },
+        "approved_evidence_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Approved Evidence Count",
+          "type": "integer"
+        },
+        "check_in_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Check In Count",
+          "type": "integer"
+        },
+        "claims_execution": {
+          "title": "Claims Execution",
+          "type": "boolean"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Due At"
+        },
+        "evidence_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Evidence Count",
+          "type": "integer"
+        },
+        "is_overdue": {
+          "default": false,
+          "title": "Is Overdue",
+          "type": "boolean"
+        },
+        "is_terminal": {
+          "title": "Is Terminal",
+          "type": "boolean"
+        },
+        "label": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "last_check_in_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Check In At"
+        },
+        "oldest_active_impediment_hours": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Oldest Active Impediment Hours"
+        },
+        "open_dependency_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Open Dependency Count",
+          "type": "integer"
+        },
+        "overdue_dependency_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Overdue Dependency Count",
+          "type": "integer"
+        },
+        "owner_assigned": {
+          "title": "Owner Assigned",
+          "type": "boolean"
+        },
+        "progress_percent": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Progress Percent"
+        },
+        "sprint_ref": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sprint Ref"
+        },
+        "sprint_status": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sprint Status"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "in_progress",
+            "implemented",
+            "validated",
+            "done",
+            "cancelled",
+            "ineffective",
+            "ineffective_closed"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_ref",
+        "label",
+        "status",
+        "owner_assigned",
+        "created_at",
+        "is_terminal",
+        "claims_execution"
+      ],
+      "title": "ExecutionActionFacts",
+      "type": "object"
+    },
+    "ExecutionCaseFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "impact_statement": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Impact Statement"
+        },
+        "latest_problem_analysis_ref": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latest Problem Analysis Ref"
+        },
+        "problem_statement": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Problem Statement"
+        },
+        "related_process": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Related Process"
+        },
+        "status": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "ExecutionCaseFacts",
+      "type": "object"
+    },
+    "ExecutionFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/ExecutionActionFacts"
+          },
+          "title": "Actions",
+          "type": "array"
+        },
+        "plan": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionPlanFacts"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "ExecutionFacts",
+      "type": "object"
+    },
+    "ExecutionPlanFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "plan_ref": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Plan Ref",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "active",
+            "completed",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "window_end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Window End"
+        },
+        "window_start": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Window Start"
+        }
+      },
+      "required": [
+        "plan_ref",
+        "status"
+      ],
+      "title": "ExecutionPlanFacts",
+      "type": "object"
+    },
+    "MeasurementFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "indicators": {
+          "items": {
+            "$ref": "#/$defs/MeasurementIndicatorFacts"
+          },
+          "title": "Indicators",
+          "type": "array"
+        },
+        "plans": {
+          "items": {
+            "$ref": "#/$defs/MeasurementPlanFacts"
+          },
+          "title": "Plans",
+          "type": "array"
+        }
+      },
+      "title": "MeasurementFacts",
+      "type": "object"
+    },
+    "MeasurementIndicatorFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline At"
+        },
+        "baseline_status": {
+          "enum": [
+            "missing",
+            "recorded",
+            "unavailable_justified"
+          ],
+          "title": "Baseline Status",
+          "type": "string"
+        },
+        "baseline_value": {
+          "anyOf": [
+            {
+              "pattern": "^-?\\d+(\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Value"
+        },
+        "comparable_reading_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Comparable Reading Count",
+          "type": "integer"
+        },
+        "direction": {
+          "enum": [
+            "higher_is_better",
+            "lower_is_better",
+            "within_range",
+            "maintain_range"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "indicator_ref": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Indicator Ref",
+          "type": "string"
+        },
+        "is_measurement_overdue": {
+          "default": false,
+          "title": "Is Measurement Overdue",
+          "type": "boolean"
+        },
+        "latest_measured_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latest Measured At"
+        },
+        "latest_value": {
+          "anyOf": [
+            {
+              "pattern": "^-?\\d+(\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latest Value"
+        },
+        "measurement_posture": {
+          "enum": [
+            "not_planned",
+            "awaiting_baseline",
+            "awaiting_measurement",
+            "on_time",
+            "overdue"
+          ],
+          "title": "Measurement Posture",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "next_measurement_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Measurement Due At"
+        },
+        "plan_ref": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Plan Ref",
+          "type": "string"
+        },
+        "substantiation": {
+          "enum": [
+            "none",
+            "partial",
+            "verified"
+          ],
+          "title": "Substantiation",
+          "type": "string"
+        },
+        "target_max": {
+          "anyOf": [
+            {
+              "pattern": "^-?\\d+(\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Max"
+        },
+        "target_min": {
+          "anyOf": [
+            {
+              "pattern": "^-?\\d+(\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Min"
+        },
+        "target_posture": {
+          "enum": [
+            "unknown",
+            "met",
+            "not_met",
+            "mixed"
+          ],
+          "title": "Target Posture",
+          "type": "string"
+        },
+        "target_value": {
+          "anyOf": [
+            {
+              "pattern": "^-?\\d+(\\.\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Value"
+        },
+        "unit": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "indicator_ref",
+        "plan_ref",
+        "name",
+        "unit",
+        "direction",
+        "measurement_posture",
+        "target_posture",
+        "baseline_status",
+        "substantiation"
+      ],
+      "title": "MeasurementIndicatorFacts",
+      "type": "object"
+    },
+    "MeasurementPlanFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "plan_ref": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Plan Ref",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "active",
+            "completed",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "plan_ref",
+        "status"
+      ],
+      "title": "MeasurementPlanFacts",
+      "type": "object"
+    },
+    "OutcomeFacts": {
+      "additionalProperties": false,
+      "properties": {
+        "linked_measurement_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Linked Measurement Count",
+          "type": "integer"
+        },
+        "measurement_basis_summary": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Measurement Basis Summary",
+          "type": "string"
+        },
+        "observation_summary": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Observation Summary",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "result_direction": {
+          "enum": [
+            "improved",
+            "unchanged",
+            "worsened",
+            "not_yet_measured"
+          ],
+          "title": "Result Direction",
+          "type": "string"
+        }
+      },
+      "required": [
+        "result_direction",
+        "observed_at",
+        "observation_summary",
+        "measurement_basis_summary"
+      ],
+      "title": "OutcomeFacts",
+      "type": "object"
+    },
+    "SourceRef": {
+      "additionalProperties": false,
+      "description": "Logical origin of a message — not a file/module path.",
+      "properties": {
+        "component": {
+          "examples": [
+            "organization-context",
+            "insight-producer"
+          ],
+          "minLength": 1,
+          "title": "Component",
+          "type": "string"
+        },
+        "system": {
+          "examples": [
+            "qmind-core",
+            "qmind-oi"
+          ],
+          "minLength": 1,
+          "title": "System",
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "component"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Core-owned factual snapshot sent to the stateless OI rules engine.",
+  "properties": {
+    "captured_at": {
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    },
+    "case": {
+      "$ref": "#/$defs/ExecutionCaseFacts"
+    },
+    "core_organization_id": {
+      "format": "uuid",
+      "title": "Core Organization Id",
+      "type": "string"
+    },
+    "correlation_id": {
+      "minLength": 1,
+      "title": "Correlation Id",
+      "type": "string"
+    },
+    "execution": {
+      "$ref": "#/$defs/ExecutionFacts"
+    },
+    "fact_refs": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Fact Refs",
+      "type": "array"
+    },
+    "improvement_case_id": {
+      "format": "uuid",
+      "title": "Improvement Case Id",
+      "type": "string"
+    },
+    "measurement": {
+      "$ref": "#/$defs/MeasurementFacts"
+    },
+    "metadata": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EnvelopeMetadata"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "outcome": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OutcomeFacts"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "request_id": {
+      "minLength": 1,
+      "title": "Request Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/SourceRef"
+    }
+  },
+  "required": [
+    "schema_version",
+    "core_organization_id",
+    "improvement_case_id",
+    "request_id",
+    "correlation_id",
+    "captured_at",
+    "source",
+    "case",
+    "execution",
+    "measurement",
+    "fact_refs"
+  ],
+  "title": "ExecutionIntelligenceInput",
+  "type": "object"
+}

@@ -12,7 +12,18 @@ const DEV_EMAIL = "dev@example.com";
 export async function visit(page: Page, path: string) {
   await page.goto(path);
   const cta = page.getByTestId("login-cta");
-  if (await cta.isVisible().catch(() => false)) await cta.click();
+  if (await cta.isVisible().catch(() => false)) {
+    await cta.click();
+  } else {
+    // Unauthenticated app routes may land on the public Hotpage first.
+    const enter = page.getByRole("button", { name: /Entrar no QMind/i }).first();
+    if (await enter.isVisible().catch(() => false)) {
+      await enter.click();
+      const gateCta = page.getByTestId("login-cta");
+      await expect(gateCta).toBeVisible();
+      await gateCta.click();
+    }
+  }
   await expect(page.getByLabel(/selecionar organização/i)).toBeVisible();
 }
 

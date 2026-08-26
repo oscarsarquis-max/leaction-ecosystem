@@ -11,10 +11,18 @@ from app.modules.improvement_cases.problem_schemas import (
     ProblemContextInput,
     dump_jsonable as dump_problem,
 )
+from app.modules.improvement_cases.execution_intelligence_schemas import (
+    ExecutionIntelligenceInput,
+    ExecutionIntelligenceResult,
+    dump_jsonable as dump_execution,
+)
 from app.modules.oi.schemas import OrganizationContextInput, OrganizationalInsights, dump_jsonable
 
 ANALYZE_PATH = "/api/v1/organizational-intelligence/analyze"
 PROBLEM_ANALYSIS_PATH = "/api/v1/organizational-intelligence/problem-analysis"
+EXECUTION_INTELLIGENCE_PATH = (
+    "/api/v1/organizational-intelligence/execution-intelligence"
+)
 
 
 class OrganizationalIntelligenceClient:
@@ -92,5 +100,18 @@ class OrganizationalIntelligenceClient:
             raise AppError(
                 "oi_invalid_response",
                 "QMind OI returned an invalid ProblemAnalysis payload",
+                status_code=502,
+            ) from exc
+
+    def analyze_execution(
+        self, payload: ExecutionIntelligenceInput
+    ) -> ExecutionIntelligenceResult:
+        raw = self._post_json(EXECUTION_INTELLIGENCE_PATH, dump_execution(payload))
+        try:
+            return ExecutionIntelligenceResult.model_validate(raw)
+        except Exception as exc:
+            raise AppError(
+                "oi_invalid_response",
+                "QMind OI returned an invalid ExecutionIntelligenceResult payload",
                 status_code=502,
             ) from exc

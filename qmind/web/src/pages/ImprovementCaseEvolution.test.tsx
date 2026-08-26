@@ -29,6 +29,10 @@ let actionOverdue = 0;
 let createObsCalls = 0;
 let patchBodies: unknown[] = [];
 let evolutionOrgId = ORG;
+let executionIntelligence: Record<string, unknown> | null = null;
+let executionRuns = 0;
+let executionHistory: Record<string, unknown>[] = [];
+let executionReadsFail = false;
 
 const caseRow = () => ({
   id: "case-1",
@@ -82,6 +86,116 @@ const run = {
   },
 };
 
+function fullExecutionRun(index: number, isStale = false) {
+  return {
+    id: `ei-${index}`,
+    organization_id: ORG,
+    improvement_case_id: "case-1",
+    schema_version: "1.0",
+    mechanism_version: "execution-intelligence-rules-v1",
+    request_id: `request-${index}`,
+    correlation_id: `correlation-${index}`,
+    generated_at: `2026-08-${25 + index}T12:00:00Z`,
+    input_fingerprint: `fingerprint-${index}`,
+    created_by: "user-1",
+    created_at: `2026-08-${25 + index}T12:00:00Z`,
+    is_stale: isStale,
+    input_snapshot: {
+      schema_version: "1.0",
+      core_organization_id: ORG,
+      improvement_case_id: "case-1",
+      request_id: `request-${index}`,
+      correlation_id: `correlation-${index}`,
+      captured_at: `2026-08-${25 + index}T12:00:00Z`,
+      source: { system: "qmind-core", component: "execution-intelligence" },
+      case: { status: "acting" },
+      execution: {
+        plan: { plan_ref: "execution-plan", status: "active" },
+        actions: [
+          {
+            action_ref: "action:1",
+            label: "Revisar fila de atendimento",
+            status: "in_progress",
+            owner_assigned: true,
+            created_at: "2026-08-20T12:00:00Z",
+            active_impediment_count: 1,
+            open_dependency_count: 0,
+            overdue_dependency_count: 0,
+            evidence_count: 0,
+            approved_evidence_count: 0,
+            is_overdue: true,
+            is_terminal: false,
+            claims_execution: false,
+          },
+        ],
+      },
+      measurement: {
+        plans: [],
+        indicators: [
+          {
+            indicator_ref: "indicator:1",
+            plan_ref: "measurement-plan:1",
+            name: "Tempo de atendimento",
+            unit: "horas",
+            direction: "lower_is_better",
+            measurement_posture: "overdue",
+            target_posture: "not_met",
+            baseline_status: "recorded",
+            is_measurement_overdue: true,
+            substantiation: "partial",
+            comparable_reading_count: 1,
+          },
+        ],
+      },
+      fact_refs: [],
+    },
+    result: {
+      schema_version: "1.0",
+      core_organization_id: ORG,
+      improvement_case_id: "case-1",
+      analysis_id: `analysis-${index}`,
+      request_id: `request-${index}`,
+      correlation_id: `correlation-${index}`,
+      generated_at: `2026-08-${25 + index}T12:00:00Z`,
+      mechanism_version: "execution-intelligence-rules-v1",
+      interpretability_status: "interpretable",
+      execution_posture: "attention_required",
+      interpretation_summary: "Há fatos que pedem atenção humana.",
+      signals: [
+        {
+          code: "action_overdue",
+          category: "schedule",
+          level: "attention",
+          title: "Prazo de ação pede atenção",
+          interpretation: "A ação ultrapassou o prazo informado.",
+          supporting_fact_refs: [
+            "execution.action:action:1:due_at",
+            "execution.action:action:1:is_overdue",
+          ],
+          iso_basis: ["6.2.2", "8.1"],
+          recommended_next_step: "Revisar o prazo com a pessoa responsável.",
+          requires_human_validation: true,
+        },
+        {
+          code: "measurement_overdue",
+          category: "measurement",
+          level: "attention",
+          title: "Medição em atraso",
+          interpretation: "A medição planejada está atrasada.",
+          supporting_fact_refs: [
+            "measurement.indicator:indicator:1:measurement_posture",
+          ],
+          iso_basis: ["9.1.1"],
+          recommended_next_step: "Realizar ou replanejar a medição.",
+          requires_human_validation: true,
+        },
+      ],
+      missing_information: ["Observação humana de resultado não informada."],
+      limitations: ["A análise não verifica o conteúdo das evidências."],
+    },
+  };
+}
+
 function evolutionPayload() {
   return {
     case: { ...caseRow(), organization_id: evolutionOrgId },
@@ -112,6 +226,7 @@ function evolutionPayload() {
     latest_outcome_observation: observations[0] ?? null,
     outcome_observations: observations,
     closure_readiness: closure,
+    execution_intelligence: executionIntelligence,
   };
 }
 
@@ -157,6 +272,10 @@ describe("Improvement Case Evolution UI", () => {
     createObsCalls = 0;
     patchBodies = [];
     evolutionOrgId = ORG;
+    executionIntelligence = null;
+    executionRuns = 0;
+    executionHistory = [];
+    executionReadsFail = false;
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -201,6 +320,61 @@ describe("Improvement Case Evolution UI", () => {
         }
         if (url.includes("/evolution") && method === "GET") {
           return jsonResponse(evolutionPayload());
+        }
+        if (
+          url.includes("/execution-intelligence/latest") &&
+          method === "GET"
+        ) {
+          if (executionReadsFail) {
+            return jsonResponse(
+              { code: "unavailable", message: "Unavailable", correlation_id: "test" },
+              503,
+            );
+          }
+          return executionHistory.length
+            ? jsonResponse(executionHistory[0])
+            : jsonResponse(
+                { code: "not_found", message: "Not found", correlation_id: "test" },
+                404,
+              );
+        }
+        if (
+          url.includes("/execution-intelligence/runs") &&
+          method === "GET"
+        ) {
+          if (executionReadsFail) {
+            return jsonResponse(
+              { code: "unavailable", message: "Unavailable", correlation_id: "test" },
+              503,
+            );
+          }
+          return jsonResponse(executionHistory);
+        }
+        if (
+          url.includes("/execution-intelligence/runs") &&
+          method === "POST"
+        ) {
+          executionRuns += 1;
+          executionHistory = [
+            fullExecutionRun(executionRuns),
+            ...executionHistory,
+          ];
+          executionIntelligence = {
+            run_id: `ei-${executionRuns}`,
+            generated_at: "2026-08-26T12:00:00Z",
+            interpretability_status: "interpretable",
+            execution_posture: "progressing",
+            interpretation_summary: "A execução apresenta avanço registrado.",
+            signal_count: 2,
+            is_stale: false,
+          };
+          return jsonResponse(
+            {
+              id: `ei-${executionRuns}`,
+              improvement_case_id: "case-1",
+            },
+            201,
+          );
         }
         if (url.includes("/outcome-observations") && method === "POST") {
           createObsCalls += 1;
@@ -285,6 +459,104 @@ describe("Improvement Case Evolution UI", () => {
     expect(screen.getByTestId("ic-evo-closure")).toHaveTextContent(
       /faltam elementos/i,
     );
+    expect(screen.getByTestId("ic-ei-never")).toBeInTheDocument();
+  });
+
+  it("runs and displays Execution Intelligence without raw identifiers", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await enterApp(user);
+    await user.click(await screen.findByTestId("ic-ei-run"));
+    await waitFor(() => expect(executionRuns).toBe(1));
+    const result = await screen.findByTestId("ic-ei-result");
+    expect(result).toHaveTextContent("Execução requer atenção");
+    expect(result).toHaveTextContent("Há fatos que pedem atenção humana.");
+    expect(result).not.toHaveTextContent("ei-1");
+    expect(screen.getByText("Interpretação QMind OI")).toBeInTheDocument();
+  });
+
+  it("shows full grouped intelligence, facts, ISO, limits, missing data and history", async () => {
+    executionHistory = [fullExecutionRun(2), fullExecutionRun(1, true)];
+    executionIntelligence = {
+      run_id: "ei-2",
+      generated_at: "2026-08-27T12:00:00Z",
+      interpretability_status: "interpretable",
+      execution_posture: "attention_required",
+      interpretation_summary: "Há fatos que pedem atenção humana.",
+      signal_count: 2,
+      is_stale: false,
+    };
+    const user = userEvent.setup();
+    renderPage();
+    await enterApp(user);
+
+    expect(await screen.findByText("Prazos")).toBeInTheDocument();
+    expect(screen.getByText("Medição")).toBeInTheDocument();
+    expect(screen.getAllByTestId("ic-ei-signal")).toHaveLength(2);
+    expect(
+      screen.getByText("Revisar fila de atendimento — prazo"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Tempo de atendimento — situação da medição/)).toBeInTheDocument();
+    expect(screen.getByText(/Base ISO 9001: 6.2.2, 8.1/)).toBeInTheDocument();
+    expect(screen.getByText(/Revisar o prazo com a pessoa responsável/)).toBeInTheDocument();
+    expect(screen.getByTestId("ic-ei-missing")).toHaveTextContent(
+      "Observação humana de resultado não informada.",
+    );
+    expect(screen.getByTestId("ic-ei-limitations")).toHaveTextContent(
+      "não verifica o conteúdo das evidências",
+    );
+    expect(screen.getByTestId("ic-ei-mechanism")).toHaveTextContent("versão 1");
+    expect(screen.getByTestId("ic-ei-history").querySelectorAll("li")).toHaveLength(2);
+    expect(screen.getByTestId("ic-ei-human-warning")).toHaveTextContent(
+      /validação humana.*não significa eficácia comprovada/i,
+    );
+    const panel = screen.getByTestId("ic-evo-execution-intelligence");
+    expect(panel).not.toHaveTextContent("execution.action:");
+    expect(panel).not.toHaveTextContent(ORG);
+  });
+
+  it("preserves the previous full analysis when refresh fails", async () => {
+    executionHistory = [fullExecutionRun(1)];
+    executionIntelligence = {
+      run_id: "ei-1",
+      generated_at: "2026-08-26T12:00:00Z",
+      interpretability_status: "interpretable",
+      execution_posture: "attention_required",
+      interpretation_summary: "Há fatos que pedem atenção humana.",
+      signal_count: 2,
+      is_stale: false,
+    };
+    const user = userEvent.setup();
+    renderPage();
+    await enterApp(user);
+    expect((await screen.findAllByTestId("ic-ei-signal"))[0]).toHaveTextContent(
+      "Prazo de ação pede atenção",
+    );
+    executionReadsFail = true;
+    await user.click(screen.getByTestId("ic-ei-run"));
+    expect(await screen.findByTestId("ic-ei-load-error")).toBeInTheDocument();
+    expect(screen.getAllByTestId("ic-ei-signal")[0]).toHaveTextContent(
+      "Prazo de ação pede atenção",
+    );
+  });
+
+  it("shows stale interpretation and hides action from reader", async () => {
+    roles = ["reader"];
+    executionIntelligence = {
+      run_id: "ei-old",
+      generated_at: "2026-08-26T12:00:00Z",
+      interpretability_status: "insufficient_facts",
+      execution_posture: "insufficient_information",
+      interpretation_summary: "Ainda faltam registros.",
+      signal_count: 0,
+      is_stale: true,
+    };
+    const user = userEvent.setup();
+    renderPage();
+    await enterApp(user);
+    expect(await screen.findByTestId("ic-ei-stale")).toBeInTheDocument();
+    expect(screen.queryByTestId("ic-ei-run")).not.toBeInTheDocument();
+    expect(screen.getByText(/faltam fatos/i)).toBeInTheDocument();
   });
 
   it("hides register for reader", async () => {

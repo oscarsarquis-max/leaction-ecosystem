@@ -17,3 +17,7 @@ scripts/_isoi006_smoke_results.json
 _isoi006_core.out.log
 _isoi006_core.err.log
 
+# Local API e2e capture (never commit)
+_e2e_api.err
+_e2e_api.out
+

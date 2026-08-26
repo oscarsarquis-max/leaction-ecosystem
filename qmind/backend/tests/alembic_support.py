@@ -11,6 +11,7 @@ asserted by `test_alembic_0024_downgrade_guard`.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,11 @@ def alembic_cfg() -> Config:
     cfg = Config(str(BACKEND / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND / "alembic"))
     cfg.set_main_option("sqlalchemy.url", ADMIN_URL)
+    # alembic/env.py prefers DATABASE_URL; pin to QMind admin so a shell
+    # DATABASE_URL from another ecosystem (e.g. Hub) cannot hijack migrations.
+    os.environ["DATABASE_URL"] = ADMIN_URL
+    os.environ["QMIND_DB_ADMIN_URL"] = ADMIN_URL
+    os.environ["DATABASE_URL_ADMIN"] = ADMIN_URL
     return cfg
 
 

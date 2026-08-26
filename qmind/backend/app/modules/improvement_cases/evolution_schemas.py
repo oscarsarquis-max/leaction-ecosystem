@@ -12,6 +12,9 @@ from app.modules.actions.schemas import ActionItemOut, ActionPlanOut
 from app.modules.improvement_cases.problem_schemas import (
     ImprovementCaseAnalysisRunOut,
 )
+from app.modules.improvement_cases.execution_intelligence_schemas import (
+    ExecutionIntelligenceSummary,
+)
 from app.modules.improvement_cases.schemas import ImprovementCaseOut
 from app.modules.measurements.schemas import TargetEvaluationOut
 from app.schemas.enums import (
@@ -129,3 +132,4 @@ class ImprovementCaseEvolutionOut(BaseModel):
     outcome_observations: list[OutcomeObservationOut] = Field(default_factory=list)
     closure_readiness: ClosureReadiness
     closure_readiness_reason: str = ""
+    execution_intelligence: ExecutionIntelligenceSummary | None = None

@@ -1,12 +1,14 @@
 # 029 — ISO Intelligence V1 — Evidência Contextual e Medição do Resultado
 
-- Status: **Em revisão (Core-only)** — revisão **001** aplicada; ver §11
+- Status: **Implementado / baseline (Core-only)** — revisão **001** e gate final concluídos
 - Date: 2026-08-24
 - Activity: **ISOI-008**
 - Name: **Evidence & Result Measurement V1**
 - Revision: **001** (migration `20260824_0024` reconciliada; contrato de API alterado)
+- Pin de entrega: **`2d09b81`** (`feat(qmind): add contextual evidence and result measurement`)
 - Predecessor: [`028`](028_ISO_Intelligence_V1_Action_Execution_Workspace.md) (ISOI-007)
-- OI: **sem alteração funcional** — pin `2d78eff` preservado
+- Successor: [`030`](030_ISO_Intelligence_V1_Execution_Intelligence.md) (ISOI-009 — interpreta estes fatos no OI)
+- OI: **sem alteração funcional neste incremento** — pin `2d78eff` preservado até ISOI-009
 
 Documento operacional da camada que responde a duas perguntas distintas: **o que comprova que a ação foi feita** (evidência) e **o que comprova que o problema diminuiu** (medição). Prepara os fatos que a **Execution Intelligence** (ISOI-009) irá interpretar; **não** os interpreta no OI neste incremento.
 
@@ -191,7 +193,7 @@ O plano em rascunho não oferece formulário de observação: a tela explica que
 | ISOI-008 Evidência contextual | **Core-only** | Prova documental da execução |
 | ISOI-008 Medição do resultado | **Core-only** | Fatos numéricos + avaliação determinística |
 | Aviso "meta ≠ eficácia" | **Core-only** | Regra de produto, não de modelo |
-| Execution Intelligence (ISOI-009, futuro) | OI | Consumirá indicadores, leituras e posturas via contrato ainda não definido |
+| Execution Intelligence (ISOI-009) | OI + Core histórico/UI | Consome indicadores, leituras e posturas via `ExecutionIntelligenceInput` / `ExecutionIntelligenceResult` |
 
 ---
 
@@ -212,4 +214,4 @@ A primeira forma desta atividade foi aplicada em bases de desenvolvimento e revi
 | `GET evidence-links` devolvia vínculos | devolve anexos (`{ link, evidence }`) | O navegador relia cada evidência por identificador; o servidor já sabe responder numa consulta |
 | `downgrade()` derrubava as tabelas | **recusa** com contagem quando há história | Um rollback de esquema não é licença para apagar trilha de auditoria |
 
-Pendências desta revisão: nenhuma no Core. O status volta a **Implementado** quando a baseline for pinada.
+**Fechamento:** revisão 001 e gate final concluídos. Baseline pinada em **`2d09b81`**. Status: **Implementado / baseline**.

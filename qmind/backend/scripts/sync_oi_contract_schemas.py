@@ -19,6 +19,8 @@ FILES = (
     "organizational-insights.schema.json",
     "problem-context-input.schema.json",
     "problem-analysis.schema.json",
+    "execution-intelligence-input.schema.json",
+    "execution-intelligence-result.schema.json",
 )
 
 

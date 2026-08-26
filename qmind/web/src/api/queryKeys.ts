@@ -87,6 +87,17 @@ export const queryKeys = {
     ["org", organizationId, "improvement-case", caseId, "actions"] as const,
   improvementCaseEvolution: (organizationId: string, caseId: string) =>
     ["org", organizationId, "improvement-case", caseId, "evolution"] as const,
+  improvementCaseExecutionIntelligence: (
+    organizationId: string,
+    caseId: string,
+  ) =>
+    [
+      "org",
+      organizationId,
+      "improvement-case",
+      caseId,
+      "execution-intelligence",
+    ] as const,
   executionBoard: (
     organizationId: string,
     filters: { squadId?: string; sprintId?: string },

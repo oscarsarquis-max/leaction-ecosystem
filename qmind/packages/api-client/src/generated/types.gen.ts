@@ -2269,6 +2269,393 @@ export type EvolutionSuggestionOut = {
 export type EvolutionSuggestionStatus = 'proposed' | 'accepted' | 'dismissed' | 'converted_to_action' | 'superseded';
 
 /**
+ * ExecutionActionFacts
+ */
+export type ExecutionActionFacts = {
+    /**
+     * Action Ref
+     */
+    action_ref: string;
+    /**
+     * Active Impediment Count
+     */
+    active_impediment_count?: number;
+    /**
+     * Approved Evidence Count
+     */
+    approved_evidence_count?: number;
+    /**
+     * Check In Count
+     */
+    check_in_count?: number;
+    /**
+     * Claims Execution
+     */
+    claims_execution: boolean;
+    /**
+     * Completed At
+     */
+    completed_at?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Due At
+     */
+    due_at?: string | null;
+    /**
+     * Evidence Count
+     */
+    evidence_count?: number;
+    /**
+     * Is Overdue
+     */
+    is_overdue?: boolean;
+    /**
+     * Is Terminal
+     */
+    is_terminal: boolean;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Last Check In At
+     */
+    last_check_in_at?: string | null;
+    /**
+     * Oldest Active Impediment Hours
+     */
+    oldest_active_impediment_hours?: number | null;
+    /**
+     * Open Dependency Count
+     */
+    open_dependency_count?: number;
+    /**
+     * Overdue Dependency Count
+     */
+    overdue_dependency_count?: number;
+    /**
+     * Owner Assigned
+     */
+    owner_assigned: boolean;
+    /**
+     * Progress Percent
+     */
+    progress_percent?: number | null;
+    /**
+     * Sprint Ref
+     */
+    sprint_ref?: string | null;
+    /**
+     * Sprint Status
+     */
+    sprint_status?: string | null;
+    /**
+     * Started At
+     */
+    started_at?: string | null;
+    /**
+     * Status
+     */
+    status: 'open' | 'in_progress' | 'implemented' | 'validated' | 'done' | 'cancelled' | 'ineffective' | 'ineffective_closed';
+};
+
+/**
+ * ExecutionCaseFacts
+ */
+export type ExecutionCaseFacts = {
+    /**
+     * Impact Statement
+     */
+    impact_statement?: string | null;
+    /**
+     * Latest Problem Analysis Ref
+     */
+    latest_problem_analysis_ref?: string | null;
+    /**
+     * Problem Statement
+     */
+    problem_statement?: string | null;
+    /**
+     * Related Process
+     */
+    related_process?: string | null;
+    /**
+     * Status
+     */
+    status: string;
+};
+
+/**
+ * ExecutionFacts
+ */
+export type ExecutionFacts = {
+    /**
+     * Actions
+     */
+    actions?: Array<ExecutionActionFacts>;
+    plan?: ExecutionPlanFacts | null;
+};
+
+/**
+ * ExecutionIntelligenceInput
+ */
+export type ExecutionIntelligenceInput = {
+    /**
+     * Captured At
+     */
+    captured_at: string;
+    case: ExecutionCaseFacts;
+    /**
+     * Core Organization Id
+     */
+    core_organization_id: string;
+    /**
+     * Correlation Id
+     */
+    correlation_id: string;
+    execution: ExecutionFacts;
+    /**
+     * Fact Refs
+     */
+    fact_refs: Array<string>;
+    /**
+     * Improvement Case Id
+     */
+    improvement_case_id: string;
+    measurement: MeasurementFacts;
+    metadata?: EnvelopeMetadata | null;
+    outcome?: OutcomeFacts | null;
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version: '1.0';
+    source: SourceRef;
+};
+
+/**
+ * ExecutionIntelligenceResult
+ */
+export type ExecutionIntelligenceResult = {
+    /**
+     * Analysis Id
+     */
+    analysis_id: string;
+    /**
+     * Core Organization Id
+     */
+    core_organization_id: string;
+    /**
+     * Correlation Id
+     */
+    correlation_id: string;
+    /**
+     * Execution Posture
+     */
+    execution_posture: 'insufficient_information' | 'not_started' | 'progressing' | 'attention_required' | 'stalled' | 'awaiting_result_evaluation' | 'result_observed';
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Improvement Case Id
+     */
+    improvement_case_id: string;
+    /**
+     * Interpretability Status
+     */
+    interpretability_status: 'insufficient_facts' | 'interpretable';
+    /**
+     * Interpretation Summary
+     */
+    interpretation_summary: string;
+    /**
+     * Limitations
+     */
+    limitations?: Array<string>;
+    /**
+     * Mechanism Version
+     */
+    mechanism_version: 'execution-intelligence-rules-v1';
+    /**
+     * Missing Information
+     */
+    missing_information?: Array<string>;
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version: '1.0';
+    /**
+     * Signals
+     */
+    signals?: Array<ExecutionSignal>;
+};
+
+/**
+ * ExecutionIntelligenceRunOut
+ */
+export type ExecutionIntelligenceRunOut = {
+    /**
+     * Correlation Id
+     */
+    correlation_id: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by: string;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Improvement Case Id
+     */
+    improvement_case_id: string;
+    /**
+     * Input Fingerprint
+     */
+    input_fingerprint: string;
+    input_snapshot: ExecutionIntelligenceInput;
+    /**
+     * Is Stale
+     */
+    is_stale?: boolean;
+    /**
+     * Mechanism Version
+     */
+    mechanism_version: string;
+    /**
+     * Organization Id
+     */
+    organization_id: string;
+    /**
+     * Request Id
+     */
+    request_id: string;
+    result: ExecutionIntelligenceResult;
+    /**
+     * Schema Version
+     */
+    schema_version: string;
+};
+
+/**
+ * ExecutionIntelligenceSummary
+ */
+export type ExecutionIntelligenceSummary = {
+    /**
+     * Execution Posture
+     */
+    execution_posture: 'insufficient_information' | 'not_started' | 'progressing' | 'attention_required' | 'stalled' | 'awaiting_result_evaluation' | 'result_observed';
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Interpretability Status
+     */
+    interpretability_status: 'insufficient_facts' | 'interpretable';
+    /**
+     * Interpretation Summary
+     */
+    interpretation_summary: string;
+    /**
+     * Is Stale
+     */
+    is_stale: boolean;
+    /**
+     * Run Id
+     */
+    run_id: string;
+    /**
+     * Signal Count
+     */
+    signal_count: number;
+};
+
+/**
+ * ExecutionPlanFacts
+ */
+export type ExecutionPlanFacts = {
+    /**
+     * Plan Ref
+     */
+    plan_ref: string;
+    /**
+     * Status
+     */
+    status: 'draft' | 'active' | 'completed' | 'cancelled';
+    /**
+     * Window End
+     */
+    window_end?: string | null;
+    /**
+     * Window Start
+     */
+    window_start?: string | null;
+};
+
+/**
+ * ExecutionSignal
+ */
+export type ExecutionSignal = {
+    /**
+     * Category
+     */
+    category: 'flow' | 'schedule' | 'blocker' | 'dependency' | 'evidence' | 'measurement' | 'outcome';
+    /**
+     * Code
+     */
+    code: 'execution_not_started' | 'execution_progress_observed' | 'action_overdue' | 'execution_stale' | 'active_impediment' | 'open_dependency' | 'ownership_gap' | 'execution_evidence_gap' | 'measurement_baseline_gap' | 'measurement_overdue' | 'result_unsubstantiated' | 'target_met_awaiting_human_review' | 'target_not_met_attention' | 'outcome_measurement_tension' | 'result_observation_missing';
+    /**
+     * Interpretation
+     */
+    interpretation: string;
+    /**
+     * Iso Basis
+     */
+    iso_basis: Array<'6.2.2' | '8.1' | '9.1.1' | '10.2.1' | '10.3'>;
+    /**
+     * Level
+     */
+    level: 'information' | 'watch' | 'attention';
+    /**
+     * Recommended Next Step
+     */
+    recommended_next_step: string;
+    /**
+     * Requires Human Validation
+     */
+    requires_human_validation?: true;
+    /**
+     * Supporting Fact Refs
+     */
+    supporting_fact_refs: Array<string>;
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
  * FieldError
  */
 export type FieldError = {
@@ -3009,6 +3396,7 @@ export type ImprovementCaseEvolutionOut = {
      * Closure Readiness Reason
      */
     closure_readiness_reason?: string;
+    execution_intelligence?: ExecutionIntelligenceSummary | null;
     latest_outcome_observation?: OutcomeObservationOut | null;
     measurement_summary: MeasurementSummary;
     /**
@@ -3089,6 +3477,10 @@ export type IndicatorCreate = {
      * Baseline At
      */
     baseline_at?: string | null;
+    /**
+     * Baseline Status
+     */
+    baseline_status?: 'missing' | 'recorded' | 'unavailable_justified';
     /**
      * Baseline Unavailable Reason
      */
@@ -3903,6 +4295,98 @@ export type MeasurementCorrectionIn = {
 };
 
 /**
+ * MeasurementFacts
+ */
+export type MeasurementFacts = {
+    /**
+     * Indicators
+     */
+    indicators?: Array<MeasurementIndicatorFacts>;
+    /**
+     * Plans
+     */
+    plans?: Array<MeasurementPlanFacts>;
+};
+
+/**
+ * MeasurementIndicatorFacts
+ */
+export type MeasurementIndicatorFacts = {
+    /**
+     * Baseline At
+     */
+    baseline_at?: string | null;
+    /**
+     * Baseline Value
+     */
+    baseline_value?: string | null;
+    /**
+     * Comparable Reading Count
+     */
+    comparable_reading_count?: number;
+    /**
+     * Direction
+     */
+    direction: 'higher_is_better' | 'lower_is_better' | 'within_range' | 'maintain_range';
+    /**
+     * Indicator Ref
+     */
+    indicator_ref: string;
+    /**
+     * Is Measurement Overdue
+     */
+    is_measurement_overdue?: boolean;
+    /**
+     * Latest Measured At
+     */
+    latest_measured_at?: string | null;
+    /**
+     * Latest Value
+     */
+    latest_value?: string | null;
+    /**
+     * Measurement Posture
+     */
+    measurement_posture: 'not_planned' | 'awaiting_baseline' | 'awaiting_measurement' | 'on_time' | 'overdue';
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Next Measurement Due At
+     */
+    next_measurement_due_at?: string | null;
+    /**
+     * Plan Ref
+     */
+    plan_ref: string;
+    /**
+     * Substantiation
+     */
+    substantiation: 'none' | 'partial' | 'verified';
+    /**
+     * Target Max
+     */
+    target_max?: string | null;
+    /**
+     * Target Min
+     */
+    target_min?: string | null;
+    /**
+     * Target Posture
+     */
+    target_posture: 'unknown' | 'met' | 'not_met' | 'mixed';
+    /**
+     * Target Value
+     */
+    target_value?: string | null;
+    /**
+     * Unit
+     */
+    unit: string;
+};
+
+/**
  * MeasurementKind
  * A baseline is a measurement; it is just the first one.
  */
@@ -3948,6 +4432,20 @@ export type MeasurementPlanCreate = {
      * Review Cadence Days
      */
     review_cadence_days?: number | null;
+};
+
+/**
+ * MeasurementPlanFacts
+ */
+export type MeasurementPlanFacts = {
+    /**
+     * Plan Ref
+     */
+    plan_ref: string;
+    /**
+     * Status
+     */
+    status: 'draft' | 'active' | 'completed' | 'cancelled';
 };
 
 /**
@@ -4635,6 +5133,32 @@ export type OrganizationalInsights = {
      * Schema Version
      */
     schema_version: string;
+};
+
+/**
+ * OutcomeFacts
+ */
+export type OutcomeFacts = {
+    /**
+     * Linked Measurement Count
+     */
+    linked_measurement_count?: number;
+    /**
+     * Measurement Basis Summary
+     */
+    measurement_basis_summary: string;
+    /**
+     * Observation Summary
+     */
+    observation_summary: string;
+    /**
+     * Observed At
+     */
+    observed_at: string;
+    /**
+     * Result Direction
+     */
+    result_direction: 'improved' | 'unchanged' | 'worsened' | 'not_yet_measured';
 };
 
 /**
@@ -5507,6 +6031,20 @@ export type ScoresUpsertIn = {
      * Scores
      */
     scores: Array<ScoreUpsert>;
+};
+
+/**
+ * SourceRef
+ */
+export type SourceRef = {
+    /**
+     * Component
+     */
+    component: string;
+    /**
+     * System
+     */
+    system: string;
 };
 
 /**
@@ -20722,6 +21260,357 @@ export type GetCurrentOrganizationImprovementCaseEvolutionResponses = {
 };
 
 export type GetCurrentOrganizationImprovementCaseEvolutionResponse = GetCurrentOrganizationImprovementCaseEvolutionResponses[keyof GetCurrentOrganizationImprovementCaseEvolutionResponses];
+
+export type GetLatestCurrentOrganizationImprovementCaseExecutionIntelligenceData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/execution-intelligence/latest';
+};
+
+export type GetLatestCurrentOrganizationImprovementCaseExecutionIntelligenceErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetLatestCurrentOrganizationImprovementCaseExecutionIntelligenceError = GetLatestCurrentOrganizationImprovementCaseExecutionIntelligenceErrors[keyof GetLatestCurrentOrganizationImprovementCaseExecutionIntelligenceErrors];
+
+export type GetLatestCurrentOrganizationImprovementCaseExecutionIntelligenceResponses = {
+    /**
+     * Successful Response
+     */
+    200: ExecutionIntelligenceRunOut;
+};
+
+export type GetLatestCurrentOrganizationImprovementCaseExecutionIntelligenceResponse = GetLatestCurrentOrganizationImprovementCaseExecutionIntelligenceResponses[keyof GetLatestCurrentOrganizationImprovementCaseExecutionIntelligenceResponses];
+
+export type ListCurrentOrganizationImprovementCaseExecutionIntelligenceRunsData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: {
+        /**
+         * Limit
+         * Maximum items to return (collections). Default 50, max 100.
+         */
+        limit?: number;
+    };
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/execution-intelligence/runs';
+};
+
+export type ListCurrentOrganizationImprovementCaseExecutionIntelligenceRunsErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type ListCurrentOrganizationImprovementCaseExecutionIntelligenceRunsError = ListCurrentOrganizationImprovementCaseExecutionIntelligenceRunsErrors[keyof ListCurrentOrganizationImprovementCaseExecutionIntelligenceRunsErrors];
+
+export type ListCurrentOrganizationImprovementCaseExecutionIntelligenceRunsResponses = {
+    /**
+     * Response Listcurrentorganizationimprovementcaseexecutionintelligenceruns
+     * Successful Response
+     */
+    200: Array<ExecutionIntelligenceRunOut>;
+};
+
+export type ListCurrentOrganizationImprovementCaseExecutionIntelligenceRunsResponse = ListCurrentOrganizationImprovementCaseExecutionIntelligenceRunsResponses[keyof ListCurrentOrganizationImprovementCaseExecutionIntelligenceRunsResponses];
+
+export type CreateCurrentOrganizationImprovementCaseExecutionIntelligenceRunData = {
+    body?: never;
+    headers?: {
+        /**
+         * Idempotency-Key
+         */
+        'Idempotency-Key'?: string | null;
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/execution-intelligence/runs';
+};
+
+export type CreateCurrentOrganizationImprovementCaseExecutionIntelligenceRunErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation error
+     */
+    422: ErrorBody;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type CreateCurrentOrganizationImprovementCaseExecutionIntelligenceRunError = CreateCurrentOrganizationImprovementCaseExecutionIntelligenceRunErrors[keyof CreateCurrentOrganizationImprovementCaseExecutionIntelligenceRunErrors];
+
+export type CreateCurrentOrganizationImprovementCaseExecutionIntelligenceRunResponses = {
+    /**
+     * Successful Response
+     */
+    201: ExecutionIntelligenceRunOut;
+};
+
+export type CreateCurrentOrganizationImprovementCaseExecutionIntelligenceRunResponse = CreateCurrentOrganizationImprovementCaseExecutionIntelligenceRunResponses[keyof CreateCurrentOrganizationImprovementCaseExecutionIntelligenceRunResponses];
+
+export type GetCurrentOrganizationImprovementCaseExecutionIntelligenceRunData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Organization-Id
+         */
+        'X-Organization-Id'?: string | null;
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Dev-User-Sub
+         */
+        'x-dev-user-sub'?: string | null;
+        /**
+         * X-Dev-User-Email
+         */
+        'x-dev-user-email'?: string | null;
+    };
+    path: {
+        /**
+         * Case Id
+         */
+        case_id: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/organizations/current/improvement-cases/{case_id}/execution-intelligence/runs/{run_id}';
+};
+
+export type GetCurrentOrganizationImprovementCaseExecutionIntelligenceRunErrors = {
+    /**
+     * Bad request / domain guard
+     */
+    400: ErrorBody;
+    /**
+     * Missing or invalid authentication
+     */
+    401: ErrorBody;
+    /**
+     * Forbidden / SoD / role
+     */
+    403: ErrorBody;
+    /**
+     * Not found (or cross-tenant hide)
+     */
+    404: ErrorBody;
+    /**
+     * Conflict / invalid transition
+     */
+    409: ErrorBody;
+    /**
+     * Gone (e.g. upload expired)
+     */
+    410: ErrorBody;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Upstream dependency error (e.g. QMind OI)
+     */
+    502: ErrorBody;
+    /**
+     * Dependency unavailable
+     */
+    503: ErrorBody;
+    /**
+     * Upstream timeout (e.g. QMind OI)
+     */
+    504: ErrorBody;
+};
+
+export type GetCurrentOrganizationImprovementCaseExecutionIntelligenceRunError = GetCurrentOrganizationImprovementCaseExecutionIntelligenceRunErrors[keyof GetCurrentOrganizationImprovementCaseExecutionIntelligenceRunErrors];
+
+export type GetCurrentOrganizationImprovementCaseExecutionIntelligenceRunResponses = {
+    /**
+     * Successful Response
+     */
+    200: ExecutionIntelligenceRunOut;
+};
+
+export type GetCurrentOrganizationImprovementCaseExecutionIntelligenceRunResponse = GetCurrentOrganizationImprovementCaseExecutionIntelligenceRunResponses[keyof GetCurrentOrganizationImprovementCaseExecutionIntelligenceRunResponses];
 
 export type ListCurrentOrganizationImprovementCaseOutcomeObservationsData = {
     body?: never;

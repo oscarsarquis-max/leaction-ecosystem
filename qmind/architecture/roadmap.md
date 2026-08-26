@@ -41,6 +41,7 @@ A Foundation **v1.0** está baselineada (ADR-012). A sequência **OI Alpha** ori
 - Roadmap OI (histórico): [`04_Docs/014_OI_Architectural_Roadmap.md`](04_Docs/014_OI_Architectural_Roadmap.md).
 - Baseline loop: [`04_Docs/027_…`](04_Docs/027_ISO_Intelligence_V1_Improvement_Case_Loop_Baseline.md) (ISOI-006).
 - Execution Workspace: [`04_Docs/028_…`](04_Docs/028_ISO_Intelligence_V1_Action_Execution_Workspace.md) (ISOI-007, Core-only).
-- Evidência e medição do resultado: [`04_Docs/029_…`](04_Docs/029_ISO_Intelligence_V1_Evidence_Measurement.md) (ISOI-008, Core-only, **em revisão** — revisão 001 aplicada, aguardando pin de baseline).
+- Evidência e medição do resultado: [`04_Docs/029_…`](04_Docs/029_ISO_Intelligence_V1_Evidence_Measurement.md) (ISOI-008, Core-only, **implementado/baseline**, pin `2d09b81`; revisão 001 e gate final concluídos).
+- Execution Intelligence: [`04_Docs/030_…`](04_Docs/030_ISO_Intelligence_V1_Execution_Intelligence.md) (ISOI-009 — em implementação; Core fatos → OI interpretação → Core histórico/UI).
 
-Próximos: ISOI-009 (Execution Intelligence no OI — **não entregue**; consumirá indicadores, leituras e posturas de ISOI-008), ISOI-010 (cockpit).
+Próximos após ISOI-009: ISOI-010 (cockpit).

@@ -82,6 +82,7 @@ Fechamento definitivo do gate 011: ao completar 7 dias sem gatilho crítico aber
 | V7b | Worker PDF real | **PASS** — `WORKER_PDF_V7b_20260804.md` |
 | V7c | Worker PDF no domínio piloto | **PASS** — `PILOT_WORKER_PDF_evidence.json` |
 | V8 | Observabilidade/custo 7 dias | **EM ANDAMENTO** (pós-liberação; não bloqueia piloto) — `OBSERVATION_7D_20260804.md` |
+| V9 | ISOI-009 Execution Intelligence R1 | **IMPLEMENTADO LOCALMENTE, AGUARDA HOMOLOGAÇÃO** — refs por campo compartilhadas Core/OI; `is_terminal`, `claims_execution`, `baseline_status`; idempotência vinculada ao snapshot; histórico integral na Evolução |
 
 ## 5. Piloto controlado (autorizado)
 

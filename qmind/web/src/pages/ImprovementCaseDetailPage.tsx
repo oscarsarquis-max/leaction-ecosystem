@@ -10,7 +10,10 @@ import {
   useImprovementCaseAnalysisRuns,
 } from "@/hooks/useImprovementCaseAnalysis";
 import { useOrgProfile } from "@/hooks/useOrgProfile";
-import { canManageImprovementCases } from "@/lib/permissions";
+import {
+  canManageImprovementCases,
+  canRunExecutionIntelligence,
+} from "@/lib/permissions";
 import {
   FindingActionControls,
   ImprovementCaseActionsSection,
@@ -43,6 +46,9 @@ export function ImprovementCaseDetailPage() {
   const { caseId } = useParams<{ caseId: string }>();
   const org = useOrganization();
   const canWrite = canManageImprovementCases(org.currentOrganization?.roles);
+  const canAnalyzeExecution = canRunExecutionIntelligence(
+    org.currentOrganization?.roles,
+  );
   const query = useImprovementCase(caseId);
   const patch = usePatchImprovementCase(caseId);
   const profile = useOrgProfile();
@@ -557,6 +563,7 @@ export function ImprovementCaseDetailPage() {
         <ImprovementCaseEvolutionSection
           caseId={caseId}
           canWrite={canWrite}
+          canAnalyzeExecution={canAnalyzeExecution}
         />
       ) : null}
     </section>

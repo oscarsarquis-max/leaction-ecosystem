@@ -53,6 +53,20 @@ export function canReadImprovementCases(
   return (roles ?? []).some((r) => READ_ROLES.has(r));
 }
 
+const EXECUTION_INTELLIGENCE_ROLES = new Set([
+  "org_admin",
+  "quality_manager",
+  "process_owner",
+  "consultant_auditor",
+  "platform_admin",
+]);
+
+export function canRunExecutionIntelligence(
+  roles: readonly string[] | undefined,
+): boolean {
+  return (roles ?? []).some((role) => EXECUTION_INTELLIGENCE_ROLES.has(role));
+}
+
 export function canReadAssessments(roles: readonly string[] | undefined): boolean {
   return (roles ?? []).some((r) => READ_ROLES.has(r));
 }

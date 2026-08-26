@@ -1,0 +1,221 @@
+{
+  "$defs": {
+    "ExecutionSignal": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "flow",
+            "schedule",
+            "blocker",
+            "dependency",
+            "evidence",
+            "measurement",
+            "outcome"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "code": {
+          "enum": [
+            "execution_not_started",
+            "execution_progress_observed",
+            "action_overdue",
+            "execution_stale",
+            "active_impediment",
+            "open_dependency",
+            "ownership_gap",
+            "execution_evidence_gap",
+            "measurement_baseline_gap",
+            "measurement_overdue",
+            "result_unsubstantiated",
+            "target_met_awaiting_human_review",
+            "target_not_met_attention",
+            "outcome_measurement_tension",
+            "result_observation_missing"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "interpretation": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Interpretation",
+          "type": "string"
+        },
+        "iso_basis": {
+          "items": {
+            "enum": [
+              "6.2.2",
+              "8.1",
+              "9.1.1",
+              "10.2.1",
+              "10.3"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Iso Basis",
+          "type": "array"
+        },
+        "level": {
+          "enum": [
+            "information",
+            "watch",
+            "attention"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "recommended_next_step": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Recommended Next Step",
+          "type": "string"
+        },
+        "requires_human_validation": {
+          "const": true,
+          "default": true,
+          "title": "Requires Human Validation",
+          "type": "boolean"
+        },
+        "supporting_fact_refs": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Supporting Fact Refs",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "category",
+        "level",
+        "title",
+        "interpretation",
+        "supporting_fact_refs",
+        "iso_basis",
+        "recommended_next_step"
+      ],
+      "title": "ExecutionSignal",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "OI interpretation returned to Core without operational side effects.",
+  "properties": {
+    "analysis_id": {
+      "format": "uuid",
+      "title": "Analysis Id",
+      "type": "string"
+    },
+    "core_organization_id": {
+      "format": "uuid",
+      "title": "Core Organization Id",
+      "type": "string"
+    },
+    "correlation_id": {
+      "minLength": 1,
+      "title": "Correlation Id",
+      "type": "string"
+    },
+    "execution_posture": {
+      "enum": [
+        "insufficient_information",
+        "not_started",
+        "progressing",
+        "attention_required",
+        "stalled",
+        "awaiting_result_evaluation",
+        "result_observed"
+      ],
+      "title": "Execution Posture",
+      "type": "string"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "improvement_case_id": {
+      "format": "uuid",
+      "title": "Improvement Case Id",
+      "type": "string"
+    },
+    "interpretability_status": {
+      "enum": [
+        "insufficient_facts",
+        "interpretable"
+      ],
+      "title": "Interpretability Status",
+      "type": "string"
+    },
+    "interpretation_summary": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Interpretation Summary",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "mechanism_version": {
+      "const": "execution-intelligence-rules-v1",
+      "title": "Mechanism Version",
+      "type": "string"
+    },
+    "missing_information": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Missing Information",
+      "type": "array"
+    },
+    "request_id": {
+      "minLength": 1,
+      "title": "Request Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signals": {
+      "items": {
+        "$ref": "#/$defs/ExecutionSignal"
+      },
+      "title": "Signals",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "core_organization_id",
+    "improvement_case_id",
+    "analysis_id",
+    "request_id",
+    "correlation_id",
+    "generated_at",
+    "mechanism_version",
+    "interpretability_status",
+    "execution_posture",
+    "interpretation_summary"
+  ],
+  "title": "ExecutionIntelligenceResult",
+  "type": "object"
+}

@@ -12,6 +12,7 @@ from app.db import tenant_connection
 from app.errors import AppError
 from app.modules.improvement_cases import analysis_service
 from app.modules.improvement_cases import finding_actions
+from app.modules.improvement_cases import execution_intelligence_service
 from app.modules.improvement_cases import service as cases_service
 from app.modules.improvement_cases.evolution_schemas import (
     ActionStatusCount,
@@ -23,6 +24,9 @@ from app.modules.improvement_cases.evolution_schemas import (
     MeasurementSummary,
     OutcomeObservationCreate,
     OutcomeObservationOut,
+)
+from app.modules.improvement_cases.execution_intelligence_schemas import (
+    ExecutionIntelligenceSummary,
 )
 from app.modules.improvement_cases.problem_schemas import ImprovementCaseAnalysisRunOut
 from app.modules.measurements import service as measurements_service
@@ -355,6 +359,19 @@ def get_evolution(ctx: OrgContext, case_id: UUID) -> ImprovementCaseEvolutionOut
         latest_obs=latest_obs,
         measurement_posture=measurement_summary.measurement_posture,
     )
+    ei_runs = execution_intelligence_service.list_runs(ctx, case_id, limit=1)
+    ei = None
+    if ei_runs:
+        run = ei_runs[0]
+        ei = ExecutionIntelligenceSummary(
+            run_id=run.id,
+            generated_at=run.generated_at,
+            interpretability_status=run.result.interpretability_status,
+            execution_posture=run.result.execution_posture,
+            interpretation_summary=run.result.interpretation_summary,
+            signal_count=len(run.result.signals),
+            is_stale=run.is_stale,
+        )
     return ImprovementCaseEvolutionOut(
         case=case,
         analysis_summary=AnalysisSummary(
@@ -369,4 +386,5 @@ def get_evolution(ctx: OrgContext, case_id: UUID) -> ImprovementCaseEvolutionOut
         outcome_observations=observations,
         closure_readiness=readiness,
         closure_readiness_reason=reason,
+        execution_intelligence=ei,
     )

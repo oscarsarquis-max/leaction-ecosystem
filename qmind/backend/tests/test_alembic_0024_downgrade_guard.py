@@ -40,11 +40,57 @@ def test_downgrade_refuses_while_history_exists():
 
     cfg = alembic_cfg()
     command.upgrade(cfg, "head")
-    with pytest.raises(DatabaseError) as raised:
-        command.downgrade(cfg, PREVIOUS)
+    # ISOI-009 must be empty before Alembic can even reach the ISOI-008 guard.
+    ei_backup = "_iso008_guard_ei_backup"
+    eng = create_engine(ADMIN_URL)
+    try:
+        with eng.begin() as conn:
+            exists = conn.execute(
+                text(
+                    "SELECT to_regclass('public.improvement_case_execution_intelligence_runs')"
+                )
+            ).scalar()
+            if exists:
+                conn.execute(text(f"DROP TABLE IF EXISTS {ei_backup}"))
+                conn.execute(
+                    text(
+                        f"CREATE TABLE {ei_backup} AS "
+                        "TABLE improvement_case_execution_intelligence_runs"
+                    )
+                )
+                conn.execute(
+                    text("DELETE FROM improvement_case_execution_intelligence_runs")
+                )
+    finally:
+        eng.dispose()
 
-    message = str(raised.value)
-    assert "ISOI-008 downgrade refused" in message
-    assert "measurement records" in message
-    # Refusing has to leave the database exactly where it was.
-    assert _current_revision() == alembic_head()
+    try:
+        with pytest.raises(DatabaseError) as raised:
+            command.downgrade(cfg, PREVIOUS)
+
+        message = str(raised.value)
+        assert "ISOI-008 downgrade refused" in message
+        assert "measurement records" in message
+        # Refusing has to leave the database exactly where it was.
+        assert _current_revision() == alembic_head()
+    finally:
+        command.upgrade(cfg, "head")
+        eng = create_engine(ADMIN_URL)
+        try:
+            with eng.begin() as conn:
+                backup = conn.execute(
+                    text("SELECT to_regclass(:name)"), {"name": ei_backup}
+                ).scalar()
+                if backup:
+                    conn.execute(
+                        text(
+                            """
+                            INSERT INTO improvement_case_execution_intelligence_runs
+                            SELECT * FROM _iso008_guard_ei_backup
+                            ON CONFLICT (id) DO NOTHING
+                            """
+                        )
+                    )
+                    conn.execute(text(f"DROP TABLE IF EXISTS {ei_backup}"))
+        finally:
+            eng.dispose()

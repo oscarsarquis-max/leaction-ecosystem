@@ -12,8 +12,8 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Prefer env var (never commit secrets).
-database_url = os.getenv("DATABASE_URL") or os.getenv("QMIND_DB_ADMIN_URL")
+# Prefer QMind-specific admin URL, then generic DATABASE_URL (never commit secrets).
+database_url = os.getenv("QMIND_DB_ADMIN_URL") or os.getenv("DATABASE_URL")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 

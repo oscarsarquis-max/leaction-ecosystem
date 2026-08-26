@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
+  useCreateExecutionIntelligenceRun,
   useCreateOutcomeObservation,
+  useExecutionIntelligenceRuns,
   useImprovementCaseEvolution,
 } from "@/hooks/useImprovementCaseEvolution";
+import type {
+  ExecutionIntelligenceRunOut,
+  ExecutionSignal,
+} from "@qmind/api-client";
 import { usePatchImprovementCase } from "@/hooks/useImprovementCases";
 import {
   labelClosureReadiness,
@@ -55,11 +61,100 @@ function CodeList({
 type Props = {
   caseId: string;
   canWrite: boolean;
+  canAnalyzeExecution: boolean;
 };
 
-export function ImprovementCaseEvolutionSection({ caseId, canWrite }: Props) {
+function executionPostureLabel(value: string): string {
+  return (
+    {
+      insufficient_information: "Informações insuficientes",
+      not_started: "Execução ainda não iniciada",
+      progressing: "Execução em andamento",
+      attention_required: "Execução requer atenção",
+      stalled: "Execução sem avanço recente",
+      awaiting_result_evaluation: "Aguardando avaliação do resultado",
+      result_observed: "Resultado observado",
+    }[value] ?? "Interpretação disponível"
+  );
+}
+
+const SIGNAL_CATEGORY_LABELS: Record<string, string> = {
+  flow: "Fluxo da execução",
+  schedule: "Prazos",
+  blocker: "Impedimentos",
+  dependency: "Dependências",
+  evidence: "Evidências",
+  measurement: "Medição",
+  outcome: "Resultado",
+};
+
+const SIGNAL_LEVEL_LABELS: Record<string, string> = {
+  information: "Informação",
+  watch: "Acompanhar",
+  attention: "Requer atenção",
+};
+
+const FACT_FIELD_LABELS: Record<string, string> = {
+  status: "situação atual",
+  owner_assigned: "responsabilidade atribuída",
+  due_at: "prazo",
+  is_overdue: "prazo vencido",
+  last_check_in_at: "última atualização",
+  active_impediment_count: "impedimentos ativos",
+  open_dependency_count: "dependências abertas",
+  overdue_dependency_count: "dependências vencidas",
+  approved_evidence_count: "evidências aprovadas",
+  is_terminal: "encerramento da ação",
+  claims_execution: "execução declarada",
+  baseline_value: "valor de referência",
+  baseline_status: "situação do valor de referência",
+  latest_value: "último valor medido",
+  measurement_posture: "situação da medição",
+  is_measurement_overdue: "medição vencida",
+  substantiation: "sustentação da leitura",
+  target_posture: "situação da meta",
+};
+
+function factLabel(run: ExecutionIntelligenceRunOut, ref: string): string {
+  if (ref === "case.status") return "Situação do caso";
+  if (ref === "execution.plan.status") return "Situação do plano de ação";
+  if (ref === "outcome.latest.result_direction") {
+    return "Direção do resultado observado";
+  }
+  const action = /^execution\.action:(.+):([^:]+)$/.exec(ref);
+  if (action) {
+    const item = run.input_snapshot.execution.actions?.find(
+      (candidate) => candidate.action_ref === action[1],
+    );
+    return `${item?.label ?? "Ação"} — ${FACT_FIELD_LABELS[action[2]] ?? "fato relacionado"}`;
+  }
+  const indicator = /^measurement\.indicator:(.+):([^:]+)$/.exec(ref);
+  if (indicator) {
+    const item = run.input_snapshot.measurement.indicators?.find(
+      (candidate) => candidate.indicator_ref === indicator[1],
+    );
+    return `${item?.name ?? "Indicador"} — ${FACT_FIELD_LABELS[indicator[2]] ?? "fato relacionado"}`;
+  }
+  return "Fato relacionado à interpretação";
+}
+
+function mechanismLabel(value: string): string {
+  return value === "execution-intelligence-rules-v1"
+    ? "Regras determinísticas de inteligência da execução — versão 1"
+    : "Mecanismo determinístico versionado";
+}
+
+export function ImprovementCaseEvolutionSection({
+  caseId,
+  canWrite,
+  canAnalyzeExecution,
+}: Props) {
   const query = useImprovementCaseEvolution(caseId);
+  const executionQuery = useExecutionIntelligenceRuns(caseId);
+  const retainedExecution = useRef(executionQuery.data);
+  if (executionQuery.data) retainedExecution.current = executionQuery.data;
   const createObs = useCreateOutcomeObservation(caseId);
+  const createExecutionIntelligence = useCreateExecutionIntelligenceRun(caseId);
   const patch = usePatchImprovementCase(caseId);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -106,6 +201,16 @@ export function ImprovementCaseEvolutionSection({ caseId, canWrite }: Props) {
   const latestObs = evo.latest_outcome_observation;
   const ready = evo.closure_readiness === "ready_for_review";
   const caseStatus = evo.case.status;
+  const executionIntelligence = evo.execution_intelligence;
+  const executionData = executionQuery.data ?? retainedExecution.current;
+  const fullExecution = executionData?.latest ?? null;
+  const executionResult = fullExecution?.result;
+  const signalGroups = (executionResult?.signals ?? []).reduce<
+    Record<string, ExecutionSignal[]>
+  >((groups, signal) => {
+    (groups[signal.category] ??= []).push(signal);
+    return groups;
+  }, {});
 
   async function submitObservation(e: React.FormEvent) {
     e.preventDefault();
@@ -232,6 +337,194 @@ export function ImprovementCaseEvolutionSection({ caseId, canWrite }: Props) {
           />
         </div>
       ) : null}
+
+      <div className="qm-panel space-y-3" data-testid="ic-evo-execution-intelligence">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-medium text-slate-800">Inteligência da execução</h3>
+          <span className="rounded-full bg-violet-50 px-2 py-1 text-xs font-medium text-violet-800">
+            Interpretação QMind OI
+          </span>
+        </div>
+        {createExecutionIntelligence.isPending ? (
+          <p className="text-sm text-slate-600" data-testid="ic-ei-analyzing">
+            Analisando os fatos atuais da execução…
+          </p>
+        ) : fullExecution || executionIntelligence ? (
+          <div className="space-y-4 text-sm" data-testid="ic-ei-result">
+            <p className="font-medium text-slate-800">
+              {executionPostureLabel(
+                executionResult?.execution_posture ??
+                  executionIntelligence?.execution_posture ??
+                  "",
+              )}
+            </p>
+            <p className="text-slate-700">
+              {executionResult?.interpretation_summary ??
+                executionIntelligence?.interpretation_summary}
+            </p>
+            <p className="text-slate-500">
+              {(executionResult?.signals?.length ??
+                executionIntelligence?.signal_count ??
+                0) === 1
+                ? "1 sinal"
+                : `${executionResult?.signals?.length ?? executionIntelligence?.signal_count ?? 0} sinais`}{" "}
+              ·{" "}
+              {formatWhen(
+                fullExecution?.generated_at ??
+                  executionIntelligence?.generated_at ??
+                  "",
+              )}
+            </p>
+            {(executionResult?.interpretability_status ??
+              executionIntelligence?.interpretability_status) ===
+            "insufficient_facts" ? (
+              <p className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+                Ainda faltam fatos para uma interpretação completa.
+              </p>
+            ) : null}
+            {(fullExecution?.is_stale ?? executionIntelligence?.is_stale) ? (
+              <p
+                className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-amber-950"
+                data-testid="ic-ei-stale"
+              >
+                A execução mudou desde esta interpretação. Gere uma leitura atualizada.
+              </p>
+            ) : (
+              <p className="text-emerald-700" data-testid="ic-ei-current">
+                Interpretação atual para os fatos disponíveis.
+              </p>
+            )}
+
+            {executionResult && fullExecution ? (
+              <>
+                <p data-testid="ic-ei-mechanism" className="text-slate-600">
+                  Como foi analisado: {mechanismLabel(executionResult.mechanism_version)}
+                </p>
+
+                {Object.entries(signalGroups).map(([category, signals]) => (
+                  <section
+                    key={category}
+                    className="space-y-2 border-t border-slate-100 pt-3"
+                  >
+                    <h4 className="font-medium text-slate-800">
+                      {SIGNAL_CATEGORY_LABELS[category] ?? "Sinais da execução"}
+                    </h4>
+                    {signals.map((signal) => (
+                      <article
+                        key={signal.code}
+                        className="rounded border border-slate-200 p-3"
+                        data-testid="ic-ei-signal"
+                      >
+                        <p className="font-medium text-slate-900">
+                          {SIGNAL_LEVEL_LABELS[signal.level]} — {signal.title}
+                        </p>
+                        <p className="mt-1 text-slate-700">{signal.interpretation}</p>
+                        <div className="mt-2">
+                          <p className="font-medium text-slate-700">
+                            Fatos considerados
+                          </p>
+                          <ul className="list-disc pl-5 text-slate-600">
+                            {signal.supporting_fact_refs.map((ref) => (
+                              <li key={ref}>{factLabel(fullExecution, ref)}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <p className="mt-2 text-slate-600">
+                          Base ISO 9001: {signal.iso_basis.join(", ")}
+                        </p>
+                        <p className="mt-2 text-slate-800">
+                          <span className="font-medium">Próximo passo recomendado:</span>{" "}
+                          {signal.recommended_next_step}
+                        </p>
+                      </article>
+                    ))}
+                  </section>
+                ))}
+
+                {(executionResult.missing_information?.length ?? 0) > 0 ? (
+                  <section data-testid="ic-ei-missing">
+                    <h4 className="font-medium text-slate-800">
+                      Informações que ainda faltam
+                    </h4>
+                    <CodeList
+                      items={executionResult.missing_information ?? []}
+                      empty="Nenhuma informação adicional indicada."
+                    />
+                  </section>
+                ) : null}
+                {(executionResult.limitations?.length ?? 0) > 0 ? (
+                  <section data-testid="ic-ei-limitations">
+                    <h4 className="font-medium text-slate-800">
+                      Limites desta interpretação
+                    </h4>
+                    <CodeList
+                      items={executionResult.limitations ?? []}
+                      empty="Nenhuma limitação informada."
+                    />
+                  </section>
+                ) : null}
+
+                <div
+                  className="rounded border border-violet-200 bg-violet-50 px-3 py-2 text-violet-950"
+                  data-testid="ic-ei-human-warning"
+                >
+                  Esta interpretação sempre requer validação humana. Meta atingida não
+                  significa eficácia comprovada, e os sinais não alteram decisões do caso.
+                </div>
+
+                {(executionData?.history.length ?? 0) > 0 ? (
+                  <section className="border-t border-slate-100 pt-3" data-testid="ic-ei-history">
+                    <h4 className="font-medium text-slate-800">
+                      Histórico de interpretações
+                    </h4>
+                    <ul className="mt-1 space-y-1 text-slate-600">
+                      {executionData?.history.map((item, index) => (
+                        <li key={item.id}>
+                          {index === 0 ? "Mais recente" : "Anterior"} ·{" "}
+                          {formatWhen(item.generated_at)} ·{" "}
+                          {executionPostureLabel(item.result.execution_posture)} ·{" "}
+                          {item.is_stale ? "desatualizada" : "atual"}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-slate-500">
+                Os detalhes completos estão temporariamente indisponíveis; o último
+                resumo foi preservado.
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-600" data-testid="ic-ei-never">
+            A execução ainda não foi interpretada pelo QMind OI.
+          </p>
+        )}
+        {createExecutionIntelligence.isError ? (
+          <p className="text-sm text-red-700" role="alert" data-testid="ic-ei-error">
+            Não foi possível interpretar a execução agora. Os dados do caso não foram alterados.
+          </p>
+        ) : null}
+        {executionQuery.isError ? (
+          <p className="text-sm text-amber-800" role="alert" data-testid="ic-ei-load-error">
+            Não foi possível atualizar os detalhes agora. A última interpretação
+            disponível foi preservada.
+          </p>
+        ) : null}
+        {canAnalyzeExecution ? (
+          <button
+            type="button"
+            className="qm-btn-secondary"
+            disabled={createExecutionIntelligence.isPending}
+            onClick={() => createExecutionIntelligence.mutate()}
+            data-testid="ic-ei-run"
+          >
+            {executionIntelligence ? "Atualizar interpretação" : "Interpretar execução"}
+          </button>
+        ) : null}
+      </div>
 
       <div className="qm-panel space-y-3" data-testid="ic-evo-outcome">
         <h3 className="font-medium text-slate-800">Resultado observado</h3>

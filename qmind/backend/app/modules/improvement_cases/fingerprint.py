@@ -7,6 +7,10 @@ import json
 from typing import Any
 
 from app.modules.improvement_cases.problem_schemas import ProblemContextInput, dump_jsonable
+from app.modules.improvement_cases.execution_intelligence_schemas import (
+    ExecutionIntelligenceInput,
+    dump_jsonable as dump_execution_jsonable,
+)
 
 
 def _canonical(obj: Any) -> Any:
@@ -30,6 +34,20 @@ def fingerprint_problem_context_input(payload: ProblemContextInput) -> str:
         "organization_profile": data["organization_profile"],
         "problem": data["problem"],
     }
+    encoded = json.dumps(
+        _canonical(material),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def fingerprint_execution_intelligence_input(payload: ExecutionIntelligenceInput) -> str:
+    """Hash all interpretation facts, excluding transport/time identifiers."""
+    material = dump_execution_jsonable(payload)
+    for key in ("request_id", "correlation_id", "captured_at"):
+        material.pop(key, None)
     encoded = json.dumps(
         _canonical(material),
         ensure_ascii=False,
