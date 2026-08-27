@@ -7,7 +7,7 @@
 | Branch de consolidação | `feat/panne-demo-026` |
 | Remoto | `origin` (`https://github.com/oscarsarquis-max/leaction-ecosystem.git`) |
 | Destino | `origin/main` via worktree limpo + cherry-pick |
-| SHA final no monorepo | _(preencher após push)_ |
+| SHA final no monorepo | `5cc13bad2f251682b143d9fcf979827070f12837` |
 | Deploy | **não executado** |
 | CURSOR-027 | **não iniciado** |
 
