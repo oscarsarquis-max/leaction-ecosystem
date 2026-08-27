@@ -9,9 +9,11 @@ function useList(kind: "assessments" | "candidates" | "sources") {
     | { kind: "ok"; items: Array<Record<string, unknown>> }
     | { kind: "erro"; error: unknown }
   >({ kind: "carregando" });
+  const orgId = active?.organization_id ?? null;
   useEffect(() => {
-    if (!active) return;
+    if (!orgId) return;
     let alive = true;
+    setState({ kind: "carregando" });
     const request =
       kind === "assessments"
         ? api.listLabelingAssessments()
@@ -28,7 +30,7 @@ function useList(kind: "assessments" | "candidates" | "sources") {
     return () => {
       alive = false;
     };
-  }, [api, active, kind]);
+  }, [api, orgId, kind]);
   return state;
 }
 
@@ -80,7 +82,7 @@ export function LabelingCandidatesPage() {
       title="Rótulos candidatos"
       lede="Versões para conferência. Não são arte-final nem rótulo aprovado."
       state={useList("candidates")}
-      render={(item) => `${item.watermark} · ${item.payload_sha256}`}
+      render={(item) => String(item.watermark ?? "Candidato sem marca d'água")}
     />
   );
 }
@@ -91,7 +93,9 @@ export function LabelingSourcesPage() {
       title="Fontes e normas"
       lede="Atos vigentes. Material de orientação não substitui a norma."
       state={useList("sources")}
-      render={(item) => `${item.title} · ${item.force} · acesso ${item.accessed_at}`}
+      render={(item) =>
+        `${String(item.title ?? "—")} · ${String(item.force ?? "—")} · acesso ${String(item.accessed_at ?? "—")}`
+      }
     />
   );
 }

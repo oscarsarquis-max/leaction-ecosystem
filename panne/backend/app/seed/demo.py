@@ -417,8 +417,9 @@ def _seed_suppliers(session: Session, world: DemoWorld) -> None:
     org = world.organization
     gram = world.units["g"]
     kg = world.units["kg"]
+    # SKU-FAR-25 = saco de 25 kg (não 25000 kg). Demais: quantidade na unidade do item.
     specs = (
-        ("FOR-MOINHO", "Moinho Demo", "FAR-TRIGO", "SKU-FAR-25", Decimal("25000"), kg, True),
+        ("FOR-MOINHO", "Moinho Demo", "FAR-TRIGO", "SKU-FAR-25", Decimal("25"), kg, True),
         ("FOR-LATIC", "Laticínio Demo", "LEITE", "SKU-LEI-1", Decimal("1000"), gram, True),
         ("FOR-GRANJA", "Granja Demo", "OVO", "SKU-OVO-30", Decimal("1800"), gram, True),
         ("FOR-SEMENTE", "Sementes Demo", "GERGELIM", "SKU-GER-1", Decimal("1000"), gram, False),
@@ -451,6 +452,12 @@ def _seed_suppliers(session: Session, world: DemoWorld) -> None:
             )
             session.add(item)
             session.flush()
+        else:
+            # Corrige seed incoerente anterior (ex.: 25000 kg) sem recriar o item.
+            if item.package_quantity != qty or item.measurement_unit_id != unit.id:
+                item.package_quantity = qty
+                item.measurement_unit_id = unit.id
+                session.flush()
         if priced and session.scalar(select(SupplierItemPrice).where(SupplierItemPrice.supplier_item_id == item.id)) is None:
             session.add(
                 SupplierItemPrice(

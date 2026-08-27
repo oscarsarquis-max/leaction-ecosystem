@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ApiError } from "../api/errors";
+import { ApiError, isCancelledError } from "../api/errors";
 import type { Catalog, ExecutionBatch, ExecutionView } from "../api/types";
 import { ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
+import { TechnicalAuditDetails } from "../components/TechnicalAuditDetails";
 import {
   CONSUMPTION_LABEL,
   OCCURRENCE_LABEL,
@@ -70,7 +71,7 @@ export function ExecutePage() {
     setError(null);
     reload()
       .catch((err) => {
-        if (ativo) setError(err);
+        if (ativo && !isCancelledError(err)) setError(err);
       });
     return () => {
       ativo = false;
@@ -171,8 +172,22 @@ export function ExecutePage() {
           planejado {formatDateTime(batch.planned_start_at)}
         </p>
         {view.dependencies.map((item) => (
-          <p key={item.id}>Depende de {item.predecessor_order_id}</p>
+          <p key={item.id}>
+            Depende de outra ordem
+            <span className="meta"> (código técnico na auditoria da ordem relacionada)</span>
+          </p>
         ))}
+        {view.dependencies.length > 0 ? (
+          <TechnicalAuditDetails
+            title="Dependências técnicas"
+            purpose="Identificadores internos das ordens predecessoras."
+            rows={view.dependencies.map((item, index) => ({
+              label: `Predecessora ${index + 1}`,
+              value: item.predecessor_order_id,
+              copyable: true,
+            }))}
+          />
+        ) : null}
       </section>
 
       <WeighingSection

@@ -151,12 +151,34 @@ def test_production_reads_commands_board_and_security(engine) -> None:
         listed = client.get(f"{prefix}/plans", headers=_headers(token, org_id))
         assert listed.status_code == 200
         assert listed.json()["items"]
+        plan_row = next(row for row in listed.json()["items"] if row["id"] == str(plan.id))
+        assert plan_row["item_count"] >= 1
+        assert plan_row["items_summary"] == data["ctx"]["product"].display_name
+        assert "product" not in plan_row or plan_row.get("product") is None
         detail = client.get(f"{prefix}/plans/{plan.id}", headers=_headers(token, org_id))
         assert detail.status_code == 200
+        plan_body = detail.json()["data"]
+        assert plan_body["items"]
+        first_item = plan_body["items"][0]
+        assert first_item["product"]["display_name"] == data["ctx"]["product"].display_name
+        assert first_item["product"]["code"] == data["ctx"]["product"].code
+        assert first_item["technical_product_id"]
+        assert first_item["priority"] == 50
         orders = client.get(f"{prefix}/orders", headers=_headers(token, org_id))
         assert orders.status_code == 200
+        listed_orders = orders.json()["items"]
+        assert listed_orders
+        first = listed_orders[0]
+        assert first["product"]["display_name"] == data["ctx"]["product"].display_name
+        assert first["product"]["code"] == data["ctx"]["product"].code
+        assert first["plan"]["public_code"] == plan.public_code
+        assert first["plan"]["id"] == str(plan.id)
+        assert first["target_mode"] in {"mass", "units"}
+        assert "cost" not in orders.text.lower()
         order_detail = client.get(f"{prefix}/orders/{order.id}", headers=_headers(token, org_id))
         assert order_detail.status_code == 200
+        assert order_detail.json()["data"]["product"]["display_name"] == data["ctx"]["product"].display_name
+        assert order_detail.json()["data"]["plan"]["public_code"] == plan.public_code
         assert "cost" not in order_detail.text.lower()
         page1 = client.get(f"{prefix}/plans?limit=1", headers=_headers(token, org_id))
         assert page1.status_code == 200
@@ -314,3 +336,199 @@ def test_no_forbidden_external_calls_in_http_layer() -> None:
     assert "boto3" not in text
     assert "cognito" not in text.lower()
     assert "bedrock" not in text.lower()
+
+
+def test_list_orders_enrichment_without_n_plus_one(engine) -> None:
+    from sqlalchemy import event
+
+    data = _setup_http(engine, "orders-enrich")
+    client, token, org_id, admin, ctx = (
+        data["client"],
+        data["token"],
+        data["org_id"],
+        data["admin"],
+        data["ctx"],
+    )
+    runtime = client.runtime_engine
+    try:
+        for _ in range(3):
+            _plan_and_order(admin, ctx, batches=1)
+        admin.commit()
+
+        statements: list[str] = []
+
+        def before_cursor(conn, cursor, statement, parameters, context, executemany):
+            if str(statement).lstrip().upper().startswith("SELECT"):
+                statements.append(str(statement))
+
+        event.listen(runtime, "before_cursor_execute", before_cursor)
+        try:
+            prefix = f"/api/v1/organizations/{org_id}/production"
+            response = client.get(f"{prefix}/orders", headers=_headers(token, org_id))
+        finally:
+            event.remove(runtime, "before_cursor_execute", before_cursor)
+
+        assert response.status_code == 200
+        items = response.json()["items"]
+        assert len(items) >= 4
+        for item in items:
+            assert item["product"] and item["product"]["display_name"]
+            assert "cost" not in item
+            assert "price" not in str(item).lower()
+        order_selects = [sql for sql in statements if "production_order" in sql.lower()]
+        assert len(order_selects) <= 2, f"possível N+1: {len(order_selects)} selects de ordem"
+    finally:
+        _cleanup(client)
+        admin.close()
+
+
+def test_order_out_null_product_and_plan_contract() -> None:
+    from types import SimpleNamespace
+    from decimal import Decimal
+    from datetime import datetime, timezone
+    from app.modules.production_http.serialize import order_out
+
+    row = SimpleNamespace(
+        id=uuid4(),
+        public_code="ORD-X",
+        establishment_id=uuid4(),
+        plan_id=None,
+        technical_product_id=uuid4(),
+        target_mode="mass",
+        target_quantity=Decimal("10"),
+        priority=1,
+        status="draft",
+        planned_start_at=None,
+        planned_end_at=None,
+        row_version=1,
+        materials_hash=None,
+        steps_hash=None,
+        snapshot_hash=None,
+        created_at=datetime.now(timezone.utc),
+    )
+    payload = order_out(row, product=None, plan=None)
+    assert payload["product"] is None
+    assert payload["plan"] is None
+    assert "cost" not in payload
+
+
+def test_list_orders_plan_absent_and_product_fk_invariant(engine) -> None:
+    from decimal import Decimal
+    from sqlalchemy import inspect, text
+    from app.modules.production_planning.commands import create_order
+    from app.modules.production_planning.constants import TARGET_MODE_MASS
+    from app.modules.production_planning.models import ProductionOrder
+
+    data = _setup_http(engine, "orders-plan-null")
+    client, token, org_id, admin, ctx = (
+        data["client"],
+        data["token"],
+        data["org_id"],
+        data["admin"],
+        data["ctx"],
+    )
+    try:
+        # Invariante: technical_product_id NOT NULL + FK composta com organization_id.
+        table = inspect(admin.get_bind()).get_columns("production_order")
+        product_col = next(col for col in table if col["name"] == "technical_product_id")
+        assert product_col["nullable"] is False
+        fks = inspect(admin.get_bind()).get_foreign_keys("production_order")
+        product_fks = [
+            fk
+            for fk in fks
+            if "technical_product_id" in fk.get("constrained_columns", [])
+        ]
+        assert product_fks, "FK de produto técnico ausente"
+        assert any(
+            "organization_id" in fk.get("constrained_columns", []) for fk in product_fks
+        )
+
+        orphan = create_order(
+            admin,
+            ctx["principal"],
+            establishment_id=ctx["establishment"].id,
+            technical_product_id=ctx["product"].id,
+            target_mode=TARGET_MODE_MASS,
+            target_quantity=Decimal("1000"),
+            formulation_version_id=ctx["version"].id,
+            scale_calculation_id=ctx["scale"].id,
+            idempotency_key=uuid4(),
+        )
+        assert orphan.plan_id is None
+        admin.commit()
+
+        prefix = f"/api/v1/organizations/{org_id}/production"
+        response = client.get(f"{prefix}/orders", headers=_headers(token, org_id))
+        assert response.status_code == 200
+        items = response.json()["items"]
+        found = next(item for item in items if item["id"] == str(orphan.id))
+        assert found["plan"] is None
+        assert found["plan_id"] is None
+        assert found["product"]["display_name"] == ctx["product"].display_name
+        assert found["product"]["code"] == ctx["product"].code
+
+        # Ordem continua listada se o join de produto falhar (outerjoin); product null.
+        # Simula órfão bypassando FK apenas no ambiente de teste.
+        admin.execute(text("SET session_replication_role = 'replica'"))
+        admin.execute(
+            text("DELETE FROM technical_product WHERE id = CAST(:id AS uuid)"),
+            {"id": str(ctx["product"].id)},
+        )
+        admin.execute(text("SET session_replication_role = 'origin'"))
+        admin.commit()
+
+        after = client.get(f"{prefix}/orders", headers=_headers(token, org_id))
+        assert after.status_code == 200
+        rows = after.json()["items"]
+        assert any(item["id"] == str(orphan.id) for item in rows)
+        orphan_row = next(item for item in rows if item["id"] == str(orphan.id))
+        assert orphan_row["product"] is None
+        # Paginação não engole a linha órfã.
+        assert len(rows) >= 1
+        assert all(item.get("plan") is None or item["plan"].get("public_code") for item in rows)
+        # Isolamento: nenhum display_name de outra org.
+        for item in rows:
+            if item["product"]:
+                assert item["product"]["id"]
+    finally:
+        _cleanup(client)
+        admin.close()
+
+
+def test_list_orders_rejects_foreign_plan_enrichment(engine) -> None:
+    from sqlalchemy import text
+    from tests.test_production_planning import _context, _plan_and_order as plan_order
+
+    data = _setup_http(engine, "orders-plan-iso-a")
+    client, token, org_id, admin = data["client"], data["token"], data["org_id"], data["admin"]
+    try:
+        _plan, _item, order = _plan_and_order(admin, data["ctx"], batches=1)
+        other_ctx = _context(admin, f"orders-plan-iso-b-{uuid4().hex[:6]}")
+        other_plan, _other_item, _other_order = plan_order(admin, other_ctx, batches=1)
+        admin.commit()
+
+        # Aponta plan_id para plano de outra org (bypass FK) — enrich não deve vazar.
+        admin.execute(text("SET session_replication_role = 'replica'"))
+        admin.execute(
+            text(
+                "UPDATE production_order SET plan_id = CAST(:pid AS uuid) WHERE id = CAST(:oid AS uuid)"
+            ),
+            {"pid": str(other_plan.id), "oid": str(order.id)},
+        )
+        admin.execute(text("SET session_replication_role = 'origin'"))
+        admin.commit()
+
+        prefix = f"/api/v1/organizations/{org_id}/production"
+        response = client.get(f"{prefix}/orders", headers=_headers(token, org_id))
+        assert response.status_code == 200
+        row = next(item for item in response.json()["items"] if item["id"] == str(order.id))
+        assert row["plan"] is None
+        assert row["plan_id"] == str(other_plan.id)
+        # Plano estrangeiro não é hidratado (mesmo se o código público coincidir com outro plano local).
+        assert all(
+            item["plan"] is None or item["plan"]["id"] != str(other_plan.id)
+            for item in response.json()["items"]
+        )
+    finally:
+        _cleanup(client)
+        admin.close()

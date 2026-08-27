@@ -59,4 +59,18 @@ describe("tela de acesso e editorial", () => {
     await user.click(await screen.findByRole("button", { name: "Ajuda para entrar" }));
     expect(await screen.findByRole("heading", { name: "Ajuda para entrar" })).toBeInTheDocument();
   });
+
+  it("R026-005: marca fica no cabeçalho estrutural da caixa", async () => {
+    installApiMock();
+    const { view } = await renderApp("/entrar", { signedIn: false });
+    expect(await screen.findByRole("heading", { name: "Entrar na Panne" })).toBeInTheDocument();
+    const brand = screen.getByRole("img", { name: "Panne" });
+    expect(brand).toHaveClass("login-center__brand");
+    expect(brand.closest("header")).toHaveClass("login-center__header");
+    expect(brand.closest("header")?.parentElement).toHaveClass("login-center");
+    expect(view.container.querySelector(".login-center__body")).toContainElement(
+      screen.getByRole("heading", { name: "Entrar na Panne" }),
+    );
+    expect(view.container.querySelector(".login-brand")).toBeNull();
+  });
 });

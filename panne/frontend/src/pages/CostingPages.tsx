@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ApiError } from "../api/errors";
+import { ApiError, isCancelledError } from "../api/errors";
 import type { CostingCalculation, CostingPolicy, PracticedPrice, PricingSimulation } from "../api/types";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
 import { CostingMentor } from "../components/CostingMentor";
+import { statusLabel } from "../format";
 import { useOrganization } from "../session/OrganizationContext";
 
 const CHANNELS: Record<string, string> = {
@@ -35,7 +36,10 @@ function useList<T>(loader: () => Promise<{ items: T[] }>, key: string) {
     setState({ kind: "carregando" });
     loader()
       .then((body) => setState({ kind: "ok", items: body.items }))
-      .catch((error) => setState({ kind: "erro", error }));
+      .catch((error) => {
+        if (isCancelledError(error)) return;
+        setState({ kind: "erro", error });
+      });
   }
   useEffect(() => {
     load();
@@ -45,8 +49,11 @@ function useList<T>(loader: () => Promise<{ items: T[] }>, key: string) {
 }
 
 export function CostingPoliciesPage() {
-  const { api, hasPermission } = useOrganization();
-  const { state, load } = useList(() => api.listCostingPolicies(), "policies");
+  const { api, hasPermission, active } = useOrganization();
+  const { state, load } = useList(
+    () => api.listCostingPolicies(),
+    `policies:${active?.organization_id ?? ""}`,
+  );
   const [code, setCode] = useState("POL-PADRAO");
   const [justification, setJustification] = useState("política inicial da organização");
   if (state.kind === "carregando") return <LoadingState />;
@@ -62,7 +69,7 @@ export function CostingPoliciesPage() {
         <ul>
           {state.items.map((item: CostingPolicy) => (
             <li key={item.id}>
-              <strong>{item.display_name}</strong> <StatusBadge tone="info" label={item.status} />
+              <strong>{item.display_name}</strong> <StatusBadge tone="info" label={statusLabel(item.status)} />
               <span className="meta">
                 {" "}
                 {item.version?.currency} · {item.version?.price_criterion}
@@ -114,8 +121,11 @@ export function CostingPoliciesPage() {
 }
 
 export function CostingListPage({ kind, title }: { kind: "planned" | "actual"; title: string }) {
-  const { api } = useOrganization();
-  const { state, load } = useList(() => api.listCostingCalculations(kind), kind);
+  const { api, active } = useOrganization();
+  const { state, load } = useList(
+    () => api.listCostingCalculations(kind),
+    `${kind}:${active?.organization_id ?? ""}`,
+  );
   if (state.kind === "carregando") return <LoadingState />;
   if (state.kind === "erro") return <ErrorState error={state.error} onRetry={load} />;
   return (
@@ -147,7 +157,8 @@ export function CostingListPage({ kind, title }: { kind: "planned" | "actual"; t
 
 export function CostingCalculationPage() {
   const { calcId = "" } = useParams();
-  const { api, hasPermission } = useOrganization();
+  const { api, hasPermission, active } = useOrganization();
+  const orgId = active?.organization_id ?? null;
   const [state, setState] = useState<
     { kind: "carregando" } | { kind: "ok"; data: CostingCalculation } | { kind: "erro"; error: unknown }
   >({ kind: "carregando" });
@@ -157,12 +168,16 @@ export function CostingCalculationPage() {
     api
       .getCostingCalculation(calcId)
       .then((body) => setState({ kind: "ok", data: body.data }))
-      .catch((error) => setState({ kind: "erro", error }));
+      .catch((error) => {
+        if (isCancelledError(error)) return;
+        setState({ kind: "erro", error });
+      });
   }
   useEffect(() => {
+    setCompare(null);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, calcId]);
+  }, [api, calcId, orgId]);
   if (state.kind === "carregando") return <LoadingState />;
   if (state.kind === "erro") return <ErrorState error={state.error} onRetry={load} />;
   const data = state.data;
@@ -223,14 +238,19 @@ export function CostingCalculationPage() {
 }
 
 export function CostingSimulationsPage() {
-  const { api, hasPermission } = useOrganization();
-  const { state, load } = useList(() => api.listPricingSimulations(), "simulations");
+  const { api, hasPermission, active } = useOrganization();
+  const orgId = active?.organization_id ?? null;
+  const { state, load } = useList(
+    () => api.listPricingSimulations(),
+    `simulations:${orgId ?? ""}`,
+  );
   const [kind, setKind] = useState("markup_factor");
   const [channel, setChannel] = useState("own_counter");
   const [calcId, setCalcId] = useState("");
   useEffect(() => {
+    setCalcId("");
     api.listCostingCalculations().then((body) => setCalcId(body.items[0]?.id ?? ""));
-  }, [api]);
+  }, [api, orgId]);
   if (state.kind === "carregando") return <LoadingState />;
   if (state.kind === "erro") return <ErrorState error={state.error} onRetry={load} />;
   return (
@@ -307,8 +327,11 @@ export function CostingSimulationsPage() {
 }
 
 export function CostingPricesPage() {
-  const { api, hasPermission } = useOrganization();
-  const { state, load } = useList(() => api.listPracticedPrices(), "prices");
+  const { api, hasPermission, active } = useOrganization();
+  const { state, load } = useList(
+    () => api.listPracticedPrices(),
+    `prices:${active?.organization_id ?? ""}`,
+  );
   const [row, setRow] = useState(1);
   const [notes, setNotes] = useState("revisão humana");
   const [reinforced, setReinforced] = useState(false);
@@ -333,7 +356,7 @@ export function CostingPricesPage() {
         <ul>
           {state.items.map((item: PracticedPrice) => (
             <li key={item.id}>
-              {CHANNELS[item.channel] ?? item.channel} · {item.amount} · {item.status}
+              {CHANNELS[item.channel] ?? item.channel} · {item.amount} · {statusLabel(item.status)}
               {hasPermission("pricing.publish") && item.status === "draft" ? (
                 <form
                   onSubmit={(event) => {

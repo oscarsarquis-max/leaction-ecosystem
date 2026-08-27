@@ -138,6 +138,61 @@ def items_of_ingredient(
     )
 
 
+def get_supplier(
+    session: Session, organization_id: UUID, supplier_id: UUID
+) -> Supplier | None:
+    return session.scalar(
+        select(Supplier).where(
+            Supplier.id == supplier_id,
+            Supplier.organization_id == organization_id,
+        )
+    )
+
+
+def items_of_supplier(
+    session: Session, organization_id: UUID, supplier_id: UUID
+) -> list[SupplierItem]:
+    return list(
+        session.scalars(
+            select(SupplierItem)
+            .where(
+                SupplierItem.organization_id == organization_id,
+                SupplierItem.supplier_id == supplier_id,
+            )
+            .order_by(SupplierItem.supplier_sku)
+        )
+    )
+
+
+def get_supplier_item(
+    session: Session, organization_id: UUID, item_id: UUID
+) -> SupplierItem | None:
+    return session.scalar(
+        select(SupplierItem).where(
+            SupplierItem.id == item_id,
+            SupplierItem.organization_id == organization_id,
+        )
+    )
+
+
+def active_item_counts_by_supplier(
+    session: Session, organization_id: UUID, supplier_ids: set[UUID]
+) -> dict[UUID, int]:
+    """Contagem de itens ativos por fornecedor em uma consulta (sem N+1)."""
+    if not supplier_ids:
+        return {}
+    rows = session.execute(
+        select(SupplierItem.supplier_id, func.count())
+        .where(
+            SupplierItem.organization_id == organization_id,
+            SupplierItem.supplier_id.in_(supplier_ids),
+            SupplierItem.status == "active",
+        )
+        .group_by(SupplierItem.supplier_id)
+    ).all()
+    return {supplier_id: int(count) for supplier_id, count in rows}
+
+
 def latest_price(session: Session, item_id: UUID) -> SupplierItemPrice | None:
     return session.scalar(
         select(SupplierItemPrice)
@@ -146,12 +201,39 @@ def latest_price(session: Session, item_id: UUID) -> SupplierItemPrice | None:
     )
 
 
+def latest_prices_of(
+    session: Session, item_ids: set[UUID]
+) -> dict[UUID, SupplierItemPrice]:
+    """Último preço por item em uma consulta (sem N+1)."""
+    if not item_ids:
+        return {}
+    rows = list(
+        session.scalars(
+            select(SupplierItemPrice)
+            .where(SupplierItemPrice.supplier_item_id.in_(item_ids))
+            .order_by(
+                SupplierItemPrice.supplier_item_id,
+                SupplierItemPrice.observed_at.desc(),
+                SupplierItemPrice.created_at.desc(),
+            )
+        ).all()
+    )
+    latest: dict[UUID, SupplierItemPrice] = {}
+    for row in rows:
+        if row.supplier_item_id not in latest:
+            latest[row.supplier_item_id] = row
+    return latest
+
+
 def prices_of(session: Session, item_id: UUID) -> list[SupplierItemPrice]:
     return list(
         session.scalars(
             select(SupplierItemPrice)
             .where(SupplierItemPrice.supplier_item_id == item_id)
-            .order_by(SupplierItemPrice.observed_at.desc())
+            .order_by(
+                SupplierItemPrice.observed_at.desc(),
+                SupplierItemPrice.created_at.desc(),
+            )
         )
     )
 

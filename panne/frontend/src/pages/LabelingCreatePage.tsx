@@ -1,24 +1,37 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ApiError } from "../api/errors";
+import { ApiError, isCancelledError } from "../api/errors";
 import type { RecipeCard } from "../api/types";
 import { ErrorState, LoadingState } from "../components/Feedback";
 import { LabelingMentor } from "../components/LabelingMentor";
 import { useOrganization } from "../session/OrganizationContext";
 
 export function LabelingCreatePage() {
-  const { api, hasPermission } = useOrganization();
+  const { api, hasPermission, active } = useOrganization();
+  const orgId = active?.organization_id ?? null;
   const navigate = useNavigate();
   const [recipes, setRecipes] = useState<RecipeCard[] | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (!orgId) return;
+    let alive = true;
+    setRecipes(null);
+    setError(null);
     api
       .listRecipes()
-      .then((page) => setRecipes(page.items))
-      .catch(setError);
-  }, [api]);
+      .then((page) => {
+        if (alive) setRecipes(page.items);
+      })
+      .catch((error) => {
+        if (!alive || isCancelledError(error)) return;
+        setError(error);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [api, orgId]);
 
   if (!hasPermission("labeling.dossier.create")) {
     return <ErrorState error={new ApiError("nao_autorizado", "Não autorizado.", 403)} />;

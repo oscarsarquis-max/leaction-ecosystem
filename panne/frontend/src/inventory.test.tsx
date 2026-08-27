@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { operatorMeFixture } from "./api/fixtures";
+import { formatOperationalQuantity } from "./language/quantities";
 import { installApiMock, json } from "./test/fetchMock";
 import { renderApp } from "./test/renderApp";
 
@@ -30,21 +31,21 @@ describe("estoque e compras", () => {
     installApiMock();
     const position = await renderApp("/componentes/estoque/posicao");
     expect(await screen.findByRole("heading", { name: "Posição de estoque" })).toBeInTheDocument();
-    expect(screen.getByText("800")).toBeInTheDocument();
-    expect(screen.getByText("Farinha de trigo tipo 1")).toBeInTheDocument();
+    expect(screen.getAllByText(formatOperationalQuantity("1500", "g")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Farinha de trigo tipo 1").length).toBeGreaterThan(0);
     position.view.unmount();
     await renderApp("/componentes/lotes");
     expect(await screen.findByRole("heading", { name: "Lotes e validade" })).toBeInTheDocument();
     expect(screen.getByText("LOT-000001")).toBeInTheDocument();
     await renderApp("/componentes/estoque/reservas");
-    expect(await screen.findByText(/adoção histórica/)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Registro histórico incorporado/)).length).toBeGreaterThan(0);
   });
 
   it("mostra inventário, necessidades, cotações e pedidos", async () => {
     installApiMock();
     await renderApp("/gestao/inventarios");
     expect(await screen.findByRole("heading", { name: "Inventários" })).toBeInTheDocument();
-    expect(screen.getByText(/divergência -10/)).toBeInTheDocument();
+    expect(screen.getByText((content) => content.includes("divergência") && content.includes(formatOperationalQuantity("-10")))).toBeInTheDocument();
     await renderApp("/gestao/compras/necessidades");
     expect(await screen.findByRole("heading", { name: "Necessidades" })).toBeInTheDocument();
     expect(screen.getByText(/Assistente de reposição/)).toBeInTheDocument();

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import logoCompleto from "../../images/aprovados/horizontal-escuro.png";
+import { isCancelledError } from "../api/errors";
 import type { SheetIssue } from "../api/types";
 import { ErrorState, LoadingState } from "../components/Feedback";
-import { formatDecimal, statusLabel } from "../format";
+import { TechnicalAuditDetails } from "../components/TechnicalAuditDetails";
+import { formatDecimal, formatDateTime, statusLabel } from "../format";
 import { useOrganization } from "../session/OrganizationContext";
 
 function text(value: unknown): string {
@@ -16,16 +18,29 @@ function text(value: unknown): string {
 
 export function SheetPage() {
   const { orderId = "", issueId = "" } = useParams();
-  const { api } = useOrganization();
+  const { api, active } = useOrganization();
+  const orgId = active?.organization_id ?? null;
   const [issue, setIssue] = useState<SheetIssue | null>(null);
   const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
+    let alive = true;
+    setIssue(null);
+    setError(null);
+    if (!orderId || !issueId || !orgId) return;
     api
       .getSheet(orderId, issueId)
-      .then((response) => setIssue(response.data))
-      .catch(setError);
-  }, [api, issueId, orderId]);
+      .then((response) => {
+        if (alive) setIssue(response.data);
+      })
+      .catch((error) => {
+        if (!alive || isCancelledError(error)) return;
+        setError(error);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [api, issueId, orderId, orgId]);
 
   if (error) return <ErrorState error={error} />;
   if (!issue) return <LoadingState>Carregando ficha…</LoadingState>;
@@ -74,19 +89,43 @@ export function SheetPage() {
           payload.establishment?.code ||
           "não informado"}
       </p>
-      <p>Finalidade: {issue.purpose}</p>
+      <p>Finalidade: {issue.purpose === "operational" ? "Operacional" : issue.purpose}</p>
       <p>Estado na emissão: {statusLabel(issue.order_status_at_issue)}</p>
-      <p>Emissão anterior: {issue.previous_issue_id ?? "nenhuma"}</p>
-      <p>Produto: não informado no payload canônico</p>
+      <p>
+        Emissão anterior:{" "}
+        {issue.previous_issue_id ? "substitui emissão anterior (ver detalhes técnicos)" : "nenhuma"}
+      </p>
+      <p>
+        Produto:{" "}
+        {(payload as { product?: { display_name?: string } }).product?.display_name ||
+          "não informado neste registro"}
+      </p>
       <p>Quantidade alvo: {formatDecimal(text(order.target_quantity) || null)}</p>
-      <section>
-        <h2>Hashes e versões</h2>
-        <p className="hashes">
-          payload {issue.payload_sha256} · snapshot {text(order.snapshot_hash) || "—"} · materiais{" "}
-          {text(order.materials_hash) || "—"} · etapas {text(order.steps_hash) || "—"} · política{" "}
-          {text(order.policy_hash) || "—"} · schema {text(payload.schema_version) || "—"}
-        </p>
+      <section className="integrity-summary">
+        <h2>Integridade da ficha</h2>
+        <ul>
+          <li>Materiais: {order.materials_hash ? "versão registrada" : "ainda sem registro"}</li>
+          <li>Etapas: {order.steps_hash ? "versão registrada" : "ainda sem registro"}</li>
+          <li>Registro: {order.snapshot_hash ? "preservado" : "ainda sem registro"}</li>
+        </ul>
       </section>
+      <TechnicalAuditDetails
+        rows={[
+          { label: "Hash do conteúdo da ficha", value: issue.payload_sha256, copyable: true },
+          { label: "Hash do registro", value: text(order.snapshot_hash) || "—", copyable: Boolean(order.snapshot_hash) },
+          { label: "Hash dos materiais", value: text(order.materials_hash) || "—", copyable: Boolean(order.materials_hash) },
+          { label: "Hash das etapas", value: text(order.steps_hash) || "—", copyable: Boolean(order.steps_hash) },
+          { label: "Hash da política", value: text(order.policy_hash) || "—", copyable: Boolean(order.policy_hash) },
+          { label: "Versão do esquema", value: text(payload.schema_version) || "—" },
+          {
+            label: "Política (código)",
+            value: [text(policy.algorithm_code), text(policy.algorithm_version)].filter(Boolean).join(" ") || "—",
+          },
+          ...(issue.previous_issue_id
+            ? [{ label: "Emissão anterior (id)", value: issue.previous_issue_id, copyable: true }]
+            : []),
+        ]}
+      />
       <section>
         <h2>Bateladas</h2>
         {batches.map((batch, index) => (
@@ -125,7 +164,7 @@ export function SheetPage() {
         <h2>Etapas, tempos e temperaturas</h2>
         {steps.map((step, index) => (
           <p key={index}>
-            {text(step.sequence)}. {text(step.title)} — {text(step.instructions) || "sem instrução no payload"}
+            {text(step.sequence)}. {text(step.title)} — {text(step.instructions) || "sem instrução nesta emissão"}
           </p>
         ))}
       </section>
@@ -140,13 +179,13 @@ export function SheetPage() {
           {text((payload as { annotation_fields?: unknown }).annotation_fields) ||
             "não presentes nesta emissão"}
         </p>
-        <p>Política: {text(policy.algorithm_code)} {text(policy.algorithm_version)}</p>
+        <p>Política de execução: registrada (ver detalhes técnicos quando houver código).</p>
       </section>
       <section>
         <h2>Responsável, data e hora</h2>
         <p>
           {payload.issuer?.display_name || "não informado"}
-          {payload.issuer?.issued_at ? ` · ${payload.issuer.issued_at}` : ""}
+          {payload.issuer?.issued_at ? ` · ${formatDateTime(payload.issuer.issued_at)}` : ""}
         </p>
       </section>
     </article>

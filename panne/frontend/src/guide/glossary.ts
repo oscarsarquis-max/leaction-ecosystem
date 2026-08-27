@@ -244,7 +244,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     code: "lote",
     title: "Lote e saldos",
     short: "Físico, reservado, disponível e em trânsito.",
-    detail: "Saldo é projeção do ledger. Reserva não move o físico.",
+    detail: "Saldo é projeção do histórico de movimentos. Reserva não move o físico.",
     example: "800 g disponíveis, 200 g reservadas.",
     related: ["inventario", "recebimento"],
     routes: ["/componentes/estoque", "/componentes/lotes"],

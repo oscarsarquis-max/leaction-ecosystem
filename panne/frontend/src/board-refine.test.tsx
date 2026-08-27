@@ -19,7 +19,7 @@ describe("quadro refinado", () => {
     expect(await screen.findByRole("heading", { name: "Definir contexto do turno" })).toBeInTheDocument();
     expect(await screen.findByDisplayValue("Padaria Central")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Usar este contexto" }));
-    expect(await screen.findByText(/Padaria Central · Manhã · Fornos/)).toBeInTheDocument();
+    expect(await screen.findByText(/Padaria Central · Manhã · Todas as áreas/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Fluxo por estado" }));
     await user.click(screen.getByRole("button", { name: "Por estação" }));
     await user.click(screen.getByRole("button", { name: "Lista gerencial" }));

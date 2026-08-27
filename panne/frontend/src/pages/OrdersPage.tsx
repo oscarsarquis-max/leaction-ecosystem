@@ -1,14 +1,26 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import type { Order } from "../api/types";
 import { EmptyState, ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
-import { formatDecimal, statusLabel } from "../format";
+import { formatTargetQuantity, statusLabel } from "../format";
+import { canOfferFloorExecution, floorExecutionHint } from "../orderListActions";
 import { useOrganization } from "../session/OrganizationContext";
 
+function productLabel(order: Order): string {
+  const name = order.product?.display_name?.trim();
+  return name || "Produto ausente";
+}
+
+function planLabel(order: Order): string {
+  const code = order.plan?.public_code?.trim();
+  if (code) return code;
+  if (order.plan_id) return "Plano sem código legível";
+  return "—";
+}
+
 export function OrdersPage() {
-  const { api } = useOrganization();
+  const { api, hasPermission, active } = useOrganization();
   const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
   const [items, setItems] = useState<Order[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<"carregando" | "ok" | "erro">("carregando");
@@ -29,9 +41,11 @@ export function OrdersPage() {
   }
 
   useEffect(() => {
+    setItems([]);
+    setCursor(null);
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, status]);
+  }, [api, status, active?.organization_id]);
 
   return (
     <section>
@@ -59,6 +73,7 @@ export function OrdersPage() {
             <option value="">Todos</option>
             <option value="draft">Rascunho</option>
             <option value="released">Liberada</option>
+            <option value="in_weighing">Em pesagem</option>
             <option value="in_progress">Em execução</option>
             <option value="completed">Concluída</option>
             <option value="cancelled">Cancelada</option>
@@ -74,25 +89,71 @@ export function OrdersPage() {
             <caption className="visually-hidden">Lista de ordens</caption>
             <thead>
               <tr>
+                <th>Produto</th>
                 <th>Código</th>
                 <th>Plano</th>
                 <th>Alvo</th>
                 <th>Prioridade</th>
                 <th>Estado</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((order) => (
-                <tr key={order.id} tabIndex={0} onClick={() => navigate(`/ordens/${order.id}`)}>
-                  <td>{order.public_code}</td>
-                  <td>{order.plan_id ?? "—"}</td>
-                  <td>{formatDecimal(order.target_quantity)}</td>
-                  <td>{order.priority}</td>
-                  <td>
-                    <StatusBadge tone="neutro" label={statusLabel(order.status)} />
-                  </td>
-                </tr>
-              ))}
+              {items.map((order) => {
+                const detailTo = status
+                  ? `/ordens/${order.id}?from_status=${encodeURIComponent(status)}`
+                  : `/ordens/${order.id}`;
+                const codeLabel = `Abrir detalhe da ordem ${order.public_code}`;
+                const detailActionLabel = `Detalhe da ordem ${order.public_code}`;
+                const executeLabel = `Executar ordem ${order.public_code}`;
+                const showExecute = canOfferFloorExecution(order.status, hasPermission);
+                const execHint = floorExecutionHint(order.status);
+                return (
+                  <tr key={order.id}>
+                    <td>{productLabel(order)}</td>
+                    <td>
+                      <Link to={detailTo} aria-label={codeLabel}>
+                        {order.public_code}
+                      </Link>
+                    </td>
+                    <td>
+                      {order.plan?.id ? (
+                        <Link
+                          to={`/planejamento/${order.plan.id}`}
+                          aria-label={`Abrir plano ${planLabel(order)}`}
+                        >
+                          {planLabel(order)}
+                        </Link>
+                      ) : (
+                        planLabel(order)
+                      )}
+                    </td>
+                    <td>{formatTargetQuantity(order.target_quantity, order.target_mode)}</td>
+                    <td>{order.priority}</td>
+                    <td>
+                      <StatusBadge tone="neutro" label={statusLabel(order.status)} />
+                    </td>
+                    <td>
+                      <Link to={detailTo} aria-label={detailActionLabel}>
+                        Detalhe
+                      </Link>
+                      {showExecute ? (
+                        <>
+                          {" · "}
+                          <Link
+                            to={`/producao/ordens/${order.id}/executar`}
+                            aria-label={executeLabel}
+                          >
+                            Executar
+                          </Link>
+                        </>
+                      ) : execHint ? (
+                        <span className="meta"> · {execHint}</span>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

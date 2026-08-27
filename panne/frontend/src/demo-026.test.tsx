@@ -26,6 +26,7 @@ afterEach(() => {
 
 const FIXTURE_IDS: Record<string, string> = {
   ingredientId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+  supplierId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
   recipeId: RECIPE_ID,
   versionId: RECIPE_VERSION_ID,
   proposalId: PROPOSAL_ID,
@@ -72,8 +73,8 @@ describe("aceitação demo 026", () => {
     ]);
     installApiMock();
     await renderApp("/componentes/estoque/posicao");
-    expect(await screen.findByText("Farinha de trigo tipo 1")).toBeInTheDocument();
-    expect(screen.getByText("Almoxarifado Central")).toBeInTheDocument();
+    expect((await screen.findAllByText("Farinha de trigo tipo 1")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Almoxarifado Central").length).toBeGreaterThan(0);
     expect(screen.getByRole("table").textContent).not.toMatch(
       /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
     );

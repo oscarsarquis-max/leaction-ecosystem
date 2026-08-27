@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ApiError } from "../api/errors";
+import { ApiError, isCancelledError } from "../api/errors";
 import type { ReportIndicator, ReportPayload, ReportSnapshot, SavedReportView } from "../api/types";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
 import { ReportingMentor } from "../components/ReportingMentor";
+import { TechnicalAuditDetails } from "../components/TechnicalAuditDetails";
 import { useOrganization } from "../session/OrganizationContext";
 
 const REPORTS: Array<{ code: string; path: string; title: string; permission: string }> = [
@@ -141,7 +142,8 @@ export function ReportingReportPage({
   title: string;
   extraCodes?: string[];
 }) {
-  const { api, hasPermission } = useOrganization();
+  const { api, hasPermission, active } = useOrganization();
+  const orgId = active?.organization_id ?? null;
   const [params, setParams] = useSearchParams();
   const periodStart = params.get("inicio") ?? "";
   const periodEnd = params.get("fim") ?? "";
@@ -165,6 +167,7 @@ export function ReportingReportPage({
 
   function load() {
     setState({ kind: "carregando" });
+    setDetails(null);
     Promise.all([
       api.reportingReport(code, query),
       ...allowedExtra.map((item) => api.reportingReport(item, query)),
@@ -191,13 +194,16 @@ export function ReportingReportPage({
           reference: reference?.data,
         });
       })
-      .catch((error) => setState({ kind: "erro", error }));
+      .catch((error) => {
+        if (isCancelledError(error)) return;
+        setState({ kind: "erro", error });
+      });
   }
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, periodStart, periodEnd, compare]);
+  }, [code, periodStart, periodEnd, compare, orgId, api]);
 
   if (state.kind === "carregando") return <LoadingState />;
   if (state.kind === "erro") return <ErrorState error={state.error} onRetry={load} />;
@@ -213,8 +219,17 @@ export function ReportingReportPage({
       <div>
         <h1>{title}</h1>
         <p className="lede">
-          Dados até {new Date(data.data_cutoff_at).toLocaleString("pt-BR")}. Hash {data.content_hash}. Não é tempo real.
+          Dados até {new Date(data.data_cutoff_at).toLocaleString("pt-BR")}. Recorte registrado. Não é tempo real.
         </p>
+        <TechnicalAuditDetails
+          rows={[
+            {
+              label: "Hash do conteúdo",
+              value: data.content_hash,
+              copyable: true,
+            },
+          ]}
+        />
         <form
           className="filters"
           onSubmit={(event) => {
@@ -332,12 +347,21 @@ export function ReportingReportPage({
 }
 
 export function ReportingSavedPage() {
-  const { api } = useOrganization();
+  const { api, active } = useOrganization();
+  const orgId = active?.organization_id ?? null;
   const [items, setItems] = useState<SavedReportView[]>([]);
   const [error, setError] = useState<unknown>(null);
   useEffect(() => {
-    api.reportingSavedViews().then((body) => setItems(body.items)).catch(setError);
-  }, [api]);
+    setItems([]);
+    setError(null);
+    api
+      .reportingSavedViews()
+      .then((body) => setItems(body.items))
+      .catch((err) => {
+        if (isCancelledError(err)) return;
+        setError(err);
+      });
+  }, [api, orgId]);
   if (error) return <ErrorState error={error} />;
   return (
     <div className="stage">
@@ -385,20 +409,41 @@ export function ReportingSavedPage() {
 
 export function ReportingSnapshotPage() {
   const { snapshotId } = useParams();
-  const { api } = useOrganization();
+  const { api, active } = useOrganization();
+  const orgId = active?.organization_id ?? null;
   const [item, setItem] = useState<ReportSnapshot | null>(null);
   const [error, setError] = useState<unknown>(null);
   useEffect(() => {
-    api.reportingSnapshots()
+    setItem(null);
+    setError(null);
+    api
+      .reportingSnapshots()
       .then((body) => setItem(body.items.find((row) => row.id === snapshotId) ?? body.items[0] ?? null))
-      .catch(setError);
-  }, [api, snapshotId]);
+      .catch((err) => {
+        if (isCancelledError(err)) return;
+        setError(err);
+      });
+  }, [api, snapshotId, orgId]);
   if (error) return <ErrorState error={error instanceof ApiError ? error : error} />;
   if (!item) return <LoadingState />;
   return (
     <div className="print-report">
-      <h1>Snapshot {item.content_hash.slice(0, 8)}</h1>
+      <h1>Relatório congelado</h1>
       <p>Emitido em {new Date(item.created_at).toLocaleString("pt-BR")}. Não recalcula.</p>
+      <TechnicalAuditDetails
+        rows={[
+          {
+            label: "Hash do conteúdo",
+            value: item.content_hash,
+            copyable: true,
+          },
+          {
+            label: "Identificador do registro",
+            value: item.id,
+            copyable: true,
+          },
+        ]}
+      />
       <table>
         <caption>Indicadores congelados</caption>
         <tbody>

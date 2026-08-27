@@ -10,7 +10,9 @@ Na pasta da Panne, em um terminal:
 powershell -File scripts/dev/start-demo.ps1
 ```
 
-O script só aceita o banco `panne_demo`. Se a demo já estiver no ar, ele só confirma os endereços.
+O script encerra com segurança qualquer instância Panne anterior comprovada e sobe **API e frontend novos**. Não reutiliza processo só porque `/health` já responde (R026-012). Opt-in de reuso: `-ReuseExisting`.
+
+Se uma porta estiver ocupada por processo **não** Panne, o script **aborta sem matar** e mostra PID/comando sanitizado.
 
 ## Endereço
 

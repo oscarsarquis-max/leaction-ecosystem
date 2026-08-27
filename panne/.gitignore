@@ -12,3 +12,4 @@ dist/
 coverage/
 *.egg-info/
 .python-version
+.tmp-demo/

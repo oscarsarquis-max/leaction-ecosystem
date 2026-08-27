@@ -9,7 +9,6 @@ from app.modules.formula_lab.queries import (
     approvals_of,
     bakers_view,
     completeness_of,
-    ingredient_label,
     items_of,
     latest_nutrition,
     nutrition_items_of,
@@ -22,6 +21,7 @@ from app.modules.formula_lab.rules import derived_gross_quantity
 from app.modules.formula_lab.version_references import version_references_of
 from app.modules.nutrition_calculation.models import CalculationEvidence
 from app.modules.production_http.schemas import decimal_str
+from app.modules.recipe_http.serialize import load_item_enrichments
 
 TECHNICAL_DISCLAIMER = (
     "Prévia técnica incompleta e não validada regulatoriamente."
@@ -44,9 +44,34 @@ def project_technical_sheet(
     items = items_of(session, version.id)
     bakers = bakers_view(session, version.id)
     percents = {row["id"]: row["bakers_percentage"] for row in bakers["items"]}
+    enrichments = load_item_enrichments(session, recipe.organization_id, items)
     nutrition = latest_nutrition(session, version.id)
     latest_scale = scales_of(session, version.id)
     latest_decision = approvals_of(session, version.id)
+    components = []
+    for item in items:
+        ingredient, unit = enrichments.get(item.id, (None, None))
+        if ingredient is not None:
+            label = f"{ingredient['display_name']} v{ingredient['version_number']}"
+        else:
+            label = "Ingrediente indisponível"
+        components.append(
+            {
+                "sequence": item.sequence,
+                "label": label,
+                "ingredient": ingredient,
+                "unit": unit,
+                "role": item.role,
+                "net_quantity": decimal_str(item.net_quantity),
+                "gross_quantity": decimal_str(
+                    derived_gross_quantity(item.net_quantity, item.correction_factor)
+                ),
+                "correction_factor": decimal_str(item.correction_factor),
+                "is_flour_basis": item.is_flour_basis,
+                "bakers_percentage": percents.get(str(item.id)),
+                "measurement_unit_id": str(item.measurement_unit_id),
+            }
+        )
     body = {
         "kind": "ficha_tecnica_derivada",
         "disclaimer": TECHNICAL_DISCLAIMER,
@@ -79,22 +104,7 @@ def project_technical_sheet(
             "decision": latest_decision[0].decision,
             "occurred_at": latest_decision[0].occurred_at.isoformat(),
         },
-        "components": [
-            {
-                "sequence": item.sequence,
-                "label": ingredient_label(session, item.ingredient_version_id),
-                "role": item.role,
-                "net_quantity": decimal_str(item.net_quantity),
-                "gross_quantity": decimal_str(
-                    derived_gross_quantity(item.net_quantity, item.correction_factor)
-                ),
-                "correction_factor": decimal_str(item.correction_factor),
-                "is_flour_basis": item.is_flour_basis,
-                "bakers_percentage": percents.get(str(item.id)),
-                "measurement_unit_id": str(item.measurement_unit_id),
-            }
-            for item in items
-        ],
+        "components": components,
         "bakers_percentage": {
             "flour_mass": bakers["flour_mass"],
             "explained_absence": bakers["explained_absence"],

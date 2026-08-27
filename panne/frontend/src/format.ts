@@ -50,6 +50,42 @@ export function todayIso(): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
+/** Data inicial do Quadro: âncora do cenário no modo demo; senão, data operacional local. */
+export function boardDefaultOperationalDate(
+  demoMode: boolean,
+  demoAnchorDate: string,
+  today: string = todayIso(),
+): string {
+  if (demoMode && /^\d{4}-\d{2}-\d{2}$/.test(demoAnchorDate)) return demoAnchorDate;
+  return today;
+}
+
+/** Alvo operacional com unidade explícita (massa em g; unidades em un). */
+export function formatTargetQuantity(
+  quantity: string | null | undefined,
+  targetMode: string | null | undefined,
+): string {
+  const amount = formatDecimal(quantity);
+  if (amount === "—") return amount;
+  if (targetMode === "mass") return `${amount} g`;
+  if (targetMode === "units") return `${amount} un`;
+  if (targetMode) return `${amount} ${targetMode}`;
+  return amount;
+}
+
+/**
+ * Prioridade de item/ordem: inteiro 1–99 (padrão 50).
+ * Sem faixas canônicas Alta/Média/Baixa no contrato — expor como ordem relativa.
+ */
+export function formatProcessingOrder(priority: number | null | undefined): string {
+  if (priority == null || !Number.isFinite(priority)) return "—";
+  return `${priority} · relativa (1–99; padrão 50)`;
+}
+
+export const PROCESSING_ORDER_HELP =
+  "Valor relativo de 1 a 99 (padrão 50). Não há faixas Alta/Média/Baixa no contrato operacional.";
+
+
 export const STATUS_LABEL: Record<string, string> = {
   draft: "Rascunho",
   scheduled: "Programada",
@@ -83,6 +119,9 @@ export const STATUS_LABEL: Record<string, string> = {
   failed: "Falhou",
   quarantined: "Em quarentena",
   confirmed: "Confirmado",
+  published: "Publicada",
+  active: "Ativo",
+  retired: "Aposentado",
 };
 
 export const YIELD_LABEL: Record<string, string> = {

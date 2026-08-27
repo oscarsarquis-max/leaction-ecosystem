@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { ApiError } from "../api/errors";
+import { ApiError, isCancelledError } from "../api/errors";
 import { useAssistantOptional } from "../assistant/AssistantContext";
 import type { LiveOverlay, PageKind } from "../assistant/liveContext";
 
@@ -60,6 +60,10 @@ export function ErrorState({
   error: unknown;
   onRetry?: () => void;
 }) {
+  // Cinto de segurança: cancelamento nunca deve ser tela de erro persistente.
+  if (isCancelledError(error)) {
+    return <LoadingState>Carregando…</LoadingState>;
+  }
   const api = error instanceof ApiError ? error : null;
   const title =
     api?.code === "nao_autenticado"

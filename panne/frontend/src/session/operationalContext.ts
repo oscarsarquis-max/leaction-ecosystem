@@ -10,6 +10,24 @@ export type OperationalContext = {
 
 const PREFIX = "panne.operationalContext.";
 
+/** Query keys do Quadro que amarram contexto/filtros à organização. */
+export const BOARD_QUERY_KEYS = [
+  "operational_date",
+  "establishment_id",
+  "shift",
+  "area",
+  "product_id",
+  "status",
+  "priority",
+  "q",
+] as const;
+
+export function stripBoardQueryParams(source: URLSearchParams): URLSearchParams {
+  const next = new URLSearchParams(source);
+  for (const key of BOARD_QUERY_KEYS) next.delete(key);
+  return next;
+}
+
 function key(organizationId: string, userHint: string): string {
   return `${PREFIX}${organizationId}.${userHint || "anon"}`;
 }

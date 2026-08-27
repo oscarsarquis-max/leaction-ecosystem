@@ -1,24 +1,30 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/errors";
 import type { BoardCard, BoardContextCatalog, BoardFilters } from "../api/types";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
+import { config } from "../config";
 import {
   actionLabel,
+  boardDefaultOperationalDate,
   formatContextDate,
   formatDateTime,
   formatDecimal,
   shiftLabel,
   statusLabel,
-  todayIso,
 } from "../format";
 import {
   readOperationalContext,
+  stripBoardQueryParams,
   writeOperationalContext,
   type OperationalContext,
 } from "../session/operationalContext";
 import { useAssistant } from "../assistant/AssistantContext";
 import { useOrganization } from "../session/OrganizationContext";
+
+function defaultBoardDate(): string {
+  return boardDefaultOperationalDate(config.demoMode, config.demoAnchorDate);
+}
 
 const BUCKETS = [
   { id: "awaiting", label: "Aguardando liberação", match: (card: BoardCard) => ["draft", "scheduled", "released"].includes(card.order.status) },
@@ -59,54 +65,147 @@ export function BoardPage() {
     | { kind: "ok"; cards: BoardCard[]; updatedAt: string }
     | { kind: "erro"; error: unknown }
   >({ kind: "carregando" });
+  const prevOrgRef = useRef<string | null>(null);
+  const catalogOrgRef = useRef<string | null>(null);
+  const loadGenerationRef = useRef(0);
 
-  const filters = useMemo<BoardFilters>(
-    () => ({
-      operational_date: params.get("operational_date") ?? context?.operational_date ?? todayIso(),
-      establishment_id: params.get("establishment_id") ?? context?.establishment_id ?? undefined,
-      shift: params.get("shift") ?? context?.shift ?? undefined,
-      area: params.get("area") ?? context?.area ?? undefined,
-      product_id: params.get("product_id") ?? undefined,
-      status: params.get("status") ?? undefined,
-      priority: params.get("priority") ?? undefined,
-      q: params.get("q") ?? undefined,
-    }),
-    [params, context],
-  );
+  const filters = useMemo<BoardFilters>(() => {
+    // Só confiar em query/contexto depois do catálogo da org ativa confirmar o estabelecimento.
+    // Com catalog=null (troca de org), `!catalog` antes aceitava establishment_id residual da URL.
+    const catalogAligned =
+      Boolean(catalog) &&
+      Boolean(active?.organization_id) &&
+      catalogOrgRef.current === active?.organization_id;
+    const rawEstablishment = params.get("establishment_id") ?? context?.establishment_id ?? undefined;
+    const establishmentAllowed =
+      !rawEstablishment ||
+      Boolean(catalogAligned && catalog!.establishments.some((row) => row.id === rawEstablishment));
+    const trustScopedFilters = Boolean(catalogAligned && establishmentAllowed);
+    return {
+      operational_date: trustScopedFilters
+        ? (params.get("operational_date") ?? context?.operational_date ?? defaultBoardDate())
+        : (context?.operational_date ?? defaultBoardDate()),
+      establishment_id: trustScopedFilters ? rawEstablishment : undefined,
+      shift: trustScopedFilters
+        ? (params.get("shift") ?? context?.shift ?? undefined)
+        : undefined,
+      area: trustScopedFilters
+        ? (params.get("area") ?? (context?.area ? context.area : undefined))
+        : undefined,
+      product_id: trustScopedFilters ? (params.get("product_id") ?? undefined) : undefined,
+      status: trustScopedFilters ? (params.get("status") ?? undefined) : undefined,
+      priority: trustScopedFilters ? (params.get("priority") ?? undefined) : undefined,
+      q: trustScopedFilters ? (params.get("q") ?? undefined) : undefined,
+    };
+  }, [params, context, catalog, active?.organization_id]);
 
   function setFilter(key: keyof BoardFilters, value: string) {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
     if (key !== "operational_date" && !next.get("operational_date")) {
-      next.set("operational_date", filters.operational_date || todayIso());
+      next.set("operational_date", filters.operational_date || defaultBoardDate());
     }
     setParams(next, { replace: true });
   }
 
   useEffect(() => {
     if (!active?.organization_id) return;
-    setContext(readOperationalContext(active.organization_id, userHint));
-    void api.getBoardContext().then((row) => setCatalog(row.data)).catch(() => setCatalog({
-      establishments: [],
-      shifts: [
-        { code: "morning", label: "Manhã" },
-        { code: "afternoon", label: "Tarde" },
-        { code: "night", label: "Noite" },
-      ],
-      areas: [
-        { code: "fornos", label: "Fornos" },
-        { code: "masseira", label: "Masseira" },
-      ],
-    }));
-  }, [api, active?.organization_id, userHint]);
+    const orgId = active.organization_id;
+    const previous = prevOrgRef.current;
+    const orgChanged = previous !== null && previous !== orgId;
+    prevOrgRef.current = orgId;
+    catalogOrgRef.current = orgId;
+
+    let cancelled = false;
+
+    if (orgChanged) {
+      // sessionStorage já foi limpo em selectOrganization; URL e estado local ainda carregavam a org anterior.
+      setCatalog(null);
+      setContext(null);
+      setSelected(null);
+      setEditingContext(false);
+      setConfirmChange(false);
+      setParams((prev) => stripBoardQueryParams(prev), { replace: true });
+    } else if (previous === null) {
+      setContext(readOperationalContext(orgId, userHint));
+    }
+
+    void api
+      .getBoardContext()
+      .then((row) => {
+        if (cancelled || catalogOrgRef.current !== orgId) return;
+        setCatalog(row.data);
+      })
+      .catch((error) => {
+        if (cancelled || catalogOrgRef.current !== orgId) return;
+        if (error instanceof ApiError && error.code === "cancelado") return;
+        setCatalog({
+          establishments: [],
+          shifts: [
+            { code: "morning", label: "Manhã" },
+            { code: "afternoon", label: "Tarde" },
+            { code: "night", label: "Noite" },
+          ],
+          areas: [
+            { code: "fornos", label: "Fornos" },
+            { code: "masseira", label: "Masseira" },
+          ],
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, active?.organization_id, userHint, setParams]);
+
+  // Descarta contexto/URL se o estabelecimento não pertence ao catálogo da org ativa.
+  useEffect(() => {
+    if (!active?.organization_id || !catalog) return;
+    const estId = params.get("establishment_id") ?? context?.establishment_id;
+    if (!estId) return;
+    if (catalog.establishments.some((row) => row.id === estId)) return;
+    if (context) {
+      writeOperationalContext(active.organization_id, userHint, null);
+      setContext(null);
+    }
+    if (params.get("establishment_id") || params.get("shift") || params.get("area") || params.get("operational_date")) {
+      setParams(stripBoardQueryParams(params), { replace: true });
+    }
+  }, [active?.organization_id, catalog, context, params, setParams, userHint]);
+
+  // Demo: aplicar contexto válido da org ativa (âncora + 1º estabelecimento do catálogo + manhã).
+  useEffect(() => {
+    if (!config.demoMode || !active?.organization_id || !catalog) return;
+    if (catalogOrgRef.current !== active.organization_id) return;
+    if (readOperationalContext(active.organization_id, userHint)) return;
+    const place = catalog.establishments[0];
+    if (!place) return;
+    const suggested: OperationalContext = {
+      operational_date: config.demoAnchorDate,
+      establishment_id: place.id,
+      establishment_name: place.display_name,
+      shift: "morning",
+      area: "",
+    };
+    writeOperationalContext(active.organization_id, userHint, suggested);
+    setContext(suggested);
+    const url = new URLSearchParams();
+    url.set("operational_date", suggested.operational_date);
+    url.set("establishment_id", suggested.establishment_id);
+    url.set("shift", suggested.shift);
+    setParams(url, { replace: true });
+  }, [active?.organization_id, catalog, setParams, userHint]);
 
   async function load() {
+    const generation = ++loadGenerationRef.current;
     setState({ kind: "carregando" });
     try {
       const response = await api.getBoard(filters);
+      if (generation !== loadGenerationRef.current) return;
       setState({ kind: "ok", cards: response.data, updatedAt: new Date().toISOString() });
     } catch (error) {
+      if (generation !== loadGenerationRef.current) return;
       if (error instanceof ApiError && error.code === "cancelado") return;
       setState({ kind: "erro", error });
     }
@@ -115,7 +214,7 @@ export function BoardPage() {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, active?.organization_id, params.toString(), context?.establishment_id, context?.shift, context?.area, context?.operational_date]);
+  }, [api, active?.organization_id, params.toString(), context?.establishment_id, context?.shift, context?.area, context?.operational_date, catalog]);
 
   function saveContext(next: OperationalContext) {
     if (!active?.organization_id) return;
@@ -126,7 +225,8 @@ export function BoardPage() {
     url.set("operational_date", next.operational_date);
     url.set("establishment_id", next.establishment_id);
     url.set("shift", next.shift);
-    url.set("area", next.area);
+    if (next.area) url.set("area", next.area);
+    else url.delete("area");
     setParams(url, { replace: true });
   }
 
@@ -172,7 +272,15 @@ export function BoardPage() {
   const filteredEmpty = state.kind === "ok" && cards.length === 0 && Boolean(filters.q || filters.status || filters.product_id);
   const noPlan = state.kind === "ok" && cards.length === 0 && !filteredEmpty;
   const establishments = catalog?.establishments ?? [];
-  const noAccess = Boolean(context?.establishment_id) && establishments.length > 0 && !establishments.some((row) => row.id === context?.establishment_id);
+  const filterEstablishmentId = filters.establishment_id;
+  const orphanEstablishment =
+    Boolean(filterEstablishmentId) &&
+    establishments.length > 0 &&
+    !establishments.some((row) => row.id === filterEstablishmentId);
+  const noEstablishments = Boolean(catalog) && establishments.length === 0;
+  const areaLabel = context?.area
+    ? catalog?.areas.find((row) => row.code === context.area)?.label || context.area
+    : "Todas as áreas";
 
   return (
     <section>
@@ -193,7 +301,7 @@ export function BoardPage() {
 
       {context && !editingContext ? (
         <p className="context-strip">
-          {formatContextDate(context.operational_date)} · {context.establishment_name} · {shiftLabel(context.shift)} · {catalog?.areas.find((row) => row.code === context.area)?.label || context.area}
+          {formatContextDate(context.operational_date)} · {context.establishment_name} · {shiftLabel(context.shift)} · {areaLabel}
           {" "}
           <button type="button" className="ghost" onClick={requestChangeContext}>
             Trocar contexto
@@ -209,24 +317,33 @@ export function BoardPage() {
             const place = establishments.find((row) => row.id === establishmentId);
             if (!place) return;
             saveContext({
-              operational_date: String(data.get("operational_date") || todayIso()),
+              operational_date: String(data.get("operational_date") || defaultBoardDate()),
               establishment_id: place.id,
               establishment_name: place.display_name,
               shift: String(data.get("shift") || "morning"),
-              area: String(data.get("area") || "fornos"),
+              area: String(data.get("area") || ""),
             });
           }}
         >
           <h2>Definir contexto do turno</h2>
-          <p>Escolha catálogos. Sem digitar identificador.</p>
+          <p>
+            {config.demoMode
+              ? `Cenário demonstrativo: data-âncora ${config.demoAnchorDate}, primeiro estabelecimento do catálogo, turno manhã. Área opcional (na API filtra só o código público).`
+              : "Escolha catálogos. Sem digitar identificador."}
+          </p>
           <div className="grid-2">
             <label>
               Data operacional
-              <input name="operational_date" type="date" defaultValue={filters.operational_date || todayIso()} required />
+              <input name="operational_date" type="date" defaultValue={filters.operational_date || defaultBoardDate()} required />
             </label>
             <label>
               Estabelecimento
-              <select name="establishment_id" defaultValue={context?.establishment_id || establishments[0]?.id || ""} required>
+              <select
+                key={`est-${active?.organization_id || "none"}-${establishments.map((row) => row.id).join(",")}`}
+                name="establishment_id"
+                defaultValue={context?.establishment_id || establishments[0]?.id || ""}
+                required
+              >
                 {establishments.map((row) => (
                   <option key={row.id} value={row.id}>{row.display_name}</option>
                 ))}
@@ -234,7 +351,11 @@ export function BoardPage() {
             </label>
             <label>
               Turno
-              <select name="shift" defaultValue={context?.shift || "morning"}>
+              <select
+                key={`shift-${active?.organization_id || "none"}`}
+                name="shift"
+                defaultValue={context?.shift || "morning"}
+              >
                 {(catalog?.shifts ?? []).map((row) => (
                   <option key={row.code} value={row.code}>{row.label}</option>
                 ))}
@@ -242,7 +363,12 @@ export function BoardPage() {
             </label>
             <label>
               Área ou estação
-              <select name="area" defaultValue={context?.area || "fornos"}>
+              <select
+                key={`area-${active?.organization_id || "none"}`}
+                name="area"
+                defaultValue={context?.area || ""}
+              >
+                <option value="">Todas as áreas</option>
                 {(catalog?.areas ?? []).map((row) => (
                   <option key={row.code} value={row.code}>{row.label}</option>
                 ))}
@@ -346,13 +472,17 @@ export function BoardPage() {
 
       {state.kind === "carregando" ? <LoadingState>Carregando o quadro…</LoadingState> : null}
       {state.kind === "erro" ? <ErrorState error={state.error} onRetry={() => void load()} /> : null}
-      {noAccess ? (
+      {orphanEstablishment ? (
         <div className="empty-card" role="status">
-          Sem acesso a este estabelecimento.
-          <div><Link to="/inicio">Voltar ao início</Link></div>
+          O estabelecimento do contexto anterior não pertence a esta organização. O filtro foi descartado.
         </div>
       ) : null}
-      {!context && !editingContext ? (
+      {noEstablishments ? (
+        <div className="empty-card" role="status">
+          Esta organização não tem estabelecimento autorizado para o quadro.
+        </div>
+      ) : null}
+      {!context && !editingContext && !orphanEstablishment ? (
         <div className="empty-card" role="status">
           Contexto ainda não definido. O quadro lê a organização, mas o turno fica mais claro com a faixa.
           <div><button type="button" className="primary" onClick={() => setEditingContext(true)}>Definir contexto</button></div>
@@ -363,7 +493,7 @@ export function BoardPage() {
           Os filtros eliminaram os resultados. <button type="button" className="ghost" onClick={() => setParams(new URLSearchParams(), { replace: true })}>Limpar filtros</button>
         </EmptyState>
       ) : null}
-      {noPlan && !filteredEmpty ? (
+      {noPlan && !filteredEmpty && !orphanEstablishment ? (
         <EmptyState>
           Não há ordens para os filtros atuais nesta organização. <Link to="/planejamento">Abrir planejamento</Link>
         </EmptyState>
@@ -446,7 +576,7 @@ export function BoardPage() {
                     </div>
                   </td>
                   <td>
-                    {formatDecimal(card.quantity)} {card.target_mode === "mass" ? "g" : card.target_mode}
+                    {formatDecimal(card.quantity)} {card.target_mode === "mass" ? "g" : card.target_mode === "units" ? "un" : card.target_mode}
                   </td>
                   <td>
                     {formatDateTime(card.planned_start_at)}
@@ -490,7 +620,9 @@ export function BoardPage() {
             <h2>{selected.order.public_code}</h2>
             <p>{selected.product.display_name}</p>
             <p className="meta">
-              {formatDecimal(selected.quantity)} {selected.target_mode === "mass" ? "g" : selected.target_mode} · prioridade {selected.order.priority}
+              {formatDecimal(selected.quantity)}{" "}
+              {selected.target_mode === "mass" ? "g" : selected.target_mode === "units" ? "un" : selected.target_mode} ·
+              prioridade {selected.order.priority}
             </p>
             <p>
               <StatusBadge tone={toneForStatus(selected.order.status)} label={statusLabel(selected.order.status)} />

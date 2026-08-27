@@ -15,6 +15,8 @@ export const config = {
   apiBase: read("VITE_API_BASE"),
   evidence: read("VITE_EVIDENCE") === "1",
   demoMode: !import.meta.env.PROD && read("VITE_DEMO_MODE") === "1",
+  /** Data-âncora do cenário demo (026). Só usada quando demoMode. */
+  demoAnchorDate: read("VITE_DEMO_ANCHOR_DATE", "2026-08-24") || "2026-08-24",
 };
 
 export function isFakeBlockedInProduction(

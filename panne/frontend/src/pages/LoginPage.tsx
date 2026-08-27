@@ -87,41 +87,45 @@ export function LoginPage() {
   return (
     <main className="login-stage">
       {left ? <EditorialColumn column={left} /> : editorialReady ? null : <div className="login-col skeleton" aria-hidden />}
-      <section className="login-center">
-        <img className="login-brand" src={logoCompleto} alt="Panne" />
-        <h1>Entrar na Panne</h1>
-        <p>A autorização usa as permissões da sessão. O conteúdo ao lado não altera o acesso.</p>
-        {config.demoMode ? <p className="demo-banner">Ambiente de demonstração</p> : null}
-        {provider.name === "fake" ? (
-          <p className="meta">Ambiente de desenvolvimento com provedor falso explícito.</p>
-        ) : (
-          <p className="meta">OIDC Authorization Code com PKCE. Sem segredo no navegador.</p>
-        )}
-        {config.demoMode && provider.name === "fake" ? (
-          <label>
-            Perfil de demonstração
-            <select value={demoSubject} onChange={(event) => setDemoSubject(event.target.value)}>
-              {DEMO_PROFILES.map((row) => (
-                <option key={row.subject} value={row.subject}>
-                  {row.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <button type="button" className="primary" disabled={loading} onClick={() => void handleLogin()}>
-          {loading ? "Entrando…" : provider.name === "fake" ? "Entrar em desenvolvimento" : "Entrar"}
-        </button>
-        <p>
-          <button type="button" className="ghost" onClick={openAssistant}>
-            Ajuda para entrar
+      <section className="login-center" aria-labelledby="login-heading">
+        <header className="login-center__header">
+          <img className="login-center__brand" src={logoCompleto} alt="Panne" />
+        </header>
+        <div className="login-center__body">
+          <h1 id="login-heading">Entrar na Panne</h1>
+          <p>A autorização usa as permissões da sessão. O conteúdo ao lado não altera o acesso.</p>
+          {config.demoMode ? <p className="demo-banner">Ambiente de demonstração</p> : null}
+          {provider.name === "fake" ? (
+            <p className="meta">Ambiente de desenvolvimento com provedor falso explícito.</p>
+          ) : (
+            <p className="meta">Entrada segura na conta da organização. Sem senha armazenada neste aparelho.</p>
+          )}
+          {config.demoMode && provider.name === "fake" ? (
+            <label>
+              Perfil de demonstração
+              <select value={demoSubject} onChange={(event) => setDemoSubject(event.target.value)}>
+                {DEMO_PROFILES.map((row) => (
+                  <option key={row.subject} value={row.subject}>
+                    {row.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <button type="button" className="primary" disabled={loading} onClick={() => void handleLogin()}>
+            {loading ? "Entrando…" : provider.name === "fake" ? "Entrar em desenvolvimento" : "Entrar"}
           </button>
-        </p>
-        {config.authProvider === "oidc" && !config.oidcIssuer ? (
-          <p role="alert">Configure o emissor e o client ID antes de autenticar.</p>
-        ) : null}
-        {erro ? <p role="alert">{erro}</p> : null}
-        {editorialReady && !editorial ? <p className="meta">As colunas editoriais são opcionais.</p> : null}
+          <p>
+            <button type="button" className="ghost" onClick={openAssistant}>
+              Ajuda para entrar
+            </button>
+          </p>
+          {config.authProvider === "oidc" && !config.oidcIssuer ? (
+            <p role="alert">Configure o emissor e o client ID antes de autenticar.</p>
+          ) : null}
+          {erro ? <p role="alert">{erro}</p> : null}
+          {editorialReady && !editorial ? <p className="meta">As colunas editoriais são opcionais.</p> : null}
+        </div>
       </section>
       {right ? <EditorialColumn column={right} /> : editorialReady ? null : <div className="login-col skeleton" aria-hidden />}
       <AssistantAvatar publicMode />

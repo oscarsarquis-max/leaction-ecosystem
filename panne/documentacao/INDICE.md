@@ -1,6 +1,6 @@
 # Índice mestre da documentação Panne
 
-Fonte exclusiva: esta pasta e o código em `panne/`.  
+Fonte exclusiva: esta pasta e o código em `panne/`.
 Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pertencem a **outro produto** e não são fonte da Panne.
 
 ## Como ler
@@ -24,6 +24,7 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Contexto e RLS](decisoes/CONTEXTO-E-RLS.md) — ciclo 010
 - [Matriz RLS](decisoes/MATRIZ-RLS.md)
 - [Ameaças e riscos](decisoes/AMEACAS-E-RISCOS.md)
+- [Linguagem humana e divulgação técnica](decisoes/LINGUAGEM-HUMANA-E-DIVULGACAO-TECNICA.md) — R026-004
 - [Bootstrap do primeiro proprietário](produto/BOOTSTRAP-PRIMEIRO-PROPRIETARIO.md)
 
 ## Regulatório e produto
@@ -310,6 +311,11 @@ Documentos homônimos em outras aplicações do workspace, inclusive `qmind`, pe
 - [Limitações 026](produto/LIMITACOES-026.md)
 - [Evidências 026](evidencias/cursor-026/README.md)
 - [Retorno CURSOR-026](retornos/CURSOR-026-retorno.md)
+- [Revisão do proprietário 026](produto/REVISAO-PROPRIETARIO-026.md) — R026-001…011 validadas; R026-012 corrigida e revalidada (ciclo demo)
+- [Handoff consolidação Demo 026](produto/HANDOFF-DEMO-026-CONSOLIDACAO.md) — commit/push monorepo; CURSOR-027 não iniciado; sem deploy
+
+- [Inventário linguagem técnica 026](produto/INVENTARIO-LINGUAGEM-TECNICA-026.md) — R026-004 (validada integralmente)
+- [Evidências revisão proprietário](evidencias/cursor-026/revisao-proprietario/)
 - [Prompt CURSOR-011](prompts/CURSOR-011-descobrir-chao-de-fabrica.md)
 - [Retorno CURSOR-011](retornos/CURSOR-011-retorno-execucao.md)
 

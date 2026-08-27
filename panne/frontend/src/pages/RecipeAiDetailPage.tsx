@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ApiError } from "../api/errors";
+import { ApiError, isCancelledError } from "../api/errors";
 import type { RecipeAiChange, RecipeAiProposal } from "../api/types";
 import { ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
 import { RecipeAiMentor } from "../components/RecipeAiMentor";
@@ -15,7 +15,8 @@ function kindLabel(kind: RecipeAiChange["change_kind"]): string {
 
 export function RecipeAiDetailPage() {
   const { proposalId = "" } = useParams();
-  const { api, hasPermission } = useOrganization();
+  const { api, hasPermission, active } = useOrganization();
+  const orgId = active?.organization_id ?? null;
   const [proposal, setProposal] = useState<RecipeAiProposal | null>(null);
   const [grounding, setGrounding] = useState<Array<Record<string, string | null>>>([]);
   const [error, setError] = useState<unknown>(null);
@@ -26,6 +27,9 @@ export function RecipeAiDetailPage() {
 
   useEffect(() => {
     let alive = true;
+    setProposal(null);
+    setGrounding([]);
+    setError(null);
     Promise.all([api.getRecipeAiProposal(proposalId), api.getRecipeAiGrounding(proposalId)])
       .then(([detail, ground]) => {
         if (!alive) return;
@@ -33,12 +37,13 @@ export function RecipeAiDetailPage() {
         setGrounding(ground.data.results ?? []);
       })
       .catch((err) => {
-        if (alive) setError(err);
+        if (!alive || isCancelledError(err)) return;
+        setError(err);
       });
     return () => {
       alive = false;
     };
-  }, [api, proposalId]);
+  }, [api, proposalId, orgId]);
 
   const changes = useMemo(() => {
     const rows = proposal?.changes ?? [];

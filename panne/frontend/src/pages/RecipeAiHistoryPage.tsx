@@ -13,9 +13,11 @@ export function RecipeAiHistoryPage() {
     | { kind: "erro"; error: unknown }
   >({ kind: "carregando" });
 
+  const orgId = active?.organization_id ?? null;
   useEffect(() => {
-    if (!active) return;
+    if (!orgId) return;
     let alive = true;
+    setState({ kind: "carregando" });
     api
       .listRecipeAiProposals()
       .then((page) => {
@@ -27,7 +29,7 @@ export function RecipeAiHistoryPage() {
     return () => {
       alive = false;
     };
-  }, [api, active]);
+  }, [api, orgId]);
 
   return (
     <div className="stage">

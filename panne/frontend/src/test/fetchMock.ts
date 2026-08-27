@@ -42,8 +42,15 @@ export function json(data: unknown, status = 200): Response {
 
 export function installApiMock(overrides: Record<string, (url: URL, request: Request) => Response> = {}) {
   const handler = async (input: RequestInfo | URL, init?: RequestInit) => {
+    // jsdom AbortSignal ≠ undici AbortSignal (Node 18+); não repasse signal ao recriar Request.
+    const initWithoutSignal = init ? { ...init, signal: undefined } : undefined;
     const request =
-      input instanceof Request ? input : new Request(typeof input === "string" ? input : input.toString(), init);
+      input instanceof Request
+        ? input
+        : new Request(
+            typeof input === "string" ? new URL(input, window.location.origin).toString() : input.toString(),
+            initWithoutSignal,
+          );
     const url = new URL(request.url);
     const path = url.pathname;
     for (const [prefix, fn] of Object.entries(overrides)) {
@@ -109,13 +116,22 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
             id: RECIPE_ID,
             code: "PAO-1",
             display_name: "Pão francês",
-            status: "development",
+            status: "active",
             technical_product_id: "tp-1",
             row_version: 1,
             current_version: { id: RECIPE_VERSION_ID, version_number: 1, status: "draft" },
           },
+          {
+            id: "recipe-dev",
+            code: "F-DEV",
+            display_name: "Receita em desenvolvimento",
+            status: "development",
+            technical_product_id: "tp-2",
+            row_version: 1,
+            current_version: { id: "ver-dev", version_number: 1, status: "draft" },
+          },
         ],
-        total: 1,
+        total: 2,
         limit: 20,
         offset: 0,
       });
@@ -133,7 +149,9 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
       });
     }
     if (path.includes("/recipes/") && path.endsWith("/trials")) {
-      return json({ data: [] });
+      return json({
+        data: [{ id: "tr1", code: "TR-PAO-OK", status: "completed", notes: null, planned_on: null, executed_on: null }],
+      });
     }
     if (path.includes("/recipes/") && path.endsWith("/nutrition")) {
       return json({
@@ -145,7 +163,19 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
       return json({ data: [] });
     }
     if (path.includes("/recipes/") && path.endsWith("/scales")) {
-      return json({ data: [] });
+      return json({
+        data: [
+          {
+            id: "scale-1",
+            calculation_mode: "total_dough_mass",
+            scale_factor: "1.9584569733",
+            base_total_net_mass: "1685.000000",
+            required_pre_bake_mass: "3300.000000",
+            input_target_total_dough_mass: "3300.000000",
+            presentation_decimal_places: 3,
+          },
+        ],
+      });
     }
     if (path.includes("/recipes/") && path.endsWith("/references")) {
       return json({ data: [] });
@@ -221,14 +251,43 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
               id: "ri1",
               ingredient_version_id: "ffffffff-ffff-ffff-ffff-ffffffffffff",
               sequence: 1,
-              net_quantity: "1000",
-              gross_quantity: "1000",
+              net_quantity: "1000.000000",
+              gross_quantity: "1000.000000",
               measurement_unit_id: "u1",
               correction_factor: "1",
               is_flour_basis: true,
               role: "ingredient",
               notes: null,
               bakers_percentage: "100",
+              ingredient: {
+                id: "ing-1",
+                code: "FAR-TRIGO",
+                display_name: "Farinha de trigo tipo 1 (Demo)",
+                version_id: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+                version_number: 1,
+              },
+              unit: { id: "u1", code: "g", symbol: "g", dimension: "mass" },
+            },
+            {
+              id: "ri2",
+              ingredient_version_id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+              sequence: 2,
+              net_quantity: "650.000000",
+              gross_quantity: "650.000000",
+              measurement_unit_id: "u1",
+              correction_factor: "1",
+              is_flour_basis: false,
+              role: "ingredient",
+              notes: null,
+              bakers_percentage: "65.00",
+              ingredient: {
+                id: "ing-2",
+                code: "AGUA",
+                display_name: "Água (Demo)",
+                version_id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+                version_number: 1,
+              },
+              unit: { id: "u1", code: "g", symbol: "g", dimension: "mass" },
             },
           ],
           steps: [
@@ -363,6 +422,8 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
     }
     if (path.endsWith("/inventory/balances")) {
       return json({
+        as_of: "2026-08-24",
+        timezone: "America/Sao_Paulo",
         items: [
           {
             id: "bal-1",
@@ -372,39 +433,263 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
             item_label: "Farinha de trigo tipo 1",
             location_label: "Almoxarifado Central",
             lot_code: "LOT-000001",
-            physical_quantity: "1000",
-            reserved_quantity: "200",
-            available_quantity: "800",
+            lot_status: "available",
+            physical_quantity: "1500.000000",
+            reserved_quantity: "0.000000",
+            available_quantity: "1500.000000",
+            unreserved_quantity: "1500.000000",
+            eligible_quantity: "1500.000000",
+            impeded_quantity: "0.000000",
+            production_eligible: true,
+            eligibility_reason: null,
             unit_code: "g",
+          },
+          {
+            id: "bal-blocked",
+            inventory_item_id: "item-1",
+            inventory_location_id: "loc-1",
+            inventory_lot_id: "lot-3",
+            item_label: "Farinha de trigo tipo 1",
+            location_label: "Almoxarifado Central",
+            lot_code: "LOT-000003",
+            lot_status: "blocked",
+            physical_quantity: "1500.000000",
+            reserved_quantity: "0.000000",
+            available_quantity: "1500.000000",
+            unreserved_quantity: "1500.000000",
+            eligible_quantity: "0.000000",
+            impeded_quantity: "1500.000000",
+            production_eligible: false,
+            eligibility_reason: "lot_status",
+            unit_code: "g",
+          },
+          {
+            id: "bal-2",
+            inventory_item_id: "item-2",
+            inventory_location_id: "loc-1",
+            inventory_lot_id: "lot-2",
+            item_label: "Embalagens",
+            location_label: "Almoxarifado Central",
+            lot_code: "LOT-000002",
+            lot_status: "available",
+            physical_quantity: "120.000000",
+            reserved_quantity: "10.000000",
+            available_quantity: "110.000000",
+            unreserved_quantity: "110.000000",
+            eligible_quantity: "110.000000",
+            impeded_quantity: "0.000000",
+            production_eligible: true,
+            eligibility_reason: null,
+            unit_code: "un",
           },
         ],
       });
     }
     if (path.endsWith("/inventory/lots")) {
       return json({
+        as_of: "2026-08-24",
+        timezone: "America/Sao_Paulo",
         items: [
           {
             id: "lot-1",
             internal_lot_code: "LOT-000001",
             item_label: "Farinha de trigo tipo 1",
+            location_label: "Almoxarifado Central",
             status: "available",
             expires_on: "2026-09-10",
+            physical_quantity: "20000",
+            reserved_quantity: "20000",
+            unreserved_quantity: "0",
+            eligible_quantity: "0",
+            impeded_quantity: "0",
+            production_eligible: true,
+            unit_code: "g",
+          },
+          {
+            id: "lot-2",
+            internal_lot_code: "LOT-000002",
+            item_label: "Farinha de trigo tipo 1",
+            location_label: "Almoxarifado Central",
+            status: "available",
+            expires_on: "2026-08-27",
+            physical_quantity: "4000",
+            reserved_quantity: "4000",
+            unreserved_quantity: "0",
+            eligible_quantity: "0",
+            impeded_quantity: "0",
+            production_eligible: true,
+            unit_code: "g",
+          },
+          {
+            id: "lot-3",
+            internal_lot_code: "LOT-000003",
+            item_label: "Farinha de trigo tipo 1",
+            location_label: "Almoxarifado Central",
+            status: "blocked",
+            expires_on: "2026-09-13",
+            physical_quantity: "1500",
+            reserved_quantity: "0",
+            unreserved_quantity: "1500",
+            eligible_quantity: "0",
+            impeded_quantity: "1500",
+            production_eligible: false,
+            eligibility_reason: "lot_status",
+            unit_code: "g",
           },
         ],
       });
     }
     if (path.endsWith("/inventory/reservations")) {
       return json({
-        items: [{ id: "res-1", status: "partial", required_quantity: "100", reserved_quantity: "40", adopted: true }],
+        items: [
+          {
+            id: "res-1",
+            production_order_id: ORDER_ID,
+            order_public_code: "ORD-20260824-0004",
+            inventory_item_id: "item-1",
+            item_label: "Farinha de trigo tipo 1",
+            status: "reserved",
+            required_quantity: "2500.000000",
+            reserved_quantity: "2500.000000",
+            shortage_quantity: "0.000000",
+            unit_code: "g",
+            adopted: true,
+            created_at: "2026-08-24T12:00:00+00:00",
+            allocations: [
+              {
+                lot_id: "lot-2",
+                lot_code: "LOT-000002",
+                location_id: "loc-1",
+                location_label: "Almoxarifado Central",
+                quantity: "2500.000000",
+              },
+            ],
+          },
+          {
+            id: "res-2",
+            production_order_id: ORDER_ID,
+            order_public_code: "ORD-20260824-0004",
+            inventory_item_id: "item-1",
+            item_label: "Farinha de trigo tipo 1",
+            status: "partial",
+            required_quantity: "90000.000000",
+            reserved_quantity: "21500.000000",
+            shortage_quantity: "68500.000000",
+            unit_code: "g",
+            adopted: true,
+            created_at: "2026-08-24T12:05:00+00:00",
+            allocations: [
+              {
+                lot_id: "lot-2",
+                lot_code: "LOT-000002",
+                location_id: "loc-1",
+                location_label: "Almoxarifado Central",
+                quantity: "1500.000000",
+              },
+              {
+                lot_id: "lot-1",
+                lot_code: "LOT-000001",
+                location_id: "loc-1",
+                location_label: "Almoxarifado Central",
+                quantity: "20000.000000",
+              },
+            ],
+          },
+        ],
       });
     }
     if (path.endsWith("/inventory/movements")) {
       return json({
-        items: [{ id: "mov-1", movement_type: "receipt", canonical_quantity: "1000", origin_type: "opening" }],
+        items: [
+          {
+            id: "mov-1",
+            movement_type: "opening",
+            item_label: "Farinha de trigo tipo 1",
+            lot_code: "LOT-000001",
+            to_location_label: "Almoxarifado Central",
+            canonical_quantity: "20000.000000",
+            unit_code: "g",
+            sign: 1,
+            origin_type: "opening",
+            document_label: null,
+            effective_at: "2026-08-24T12:00:00+00:00",
+            created_at: "2026-08-24T12:00:00+00:00",
+            content_hash: "h1",
+          },
+          {
+            id: "mov-2",
+            movement_type: "opening",
+            item_label: "Farinha de trigo tipo 1",
+            lot_code: "LOT-000002",
+            to_location_label: "Almoxarifado Central",
+            canonical_quantity: "4000.000000",
+            unit_code: "g",
+            sign: 1,
+            origin_type: "opening",
+            effective_at: "2026-08-24T12:00:00+00:00",
+            created_at: "2026-08-24T12:00:00+00:00",
+          },
+          {
+            id: "mov-5",
+            movement_type: "receipt",
+            item_label: "Farinha de trigo tipo 1",
+            lot_code: "LOT-000005",
+            to_location_label: "Almoxarifado Central",
+            canonical_quantity: "4000.000000",
+            unit_code: "g",
+            sign: 1,
+            origin_type: "procurement_receipt",
+            document_label: "RCP-000001",
+            effective_at: "2026-08-24T13:00:00+00:00",
+            created_at: "2026-08-24T13:00:00+00:00",
+          },
+          {
+            id: "mov-6",
+            movement_type: "supplier_return",
+            item_label: "Farinha de trigo tipo 1",
+            lot_code: "LOT-000005",
+            from_location_label: "Almoxarifado Central",
+            canonical_quantity: "200.000000",
+            unit_code: "g",
+            sign: -1,
+            origin_type: "procurement_return",
+            document_label: "RET-000001",
+            effective_at: "2026-08-24T14:00:00+00:00",
+            created_at: "2026-08-24T14:00:00+00:00",
+            content_hash: "h6",
+          },
+        ],
       });
     }
     if (path.endsWith("/inventory/picks") && request.method === "GET") {
-      return json({ items: [{ id: "pick-1", public_code: "PICK-000001", status: "confirmed" }] });
+      return json({
+        items: [
+          {
+            id: "pick-1",
+            public_code: "PICK-000001",
+            production_order_id: ORDER_ID,
+            order_public_code: "ORD-20260824-0004",
+            product_label: "Pão francês (Demo)",
+            status: "confirmed",
+            created_at: "2026-08-24T15:00:00+00:00",
+            created_by_label: "Proprietário Demo",
+            line_count: 1,
+            lines: [
+              {
+                id: "pl-1",
+                item_label: "Farinha de trigo tipo 1",
+                lot_code: "LOT-000001",
+                location_label: "Almoxarifado Central",
+                quantity: "500.000000",
+                unit_code: "g",
+                suggested: true,
+                substituted: false,
+                reason: null,
+              },
+            ],
+          },
+        ],
+      });
     }
     if (path.endsWith("/inventory/counts")) {
       return json({
@@ -575,6 +860,12 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
             measurement_unit_id: "u1",
             status: "active",
             row_version: 1,
+            unit: { id: "u1", code: "kg", symbol: "kg", name: "quilograma", dimension: "mass" },
+            supplier: {
+              id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+              code: "FOR-1",
+              display_name: "Moinho Demo",
+            },
             latest_purchase: { unit_price: "18.40", currency: "BRL", observed_at: "2026-08-23T10:00:00Z" },
           },
         ],
@@ -633,6 +924,9 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
               limit_of_quantification: "0.1",
               loq_unit_id: "u1",
               method_or_source: "laudo",
+              nutrient: { id: "n1", code: "protein", name: "Proteína", group_code: "macro" },
+              unit: { id: "u1", code: "g", symbol: "g", name: "grama", dimension: "mass" },
+              loq_unit: { id: "u1", code: "g", symbol: "g", name: "grama", dimension: "mass" },
             },
           ],
           allergens: [
@@ -642,6 +936,7 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
               presence: "contains",
               data_source_id: null,
               evidence_note: "rótulo",
+              allergen: { id: "a1", code: "gluten", name: "Glúten" },
             },
           ],
           completeness: {
@@ -660,7 +955,140 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
         row_version: 1,
       });
     }
-    if (path.endsWith("/suppliers")) return json({ data: [] });
+    if (path.endsWith("/suppliers") && request.method === "GET") {
+      return json({
+        data: [
+          {
+            id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            code: "FOR-MOINHO",
+            display_name: "Moinho Demo",
+            status: "active",
+            row_version: 1,
+            active_item_count: 1,
+          },
+          {
+            id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            code: "FOR-GRANJA",
+            display_name: "Granja Demo",
+            status: "active",
+            row_version: 1,
+            active_item_count: 1,
+          },
+          {
+            id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
+            code: "FOR-LATIC",
+            display_name: "Laticínio Demo",
+            status: "active",
+            row_version: 1,
+            active_item_count: 1,
+          },
+          {
+            id: "eeeeeeee-eeee-eeee-eeee-eeeeeeee0001",
+            code: "FOR-SEMENTE",
+            display_name: "Sementes Demo",
+            status: "active",
+            row_version: 1,
+            active_item_count: 0,
+          },
+        ],
+      });
+    }
+    if (
+      path.includes("/suppliers/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") &&
+      request.method === "GET" &&
+      !path.includes("/items")
+    ) {
+      return json({
+        data: {
+          id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+          code: "FOR-MOINHO",
+          display_name: "Moinho Demo",
+          status: "active",
+          row_version: 1,
+          active_item_count: 1,
+          price_access: true,
+          items: [
+            {
+              id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+              supplier_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+              ingredient_id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+              supplier_sku: "SKU-FAR-25",
+              description: "Embalagem de demonstração",
+              package_quantity: "25",
+              measurement_unit_id: "u1",
+              status: "active",
+              row_version: 1,
+              unit: { id: "u1", code: "kg", symbol: "kg", name: "quilograma", dimension: "mass" },
+              supplier: {
+                id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                code: "FOR-MOINHO",
+                display_name: "Moinho Demo",
+              },
+              ingredient: {
+                id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+                code: "FAR-TRIGO",
+                display_name: "Farinha de trigo tipo 1 (Demo)",
+              },
+              latest_purchase: {
+                unit_price: "13.00",
+                currency: "BRL",
+                observed_at: "2026-08-24T12:00:00+00:00",
+              },
+            },
+          ],
+        },
+      });
+    }
+    if (
+      path.includes("/items/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/prices") &&
+      request.method === "GET"
+    ) {
+      return json({
+        data: [
+          {
+            id: "price-3",
+            supplier_item_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            unit_price: "13.00",
+            currency: "BRL",
+            observed_at: "2026-08-24T12:00:00+00:00",
+            source: "receipt:demo",
+            is_latest: true,
+          },
+          {
+            id: "price-2",
+            supplier_item_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            unit_price: "13.10",
+            currency: "BRL",
+            observed_at: "2026-08-23T12:00:00+00:00",
+            source: "seed-demo",
+            is_latest: false,
+          },
+          {
+            id: "price-1",
+            supplier_item_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            unit_price: "12.50",
+            currency: "BRL",
+            observed_at: "2026-08-14T12:00:00+00:00",
+            source: "seed-demo",
+            is_latest: false,
+          },
+        ],
+        price_access: true,
+      });
+    }
+    if (path.endsWith("/suppliers") && request.method === "POST") {
+      return json({
+        data: {
+          id: "ffffffff-ffff-ffff-ffff-ffffffffff01",
+          code: "FOR-NOVO",
+          display_name: "Novo Demo",
+          status: "active",
+          row_version: 1,
+          active_item_count: 0,
+        },
+        row_version: 1,
+      });
+    }
     if (path.endsWith("/catalog/units")) return json({ data: [{ id: "u1", code: "g", name: "grama", access: "somente_leitura" }] });
     if (path.endsWith("/catalog/nutrients")) return json({ data: [{ id: "n1", code: "protein", name: "proteína", access: "somente_leitura" }] });
     if (path.endsWith("/catalog/allergens")) return json({ data: [{ id: "a1", code: "gluten", name: "glúten", access: "somente_leitura" }] });

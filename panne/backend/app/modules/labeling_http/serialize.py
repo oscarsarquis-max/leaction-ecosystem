@@ -17,8 +17,8 @@ def _iso(value) -> str | None:
     return None if value is None else value.isoformat()
 
 
-def dossier_card(row: LabelingDossier) -> dict:
-    return {
+def dossier_card(row: LabelingDossier, *, formulation=None, version=None) -> dict:
+    payload = {
         "id": str(row.id),
         "status": row.status,
         "formulation_id": str(row.formulation_id),
@@ -31,7 +31,21 @@ def dossier_card(row: LabelingDossier) -> dict:
         "disclaimer": "Proposta técnica para revisão. Não é declaração de conformidade.",
         "certified": False,
         "conforme_anvisa": False,
+        "formulation": None,
+        "formulation_version": None,
     }
+    if formulation is not None:
+        payload["formulation"] = {
+            "id": str(formulation.id),
+            "code": formulation.code,
+            "display_name": formulation.display_name,
+        }
+    if version is not None:
+        payload["formulation_version"] = {
+            "id": str(version.id),
+            "version_number": version.version_number,
+        }
+    return payload
 
 
 def version_card(row: LabelingDossierVersion) -> dict:
@@ -176,7 +190,9 @@ def bundle_out(bundle: dict) -> dict:
 
 def dossier_detail(payload: dict) -> dict:
     dossier = payload["dossier"]
-    data = dossier_card(dossier)
+    formulation = payload.get("formulation")
+    version = payload.get("formulation_version")
+    data = dossier_card(dossier, formulation=formulation, version=version)
     data["profile"] = payload["profile_payload"]
     data["versions"] = [version_card(row) for row in payload["versions"]]
     data["current"] = None if payload["bundle"] is None else bundle_out(payload["bundle"])
