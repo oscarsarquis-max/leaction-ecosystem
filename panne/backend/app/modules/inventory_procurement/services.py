@@ -547,9 +547,10 @@ def _location_locked(session, organization_id, location_id) -> bool:
 
 
 def _assert_lot_usable(session, principal, lot: InventoryLot, *, override: bool):
-    today = date.today()
-    expired = lot.expires_on is not None and lot.expires_on < today
-    blocked = lot.status in BLOCKED_LOT_STATUSES or expired
+    from app.modules.inventory_procurement.eligibility import is_lot_production_eligible
+
+    eligible, _reason = is_lot_production_eligible(lot)
+    blocked = not eligible
     if blocked and not override:
         raise ValidationError("lote_indisponivel")
     if blocked and override:
@@ -759,10 +760,13 @@ def list_movements(session: Session, principal: Principal):
     )
 
 
-def suggest_fefo(session: Session, principal: Principal, item_id, quantity) -> list[dict]:
+def suggest_fefo(session: Session, principal: Principal, item_id, quantity, *, as_of=None) -> list[dict]:
     require_permission(principal, PERMISSION_INVENTORY_READ)
     org = _org(principal)
     needed = _qty(quantity)
+    from app.modules.inventory_procurement.eligibility import is_lot_production_eligible
+    from app.modules.inventory_procurement.operational_date import inventory_operational_date
+
     lots = list(
         session.scalars(
             select(InventoryLot)
@@ -776,9 +780,10 @@ def suggest_fefo(session: Session, principal: Principal, item_id, quantity) -> l
     )
     suggestions = []
     remaining = needed
-    today = date.today()
+    today = as_of if as_of is not None else inventory_operational_date()
     for lot in lots:
-        if lot.expires_on is not None and lot.expires_on < today:
+        eligible, _reason = is_lot_production_eligible(lot, as_of=today)
+        if not eligible:
             continue
         balance = _lock_balance(session, org, lot.inventory_location_id, item_id, lot.id)
         if balance is None:

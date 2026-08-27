@@ -1,3 +1,8 @@
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.modules.calculation_engine.scale import ScaleResult
 from app.modules.formula_lab.models import (
     Approval,
@@ -13,6 +18,7 @@ from app.modules.formula_lab.models import (
     TrialMeasurement,
 )
 from app.modules.formula_lab.rules import derived_gross_quantity
+from app.modules.ingredient_catalog.models import Ingredient, IngredientVersion, MeasurementUnit
 from app.modules.nutrition_calculation.models import NutritionCalculation, NutritionCalculationItem
 from app.modules.production_http.schemas import decimal_str, envelope
 
@@ -53,7 +59,90 @@ def version_out(row: FormulationVersion) -> dict:
     }
 
 
-def item_out(row: FormulationItem, bakers_percentage: str | None = None) -> dict:
+def _unit_ref(unit: MeasurementUnit | None) -> dict | None:
+    if unit is None:
+        return None
+    return {
+        "id": str(unit.id),
+        "code": unit.code,
+        "symbol": unit.symbol or unit.code,
+        "dimension": unit.dimension,
+    }
+
+
+def _ingredient_ref(
+    identity: Ingredient | None, version: IngredientVersion | None
+) -> dict | None:
+    if identity is None or version is None:
+        return None
+    return {
+        "id": str(identity.id),
+        "code": identity.code,
+        "display_name": identity.display_name,
+        "version_id": str(version.id),
+        "version_number": version.version_number,
+    }
+
+
+def load_item_enrichments(
+    session: Session, organization_id: UUID, items: list[FormulationItem]
+) -> dict[UUID, tuple[dict | None, dict | None]]:
+    """Carrega ingredientes e unidades em lote, sempre com escopo da organização.
+
+    Retorna mapa item_id → (ingredient_ref|None, unit_ref|None).
+    Versão/ingrediente de outra org não hidrata (None).
+    """
+    if not items:
+        return {}
+    version_ids = {item.ingredient_version_id for item in items}
+    unit_ids = {item.measurement_unit_id for item in items}
+    versions = list(
+        session.scalars(
+            select(IngredientVersion).where(
+                IngredientVersion.id.in_(version_ids),
+                IngredientVersion.organization_id == organization_id,
+            )
+        ).all()
+    )
+    version_by_id = {row.id: row for row in versions}
+    ingredient_ids = {row.ingredient_id for row in versions}
+    ingredients = (
+        list(
+            session.scalars(
+                select(Ingredient).where(
+                    Ingredient.id.in_(ingredient_ids),
+                    Ingredient.organization_id == organization_id,
+                )
+            ).all()
+        )
+        if ingredient_ids
+        else []
+    )
+    ingredient_by_id = {row.id: row for row in ingredients}
+    units = (
+        list(session.scalars(select(MeasurementUnit).where(MeasurementUnit.id.in_(unit_ids))).all())
+        if unit_ids
+        else []
+    )
+    unit_by_id = {row.id: row for row in units}
+    enriched: dict[UUID, tuple[dict | None, dict | None]] = {}
+    for item in items:
+        version = version_by_id.get(item.ingredient_version_id)
+        identity = None if version is None else ingredient_by_id.get(version.ingredient_id)
+        enriched[item.id] = (
+            _ingredient_ref(identity, version),
+            _unit_ref(unit_by_id.get(item.measurement_unit_id)),
+        )
+    return enriched
+
+
+def item_out(
+    row: FormulationItem,
+    bakers_percentage: str | None = None,
+    *,
+    ingredient: dict | None = None,
+    unit: dict | None = None,
+) -> dict:
     return {
         "id": str(row.id),
         "ingredient_version_id": str(row.ingredient_version_id),
@@ -68,6 +157,8 @@ def item_out(row: FormulationItem, bakers_percentage: str | None = None) -> dict
         "role": row.role,
         "notes": row.notes,
         "bakers_percentage": bakers_percentage,
+        "ingredient": ingredient,
+        "unit": unit,
     }
 
 

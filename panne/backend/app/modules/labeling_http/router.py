@@ -3,9 +3,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_runtime_session
+from app.modules.formula_lab.models import Formulation, FormulationVersion
 from app.modules.identity_organization.authorization import Principal
 from app.modules.labeling_compliance import services
 from app.modules.labeling_http.render import render_candidate
@@ -90,7 +92,42 @@ def get_dossiers(
     principal: Annotated[Principal, Depends(get_runtime_principal)],
 ):
     rows = _run(lambda: services.list_dossiers(session, principal))
-    return {"items": [dossier_card(row) for row in rows], "total": len(rows)}
+    org_id = None if principal.selected is None else principal.selected.organization_id
+    formulation_ids = {row.formulation_id for row in rows}
+    version_ids = {row.formulation_version_id for row in rows}
+    formulations = {}
+    versions = {}
+    if org_id is not None and formulation_ids:
+        formulations = {
+            row.id: row
+            for row in session.scalars(
+                select(Formulation).where(
+                    Formulation.id.in_(formulation_ids),
+                    Formulation.organization_id == org_id,
+                )
+            )
+        }
+    if org_id is not None and version_ids:
+        versions = {
+            row.id: row
+            for row in session.scalars(
+                select(FormulationVersion).where(
+                    FormulationVersion.id.in_(version_ids),
+                    FormulationVersion.organization_id == org_id,
+                )
+            )
+        }
+    return {
+        "items": [
+            dossier_card(
+                row,
+                formulation=formulations.get(row.formulation_id),
+                version=versions.get(row.formulation_version_id),
+            )
+            for row in rows
+        ],
+        "total": len(rows),
+    }
 
 
 @router.post("/labeling/dossiers")
@@ -114,7 +151,17 @@ def get_dossier(
     principal: Annotated[Principal, Depends(get_runtime_principal)],
 ):
     payload = _run(lambda: services.latest_bundle(session, principal, dossier_id))
-    return {"data": dossier_detail(payload), "row_version": payload["dossier"].row_version}
+    dossier = payload["dossier"]
+    org_id = None if principal.selected is None else principal.selected.organization_id
+    formulation = session.get(Formulation, dossier.formulation_id)
+    if formulation is not None and (org_id is None or formulation.organization_id != org_id):
+        formulation = None
+    version = session.get(FormulationVersion, dossier.formulation_version_id)
+    if version is not None and (org_id is None or version.organization_id != org_id):
+        version = None
+    payload["formulation"] = formulation
+    payload["formulation_version"] = version
+    return {"data": dossier_detail(payload), "row_version": dossier.row_version}
 
 
 @router.post("/labeling/dossiers/{dossier_id}/profile")

@@ -162,6 +162,19 @@ def test_atomic_create_versioning_and_lifecycle(engine):
         headers=_h(ctx),
     ).json()["data"]
     assert bakers["flour_mass"] == "1000.000000"
+    dossier = ctx["client"].get(
+        _base(ctx, f"/recipes/{recipe_id}/versions/{version_id}"),
+        headers=_h(ctx),
+    )
+    assert dossier.status_code == 200, dossier.text
+    dossier_items = dossier.json()["data"]["items"]
+    assert len(dossier_items) >= 2
+    flour_item = next(row for row in dossier_items if row["sequence"] == 1)
+    assert flour_item["ingredient"]["display_name"]
+    assert flour_item["ingredient"]["code"]
+    assert flour_item["unit"]["code"] == "g"
+    assert flour_item["ingredient_version_id"]
+    assert "ffffffff" not in (flour_item["ingredient"]["display_name"] or "").lower()
     assert bakers["explained_absence"] is False
     percents = {row["id"]: row["bakers_percentage"] for row in bakers["items"]}
     assert percents[item.json()["data"]["id"]].startswith("100")

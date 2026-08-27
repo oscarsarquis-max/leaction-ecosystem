@@ -33,10 +33,15 @@ describe("componentes e shell", () => {
     installApiMock();
     const { view } = await renderApp("/componentes/ingredientes");
     expect(await screen.findByRole("heading", { name: "Ingredientes" })).toBeInTheDocument();
-    expect(await screen.findByText("Farinha de trigo tipo 1")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("link", { name: "Abrir detalhe de Farinha de trigo tipo 1" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrir detalhe do código FAR-1" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Detalhe de Farinha de trigo tipo 1" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Novo ingrediente" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ingredientes" })).toBeInTheDocument();
-    expect(screen.getByText("publicado")).toBeInTheDocument();
+    expect(screen.getByText(/Rascunho v1/)).toBeInTheDocument();
+    expect(document.body.textContent).toContain("Ativa");
     expect(screen.getByLabelText("Pesquisa")).toBeInTheDocument();
     const results = await axe(view.container);
     expect(results.violations).toEqual([]);
@@ -61,13 +66,21 @@ describe("componentes e shell", () => {
     await renderApp("/componentes/ingredientes/eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
     expect(await screen.findByRole("heading", { name: "Farinha de trigo tipo 1" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Composição" })).toBeInTheDocument();
-    expect(screen.getByText(/constituinte/)).toBeInTheDocument();
+    expect(document.body.textContent).toContain("Constituinte");
     expect(screen.getByRole("heading", { name: "Nutrição por 100 g" })).toBeInTheDocument();
-    expect(screen.getAllByText(/abaixo do LQ/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Proteína: Abaixo do limite de quantificação/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Alergênicos" })).toBeInTheDocument();
+    expect(screen.getByText(/Glúten · Contém · rótulo/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Fontes e evidências" })).toBeInTheDocument();
+    expect(screen.getByText(/Nenhuma fonte global disponível/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Fornecedores e valores de compra" })).toBeInTheDocument();
-    expect(screen.getByText(/SKU-1/)).toBeInTheDocument();
+    expect(document.body.textContent).toContain("SKU-1");
+    expect(document.body.textContent).toMatch(/Embalagem:\s*25 kg/);
+    expect(document.body.textContent).toMatch(/Último valor:/);
+    expect(screen.getByText("Versão sem fonte técnica associada.")).toBeInTheDocument();
+    const completeness = screen.getByRole("heading", { name: "Completude" }).closest(".panel");
+    expect(completeness?.textContent).not.toMatch(/origem:/i);
+    expect(completeness?.textContent).not.toContain("ingredient_version.data_source_id");
     expect(screen.getByRole("dialog", { name: "Assistente de ingrediente" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Publicar versão" })).toBeInTheDocument();
   });
@@ -163,7 +176,7 @@ describe("componentes e shell", () => {
     installApiMock();
     await renderApp("/componentes/fornecedores");
     expect(await screen.findByRole("heading", { name: "Fornecedores e itens" })).toBeInTheDocument();
-    expect(screen.getByText(/append-only/)).toBeInTheDocument();
-    expect(document.body.textContent?.toLowerCase()).not.toContain("preço");
+    expect(screen.getByRole("link", { name: "Abrir detalhe de Moinho Demo" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Detalhe de Moinho Demo" })).toBeInTheDocument();
   });
 });

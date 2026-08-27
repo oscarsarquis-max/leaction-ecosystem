@@ -1,9 +1,13 @@
 import { useNavigate } from "react-router-dom";
+import { AssistantAvatar } from "../assistant/AssistantAvatar";
+import { GlobalAssistant } from "../assistant/GlobalAssistant";
+import { useAssistant } from "../assistant/AssistantContext";
 import { useOrganization } from "../session/OrganizationContext";
 
 export function SelectOrgPage() {
   const { associations, selectOrganization } = useOrganization();
   const navigate = useNavigate();
+  const { open } = useAssistant();
 
   async function choose(id: string) {
     await selectOrganization(id);
@@ -23,6 +27,8 @@ export function SelectOrgPage() {
           </li>
         ))}
       </ul>
+      <AssistantAvatar />
+      {open ? <GlobalAssistant /> : null}
     </main>
   );
 }

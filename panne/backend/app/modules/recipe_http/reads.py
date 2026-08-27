@@ -40,6 +40,7 @@ from app.modules.production_planning.errors import ValidationError
 from app.modules.recipe_http.serialize import (
     approval_out,
     item_out,
+    load_item_enrichments,
     measurement_out,
     nutrition_item_out,
     nutrition_out,
@@ -182,12 +183,20 @@ def get_version(
         raise_domain(ValidationError("recurso_nao_encontrado"))
     bakers = bakers_view(session, version.id)
     percents = {row["id"]: row["bakers_percentage"] for row in bakers["items"]}
+    items = list(items_of(session, version.id))
+    enrichments = load_item_enrichments(session, organization_id, items)
     return versioned(
         {
             "identity": recipe_card(identity, version),
             "version": version_out(version),
             "items": [
-                item_out(row, percents.get(str(row.id))) for row in items_of(session, version.id)
+                item_out(
+                    row,
+                    percents.get(str(row.id)),
+                    ingredient=enrichments.get(row.id, (None, None))[0],
+                    unit=enrichments.get(row.id, (None, None))[1],
+                )
+                for row in items
             ],
             "steps": [step_out(row) for row in steps_of(session, version.id)],
             "bakers": bakers,
@@ -210,8 +219,18 @@ def get_items(
     version = _run(lambda: _version(session, organization_id, recipe_id, version_id))
     bakers = bakers_view(session, version.id)
     percents = {row["id"]: row["bakers_percentage"] for row in bakers["items"]}
+    items = list(items_of(session, version.id))
+    enrichments = load_item_enrichments(session, organization_id, items)
     return {
-        "data": [item_out(row, percents.get(str(row.id))) for row in items_of(session, version.id)],
+        "data": [
+            item_out(
+                row,
+                percents.get(str(row.id)),
+                ingredient=enrichments.get(row.id, (None, None))[0],
+                unit=enrichments.get(row.id, (None, None))[1],
+            )
+            for row in items
+        ],
         "bakers": bakers,
     }
 

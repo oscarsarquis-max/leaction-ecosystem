@@ -18,6 +18,7 @@ import { renderApp } from "./test/renderApp";
 afterEach(() => {
   vi.unstubAllGlobals();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe("autenticação", () => {
@@ -67,6 +68,41 @@ describe("autenticação", () => {
       expect(authorization).toMatch(/^Bearer panne-fake-access-token$/);
     });
     expect(await screen.findByRole("heading", { name: "Quadro de produção" })).toBeInTheDocument();
+  });
+
+  it("R026-001: /organizacao fica fora de RequireOrganization e renderiza a seleção", async () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    const multiOrgNoSelection = {
+      ...meFixture,
+      selected_organization_id: null as string | null,
+    };
+    installApiMock({
+      "/api/v1/me": () => json(multiOrgNoSelection),
+    });
+    await renderApp("/organizacao");
+    expect(await screen.findByRole("heading", { name: "Escolha a organização" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Padaria Central" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Atelier Norte" })).toBeInTheDocument();
+
+    // Com multi-org e sem ativa, /producao redireciona para a seleção (sem página vazia).
+    const { view } = await renderApp("/producao");
+    expect(await screen.findByRole("heading", { name: "Escolha a organização" })).toBeInTheDocument();
+    view.unmount();
+
+    await renderApp("/organizacao");
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Padaria Central" }));
+    expect(await screen.findByRole("heading", { name: "Quadro de produção" })).toBeInTheDocument();
+  });
+
+  it("R026-001: /organizacao sem sessão redireciona para /entrar", async () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    installApiMock();
+    await renderApp("/organizacao", { signedIn: false });
+    expect(await screen.findByRole("heading", { name: "Entrar na Panne" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Escolha a organização" })).not.toBeInTheDocument();
   });
 
   it("descarta organização preferida inválida e recarrega o perfil", async () => {

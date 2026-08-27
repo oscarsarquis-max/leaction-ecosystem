@@ -700,7 +700,11 @@ def create_supplier(
         status="active",
     )
     session.add(row)
-    session.flush()
+    try:
+        session.flush()
+    except IntegrityError as exc:
+        session.rollback()
+        raise ValidationError("código já utilizado nesta organização") from exc
     _remember(
         session,
         organization_id=organization_id,

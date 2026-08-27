@@ -36,16 +36,20 @@ from app.modules.production_http.serialize import (
     batch_out,
     conversion_out,
     decode_cursor,
+    decode_plan_list_cursor,
     encode_cursor,
+    encode_plan_list_cursor,
     iso,
     order_out,
     page,
     plan_item_out,
+    plan_items_summary,
     plan_out,
 )
 from app.modules.production_http.traceability import build_traceability
 from app.modules.production_planning.constants import SHIFTS
 from app.modules.production_planning.errors import ValidationError
+from app.modules.formula_lab.models import TechnicalProduct
 from app.modules.production_planning.models import (
     ProductionBatch,
     ProductionBatchMaterial,
@@ -88,6 +92,48 @@ def _paginate(rows, created_attr, cursor: str | None, limit: int):
     return sliced, nxt
 
 
+_SHIFT_RANK = {name: index for index, name in enumerate(SHIFTS)}
+
+
+def _plan_list_sort_key(row: ProductionPlan) -> tuple[str, int, str, str]:
+    return (
+        row.operational_date.isoformat(),
+        _SHIFT_RANK.get(row.shift or "", 99),
+        row.public_code or "",
+        str(row.id),
+    )
+
+
+def _enrich_plan_summaries(
+    session: Session, plans: list[ProductionPlan]
+) -> dict[UUID, tuple[int, str]]:
+    """Uma query em lote para itens+produtos da página (sem N+1)."""
+    if not plans:
+        return {}
+    plan_ids = [plan.id for plan in plans]
+    rows = session.execute(
+        select(
+            ProductionPlanItem.production_plan_id,
+            TechnicalProduct.display_name,
+        )
+        .outerjoin(
+            TechnicalProduct,
+            (TechnicalProduct.id == ProductionPlanItem.technical_product_id)
+            & (TechnicalProduct.organization_id == ProductionPlanItem.organization_id),
+        )
+        .where(ProductionPlanItem.production_plan_id.in_(plan_ids))
+        .order_by(
+            ProductionPlanItem.production_plan_id,
+            ProductionPlanItem.sort_order,
+            ProductionPlanItem.id,
+        )
+    ).all()
+    names_by_plan: dict[UUID, list[str | None]] = {plan_id: [] for plan_id in plan_ids}
+    for plan_id, display_name in rows:
+        names_by_plan.setdefault(plan_id, []).append(display_name)
+    return {plan_id: plan_items_summary(names) for plan_id, names in names_by_plan.items()}
+
+
 @router.get("/plans")
 def list_plans(
     organization_id: UUID,
@@ -104,9 +150,29 @@ def list_plans(
     query = select(ProductionPlan).where(ProductionPlan.organization_id == organization_id)
     if status:
         query = query.where(ProductionPlan.status == status)
-    rows = list(session.scalars(query.order_by(ProductionPlan.created_at, ProductionPlan.id)))
-    items, nxt = _paginate(rows, "created_at", cursor, limit)
-    return page([plan_out(row) for row in items], nxt)
+    rows = list(session.scalars(query).all())
+    rows.sort(key=_plan_list_sort_key)
+    decoded = decode_plan_list_cursor(cursor)
+    if decoded is not None:
+        date_part, shift_part, code_part, last_id = decoded
+        cursor_key = (date_part, _SHIFT_RANK.get(shift_part, 99), code_part, str(last_id))
+        rows = [row for row in rows if _plan_list_sort_key(row) > cursor_key]
+    page_rows = rows[:limit]
+    summaries = _enrich_plan_summaries(session, page_rows)
+    items = []
+    for row in page_rows:
+        count, summary = summaries.get(row.id, (0, "Nenhum item planejado"))
+        items.append(plan_out(row, item_count=count, items_summary=summary))
+    next_cursor = None
+    if len(rows) > limit and page_rows:
+        last = page_rows[-1]
+        next_cursor = encode_plan_list_cursor(
+            last.operational_date,
+            last.shift,
+            last.public_code or "",
+            last.id,
+        )
+    return page(items, next_cursor)
 
 
 @router.get("/plans/{plan_id}")
@@ -121,13 +187,23 @@ def get_plan(
     except Exception as exc:
         raise_domain(exc)
     plan = _visible(session, ProductionPlan, plan_id, organization_id)
-    items = list(
-        session.scalars(
-            select(ProductionPlanItem).where(ProductionPlanItem.production_plan_id == plan.id)
-        )
+    joined = list(
+        session.execute(
+            select(ProductionPlanItem, TechnicalProduct)
+            .outerjoin(
+                TechnicalProduct,
+                (TechnicalProduct.id == ProductionPlanItem.technical_product_id)
+                & (TechnicalProduct.organization_id == organization_id),
+            )
+            .where(ProductionPlanItem.production_plan_id == plan.id)
+            .order_by(ProductionPlanItem.sort_order, ProductionPlanItem.id)
+        ).all()
     )
     return envelope(
-        {**plan_out(plan), "items": [plan_item_out(item) for item in items]},
+        {
+            **plan_out(plan),
+            "items": [plan_item_out(item, product=product) for item, product in joined],
+        },
         plan.row_version,
     )
 
@@ -145,12 +221,33 @@ def list_orders(
         require_permission(principal, PERMISSION_PRODUCTION_ORDER_READ)
     except Exception as exc:
         raise_domain(exc)
-    query = select(ProductionOrder).where(ProductionOrder.organization_id == organization_id)
+    query = (
+        select(ProductionOrder, ProductionPlan, TechnicalProduct)
+        .outerjoin(
+            ProductionPlan,
+            (ProductionPlan.id == ProductionOrder.plan_id)
+            & (ProductionPlan.organization_id == organization_id),
+        )
+        .outerjoin(
+            TechnicalProduct,
+            (TechnicalProduct.id == ProductionOrder.technical_product_id)
+            & (TechnicalProduct.organization_id == organization_id),
+        )
+        .where(ProductionOrder.organization_id == organization_id)
+    )
     if status:
         query = query.where(ProductionOrder.status == status)
-    rows = list(session.scalars(query.order_by(ProductionOrder.created_at, ProductionOrder.id)))
-    items, nxt = _paginate(rows, "created_at", cursor, limit)
-    return page([order_out(row) for row in items], nxt)
+    joined = list(session.execute(query.order_by(ProductionOrder.created_at, ProductionOrder.id)).all())
+    by_id = {order.id: (order, plan, product) for order, plan, product in joined}
+    orders = [order for order, _plan, _product in joined]
+    items, nxt = _paginate(orders, "created_at", cursor, limit)
+    return page(
+        [
+            order_out(order, product=by_id[order.id][2], plan=by_id[order.id][1])
+            for order in items
+        ],
+        nxt,
+    )
 
 
 @router.get("/orders/{order_id}")
@@ -165,7 +262,15 @@ def get_order(
     except Exception as exc:
         raise_domain(exc)
     order = _visible(session, ProductionOrder, order_id, organization_id)
-    return envelope(order_out(order), order.row_version)
+    product = session.get(TechnicalProduct, order.technical_product_id)
+    if product is not None and product.organization_id != organization_id:
+        product = None
+    plan = None
+    if order.plan_id is not None:
+        plan = session.get(ProductionPlan, order.plan_id)
+        if plan is not None and plan.organization_id != organization_id:
+            plan = None
+    return envelope(order_out(order, product=product, plan=plan), order.row_version)
 
 
 @router.get("/batches/{batch_id}")

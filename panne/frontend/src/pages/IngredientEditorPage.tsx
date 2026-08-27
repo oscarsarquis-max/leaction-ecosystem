@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ApiError } from "../api/errors";
+import { ApiError, isCancelledError } from "../api/errors";
 import type {
   AllergenLine,
   CatalogItem,
@@ -12,21 +12,49 @@ import type {
 } from "../api/types";
 import { ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
 import { IngredientAssistant } from "../components/IngredientAssistant";
+import { TechnicalAuditDetails } from "../components/TechnicalAuditDetails";
+import {
+  allergenPresenceLabel,
+  formatAllergenLine,
+  formatMoneyAmount,
+  formatNutrientLine,
+  formatPackageQuantity,
+  globalSourcesSummary,
+  ingredientStatusTone,
+  ingredientTypeLabel,
+  ingredientVersionLabel,
+  nutrientStatusLabel,
+} from "../language/ingredients";
 import { useCommand } from "../ops/useCommand";
 import { useOrganization } from "../session/OrganizationContext";
 
-function versionTone(status: string): "sucesso" | "atencao" | "neutro" | "info" {
-  if (status === "published") return "sucesso";
-  if (status === "draft") return "atencao";
-  if (status === "retired") return "neutro";
-  return "info";
-}
-
-function versionLabel(status: string): string {
-  if (status === "published") return "publicado";
-  if (status === "draft") return "rascunho";
-  if (status === "retired") return "aposentado";
-  return status;
+function clearDossierState(setters: {
+  setIdentity: (v: {
+    code: string;
+    display_name: string;
+    ingredient_type: string;
+    row_version: number;
+  }) => void;
+  setVersions: (v: IngredientVersion[]) => void;
+  setVersion: (v: IngredientVersion | null) => void;
+  setCompleteness: (v: Completeness | null) => void;
+  setComposition: (v: CompositionLine[]) => void;
+  setNutrientRows: (v: NutrientLine[]) => void;
+  setAllergenRows: (v: AllergenLine[]) => void;
+  setItems: (v: SupplierItemCard[]) => void;
+  setNotes: (v: string) => void;
+  setSourceId: (v: string) => void;
+}) {
+  setters.setIdentity({ code: "", display_name: "", ingredient_type: "simple", row_version: 1 });
+  setters.setVersions([]);
+  setters.setVersion(null);
+  setters.setCompleteness(null);
+  setters.setComposition([]);
+  setters.setNutrientRows([]);
+  setters.setAllergenRows([]);
+  setters.setItems([]);
+  setters.setNotes("");
+  setters.setSourceId("");
 }
 
 export function IngredientEditorPage() {
@@ -68,74 +96,117 @@ export function IngredientEditorPage() {
   const [presence, setPresence] = useState("contains");
   const [evidence, setEvidence] = useState("");
   const [loading, setLoading] = useState(!isNew);
+  const loadGeneration = useRef(0);
+  const showPurchasePrice =
+    hasPermission("supplier.price.record") ||
+    hasPermission("costing.read") ||
+    hasPermission("procurement.order.manage");
 
-  const reload = useCallback(async (id: string, preferredVersion?: string) => {
-    const detail = await api.getIngredient(id);
-    setIdentity({
-      code: detail.data.code,
-      display_name: detail.data.display_name,
-      ingredient_type: detail.data.ingredient_type,
-      row_version: detail.data.row_version,
-    });
-    setVersions(detail.data.versions);
-    const current =
-      detail.data.versions.find((item) => item.id === preferredVersion) ?? detail.data.versions[0];
-    if (!current) return;
-    const dossier = await api.getIngredientVersion(id, current.id);
-    setVersion(dossier.data.version);
-    setCompleteness(dossier.data.completeness);
-    setComposition(dossier.data.composition);
-    setNutrientRows(dossier.data.nutrients);
-    setAllergenRows(dossier.data.allergens);
-    setNotes(dossier.data.version.notes ?? "");
-    setSourceId(dossier.data.version.data_source_id ?? "");
-    try {
-      const listed = await api.listIngredientItems(id);
-      setItems(listed.data);
-    } catch {
-      setItems([]);
-    }
-  }, [api]);
+  const reload = useCallback(
+    async (id: string, preferredVersion?: string, token?: number) => {
+      const detail = await api.getIngredient(id);
+      if (token != null && loadGeneration.current !== token) return;
+      setIdentity({
+        code: detail.data.code,
+        display_name: detail.data.display_name,
+        ingredient_type: detail.data.ingredient_type,
+        row_version: detail.data.row_version,
+      });
+      setVersions(detail.data.versions);
+      const current =
+        detail.data.versions.find((item) => item.id === preferredVersion) ?? detail.data.versions[0];
+      if (!current) return;
+      const dossier = await api.getIngredientVersion(id, current.id);
+      if (token != null && loadGeneration.current !== token) return;
+      setVersion(dossier.data.version);
+      setCompleteness(dossier.data.completeness);
+      setComposition(dossier.data.composition);
+      setNutrientRows(dossier.data.nutrients);
+      setAllergenRows(dossier.data.allergens);
+      setNotes(dossier.data.version.notes ?? "");
+      setSourceId(dossier.data.version.data_source_id ?? "");
+      try {
+        const listed = await api.listIngredientItems(id);
+        if (token != null && loadGeneration.current !== token) return;
+        setItems(listed.data);
+      } catch (caught) {
+        if (isCancelledError(caught)) return;
+        if (token != null && loadGeneration.current !== token) return;
+        setItems([]);
+      }
+    },
+    [api],
+  );
 
   useEffect(() => {
-    if (!active) return;
+    if (!active?.organization_id) return;
+    setCandidates([]);
     void Promise.all([
       api.getCatalogUnits(),
       api.getCatalogNutrients(),
       api.getCatalogAllergens(),
       api.getCatalogSources(),
       api.listIngredients({ limit: "50" }),
-    ]).then(([unitPage, nutrientPage, allergenPage, sourcePage, list]) => {
-      setUnits(unitPage.data);
-      setNutrients(nutrientPage.data);
-      setAllergens(allergenPage.data);
-      setSources(sourcePage.data);
-      setCandidates(
-        list.items
-          .filter((item) => item.id !== ingredientId && item.current_version)
-          .map((item) => ({
-            id: item.current_version!.id,
-            label: `${item.display_name} (${item.code})`,
-          })),
-      );
-    }).catch(() => undefined);
-  }, [api, active, ingredientId]);
+    ])
+      .then(([unitPage, nutrientPage, allergenPage, sourcePage, list]) => {
+        setUnits(unitPage.data);
+        setNutrients(nutrientPage.data);
+        setAllergens(allergenPage.data);
+        setSources(sourcePage.data);
+        setCandidates(
+          list.items
+            .filter((item) => item.id !== ingredientId && item.current_version)
+            .map((item) => ({
+              id: item.current_version!.id,
+              label: `${item.display_name} (${item.code})`,
+            })),
+        );
+      })
+      .catch((caught) => {
+        if (isCancelledError(caught)) return;
+      });
+  }, [api, active?.organization_id, ingredientId]);
 
   useEffect(() => {
-    if (!ingredientId || !active) return;
+    if (!ingredientId || !active?.organization_id) return;
+    const token = ++loadGeneration.current;
     setLoading(true);
-    reload(ingredientId)
-      .catch(setError)
-      .finally(() => setLoading(false));
-  }, [api, ingredientId, active, reload]);
+    setError(null);
+    clearDossierState({
+      setIdentity,
+      setVersions,
+      setVersion,
+      setCompleteness,
+      setComposition,
+      setNutrientRows,
+      setAllergenRows,
+      setItems,
+      setNotes,
+      setSourceId,
+    });
+    reload(ingredientId, undefined, token)
+      .then(() => {
+        if (loadGeneration.current === token) setLoading(false);
+      })
+      .catch((caught) => {
+        if (loadGeneration.current !== token) return;
+        if (isCancelledError(caught)) return;
+        setError(caught);
+        setLoading(false);
+      });
+  }, [api, ingredientId, active?.organization_id, reload]);
 
   async function run(name: string, action: (key: string) => Promise<unknown>) {
     try {
       await command.run(name, action);
       setDirty(false);
       setError(null);
-      if (ingredientId) await reload(ingredientId, version?.id);
+      if (ingredientId) {
+        const token = ++loadGeneration.current;
+        await reload(ingredientId, version?.id, token);
+      }
     } catch (caught) {
+      if (isCancelledError(caught)) return;
       setError(caught);
     }
   }
@@ -157,21 +228,36 @@ export function IngredientEditorPage() {
       );
       if (result?.data.id) navigate(`/componentes/ingredientes/${result.data.id}`);
     } catch (caught) {
+      if (isCancelledError(caught)) return;
       setError(caught);
     }
   }
 
   const frozen = version?.status === "published";
   const canDraft = hasPermission("ingredient.update_draft") && !frozen;
+  const presentableError = error && !isCancelledError(error) ? error : null;
 
   if (loading) return <LoadingState />;
-  if (!isNew && error && !identity.code && !dirty) {
+  if (!isNew && presentableError && !identity.code && !dirty) {
     return (
       <ErrorState
-        error={error instanceof ApiError ? error : new Error("Falha no dossiê")}
+        error={presentableError instanceof ApiError ? presentableError : new Error("Falha no dossiê")}
         onRetry={() => {
           setError(null);
-          if (ingredientId) void reload(ingredientId);
+          if (ingredientId) {
+            const token = ++loadGeneration.current;
+            setLoading(true);
+            reload(ingredientId, undefined, token)
+              .then(() => {
+                if (loadGeneration.current === token) setLoading(false);
+              })
+              .catch((caught) => {
+                if (loadGeneration.current !== token) return;
+                if (isCancelledError(caught)) return;
+                setError(caught);
+                setLoading(false);
+              });
+          }
         }}
       />
     );
@@ -184,17 +270,20 @@ export function IngredientEditorPage() {
           <h1>{isNew ? "Novo ingrediente" : identity.display_name || "Ingrediente"}</h1>
           <p className="lede">
             {version ? (
-              <StatusBadge tone={versionTone(version.status)} label={versionLabel(version.status)} />
+              <StatusBadge
+                tone={ingredientStatusTone(version.status)}
+                label={ingredientVersionLabel(version.status)}
+              />
             ) : (
-              <StatusBadge tone="atencao" label="rascunho" />
+              <StatusBadge tone="atencao" label="Rascunho" />
             )}{" "}
             {dirty ? "Há alterações não salvas." : "Dossiê sincronizado."}
           </p>
-          {error instanceof ApiError ? (
+          {presentableError instanceof ApiError ? (
             <p role="alert">
-              {error.code === "conflito"
+              {presentableError.code === "conflito"
                 ? "O estado mudou. Recarregue e tente de novo."
-                : error.message}
+                : presentableError.message}
             </p>
           ) : null}
 
@@ -246,9 +335,9 @@ export function IngredientEditorPage() {
                 }}
                 disabled={!isNew}
               >
-                <option value="simple">simples</option>
-                <option value="composite">composto</option>
-                <option value="preparation">preparação</option>
+                <option value="simple">{ingredientTypeLabel("simple")}</option>
+                <option value="composite">{ingredientTypeLabel("composite")}</option>
+                <option value="preparation">{ingredientTypeLabel("preparation")}</option>
               </select>
             </label>
             {isNew && hasPermission("ingredient.create") ? (
@@ -271,12 +360,25 @@ export function IngredientEditorPage() {
                 <select
                   value={version.id}
                   onChange={(event) => {
-                    if (ingredientId) void reload(ingredientId, event.target.value);
+                    if (!ingredientId) return;
+                    const token = ++loadGeneration.current;
+                    setLoading(true);
+                    setError(null);
+                    reload(ingredientId, event.target.value, token)
+                      .then(() => {
+                        if (loadGeneration.current === token) setLoading(false);
+                      })
+                      .catch((caught) => {
+                        if (loadGeneration.current !== token) return;
+                        if (isCancelledError(caught)) return;
+                        setError(caught);
+                        setLoading(false);
+                      });
                   }}
                 >
                   {versions.map((item) => (
                     <option key={item.id} value={item.id}>
-                      v{item.version_number} · {versionLabel(item.status)}
+                      v{item.version_number} · {ingredientVersionLabel(item.status)}
                     </option>
                   ))}
                 </select>
@@ -328,7 +430,7 @@ export function IngredientEditorPage() {
               <ul>
                 {composition.map((line) => (
                   <li key={line.id}>
-                    {line.component_type === "preparation" ? "preparação" : "constituinte"} ·{" "}
+                    {line.component_type === "preparation" ? "Preparação" : "Constituinte"} ·{" "}
                     {line.quantity} · seq {line.sequence}
                     {canDraft ? (
                       <>
@@ -359,7 +461,7 @@ export function IngredientEditorPage() {
                       value={componentVersionId}
                       onChange={(event) => setComponentVersionId(event.target.value)}
                     >
-                      <option value="">selecione</option>
+                      <option value="">Selecione</option>
                       {candidates.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.label}
@@ -409,11 +511,7 @@ export function IngredientEditorPage() {
               <p className="meta">Ausência não é zero. Abaixo do LQ permanece abaixo do LQ.</p>
               <ul>
                 {nutrientRows.map((row) => (
-                  <li key={row.id}>
-                    {row.value_status}
-                    {row.value ? ` · ${row.value}` : ""}
-                    {row.value_status === "below_loq" ? ` · LQ ${row.limit_of_quantification}` : ""}
-                  </li>
+                  <li key={row.id}>{formatNutrientLine(row)}</li>
                 ))}
               </ul>
               {canDraft ? (
@@ -421,7 +519,7 @@ export function IngredientEditorPage() {
                   <label>
                     Nutriente
                     <select value={nutrientId} onChange={(event) => setNutrientId(event.target.value)}>
-                      <option value="">selecione</option>
+                      <option value="">Selecione</option>
                       {nutrients.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.name ?? item.code}
@@ -435,11 +533,11 @@ export function IngredientEditorPage() {
                       value={nutrientStatus}
                       onChange={(event) => setNutrientStatus(event.target.value)}
                     >
-                      <option value="measured">medido</option>
-                      <option value="known_zero">zero conhecido</option>
-                      <option value="below_loq">abaixo do LQ</option>
-                      <option value="not_detected">não detectado</option>
-                      <option value="unknown">desconhecido</option>
+                      <option value="measured">{nutrientStatusLabel("measured")}</option>
+                      <option value="known_zero">{nutrientStatusLabel("known_zero")}</option>
+                      <option value="below_loq">{nutrientStatusLabel("below_loq")}</option>
+                      <option value="not_detected">{nutrientStatusLabel("not_detected")}</option>
+                      <option value="unknown">{nutrientStatusLabel("unknown")}</option>
                     </select>
                   </label>
                   <label>
@@ -486,10 +584,7 @@ export function IngredientEditorPage() {
               <h2>Alergênicos</h2>
               <ul>
                 {allergenRows.map((row) => (
-                  <li key={row.id}>
-                    {row.presence}
-                    {row.evidence_note ? ` · ${row.evidence_note}` : ""}
-                  </li>
+                  <li key={row.id}>{formatAllergenLine(row)}</li>
                 ))}
               </ul>
               {canDraft ? (
@@ -497,7 +592,7 @@ export function IngredientEditorPage() {
                   <label>
                     Alergênico
                     <select value={allergenId} onChange={(event) => setAllergenId(event.target.value)}>
-                      <option value="">selecione</option>
+                      <option value="">Selecione</option>
                       {allergens.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.name ?? item.code}
@@ -508,9 +603,9 @@ export function IngredientEditorPage() {
                   <label>
                     Presença
                     <select value={presence} onChange={(event) => setPresence(event.target.value)}>
-                      <option value="contains">contém</option>
-                      <option value="may_contain">pode conter / traços</option>
-                      <option value="not_declared">ausência conhecida / não declarado</option>
+                      <option value="contains">{allergenPresenceLabel("contains")}</option>
+                      <option value="may_contain">{allergenPresenceLabel("may_contain")}</option>
+                      <option value="not_declared">{allergenPresenceLabel("not_declared")}</option>
                     </select>
                   </label>
                   <label>
@@ -540,8 +635,8 @@ export function IngredientEditorPage() {
             <section className="panel">
               <h2>Fontes e evidências</h2>
               <p className="meta">
-                Catálogo global visível: {sources.length} fonte(s), somente leitura. Sem upload e sem
-                consulta externa.
+                {globalSourcesSummary(sources.length)}, somente leitura. Sem upload e sem consulta
+                externa.
               </p>
               <label>
                 Fonte da versão
@@ -553,7 +648,7 @@ export function IngredientEditorPage() {
                     setDirty(true);
                   }}
                 >
-                  <option value="">sem fonte</option>
+                  <option value="">Sem fonte</option>
                   {sources.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.title ?? item.code}
@@ -599,10 +694,20 @@ export function IngredientEditorPage() {
               <ul>
                 {items.map((item) => (
                   <li key={item.id}>
-                    {item.supplier_sku} · {item.package_quantity}
-                    {item.latest_purchase
-                      ? ` · último valor ${item.latest_purchase.unit_price} ${item.latest_purchase.currency}`
-                      : ""}
+                    <div>{item.supplier_sku}</div>
+                    <div className="meta">
+                      Embalagem: {formatPackageQuantity(item.package_quantity, item.unit)}
+                      {item.supplier?.display_name ? ` · ${item.supplier.display_name}` : ""}
+                    </div>
+                    {showPurchasePrice && item.latest_purchase ? (
+                      <div className="meta">
+                        Último valor:{" "}
+                        {formatMoneyAmount(
+                          item.latest_purchase.unit_price,
+                          item.latest_purchase.currency,
+                        )}
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -629,9 +734,49 @@ export function IngredientEditorPage() {
           <section className="panel">
             <h2>Auditoria</h2>
             <p className="meta">
-              Organização soberana. Versão de linha {version?.row_version ?? identity.row_version}. Autor
-              da versão: {version?.created_by_user_id ?? "ainda sem publicação"}.
+              Organização soberana. Autor da versão:{" "}
+              {version?.created_by_user_id ? "registrado (ver detalhes técnicos)" : "ainda sem publicação"}.
             </p>
+            <TechnicalAuditDetails
+              rows={[
+                {
+                  label: "Versão de linha",
+                  value: String(version?.row_version ?? identity.row_version),
+                },
+                {
+                  label: "Identificador do autor",
+                  value: version?.created_by_user_id ?? "—",
+                  copyable: Boolean(version?.created_by_user_id),
+                },
+                ...(completeness?.items ?? []).map((item) => ({
+                  label: `Origem · ${item.code}`,
+                  value: item.origin,
+                })),
+                ...nutrientRows.map((row) => ({
+                  label: `Nutriente · ${row.nutrient?.code ?? row.nutrient_id}`,
+                  value: row.nutrient_id,
+                  copyable: true as const,
+                })),
+                ...allergenRows.map((row) => ({
+                  label: `Alergênico · ${row.allergen?.code ?? row.allergen_id}`,
+                  value: row.allergen_id,
+                  copyable: true as const,
+                })),
+                ...items.flatMap((item) => {
+                  const rows: Array<{ label: string; value: string; copyable?: boolean }> = [
+                    { label: `SKU · ${item.supplier_sku}`, value: item.id, copyable: true },
+                  ];
+                  if (showPurchasePrice && item.latest_purchase) {
+                    rows.push({
+                      label: `Moeda ISO · ${item.supplier_sku}`,
+                      value: item.latest_purchase.currency,
+                      copyable: false,
+                    });
+                  }
+                  return rows;
+                }),
+              ]}
+            />
           </section>
         </div>
         <aside className="panel">
@@ -640,12 +785,11 @@ export function IngredientEditorPage() {
             completeness.items.map((item) => (
               <p key={item.code}>
                 <StatusBadge tone={item.blocking ? "erro" : "atencao"} label={item.label} />
-                <span className="meta"> origem: {item.origin}</span>
               </p>
             ))
           ) : (
             <p>
-              <StatusBadge tone="sucesso" label="dossiê completo" />
+              <StatusBadge tone="sucesso" label="Dossiê completo" />
             </p>
           )}
         </aside>

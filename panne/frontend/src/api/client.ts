@@ -30,7 +30,9 @@ import type {
   ScaleRow,
   TrialRow,
   SupplierCard,
+  SupplierDetail,
   SupplierItemCard,
+  SupplierPriceRow,
   Dependency,
   Envelope,
   EventRow,
@@ -184,6 +186,16 @@ export class ApiClient {
     return this.catalogGet<{ data: SupplierCard[] }>("/suppliers", query);
   }
 
+  getSupplier(supplierId: string) {
+    return this.catalogGet<{ data: SupplierDetail }>(`/suppliers/${supplierId}`);
+  }
+
+  listItemPrices(itemId: string) {
+    return this.catalogGet<{ data: SupplierPriceRow[]; price_access: boolean }>(
+      `/items/${itemId}/prices`,
+    );
+  }
+
   getCatalogUnits() {
     return this.catalogGet<{ data: CatalogItem[] }>("/catalog/units");
   }
@@ -322,7 +334,7 @@ export class ApiClient {
   }
 
   listInventory<T = Record<string, unknown>>(path: string, query: Query = {}) {
-    return this.catalogGet<{ items: T[] }>(path, query);
+    return this.catalogGet<{ items: T[]; as_of?: string; timezone?: string }>(path, query);
   }
 
   reportingCatalog() {

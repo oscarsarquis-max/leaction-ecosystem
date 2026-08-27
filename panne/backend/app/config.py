@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     oidc_required_scope: str = ""
     jwks_timeout_seconds: float = 3.0
     max_authorization_header_bytes: int = 8192
+    # Só efetiva com PANNE_ENV=demo. Fora disso é ignorada (sem efeito em produção).
+    # Default alinhado ao seed DEFAULT_ANCHOR quando env=demo e o campo está vazio.
+    demo_anchor_date: str = ""
+    # Identidade da execução demo (start-demo). Fora de demo permanece vazio.
+    demo_instance_id: str = ""
+    demo_started_at: str = ""
 
 
 @lru_cache

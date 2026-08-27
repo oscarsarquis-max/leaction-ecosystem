@@ -13,33 +13,21 @@ import type {
 } from "../api/types";
 import { ErrorState, LoadingState, StatusBadge } from "../components/Feedback";
 import { RecipeAssistant } from "../components/RecipeAssistant";
+import { TechnicalAuditDetails } from "../components/TechnicalAuditDetails";
+import { formatOperationalQuantity } from "../language/quantities";
+import {
+  formatBakersPercentage,
+  formatScaleFactor,
+  formatYieldSummary,
+  ingredientLineLabel,
+  recipeApprovalLabel,
+  recipeStatusTone,
+  recipeTrialLabel,
+  recipeVersionLabel,
+  unitDisplayCode,
+} from "../language/recipes";
 import { useCommand } from "../ops/useCommand";
 import { useOrganization } from "../session/OrganizationContext";
-
-function versionTone(status: string): "sucesso" | "atencao" | "neutro" | "info" | "erro" {
-  if (status === "published" || status === "approved") return "sucesso";
-  if (status === "draft" || status === "submitted" || status === "in_progress") return "atencao";
-  if (status === "retired" || status === "cancelled") return "neutro";
-  if (status === "rejected" || status === "revoked") return "erro";
-  return "info";
-}
-
-function versionLabel(status: string): string {
-  const labels: Record<string, string> = {
-    draft: "rascunho",
-    published: "publicado",
-    retired: "aposentado",
-    submitted: "em revisão",
-    approved: "aprovado",
-    rejected: "rejeitado",
-    revoked: "revogado",
-    planned: "trial pendente",
-    in_progress: "trial em andamento",
-    completed: "trial concluído",
-    cancelled: "trial cancelado",
-  };
-  return labels[status] ?? status;
-}
 
 export function RecipeEditorPage() {
   const { recipeId } = useParams();
@@ -114,9 +102,21 @@ export function RecipeEditorPage() {
   );
 
   useEffect(() => {
-    if (!active || isNew) return;
+    if (!active?.organization_id || isNew) return;
     let alive = true;
     setLoading(true);
+    setError(null);
+    setIdentity({ code: "", display_name: "", row_version: 1 });
+    setVersions([]);
+    setVersion(null);
+    setItems([]);
+    setSteps([]);
+    setTrials([]);
+    setScales([]);
+    setApprovals([]);
+    setNutrition(null);
+    setCompleteness(null);
+    setFlourMass(null);
     reload(recipeId)
       .catch((err) => {
         if (alive) setError(err);
@@ -127,7 +127,7 @@ export function RecipeEditorPage() {
     return () => {
       alive = false;
     };
-  }, [active, isNew, recipeId, reload]);
+  }, [active?.organization_id, isNew, recipeId, reload]);
 
   async function createRecipe(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -200,20 +200,22 @@ export function RecipeEditorPage() {
         <h1>{identity.display_name}</h1>
         <p className="lede">
           {identity.code}{" "}
-          {version ? <StatusBadge tone={versionTone(version.status)} label={versionLabel(version.status)} /> : null}{" "}
+          {version ? (
+            <StatusBadge tone={recipeStatusTone(version.status)} label={recipeVersionLabel(version.status)} />
+          ) : null}{" "}
           {latestDecision ? (
-            <StatusBadge tone={versionTone(latestDecision)} label={versionLabel(latestDecision)} />
+            <StatusBadge tone={recipeStatusTone(latestDecision)} label={recipeApprovalLabel(latestDecision)} />
           ) : null}{" "}
           {pendingTrial ? (
-            <StatusBadge tone="atencao" label={versionLabel(pendingTrial.status)} />
+            <StatusBadge tone="atencao" label={recipeTrialLabel(pendingTrial.status)} />
           ) : trials.some((item) => item.status === "completed") ? (
-            <StatusBadge tone="sucesso" label="trial concluído" />
+            <StatusBadge tone="sucesso" label="Ensaio concluído" />
           ) : null}{" "}
-          {nutrition == null ? <StatusBadge tone="atencao" label="nutrição incompleta" /> : null}{" "}
+          {nutrition == null ? <StatusBadge tone="atencao" label="Nutrição incompleta" /> : null}{" "}
           {completeness?.ready_to_publish ? (
-            <StatusBadge tone="sucesso" label="pronta para publicar" />
+            <StatusBadge tone="sucesso" label="Pronta para publicar" />
           ) : (
-            <StatusBadge tone="info" label="prontidão incompleta" />
+            <StatusBadge tone="info" label="Prontidão incompleta" />
           )}
         </p>
         {error ? <ErrorState error={error instanceof ApiError ? error : new Error("Falha")} /> : null}
@@ -225,6 +227,7 @@ export function RecipeEditorPage() {
             <thead>
               <tr>
                 <th>Seq.</th>
+                <th>Ingrediente</th>
                 <th>Líquido</th>
                 <th>Bruto</th>
                 <th>% padeiro</th>
@@ -232,17 +235,30 @@ export function RecipeEditorPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.sequence}</td>
-                  <td>{item.net_quantity}</td>
-                  <td>{item.gross_quantity}</td>
-                  <td>{item.bakers_percentage ?? "—"}</td>
-                  <td>{item.is_flour_basis ? "sim" : "não"}</td>
-                </tr>
-              ))}
+              {items.map((item) => {
+                const unit = unitDisplayCode(item.unit);
+                return (
+                  <tr key={item.id}>
+                    <td>{item.sequence}</td>
+                    <td>{ingredientLineLabel(item)}</td>
+                    <td>{formatOperationalQuantity(item.net_quantity, unit)}</td>
+                    <td>{formatOperationalQuantity(item.gross_quantity, unit)}</td>
+                    <td>{formatBakersPercentage(item.bakers_percentage)}</td>
+                    <td>{item.is_flour_basis ? "Sim" : "Não"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+          <TechnicalAuditDetails
+            title="Identificadores dos componentes"
+            purpose="IDs internos das versões de ingrediente desta receita."
+            rows={items.map((item) => ({
+              label: ingredientLineLabel(item),
+              value: item.ingredient_version_id,
+              copyable: true,
+            }))}
+          />
           {canEdit ? (
             <form
               onSubmit={(event) => {
@@ -285,7 +301,7 @@ export function RecipeEditorPage() {
 
         <section>
           <h2>Percentual do padeiro</h2>
-          <p>Total de farinha: {flourMass ?? "ausente"}.</p>
+          <p>Total de farinha: {flourMass ? formatOperationalQuantity(flourMass, "g") : "ausente"}.</p>
           {flourAbsence ? (
             <p>Sem farinha-base marcada: o percentual do padeiro não se aplica. Isso é válido e precisa ser explicado.</p>
           ) : (
@@ -361,11 +377,11 @@ export function RecipeEditorPage() {
                 <input value={yieldUnits} onChange={(event) => setYieldUnits(event.target.value)} />
               </label>
               <label>
-                Peso final por unidade
+                Peso final por unidade (g)
                 <input value={unitWeight} onChange={(event) => setUnitWeight(event.target.value)} />
               </label>
               <label>
-                Perda prevista
+                Perda prevista (taxa 0–1)
                 <input value={loss} onChange={(event) => setLoss(event.target.value)} />
               </label>
               <button type="submit" className="primary">
@@ -374,18 +390,37 @@ export function RecipeEditorPage() {
             </form>
           ) : (
             <p>
-              {yieldUnits || "—"} unidades de {unitWeight || "—"} g, perda {loss || "—"}.
+              {formatYieldSummary({
+                yieldUnits,
+                unitWeightG: unitWeight || null,
+                lossRate: loss || null,
+              })}
             </p>
           )}
         </section>
 
         <section>
           <h2>Escala</h2>
-          {scales.map((row) => (
-            <p key={row.id}>
-              Fator {row.scale_factor} · massa-base {row.base_total_net_mass}
-            </p>
-          ))}
+          <p className="meta">
+            O fator multiplica a receita-base para atingir a massa total informada. A massa-base é a soma líquida
+            dos componentes da versão.
+          </p>
+          {scales.length === 0 ? <p>Nenhuma escala gravada nesta versão.</p> : null}
+          {scales.map((row) => {
+            const places =
+              typeof row.presentation_decimal_places === "number"
+                ? row.presentation_decimal_places
+                : 4;
+            return (
+              <p key={row.id ?? `${row.scale_factor}-${row.base_total_net_mass}`}>
+                Fator de escala: {formatScaleFactor(row.scale_factor, Math.max(places, 4))} · Massa-base da
+                receita: {formatOperationalQuantity(row.base_total_net_mass, "g")}
+                {row.input_target_total_dough_mass
+                  ? ` · Massa total alvo: ${formatOperationalQuantity(row.input_target_total_dough_mass, "g")}`
+                  : ""}
+              </p>
+            );
+          })}
           {hasPermission("recipe.scale") && version ? (
             <form
               onSubmit={(event) => {
@@ -399,8 +434,13 @@ export function RecipeEditorPage() {
               }}
             >
               <label>
-                Massa total
-                <input value={scaleMass} onChange={(event) => setScaleMass(event.target.value)} />
+                Massa total (g)
+                <input
+                  value={scaleMass}
+                  onChange={(event) => setScaleMass(event.target.value)}
+                  inputMode="decimal"
+                  placeholder="Ex.: 3300"
+                />
               </label>
               <button type="submit" className="primary">
                 Gravar escala
@@ -414,7 +454,8 @@ export function RecipeEditorPage() {
           <p>Ensaio não é ordem de produção.</p>
           {trials.map((trial) => (
             <p key={trial.id}>
-              {trial.code} <StatusBadge tone={versionTone(trial.status)} label={versionLabel(trial.status)} />
+              {trial.code}{" "}
+              <StatusBadge tone={recipeStatusTone(trial.status)} label={recipeTrialLabel(trial.status)} />
             </p>
           ))}
           {hasPermission("recipe.trial.manage") && version ? (
@@ -492,7 +533,7 @@ export function RecipeEditorPage() {
           <h2>Revisão e aprovação</h2>
           {approvals.map((row) => (
             <p key={row.id}>
-              <StatusBadge tone={versionTone(row.decision)} label={versionLabel(row.decision)} /> {row.notes}
+              <StatusBadge tone={recipeStatusTone(row.decision)} label={recipeApprovalLabel(row.decision)} /> {row.notes}
             </p>
           ))}
           <label>
@@ -552,7 +593,8 @@ export function RecipeEditorPage() {
           <ol>
             {versions.map((item) => (
               <li key={item.id}>
-                v{item.version_number} <StatusBadge tone={versionTone(item.status)} label={versionLabel(item.status)} />
+                v{item.version_number}{" "}
+                <StatusBadge tone={recipeStatusTone(item.status)} label={recipeVersionLabel(item.status)} />
               </li>
             ))}
           </ol>

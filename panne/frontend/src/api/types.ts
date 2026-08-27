@@ -41,6 +41,16 @@ export type Plan = {
   created_at: string;
   updated_at: string;
   scheduled_at: string | null;
+  /** Quantidade de itens do plano (listagem enriquecida). */
+  item_count?: number;
+  /** Resumo operacional sem inventar produto principal (listagem enriquecida). */
+  items_summary?: string;
+};
+
+export type OrderProductRef = {
+  id: string;
+  code: string;
+  display_name: string;
 };
 
 export type PlanItem = {
@@ -52,9 +62,15 @@ export type PlanItem = {
   priority: number;
   sort_order: number;
   notes: string | null;
+  product?: OrderProductRef | null;
 };
 
 export type PlanDetail = Plan & { items: PlanItem[] };
+
+export type OrderPlanRef = {
+  id: string;
+  public_code: string;
+};
 
 export type Order = {
   id: string;
@@ -72,6 +88,10 @@ export type Order = {
   materials_hash: string | null;
   steps_hash: string | null;
   snapshot_hash: string | null;
+  /** Presente na listagem/detalhe enriquecidos; null se o produto não for legível nesta org. */
+  product?: OrderProductRef | null;
+  /** Presente quando a ordem tem plano na mesma org; null se ausente. */
+  plan?: OrderPlanRef | null;
 };
 
 export type Batch = {
@@ -440,6 +460,22 @@ export type SupplierCard = {
   display_name: string;
   status: string;
   row_version: number;
+  active_item_count?: number;
+};
+
+export type SupplierPriceRow = {
+  id: string;
+  supplier_item_id: string;
+  unit_price: string;
+  currency: string;
+  observed_at: string;
+  source: string | null;
+  is_latest?: boolean;
+};
+
+export type SupplierDetail = SupplierCard & {
+  items: SupplierItemCard[];
+  price_access: boolean;
 };
 
 export type CatalogItem = {
@@ -467,6 +503,9 @@ export type NutrientLine = {
   limit_of_quantification: string | null;
   loq_unit_id: string | null;
   method_or_source: string | null;
+  nutrient?: { id: string; code: string; name: string; group_code?: string } | null;
+  unit?: { id: string; code: string; symbol: string; name?: string; dimension?: string } | null;
+  loq_unit?: { id: string; code: string; symbol: string; name?: string; dimension?: string } | null;
 };
 
 export type AllergenLine = {
@@ -475,6 +514,7 @@ export type AllergenLine = {
   presence: string;
   data_source_id: string | null;
   evidence_note: string | null;
+  allergen?: { id: string; code: string; name: string } | null;
 };
 
 export type SupplierItemCard = {
@@ -487,6 +527,9 @@ export type SupplierItemCard = {
   measurement_unit_id: string;
   status: string;
   row_version: number;
+  unit?: { id: string; code: string; symbol: string; name?: string; dimension?: string } | null;
+  supplier?: { id: string; code: string; display_name: string } | null;
+  ingredient?: { id: string; code: string; display_name: string } | null;
   latest_purchase: { unit_price: string; currency: string; observed_at: string } | null;
 };
 
@@ -534,6 +577,21 @@ export type RecipeItem = {
   role: string;
   notes: string | null;
   bakers_percentage: string | null;
+  /** Enriquecido na leitura, org-scoped; null se ausente/outra org. */
+  ingredient?: {
+    id: string;
+    code: string;
+    display_name: string;
+    version_id: string;
+    version_number: number;
+  } | null;
+  /** Unidade de medição; formulação exige dimensão massa. */
+  unit?: {
+    id: string;
+    code: string;
+    symbol: string;
+    dimension: string;
+  } | null;
 };
 
 export type RecipeStep = {
@@ -572,8 +630,10 @@ export type ScaleRow = {
   scale_factor: string | null;
   base_total_net_mass: string | null;
   required_pre_bake_mass: string | null;
+  input_target_total_dough_mass?: string | null;
   algorithm_code?: string;
   algorithm_version?: string;
+  presentation_decimal_places?: number;
   persisted?: boolean;
   items?: Array<{
     sequence: number;
@@ -720,8 +780,11 @@ export type LabelingDossier = {
   formulation_version_id: string;
   row_version: number;
   disclaimer: string;
+  created_at?: string | null;
   certified?: boolean;
   conforme_anvisa?: boolean;
+  formulation?: { id: string; code: string; display_name: string } | null;
+  formulation_version?: { id: string; version_number: number } | null;
   profile?: Record<string, unknown>;
   versions?: Array<{ id: string; version_number: number; status: string; content_hash: string }>;
   current?: {

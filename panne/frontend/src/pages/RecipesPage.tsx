@@ -3,22 +3,12 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/errors";
 import type { RecipeCard } from "../api/types";
 import { EmptyState, ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
+import {
+  recipeIdentityLabel,
+  recipeStatusTone,
+  recipeVersionLabel,
+} from "../language/recipes";
 import { useOrganization } from "../session/OrganizationContext";
-
-function tone(status: string): "sucesso" | "atencao" | "info" | "neutro" {
-  if (status === "published" || status === "active") return "sucesso";
-  if (status === "draft") return "atencao";
-  if (status === "retired") return "neutro";
-  return "info";
-}
-
-function versionLabel(status: string): string {
-  if (status === "published") return "publicado";
-  if (status === "draft") return "rascunho";
-  if (status === "retired") return "aposentado";
-  if (status === "development") return "em desenvolvimento";
-  return status;
-}
 
 export function RecipesPage() {
   const { api, hasPermission, active } = useOrganization();
@@ -40,8 +30,9 @@ export function RecipesPage() {
     [params],
   );
 
+  const orgId = active?.organization_id ?? null;
   useEffect(() => {
-    if (!active) return;
+    if (!orgId) return;
     let alive = true;
     setState({ kind: "carregando" });
     api
@@ -55,7 +46,7 @@ export function RecipesPage() {
     return () => {
       alive = false;
     };
-  }, [api, query, active]);
+  }, [api, query, orgId]);
 
   const offset = Number(query.offset ?? 0);
   const limit = Number(query.limit ?? 20);
@@ -106,19 +97,19 @@ export function RecipesPage() {
           <label>
             Situação
             <select name="status" defaultValue={query.status ?? ""}>
-              <option value="">todas</option>
-              <option value="development">em desenvolvimento</option>
-              <option value="active">ativa</option>
-              <option value="retired">aposentada</option>
+              <option value="">Todas</option>
+              <option value="development">Em desenvolvimento</option>
+              <option value="active">Ativa</option>
+              <option value="retired">Aposentada</option>
             </select>
           </label>
           <label>
             Versão
             <select name="version_status" defaultValue={query.version_status ?? ""}>
-              <option value="">todas</option>
-              <option value="draft">rascunho</option>
-              <option value="published">publicada</option>
-              <option value="retired">aposentada</option>
+              <option value="">Todas</option>
+              <option value="draft">Rascunho</option>
+              <option value="published">Publicada</option>
+              <option value="retired">Aposentada</option>
             </select>
           </label>
           <button type="submit" className="primary">
@@ -141,7 +132,7 @@ export function RecipesPage() {
               <tr>
                 <th>Código</th>
                 <th>Nome</th>
-                <th>Identidade</th>
+                <th>Situação</th>
                 <th>Versão</th>
               </tr>
             </thead>
@@ -153,13 +144,13 @@ export function RecipesPage() {
                   </td>
                   <td>{item.display_name}</td>
                   <td>
-                    <StatusBadge tone={tone(item.status)} label={versionLabel(item.status)} />
+                    <StatusBadge tone={recipeStatusTone(item.status)} label={recipeIdentityLabel(item.status)} />
                   </td>
                   <td>
                     {item.current_version ? (
                       <StatusBadge
-                        tone={tone(item.current_version.status)}
-                        label={versionLabel(item.current_version.status)}
+                        tone={recipeStatusTone(item.current_version.status)}
+                        label={recipeVersionLabel(item.current_version.status)}
                       />
                     ) : (
                       "—"

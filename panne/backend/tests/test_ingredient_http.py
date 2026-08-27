@@ -134,6 +134,18 @@ def test_lifecycle_composition_nutrition_supplier(engine):
         },
     )
     assert nutrient.status_code == 200, nutrient.text
+    dossier = (
+        ctx["client"]
+        .get(
+            f"/api/v1/organizations/{ctx['organization'].id}/ingredients/{ingredient_id}/versions/{version_id}",
+            headers=headers(),
+        )
+        .json()["data"]
+    )
+    measured = next(item for item in dossier["nutrients"] if item["value_status"] == "measured")
+    assert measured["nutrient"]["id"] == str(ctx["protein"].id)
+    assert measured["nutrient"]["name"]
+    assert measured["unit"]["code"] == "g"
     row_version += 1
     loq = ctx["client"].post(
         f"/api/v1/organizations/{ctx['organization'].id}/ingredients/{ingredient_id}/versions/{version_id}/nutrients",
@@ -259,6 +271,15 @@ def test_lifecycle_composition_nutrition_supplier(engine):
         },
     )
     assert price.status_code == 200
+    listed_items = ctx["client"].get(
+        f"/api/v1/organizations/{ctx['organization'].id}/ingredients/{ingredient_id}/items",
+        headers=headers(),
+    )
+    assert listed_items.status_code == 200
+    card = listed_items.json()["data"][0]
+    assert card["unit"]["code"] == "g"
+    assert card["supplier"]["display_name"] == "Moinho Central"
+    assert card["latest_purchase"]["unit_price"].startswith("18.4")
     history = ctx["client"].get(
         f"/api/v1/organizations/{ctx['organization'].id}/items/{item.json()['data']['id']}/prices",
         headers=headers(),

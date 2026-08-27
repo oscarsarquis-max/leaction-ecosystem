@@ -10,8 +10,13 @@ export function CatalogsPage() {
   const [allergens, setAllergens] = useState<CatalogItem[]>([]);
   const [sources, setSources] = useState<CatalogItem[]>([]);
 
+  const orgId = active?.organization_id ?? null;
   useEffect(() => {
-    if (!active) return;
+    if (!orgId) return;
+    setUnits(null);
+    setNutrients([]);
+    setAllergens([]);
+    setSources([]);
     void Promise.all([
       api.getCatalogUnits(),
       api.getCatalogNutrients(),
@@ -23,7 +28,7 @@ export function CatalogsPage() {
       setAllergens(allergenPage.data);
       setSources(sourcePage.data);
     }).catch(() => undefined);
-  }, [api, active]);
+  }, [api, orgId]);
 
   if (!units) return <LoadingState />;
   return (

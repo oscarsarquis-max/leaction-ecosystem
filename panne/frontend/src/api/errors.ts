@@ -66,4 +66,33 @@ export function errorMessage(error: unknown): string {
   return FALLBACK_MESSAGE.rede;
 }
 
+/** Cancelamento/substituição de consulta — não é erro apresentável na UI. */
+export function isCancelledError(error: unknown): boolean {
+  if (error instanceof ApiError && error.code === "cancelado") return true;
+  if (error instanceof DOMException && error.name === "AbortError") return true;
+  if (error instanceof Error && error.name === "AbortError") return true;
+  return false;
+}
+
+/**
+ * Aplica erro de carga somente se a geração ainda for a atual, o componente
+ * estiver montado e o erro não for cancelamento.
+ */
+export function reportLoadError(
+  error: unknown,
+  setError: (error: unknown) => void,
+  options: { alive?: boolean; generation?: number; expectedGeneration?: number } = {},
+): void {
+  if (options.alive === false) return;
+  if (
+    options.generation != null &&
+    options.expectedGeneration != null &&
+    options.generation !== options.expectedGeneration
+  ) {
+    return;
+  }
+  if (isCancelledError(error)) return;
+  setError(error);
+}
+
 export { FALLBACK_MESSAGE };

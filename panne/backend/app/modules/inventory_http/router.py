@@ -9,6 +9,10 @@ from app.db import get_runtime_session
 from app.modules.identity_organization.authorization import Principal
 from app.modules.inventory_http import serialize
 from app.modules.inventory_procurement import services
+from app.modules.inventory_procurement.operational_date import (
+    inventory_as_of_payload,
+    inventory_operational_date,
+)
 from app.modules.production_http.deps import (
     get_runtime_principal,
     parse_if_match,
@@ -395,7 +399,13 @@ def list_lots(
     principal: Annotated[Principal, Depends(get_runtime_principal)],
     session: Annotated[Session, Depends(get_runtime_session)],
 ):
-    return {"items": [serialize.lot_out(row, session) for row in _run(lambda: services.list_lots(session, principal))]}
+    as_of = inventory_operational_date()
+    return {
+        "items": serialize.lots_out(
+            _run(lambda: services.list_lots(session, principal)), session, as_of=as_of
+        ),
+        **inventory_as_of_payload(),
+    }
 
 
 @router.post("/inventory/lots/{lot_id}/status")
@@ -407,6 +417,7 @@ def lot_status(
     idempotency_key: Annotated[UUID, Depends(_command_keys)],
     if_match: Annotated[str | None, Header(alias="If-Match")] = None,
 ):
+    as_of = inventory_operational_date()
     row = _run(
         lambda: services.set_lot_status(
             session,
@@ -418,7 +429,7 @@ def lot_status(
             idempotency_key=idempotency_key,
         )
     )
-    return {"data": serialize.lot_out(row), "row_version": row.row_version}
+    return {"data": serialize.lot_out(row, session, as_of=as_of), "row_version": row.row_version}
 
 
 @router.get("/inventory/balances")
@@ -426,15 +437,24 @@ def list_balances(
     principal: Annotated[Principal, Depends(get_runtime_principal)],
     session: Annotated[Session, Depends(get_runtime_session)],
 ):
-    return {"items": [serialize.balance_out(row, session) for row in _run(lambda: services.list_balances(session, principal))]}
-
+    as_of = inventory_operational_date()
+    return {
+        "items": serialize.balances_out(
+            _run(lambda: services.list_balances(session, principal)), session, as_of=as_of
+        ),
+        **inventory_as_of_payload(),
+    }
 
 @router.get("/inventory/movements")
 def list_movements(
     principal: Annotated[Principal, Depends(get_runtime_principal)],
     session: Annotated[Session, Depends(get_runtime_session)],
 ):
-    return {"items": [serialize.movement_out(row) for row in _run(lambda: services.list_movements(session, principal))]}
+    return {
+        "items": serialize.movements_out(
+            _run(lambda: services.list_movements(session, principal)), session
+        )
+    }
 
 
 @router.post("/inventory/openings")
@@ -444,8 +464,9 @@ def open_balance(
     session: Annotated[Session, Depends(get_runtime_session)],
     idempotency_key: Annotated[UUID, Depends(_command_keys)],
 ):
+    as_of = inventory_operational_date()
     row = _run(lambda: services.open_balance(session, principal, body.model_dump(), idempotency_key=idempotency_key))
-    return {"data": serialize.lot_out(row), "row_version": row.row_version}
+    return {"data": serialize.lot_out(row, as_of=as_of), "row_version": row.row_version}
 
 
 @router.post("/inventory/movements")
@@ -466,7 +487,11 @@ def fefo(
     principal: Annotated[Principal, Depends(get_runtime_principal)],
     session: Annotated[Session, Depends(get_runtime_session)],
 ):
-    return {"items": _run(lambda: services.suggest_fefo(session, principal, inventory_item_id, quantity))}
+    as_of = inventory_operational_date()
+    return {
+        "items": _run(lambda: services.suggest_fefo(session, principal, inventory_item_id, quantity, as_of=as_of)),
+        **inventory_as_of_payload(),
+    }
 
 
 @router.get("/inventory/reservations")
@@ -475,11 +500,7 @@ def list_reservations(
     session: Annotated[Session, Depends(get_runtime_session)],
 ):
     rows = _run(lambda: services.list_reservations(session, principal))
-    return {
-        "items": [
-            serialize.reservation_out(row, services.reservation_allocations(session, row.id)) for row in rows
-        ]
-    }
+    return {"items": serialize.reservations_out(rows, session)}
 
 
 @router.post("/inventory/reservations")
@@ -534,7 +555,7 @@ def list_picks(
     session: Annotated[Session, Depends(get_runtime_session)],
 ):
     rows = _run(lambda: services.list_picks(session, principal))
-    return {"items": [serialize.pick_out(row, services.pick_lines(session, row.id)) for row in rows]}
+    return {"items": serialize.picks_out(rows, session)}
 
 
 @router.post("/inventory/consumptions/{consumption_id}/post")

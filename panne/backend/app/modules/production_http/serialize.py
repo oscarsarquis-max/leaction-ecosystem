@@ -13,8 +13,8 @@ def iso(value: datetime | None) -> str | None:
     return value.isoformat()
 
 
-def plan_out(row) -> dict:
-    return {
+def plan_out(row, *, item_count: int | None = None, items_summary: str | None = None) -> dict:
+    payload = {
         "id": str(row.id),
         "public_code": row.public_code,
         "establishment_id": str(row.establishment_id),
@@ -27,10 +27,28 @@ def plan_out(row) -> dict:
         "updated_at": iso(row.updated_at),
         "scheduled_at": iso(row.scheduled_at),
     }
+    if item_count is not None:
+        payload["item_count"] = item_count
+    if items_summary is not None:
+        payload["items_summary"] = items_summary
+    return payload
 
 
-def plan_item_out(row) -> dict:
-    return {
+def plan_items_summary(display_names: list[str | None]) -> tuple[int, str]:
+    """Resumo operacional da lista: não inventa produto principal em multi-item."""
+    count = len(display_names)
+    if count == 0:
+        return 0, "Nenhum item planejado"
+    named = [name.strip() for name in display_names if name and name.strip()]
+    if count == 1:
+        return 1, named[0] if named else "1 item planejado"
+    if named:
+        return count, f"{named[0]} e mais {count - 1}"
+    return count, f"{count} itens planejados"
+
+
+def plan_item_out(row, *, product=None) -> dict:
+    payload = {
         "id": str(row.id),
         "technical_product_id": str(row.technical_product_id),
         "target_mode": row.target_mode,
@@ -39,11 +57,19 @@ def plan_item_out(row) -> dict:
         "priority": row.priority,
         "sort_order": row.sort_order,
         "notes": row.notes,
+        "product": None,
     }
+    if product is not None:
+        payload["product"] = {
+            "id": str(product.id),
+            "code": product.code,
+            "display_name": product.display_name,
+        }
+    return payload
 
 
-def order_out(row) -> dict:
-    return {
+def order_out(row, *, product=None, plan=None) -> dict:
+    payload = {
         "id": str(row.id),
         "public_code": row.public_code,
         "establishment_id": str(row.establishment_id),
@@ -59,7 +85,21 @@ def order_out(row) -> dict:
         "materials_hash": getattr(row, "materials_hash", None),
         "steps_hash": getattr(row, "steps_hash", None),
         "snapshot_hash": getattr(row, "snapshot_hash", None),
+        "product": None,
+        "plan": None,
     }
+    if product is not None:
+        payload["product"] = {
+            "id": str(product.id),
+            "code": product.code,
+            "display_name": product.display_name,
+        }
+    if plan is not None:
+        payload["plan"] = {
+            "id": str(plan.id),
+            "public_code": plan.public_code,
+        }
+    return payload
 
 
 def batch_out(row) -> dict:
@@ -105,3 +145,24 @@ def decode_cursor(value: str | None) -> tuple[datetime | None, UUID | None]:
         return datetime.fromisoformat(stamp), UUID(raw_id)
     except ValueError:
         return None, None
+
+
+def encode_plan_list_cursor(
+    operational_date,
+    shift: str | None,
+    public_code: str,
+    item_id: UUID,
+) -> str:
+    return f"{operational_date.isoformat()}|{shift or ''}|{public_code}|{item_id}"
+
+
+def decode_plan_list_cursor(
+    value: str | None,
+) -> tuple[str, str, str, UUID] | None:
+    if not value:
+        return None
+    try:
+        date_part, shift_part, code_part, raw_id = value.split("|", 3)
+        return date_part, shift_part, code_part, UUID(raw_id)
+    except ValueError:
+        return None

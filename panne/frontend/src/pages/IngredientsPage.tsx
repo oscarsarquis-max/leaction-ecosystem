@@ -1,33 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ApiError } from "../api/errors";
-import type { IngredientCard } from "../api/types";
+import type { IngredientCard, IngredientPage } from "../api/types";
 import { EmptyState, ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
+import { useAsyncResource } from "../hooks/useAsyncResource";
+import {
+  ingredientIdentityLabel,
+  ingredientStatusTone,
+  ingredientVersionLabel,
+} from "../language/ingredients";
 import { useOrganization } from "../session/OrganizationContext";
-
-function tone(status: string): "sucesso" | "atencao" | "info" | "neutro" {
-  if (status === "published") return "sucesso";
-  if (status === "draft") return "atencao";
-  if (status === "retired") return "neutro";
-  return "info";
-}
-
-function versionLabel(status: string): string {
-  if (status === "published") return "publicado";
-  if (status === "draft") return "rascunho";
-  if (status === "retired") return "aposentado";
-  return status;
-}
 
 export function IngredientsPage() {
   const { api, hasPermission, active } = useOrganization();
+  const orgId = active?.organization_id ?? null;
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const [state, setState] = useState<
-    | { kind: "carregando" }
-    | { kind: "ok"; items: IngredientCard[]; total: number }
-    | { kind: "erro"; error: unknown }
-  >({ kind: "carregando" });
   const query = useMemo(
     () => ({
       q: params.get("q") || undefined,
@@ -39,26 +26,16 @@ export function IngredientsPage() {
     [params],
   );
 
-  useEffect(() => {
-    if (!active) return;
-    let alive = true;
-    setState({ kind: "carregando" });
-    api
-      .listIngredients(query)
-      .then((page) => {
-        if (alive) setState({ kind: "ok", items: page.items, total: page.total });
-      })
-      .catch((error) => {
-        if (alive) setState({ kind: "erro", error });
-      });
-    return () => {
-      alive = false;
-    };
-  }, [api, query, active]);
+  const { state } = useAsyncResource<IngredientPage>(
+    () => api.listIngredients(query),
+    [api, query, orgId],
+    Boolean(orgId),
+  );
 
   const offset = Number(query.offset ?? 0);
   const limit = Number(query.limit ?? 20);
-  const total = state.kind === "ok" ? state.total : 0;
+  const total = state.kind === "ok" ? state.data.total : 0;
+  const items = state.kind === "ok" ? state.data.items : [];
 
   function applyFilters(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,9 +52,9 @@ export function IngredientsPage() {
     <div className="stage">
       <ListLive
         kind={state.kind}
-        empty={state.kind === "ok" && state.items.length === 0}
-        entityLabel={state.kind === "ok" && state.items[0] ? state.items[0].display_name : "ingrediente"}
-        status={state.kind === "ok" ? `${state.total} itens` : undefined}
+        empty={state.kind === "ok" && items.length === 0}
+        entityLabel={items[0]?.display_name ?? "ingrediente"}
+        status={state.kind === "ok" ? `${total} itens` : undefined}
       />
       <div>
         <h1>Ingredientes</h1>
@@ -99,18 +76,18 @@ export function IngredientsPage() {
           <label>
             Situação
             <select name="status" defaultValue={query.status ?? ""}>
-              <option value="">todas</option>
-              <option value="active">ativa</option>
-              <option value="inactive">inativa</option>
+              <option value="">Todas</option>
+              <option value="active">Ativa</option>
+              <option value="inactive">Inativa</option>
             </select>
           </label>
           <label>
             Versão
             <select name="version_status" defaultValue={query.version_status ?? ""}>
-              <option value="">todas</option>
-              <option value="draft">rascunho</option>
-              <option value="published">publicada</option>
-              <option value="retired">aposentada</option>
+              <option value="">Todas</option>
+              <option value="draft">Rascunho</option>
+              <option value="published">Publicada</option>
+              <option value="retired">Aposentada</option>
             </select>
           </label>
           <button type="submit" className="primary">
@@ -118,15 +95,11 @@ export function IngredientsPage() {
           </button>
         </form>
         {state.kind === "carregando" ? <LoadingState /> : null}
-        {state.kind === "erro" ? (
-          <ErrorState
-            error={state.error instanceof ApiError ? state.error : new Error("Falha ao listar")}
-          />
-        ) : null}
-        {state.kind === "ok" && state.items.length === 0 ? (
+        {state.kind === "erro" ? <ErrorState error={state.error} /> : null}
+        {state.kind === "ok" && items.length === 0 ? (
           <EmptyState>Não há ingredientes neste recorte.</EmptyState>
         ) : null}
-        {state.kind === "ok" && state.items.length > 0 ? (
+        {items.length > 0 ? (
           <div className="table-wrap">
             <table>
               <caption>Ingredientes da organização</caption>
@@ -136,32 +109,16 @@ export function IngredientsPage() {
                   <th>Código</th>
                   <th>Versão</th>
                   <th>Situação</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {state.items.map((item) => (
-                  <tr
+                {items.map((item) => (
+                  <IngredientRow
                     key={item.id}
-                    onClick={() => navigate(`/componentes/ingredientes/${item.id}`)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") navigate(`/componentes/ingredientes/${item.id}`);
-                    }}
-                    tabIndex={0}
-                  >
-                    <td>{item.display_name}</td>
-                    <td>{item.code}</td>
-                    <td>
-                      {item.current_version ? (
-                        <StatusBadge
-                          tone={tone(item.current_version.status)}
-                          label={`${versionLabel(item.current_version.status)} v${item.current_version.version_number}`}
-                        />
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td>{item.status === "active" ? "ativa" : "inativa"}</td>
-                  </tr>
+                    item={item}
+                    onRowNavigate={(to) => navigate(to)}
+                  />
                 ))}
               </tbody>
             </table>
@@ -172,14 +129,18 @@ export function IngredientsPage() {
             <button
               type="button"
               disabled={offset <= 0}
-              onClick={() => setParams({ ...Object.fromEntries(params), offset: String(Math.max(0, offset - limit)) })}
+              onClick={() =>
+                setParams({ ...Object.fromEntries(params), offset: String(Math.max(0, offset - limit)) })
+              }
             >
               Anterior
             </button>{" "}
             <button
               type="button"
               disabled={offset + limit >= total}
-              onClick={() => setParams({ ...Object.fromEntries(params), offset: String(offset + limit) })}
+              onClick={() =>
+                setParams({ ...Object.fromEntries(params), offset: String(offset + limit) })
+              }
             >
               Seguinte
             </button>
@@ -189,16 +150,67 @@ export function IngredientsPage() {
       <aside className="panel">
         <h2>Qualidade</h2>
         <p>
-          <StatusBadge tone="sucesso" label="publicado" />
+          <StatusBadge tone="sucesso" label="Publicada" />
         </p>
         <p>
-          <StatusBadge tone="atencao" label="rascunho / nutrição incompleta" />
+          <StatusBadge tone="atencao" label="Rascunho / nutrição incompleta" />
         </p>
         <p>
-          <StatusBadge tone="neutro" label="aposentado" />
+          <StatusBadge tone="neutro" label="Aposentada" />
         </p>
         <p className="meta">Completude não é conformidade regulatória.</p>
       </aside>
     </div>
+  );
+}
+
+function IngredientRow({
+  item,
+  onRowNavigate,
+}: {
+  item: IngredientCard;
+  onRowNavigate: (to: string) => void;
+}) {
+  const detailTo = `/componentes/ingredientes/${item.id}`;
+  const nameLabel = `Abrir detalhe de ${item.display_name}`;
+  const codeLabel = `Abrir detalhe do código ${item.code}`;
+  const detailActionLabel = `Detalhe de ${item.display_name}`;
+  const version = item.current_version;
+
+  return (
+    <tr
+      onClick={(event) => {
+        const target = event.target as HTMLElement;
+        if (target.closest("a")) return;
+        onRowNavigate(detailTo);
+      }}
+    >
+      <td>
+        <Link to={detailTo} aria-label={nameLabel}>
+          {item.display_name}
+        </Link>
+      </td>
+      <td>
+        <Link to={detailTo} aria-label={codeLabel}>
+          {item.code}
+        </Link>
+      </td>
+      <td>
+        {version ? (
+          <StatusBadge
+            tone={ingredientStatusTone(version.status)}
+            label={`${ingredientVersionLabel(version.status)} v${version.version_number}`}
+          />
+        ) : (
+          "—"
+        )}
+      </td>
+      <td>{ingredientIdentityLabel(item.status)}</td>
+      <td>
+        <Link to={detailTo} aria-label={detailActionLabel}>
+          Detalhe
+        </Link>
+      </td>
+    </tr>
   );
 }

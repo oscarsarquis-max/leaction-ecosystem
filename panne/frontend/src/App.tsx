@@ -47,6 +47,7 @@ import {
   CostingPricesPage,
   CostingSimulationsPage,
 } from "./pages/CostingPages";
+import { SupplierDetailPage } from "./pages/SupplierDetailPage";
 import { SuppliersPage } from "./pages/SuppliersPage";
 import {
   InventoryCountsPage,
@@ -69,6 +70,14 @@ export function AppRoutes() {
             <Route path="/entrar" element={<LoginPage />} />
             <Route path="/callback" element={<CallbackPage />} />
             <Route
+              path="/organizacao"
+              element={
+                <RequireAuth>
+                  <SelectOrgPage />
+                </RequireAuth>
+              }
+            />
+            <Route
               element={
                 <RequireAuth>
                   <RequireOrganization>
@@ -77,7 +86,6 @@ export function AppRoutes() {
                 </RequireAuth>
               }
             >
-              <Route path="/organizacao" element={<SelectOrgPage />} />
               <Route path="/inicio" element={<HomePage />} />
               <Route
                 path="/componentes/ingredientes"
@@ -156,6 +164,14 @@ export function AppRoutes() {
                 element={
                   <RequirePermission code="supplier.read">
                     <SuppliersPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/componentes/fornecedores/:supplierId"
+                element={
+                  <RequirePermission code="supplier.read">
+                    <SupplierDetailPage />
                   </RequirePermission>
                 }
               />
