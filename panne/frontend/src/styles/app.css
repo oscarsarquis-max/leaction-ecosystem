@@ -1352,6 +1352,184 @@ tbody tr:focus-visible {
   gap: 1rem;
 }
 
+.flow-page__head .lede {
+  max-width: 40rem;
+}
+
+.flow-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.flow-mode .primary,
+.flow-mode .ghost {
+  min-height: 2.5rem;
+}
+
+.flow-product-picker {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.65rem;
+  max-width: 28rem;
+}
+
+.flow-product-picker label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.flow-banner {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--panne-areia);
+  background: var(--panne-bege-elevado);
+  border-radius: var(--panne-raio-conteudo);
+}
+
+.flow-banner--soft {
+  background: transparent;
+}
+
+.flow-map {
+  padding: 0.85rem 0 0.25rem;
+  overflow-x: hidden;
+}
+
+.flow-map__caption {
+  margin: 0 0 0.55rem;
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--panne-grafite);
+}
+
+.flow-map__track {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0;
+  align-items: stretch;
+}
+
+.flow-map__item {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 10.5rem;
+  min-width: 9.5rem;
+  max-width: 14rem;
+}
+
+.flow-map__connector {
+  width: 0.7rem;
+  align-self: center;
+  height: 2px;
+  background: var(--panne-grafite);
+  opacity: 0.35;
+  flex: 0 0 0.7rem;
+  margin-right: 0.15rem;
+}
+
+.flow-map__node {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  grid-template-areas:
+    "icon num title"
+    "icon state state"
+    "focus focus focus";
+  gap: 0.15rem 0.4rem;
+  text-align: left;
+  min-height: 4.5rem;
+  padding: 0.65rem 0.7rem;
+  border: 2px solid var(--panne-linha);
+  background: var(--panne-bege-elevado);
+  color: var(--panne-grafite);
+  cursor: pointer;
+  font: inherit;
+  border-radius: 0.35rem;
+}
+
+.flow-map__node:focus-visible {
+  outline: 2px solid var(--panne-espresso);
+  outline-offset: 2px;
+}
+
+.flow-map__node.is-here {
+  border-color: var(--panne-espresso);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--panne-espresso) 25%, transparent);
+}
+
+.flow-map__node.is-focus:not(.is-here) {
+  border-style: dashed;
+  border-color: var(--panne-grafite);
+}
+
+.flow-map__node.is-na {
+  opacity: 0.72;
+}
+
+.flow-map__node.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.flow-map__icon {
+  grid-area: icon;
+  width: 1.35rem;
+  height: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.flow-map__node.tone-sucesso .flow-map__icon {
+  background: color-mix(in srgb, #2f6b4f 18%, transparent);
+}
+
+.flow-map__node.tone-atencao .flow-map__icon {
+  background: color-mix(in srgb, #a15c12 20%, transparent);
+}
+
+.flow-map__node.tone-info .flow-map__icon {
+  background: color-mix(in srgb, var(--panne-espresso) 18%, transparent);
+}
+
+.flow-map__num {
+  grid-area: num;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.flow-map__title {
+  grid-area: title;
+  font-weight: 650;
+  font-size: 0.9rem;
+}
+
+.flow-map__state {
+  grid-area: state;
+  font-size: 0.8rem;
+}
+
+.flow-map__focus-tag {
+  grid-area: focus;
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.flow-orient__cta {
+  margin: 0.75rem 0 0;
+}
+
 .flow-gigio {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1559,6 +1737,40 @@ tbody tr:focus-visible {
   margin-top: 0.35rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--panne-linha);
+}
+
+@media (max-width: 1024px) {
+  .flow-map__track {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .flow-map__item {
+    max-width: none;
+    min-width: 0;
+    flex: none;
+  }
+
+  .flow-map__connector {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .flow-map__track {
+    grid-template-columns: 1fr;
+  }
+
+  .flow-map__node {
+    min-height: 3.75rem;
+  }
+
+  .flow-mode .primary,
+  .flow-mode .ghost {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 900px) {

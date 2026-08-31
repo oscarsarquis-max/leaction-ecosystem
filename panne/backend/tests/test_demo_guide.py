@@ -48,7 +48,7 @@ def test_demo_guide_available_in_demo_without_auth() -> None:
             assert response.status_code == 200
             body = response.json()
             assert body["schema_version"] == 1
-            assert body["content_version"] == "r028-002"
+            assert body["content_version"] == "r028-003"
             assert len(body["profiles"]) == 7
             assert len(body["roadmap"]) == 14
             assert body["source"] in {"live", "fallback"}

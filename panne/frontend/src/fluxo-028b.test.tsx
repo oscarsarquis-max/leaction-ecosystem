@@ -41,7 +41,10 @@ describe("CURSOR-028-B fluxo produtivo", () => {
 
     const login = await renderApp("/entrar", { signedIn: false });
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Entrar em desenvolvimento" }));
+    const enter = screen.getByRole("button", {
+      name: /Entrar em desenvolvimento|Entrar na demonstração/,
+    });
+    await user.click(enter);
     expect(await screen.findByRole("heading", { name: "Fluxo produtivo" })).toBeInTheDocument();
     login.view.unmount();
   });

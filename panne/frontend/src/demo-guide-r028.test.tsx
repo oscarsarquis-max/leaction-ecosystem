@@ -73,10 +73,13 @@ describe("R028-002 guia da demonstração", () => {
     });
     const user = userEvent.setup();
     await renderApp("/demonstracao", { signedIn: true });
-    expect(await screen.findByRole("link", { name: /Abrir Fluxo produtivo/i })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: /^Começar roteiro$/i })).toHaveAttribute(
       "href",
       "/fluxo",
     );
+    expect(
+      await screen.findByRole("link", { name: /Começar roteiro no mapa do caminho crítico/i }),
+    ).toHaveAttribute("href", "/fluxo");
     const { view } = await renderApp("/fluxo", { signedIn: true });
     await user.click(await view.findByRole("button", { name: /Abrir menu do usuário/i }));
     expect(view.getByRole("menuitem", { name: /Guia da demonstração/i })).toHaveAttribute(

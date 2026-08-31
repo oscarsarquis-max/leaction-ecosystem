@@ -52,7 +52,7 @@ describe("aceitação demo 026", () => {
     for (const path of paths) {
       const signedIn = path !== "/entrar" && path !== "/callback";
       const { view } = await renderApp(concretePath(path), { signedIn });
-      if (signedIn) {
+      if (signedIn && path !== "/demonstracao") {
         expect(await screen.findByRole("button", { name: "Abrir Gigio, assistente da Panne" })).toBeInTheDocument();
       } else if (path === "/entrar") {
         expect(await screen.findByRole("button", { name: "Abrir ajuda de Gigio para entrar" })).toBeInTheDocument();

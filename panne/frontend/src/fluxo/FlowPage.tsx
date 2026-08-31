@@ -1,29 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import type { ProductCard } from "../api/types";
 import { StatusBadge } from "../components/Feedback";
 import { GigioIdentity } from "../assistant/GigioIdentity";
+import { config } from "../config";
+import { readOperationalContext } from "../session/operationalContext";
+import { useAuth } from "../auth/AuthContext";
 import { useOrganization } from "../session/OrganizationContext";
+import {
+  buildCriticalPath,
+  productJourneyFromCard,
+  type FlowViewMode,
+  type ProductJourneyContext,
+} from "./criticalPath";
+import { FlowMap } from "./FlowMap";
+import {
+  buildOrientation,
+  inferModality,
+} from "./orientation";
 import {
   focusStepsForRole,
   preferredStepForRole,
   resolveFlowRole,
   roleDisplayLabel,
 } from "./profileFocus";
-import { neighborSteps, resolveVisibleSteps, type FlowEvidence } from "./resolve";
-import {
-  buildOrientation,
-  inferModality,
-  type OrientationResult,
-} from "./orientation";
+import { neighborSteps } from "./resolve";
 import type { FlowStepId } from "./steps";
-import { flowHref, withFlowReturn } from "./steps";
+import { withFlowReturn } from "./steps";
 import { useFlowEvidence } from "./useFlowEvidence";
-
-const JOURNEY_SEP = " → ";
-
-function journeyLine(visibleTitles: string[]): string {
-  return visibleTitles.join(JOURNEY_SEP);
-}
 
 const FISCAL_SUBSTEPS = [
   "Captura ou importação do documento",
@@ -46,6 +50,7 @@ function linkAllowed(
 
 function situationTone(situation: string): "sucesso" | "atencao" | "erro" | "info" | "neutro" {
   switch (situation) {
+    case "Você está aqui":
     case "Em andamento":
       return "info";
     case "Requer atenção":
@@ -69,71 +74,130 @@ function parseEtapa(raw: string | null, fallback: FlowStepId): FlowStepId {
   return fallback;
 }
 
-function buildPageOrientation(
-  roleHint: ReturnType<typeof resolveFlowRole>,
-  evidence: FlowEvidence,
-  currentId: FlowStepId,
-  visible: ReturnType<typeof resolveVisibleSteps>,
-  orgId: string | null,
-  orgName: string | null,
-  permissions: string[],
-): OrientationResult {
-  const current = visible.find((row) => row.def.id === currentId);
-  return buildOrientation({
-    organizationId: orgId,
-    organizationName: orgName,
-    establishmentId: null,
-    profile: roleHint,
-    stepId: currentId,
-    stepTitle: current?.def.title ?? null,
-    situation: current?.situation ?? null,
-    pending: current?.pending ?? null,
-    nextAction: current?.nextAction ?? null,
-    permissions,
-    productModality: inferModality(evidence.products),
-    products: evidence.products,
-    fiscal: evidence.fiscal,
-    recipesTotal: evidence.recipesTotal,
-    ordersTotal: evidence.ordersTotal,
-    ingredientsTotal: evidence.ingredientsTotal,
-    inventoryItemsTotal: evidence.inventoryItemsTotal,
-    blocks: [],
-    alerts: [],
-  });
+function parseMode(raw: string | null): FlowViewMode {
+  return raw === "produto" ? "product" : "org";
 }
 
 export function FlowPage() {
-  const { hasPermission, active, me } = useOrganization();
+  const { session } = useAuth();
+  const { hasPermission, active, me, api } = useOrganization();
   const [params, setParams] = useSearchParams();
   const { evidence, loading } = useFlowEvidence();
   const roles = active?.roles?.length ? active.roles : me?.roles;
   const roleHint = resolveFlowRole(roles);
   const preferred = preferredStepForRole(roleHint);
-  const focus = focusStepsForRole(roleHint);
+  const focusSet = focusStepsForRole(roleHint);
   const orgId = active?.organization_id ?? null;
+  const userHint = session?.displayHint ?? "";
+
+  const mode = parseMode(params.get("modo"));
+  const productCode = (params.get("produto") ?? "").trim();
+  const mixedOriginParam = params.get("origem");
+  const mixedOrigin =
+    mixedOriginParam === "comprado"
+      ? "purchased"
+      : mixedOriginParam === "produzido"
+        ? "produced"
+        : null;
 
   const [selected, setSelected] = useState<FlowStepId>(() => parseEtapa(params.get("etapa"), preferred));
+  const [productOptions, setProductOptions] = useState<ProductCard[]>([]);
+  const [product, setProduct] = useState<ProductJourneyContext | null>(null);
+  const [productError, setProductError] = useState<string | null>(null);
+  const [productsLoading, setProductsLoading] = useState(false);
+
+  const operational = orgId ? readOperationalContext(orgId, userHint) : null;
 
   useEffect(() => {
     const fromQuery = params.get("etapa");
-    if (fromQuery) {
-      setSelected(parseEtapa(fromQuery, preferred));
-    } else {
-      setSelected(preferred);
-    }
+    if (fromQuery) setSelected(parseEtapa(fromQuery, preferred));
+    else setSelected(preferred);
   }, [params, preferred, orgId]);
 
-  const visible = useMemo(
-    () => resolveVisibleSteps(hasPermission, evidence, focus, null),
-    [hasPermission, evidence, focus],
+  useEffect(() => {
+    if (!orgId || !hasPermission("product.read")) {
+      setProductOptions([]);
+      return;
+    }
+    let alive = true;
+    setProductsLoading(true);
+    void api
+      .listProducts({ limit: "50", offset: "0", status: "active" })
+      .then((page) => {
+        if (alive) setProductOptions(page.items ?? []);
+      })
+      .catch(() => {
+        if (alive) setProductOptions([]);
+      })
+      .finally(() => {
+        if (alive) setProductsLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [api, orgId, hasPermission]);
+
+  useEffect(() => {
+    if (mode !== "product" || !productCode || !orgId) {
+      setProduct(null);
+      setProductError(null);
+      return;
+    }
+    let alive = true;
+    const listed = productOptions.find((row) => row.code === productCode);
+    if (listed) {
+      // Detalhe para links reais (ordens/receitas) sem N+1 na lista.
+      void api
+        .getProduct(listed.id)
+        .then((body) => {
+          if (!alive) return;
+          setProduct(productJourneyFromCard(body.data, mixedOrigin));
+          setProductError(null);
+        })
+        .catch(() => {
+          if (!alive) return;
+          setProduct(productJourneyFromCard(listed, mixedOrigin));
+          setProductError(null);
+        });
+      return () => {
+        alive = false;
+      };
+    }
+    if (productsLoading) return;
+    setProduct(null);
+    setProductError("Produto não encontrado nesta organização (use o código público).");
+    return () => {
+      alive = false;
+    };
+  }, [mode, productCode, orgId, productOptions, productsLoading, api, mixedOrigin]);
+
+  const path = useMemo(
+    () =>
+      buildCriticalPath({
+        mode: mode === "product" && product ? "product" : "org",
+        evidence,
+        hasPermission,
+        focusId: selected,
+        profileFocus: focusSet,
+        product: mode === "product" ? product : null,
+      }),
+    [mode, product, evidence, hasPermission, selected, focusSet],
   );
 
-  const current = visible.find((row) => row.def.id === selected) ?? visible[0];
+  const current = path.steps.find((row) => row.def.id === path.focusId) ?? path.steps[0];
   const currentId = current?.def.id ?? preferred;
-  const { prev, next } = neighborSteps(visible, currentId);
-  // N = id canônico da etapa; M = etapas visíveis ao perfil (8 com custos; 7 sem).
-  const stageLabel = `Etapa ${currentId} de ${visible.length}`;
-  const journey = journeyLine(visible.map((row) => row.def.title));
+  const { prev, next } = neighborSteps(
+    path.steps.map((row) => ({
+      def: row.def,
+      situation: row.situation,
+      pending: row.pending,
+      nextAction: row.nextAction,
+      hasAccess: row.hasAccess,
+      visible: true,
+      inFocus: row.profileEmphasis,
+    })),
+    currentId,
+  );
 
   const permissions = useMemo(() => {
     const raw = [...(active?.permissions ?? []), ...(me?.permissions ?? [])];
@@ -142,170 +206,263 @@ export function FlowPage() {
 
   const gigio = useMemo(
     () =>
-      buildPageOrientation(
-        roleHint,
-        evidence,
-        currentId,
-        visible,
-        orgId,
-        active?.display_name ?? null,
+      buildOrientation({
+        organizationId: orgId,
+        organizationName: active?.display_name ?? null,
+        establishmentId: operational?.establishment_id ?? null,
+        profile: roleHint,
+        stepId: currentId,
+        stepTitle: current?.def.title ?? null,
+        situation: current?.situation ?? null,
+        pending: current?.pending ?? null,
+        nextAction: current?.nextAction ?? null,
         permissions,
-      ),
-    [roleHint, evidence, currentId, visible, orgId, active?.display_name, permissions],
+        productModality: product
+          ? (product.supplyMode as ReturnType<typeof inferModality>)
+          : inferModality(evidence.products),
+        products: evidence.products,
+        fiscal: evidence.fiscal,
+        recipesTotal: evidence.recipesTotal,
+        ordersTotal: evidence.ordersTotal,
+        ingredientsTotal: evidence.ingredientsTotal,
+        inventoryItemsTotal: evidence.inventoryItemsTotal,
+        blocks: [],
+        alerts: [],
+        mode: path.mode,
+        criticalPath: path,
+        product,
+      }),
+    [
+      orgId,
+      active?.display_name,
+      operational?.establishment_id,
+      roleHint,
+      currentId,
+      current,
+      permissions,
+      product,
+      evidence,
+      path,
+    ],
   );
+
+  function writeParams(next: {
+    etapa?: FlowStepId;
+    modo?: FlowViewMode;
+    produto?: string | null;
+    origem?: "purchased" | "produced" | null;
+  }) {
+    const sp = new URLSearchParams();
+    const etapa = next.etapa ?? selected;
+    sp.set("etapa", String(etapa));
+    const modo = next.modo ?? mode;
+    if (modo === "product") {
+      sp.set("modo", "produto");
+      const code = next.produto === undefined ? productCode : next.produto;
+      if (code) sp.set("produto", code);
+      const origin = next.origem === undefined ? mixedOrigin : next.origem;
+      if (origin === "purchased") sp.set("origem", "comprado");
+      if (origin === "produced") sp.set("origem", "produzido");
+    }
+    setParams(sp, { replace: true });
+  }
 
   function selectStep(id: FlowStepId) {
     setSelected(id);
-    setParams({ etapa: String(id) }, { replace: true });
+    writeParams({ etapa: id });
   }
 
-  const recommended =
-    gigio.recommended && gigio.recommended.allowed ? gigio.recommended : null;
-
-  const readyCount = visible.filter((row) => row.situation === "Pronto").length;
-  const attentionCount = visible.filter((row) => row.situation === "Requer atenção").length;
-  const naCount = visible.filter((row) => row.situation === "Não se aplica").length;
+  const recommended = gigio.recommended && gigio.recommended.allowed ? gigio.recommended : null;
 
   return (
     <div className="flow-page">
-      <header className="page-head">
+      <header className="page-head flow-page__head">
         <div>
           <h1>Fluxo produtivo</h1>
-          <p className="lede">
-            {journey}
-          </p>
+          <p className="lede">Da entrada da mercadoria ao preço e à gestão do produto acabado.</p>
           <p className="meta">
-            Perfil: <strong>{roleDisplayLabel(roleHint)}</strong>
-            {active?.display_name ? (
+            Organização: <strong>{active?.display_name ?? "—"}</strong>
+            {operational?.establishment_name ? (
               <>
                 {" "}
-                · Organização <strong>{active.display_name}</strong>
+                · Estabelecimento: <strong>{operational.establishment_name}</strong>
               </>
             ) : null}
             {" · "}
-            {stageLabel}
+            Perfil: <strong>{roleDisplayLabel(roleHint)}</strong>
           </p>
-        </div>
-      </header>
-
-      <section className="flow-gigio panel" aria-labelledby="flow-gigio-heading">
-        <GigioIdentity
-          size="lg"
-          caption="Orientador do processo — dados reais desta organização"
-        />
-        <div className="flow-gigio__body">
-          <h2 id="flow-gigio-heading">{gigio.youAreOn}</h2>
-          <p>{gigio.purpose}</p>
-          <p>{gigio.statusLine}</p>
-          <p>
-            <strong>Pendência principal: </strong>
-            {loading ? "Carregando evidências…" : gigio.mainPending}
-          </p>
-          {gigio.modalityNote ? <p className="meta">{gigio.modalityNote}</p> : null}
-          <div className="flow-gigio__actions">
-            {recommended ? (
-              <Link className="primary" to={withFlowReturn(recommended.to, currentId)}>
-                {recommended.label}
-              </Link>
-            ) : null}
-            {current?.def.primary
-              && current.hasAccess
-              && linkAllowed(current.def.primary, hasPermission)
-              && (!recommended || recommended.to !== current.def.primary.to) ? (
-              <Link className="ghost" to={withFlowReturn(current.def.primary.to, current.def.id)}>
-                {current.def.primary.label}
-              </Link>
-            ) : null}
+          <div className="flow-mode" role="group" aria-label="Modo do fluxo">
+            <button
+              type="button"
+              className={mode === "org" ? "primary" : "ghost"}
+              aria-pressed={mode === "org"}
+              onClick={() => writeParams({ modo: "org", produto: null, origem: null })}
+            >
+              Visão geral da organização
+            </button>
+            <button
+              type="button"
+              className={mode === "product" ? "primary" : "ghost"}
+              aria-pressed={mode === "product"}
+              onClick={() => writeParams({ modo: "product" })}
+            >
+              Jornada de um produto
+            </button>
           </div>
-          {gigio.calculatorSlot === "reserved" ? (
-            <p className="meta">
-              Calculadora lateral reservada (rendimento, conversões, custo e preço) — sem números
-              simulados nesta fase.
+          {mode === "product" ? (
+            <div className="flow-product-picker">
+              <label htmlFor="flow-product-code">
+                Produto (nome ou código)
+                <select
+                  id="flow-product-code"
+                  value={productCode}
+                  onChange={(event) => {
+                    const code = event.target.value;
+                    writeParams({ modo: "product", produto: code || null, etapa: selected });
+                  }}
+                >
+                  <option value="">Escolher…</option>
+                  {productOptions.map((row) => (
+                    <option key={row.code} value={row.code}>
+                      {row.code} — {row.display_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {product?.supplyMode === "mixed" ? (
+                <label>
+                  Origem do abastecimento
+                  <select
+                    value={mixedOrigin ?? ""}
+                    onChange={(event) => {
+                      const v = event.target.value;
+                      writeParams({
+                        origem: v === "purchased" || v === "produced" ? v : null,
+                      });
+                    }}
+                  >
+                    <option value="">Informar…</option>
+                    <option value="purchased">Comprado</option>
+                    <option value="produced">Produzido</option>
+                  </select>
+                </label>
+              ) : null}
+              {productError ? <p role="alert">{productError}</p> : null}
+            </div>
+          ) : null}
+          {config.demoMode ? (
+            <p>
+              <Link className="ghost" to="/demonstracao">
+                Abrir guia da demonstração
+              </Link>
             </p>
           ) : null}
         </div>
-      </section>
+      </header>
+
+      {path.orgPreparationNote ? (
+        <p className="flow-banner" role="status">
+          {path.orgPreparationNote}
+        </p>
+      ) : null}
+      {path.modalityNote ? (
+        <p className="flow-banner flow-banner--soft" role="status">
+          {path.modalityNote}
+        </p>
+      ) : null}
+
+      <FlowMap steps={path.steps} focusId={currentId} onSelect={selectStep} />
 
       <section className="flow-orient" aria-labelledby="flow-orient-heading">
-        <h2 id="flow-orient-heading" className="visually-hidden">
-          Painel de condução
-        </h2>
+        <h2 id="flow-orient-heading">Resumo do caminho</h2>
         <dl className="flow-orient__grid">
           <div>
-            <dt>Onde você está</dt>
+            <dt>Onde o processo está</dt>
             <dd>
-              {stageLabel}
-              {current ? ` — ${current.def.title}` : ""}
+              {loading
+                ? "Carregando…"
+                : path.criticalPositionId
+                  ? path.blockingTitle
+                  : "Sem bloqueio urgente no caminho visível"}
             </dd>
           </div>
           <div>
-            <dt>Pronto</dt>
-            <dd>{loading ? "…" : `${readyCount} etapa(s)`}</dd>
+            <dt>O que já está pronto</dt>
+            <dd>{loading ? "…" : path.readyTitles.length ? path.readyTitles.join(", ") : "Nada marcado como pronto ainda"}</dd>
           </div>
           <div>
-            <dt>Requer atenção</dt>
-            <dd>{loading ? "…" : `${attentionCount} etapa(s)`}</dd>
-          </div>
-          <div>
-            <dt>Não se aplica</dt>
-            <dd>{loading ? "…" : `${naCount} etapa(s)`}</dd>
+            <dt>O que impede avançar</dt>
+            <dd>{loading ? "…" : path.blockingPending ?? "Nada urgente bloqueando agora."}</dd>
           </div>
           <div>
             <dt>Próxima ação</dt>
             <dd>{loading ? "Carregando…" : recommended?.label ?? current?.nextAction ?? "Escolher uma etapa"}</dd>
           </div>
           <div>
-            <dt>O que impede avançar</dt>
+            <dt>Não aplicáveis</dt>
             <dd>
-              {loading
-                ? "…"
-                : attentionCount > 0
-                  ? gigio.mainPending
-                  : current?.situation === "Sem acesso"
-                    ? current.pending
-                    : "Nada urgente bloqueando a jornada agora."}
+              {path.notApplicableTitles.length ? path.notApplicableTitles.join(", ") : "Nenhuma neste recorte"}
             </dd>
           </div>
+          <div>
+            <dt>Limitações</dt>
+            <dd>{path.limitations[0] ?? "—"}</dd>
+          </div>
         </dl>
+        {recommended ? (
+          <p className="flow-orient__cta">
+            <Link className="primary" to={withFlowReturn(recommended.to, currentId)}>
+              {recommended.label}
+            </Link>
+          </p>
+        ) : null}
       </section>
 
-      <nav className="flow-rail" aria-label="Etapas do fluxo produtivo">
-        <p className="flow-rail__mobile-label">
-          {stageLabel}
-          {current ? `: ${current.def.title}` : ""}
-        </p>
-        <ol className="flow-rail__list">
-          {visible.map((row) => {
-            const isCurrent = row.def.id === currentId;
-            return (
-              <li key={row.def.id} className={row.inFocus ? undefined : "is-context"}>
-                <button
-                  type="button"
-                  className={isCurrent ? "is-current" : undefined}
-                  aria-current={isCurrent ? "step" : undefined}
-                  disabled={row.situation === "Sem acesso"}
-                  onClick={() => selectStep(row.def.id)}
-                >
-                  <span className="flow-rail__num" aria-hidden="true">
-                    {row.def.id}
-                  </span>
-                  <span className="flow-rail__title">{row.def.title}</span>
-                  <StatusBadge tone={situationTone(row.situation)} label={row.situation} />
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      </nav>
+      <section className="flow-gigio panel" aria-labelledby="flow-gigio-heading">
+        <GigioIdentity size="lg" caption="Explica o mapa — não compete com ele" />
+        <div className="flow-gigio__body">
+          <h2 id="flow-gigio-heading">{gigio.youAreOn}</h2>
+          {gigio.pathStoppedAt ? (
+            <p>
+              <strong>Motivo: </strong>
+              {loading ? "Carregando evidências…" : gigio.mainPending}
+            </p>
+          ) : (
+            <p>{gigio.statusLine}</p>
+          )}
+          {gigio.consequence ? <p>{gigio.consequence}</p> : null}
+          <p>
+            <strong>Próxima ação: </strong>
+            {loading ? "…" : recommended?.label ?? current?.nextAction ?? "—"}
+          </p>
+          {gigio.modalityNote ? <p className="meta">{gigio.modalityNote}</p> : null}
+          <p className="meta">{gigio.purpose}</p>
+          <div className="flow-gigio__actions">
+            {recommended ? (
+              <Link className="primary" to={withFlowReturn(recommended.to, currentId)}>
+                {recommended.label}
+              </Link>
+            ) : null}
+            {config.demoMode ? (
+              <Link className="ghost" to="/demonstracao">
+                Abrir guia da demonstração
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </section>
 
       {current ? (
         <article className="flow-panel" aria-labelledby="flow-step-title">
           <div className="flow-panel__head">
             <h2 id="flow-step-title">
-              Etapa {current.def.id} · {current.def.title}
+              Detalhe · Etapa {current.def.id} · {current.def.title}
             </h2>
-            <StatusBadge tone={situationTone(current.situation)} label={current.situation} />
+            <StatusBadge tone={situationTone(current.mapLabel)} label={current.mapLabel} />
           </div>
+          {current.isFocus && !current.isCriticalPosition ? (
+            <p className="meta">Em foco para consulta — a posição real do caminho permanece em outra etapa.</p>
+          ) : null}
           <p>{current.def.objective}</p>
           {current.def.id === 1 ? (
             <ol className="flow-panel__substeps">
@@ -325,9 +482,7 @@ export function FlowPage() {
             {current.nextAction}
           </p>
           {current.situation === "Não se aplica" ? (
-            <p className="meta">
-              Esta etapa não se aplica ao produto ou perfil atual — o Gigio explica o motivo acima.
-            </p>
+            <p className="meta">Esta etapa não se aplica ao produto ou perfil atual — o Gigio explica o motivo.</p>
           ) : null}
 
           <div className="flow-panel__actions">
@@ -357,7 +512,7 @@ export function FlowPage() {
               <span />
             )}
             <Link className="ghost" to="/fluxo">
-              Voltar ao fluxo
+              Voltar ao mapa
             </Link>
             {next ? (
               <button type="button" className="ghost" onClick={() => selectStep(next)}>
@@ -375,5 +530,4 @@ export function FlowPage() {
   );
 }
 
-/** Export auxiliar para testes de deep link. */
-export { flowHref };
+export { flowHref } from "./steps";

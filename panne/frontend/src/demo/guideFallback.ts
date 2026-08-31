@@ -3,14 +3,14 @@ import type { DemoGuidePayload } from "./guideTypes";
 /** Fallback versionado — ausência de métrica = null, nunca inventar zero. */
 export const DEMO_GUIDE_FALLBACK: DemoGuidePayload = {
   schema_version: 1,
-  content_version: "r028-002",
+  content_version: "r028-003",
   title: "Guia da demonstração Panne",
   source: "fallback",
   what_is: {
     purpose:
       "A Panne organiza o fluxo produtivo de padarias e ateliers: compras e estoque, produtos e receitas, planejamento, ordens, execução, rotulagem e custos — com revisão humana nos pontos críticos.",
     flow:
-      "O percurso sugerido começa na entrada de mercadoria, passa por cadastros e estoque, chega ao planejamento e às ordens, e termina em conformidade e gestão.",
+      "O mapa do caminho crítico em /fluxo distingue a visão geral da organização (preparação) da jornada de um produto (código público). “Você está aqui” é a primeira etapa que ainda impede o avanço; clicar numa etapa só muda o foco de consulta.",
     data_nature:
       "Todos os dados desta demonstração são fictícios. Não representam padaria real, fornecedor real nem obrigação legal.",
     shared:
@@ -96,8 +96,8 @@ export const DEMO_GUIDE_FALLBACK: DemoGuidePayload = {
   roadmap: [
     { step: 1, title: "Entrar como Proprietário", path: "/entrar", requires_session: false },
     { step: 2, title: "Escolher Panne Demonstração", path: "/organizacao", requires_session: true },
-    { step: 3, title: "Abrir Fluxo produtivo", path: "/fluxo", requires_session: true },
-    { step: 4, title: "Entender a próxima ação com o Gigio", path: "/fluxo", requires_session: true },
+    { step: 3, title: "Começar roteiro no mapa do caminho crítico", path: "/fluxo", requires_session: true },
+    { step: 4, title: "Distinguir visão geral e jornada de produto com o Gigio", path: "/fluxo", requires_session: true },
     { step: 5, title: "Consultar compras e entrada fiscal", path: "/gestao/compras/entradas", requires_session: true },
     { step: 6, title: "Conferir ingredientes e estoque", path: "/componentes/estoque", requires_session: true },
     { step: 7, title: "Consultar produtos", path: "/produtos", requires_session: true },
@@ -163,7 +163,7 @@ export const DEMO_GUIDE_FALLBACK: DemoGuidePayload = {
       detail: "A demo usa perfis prontos sem senha; OIDC não é usado aqui.",
     },
     {
-      name: "IA generativa / Bedrock",
+      name: "IA generativa em nuvem",
       state: "indisponivel",
       detail: "Assistente de receitas com IA generativa não está ligado neste ambiente.",
     },

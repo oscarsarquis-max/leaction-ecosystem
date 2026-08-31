@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 GUIDE_SCHEMA_VERSION = 1
-GUIDE_CONTENT_VERSION = "r028-002"
+GUIDE_CONTENT_VERSION = "r028-003"
 
 # Totais de referência (fallback versionado). Nunca inventar zero quando a fonte falha.
 FALLBACK_COUNTS: dict[str, Any] = {
@@ -84,9 +84,10 @@ def static_guide_body() -> dict[str, Any]:
                 "execução, rotulagem e custos — com revisão humana nos pontos críticos."
             ),
             "flow": (
-                "O percurso sugerido começa na entrada de mercadoria, passa por "
-                "cadastros e estoque, chega ao planejamento e às ordens, e termina "
-                "em conformidade e gestão."
+                "O mapa do caminho crítico em /fluxo distingue a visão geral da "
+                "organização (preparação) da jornada de um produto (código público). "
+                "“Você está aqui” é a primeira etapa que ainda impede o avanço; "
+                "clicar numa etapa só muda o foco de consulta."
             ),
             "data_nature": (
                 "Todos os dados desta demonstração são fictícios. Não representam "
@@ -191,13 +192,13 @@ def static_guide_body() -> dict[str, Any]:
             },
             {
                 "step": 3,
-                "title": "Abrir Fluxo produtivo",
+                "title": "Começar roteiro no mapa do caminho crítico",
                 "path": "/fluxo",
                 "requires_session": True,
             },
             {
                 "step": 4,
-                "title": "Entender a próxima ação com o Gigio",
+                "title": "Distinguir visão geral e jornada de produto com o Gigio",
                 "path": "/fluxo",
                 "requires_session": True,
             },
@@ -318,7 +319,7 @@ def static_guide_body() -> dict[str, Any]:
                 "detail": "A demo usa perfis prontos sem senha; OIDC não é usado aqui.",
             },
             {
-                "name": "IA generativa / Bedrock",
+                "name": "IA generativa em nuvem",
                 "state": "indisponivel",
                 "detail": "Assistente de receitas com IA generativa não está ligado neste ambiente.",
             },

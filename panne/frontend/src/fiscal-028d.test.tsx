@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   FISCAL_DOCUMENT_ID,
@@ -184,7 +184,9 @@ describe("CURSOR-028-D entrada de mercadoria por documento fiscal", () => {
     ]) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }
-    expect(await screen.findByText(/entrada\(s\) registrada\(s\)/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText(/entrada\(s\) registrada\(s\)/).length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   it("mostra Entradas fiscais no submenu de compras", async () => {

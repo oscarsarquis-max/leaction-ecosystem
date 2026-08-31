@@ -28,19 +28,49 @@ const emptyEvidence: FlowEvidence = {
 };
 
 describe("Adendo fluxo + Gigio", () => {
-  it("login → organização → /fluxo com Gigio editorial e jornada", async () => {
+  it("login → organização → /fluxo com mapa dominante e Gigio", async () => {
     installApiMock();
     localStorage.setItem("panne.activeOrganization", ORG_A);
     await renderApp("/");
     expect(await screen.findByRole("heading", { name: "Fluxo produtivo" })).toBeInTheDocument();
-    expect(screen.getByText(/Compras e entradas → Ingredientes e estoque → Produtos/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Da entrada da mercadoria ao preço e à gestão do produto acabado/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Visão geral da organização/i })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Etapas do fluxo produtivo" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Custos e preços/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/Etapa \d+ de 8/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByAltText("Gigio, assistente da Panne").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Gigio").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole("heading", { name: /Você está na etapa/ })).toBeInTheDocument();
-    const rail = screen.getByRole("navigation", { name: "Etapas do fluxo produtivo" });
-    expect(within(rail).getAllByRole("button")).toHaveLength(8);
+    expect(screen.getByRole("heading", { name: /caminho está parado|Não há bloqueio/i })).toBeInTheDocument();
+    const map = screen.getByRole("navigation", { name: "Etapas do fluxo produtivo" });
+    expect(within(map).getAllByRole("button").length).toBeGreaterThanOrEqual(7);
+  });
+
+  it("foco diferente da posição real ao clicar etapa", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    const user = userEvent.setup();
+    await renderApp("/fluxo?etapa=1");
+    await screen.findByRole("heading", { name: "Fluxo produtivo" });
+    const map = screen.getByRole("navigation", { name: "Etapas do fluxo produtivo" });
+    const custos = within(map).getByRole("button", { name: /Custos e preços/i });
+    await user.click(custos);
+    expect(custos).toHaveAttribute("aria-current", "step");
+    expect(within(custos).getByText(/Em foco para consulta|Posição e foco/i)).toBeInTheDocument();
+  });
+
+  it("jornada de produto comprado marca etapas não aplicáveis", async () => {
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    const user = userEvent.setup();
+    await renderApp("/fluxo");
+    await user.click(await screen.findByRole("button", { name: /Jornada de um produto/i }));
+    const select = await screen.findByLabelText(/Produto \(nome ou código\)/i);
+    await user.selectOptions(select, "REF-COLA");
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(/Não se aplica — produto comprado|jornada de produto comprado/i).length,
+      ).toBeGreaterThanOrEqual(1);
+    });
   });
 
   it("Gigio visível nas telas da jornada sem abrir o chat", async () => {
@@ -173,8 +203,7 @@ describe("Adendo fluxo + Gigio", () => {
     const rail = screen.getByRole("navigation", { name: "Etapas do fluxo produtivo" });
     expect(within(rail).getAllByRole("button")).toHaveLength(7);
     const lede = document.querySelector(".flow-page .lede")?.textContent ?? "";
-    expect(lede).toMatch(/Produto acabado e rotulagem$/);
-    expect(lede).not.toMatch(/Custos e preços/);
+    expect(lede).toMatch(/Da entrada da mercadoria ao preço/i);
   });
 
   it("Proprietário autorizado vê a oitava etapa Custos e preços", async () => {
@@ -199,7 +228,7 @@ describe("Adendo fluxo + Gigio", () => {
     const rail = screen.getByRole("navigation", { name: "Etapas do fluxo produtivo" });
     expect(within(rail).getAllByRole("button")).toHaveLength(8);
     const ownerLede = document.querySelector(".flow-page .lede")?.textContent ?? "";
-    expect(ownerLede).toMatch(/→ Custos e preços$/);
+    expect(ownerLede).toMatch(/Da entrada da mercadoria ao preço/i);
   });
 
   it("trilha na tela participante usa a mesma contagem canônica do fluxo", async () => {

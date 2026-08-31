@@ -1,8 +1,9 @@
 /**
- * Contrato de orientação determinística do fluxo (CURSOR adendo Gigio).
- * Preparado para futura complementação por IA; a navegação não depende dela.
+ * Orientação determinística do mapa (R028-003).
+ * Sem IA generativa obrigatória.
  */
 import type { FiscalSummary, ProductSummary } from "../api/types";
+import type { CriticalPathResult, FlowViewMode, ProductJourneyContext } from "./criticalPath";
 import type { FlowSituation, FlowStepId } from "./steps";
 
 export type ProductModalityFocus =
@@ -31,16 +32,17 @@ export type OrientationInput = {
   ordersTotal: number | null;
   ingredientsTotal: number | null;
   inventoryItemsTotal: number | null;
-  /** Bloqueios explícitos já conhecidos pela tela. */
   blocks: string[];
-  /** Alertas não bloqueantes. */
   alerts: string[];
+  /** R028-003 */
+  mode?: FlowViewMode;
+  criticalPath?: CriticalPathResult | null;
+  product?: ProductJourneyContext | null;
 };
 
 export type OrientationAction = {
   label: string;
   to: string;
-  /** Só true quando a ação existe e o perfil pode executar. */
   allowed: boolean;
 };
 
@@ -52,8 +54,9 @@ export type OrientationResult = {
   recommended: OrientationAction | null;
   modalityNote: string | null;
   calculatorSlot: "hidden" | "reserved";
-  /** Chave estável para limpar orientação ao trocar de org. */
   scopeKey: string;
+  pathStoppedAt: string | null;
+  consequence: string | null;
 };
 
 const STEP_PURPOSE: Record<FlowStepId, string> = {
@@ -108,38 +111,100 @@ export function modalityNoteFor(
   return null;
 }
 
+function primaryActionForBlocker(
+  stepId: FlowStepId,
+  permissions: string[],
+  path: CriticalPathResult | null | undefined,
+): OrientationAction | null {
+  const codes = permissions;
+  const step = path?.steps.find((row) => row.def.id === stepId);
+  if (step && (!step.hasAccess || step.situation === "Sem acesso")) return null;
+
+  if (stepId === 1 && hasAny(codes, ["fiscal.document.capture", "procurement.receive", "procurement.read", "fiscal.document.read"])) {
+    const fiscal = path ? null : null;
+    void fiscal;
+    return { label: "Registrar entrada", to: "/gestao/compras/entradas", allowed: true };
+  }
+  if (stepId === 2 && hasAny(codes, ["ingredient.read", "inventory.read"])) {
+    return { label: "Conferir ingredientes e estoque", to: "/componentes/estoque", allowed: true };
+  }
+  if (stepId === 3 && has(codes, "product.create")) {
+    return { label: "Cadastrar produto", to: "/produtos/novo", allowed: true };
+  }
+  if (stepId === 3 && has(codes, "product.read")) {
+    return { label: "Abrir produtos", to: "/produtos", allowed: true };
+  }
+  if (stepId === 4 && has(codes, "recipe.read")) {
+    return { label: "Vincular receita", to: "/receitas", allowed: true };
+  }
+  if (stepId === 5 && hasAny(codes, ["production.plan.read", "production.order.read"])) {
+    return {
+      label: "Criar planejamento",
+      to: "/planejamento",
+      allowed: has(codes, "production.plan.read"),
+    };
+  }
+  if (stepId === 6 && has(codes, "production.order.read")) {
+    return { label: "Executar", to: "/ordens", allowed: true };
+  }
+  if (stepId === 7 && has(codes, "labeling.read")) {
+    return { label: "Revisar rotulagem", to: "/conformidade", allowed: true };
+  }
+  if (stepId === 8 && hasAny(codes, ["costing.read", "pricing.review"])) {
+    return { label: "Calcular custo/preço", to: "/gestao/custos", allowed: has(codes, "costing.read") };
+  }
+  return null;
+}
+
 export function buildOrientation(input: OrientationInput): OrientationResult {
-  const stepId = input.stepId;
-  const purpose = stepId ? STEP_PURPOSE[stepId] : "Escolher a próxima etapa do fluxo produtivo.";
-  const youAreOn = stepId && input.stepTitle
-    ? `Você está na etapa ${stepId} — ${input.stepTitle}.`
-    : "Você está no fluxo produtivo.";
+  const path = input.criticalPath ?? null;
+  const criticalId = path?.criticalPositionId ?? null;
+  const focusId = input.stepId;
+  const focusStep = path?.steps.find((row) => row.def.id === focusId) ?? null;
+  const criticalStep = path?.steps.find((row) => row.def.id === criticalId) ?? null;
 
-  const statusLine = input.situation
-    ? `Situação: ${input.situation}.`
-    : "Situação ainda não determinada.";
+  const purpose = focusId ? STEP_PURPOSE[focusId] : "Escolher a próxima etapa do fluxo produtivo.";
 
-  let mainPending = input.pending?.trim() || "Nenhuma pendência registrada nesta etapa.";
-  if (input.blocks.length) {
-    mainPending = input.blocks[0]!;
-  } else if (input.fiscal && stepId === 1) {
-    const awaiting =
-      input.fiscal.awaiting_match + input.fiscal.awaiting_check + input.fiscal.divergent;
-    if (input.fiscal.awaiting_match > 0) {
-      mainPending = `Há item(ns) da nota ainda sem correspondência (${input.fiscal.awaiting_match}).`;
-    } else if (input.fiscal.awaiting_check > 0) {
-      mainPending = `Há documento(s) aguardando conferência física (${input.fiscal.awaiting_check}).`;
-    } else if (input.fiscal.divergent > 0) {
-      mainPending = `Há divergência(s) a resolver na entrada (${input.fiscal.divergent}).`;
-    } else if (awaiting === 0 && input.fiscal.total > 0) {
-      mainPending = "Entradas registradas; nada urgente na conferência agora.";
-    }
-  } else if (input.productModality === "produced" && stepId === 4 && (input.recipesTotal ?? 0) === 0) {
-    mainPending = "Este produto produzido ainda não possui receita vigente.";
+  let youAreOn: string;
+  if (criticalStep) {
+    youAreOn = `Seu caminho está parado em ${criticalStep.def.title}.`;
+  } else if (path) {
+    youAreOn = "Não há bloqueio urgente no caminho visível agora.";
+  } else if (focusId && input.stepTitle) {
+    // Coach em rotas da jornada (sem mapa completo).
+    youAreOn = `Você está na etapa ${focusId} — ${input.stepTitle}.`;
+  } else {
+    youAreOn = "Você está no fluxo produtivo.";
   }
 
-  const recommended = recommendAction(input);
-  const modalityNote = modalityNoteFor(input.productModality, stepId);
+  const statusLine = focusStep
+    ? focusStep.isCriticalPosition
+      ? `Posição real e consulta: ${focusStep.def.title} (${focusStep.situation}).`
+      : `Em foco para consulta: ${focusStep.def.title} (${focusStep.situation}). Posição real: ${
+          criticalStep ? criticalStep.def.title : "sem bloqueio"
+        }.`
+    : input.situation
+      ? `Situação: ${input.situation}.`
+      : "Situação ainda não determinada.";
+
+  let mainPending =
+    criticalStep?.pending
+    || input.pending?.trim()
+    || "Nenhuma pendência registrada nesta etapa.";
+  if (input.blocks.length) mainPending = input.blocks[0]!;
+
+  const recommended =
+    (criticalId ? primaryActionForBlocker(criticalId, input.permissions, path) : null)
+    || recommendAction(input);
+
+  const modalityNote =
+    path?.modalityNote
+    || modalityNoteFor(input.productModality, focusId)
+    || (path?.orgPreparationNote ?? null);
+
+  const consequence = criticalStep
+    ? `Enquanto ${criticalStep.def.title} não avançar, as etapas seguintes não desbloqueiam o caminho crítico — mesmo que alguma estrutura posterior já exista.`
+    : null;
 
   return {
     youAreOn,
@@ -148,9 +213,10 @@ export function buildOrientation(input: OrientationInput): OrientationResult {
     mainPending,
     recommended,
     modalityNote,
-    calculatorSlot:
-      stepId === 4 || stepId === 8 ? "reserved" : "hidden",
-    scopeKey: `${input.organizationId ?? "none"}:${stepId ?? "fluxo"}`,
+    calculatorSlot: focusId === 4 || focusId === 8 ? "reserved" : "hidden",
+    scopeKey: `${input.organizationId ?? "none"}:${input.mode ?? "org"}:${input.product?.code ?? ""}:${focusId ?? "fluxo"}`,
+    pathStoppedAt: criticalStep?.def.title ?? null,
+    consequence,
   };
 }
 
@@ -161,14 +227,14 @@ function recommendAction(input: OrientationInput): OrientationAction | null {
   if (stepId === 1) {
     if (input.fiscal && input.fiscal.awaiting_match > 0 && hasAny(codes, ["fiscal.document.match", "procurement.receive"])) {
       return {
-        label: "Abrir entradas aguardando correspondência",
+        label: "Associar item",
         to: "/gestao/compras/entradas?situacao=aguardando-correspondencia",
         allowed: true,
       };
     }
     if (input.fiscal && input.fiscal.awaiting_check > 0 && hasAny(codes, ["fiscal.document.check", "procurement.receive"])) {
       return {
-        label: "Abrir documentos aguardando conferência",
+        label: "Conferir recebimento",
         to: "/gestao/compras/entradas?situacao=aguardando-conferencia",
         allowed: true,
       };
@@ -184,14 +250,10 @@ function recommendAction(input: OrientationInput): OrientationAction | null {
 
   if (stepId === 4) {
     if (input.productModality === "purchased") {
-      return {
-        label: "Seguir para acabamento ou gestão",
-        to: "/fluxo?etapa=7",
-        allowed: true,
-      };
+      return { label: "Seguir para acabamento", to: "/fluxo?etapa=7", allowed: true };
     }
     if (has(codes, "recipe.read")) {
-      return { label: "Abrir receitas", to: "/receitas", allowed: true };
+      return { label: "Vincular receita", to: "/receitas", allowed: true };
     }
   }
 
@@ -200,11 +262,11 @@ function recommendAction(input: OrientationInput): OrientationAction | null {
   }
 
   if (stepId === 6 && has(codes, "production.order.read")) {
-    return { label: "Escolher ordem para executar", to: "/ordens", allowed: true };
+    return { label: "Executar", to: "/ordens", allowed: true };
   }
 
   if (stepId === 7 && has(codes, "labeling.read")) {
-    return { label: "Abrir conformidade", to: "/conformidade", allowed: true };
+    return { label: "Revisar rotulagem", to: "/conformidade", allowed: true };
   }
 
   if (stepId === 8) {
@@ -215,12 +277,8 @@ function recommendAction(input: OrientationInput): OrientationAction | null {
         allowed: has(codes, "labeling.read"),
       };
     }
-    return { label: "Abrir custos e preços", to: "/gestao/custos", allowed: has(codes, "costing.read") };
+    return { label: "Calcular custo/preço", to: "/gestao/custos", allowed: has(codes, "costing.read") };
   }
 
-  if (input.nextAction && stepId) {
-    // Sem rota concreta segura — não inventa botão morto.
-    return null;
-  }
-  return { label: "Voltar ao fluxo", to: "/fluxo", allowed: true };
+  return { label: "Voltar ao mapa", to: "/fluxo", allowed: true };
 }
