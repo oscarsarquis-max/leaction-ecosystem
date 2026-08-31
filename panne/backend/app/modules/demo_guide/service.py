@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -12,10 +13,17 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import RuntimeSessionLocal
 from app.modules.demo_guide.content import FALLBACK_COUNTS, static_guide_body
+from app.modules.identity_organization.tenant_context import apply_tenant_context
+from app.seed.ids import seed_uuid
 
 logger = logging.getLogger(__name__)
 
-_ORG_SLUGS = ("panne-demonstracao", "padaria-horizonte-demo")
+# Metadados fixos da demo (sem aceitar organization_id do cliente).
+# IDs internos só para escopo RLS; nunca serializados na resposta.
+_ORG_META: tuple[tuple[str, str, str], ...] = (
+    ("panne-demonstracao", "Panne Demonstração", "principal"),
+    ("padaria-horizonte-demo", "Padaria Horizonte Demo", "isolamento"),
+)
 
 _COUNT_SQL = {
     "produtos": "SELECT count(*)::int FROM technical_product WHERE organization_id = :oid",
@@ -44,42 +52,30 @@ _COUNT_SQL = {
 def _scalar(session: Session, sql: str, params: dict[str, Any]) -> int | None:
     try:
         return int(session.execute(text(sql), params).scalar_one())
-    except Exception:
-        logger.warning("demo-guide count falhou sql=%s", sql.split()[3] if sql else "?")
+    except Exception as exc:
+        logger.warning("demo-guide count falhou: %s", type(exc).__name__)
         return None
 
 
-def _live_counts(session: Session) -> dict[str, Any] | None:
-    # Leitura agregada só na demo; sem organization_id do cliente.
-    session.execute(text("SELECT set_config('row_security', 'off', true)"))
+def _org_id(slug: str) -> UUID:
+    return seed_uuid("org", slug)
+
+
+def _live_counts(session: Session) -> dict[str, Any]:
     orgs: list[dict[str, Any]] = []
-    for slug in _ORG_SLUGS:
-        row = session.execute(
-            text(
-                "SELECT id, display_name, slug FROM organization WHERE slug = :slug LIMIT 1"
-            ),
-            {"slug": slug},
-        ).mappings().first()
-        if not row:
-            orgs.append(
-                {
-                    "slug": slug,
-                    "display_name": slug,
-                    "role": "principal" if slug.startswith("panne") else "isolamento",
-                    "counts": {k: None for k in _COUNT_SQL},
-                }
-            )
-            continue
-        oid = row["id"]
+    for slug, display_name, role in _ORG_META:
+        oid = _org_id(slug)
+        # Escopo por tenant (sem desligar RLS — runtime não tem BYPASSRLS).
+        apply_tenant_context(session, organization_id=oid, user_id=None)
         counts: dict[str, int | None] = {}
         for key, sql in _COUNT_SQL.items():
             counts[key] = _scalar(session, sql, {"oid": oid})
         counts["perfis_disponiveis"] = 7 if slug == "panne-demonstracao" else None
         orgs.append(
             {
-                "slug": str(row["slug"]),
-                "display_name": str(row["display_name"] or row["slug"]),
-                "role": "principal" if slug == "panne-demonstracao" else "isolamento",
+                "slug": slug,
+                "display_name": display_name,
+                "role": role,
                 "counts": counts,
             }
         )
@@ -87,12 +83,11 @@ def _live_counts(session: Session) -> dict[str, Any] | None:
     totals: dict[str, int | None] = {}
     for key in list(_COUNT_SQL) + ["perfis_disponiveis"]:
         vals = [o["counts"].get(key) for o in orgs]
-        if any(v is None for v in vals) and key != "perfis_disponiveis":
-            # Se alguma org falhou nessa métrica, total fica Não informado.
+        if key == "perfis_disponiveis":
+            totals[key] = 7
+        elif any(v is None for v in vals):
             known = [v for v in vals if isinstance(v, int)]
             totals[key] = sum(known) if known and len(known) == len(vals) else None
-        elif key == "perfis_disponiveis":
-            totals[key] = 7
         else:
             totals[key] = sum(int(v) for v in vals if isinstance(v, int))
 
@@ -107,7 +102,6 @@ def _live_counts(session: Session) -> dict[str, Any] | None:
 
 def _alembic_head(session: Session) -> str | None:
     try:
-        session.execute(text("SELECT set_config('row_security', 'off', true)"))
         ver = session.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).scalar()
         return str(ver) if ver else None
     except Exception:
@@ -132,13 +126,17 @@ def resolve_demo_guide() -> dict[str, Any] | None:
         session = RuntimeSessionLocal()
         try:
             live = _live_counts(session)
-            if live:
+            known = [v for v in live["totals"].values() if isinstance(v, int)]
+            if known:
                 counts = live
                 counts_ok = True
             head = _alembic_head(session)
             session.commit()
-        except Exception:
-            logger.warning("demo-guide live counts indisponíveis; usando fallback")
+        except Exception as exc:
+            logger.warning(
+                "demo-guide live counts indisponíveis; usando fallback (%s)",
+                type(exc).__name__,
+            )
             session.rollback()
         finally:
             session.close()
