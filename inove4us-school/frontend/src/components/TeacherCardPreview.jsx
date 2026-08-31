@@ -2,6 +2,7 @@
  * TeacherCardPreview — espelho visual do Card da Mesa (inove4us B2C).
  * Tokens bordo/brand do Inove (propositalmente), leitura-only no School.
  */
+import OcorrenciaBadges from './OcorrenciaBadges'
 
 const COLUNAS = [
   { id: 'para_fazer', label: 'Para Fazer', tone: 'border-[#fecdd3] bg-[#fff1f2]/60' },
@@ -173,6 +174,9 @@ export default function TeacherCardPreview({
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">
           Espelho · Mesa do Professor
         </p>
+        <div className="mt-2">
+          <OcorrenciaBadges item={{ mesa: data, ...meta }} />
+        </div>
         <h3
           className="mt-1 text-xl font-bold leading-tight"
           style={{ fontFamily: '"Source Serif 4", Georgia, serif' }}

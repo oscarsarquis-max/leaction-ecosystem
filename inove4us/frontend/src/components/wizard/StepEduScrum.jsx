@@ -367,6 +367,9 @@ export default function StepEduScrum({
   const [acaoErro, setAcaoErro] = useState('')
   const [showRelato, setShowRelato] = useState(false)
   const [relatoBusy, setRelatoBusy] = useState(false)
+  const [pendentesContinuacao, setPendentesContinuacao] = useState([])
+  const [juncaoBusy, setJuncaoBusy] = useState(false)
+  const [agendaPend, setAgendaPend] = useState({ id: null, data: '', hora: '12:00' })
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackAula, setFeedbackAula] = useState(null)
   const [feedbackBusy, setFeedbackBusy] = useState(false)
@@ -910,19 +913,33 @@ export default function StepEduScrum({
       nota: nota.trim(),
       em: new Date().toISOString(),
     }
+    let nextTasks = []
     setTasks((prev) => {
-      const next = prev.map((t) => {
+      nextTasks = prev.map((t) => {
         if (t.id !== task.id) return t
         const historico = Array.isArray(t.historico) ? [...t.historico, entrada] : [entrada]
         return { ...t, coluna: toColuna, historico, ultima_observacao: nota.trim() }
       })
-      queueBoardSave(next)
-      return next
+      queueBoardSave(nextTasks)
+      return nextTasks
     })
     setPendingMove(null)
     if (toColuna === 'pronto') {
-      // Card concluído: aulas já estão no passado (relato) — refresca o grafo
       onAgendaChanged?.()
+      const aid = Number(aulaAtiva?.id_evento)
+      const daAula = nextTasks.filter((t) => {
+        if (!multiAula) return true
+        if (Number(t.aula_id) === aid) return true
+        return aulaIdsDoCard(t).some((id) => Number(id) === aid)
+      })
+      if (
+        aulaAtiva &&
+        aulaAtiva.status !== 'concluido' &&
+        daAula.length > 0 &&
+        daAula.every((t) => t.coluna === 'pronto')
+      ) {
+        setShowRelato(true)
+      }
     }
   }
 
@@ -1047,6 +1064,8 @@ export default function StepEduScrum({
           duracao_minutos: 10,
           historico: [],
           aula_id: destAula,
+          origem_card: 'custom',
+          editado: false,
         },
       ]
       queueBoardSave(next, { syncPlan: true })
@@ -1061,8 +1080,11 @@ export default function StepEduScrum({
     if (titulo == null) return
     const nextTitle = titulo.trim()
     if (!nextTitle) return
+    if (nextTitle === (task.titulo || '').trim()) return
     setTasks((prev) => {
-      const next = prev.map((t) => (t.id === task.id ? { ...t, titulo: nextTitle } : t))
+      const next = prev.map((t) =>
+        t.id === task.id ? { ...t, titulo: nextTitle, editado: true } : t,
+      )
       queueBoardSave(next, { syncPlan: true })
       return next
     })
@@ -1306,10 +1328,79 @@ export default function StepEduScrum({
     }
   }
 
+  useEffect(() => {
+    const id = aulaAtiva?.id_evento
+    if (!id || aulaAtiva.status === 'concluido') {
+      setPendentesContinuacao([])
+      return undefined
+    }
+    let cancelled = false
+    api
+      .listPendentesContinuacao(id)
+      .then((body) => {
+        if (!cancelled) setPendentesContinuacao(body?.pendentes || [])
+      })
+      .catch(() => {
+        if (!cancelled) setPendentesContinuacao([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [aulaAtiva?.id_evento, aulaAtiva?.status])
+
   function openRelato() {
     setAcaoErro('')
     if (!aulaAtiva || aulaAtiva.status === 'concluido') return
     setShowRelato(true)
+  }
+
+  async function handleJuntarPendente(origemId) {
+    if (!aulaAtiva?.id_evento || juncaoBusy) return
+    setJuncaoBusy(true)
+    setAcaoErro('')
+    try {
+      const body = await api.juntarAulaPendente(aulaAtiva.id_evento, origemId)
+      const merged = body?.evento?.kanban_state?.tarefas
+      if (Array.isArray(merged)) {
+        const byId = Object.fromEntries(merged.map((t) => [t.id, t]))
+        setTasks((prev) =>
+          prev.map((t) =>
+            byId[t.id] ? { ...t, objetivo: byId[t.id].objetivo } : t,
+          ),
+        )
+      }
+      setPendentesContinuacao((prev) => prev.filter((p) => Number(p.id_evento) !== Number(origemId)))
+      await loadAulas()
+      onAgendaChanged?.()
+    } catch (err) {
+      setAcaoErro(err.message || 'Não foi possível juntar a aula pendente.')
+    } finally {
+      setJuncaoBusy(false)
+    }
+  }
+
+  async function handleAgendarContinuacao(origemId) {
+    if (!origemId || juncaoBusy) return
+    if (!agendaPend.data) {
+      setAcaoErro('Informe a data da continuação.')
+      return
+    }
+    setJuncaoBusy(true)
+    setAcaoErro('')
+    try {
+      await api.agendarContinuacao(origemId, {
+        data: agendaPend.data,
+        hora: agendaPend.hora || '12:00',
+      })
+      setPendentesContinuacao((prev) => prev.filter((p) => Number(p.id_evento) !== Number(origemId)))
+      setAgendaPend({ id: null, data: '', hora: '12:00' })
+      await loadAulas()
+      onAgendaChanged?.()
+    } catch (err) {
+      setAcaoErro(err.message || 'Não foi possível agendar a continuação.')
+    } finally {
+      setJuncaoBusy(false)
+    }
   }
 
   async function handleSubmitRelato(payload) {
@@ -1397,19 +1488,63 @@ export default function StepEduScrum({
             Avisos da coordenação
           </p>
           <ul className="mt-2 space-y-2">
-            {avisosMesa.map((a) => (
-              <li
-                key={a.id}
-                className="rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm text-bordo"
-              >
-                {a.texto}
-                {a.turma_nome || a.disciplina_nome ? (
-                  <span className="mt-0.5 block text-[11px] text-bordo-soft">
-                    {[a.disciplina_nome, a.turma_nome].filter(Boolean).join(' · ')}
-                  </span>
-                ) : null}
-              </li>
-            ))}
+            {avisosMesa.map((a) => {
+              const resposta = a.tipo === 'resposta_proposta_metodologica'
+              const meta = a.meta && typeof a.meta === 'object' ? a.meta : {}
+              const resultado = String(meta.resultado || '')
+              const resultadoLabel =
+                resultado === 'aprovada'
+                  ? 'Aprovada'
+                  : resultado === 'adaptada'
+                    ? 'Adaptada'
+                    : resultado === 'nao_incorporada'
+                      ? 'Não incorporada agora'
+                      : ''
+              return (
+                <li
+                  key={a.id}
+                  className={
+                    resposta
+                      ? 'rounded-xl border border-violet-300 bg-violet-50 px-3 py-2 text-sm text-violet-950'
+                      : 'rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm text-bordo'
+                  }
+                >
+                  {resposta ? (
+                    <>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-700">
+                        [Resposta à Proposta Metodológica]
+                      </p>
+                      {resultadoLabel ? (
+                        <p className="mt-1 text-xs font-semibold">
+                          Resultado: {resultadoLabel}
+                        </p>
+                      ) : null}
+                      {meta.sugestao_resumo ? (
+                        <p className="mt-1 text-xs text-violet-900/80">
+                          Sua proposta: {meta.sugestao_resumo}
+                        </p>
+                      ) : null}
+                      {meta.retorno_docente ? (
+                        <p className="mt-1.5 whitespace-pre-wrap text-sm">
+                          {meta.retorno_docente}
+                        </p>
+                      ) : (
+                        <p className="mt-1.5 whitespace-pre-wrap text-sm">{a.texto}</p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {a.texto}
+                      {a.turma_nome || a.disciplina_nome ? (
+                        <span className="mt-0.5 block text-[11px] text-bordo-soft">
+                          {[a.disciplina_nome, a.turma_nome].filter(Boolean).join(' · ')}
+                        </span>
+                      ) : null}
+                    </>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </div>
       ) : null}
@@ -2005,6 +2140,80 @@ export default function StepEduScrum({
               )
             })}
           </ul>
+
+          {podeExecutar && !aulaConcluida && pendentesContinuacao.length ? (
+            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3 print:hidden">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800">
+                Próxima aula deste fio — ações opcionais
+              </p>
+              <ul className="mt-2 space-y-3">
+                {pendentesContinuacao.map((p) => {
+                  const data = String(p.data_evento || '').slice(0, 10)
+                  const label = data ? `Parte 1 — ${data}` : p.titulo || 'Aula pendente'
+                  const aberto = Number(agendaPend.id) === Number(p.id_evento)
+                  return (
+                    <li key={p.id_evento}>
+                      <p className="text-xs font-semibold text-bordo">{label}</p>
+                      <button
+                        type="button"
+                        className="mt-1 w-full rounded-lg border border-amber-300 bg-white px-2 py-1.5 text-[11px] font-bold text-bordo hover:bg-amber-50"
+                        disabled={juncaoBusy}
+                        onClick={() => handleJuntarPendente(p.id_evento)}
+                      >
+                        {juncaoBusy ? 'Juntando…' : `Juntar objetivos com ${label}`}
+                      </button>
+                      <button
+                        type="button"
+                        className="mt-1 w-full rounded-lg border border-dashed border-amber-400 bg-white px-2 py-1.5 text-[11px] font-bold text-bordo hover:bg-amber-50"
+                        disabled={juncaoBusy}
+                        onClick={() =>
+                          setAgendaPend((prev) =>
+                            Number(prev.id) === Number(p.id_evento)
+                              ? { id: null, data: '', hora: '12:00' }
+                              : { id: p.id_evento, data: '', hora: '12:00' },
+                          )
+                        }
+                      >
+                        Agendar continuação em horário próprio
+                      </button>
+                      {aberto ? (
+                        <div className="mt-2 space-y-2 rounded-lg border border-amber-200 bg-white p-2">
+                          <input
+                            type="date"
+                            className="field-input !py-1.5 text-xs"
+                            value={agendaPend.data}
+                            onChange={(e) =>
+                              setAgendaPend((prev) => ({ ...prev, data: e.target.value }))
+                            }
+                          />
+                          <input
+                            type="time"
+                            className="field-input !py-1.5 text-xs"
+                            value={agendaPend.hora}
+                            onChange={(e) =>
+                              setAgendaPend((prev) => ({ ...prev, hora: e.target.value }))
+                            }
+                          />
+                          <button
+                            type="button"
+                            className="btn-primary w-full !py-1.5 text-[11px]"
+                            disabled={juncaoBusy}
+                            onClick={() => handleAgendarContinuacao(p.id_evento)}
+                          >
+                            {juncaoBusy ? 'Agendando…' : 'Criar aula de continuação'}
+                          </button>
+                        </div>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+              <p className="mt-2 text-[10px] text-bordo-soft">
+                Nunca automático. Juntar une os objetivos dos cards nesta aula. Agendar cria
+                só a Parte 2 no horário que você escolher.
+              </p>
+            </div>
+          ) : null}
 
           {podeExecutar && !aulaConcluida && aulaAtiva?.status === 'planejado' ? (
             <button

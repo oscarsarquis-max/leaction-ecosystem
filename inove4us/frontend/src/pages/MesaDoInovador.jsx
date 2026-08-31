@@ -9,6 +9,7 @@ import DesafioSeletor from '../components/DesafioSeletor'
 import UpgradeCreditsModal from '../components/UpgradeCreditsModal'
 import InstitutionalPlanBadge from '../components/InstitutionalPlanBadge'
 import MuralEscola from '../components/MuralEscola'
+import MeuResumoPeriodo from '../components/MeuResumoPeriodo'
 
 /**
  * Página inicial — realizações + agenda. O fluxo de investigação fica em /desafio.
@@ -18,6 +19,7 @@ export default function MesaDoInovador() {
   const [searchParams] = useSearchParams()
   const [refreshKey, setRefreshKey] = useState(0)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showResumoPeriodo, setShowResumoPeriodo] = useState(false)
   const [focusFromMap, setFocusFromMap] = useState(null)
   const [openEventFromMap, setOpenEventFromMap] = useState(null)
   const paidReturn = searchParams.get('paid') === '1'
@@ -79,6 +81,13 @@ export default function MesaDoInovador() {
             <Link to="/importacoes" className="btn-ghost !px-3 !py-1.5 text-xs font-semibold">
               Importar
             </Link>
+            <button
+              type="button"
+              onClick={() => setShowResumoPeriodo(true)}
+              className="btn-ghost !px-3 !py-1.5 text-xs font-semibold"
+            >
+              Meu resumo do período
+            </button>
             <Link to="/dia-a-dia" className="btn-ghost !px-4 !py-2 text-sm font-semibold">
               Dia a Dia
             </Link>
@@ -181,6 +190,10 @@ export default function MesaDoInovador() {
         />
       </main>
 
+      <MeuResumoPeriodo
+        open={showResumoPeriodo}
+        onClose={() => setShowResumoPeriodo(false)}
+      />
       <UpgradeCreditsModal
         open={!isInstitutional && showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}

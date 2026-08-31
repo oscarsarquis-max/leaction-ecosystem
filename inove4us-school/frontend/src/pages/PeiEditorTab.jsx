@@ -37,6 +37,8 @@ const emptyPei = {
   recursos_assistivos: '',
   criterios_avaliacao_flexibilizados: '',
   experiencias_adaptadas_individuais: '',
+  periodo_letivo_id: '',
+  intervencoes_previstas: [],
 }
 
 function statusBadge(status) {
@@ -466,6 +468,7 @@ function PeisIndividuaisPanel({ onToast }) {
   const [lista, setLista] = useState([])
   const [condicoes, setCondicoes] = useState([])
   const [alunosSec, setAlunosSec] = useState([])
+  const [periodos, setPeriodos] = useState([])
   const [form, setForm] = useState(emptyPei)
   const [editId, setEditId] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -479,14 +482,16 @@ function PeisIndividuaisPanel({ onToast }) {
     setLoading(true)
     setError('')
     try {
-      const [resP, resC, resA] = await Promise.all([
+      const [resP, resC, resA, resPer] = await Promise.all([
         fetch('/api/pei/alunos', { credentials: 'include' }),
         fetch('/api/aee/condicoes', { credentials: 'include' }),
         fetch('/api/secretaria/alunos', { credentials: 'include' }),
+        fetch('/api/secretaria/periodos', { credentials: 'include' }),
       ])
       const bodyP = await resP.json().catch(() => [])
       const bodyC = await resC.json().catch(() => [])
       const bodyA = await resA.json().catch(() => ({}))
+      const bodyPer = await resPer.json().catch(() => ({}))
       if (!resP.ok) throw new Error(bodyP.error || 'Falha ao listar PEIs')
       setLista(Array.isArray(bodyP) ? bodyP : [])
       if (Array.isArray(bodyC) && bodyC.length) {
@@ -494,6 +499,7 @@ function PeisIndividuaisPanel({ onToast }) {
       }
       const itemsA = Array.isArray(bodyA?.items) ? bodyA.items : []
       setAlunosSec(itemsA.filter((a) => a.ativo !== false))
+      setPeriodos(Array.isArray(bodyPer?.items) ? bodyPer.items : [])
       if (!resA.ok) {
         setError(bodyA.error || 'Não foi possível carregar alunos da Secretaria')
       }
@@ -531,6 +537,10 @@ function PeisIndividuaisPanel({ onToast }) {
       recursos_assistivos: row.recursos_assistivos || '',
       criterios_avaliacao_flexibilizados: row.criterios_avaliacao_flexibilizados || '',
       experiencias_adaptadas_individuais: row.experiencias_adaptadas_individuais || '',
+      periodo_letivo_id: row.periodo_letivo_id || '',
+      intervencoes_previstas: Array.isArray(row.intervencoes_previstas)
+        ? row.intervencoes_previstas
+        : [],
     })
     setShowForm(true)
   }
@@ -555,6 +565,10 @@ function PeisIndividuaisPanel({ onToast }) {
       setError('Selecione um aluno cadastrado na Secretaria.')
       return
     }
+    if (!form.periodo_letivo_id) {
+      setError('Selecione o período letivo deste PEI — o relatório de execução usa esse recorte.')
+      return
+    }
     setBusy('salvar')
     setError('')
     try {
@@ -569,6 +583,8 @@ function PeisIndividuaisPanel({ onToast }) {
         recursos_assistivos: form.recursos_assistivos,
         criterios_avaliacao_flexibilizados: form.criterios_avaliacao_flexibilizados,
         experiencias_adaptadas_individuais: form.experiencias_adaptadas_individuais,
+        periodo_letivo_id: form.periodo_letivo_id || null,
+        intervencoes_previstas: form.intervencoes_previstas || [],
       }
       if (!editId) payload.condicao_categoria = form.condicao_categoria
       const res = await fetch(url, {
@@ -584,6 +600,42 @@ function PeisIndividuaisPanel({ onToast }) {
       await carregar()
     } catch (err) {
       setError(err.message || 'Erro')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function gerarRelatorio(row) {
+    if (!row?.periodo_letivo_id) {
+      setError(
+        'Declare o período letivo neste PEI antes de gerar o Relatório de Execução.',
+      )
+      return
+    }
+    setBusy(`pdf-${row.id}`)
+    setError('')
+    try {
+      const res = await fetch(`/api/pei/alunos/${row.id}/relatorio-execucao`, {
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Falha ao gerar o PDF')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const disp = res.headers.get('Content-Disposition') || ''
+      const match = disp.match(/filename="?([^"]+)"?/i)
+      a.href = url
+      a.download = match?.[1] || `Relatorio_Execucao_PEI.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      onToast?.('PDF do Relatório de Execução do PEI baixado.')
+    } catch (e) {
+      setError(e.message || 'Erro ao gerar o relatório')
     } finally {
       setBusy('')
     }
@@ -718,6 +770,27 @@ function PeisIndividuaisPanel({ onToast }) {
                 onChange={(e) => setField('nome_responsavel', e.target.value)}
               />
             </Field>
+            <Field
+              label="Período letivo do PEI"
+              hint="Recorte do Relatório de Execução — não é o ano letivo inteiro."
+            >
+              <select
+                className={inputClass}
+                required
+                value={form.periodo_letivo_id}
+                onChange={(e) => setField('periodo_letivo_id', e.target.value)}
+              >
+                <option value="">Selecione o período…</option>
+                {periodos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                    {p.data_inicio && p.data_fim
+                      ? ` · ${String(p.data_inicio).slice(8, 10)}/${String(p.data_inicio).slice(5, 7)}/${String(p.data_inicio).slice(0, 4)}–${String(p.data_fim).slice(8, 10)}/${String(p.data_fim).slice(5, 7)}/${String(p.data_fim).slice(0, 4)}`
+                      : ''}
+                  </option>
+                ))}
+              </select>
+            </Field>
             {!editId ? (
               <Field label="Condição AEE">
                 <select
@@ -779,6 +852,77 @@ function PeisIndividuaisPanel({ onToast }) {
             </Field>
           </div>
 
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Cronograma sumário das intervenções
+            </p>
+            <p className="mt-0.5 text-xs text-muted">
+              Previsto neste PEI — não substitui o relatório de execução.
+            </p>
+            <ul className="mt-2 space-y-2">
+              {(form.intervencoes_previstas || []).map((it, idx) => (
+                <li key={idx} className="grid gap-2 sm:grid-cols-3">
+                  <input
+                    className={inputClass}
+                    placeholder="Intervenção"
+                    value={it.descricao || ''}
+                    onChange={(e) => {
+                      const next = [...(form.intervencoes_previstas || [])]
+                      next[idx] = { ...next[idx], descricao: e.target.value }
+                      setField('intervencoes_previstas', next)
+                    }}
+                  />
+                  <input
+                    className={inputClass}
+                    placeholder="Frequência"
+                    value={it.frequencia || ''}
+                    onChange={(e) => {
+                      const next = [...(form.intervencoes_previstas || [])]
+                      next[idx] = { ...next[idx], frequencia: e.target.value }
+                      setField('intervencoes_previstas', next)
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      className={inputClass}
+                      placeholder="Observação"
+                      value={it.observacao || ''}
+                      onChange={(e) => {
+                        const next = [...(form.intervencoes_previstas || [])]
+                        next[idx] = { ...next[idx], observacao: e.target.value }
+                        setField('intervencoes_previstas', next)
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-lg border border-slate-200 px-2 text-xs font-semibold"
+                      onClick={() =>
+                        setField(
+                          'intervencoes_previstas',
+                          (form.intervencoes_previstas || []).filter((_, i) => i !== idx),
+                        )
+                      }
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold"
+              onClick={() =>
+                setField('intervencoes_previstas', [
+                  ...(form.intervencoes_previstas || []),
+                  { descricao: '', frequencia: '', observacao: '' },
+                ])
+              }
+            >
+              Adicionar intervenção
+            </button>
+          </div>
+
           <Field
             label="Campos de Experiência (Adaptação Metodológica Individual)"
             hint="Como o professor deve adaptar metodologias no dia a dia deste aluno."
@@ -809,16 +953,31 @@ function PeisIndividuaisPanel({ onToast }) {
               Cancelar
             </button>
             {editId ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setHistoricoTitulo(`PEI — ${form.nome_completo || 'Aluno'}`)
-                  setHistoricoAlunoId(editId)
-                }}
-                className="ml-auto rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold hover:bg-slate-50"
-              >
-                ⏱️ Ver Histórico de Versões
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={Boolean(busy)}
+                  onClick={() =>
+                    void gerarRelatorio({
+                      id: editId,
+                      periodo_letivo_id: form.periodo_letivo_id,
+                    })
+                  }
+                  className="rounded-xl border border-violet-300 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-900"
+                >
+                  Gerar Relatório de Execução do PEI
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHistoricoTitulo(`PEI — ${form.nome_completo || 'Aluno'}`)
+                    setHistoricoAlunoId(editId)
+                  }}
+                  className="ml-auto rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold hover:bg-slate-50"
+                >
+                  ⏱️ Ver Histórico de Versões
+                </button>
+              </>
             ) : null}
           </div>
         </form>
@@ -835,6 +994,9 @@ function PeisIndividuaisPanel({ onToast }) {
                 <p className="text-xs text-muted">
                   {a.condicao_categoria} · v{a.versao || 1} · Matriz AEE v{a.aee_versao} ·
                   Matrícula: {a.matricula || '—'}
+                  {a.periodo_rotulo
+                    ? ` · Período: ${a.periodo_rotulo}`
+                    : ' · Sem período letivo'}
                   {a.valido ? (
                     <span className="ml-2 font-semibold text-emerald-700">Válido</span>
                   ) : (
@@ -843,6 +1005,16 @@ function PeisIndividuaisPanel({ onToast }) {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={Boolean(busy)}
+                  onClick={() => void gerarRelatorio(a)}
+                  className="rounded-lg border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-900 disabled:opacity-50"
+                >
+                  {busy === `pdf-${a.id}`
+                    ? 'Gerando PDF…'
+                    : 'Gerar Relatório de Execução do PEI'}
+                </button>
                 <button
                   type="button"
                   onClick={() => {

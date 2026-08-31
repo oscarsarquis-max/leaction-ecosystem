@@ -12,6 +12,7 @@ POST /api/aee/matriz/assinar/psicopedagogo
 GET/POST /api/pei/alunos
 GET/PUT  /api/pei/alunos/<id>
 GET      /api/pei/alunos/<id>/historico
+GET      /api/pei/alunos/<id>/relatorio-execucao
 POST     /api/pei/alunos/<id>/nova-versao
 POST     /api/pei/alunos/<id>/assinar/coordenador|psicopedagogo
 
@@ -27,12 +28,13 @@ POST /api/aee/<aee_id>/metodologia/<metodologia_nome>/adaptar-ia
 """
 from __future__ import annotations
 
+import io
 import os
 import uuid
 from typing import Any
 
-from flask import Blueprint, jsonify, request, session
-from psycopg2.extras import RealDictCursor
+from flask import Blueprint, jsonify, request, send_file, session
+from psycopg2.extras import Json, RealDictCursor
 
 from aee_canonico import condicao_valida, get_canonico, listar_condicoes
 from auth_guards import SESSION_KEY, require_zona, resolve_instituicao_id
@@ -165,6 +167,67 @@ def _iso(ts) -> str | None:
     return str(ts)
 
 
+def _intervencoes(raw: Any) -> list[dict[str, str]]:
+    if isinstance(raw, str):
+        try:
+            import json
+
+            raw = json.loads(raw)
+        except Exception:
+            raw = []
+    if not isinstance(raw, list):
+        return []
+    out = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        desc = str(item.get("descricao") or "").strip()
+        if not desc:
+            continue
+        out.append(
+            {
+                "descricao": desc[:400],
+                "frequencia": str(item.get("frequencia") or "").strip()[:120],
+                "observacao": str(item.get("observacao") or "").strip()[:400],
+            }
+        )
+    return out[:40]
+
+
+def _periodo_do_body(cur, inst: str, body: dict[str, Any]) -> tuple[str | None, Any]:
+    raw = body.get("periodo_letivo_id") or body.get("periodo_id")
+    pid = _parse_uuid(raw) if raw not in (None, "") else None
+    if not pid:
+        return None, None
+    cur.execute(
+        """
+        SELECT id, rotulo, data_inicio, data_fim
+        FROM public.school_periodos_letivos
+        WHERE id = %s AND instituicao_id = %s
+        """,
+        (str(pid), inst),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None, (jsonify({"error": "Período letivo não encontrado"}), 400)
+    return str(row["id"]), None
+
+
+def _ensure_pei_periodo(cur) -> None:
+    cur.execute(
+        """
+        ALTER TABLE public.school_pei_alunos
+            ADD COLUMN IF NOT EXISTS periodo_letivo_id UUID
+        """
+    )
+    cur.execute(
+        """
+        ALTER TABLE public.school_pei_alunos
+            ADD COLUMN IF NOT EXISTS intervencoes_previstas JSONB NOT NULL DEFAULT '[]'::jsonb
+        """
+    )
+
+
 def _serialize_aee(row: dict[str, Any], canon: dict[str, str] | None = None) -> dict[str, Any]:
     cond = row.get("condicao_categoria") or ""
     c = canon or get_canonico(cond) or {}
@@ -220,6 +283,13 @@ def _serialize_pei(row: dict[str, Any]) -> dict[str, Any]:
             "experiencias_adaptadas_individuais"
         )
         or "",
+        "periodo_letivo_id": str(row["periodo_letivo_id"])
+        if row.get("periodo_letivo_id")
+        else None,
+        "periodo_rotulo": row.get("periodo_rotulo") or row.get("periodo_nome") or "",
+        "periodo_inicio": _iso(row.get("periodo_inicio")),
+        "periodo_fim": _iso(row.get("periodo_fim")),
+        "intervencoes_previstas": _intervencoes(row.get("intervencoes_previstas")),
         "assinado_coordenador": bool(row.get("assinado_coordenador")),
         "assinado_psicopedagogo": bool(row.get("assinado_psicopedagogo")),
         "valido": bool(row.get("assinado_coordenador"))
@@ -764,13 +834,19 @@ def list_pei_alunos():
     inst = _instituicao_id()
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            _ensure_pei_periodo(cur)
             cur.execute(
                 """
                 SELECT p.*, m.versao AS aee_versao, m.condicao_categoria,
-                       a.nome AS aluno_nome, a.matricula AS aluno_matricula
+                       a.nome AS aluno_nome, a.matricula AS aluno_matricula,
+                       per.rotulo AS periodo_rotulo,
+                       per.data_inicio AS periodo_inicio,
+                       per.data_fim AS periodo_fim
                 FROM public.school_pei_alunos p
                 JOIN public.school_aee_matrizes m ON m.id = p.aee_matriz_id
                 JOIN public.school_alunos a ON a.id = p.aluno_id
+                LEFT JOIN public.school_periodos_letivos per
+                  ON per.id = p.periodo_letivo_id
                 WHERE p.instituicao_id = %s
                   AND p.status <> 'arquivado'
                 ORDER BY p.created_at DESC
@@ -789,11 +865,17 @@ def get_pei_aluno(pei_id: str):
     inst = _instituicao_id()
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            _ensure_pei_periodo(cur)
             cur.execute(
                 """
-                SELECT p.*, m.versao AS aee_versao, m.condicao_categoria
+                SELECT p.*, m.versao AS aee_versao, m.condicao_categoria,
+                       per.rotulo AS periodo_rotulo,
+                       per.data_inicio AS periodo_inicio,
+                       per.data_fim AS periodo_fim
                 FROM public.school_pei_alunos p
                 JOIN public.school_aee_matrizes m ON m.id = p.aee_matriz_id
+                LEFT JOIN public.school_periodos_letivos per
+                  ON per.id = p.periodo_letivo_id
                 WHERE p.id = %s AND p.instituicao_id = %s
                 """,
                 (str(pid), inst),
@@ -802,6 +884,99 @@ def get_pei_aluno(pei_id: str):
     if not row:
         return jsonify({"error": "PEI não encontrado"}), 404
     return jsonify(_serialize_pei(row))
+
+
+@bp.get("/api/pei/alunos/<pei_id>/relatorio-execucao")
+def relatorio_execucao_pei(pei_id: str):
+    """PDF oficial — recorte = período letivo declarado neste PEI."""
+    pid = _parse_uuid(pei_id)
+    if not pid:
+        return jsonify({"error": "Identificador inválido"}), 400
+    inst = _instituicao_id()
+    from pei_dossie import gerar_pdf_bytes, montar_dossie, nome_arquivo_pdf
+
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            _ensure_pei_periodo(cur)
+            cur.execute(
+                """
+                SELECT p.*, m.versao AS aee_versao, m.condicao_categoria,
+                       m.texto_escola, m.campos_experiencia_metodologica,
+                       per.rotulo AS periodo_rotulo,
+                       per.data_inicio AS periodo_inicio,
+                       per.data_fim AS periodo_fim
+                FROM public.school_pei_alunos p
+                JOIN public.school_aee_matrizes m ON m.id = p.aee_matriz_id
+                LEFT JOIN public.school_periodos_letivos per
+                  ON per.id = p.periodo_letivo_id
+                WHERE p.id = %s AND p.instituicao_id = %s
+                """,
+                (str(pid), inst),
+            )
+            pei = cur.fetchone()
+            if not pei:
+                return jsonify({"error": "PEI não encontrado"}), 404
+            if not pei.get("periodo_letivo_id") or not pei.get("periodo_inicio"):
+                return (
+                    jsonify(
+                        {
+                            "error": "Declare o período letivo neste PEI individual antes de gerar o relatório.",
+                            "code": "PERIODO_PEI_AUSENTE",
+                        }
+                    ),
+                    400,
+                )
+            cur.execute(
+                """
+                SELECT p.id, p.semana_referencia, p.conteudo_resumo,
+                       p.mesa_payload_json, t.nome AS turma_nome,
+                       m.nome AS metodologia_nome
+                FROM public.school_planos_aula_espelhados p
+                JOIN public.school_turmas t ON t.id = p.turma_id
+                JOIN public.school_metodologias_catalogo m
+                  ON m.id = p.metodologia_catalogo_id
+                WHERE p.instituicao_id = %s
+                  AND p.semana_referencia >= %s
+                  AND p.semana_referencia <= %s
+                ORDER BY p.semana_referencia ASC
+                """,
+                (inst, pei["periodo_inicio"], pei["periodo_fim"]),
+            )
+            aulas = []
+            for r in cur.fetchall():
+                aulas.append(
+                    {
+                        "id": r["id"],
+                        "semana_referencia": r["semana_referencia"],
+                        "conteudo_resumo": r.get("conteudo_resumo"),
+                        "mesa_payload_json": r.get("mesa_payload_json"),
+                        "turma_nome": r.get("turma_nome"),
+                        "metodologia_nome": r.get("metodologia_nome"),
+                    }
+                )
+
+    dossie = montar_dossie(
+        pei=_serialize_pei(pei),
+        periodo={
+            "rotulo": pei.get("periodo_rotulo"),
+            "data_inicio": pei.get("periodo_inicio"),
+            "data_fim": pei.get("periodo_fim"),
+        },
+        matriz={
+            "texto_escola": pei.get("texto_escola"),
+            "campos_experiencia_metodologica": pei.get(
+                "campos_experiencia_metodologica"
+            ),
+        },
+        aulas=aulas,
+    )
+    pdf = gerar_pdf_bytes(dossie)
+    return send_file(
+        io.BytesIO(pdf),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=nome_arquivo_pdf(dossie),
+    )
 
 
 @bp.get("/api/pei/alunos/<pei_id>/historico")
@@ -869,6 +1044,11 @@ def criar_pei_aluno():
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            _ensure_pei_periodo(cur)
+            periodo_id, periodo_err = _periodo_do_body(cur, inst, body)
+            if periodo_err:
+                return periodo_err
+            intervencoes = _intervencoes(body.get("intervencoes_previstas"))
             cur.execute(
                 """
                 SELECT id, nome, matricula
@@ -937,9 +1117,10 @@ def criar_pei_aluno():
                     perfil_atual_habilidades, barreiras_identificadas,
                     metas_desenvolvimento, recursos_assistivos,
                     criterios_avaliacao_flexibilizados,
-                    experiencias_adaptadas_individuais
+                    experiencias_adaptadas_individuais,
+                    periodo_letivo_id, intervencoes_previstas
                 )
-                VALUES (%s, %s, %s, %s, 'rascunho', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, 'rascunho', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING *
                 """,
                 (
@@ -957,6 +1138,8 @@ def criar_pei_aluno():
                     str(body.get("recursos_assistivos") or "").strip(),
                     str(body.get("criterios_avaliacao_flexibilizados") or "").strip(),
                     str(body.get("experiencias_adaptadas_individuais") or "").strip(),
+                    periodo_id,
+                    Json(intervencoes),
                 ),
             )
             row = cur.fetchone()
@@ -974,6 +1157,7 @@ def nova_versao_pei(pei_id: str):
     inst = _instituicao_id()
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            _ensure_pei_periodo(cur)
             cur.execute(
                 """
                 SELECT p.*, m.versao AS aee_versao, m.condicao_categoria
@@ -1023,9 +1207,10 @@ def nova_versao_pei(pei_id: str):
                     perfil_atual_habilidades, barreiras_identificadas,
                     metas_desenvolvimento, recursos_assistivos,
                     criterios_avaliacao_flexibilizados,
-                    experiencias_adaptadas_individuais
+                    experiencias_adaptadas_individuais,
+                    periodo_letivo_id, intervencoes_previstas
                 )
-                VALUES (%s, %s, %s, %s, 'rascunho', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, 'rascunho', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING *
                 """,
                 (
@@ -1043,6 +1228,8 @@ def nova_versao_pei(pei_id: str):
                     origem.get("recursos_assistivos") or "",
                     origem.get("criterios_avaliacao_flexibilizados") or "",
                     origem.get("experiencias_adaptadas_individuais") or "",
+                    str(origem["periodo_letivo_id"]) if origem.get("periodo_letivo_id") else None,
+                    Json(_intervencoes(origem.get("intervencoes_previstas"))),
                 ),
             )
             row = cur.fetchone()
@@ -1070,6 +1257,7 @@ def atualizar_pei_aluno(pei_id: str):
 
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            _ensure_pei_periodo(cur)
             cur.execute(
                 """
                 SELECT p.*, m.versao AS aee_versao, m.condicao_categoria
@@ -1110,6 +1298,15 @@ def atualizar_pei_aluno(pei_id: str):
                 if f in body:
                     sets.append(f"{f} = %s")
                     vals.append(str(body.get(f) or "").strip())
+            if "periodo_letivo_id" in body or "periodo_id" in body:
+                periodo_id, periodo_err = _periodo_do_body(cur, inst, body)
+                if periodo_err:
+                    return periodo_err
+                sets.append("periodo_letivo_id = %s")
+                vals.append(periodo_id)
+            if "intervencoes_previstas" in body:
+                sets.append("intervencoes_previstas = %s")
+                vals.append(Json(_intervencoes(body.get("intervencoes_previstas"))))
             if not sets:
                 return jsonify(_serialize_pei(existing))
 

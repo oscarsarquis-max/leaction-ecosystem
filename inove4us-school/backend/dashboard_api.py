@@ -18,6 +18,10 @@ from auth_guards import (
     resolve_instituicao_id,
     resolve_unidade_id,
 )
+from contribuicao_agregada import (
+    curadoria_foi_incorporada,
+    montar_bloco_radar,
+)
 from db import get_conn
 
 bp = Blueprint("dashboard", __name__)
@@ -357,6 +361,57 @@ def _horario_fields(r: dict[str, Any]) -> tuple[str, str, str | None, str | None
     return sort_key, label, None, None
 
 
+def _iso_date(value: Any) -> str:
+    text = str(value or "").strip()
+    return text[:10] if len(text) >= 10 and text[4] == "-" else ""
+
+
+def _data_br(value: Any) -> str:
+    iso = _iso_date(value)
+    if not iso:
+        return ""
+    y, m, d = iso.split("-")
+    return f"{d}/{m}/{y}"
+
+
+def _ocorrencia_vinculo_texto(occ: dict[str, Any]) -> str:
+    """Texto passivo do link: unida com / continuação de / continuação em."""
+    resolucao = str(occ.get("resolucao") or occ.get("status") or "").strip()
+    dest = _data_br(occ.get("juncao_destino_data"))
+    orig = _data_br(occ.get("juncao_origem_data"))
+    cont_de = _data_br(occ.get("continuacao_origem_data"))
+    cont_em = _data_br(occ.get("continuacao_destino_data"))
+    if resolucao == "concluida_via_juncao" or dest:
+        return f"Unida com a aula de {dest}" if dest else "Unida com outra aula"
+    if orig:
+        return f"Unida com a aula de {orig}"
+    if cont_de:
+        return f"Continuação de {cont_de}"
+    if resolucao == "agendada_continuacao" or cont_em:
+        return f"Continuação em {cont_em}" if cont_em else "Continuação agendada"
+    return ""
+
+
+def _ocorrencia_radar_fields(occ: dict[str, Any]) -> dict[str, Any]:
+    resolucao = occ.get("resolucao") or occ.get("status")
+    return {
+        "ocorrencia_tipo": occ.get("tipo"),
+        "ocorrencia_nota": occ.get("nota") or "",
+        "ocorrencia_resolucao": resolucao,
+        "aguardando_continuacao": bool(occ.get("aguardando_continuacao")),
+        "ocorrencia_unida": bool(occ.get("unida")),
+        "juncao_destino_id": occ.get("juncao_destino_id"),
+        "juncao_destino_data": _iso_date(occ.get("juncao_destino_data")) or None,
+        "juncao_origem_id": occ.get("juncao_origem_id"),
+        "juncao_origem_data": _iso_date(occ.get("juncao_origem_data")) or None,
+        "continuacao_origem_id": occ.get("continuacao_origem_id"),
+        "continuacao_origem_data": _iso_date(occ.get("continuacao_origem_data")) or None,
+        "continuacao_destino_id": occ.get("continuacao_destino_id"),
+        "continuacao_destino_data": _iso_date(occ.get("continuacao_destino_data")) or None,
+        "ocorrencia_vinculo": _ocorrencia_vinculo_texto(occ) or None,
+    }
+
+
 def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
     mesa = _as_mesa(r.get("mesa_payload_json"))
     sugestao = str(
@@ -367,6 +422,8 @@ def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
     ).strip() or None
     horario_sort, horario_label, hora_inicio, hora_fim = _horario_fields(r)
     codigo = _codigo_disciplina(r)
+    ocorrencia = mesa.get("ocorrencia") if isinstance(mesa.get("ocorrencia"), dict) else {}
+    occ_fields = _ocorrencia_radar_fields(ocorrencia)
     return {
         "id": str(r["id"]),
         "turma_id": str(r["turma_id"]),
@@ -398,6 +455,7 @@ def _plano_row(r: dict[str, Any]) -> dict[str, Any]:
         "horario_sort": horario_sort,
         "horario_label": horario_label,
         "item_kind": "aula",
+        **occ_fields,
     }
 
 
@@ -513,8 +571,13 @@ def _fetch_eventos(
         return []
 
 
-def _resumo_payload(row: dict[str, Any], data_inicio: date, data_fim: date) -> dict[str, Any]:
-    return {
+def _resumo_payload(
+    row: dict[str, Any],
+    data_inicio: date,
+    data_fim: date,
+    contribuicao: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = {
         "total": int(row.get("total") or 0),
         "por_tipo_aula": {
             "dia_a_dia": int(row.get("dia_a_dia") or 0),
@@ -529,6 +592,58 @@ def _resumo_payload(row: dict[str, Any], data_inicio: date, data_fim: date) -> d
         "data_inicio": data_inicio.isoformat(),
         "data_fim": data_fim.isoformat(),
     }
+    if contribuicao is not None:
+        payload["contribuicao"] = contribuicao
+    return payload
+
+
+def _fetch_contribuicao_recorte(
+    cur: Any,
+    *,
+    instituicao_id: str,
+    data_inicio: date,
+    data_fim: date,
+    unidade_id: str | None = None,
+) -> dict[str, Any]:
+    """Agregado anônimo do recorte. Sem quebra por professor."""
+    sql = """
+        SELECT p.mesa_payload_json
+        FROM public.school_planos_aula_espelhados p
+        JOIN public.school_turmas t ON t.id = p.turma_id
+        JOIN public.school_unidades u ON u.id = t.unidade_id
+        WHERE u.instituicao_id = %s
+          AND u.ativo = TRUE
+          AND p.semana_referencia >= %s
+          AND p.semana_referencia <= %s
+    """
+    params: list[Any] = [str(instituicao_id), data_inicio, data_fim]
+    if unidade_id:
+        sql += " AND t.unidade_id = %s"
+        params.append(str(unidade_id))
+    cur.execute(sql, params)
+    mesas = [_as_mesa(r.get("mesa_payload_json")) for r in cur.fetchall()]
+
+    sql_inc = """
+        SELECT c.status_analise, c.resultado_analise
+        FROM public.school_curadoria_metodologias c
+        JOIN public.school_planos_aula_espelhados p ON p.id = c.plano_espelhado_id
+        JOIN public.school_turmas t ON t.id = p.turma_id
+        JOIN public.school_unidades u ON u.id = t.unidade_id
+        WHERE u.instituicao_id = %s
+          AND u.ativo = TRUE
+          AND c.updated_at::date >= %s
+          AND c.updated_at::date <= %s
+    """
+    params_inc: list[Any] = [str(instituicao_id), data_inicio, data_fim]
+    if unidade_id:
+        sql_inc += " AND t.unidade_id = %s"
+        params_inc.append(str(unidade_id))
+    try:
+        cur.execute(sql_inc, params_inc)
+        n_inc = sum(1 for r in cur.fetchall() if curadoria_foi_incorporada(dict(r)))
+    except Exception:
+        n_inc = 0
+    return montar_bloco_radar(mesas=mesas, sugestoes_incorporadas=n_inc)
 
 
 _RESUMO_SELECT = """
@@ -654,8 +769,15 @@ def calendario_pedagogico_resumo(unidade_id: str):
                 (str(parsed), data_inicio, data_fim),
             )
             row = cur.fetchone() or {}
+            contribuicao = _fetch_contribuicao_recorte(
+                cur,
+                instituicao_id=str(unidade["instituicao_id"]),
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                unidade_id=str(parsed),
+            )
 
-    return jsonify(_resumo_payload(row, data_inicio, data_fim))
+    return jsonify(_resumo_payload(row, data_inicio, data_fim, contribuicao))
 
 
 @bp.get("/api/instituicoes/<instituicao_id>/calendario-pedagogico")
@@ -770,8 +892,15 @@ def calendario_instituicao_resumo(instituicao_id: str):
                     (str(parsed), data_inicio, data_fim),
                 )
             row = cur.fetchone() or {}
+            contribuicao = _fetch_contribuicao_recorte(
+                cur,
+                instituicao_id=str(parsed),
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                unidade_id=str(unidade_id) if unidade_id else None,
+            )
 
-    return jsonify(_resumo_payload(row, data_inicio, data_fim))
+    return jsonify(_resumo_payload(row, data_inicio, data_fim, contribuicao))
 
 
 @bp.get("/api/instituicoes/<instituicao_id>/planos-espelhados/<plano_id>")
@@ -808,15 +937,25 @@ def plano_espelhado_detail(instituicao_id: str, plano_id: str):
                     FROM public.school_avisos_mesa a
                     LEFT JOIN public.school_turmas t ON t.id = a.turma_id
                     LEFT JOIN public.school_disciplinas d ON d.id = a.disciplina_id
+                    LEFT JOIN public.school_professores_vinculo v
+                      ON v.id = %s
                     WHERE a.instituicao_id = %s AND a.ativo = TRUE
                       AND (
                         a.turma_id IS NULL
                         OR a.turma_id = %s
                       )
+                      AND (
+                        a.professor_b2c_id IS NULL
+                        OR a.professor_b2c_id = v.professor_b2c_id
+                      )
                     ORDER BY a.created_at DESC
                     LIMIT 20
                     """,
-                    (str(inst), str(row["turma_id"])),
+                    (
+                        str(row["professor_vinculo_id"]),
+                        str(inst),
+                        str(row["turma_id"]),
+                    ),
                 )
                 avisos = [
                     {

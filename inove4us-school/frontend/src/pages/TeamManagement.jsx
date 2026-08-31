@@ -765,6 +765,11 @@ export default function TeamManagement() {
                   <PedagogicoBadge
                     ped={selected?.status_pedagogico || radio.status_pedagogico}
                   />
+                  {radio.voz_ativa ? (
+                    <span className="inline-flex items-center rounded-full border border-violet-300 bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-900">
+                      Voz Ativa
+                    </span>
+                  ) : null}
                 </div>
               </section>
 

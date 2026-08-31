@@ -13,6 +13,7 @@ import jwt
 import requests
 from psycopg2.extras import RealDictCursor
 
+from contribuicao_metodologica import resumo_aula_contribuicao
 from db import get_conn
 
 ISSUER_B2C = "inove4us"
@@ -193,9 +194,160 @@ def _cards_snapshot_from_evento(evento: dict[str, Any]) -> list[dict[str, Any]]:
                 "parent_card_id": t.get("parent_card_id"),
                 "pei_concluido": t.get("pei_concluido"),
                 "aula_id": t.get("aula_id"),
+                "origem_card": t.get("origem_card"),
+                "editado": bool(t.get("editado")),
             }
         )
     return cards_out
+
+
+def _iso_date(value: Any) -> str | None:
+    text = str(value or "").strip()
+    if len(text) >= 10 and text[4] == "-":
+        return text[:10]
+    return None
+
+
+def _as_int_id(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _ocorrencia_link_rows(evento: dict[str, Any]) -> dict[str, Any]:
+    """Completa datas/títulos das aulas linkadas (junção / continuação)."""
+    ev_id = _as_int_id(evento.get("id_evento"))
+    wanted = {
+        _as_int_id(evento.get("juncao_destino_id")),
+        _as_int_id(evento.get("continuacao_origem_id")),
+        _as_int_id(evento.get("juncao_origem_id")),
+        _as_int_id(evento.get("continuacao_destino_id")),
+        ev_id,
+    }
+    wanted.discard(None)
+    by_id: dict[int, dict[str, Any]] = {}
+    reverse_juncao = None
+    reverse_cont = None
+    if not wanted and ev_id is None:
+        return {}
+    try:
+        with get_conn() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                if wanted:
+                    cur.execute(
+                        """
+                        SELECT id_evento, data_evento, titulo
+                        FROM public.inove_agenda_eventos
+                        WHERE id_evento = ANY(%s)
+                        """,
+                        (list(wanted),),
+                    )
+                    for row in cur.fetchall():
+                        by_id[int(row["id_evento"])] = dict(row)
+                if ev_id is not None:
+                    cur.execute(
+                        """
+                        SELECT id_evento, data_evento, titulo
+                        FROM public.inove_agenda_eventos
+                        WHERE juncao_destino_id = %s
+                        ORDER BY data_evento DESC, id_evento DESC
+                        LIMIT 1
+                        """,
+                        (ev_id,),
+                    )
+                    reverse_juncao = cur.fetchone()
+                    cur.execute(
+                        """
+                        SELECT id_evento, data_evento, titulo
+                        FROM public.inove_agenda_eventos
+                        WHERE continuacao_origem_id = %s
+                        ORDER BY data_evento DESC, id_evento DESC
+                        LIMIT 1
+                        """,
+                        (ev_id,),
+                    )
+                    reverse_cont = cur.fetchone()
+    except Exception as exc:
+        print(f"[b2c->school] ocorrencia links: {exc}", file=sys.stderr, flush=True)
+        return {}
+
+    def pack(row: dict[str, Any] | None) -> tuple[int | None, str | None, str | None]:
+        if not row:
+            return None, None, None
+        return (
+            _as_int_id(row.get("id_evento")),
+            _iso_date(row.get("data_evento")),
+            str(row.get("titulo") or "").strip() or None,
+        )
+
+    dest_id = _as_int_id(evento.get("juncao_destino_id"))
+    dest_data = _iso_date(evento.get("juncao_destino_data"))
+    dest_titulo = str(evento.get("juncao_destino_titulo") or "").strip() or None
+    if dest_id and dest_id in by_id:
+        _, dest_data, dest_titulo = pack(by_id[dest_id])
+
+    orig_j_id = _as_int_id(evento.get("juncao_origem_id"))
+    orig_j_data = _iso_date(evento.get("juncao_origem_data"))
+    orig_j_titulo = str(evento.get("juncao_origem_titulo") or "").strip() or None
+    if orig_j_id and orig_j_id in by_id:
+        _, orig_j_data, orig_j_titulo = pack(by_id[orig_j_id])
+    elif reverse_juncao:
+        orig_j_id, orig_j_data, orig_j_titulo = pack(dict(reverse_juncao))
+
+    cont_orig_id = _as_int_id(evento.get("continuacao_origem_id"))
+    cont_orig_data = _iso_date(evento.get("continuacao_origem_data"))
+    cont_orig_titulo = str(evento.get("continuacao_origem_titulo") or "").strip() or None
+    if cont_orig_id and cont_orig_id in by_id:
+        _, cont_orig_data, cont_orig_titulo = pack(by_id[cont_orig_id])
+
+    cont_dest_id = _as_int_id(evento.get("continuacao_destino_id"))
+    cont_dest_data = _iso_date(evento.get("continuacao_destino_data"))
+    cont_dest_titulo = str(evento.get("continuacao_destino_titulo") or "").strip() or None
+    if cont_dest_id and cont_dest_id in by_id:
+        _, cont_dest_data, cont_dest_titulo = pack(by_id[cont_dest_id])
+    elif reverse_cont:
+        cont_dest_id, cont_dest_data, cont_dest_titulo = pack(dict(reverse_cont))
+
+    return {
+        "juncao_destino_id": dest_id,
+        "juncao_destino_data": dest_data,
+        "juncao_destino_titulo": dest_titulo,
+        "juncao_origem_id": orig_j_id,
+        "juncao_origem_data": orig_j_data,
+        "juncao_origem_titulo": orig_j_titulo,
+        "continuacao_origem_id": cont_orig_id,
+        "continuacao_origem_data": cont_orig_data,
+        "continuacao_origem_titulo": cont_orig_titulo,
+        "continuacao_destino_id": cont_dest_id,
+        "continuacao_destino_data": cont_dest_data,
+        "continuacao_destino_titulo": cont_dest_titulo,
+    }
+
+
+def _mesa_ocorrencia(evento: dict[str, Any]) -> dict[str, Any]:
+    links = _ocorrencia_link_rows(evento)
+    resolucao = str(evento.get("ocorrencia_resolucao") or "").strip() or None
+    status = (
+        str(evento.get("ocorrencia_status") or "").strip()
+        or resolucao
+        or "normal"
+    )
+    unida = resolucao == "concluida_via_juncao" or bool(
+        links.get("juncao_destino_id") or links.get("juncao_origem_id")
+    )
+    return {
+        "tipo": evento.get("ocorrencia_tipo"),
+        "nota": evento.get("ocorrencia_nota") or "",
+        "resolucao": resolucao,
+        "status": status,
+        "aguardando_continuacao": bool(evento.get("aguardando_continuacao"))
+        or resolucao == "aguardando_continuacao",
+        "unida": unida,
+        **links,
+    }
 
 
 def dispatch_lesson_record_sync(
@@ -251,6 +403,7 @@ def dispatch_lesson_record_sync(
         payload_status = "pendente"
 
     cards = _cards_snapshot_from_evento(evento)
+    contribuicao = resumo_aula_contribuicao(cards)
 
     # Cadeia School: desafio exige desafio_grupo_id; aula avulsa/Dia a Dia não.
     raw_desafio = evento.get("desafio_id") or evento.get("desafio_grupo_id")
@@ -275,13 +428,17 @@ def dispatch_lesson_record_sync(
         "pei_adaptation_text": pei_text,
         "pei_aluno_id": pei_aluno_id,
         "aluno_nome": aluno_nome,
+        "aluno_id": evento.get("aluno_id"),
+        "pei_override_versao_aplicada": evento.get("pei_override_versao_aplicada"),
         "relato_sala": evento.get("relato_sala"),
         "participantes": evento.get("participantes"),
+        "ocorrencia": _mesa_ocorrencia(evento),
         "professor_id": str(id_clie),
         "professor_nome": prof_nome,
         "desafio_grupo_id": desafio_grupo_id,
         "cards": cards,
         "kanban_cards": cards,
+        "contribuicao": contribuicao,
     }
 
     payload = {
@@ -309,5 +466,6 @@ def dispatch_lesson_record_sync(
         "pei_aluno_id": pei_aluno_id,
         "aluno_nome": aluno_nome,
         "mesa": mesa,
+        "contribuicao": contribuicao,
     }
     return dispatch_event_to_school("LESSON_RECORD_SYNC", payload)
