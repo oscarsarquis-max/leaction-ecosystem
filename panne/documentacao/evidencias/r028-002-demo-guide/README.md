@@ -40,3 +40,21 @@ Em `/entrar`, “Ajuda para entrar” só explicava a fronteira do CMS (“O con
 ## Publicação
 
 Somente demo (`panne_demo` / `demo.panne.ia.br`). Produção e banco `panne` congelados. Sem reseed.
+
+### Publicado
+
+| Item | Valor |
+|------|--------|
+| Git SHA | `5982248726e0f51215acc127265232d6d177d1da` (fix counts) sobre `593950c` (guia) |
+| API digest | `sha256:959aaea5e7064243248bc48b38f0238ae9a8829d41c112aae2443ceb9a726873` |
+| Task def | `panne-demo-api:10` |
+| FE | S3/CloudFront `demo.panne.ia.br` (build com `VITE_HOMOLOG_DEMO=1` + `VITE_DEMO_MODE=1`) |
+
+### Validação externa
+
+- `GET https://api.demo.panne.ia.br/health` → ambiente `demo`, DB lógico `panne_demo`
+- `GET https://api.demo.panne.ia.br/api/v1/public/demo-guide` → `source=live`, 7 perfis, 14 passos
+- Contagens live alinhadas ao baseline 028-release: produtos 12, ingredientes 19, receitas 6, planos/ordens 10, entradas fiscais 0
+- Migration head: `0022_fiscal_inbound`
+- `https://demo.panne.ia.br/entrar` e `/demonstracao` → 200 (SPA)
+- Produção / Hub / CMS / banco `panne` não alterados
