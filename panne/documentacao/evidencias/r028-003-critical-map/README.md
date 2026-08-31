@@ -55,14 +55,42 @@ Textos determinísticos: “Seu caminho está parado em…”, motivo, consequê
 
 ## 8. Testes / build
 
-- FE: **244 passed**
+- FE: **244 passed** (+ `fluxo-critical-r028` 10)
 - BE: `tests/test_demo_guide.py` — **3 passed**
 - Build homolog: `VITE_HOMOLOG_DEMO=1 VITE_DEMO_MODE=1 VITE_AUTH_PROVIDER=fake npm run build` — ok
 
 ## 9. Evidências
 
-Ver pasta: screenshots + `resolution-rules.md` + `routes.md` + `counts-before-after.json`.
+Pasta `screenshots/`:
 
-## 10–13. Publicação
+| # | Arquivo | Conteúdo |
+|---|---------|----------|
+| 1 | `01-visao-geral-desktop.png` | Preparação da organização + mapa |
+| 2 | `02-produzido-bloqueado-receita.png` | BOLO parado em Receitas |
+| 3 | `03-produzido-pronto-execucao.png` | BRIOCHE parado em Preparo e execução |
+| 4 | `04-comprado-nao-aplicavel.png` | T028C-BUY com 4–6 N/A |
+| 5 | `05-foco-diferente-posicao.png` | Etapa 8 em foco; posição em Compras |
+| 6 | `06-mobile.png` | 390-ish (iPhone 12) |
+| 7 | `07-tablet.png` | 768×1024 |
+| 8 | `08-perfil-sem-custos.png` | Leitor / sem etapa 8 |
 
-Preenchido após deploy demo (somente `panne_demo` / `demo.panne.ia.br`). Produção / Hub / CMS / banco `panne` intactos.
+Também: `resolution-rules.md`, `routes.md`, `counts-before.json`, `counts-after.json`.
+
+## 10–13. Publicação (demo only)
+
+| Item | Valor |
+|------|--------|
+| Git SHA | `636b1704fad65383bbad9483ffd24b44a00434bc` (+ commits de evidência/hotfix FE) |
+| API digest | `sha256:0599d600f54459e0b09c0e72012c656270f69b92c6957dd596918efbf614f5b4` |
+| Task def | `panne-demo-api:11` |
+| ECR scan | COMPLETE, CRITICAL=0 HIGH=0 (counts vazios) |
+| FE | S3/CloudFront `demo.panne.ia.br` |
+| Contagens | delta **0** vs before |
+| Produção / Hub / CMS / DB `panne` | não alterados |
+
+### Validação externa
+
+- `GET https://api.demo.panne.ia.br/health` → `demo` / `panne_demo`
+- `GET …/api/v1/public/demo-guide` → `content_version=r028-003`, `source=live`
+- `https://demo.panne.ia.br/fluxo` e `/demonstracao` → 200
+- Hub `https://api.actionhub.com.br/api/health` → 200

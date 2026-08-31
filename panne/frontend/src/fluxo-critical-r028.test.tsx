@@ -212,6 +212,32 @@ describe("R028-003 caminho crítico", () => {
     expect(path.steps.some((s) => s.def.id === 8)).toBe(false);
   });
 
+  it("produto com estoque e sem documento fiscal avança além de Compras", () => {
+    const product = productJourneyFromCard(productFixture);
+    const path = buildCriticalPath({
+      mode: "product",
+      evidence: {
+        ...empty,
+        fiscal: {
+          total: 0,
+          awaiting_match: 0,
+          awaiting_check: 0,
+          partially_received: 0,
+          divergent: 0,
+          confirmed: 0,
+        },
+        ingredientsTotal: 5,
+        inventoryItemsTotal: 3,
+      },
+      hasPermission: () => true,
+      focusId: 3,
+      profileFocus: new Set([3, 4]),
+      product,
+    });
+    expect(path.steps.find((s) => s.def.id === 1)?.situation).toBe("Pronto");
+    expect(path.criticalPositionId).toBe(4);
+  });
+
   it("findCriticalPosition ignora prontos e não aplicáveis", () => {
     expect(
       findCriticalPosition([

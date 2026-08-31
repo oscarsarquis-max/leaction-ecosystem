@@ -1,0 +1,30 @@
+{
+  "captured_at": "2026-08-31T20:41:00-03:00",
+  "phase": "after",
+  "api": "https://api.demo.panne.ia.br",
+  "content_version": "r028-003",
+  "health": {
+    "ambiente": "demo",
+    "logical_database": "panne_demo"
+  },
+  "totals": {
+    "produtos": 12,
+    "produtos_ativos": 6,
+    "produtos_inativos": 6,
+    "ingredientes": 19,
+    "receitas": 6,
+    "planos": 10,
+    "ordens": 10,
+    "fornecedores": 4,
+    "lotes": 6,
+    "saldos": 6,
+    "movimentos": 7,
+    "entradas_fiscais": 0,
+    "perfis_disponiveis": 7
+  },
+  "delta_vs_before": 0,
+  "git_sha": "636b1704fad65383bbad9483ffd24b44a00434bc",
+  "api_digest": "sha256:0599d600f54459e0b09c0e72012c656270f69b92c6957dd596918efbf614f5b4",
+  "task_definition": "panne-demo-api:11",
+  "fe": "CloudFront demo.panne.ia.br (homolog build)"
+}

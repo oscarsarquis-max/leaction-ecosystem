@@ -365,6 +365,16 @@ function resolveProductStep(
         };
       }
       if (evidence.fiscal.total === 0) {
+        if ((evidence.inventoryItemsTotal ?? 0) > 0 || (evidence.ingredientsTotal ?? 0) > 0) {
+          return {
+            situation: "Pronto",
+            pending:
+              "Sem documento fiscal nesta organização; há ingredientes/estoque disponíveis para o abastecimento neste recorte.",
+            nextAction: "Seguir no caminho do produto ou registrar entrada quando houver documento.",
+            hasAccess: true,
+            applicable: true,
+          };
+        }
         return {
           situation: "Não iniciado",
           pending: "Nenhuma entrada de mercadoria foi registrada ainda.",
@@ -421,7 +431,7 @@ function resolveProductStep(
 
   if (def.id === 4) {
     if (mode === "produced" || mode === "intermediate") {
-      if (!product.hasPublishedRecipe && product.recipesCount === 0) {
+      if (!product.hasPublishedRecipe) {
         return {
           situation: "Requer atenção",
           pending: "Produto produzido sem receita vigente.",

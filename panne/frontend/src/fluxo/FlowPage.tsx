@@ -121,10 +121,17 @@ export function FlowPage() {
     }
     let alive = true;
     setProductsLoading(true);
-    void api
-      .listProducts({ limit: "50", offset: "0", status: "active" })
-      .then((page) => {
-        if (alive) setProductOptions(page.items ?? []);
+    void Promise.all([
+      api.listProducts({ limit: "50", offset: "0", status: "active" }),
+      api.listProducts({ limit: "50", offset: "0", status: "inactive" }),
+    ])
+      .then(([activePage, inactivePage]) => {
+        if (!alive) return;
+        const byCode = new Map<string, ProductCard>();
+        for (const row of [...(activePage.items ?? []), ...(inactivePage.items ?? [])]) {
+          byCode.set(row.code, row);
+        }
+        setProductOptions([...byCode.values()].sort((a, b) => a.code.localeCompare(b.code)));
       })
       .catch(() => {
         if (alive) setProductOptions([]);
