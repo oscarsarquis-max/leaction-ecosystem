@@ -6,13 +6,24 @@ from urllib.parse import urlparse
 
 # Hosts padrão para mídia pública do Action Hub / S3 / CloudFront (documentados).
 # Sobrescrever via PANNE_LOGIN_EDITORIAL_MEDIA_HOSTS (CSV).
+# Inclui hostname virtual-hosted-style regional (us-east-2) e o canônico sem região.
 DEFAULT_MEDIA_HOSTS = frozenset(
     {
         "paneldx-cms-assets-2026.s3.amazonaws.com",
+        "paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com",
         "paneldx-cms-assets-2026.s3.us-east-1.amazonaws.com",
         "d1panne-cms.cloudfront.net",  # placeholder documentado — ajustar quando houver CF real
     }
 )
+
+# Bucket CMS: path público esperado (nunca aceitar objeto fora de /cms/).
+_CMS_S3_HOST_SUFFIXES = (
+    "paneldx-cms-assets-2026.s3.amazonaws.com",
+    "paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com",
+    "paneldx-cms-assets-2026.s3.us-east-1.amazonaws.com",
+)
+_CMS_S3_PATH_PREFIX = "/cms/"
+
 
 # Hosts HTTPS externos permitidos em CTA (além das rotas internas relativas).
 DEFAULT_CTA_HOSTS = frozenset(
@@ -52,6 +63,10 @@ def _is_safe_relative_path(path: str) -> bool:
     return True
 
 
+def _is_cms_s3_host(host: str) -> bool:
+    return host in _CMS_S3_HOST_SUFFIXES
+
+
 def _https_host_allowed(url: str, hosts: frozenset[str]) -> bool:
     try:
         parsed = urlparse(url)
@@ -69,7 +84,19 @@ def _https_host_allowed(url: str, hosts: frozenset[str]) -> bool:
         return False
     if host.startswith("[") or (":" in host and host.count(".") == 0):
         return host in hosts
-    return host in hosts or any(host == h or host.endswith("." + h) for h in hosts)
+    # Sem wildcard *.amazonaws.com — só igualdade exata (ou subdomínio explícito de host allowlist).
+    allowed = host in hosts or any(host == h or host.endswith("." + h) for h in hosts)
+    if not allowed:
+        return False
+    if _is_cms_s3_host(host):
+        path = parsed.path or ""
+        if not path.startswith(_CMS_S3_PATH_PREFIX):
+            return False
+        # Evitar path traversal no objeto
+        if ".." in path.split("/"):
+            return False
+    return True
+
 
 
 def sanitize_image_url(raw: object, *, media_hosts: frozenset[str]) -> str:

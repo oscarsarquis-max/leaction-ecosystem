@@ -47,11 +47,20 @@ describe("tela de acesso e editorial", () => {
     const ok = sanitizeColumn({
       placement: "left",
       title: "Ok",
-      image: { url: "https://paneldx-cms-assets-2026.s3.amazonaws.com/a.png", alt: "a" },
+      image: { url: "https://paneldx-cms-assets-2026.s3.amazonaws.com/cms/a.png", alt: "a" },
       cta: { label: "Docs", url: "https://docs.leaction.com.br/x" },
     });
     expect(ok?.image.url).toContain("s3.amazonaws.com");
     expect(ok?.cta?.url).toContain("docs.leaction.com.br");
+    const regional = sanitizeColumn({
+      placement: "left",
+      title: "Regional",
+      image: {
+        url: "https://paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com/cms/1788202927768-mulherforno.png",
+        alt: "forno",
+      },
+    });
+    expect(regional?.image.url).toContain("s3.us-east-2.amazonaws.com/cms/");
     const bad = sanitizeColumn({
       placement: "right",
       title: "Bad",
@@ -60,6 +69,23 @@ describe("tela de acesso e editorial", () => {
     });
     expect(bad?.image.url).toBe("");
     expect(bad?.cta).toBeUndefined();
+    expect(
+      sanitizeColumn({
+        placement: "left",
+        title: "Outro bucket",
+        image: { url: "https://other.s3.us-east-2.amazonaws.com/cms/a.png", alt: "x" },
+      })?.image.url,
+    ).toBe("");
+    expect(
+      sanitizeColumn({
+        placement: "left",
+        title: "Sem prefixo cms",
+        image: {
+          url: "https://paneldx-cms-assets-2026.s3.us-east-2.amazonaws.com/private/a.png",
+          alt: "x",
+        },
+      })?.image.url,
+    ).toBe("");
   });
 
   it("provider estático e inválido", async () => {
