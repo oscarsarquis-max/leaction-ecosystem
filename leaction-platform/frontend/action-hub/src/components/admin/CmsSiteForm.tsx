@@ -261,10 +261,14 @@ export function CmsSiteForm() {
   const [landing, setLanding] = useState<Record<string, unknown>>({});
   const [instructions, setInstructions] = useState('');
 
-  /** Satélites /acesso (2 colunas) — distinto do Micro-CMS PanelDX (default). */
+  /** Satélites /acesso ou /entrar — distinto do Micro-CMS PanelDX (default). */
   const isAcessoSatellite =
-    configKey === 'inove4us' || configKey === 'inove4us-school';
+    configKey === 'inove4us'
+    || configKey === 'inove4us-school'
+    || configKey === 'panne-demo'
+    || configKey === 'panne';
   const isSchool = configKey === 'inove4us-school';
+  const isPanne = configKey === 'panne-demo' || configKey === 'panne';
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -434,16 +438,22 @@ export function CmsSiteForm() {
             Voltar aos posts
           </Link>
           <h1 className="text-xl font-bold text-stone-900">
-            {isSchool
-              ? 'Micro-CMS — inove4us School (/acesso)'
-              : isAcessoSatellite
-                ? 'Micro-CMS — inove4us (/acesso)'
-                : 'Micro-CMS (estrutura PanelDX)'}
+            {isPanne
+              ? configKey === 'panne-demo'
+                ? 'Micro-CMS — Panne Demonstração (/entrar)'
+                : 'Micro-CMS — Panne Produção (/entrar, preparatório)'
+              : isSchool
+                ? 'Micro-CMS — inove4us School (/acesso)'
+                : isAcessoSatellite
+                  ? 'Micro-CMS — inove4us (/acesso)'
+                  : 'Micro-CMS (estrutura PanelDX)'}
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-stone-500">
-            {isAcessoSatellite
-              ? 'Colunas laterais da página de acesso do satélite. O satélite só lê — sem gestão local.'
-              : 'Landing + instruções migradas para o Hub. O PanelDX continua ativo até autorização explícita de cutover.'}
+            {isPanne
+              ? 'Colunas laterais da página de acesso da Panne. Autenticação permanece na Panne; panne-demo e panne são chaves separadas.'
+              : isAcessoSatellite
+                ? 'Colunas laterais da página de acesso do satélite. O satélite só lê — sem gestão local.'
+                : 'Landing + instruções migradas para o Hub. O PanelDX continua ativo até autorização explícita de cutover.'}
           </p>
           <label className="mt-3 block max-w-sm space-y-1">
             <span className="text-xs font-semibold text-stone-500">Site / satélite</span>
@@ -458,6 +468,8 @@ export function CmsSiteForm() {
               <option value="default">PanelDX (default)</option>
               <option value="inove4us">inove4us — página /acesso</option>
               <option value="inove4us-school">inove4us School — página /acesso</option>
+              <option value="panne-demo">Panne — Demonstração</option>
+              <option value="panne">Panne — Produção</option>
             </select>
           </label>
         </div>

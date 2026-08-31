@@ -3,7 +3,8 @@
 /**
  * Micro-CMS migrado do PanelDX (ctdi_cms_config → cms_site_config no Hub).
  * APIs: GET /api/public/cms · GET/PUT /api/admin/cms
- * Query/body: config_key=default|inove4us|inove4us-school (default = landing PanelDX).
+ * Query/body: config_key=default|inove4us|inove4us-school|panne-demo|panne
+ * (default = landing PanelDX; panne-demo = homologação Panne; panne = produção futura).
  *
  * Persistência:
  * - Postgres = leitura rápida / operacional
@@ -25,7 +26,13 @@ const {
 } = require('./cms-blog-sync');
 const cmsS3 = require('../lib/cms-s3-storage');
 
-const ALLOWED_CONFIG_KEYS = new Set(['default', 'inove4us', 'inove4us-school']);
+const ALLOWED_CONFIG_KEYS = new Set([
+  'default',
+  'inove4us',
+  'inove4us-school',
+  'panne-demo',
+  'panne',
+]);
 
 function resolveConfigKey(raw) {
   const key = String(raw || 'default').trim().toLowerCase() || 'default';

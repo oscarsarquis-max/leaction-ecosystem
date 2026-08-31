@@ -26,7 +26,7 @@ if (process.env.CMS_PROMOTE_LOCAL_DATABASE_URL) {
   process.env.DATABASE_URL = process.env.CMS_PROMOTE_LOCAL_DATABASE_URL;
 }
 
-const ALLOWED = new Set(['default', 'inove4us', 'inove4us-school']);
+const ALLOWED = new Set(['default', 'inove4us', 'inove4us-school', 'panne-demo', 'panne']);
 
 function argValue(name) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));

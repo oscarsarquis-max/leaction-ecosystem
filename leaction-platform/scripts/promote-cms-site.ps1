@@ -25,7 +25,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('default', 'inove4us', 'inove4us-school')]
+    [ValidateSet('default', 'inove4us', 'inove4us-school', 'panne-demo', 'panne')]
     [string]$Key,
 
     [switch]$CompareOnly,
