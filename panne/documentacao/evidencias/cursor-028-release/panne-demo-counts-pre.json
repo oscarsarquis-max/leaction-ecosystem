@@ -1,0 +1,66 @@
+{
+  "phase": "pre",
+  "captured_at": "2026-08-31T16:56:52.210494+00:00",
+  "database": "panne_demo",
+  "username": "panne_demo_migrator",
+  "host_sanitized": "actionhub-prod.…",
+  "read_only": true,
+  "organizations": [
+    {
+      "organization_id": "5547c13b-3ad2-50ea-9bbf-bdb711e1d8b9",
+      "slug": "padaria-horizonte-demo",
+      "display_name": "Padaria Horizonte Demo",
+      "counts": {
+        "produtos": 0,
+        "ingredientes": 1,
+        "receitas": 0,
+        "ordens": 0,
+        "planos": 0,
+        "fornecedores": 0,
+        "lotes": 0,
+        "saldos": 0,
+        "movimentos": 0,
+        "entradas_fiscais": 0,
+        "usuarios_demo": 2
+      }
+    },
+    {
+      "organization_id": "45104a8c-d590-5946-b8dd-f5534e89e338",
+      "slug": "panne-demonstracao",
+      "display_name": "Panne Demonstração",
+      "counts": {
+        "produtos": 12,
+        "ingredientes": 18,
+        "receitas": 6,
+        "ordens": 10,
+        "planos": 10,
+        "fornecedores": 4,
+        "lotes": 6,
+        "saldos": 6,
+        "movimentos": 7,
+        "entradas_fiscais": 0,
+        "usuarios_demo": 7
+      }
+    }
+  ],
+  "totals": {
+    "produtos": 12,
+    "ingredientes": 19,
+    "receitas": 6,
+    "ordens": 10,
+    "planos": 10,
+    "fornecedores": 4,
+    "lotes": 6,
+    "saldos": 6,
+    "movimentos": 7,
+    "entradas_fiscais": 0,
+    "usuarios_demo": 9
+  },
+  "alembic_head": "0022_fiscal_inbound",
+  "notes": [
+    "usuarios_demo = memberships distintas",
+    "receitas = formulation",
+    "produtos = technical_product",
+    "entradas_fiscais = fiscal_inbound_document"
+  ]
+}

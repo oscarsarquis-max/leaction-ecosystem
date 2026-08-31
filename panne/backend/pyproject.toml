@@ -17,6 +17,7 @@ dependencies = [
   "asyncpg>=0.30",
   "alembic>=1.14",
   "PyJWT[crypto]>=2.9",
+  "defusedxml>=0.7",
 ]
 
 [project.optional-dependencies]

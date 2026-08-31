@@ -1,0 +1,44 @@
+﻿{
+    "schema_version":  1,
+    "source":  "static",
+    "columns":  [
+                    {
+                        "schema_version":  1,
+                        "placement":  "left",
+                        "locale":  "pt-BR",
+                        "eyebrow":  "Oficina",
+                        "title":  "O turno cabe no quadro",
+                        "summary":  "ProduÃ§Ã£o, componentes e conformidade no recorte da padaria.",
+                        "sections":  [
+                                         "Contexto do turno antes dos filtros.",
+                                         "PrÃ³xima aÃ§Ã£o por estado e permissÃ£o."
+                                     ],
+                        "image":  {
+                                      "url":  "/images/aprovados/horizontal-claro.png",
+                                      "alt":  "Marca Panne em fundo claro."
+                                  },
+                        "priority":  10,
+                        "hash":  "b8255101aa9c9e93"
+                    },
+                    {
+                        "schema_version":  1,
+                        "placement":  "right",
+                        "locale":  "pt-BR",
+                        "eyebrow":  "Atelier",
+                        "title":  "Ficha antes do palpite",
+                        "summary":  "VersÃ£o e revisÃ£o humana antes de qualquer selo.",
+                        "sections":  [
+                                         "AusÃªncia nÃ£o Ã© zero.",
+                                         "Assistente orienta, nÃ£o executa."
+                                     ],
+                        "image":  {
+                                      "url":  "/images/aprovados/compacto-escuro.png",
+                                      "alt":  "SÃ­mbolo compacto da Panne."
+                                  },
+                        "priority":  9,
+                        "hash":  "d9481db50b7c9a52"
+                    }
+                ],
+    "note":  "Fallback estÃ¡tico â Hub indisponÃ­vel, incompatÃ­vel ou stale expirado.",
+    "config_key":  "panne-demo"
+}

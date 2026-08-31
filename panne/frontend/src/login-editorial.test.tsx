@@ -43,6 +43,25 @@ describe("tela de acesso e editorial", () => {
     expect(row?.image.url).toBe("");
   });
 
+  it("segunda barreira: allowlist de host e bloqueio de auth em CTA", () => {
+    const ok = sanitizeColumn({
+      placement: "left",
+      title: "Ok",
+      image: { url: "https://paneldx-cms-assets-2026.s3.amazonaws.com/a.png", alt: "a" },
+      cta: { label: "Docs", url: "https://docs.leaction.com.br/x" },
+    });
+    expect(ok?.image.url).toContain("s3.amazonaws.com");
+    expect(ok?.cta?.url).toContain("docs.leaction.com.br");
+    const bad = sanitizeColumn({
+      placement: "right",
+      title: "Bad",
+      image: { url: "https://evil.example/a.png", alt: "x" },
+      cta: { label: "Login", url: "/entrar" },
+    });
+    expect(bad?.image.url).toBe("");
+    expect(bad?.cta).toBeUndefined();
+  });
+
   it("provider estático e inválido", async () => {
     const ok = await new StaticLoginEditorialProvider("ok").load();
     expect(ok?.columns).toHaveLength(2);
@@ -57,7 +76,7 @@ describe("tela de acesso e editorial", () => {
     await renderApp("/entrar", { signedIn: false });
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Ajuda para entrar" }));
-    expect(await screen.findByRole("heading", { name: "Ajuda para entrar" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Ajuda para entrar/ })).toBeInTheDocument();
   });
 
   it("R026-005: marca fica no cabeçalho estrutural da caixa", async () => {

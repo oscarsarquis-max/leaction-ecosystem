@@ -29,4 +29,4 @@ def test_accepts_demo_and_smoke() -> None:
 def test_alembic_head_constant() -> None:
     from app.seed import ALEMBIC_HEAD
 
-    assert ALEMBIC_HEAD == "0020_inventory_procurement"
+    assert ALEMBIC_HEAD == "0022_fiscal_inbound"

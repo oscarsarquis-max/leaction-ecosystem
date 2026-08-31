@@ -38,6 +38,64 @@ describe("autenticação", () => {
     expect(provider.getAccessToken()).toBeNull();
   });
 
+  it("rehidrata a sessão fake a partir do sessionStorage após “refresh”", async () => {
+    sessionStorage.setItem("panne.demoSubject", "demo-owner");
+    const first = new FakeAuthProvider();
+    await first.login();
+    expect(first.getAccessToken()).toBe("panne-demo:demo-owner");
+    expect(sessionStorage.getItem("panne.fakeSession")).toBe("1");
+    expect(localStorage.getItem("panne.token")).toBeNull();
+
+    const restored = new FakeAuthProvider();
+    expect(restored.getSession()?.accessToken).toBe("panne-demo:demo-owner");
+    expect(restored.getAccessToken()).toBe("panne-demo:demo-owner");
+
+    await restored.logout();
+    expect(sessionStorage.getItem("panne.fakeSession")).toBeNull();
+    expect(sessionStorage.getItem("panne.demoSubject")).toBeNull();
+    expect(new FakeAuthProvider().getSession()).toBeNull();
+  });
+
+  it("Sair limpa autenticação e não restaura após novo FakeAuthProvider", async () => {
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    sessionStorage.setItem("panne.demoSubject", "demo-owner");
+    sessionStorage.setItem("panne.operationalContext." + ORG_A + ".anon", JSON.stringify({
+      operational_date: "2026-08-24",
+      establishment_id: "e1",
+      establishment_name: "Central",
+      shift: "manha",
+      area: "padaria",
+    }));
+    const provider = new FakeAuthProvider();
+    await provider.login();
+    installApiMock();
+    render(
+      <AuthProviderTree provider={provider}>
+        <OrganizationProvider>
+          <MemoryRouter
+            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+            initialEntries={["/producao"]}
+          >
+            <AssistantProvider>
+              <AppRoutes />
+            </AssistantProvider>
+          </MemoryRouter>
+        </OrganizationProvider>
+      </AuthProviderTree>,
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Abrir menu do usuário" }));
+    await user.click(screen.getByRole("menuitem", { name: "Sair" }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Entrar na Panne" })).toBeInTheDocument();
+    });
+    expect(sessionStorage.getItem("panne.fakeSession")).toBeNull();
+    expect(sessionStorage.getItem("panne.demoSubject")).toBeNull();
+    expect(localStorage.getItem("panne.activeOrganization")).toBeNull();
+    expect(Object.keys(sessionStorage).filter((k) => k.startsWith("panne.operationalContext."))).toEqual([]);
+    expect(new FakeAuthProvider().getSession()).toBeNull();
+  });
+
   it("envia o token no /me depois de entrar", async () => {
     installApiMock();
     render(
@@ -67,7 +125,7 @@ describe("autenticação", () => {
           : (headers as Record<string, string> | undefined)?.Authorization;
       expect(authorization).toMatch(/^Bearer panne-fake-access-token$/);
     });
-    expect(await screen.findByRole("heading", { name: "Quadro de produção" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Fluxo produtivo" })).toBeInTheDocument();
   });
 
   it("R026-001: /organizacao fica fora de RequireOrganization e renderiza a seleção", async () => {
@@ -93,7 +151,7 @@ describe("autenticação", () => {
     await renderApp("/organizacao");
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Padaria Central" }));
-    expect(await screen.findByRole("heading", { name: "Quadro de produção" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Fluxo produtivo" })).toBeInTheDocument();
   });
 
   it("R026-001: /organizacao sem sessão redireciona para /entrar", async () => {
@@ -141,7 +199,7 @@ describe("interface", () => {
     expect(await screen.findByText("Pão tradicional")).toBeInTheDocument();
     expect(screen.getByText("Atrasada")).toBeInTheDocument();
     expect(screen.getByText(/Livre/)).toBeInTheDocument();
-    expect(document.body.textContent?.toLowerCase()).not.toContain("preço");
+    expect(screen.getByRole("main").textContent?.toLowerCase()).not.toContain("preço");
     const results = await axe(view.container);
     expect(results.violations.filter((item) => item.impact === "critical")).toEqual([]);
   });

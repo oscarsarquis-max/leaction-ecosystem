@@ -81,6 +81,17 @@ export const GLOSSARY: GlossaryEntry[] = [
     version: 1,
   },
   {
+    code: "produto",
+    title: "Produto",
+    short: "O que a casa vende, estoca ou produz.",
+    detail:
+      "Existe por si, com ou sem receita. Produzido sem receita vigente não gera ordem de produção.",
+    example: "Pão tradicional produzido na casa; refrigerante comprado pronto.",
+    related: ["receita", "ordem"],
+    routes: ["/produtos"],
+    version: 1,
+  },
+  {
     code: "receita",
     title: "Receita",
     short: "Ficha técnica versionada para produção.",

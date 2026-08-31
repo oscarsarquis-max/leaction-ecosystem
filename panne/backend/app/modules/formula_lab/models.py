@@ -1,4 +1,4 @@
-"""Núcleo de produto técnico e formulações. Sem CRUD HTTP, nutrição ou custo."""
+"""Núcleo de produto (legado technical_product) e formulações."""
 
 from datetime import date, datetime
 from decimal import Decimal
@@ -36,11 +36,17 @@ def _updated_at():
     return mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
-class TechnicalProduct(Base):
-    __tablename__ = "technical_product"
+class ProductFamily(Base):
+    __tablename__ = "product_family"
     __table_args__ = (
-        Index("uq_technical_product_org_code", "organization_id", "code", unique=True),
-        Index("uq_technical_product_id_org", "id", "organization_id", unique=True),
+        Index("uq_product_family_org_code", "organization_id", "code", unique=True),
+        Index("uq_product_family_id_org", "id", "organization_id", unique=True),
+        ForeignKeyConstraint(
+            ["parent_id", "organization_id"],
+            ["product_family.id", "product_family.organization_id"],
+            ondelete="RESTRICT",
+            name="fk_product_family_parent",
+        ),
     )
 
     id: Mapped[UUID] = _uuid_pk()
@@ -50,10 +56,64 @@ class TechnicalProduct(Base):
     code: Mapped[str] = mapped_column(Text, nullable=False)
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'development'"))
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'active'"))
+    parent_id: Mapped[UUID | None] = mapped_column(Uuid)
     row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = _updated_at()
+
+
+class TechnicalProduct(Base):
+    """Produto canônico. Nome de tabela legado `technical_product` preservado."""
+
+    __tablename__ = "technical_product"
+    __table_args__ = (
+        Index("uq_technical_product_org_code", "organization_id", "code", unique=True),
+        Index("uq_technical_product_id_org", "id", "organization_id", unique=True),
+        ForeignKeyConstraint(
+            ["family_id", "organization_id"],
+            ["product_family.id", "product_family.organization_id"],
+            ondelete="RESTRICT",
+            name="fk_technical_product_family",
+        ),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    organization_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("organization.id", ondelete="RESTRICT"), nullable=False
+    )
+    code: Mapped[str] = mapped_column(Text, nullable=False)
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'active'"))
+    family_id: Mapped[UUID | None] = mapped_column(Uuid)
+    purpose: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'final'"))
+    supply_mode: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'produced'"))
+    stock_unit_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("measurement_unit.id", ondelete="RESTRICT")
+    )
+    sale_unit_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("measurement_unit.id", ondelete="RESTRICT")
+    )
+    net_content: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    net_content_unit_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("measurement_unit.id", ondelete="RESTRICT")
+    )
+    default_shelf_life_days: Mapped[int | None] = mapped_column(Integer)
+    packaging_description: Mapped[str | None] = mapped_column(Text)
+    created_by_user_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("app_user.id", ondelete="RESTRICT")
+    )
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("app_user.id", ondelete="RESTRICT")
+    )
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = _updated_at()
+
+
+# Alias canônico para código novo.
+Product = TechnicalProduct
 
 
 class RecipeReference(Base):

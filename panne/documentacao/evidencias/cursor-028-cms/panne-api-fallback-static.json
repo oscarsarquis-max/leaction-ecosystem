@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "source": "static",
+  "columns": [
+    {
+      "schema_version": 1,
+      "placement": "left",
+      "locale": "pt-BR",
+      "eyebrow": "Oficina",
+      "title": "O turno cabe no quadro",
+      "summary": "Produção, componentes e conformidade no recorte da padaria.",
+      "sections": [
+        "Contexto do turno antes dos filtros.",
+        "Próxima ação por estado e permissão."
+      ],
+      "image": {
+        "url": "/images/aprovados/horizontal-claro.png",
+        "alt": "Marca Panne em fundo claro."
+      },
+      "priority": 10,
+      "hash": "b8255101aa9c9e93"
+    },
+    {
+      "schema_version": 1,
+      "placement": "right",
+      "locale": "pt-BR",
+      "eyebrow": "Atelier",
+      "title": "Ficha antes do palpite",
+      "summary": "Versão e revisão humana antes de qualquer selo.",
+      "sections": [
+        "Ausência não é zero.",
+        "Assistente orienta, não executa."
+      ],
+      "image": {
+        "url": "/images/aprovados/compacto-escuro.png",
+        "alt": "Símbolo compacto da Panne."
+      },
+      "priority": 9,
+      "hash": "d9481db50b7c9a52"
+    }
+  ],
+  "note": "Hub indisponivel"
+}

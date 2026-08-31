@@ -91,8 +91,8 @@ def test_rls_orgs_are_distinct(db_session: Session) -> None:
 
 def test_manifest_matches_counts(db_session: Session) -> None:
     world = seed_demo(db_session, anchor=date(2026, 8, 24))
-    payload = build_manifest(db_session, anchor=date(2026, 8, 24), gaps=world.gaps, elapsed_s=0.1, alembic_head="0020_inventory_procurement")
-    assert payload["alembic_head"] == "0020_inventory_procurement"
+    payload = build_manifest(db_session, anchor=date(2026, 8, 24), gaps=world.gaps, elapsed_s=0.1, alembic_head="0022_fiscal_inbound")
+    assert payload["alembic_head"] == "0022_fiscal_inbound"
     assert payload["table_counts"]["organization"] >= 2
     journeys = run_journeys(db_session)
     assert payload["alembic_head"] == ALEMBIC_HEAD
@@ -116,4 +116,4 @@ def test_guards_refuse_production_and_keep_alembic_head() -> None:
         raise AssertionError("deveria recusar")
     except SeedTargetError:
         pass
-    assert ALEMBIC_HEAD == "0020_inventory_procurement"
+    assert ALEMBIC_HEAD == "0022_fiscal_inbound"

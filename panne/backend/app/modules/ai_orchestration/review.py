@@ -189,7 +189,9 @@ def _materialize(
                 organization_id=proposal.organization_id,
                 code=f"AI-P-{proposal.id.hex[:8]}",
                 display_name=proposal.title,
-                status="development",
+                status="active",
+                purpose="final",
+                supply_mode="produced",
             )
             session.add(product)
             session.flush()

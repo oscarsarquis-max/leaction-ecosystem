@@ -4,6 +4,7 @@ import { GLOSSARY } from "../guide/glossary";
 import { INTENTS } from "../guide/intents";
 import { useOrganization } from "../session/OrganizationContext";
 import { useAssistant } from "./AssistantContext";
+import { GIGIO_NAME, GigioIdentity } from "./GigioIdentity";
 
 export function GlobalAssistant({ publicMode = false }: { publicMode?: boolean }) {
   const { open, flow, dirty, pendingCommand, live, closeAssistant, minimizeAssistant, dismissAssistant, setFlow } =
@@ -32,7 +33,8 @@ export function GlobalAssistant({ publicMode = false }: { publicMode?: boolean }
 
   return (
     <aside className="drawer-assist panel no-print" role="dialog" aria-labelledby={titleId} aria-modal="false">
-      <h2 id={titleId}>{publicMode ? "Ajuda para entrar" : "Assistente"}</h2>
+      <GigioIdentity size="sm" caption={publicMode ? "Ajuda para entrar" : "Orientação do processo"} />
+      <h2 id={titleId}>{publicMode ? `${GIGIO_NAME} · Ajuda para entrar` : GIGIO_NAME}</h2>
       {publicMode ? (
         <p>O conteúdo ao lado não altera o login. Se as colunas falharem, o acesso continua no centro.</p>
       ) : (
@@ -51,7 +53,7 @@ export function GlobalAssistant({ publicMode = false }: { publicMode?: boolean }
           {live.pending ? <p>Falta: {live.pending}</p> : null}
           {!live.guideSpecific ? <p className="meta">Guia mínimo: esta rota ainda não tem texto próprio.</p> : null}
           {dirty || pendingCommand ? (
-            <p role="status">Há formulário sujo ou comando pendente. O assistente não executa.</p>
+            <p role="status">Há formulário sujo ou comando pendente. {GIGIO_NAME} não executa.</p>
           ) : null}
         </>
       )}

@@ -36,6 +36,22 @@ class Settings(BaseSettings):
     demo_instance_id: str = ""
     demo_started_at: str = ""
 
+    # Editorial /entrar via Action Hub (S2S). Sem credenciais no browser.
+    action_hub_api_url: str = ""
+    login_editorial_timeout_seconds: float = 2.5
+    login_editorial_cache_ttl_seconds: int = 30
+    # Idade máxima do stale (segundos). Além disso → fallback estático.
+    # Cache é em memória por processo — não compartilhado.
+    login_editorial_cache_max_stale_seconds: int = 600
+    login_editorial_max_bytes: int = 200_000
+    # Override explícito (local/test): panne-demo | panne. Em produção é ignorado
+    # salvo login_editorial_allow_demo_key_in_prod=True (admin explícito).
+    login_editorial_config_key: str = ""
+    login_editorial_allow_demo_key_in_prod: bool = False
+    # CSV de hosts HTTPS permitidos (mídia / CTA). Vazio = defaults do url_policy.
+    login_editorial_media_hosts: str = ""
+    login_editorial_cta_hosts: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

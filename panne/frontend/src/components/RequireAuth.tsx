@@ -33,14 +33,18 @@ export function RequireOrganization({ children }: { children: React.ReactNode })
 
 export function RequirePermission({
   code,
+  anyOf,
   children,
 }: {
-  code: string;
+  code?: string;
+  /** Basta uma das permissões; usado onde um domínio novo ainda convive com o código antigo. */
+  anyOf?: string[];
   children: React.ReactNode;
 }) {
   const { hasPermission, active } = useOrganization();
+  const codes = anyOf ?? (code ? [code] : []);
   if (!active) return <Navigate to="/organizacao" replace />;
-  if (!hasPermission(code)) {
+  if (!codes.some((item) => hasPermission(item))) {
     return (
       <ErrorState error={new ApiError("nao_autorizado", "Você não tem permissão para este recurso.", 403)} />
     );

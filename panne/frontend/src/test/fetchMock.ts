@@ -22,6 +22,18 @@ import {
   CALC_ID,
   SNAPSHOT_ID,
   proposalFixture,
+  PRODUCT_ID,
+  PRODUCT_PURCHASED_ID,
+  productFamilyFixture,
+  productFixture,
+  productPurchasedFixture,
+  productSummaryFixture,
+  FISCAL_DOCUMENT_ID,
+  FISCAL_DOCUMENT_DIVERGENT_ID,
+  INVENTORY_LOCATION_ID,
+  fiscalDocumentFixture,
+  fiscalDocumentDivergentFixture,
+  fiscalSummaryFixture,
   RECIPE_ID,
   RECIPE_VERSION_ID,
   ordersFixture,
@@ -32,6 +44,15 @@ import {
   traceFixture,
   weighingsFixture,
 } from "../api/fixtures";
+
+async function readJsonBody(request: Request): Promise<Record<string, unknown> | null> {
+  try {
+    const text = await request.clone().text();
+    return text ? (JSON.parse(text) as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
 
 export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -57,6 +78,38 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
       if (path.includes(prefix)) return fn(url, request);
     }
     if (path === "/api/v1/me") return json(meFixture);
+    if (path === "/api/v1/public/login-editorial") {
+      return json({
+        schema_version: 1,
+        source: "static",
+        columns: [
+          {
+            schema_version: 1,
+            placement: "left",
+            locale: "pt-BR",
+            eyebrow: "Oficina",
+            title: "O turno cabe no quadro",
+            summary: "A Panne organiza produção, componentes e conformidade no mesmo recorte da padaria.",
+            sections: ["Contexto do turno antes dos filtros."],
+            image: { url: "/images/aprovados/horizontal-claro.png", alt: "Marca Panne" },
+            priority: 10,
+            hash: "editorial-left-v1",
+          },
+          {
+            schema_version: 1,
+            placement: "right",
+            locale: "pt-BR",
+            eyebrow: "Atelier",
+            title: "Ficha antes do palpite",
+            summary: "Ingrediente, receita e rótulo candidato passam por versão e revisão humana.",
+            sections: ["Ausência não é zero."],
+            image: { url: "/images/aprovados/compacto-escuro.png", alt: "Símbolo Panne" },
+            priority: 9,
+            hash: "editorial-right-v1",
+          },
+        ],
+      });
+    }
     if (path.includes("/recipe-ai/proposals") && path.endsWith("/grounding")) {
       return json({
         data: {
@@ -325,6 +378,132 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
         row_version: 1,
       });
     }
+    if (path.endsWith("/fiscal/documents/summary")) {
+      return json({ data: fiscalSummaryFixture });
+    }
+    if (path.endsWith("/fiscal/documents/import-xml") || path.endsWith("/fiscal/documents/scan")) {
+      return json({ data: fiscalDocumentFixture, row_version: fiscalDocumentFixture.row_version });
+    }
+    if (path.endsWith("/fiscal/access-keys/lookup")) {
+      return json({ data: fiscalDocumentFixture, row_version: fiscalDocumentFixture.row_version });
+    }
+    if (path.endsWith("/fiscal/distribution/simulate")) {
+      return json({
+        data: {
+          c_stat: "138",
+          x_motivo: "Documento(s) localizado(s) — DEMONSTRACAO",
+          synthetic: true,
+          documents_ingested: [FISCAL_DOCUMENT_ID],
+          document_count: 1,
+        },
+      });
+    }
+    if (path.includes("/fiscal/distribution/status")) {
+      return json({
+        data: {
+          ready: false,
+          live: false,
+          simulation_available: true,
+          message:
+            "Consulta automática preparada, mas ainda não ativada para este estabelecimento.",
+          status: "not_configured",
+        },
+      });
+    }
+    if (path.endsWith("/fiscal/documents") && request.method === "GET") {
+      const status = url.searchParams.get("status");
+      const items = [fiscalDocumentFixture, fiscalDocumentDivergentFixture].filter(
+        (item) => !status || item.status === status,
+      );
+      return json({ items, total: items.length, limit: 20, offset: 0 });
+    }
+    if (path.endsWith("/fiscal/documents") && request.method === "POST") {
+      const body = await readJsonBody(request);
+      return json({
+        data: {
+          ...fiscalDocumentFixture,
+          document_number:
+            typeof body?.document_number === "string"
+              ? body.document_number
+              : fiscalDocumentFixture.document_number,
+        },
+        row_version: fiscalDocumentFixture.row_version,
+      });
+    }
+    if (path.includes("/fiscal/documents/") && request.method !== "GET") {
+      return json({
+        data: { ...fiscalDocumentFixture, row_version: fiscalDocumentFixture.row_version + 1 },
+        row_version: fiscalDocumentFixture.row_version + 1,
+      });
+    }
+    if (path.endsWith(`/fiscal/documents/${FISCAL_DOCUMENT_DIVERGENT_ID}`)) {
+      return json({
+        data: fiscalDocumentDivergentFixture,
+        row_version: fiscalDocumentDivergentFixture.row_version,
+      });
+    }
+    if (path.endsWith(`/fiscal/documents/${FISCAL_DOCUMENT_ID}`)) {
+      return json({ data: fiscalDocumentFixture, row_version: fiscalDocumentFixture.row_version });
+    }
+    if (path.endsWith("/products/summary")) {
+      return json({ data: productSummaryFixture });
+    }
+    if (path.endsWith("/products") && request.method === "GET") {
+      const purpose = url.searchParams.get("purpose");
+      const supplyMode = url.searchParams.get("supply_mode");
+      const status = url.searchParams.get("status");
+      const items = [productFixture, productPurchasedFixture].filter(
+        (item) =>
+          (!purpose || item.purpose === purpose) &&
+          (!supplyMode || item.supply_mode === supplyMode) &&
+          (!status || item.status === status),
+      );
+      return json({ items, total: items.length, limit: 20, offset: 0 });
+    }
+    if (path.endsWith("/products") && request.method === "POST") {
+      const body = await readJsonBody(request);
+      const purchased = body?.supply_mode === "purchased";
+      const base = purchased ? productPurchasedFixture : productFixture;
+      return json({
+        data: {
+          ...base,
+          code: typeof body?.code === "string" ? body.code : base.code,
+          display_name:
+            typeof body?.display_name === "string" ? body.display_name : base.display_name,
+        },
+        row_version: 1,
+      });
+    }
+    if (path.includes("/products/") && path.endsWith("/status") && request.method === "POST") {
+      return json({ data: { ...productFixture, status: "inactive", row_version: 2 }, row_version: 2 });
+    }
+    if (path.includes("/products/") && request.method === "PATCH") {
+      return json({ data: { ...productFixture, row_version: 2 }, row_version: 2 });
+    }
+    if (path.includes(`/products/${PRODUCT_PURCHASED_ID}`)) {
+      return json({ data: productPurchasedFixture, row_version: productPurchasedFixture.row_version });
+    }
+    if (path.includes(`/products/${PRODUCT_ID}`)) {
+      return json({ data: productFixture, row_version: productFixture.row_version });
+    }
+    if (path.endsWith("/product-families") && request.method === "GET") {
+      return json({ items: [productFamilyFixture] });
+    }
+    if (path.endsWith("/product-families") && request.method === "POST") {
+      const body = await readJsonBody(request);
+      return json({
+        data: {
+          ...productFamilyFixture,
+          id: "a4a4a4a4-a4a4-4a4a-8a4a-a4a4a4a4a4a4",
+          code: typeof body?.code === "string" ? body.code : productFamilyFixture.code,
+          display_name:
+            typeof body?.display_name === "string"
+              ? body.display_name
+              : productFamilyFixture.display_name,
+        },
+        row_version: 1,
+      });
+    }
     if (path.endsWith("/labeling/dossiers") && request.method === "GET") {
       return json({ items: [labelingDossierFixture], total: 1 });
     }
@@ -481,6 +660,21 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
             production_eligible: true,
             eligibility_reason: null,
             unit_code: "un",
+          },
+        ],
+      });
+    }
+    if (path.endsWith("/inventory/locations") && request.method === "GET") {
+      return json({
+        items: [
+          {
+            id: INVENTORY_LOCATION_ID,
+            code: "ALM-01",
+            display_name: "Almoxarifado Central",
+            kind: "storage",
+            status: "active",
+            establishment_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+            row_version: 1,
           },
         ],
       });

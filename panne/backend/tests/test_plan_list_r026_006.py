@@ -31,6 +31,12 @@ def test_plan_list_enrichment_order_and_no_n_plus_one(engine) -> None:
     try:
         other = helpers.technical_product(admin, ctx["organization"], f"P2-{uuid4().hex[:6]}")
         other.display_name = "Ciabatta (Demo)"
+        other_recipe = helpers.formulation(admin, other, f"F2-{uuid4().hex[:6]}")
+        other_version = helpers.formulation_version(admin, other_recipe)
+        helpers.approve_version(admin, other_version, ctx["actor"])
+        from app.modules.formula_lab.rules import publish_formulation_version
+
+        publish_formulation_version(admin, other_version)
         early = create_plan(
             admin,
             ctx["principal"],

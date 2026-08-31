@@ -72,6 +72,9 @@ def _context(session: Session, slug: str, role: str = "production_manager"):
     helpers.formulation_item(session, version, water, unit, 2, Decimal("650"))
     helpers.process_step(session, version, 1)
     helpers.approve_version(session, version, actor)
+    from app.modules.formula_lab.rules import publish_formulation_version
+
+    publish_formulation_version(session, version)
     loaded = list(
         session.scalars(
             select(FormulationItem).where(FormulationItem.formulation_version_id == version.id)
@@ -198,6 +201,12 @@ def test_release_rejects_unapproved_formulation(db_session: Session) -> None:
 def test_incompatible_product_formulation_scale(db_session: Session) -> None:
     ctx = _context(db_session, "org-prod-inc")
     other = helpers.technical_product(db_session, ctx["organization"], "OUTRO")
+    other_recipe = helpers.formulation(db_session, other, "F-OUTRO")
+    other_version = helpers.formulation_version(db_session, other_recipe)
+    helpers.approve_version(db_session, other_version, ctx["actor"])
+    from app.modules.formula_lab.rules import publish_formulation_version
+
+    publish_formulation_version(db_session, other_version)
     order = create_order(
         db_session,
         ctx["principal"],

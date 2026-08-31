@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "source": "hub",
+  "columns": [
+    {
+      "schema_version": 1,
+      "placement": "left",
+      "locale": "pt-BR",
+      "eyebrow": "Oficina",
+      "title": "Hub Left Demo",
+      "summary": "Resumo editorial.",
+      "sections": [
+        "Contexto do turno antes dos filtros.",
+        "Próxima ação por estado e permissão."
+      ],
+      "image": {
+        "url": "",
+        "alt": "Hub Left Demo"
+      },
+      "priority": 10,
+      "hash": "d701857070d45d77"
+    },
+    {
+      "schema_version": 1,
+      "placement": "right",
+      "locale": "pt-BR",
+      "eyebrow": "Atelier",
+      "title": "Hub Right Demo",
+      "summary": "Outro resumo.",
+      "sections": [
+        "Ausência não é zero.",
+        "Assistente orienta, não executa."
+      ],
+      "image": {
+        "url": "",
+        "alt": "Hub Right Demo"
+      },
+      "priority": 9,
+      "hash": "4fb087d1e12baa53"
+    }
+  ],
+  "note": "Editorial Hub mapeado (colunas; hero não consumido). v=6ac9c5315602",
+  "hub_hero_consumed": false,
+  "config_key": "panne-demo"
+}

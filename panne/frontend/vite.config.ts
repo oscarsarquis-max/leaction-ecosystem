@@ -4,7 +4,11 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
-  if (mode === "production" && env.VITE_AUTH_PROVIDER === "fake") {
+  if (
+    mode === "production" &&
+    env.VITE_AUTH_PROVIDER === "fake" &&
+    env.VITE_HOMOLOG_DEMO !== "1"
+  ) {
     throw new Error("O provedor falso de autenticação não pode ser usado em produção.");
   }
   return {

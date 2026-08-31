@@ -8,7 +8,7 @@ import { useAssistant } from "../assistant/AssistantContext";
 import { useAuth } from "../auth/AuthContext";
 import { config } from "../config";
 import { DEMO_PROFILES } from "../demo/profiles";
-import { StaticLoginEditorialProvider } from "../editorial/staticProvider";
+import { ApiLoginEditorialProvider } from "../editorial/apiProvider";
 import type { LoginEditorialColumn, LoginEditorialPayload } from "../editorial/schema";
 
 function EditorialImage({ column }: { column: LoginEditorialColumn }) {
@@ -57,7 +57,7 @@ export function LoginPage() {
   useEffect(() => {
     const mode = new URLSearchParams(window.location.search).get("editorial");
     const providerMode = mode === "indisponivel" ? "unavailable" : mode === "invalido" ? "invalid" : "ok";
-    void new StaticLoginEditorialProvider(providerMode).load().then((payload) => {
+    void new ApiLoginEditorialProvider(providerMode).load().then((payload) => {
       setEditorial(payload);
       setEditorialReady(true);
     });
@@ -72,7 +72,7 @@ export function LoginPage() {
       }
       await login();
       if (provider.name === "fake") {
-        navigate("/producao", { replace: true });
+        navigate("/fluxo", { replace: true });
       }
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Falha ao entrar.");

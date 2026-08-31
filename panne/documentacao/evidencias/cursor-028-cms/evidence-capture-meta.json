@@ -1,0 +1,11 @@
+{
+  "base": "http://127.0.0.1:5180",
+  "viewports_remoto": [
+    "celular-390",
+    "tablet-v-768",
+    "tablet-h-1024",
+    "desktop-1440"
+  ],
+  "hub_admin_selector": "bloqueado — Docker Desktop off",
+  "elapsed_ms": 5050
+}

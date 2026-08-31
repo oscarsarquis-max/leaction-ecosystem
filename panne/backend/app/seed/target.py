@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from urllib.parse import urlparse
 
@@ -26,6 +27,16 @@ def parse_database_name(url: str) -> str:
     return parsed.path.lstrip("/").split("?")[0]
 
 
+def _rds_host_allowed(host: str, name: str) -> bool:
+    """Homologação: RDS demo só com flags explícitas e host exato."""
+    if os.environ.get("PANNE_SEED_ALLOW_RDS", "").strip() != "1":
+        return False
+    expected = (os.environ.get("PANNE_SEED_RDS_HOST") or "").strip().lower()
+    if not expected or host != expected:
+        return False
+    return name.endswith("_demo") and name != "panne"
+
+
 def assert_seed_target(url: str, env: str) -> str:
     if env == "production":
         raise SeedTargetError("ambiente production recusado")
@@ -35,13 +46,13 @@ def assert_seed_target(url: str, env: str) -> str:
     if parsed.scheme.split("+")[0] != "postgresql":
         raise SeedTargetError("mecanismo inválido")
     host = (parsed.hostname or "").lower()
-    if host not in ALLOWED_HOSTS:
-        raise SeedTargetError(f"host recusado: {host or 'vazio'}")
     name = parse_database_name(url)
     if name == "panne":
         raise SeedTargetError("banco lógico panne recusado")
     if not NAME_RE.fullmatch(name):
         raise SeedTargetError(f"sufixo inválido: {name}")
+    if host not in ALLOWED_HOSTS and not _rds_host_allowed(host, name):
+        raise SeedTargetError(f"host recusado: {host or 'vazio'}")
     return name
 
 

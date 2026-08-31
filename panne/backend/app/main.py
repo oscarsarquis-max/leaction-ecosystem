@@ -22,6 +22,8 @@ from app.modules.login_editorial.http import router as login_editorial
 from app.modules.recipe_ai_http.router import router as recipe_ai
 from app.modules.recipe_http.reads import router as recipe_reads
 from app.modules.recipe_http.writes import router as recipe_writes
+from app.modules.product_http.router import router as product_router
+from app.modules.fiscal_http.router import router as fiscal_router
 from app.ready import ReadyResponse, assert_database_ready
 
 settings = get_settings()
@@ -65,6 +67,14 @@ app.include_router(
 )
 app.include_router(
     recipe_writes,
+    prefix="/api/v1/organizations/{organization_id}",
+)
+app.include_router(
+    product_router,
+    prefix="/api/v1/organizations/{organization_id}",
+)
+app.include_router(
+    fiscal_router,
     prefix="/api/v1/organizations/{organization_id}",
 )
 app.include_router(

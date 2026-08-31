@@ -13,6 +13,10 @@ import type {
   IngredientVersion,
   ApprovalRow,
   NutritionPreview,
+  ProductCard,
+  ProductFamilyRow,
+  ProductPage,
+  ProductSummary,
   RecipeCard,
   RecipeDossier,
   RecipePage,
@@ -33,6 +37,16 @@ import type {
   SupplierDetail,
   SupplierItemCard,
   SupplierPriceRow,
+  FiscalAttachmentAccess,
+  FiscalConfirmBody,
+  FiscalDocument,
+  FiscalDocumentPage,
+  FiscalManualBody,
+  FiscalMatchBody,
+  FiscalPhysicalBody,
+  FiscalScanBody,
+  FiscalSummary,
+  FiscalXmlBody,
   Dependency,
   Envelope,
   EventRow,
@@ -229,6 +243,155 @@ export class ApiClient {
   getRecipeSheet(recipeId: string, versionId: string) {
     return this.catalogGet<Envelope<Record<string, unknown>>>(
       `/recipes/${recipeId}/versions/${versionId}/sheet`,
+    );
+  }
+
+  listProducts(query: Query = {}) {
+    return this.catalogGet<ProductPage>("/products", query);
+  }
+
+  productsSummary() {
+    return this.catalogGet<{ data: ProductSummary }>("/products/summary");
+  }
+
+  getProduct(productId: string) {
+    return this.catalogGet<Envelope<ProductCard>>(`/products/${productId}`);
+  }
+
+  createProduct(body: Record<string, unknown>, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<ProductCard>>("/products", { body, idempotencyKey });
+  }
+
+  patchProduct(
+    productId: string,
+    body: Record<string, unknown>,
+    options: { idempotencyKey: string; rowVersion?: number | null },
+  ) {
+    return this.catalogCommand<Envelope<ProductCard>>(`/products/${productId}`, {
+      method: "PATCH",
+      body,
+      idempotencyKey: options.idempotencyKey,
+      ifMatch: options.rowVersion ?? null,
+    });
+  }
+
+  setProductStatus(
+    productId: string,
+    status: "active" | "inactive",
+    options: { idempotencyKey: string; rowVersion?: number | null },
+  ) {
+    return this.catalogCommand<Envelope<ProductCard>>(`/products/${productId}/status`, {
+      body: { status },
+      idempotencyKey: options.idempotencyKey,
+      ifMatch: options.rowVersion ?? null,
+    });
+  }
+
+  listProductFamilies() {
+    return this.catalogGet<{ items: ProductFamilyRow[] }>("/product-families");
+  }
+
+  createProductFamily(body: Record<string, unknown>, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<ProductFamilyRow>>("/product-families", {
+      body,
+      idempotencyKey,
+    });
+  }
+
+  listFiscalDocuments(query: Query = {}) {
+    return this.catalogGet<FiscalDocumentPage>("/fiscal/documents", query);
+  }
+
+  getFiscalDocument(documentId: string) {
+    return this.catalogGet<Envelope<FiscalDocument>>(`/fiscal/documents/${documentId}`);
+  }
+
+  getFiscalSummary() {
+    return this.catalogGet<{ data: FiscalSummary }>("/fiscal/documents/summary");
+  }
+
+  createManualFiscal(body: FiscalManualBody, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<FiscalDocument>>("/fiscal/documents", {
+      body,
+      idempotencyKey,
+    });
+  }
+
+  importFiscalXml(body: FiscalXmlBody, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<FiscalDocument>>("/fiscal/documents/import-xml", {
+      body,
+      idempotencyKey,
+    });
+  }
+
+  /** Foto ou PDF do DANFE; abre um documento novo já com o anexo guardado. */
+  attachFiscalScan(body: FiscalScanBody, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<FiscalDocument>>("/fiscal/documents/scan", {
+      body,
+      idempotencyKey,
+    });
+  }
+
+  lookupFiscalAccessKey(accessKey: string, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<FiscalDocument>>("/fiscal/access-keys/lookup", {
+      body: { access_key: accessKey },
+      idempotencyKey,
+    });
+  }
+
+  getFiscalDistributionStatus(establishmentId: string) {
+    return this.catalogGet<{ data: Record<string, unknown> }>("/fiscal/distribution/status", {
+      establishment_id: establishmentId,
+    });
+  }
+
+  simulateFiscalDistribution(body: Record<string, unknown>, idempotencyKey: string) {
+    return this.catalogCommand<{ data: Record<string, unknown> }>("/fiscal/distribution/simulate", {
+      body,
+      idempotencyKey,
+    });
+  }
+
+  matchFiscalItem(
+    documentId: string,
+    itemId: string,
+    body: FiscalMatchBody,
+    idempotencyKey: string,
+  ) {
+    return this.catalogCommand<Envelope<FiscalDocument>>(
+      `/fiscal/documents/${documentId}/items/${itemId}/match`,
+      { body, idempotencyKey },
+    );
+  }
+
+  recordFiscalPhysical(
+    documentId: string,
+    itemId: string,
+    body: FiscalPhysicalBody,
+    idempotencyKey: string,
+  ) {
+    return this.catalogCommand<Envelope<FiscalDocument>>(
+      `/fiscal/documents/${documentId}/items/${itemId}/physical`,
+      { body, idempotencyKey },
+    );
+  }
+
+  confirmFiscalReceipt(documentId: string, body: FiscalConfirmBody, idempotencyKey: string) {
+    return this.catalogCommand<Envelope<FiscalDocument>>(
+      `/fiscal/documents/${documentId}/confirm`,
+      { body, idempotencyKey },
+    );
+  }
+
+  /** Endereço do anexo no armazenamento privado; exige a mesma sessão da API. */
+  getFiscalAttachmentUrl(documentId: string, attachmentId: string): string {
+    return this.url(this.catalogPath(`/fiscal/documents/${documentId}/attachments/${attachmentId}`));
+  }
+
+  /** O contrato devolve a ficha do anexo, não o arquivo; o blob fica no armazenamento privado. */
+  getFiscalAttachment(documentId: string, attachmentId: string) {
+    return this.catalogGet<{ data: FiscalAttachmentAccess }>(
+      `/fiscal/documents/${documentId}/attachments/${attachmentId}`,
     );
   }
 

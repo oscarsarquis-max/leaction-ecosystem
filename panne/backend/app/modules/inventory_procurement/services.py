@@ -1893,6 +1893,85 @@ def receive_order(session: Session, principal: Principal, body: dict, *, idempot
     return receipt
 
 
+def post_receipt_stock_line(
+    session: Session,
+    principal: Principal,
+    *,
+    receipt,
+    location,
+    inventory_item,
+    quantity: Decimal,
+    unit_code: str,
+    supplier_id=None,
+    supplier_item_id=None,
+    supplier_lot_code=None,
+    manufactured_on=None,
+    expires_on=None,
+    quarantine: bool = False,
+    observed_unit_price=None,
+    fiscal_inbound_item_id=None,
+    divergence: dict | None = None,
+):
+    """Helper compartilhado: cria lote + movimento de entrada a partir de um receipt já existente."""
+    org = _org(principal)
+    qty = _qty(quantity)
+    lot = InventoryLot(
+        organization_id=org,
+        establishment_id=location.establishment_id,
+        inventory_item_id=inventory_item.id,
+        inventory_location_id=location.id,
+        internal_lot_code=_next_code(session, org, "LOT"),
+        supplier_lot_code=supplier_lot_code,
+        supplier_id=supplier_id,
+        supplier_item_id=supplier_item_id,
+        manufactured_on=manufactured_on,
+        expires_on=expires_on,
+        procurement_receipt_id=receipt.id,
+        unit_code=unit_code or inventory_item.unit_code,
+        received_quantity=qty,
+        status="quarantined" if quarantine else "available",
+        content_hash="",
+        created_by_user_id=principal.user_id,
+    )
+    lot.content_hash = _hash_lot({"item": str(inventory_item.id), "qty": str(qty), "receipt": str(receipt.id)})
+    session.add(lot)
+    session.flush()
+    receipt_item = ProcurementReceiptItem(
+        organization_id=org,
+        procurement_receipt_id=receipt.id,
+        procurement_order_item_id=None,
+        fiscal_inbound_item_id=fiscal_inbound_item_id,
+        inventory_item_id=inventory_item.id,
+        quantity=qty,
+        unit_code=lot.unit_code,
+        supplier_lot_code=lot.supplier_lot_code,
+        manufactured_on=lot.manufactured_on,
+        expires_on=lot.expires_on,
+        observed_unit_price=observed_unit_price,
+        inventory_lot_id=lot.id,
+        divergence=divergence or {},
+    )
+    session.add(receipt_item)
+    _post_movement(
+        session,
+        principal,
+        {
+            "movement_type": "receipt",
+            "inventory_item_id": str(inventory_item.id),
+            "inventory_lot_id": str(lot.id),
+            "to_location_id": str(location.id),
+            "quantity": format(qty, "f"),
+            "unit_code": lot.unit_code,
+            "origin_type": "procurement_receipt",
+            "origin_id": str(receipt.id),
+            "procurement_receipt_id": str(receipt.id),
+        },
+        idempotency_key=None,
+        command="fiscal.confirm.inner",
+    )
+    return lot, receipt_item
+
+
 def record_observed_price(session, principal, receipt_item_id, *, idempotency_key):
     require_permission(principal, PERMISSION_SUPPLIER_PRICE_RECORD)
     org = _org(principal)

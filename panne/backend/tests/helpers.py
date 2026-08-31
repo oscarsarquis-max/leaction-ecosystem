@@ -221,13 +221,21 @@ def technical_product(
     session: Session,
     organization: Organization,
     code: str,
-    status: str = "development",
+    status: str = "active",
 ) -> TechnicalProduct:
+    # Compatibilidade com seeds/testes antigos (development/approved/retired).
+    mapped = {
+        "development": "active",
+        "approved": "active",
+        "retired": "inactive",
+    }.get(status, status)
     row = TechnicalProduct(
         organization_id=organization.id,
         code=code,
         display_name=code,
-        status=status,
+        status=mapped,
+        purpose="final",
+        supply_mode="produced",
     )
     session.add(row)
     session.flush()
@@ -353,6 +361,22 @@ def approve_version(
     )
     session.add(row)
     session.flush()
+    return row
+
+
+def ensure_published_recipe(
+    session: Session,
+    product: TechnicalProduct,
+    actor: AppUser,
+    code: str | None = None,
+) -> FormulationVersion:
+    """Publica receita mínima para liberar OP de produto produzido (CURSOR-028-C)."""
+    from app.modules.formula_lab.rules import publish_formulation_version
+
+    recipe = formulation(session, product, code or f"F-{product.code}")
+    row = formulation_version(session, recipe)
+    approve_version(session, row, actor)
+    publish_formulation_version(session, row)
     return row
 
 

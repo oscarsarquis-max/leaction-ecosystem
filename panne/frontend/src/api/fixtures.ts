@@ -64,6 +64,11 @@ export const meFixture: Me = {
         "recipe.ai.propose",
         "recipe.ai.review",
         "recipe.ai.materialize",
+        "product.read",
+        "product.create",
+        "product.update",
+        "product.activate",
+        "product.family.manage",
         "labeling.read",
         "labeling.dossier.create",
         "labeling.evaluate",
@@ -129,6 +134,7 @@ export const meFixture: Me = {
         "supplier.read",
         "recipe.read",
         "recipe.technical_sheet.read",
+        "product.read",
       ],
     },
   ],
@@ -163,6 +169,11 @@ export const meFixture: Me = {
     "recipe.ai.propose",
     "recipe.ai.review",
     "recipe.ai.materialize",
+    "product.read",
+    "product.create",
+    "product.update",
+    "product.activate",
+    "product.family.manage",
     "labeling.read",
     "labeling.dossier.create",
     "labeling.evaluate",
@@ -261,6 +272,235 @@ export const practicedPriceFixture = {
   status: "draft",
   row_version: 1,
   justification: "revisão humana",
+};
+
+export const PRODUCT_ID = "a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1";
+export const PRODUCT_PURCHASED_ID = "a2a2a2a2-a2a2-4a2a-8a2a-a2a2a2a2a2a2";
+export const PRODUCT_FAMILY_ID = "a3a3a3a3-a3a3-4a3a-8a3a-a3a3a3a3a3a3";
+
+export const productFamilyFixture = {
+  id: PRODUCT_FAMILY_ID,
+  code: "FAM-PAES",
+  display_name: "Pães",
+  description: null,
+  status: "active",
+  parent_id: null,
+  row_version: 1,
+};
+
+export const productFixture = {
+  id: PRODUCT_ID,
+  code: "PAO-TRAD",
+  display_name: "Pão tradicional",
+  description: "Pão de casca fina para o balcão.",
+  status: "active",
+  purpose: "final",
+  supply_mode: "produced",
+  family: {
+    id: PRODUCT_FAMILY_ID,
+    code: "FAM-PAES",
+    display_name: "Pães",
+    status: "active",
+  },
+  has_published_recipe: false,
+  recipe_status_label: "Sem receita vigente",
+  stock_unit: { id: "u1", code: "g", display_name: "grama" },
+  sale_unit: { id: "u1", code: "g", display_name: "grama" },
+  net_content: "500",
+  net_content_unit: { id: "u1", code: "g", display_name: "grama" },
+  default_shelf_life_days: 3,
+  packaging_description: "Saco de papel",
+  row_version: 1,
+  created_at: "2026-08-24T10:00:00+00:00",
+  updated_at: "2026-08-24T10:00:00+00:00",
+  links: { recipes_count: 0, orders_count: 1 },
+  operational_notes: [
+    "Cadastro válido sem receita; produção fica bloqueada até haver receita vigente.",
+  ],
+};
+
+export const productPurchasedFixture = {
+  ...productFixture,
+  id: PRODUCT_PURCHASED_ID,
+  code: "REF-COLA",
+  display_name: "Refrigerante de cola",
+  description: null,
+  purpose: "final",
+  supply_mode: "purchased",
+  family: null,
+  has_published_recipe: false,
+  recipe_status_label: "Não se aplica",
+  net_content: "350",
+  default_shelf_life_days: 180,
+  packaging_description: "Lata",
+  links: { recipes_count: 0, orders_count: 0 },
+  operational_notes: [
+    "Recebimento e estoque de mercadoria serão completados no próximo ciclo.",
+  ],
+};
+
+export const productSummaryFixture = {
+  total: 2,
+  active: 2,
+  purchased: 1,
+  intermediate: 0,
+  produced_without_recipe: 1,
+};
+
+export const INVENTORY_LOCATION_ID = "b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0";
+export const FISCAL_DOCUMENT_ID = "b1b1b1b1-b1b1-4b1b-8b1b-b1b1b1b1b1b1";
+export const FISCAL_DOCUMENT_DIVERGENT_ID = "b2b2b2b2-b2b2-4b2b-8b2b-b2b2b2b2b2b2";
+
+/** Espelha o serializador de `/fiscal/documents/{id}`: sem código público e sem rótulo de alvo. */
+export const fiscalDocumentFixture = {
+  id: FISCAL_DOCUMENT_ID,
+  public_code: null,
+  document_number: "104532",
+  series: "1",
+  access_key: "35260812345678000190550010001045321234567890",
+  issued_on: "2026-08-28",
+  status: "awaiting_check",
+  status_label: "Aguardando conferência",
+  origin: "xml",
+  supplier: {
+    id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    display_name: "Moinho Demo",
+    tax_id: "12345678000190",
+    registered: true,
+  },
+  item_count: 2,
+  matched_item_count: 1,
+  checked_item_count: 0,
+  divergence_count: 0,
+  received_at: null,
+  updated_at: "2026-08-29T09:10:00+00:00",
+  document_total: "742.50",
+  currency: "BRL",
+  cost_access: true,
+  costs: {
+    currency: "BRL",
+    items_total: "700.00",
+    freight_total: "42.50",
+    discount_total: "0.00",
+    taxes_total: "58.10",
+    document_total: "742.50",
+  },
+  storage_location_label: null,
+  stock_applied: false,
+  stock_summary: "Estoque ainda não atualizado: falta conferir o que chegou.",
+  next_action: "record_physical",
+  next_action_label: "Registrar o que realmente chegou na doca.",
+  pending_reasons: [
+    "Há itens sem correspondência com o cadastro da Panne.",
+    "Há itens sem conferência física.",
+  ],
+  operational_notes: [],
+  row_version: 3,
+  items: [
+    {
+      id: "fi-1",
+      sequence: 1,
+      supplier_description: "Farinha de trigo tipo 1 saco 25 kg",
+      supplier_sku: "SKU-FAR-25",
+      invoiced_quantity: "40",
+      unit_code: "kg",
+      match: {
+        status: "matched",
+        target_kind: "ingredient",
+        target_id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        target_label: null,
+        suggestion_reason: null,
+      },
+      physical: null,
+      unit_cost: "13.00",
+      total_cost: "520.00",
+    },
+    {
+      id: "fi-2",
+      sequence: 2,
+      supplier_description: "Açúcar cristal saco 25 kg",
+      supplier_sku: "SKU-ACU-25",
+      invoiced_quantity: "10",
+      unit_code: "kg",
+      match: {
+        status: "suggested",
+        target_kind: "ingredient",
+        target_id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeef",
+        target_label: null,
+        suggestion_reason: null,
+      },
+      physical: null,
+      unit_cost: "18.00",
+      total_cost: "180.00",
+    },
+  ],
+  attachments: [
+    { id: "fa-1", kind: "xml", filename: "nfe-104532.xml", uploaded_at: "2026-08-29T09:00:00+00:00" },
+  ],
+  history: [
+    {
+      id: "fh-1",
+      occurred_at: "2026-08-29T09:00:00+00:00",
+      action: "fiscal.document.xml_imported",
+      action_label: "XML importado",
+      actor_label: "Ana Padeiro",
+      detail: null,
+    },
+    {
+      id: "fh-2",
+      occurred_at: "2026-08-29T09:10:00+00:00",
+      action: "fiscal.document.match_confirmed",
+      action_label: "Correspondência confirmada",
+      actor_label: "Ana Padeiro",
+      detail: null,
+    },
+  ],
+};
+
+/** Mesmo documento visto por um perfil sem leitura de valores: a API omite todo custo. */
+export const fiscalDocumentNoCostFixture = {
+  ...fiscalDocumentFixture,
+  document_total: null,
+  currency: null,
+  cost_access: false,
+  costs: null,
+  items: fiscalDocumentFixture.items.map((item) => ({
+    ...item,
+    unit_cost: null,
+    total_cost: null,
+  })),
+};
+
+export const fiscalDocumentDivergentFixture = {
+  ...fiscalDocumentFixture,
+  id: FISCAL_DOCUMENT_DIVERGENT_ID,
+  public_code: null,
+  document_number: "990117",
+  series: "2",
+  status: "divergent",
+  status_label: "Com divergência",
+  origin: "manual",
+  supplier: {
+    id: null,
+    display_name: "Laticínio Demo",
+    tax_id: "98765432000155",
+    registered: false,
+  },
+  matched_item_count: 2,
+  checked_item_count: 2,
+  divergence_count: 1,
+  stock_applied: false,
+  next_action: "resolve_divergence",
+  next_action_label: "Resolver a divergência apontada na conferência.",
+};
+
+export const fiscalSummaryFixture = {
+  total: 2,
+  awaiting_match: 0,
+  awaiting_check: 1,
+  partially_received: 0,
+  divergent: 1,
+  confirmed: 0,
 };
 
 export const RECIPE_ID = "99999999-9999-9999-9999-999999999999";
@@ -716,6 +956,7 @@ export const operatorMeFixture: Me = {
                 !code.startsWith("costing.") &&
                 !code.startsWith("pricing.") &&
                 !code.startsWith("procurement.") &&
+                !(code.startsWith("product.") && code !== "product.read") &&
                 !(code.startsWith("inventory.") && !["inventory.read", "inventory.separate"].includes(code)) &&
                 !["reporting.dashboard.read", "reporting.costing.read", "reporting.pricing.read", "reporting.inventory.read"].includes(code),
             ),
@@ -738,6 +979,7 @@ export const operatorMeFixture: Me = {
         !code.startsWith("costing.") &&
         !code.startsWith("pricing.") &&
         !code.startsWith("procurement.") &&
+        !(code.startsWith("product.") && code !== "product.read") &&
         !(code.startsWith("inventory.") && !["inventory.read", "inventory.separate"].includes(code)) &&
         !["reporting.dashboard.read", "reporting.costing.read", "reporting.pricing.read", "reporting.inventory.read"].includes(code),
     ),

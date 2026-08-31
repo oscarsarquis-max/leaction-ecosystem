@@ -740,12 +740,19 @@ class ProcurementReceipt(Base):
             ["procurement_order.id", "procurement_order.organization_id"],
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ["fiscal_inbound_document_id", "organization_id"],
+            ["fiscal_inbound_document.id", "fiscal_inbound_document.organization_id"],
+            ondelete="RESTRICT",
+        ),
     )
 
     id: Mapped[UUID] = _uuid_pk()
     organization_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     public_code: Mapped[str] = mapped_column(Text, nullable=False)
-    procurement_order_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    procurement_order_id: Mapped[UUID | None] = mapped_column(Uuid)
+    fiscal_inbound_document_id: Mapped[UUID | None] = mapped_column(Uuid)
+    source: Mapped[str] = mapped_column(Text, nullable=False, server_default="order")
     inventory_location_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="draft")
     evidence_ref: Mapped[str | None] = mapped_column(Text)
@@ -763,12 +770,18 @@ class ProcurementReceiptItem(Base):
             ["procurement_receipt.id", "procurement_receipt.organization_id"],
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ["fiscal_inbound_item_id", "organization_id"],
+            ["fiscal_inbound_item.id", "fiscal_inbound_item.organization_id"],
+            ondelete="RESTRICT",
+        ),
     )
 
     id: Mapped[UUID] = _uuid_pk()
     organization_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     procurement_receipt_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
-    procurement_order_item_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    procurement_order_item_id: Mapped[UUID | None] = mapped_column(Uuid)
+    fiscal_inbound_item_id: Mapped[UUID | None] = mapped_column(Uuid)
     inventory_item_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     quantity: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
     unit_code: Mapped[str] = mapped_column(Text, nullable=False)

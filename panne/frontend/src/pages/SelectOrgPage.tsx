@@ -11,7 +11,7 @@ export function SelectOrgPage() {
 
   async function choose(id: string) {
     await selectOrganization(id);
-    navigate("/producao", { replace: true });
+    navigate("/fluxo", { replace: true });
   }
 
   return (

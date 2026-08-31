@@ -1,101 +1,85 @@
-"""Conteúdo editorial estático da tela de acesso. Sem ActionHub."""
+"""Orquestra Hub → mapper → cache → fallback estático para /entrar."""
 
-from hashlib import sha256
+from __future__ import annotations
 
-SCHEMA_VERSION = 1
-STATIONS_NOTE = "Adaptador futuro do Action Hub conecta-se atrás desta porta."
-
-_COLUMNS = (
-    {
-        "placement": "left",
-        "eyebrow": "Oficina",
-        "title": "O turno cabe no quadro",
-        "summary": "Produção, componentes e conformidade no recorte da padaria.",
-        "sections": (
-            "Contexto do turno antes dos filtros.",
-            "Próxima ação por estado e permissão.",
-        ),
-        "image": {
-            "url": "/images/aprovados/horizontal-claro.png",
-            "alt": "Marca Panne em fundo claro.",
-        },
-        "priority": 10,
-    },
-    {
-        "placement": "right",
-        "eyebrow": "Atelier",
-        "title": "Ficha antes do palpite",
-        "summary": "Versão e revisão humana antes de qualquer selo.",
-        "sections": (
-            "Ausência não é zero.",
-            "Assistente orienta, não executa.",
-        ),
-        "image": {
-            "url": "/images/aprovados/compacto-escuro.png",
-            "alt": "Símbolo compacto da Panne.",
-        },
-        "priority": 9,
-    },
+from app.config import get_settings
+from app.modules.login_editorial.cache import cache_get, cache_get_stale, cache_set
+from app.modules.login_editorial.config_key import resolve_login_editorial_config_key
+from app.modules.login_editorial.content import (
+    SCHEMA_VERSION,
+    hosts_from_settings,
+    sanitize_column,
+    static_payload,
+    unavailable_fallback,
 )
+from app.modules.login_editorial.hub_client import fetch_hub_cms
+from app.modules.login_editorial.mapper import map_hub_landing_to_panne
+
+__all__ = [
+    "SCHEMA_VERSION",
+    "sanitize_column",
+    "static_payload",
+    "unavailable_fallback",
+    "resolve_editorial_payload",
+]
 
 
-def _plain(value: object, max_len: int) -> str:
-    text = str(value or "")
-    text = "".join(ch for ch in text if ch >= " " or ch in "\n\t")
-    for token in ("<", ">", "javascript:", "data:"):
-        if token in text.lower() and token != "\n":
-            text = text.replace("<", "").replace(">", "")
-    return text.strip()[:max_len]
+def resolve_editorial_payload(*, force_mode: str | None = None) -> dict:
+    """
+    force_mode é **somente** para injeção em testes unitários do service.
+    A rota HTTP pública não aceita nem encaminha mode.
+    """
+    if force_mode == "unavailable":
+        return unavailable_fallback()
+    if force_mode == "invalid":
+        return {"schema_version": 99, "columns": [{"title": ""}]}
 
+    settings = get_settings()
+    media_hosts, cta_hosts = hosts_from_settings(settings)
+    config_key = resolve_login_editorial_config_key(
+        env=settings.env,
+        override=settings.login_editorial_config_key,
+        allow_demo_override_in_prod=bool(settings.login_editorial_allow_demo_key_in_prod),
+    )
+    cache_key = f"login-editorial:{config_key}"
+    ttl = float(settings.login_editorial_cache_ttl_seconds)
+    max_stale = float(settings.login_editorial_cache_max_stale_seconds)
 
-def _hash(payload: dict) -> str:
-    return sha256(repr(sorted(payload.items())).encode("utf-8")).hexdigest()[:16]
+    cached = cache_get(cache_key, ttl)
+    if cached:
+        out = dict(cached)
+        out["source"] = "cache" if out.get("source") == "hub" else out.get("source", "cache")
+        out["config_key"] = config_key
+        return out
 
+    hub = fetch_hub_cms(
+        config_key=config_key,
+        base_url=settings.action_hub_api_url,
+        timeout_seconds=float(settings.login_editorial_timeout_seconds),
+        max_bytes=int(settings.login_editorial_max_bytes),
+    )
+    static = static_payload(media_hosts=media_hosts, cta_hosts=cta_hosts)
+    if hub:
+        mapped = map_hub_landing_to_panne(
+            hub.get("landing_page_data") if isinstance(hub.get("landing_page_data"), dict) else None,
+            static_columns=list(static.get("columns") or []),
+            media_hosts=media_hosts,
+            cta_hosts=cta_hosts,
+        )
+        if mapped and mapped.get("columns"):
+            mapped["config_key"] = config_key
+            cache_set(cache_key, mapped)
+            return mapped
 
-def sanitize_column(raw: dict) -> dict | None:
-    placement = raw.get("placement")
-    if placement not in {"left", "right"}:
-        return None
-    title = _plain(raw.get("title"), 120)
-    if not title:
-        return None
-    image = raw.get("image") if isinstance(raw.get("image"), dict) else {}
-    url = _plain(image.get("url"), 240)
-    if url.lower().startswith(("javascript:", "data:", "vbscript:")):
-        url = ""
-    if url.startswith("//"):
-        url = ""
-    if url.startswith("http://"):
-        url = ""
-    column = {
-        "schema_version": SCHEMA_VERSION,
-        "placement": placement,
-        "locale": "pt-BR",
-        "eyebrow": _plain(raw.get("eyebrow"), 40),
-        "title": title,
-        "summary": _plain(raw.get("summary"), 280),
-        "sections": [_plain(item, 180) for item in raw.get("sections") or [] if _plain(item, 180)][:4],
-        "image": {"url": url, "alt": _plain(image.get("alt"), 120) or title},
-        "priority": int(raw.get("priority") or 0),
-    }
-    column["hash"] = _hash(column)
-    return column
+    stale = cache_get_stale(cache_key, max_stale_seconds=max_stale)
+    if stale and stale.get("columns"):
+        out = dict(stale)
+        out["source"] = "cache"
+        out["config_key"] = config_key
+        out["note"] = "Último conteúdo válido em cache (Hub indisponível; dentro da idade máxima stale)."
+        return out
 
-
-def static_payload() -> dict:
-    columns = [sanitize_column(dict(row)) for row in _COLUMNS]
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "source": "static",
-        "columns": [row for row in columns if row],
-        "note": STATIONS_NOTE,
-    }
-
-
-def unavailable_fallback() -> dict:
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "source": "fallback",
-        "columns": [],
-        "note": "Conteúdo editorial indisponível. O acesso permanece no centro.",
-    }
+    fallback = static_payload(media_hosts=media_hosts, cta_hosts=cta_hosts)
+    fallback["config_key"] = config_key
+    fallback["note"] = "Fallback estático — Hub indisponível, incompatível ou stale expirado."
+    return fallback

@@ -102,6 +102,7 @@ def test_order_states_and_snapshot(db_session: Session) -> None:
     helpers.membership(db_session, organization, actor, "owner")
     principal = helpers.principal_for(actor, organization, "owner")
     product = helpers.technical_product(db_session, organization, "PAO-R")
+    helpers.ensure_published_recipe(db_session, product, actor)
     create_order(
         db_session,
         principal,
@@ -219,6 +220,7 @@ def test_timezone_half_open_and_cache_isolation(db_session: Session) -> None:
     principal = helpers.principal_for(actor, organization, "owner")
     other_principal = helpers.principal_for(other_actor, other, "owner")
     product = helpers.technical_product(db_session, organization, "PAO-TZ")
+    helpers.ensure_published_recipe(db_session, product, actor)
     zone = ZoneInfo("America/Sao_Paulo")
     start = datetime(2026, 8, 17, 0, 0, tzinfo=zone)
     end = datetime(2026, 8, 24, 0, 0, tzinfo=zone)
