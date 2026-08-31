@@ -1,9 +1,9 @@
 {
-  "phase": "pre",
-  "captured_at": "2026-08-31T16:56:52.210494+00:00",
+  "phase": "post",
+  "captured_at": "2026-08-31T17:57:28.345141+00:00",
   "database": "panne_demo",
   "username": "panne_demo_migrator",
-  "host_sanitized": "actionhub-prod.�",
+  "host_sanitized": "actionhub-prod.…",
   "read_only": true,
   "organizations": [
     {
@@ -27,7 +27,7 @@
     {
       "organization_id": "45104a8c-d590-5946-b8dd-f5534e89e338",
       "slug": "panne-demonstracao",
-      "display_name": "Panne Demonstra��o",
+      "display_name": "Panne Demonstração",
       "counts": {
         "produtos": 12,
         "ingredientes": 18,
