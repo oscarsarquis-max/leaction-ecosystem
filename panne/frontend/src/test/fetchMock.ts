@@ -110,6 +110,64 @@ export function installApiMock(overrides: Record<string, (url: URL, request: Req
         ],
       });
     }
+    if (path === "/api/v1/public/demo-guide") {
+      return json({
+        schema_version: 1,
+        content_version: "r028-002",
+        title: "Guia da demonstração Panne",
+        source: "fallback",
+        what_is: {
+          purpose: "Finalidade Panne.",
+          flow: "Fluxo sugerido.",
+          data_nature: "Dados fictícios.",
+          shared: "Ambiente compartilhado.",
+          not_production: "Sem produção.",
+        },
+        scenario: {
+          anchor_date_label: "24/08/2026",
+          primary_organization: "Panne Demonstração",
+          isolation_organization: "Padaria Horizonte Demo",
+          establishment_hint: "Estabelecimento padrão.",
+          shift_hint: "Turno do dia âncora.",
+          areas_with_data: ["Fluxo"],
+        },
+        profiles: Array.from({ length: 7 }, (_, i) => ({
+          id: `p${i}`,
+          label: `Perfil ${i}`,
+          purpose: "Propósito",
+          areas: "Áreas",
+          actions: "Ações",
+          limits: "Limites",
+        })),
+        roadmap: [
+          { step: 1, title: "Entrar como Proprietário", path: "/entrar", requires_session: false },
+          { step: 3, title: "Abrir Fluxo produtivo", path: "/fluxo", requires_session: true },
+        ],
+        safe_actions: { consult: ["Telas"], mutates_shared: ["Editar"], shared_notice: "Compartilhado." },
+        integrations: [{ name: "CMS", state: "ativo", detail: "Ativo" }],
+        limitations: ["Separação pode estar indisponível."],
+        version: { label: "Panne Demo", environment: "demo", anchor_date_label: "24/08/2026" },
+        counts: {
+          source: "fallback",
+          updated_at: null,
+          note: "fallback",
+          organizations: [],
+          totals: {
+            produtos: null,
+            ingredientes: null,
+            receitas: null,
+            planos: null,
+            ordens: null,
+            fornecedores: null,
+            lotes: null,
+            saldos: null,
+            movimentos: null,
+            entradas_fiscais: null,
+            perfis_disponiveis: 7,
+          },
+        },
+      });
+    }
     if (path.includes("/recipe-ai/proposals") && path.endsWith("/grounding")) {
       return json({
         data: {

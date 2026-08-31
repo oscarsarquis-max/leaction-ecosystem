@@ -95,7 +95,12 @@ def test_existing_endpoints_and_openapi(engine) -> None:
         assert client.get("/ready").status_code == 200
         assert client.get("/api/v1/me").status_code == 401
         schema = client.get("/openapi.json").json()
-        public = {"/health", "/ready", "/api/v1/public/login-editorial"}
+        public = {
+            "/health",
+            "/ready",
+            "/api/v1/public/login-editorial",
+            "/api/v1/public/demo-guide",
+        }
         for path, methods in schema["paths"].items():
             if path in public:
                 continue

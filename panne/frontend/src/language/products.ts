@@ -122,15 +122,20 @@ export function productShelfLifeLabel(days: number | null | undefined): string {
 
 /** Resumo da etapa Produtos no fluxo, em linguagem de operação. */
 export function productsSummarySentence(summary: {
+  total?: number;
   active: number;
   produced_without_recipe: number;
   purchased: number;
   intermediate: number;
 }): string {
-  return [
-    `${summary.active} produto(s) ativo(s)`,
+  if ((summary.total ?? summary.active) === 0) {
+    return "Nenhum produto cadastrado ainda. Cadastre o primeiro produto para iniciar esta etapa.";
+  }
+  const primary = `${summary.active} produto(s) ativo(s)`;
+  const secondary = [
     `${summary.produced_without_recipe} produzido(s) sem receita vigente`,
     `${summary.purchased} comprado(s) pronto(s)`,
     `${summary.intermediate} preparo(s) intermediário(s)`,
   ].join(" · ");
+  return `${primary}. Detalhe: ${secondary}.`;
 }

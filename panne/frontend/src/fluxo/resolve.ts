@@ -83,7 +83,9 @@ export function resolveStepSituation(
       nextAction:
         attention > 0
           ? "Abrir as entradas pendentes e concluir a conferência."
-          : "Registrar a próxima entrada de mercadoria.",
+          : evidence.fiscal.total === 0
+            ? "Registrar a primeira entrada de mercadoria."
+            : "Registrar a próxima entrada de mercadoria.",
       hasAccess: true,
     };
   }

@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import logoCompacto from "../../images/aprovados/compacto-escuro.png";
 import logoHorizontal from "../../images/aprovados/horizontal-escuro.png";
 import { AssistantAvatar } from "../assistant/AssistantAvatar";
@@ -268,6 +268,11 @@ export function Shell() {
         </nav>
         <div className="shell-tools">
           {config.demoMode ? <span className="demo-banner">Ambiente de demonstração</span> : null}
+          {config.demoMode ? (
+            <span className="demo-shared-hint" title="Alterações afetam outros homologadores">
+              Dados compartilhados
+            </span>
+          ) : null}
           {associations.length > 1 ? (
             <label>
               <span className="visually-hidden">Organização ativa</span>
@@ -310,6 +315,16 @@ export function Shell() {
                 <p className="account-panel__name">{profileLabel}</p>
                 {roleName ? <p className="meta account-panel__role">{roleName}</p> : null}
                 <p className="meta">{active?.display_name}</p>
+                {config.demoMode ? (
+                  <Link
+                    to="/demonstracao"
+                    role="menuitem"
+                    className="account-panel__link"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Guia da demonstração
+                  </Link>
+                ) : null}
                 <button
                   type="button"
                   role="menuitem"

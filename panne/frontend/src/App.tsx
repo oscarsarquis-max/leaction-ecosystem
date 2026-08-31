@@ -4,6 +4,7 @@ import { RequireAuth, RequireOrganization, RequirePermission } from "./component
 import { Shell } from "./components/Shell";
 import { BoardPage } from "./pages/BoardPage";
 import { CallbackPage } from "./pages/CallbackPage";
+import { DemoGuidePage } from "./pages/DemoGuidePage";
 import { LoginPage } from "./pages/LoginPage";
 import { OrderDetailPage } from "./pages/OrderDetailPage";
 import { OrdersPage } from "./pages/OrdersPage";
@@ -77,6 +78,7 @@ export function AppRoutes() {
   return (
           <Routes>
             <Route path="/entrar" element={<LoginPage />} />
+            <Route path="/demonstracao" element={<DemoGuidePage />} />
             <Route path="/callback" element={<CallbackPage />} />
             <Route
               path="/organizacao"

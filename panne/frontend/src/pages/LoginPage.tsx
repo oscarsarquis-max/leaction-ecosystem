@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import logoCompleto from "../../images/aprovados/horizontal-claro.png";
 import fallbackImage from "../../images/aprovados/compacto-escuro.png";
 import { AssistantAvatar } from "../assistant/AssistantAvatar";
@@ -95,11 +95,29 @@ export function LoginPage() {
           <h1 id="login-heading">Entrar na Panne</h1>
           <p>A autorização usa as permissões da sessão. O conteúdo ao lado não altera o acesso.</p>
           {config.demoMode ? <p className="demo-banner">Ambiente de demonstração</p> : null}
-          {provider.name === "fake" ? (
+          {config.demoMode && provider.name === "fake" ? (
+            <p>
+              Ambiente de demonstração com perfis prontos para avaliação. Não é necessário informar senha.
+            </p>
+          ) : provider.name === "fake" ? (
             <p className="meta">Ambiente de desenvolvimento com provedor falso explícito.</p>
           ) : (
             <p className="meta">Entrada segura na conta da organização. Sem senha armazenada neste aparelho.</p>
           )}
+          {config.demoMode ? (
+            <aside className="demo-eval-box" aria-labelledby="demo-eval-heading">
+              <h2 id="demo-eval-heading">Como avaliar esta demonstração</h2>
+              <p>
+                Escolha o perfil Proprietário, entre sem senha e siga o roteiro do guia. Os dados são
+                fictícios e compartilhados entre homologadores.
+              </p>
+              <p>
+                <Link className="ghost" to="/demonstracao">
+                  Abrir guia completo da demonstração
+                </Link>
+              </p>
+            </aside>
+          ) : null}
           {config.demoMode && provider.name === "fake" ? (
             <label>
               Perfil de demonstração
@@ -113,7 +131,13 @@ export function LoginPage() {
             </label>
           ) : null}
           <button type="button" className="primary" disabled={loading} onClick={() => void handleLogin()}>
-            {loading ? "Entrando…" : provider.name === "fake" ? "Entrar em desenvolvimento" : "Entrar"}
+            {loading
+              ? "Entrando…"
+              : config.demoMode && provider.name === "fake"
+                ? "Entrar na demonstração"
+                : provider.name === "fake"
+                  ? "Entrar em desenvolvimento"
+                  : "Entrar"}
           </button>
           <p>
             <button type="button" className="ghost" onClick={openAssistant}>

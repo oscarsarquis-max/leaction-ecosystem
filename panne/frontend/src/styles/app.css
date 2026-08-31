@@ -229,6 +229,22 @@ a {
   cursor: pointer;
 }
 
+.account-panel__link {
+  display: block;
+  margin-top: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.4rem;
+  text-decoration: none;
+  color: inherit;
+  font-weight: 600;
+}
+
+.account-panel__link:hover,
+.account-panel__link:focus-visible {
+  outline: 2px solid var(--panne-accent, #c45c26);
+  outline-offset: 2px;
+}
+
 .account-panel__logout:hover,
 .account-panel__logout:focus-visible {
   filter: brightness(1.08);
@@ -1685,3 +1701,208 @@ tbody tr:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* —— Guia da demonstração (R028-002) —— */
+.demo-eval-box {
+  border: 1px solid var(--panne-areia);
+  background: var(--panne-bege-elevado);
+  border-radius: var(--panne-raio-conteudo);
+  padding: 0.85rem 1rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.demo-eval-box h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.demo-eval-box p {
+  margin: 0;
+}
+
+.demo-shared-hint {
+  font-size: 0.75rem;
+  color: var(--panne-grafite);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.print-only {
+  display: none;
+}
+
+.demo-guide {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.25rem 4vw 4rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.demo-guide__hero {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 10rem) minmax(0, 1fr);
+  align-items: start;
+}
+
+.demo-guide__brand {
+  width: 100%;
+  max-width: 10rem;
+  height: auto;
+}
+
+.demo-guide__toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.demo-guide__toc .ghost {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.75rem;
+}
+
+.demo-guide__section {
+  border-top: 1px solid var(--panne-areia);
+  padding-top: 0.75rem;
+}
+
+.demo-guide__toggle {
+  background: transparent;
+  border: 0;
+  padding: 0.35rem 0;
+  min-height: 2.5rem;
+  text-align: left;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+
+.demo-guide__counts {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.demo-guide__counts li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--panne-areia) 70%, transparent);
+}
+
+.demo-guide__counts.compact li {
+  font-size: 0.92rem;
+}
+
+.demo-guide__org {
+  margin-top: 1rem;
+}
+
+.demo-guide__profiles {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.demo-guide__profiles article {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--panne-areia);
+}
+
+.demo-guide__roadmap {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.demo-guide__roadmap a {
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.demo-guide__actions {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.demo-guide__table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.demo-guide__table {
+  width: 100%;
+  min-width: 18rem;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.demo-guide__table th,
+.demo-guide__table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.55rem 0.45rem;
+  border-bottom: 1px solid var(--panne-areia);
+}
+
+@media (max-width: 768px) {
+  .demo-guide__hero {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-guide__brand {
+    max-width: 8rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .demo-guide {
+    padding-inline: 3.5vw;
+  }
+
+  .demo-shared-hint {
+    display: none;
+  }
+}
+
+@media print {
+  .print-only {
+    display: block !important;
+  }
+
+  .demo-guide__hero,
+  .demo-guide__toc,
+  .demo-guide__toggle {
+    display: none !important;
+  }
+
+  .demo-guide__section > div,
+  .demo-guide__section > ul,
+  .demo-guide__section > ol,
+  .demo-guide__section > .demo-guide__profiles,
+  .demo-guide__section > .demo-guide__actions,
+  .demo-guide__section > .demo-guide__table-wrap {
+    display: block !important;
+  }
+
+  .demo-guide {
+    max-width: none;
+    padding: 0;
+  }
+
+  .demo-guide__table {
+    font-size: 10pt;
+  }
+}
+

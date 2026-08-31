@@ -228,12 +228,16 @@ export function fiscalItemTitle(item: FiscalDocumentItem): string {
 
 /** Resumo da caixa de entrada para a etapa 1 do fluxo. */
 export function fiscalSummarySentence(summary: FiscalSummary): string {
-  return [
-    `${summary.total} entrada(s) registrada(s)`,
+  if (summary.total === 0) {
+    return "Nenhuma entrada de mercadoria foi registrada ainda. Registre a primeira entrada para iniciar esta etapa.";
+  }
+  const primary = `${summary.total} entrada(s) registrada(s)`;
+  const secondary = [
     `${summary.awaiting_match} aguardando correspondência`,
     `${summary.awaiting_check} aguardando conferência`,
     `${summary.divergent} com divergência`,
   ].join(" · ");
+  return `${primary}. Detalhe: ${secondary}.`;
 }
 
 /**
