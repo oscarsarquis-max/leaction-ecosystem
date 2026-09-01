@@ -250,9 +250,13 @@ class FakeAccessTokenVerifier:
         settings = get_settings()
         if settings.auth_verifier == "fake" and settings.env in {"local", "test", "demo"}:
             if token.startswith("panne-demo:"):
+                subject = token.split(":", 1)[1]
+                # Alias canônico: demo-viewer ≡ demo-reader (leitor econômico).
+                if subject == "demo-viewer":
+                    subject = "demo-reader"
                 return VerifiedAccessToken(
                     issuer=settings.fake_issuer,
-                    subject=token.split(":", 1)[1],
+                    subject=subject,
                     client_id="panne-demo",
                     scopes=frozenset(),
                     raw_claims={},

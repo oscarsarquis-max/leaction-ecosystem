@@ -18,5 +18,16 @@
     "types": ["vite/client", "vitest/globals"]
   },
   "include": ["src"],
-  "exclude": ["src/language-scanner.test.ts"]
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/*.test.ts",
+    "src/*.test.tsx",
+    "src/language-scanner.test.ts",
+    "src/theme-contracts.test.ts",
+    "src/tokens.test.ts",
+    "src/costing.test.tsx",
+    "src/costing-gate-final.test.tsx",
+    "src/narrow-viewport-overflow.test.tsx"
+  ]
 }

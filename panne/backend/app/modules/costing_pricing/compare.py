@@ -2,41 +2,11 @@
 
 from decimal import Decimal
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from app.modules.costing_pricing.formulas import quantize_money
+from app.modules.costing_pricing.models import CostingCalculation, PracticedPrice
+from app.modules.costing_pricing.presentation import composition
 
-from app.modules.costing_pricing.constants import ZERO
-from app.modules.costing_pricing.formulas import quantize_money, quantize_percent
-from app.modules.costing_pricing.models import CostingCalculation, CostingComponent, PracticedPrice
-
-
-def _amount(value) -> Decimal:
-    return ZERO if value is None else value
-
-
-def composition(session: Session, calculation: CostingCalculation) -> list[dict]:
-    rows = list(
-        session.scalars(
-            select(CostingComponent).where(
-                CostingComponent.costing_calculation_id == calculation.id
-            )
-        )
-    )
-    total = calculation.total_amount
-    items = []
-    for row in rows:
-        share = None
-        if total and total > ZERO and row.amount is not None:
-            share = quantize_percent(row.amount / total * Decimal("100"))
-        items.append(
-            {
-                "category": row.category,
-                "amount": None if row.amount is None else format(row.amount, "f"),
-                "quality": row.quality,
-                "share_percent": None if share is None else format(share, "f"),
-            }
-        )
-    return items
+__all__ = ["composition", "compare_calculations", "suggested_versus_practiced"]
 
 
 def compare_calculations(left: CostingCalculation, right: CostingCalculation) -> dict:

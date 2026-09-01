@@ -31,7 +31,7 @@ describe("Adendo fluxo + Gigio", () => {
   it("login → organização → /fluxo com mapa dominante e Gigio", async () => {
     installApiMock();
     localStorage.setItem("panne.activeOrganization", ORG_A);
-    await renderApp("/");
+    await renderApp("/fluxo");
     expect(await screen.findByRole("heading", { name: "Fluxo produtivo" })).toBeInTheDocument();
     expect(
       screen.getByText(/Da entrada da mercadoria ao preço e à gestão do produto acabado/i),
@@ -40,7 +40,8 @@ describe("Adendo fluxo + Gigio", () => {
     expect(screen.getByRole("navigation", { name: "Etapas do fluxo produtivo" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Custos e preços/i })).toBeInTheDocument();
     expect(screen.getAllByAltText("Gigio, assistente da Panne").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole("heading", { name: /caminho está parado|Não há bloqueio/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Resumo do caminho" })).toBeInTheDocument();
+    expect(screen.getByText(/Sem bloqueio urgente|O que impede avançar/i)).toBeInTheDocument();
     const map = screen.getByRole("navigation", { name: "Etapas do fluxo produtivo" });
     expect(within(map).getAllByRole("button").length).toBeGreaterThanOrEqual(7);
   });
@@ -77,11 +78,9 @@ describe("Adendo fluxo + Gigio", () => {
     installApiMock();
     localStorage.setItem("panne.activeOrganization", ORG_A);
     await renderApp("/receitas");
-    expect(await screen.findByRole("heading", { name: "Receitas" })).toBeInTheDocument();
-    const coach = await screen.findByRole("complementary", { name: /Orientação do processo/i });
-    expect(within(coach).getByText("Gigio")).toBeInTheDocument();
-    expect(within(coach).getByText(/Você está na etapa 4/)).toBeInTheDocument();
-    expect(within(coach).getByRole("link", { name: "Voltar ao fluxo" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Minhas receitas" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Abrir Gigio" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: /Orientação do processo/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Gigio" })).not.toBeInTheDocument();
   });
 
@@ -90,7 +89,7 @@ describe("Adendo fluxo + Gigio", () => {
     localStorage.setItem("panne.activeOrganization", ORG_A);
     const user = userEvent.setup();
     await renderApp("/fluxo");
-    const open = await screen.findByRole("button", { name: "Abrir Gigio, assistente da Panne" });
+    const open = await screen.findByRole("button", { name: "Abrir Gigio" });
     expect(within(open).getByAltText("Gigio, assistente da Panne")).toBeInTheDocument();
     await user.click(open);
     expect(await screen.findByRole("dialog", { name: "Gigio" })).toBeInTheDocument();
@@ -245,13 +244,12 @@ describe("Adendo fluxo + Gigio", () => {
     localStorage.setItem("panne.activeOrganization", ORG_A);
     const user = userEvent.setup();
     await renderApp("/receitas");
-    const coach = await screen.findByRole("complementary", { name: /Orientação do processo/i });
-    expect(within(coach).getByText(/Você está na etapa 4/)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Abrir Gigio" })).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Organização ativa"), ORG_B);
     await waitFor(() => {
       expect(localStorage.getItem("panne.activeOrganization")).toBe(ORG_B);
     });
-    expect(await screen.findByRole("complementary", { name: /Orientação do processo/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Abrir Gigio" })).toBeInTheDocument();
   });
 
   it("não cria botão morto quando a ação recomendada não é permitida", () => {

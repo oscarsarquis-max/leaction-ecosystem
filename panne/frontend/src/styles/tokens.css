@@ -20,7 +20,9 @@
   --panne-atencao: var(--panne-ocre);
   --panne-erro: var(--panne-terracota);
   --panne-info: var(--panne-castanho);
+  --panne-neutro: var(--panne-grafite-suave);
   --panne-foco: #5a3d2c;
+  --panne-accent: var(--panne-castanho);
   --panne-fonte: "Segoe UI", "Helvetica Neue", sans-serif;
   --panne-fonte-chrome: "Segoe UI", sans-serif;
   --panne-fonte-display: Georgia, "Times New Roman", serif;

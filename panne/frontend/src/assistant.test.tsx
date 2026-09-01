@@ -35,7 +35,7 @@ describe("assistente global 025", () => {
     ];
     for (const path of paths) {
       const { view } = await renderApp(path);
-      expect(await screen.findByRole("button", { name: "Abrir Gigio, assistente da Panne" })).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: "Abrir Gigio" })).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Assistente" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Retomar assistente" })).not.toBeInTheDocument();
       view.unmount();
@@ -45,7 +45,7 @@ describe("assistente global 025", () => {
   it("expõe avatar público no login sem botão textual minimizado", async () => {
     installApiMock();
     await renderApp("/entrar", { signedIn: false });
-    expect(await screen.findByRole("button", { name: "Abrir ajuda de Gigio para entrar" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Abrir Gigio" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Assistente" })).not.toBeInTheDocument();
   });
 
@@ -69,12 +69,12 @@ describe("assistente global 025", () => {
     const user = userEvent.setup();
     const { view } = await renderApp("/producao");
     await user.click(await screen.findByRole("button", { name: "Usar este contexto" }));
-    await user.click(await screen.findByRole("button", { name: "Abrir Gigio, assistente da Panne" }));
-    expect(await screen.findByRole("dialog", { name: "Gigio" })).toHaveTextContent(/Quadro de produção/);
+    await user.click(await screen.findByRole("button", { name: "Abrir Gigio" }));
+    expect(await screen.findByRole("dialog", { name: "Gigio" })).toHaveTextContent(/Conduzir o turno/);
     view.unmount();
     await renderApp("/receitas");
-    await user.click(await screen.findByRole("button", { name: "Abrir Gigio, assistente da Panne" }));
-    expect(await screen.findByRole("dialog", { name: "Gigio" })).toHaveTextContent(/Receitas/);
-    expect(screen.getByRole("dialog", { name: "Gigio" })).not.toHaveTextContent(/Quadro de produção/);
+    await user.click(await screen.findByRole("button", { name: "Abrir Gigio" }));
+    expect(await screen.findByRole("dialog", { name: "Gigio" })).toHaveTextContent(/Pesquisar fichas técnicas/);
+    expect(screen.getByRole("dialog", { name: "Gigio" })).not.toHaveTextContent(/Conduzir o turno/);
   });
 });

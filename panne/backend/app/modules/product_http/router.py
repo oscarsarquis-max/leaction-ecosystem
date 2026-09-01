@@ -16,6 +16,7 @@ from app.modules.product_catalog.commands import (
     create_family,
     create_product,
     has_published_recipe,
+    has_process_steps_on_published_recipe,
     list_families,
     list_products_query,
     product_summary,
@@ -26,6 +27,7 @@ from app.modules.product_catalog.commands import (
     update_family,
     update_product,
 )
+from app.modules.product_catalog.recipe_projection import current_recipe_projection
 from app.modules.product_catalog.constants import (
     PURPOSE_FINAL,
     STATUS_ACTIVE,
@@ -137,6 +139,9 @@ def _recipe_status_label(has_recipe: bool, supply_mode: str) -> str:
 def product_card(session: Session, row: TechnicalProduct, *, organization_id: UUID) -> dict:
     family = session.get(ProductFamily, row.family_id) if row.family_id else None
     has_recipe = has_published_recipe(session, row.id, organization_id)
+    has_steps = (
+        has_process_steps_on_published_recipe(session, row.id, organization_id) if has_recipe else False
+    )
     return {
         "id": str(row.id),
         "code": row.code,
@@ -147,6 +152,7 @@ def product_card(session: Session, row: TechnicalProduct, *, organization_id: UU
         "supply_mode": row.supply_mode,
         "family": _family_card(family),
         "has_published_recipe": has_recipe,
+        "has_process_steps": has_steps,
         "recipe_status_label": _recipe_status_label(has_recipe, row.supply_mode),
         "stock_unit": _unit_label(session, row.stock_unit_id),
         "sale_unit": _unit_label(session, row.sale_unit_id),
@@ -179,6 +185,8 @@ def product_detail(session: Session, row: TechnicalProduct, *, organization_id: 
         card["operational_notes"].append(
             "Cadastro válido sem receita; produção fica bloqueada até haver receita vigente."
         )
+    # Origem: Formulation.technical_product_id (FK persistente). Sem inferência por código/nome.
+    card["current_recipe"] = current_recipe_projection(session, row.id, organization_id)
     return card
 
 

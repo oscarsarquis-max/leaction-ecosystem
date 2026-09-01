@@ -7,9 +7,9 @@ import { GlobalAssistant } from "../assistant/GlobalAssistant";
 import { useAssistant } from "../assistant/AssistantContext";
 import { config } from "../config";
 import { useAuth } from "../auth/AuthContext";
-import { FlowCoachPanel } from "../fluxo/FlowCoachPanel";
 import { FlowTrailFromLocation } from "../fluxo/FlowTrail";
 import { roleLabel } from "../language/roles";
+import { brandHomeForRoles } from "../navigation/landing";
 import { FISCAL_READ_CODES } from "../session/fiscalAccess";
 import { useOrganization } from "../session/OrganizationContext";
 
@@ -57,27 +57,26 @@ const COUNTS = [
   { to: "/gestao/inventarios", label: "Sessões", permission: "inventory.count", end: true },
 ];
 
-const PRODUCTS = [
-  { to: "/produtos", label: "Todos os produtos", permission: "product.read", end: true },
-  { to: "/produtos/familias", label: "Famílias", permission: "product.read", end: false },
-  { to: "/produtos/novo", label: "Novo produto", permission: "product.create", end: false },
+const CATALOG = [
+  { to: "/produtos", label: "Produtos", permission: "product.read", end: true },
+  { to: "/componentes/ingredientes", label: "Ingredientes e componentes", permission: "ingredient.read", end: false },
+  { to: "/receitas", label: "Receitas técnicas", permission: "recipe.read", end: false },
 ];
 
-const RECIPES = [
-  { to: "/receitas", label: "Minhas receitas", permission: "recipe.read", end: true },
-  { to: "/receitas/assistente", label: "Assistente de receitas", permission: "recipe.read", end: false },
-  { to: "/receitas/assistente/historico", label: "Histórico de propostas", permission: "recipe.ai.review", end: false },
-];
-
+/** Submenu Gestao quando fora de custos; custos usam ECONOMIC_NAV no layout + espelho abaixo. */
 const MANAGEMENT = [
-  { to: "/gestao/custos", label: "Visão geral", permission: "costing.read", end: true },
-  { to: "/gestao/custos/politicas", label: "Políticas de custeio", permission: "costing.read", end: false },
-  { to: "/gestao/custos/previstos", label: "Custos previstos", permission: "costing.read", end: false },
-  { to: "/gestao/custos/realizados", label: "Custos realizados", permission: "costing.read", end: false },
-  { to: "/gestao/custos/simulacoes", label: "Simulações", permission: "pricing.simulation.manage", end: false },
-  { to: "/gestao/custos/precos", label: "Preços praticados", permission: "pricing.review", end: false },
+  { to: "/gestao/custos", label: "Custos, preços e margem", permission: "costing.read", end: false },
   { to: "/gestao/compras/necessidades", label: "Compras", permission: "procurement.read", end: false },
   { to: "/gestao/inventarios", label: "Inventários", permission: "inventory.count", end: false },
+];
+
+const COSTING_SUBMENU = [
+  { to: "/gestao/custos", label: "Visão geral", permission: "costing.read", end: true },
+  { to: "/gestao/custos/formacao", label: "Formação do custo", permission: "costing.read", end: false },
+  { to: "/gestao/custos/variacao", label: "Previsto vs realizado", permission: "costing.read", end: false },
+  { to: "/gestao/custos/precos", label: "Preços e histórico", permission: "costing.read", end: false },
+  { to: "/gestao/custos/politicas", label: "Políticas e premissas", permission: "costing.read", end: false },
+  { to: "/gestao/custos/calculadora", label: "Calculadora", permission: "costing.read", end: false },
 ];
 
 const REPORTING = [
@@ -149,9 +148,11 @@ export function Shell() {
   const visible = (item: { permission: string; anyOf?: string[] }) =>
     item.anyOf ? item.anyOf.some((code) => hasPermission(code)) : hasPermission(item.permission);
   const showProduction = PRODUCTION.some(visible);
-  const showComponents = COMPONENTS.some(visible);
-  const showProducts = PRODUCTS.some(visible);
-  const showRecipes = RECIPES.some(visible);
+  const showComponents = COMPONENTS.filter((item) => item.to !== "/componentes/ingredientes").some(visible);
+  const showCatalog = CATALOG.some(visible);
+  const componentsHome = hasPermission("inventory.read")
+    ? "/componentes/estoque"
+    : "/componentes/fornecedores";
   const showCompliance = COMPLIANCE.some(visible);
   const showManagement =
     MANAGEMENT.some(visible)
@@ -163,14 +164,18 @@ export function Shell() {
     : hasPermission("procurement.read")
       ? "/gestao/compras/necessidades"
       : "/gestao/inventarios";
+  const brandHome = brandHomeForRoles(active?.roles ?? me?.roles);
+  const inicioActive = location.pathname === "/inicio";
   const fluxoActive = location.pathname === "/fluxo" || location.pathname.startsWith("/fluxo/");
   const productionActive = location.pathname.startsWith("/producao")
     || location.pathname.startsWith("/planejamento")
     || location.pathname.startsWith("/ordens")
     || location.pathname.startsWith("/rastreabilidade");
-  const componentsActive = location.pathname.startsWith("/componentes");
+  const ingredientsActive = location.pathname.startsWith("/componentes/ingredientes");
+  const componentsActive = location.pathname.startsWith("/componentes") && !ingredientsActive;
   const productsActive = location.pathname.startsWith("/produtos");
   const recipesActive = location.pathname.startsWith("/receitas");
+  const catalogActive = productsActive || recipesActive || ingredientsActive;
   const complianceActive = location.pathname.startsWith("/conformidade");
   const costingActive = location.pathname.startsWith("/gestao/custos");
   const procurementActive = location.pathname.startsWith("/gestao/compras");
@@ -182,7 +187,7 @@ export function Shell() {
   const submenu = reportingActive
     ? REPORTING.filter(visible)
     : costingActive
-    ? MANAGEMENT.filter(visible)
+    ? COSTING_SUBMENU.filter(visible)
     : procurementActive
     ? PROCUREMENT.filter(visible)
     : countsActive
@@ -191,10 +196,8 @@ export function Shell() {
     ? INVENTORY.filter(visible)
     : complianceActive
     ? COMPLIANCE.filter(visible)
-    : productsActive
-    ? PRODUCTS.filter(visible)
-    : recipesActive
-    ? RECIPES.filter(visible)
+    : catalogActive
+    ? CATALOG.filter(visible)
     : productionActive
       ? PRODUCTION.filter(visible)
       : componentsActive
@@ -206,7 +209,7 @@ export function Shell() {
   return (
     <div className={operational ? "shell shell-ops" : "shell"}>
       <header className="shell-header">
-        <NavLink to="/inicio" className="brand" aria-label="Panne">
+        <NavLink to={brandHome} className="brand" aria-label="Panne">
           <img className="horizontal" src={logoHorizontal} alt="" />
           <img className="compacto" src={logoCompacto} alt="" />
         </NavLink>
@@ -236,18 +239,13 @@ export function Shell() {
             </NavLink>
           ) : null}
           {showComponents ? (
-            <NavLink to="/componentes/ingredientes" aria-current={componentsActive ? "page" : undefined}>
-              Componentes
+            <NavLink to={componentsHome} aria-current={componentsActive ? "page" : undefined}>
+              Estoque e insumos
             </NavLink>
           ) : null}
-          {showProducts ? (
-            <NavLink to="/produtos" aria-current={productsActive ? "page" : undefined}>
-              Produtos
-            </NavLink>
-          ) : null}
-          {showRecipes ? (
-            <NavLink to="/receitas" aria-current={recipesActive ? "page" : undefined}>
-              Receitas
+          {showCatalog ? (
+            <NavLink to="/produtos" aria-current={catalogActive ? "page" : undefined}>
+              Produtos e receitas
             </NavLink>
           ) : null}
           {showCompliance ? (
@@ -274,10 +272,14 @@ export function Shell() {
             </span>
           ) : null}
           {associations.length > 1 ? (
-            <label>
+            <label className="org-picker">
               <span className="visually-hidden">Organização ativa</span>
+              <span className="org-picker__current" aria-hidden="true">
+                {active?.display_name || active?.slug || "Organização"}
+              </span>
               <select
                 className="org-select"
+                aria-label="Organização ativa"
                 value={active?.organization_id ?? ""}
                 onChange={(event) => void selectOrganization(event.target.value)}
               >
@@ -289,7 +291,7 @@ export function Shell() {
               </select>
             </label>
           ) : (
-            <span>{active?.display_name || "Sem organização"}</span>
+            <span className="org-picker__current">{active?.display_name || "Sem organização"}</span>
           )}
           <div className="account-menu" ref={menuRef}>
             <button
@@ -349,7 +351,9 @@ export function Shell() {
       )}
       <p className="crumb">
         Início
-        {fluxoActive
+        {inicioActive
+          ? " / Hoje"
+          : fluxoActive
           ? " / Fluxo produtivo"
           : reportingActive
             ? " / Gestão / Relatórios e painéis"
@@ -363,18 +367,15 @@ export function Shell() {
                     ? " / Componentes / Estoque"
                     : complianceActive
                       ? " / Conformidade"
-                      : productsActive
-                        ? " / Produtos"
-                        : recipesActive
-                          ? " / Receitas"
-                          : componentsActive
+                      : catalogActive
+                        ? " / Produtos e receitas"
+                        : componentsActive
                             ? " / Componentes"
                             : productionActive
                               ? " / Produção"
                               : ""}
       </p>
       <FlowTrailFromLocation pathname={location.pathname} />
-      <FlowCoachPanel />
       <main className="main">
         {status.kind === "erro" ? (
           <p role="alert">Não foi possível carregar a sessão.</p>

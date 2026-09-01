@@ -182,12 +182,23 @@ EXPECTED = set(EXPECTED_0019) | {
 }
 EXPECTED_0020 = set(EXPECTED)
 EXPECTED = set(EXPECTED_0020) | {"product_family"}
+EXPECTED = set(EXPECTED) | {"pricing_markup_policy", "pricing_economic_audit"}
 
 
-def _alembic() -> Config:
+def _upgrade(engine: Engine, revision: str) -> None:
     config = Config(str(ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(ROOT / "alembic"))
-    return config
+    with engine.begin() as conn:
+        config.attributes["connection"] = conn
+        command.upgrade(config, revision)
+
+
+def _downgrade(engine: Engine, revision: str) -> None:
+    config = Config(str(ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(ROOT / "alembic"))
+    with engine.begin() as conn:
+        config.attributes["connection"] = conn
+        command.downgrade(config, revision)
 
 
 def test_upgrade_downgrade_reapply(engine: Engine) -> None:
@@ -197,49 +208,49 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
     url = postgres_url()
     assert "mysql" not in url.lower()
 
-    command.downgrade(_alembic(), "0001_foundation")
+    _downgrade(engine, "0001_foundation")
     tables_at_0001 = set(inspect(engine).get_table_names())
     assert tables_at_0001 == {"alembic_version"} or tables_at_0001 <= {"alembic_version"}
 
-    command.upgrade(_alembic(), "0003_ingredient_catalog")
+    _upgrade(engine, "0003_ingredient_catalog")
     tables_at_0003 = set(inspect(engine).get_table_names())
     assert "formulation" not in tables_at_0003
     assert "technical_product" not in tables_at_0003
 
-    command.upgrade(_alembic(), "0004_formulation_lab")
+    _upgrade(engine, "0004_formulation_lab")
     tables_at_0004 = set(inspect(engine).get_table_names())
     assert "formulation" in tables_at_0004
     assert "nutrition_calculation" not in tables_at_0004
     assert "calculation_evidence" not in tables_at_0004
 
-    command.upgrade(_alembic(), "0005_nutrition_calculation")
+    _upgrade(engine, "0005_nutrition_calculation")
     tables_at_0005 = set(inspect(engine).get_table_names())
     assert "nutrition_calculation" in tables_at_0005
     assert "knowledge_source" not in tables_at_0005
     assert "nutrition_expectation_profile" not in tables_at_0005
 
-    command.upgrade(_alembic(), "0006_knowledge_grounding")
+    _upgrade(engine, "0006_knowledge_grounding")
     tables_at_0006 = set(inspect(engine).get_table_names())
     assert "knowledge_source" in tables_at_0006
     assert "ai_interaction" not in tables_at_0006
     assert "ai_proposal" not in tables_at_0006
 
-    command.upgrade(_alembic(), "0007_ai_orchestration")
+    _upgrade(engine, "0007_ai_orchestration")
     tables_at_0007 = set(inspect(engine).get_table_names())
     assert "ai_interaction" in tables_at_0007
     assert "compliance_framework" not in tables_at_0007
 
-    command.upgrade(_alembic(), "0008_compliance_governance")
+    _upgrade(engine, "0008_compliance_governance")
     tables = set(inspect(engine).get_table_names())
     assert "compliance_framework" in tables
     assert "auth_identity" not in tables
 
-    command.upgrade(_alembic(), "0009_identity_authorization_rls")
+    _upgrade(engine, "0009_identity_authorization_rls")
     tables = set(inspect(engine).get_table_names())
     assert "auth_identity" in tables
     assert "production_order" not in tables
 
-    command.upgrade(_alembic(), "0010_production_planning")
+    _upgrade(engine, "0010_production_planning")
     tables = set(inspect(engine).get_table_names())
     assert EXPECTED_0010 <= tables
     assert "production_weighing_entry" not in tables
@@ -247,146 +258,146 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
     assert "formula_ingredient" not in tables
     assert "label_snapshot" not in tables
 
-    command.upgrade(_alembic(), "0011_production_execution")
+    _upgrade(engine, "0011_production_execution")
     tables = set(inspect(engine).get_table_names())
     assert EXPECTED_0011 <= tables
     assert "organization_membership_role" not in tables
 
-    command.upgrade(_alembic(), "0012_production_api_roles")
+    _upgrade(engine, "0012_production_api_roles")
     tables = set(inspect(engine).get_table_names())
     assert EXPECTED_0013 <= tables
     cols_0012 = {col["name"] for col in inspect(engine).get_columns("organization_membership")}
     assert "role" in cols_0012
     assert "legacy_role_label" not in cols_0012
 
-    command.upgrade(_alembic(), "0013_legacy_role_label")
+    _upgrade(engine, "0013_legacy_role_label")
     cols_0013 = {col["name"] for col in inspect(engine).get_columns("organization_membership")}
     assert "legacy_role_label" in cols_0013
     assert "role" not in cols_0013
 
-    command.upgrade(_alembic(), "0014_ingredient_http")
+    _upgrade(engine, "0014_ingredient_http")
     tables_0014 = set(inspect(engine).get_table_names())
     assert "ingredient_command" in tables_0014
     cols_ing = {col["name"] for col in inspect(engine).get_columns("ingredient")}
     assert "row_version" in cols_ing
-    command.downgrade(_alembic(), "0013_legacy_role_label")
+    _downgrade(engine, "0013_legacy_role_label")
     assert "ingredient_command" not in set(inspect(engine).get_table_names())
-    command.upgrade(_alembic(), "0014_ingredient_http")
-    command.upgrade(_alembic(), "0015_formulation_http")
+    _upgrade(engine, "0014_ingredient_http")
+    _upgrade(engine, "0015_formulation_http")
     tables_0015 = set(inspect(engine).get_table_names())
     assert "formulation_command" in tables_0015
     cols_form = {col["name"] for col in inspect(engine).get_columns("formulation")}
     assert "row_version" in cols_form
-    command.downgrade(_alembic(), "0014_ingredient_http")
+    _downgrade(engine, "0014_ingredient_http")
     assert "formulation_command" not in set(inspect(engine).get_table_names())
-    command.upgrade(_alembic(), "0015_formulation_http")
-    command.downgrade(_alembic(), "0014_ingredient_http")
-    command.upgrade(_alembic(), "0015_formulation_http")
-    command.upgrade(_alembic(), "0016_recipe_ai_assistant")
+    _upgrade(engine, "0015_formulation_http")
+    _downgrade(engine, "0014_ingredient_http")
+    _upgrade(engine, "0015_formulation_http")
+    _upgrade(engine, "0016_recipe_ai_assistant")
     tables_0016 = set(inspect(engine).get_table_names())
     assert "formulation_version_recipe_reference" in tables_0016
     assert "ai_proposal_change" in tables_0016
-    command.downgrade(_alembic(), "0015_formulation_http")
+    _downgrade(engine, "0015_formulation_http")
     assert "formulation_version_recipe_reference" not in set(inspect(engine).get_table_names())
-    command.upgrade(_alembic(), "0016_recipe_ai_assistant")
-    command.downgrade(_alembic(), "0015_formulation_http")
-    command.upgrade(_alembic(), "0016_recipe_ai_assistant")
-    command.upgrade(_alembic(), "0017_labeling_compliance")
+    _upgrade(engine, "0016_recipe_ai_assistant")
+    _downgrade(engine, "0015_formulation_http")
+    _upgrade(engine, "0016_recipe_ai_assistant")
+    _upgrade(engine, "0017_labeling_compliance")
     tables_0017 = set(inspect(engine).get_table_names())
     assert "labeling_dossier" in tables_0017
     assert "labeling_label_candidate" in tables_0017
-    command.downgrade(_alembic(), "0016_recipe_ai_assistant")
+    _downgrade(engine, "0016_recipe_ai_assistant")
     assert "labeling_dossier" not in set(inspect(engine).get_table_names())
-    command.upgrade(_alembic(), "0017_labeling_compliance")
-    command.downgrade(_alembic(), "0016_recipe_ai_assistant")
-    command.upgrade(_alembic(), "0017_labeling_compliance")
-    command.upgrade(_alembic(), "0018_costing_pricing")
+    _upgrade(engine, "0017_labeling_compliance")
+    _downgrade(engine, "0016_recipe_ai_assistant")
+    _upgrade(engine, "0017_labeling_compliance")
+    _upgrade(engine, "0018_costing_pricing")
     tables_0018 = set(inspect(engine).get_table_names())
     assert "costing_policy" in tables_0018
     assert "practiced_price" in tables_0018
-    command.downgrade(_alembic(), "0017_labeling_compliance")
+    _downgrade(engine, "0017_labeling_compliance")
     assert "costing_policy" not in set(inspect(engine).get_table_names())
-    command.upgrade(_alembic(), "0018_costing_pricing")
-    command.downgrade(_alembic(), "0017_labeling_compliance")
-    command.upgrade(_alembic(), "0018_costing_pricing")
-    command.upgrade(_alembic(), "0019_reporting_analytics")
+    _upgrade(engine, "0018_costing_pricing")
+    _downgrade(engine, "0017_labeling_compliance")
+    _upgrade(engine, "0018_costing_pricing")
+    _upgrade(engine, "0019_reporting_analytics")
     tables_0019 = set(inspect(engine).get_table_names())
     assert "reporting_execution" in tables_0019
     assert "reporting_snapshot" in tables_0019
-    command.downgrade(_alembic(), "0018_costing_pricing")
+    _downgrade(engine, "0018_costing_pricing")
     assert "reporting_execution" not in set(inspect(engine).get_table_names())
-    command.upgrade(_alembic(), "0019_reporting_analytics")
-    command.downgrade(_alembic(), "0018_costing_pricing")
-    command.upgrade(_alembic(), "0019_reporting_analytics")
-    command.upgrade(_alembic(), "0020_inventory_procurement")
+    _upgrade(engine, "0019_reporting_analytics")
+    _downgrade(engine, "0018_costing_pricing")
+    _upgrade(engine, "0019_reporting_analytics")
+    _upgrade(engine, "0020_inventory_procurement")
     tables_0020 = set(inspect(engine).get_table_names())
     assert "inventory_movement" in tables_0020
     assert "procurement_order" in tables_0020
-    command.downgrade(_alembic(), "0019_reporting_analytics")
+    _downgrade(engine, "0019_reporting_analytics")
     assert "inventory_movement" not in set(inspect(engine).get_table_names())
-    command.upgrade(_alembic(), "0020_inventory_procurement")
-    command.downgrade(_alembic(), "0019_reporting_analytics")
-    command.upgrade(_alembic(), "0020_inventory_procurement")
-    command.upgrade(_alembic(), "0021_product_canonical")
+    _upgrade(engine, "0020_inventory_procurement")
+    _downgrade(engine, "0019_reporting_analytics")
+    _upgrade(engine, "0020_inventory_procurement")
+    _upgrade(engine, "0021_product_canonical")
     tables_0021 = set(inspect(engine).get_table_names())
     assert "product_family" in tables_0021
     cols_product = {col["name"] for col in inspect(engine).get_columns("technical_product")}
     assert "supply_mode" in cols_product
     assert "purpose" in cols_product
-    command.downgrade(_alembic(), "0020_inventory_procurement")
+    _downgrade(engine, "0020_inventory_procurement")
     assert "product_family" not in set(inspect(engine).get_table_names())
-    command.upgrade(_alembic(), "0021_product_canonical")
-    command.upgrade(_alembic(), "0022_fiscal_inbound")
+    _upgrade(engine, "0021_product_canonical")
+    _upgrade(engine, "0022_fiscal_inbound")
     tables_0022 = set(inspect(engine).get_table_names())
     assert "fiscal_inbound_document" in tables_0022
     assert "establishment_fiscal_certificate" in tables_0022
     receipt_cols = {col["name"] for col in inspect(engine).get_columns("procurement_receipt")}
     assert "fiscal_inbound_document_id" in receipt_cols
     assert "source" in receipt_cols
-    command.downgrade(_alembic(), "0021_product_canonical")
+    _downgrade(engine, "0021_product_canonical")
     assert "fiscal_inbound_document" not in set(inspect(engine).get_table_names())
-    command.upgrade(_alembic(), "0022_fiscal_inbound")
+    _upgrade(engine, "0022_fiscal_inbound")
 
-    command.downgrade(_alembic(), "0012_production_api_roles")
+    _downgrade(engine, "0012_production_api_roles")
     cols_back = {col["name"] for col in inspect(engine).get_columns("organization_membership")}
     assert "role" in cols_back
     assert "legacy_role_label" not in cols_back
 
-    command.upgrade(_alembic(), "0013_legacy_role_label")
-    command.downgrade(_alembic(), "0011_production_execution")
+    _upgrade(engine, "0013_legacy_role_label")
+    _downgrade(engine, "0011_production_execution")
     tables_after_0012_down = set(inspect(engine).get_table_names())
     assert "organization_membership_role" not in tables_after_0012_down
     assert "production_weighing_entry" in tables_after_0012_down
 
-    command.upgrade(_alembic(), "0012_production_api_roles")
-    command.downgrade(_alembic(), "0010_production_planning")
+    _upgrade(engine, "0012_production_api_roles")
+    _downgrade(engine, "0010_production_planning")
     tables_after_0011_down = set(inspect(engine).get_table_names())
     assert "production_weighing_entry" not in tables_after_0011_down
     assert "production_order" in tables_after_0011_down
 
-    command.upgrade(_alembic(), "0011_production_execution")
-    command.downgrade(_alembic(), "0009_identity_authorization_rls")
+    _upgrade(engine, "0011_production_execution")
+    _downgrade(engine, "0009_identity_authorization_rls")
     tables_after_0010_down = set(inspect(engine).get_table_names())
     assert "production_order" not in tables_after_0010_down
     assert "production_event" not in tables_after_0010_down
     assert "auth_identity" in tables_after_0010_down
 
-    command.upgrade(_alembic(), "0010_production_planning")
-    command.downgrade(_alembic(), "0008_compliance_governance")
+    _upgrade(engine, "0010_production_planning")
+    _downgrade(engine, "0008_compliance_governance")
     tables_after_0009_down = set(inspect(engine).get_table_names())
     assert "auth_identity" not in tables_after_0009_down
     assert "permission" not in tables_after_0009_down
     assert "compliance_framework" in tables_after_0009_down
 
-    command.upgrade(_alembic(), "0009_identity_authorization_rls")
-    command.downgrade(_alembic(), "0007_ai_orchestration")
+    _upgrade(engine, "0009_identity_authorization_rls")
+    _downgrade(engine, "0007_ai_orchestration")
     tables_after_down = set(inspect(engine).get_table_names())
     assert "compliance_framework" not in tables_after_down
     assert "ai_interaction" in tables_after_down
 
-    command.upgrade(_alembic(), "0008_compliance_governance")
-    command.downgrade(_alembic(), "0001_foundation")
-    command.upgrade(_alembic(), "head")
+    _upgrade(engine, "0008_compliance_governance")
+    _downgrade(engine, "0001_foundation")
+    _upgrade(engine, "head")
     tables_from_empty = set(inspect(engine).get_table_names())
     assert EXPECTED <= tables_from_empty
 
@@ -397,5 +408,5 @@ def test_upgrade_downgrade_reapply(engine: Engine) -> None:
             .scalars()
             .all()
         )
-    assert current == "0022_fiscal_inbound"
+    assert current == "0025_economic_audit_policy"
     assert "mysql" not in "".join(other).lower()

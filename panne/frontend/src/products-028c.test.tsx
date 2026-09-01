@@ -35,7 +35,7 @@ describe("CURSOR-028-C produtos", () => {
     expect(await screen.findByRole("link", { name: "Abrir detalhe de Pão tradicional" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Abrir detalhe de Refrigerante de cola" })).toBeInTheDocument();
     const table = within(screen.getByRole("table", { name: "Produtos da organização" }));
-    expect(table.getByText("Produzido na casa")).toBeInTheDocument();
+    expect(table.getAllByText("Produzido na casa").length).toBeGreaterThan(0);
     expect(table.getByText("Comprado pronto")).toBeInTheDocument();
     expect(table.getByText("Sem receita vigente")).toBeInTheDocument();
     expect(table.getByText("Não se aplica")).toBeInTheDocument();
@@ -77,7 +77,7 @@ describe("CURSOR-028-C produtos", () => {
     expect(await screen.findByRole("heading", { name: "Pão tradicional" })).toBeInTheDocument();
     expect(screen.getAllByText("Sem receita vigente").length).toBeGreaterThan(0);
     expect(screen.getByText(/produção fica bloqueada até haver receita vigente/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Editar produto" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Editar dados do produto" })).toBeInTheDocument();
   });
 
   it("cria família e mostra na lista de famílias", async () => {
@@ -105,7 +105,7 @@ describe("CURSOR-028-C produtos", () => {
     expect(screen.getAllByText(/produzido\(s\) sem receita vigente/).length).toBeGreaterThanOrEqual(1);
     await user.click(screen.getAllByRole("link", { name: "Abrir produtos" })[0]);
     expect(await screen.findByRole("heading", { name: "Produtos" })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Voltar ao fluxo" }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("link", { name: "Voltar ao fluxo produtivo" }).length).toBeGreaterThanOrEqual(1);
   });
 
   it("não expõe identificador técnico nem código de contrato na lista", async () => {

@@ -49,12 +49,17 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 export function errorFromResponse(status: number, body: unknown): ApiError {
   const record = asRecord(body);
-  const rawCode = typeof record?.code === "string" ? record.code : "";
+  const detailRecord = asRecord(record?.detail);
+  const rawCode =
+    (typeof record?.code === "string" && record.code) ||
+    (typeof detailRecord?.code === "string" && detailRecord.code) ||
+    "";
   const detail = typeof record?.detail === "string" ? record.detail : "";
   const message =
-    typeof record?.message === "string"
-      ? record.message
-      : detail || FALLBACK_MESSAGE[STATUS_CODE[status] ?? "rede"];
+    (typeof record?.message === "string" && record.message) ||
+    (typeof detailRecord?.message === "string" && detailRecord.message) ||
+    detail ||
+    FALLBACK_MESSAGE[STATUS_CODE[status] ?? "rede"];
   const code = (STATUS_CODE[status] ??
     (rawCode === "nao_autenticado" ? "nao_autenticado" : "rede")) as ApiErrorCode;
   return new ApiError(code, message, status);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ApiError, isCancelledError } from "../api/errors";
 import type {
   AllergenLine,
@@ -26,6 +26,7 @@ import {
   nutrientStatusLabel,
 } from "../language/ingredients";
 import { useCommand } from "../ops/useCommand";
+import { safeReturnTo } from "../navigation/returnTo";
 import { useOrganization } from "../session/OrganizationContext";
 
 function clearDossierState(setters: {
@@ -60,6 +61,8 @@ function clearDossierState(setters: {
 export function IngredientEditorPage() {
   const { ingredientId } = useParams();
   const isNew = !ingredientId;
+  const [returnParams] = useSearchParams();
+  const productReturn = safeReturnTo(returnParams.get("from"), "");
   const { api, hasPermission, active } = useOrganization();
   const navigate = useNavigate();
   const command = useCommand();
@@ -268,6 +271,11 @@ export function IngredientEditorPage() {
       <div className="stage">
         <div>
           <h1>{isNew ? "Novo ingrediente" : identity.display_name || "Ingrediente"}</h1>
+          {productReturn.startsWith("/produtos/") ? (
+            <p>
+              <Link to={productReturn}>Voltar ao produto</Link>
+            </p>
+          ) : null}
           <p className="lede">
             {version ? (
               <StatusBadge

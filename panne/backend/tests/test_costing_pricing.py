@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.modules.costing_pricing.engine import calculate
 from app.modules.costing_pricing.formulas import (
+    markup_factor_from_price,
+    monetary_margin,
     price_from_contribution,
     price_from_gross_margin,
     price_from_markup_factor,
@@ -101,6 +103,8 @@ def _offer(session, organization, ingredient_id, unit, price, observed_at, sku: 
 
 def test_formulas_distinct_and_invalid_denominator() -> None:
     assert price_from_markup_factor(Decimal("10"), Decimal("2")) == Decimal("20")
+    assert markup_factor_from_price(Decimal("20"), Decimal("10")) == Decimal("2")
+    assert monetary_margin(Decimal("20"), Decimal("10")) == Decimal("10")
     assert price_from_gross_margin(Decimal("10"), Decimal("0.20")) == Decimal("12.5")
     assert price_from_contribution(Decimal("10"), Decimal("0.10"), Decimal("0.20")) == Decimal(
         "14.285714"
@@ -113,6 +117,8 @@ def test_formulas_distinct_and_invalid_denominator() -> None:
         price_from_gross_margin(Decimal("10"), Decimal("1"))
     with pytest.raises(ValidationError, match="denominador_invalido"):
         price_from_contribution(Decimal("10"), Decimal("0.6"), Decimal("0.5"))
+    with pytest.raises(ValidationError, match="denominador_invalido"):
+        markup_factor_from_price(Decimal("10"), Decimal("0"))
 
 
 def test_baker_has_no_costing_permission() -> None:
@@ -292,15 +298,39 @@ def test_http_permissions_idempotency_and_no_auto_publish(engine) -> None:
         )
         assert practiced.status_code == 200, practiced.text
         assert practiced.json()["data"]["status"] == "draft"
-        published_price = owner["client"].post(
+        blocked = owner["client"].post(
             _base(owner, f"/pricing/practiced/{practiced.json()['data']['id']}/decide"),
             headers=_h(owner, key=uuid4(), match=str(practiced.json()["row_version"])),
+            json={"decision": "publish", "notes": "sem base"},
+        )
+        assert blocked.status_code == 422, blocked.text
+        assert blocked.json().get("code") in {"sale_basis_obrigatoria", "contrato_invalido"} or (
+            "sale_basis" in str(blocked.json()).lower()
+        )
+        practiced_ok = owner["client"].post(
+            _base(owner, "/pricing/practiced"),
+            headers=_h(owner, key=uuid4()),
+            json={
+                "technical_product_id": str(product.id),
+                "channel": "own_counter",
+                "amount": "16",
+                "valid_from": _now().isoformat(),
+                "simulation_id": sim.json()["data"]["id"],
+                "justification": "revisão humana com base",
+                "sale_basis_quantity": "1",
+                "sale_basis_unit_id": str(unit.id),
+            },
+        )
+        assert practiced_ok.status_code == 200, practiced_ok.text
+        published_price = owner["client"].post(
+            _base(owner, f"/pricing/practiced/{practiced_ok.json()['data']['id']}/decide"),
+            headers=_h(owner, key=uuid4(), match=str(practiced_ok.json()["row_version"])),
             json={"decision": "publish", "notes": "ok"},
         )
-        assert published_price.status_code == 200
+        assert published_price.status_code == 200, published_price.text
         assert published_price.json()["data"]["status"] == "active"
         conflict = owner["client"].post(
-            _base(owner, f"/pricing/practiced/{practiced.json()['data']['id']}/decide"),
+            _base(owner, f"/pricing/practiced/{practiced_ok.json()['data']['id']}/decide"),
             headers=_h(owner, key=uuid4(), match="1"),
             json={"decision": "retire"},
         )
@@ -539,3 +569,97 @@ def test_actual_cost_distinguishes_return_waste_and_yield(db_session: Session) -
     )
     assert any(row.code == "rendimento_ausente" for row in gaps)
     assert calc.completeness == "partial"
+
+
+def test_cost_scope_ingredients_vs_production_and_flour_basis():
+    from app.modules.costing_pricing.presentation import cost_scope_report, price_basis_contract
+
+    class _Policy:
+        enabled_categories = [
+            "ingredient",
+            "packaging",
+            "labor",
+            "energy",
+            "variable_indirect",
+        ]
+
+    complete_ingredients = [
+        {
+            "category": "ingredient",
+            "category_label": "Ingrediente",
+            "amount": "27.398813",
+            "price_missing": False,
+            "display_name": "Farinha",
+        }
+    ]
+    scope = cost_scope_report(complete_ingredients, policy=_Policy(), completeness="complete")
+    assert scope["ingredients_complete"] is True
+    assert scope["production_complete"] is False
+    assert scope["completeness_label"] == "Custo de ingredientes completo"
+    assert "ingredientes" in scope["margin_label"].lower()
+    assert "bruta" not in scope["margin_label"].lower()
+
+    partial = [
+        {
+            "category": "ingredient",
+            "category_label": "Ingrediente",
+            "amount": "5.00",
+            "price_missing": False,
+            "display_name": "Água",
+        },
+        {
+            "category": "ingredient",
+            "category_label": "Ingrediente",
+            "amount": None,
+            "price_missing": True,
+            "display_name": "Farinha integral",
+        },
+    ]
+    scope_b = cost_scope_report(partial, policy=_Policy(), completeness="partial")
+    assert scope_b["ingredients_complete"] is False
+    assert scope_b["completeness_label"] == "Custo de ingredientes parcial"
+
+    basis = price_basis_contract()
+    assert basis["code"] == "package_price"
+    assert basis["flour_audit"]["normalized_package_prices_brl"] == ["312.50", "327.50", "325.00"]
+
+    purchased_components = [
+        {
+            "category": "ingredient",
+            "category_label": "Valor de compra",
+            "amount": "18.00",
+            "price_missing": False,
+            "display_name": "Manteiga tablete",
+        }
+    ]
+    scope_c = cost_scope_report(
+        purchased_components,
+        policy=_Policy(),
+        completeness="complete",
+        supply_mode="purchased",
+    )
+    assert scope_c["mode"] == "purchased"
+    assert scope_c["production_complete"] is False
+    assert scope_c["acquisition_complete"] is True
+    assert scope_c["price_definitive_allowed"] is True
+    assert scope_c["completeness_label"] == "Custo de aquisição completo"
+    assert "aquisição" in scope_c["margin_label"].lower()
+    assert scope_c["comparison_scope_label"] == "Mercadoria comprada"
+    states = {c["code"]: c["state"] for c in scope_c["categories"]}
+    assert states["labor"] == "not_applicable"
+    assert states["energy"] == "not_applicable"
+    assert states["ingredient"] == "valued"
+    assert any(c["state_label"] == "Não se aplica" for c in scope_c["categories"] if c["code"] == "labor")
+
+    from app.modules.costing_pricing.presentation import evaluate_planned_actual
+
+    yield_sig = evaluate_planned_actual("yield", "8", "7")
+    assert yield_sig["signal_label"] == "desfavorável"
+    unit_sig = evaluate_planned_actual("cost", "3.155150", "3.605886")
+    assert unit_sig["signal_label"] == "desfavorável"
+    total_sig = evaluate_planned_actual("cost", "25.241199", "25.241199")
+    assert total_sig["signal_label"] == "neutro"
+    better_cost = evaluate_planned_actual("cost", "10", "9")
+    assert better_cost["signal_label"] == "favorável"
+    better_yield = evaluate_planned_actual("yield", "7", "8")
+    assert better_yield["signal_label"] == "favorável"

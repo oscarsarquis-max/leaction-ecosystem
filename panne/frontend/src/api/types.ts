@@ -784,6 +784,8 @@ export type ProductCard = {
   supply_mode: string;
   family: ProductFamilyRef | null;
   has_published_recipe: boolean;
+  /** Etapas na versão publicada; sem isso não há prontidão produtiva. */
+  has_process_steps?: boolean;
   /** Frase humana já resolvida pela API (não repetir enum na tela). */
   recipe_status_label: string;
   stock_unit: ProductUnitRef | null;
@@ -799,6 +801,39 @@ export type ProductCard = {
   links?: { recipes_count: number; orders_count: number };
   /** Só no detalhe; avisos operacionais em linguagem humana. */
   operational_notes?: string[];
+  /** Só no detalhe. FK Formulation.technical_product_id — nunca inferido por código. */
+  current_recipe?: ProductRecipeProjection | null;
+};
+
+export type ProductRecipeItem = {
+  ingredient_id: string | null;
+  code: string | null;
+  display_name: string | null;
+  quantity: string | null;
+  unit: string | null;
+  role: string;
+  is_flour_basis: boolean;
+};
+
+export type ProductRecipeStep = {
+  sequence: number;
+  title: string;
+  instructions: string;
+};
+
+export type ProductRecipeProjection = {
+  id: string;
+  code: string;
+  display_name: string;
+  formulation_status: string;
+  version_id: string;
+  version_number: number;
+  version_status: string;
+  published_at: string | null;
+  is_published: boolean;
+  yield_mass_g: string | null;
+  items: ProductRecipeItem[];
+  steps: ProductRecipeStep[];
 };
 
 export type ProductPage = {
@@ -1105,9 +1140,152 @@ export type CostingCalculation = {
   completeness: string;
   currency: string;
   total_amount: string | null;
+  batch_amount?: string | null;
+  mass_amount?: string | null;
+  produced_unit_amount?: string | null;
   sellable_unit_amount: string | null;
+  produced_quantity?: string | null;
+  sellable_quantity?: string | null;
+  valuation_at?: string | null;
+  created_at?: string | null;
+  algorithm_name?: string;
+  algorithm_version?: string;
   auto_published?: boolean;
-  components?: Array<{ category: string; amount: string | null; quality: string; share_percent: string | null }>;
+  technical_product_id?: string | null;
+  formulation_id?: string | null;
+  subject?: {
+    product_display_name?: string | null;
+    formulation_display_name?: string | null;
+    supply_mode?: string | null;
+    kind?: string;
+    kind_label?: string;
+    commercial_presentation?: {
+      defined: boolean;
+      yield_units?: number | null;
+      target_unit_weight_g?: string | null;
+      action_label?: string | null;
+      action_hint?: string | null;
+    };
+  };
+  cost_base?: {
+    amount: string | null;
+    origin: string;
+    origin_label: string;
+    unit_label?: string | null;
+    usable: boolean;
+    incomplete: boolean;
+  };
+  cost_scope?: {
+    mode?: "purchased" | "produced" | string;
+    scope_label: string;
+    completeness_label: string;
+    margin_label: string;
+    comparison_scope_label?: string;
+    ingredients_complete: boolean;
+    acquisition_complete?: boolean;
+    production_complete: boolean;
+    price_definitive_allowed?: boolean;
+    included_categories: Array<{
+      code: string;
+      label: string;
+      state: string;
+      state_label: string;
+      amount?: string | null;
+    }>;
+    excluded_categories: Array<{
+      code: string;
+      label: string;
+      state: string;
+      state_label: string;
+    }>;
+    categories?: Array<{
+      code: string;
+      label: string;
+      state: string;
+      state_label: string;
+      amount?: string | null;
+    }>;
+    hint: string;
+  };
+  sellable_absence_reason?: string | null;
+  markup_policy?: {
+    supported_precedence: boolean;
+    desired_precedence: string[];
+    current_scope: string;
+    note: string;
+  };
+  price_basis?: {
+    code: string;
+    label: string;
+    formula: string;
+    note: string;
+    flour_audit?: {
+      sku: string;
+      package: string;
+      finding: string;
+      normalized_package_prices_brl: string[];
+    };
+  };
+  analytics?: {
+    composition_title: string;
+    formation_title?: string;
+    use_waterfall?: boolean;
+    known_total: string | null;
+    missing_count: number;
+    valued_count: number;
+    missing_names: string[];
+    share_basis: string;
+    share_basis_label: string;
+    category_bars: Array<{
+      category: string;
+      category_label: string;
+      amount: string | null;
+      missing_count: number;
+      valued_count: number;
+      share_of_known_percent: string | null;
+      state: string;
+    }>;
+    waterfall: Array<{
+      label: string;
+      amount: string | null;
+      running_total?: string | null;
+      state?: string;
+    }>;
+    component_bars: Array<{
+      id?: string;
+      label: string;
+      amount: string | null;
+      share_of_known_percent: string | null;
+      state: string;
+      quality_label?: string;
+    }>;
+  };
+  policy?: {
+    price_criterion?: string;
+    currency?: string;
+    use_sellable_yield?: boolean;
+    use_gross_quantity?: boolean;
+    include_return?: boolean;
+    include_waste?: boolean;
+    algorithm_name?: string;
+    algorithm_version?: string;
+    presentation_decimals?: number;
+  } | null;
+  total_is_partial?: boolean;
+  components?: Array<{
+    id?: string;
+    display_name?: string;
+    category: string;
+    category_label?: string;
+    amount: string | null;
+    quantity?: string | null;
+    unit_code?: string | null;
+    quality: string;
+    quality_label?: string;
+    share_percent: string | null;
+    price_missing?: boolean;
+    memory?: Array<{ code: string; label: string; value: string }>;
+  }>;
   gaps?: Array<{ code: string; message: string }>;
 };
 
@@ -1120,6 +1298,26 @@ export type PricingSimulation = {
   disclaimer: string;
 };
 
+export type PracticedSaleBasis = {
+  informed: boolean;
+  quantity: string | null;
+  unit: { id: string; code: string | null; display_name: string | null } | null;
+  label: string | null;
+  status: string;
+  status_label: string;
+};
+
+export type PracticedComparison = {
+  allowed: boolean;
+  reason: string | null;
+  reason_label: string | null;
+  markup_factor?: string | null;
+  margin_rate?: string | null;
+  margin_amount?: string | null;
+  acrescimo_rate?: string | null;
+  scope_complete_for_margin?: boolean;
+};
+
 export type PracticedPrice = {
   id: string;
   channel: string;
@@ -1127,6 +1325,34 @@ export type PracticedPrice = {
   status: string;
   row_version: number;
   justification: string | null;
+  technical_product_id?: string | null;
+  establishment_id?: string | null;
+  valid_from?: string | null;
+  valid_to?: string | null;
+  currency?: string;
+  sale_basis?: PracticedSaleBasis;
+  comparison?: PracticedComparison;
+  derived?: {
+    markup_factor?: string | null;
+    margin_rate?: string | null;
+    margin_amount?: string | null;
+    source?: string;
+    block_reason?: string;
+    block_reason_label?: string;
+  };
+  effective_markup_policy?: {
+    id?: string;
+    code?: string;
+    kind?: string;
+    value?: string;
+    scope_level?: string;
+  } | null;
+  effective_markup_policy_note?: string | null;
+  effective_markup_policy_resolution?: {
+    origin_level?: string | null;
+    reason_label?: string | null;
+    replaced?: unknown[];
+  };
 };
 
 export type ReportIndicator = {
@@ -1175,4 +1401,124 @@ export type SavedReportView = {
   report_code: string;
   filters: Record<string, string | number | null>;
   row_version: number;
+};
+
+export type DashboardMetric = {
+  available: boolean;
+  value?: string | null;
+  unit?: string | null;
+  source: string;
+  period: string;
+  empty?: boolean;
+  reason?: string | null;
+};
+
+export type DashboardAgendaItem = {
+  title: string;
+  when_label: string;
+  href: string;
+};
+
+export type DashboardTask = {
+  title: string;
+  severity: "high" | "medium" | "low";
+  href: string;
+};
+
+export type DashboardAttention = {
+  code: string;
+  title: string;
+  detail: string;
+  severity: "high" | "medium" | "low";
+  count: number;
+  href: string;
+};
+
+export type DashboardChartPoint = {
+  label: string;
+  produced: number | null;
+  cost: string | null;
+  variance: number | null;
+};
+
+export type DashboardToday = {
+  operational_date: string;
+  timezone: string;
+  organization: { name: string };
+  establishment: { name: string } | null;
+  headline: { situation: string; attention: string; next_action?: string; next_href?: string };
+  yesterday: {
+    period: { start: string; end: string; label: string };
+    produced: DashboardMetric;
+    received: DashboardMetric;
+    consumed: DashboardMetric;
+    losses: DashboardMetric;
+    orders_completed: DashboardMetric;
+  };
+  today: {
+    period: { start: string; end: string; label: string };
+    orders_planned: DashboardMetric;
+    orders_in_progress: DashboardMetric;
+    expected_receipts: DashboardMetric;
+    agenda: DashboardAgendaItem[];
+    priority_tasks: DashboardTask[];
+  };
+  attentions: DashboardAttention[];
+  business: {
+    known_cost: DashboardMetric;
+    cost_coverage?: DashboardMetric;
+    current_prices: DashboardMetric;
+    complete_calculations: number;
+    margin: DashboardMetric | null;
+    chart: DashboardChartPoint[];
+  } | null;
+  charts: DashboardCharts;
+  permissions: { economy: boolean };
+};
+
+export type DashboardChartKey = { code: string; label: string };
+
+export type DashboardChartSeries = Record<string, string | number | null | undefined> & {
+  label: string;
+  href?: string;
+  unit?: string | null;
+  status?: string;
+  status_label?: string;
+};
+
+export type DashboardChart = {
+  available: boolean;
+  coverage: string;
+  title: string;
+  unit?: string | null;
+  source: string;
+  series: DashboardChartSeries[];
+  keys?: DashboardChartKey[];
+  distribution?: Array<{ code: string; label: string; count: number }>;
+  coverage_note?: string | null;
+  empty_title?: string | null;
+  empty_action?: string | null;
+  empty_href?: string | null;
+  unit_groups?: Array<{ unit: string; series: DashboardChartSeries[] }>;
+  other_units?: string[];
+  board_href?: string;
+};
+
+export type DashboardCharts = {
+  meta: {
+    period: string;
+    period_label: string;
+    period_start: string;
+    period_end: string;
+    timezone: string;
+    establishment: string | null;
+    as_of: string;
+    generated_at: string;
+  };
+  production: DashboardChart;
+  movements: DashboardChart;
+  stock: DashboardChart;
+  agenda: DashboardChart;
+  costs: DashboardChart | null;
+  prices: DashboardChart | null;
 };

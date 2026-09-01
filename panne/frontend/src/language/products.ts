@@ -81,11 +81,15 @@ export function productRecipeStatusLabel(product: {
 
 export function productRecipeTone(product: {
   has_published_recipe?: boolean;
+  has_process_steps?: boolean;
+  current_recipe?: { steps?: Array<unknown> } | null;
   supply_mode?: string | null;
 }): "sucesso" | "atencao" | "info" | "neutro" | "erro" {
   if (product.supply_mode === "purchased") return "neutro";
   if (isSupplyModeInPreparation(product.supply_mode)) return "atencao";
-  return product.has_published_recipe ? "sucesso" : "atencao";
+  if (!product.has_published_recipe) return "atencao";
+  if (!productHasPrep(product)) return "atencao";
+  return "sucesso";
 }
 
 export function productFamilyLabel(
@@ -138,4 +142,119 @@ export function productsSummarySentence(summary: {
     `${summary.intermediate} preparo(s) intermediário(s)`,
   ].join(" · ");
   return `${primary}. Detalhe: ${secondary}.`;
+}
+
+export function productHasPrep(product: {
+  has_process_steps?: boolean;
+  current_recipe?: { steps?: Array<unknown> } | null;
+}): boolean {
+  if (product.current_recipe) return (product.current_recipe.steps?.length ?? 0) > 0;
+  return Boolean(product.has_process_steps);
+}
+
+export function productReadyToProduce(product: {
+  supply_mode?: string | null;
+  has_published_recipe?: boolean;
+  has_process_steps?: boolean;
+  current_recipe?: { steps?: Array<unknown> } | null;
+}): boolean {
+  if (product.supply_mode !== "produced") return false;
+  return Boolean(product.has_published_recipe) && productHasPrep(product);
+}
+
+/** Prontidão produtiva — não mistura custo. */
+export function productProductionLabel(product: {
+  supply_mode?: string | null;
+  has_published_recipe?: boolean;
+  has_process_steps?: boolean;
+  current_recipe?: { steps?: Array<unknown> } | null;
+}): string {
+  if (product.supply_mode === "purchased") return "Não se aplica";
+  if (isSupplyModeInPreparation(product.supply_mode)) return "Modalidade em preparação";
+  if (!product.has_published_recipe) return "Produção bloqueada";
+  if (!productHasPrep(product)) return "Requer modo de preparo";
+  return "Pronto para produzir";
+}
+
+export function productPendingLabel(product: {
+  supply_mode?: string | null;
+  has_published_recipe?: boolean;
+  has_process_steps?: boolean;
+  current_recipe?: { steps?: Array<unknown> } | null;
+  status?: string | null;
+}): string {
+  if (product.status === "inactive") return "Produto inativo";
+  if (product.supply_mode === "purchased") return "—";
+  if (isSupplyModeInPreparation(product.supply_mode)) return "Modalidade em preparação";
+  if (!product.has_published_recipe) return "Sem receita vigente";
+  if (!productHasPrep(product)) return "Sem modo de preparo";
+  return "—";
+}
+
+export function productNextActionLabel(product: {
+  supply_mode?: string | null;
+  has_published_recipe?: boolean;
+  has_process_steps?: boolean;
+  current_recipe?: { steps?: Array<unknown> } | null;
+  status?: string | null;
+}): string {
+  if (product.status === "inactive") return "Revisar cadastro";
+  if (product.supply_mode === "purchased") return "Abrir produto";
+  if (isSupplyModeInPreparation(product.supply_mode)) return "Abrir produto";
+  if (!product.has_published_recipe) return "Completar a receita";
+  if (!productHasPrep(product)) return "Registrar etapas na receita";
+  return "Abrir produto";
+}
+
+export function productQuantityLabel(
+  quantity: string | null | undefined,
+  unit: string | null | undefined,
+): string {
+  if (quantity == null || quantity === "") return "—";
+  const amount = formatDecimal(quantity);
+  const symbol = unit?.trim();
+  return symbol ? `${amount} ${symbol}` : amount;
+}
+
+export function productComponentRoleLabel(item: {
+  role?: string | null;
+  is_flour_basis?: boolean;
+}): string {
+  if (item.is_flour_basis) return "Base farinha";
+  const role = item.role?.trim();
+  if (!role || role === "ingredient") return "Componente";
+  return role;
+}
+
+export function productYieldLabel(massG: string | null | undefined): string {
+  if (massG == null || massG === "") return "Rendimento não informado";
+  return `${formatDecimal(massG)} g de massa`;
+}
+
+export function productInitials(name: string | null | undefined): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "P";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
+/** Situação de rotulagem a partir do dossiê real — sem inventar aprovação. */
+export function productLabelingStatusLabel(input: {
+  supply_mode?: string | null;
+  dossierStatus?: string | null;
+  recipePublished?: boolean;
+  recipeVersionMatches?: boolean | null;
+}): string {
+  if (input.supply_mode === "purchased") return "Não se aplica";
+  if (!input.dossierStatus) return "Não iniciada";
+  if (input.dossierStatus === "draft") return "Em elaboração";
+  if (input.dossierStatus === "evaluated") return "Rotulagem: requer revisão";
+  if (input.dossierStatus === "invalidated") return "Rotulagem: requer revisão";
+  if (input.dossierStatus === "reviewed") {
+    if (input.recipePublished && input.recipeVersionMatches === false) {
+      return "Desatualizada em relação à receita";
+    }
+    return "Aprovada";
+  }
+  return "Em elaboração";
 }

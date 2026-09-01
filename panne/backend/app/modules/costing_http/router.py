@@ -93,12 +93,42 @@ class PracticedBody(StrictModel):
     establishment_id: str | None = None
     simulation_id: str | None = None
     justification: str | None = None
+    sale_basis_quantity: str | None = None
+    sale_basis_unit_id: str | None = None
 
 
 class DecideBody(StrictModel):
     decision: str
     notes: str | None = None
     reinforced_confirmation: bool = False
+    # Concorrência otimista: vigente conhecido ao abrir o modal de aplicação.
+    expected_active_price_id: str | None = None
+    expected_active_row_version: int | None = None
+
+
+class MarkupPolicyBody(StrictModel):
+    code: str
+    display_name: str | None = None
+    kind: str
+    value: str
+    scope_level: str
+    product_family_id: str | None = None
+    technical_product_id: str | None = None
+    currency: str = "BRL"
+    commercial_rounding_places: int = 2
+    priority: int = 100
+    valid_from: str
+    valid_to: str | None = None
+    justification: str | None = None
+
+
+class ActivateMarkupBody(StrictModel):
+    notes: str | None = None
+
+
+class RetireMarkupBody(StrictModel):
+    notes: str | None = None
+    valid_to: str | None = None
 
 
 def _run(action):
@@ -183,11 +213,21 @@ def list_calculations(
     session: Annotated[Session, Depends(get_runtime_session)],
     kind: str | None = None,
 ):
-    rows = _run(lambda: services.list_calculations(session, principal, kind))
-    marked = services.invalidated_ids(session, principal.selected.organization_id)
-    return {
-        "items": [calculation_out(row, invalidated=row.id in marked) for row in rows]
-    }
+    from app.modules.costing_pricing.presentation import calculation_subject
+
+    def build():
+        rows = services.list_calculations(session, principal, kind)
+        marked = services.invalidated_ids(session, principal.selected.organization_id)
+        return [
+            calculation_out(
+                row,
+                invalidated=row.id in marked,
+                enrich={"subject": calculation_subject(session, row)},
+            )
+            for row in rows
+        ]
+
+    return {"items": _run(build)}
 
 
 @router.post("/costing/calculations")
@@ -212,7 +252,7 @@ def get_calculation(
     calc = payload["calculation"]
     return {
         "data": {
-            **calculation_out(calc, invalidated=calc.id in marked),
+            **calculation_out(calc, invalidated=calc.id in marked, enrich=payload.get("enrich")),
             "components": payload["components"],
             "gaps": [{"code": row.code, "message": row.message} for row in payload["gaps"]],
         }
@@ -274,7 +314,7 @@ def list_prices(
     principal: Annotated[Principal, Depends(get_runtime_principal)],
     session: Annotated[Session, Depends(get_runtime_session)],
 ):
-    return {"items": [price_out(row) for row in _run(lambda: services.list_prices(session, principal))]}
+    return {"items": _run(lambda: services.list_prices_enriched(session, principal))}
 
 
 @router.post("/pricing/practiced")
@@ -312,3 +352,88 @@ def decide_price(
         )
     )
     return {"data": price_out(row), "row_version": row.row_version}
+
+
+@router.get("/pricing/markup-policies")
+def list_markup_policies(
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+):
+    return {"items": _run(lambda: services.list_markup_policies(session, principal))}
+
+
+@router.post("/pricing/markup-policies")
+def create_markup_policy(
+    body: MarkupPolicyBody,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+    idempotency_key: Annotated[UUID, Depends(_command_keys)],
+):
+    data = _run(
+        lambda: services.create_markup_policy(
+            session, principal, body.model_dump(), idempotency_key=idempotency_key
+        )
+    )
+    return {"data": data, "row_version": data.get("row_version")}
+
+
+@router.post("/pricing/markup-policies/{policy_id}/activate")
+def activate_markup_policy(
+    policy_id: UUID,
+    body: ActivateMarkupBody,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+    idempotency_key: Annotated[UUID, Depends(_command_keys)],
+    if_match: Annotated[str | None, Header(alias="If-Match")] = None,
+):
+    data = _run(
+        lambda: services.activate_markup_policy(
+            session,
+            principal,
+            policy_id,
+            expected_version=parse_if_match(if_match, required=False),
+            idempotency_key=idempotency_key,
+            notes=body.notes,
+        )
+    )
+    return {"data": data, "row_version": data.get("row_version")}
+
+
+@router.post("/pricing/markup-policies/{policy_id}/retire")
+def retire_markup_policy(
+    policy_id: UUID,
+    body: RetireMarkupBody,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+    idempotency_key: Annotated[UUID, Depends(_command_keys)],
+    if_match: Annotated[str | None, Header(alias="If-Match")] = None,
+):
+    data = _run(
+        lambda: services.retire_markup_policy(
+            session,
+            principal,
+            policy_id,
+            expected_version=parse_if_match(if_match, required=False),
+            idempotency_key=idempotency_key,
+            notes=body.notes,
+            valid_to=body.valid_to,
+        )
+    )
+    return {"data": data, "row_version": data.get("row_version")}
+
+
+@router.get("/pricing/markup-policies/resolve/{product_id}")
+def resolve_markup_policy_for_product(
+    product_id: UUID,
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+):
+    return {"data": _run(lambda: services.resolve_product_markup_policy(session, principal, product_id))}
+
+
+@router.get("/pricing/economic-audit")
+def list_economic_audit(
+    principal: Annotated[Principal, Depends(get_runtime_principal)],
+    session: Annotated[Session, Depends(get_runtime_session)],
+):
+    return {"items": _run(lambda: services.list_economic_audit(session, principal))}

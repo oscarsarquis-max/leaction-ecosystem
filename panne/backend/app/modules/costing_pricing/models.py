@@ -313,6 +313,9 @@ class PricingDecision(Base):
     practiced_price_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     decision: Mapped[str] = mapped_column(Text, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
+    snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    idempotency_key: Mapped[UUID | None] = mapped_column(Uuid)
+    correlation_id: Mapped[str | None] = mapped_column(Text)
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     created_at: Mapped[datetime] = _created_at()
 
@@ -330,6 +333,8 @@ class PracticedPrice(Base):
     channel: Mapped[str] = mapped_column(Text, nullable=False)
     currency: Mapped[str] = mapped_column(Text, nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
+    sale_basis_quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    sale_basis_unit_id: Mapped[UUID | None] = mapped_column(Uuid)
     valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     pricing_simulation_id: Mapped[UUID | None] = mapped_column(Uuid)
@@ -337,6 +342,58 @@ class PracticedPrice(Base):
     justification: Mapped[str | None] = mapped_column(Text)
     row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     created_by_user_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    created_at: Mapped[datetime] = _created_at()
+
+
+class PricingMarkupPolicy(Base):
+    __tablename__ = "pricing_markup_policy"
+    __table_args__ = (
+        Index("uq_pricing_markup_policy_id_org", "id", "organization_id", unique=True),
+        Index("uq_pricing_markup_policy_org_code", "organization_id", "code", unique=True),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    organization_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    code: Mapped[str] = mapped_column(Text, nullable=False)
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    value: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    scope_level: Mapped[str] = mapped_column(Text, nullable=False)
+    product_family_id: Mapped[UUID | None] = mapped_column(Uuid)
+    technical_product_id: Mapped[UUID | None] = mapped_column(Uuid)
+    channel: Mapped[str | None] = mapped_column(Text)
+    establishment_id: Mapped[UUID | None] = mapped_column(Uuid)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, server_default="100")
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="draft")
+    currency: Mapped[str] = mapped_column(Text, nullable=False, server_default="BRL")
+    commercial_rounding_places: Mapped[int] = mapped_column(Integer, nullable=False, server_default="2")
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    justification: Mapped[str | None] = mapped_column(Text)
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    created_by_user_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    created_at: Mapped[datetime] = _created_at()
+
+
+class PricingEconomicAudit(Base):
+    __tablename__ = "pricing_economic_audit"
+    __table_args__ = (
+        Index("uq_pricing_economic_audit_id_org", "id", "organization_id", unique=True),
+        Index("ix_pricing_economic_audit_org_created", "organization_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    organization_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    operation: Mapped[str] = mapped_column(Text, nullable=False)
+    resource_type: Mapped[str] = mapped_column(Text, nullable=False)
+    resource_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    actor_user_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    idempotency_key: Mapped[UUID | None] = mapped_column(Uuid)
+    correlation_id: Mapped[str | None] = mapped_column(Text)
+    before_state: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    after_state: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    memory: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    justification: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = _created_at()
 
 

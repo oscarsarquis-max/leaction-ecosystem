@@ -94,12 +94,43 @@ export function FlowTrail({ selectedStep = null, compact = true, opsLite = false
   );
 }
 
+/** Trilha econômica: não usa “Anterior” para sair para a etapa 7 do fluxo. */
+function EconomicFlowTrail({ pathname }: { pathname: string }) {
+  const onDashboard = pathname === "/gestao/custos" || pathname === "/gestao/custos/";
+  return (
+    <nav className="flow-trail flow-trail--compact flow-trail--econ" aria-label="Retorno do módulo econômico">
+      <div className="flow-trail__meta">
+        <Link className="flow-trail__home" to="/fluxo?etapa=8">
+          Fluxo · etapa 8
+        </Link>
+      </div>
+      <div className="flow-trail__nav">
+        {onDashboard ? (
+          <span className="flow-trail__spacer" />
+        ) : (
+          <Link className="ghost" to="/gestao/custos">
+            Voltar ao painel de custos
+          </Link>
+        )}
+        <Link className="ghost" to="/fluxo?etapa=8">
+          Voltar ao fluxo
+        </Link>
+        <span className="flow-trail__spacer" />
+      </div>
+    </nav>
+  );
+}
+
 /** Trilha ligada ao pathname atual (uso no Shell). */
 export function FlowTrailFromLocation({ pathname }: { pathname: string }) {
   const step = matchFlowStep(pathname);
   const operational = pathname.includes("/executar");
+  if (pathname.startsWith("/produtos")) return null;
   if (pathname === "/fluxo" || pathname.startsWith("/fluxo?")) return null;
   if (pathname === "/inicio") return null;
+  if (pathname.startsWith("/gestao/custos")) {
+    return <EconomicFlowTrail pathname={pathname} />;
+  }
   if (!step && !operational) return null;
   return <FlowTrail selectedStep={step} opsLite={operational} />;
 }

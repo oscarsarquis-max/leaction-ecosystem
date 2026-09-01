@@ -3,7 +3,7 @@ import type { DemoGuidePayload } from "./guideTypes";
 /** Fallback versionado — ausência de métrica = null, nunca inventar zero. */
 export const DEMO_GUIDE_FALLBACK: DemoGuidePayload = {
   schema_version: 1,
-  content_version: "r028-003",
+  content_version: "r028-004-economy",
   title: "Guia da demonstração Panne",
   source: "fallback",
   what_is: {
@@ -12,7 +12,7 @@ export const DEMO_GUIDE_FALLBACK: DemoGuidePayload = {
     flow:
       "O mapa do caminho crítico em /fluxo distingue a visão geral da organização (preparação) da jornada de um produto (código público). “Você está aqui” é a primeira etapa que ainda impede o avanço; clicar numa etapa só muda o foco de consulta.",
     data_nature:
-      "Todos os dados desta demonstração são fictícios. Não representam padaria real, fornecedor real nem obrigação legal.",
+      "Todos os dados desta demonstração são fictícios. Não representam padaria real, fornecedor real nem obrigação legal. Preços com origem «demonstração» são sintéticos.",
     shared:
       "Este é um ambiente compartilhado de homologação. Outros avaliadores podem alterar os mesmos registros.",
     not_production: "Não há relação com o banco nem com a aplicação de produção da Panne.",
@@ -31,7 +31,7 @@ export const DEMO_GUIDE_FALLBACK: DemoGuidePayload = {
       "Planejamento e ordens",
       "Execução / preparo",
       "Conformidade e rotulagem",
-      "Custos e preços",
+      "Custos e preços (cenários A–D)",
       "Relatórios",
     ],
   },
@@ -105,7 +105,7 @@ export const DEMO_GUIDE_FALLBACK: DemoGuidePayload = {
     { step: 9, title: "Abrir planejamento e ordens", path: "/planejamento", requires_session: true },
     { step: 10, title: "Acompanhar preparo e execução", path: "/ordens", requires_session: true },
     { step: 11, title: "Consultar rotulagem", path: "/conformidade", requires_session: true },
-    { step: 12, title: "Consultar custos e preços", path: "/gestao/custos", requires_session: true },
+    { step: 12, title: "Analisar custos, preços e margens (cenários A–D)", path: "/gestao/custos/decisao", requires_session: true },
     { step: 13, title: "Trocar para Padaria Horizonte Demo (isolamento)", path: "/organizacao", requires_session: true },
     { step: 14, title: "Sair", path: "/entrar", requires_session: false },
   ],
@@ -188,21 +188,21 @@ export const DEMO_GUIDE_FALLBACK: DemoGuidePayload = {
   counts: {
     source: "fallback",
     updated_at: null,
-    note: "Contagens de referência; a API tenta atualizar ao vivo na demo.",
+    note: "Contagens de referência pós população econômica demo; a API tenta atualizar ao vivo.",
     organizations: [
       {
         slug: "panne-demonstracao",
         display_name: "Panne Demonstração",
         role: "principal",
         counts: {
-          produtos: 12,
-          produtos_ativos: 12,
+          produtos: 7,
+          produtos_ativos: 7,
           produtos_inativos: 0,
-          ingredientes: 18,
-          receitas: 6,
+          ingredientes: 21,
+          receitas: 7,
           planos: 10,
           ordens: 10,
-          fornecedores: 4,
+          fornecedores: 9,
           lotes: 6,
           saldos: 6,
           movimentos: 7,
@@ -232,14 +232,14 @@ export const DEMO_GUIDE_FALLBACK: DemoGuidePayload = {
       },
     ],
     totals: {
-      produtos: 12,
-      produtos_ativos: 12,
+      produtos: 7,
+      produtos_ativos: 7,
       produtos_inativos: 0,
-      ingredientes: 19,
-      receitas: 6,
+      ingredientes: 22,
+      receitas: 7,
       planos: 10,
       ordens: 10,
-      fornecedores: 4,
+      fornecedores: 9,
       lotes: 6,
       saldos: 6,
       movimentos: 7,

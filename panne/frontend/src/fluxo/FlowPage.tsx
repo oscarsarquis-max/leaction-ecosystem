@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { ProductCard } from "../api/types";
 import { StatusBadge } from "../components/Feedback";
-import { GigioIdentity } from "../assistant/GigioIdentity";
 import { config } from "../config";
 import { readOperationalContext } from "../session/operationalContext";
 import { useAuth } from "../auth/AuthContext";
@@ -423,40 +422,6 @@ export function FlowPage() {
             </Link>
           </p>
         ) : null}
-      </section>
-
-      <section className="flow-gigio panel" aria-labelledby="flow-gigio-heading">
-        <GigioIdentity size="lg" caption="Explica o mapa — não compete com ele" />
-        <div className="flow-gigio__body">
-          <h2 id="flow-gigio-heading">{gigio.youAreOn}</h2>
-          {gigio.pathStoppedAt ? (
-            <p>
-              <strong>Motivo: </strong>
-              {loading ? "Carregando evidências…" : gigio.mainPending}
-            </p>
-          ) : (
-            <p>{gigio.statusLine}</p>
-          )}
-          {gigio.consequence ? <p>{gigio.consequence}</p> : null}
-          <p>
-            <strong>Próxima ação: </strong>
-            {loading ? "…" : recommended?.label ?? current?.nextAction ?? "—"}
-          </p>
-          {gigio.modalityNote ? <p className="meta">{gigio.modalityNote}</p> : null}
-          <p className="meta">{gigio.purpose}</p>
-          <div className="flow-gigio__actions">
-            {recommended ? (
-              <Link className="primary" to={withFlowReturn(recommended.to, currentId)}>
-                {recommended.label}
-              </Link>
-            ) : null}
-            {config.demoMode ? (
-              <Link className="ghost" to="/demonstracao">
-                Abrir guia da demonstração
-              </Link>
-            ) : null}
-          </div>
-        </div>
       </section>
 
       {current ? (

@@ -140,6 +140,8 @@ export function formatMoneyAmount(
       style: "currency",
       currency: code,
       currencyDisplay: "symbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
   } catch {
     return `${formatDecimal(amount)} ${code}`;

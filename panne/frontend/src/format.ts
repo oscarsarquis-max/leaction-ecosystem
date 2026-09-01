@@ -1,3 +1,5 @@
+import { SURFACE_ENUM_LABEL } from "./language/surface";
+
 const dateTime = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short",
   timeStyle: "short",
@@ -121,6 +123,8 @@ export const STATUS_LABEL: Record<string, string> = {
   confirmed: "Confirmado",
   published: "Publicada",
   active: "Ativo",
+  inactive: "Inativo",
+  planned: "Planejada",
   retired: "Aposentado",
 };
 
@@ -188,7 +192,7 @@ export const SHIFT_LABEL: Record<string, string> = {
 
 export function statusLabel(value: string | null | undefined): string {
   if (!value) return "—";
-  return STATUS_LABEL[value] ?? value;
+  return STATUS_LABEL[value] ?? SURFACE_ENUM_LABEL[value] ?? value;
 }
 
 export function actionLabel(value: string | null | undefined): string {
@@ -198,7 +202,7 @@ export function actionLabel(value: string | null | undefined): string {
 
 export function shiftLabel(value: string | null | undefined): string {
   if (!value) return "—";
-  return SHIFT_LABEL[value] ?? value;
+  return SHIFT_LABEL[value] ?? SURFACE_ENUM_LABEL[value] ?? value;
 }
 
 export function catalogLabel(map: Record<string, string>, value: string | null | undefined): string {

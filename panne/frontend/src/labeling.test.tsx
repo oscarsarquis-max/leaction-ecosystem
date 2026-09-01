@@ -119,7 +119,7 @@ describe("conformidade e rotulagem", () => {
         }),
     });
     await renderApp("/inicio");
-    expect(await screen.findByRole("heading", { name: "Início" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Hoje na Panne" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Conformidade" })).not.toBeInTheDocument();
 
     installApiMock({

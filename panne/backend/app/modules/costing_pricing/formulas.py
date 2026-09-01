@@ -80,6 +80,16 @@ def contribution_from_price(price, variable_product, variable_selling) -> Decima
     return quantize_percent((sale - _dec(variable_product) - _dec(variable_selling)) / sale)
 
 
+def markup_factor_from_price(price, cost_base) -> Decimal:
+    """Markup como fator: preço ÷ custo."""
+    return quantize_money(_dec(price) / _positive_base(cost_base))
+
+
+def monetary_margin(price, cost_base) -> Decimal:
+    """Margem monetária: preço − custo."""
+    return quantize_money(_dec(price) - _dec(cost_base))
+
+
 def reverse_metrics(
     price,
     cost_base,

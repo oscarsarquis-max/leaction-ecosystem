@@ -96,7 +96,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       domain: guide.domain,
       section: guide.section,
       title: guide.title,
-      goal: guide.goal,
+      goal: overlay?.goal || guide.goal,
       organization: active?.display_name || "",
       entity: guide.entity,
       entityLabel: overlay?.entityLabel || guide.entity,
@@ -104,7 +104,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       permissions: (me?.permissions ?? []).filter((code) => guide.permissions.includes(code) || hasPermission(code)),
       actions: guide.actions.filter((action) => action),
       pending: overlay?.pending || copies.pending || guide.pending,
-      blocked: overlay?.blocked || copies.blocked || guide.blocks,
+      blocked: overlay ? overlay.blocked || "" : copies.blocked || guide.blocks,
       next: copies.next,
       dirty,
       pendingCommand,
@@ -145,15 +145,26 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       pendingCommand,
       live,
       openAssistant,
-      closeAssistant: () => setOpen(false),
+      closeAssistant: () => {
+        setOpen(false);
+        queueMicrotask(() => {
+          document.querySelector<HTMLButtonElement>('[aria-label="Abrir Gigio"]')?.focus();
+        });
+      },
       minimizeAssistant: () => {
         setMinimized(true);
         setOpen(false);
+        queueMicrotask(() => {
+          document.querySelector<HTMLButtonElement>('[aria-label="Abrir Gigio"]')?.focus();
+        });
       },
       dismissAssistant: () => {
         setDismissed(true);
         setOpen(false);
         setFlow(null);
+        queueMicrotask(() => {
+          document.querySelector<HTMLButtonElement>('[aria-label="Abrir Gigio"]')?.focus();
+        });
       },
       setFlow,
       setDirty,

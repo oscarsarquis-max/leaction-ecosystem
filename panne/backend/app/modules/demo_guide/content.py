@@ -5,27 +5,27 @@ from __future__ import annotations
 from typing import Any
 
 GUIDE_SCHEMA_VERSION = 1
-GUIDE_CONTENT_VERSION = "r028-003"
+GUIDE_CONTENT_VERSION = "r028-004-economy"
 
 # Totais de referência (fallback versionado). Nunca inventar zero quando a fonte falha.
 FALLBACK_COUNTS: dict[str, Any] = {
     "source": "fallback",
     "updated_at": None,
-    "note": "Contagens de referência; a API tenta atualizar ao vivo na demo.",
+    "note": "Contagens de referência pós população econômica demo; a API tenta atualizar ao vivo.",
     "organizations": [
         {
             "slug": "panne-demonstracao",
             "display_name": "Panne Demonstração",
             "role": "principal",
             "counts": {
-                "produtos": 12,
-                "produtos_ativos": 12,
+                "produtos": 7,
+                "produtos_ativos": 7,
                 "produtos_inativos": 0,
-                "ingredientes": 18,
-                "receitas": 6,
+                "ingredientes": 21,
+                "receitas": 7,
                 "planos": 10,
                 "ordens": 10,
-                "fornecedores": 4,
+                "fornecedores": 9,
                 "lotes": 6,
                 "saldos": 6,
                 "movimentos": 7,
@@ -55,14 +55,14 @@ FALLBACK_COUNTS: dict[str, Any] = {
         },
     ],
     "totals": {
-        "produtos": 12,
-        "produtos_ativos": 12,
+        "produtos": 7,
+        "produtos_ativos": 7,
         "produtos_inativos": 0,
-        "ingredientes": 19,
-        "receitas": 6,
+        "ingredientes": 22,
+        "receitas": 7,
         "planos": 10,
         "ordens": 10,
-        "fornecedores": 4,
+        "fornecedores": 9,
         "lotes": 6,
         "saldos": 6,
         "movimentos": 7,
@@ -91,7 +91,8 @@ def static_guide_body() -> dict[str, Any]:
             ),
             "data_nature": (
                 "Todos os dados desta demonstração são fictícios. Não representam "
-                "padaria real, fornecedor real nem obrigação legal."
+                "padaria real, fornecedor real nem obrigação legal. Preços de compra "
+                "com origem «demonstração» são sintéticos e auditáveis."
             ),
             "shared": (
                 "Este é um ambiente compartilhado de homologação. Outros avaliadores "
@@ -115,8 +116,40 @@ def static_guide_body() -> dict[str, Any]:
                 "Planejamento e ordens",
                 "Execução / preparo",
                 "Conformidade e rotulagem",
-                "Custos e preços",
+                "Custos e preços (cenários A–D)",
                 "Relatórios",
+            ],
+            "costing_scenarios": [
+                {
+                    "code": "A",
+                    "product": "PAO-FR · Pão francês (Demo)",
+                    "role": "Custos aplicáveis configurados — calculadora e gráficos principais",
+                    "hints": "Receita v3 publicada, 60 un vendáveis, preços de ingredientes, previsto com custo unitário; embalagem/MOD/energia ainda fora do escopo.",
+                },
+                {
+                    "code": "B",
+                    "product": "PAO-INT · Pão integral (Demo)",
+                    "role": "Custos aplicáveis parciais (intencional)",
+                    "hints": "FAR-INT sem preço de propósito — ausência ≠ zero; composição parcial.",
+                },
+                {
+                    "code": "C",
+                    "product": "MANTEIGA-PT · Manteiga tablete (Demo — comprado)",
+                    "role": "Mercadoria comprada",
+                    "hints": "Sem ordem de produção; custo de aquisição por unidade; categorias produtivas não se aplicam.",
+                },
+                {
+                    "code": "D",
+                    "product": "FOCACCIA (Demo)",
+                    "role": "Variação previsto × realizado",
+                    "hints": "Previsto 8 un; realizado com 7 un; rendimento e unitário desfavoráveis; total neutro.",
+                },
+                {
+                    "code": "E",
+                    "product": "—",
+                    "role": "Cenário futuro",
+                    "hints": "Markup por produto/família ainda não persistido no contrato — não inventado nesta demo.",
+                },
             ],
         },
         "profiles": [
@@ -246,8 +279,8 @@ def static_guide_body() -> dict[str, Any]:
             },
             {
                 "step": 12,
-                "title": "Consultar custos e preços",
-                "path": "/gestao/custos",
+                "title": "Analisar custos, preços e margens (cenários A–D)",
+                "path": "/gestao/custos/decisao",
                 "requires_session": True,
             },
             {
@@ -335,6 +368,9 @@ def static_guide_body() -> dict[str, Any]:
             "Combos, mistos e sub-receitas avançadas seguem o estado real do recorte (podem estar incompletos).",
             "Dados podem ser alterados por outros homologadores a qualquer momento.",
             "Restauração/reset da demo, quando houver, é operação de equipe — não automática pelo avaliador.",
+            "Padaria Horizonte Demo permanece intencionalmente sem cenário econômico (isolamento).",
+            "Embalagem como role na receita ainda não é aceita pelo schema legado; preço de papel existe no catálogo.",
+            "Markup por família/produto (cenário E) é futuro — só política organizacional + simulação.",
         ],
         "version": {
             "label": "Panne Demo · CURSOR-028",

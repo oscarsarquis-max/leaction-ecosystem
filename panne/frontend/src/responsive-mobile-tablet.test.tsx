@@ -46,13 +46,9 @@ describe("Experiência mobile e tablet — Fluxo + Gigio + entradas", () => {
     stubViewport(390, 844);
     await renderApp("/gestao/compras/entradas");
 
-    const coach = await screen.findByRole("complementary", { name: "Orientação do processo" });
-    expect(coach).toHaveClass("is-collapsed");
-    expect(within(coach).getByRole("button", { name: "Abrir" })).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("button", { name: "Abrir Gigio, assistente da Panne" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Entradas fiscais" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Orientação do processo" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Abrir Gigio" })).toBeInTheDocument();
   });
 
   it("em tablet vertical o fluxo mostra Gigio editorial e trilho utilizável", async () => {
@@ -60,9 +56,8 @@ describe("Experiência mobile e tablet — Fluxo + Gigio + entradas", () => {
     await renderApp("/fluxo");
 
     expect(await screen.findByRole("heading", { name: "Fluxo produtivo" })).toBeInTheDocument();
-    const gigioPanel = document.querySelector(".flow-gigio");
-    expect(gigioPanel).not.toBeNull();
-    expect(gigioPanel?.textContent ?? "").toMatch(/Pendência principal|etapa|Finalidade|Orientador/i);
+    expect(document.querySelector(".flow-gigio")).toBeNull();
+    expect(screen.getByRole("button", { name: "Abrir Gigio" })).toBeInTheDocument();
 
     const rail = screen.getByRole("navigation", { name: "Etapas do fluxo produtivo" });
     const buttons = within(rail).getAllByRole("button");
@@ -92,11 +87,10 @@ describe("Experiência mobile e tablet — Fluxo + Gigio + entradas", () => {
     stubViewport(1024, 768);
     await renderApp("/produtos");
 
-    expect(await screen.findByRole("navigation", { name: "Trilha do fluxo produtivo" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Produtos" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Fluxo produtivo/i }).length).toBeGreaterThanOrEqual(1);
-    expect(
-      await screen.findByRole("complementary", { name: "Orientação do processo" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Abrir Gigio" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Orientação do processo" })).not.toBeInTheDocument();
   });
 
   it("em celular o avatar flutuante não cobre o CTA Registrar entrada", async () => {
@@ -104,7 +98,7 @@ describe("Experiência mobile e tablet — Fluxo + Gigio + entradas", () => {
     await renderApp("/gestao/compras/entradas");
 
     const avatar = await screen.findByRole("button", {
-      name: "Abrir Gigio, assistente da Panne",
+      name: "Abrir Gigio",
     });
     const cta = await screen.findByRole("link", { name: "Registrar entrada" });
     const filtrar = screen.getByRole("button", { name: "Filtrar" });

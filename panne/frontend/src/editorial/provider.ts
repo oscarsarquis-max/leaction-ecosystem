@@ -5,5 +5,5 @@ export interface LoginEditorialContentProvider {
 }
 
 export function futureActionHubAdapterNote(): string {
-  return "O adaptador do Action Hub opera no backend Panne; o frontend só consome GET /api/v1/public/login-editorial.";
+  return "O adaptador do Action Hub opera no servidor da Panne; a tela de entrada só lê o texto público de login.";
 }

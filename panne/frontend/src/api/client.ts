@@ -29,6 +29,7 @@ import type {
   ReportPayload,
   ReportSnapshot,
   SavedReportView,
+  DashboardToday,
   RecipeReferenceLink,
   RecipeVersion,
   ScaleRow,
@@ -454,6 +455,12 @@ export class ApiClient {
     return this.catalogGet<Envelope<LabelingDossier>>(`/labeling/dossiers/${dossierId}`);
   }
 
+  getLabelingRender(dossierId: string) {
+    return this.catalogGet<{ data: { html: string; candidate?: unknown } }>(
+      `/labeling/dossiers/${dossierId}/render`,
+    );
+  }
+
   listLabelingAssessments() {
     return this.catalogGet<{ items: Array<{ id: string; proposal_summary: string; status: string }>; total: number }>(
       "/labeling/assessments",
@@ -496,8 +503,30 @@ export class ApiClient {
     return this.catalogGet<{ items: PracticedPrice[] }>("/pricing/practiced");
   }
 
+  listMarkupPolicies() {
+    return this.catalogGet<{ items: Array<Record<string, unknown>> }>("/pricing/markup-policies");
+  }
+
+  resolveMarkupPolicy(productId: string) {
+    return this.catalogGet<{ data: Record<string, unknown> }>(
+      `/pricing/markup-policies/resolve/${productId}`,
+    );
+  }
+
+  listEconomicAudit() {
+    return this.catalogGet<{ items: Array<Record<string, unknown>> }>("/pricing/economic-audit");
+  }
+
   listInventory<T = Record<string, unknown>>(path: string, query: Query = {}) {
     return this.catalogGet<{ items: T[]; as_of?: string; timezone?: string }>(path, query);
+  }
+
+  getDashboardToday(establishmentId?: string, period?: string) {
+    return this.catalogGet<DashboardToday>(
+      "/dashboard/today",
+      { establishment_id: establishmentId, period },
+      false,
+    );
   }
 
   reportingCatalog() {

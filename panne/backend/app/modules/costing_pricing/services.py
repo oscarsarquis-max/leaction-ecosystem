@@ -40,6 +40,8 @@ from app.modules.costing_pricing.models import (
     CostingPolicyVersion,
     PracticedPrice,
     PricingDecision,
+    PricingEconomicAudit,
+    PricingMarkupPolicy,
     PricingSimulation,
     PricingSimulationComponent,
 )
@@ -49,6 +51,8 @@ from app.modules.identity_organization.authorization import (
     PERMISSION_COSTING_CALCULATE_PLANNED,
     PERMISSION_COSTING_POLICY_MANAGE,
     PERMISSION_COSTING_READ,
+    PERMISSION_PRICING_AUDIT_READ,
+    PERMISSION_PRICING_POLICY_MANAGE,
     PERMISSION_PRICING_PUBLISH,
     PERMISSION_PRICING_REVIEW,
     PERMISSION_PRICING_SIMULATION_MANAGE,
@@ -395,6 +399,12 @@ def create_practiced_price(session: Session, principal: Principal, body: dict, *
     replay = _replay(session, org, idempotency_key, "pricing.practiced.create", body)
     if replay is not None:
         return session.get(PracticedPrice, replay.resource_id)
+    qty = body.get("sale_basis_quantity")
+    unit = body.get("sale_basis_unit_id")
+    if (qty is None) ^ (unit is None):
+        raise ValidationError("contrato_invalido")
+    if qty is not None and Decimal(str(qty)) <= 0:
+        raise ValidationError("contrato_invalido")
     row = PracticedPrice(
         organization_id=org,
         establishment_id=None if not body.get("establishment_id") else UUID(body["establishment_id"]),
@@ -402,6 +412,8 @@ def create_practiced_price(session: Session, principal: Principal, body: dict, *
         channel=body["channel"],
         currency=body.get("currency") or "BRL",
         amount=Decimal(str(body["amount"])),
+        sale_basis_quantity=None if qty is None else Decimal(str(qty)),
+        sale_basis_unit_id=None if unit is None else UUID(str(unit)),
         valid_from=_parse_time(body["valid_from"]),
         valid_to=None if not body.get("valid_to") else _parse_time(body["valid_to"]),
         pricing_simulation_id=None if not body.get("simulation_id") else UUID(body["simulation_id"]),
@@ -429,14 +441,64 @@ def decide_price(session: Session, principal: Principal, price_id, body: dict, *
     if expected_version is not None and int(row.row_version or 1) != expected_version:
         raise ConcurrencyError("versao_conflito")
     decision = body["decision"]
+    before = {
+        "status": row.status,
+        "amount": format(row.amount, "f"),
+        "sale_basis_quantity": None if row.sale_basis_quantity is None else format(row.sale_basis_quantity, "f"),
+        "sale_basis_unit_id": None if row.sale_basis_unit_id is None else str(row.sale_basis_unit_id),
+        "valid_from": row.valid_from.isoformat() if row.valid_from else None,
+        "valid_to": row.valid_to.isoformat() if row.valid_to else None,
+    }
+    superseded_ids: list[str] = []
     if decision == "publish":
         require_permission(principal, PERMISSION_PRICING_PUBLISH)
         if row.status not in {"draft", "approved"}:
             raise InvalidStateError("transicao_invalida")
+        if row.sale_basis_quantity is None or row.sale_basis_unit_id is None:
+            raise ValidationError("sale_basis_obrigatoria")
         if row.pricing_simulation_id:
             simulation = session.get(PricingSimulation, row.pricing_simulation_id)
             if simulation is not None and simulation.warning and not body.get("reinforced_confirmation"):
                 raise ValidationError("confirmacao_reforcada_obrigatoria")
+        # Append-only succession: close other active prices same context
+        siblings = list(
+            session.scalars(
+                select(PracticedPrice).where(
+                    PracticedPrice.organization_id == org,
+                    PracticedPrice.technical_product_id == row.technical_product_id,
+                    PracticedPrice.channel == row.channel,
+                    PracticedPrice.id != row.id,
+                    PracticedPrice.status.in_(("active", "published", "approved")),
+                )
+            )
+        )
+        active_siblings = [
+            sib
+            for sib in siblings
+            if sib.establishment_id == row.establishment_id and sib.status in {"active", "published"}
+        ]
+        # Optimistic concurrency: UI passa o vigente conhecido ao abrir o modal.
+        if "expected_active_price_id" in body or "expected_active_row_version" in body:
+            expected_id = body.get("expected_active_price_id")
+            expected_rv = body.get("expected_active_row_version")
+            if expected_id in (None, ""):
+                if active_siblings:
+                    raise ConcurrencyError("versao_conflito")
+            else:
+                match = next((s for s in active_siblings if str(s.id) == str(expected_id)), None)
+                if match is None:
+                    raise ConcurrencyError("versao_conflito")
+                if expected_rv is not None and int(match.row_version or 1) != int(expected_rv):
+                    raise ConcurrencyError("versao_conflito")
+        for sib in siblings:
+            if sib.establishment_id != row.establishment_id:
+                continue
+            if sib.valid_to is None or sib.valid_to > row.valid_from:
+                sib.valid_to = row.valid_from
+            if sib.status in {"active", "published"}:
+                sib.status = "retired"
+                sib.row_version = int(sib.row_version or 1) + 1
+                superseded_ids.append(str(sib.id))
         row.status = "active"
     elif decision == "approve":
         require_permission(principal, PERMISSION_PRICING_REVIEW)
@@ -450,13 +512,44 @@ def decide_price(session: Session, principal: Principal, price_id, body: dict, *
     else:
         raise ValidationError("contrato_invalido")
     row.row_version = int(row.row_version or 1) + 1
+    after = {
+        "status": row.status,
+        "amount": format(row.amount, "f"),
+        "sale_basis_quantity": None if row.sale_basis_quantity is None else format(row.sale_basis_quantity, "f"),
+        "sale_basis_unit_id": None if row.sale_basis_unit_id is None else str(row.sale_basis_unit_id),
+        "valid_from": row.valid_from.isoformat() if row.valid_from else None,
+        "valid_to": row.valid_to.isoformat() if row.valid_to else None,
+        "superseded_ids": superseded_ids,
+    }
+    memory = {
+        "decision": decision,
+        "currency": row.currency,
+        "channel": row.channel,
+        "technical_product_id": str(row.technical_product_id),
+    }
     session.add(
         PricingDecision(
             organization_id=org,
             practiced_price_id=row.id,
             decision=decision,
             notes=body.get("notes"),
+            snapshot={"before": before, "after": after, "memory": memory},
+            idempotency_key=idempotency_key,
             created_by_user_id=principal.user_id,
+        )
+    )
+    session.add(
+        PricingEconomicAudit(
+            organization_id=org,
+            operation=f"pricing.decide.{decision}",
+            resource_type="practiced_price",
+            resource_id=row.id,
+            actor_user_id=principal.user_id,
+            idempotency_key=idempotency_key,
+            before_state=before,
+            after_state=after,
+            memory=memory,
+            justification=body.get("notes"),
         )
     )
     _store_command(
@@ -500,14 +593,461 @@ def list_prices(session: Session, principal: Principal):
     return list(session.scalars(select(PracticedPrice).where(PracticedPrice.organization_id == _org(principal))))
 
 
+def list_prices_enriched(session: Session, principal: Principal) -> list[dict]:
+    """Authoritative practiced list with sale_basis + comparison + effective policy."""
+    from app.modules.costing_http.serialize import price_out
+    from app.modules.costing_pricing.comparison import build_comparison, sale_basis_payload
+    from app.modules.costing_pricing.policy_resolve import derive_from_policy, resolve_markup_policy
+    from app.modules.formula_lab.models import TechnicalProduct
+    from app.modules.ingredient_catalog.models import MeasurementUnit
+
+    require_permission(principal, PERMISSION_COSTING_READ)
+    org = _org(principal)
+    rows = list(session.scalars(select(PracticedPrice).where(PracticedPrice.organization_id == org)))
+    product_ids = {r.technical_product_id for r in rows}
+    products = {
+        p.id: p
+        for p in session.scalars(
+            select(TechnicalProduct).where(
+                TechnicalProduct.organization_id == org,
+                TechnicalProduct.id.in_(product_ids),
+            )
+        )
+    } if product_ids else {}
+    unit_ids = {r.sale_basis_unit_id for r in rows if r.sale_basis_unit_id}
+    unit_ids |= {p.sale_unit_id for p in products.values() if p.sale_unit_id}
+    unit_ids |= {p.net_content_unit_id for p in products.values() if p.net_content_unit_id}
+    units = {}
+    if unit_ids:
+        units = {
+            u.id: u
+            for u in session.scalars(select(MeasurementUnit).where(MeasurementUnit.id.in_(unit_ids)))
+        }
+    calcs = list(
+        session.scalars(
+            select(CostingCalculation).where(
+                CostingCalculation.organization_id == org,
+                CostingCalculation.kind == "planned",
+            )
+        )
+    )
+    calc_by_product: dict = {}
+    for calc in calcs:
+        if calc.technical_product_id is None:
+            continue
+        prev = calc_by_product.get(calc.technical_product_id)
+        if prev is None or str(calc.created_at or "") > str(prev.created_at or ""):
+            calc_by_product[calc.technical_product_id] = calc
+
+    items: list[dict] = []
+    for row in rows:
+        unit = units.get(row.sale_basis_unit_id) if row.sale_basis_unit_id else None
+        basis = sale_basis_payload(
+            quantity=row.sale_basis_quantity,
+            unit_id=row.sale_basis_unit_id,
+            unit_code=None if unit is None else unit.code,
+            unit_display_name=None if unit is None else unit.name,
+        )
+        calc = calc_by_product.get(row.technical_product_id)
+        product = products.get(row.technical_product_id)
+        cost_unit_id = None if product is None else product.sale_unit_id
+        cost_unit = units.get(cost_unit_id) if cost_unit_id else None
+        cost_qty = Decimal("1") if cost_unit_id is not None and calc and calc.sellable_unit_amount is not None else None
+        pkg_unit = None
+        if product and product.net_content_unit_id:
+            pkg_unit = units.get(product.net_content_unit_id)
+        comparison = build_comparison(
+            price_amount=row.amount,
+            price_currency=row.currency,
+            sale_basis=basis,
+            cost_amount=None if calc is None else calc.sellable_unit_amount,
+            cost_currency=None if calc is None else calc.currency,
+            cost_basis_quantity=cost_qty,
+            cost_basis_unit_id=cost_unit_id,
+            cost_partial=False if calc is None else calc.completeness != "complete",
+            price_definitive_allowed=False if calc is None else calc.completeness == "complete",
+            sale_unit_dimension=None if unit is None else unit.dimension,
+            sale_unit_si_factor=None if unit is None else unit.si_factor,
+            cost_unit_dimension=None if cost_unit is None else cost_unit.dimension,
+            cost_unit_si_factor=None if cost_unit is None else cost_unit.si_factor,
+            package_content_quantity=None if product is None else product.net_content,
+            package_content_unit_id=None if product is None else product.net_content_unit_id,
+            package_content_dimension=None if pkg_unit is None else pkg_unit.dimension,
+            package_content_si_factor=None if pkg_unit is None else pkg_unit.si_factor,
+        )
+        resolved = resolve_markup_policy(
+            session,
+            organization_id=org,
+            technical_product_id=row.technical_product_id,
+            at=row.valid_from,
+        )
+        policy_calc = None
+        eff = resolved.get("effective")
+        if (
+            eff
+            and comparison.get("allowed")
+            and calc
+            and calc.sellable_unit_amount is not None
+            and calc.completeness == "complete"
+        ):
+            try:
+                policy_calc = derive_from_policy(
+                    kind=eff["kind"],
+                    value=Decimal(str(eff["value"])),
+                    cost=Decimal(str(calc.sellable_unit_amount)),
+                    places=int(eff.get("commercial_rounding_places") or 2),
+                )
+            except ValueError:
+                policy_calc = None
+        payload = price_out(row, unit_row=unit, comparison=comparison)
+        payload["effective_markup_policy"] = eff
+        payload["effective_markup_policy_resolution"] = {
+            "origin_level": resolved.get("origin_level"),
+            "replaced": resolved.get("replaced") or [],
+            "reason": resolved.get("reason"),
+            "reason_label": resolved.get("reason_label"),
+            "deferred_scopes": resolved.get("deferred_scopes"),
+            "from_policy_calculation": policy_calc,
+        }
+        if eff is None:
+            payload["effective_markup_policy_note"] = resolved.get("reason_label") or (
+                "Nenhuma política de markup/margem ativa resolvida para este preço."
+            )
+        else:
+            payload["effective_markup_policy_note"] = (
+                f"Política efetiva no nível {resolved.get('origin_level')} ({eff.get('code')})."
+            )
+        items.append(payload)
+    return items
+
+
+def list_markup_policies(session: Session, principal: Principal) -> list[dict]:
+    from app.modules.costing_pricing.policy_resolve import policy_out
+
+    require_permission(principal, PERMISSION_COSTING_READ)
+    rows = list(
+        session.scalars(
+            select(PricingMarkupPolicy)
+            .where(PricingMarkupPolicy.organization_id == _org(principal))
+            .order_by(PricingMarkupPolicy.scope_level, PricingMarkupPolicy.code)
+        )
+    )
+    return [policy_out(r) for r in rows]
+
+
+def create_markup_policy(session: Session, principal: Principal, body: dict, *, idempotency_key):
+    from app.modules.costing_pricing.policy_resolve import policy_out
+
+    require_permission(principal, PERMISSION_PRICING_POLICY_MANAGE)
+    org = _org(principal)
+    replay = _replay(session, org, idempotency_key, "pricing.markup_policy.create", body)
+    if replay is not None:
+        return policy_out(session.get(PricingMarkupPolicy, replay.resource_id))
+    kind = body["kind"]
+    if kind not in {"markup_factor", "margin_rate"}:
+        raise ValidationError("contrato_invalido")
+    scope = body["scope_level"]
+    if scope not in {"organization", "family", "product"}:
+        raise ValidationError("contrato_invalido")
+    if scope == "channel":
+        raise ValidationError("escopo_canal_nao_suportado")
+    family_id = None if not body.get("product_family_id") else UUID(str(body["product_family_id"]))
+    product_id = None if not body.get("technical_product_id") else UUID(str(body["technical_product_id"]))
+    if scope == "organization" and (family_id or product_id):
+        raise ValidationError("contrato_invalido")
+    if scope == "family" and family_id is None:
+        raise ValidationError("contrato_invalido")
+    if scope == "product" and product_id is None:
+        raise ValidationError("contrato_invalido")
+    value = Decimal(str(body["value"]))
+    if value <= 0:
+        raise ValidationError("contrato_invalido")
+    if kind == "margin_rate" and value >= 1:
+        raise ValidationError("contrato_invalido")
+    row = PricingMarkupPolicy(
+        organization_id=org,
+        code=body["code"],
+        display_name=body.get("display_name") or body["code"],
+        kind=kind,
+        value=value,
+        scope_level=scope,
+        product_family_id=family_id,
+        technical_product_id=product_id,
+        channel=None,
+        establishment_id=None,
+        priority=int(body.get("priority") or 100),
+        status="draft",
+        currency=body.get("currency") or "BRL",
+        commercial_rounding_places=int(body.get("commercial_rounding_places") or 2),
+        valid_from=_parse_time(body["valid_from"]),
+        valid_to=None if not body.get("valid_to") else _parse_time(body["valid_to"]),
+        justification=body.get("justification"),
+        created_by_user_id=principal.user_id,
+    )
+    session.add(row)
+    session.flush()
+    session.add(
+        PricingEconomicAudit(
+            organization_id=org,
+            operation="pricing.markup_policy.create",
+            resource_type="pricing_markup_policy",
+            resource_id=row.id,
+            actor_user_id=principal.user_id,
+            idempotency_key=idempotency_key,
+            before_state={},
+            after_state=policy_out(row),
+            memory={"kind": kind, "scope_level": scope},
+            justification=body.get("justification"),
+        )
+    )
+    _store_command(
+        session,
+        org,
+        idempotency_key,
+        "pricing.markup_policy.create",
+        body,
+        "pricing_markup_policy",
+        row.id,
+        principal.user_id,
+    )
+    return policy_out(row)
+
+
+def activate_markup_policy(
+    session: Session, principal: Principal, policy_id, *, expected_version, idempotency_key, notes: str | None = None
+):
+    from app.modules.costing_pricing.policy_resolve import policy_out
+
+    require_permission(principal, PERMISSION_PRICING_POLICY_MANAGE)
+    org = _org(principal)
+    payload = {"id": str(policy_id), "decision": "activate", "notes": notes}
+    replay = _replay(session, org, idempotency_key, "pricing.markup_policy.activate", payload)
+    if replay is not None:
+        return policy_out(session.get(PricingMarkupPolicy, replay.resource_id))
+    row = session.get(PricingMarkupPolicy, policy_id)
+    if row is None or row.organization_id != org:
+        raise ValidationError("recurso_nao_encontrado")
+    if expected_version is not None and int(row.row_version or 1) != expected_version:
+        raise ConcurrencyError("versao_conflito")
+    if row.status not in {"draft", "retired"}:
+        raise InvalidStateError("transicao_invalida")
+    # Application-level overlap check for same scope key
+    rivals = list(
+        session.scalars(
+            select(PricingMarkupPolicy).where(
+                PricingMarkupPolicy.organization_id == org,
+                PricingMarkupPolicy.status == "active",
+                PricingMarkupPolicy.scope_level == row.scope_level,
+                PricingMarkupPolicy.id != row.id,
+            )
+        )
+    )
+    for rival in rivals:
+        same_key = False
+        if row.scope_level == "organization":
+            same_key = True
+        elif row.scope_level == "family":
+            same_key = rival.product_family_id == row.product_family_id
+        elif row.scope_level == "product":
+            same_key = rival.technical_product_id == row.technical_product_id
+        if not same_key:
+            continue
+        # overlap if open-ended or intervals intersect
+        r_from, r_to = rival.valid_from, rival.valid_to
+        n_from, n_to = row.valid_from, row.valid_to
+        ends_before = r_to is not None and r_to <= n_from
+        starts_after = n_to is not None and n_to <= r_from
+        if not ends_before and not starts_after:
+            raise ValidationError("politica_vigencia_conflito")
+    before = policy_out(row)
+    row.status = "active"
+    row.row_version = int(row.row_version or 1) + 1
+    session.add(
+        PricingEconomicAudit(
+            organization_id=org,
+            operation="pricing.markup_policy.activate",
+            resource_type="pricing_markup_policy",
+            resource_id=row.id,
+            actor_user_id=principal.user_id,
+            idempotency_key=idempotency_key,
+            before_state=before,
+            after_state=policy_out(row),
+            memory={},
+            justification=notes,
+        )
+    )
+    _store_command(
+        session,
+        org,
+        idempotency_key,
+        "pricing.markup_policy.activate",
+        payload,
+        "pricing_markup_policy",
+        row.id,
+        principal.user_id,
+    )
+    return policy_out(row)
+
+
+def retire_markup_policy(
+    session: Session,
+    principal: Principal,
+    policy_id,
+    *,
+    expected_version,
+    idempotency_key,
+    notes: str | None = None,
+    valid_to: str | None = None,
+):
+    from app.modules.costing_pricing.policy_resolve import policy_out
+
+    require_permission(principal, PERMISSION_PRICING_POLICY_MANAGE)
+    org = _org(principal)
+    payload = {"id": str(policy_id), "decision": "retire", "notes": notes, "valid_to": valid_to}
+    replay = _replay(session, org, idempotency_key, "pricing.markup_policy.retire", payload)
+    if replay is not None:
+        return policy_out(session.get(PricingMarkupPolicy, replay.resource_id))
+    row = session.get(PricingMarkupPolicy, policy_id)
+    if row is None or row.organization_id != org:
+        raise ValidationError("recurso_nao_encontrado")
+    if expected_version is not None and int(row.row_version or 1) != expected_version:
+        raise ConcurrencyError("versao_conflito")
+    if row.status not in {"active", "draft"}:
+        raise InvalidStateError("transicao_invalida")
+    before = policy_out(row)
+    end = _parse_time(valid_to) if valid_to else datetime.now(tz=row.valid_from.tzinfo)
+    if end <= row.valid_from:
+        raise ValidationError("contrato_invalido")
+    row.valid_to = end
+    row.status = "retired"
+    row.row_version = int(row.row_version or 1) + 1
+    session.add(
+        PricingEconomicAudit(
+            organization_id=org,
+            operation="pricing.markup_policy.retire",
+            resource_type="pricing_markup_policy",
+            resource_id=row.id,
+            actor_user_id=principal.user_id,
+            idempotency_key=idempotency_key,
+            before_state=before,
+            after_state=policy_out(row),
+            memory={},
+            justification=notes,
+        )
+    )
+    _store_command(
+        session,
+        org,
+        idempotency_key,
+        "pricing.markup_policy.retire",
+        payload,
+        "pricing_markup_policy",
+        row.id,
+        principal.user_id,
+    )
+    return policy_out(row)
+
+
+def resolve_product_markup_policy(session: Session, principal: Principal, technical_product_id) -> dict:
+    require_permission(principal, PERMISSION_COSTING_READ)
+    from app.modules.costing_pricing.policy_resolve import resolve_markup_policy
+
+    return resolve_markup_policy(
+        session,
+        organization_id=_org(principal),
+        technical_product_id=UUID(str(technical_product_id)),
+    )
+
+
+def list_economic_audit(session: Session, principal: Principal, *, limit: int = 50) -> list[dict]:
+    require_permission(principal, PERMISSION_PRICING_AUDIT_READ)
+    rows = list(
+        session.scalars(
+            select(PricingEconomicAudit)
+            .where(PricingEconomicAudit.organization_id == _org(principal))
+            .order_by(PricingEconomicAudit.created_at.desc())
+            .limit(min(limit, 200))
+        )
+    )
+    return [
+        {
+            "id": str(r.id),
+            "operation": r.operation,
+            "resource_type": r.resource_type,
+            "resource_id": str(r.resource_id),
+            "actor_user_id": str(r.actor_user_id),
+            "idempotency_key": None if r.idempotency_key is None else str(r.idempotency_key),
+            "before_state": r.before_state,
+            "after_state": r.after_state,
+            "memory": r.memory,
+            "justification": r.justification,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
 def calculation_detail(session: Session, principal: Principal, calc_id) -> dict:
     require_permission(principal, PERMISSION_COSTING_READ)
     calc = _calc(session, _org(principal), calc_id)
     gaps = list(session.scalars(select(CostingGap).where(CostingGap.costing_calculation_id == calc.id)))
+    from app.modules.costing_pricing.models import CostingPolicyVersion
+    from app.modules.costing_pricing.presentation import (
+        analytics_from_components,
+        calculation_subject,
+        cost_base_for_pricing,
+        cost_scope_report,
+        markup_policy_contract,
+        price_basis_contract,
+        sellable_absence_reason,
+    )
+
+    policy = session.get(CostingPolicyVersion, calc.costing_policy_version_id)
+    subject = calculation_subject(session, calc)
+    supply_mode = subject.get("supply_mode") or "produced"
+    components = composition(session, calc)
+    if supply_mode == "purchased":
+        for row in components:
+            if row.get("category") == "ingredient":
+                row["category_label"] = "Valor de compra"
+    analytics = analytics_from_components(
+        components, completeness=calc.completeness, supply_mode=supply_mode
+    )
+    scope = cost_scope_report(
+        components,
+        policy=policy,
+        completeness=calc.completeness,
+        supply_mode=supply_mode,
+    )
+    cost_base = cost_base_for_pricing(calc, scope)
     return {
         "calculation": calc,
-        "components": composition(session, calc),
+        "components": components,
         "gaps": gaps,
+        "enrich": {
+            "subject": subject,
+            "cost_base": cost_base,
+            "cost_scope": scope,
+            "sellable_absence_reason": sellable_absence_reason(calc, policy),
+            "markup_policy": markup_policy_contract(),
+            "price_basis": price_basis_contract(),
+            "analytics": analytics,
+            "policy": None
+            if policy is None
+            else {
+                "price_criterion": policy.price_criterion,
+                "currency": policy.currency,
+                "use_sellable_yield": policy.use_sellable_yield,
+                "use_gross_quantity": policy.use_gross_quantity,
+                "include_return": policy.include_return,
+                "include_waste": policy.include_waste,
+                "enabled_categories": list(policy.enabled_categories or []),
+                "algorithm_name": policy.algorithm_name,
+                "algorithm_version": policy.algorithm_version,
+                "presentation_decimals": policy.presentation_decimals,
+            },
+            "total_is_partial": not scope.get("price_definitive_allowed", False),
+        },
     }
 
 

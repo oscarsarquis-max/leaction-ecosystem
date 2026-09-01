@@ -23,6 +23,7 @@ import {
   resolveInventoryAsOf,
 } from "../language/inventory";
 import { formatExactQuantity, formatOperationalQuantity, pluralize } from "../language/quantities";
+import { SURFACE_PHRASES } from "../language/surface";
 import { useOrganization } from "../session/OrganizationContext";
 
 type Row = Record<string, unknown>;
@@ -541,7 +542,7 @@ export function InventoryMovementsPage() {
   return (
     <Screen
       title="Movimentações"
-      lede="Histórico append-only. Erro se corrige com reversão, nunca com edição."
+      lede={SURFACE_PHRASES.movementsImmutable}
       path="/inventory/movements"
     >
       {(items) => (

@@ -7,7 +7,13 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.modules.formula_lab.models import Formulation, FormulationVersion, ProductFamily, TechnicalProduct
+from app.modules.formula_lab.models import (
+    Formulation,
+    FormulationVersion,
+    ProcessStep,
+    ProductFamily,
+    TechnicalProduct,
+)
 from app.modules.identity_organization.authorization import (
     PERMISSION_PRODUCT_ACTIVATE,
     PERMISSION_PRODUCT_CREATE,
@@ -83,6 +89,23 @@ def has_published_recipe(session: Session, product_id: UUID, organization_id: UU
             Formulation.technical_product_id == product_id,
             Formulation.organization_id == organization_id,
             FormulationVersion.organization_id == organization_id,
+            FormulationVersion.status == "published",
+        )
+        .limit(1)
+    )
+    return session.execute(stmt).scalar_one_or_none() is not None
+
+
+def has_process_steps_on_published_recipe(session: Session, product_id: UUID, organization_id: UUID) -> bool:
+    stmt = (
+        select(ProcessStep.id)
+        .join(FormulationVersion, FormulationVersion.id == ProcessStep.formulation_version_id)
+        .join(Formulation, Formulation.id == FormulationVersion.formulation_id)
+        .where(
+            Formulation.technical_product_id == product_id,
+            Formulation.organization_id == organization_id,
+            FormulationVersion.organization_id == organization_id,
+            ProcessStep.organization_id == organization_id,
             FormulationVersion.status == "published",
         )
         .limit(1)

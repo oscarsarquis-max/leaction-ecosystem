@@ -17,9 +17,27 @@
     display: none !important;
   }
 
-  body {
-    background: #fff;
-    color: #111;
+  body,
+  .main,
+  .shell,
+  .flow-page,
+  .card,
+  .stat-card,
+  .context-strip,
+  .empty-card {
+    background: #fff !important;
+    color: #111 !important;
+    box-shadow: none !important;
+  }
+
+  .primary,
+  .ghost,
+  .chip,
+  .flow-map__node {
+    background: #fff !important;
+    color: #111 !important;
+    border-color: #111 !important;
+    box-shadow: none !important;
   }
 
   .sheet,

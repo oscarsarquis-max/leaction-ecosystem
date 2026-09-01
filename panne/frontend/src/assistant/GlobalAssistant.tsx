@@ -1,18 +1,17 @@
 import { useEffect, useId, useRef } from "react";
-import { Link } from "react-router-dom";
 import { config } from "../config";
-import { GLOSSARY } from "../guide/glossary";
-import { INTENTS } from "../guide/intents";
-import { useOrganization } from "../session/OrganizationContext";
 import { useAssistant } from "./AssistantContext";
 import { GIGIO_NAME, GigioIdentity } from "./GigioIdentity";
 
+function isMobileViewport(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+}
+
 export function GlobalAssistant({ publicMode = false }: { publicMode?: boolean }) {
-  const { open, flow, dirty, pendingCommand, live, closeAssistant, minimizeAssistant, dismissAssistant, setFlow } =
-    useAssistant();
-  const { hasPermission } = useOrganization();
+  const { open, live, closeAssistant } = useAssistant();
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (open) closeRef.current?.focus();
@@ -21,113 +20,91 @@ export function GlobalAssistant({ publicMode = false }: { publicMode?: boolean }
   useEffect(() => {
     if (!open) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape" && !dirty && !pendingCommand) closeAssistant();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeAssistant();
+        return;
+      }
+      if (event.key !== "Tab" || !panelRef.current) return;
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    function onPointer(event: MouseEvent) {
+      const target = event.target as Node;
+      if (panelRef.current?.contains(target)) return;
+      if ((target as HTMLElement).closest?.(".assistant-avatar")) return;
+      closeAssistant();
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, dirty, pendingCommand, closeAssistant]);
+    document.addEventListener("mousedown", onPointer);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onPointer);
+    };
+  }, [open, closeAssistant]);
 
   if (!open) return null;
 
-  const intents = publicMode ? [] : INTENTS.filter((item) => hasPermission(item.permission));
-  const terms = GLOSSARY.filter((item) => live.related.includes(item.code)).slice(0, 4);
+  const situation = publicMode
+    ? config.demoMode
+      ? "Não há senha nesta demonstração. Escolha um perfil e entre pelo botão do centro."
+      : "O conteúdo ao lado não altera o login. Se as colunas falharem, o acesso continua no centro."
+    : live.goal;
+  const pending = publicMode
+    ? "O conteúdo editorial não mistura sessão com autenticação."
+    : live.blocked || live.pending || "Nenhuma pendência destacada nesta tela.";
+  const next = publicMode
+    ? config.demoMode
+      ? "Escolher o perfil e entrar na demonstração."
+      : "Entrar com a conta da organização."
+    : live.next;
+
+  const mobile = isMobileViewport();
 
   return (
-    <aside className="drawer-assist panel no-print" role="dialog" aria-labelledby={titleId} aria-modal="false">
-      <GigioIdentity size="sm" caption={publicMode ? "Ajuda para entrar" : "Orientação do processo"} />
-      <h2 id={titleId}>{publicMode ? `${GIGIO_NAME} · Ajuda para entrar` : GIGIO_NAME}</h2>
-      {publicMode ? (
-        config.demoMode ? (
-          <>
-            <p>
-              Não há senha nesta demonstração. Escolha um perfil — recomendamos Proprietário para o roteiro
-              completo — e entre pelo botão do centro.
-            </p>
-            <p>O conteúdo editorial ao lado não altera o acesso; o login continua utilizável se as colunas falharem.</p>
-            <p>
-              <Link to="/demonstracao">Abrir guia da demonstração</Link>
-            </p>
-          </>
-        ) : (
-          <p>O conteúdo ao lado não altera o login. Se as colunas falharem, o acesso continua no centro.</p>
-        )
-      ) : (
-        <>
-          <p>
-            Você está em <strong>{live.title}</strong>
-            {live.entityLabel && live.entityLabel !== live.entity ? ` · ${live.entityLabel}` : ""}. {live.goal}
-          </p>
-          <p className="meta">
-            {live.organization ? `Organização: ${live.organization}. ` : ""}
-            Entidade: {live.entity}. Estado: {live.status}.
-            {live.operational ? ` Contexto: ${live.operational}.` : ""}
-          </p>
-          <p className="meta">Próxima ação: {live.next}</p>
-          {live.blocked ? <p role="status">Bloqueio: {live.blocked}</p> : null}
-          {live.pending ? <p>Falta: {live.pending}</p> : null}
-          {!live.guideSpecific ? <p className="meta">Guia mínimo: esta rota ainda não tem texto próprio.</p> : null}
-          {config.demoMode ? (
-            <p>
-              <Link to="/demonstracao">Guia da demonstração</Link>
-              {" · "}
-              etapa atual e próxima ação acima; limitações da tela estão no guia quando relevantes.
-            </p>
-          ) : null}
-          {dirty || pendingCommand ? (
-            <p role="status">Há formulário sujo ou comando pendente. {GIGIO_NAME} não executa.</p>
-          ) : null}
-        </>
-      )}
-      {flow ? (
-        <section>
-          <h3>{flow.title}</h3>
-          <p>{flow.note}</p>
-          <ol>
-            {flow.steps.map((step, index) => (
-              <li key={step} aria-current={index === flow.step ? "step" : undefined}>
-                {step}
-              </li>
-            ))}
-          </ol>
-          <button type="button" className="ghost" onClick={() => setFlow(null)}>
-            Voltar à orientação
+    <>
+      {mobile ? <div className="assistant-backdrop no-print" aria-hidden="true" /> : null}
+      <aside
+        ref={panelRef}
+        className={`drawer-assist panel no-print${mobile ? " drawer-assist--sheet" : ""}`}
+        role="dialog"
+        aria-labelledby={titleId}
+        aria-modal="true"
+        aria-label={GIGIO_NAME}
+      >
+        <div className="drawer-assist__bar">
+          <GigioIdentity size="sm" caption={null} />
+          <h2 id={titleId} className="visually-hidden">
+            {GIGIO_NAME}
+          </h2>
+          <button type="button" className="ghost" ref={closeRef} onClick={closeAssistant}>
+            Fechar
           </button>
-        </section>
-      ) : null}
-      {!publicMode && intents.length ? (
-        <section>
-          <h3>Ir para</h3>
-          <ul className="list">
-            {intents.map((item) => (
-              <li key={item.code}>
-                <Link to={item.to}>{item.label}</Link>
-                <div className="meta">{item.precondition}</div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {terms.length ? (
-        <section>
-          <h3>Glossário</h3>
-          {terms.map((item) => (
-            <p key={item.code}>
-              <strong>{item.title}.</strong> {item.short}
-            </p>
-          ))}
-        </section>
-      ) : null}
-      <p>
-        <button type="button" className="ghost" ref={closeRef} onClick={closeAssistant}>
-          Fechar
-        </button>{" "}
-        <button type="button" className="ghost" onClick={minimizeAssistant}>
-          Minimizar
-        </button>{" "}
-        <button type="button" className="ghost" onClick={dismissAssistant}>
-          Dispensar
-        </button>
-      </p>
-    </aside>
+        </div>
+        <p>
+          <strong>Situação. </strong>
+          {situation}
+        </p>
+        <p>
+          <strong>Principal pendência. </strong>
+          {pending}
+        </p>
+        <p>
+          <strong>Próxima ação. </strong>
+          {next}
+        </p>
+      </aside>
+    </>
   );
 }

@@ -176,8 +176,8 @@ export const FLOW_STEPS: FlowStepDef[] = [
     hideWithoutAccess: true,
     primary: { to: "/gestao/custos", label: "Abrir custos e preços", permission: "costing.read" },
     secondary: [
-      { to: "/gestao/custos/precos", label: "Preços praticados", permission: "pricing.review" },
-      { to: "/gestao/custos/simulacoes", label: "Simulações", permission: "pricing.simulation.manage" },
+      { to: "/gestao/custos/precos", label: "Preços e histórico", permission: "pricing.review" },
+      { to: "/gestao/custos/calculadora", label: "Calculadora", permission: "pricing.simulation.manage" },
     ],
     pathMatchers: (path) => path.startsWith("/gestao/custos"),
   },

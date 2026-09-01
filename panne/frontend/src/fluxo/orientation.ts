@@ -151,7 +151,7 @@ function primaryActionForBlocker(
     return { label: "Revisar rotulagem", to: "/conformidade", allowed: true };
   }
   if (stepId === 8 && hasAny(codes, ["costing.read", "pricing.review"])) {
-    return { label: "Calcular custo/preço", to: "/gestao/custos", allowed: has(codes, "costing.read") };
+    return { label: "Abrir formação do custo", to: "/gestao/custos/formacao", allowed: has(codes, "costing.read") };
   }
   return null;
 }
@@ -277,7 +277,7 @@ function recommendAction(input: OrientationInput): OrientationAction | null {
         allowed: has(codes, "labeling.read"),
       };
     }
-    return { label: "Calcular custo/preço", to: "/gestao/custos", allowed: has(codes, "costing.read") };
+    return { label: "Abrir formação do custo", to: "/gestao/custos/formacao", allowed: has(codes, "costing.read") };
   }
 
   return { label: "Voltar ao mapa", to: "/fluxo", allowed: true };

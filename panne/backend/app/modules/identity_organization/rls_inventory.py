@@ -157,6 +157,8 @@ COSTING_TABLES = frozenset(
         "pricing_simulation_component",
         "pricing_decision",
         "practiced_price",
+        "pricing_markup_policy",
+        "pricing_economic_audit",
         "costing_command",
     }
 )

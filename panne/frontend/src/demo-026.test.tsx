@@ -53,9 +53,9 @@ describe("aceitação demo 026", () => {
       const signedIn = path !== "/entrar" && path !== "/callback";
       const { view } = await renderApp(concretePath(path), { signedIn });
       if (signedIn && path !== "/demonstracao") {
-        expect(await screen.findByRole("button", { name: "Abrir Gigio, assistente da Panne" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Abrir Gigio" })).toBeInTheDocument();
       } else if (path === "/entrar") {
-        expect(await screen.findByRole("button", { name: "Abrir ajuda de Gigio para entrar" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Abrir Gigio" })).toBeInTheDocument();
       }
       expect(screen.queryByRole("button", { name: "Assistente" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Retomar assistente" })).not.toBeInTheDocument();
@@ -73,7 +73,7 @@ describe("aceitação demo 026", () => {
       "demo-baker",
       "demo-reviewer",
       "demo-buyer",
-      "demo-reader",
+      "demo-viewer",
     ]);
     installApiMock();
     await renderApp("/componentes/estoque/posicao");

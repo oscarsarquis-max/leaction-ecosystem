@@ -14,13 +14,32 @@ export function contrastRatio(foreground: string, background: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+/** Pares oficiais do tema marrom/bege (WCAG AA ≥ 4.5:1 texto). */
 export const TOKEN_PAIRS: Array<{ name: string; fg: string; bg: string }> = [
-  { name: "grafite sobre bege", fg: "#323334", bg: "#E5E4D6" },
-  { name: "espresso sobre creme", fg: "#49352A", bg: "#F7F2E8" },
-  { name: "castanho sobre creme", fg: "#6B4A3A", bg: "#F7F2E8" },
-  { name: "oliva sobre creme", fg: "#3D5A3A", bg: "#F7F2E8" },
-  { name: "ocre sobre creme", fg: "#8A5A12", bg: "#F7F2E8" },
-  { name: "terracota sobre creme", fg: "#8B3A2A", bg: "#F7F2E8" },
-  { name: "creme sobre grafite", fg: "#F7F2E8", bg: "#323334" },
-  { name: "trigo sobre espresso", fg: "#C7A878", bg: "#49352A" },
+  { name: "grafite sobre bege", fg: "#323334", bg: "#e5e4d6" },
+  { name: "grafite sobre creme", fg: "#323334", bg: "#f7f2e8" },
+  { name: "bege sobre grafite (chrome)", fg: "#e5e4d6", bg: "#323334" },
+  { name: "creme sobre espresso (botão)", fg: "#f7f2e8", bg: "#49352a" },
+  { name: "oliva sobre bege", fg: "#3d5a3a", bg: "#e5e4d6" },
+  { name: "ocre sobre bege", fg: "#8a5a12", bg: "#e5e4d6" },
+  { name: "terracota sobre creme", fg: "#8b3a2a", bg: "#f7f2e8" },
 ];
+
+/** Escala marrom/bege de referência (tema aprovado na demo). */
+export const BROWN_SCALE = {
+  grafite: "#323334",
+  bege: "#e5e4d6",
+  espresso: "#49352a",
+  castanho: "#6b4a3a",
+  caramelo: "#a06f49",
+  trigo: "#c7a878",
+  creme: "#f7f2e8",
+  areia: "#d8c9af",
+  oliva: "#3d5a3a",
+  ocre: "#8a5a12",
+  terracota: "#8b3a2a",
+  foco: "#5a3d2c",
+} as const;
+
+/** Tema verde rejeitado — não usar. */
+export const GREEN_SCALE = {} as Record<string, string>;

@@ -23,12 +23,19 @@ def _raw_url() -> str:
 def postgres_url() -> str:
     raw = _raw_url()
     if "postgresql+asyncpg://" in raw:
-        raw = raw.replace("postgresql+asyncpg://", "postgresql+psycopg://")
+        raw = raw.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    if "postgresql+psycopg://" in raw and "postgresql+psycopg2://" not in raw:
+        # Windows: psycopg3 + ProactorEventLoop quebra create_engine síncrono nos testes.
+        raw = raw.replace("postgresql+psycopg://", "postgresql+psycopg2://")
     parsed = urlparse(raw)
     if parsed.scheme.split("+")[0] != "postgresql":
         raise RuntimeError("mecanismo invalido")
     if parsed.path.lstrip("/") != "panne":
-        raise RuntimeError("banco logico invalido")
+        raise RuntimeError(
+        "banco logico invalido: testes exigem DB lógico 'panne' "
+        f"(obtido: {parsed.path.lstrip('/')!r}). "
+        "Ex.: PANNE_ENV=test PANNE_DATABASE_URL=postgresql+asyncpg://…/panne"
+    )
     if get_settings().env not in {"local", "test"}:
         raise RuntimeError("ambiente desconhecido")
     return raw

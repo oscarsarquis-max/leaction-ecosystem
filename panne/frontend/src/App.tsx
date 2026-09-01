@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProviderTree } from "./auth/AuthContext";
 import { RequireAuth, RequireOrganization, RequirePermission } from "./components/RequireAuth";
 import { Shell } from "./components/Shell";
@@ -15,7 +15,8 @@ import { SheetPage } from "./pages/SheetPage";
 import { TraceabilityHubPage, TraceabilityPage } from "./pages/TraceabilityPage";
 import { ExecutePage } from "./ops/ExecutePage";
 import { CatalogsPage } from "./pages/CatalogsPage";
-import { HomePage } from "./pages/HomePage";
+import { ExecutiveTodayPage } from "./pages/ExecutiveTodayPage";
+import { LandingRedirect } from "./navigation/LandingRedirect";
 import { IngredientEditorPage } from "./pages/IngredientEditorPage";
 import { IngredientsPage } from "./pages/IngredientsPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
@@ -38,7 +39,10 @@ import {
   LabelingSourcesPage,
 } from "./pages/LabelingListsPage";
 import { LabelingOverviewPage } from "./pages/LabelingOverviewPage";
-import { CostingOverviewPage } from "./pages/CostingOverviewPage";
+import { CostingDecisionPage } from "./pages/CostingDecisionPage";
+import { EconomicDashboardPage } from "./pages/EconomicDashboardPage";
+import { CostingVariancePage } from "./pages/CostingVariancePage";
+import { EconomicLayout } from "./costing/EconomicLayout";
 import {
   ReportingOverviewPage,
   ReportingReportPage,
@@ -47,6 +51,7 @@ import {
 } from "./pages/ReportingPages";
 import {
   CostingCalculationPage,
+  CostingCalculatorPage,
   CostingListPage,
   CostingPoliciesPage,
   CostingPricesPage,
@@ -97,7 +102,7 @@ export function AppRoutes() {
                 </RequireAuth>
               }
             >
-              <Route path="/inicio" element={<HomePage />} />
+              <Route path="/inicio" element={<ExecutiveTodayPage />} />
               <Route path="/fluxo" element={<FlowPage />} />
               <Route
                 path="/componentes/ingredientes"
@@ -443,58 +448,43 @@ export function AppRoutes() {
                 path="/gestao/custos"
                 element={
                   <RequirePermission code="costing.read">
-                    <CostingOverviewPage />
+                    <EconomicLayout />
                   </RequirePermission>
                 }
-              />
-              <Route
-                path="/gestao/custos/politicas"
-                element={
-                  <RequirePermission code="costing.read">
-                    <CostingPoliciesPage />
-                  </RequirePermission>
-                }
-              />
-              <Route
-                path="/gestao/custos/previstos"
-                element={
-                  <RequirePermission code="costing.read">
-                    <CostingListPage kind="planned" title="Custos previstos" />
-                  </RequirePermission>
-                }
-              />
-              <Route
-                path="/gestao/custos/realizados"
-                element={
-                  <RequirePermission code="costing.read">
-                    <CostingListPage kind="actual" title="Custos realizados" />
-                  </RequirePermission>
-                }
-              />
-              <Route
-                path="/gestao/custos/calculos/:calcId"
-                element={
-                  <RequirePermission code="costing.read">
-                    <CostingCalculationPage />
-                  </RequirePermission>
-                }
-              />
-              <Route
-                path="/gestao/custos/simulacoes"
-                element={
-                  <RequirePermission code="pricing.simulation.manage">
-                    <CostingSimulationsPage />
-                  </RequirePermission>
-                }
-              />
-              <Route
-                path="/gestao/custos/precos"
-                element={
-                  <RequirePermission code="pricing.review">
-                    <CostingPricesPage />
-                  </RequirePermission>
-                }
-              />
+              >
+                <Route index element={<EconomicDashboardPage />} />
+                <Route path="formacao" element={<CostingDecisionPage />} />
+                <Route path="decisao" element={<CostingDecisionPage />} />
+                <Route path="variacao" element={<CostingVariancePage />} />
+                <Route path="politicas" element={<CostingPoliciesPage />} />
+                <Route path="previstos" element={<CostingListPage kind="planned" title="Custos previstos" />} />
+                <Route path="realizados" element={<CostingListPage kind="actual" title="Custos realizados" />} />
+                <Route path="calculos/:calcId" element={<CostingCalculationPage />} />
+                <Route
+                  path="calculadora"
+                  element={
+                    <RequirePermission code="costing.read">
+                      <CostingCalculatorPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="simulacoes"
+                  element={
+                    <RequirePermission code="pricing.simulation.manage">
+                      <CostingSimulationsPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="precos"
+                  element={
+                    <RequirePermission code="costing.read">
+                      <CostingPricesPage />
+                    </RequirePermission>
+                  }
+                />
+              </Route>
               <Route
                 path="/gestao/compras/necessidades"
                 element={
@@ -659,7 +649,7 @@ export function AppRoutes() {
                   </RequirePermission>
                 }
               />
-              <Route path="/" element={<Navigate to="/fluxo" replace />} />
+              <Route path="/" element={<LandingRedirect />} />
             </Route>
           </Routes>
   );

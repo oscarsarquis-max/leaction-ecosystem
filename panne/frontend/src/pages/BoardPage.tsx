@@ -180,7 +180,7 @@ export function BoardPage() {
     if (!config.demoMode || !active?.organization_id || !catalog) return;
     if (catalogOrgRef.current !== active.organization_id) return;
     if (readOperationalContext(active.organization_id, userHint)) return;
-    const place = catalog.establishments[0];
+    const place = catalog?.establishments?.[0];
     if (!place) return;
     const suggested: OperationalContext = {
       operational_date: config.demoAnchorDate,

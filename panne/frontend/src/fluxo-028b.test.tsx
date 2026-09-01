@@ -32,11 +32,11 @@ describe("CURSOR-028-B fluxo produtivo", () => {
     expect(preferredStepForRole(resolveFlowRole(["regulatory_reviewer"]))).toBe(7);
   });
 
-  it("redirect inicial / e login vão para /fluxo", async () => {
+  it("redirect inicial / e login do gestor vão para o painel", async () => {
     installApiMock();
     localStorage.setItem("panne.activeOrganization", ORG_A);
     const { view } = await renderApp("/");
-    expect(await screen.findByRole("heading", { name: "Fluxo produtivo" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Hoje na Panne" })).toBeInTheDocument();
     view.unmount();
 
     const login = await renderApp("/entrar", { signedIn: false });
@@ -45,7 +45,7 @@ describe("CURSOR-028-B fluxo produtivo", () => {
       name: /Entrar em desenvolvimento|Entrar na demonstração/,
     });
     await user.click(enter);
-    expect(await screen.findByRole("heading", { name: "Fluxo produtivo" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Hoje na Panne" })).toBeInTheDocument();
     login.view.unmount();
   });
 
@@ -74,7 +74,7 @@ describe("CURSOR-028-B fluxo produtivo", () => {
     installApiMock();
     localStorage.setItem("panne.activeOrganization", ORG_A);
     await renderApp("/receitas");
-    expect(await screen.findByRole("heading", { name: "Receitas" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Minhas receitas" })).toBeInTheDocument();
     const trail = screen.getByRole("navigation", { name: "Trilha do fluxo produtivo" });
     expect(within(trail).getByText(/Etapa 4 de \d+/)).toBeInTheDocument();
     expect(within(trail).getByRole("link", { name: "Voltar ao fluxo" })).toHaveAttribute(

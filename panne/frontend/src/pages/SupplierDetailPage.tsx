@@ -11,6 +11,7 @@ import {
   supplierStatusLabel,
   supplierStatusTone,
 } from "../language/suppliers";
+import { SURFACE_PHRASES } from "../language/surface";
 import { useOrganization } from "../session/OrganizationContext";
 
 function packageLabel(item: SupplierItemCard): string {
@@ -190,7 +191,7 @@ export function SupplierDetailPage() {
             historyState.data.data.length > 0 ? (
               <div className="table-wrap">
                 <table>
-                  <caption>Observações append-only (mais recente primeiro)</caption>
+                  <caption>{SURFACE_PHRASES.notesHistory}</caption>
                   <thead>
                     <tr>
                       <th>Valor</th>
