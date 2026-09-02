@@ -12,7 +12,14 @@ Registro operacional de deploys. Uma linha por promoção a produção.
 
 - URL: `https://actionhub.com.br/panne`
 - Processo: upload cirúrgico do frontend Action Hub (`src/app/panne`, marca, isenção de gatekeeper/header) + `npm run build` + `pm2 restart action-hub`. Sem migrate, seed, CMS ou Demo.
-- Rollback: reverter o commit `6dea0b5` em `main` (ou restaurar o `.next` anterior do FE) e `pm2 restart action-hub`. A rota `/inove4us` em produção permanece fora deste commit (já publicada à parte); não fazer `git pull` completo no EC2 neste passo.
+- `3252fac` é só documentação deste registro; não entra no rollback funcional.
+- Identificação operacional: o health do FE em produção (`GET /api/health`) ainda reporta `git_sha` `3bbe9f0` / `version` `4dcc5cb+3bbe9f0-cms-fe` (env/`GIT_SHA` da caixa). Isso **não** representa o código publicado em `/panne` (`6dea0b5`). A aplicação está no ar; a correção do SHA no health fica para um ciclo futuro.
+- Backup `.next` anterior: **não registrado** (sem caminho nem `BUILD_ID` verificados nesta publicação). Restaurar “o `.next` anterior” **não** é rollback válido até existir backup identificado.
+
+Rollback funcional:
+- Se houver build anterior identificado por caminho e `BUILD_ID` registrados e verificados: restaurar esse build e `pm2 restart action-hub`.
+- Alternativa atual: `git revert 6dea0b5`, reconstruir e publicar **somente** o frontend afetado.
+- Não usar `reset`, force push nem atualização integral da EC2. `/inove4us` em produção permanece fora deste commit.
 
 Ao promover: atualize esta tabela **e** confira:
 - Gateway: `https://actionhub.com.br` via API interna `/health` (ou proxy) — `version` + `git_sha`
