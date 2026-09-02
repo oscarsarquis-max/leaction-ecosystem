@@ -51,6 +51,10 @@ function SiteHeaderInner() {
     return null;
   }
 
+  if (pathname === '/panne' || pathname.startsWith('/panne/')) {
+    return null;
+  }
+
   return <Header />;
 }
 

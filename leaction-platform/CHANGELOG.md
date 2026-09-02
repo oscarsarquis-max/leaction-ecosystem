@@ -11,7 +11,7 @@ Versão por app (`actionhub/vX.Y.Z`). Não usar versão única do monorepo.
   (+ anuais R$249 / R$499); desativa SKUs de penny test; destaque “Recomendado” no Profissional
 
 ### Added
-- (preencher antes do próximo release)
+- Página pública `/panne` no Action Hub: apresentação comercial estática da Panne, jornada da operação e assistente comercial local (canal WhatsApp já usado no Hub). Sem CMS, Gigio, Demo ou autenticação.
 
 ## [1.0.0] - 2026-07-20
 
