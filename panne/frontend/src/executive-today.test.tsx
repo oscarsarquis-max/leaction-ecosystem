@@ -1,4 +1,5 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { dashboardTodayEmptyFixture, dashboardTodayFixture, meFixture, ORG_A } from "./api/fixtures";
 import { FORBIDDEN_SURFACE_ENGLISH } from "./language/surface";
@@ -23,7 +24,7 @@ describe("CURSOR-028-R3 painel executivo", () => {
     expect(await screen.findByRole("heading", { name: "Hoje na Panne" })).toBeInTheDocument();
     expect(screen.getByText("Painel do proprietário")).toBeInTheDocument();
     expect(screen.getByText(/O negócio pede/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ver prioridades" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver prioridades" })).toHaveAttribute("href", "#exec-priorities");
 
     const rail = screen.getByRole("region", { name: "Indicadores principais" });
     expect(within(rail).getAllByRole("heading", { level: 3 })).toHaveLength(6);
@@ -123,6 +124,17 @@ describe("CURSOR-028-R3 painel executivo", () => {
     }
     expect(surface).not.toMatch(FORBIDDEN_SURFACE_ENGLISH);
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
+  });
+
+  it("troca o conteúdo ao sair do painel pelo menu", async () => {
+    const user = userEvent.setup();
+    installApiMock();
+    localStorage.setItem("panne.activeOrganization", ORG_A);
+    await renderApp("/inicio");
+    await screen.findByRole("heading", { name: "Hoje na Panne" });
+    await user.click(screen.getByRole("link", { name: "Relatórios", exact: true }));
+    expect(await screen.findByRole("heading", { name: "Relatórios e painéis" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Hoje na Panne" })).not.toBeInTheDocument();
   });
 
   it("preserva os acessos de detalhamento", async () => {

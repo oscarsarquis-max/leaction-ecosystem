@@ -659,7 +659,7 @@ export function App() {
   return (
     <AuthProviderTree>
       <OrganizationProvider>
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <BrowserRouter future={{ v7_relativeSplatPath: true }}>
           <AssistantProvider>
             <AppRoutes />
           </AssistantProvider>

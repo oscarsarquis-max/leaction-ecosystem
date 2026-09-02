@@ -120,6 +120,8 @@ export function Shell() {
   useEffect(() => {
     if (!menuOpen) return;
     function onPointerDown(event: MouseEvent) {
+      const el = event.target as HTMLElement | null;
+      if (el?.closest?.("a[href], [role='menuitem']")) return;
       if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
     }
     function onKeyDown(event: KeyboardEvent) {
@@ -380,7 +382,7 @@ export function Shell() {
         {status.kind === "erro" ? (
           <p role="alert">Não foi possível carregar a sessão.</p>
         ) : (
-          <Outlet />
+          <Outlet key={location.pathname} />
         )}
       </main>
       <AssistantAvatar />

@@ -58,6 +58,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     setOverlay(null);
     setDirty(false);
     setPendingCommand(false);
+    setOpen((was) => (was ? false : was));
   }, [location.pathname]);
 
   useEffect(() => {

@@ -41,16 +41,21 @@ export function GlobalAssistant({ publicMode = false }: { publicMode?: boolean }
       }
     }
     function onPointer(event: MouseEvent) {
-      const target = event.target as Node;
-      if (panelRef.current?.contains(target)) return;
-      if ((target as HTMLElement).closest?.(".assistant-avatar")) return;
+      const el = event.target as HTMLElement | null;
+      if (!el) return;
+      if (panelRef.current?.contains(el)) return;
+      if (el.closest?.(".assistant-avatar")) return;
+      /* Não desmontar o alvo no pointerdown de um link/botão — o click precisa completar. */
+      if (el.closest?.("a, button, summary, input, label, select, textarea, [role='menuitem'], [role='link']")) {
+        return;
+      }
       closeAssistant();
     }
     window.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("pointerdown", onPointer, true);
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("pointerdown", onPointer, true);
     };
   }, [open, closeAssistant]);
 

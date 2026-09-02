@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { ProductCard, ProductFamilyRow, ProductPage } from "../api/types";
 import { EmptyState, ErrorState, ListLive, LoadingState, StatusBadge } from "../components/Feedback";
@@ -14,6 +14,7 @@ import {
   productSupplyModeLabel,
 } from "../language/products";
 import { productHref } from "../navigation/returnTo";
+import { ProductStructurePanel } from "../products/ProductStructurePanel";
 import { useOrganization } from "../session/OrganizationContext";
 
 /** Artefato de teste assistivo — não pertence ao seed canônico. */
@@ -23,6 +24,7 @@ export function ProductsPage() {
   const { api, hasPermission, active } = useOrganization();
   const orgId = active?.organization_id ?? null;
   const [params, setParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const statusParam = params.get("status");
   const query = useMemo(
     () => ({
@@ -55,6 +57,17 @@ export function ProductsPage() {
   );
   const familyRows = families.state.kind === "ok" ? families.state.data.items : [];
   const listSearch = params.toString();
+
+  useEffect(() => {
+    setSelectedId(null);
+  }, [orgId]);
+
+  useEffect(() => {
+    if (state.kind !== "ok") return;
+    if (selectedId && !items.some((item) => item.id === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [state.kind, items, selectedId]);
 
   function applyFilters(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -97,6 +110,12 @@ export function ProductsPage() {
             Famílias
           </Link>
         </p>
+        <ProductStructurePanel
+          selectedId={selectedId}
+          listSearch={listSearch}
+          orgId={orgId}
+          api={api}
+        />
         <form className="filters" onSubmit={applyFilters}>
           <label>
             Pesquisa
@@ -144,6 +163,7 @@ export function ProductsPage() {
               <caption>Produtos da organização</caption>
               <thead>
                 <tr>
+                  <th>Visualizar</th>
                   <th>Produto</th>
                   <th>Código</th>
                   <th>Modalidade</th>
@@ -157,7 +177,13 @@ export function ProductsPage() {
               </thead>
               <tbody>
                 {items.map((item) => (
-                  <ProductRow key={item.id} item={item} listSearch={listSearch} />
+                  <ProductRow
+                    key={item.id}
+                    item={item}
+                    listSearch={listSearch}
+                    selected={selectedId === item.id}
+                    onSelect={() => setSelectedId(item.id)}
+                  />
                 ))}
               </tbody>
             </table>
@@ -188,10 +214,35 @@ export function ProductsPage() {
   );
 }
 
-function ProductRow({ item, listSearch }: { item: ProductCard; listSearch: string }) {
+function ProductRow({
+  item,
+  listSearch,
+  selected,
+  onSelect,
+}: {
+  item: ProductCard;
+  listSearch: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const detailTo = productHref(item.id, listSearch);
   return (
     <tr>
+      <td className="product-view-cell">
+        <label className="product-view-radio">
+          <input
+            type="radio"
+            name="product-structure-view"
+            checked={selected}
+            onChange={onSelect}
+            onClick={(event) => event.stopPropagation()}
+            aria-label={`Visualizar estrutura de ${item.display_name}`}
+          />
+          <span className="product-view-radio__caption" aria-hidden="true">
+            Visualizar
+          </span>
+        </label>
+      </td>
       <td>{item.display_name}</td>
       <td>{item.code}</td>
       <td>{productSupplyModeLabel(item.supply_mode)}</td>

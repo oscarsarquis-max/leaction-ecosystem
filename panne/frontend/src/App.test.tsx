@@ -73,7 +73,7 @@ describe("autenticação", () => {
       <AuthProviderTree provider={provider}>
         <OrganizationProvider>
           <MemoryRouter
-            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+            future={{ v7_relativeSplatPath: true }}
             initialEntries={["/producao"]}
           >
             <AssistantProvider>
@@ -102,7 +102,7 @@ describe("autenticação", () => {
       <AuthProviderTree>
         <OrganizationProvider>
           <MemoryRouter
-            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+            future={{ v7_relativeSplatPath: true }}
             initialEntries={["/entrar"]}
           >
             <AssistantProvider>
@@ -125,7 +125,7 @@ describe("autenticação", () => {
           : (headers as Record<string, string> | undefined)?.Authorization;
       expect(authorization).toMatch(/^Bearer (panne-fake-access-token|panne-demo:)/);
     });
-    expect(await screen.findByRole("heading", { name: "Fluxo produtivo" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Hoje na Panne" })).toBeInTheDocument();
   });
 
   it("R026-001: /organizacao fica fora de RequireOrganization e renderiza a seleção", async () => {
@@ -151,7 +151,7 @@ describe("autenticação", () => {
     await renderApp("/organizacao");
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Padaria Central" }));
-    expect(await screen.findByRole("heading", { name: "Fluxo produtivo" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Hoje na Panne" })).toBeInTheDocument();
   });
 
   it("R026-001: /organizacao sem sessão redireciona para /entrar", async () => {

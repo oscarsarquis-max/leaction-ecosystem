@@ -124,15 +124,16 @@ export function ExecutiveTodayPage() {
   );
 
   const liveData = state.kind === "ok" ? state.data : null;
+  const publishLive = assistant?.publishLive;
   useEffect(() => {
-    if (!assistant || !liveData) return;
+    if (!publishLive || !liveData) return;
     const brief = executiveBrief(liveData);
-    assistant.publishLive({
+    publishLive({
       goal: brief.lead,
       pending: liveData.headline.attention || liveData.attentions[0]?.title || "Nenhuma pendência destacada.",
       next: brief.action,
     });
-  }, [assistant, liveData]);
+  }, [publishLive, liveData]);
 
   if (state.kind === "carregando") return <LoadingState />;
   if (state.kind === "erro") return <ErrorState error={state.error} onRetry={() => reload()} />;
@@ -172,9 +173,22 @@ export function ExecutiveTodayPage() {
             {brief.causes ? ` ${brief.causes}.` : ""}
           </p>
         </div>
-        <Link className="exec-brief__action" to="#exec-priorities">
-          {brief.action}
-        </Link>
+        {brief.action === "Ver prioridades" ? (
+          <a
+            className="exec-brief__action"
+            href="#exec-priorities"
+            onClick={(event) => {
+              event.preventDefault();
+              document.getElementById("exec-priorities")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            {brief.action}
+          </a>
+        ) : (
+          <Link className="exec-brief__action" to={brief.href}>
+            {brief.action}
+          </Link>
+        )}
       </aside>
 
       <section className="exec-kpis" role="region" aria-label="Indicadores principais">

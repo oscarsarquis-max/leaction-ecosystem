@@ -23,3 +23,11 @@ export function productHref(productId: string, listSearch = ""): string {
     ? `/produtos/${productId}`
     : `/produtos/${productId}?from=${encoded}`;
 }
+
+export function recipeHref(recipeId: string, listSearch = ""): string {
+  return `/receitas/${recipeId}?from=${listReturnParam(listSearch)}`;
+}
+
+export function ingredientHref(ingredientId: string, listSearch = ""): string {
+  return `/componentes/ingredientes/${ingredientId}?from=${listReturnParam(listSearch)}`;
+}
