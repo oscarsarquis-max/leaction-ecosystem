@@ -7,8 +7,8 @@
 | Natureza | Espelho documental vivo do Spider |
 | Baseline funcional | Spider 0.20.0 — SPIDER-PROMPT-020 VERIFIED |
 | Boundary ativo | MOCK_ONLY (integrações); CAP-019/020 = SIMULATED_INFRASTRUCTURE |
-| Estado documental | BASELINE 020 preservado; Context Intelligence CTX-001 implementado default-off; Grupo B 2/3 |
-| Fontes autoritativas | SPIDER-ARCH-001–015, SPIDER-PROMPT-001–020, SPIDER-CONTEXT-PROMPT-001, manifesto, contrato anti-drift e roadmap |
+| Estado documental | BASELINE 020 preservado; Context Intelligence CTX-002 implementado default-off; Grupo B 2/3 |
+| Fontes autoritativas | SPIDER-ARCH-001–015, SPIDER-PROMPT-001–020, SPIDER-CTX-002, manifesto, contrato anti-drift e roadmap |
 
 > **Razão da numeração:** o número `SPIDER-ARCH-005` já está ocupado por “Definição de Rotas, Execution Plan e Máquina de Estados”. Como a série existente prossegue até `SPIDER-ARCH-013`, este documento recebe o próximo identificador coerente: `SPIDER-ARCH-014`.
 
@@ -85,7 +85,7 @@ O 021 está elegível pelo gate do 020, mas permanece PLANNED até emissão form
 
 ### 2.1 Nova trilha: Context Intelligence
 
-CTX-001 acrescenta uma camada opt-in sobre o baseline sem avançar CAP-021 e sem reescrever o Core:
+CTX-001/002 acrescentam uma camada opt-in sobre o baseline sem avançar CAP-021 e sem reescrever o Core:
 
 ```text
 EXPERIENCE
@@ -108,8 +108,8 @@ Na Home, seis situações frequentes constroem contratos conhecidos com proveni�
 rota antes de confirmar. A confirmação produz uma execução canônica comum; a Jornada 020B ganha
 uma seção CONTEXTO antes do DATA PLANE, derivada do read model contextual real.
 
-A experiência contextual separa compreensão de execução. Business Cards e, futuramente, linguagem
-natural convergem para o mesmo Intent Contract antes da entrada no Data Plane. O refinamento
+A experiência contextual separa compreensão de execução. Business Cards e linguagem natural
+convergem para o mesmo Intent Contract antes da entrada no Data Plane. O refinamento
 CTX-001A torna essa fronteira explícita na Home:
 
 ```text
@@ -120,10 +120,14 @@ OBJETIVO → INTENT → POLICY → ROTA → EXECUTAR → JORNADA
 demonstração de Crédito neste incremento, é a fronteira de entrada no Data Plane. Os demais cards
 permanecem honestamente em preview.
 
-O campo de linguagem natural é apresentado como evolução futura e permanece desabilitado com
-`IA — próxima etapa`. Não há LLM, RAG, agente, tool calling nem integração ServiceNow. As flags
-`spider.context.enabled` e `spider.context.ui.enabled` são `false` por padrão e `true` somente no
-profile `local-demo`.
+CTX-002 torna o campo de linguagem natural funcional sob `spider.context.ai.enabled=true`. A IA
+escolhe somente intent e entidades do vocabulário controlado; o catálogo local materializa
+domain/objective, e o mesmo Guard e Router decidem. A IA é uma fonte probabilística de Intent
+Contract. Ela não possui autoridade de roteamento ou execução.
+
+O provider inicial é AWS Bedrock/Anthropic atrás de `ContextInterpretationProvider`. A flag de IA é
+`false` por padrão inclusive no profile `local-demo`; `AI OFF` preserva integralmente os seis cards.
+Não há RAG, Response Composer, agente, tool calling nem integração ServiceNow.
 
 ## 3. Princípios funcionais do produto
 
@@ -958,4 +962,4 @@ O glossário descreve a semântica do produto, não uma obrigação tecnológica
 
 ---
 
-**Declaração de baseline:** este documento preserva o Spider 0.20.0 / SPIDER-PROMPT-020 VERIFIED, com integrações `MOCK_ONLY` e runtime de workers + governo de capacidade em `SIMULATED_INFRASTRUCTURE` (OFF_BY_DEFAULT). O Grupo A (015–018) está completo; o Grupo B está em 2/3; o 021 permanece PLANNED. A trilha paralela Context Intelligence está `ENABLED` apenas como arquitetura determinística default-off (`SPIDER-CONTEXT-PROMPT-001`); `AI_ENABLED=false`.
+**Declaração de baseline:** este documento preserva o Spider 0.20.0 / SPIDER-PROMPT-020 VERIFIED, com integrações `MOCK_ONLY` e runtime de workers + governo de capacidade em `SIMULATED_INFRASTRUCTURE` (OFF_BY_DEFAULT). O Grupo A (015–018) está completo; o Grupo B está em 2/3; o 021 permanece PLANNED. A trilha paralela Context Intelligence está `ENABLED`; a interpretação CTX-002 está implementada por provider substituível e permanece `AI_ENABLED=false` por padrão.

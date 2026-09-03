@@ -19,6 +19,8 @@ public record SpiderImplementationManifest(
   public record ContextIntelligence(
       String status,
       boolean aiEnabled,
+      String aiContextInterpretation,
+      String aiProvider,
       String promptRef,
       List<String> featureFlags,
       List<String> architectureRefs,

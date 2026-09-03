@@ -28,18 +28,47 @@ URLs típicas:
 
 Flags: profile `local-demo` + `spider.console.*` + `spider.context.*` + canonical HTTP conforme script.
 
+CTX-002 permanece IA OFF por padrão. Para evidência local sem cloud:
+
+```powershell
+$env:SPIDER_CONTEXT_AI_ENABLED="true"
+$env:SPIDER_CONTEXT_AI_PROVIDER="scripted"
+$env:SPIDER_CONTEXT_AI_SCRIPTED_ENABLED="true"
+.\scripts\start-presentation.ps1
+```
+
+Esse provider é rotulado `scripted-evidence` e não representa smoke Bedrock. Para smoke real, use
+provider `bedrock`, região/modelo e a cadeia padrão de credenciais AWS.
+
+Com backend Bedrock ativo:
+
+```powershell
+.\scripts\smoke-ctx-002-bedrock.ps1
+```
+
 ## Roteiro 3 minutos
 
 1. Badge **DEMONSTRAÇÃO MOCK** no topo.
 2. **Home operacional**: Spider 0.20.0, Health UP, Presentation READY, Runtime SIMULATED_INFRASTRUCTURE, Integrations MOCK_ONLY.
-3. Em **Situações frequentes**, destacar a indicação discreta `IA — próxima etapa`. Selecionar Crédito e mostrar **SPIDER ENTENDEU**: OBJETIVO → INTENT → POLICY → ROTA. Provenance, confiança, constraints, decisão e disponibilidade vêm do contrato/resolução reais.
-4. Mostrar um card não executável: o mesmo preview aparece, mas declara `Preview disponível · execução ainda não habilitada` e não oferece botão. Voltar a Crédito e confirmar **Executar**.
-5. A decisão contextual usa o ingress canônico existente e acompanha a Jornada na Home. Mostrar CONTEXTO antes do DATA PLANE e clicar em Intent, Política e Rota para abrir as explicações derivadas do read model.
+3. Com IA explicitamente ativa, declarar `Minha proposta 12345 foi aprovada, mas o crédito ainda não foi liberado` e selecionar **Interpretar**.
+4. Mostrar o mesmo **SPIDER ENTENDEU**: texto redigido, `NATURAL_LANGUAGE`, confidence, Guard e rota. Destacar que nenhuma execução ocorreu.
+5. Confirmar **Executar**. Na Jornada, clicar em **IA interpretou contexto** e mostrar provider/model, entidades, ausências, versões e usage seguro antes do DATA PLANE.
 6. No Data Plane, selecionar **Solicitação recebida**, **Interaction #1**, **Retry**, **Interaction #2** e **Execução concluída**. O painel mostra apenas detalhes seguros.
 7. Navegação agrupada: Execuções / Operação / Testes & demonstração / Plataforma.
-8. Aba **Implementação**: CAP-015–020 VERIFIED; 021–026 PLANNED; Context Intelligence é trilha paralela default-off e sem IA.
+8. Aba **Implementação**: CAP-015–020 VERIFIED; 021–026 PLANNED; Context Intelligence e AI Context Interpretation são estados separados, com IA default-off.
 9. Aba **Apresentação**: preflight readiness; se READY, capítulo 4 → `RETRY_THEN_SUCCESS`.
 10. Detalhe: o que aconteceu → por onde passou → quando → o que tecnicamente ocorreu.
+
+## Cenários manuais CTX-002
+
+1. `Minha proposta 12345 foi aprovada, mas o crédito ainda não foi liberado.` →
+   `INVESTIGATE_CREDIT_RELEASE`, Guard aceito, rota de crédito e nenhuma execução antes de confirmar.
+2. `Quero saber o que aconteceu com o cliente João.` → `AMBIGUOUS`, opções do catálogo e nenhuma rota.
+3. `Minha proposta foi aprovada, mas o crédito ainda não foi liberado.` → `MISSING_CONTEXT`,
+   pergunta pelo número da proposta e nenhuma rota.
+4. `Quero comprar passagens para Paris.` → `UNSUPPORTED_INTENT`, nenhuma rota ou execução.
+5. Reiniciar com `SPIDER_CONTEXT_AI_ENABLED=false` → badge `DESABILITADA`; os seis Business Cards
+   continuam produzindo preview e Crédito continua executável após confirmação.
 
 ## Roteiro 8 minutos
 

@@ -31,6 +31,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -77,6 +78,13 @@ public final class ContextIntelligenceService {
   }
 
   public ContextDecisionRecord resolve(IntentContract contract, String principalRef) {
+    return resolve(contract, principalRef, null);
+  }
+
+  public ContextDecisionRecord resolve(
+      IntentContract contract,
+      String principalRef,
+      ContextInterpretationEvidence interpretation) {
     Instant createdAt = clock.now();
     var guardResult = guard.evaluate(contract, principalRef != null && !principalRef.isBlank());
     IntentRouteResolution route = router.resolve(contract, guardResult).orElse(null);
@@ -92,7 +100,8 @@ public final class ContextIntelligenceService {
             null,
             null,
             null,
-            journey(contract, guardResult, route, createdAt));
+            interpretation,
+            journey(contract, guardResult, route, createdAt, interpretation));
     store.save(record);
     return record;
   }
@@ -129,7 +138,13 @@ public final class ContextIntelligenceService {
     String executionId = ids.nextId("exec");
     String correlationId = ids.nextId("corr");
     Instant submittedAt = clock.now();
-    emitContextEvents(executionId, correlationId, contract, route, guardResult);
+    emitContextEvents(
+        executionId,
+        correlationId,
+        contract,
+        route,
+        guardResult,
+        preview.get().interpretation());
     CanonicalExecutionRequest canonical =
         canonicalRequest(executionId, correlationId, submittedAt, contract, route, originator);
     var command =
@@ -201,7 +216,20 @@ public final class ContextIntelligenceService {
       String correlationId,
       IntentContract contract,
       IntentRouteResolution route,
-      ContextPolicyGuard.GuardResult guardResult) {
+      ContextPolicyGuard.GuardResult guardResult,
+      ContextInterpretationEvidence interpretation) {
+    if (interpretation != null) {
+      publish(
+          OperationalEventType.AI_INTERPRETATION_SUCCEEDED,
+          executionId,
+          correlationId,
+          OperationalEventAttributes.builder()
+              .reasonCode("AI_INTERPRETATION_USED_BY_EXECUTION")
+              .put("provider", interpretation.provider())
+              .put("model", interpretation.model())
+              .put("interpretationStatus", "SUCCEEDED")
+              .build());
+    }
     publish(
         OperationalEventType.INTENT_CREATED,
         executionId,
@@ -250,7 +278,8 @@ public final class ContextIntelligenceService {
       IntentContract contract,
       ContextPolicyGuard.GuardResult guard,
       IntentRouteResolution route,
-      Instant at) {
+      Instant at,
+      ContextInterpretationEvidence interpretation) {
     if (contract == null) {
       return List.of(
           new ContextJourneyStage(
@@ -264,17 +293,36 @@ public final class ContextIntelligenceService {
     }
     ContextJourneyStage objective =
         new ContextJourneyStage(
-            "objective-selected",
-            "Objetivo selecionado",
+            interpretation == null ? "objective-selected" : "objective-received",
+            interpretation == null ? "Objetivo selecionado" : "Objetivo recebido",
             "CONTEXT",
             "SUCCEEDED",
-            "O objetivo "
-                + contract.objective()
-                + " foi selecionado no domínio "
-                + contract.domain()
-                + ".",
+            interpretation == null
+                ? "O objetivo "
+                    + contract.objective()
+                    + " foi selecionado no domínio "
+                    + contract.domain()
+                    + "."
+                : "O objetivo em linguagem natural foi recebido e redigido antes da interpretação.",
             at,
-            Map.of("objective", contract.objective(), "domain", contract.domain()));
+            interpretation == null
+                ? Map.of("objective", contract.objective(), "domain", contract.domain())
+                : Map.of(
+                    "requestedObjective",
+                    interpretation.requestedObjective(),
+                    "redactedFields",
+                    Integer.toString(interpretation.redactedFieldsCount())));
+    ContextJourneyStage aiInterpreted =
+        interpretation == null
+            ? null
+            : new ContextJourneyStage(
+                "ai-interpreted",
+                "IA interpretou contexto",
+                "CONTEXT",
+                "SUCCEEDED",
+                "A IA produziu uma decisão estruturada de intenção; nenhuma rota ou execução foi decidida pelo modelo.",
+                at,
+                interpretationDetails(interpretation));
     ContextJourneyStage intent =
         new ContextJourneyStage(
             "intent-created",
@@ -319,7 +367,9 @@ public final class ContextIntelligenceService {
                 "reasonCode",
                 guard.reasonCode()));
     if (route == null) {
-      return List.of(objective, intent, policy);
+      return interpretation == null
+          ? List.of(objective, intent, policy)
+          : List.of(objective, aiInterpreted, intent, policy);
     }
     ContextJourneyStage resolved =
         new ContextJourneyStage(
@@ -344,7 +394,35 @@ public final class ContextIntelligenceService {
                 route.executable() ? "CTX001_END_TO_END" : "PREVIEW_ONLY",
                 "policyRef",
                 route.policyRef()));
-    return List.of(objective, intent, policy, resolved);
+    return interpretation == null
+        ? List.of(objective, intent, policy, resolved)
+        : List.of(objective, aiInterpreted, intent, policy, resolved);
+  }
+
+  private static Map<String, String> interpretationDetails(
+      ContextInterpretationEvidence interpretation) {
+    Map<String, String> details = new LinkedHashMap<>();
+    details.put("requestedObjective", interpretation.requestedObjective());
+    details.put("intent", interpretation.intent());
+    details.put("domain", interpretation.domain());
+    details.put("extractedEntities", interpretation.extractedEntities().toString());
+    details.put("missingContext", interpretation.missingContext().toString());
+    details.put("confidence", interpretation.confidence().toPlainString());
+    details.put("provider", interpretation.provider());
+    details.put("model", interpretation.model());
+    details.put("schemaVersion", interpretation.schemaVersion());
+    details.put("promptVersion", interpretation.promptVersion());
+    details.put("latencyMs", Long.toString(interpretation.latencyMs()));
+    if (interpretation.usage().inputTokens() != null) {
+      details.put("inputTokens", interpretation.usage().inputTokens().toString());
+    }
+    if (interpretation.usage().outputTokens() != null) {
+      details.put("outputTokens", interpretation.usage().outputTokens().toString());
+    }
+    if (interpretation.usage().totalTokens() != null) {
+      details.put("totalTokens", interpretation.usage().totalTokens().toString());
+    }
+    return Map.copyOf(details);
   }
 
   private static String newTraceparent() {

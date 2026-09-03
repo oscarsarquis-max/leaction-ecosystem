@@ -24,6 +24,9 @@ class ImplementationManifestLoaderTest {
     assertEquals(0, m.baseline().skipped());
     assertEquals("ENABLED", m.contextIntelligence().status());
     assertEquals(false, m.contextIntelligence().aiEnabled());
+    assertEquals("ENABLED", m.contextIntelligence().aiContextInterpretation());
+    assertEquals("AWS_BEDROCK_ANTHROPIC", m.contextIntelligence().aiProvider());
+    assertEquals("SPIDER-CTX-002", m.contextIntelligence().promptRef());
     for (var c : m.capabilities()) {
       int n = Integer.parseInt(c.promptRef().substring("SPIDER-PROMPT-".length()));
       if (n <= 20) {

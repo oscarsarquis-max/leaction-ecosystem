@@ -73,6 +73,7 @@ public class GetImplementationStatusUseCase {
     flags.put("spider.adapter.mock.enabled", environment.getProperty("spider.adapter.mock.enabled", "true"));
     flags.put("spider.context.enabled", environment.getProperty("spider.context.enabled", "false"));
     flags.put("spider.context.ui.enabled", environment.getProperty("spider.context.ui.enabled", "false"));
+    flags.put("spider.context.ai.enabled", environment.getProperty("spider.context.ai.enabled", "false"));
     // never include secrets/jwt/datasource passwords
     return flags;
   }

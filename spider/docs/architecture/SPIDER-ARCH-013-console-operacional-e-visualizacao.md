@@ -39,7 +39,7 @@ USER → HOME OPERACIONAL → EXECUÇÕES → DETALHE / TIMELINE / OPERAÇÃO
 
 A Home reutiliza o submit canônico existente (`POST /v1/canonical/executions`, cenário `RETRY_THEN_SUCCESS`) e lista últimas execuções via `GET /v1/canonical/executions`. A navegação é **agrupada por finalidade** (PROMPT-020B): Home; Execuções (lista / detalhe / visão geral); Operação (Cockpit, Runtime de Workers, Capacidade); Testes & demonstração (Laboratório Mock, Failure Lab); Plataforma (Implementação, Apresentação).
 
-#### 2.1.1 Compreensão contextual antes da execução (CTX-001A)
+#### 2.1.1 Compreensão contextual antes da execução (CTX-001A/002)
 
 A Home preserva as superfícies 020A/020B e acrescenta uma etapa explícita de compreensão. Clicar em
 um Business Intent Card abre **SPIDER ENTENDEU**; não submete execução. O painel projeta o Intent
@@ -50,9 +50,11 @@ Contract, a decisão do Context Guard e a rota determinística. Somente uma conf
 OBJETIVO → INTENT → POLICY → ROTA → EXECUTAR → JORNADA
 ```
 
-A experiência contextual separa compreensão de execução. Business Cards e, futuramente, linguagem
-natural convergem para o mesmo Intent Contract antes da entrada no Data Plane. O campo de linguagem
-natural permanece desabilitado e identificado como `IA — próxima etapa`.
+A experiência contextual separa compreensão de execução. Business Cards e linguagem natural
+convergem para o mesmo Intent Contract antes da entrada no Data Plane. O campo só fica funcional
+quando `spider.context.ai.enabled=true`; os estados `ATIVA`, `DESABILITADA` e `INDISPONÍVEL` não
+alteram o health geral. Ambiguidade, contexto ausente ou intent não suportada permanecem no painel
+sem expor **Executar**.
 
 ### 2.2 Jornada visual da execução (PROMPT-020B)
 
@@ -77,6 +79,10 @@ Cada etapa da Jornada da Execução é uma superfície explicável. O operador p
 Quando a execução nasce do Context Plane, a mesma Jornada divide visualmente **CONTEXTO** (objetivo,
 intent, policy e rota) de **DATA PLANE** (ingress, contrato canônico, Engine, interações e outcome).
 As etapas contextuais usam o mesmo painel explicativo e somente fatos do read model.
+
+Para origem `NATURAL_LANGUAGE`, CONTEXTO inclui **Objetivo recebido** e **IA interpretou contexto**.
+O detalhe mostra somente entrada redigida, decisão estruturada, provider/model, entities, ausências,
+confidence, versões, latency e usage; nunca chain-of-thought.
 
 O painel usa somente campos seguros do read model: summary, route/correlation redigida, steps/attempts, timeline, wait/callback e Operational Events correlacionáveis. Campos não existentes não são inferidos. Por exemplo, o adapter in-process do cenário `RETRY_THEN_SUCCESS` expõe `safeErrorCode=TRANSIENT`, disposition e duração, mas não um status HTTP; portanto a UI não inventa `HTTP 500`. Metadata arbitrária, payloads, headers, tokens e credenciais não são renderizados.
 

@@ -1036,3 +1036,14 @@ A especificação continuará neutra a nuvem, orquestrador e fornecedor, usando 
 ## Apêndice — Alinhamento com SPIDER-ARCH-013 (não altera decisões históricas)
 
 O **SPIDER-ARCH-013 — Console Operacional e Visualização** complementa este documento: o console operacional consome sinais/estados persistidos do Data Plane para observação humana, **sem** substituir a plataforma de métricas/SLO/alertas definida aqui. Observabilidade de produto (SLI/SLO) permanece fora do console 015; o console exibe apenas read models autorizados e redigidos. Ver `docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md`.
+
+### Alinhamento com CTX-002 — interpretação contextual
+
+O Context Interpreter reutiliza Operational Events na categoria `CONTEXT`:
+`AI_INTERPRETATION_REQUESTED`, `SUCCEEDED`, `REJECTED` e `FAILED`. A allowlist admite somente
+provider/model, status, latency, usage e contagem de redações; objetivo e prompt completos não entram
+nos eventos.
+
+Timeout é explícito, retry do adapter está desabilitado e indisponibilidade da IA não altera o health
+geral: somente a capacidade de linguagem natural degrada para `INDISPONÍVEL`. Business Cards,
+Context Guard, Router, Console e Data Plane permanecem operacionais.

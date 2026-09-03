@@ -12,6 +12,7 @@ import br.com.banco.spider.context.domain.ContextGuardDecision;
 import br.com.banco.spider.context.domain.ContextPolicyGuard;
 import br.com.banco.spider.context.domain.DeterministicIntentRouter;
 import br.com.banco.spider.context.domain.StaticBusinessIntentCatalog;
+import java.math.BigDecimal;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -127,7 +128,7 @@ class ContextPolicyAndRouterTest {
   }
 
   @Test
-  void naturalLanguageProvenanceExistsButIsNotEnabledInCtx001() {
+  void naturalLanguageUsesTheSameGuardAndDeterministicRoute() {
     IntentContract naturalLanguage =
         new IntentContract(
             credit.schemaVersion(),
@@ -136,11 +137,31 @@ class ContextPolicyAndRouterTest {
             credit.objective(),
             credit.entities(),
             credit.constraints(),
-            new IntentProvenance(IntentProvenanceSource.NATURAL_LANGUAGE, "future"),
-            credit.confidence());
+            new IntentProvenance(IntentProvenanceSource.NATURAL_LANGUAGE, "context-ai:ctxi-1"),
+            new BigDecimal("0.94"));
     var decision = guard.evaluate(naturalLanguage, true);
-    assertEquals(ContextGuardDecision.POLICY_REJECTED, decision.decision());
-    assertEquals("PROVENANCE_NOT_ENABLED", decision.reasonCode());
+    assertEquals(ContextGuardDecision.ACCEPTED, decision.decision());
+    assertEquals(
+        router.resolve(credit, guard.evaluate(credit, true)).orElseThrow().routeRef(),
+        router.resolve(naturalLanguage, decision).orElseThrow().routeRef());
+  }
+
+  @Test
+  void naturalLanguageBelowCentralConfidencePolicyIsAmbiguous() {
+    IntentContract uncertain =
+        new IntentContract(
+            credit.schemaVersion(),
+            credit.intent(),
+            credit.domain(),
+            credit.objective(),
+            credit.entities(),
+            credit.constraints(),
+            new IntentProvenance(IntentProvenanceSource.NATURAL_LANGUAGE, "context-ai:ctxi-2"),
+            new BigDecimal("0.79"));
+    var decision = guard.evaluate(uncertain, true);
+    assertEquals(ContextGuardDecision.AMBIGUOUS, decision.decision());
+    assertEquals("AI_CONFIDENCE_BELOW_POLICY", decision.reasonCode());
+    assertTrue(router.resolve(uncertain, decision).isEmpty());
   }
 
   @Test

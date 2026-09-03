@@ -2,7 +2,6 @@ package br.com.banco.spider.context.domain;
 
 import br.com.banco.spider.context.contract.IntentContract;
 import br.com.banco.spider.context.contract.IntentProvenanceSource;
-import java.math.BigDecimal;
 
 /** Validação determinística antes de qualquer resolução ou acesso ao Core. */
 public final class ContextPolicyGuard {
@@ -10,9 +9,16 @@ public final class ContextPolicyGuard {
   public static final String POLICY_REF = "context:read-only@1.0";
 
   private final BusinessIntentCatalog catalog;
+  private final ContextConfidencePolicy confidencePolicy;
 
   public ContextPolicyGuard(BusinessIntentCatalog catalog) {
+    this(catalog, new ContextConfidencePolicy(null));
+  }
+
+  public ContextPolicyGuard(
+      BusinessIntentCatalog catalog, ContextConfidencePolicy confidencePolicy) {
     this.catalog = catalog;
+    this.confidencePolicy = confidencePolicy;
   }
 
   public GuardResult evaluate(IntentContract contract, boolean authenticated) {
@@ -41,11 +47,19 @@ public final class ContextPolicyGuard {
         || !definition.get().objective().equals(contract.objective())) {
       return rejected(ContextGuardDecision.POLICY_REJECTED, "INTENT_DOMAIN_OBJECTIVE_MISMATCH");
     }
-    if (contract.confidence().compareTo(BigDecimal.ONE) != 0) {
-      return rejected(ContextGuardDecision.AMBIGUOUS, "DETERMINISTIC_CONFIDENCE_REQUIRED");
-    }
-    if (contract.provenance().source() != IntentProvenanceSource.BUSINESS_CARD) {
+    if (contract.provenance().source() != IntentProvenanceSource.BUSINESS_CARD
+        && contract.provenance().source() != IntentProvenanceSource.NATURAL_LANGUAGE) {
       return rejected(ContextGuardDecision.POLICY_REJECTED, "PROVENANCE_NOT_ENABLED");
+    }
+    ContextConfidencePolicy.Decision confidence =
+        confidencePolicy.evaluate(contract.provenance().source(), contract.confidence());
+    if (!confidence.accepted()) {
+      ContextGuardDecision decision =
+          "AI_CONFIDENCE_BELOW_POLICY".equals(confidence.reasonCode())
+                  || "DETERMINISTIC_CONFIDENCE_REQUIRED".equals(confidence.reasonCode())
+              ? ContextGuardDecision.AMBIGUOUS
+              : ContextGuardDecision.POLICY_REJECTED;
+      return rejected(decision, confidence.reasonCode());
     }
     if (Boolean.TRUE.equals(contract.constraints().mutationAllowed())
         || !Boolean.TRUE.equals(contract.constraints().readOnly())) {

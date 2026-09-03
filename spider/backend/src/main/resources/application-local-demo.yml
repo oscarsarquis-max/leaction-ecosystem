@@ -10,6 +10,12 @@ spider:
     enabled: true
     ui:
       enabled: true
+    ai:
+      enabled: ${SPIDER_CONTEXT_AI_ENABLED:false}
+      provider: ${SPIDER_CONTEXT_AI_PROVIDER:bedrock}
+      model: ${SPIDER_CONTEXT_AI_MODEL:anthropic.claude-3-5-haiku-20241022-v1:0}
+      region: ${AWS_REGION:${AWS_DEFAULT_REGION:us-east-1}}
+      scripted-enabled: ${SPIDER_CONTEXT_AI_SCRIPTED_ENABLED:false}
   console:
     enabled: true
     http:

@@ -80,8 +80,18 @@ public class ImplementationManifestLoader {
     if (manifest.contextIntelligence() == null
         || !"ENABLED".equals(manifest.contextIntelligence().status())) {
       problems.add("contextIntelligence must be ENABLED after CTX-001");
-    } else if (manifest.contextIntelligence().aiEnabled()) {
-      problems.add("CTX-001 must never declare AI enabled");
+    } else {
+      if (manifest.contextIntelligence().aiEnabled()) {
+        problems.add("context AI must remain disabled by default");
+      }
+      if (!"ENABLED".equals(
+          manifest.contextIntelligence().aiContextInterpretation())) {
+        problems.add("AI context interpretation must be implemented after CTX-002");
+      }
+      if (!"AWS_BEDROCK_ANTHROPIC".equals(
+          manifest.contextIntelligence().aiProvider())) {
+        problems.add("AI provider must remain explicit and substitutable");
+      }
     }
     for (ImplementationCapability c : manifest.capabilities()) {
       if ("PRODUCTION".equals(c.integrationLevel())) {

@@ -857,6 +857,21 @@ Devem ser automatizáveis, no mínimo:
 | Break-glass | Autoridade, monitoramento e revisão |
 | Fase final | Perfil de segurança e certificação individual de cada legado |
 
+### 44.1 Fronteira de IA contextual — CTX-002
+
+O adapter AWS Bedrock/Anthropic é uma nova trust boundary, mas não uma integração de negócio.
+Antes dela, o Spider remove tokens, credentials, secrets, chaves, CPF e e-mail e limita o tamanho do
+objetivo. O provider recebe somente o texto redigido, versões e o catálogo controlado; nunca recebe
+payload canônico, credencial do Console, rota, endpoint ou adapter.
+
+A resposta é tratada como não confiável: somente JSON estruturado é aceito, intent e entidades são
+validadas contra catálogo/schema e qualquer falha fecha o caminho antes do Core. Texto bruto,
+prompt com dados do usuário e chain-of-thought não são persistidos nem registrados em eventos.
+Provider/model, usage, latency, outcome e contagem de redações são evidências permitidas.
+
+Confidence não concede autorização. Contrato `NATURAL_LANGUAGE` atravessa autenticação, Context
+Guard, mutation safety, confirmação e autorização canônica exatamente como o contrato de card.
+
 ## 45. Critérios de aceite
 
 O SPIDER-ARCH-009 é considerado apto a orientar a próxima etapa quando:

@@ -175,6 +175,15 @@ spider:
     enabled: false
     ui:
       enabled: false
+    ai:
+      enabled: false
+      provider: bedrock
+      model: anthropic.claude-3-5-haiku-20241022-v1:0
+      region: us-east-1
+      timeout: PT8S
+      minimum-confidence: 0.80
+      max-input-chars: 2000
+      scripted-enabled: false
   telemetry:
     enabled: false
   operational-health:

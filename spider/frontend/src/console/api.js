@@ -119,6 +119,14 @@ export function resolveBusinessIntent(intentContract, { signal } = {}) {
   });
 }
 
+export function interpretNaturalLanguage(objective, { signal } = {}) {
+  return request("/v1/context/interpretations", {
+    method: "POST",
+    body: { objective },
+    signal,
+  });
+}
+
 export function executeContextIntent(decisionId, intentContract, { signal } = {}) {
   return request("/v1/context/executions", {
     method: "POST",

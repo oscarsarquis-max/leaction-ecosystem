@@ -7,7 +7,8 @@ baseline determinístico 0.20.0. Ele transforma uma situação conhecida em `Int
 aplica política contextual, determina capability e rota e somente então entrega um pedido ao
 ingress canônico já protegido.
 
-CTX-001 não conecta LLM, não implementa linguagem natural e não altera o Spider Core.
+CTX-001 estabeleceu o plano determinístico; CTX-002 adicionou interpretação por provider
+substituível sem alterar o Spider Core.
 
 ## 2. Posição arquitetural
 
@@ -15,7 +16,7 @@ CTX-001 não conecta LLM, não implementa linguagem natural e não altera o Spid
 EXPERIENCE PLANE
   │
   ├─ Business Intent Cards (CTX-001)
-  └─ Natural Language (futuro; AI NOT ENABLED)
+  └─ Natural Language → AI Context Interpreter (CTX-002; OFF por padrão)
   │
   ▼
 INTENT CONTRACT V1 ── fronteira formal
@@ -30,7 +31,7 @@ DETERMINISTIC ROUTER
 CANONICAL INGRESS → SPIDER CORE → RESULT
 ```
 
-A zona probabilística futura termina no Intent Contract. Abaixo dessa fronteira, schema,
+A zona probabilística termina no Intent Contract. Abaixo dessa fronteira, schema,
 política, autorização, roteamento e execução permanecem determinísticos.
 
 ## 3. Intent Contract V1
@@ -156,13 +157,14 @@ DATA PLANE
   …
 ```
 
-As quatro etapas vêm do read model produzido por resolução real, e não de timers ou animação.
-Execuções sem contexto continuam exibindo apenas o Data Plane.
+As quatro etapas de card — ou cinco etapas de linguagem natural, incluindo a interpretação — vêm
+do read model produzido por resolução real, e não de timers ou animação. Execuções sem contexto
+continuam exibindo apenas o Data Plane.
 
 ### 9.1 Clareza visual da experiência — CTX-001A
 
-A experiência contextual separa compreensão de execução. Business Cards e, futuramente, linguagem
-natural convergem para o mesmo Intent Contract antes da entrada no Data Plane.
+A experiência contextual separa compreensão de execução. Business Cards e linguagem natural
+convergem para o mesmo Intent Contract antes da entrada no Data Plane.
 
 Na Home, o usuário percebe a sequência:
 
@@ -189,10 +191,12 @@ constraints, policy, capability e rota do read model, sem inferência visual.
 
 - `spider.context.enabled=false`;
 - `spider.context.ui.enabled=false`;
-- profile `local-demo`: ambas explicitamente `true`;
+- `spider.context.ai.enabled=false`;
+- profile `local-demo`: Context/UI são `true`, mas IA só ativa por configuração explícita;
 - integrações: `MOCK_ONLY`;
 - runtime demonstrativo: `SIMULATED_INFRASTRUCTURE`;
-- IA: `false`.
+- provider inicial: AWS Bedrock / Anthropic Claude, substituível pela porta interna;
+- timeout: `PT8S`; retry do adapter: desabilitado; confidence mínima: policy centralizada em `0.80`.
 
 `AI OFF` não significa `Context OFF`: cards, contrato, guard, router, auditoria e jornada funcionam
 sem modelo.
@@ -203,15 +207,54 @@ Context Intelligence não concede autorização. O controller reutiliza a autent
 default do ingress canônico, e o submit continua passando pela autorização canônica. Intenção
 válida não implica execução permitida.
 
-CTX-001 é somente leitura, exige confirmação e rejeita mutação. Uma futura interpretação
-probabilística não poderá alterar esses constraints nem converter interpretação em efeito externo
-sem policy explícita.
+CTX-001/002 são somente leitura, exigem confirmação e rejeitam mutação. A interpretação
+probabilística não altera constraints nem converte interpretação em efeito externo.
 
-## 12. Evolução futura, não implementada
+## 12. AI Context Interpreter — CTX-002
 
-Ficam fora de CTX-001: Bedrock, Anthropic, OpenAI, modelos locais, prompts, embeddings, RAG,
-agents, tool calling, ServiceNow, composição por IA e integração corporativa real.
+A IA é uma fonte probabilística de Intent Contract. Ela não possui autoridade de roteamento ou
+execução.
 
-Uma futura entrada de linguagem natural deverá produzir o mesmo Intent Contract e atravessar o
-mesmo Guard e Router. Uma futura Response Composer só poderá explicar resultados seguros já
-produzidos pelo Core.
+```text
+texto redigido
+  → ContextInterpretationProvider
+  → resposta estruturada
+  → validação sintática/semântica contra catálogo
+  → Intent Contract V1
+  → mesmo Context Policy Guard
+  → mesmo Deterministic Router
+  → confirmação
+  → Spider Core
+```
+
+`ContextInterpretationProvider` não expõe route, capability, endpoint, adapter ou Core. O adapter
+inicial encapsula integralmente tipos AWS Bedrock/Anthropic e envia ao modelo somente texto redigido,
+versões e o vocabulário controlado dos seis intents. O prompt
+`context/context-interpreter-v1.txt` é versionado como `CTX-INTERPRETER-1.0`.
+
+A resposta aceita é exclusivamente JSON estruturado com `status`, intent controlada, entidades
+explicitamente extraídas, candidatos e confidence. Domain e objective são materializados a partir
+do catálogo local; nunca são autoridades do modelo. Intent inexistente, chave de entidade não
+permitida, JSON inválido, timeout ou indisponibilidade falham antes do Router/Core.
+
+Resultados:
+
+- `MATCHED` com contexto completo: produz contrato `NATURAL_LANGUAGE`, passa pelo Guard e Router;
+- `MISSING_CONTEXT`: o Guard rejeita o contrato e a UI pergunta pelo identificador ausente;
+- `AMBIGUOUS`: não produz contrato operacional nem rota;
+- `UNSUPPORTED_INTENT`: não produz contrato operacional nem rota;
+- falha técnica: fail-closed para IA e fail-open para cards/plataforma.
+
+Metadados seguros — provider, model, prompt/schema version, latency, usage e campos redigidos — ficam
+na evidência de interpretação associada ao decision record. Texto bruto não é persistido; somente a
+versão redigida. Não há chain-of-thought.
+
+Para evidência sem credenciais cloud existe provider `scripted-evidence`, condicionado simultaneamente
+ao profile `local-demo`, provider `scripted` e opt-in `scripted-enabled=true`. Ele não é smoke Bedrock
+e nunca é habilitado por padrão.
+
+## 13. Evolução futura, não implementada
+
+Ficam fora de CTX-002: Response Composer, embeddings, RAG, agents, planner LLM, tool calling,
+ServiceNow, novas intents, operações mutáveis e integração corporativa real. CAP-021 permanece
+`PLANNED / NOT_IMPLEMENTED`.

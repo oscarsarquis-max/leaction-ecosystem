@@ -106,15 +106,22 @@ spider.capacity.local-demo.enabled=false
 spider.capacity.enforcement.enabled=false
 spider.context.enabled=false
 spider.context.ui.enabled=false
+spider.context.ai.enabled=false
 ```
 
 Local-demo exige profile Spring `local-demo` **e** flag. A UI abre na **Home operacional** (PROMPT-020A): estado da plataforma, Executar demonstração e últimas execuções. Uma execução disparada pela Home torna-se automaticamente a execução ativa e a **Jornada visual** (PROMPT-020B) é projetada no ponto de entrada — sem progresso fictício e sem JSON bruto. O console envia `X-Spider-Credential-Ref: local-demo-console` no ingress canônico (allowlist; sem header → 401). DenyAll permanece fora desse recorte — não usar `permitAll`. O Cockpit Operacional exige também `spider.telemetry.enabled=true`. O Failure Lab exige `spider.failure-lab.enabled=true` (e `http`/`local-demo` conforme a superfície). O Runtime de Workers exige `spider.worker-runtime.enabled=true` (e `http`/`local-demo`; drain HTTP também exige `allow-drain` ou local-demo). Capacidade exige `spider.capacity.enabled=true` (e `http`/`local-demo`; bloqueio real exige `enforcement.enabled`). Endpoints: `GET /v1/canonical/executions`, `POST /v1/canonical/executions`, `GET /v1/console/executions`, `/{id}`, `/{id}/events`, `/implementation`, `/presentation/readiness`, `/operational-health`, `/operational-health/definitions`, `/failure-lab/scenarios`, `POST /failure-lab/runs`, `GET /failure-lab/runs/{id}` e `/failure-lab/runs/{id}/evidence`, `GET /runtime`, `/runtime/workers`, `/runtime/schedules`, `/runtime/backlogs`, `POST /runtime/workers/{id}/drain`, `GET /capacity`, `/capacity/policies`, `/capacity/pressure`, `/capacity/bulkheads`, `/capacity/circuits`, `/capacity/decisions`.
 
-`SPIDER-CONTEXT-PROMPT-001` acrescenta Context Intelligence determinístico à Home. Seis cards de
-situações de negócio produzem `Intent Contract V1`, passam por Policy Guard, resolvem capability e
-rota e exigem confirmação antes do submit canônico. A Jornada 020B mostra CONTEXTO antes do DATA
-PLANE quando essa evidência existe. O campo de linguagem natural permanece desabilitado:
-`AI NOT ENABLED`; não há LLM, RAG, agent ou integração externa.
+`SPIDER-CTX-002` acrescenta linguagem natural ao Context Intelligence sem criar um pipeline
+paralelo. Business Cards e `ContextInterpretationProvider` produzem o mesmo `Intent Contract V1`,
+que atravessa o mesmo Guard, Router e confirmação. O provider inicial é AWS Bedrock/Anthropic,
+substituível e `false` por padrão. A IA é uma fonte probabilística de Intent Contract. Ela não
+possui autoridade de roteamento ou execução. Não há Response Composer, RAG, agent, tool calling ou
+integração de negócio real.
+
+Para habilitar Bedrock no `local-demo`, configure `SPIDER_CONTEXT_AI_ENABLED=true`, região/modelo e
+credenciais AWS pela cadeia padrão do SDK. O provider `scripted` existe apenas para testes e
+evidências locais e exige também `SPIDER_CONTEXT_AI_SCRIPTED_ENABLED=true`.
+Com backend Bedrock ativo, o smoke separado é `.\scripts\smoke-ctx-002-bedrock.ps1`.
 
 Apresentação:
 

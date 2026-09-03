@@ -55,10 +55,12 @@ describe("ContextIntelligence", () => {
       />,
     );
 
-    expect(screen.getByText("IA — próxima etapa")).toBeInTheDocument();
+    expect(screen.getByText("IA CONTEXTUAL — DESABILITADA")).toBeInTheDocument();
     expect(screen.getByLabelText("Interpretação em linguagem natural")).toBeDisabled();
     expect(screen.getByPlaceholderText("Descreva uma situação ou objetivo...")).toBeDisabled();
-    expect(screen.getByText(/O Spider transforma o objetivo em uma intenção estruturada/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/As situações frequentes continuam operacionais/),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Investigar" }));
     expect(onInterpret).toHaveBeenCalledWith(catalog.items[0]);
   });
@@ -134,6 +136,133 @@ describe("ContextIntelligence", () => {
     expect(panel).toHaveTextContent("INVESTIGATE_COLLECTION_PENDING");
     expect(panel).toHaveTextContent("COLLECTION_DIAGNOSTIC_V1");
     expect(panel).toHaveTextContent("Preview disponível · execução ainda não habilitada");
+    expect(screen.queryByRole("button", { name: "Executar" })).not.toBeInTheDocument();
+  });
+
+  it("enables the objective field only when contextual AI is active", () => {
+    const onInterpretText = vi.fn();
+    render(
+      <ContextIntelligence
+        catalog={{ ...catalog, aiEnabled: true, aiState: "ACTIVE" }}
+        onInterpret={vi.fn()}
+        onInterpretText={onInterpretText}
+        onExecute={vi.fn()}
+      />,
+    );
+
+    const field = screen.getByLabelText("Interpretação em linguagem natural");
+    expect(field).toBeEnabled();
+    fireEvent.change(field, {
+      target: { value: "Verifique a proposta 12345 porque ainda não liberou." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Interpretar" }));
+    expect(onInterpretText).toHaveBeenCalledWith(
+      "Verifique a proposta 12345 porque ainda não liberou.",
+    );
+  });
+
+  it("reuses Spider Entendeu for a valid natural-language contract", () => {
+    const naturalContract = {
+      ...contract,
+      entities: { proposalId: "12345" },
+      provenance: { source: "NATURAL_LANGUAGE", sourceRef: "context-ai:ctxi-1" },
+      confidence: 0.94,
+    };
+    render(
+      <ContextIntelligence
+        catalog={{ ...catalog, aiEnabled: true, aiState: "ACTIVE" }}
+        preview={{
+          decisionId: "ctxd-ai",
+          decision: "ACCEPTED",
+          policyRef: "context:read-only@1.0",
+          intentContract: naturalContract,
+          requestedObjective: "Verifique a proposta 12345 porque ainda não liberou.",
+          interpretationStatus: "SUCCEEDED",
+          interpretationMessage: "Objetivo interpretado.",
+          interpretation: {
+            interpretationId: "ctxi-1",
+            missingContext: [],
+            candidateIntents: [],
+          },
+          route: {
+            capabilityRef: "CREDIT_RELEASE_DIAGNOSTIC",
+            routeRef: "CREDIT_RELEASE_DIAGNOSTIC_V1",
+            executable: true,
+          },
+        }}
+        onInterpret={vi.fn()}
+        onInterpretText={vi.fn()}
+        onExecute={vi.fn()}
+      />,
+    );
+
+    const panel = screen.getByTestId("intent-preview");
+    expect(panel).toHaveTextContent("Você pediu");
+    expect(panel).toHaveTextContent("NATURAL_LANGUAGE");
+    expect(panel).toHaveTextContent("94%");
+    expect(panel).toHaveTextContent("Contexto suficiente");
+    expect(
+      screen.getByLabelText("Objetivo, IA, Intent, Policy, Rota, Executar e Jornada"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Executar" })).toBeEnabled();
+  });
+
+  it("shows missing context and ambiguity without exposing execution", () => {
+    const { rerender } = render(
+      <ContextIntelligence
+        catalog={{ ...catalog, aiEnabled: true, aiState: "ACTIVE" }}
+        preview={{
+          decisionId: "ctxd-missing",
+          decision: "MISSING_CONTEXT",
+          policyRef: "context:read-only@1.0",
+          intentContract: {
+            ...contract,
+            entities: {},
+            provenance: { source: "NATURAL_LANGUAGE" },
+            confidence: 0.94,
+          },
+          requestedObjective: "Minha proposta ainda não foi liberada.",
+          interpretationStatus: "MISSING_CONTEXT",
+          interpretationMessage: "Falta uma informação para continuar com segurança.",
+          interpretation: { missingContext: ["proposalId"], candidateIntents: [] },
+          route: null,
+        }}
+        onInterpret={vi.fn()}
+        onInterpretText={vi.fn()}
+        onExecute={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("missing-context")).toHaveTextContent(
+      "Qual é o número da proposta?",
+    );
+    expect(screen.queryByRole("button", { name: "Executar" })).not.toBeInTheDocument();
+
+    rerender(
+      <ContextIntelligence
+        catalog={{ ...catalog, aiEnabled: true, aiState: "ACTIVE" }}
+        preview={{
+          decisionId: "ctxi-ambiguous",
+          decision: "AMBIGUOUS",
+          requestedObjective: "Quero saber o que aconteceu com o cliente João.",
+          interpretationStatus: "AMBIGUOUS",
+          interpretationMessage: "Preciso entender melhor o objetivo.",
+          interpretation: {
+            missingContext: [],
+            candidateIntents: ["INVESTIGATE_CREDIT_RELEASE"],
+          },
+        }}
+        onInterpret={vi.fn()}
+        onInterpretText={vi.fn()}
+        onExecute={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("interpretation-blocked")).toHaveTextContent(
+      "Preciso entender melhor o objetivo",
+    );
+    expect(screen.getByTestId("interpretation-blocked")).toHaveTextContent(
+      "Investigar liberação de proposta",
+    );
     expect(screen.queryByRole("button", { name: "Executar" })).not.toBeInTheDocument();
   });
 });

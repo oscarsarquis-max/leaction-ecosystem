@@ -16,6 +16,7 @@ public record ContextDecisionRecord(
     String executionId,
     String executionState,
     Instant executedAt,
+    ContextInterpretationEvidence interpretation,
     List<ContextJourneyStage> journey) {
 
   public ContextDecisionRecord {
@@ -34,6 +35,7 @@ public record ContextDecisionRecord(
         nextExecutionId,
         nextExecutionState,
         nextExecutedAt,
+        interpretation,
         journey);
   }
 }

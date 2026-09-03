@@ -116,6 +116,7 @@ function relatedOperational(stage, input) {
   const events = input.operationalEvents || [];
   if (stage.id.startsWith("context-")) {
     const eventTypeByStage = {
+      "context-ai-interpreted": "AI_INTERPRETATION_SUCCEEDED",
       "context-intent-created": "INTENT_CREATED",
       "context-policy-validated": "INTENT_VALIDATED",
       "context-route-resolved": "ROUTE_RESOLVED",
@@ -154,6 +155,10 @@ function relatedOperational(stage, input) {
     signal: ["SIGNAL_"],
     callback: ["CALLBACK_"],
     completion: ["EXECUTION_SUCCEEDED", "EXECUTION_FAILED", "EXECUTION_REJECTED"],
+    "context-ai-interpreted": ["AI_INTERPRETATION_"],
+    "context-intent-created": ["INTENT_CREATED"],
+    "context-policy-validated": ["INTENT_VALIDATED"],
+    "context-route-resolved": ["ROUTE_RESOLVED"],
   };
   let accepted = prefixes[stage.id] || [];
   if (stage.id === "interaction-op") accepted = ["INTERACTION_", "OUTBOUND_"];
@@ -200,6 +205,17 @@ function baseDetail(stage, input, stages) {
       capabilityRef: "Capability",
       routeRef: "Rota",
       executionAvailability: "Disponibilidade",
+      requestedObjective: "Objetivo recebido",
+      extractedEntities: "Entidades extraídas",
+      missingContext: "Informações ausentes",
+      provider: "Provider",
+      model: "Modelo",
+      promptVersion: "Versão do prompt",
+      latencyMs: "Latência (ms)",
+      inputTokens: "Tokens de entrada",
+      outputTokens: "Tokens de saída",
+      totalTokens: "Tokens totais",
+      redactedFields: "Campos redigidos",
     };
     result.summary = stage.contextDetail.summary;
     result.whatHappened = stage.contextDetail.summary;
@@ -211,6 +227,10 @@ function baseDetail(stage, input, stages) {
     );
     const contextNextSteps = {
       "context-objective-selected": "Construir o Intent Contract a partir do objetivo selecionado.",
+      "context-objective-received":
+        "Enviar somente o objetivo redigido ao provider de interpretação.",
+      "context-ai-interpreted":
+        "Materializar o Intent Contract V1 com o vocabulário controlado do Spider.",
       "context-intent-created": "Validar contrato, constraints e provenance no Context Guard.",
       "context-policy-validated": "Resolver capability e rota no roteador determinístico.",
       "context-route-resolved":

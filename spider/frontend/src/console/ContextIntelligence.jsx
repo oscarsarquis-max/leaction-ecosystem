@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 function confidenceLabel(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? `${Math.round(parsed * 100)}%` : "—";
@@ -22,6 +24,24 @@ function flowState(complete, available = true) {
   return complete ? "complete" : "pending";
 }
 
+function aiStateLabel(state) {
+  if (state === "ACTIVE") return "ATIVA";
+  if (state === "UNAVAILABLE") return "INDISPONÍVEL";
+  return "DESABILITADA";
+}
+
+function missingQuestion(key) {
+  const questions = {
+    proposalId: "Qual é o número da proposta?",
+    collectionId: "Qual é o identificador da cobrança?",
+    invoiceId: "Qual é o identificador do faturamento?",
+    customerId: "Qual é o identificador do cliente?",
+    serviceRequestId: "Qual é o número da solicitação?",
+    incidentId: "Qual é o identificador do incidente?",
+  };
+  return questions[key] || `Informe o dado obrigatório: ${key}.`;
+}
+
 export default function ContextIntelligence({
   catalog,
   loading,
@@ -30,8 +50,11 @@ export default function ContextIntelligence({
   busy,
   message,
   onInterpret,
+  onInterpretText,
   onExecute,
 }) {
+  const [objectiveText, setObjectiveText] = useState("");
+
   if (!loading && (!catalog?.contextEnabled || !catalog?.uiEnabled)) {
     return null;
   }
@@ -41,28 +64,67 @@ export default function ContextIntelligence({
   const policyAccepted = preview?.decision === "ACCEPTED";
   const routeResolved = Boolean(preview?.route?.routeRef);
   const executable = preview?.route?.executable === true;
+  const interpretation = preview?.interpretation;
+  const isNaturalLanguage = Boolean(interpretation || preview?.requestedObjective);
+  const missingContext = interpretation?.missingContext || [];
+  const candidateIntents = interpretation?.candidateIntents || [];
+  const intentRecognized = Boolean(contract?.intent);
+  const contextSufficient = intentRecognized && missingContext.length === 0;
+  const aiState = catalog?.aiState || (catalog?.aiEnabled ? "UNAVAILABLE" : "DISABLED");
+  const aiAvailable = catalog?.aiEnabled && aiState === "ACTIVE";
   const validationItems = preview
-    ? [
-        {
-          label: "Intent válido",
-          value: contract?.intent,
-          accepted: Boolean(contract?.intent && policyAccepted),
-        },
-        {
-          label: "Política aceita",
-          value: [preview.decision, preview.policyRef].filter(Boolean).join(" · "),
-          accepted: policyAccepted,
-        },
-        {
-          label: "Rota determinada",
-          value: preview.route?.routeRef,
-          accepted: routeResolved,
-        },
-      ]
+    ? isNaturalLanguage
+      ? [
+          {
+            label: "Intent reconhecido",
+            value: contract?.intent,
+            accepted: intentRecognized,
+          },
+          {
+            label: "Contexto suficiente",
+            value: contextSufficient
+              ? "Nenhuma informação obrigatória ausente"
+              : missingContext.join(", "),
+            accepted: contextSufficient,
+          },
+          {
+            label: "Política aceita",
+            value: [preview.decision, preview.policyRef].filter(Boolean).join(" · "),
+            accepted: policyAccepted,
+          },
+          {
+            label: "Rota determinada",
+            value: preview.route?.routeRef,
+            accepted: routeResolved,
+          },
+        ]
+      : [
+          {
+            label: "Intent válido",
+            value: contract?.intent,
+            accepted: Boolean(contract?.intent && policyAccepted),
+          },
+          {
+            label: "Política aceita",
+            value: [preview.decision, preview.policyRef].filter(Boolean).join(" · "),
+            accepted: policyAccepted,
+          },
+          {
+            label: "Rota determinada",
+            value: preview.route?.routeRef,
+            accepted: routeResolved,
+          },
+        ]
     : [];
   const understandingFlow = preview
     ? [
-        { label: "Objetivo", state: flowState(Boolean(contract?.objective)) },
+        {
+          label: "Objetivo",
+          state: flowState(Boolean(contract?.objective || preview?.requestedObjective)),
+        },
+        ...(isNaturalLanguage
+          ? [{ label: "IA", state: flowState(Boolean(interpretation)) }]
+          : []),
         { label: "Intent", state: flowState(Boolean(contract?.intent)) },
         { label: "Policy", state: flowState(policyAccepted) },
         { label: "Rota", state: flowState(routeResolved) },
@@ -78,27 +140,54 @@ export default function ContextIntelligence({
           <p className="eyebrow">CONTEXT INTELLIGENCE · DEMONSTRAÇÃO</p>
           <h3 id="context-title">O que você precisa resolver?</h3>
           <p className="muted">
-            Selecione uma situação de negócio. O Spider formaliza o objetivo antes de determinar a
-            rota.
+            Descreva uma necessidade empresarial ou selecione uma situação frequente. As duas
+            entradas convergem para o mesmo Intent Contract.
           </p>
         </div>
-        <span className="context-ai-off">IA — próxima etapa</span>
+        <span
+          className={`context-ai-state context-ai-${aiState.toLowerCase()}`}
+          data-testid="context-ai-state"
+        >
+          IA CONTEXTUAL — {aiStateLabel(aiState)}
+        </span>
       </header>
 
-      <label className="context-natural-language">
-        <span>Interpretação em linguagem natural</span>
-        <input
-          type="text"
-          disabled
+      <form
+        className="context-natural-language"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (aiAvailable && objectiveText.trim()) {
+            onInterpretText(objectiveText.trim());
+          }
+        }}
+      >
+        <label htmlFor="context-objective">Interpretação em linguagem natural</label>
+        <textarea
+          id="context-objective"
+          value={objectiveText}
+          disabled={!aiAvailable || busy}
           placeholder="Descreva uma situação ou objetivo..."
           aria-describedby="context-ai-note"
+          rows={3}
+          onChange={(event) => setObjectiveText(event.target.value)}
         />
-      </label>
+        <button
+          type="submit"
+          className="cta"
+          disabled={!aiAvailable || busy || !objectiveText.trim()}
+        >
+          {busy ? "Interpretando…" : "Interpretar"}
+        </button>
+      </form>
       <p id="context-ai-note" className="context-note muted">
-        Escolha uma situação abaixo ou descreva seu objetivo. O Spider transforma o objetivo em uma
-        intenção estruturada antes de determinar como executá-lo. A descrição em linguagem natural
-        estará disponível em uma próxima etapa.
+        {aiAvailable
+          ? "Descreva uma necessidade empresarial. A IA produz uma intenção estruturada; o Guard e o Router continuam responsáveis pela decisão."
+          : "A interpretação em linguagem natural está indisponível neste ambiente. As situações frequentes continuam operacionais pelo caminho determinístico."}
       </p>
+
+      <div className="context-or" aria-hidden="true">
+        <span>OU</span>
+      </div>
 
       <div className="context-section-heading">
         <h4>Situações frequentes</h4>
@@ -131,7 +220,9 @@ export default function ContextIntelligence({
         <article className="intent-preview" data-testid="intent-preview" aria-labelledby="intent-preview-title">
           <header className="intent-preview-head">
             <div>
-              <p className="eyebrow">INTENT CONTRACT · V1</p>
+              <p className="eyebrow">
+                {contract ? "INTENT CONTRACT · V1" : "INTERPRETAÇÃO CONTEXTUAL"}
+              </p>
               <h4 id="intent-preview-title">SPIDER ENTENDEU</h4>
             </div>
             <span className={`intent-decision intent-decision-${preview.decision?.toLowerCase()}`}>
@@ -139,7 +230,22 @@ export default function ContextIntelligence({
             </span>
           </header>
 
-          <ol className="context-understanding-flow" aria-label="Objetivo, Intent, Policy, Rota, Executar e Jornada">
+          {preview.requestedObjective && (
+            <section className="intent-requested-objective" aria-label="Objetivo informado">
+              <span>Você pediu</span>
+              <blockquote>{preview.requestedObjective}</blockquote>
+            </section>
+          )}
+
+          <ol
+            className="context-understanding-flow"
+            aria-label={
+              isNaturalLanguage
+                ? "Objetivo, IA, Intent, Policy, Rota, Executar e Jornada"
+                : "Objetivo, Intent, Policy, Rota, Executar e Jornada"
+            }
+            style={{ "--context-flow-count": understandingFlow.length }}
+          >
             {understandingFlow.map((item, index) => (
               <li key={item.label} data-state={item.state}>
                 <span className="context-flow-index" aria-hidden="true">
@@ -155,7 +261,9 @@ export default function ContextIntelligence({
             ))}
           </ol>
 
-          <dl className="intent-preview-grid">
+          {contract ? (
+            <>
+              <dl className="intent-preview-grid">
             <div className="intent-preview-objective">
               <dt>Objetivo</dt>
               <dd>{card?.description || contract?.objective}</dd>
@@ -199,39 +307,77 @@ export default function ContextIntelligence({
               <dd>
                 {executable
                   ? "Disponível ponta a ponta"
-                  : "Preview disponível · execução ainda não habilitada"}
+                  : missingContext.length > 0
+                    ? "Bloqueada · contexto obrigatório ausente"
+                    : isNaturalLanguage
+                      ? "Sem autorização de execução"
+                      : "Preview disponível · execução ainda não habilitada"}
               </dd>
             </div>
-          </dl>
+              </dl>
 
-          <section className="intent-validation" aria-labelledby="intent-validation-title">
-            <h5 id="intent-validation-title">Validação</h5>
-            <ul>
-              {validationItems.map((item) => (
-                <li key={item.label} data-state={item.accepted ? "accepted" : "rejected"}>
-                  <span aria-hidden="true">{item.accepted ? "✓" : "✕"}</span>
-                  <div>
-                    <strong>{item.label}</strong>
-                    <small>{item.value || "Sem evidência"}</small>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
+              <section className="intent-validation" aria-labelledby="intent-validation-title">
+                <h5 id="intent-validation-title">Validação</h5>
+                <ul>
+                  {validationItems.map((item) => (
+                    <li key={item.label} data-state={item.accepted ? "accepted" : "rejected"}>
+                      <span aria-hidden="true">{item.accepted ? "✓" : "✕"}</span>
+                      <div>
+                        <strong>{item.label}</strong>
+                        <small>{item.value || "Sem evidência"}</small>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
 
-          <footer className="intent-preview-actions">
-            {!executable && (
-              <p className="muted">
-                A compreensão está disponível. A execução ponta a ponta de CTX-001 está habilitada
-                inicialmente para Crédito.
-              </p>
-            )}
-            {policyAccepted && executable && (
-              <button type="button" className="cta" disabled={busy} onClick={() => onExecute(preview)}>
-                {busy ? "Executando…" : "Executar"}
-              </button>
-            )}
-          </footer>
+              {missingContext.length > 0 && (
+                <section className="intent-clarification" data-testid="missing-context">
+                  <h5>Falta uma informação</h5>
+                  {missingContext.map((key) => (
+                    <p key={key}>{missingQuestion(key)}</p>
+                  ))}
+                </section>
+              )}
+
+              <footer className="intent-preview-actions">
+                {!executable && (
+                  <p className="muted">
+                    {preview.interpretationMessage ||
+                      "A compreensão está disponível. A execução ponta a ponta de CTX-001 está habilitada inicialmente para Crédito."}
+                  </p>
+                )}
+                {policyAccepted && executable && (
+                  <button
+                    type="button"
+                    className="cta"
+                    disabled={busy}
+                    onClick={() => onExecute(preview)}
+                  >
+                    {busy ? "Executando…" : "Executar"}
+                  </button>
+                )}
+              </footer>
+            </>
+          ) : (
+            <section className="intent-interpretation-blocked" data-testid="interpretation-blocked">
+              <h5>
+                {preview.interpretationStatus === "AMBIGUOUS"
+                  ? "Preciso entender melhor o objetivo"
+                  : "Objetivo não suportado"}
+              </h5>
+              <p>{preview.interpretationMessage}</p>
+              {candidateIntents.length > 0 && (
+                <ul>
+                  {candidateIntents.map((intent) => {
+                    const option = catalog?.items?.find((item) => item.intent === intent);
+                    return <li key={intent}>{option?.title || intent}</li>;
+                  })}
+                </ul>
+              )}
+              <p className="muted">Nenhuma rota foi determinada e nenhuma execução foi iniciada.</p>
+            </section>
+          )}
         </article>
       )}
 

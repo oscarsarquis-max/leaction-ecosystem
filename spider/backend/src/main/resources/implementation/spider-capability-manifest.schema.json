@@ -39,6 +39,8 @@
       "required": [
         "status",
         "aiEnabled",
+        "aiContextInterpretation",
+        "aiProvider",
         "promptRef",
         "featureFlags",
         "architectureRefs",
@@ -49,7 +51,9 @@
       "properties": {
         "status": { "enum": ["NOT_STARTED", "ENABLED"] },
         "aiEnabled": { "const": false },
-        "promptRef": { "const": "SPIDER-CONTEXT-PROMPT-001" },
+        "aiContextInterpretation": { "enum": ["DISABLED", "ENABLED"] },
+        "aiProvider": { "const": "AWS_BEDROCK_ANTHROPIC" },
+        "promptRef": { "const": "SPIDER-CTX-002" },
         "featureFlags": { "type": "array", "items": { "type": "string" } },
         "architectureRefs": { "type": "array", "items": { "type": "string" } },
         "evidenceRefs": { "type": "array", "items": { "type": "string" } },

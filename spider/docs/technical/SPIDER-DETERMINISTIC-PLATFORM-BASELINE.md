@@ -49,6 +49,10 @@ O refinamento visual CTX-001A preservou esse baseline histórico e acrescentou u
 frontend para cards `preview-only`. A verificação atual passou com **402 backend / 99 frontend**,
 build de produção verde e diagnósticos de lint sem erros.
 
+CTX-002 adicionou a fonte probabilística `NATURAL_LANGUAGE` sem mudar a soberania do Guard, Router
+ou Core. A regressão completa passou com **417 backend / 103 frontend**, build de produção e ESLint
+verdes. O smoke Bedrock permanece separado e condicional a credenciais externas.
+
 ## Evidências preservadas
 
 - `docs/technical/screenshots/020A-home-operacional.png`

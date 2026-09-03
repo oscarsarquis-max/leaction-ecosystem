@@ -52,7 +52,7 @@ async function main() {
   await page.goto(UI, { waitUntil: "networkidle" });
   const contextPlane = page.getByTestId("context-intelligence");
   await contextPlane.waitFor();
-  await contextPlane.getByText("IA — próxima etapa", { exact: true }).waitFor();
+  await contextPlane.getByText("IA CONTEXTUAL — DESABILITADA", { exact: true }).waitFor();
   await page.screenshot({
     path: path.join(outDir, "CTX-001A-context-home.png"),
     fullPage: true,
@@ -106,7 +106,7 @@ async function main() {
     throw new Error("A transição CONTEXTO → DATA PLANE não está clara");
   }
   const bodyText = await page.locator("body").innerText();
-  if (!/IA — próxima etapa/.test(bodyText) || /Submetido\. Resposta/.test(bodyText)) {
+  if (!/IA CONTEXTUAL — DESABILITADA/.test(bodyText) || /Submetido\. Resposta/.test(bodyText)) {
     throw new Error("Boundary visual CTX-001A inválido");
   }
   if (externalAiCalls.length > 0) {

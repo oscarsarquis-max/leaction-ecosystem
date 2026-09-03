@@ -55,6 +55,12 @@ Capturas reais (Playwright) contra UI `http://127.0.0.1:5180` + API local-demo:
 | `CTX-001A-intent-policy-route.png` | componente responsivo |
 | `CTX-001A-context-to-dataplane.png` | 1440×página |
 | `CTX-001A-context-step-detail.png` | componente responsivo |
+| `CTX-002-natural-language-home.png` | 1440×página |
+| `CTX-002-ai-interpretation.png` | Jornada + detalhe explicável |
+| `CTX-002-spider-entendeu.png` | componente responsivo |
+| `CTX-002-ambiguous.png` | componente responsivo |
+| `CTX-002-missing-context.png` | componente responsivo |
+| `CTX-002-context-to-dataplane.png` | 1440×página |
 
 Geração:
 
@@ -72,6 +78,10 @@ node .\scripts\capture-020b-live-screenshots.mjs
 node .\scripts\capture-020b-step-details-screenshots.mjs
 node .\scripts\capture-ctx-001-screenshots.mjs
 node .\scripts\capture-ctx-001a-screenshots.mjs
+node .\scripts\capture-ctx-002-screenshots.mjs
 ```
+
+As evidências CTX-002 deste repositório usam o provider local explicitamente opt-in
+`scripted-evidence`; não são smoke AWS Bedrock. O script valida a UI real sem interceptar rotas.
 
 As capturas 017 usam o Cockpit Operacional (console + telemetria + saúde). As cinco capturas 018 usam o Failure Lab com `spider.failure-lab.enabled` e `spider.failure-lab.http.enabled`. As cinco capturas 019 usam o Runtime de Workers com `spider.worker-runtime.enabled` e `spider.worker-runtime.http.enabled`. As cinco capturas 020 usam Capacidade & Resiliência com `spider.capacity.enabled` (+ `http` / `local-demo` / `enforcement` conforme o cenário). Os PNGs podem ser produzidos separadamente do fechamento documental.

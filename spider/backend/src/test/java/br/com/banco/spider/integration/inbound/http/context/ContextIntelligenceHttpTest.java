@@ -16,7 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
-@SpringBootTest
+@SpringBootTest(properties = "spider.context.ai.enabled=false")
 @AutoConfigureWebTestClient(timeout = "PT30S")
 @ActiveProfiles("local-demo")
 class ContextIntelligenceHttpTest {
@@ -40,6 +40,8 @@ class ContextIntelligenceHttpTest {
         .isEqualTo(true)
         .jsonPath("$.aiEnabled")
         .isEqualTo(false)
+        .jsonPath("$.aiState")
+        .isEqualTo("DISABLED")
         .jsonPath("$.items.length()")
         .isEqualTo(6)
         .jsonPath("$.items[0].intentContract.provenance.source")
@@ -49,6 +51,24 @@ class ContextIntelligenceHttpTest {
   @Test
   void contextEndpointsPreserveDenyAllWithoutCredential() {
     client.get().uri("/v1/context/intents").exchange().expectStatus().isUnauthorized();
+  }
+
+  @Test
+  void aiOffFailsClosedWhileBusinessCardsRemainAvailable() {
+    client
+        .post()
+        .uri("/v1/context/interpretations")
+        .header("X-Spider-Credential-Ref", LocalDemoCanonicalCredentials.CREDENTIAL_REF)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(Map.of("objective", "Verifique a proposta 12345."))
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("DISABLED")
+        .jsonPath("$.decision")
+        .isEmpty();
   }
 
   @Test

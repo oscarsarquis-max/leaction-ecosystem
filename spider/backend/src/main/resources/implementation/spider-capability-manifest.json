@@ -1,7 +1,7 @@
 {
-  "manifestVersion": "1.1.0",
+  "manifestVersion": "1.2.0",
   "productVersion": "0.20.0",
-  "lastVerifiedAt": "2026-09-03T15:54:00Z",
+  "lastVerifiedAt": "2026-09-03T17:10:00Z",
   "baseline": {
     "backendTests": 385,
     "frontendTests": 92,
@@ -14,10 +14,13 @@
   "contextIntelligence": {
     "status": "ENABLED",
     "aiEnabled": false,
-    "promptRef": "SPIDER-CONTEXT-PROMPT-001",
+    "aiContextInterpretation": "ENABLED",
+    "aiProvider": "AWS_BEDROCK_ANTHROPIC",
+    "promptRef": "SPIDER-CTX-002",
     "featureFlags": [
       "spider.context.enabled",
-      "spider.context.ui.enabled"
+      "spider.context.ui.enabled",
+      "spider.context.ai.enabled"
     ],
     "architectureRefs": [
       "docs/architecture/SPIDER-ARCH-015-context-intelligence-plane.md",
@@ -35,12 +38,20 @@
       "docs/technical/screenshots/CTX-001A-spider-entendeu.png",
       "docs/technical/screenshots/CTX-001A-intent-policy-route.png",
       "docs/technical/screenshots/CTX-001A-context-to-dataplane.png",
-      "docs/technical/screenshots/CTX-001A-context-step-detail.png"
+      "docs/technical/screenshots/CTX-001A-context-step-detail.png",
+      "docs/technical/screenshots/CTX-002-natural-language-home.png",
+      "docs/technical/screenshots/CTX-002-ai-interpretation.png",
+      "docs/technical/screenshots/CTX-002-spider-entendeu.png",
+      "docs/technical/screenshots/CTX-002-ambiguous.png",
+      "docs/technical/screenshots/CTX-002-missing-context.png",
+      "docs/technical/screenshots/CTX-002-context-to-dataplane.png"
     ],
-    "testSummary": "17 backend context tests and 7 frontend context tests; full suites 402 backend / 99 frontend",
+    "testSummary": "32 backend context tests and 11 frontend context tests; full suites 417 backend / 103 frontend",
     "limitations": [
-      "NO_LLM",
-      "BUSINESS_CARD_ONLY",
+      "AI_DEFAULT_OFF",
+      "BEDROCK_SMOKE_REQUIRES_EXTERNAL_CREDENTIALS",
+      "NO_RESPONSE_COMPOSER",
+      "NO_AGENT",
       "MOCK_ONLY",
       "IN_MEMORY_CONTEXT_READ_MODEL"
     ]

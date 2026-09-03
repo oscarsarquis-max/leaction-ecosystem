@@ -6,6 +6,8 @@ import br.com.banco.spider.application.security.IngressAuthenticationRequest;
 import br.com.banco.spider.config.ContextIntelligenceProperties;
 import br.com.banco.spider.context.application.ContextDecisionRecord;
 import br.com.banco.spider.context.application.ContextIntelligenceService;
+import br.com.banco.spider.context.application.ContextInterpretationEvidence;
+import br.com.banco.spider.context.application.ContextInterpretationService;
 import br.com.banco.spider.context.contract.IntentContract;
 import br.com.banco.spider.context.domain.BusinessIntentDefinition;
 import br.com.banco.spider.context.domain.ContextGuardDecision;
@@ -35,16 +37,19 @@ public class ContextIntelligenceHttpController {
 
   private final CanonicalIngressAuthenticationPort authentication;
   private final ContextIntelligenceService context;
+  private final ContextInterpretationService interpretation;
   private final ContextIntelligenceProperties properties;
   private final SpiderClock clock;
 
   public ContextIntelligenceHttpController(
       CanonicalIngressAuthenticationPort authentication,
       ContextIntelligenceService context,
+      ContextInterpretationService interpretation,
       ContextIntelligenceProperties properties,
       SpiderClock clock) {
     this.authentication = authentication;
     this.context = context;
+    this.interpretation = interpretation;
     this.properties = properties;
     this.clock = clock;
   }
@@ -68,9 +73,37 @@ public class ContextIntelligenceHttpController {
                           "1.0",
                           true,
                           properties.getUi().isEnabled(),
-                          false,
-                          "Interpretação em linguagem natural — próxima etapa.",
+                          properties.getAi().isEnabled(),
+                          interpretation.state().name(),
+                          interpretation.providerId(),
+                          properties.getAi().isEnabled()
+                              ? "Interpretação contextual disponível."
+                              : "Interpretação contextual desabilitada.",
                           items));
+            });
+  }
+
+  @PostMapping(
+      value = "/interpretations",
+      consumes = MediaType.APPLICATION_JSON_VALUE,
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<?>> interpret(
+      @RequestBody NaturalLanguageInterpretationRequest body,
+      @RequestHeader(value = "X-Spider-Credential-Ref", required = false) String credentialRef,
+      ServerWebExchange exchange) {
+    return authenticate(credentialRef, exchange)
+        .flatMap(
+            originator -> {
+              if (originator.isEmpty()) {
+                return Mono.just(unauthorized());
+              }
+              return interpretation
+                  .interpret(body.objective(), originator.get().principalRef())
+                  .map(
+                      result ->
+                          ResponseEntity.ok()
+                              .header("Cache-Control", "no-store")
+                              .body(InterpretationView.from(result)));
             });
   }
 
@@ -221,8 +254,31 @@ public class ContextIntelligenceHttpController {
       boolean contextEnabled,
       boolean uiEnabled,
       boolean aiEnabled,
+      String aiState,
+      String aiProvider,
       String naturalLanguageMessage,
       List<BusinessIntentCardView> items) {}
+
+  public record NaturalLanguageInterpretationRequest(String objective) {}
+
+  public record InterpretationView(
+      String status,
+      String aiState,
+      String message,
+      String requestedObjective,
+      DecisionView decision,
+      ContextInterpretationEvidence interpretation) {
+    static InterpretationView from(
+        ContextInterpretationService.InterpretationResult result) {
+      return new InterpretationView(
+          result.status().name(),
+          result.aiState().name(),
+          result.message(),
+          result.requestedObjective(),
+          result.decision() == null ? null : DecisionView.from(result.decision()),
+          result.interpretation());
+    }
+  }
 
   public record BusinessIntentCardView(
       String domain,
@@ -270,6 +326,7 @@ public class ContextIntelligenceHttpController {
       String policyRef,
       PublicRouteView route,
       List<br.com.banco.spider.context.application.ContextJourneyStage> contextJourney,
+      ContextInterpretationEvidence interpretation,
       String executionId,
       String executionState) {
     static DecisionView from(ContextDecisionRecord record) {
@@ -281,6 +338,7 @@ public class ContextIntelligenceHttpController {
           record.guard().policyRef(),
           PublicRouteView.from(record.route()),
           record.journey(),
+          record.interpretation(),
           record.executionId(),
           record.executionState());
     }

@@ -11,6 +11,7 @@ import {
   extractCanonicalExecutionId,
   getContextIntentCatalog,
   resolveBusinessIntent,
+  interpretNaturalLanguage,
   executeContextIntent,
   getExecutionContext,
 } from "./api";
@@ -324,6 +325,46 @@ export default function ConsoleShell() {
     }
   }
 
+  async function interpretNaturalLanguageObjective(objective) {
+    setContextBusy(true);
+    setContextMessage(null);
+    try {
+      const result = await interpretNaturalLanguage(objective);
+      const preview = result.decision
+        ? {
+            ...result.decision,
+            interpretation: result.interpretation || result.decision.interpretation,
+            requestedObjective: result.requestedObjective,
+            interpretationStatus: result.status,
+            interpretationMessage: result.message,
+          }
+        : {
+            decisionId: result.interpretation?.interpretationId,
+            decision: result.status,
+            reasonCode: result.status,
+            intentContract: null,
+            route: null,
+            contextJourney: [],
+            interpretation: result.interpretation,
+            requestedObjective: result.requestedObjective,
+            interpretationStatus: result.status,
+            interpretationMessage: result.message,
+          };
+      setContextPreview(preview);
+      setContextCatalog((current) =>
+        current ? { ...current, aiState: result.aiState || current.aiState } : current,
+      );
+    } catch (error) {
+      setContextMessage({
+        ok: false,
+        text:
+          error.message || "Não foi possível interpretar este objetivo com segurança.",
+      });
+    } finally {
+      setContextBusy(false);
+    }
+  }
+
   async function executeBusinessIntent(preview) {
     setContextBusy(true);
     setContextMessage(null);
@@ -466,6 +507,7 @@ export default function ConsoleShell() {
             busy={contextBusy}
             message={contextMessage}
             onInterpret={interpretBusinessIntent}
+            onInterpretText={interpretNaturalLanguageObjective}
             onExecute={executeBusinessIntent}
           />
           {selectedId && (

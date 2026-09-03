@@ -74,7 +74,7 @@ async function main() {
   await journey.screenshot({ path: path.join(outDir, "CTX-001-context-journey.png") });
 
   const body = await page.locator("body").innerText();
-  if (!/IA — próxima etapa/.test(body) || /Submetido\. Resposta/.test(body)) {
+  if (!/IA CONTEXTUAL — DESABILITADA/.test(body) || /Submetido\. Resposta/.test(body)) {
     throw new Error("Boundary visual CTX-001 inválido");
   }
   if (externalAiCalls.length > 0) {
