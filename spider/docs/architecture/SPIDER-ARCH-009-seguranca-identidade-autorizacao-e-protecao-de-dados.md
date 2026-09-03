@@ -47,6 +47,10 @@ Os termos “deve”, “não deve” e “somente” expressam requisitos arqui
 9. Proteção de dados segue minimização, finalidade, necessidade, acesso mínimo e retenção limitada.
 10. Nesta fase são permitidas apenas identidades de teste, dados sintéticos, Mocks e simuladores isolados.
 
+### Nota de implementação (PROMPT-020A)
+
+O ingress HTTP canônico aplica **DenyAll** por default (`CanonicalSecurityDefaultsConfig`). O profile `local-demo` com `spider.console.local-demo.enabled=true` substitui esses beans por uma **allowlist** da credencial `local-demo-console` — não `permitAll()`, não OAuth corporativo. Credencial ausente ou desconhecida continua 401. O Control Plane / Data Plane de produção permanece DenyAll.
+
 ## 4. Modelo de ameaças inicial
 
 O modelo deve considerar, no mínimo:

@@ -45,7 +45,7 @@ export function buildCanonicalRequest(scenario, { idempotencyKey, traceparent } 
   return {
     contract: { schemaVersion: "1.0", contractVersion: "1.0.0" },
     execution: {
-      executionId: null,
+      executionId: `exec-${crypto.randomUUID()}`,
       requestedAt: now,
       idempotencyKey: idempotencyKey || null,
     },

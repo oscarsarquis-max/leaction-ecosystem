@@ -1,6 +1,10 @@
 /**
  * Cliente tipado do console operacional — sem localStorage de tokens.
+ * A credencial local-demo vai no header allowlist; o backend DenyAll continua
+ * rejeitando ausência/valor estranho no ingress canônico.
  */
+
+export const LOCAL_DEMO_CREDENTIAL = "local-demo-console";
 
 function parseProblem(body) {
   if (!body || typeof body !== "object") {
@@ -19,6 +23,7 @@ async function request(path, { method = "GET", body, signal, headers = {} } = {}
     signal,
     headers: {
       Accept: "application/json, application/problem+json",
+      "X-Spider-Credential-Ref": LOCAL_DEMO_CREDENTIAL,
       ...(body ? { "Content-Type": "application/json" } : {}),
       ...headers,
     },
@@ -72,7 +77,6 @@ export function submitMockScenario(httpBody, { idempotencyKey, traceparent, sign
     headers: {
       "Idempotency-Key": idempotencyKey,
       traceparent,
-      "X-Spider-Credential-Ref": "local-demo-console",
     },
   });
 }
@@ -84,6 +88,14 @@ export function submitMockSignal(body, { signal } = {}) {
     signal,
     headers: { "X-Spider-Credential-Ref": "local-demo-console" },
   });
+}
+
+export function getPlatformHealth({ signal } = {}) {
+  return request("/actuator/health", { signal });
+}
+
+export function listCanonicalExecutions({ signal } = {}) {
+  return request("/v1/canonical/executions", { signal });
 }
 
 export function getImplementationStatus({ signal } = {}) {

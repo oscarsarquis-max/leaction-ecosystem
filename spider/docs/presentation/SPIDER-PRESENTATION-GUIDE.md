@@ -31,9 +31,12 @@ Flags: profile `local-demo` + `spider.console.*` + canonical HTTP conforme scrip
 ## Roteiro 3 minutos
 
 1. Badge **DEMONSTRAÇÃO MOCK** no topo.
-2. Aba **Implementação**: grupos A–D, CAP-015–020 VERIFIED (Grupo A 4/4; Grupo B 2/3), 021–026 PLANNED, baseline confirmado 374/67.
-3. Aba **Apresentação**: preflight readiness; se READY, capítulo 4 → `RETRY_THEN_SUCCESS`.
-4. Abrir detalhe: journey map + timeline persistidos (2 attempts).
+2. **Home operacional**: Spider 0.20.0, Health UP, Presentation READY, Runtime SIMULATED_INFRASTRUCTURE, Integrations MOCK_ONLY.
+3. Últimas execuções visíveis (sem 401). Ação **Executar demonstração** usa `POST /v1/canonical/executions` e acompanha a **Jornada visual** na Home (somente etapas com evidência; retry visível em `RETRY_THEN_SUCCESS`).
+4. Navegação agrupada: Execuções / Operação / Testes & demonstração / Plataforma — não é mais uma fita plana de abas.
+5. Aba **Implementação** (grupo Plataforma): grupos A–D, CAP-015–020 VERIFIED (Grupo A 4/4; Grupo B 2/3), 021–026 PLANNED.
+6. Aba **Apresentação**: preflight readiness; se READY, capítulo 4 → `RETRY_THEN_SUCCESS`.
+7. Detalhe: o que aconteceu → por onde passou → quando (timeline) → o que tecnicamente ocorreu.
 
 ## Roteiro 8 minutos
 
@@ -104,7 +107,8 @@ Integração real começa quando capabilities saírem de `MOCK_ONLY` sob governa
 ## Troubleshooting
 
 - Console indisponível: `spider.console.enabled` + `http.enabled`.
-- Auth negada: profile `local-demo` + `local-demo.enabled=true`.
+- Auth negada no **console**: profile `local-demo` + `local-demo.enabled=true`.
+- Auth 401 no **ingress canônico**: header `X-Spider-Credential-Ref: local-demo-console` (allowlist; não é permitAll). Sem header o DenyAll permanece.
 - Readiness not-ready: habilitar canonical submit/status conforme checklist.
 - Porta ocupada: liberar 8080/5180.
 

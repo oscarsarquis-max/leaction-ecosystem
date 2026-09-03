@@ -408,6 +408,42 @@ Flags + manifesto ─────→ Presentation Readiness ─────→ M
 
 A UI não inventa eventos nem lê JSON local para hardcodar a evolução. Execução e implementação são dimensões distintas. O laboratório de apresentação submete cenários canônicos Mock; não usa o endpoint legado como jornada principal.
 
+Jornada operacional restaurada (PROMPT-020A):
+
+```text
+USER
+  ↓
+HOME OPERACIONAL
+  ↓
+EXECUÇÕES
+  ↓
+DETALHE / TIMELINE / OPERAÇÃO
+```
+
+A rota inicial do console é a **Home operacional** (estado da plataforma, ação principal de demonstração e últimas execuções). Não abre em “Observação do Data Plane”. Ingress canônico permanece DenyAll no default; `local-demo` autentica somente a credencial allowlist `local-demo-console`.
+
+Jornada visual (PROMPT-020B) — a UI projeta o comportamento real e não simula etapas inexistentes:
+
+```text
+                HOME
+                  │
+             NOVA EXECUÇÃO
+                  │
+                  ▼
+          JORNADA VISUAL
+                  │
+     ┌────────────┼────────────┐
+     ▼            ▼            ▼
+   STATE      OP EVENTS    INTERACTIONS
+     │            │            │
+     └────────────┼────────────┘
+                  ▼
+              READ MODEL
+                  │
+                  ▼
+               CONSOLE
+```
+
 ## 8. Interfaces e superfícies do produto
 
 ### 8.1 Superfícies HTTP atuais
@@ -415,7 +451,8 @@ A UI não inventa eventos nem lê JSON local para hardcodar a evolução. Execu�
 | Método e path | Função | Disponibilidade / boundary |
 |---|---|---|
 | `POST /v1/products/orchestrate` | Endpoint legado preservado | Compatibilidade; fora da jornada canônica do Console |
-| `POST /v1/canonical/executions` | Submeter execução canônica | Flag opt-in; DenyAll por default; laboratório Mock no local-demo |
+| `POST /v1/canonical/executions` | Submeter execução canônica | Flag opt-in; DenyAll por default; allowlist `local-demo-console` no profile local-demo |
+| `GET /v1/canonical/executions` | Listar execuções do originador autenticado | Mesma flag de status-query; 401 sem credencial allowlist |
 | `GET /v1/canonical/executions/{id}` | Consultar status próprio | Flags de HTTP + status query; ownership/authz |
 | `POST /v1/canonical/signals` | Receber sinal externo | Flag opt-in; inline ou durable conforme configuração |
 | `GET /v1/console/executions` | Listar execuções seguras | Console/HTTP opt-in; DenyAll por default |
@@ -437,7 +474,9 @@ Essas portas preservam a neutralidade de protocolo. Uma implementação futura p
 
 ### 8.3 Superfícies visuais
 
-- Console de execuções;
+- Home operacional (PROMPT-020A): estado da plataforma, demonstração e últimas execuções;
+- Jornada visual da execução (PROMPT-020B): projeção de state / events / interactions, sem progresso fictício;
+- Console de execuções (navegação agrupada: Execuções, Operação, Testes, Plataforma);
 - detalhe com journey map e timeline persistida/derivada;
 - Cockpit de Implementação;
 - Presentation Readiness;

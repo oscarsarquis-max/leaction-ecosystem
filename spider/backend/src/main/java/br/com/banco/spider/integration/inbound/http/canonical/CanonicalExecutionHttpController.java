@@ -1,6 +1,7 @@
 package br.com.banco.spider.integration.inbound.http.canonical;
 
 import br.com.banco.spider.application.canonical.GetCanonicalExecutionUseCase;
+import br.com.banco.spider.application.canonical.ListCanonicalExecutionsUseCase;
 import br.com.banco.spider.application.canonical.SubmitCanonicalExecutionUseCase;
 import br.com.banco.spider.application.security.CanonicalIngressAuthenticationPort;
 import br.com.banco.spider.application.security.CanonicalIngressSecurityContext;
@@ -36,6 +37,7 @@ public class CanonicalExecutionHttpController {
   private final CanonicalIngressAuthenticationPort authentication;
   private final SubmitCanonicalExecutionUseCase submitUseCase;
   private final GetCanonicalExecutionUseCase getUseCase;
+  private final ListCanonicalExecutionsUseCase listUseCase;
   private final CanonicalExecutionHttpMapper mapper;
   private final CanonicalHttpStatusMapper statusMapper;
   private final SpiderClock clock;
@@ -45,6 +47,7 @@ public class CanonicalExecutionHttpController {
       CanonicalIngressAuthenticationPort authentication,
       SubmitCanonicalExecutionUseCase submitUseCase,
       GetCanonicalExecutionUseCase getUseCase,
+      ListCanonicalExecutionsUseCase listUseCase,
       CanonicalExecutionHttpMapper mapper,
       CanonicalHttpStatusMapper statusMapper,
       SpiderClock clock,
@@ -52,10 +55,47 @@ public class CanonicalExecutionHttpController {
     this.authentication = authentication;
     this.submitUseCase = submitUseCase;
     this.getUseCase = getUseCase;
+    this.listUseCase = listUseCase;
     this.mapper = mapper;
     this.statusMapper = statusMapper;
     this.clock = clock;
     this.statusQueryEnabled = props.isStatusQueryEnabled();
+  }
+
+  @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<?>> list(
+      @RequestHeader(value = "X-Spider-Credential-Ref", required = false) String credentialRef,
+      ServerWebExchange exchange) {
+    if (!statusQueryEnabled) {
+      return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
+    IngressAuthenticationRequest authReq =
+        new IngressAuthenticationRequest(
+            "REST_HTTP",
+            credentialRef,
+            Map.of(),
+            exchange.getRequest().getRemoteAddress() != null
+                ? exchange.getRequest().getRemoteAddress().toString()
+                : null,
+            clock.now());
+    return authentication
+        .authenticate(authReq)
+        .flatMap(
+            opt -> {
+              if (opt.isEmpty()) {
+                log.info("event=authz_decision reasonCode=UNAUTHENTICATED path=list");
+                return Mono.just(
+                    ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("code", "UNAUTHENTICATED")));
+              }
+              return listUseCase
+                  .listOwned(opt.get().principalRef(), 20)
+                  .map(
+                      items ->
+                          ResponseEntity.ok()
+                              .header("Cache-Control", "no-store")
+                              .body(Map.of("items", items)));
+            });
   }
 
   @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)

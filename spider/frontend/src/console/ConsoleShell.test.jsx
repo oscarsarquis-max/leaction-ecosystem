@@ -26,6 +26,7 @@ describe("scenarios", () => {
       traceparent: "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01",
     });
     expect(body.target.operation).toBe("RETRY_THEN_SUCCESS");
+    expect(body.execution.executionId).toMatch(/^exec-[0-9a-f-]{36}$/i);
     expect(JSON.stringify(body)).not.toContain("orchestrate");
   });
 });
@@ -127,6 +128,47 @@ describe("ConsoleShell", () => {
       vi.fn(async (url, init) => {
         if (String(url).includes("/v1/products/orchestrate")) {
           throw new Error("legacy must not be called");
+        }
+        if (String(url).includes("/actuator/health")) {
+          return { ok: true, status: 200, text: async () => JSON.stringify({ status: "UP" }) };
+        }
+        if (String(url).includes("/v1/console/implementation")) {
+          return {
+            ok: true,
+            status: 200,
+            text: async () =>
+              JSON.stringify({
+                productVersion: "0.20.0",
+                currentPrompt: "SPIDER-PROMPT-020",
+                mockRealBoundary: "MOCK_ONLY",
+              }),
+          };
+        }
+        if (String(url).includes("/v1/console/presentation/readiness")) {
+          return {
+            ok: true,
+            status: 200,
+            text: async () =>
+              JSON.stringify({ ready: true, runtimeVersion: "spider@0.20.0", boundary: "MOCK_ONLY" }),
+          };
+        }
+        if (String(url).includes("/v1/canonical/executions") && (!init || !init.method || init.method === "GET")) {
+          return {
+            ok: true,
+            status: 200,
+            text: async () =>
+              JSON.stringify({
+                items: [
+                  {
+                    executionId: "demo-retry-001",
+                    state: "SUCCEEDED",
+                    technicalStatus: "SUCCESS",
+                    startedAt: "2026-08-21T18:00:00Z",
+                    durationMs: 3000,
+                  },
+                ],
+              }),
+          };
         }
         if (String(url).includes("/v1/console/operational-health")) {
           return {
@@ -249,10 +291,12 @@ describe("ConsoleShell", () => {
 
   it("shows list and opens detail without legacy calls", async () => {
     render(<ConsoleShell />);
-    fireEvent.click(screen.getByRole("button", { name: "Execuções" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Execuções" })[0]);
     await waitFor(() => expect(screen.getByText(/RETRY_THEN_SUCCESS/)).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /ex-1|…/ }));
-    await waitFor(() => expect(screen.getByText("Journey map")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Por onde passou?")).toBeInTheDocument());
+    expect(screen.getByText("Quando aconteceu?")).toBeInTheDocument();
+    expect(screen.getByText("O que tecnicamente ocorreu?")).toBeInTheDocument();
     const calls = fetch.mock.calls.map((c) => String(c[0]));
     expect(calls.some((u) => u.includes("/v1/products/orchestrate"))).toBe(false);
     expect(calls.some((u) => u.includes("/v1/console/executions"))).toBe(true);
@@ -266,6 +310,133 @@ describe("ConsoleShell", () => {
     }));
     render(<ConsoleShell />);
     await waitFor(() => expect(screen.getByText(/Console indisponível/i)).toBeInTheDocument());
+  });
+
+  it("opens on the operational home with platform status and recent executions", async () => {
+    render(<ConsoleShell />);
+    expect(screen.getByRole("heading", { name: "Home operacional" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "SPIDER" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Spider 0.20.0")).toBeInTheDocument());
+    expect(screen.getByText("UP")).toBeInTheDocument();
+    expect(screen.getByText("READY")).toBeInTheDocument();
+    expect(screen.getByText("SIMULATED_INFRASTRUCTURE")).toBeInTheDocument();
+    expect(screen.getByText("MOCK_ONLY")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Executar demonstração" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Abrir" })).toBeInTheDocument());
+    expect(screen.queryByRole("heading", { name: "Observação do Data Plane" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("nav-group-operation")).toBeInTheDocument();
+    expect(screen.getByTestId("nav-group-tests")).toBeInTheDocument();
+    expect(screen.getByTestId("nav-group-platform")).toBeInTheDocument();
+  });
+
+  it("projects the visual journey on home after selecting a recent execution", async () => {
+    render(<ConsoleShell />);
+    fireEvent.click(await screen.findByRole("button", { name: "Abrir" }));
+    await waitFor(() => expect(screen.getByTestId("execution-journey")).toBeInTheDocument());
+    expect(screen.getByTestId("journey-stage-request")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Home operacional" })).toBeInTheDocument();
+  });
+
+  it("primary action submits the existing canonical execution flow", async () => {
+    fetch.mockImplementation(async (url, init) => {
+      if (String(url).includes("/v1/canonical/executions") && init?.method === "POST") {
+        return {
+          ok: true,
+          status: 202,
+          text: async () => JSON.stringify({ executionId: "ex-demo" }),
+        };
+      }
+      if (String(url).includes("/v1/canonical/executions")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify({ items: [] }) };
+      }
+      if (String(url).includes("/actuator/health")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify({ status: "UP" }) };
+      }
+      if (String(url).includes("/v1/console/implementation")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify({ productVersion: "0.20.0" }) };
+      }
+      if (String(url).includes("/v1/console/presentation/readiness")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ ready: true, boundary: "MOCK_ONLY" }),
+        };
+      }
+      if (String(url).includes("/v1/console/executions")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ items: [], nextCursorStartedAt: "", nextCursorExecutionId: "" }),
+        };
+      }
+      return { ok: false, status: 404, text: async () => "{}" };
+    });
+    render(<ConsoleShell />);
+    fireEvent.click(screen.getByRole("button", { name: "Executar demonstração" }));
+    await waitFor(() =>
+      expect(
+        fetch.mock.calls.some(
+          (c) => String(c[0]).includes("/v1/canonical/executions") && c[1]?.method === "POST",
+        ),
+      ).toBe(true),
+    );
+    expect(fetch.mock.calls.some((c) => String(c[0]).includes("/v1/products/orchestrate"))).toBe(false);
+  });
+
+  it("shows an error when canonical executions cannot be listed", async () => {
+    fetch.mockImplementation(async (url) => {
+      if (String(url).includes("/v1/canonical/executions")) {
+        return {
+          ok: false,
+          status: 401,
+          text: async () => JSON.stringify({ code: "UNAUTHENTICATED", title: "UNAUTHENTICATED" }),
+        };
+      }
+      if (String(url).includes("/actuator/health")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify({ status: "UP" }) };
+      }
+      if (String(url).includes("/v1/console/implementation")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify({ productVersion: "0.20.0" }) };
+      }
+      if (String(url).includes("/v1/console/presentation/readiness")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ ready: true, boundary: "MOCK_ONLY" }),
+        };
+      }
+      if (String(url).includes("/v1/console/executions")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ items: [], nextCursorStartedAt: "", nextCursorExecutionId: "" }),
+        };
+      }
+      return { ok: false, status: 404, text: async () => "{}" };
+    });
+    render(<ConsoleShell />);
+    await waitFor(() =>
+      expect(screen.getByText(/Falha ao listar execuções canônicas \(401\)/)).toBeInTheDocument(),
+    );
+  });
+
+  it("keeps navigation to preserved operational surfaces", async () => {
+    render(<ConsoleShell />);
+    for (const name of [
+      "Execuções",
+      "Cockpit Operacional",
+      "Failure Lab",
+      "Runtime de Workers",
+      "Capacidade & Resiliência",
+      "Implementação",
+      "Apresentação",
+      "Laboratório Mock",
+    ]) {
+      expect(screen.getAllByRole("button", { name }).length).toBeGreaterThan(0);
+    }
+    expect(screen.getByTestId("nav-group-executions")).toHaveTextContent("Detalhe");
+    fireEvent.click(screen.getAllByRole("button", { name: "Execuções" })[0]);
+    expect(screen.getByRole("heading", { name: "Execuções" })).toBeInTheDocument();
   });
 
   it("renders operational cockpit from canonical health API", async () => {
@@ -324,7 +495,7 @@ describe("ConsoleShell", () => {
     expect(screen.getByTestId("failure-lab-boundary-banner")).toHaveTextContent(
       "FALHAS SIMULADAS",
     );
-    expect(screen.getByRole("button", { name: "Laboratório Mock" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Laboratório Mock" }).length).toBeGreaterThan(0);
   });
 
   it("renders the worker runtime surface from the runtime API", async () => {
@@ -486,7 +657,7 @@ describe("ConsoleShell", () => {
       return { ok: false, status: 404, text: async () => "{}" };
     });
     render(<ConsoleShell />);
-    fireEvent.click(screen.getByRole("button", { name: "Laboratório Mock" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Laboratório Mock" })[0]);
     fireEvent.click(screen.getAllByRole("button", { name: "Executar" })[1]);
     await waitFor(() =>
       expect(spy.mock.calls.some((c) => String(c[0]).includes("/v1/canonical/executions"))).toBe(

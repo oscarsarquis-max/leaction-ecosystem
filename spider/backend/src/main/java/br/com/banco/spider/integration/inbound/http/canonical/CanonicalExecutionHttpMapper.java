@@ -15,6 +15,7 @@ import br.com.banco.spider.execution.domain.TechnicalStatus;
 import br.com.banco.spider.execution.signal.ExternalSignalEnvelope;
 import br.com.banco.spider.execution.signal.SignalCompletion;
 import br.com.banco.spider.execution.signal.SignalSecurityContext;
+import br.com.banco.spider.execution.support.IdentifierGenerator;
 import br.com.banco.spider.integration.inbound.http.canonical.dto.CanonicalExecutionHttpRequest;
 import br.com.banco.spider.integration.inbound.http.canonical.dto.ExternalSignalHttpRequest;
 import br.com.banco.spider.integration.port.AdapterDispositionMode;
@@ -33,17 +34,20 @@ public class CanonicalExecutionHttpMapper {
   }
 
   public CanonicalExecutionRequest toCanonical(CanonicalExecutionHttpRequest http) {
+    String executionId = http.execution() == null ? null : http.execution().executionId();
+    if (executionId == null || executionId.isBlank()) {
+      executionId = IdentifierGenerator.uuid().nextId("exec");
+    }
+    Instant requestedAt =
+        http.execution() != null && http.execution().requestedAt() != null
+            ? http.execution().requestedAt()
+            : Instant.now();
+    String idempotencyKey = http.execution() == null ? null : http.execution().idempotencyKey();
     return CanonicalExecutionRequest.builder()
         .contract(
             new ContractDescriptor(
                 http.contract().schemaVersion(), http.contract().contractVersion()))
-        .execution(
-            new ExecutionIdentity(
-                http.execution().executionId(),
-                http.execution().requestedAt() != null
-                    ? http.execution().requestedAt()
-                    : Instant.now(),
-                http.execution().idempotencyKey()))
+        .execution(new ExecutionIdentity(executionId, requestedAt, idempotencyKey))
         .contextRef(
             new ContextReference(
                 http.contextRef().contextId(),

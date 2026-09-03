@@ -29,6 +29,32 @@ UI React → Console HTTP (opt-in) → Operational Query / Implementation Use Ca
 
 O console **não** é fonte de verdade, **não** altera estado de execução e **não** substitui Control Plane administrativo.
 
+### 2.1 Home operacional (PROMPT-020A)
+
+A rota inicial do console é a **Home operacional**, não “Observação do Data Plane”. A jornada do operador é:
+
+```text
+USER → HOME OPERACIONAL → EXECUÇÕES → DETALHE / TIMELINE / OPERAÇÃO
+```
+
+A Home reutiliza o submit canônico existente (`POST /v1/canonical/executions`, cenário `RETRY_THEN_SUCCESS`) e lista últimas execuções via `GET /v1/canonical/executions`. A navegação é **agrupada por finalidade** (PROMPT-020B): Home; Execuções (lista / detalhe / visão geral); Operação (Cockpit, Runtime de Workers, Capacidade); Testes & demonstração (Laboratório Mock, Failure Lab); Plataforma (Implementação, Apresentação).
+
+### 2.2 Jornada visual da execução (PROMPT-020B)
+
+A interface do Spider projeta visualmente o comportamento real da execução e não simula etapas inexistentes.
+
+```text
+ENGINE / DATA PLANE
+       ↓
+Operational Events / State
+       ↓
+Read Model (detail + timeline + events)
+       ↓
+Console (projeção amigável)
+```
+
+A **Jornada da execução** é uma projeção no frontend (`projectExecutionJourney`) de summary, timeline persistida, steps/attempts, wait/callback e Operational Events (CAP-016). Retry, wait, callback, signal, capacity e worker só aparecem com evidência. Etapas não percorridas, quando listadas na conclusão ainda em curso, ficam `NOT_REACHED`. Sem `sleep`, sem WebSocket/SSE novo: polling já existente do detalhe, cancelado no unmount e em estado terminal. A timeline técnica permanece no detalhe.
+
 ## 3. Runtime execution state versus implementation state
 
 | Dimensão | Fonte | Endpoint típico |
@@ -48,6 +74,8 @@ Projeções opt-in (`spider.console.safe-projections.enabled`). Redaction remove
 ## 6. Authn / authz / no-enumeration
 
 Portas `OperationalConsoleAuthenticationPort` / `AuthorizationPort`. Default DenyAll. Execução inexistente e não autorizada → resposta externa equivalente. Profile `local-demo` + flag explícita apenas para demo local.
+
+Ingress canônico (`CanonicalIngressAuthenticationPort`) é **DenyAll independente** do console. O 401 em `GET/POST /v1/canonical/executions` no default é intencional. Em `local-demo` + `spider.console.local-demo.enabled=true`, a credencial allowlist `X-Spider-Credential-Ref: local-demo-console` autentica o originador Mock; credencial ausente ou estranha permanece 401. Não há `permitAll`.
 
 Ações incluem: `LIST_EXECUTIONS`, `VIEW_EXECUTION_*`, `VIEW_SAFE_PROJECTIONS`, `VIEW_GOVERNANCE_REFERENCE`, `SUBMIT_MOCK_SCENARIO`, `VIEW_IMPLEMENTATION_STATUS`, `VIEW_PRESENTATION_READINESS`, `VIEW_WORKER_RUNTIME`, `DRAIN_WORKER`, `VIEW_CAPACITY`.
 
@@ -84,7 +112,7 @@ Modo guiado rotulado **DEMONSTRAÇÃO MOCK**. Preflight via readiness. Jornada a
 
 ## 9. Presentation Readiness
 
-Checks: manifesto válido, console API, submit/status canônicos, persistência, bootstrap Mock, bundle, cenários, coerência integrity/DP Mock, nenhum Adapter real, versões compatíveis. `boundary=MOCK_ONLY`.
+Checks: manifesto válido, console API, submit/status canônicos, persistência, bootstrap Mock, bundle, cenários, coerência integrity/DP Mock, nenhum Adapter real, versões compatíveis (`productVersion` do manifesto, não hardcoded). `boundary=MOCK_ONLY`. Home operacional (020A) lê este endpoint para Presentation: READY.
 
 ## 10. Mock / real boundary
 

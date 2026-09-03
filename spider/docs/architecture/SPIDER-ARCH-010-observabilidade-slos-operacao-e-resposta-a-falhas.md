@@ -217,7 +217,7 @@ Decisões vinculadas ao 016:
 3. **Sem broker** nesta etapa — persistência técnica em PostgreSQL (`tb_operational_event`) / store em memória nos testes.
 4. **Metadata allowlist + redaction** — reutiliza a política do console 015; sem secrets, tokens, HMAC completo ou payloads.
 5. **Correlação** — `executionId` obrigatório; `interactionId` / `correlationId` / `eventId` quando disponíveis.
-6. **Consulta** — timeline operacional read-only via Console (`GET /v1/console/executions/{id}/events`).
+6. **Consulta** — timeline operacional read-only via Console (`GET /v1/console/executions/{id}/events`). A jornada visual 020B projeta esses fatos (e o estado persistido); não é fonte de verdade nem duplica o store.
 7. **017 / 018** — SLOs, health analytics e Failure Lab consomem estes fatos depois; não fazem parte do 016.
 
 Diferença preservada: **logs** diagnosticam a aplicação; **Operational Events** registram acontecimentos canônicos da execução.

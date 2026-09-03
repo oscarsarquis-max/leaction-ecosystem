@@ -35,7 +35,7 @@ public class GetImplementationStatusUseCase {
     this.consoleProps = consoleProps;
     this.canonicalHttp = canonicalHttp;
     this.environment = environment;
-    this.appVersion = appName + "@0.15.0";
+    this.appVersion = appName;
   }
 
   public Mono<Map<String, Object>> execute() {
@@ -45,7 +45,7 @@ public class GetImplementationStatusUseCase {
   private Map<String, Object> build() {
     SpiderImplementationManifest manifest = loader.getManifest();
     Map<String, Object> out = new LinkedHashMap<>();
-    out.put("runtimeVersion", appVersion);
+    out.put("runtimeVersion", appVersion + "@" + manifest.productVersion());
     out.put("productVersion", manifest.productVersion());
     out.put("manifestVersion", manifest.manifestVersion());
     out.put("currentPrompt", manifest.currentPrompt());

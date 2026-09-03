@@ -51,7 +51,10 @@ public class CanonicalHttpExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, String>> internal(Exception ex) {
     CanonicalError err = safe("HTTP_INTERNAL", "Internal error", ErrorCategory.INTERNAL);
-    log.info("event=http_mapping_result status=500 errorId={} reasonCode=INTERNAL", err.errorId());
+    log.warn(
+        "event=http_mapping_result status=500 errorId={} reasonCode=INTERNAL",
+        err.errorId(),
+        ex);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(Map.of("code", err.code(), "errorId", err.errorId(), "message", err.message()));
   }

@@ -126,6 +126,11 @@ class CanonicalHttpProfileIntegrationTest {
   }
 
   @Test
+  void unauthenticatedListReturns401() {
+    client.get().uri("/v1/canonical/executions").exchange().expectStatus().isUnauthorized();
+  }
+
+  @Test
   void unauthenticatedSubmissionReturns401() {
     client
         .post()

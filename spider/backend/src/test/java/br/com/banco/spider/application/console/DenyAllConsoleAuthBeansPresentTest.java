@@ -29,6 +29,8 @@ class DenyAllConsoleAuthBeansPresentTest {
   void noPermissiveLocalDemoBeansOutsideProfile() {
     assertFalse(ctx.containsBean("localDemoConsoleAuthentication"));
     assertFalse(ctx.containsBean("localDemoConsoleAuthorization"));
+    assertFalse(ctx.containsBean("localDemoCanonicalIngressAuthentication"));
+    assertFalse(ctx.containsBean("localDemoCanonicalExecutionAuthorization"));
   }
 
   @Test

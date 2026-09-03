@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listExecutions, isTerminalState, getExecutionOperationalEvents } from "./api";
+import {
+  listExecutions,
+  isTerminalState,
+  getExecutionOperationalEvents,
+  getImplementationStatus,
+  getPresentationReadiness,
+  getPlatformHealth,
+  listCanonicalExecutions,
+  submitMockScenario,
+} from "./api";
 import {
   MOCK_SCENARIOS,
   buildCanonicalRequest,
   newIdempotencyKey,
   newTraceparent,
 } from "./scenarios";
-import { submitMockScenario } from "./api";
 import { useExecutionPolling } from "./useExecutionPolling";
 import {
   StateBadge,
@@ -18,6 +26,8 @@ import {
   formatDuration,
   formatWhen,
 } from "./components";
+import ExecutionJourney from "./ExecutionJourney";
+import { ConsoleNav } from "./ConsoleNav";
 import ImplementationCockpit from "./ImplementationCockpit";
 import PresentationMode from "./PresentationMode";
 import OperationalCockpit from "./OperationalCockpit";
@@ -25,21 +35,11 @@ import FailureLab from "./FailureLab";
 import WorkerRuntime from "./WorkerRuntime";
 import CapacityResilience from "./CapacityResilience";
 
-const NAV = [
-  { id: "overview", label: "Visão geral" },
-  { id: "executions", label: "Execuções" },
-  { id: "detail", label: "Detalhe" },
-  { id: "operational-health", label: "Cockpit Operacional" },
-  { id: "failure-lab", label: "Failure Lab" },
-  { id: "worker-runtime", label: "Runtime de Workers" },
-  { id: "capacity", label: "Capacidade & Resiliência" },
-  { id: "implementation", label: "Implementação" },
-  { id: "presentation", label: "Apresentação" },
-  { id: "lab", label: "Laboratório Mock" },
-];
+const PRIMARY_SCENARIO =
+  MOCK_SCENARIOS.find((s) => s.id === "RETRY_THEN_SUCCESS") || MOCK_SCENARIOS[0];
 
 export default function ConsoleShell() {
-  const [view, setView] = useState("overview");
+  const [view, setView] = useState("home");
   const [items, setItems] = useState([]);
   const [listError, setListError] = useState(null);
   const [consoleUnavailable, setConsoleUnavailable] = useState(false);
@@ -53,6 +53,17 @@ export default function ConsoleShell() {
   const [labBusy, setLabBusy] = useState(false);
   const [operationalEvents, setOperationalEvents] = useState(null);
   const [operationalEventsError, setOperationalEventsError] = useState(null);
+  const [platform, setPlatform] = useState({
+    status: "idle",
+    productVersion: null,
+    health: null,
+    presentation: null,
+    runtime: "SIMULATED_INFRASTRUCTURE",
+    integrations: "MOCK_ONLY",
+    error: null,
+  });
+  const [canonicalItems, setCanonicalItems] = useState(null);
+  const [canonicalError, setCanonicalError] = useState(null);
 
   const refreshList = useCallback(
     async (nextCursor = {}) => {
@@ -83,14 +94,63 @@ export default function ConsoleShell() {
   }, [refreshList]);
 
   useEffect(() => {
-    if (view !== "detail" || !selectedId) {
-      setOperationalEvents(null);
-      setOperationalEventsError(null);
+    if (view !== "home") {
       return undefined;
     }
     const controller = new AbortController();
-    setOperationalEvents(null);
-    setOperationalEventsError(null);
+    setPlatform((p) => ({ ...p, status: "loading", error: null }));
+    setCanonicalError(null);
+    Promise.all([
+      getImplementationStatus({ signal: controller.signal }).catch((e) => ({ __error: e })),
+      getPresentationReadiness({ signal: controller.signal }).catch((e) => ({ __error: e })),
+      getPlatformHealth({ signal: controller.signal }).catch((e) => ({ __error: e })),
+      listCanonicalExecutions({ signal: controller.signal }).catch((e) => ({ __error: e })),
+    ]).then(([impl, ready, health, canonical]) => {
+      if (controller.signal.aborted) return;
+      const implErr = impl && impl.__error;
+      const readyErr = ready && ready.__error;
+      const healthErr = health && health.__error;
+      const canonicalErr = canonical && canonical.__error;
+      setPlatform({
+        status: implErr || readyErr || healthErr ? "error" : "ok",
+        productVersion: implErr ? null : impl.productVersion,
+        health: healthErr ? null : health.status,
+        presentation: readyErr ? null : ready.ready ? "READY" : "NOT_READY",
+        runtime: "SIMULATED_INFRASTRUCTURE",
+        integrations: (ready && ready.boundary) || "MOCK_ONLY",
+        error: implErr || readyErr || healthErr || null,
+      });
+      if (canonicalErr) {
+        setCanonicalItems([]);
+        setCanonicalError(canonicalErr);
+      } else {
+        setCanonicalItems(canonical.items || []);
+        setCanonicalError(null);
+      }
+    });
+    return () => controller.abort();
+  }, [view]);
+
+  const journeySurface = view === "home" || view === "detail";
+  const pollingEnabled = journeySurface && Boolean(selectedId);
+  const { detail, error: detailError, updatedAt, status: pollStatus } = useExecutionPolling(
+    selectedId,
+    {
+      enabled: pollingEnabled,
+      minIntervalMs: 1000,
+      paused: pollPaused,
+    },
+  );
+
+  useEffect(() => {
+    if (!journeySurface || !selectedId || pollPaused) {
+      if (!selectedId) {
+        setOperationalEvents(null);
+        setOperationalEventsError(null);
+      }
+      return undefined;
+    }
+    const controller = new AbortController();
     getExecutionOperationalEvents(selectedId, { signal: controller.signal })
       .then((data) => {
         setOperationalEvents(data.items || []);
@@ -102,17 +162,7 @@ export default function ConsoleShell() {
         setOperationalEventsError(e);
       });
     return () => controller.abort();
-  }, [view, selectedId, pollPaused]);
-
-  const pollingEnabled = view === "detail" && Boolean(selectedId);
-  const { detail, error: detailError, updatedAt, status: pollStatus } = useExecutionPolling(
-    selectedId,
-    {
-      enabled: pollingEnabled,
-      minIntervalMs: 1000,
-      paused: pollPaused,
-    },
-  );
+  }, [journeySurface, selectedId, pollPaused, updatedAt]);
 
   const sampleStats = useMemo(() => {
     const byState = {};
@@ -143,8 +193,10 @@ export default function ConsoleShell() {
       });
       if (executionId) {
         setSelectedId(executionId);
-        setView("detail");
         setPollPaused(false);
+        if (view !== "home") {
+          setView("detail");
+        }
       }
       await refreshList({});
     } catch (e) {
@@ -166,32 +218,27 @@ export default function ConsoleShell() {
     setView("detail");
   }
 
+  function followOnHome(id) {
+    setSelectedId(id);
+    setPollPaused(false);
+  }
+
   return (
     <div className="obs-shell console-shell">
       <header className="obs-top">
         <div>
-          <p className="obs-brand">Spider · Console Operacional Canônico</p>
-          <h1>Observação do Data Plane</h1>
+          <p className="obs-brand">SPIDER</p>
+          <h1>{view === "home" ? "Home operacional" : "Console operacional"}</h1>
           <p className="obs-sub">
-            Read model autorizado sobre execuções persistidas — sem simulação por sleep e sem endpoint
-            legado nesta jornada.
+            {view === "home"
+              ? "Ponto de entrada da jornada Mock: estado da plataforma, demonstração e últimas execuções."
+              : "Read model autorizado sobre execuções persistidas — sem simulação por sleep e sem endpoint legado nesta jornada."}
           </p>
           <p>
             <span className="pill mock-badge">DEMONSTRAÇÃO MOCK</span>
           </p>
         </div>
-        <nav className="console-nav" aria-label="Navegação principal">
-          {NAV.map((n) => (
-            <button
-              key={n.id}
-              type="button"
-              className={view === n.id ? "nav-btn active" : "nav-btn"}
-              onClick={() => setView(n.id)}
-            >
-              {n.label}
-            </button>
-          ))}
-        </nav>
+        <ConsoleNav view={view} onChange={setView} />
       </header>
 
       {consoleUnavailable && (
@@ -200,6 +247,132 @@ export default function ConsoleShell() {
           <code>spider.console.enabled</code> + <code>spider.console.http.enabled</code> (e auth
           local-demo se necessário).
         </div>
+      )}
+
+      {view === "home" && (
+        <section className="panel-card home-operational" aria-labelledby="home-title">
+          <h2 id="home-title">SPIDER</h2>
+          <div className="home-grid">
+            <article className="home-status" aria-labelledby="plat-title">
+              <h3 id="plat-title">Estado da plataforma</h3>
+              {platform.status === "loading" && <p role="status">Carregando estado…</p>}
+              {platform.error && (
+                <p className="error" role="alert">
+                  Não foi possível ler o estado da plataforma: {platform.error.message}
+                </p>
+              )}
+              <dl className="platform-dl">
+                <div>
+                  <dt>Produto</dt>
+                  <dd>Spider {platform.productVersion || "0.20.0"}</dd>
+                </div>
+                <div>
+                  <dt>Health</dt>
+                  <dd>{platform.health || "—"}</dd>
+                </div>
+                <div>
+                  <dt>Presentation</dt>
+                  <dd>{platform.presentation || "—"}</dd>
+                </div>
+                <div>
+                  <dt>Runtime</dt>
+                  <dd>{platform.runtime}</dd>
+                </div>
+                <div>
+                  <dt>Integrations</dt>
+                  <dd>{platform.integrations}</dd>
+                </div>
+              </dl>
+            </article>
+            <article aria-labelledby="action-title">
+              <h3 id="action-title">Nova execução</h3>
+              <p className="muted">
+                Reutiliza <code>POST /v1/canonical/executions</code> com o cenário{" "}
+                {PRIMARY_SCENARIO.label}.
+              </p>
+              <button
+                type="button"
+                className="cta"
+                disabled={labBusy}
+                onClick={() => runScenario(PRIMARY_SCENARIO)}
+              >
+                Executar demonstração
+              </button>
+              {labMsg && (
+                <p className={labMsg.ok ? "ok" : "error"} role="status">
+                  {labMsg.text}
+                </p>
+              )}
+            </article>
+          </div>
+          <article aria-labelledby="recent-title">
+            <h3 id="recent-title">Últimas execuções</h3>
+            {canonicalError && (
+              <p className="error" role="alert">
+                Falha ao listar execuções canônicas ({canonicalError.status || "erro"}):{" "}
+                {canonicalError.message}
+              </p>
+            )}
+            {!canonicalError && canonicalItems && canonicalItems.length === 0 && (
+              <p className="muted">Nenhuma execução visível neste recorte.</p>
+            )}
+            {canonicalItems && canonicalItems.length > 0 && (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">Execução</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Horário</th>
+                      <th scope="col">Duração</th>
+                      <th scope="col">Detalhe</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {canonicalItems.map((it) => (
+                      <tr key={it.executionId}>
+                        <td title={it.executionId}>{shortId(it.executionId)}</td>
+                        <td>
+                          <StateBadge state={it.state} technicalStatus={it.technicalStatus} />
+                        </td>
+                        <td title={it.startedAt}>{formatWhen(it.startedAt)}</td>
+                        <td>{formatDuration(it.durationMs)}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="linkish"
+                            onClick={() => followOnHome(it.executionId)}
+                          >
+                            Abrir
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
+          {selectedId && (
+            <article className="home-journey" aria-label="Jornada da execução selecionada">
+              {detailError && <p className="error">{detailError.message}</p>}
+              <ExecutionJourney
+                heading="Jornada da execução"
+                summary={detail?.summary || { executionId: selectedId, state: null }}
+                timeline={detail?.timeline}
+                steps={detail?.steps}
+                waitInfo={detail?.waitInfo}
+                callback={detail?.callback}
+                operationalEvents={operationalEvents}
+              />
+              <p>
+                <button type="button" className="ghost" onClick={() => openDetail(selectedId)}>
+                  Ver detalhe técnico
+                </button>
+              </p>
+            </article>
+          )}
+        </section>
       )}
 
       {view === "overview" && (
@@ -341,6 +514,7 @@ export default function ConsoleShell() {
           {detail && (
             <>
               <div className="detail-summary">
+                <h3>O que aconteceu?</h3>
                 <StateBadge
                   state={detail.summary?.state}
                   technicalStatus={detail.summary?.technicalStatus}
@@ -354,16 +528,25 @@ export default function ConsoleShell() {
                   {isTerminalState(detail.summary?.state) ? " · terminal" : ""}
                 </span>
               </div>
-              <h3>Journey map</h3>
+              <h3>Por onde passou?</h3>
+              <ExecutionJourney
+                summary={detail.summary}
+                timeline={detail.timeline}
+                steps={detail.steps}
+                waitInfo={detail.waitInfo}
+                callback={detail.callback}
+                operationalEvents={operationalEvents}
+              />
+              <h3>Mapa do plano</h3>
               <JourneyMap plan={detail.plan} steps={detail.steps} />
-              <h3>Timeline</h3>
+              <h3>Quando aconteceu?</h3>
               <TimelineView timeline={detail.timeline} />
               <h3>Operational Timeline</h3>
               <OperationalTimelineView
                 events={operationalEvents}
                 error={operationalEventsError}
               />
-              <h3>Inspectors</h3>
+              <h3>O que tecnicamente ocorreu?</h3>
               <InspectorTabs detail={detail} />
             </>
           )}

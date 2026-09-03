@@ -1,3 +1,10 @@
+# local-demo — apresentação Mock (PROMPT-015…020 + 020A)
+#
+# Profile Spring `local-demo` + flags abaixo. Não é produção.
+# Ingress canônico: DenyAll permanece no runtime default. Neste profile, a credencial
+# allowlist `local-demo-console` (header X-Spider-Credential-Ref) autentica o originador
+# `console-local-demo` / canal `operational-console`. Sem header ou credencial estranha → 401.
+# Não usar permitAll.
 spider:
   console:
     enabled: true

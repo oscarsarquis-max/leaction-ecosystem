@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Spider">
+  <rect width="32" height="32" rx="6" fill="#070b14"/>
+  <circle cx="16" cy="14" r="5.2" fill="#3dd6c6"/>
+  <path fill="none" stroke="#3dd6c6" stroke-width="1.8" stroke-linecap="round"
+    d="M10 14 L4 8 M10 16 L3 16 M10 18 L4 24 M22 14 L28 8 M22 16 L29 16 M22 18 L28 24 M16 19 L16 27"/>
+</svg>

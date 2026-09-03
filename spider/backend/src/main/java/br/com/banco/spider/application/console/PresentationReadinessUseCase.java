@@ -127,11 +127,12 @@ public class PresentationReadinessUseCase {
             "No real Adapter active (Mock-only)",
             "Real Adapter flag detected"));
 
+    String productVersion = manifest != null ? manifest.productVersion() : null;
     checks.add(
         bool(
             "version_compatible",
-            manifest != null && "0.15.0".equals(manifest.productVersion()),
-            "Frontend/backend productVersion compatible (0.15.0)",
+            productVersion != null && !productVersion.isBlank(),
+            "Frontend/backend productVersion compatible (" + productVersion + ")",
             "Version mismatch"));
 
     List<String> failing =
@@ -152,9 +153,13 @@ public class PresentationReadinessUseCase {
       }
     }
 
+    String runtimeVersion =
+        productVersion != null && !productVersion.isBlank()
+            ? "spider@" + productVersion
+            : "spider@unknown";
     return new PresentationReadinessView(
         ready,
-        "spider@0.15.0",
+        runtimeVersion,
         manifestStatus,
         checks,
         scenarios,
