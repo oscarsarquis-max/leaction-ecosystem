@@ -19,14 +19,17 @@ class ImplementationManifestLoaderTest {
     assertEquals("SPIDER-PROMPT-020", m.currentPrompt());
     assertEquals("GROUP_B_RUNTIME_OPERATIONS", m.currentGroup());
     assertEquals(26, m.capabilities().size());
-    assertEquals(385, m.baseline().backendTests());
-    assertEquals(92, m.baseline().frontendTests());
+    assertEquals(423, m.baseline().backendTests());
+    assertEquals(104, m.baseline().frontendTests());
     assertEquals(0, m.baseline().skipped());
     assertEquals("ENABLED", m.contextIntelligence().status());
     assertEquals(false, m.contextIntelligence().aiEnabled());
     assertEquals("ENABLED", m.contextIntelligence().aiContextInterpretation());
     assertEquals("AWS_BEDROCK_ANTHROPIC", m.contextIntelligence().aiProvider());
-    assertEquals("SPIDER-CTX-002", m.contextIntelligence().promptRef());
+    assertEquals("ENABLED", m.contextIntelligence().executionPlanning());
+    assertEquals("ENABLED", m.contextIntelligence().businessCapabilityComposition());
+    assertEquals("PARTIALLY_AVAILABLE", m.contextIntelligence().workingCapitalPlan());
+    assertEquals("SPIDER-CTX-003", m.contextIntelligence().promptRef());
     for (var c : m.capabilities()) {
       int n = Integer.parseInt(c.promptRef().substring("SPIDER-PROMPT-".length()));
       if (n <= 20) {

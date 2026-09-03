@@ -67,6 +67,7 @@ Diretrizes para a IA: ver `.cursorrules`.
 ## Documentação
 
 - Arquitetura normativa: `docs/architecture/SPIDER-ARCH-*.md`
+- **Execution Planning e Business Capabilities (ARCH-016):** `docs/architecture/SPIDER-ARCH-016-execution-planning-business-capability-composition.md`
 - **Console operacional (ARCH-013):** `docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md`
 - **Roadmap oficial 016–026:** `docs/roadmap/SPIDER-ROADMAP-IMPLEMENTACAO-016-026.md`
 - Console / Prompt 015: `docs/technical/SPIDER-PROMPT-015-operational-console.md`
@@ -111,12 +112,21 @@ spider.context.ai.enabled=false
 
 Local-demo exige profile Spring `local-demo` **e** flag. A UI abre na **Home operacional** (PROMPT-020A): estado da plataforma, Executar demonstração e últimas execuções. Uma execução disparada pela Home torna-se automaticamente a execução ativa e a **Jornada visual** (PROMPT-020B) é projetada no ponto de entrada — sem progresso fictício e sem JSON bruto. O console envia `X-Spider-Credential-Ref: local-demo-console` no ingress canônico (allowlist; sem header → 401). DenyAll permanece fora desse recorte — não usar `permitAll`. O Cockpit Operacional exige também `spider.telemetry.enabled=true`. O Failure Lab exige `spider.failure-lab.enabled=true` (e `http`/`local-demo` conforme a superfície). O Runtime de Workers exige `spider.worker-runtime.enabled=true` (e `http`/`local-demo`; drain HTTP também exige `allow-drain` ou local-demo). Capacidade exige `spider.capacity.enabled=true` (e `http`/`local-demo`; bloqueio real exige `enforcement.enabled`). Endpoints: `GET /v1/canonical/executions`, `POST /v1/canonical/executions`, `GET /v1/console/executions`, `/{id}`, `/{id}/events`, `/implementation`, `/presentation/readiness`, `/operational-health`, `/operational-health/definitions`, `/failure-lab/scenarios`, `POST /failure-lab/runs`, `GET /failure-lab/runs/{id}` e `/failure-lab/runs/{id}/evidence`, `GET /runtime`, `/runtime/workers`, `/runtime/schedules`, `/runtime/backlogs`, `POST /runtime/workers/{id}/drain`, `GET /capacity`, `/capacity/policies`, `/capacity/pressure`, `/capacity/bulkheads`, `/capacity/circuits`, `/capacity/decisions`.
 
-`SPIDER-CTX-002` acrescenta linguagem natural ao Context Intelligence sem criar um pipeline
-paralelo. Business Cards e `ContextInterpretationProvider` produzem o mesmo `Intent Contract V1`,
-que atravessa o mesmo Guard, Router e confirmação. O provider inicial é AWS Bedrock/Anthropic,
-substituível e `false` por padrão. A IA é uma fonte probabilística de Intent Contract. Ela não
-possui autoridade de roteamento ou execução. Não há Response Composer, RAG, agent, tool calling ou
-integração de negócio real.
+`SPIDER-CTX-002` acrescenta linguagem natural ao Context Intelligence sem criar pipeline paralelo.
+Business Cards e `ContextInterpretationProvider` produzem o mesmo `Intent Contract V1`. O provider
+inicial é AWS Bedrock/Anthropic, substituível e `false` por padrão. A IA é uma fonte probabilística
+de Intent Contract e não possui autoridade de planejamento, roteamento ou execução.
+
+`SPIDER-CTX-003` estabelece `Intent → Execution Plan → Business Capabilities → Routes/Adapters`.
+Intent não resolve diretamente para Route. O plano `WORKING_CAPITAL_DIAGNOSTIC_V1` demonstra
+`SEEK_WORKING_CAPITAL` com finalidade e valor econômico explícito, mas permanece parcial: apenas
+capabilities realmente disponíveis são resolvidas e nenhuma capability ausente é simulada. O
+Crédito anterior continua executável. Não há ServiceNow real, Response Composer, RAG, agent, tool
+calling ou integração de negócio real.
+
+`SPIDER-CTX-003A` torna visível e explicável essa cadeia na Home. O usuário declara objetivos. A IA
+os compreende. O Spider os decompõe em capacidades. O ambiente determina onde essas capacidades são
+executadas. A interface torna cada fase, decisão e resultado visível e explicável.
 
 Para habilitar Bedrock no `local-demo`, configure `SPIDER_CONTEXT_AI_ENABLED=true`, região/modelo e
 credenciais AWS pela cadeia padrão do SDK. O provider `scripted` existe apenas para testes e

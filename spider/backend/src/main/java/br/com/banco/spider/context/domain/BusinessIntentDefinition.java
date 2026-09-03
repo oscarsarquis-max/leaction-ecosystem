@@ -16,20 +16,21 @@ public record BusinessIntentDefinition(
     String objective,
     String title,
     String description,
+    Set<String> allowedEntityKeys,
     Set<String> requiredEntityKeys,
     Map<String, String> demoEntities,
-    String capabilityRef,
-    String routeRef,
-    boolean executable,
-    String targetOperation,
-    String mockScenario) {
+    boolean businessCardEnabled) {
 
   public BusinessIntentDefinition {
+    allowedEntityKeys = Set.copyOf(allowedEntityKeys);
     requiredEntityKeys = Set.copyOf(requiredEntityKeys);
     demoEntities = Map.copyOf(demoEntities);
   }
 
   public IntentContract businessCardContract() {
+    if (!businessCardEnabled) {
+      throw new IllegalStateException("Intent is not exposed as a Business Intent Card");
+    }
     return new IntentContract(
         "1.0",
         intent,

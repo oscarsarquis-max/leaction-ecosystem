@@ -8,7 +8,7 @@ public final class OperationalEventAttributes {
 
   // A allowlist tem exatamente MAX_ENTRIES chaves: um evento pode, no limite, carregar todas elas,
   // e nenhuma chave nova entra sem revisão consciente deste teto.
-  private static final int MAX_ENTRIES = 28;
+  private static final int MAX_ENTRIES = 31;
   private static final int MAX_VALUE_LENGTH = 200;
   private static final Set<String> ALLOWED =
       Set.of(
@@ -28,6 +28,9 @@ public final class OperationalEventAttributes {
           "admissionResult",
           "circuitPhase",
           "capacityScope",
+          "planId",
+          "planType",
+          "planStatus",
           "intent",
           "domain",
           "provenance",

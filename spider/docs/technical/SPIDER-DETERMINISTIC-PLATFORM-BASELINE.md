@@ -53,6 +53,15 @@ CTX-002 adicionou a fonte probabilística `NATURAL_LANGUAGE` sem mudar a soberan
 ou Core. A regressão completa passou com **417 backend / 103 frontend**, build de produção e ESLint
 verdes. O smoke Bedrock permanece separado e condicional a credenciais externas.
 
+CTX-003 desacoplou Intent de Route por `ContextExecutionPlan`, Business Capability Catalog e
+Capability Resolver determinísticos. Capital de giro é demonstrável como plano parcial sem
+execução fictícia, e Crédito permanece executável. A verificação passou com **423 backend / 104
+frontend**, build de produção e ESLint verdes; CAP-021 permanece NOT_STARTED.
+
+CTX-003A tornou visível a cadeia Objetivo → Entendimento → Policy → Plano → Capacidades → Resolução
+→ Execução → Resultado na Home, sem nova arquitetura. A verificação passou com **423 backend / 115
+frontend**, build de produção e ESLint verdes; CAP-021 permanece NOT_STARTED.
+
 ## Evidências preservadas
 
 - `docs/technical/screenshots/020A-home-operacional.png`

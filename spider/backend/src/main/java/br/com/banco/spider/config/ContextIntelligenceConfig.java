@@ -8,11 +8,19 @@ import br.com.banco.spider.context.application.ContextInterpretationService;
 import br.com.banco.spider.context.application.ContextInterpreterPrompt;
 import br.com.banco.spider.context.application.InMemoryContextDecisionStore;
 import br.com.banco.spider.context.application.port.ContextInterpretationProvider;
+import br.com.banco.spider.context.capability.BusinessCapabilityCatalog;
+import br.com.banco.spider.context.capability.CapabilityResolver;
+import br.com.banco.spider.context.capability.DeterministicCapabilityResolver;
+import br.com.banco.spider.context.capability.StaticBusinessCapabilityCatalog;
 import br.com.banco.spider.context.domain.BusinessIntentCatalog;
 import br.com.banco.spider.context.domain.ContextConfidencePolicy;
 import br.com.banco.spider.context.domain.ContextPolicyGuard;
 import br.com.banco.spider.context.domain.DeterministicIntentRouter;
 import br.com.banco.spider.context.domain.StaticBusinessIntentCatalog;
+import br.com.banco.spider.context.planning.DeterministicExecutionPlanResolver;
+import br.com.banco.spider.context.planning.ExecutionPlanCatalog;
+import br.com.banco.spider.context.planning.ExecutionPlanResolver;
+import br.com.banco.spider.context.planning.StaticExecutionPlanCatalog;
 import br.com.banco.spider.execution.support.IdentifierGenerator;
 import br.com.banco.spider.execution.support.SpiderClock;
 import br.com.banco.spider.integration.outbound.ai.BedrockContextInterpretationProvider;
@@ -55,8 +63,29 @@ public class ContextIntelligenceConfig {
   }
 
   @Bean
-  DeterministicIntentRouter deterministicIntentRouter(BusinessIntentCatalog catalog) {
-    return new DeterministicIntentRouter(catalog);
+  BusinessCapabilityCatalog businessCapabilityCatalog() {
+    return new StaticBusinessCapabilityCatalog();
+  }
+
+  @Bean
+  ExecutionPlanCatalog executionPlanCatalog() {
+    return new StaticExecutionPlanCatalog();
+  }
+
+  @Bean
+  ExecutionPlanResolver executionPlanResolver(
+      ExecutionPlanCatalog planCatalog, BusinessCapabilityCatalog capabilityCatalog) {
+    return new DeterministicExecutionPlanResolver(planCatalog, capabilityCatalog);
+  }
+
+  @Bean
+  CapabilityResolver capabilityResolver(BusinessCapabilityCatalog catalog) {
+    return new DeterministicCapabilityResolver(catalog);
+  }
+
+  @Bean
+  DeterministicIntentRouter deterministicIntentRouter() {
+    return new DeterministicIntentRouter();
   }
 
   @Bean
@@ -82,6 +111,8 @@ public class ContextIntelligenceConfig {
   ContextIntelligenceService contextIntelligenceService(
       BusinessIntentCatalog catalog,
       ContextPolicyGuard guard,
+      ExecutionPlanResolver planResolver,
+      CapabilityResolver capabilityResolver,
       DeterministicIntentRouter router,
       ContextDecisionStore store,
       SubmitCanonicalExecutionUseCase canonicalSubmit,
@@ -90,7 +121,17 @@ public class ContextIntelligenceConfig {
       SpiderClock clock,
       ObjectMapper mapper) {
     return new ContextIntelligenceService(
-        catalog, guard, router, store, canonicalSubmit, events, ids, clock, mapper);
+        catalog,
+        guard,
+        planResolver,
+        capabilityResolver,
+        router,
+        store,
+        canonicalSubmit,
+        events,
+        ids,
+        clock,
+        mapper);
   }
 
   @Bean

@@ -13,6 +13,34 @@ const contract = {
   confidence: 0.94,
 };
 
+const executionPlan = {
+  schemaVersion: "1.0",
+  planId: "ctxp-credit",
+  planType: "CREDIT_RELEASE_INVESTIGATION_PLAN_V1",
+  intent: contract.intent,
+  status: "READY",
+  statusReasons: [],
+  steps: [{ stepId: "credit-01", capabilityId: "CREDIT_RELEASE_DIAGNOSTIC" }],
+};
+
+const capabilities = [
+  {
+    stepId: "credit-01",
+    capabilityId: "CREDIT_RELEASE_DIAGNOSTIC",
+    description: "Investigar bloqueio.",
+    reason: "Identificar condição bloqueadora.",
+    inputContract: "spider-capability://input/credit/v1",
+    outputContract: "spider-capability://output/credit/v1",
+    availability: "AVAILABLE",
+    status: "RESOLVED",
+    selectedRoute: {
+      routeRef: "CREDIT_RELEASE_DIAGNOSTIC_V1",
+      adapterRef: "mock-universal",
+      targetOperation: "RETRY_THEN_SUCCESS",
+    },
+  },
+];
+
 const journey = [
   {
     id: "objective-received",
@@ -49,8 +77,34 @@ const journey = [
     technicalDetails: { policyRef: "context:read-only@1.0" },
   },
   {
+    id: "execution-plan-resolved",
+    title: "Plano determinado",
+    state: "SUCCEEDED",
+    summary: "Plano determinístico composto.",
+    technicalDetails: { planType: executionPlan.planType, planId: executionPlan.planId },
+  },
+  {
+    id: "capabilities-resolved",
+    title: "Capabilities resolvidas",
+    state: "SUCCEEDED",
+    summary: "Capabilities avaliadas.",
+    technicalDetails: { resolvedCapabilities: "1", unavailableCapabilities: "0" },
+  },
+  {
+    id: "plan-capability-credit-01",
+    title: "CREDIT_RELEASE_DIAGNOSTIC",
+    layer: "PLAN",
+    state: "SUCCEEDED",
+    summary: "Capability resolvida, ainda não executada.",
+    technicalDetails: {
+      capabilityRef: "CREDIT_RELEASE_DIAGNOSTIC",
+      routeRef: "CREDIT_RELEASE_DIAGNOSTIC_V1",
+    },
+  },
+  {
     id: "route-resolved",
     title: "Rota determinada",
+    layer: "PLAN",
     state: "SUCCEEDED",
     summary: "Router determinístico resolveu a rota.",
     technicalDetails: { routeRef: "CREDIT_RELEASE_DIAGNOSTIC_V1" },
@@ -117,6 +171,8 @@ it("converges natural language into the existing preview, confirmation and journ
             decision: "ACCEPTED",
             policyRef: "context:read-only@1.0",
             intentContract: contract,
+            executionPlan,
+            capabilities,
             route: {
               capabilityRef: "CREDIT_RELEASE_DIAGNOSTIC",
               routeRef: "CREDIT_RELEASE_DIAGNOSTIC_V1",

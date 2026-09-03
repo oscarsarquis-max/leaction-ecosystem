@@ -296,7 +296,7 @@ public final class ContextInterpretationService {
   private static void validateEntityVocabulary(
       BusinessIntentDefinition definition, Map<String, String> entities) {
     boolean invalidKey =
-        entities.keySet().stream().anyMatch(key -> !definition.requiredEntityKeys().contains(key));
+        entities.keySet().stream().anyMatch(key -> !definition.allowedEntityKeys().contains(key));
     boolean blankValue = entities.values().stream().anyMatch(ContextInterpretationService::blank);
     if (invalidKey || blankValue) {
       throw new InvalidContextInterpretationResponseException(
@@ -402,6 +402,7 @@ public final class ContextInterpretationService {
         definition.intent(),
         definition.domain(),
         definition.objective(),
+        definition.allowedEntityKeys().stream().sorted().toList(),
         definition.requiredEntityKeys().stream().sorted().toList());
   }
 

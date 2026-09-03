@@ -119,8 +119,18 @@ function relatedOperational(stage, input) {
       "context-ai-interpreted": "AI_INTERPRETATION_SUCCEEDED",
       "context-intent-created": "INTENT_CREATED",
       "context-policy-validated": "INTENT_VALIDATED",
+      "context-execution-plan-resolved": "EXECUTION_PLAN_RESOLVED",
+      "context-capabilities-resolved": "CAPABILITY_RESOLVED",
       "context-route-resolved": "ROUTE_RESOLVED",
     };
+    if (stage.id.startsWith("context-plan-capability-")) {
+      const capabilityRef = stage.contextDetail?.technicalDetails?.capabilityRef;
+      return events.filter(
+        (event) =>
+          String(event.eventType || "").startsWith("CAPABILITY_") &&
+          (!capabilityRef || event.metadata?.capabilityRef === capabilityRef),
+      );
+    }
     const expected = eventTypeByStage[stage.id];
     return expected ? events.filter((event) => event.eventType === expected) : [];
   }
@@ -158,6 +168,8 @@ function relatedOperational(stage, input) {
     "context-ai-interpreted": ["AI_INTERPRETATION_"],
     "context-intent-created": ["INTENT_CREATED"],
     "context-policy-validated": ["INTENT_VALIDATED"],
+    "context-execution-plan-resolved": ["EXECUTION_PLAN_"],
+    "context-capabilities-resolved": ["CAPABILITY_"],
     "context-route-resolved": ["ROUTE_RESOLVED"],
   };
   let accepted = prefixes[stage.id] || [];
@@ -202,7 +214,23 @@ function baseDetail(stage, input, stages) {
       decision: "Decisão",
       policyRef: "Política",
       reasonCode: "Código da decisão",
+      planId: "Plan ID",
+      planType: "Execution Plan",
+      planStatus: "Status do plano",
+      statusReasons: "Motivos do status",
+      stepCount: "Capabilities previstas",
+      resolvedCapabilities: "Capabilities resolvidas",
+      unavailableCapabilities: "Capabilities indisponíveis",
       capabilityRef: "Capability",
+      description: "Descrição",
+      reason: "Por que é necessária",
+      inputContract: "Input necessário",
+      outputContract: "Output esperado",
+      mutationType: "Tipo de mutação",
+      availability: "Disponibilidade",
+      resolutionStatus: "Estado da resolução",
+      adapterRef: "Adapter",
+      targetOperation: "Target",
       routeRef: "Rota",
       executionAvailability: "Disponibilidade",
       requestedObjective: "Objetivo recebido",
@@ -232,12 +260,18 @@ function baseDetail(stage, input, stages) {
       "context-ai-interpreted":
         "Materializar o Intent Contract V1 com o vocabulário controlado do Spider.",
       "context-intent-created": "Validar contrato, constraints e provenance no Context Guard.",
-      "context-policy-validated": "Resolver capability e rota no roteador determinístico.",
+      "context-policy-validated": "Compor o Execution Plan no Plan Resolver determinístico.",
+      "context-execution-plan-resolved":
+        "Resolver cada Business Capability por catálogo controlado.",
+      "context-capabilities-resolved":
+        "Inspecionar disponibilidade e routes elegíveis de cada capability.",
       "context-route-resolved":
         "Encaminhar o contrato confirmado ao ingress canônico do Spider Core.",
     };
     result.nextSteps =
-      contextNextSteps[stage.id] ||
+      (stage.id.startsWith("context-plan-capability-")
+        ? "Prosseguir somente se as capabilities obrigatórias do plano estiverem disponíveis."
+        : contextNextSteps[stage.id]) ||
       "Prosseguir para a próxima decisão determinística do Context Plane.";
   } else if (stage.id === "request") {
     result.summary = "O Spider recebeu a solicitação pelo ingress canônico.";

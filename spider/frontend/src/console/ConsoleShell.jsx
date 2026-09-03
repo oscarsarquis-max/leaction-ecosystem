@@ -376,6 +376,15 @@ export default function ConsoleShell() {
       }
       followExecution(executionId, { stayOnHome: true });
       setExecutionContext(result.context);
+      setContextPreview((current) =>
+        current
+          ? {
+              ...current,
+              executionId: result.context?.executionId || executionId,
+              executionState: result.context?.executionState || result.state,
+            }
+          : current,
+      );
       setContextMessage({
         ok: true,
         text: `Contexto confirmado — acompanhando ${executionId}`,
@@ -506,9 +515,32 @@ export default function ConsoleShell() {
             preview={contextPreview}
             busy={contextBusy}
             message={contextMessage}
+            executionEvidence={
+              (contextPreview?.executionId || executionContext?.executionId) &&
+              selectedId &&
+              selectedId === (contextPreview?.executionId || executionContext?.executionId)
+                ? {
+                    executionId: selectedId,
+                    executionState: detail?.summary?.state || executionContext?.executionState,
+                    durationMs: detail?.summary?.durationMs,
+                    outcome: detail?.summary?.technicalStatus || detail?.summary?.state,
+                    startedAt: detail?.summary?.startedAt,
+                    completedAt: detail?.summary?.completedAt,
+                  }
+                : contextPreview?.executionId
+                  ? {
+                      executionId: contextPreview.executionId,
+                      executionState: contextPreview.executionState,
+                    }
+                  : null
+            }
+            operationalEvents={operationalEvents}
             onInterpret={interpretBusinessIntent}
             onInterpretText={interpretNaturalLanguageObjective}
             onExecute={executeBusinessIntent}
+            onRevealDataPlane={() =>
+              journeyRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" })
+            }
           />
           {selectedId && (
             <article

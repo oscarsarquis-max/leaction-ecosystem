@@ -51,11 +51,15 @@ Com backend Bedrock ativo:
 1. Badge **DEMONSTRAÇÃO MOCK** no topo.
 2. **Home operacional**: Spider 0.20.0, Health UP, Presentation READY, Runtime SIMULATED_INFRASTRUCTURE, Integrations MOCK_ONLY.
 3. Com IA explicitamente ativa, declarar `Minha proposta 12345 foi aprovada, mas o crédito ainda não foi liberado` e selecionar **Interpretar**.
-4. Mostrar o mesmo **SPIDER ENTENDEU**: texto redigido, `NATURAL_LANGUAGE`, confidence, Guard e rota. Destacar que nenhuma execução ocorreu.
-5. Confirmar **Executar**. Na Jornada, clicar em **IA interpretou contexto** e mostrar provider/model, entidades, ausências, versões e usage seguro antes do DATA PLANE.
-6. No Data Plane, selecionar **Solicitação recebida**, **Interaction #1**, **Retry**, **Interaction #2** e **Execução concluída**. O painel mostra apenas detalhes seguros.
-7. Navegação agrupada: Execuções / Operação / Testes & demonstração / Plataforma.
-8. Aba **Implementação**: CAP-015–020 VERIFIED; 021–026 PLANNED; Context Intelligence e AI Context Interpretation são estados separados, com IA default-off.
+4. Mostrar o mesmo **SPIDER ENTENDEU**: texto redigido, `NATURAL_LANGUAGE`, confidence, Guard,
+   Execution Plan e Business Capabilities. Destacar que nenhuma execução ocorreu.
+5. Abrir o detalhe de `CREDIT_RELEASE_DIAGNOSTIC` e mostrar que route/adapter só aparecem depois da
+   capability. Confirmar **Executar**.
+6. Na Jornada, clicar em **IA interpretou contexto**, **Plano determinado** e na capability; mostrar
+   as zonas CONTEXTO, PLANO e DATA PLANE.
+7. No Data Plane, selecionar **Solicitação recebida**, **Interaction #1**, **Retry**,
+   **Interaction #2** e **Execução concluída**.
+8. Aba **Implementação**: CAP-015–020 VERIFIED; 021–026 PLANNED; IA default-off.
 9. Aba **Apresentação**: preflight readiness; se READY, capítulo 4 → `RETRY_THEN_SUCCESS`.
 10. Detalhe: o que aconteceu → por onde passou → quando → o que tecnicamente ocorreu.
 
@@ -69,6 +73,38 @@ Com backend Bedrock ativo:
 4. `Quero comprar passagens para Paris.` → `UNSUPPORTED_INTENT`, nenhuma rota ou execução.
 5. Reiniciar com `SPIDER_CONTEXT_AI_ENABLED=false` → badge `DESABILITADA`; os seis Business Cards
    continuam produzindo preview e Crédito continua executável após confirmação.
+
+## Cenários manuais CTX-003
+
+1. Informar `Preciso de R$ 50 mil para reforçar meu estoque.` e selecionar **Interpretar**.
+2. Confirmar `SEEK_WORKING_CAPITAL`, `ESTOQUE`, `R$ 50.000,00` e
+   `WORKING_CAPITAL_DIAGNOSTIC_V1`.
+3. Verificar as sete capabilities. `IDENTIFY_CUSTOMER` está disponível pelo contexto autenticado;
+   as seis restantes estão explicitamente indisponíveis.
+4. Abrir uma capability e inspecionar descrição, razão, input/output, availability e route/adapter
+   somente quando houver.
+5. Confirmar status `PARCIALMENTE DISPONÍVEL` e ausência do botão **Executar**.
+6. Repetir com reforço de caixa, matéria-prima e sazonalidade; todos convergem para o mesmo intent,
+   preservando `purpose` e sem inventar `amount`.
+7. Executar o card Crédito para demonstrar a Jornada `CONTEXTO → PLANO → DATA PLANE` e comprovar a
+   regressão preservada.
+
+## Cenários manuais CTX-003A
+
+1. Informar `Preciso de R$ 50 mil para reforçar meu estoque.` e selecionar **Interpretar**.
+2. Percorrer a **Jornada do objetivo**: Objetivo → Entendimento → Policy → Plano → Capacidades →
+   Resolução → Execução → Resultado.
+3. Confirmar `SEEK_WORKING_CAPITAL`, `INVENTORY`, `50000`, Guard `ACCEPTED` e
+   `WORKING_CAPITAL_DIAGNOSTIC_V1`.
+4. Distinguir `IDENTIFY_CUSTOMER` disponível (◉) das demais necessárias e indisponíveis (○); nenhuma
+   está executada (✓) neste plano parcial.
+5. Abrir o detalhe de uma capability e a tabela de resolução Capability → Route → Adapter → Target.
+6. Ver o resultado determinístico `PLANO PARCIALMENTE DISPONÍVEL` sem fingir completude.
+7. Executar o Crédito somente para evidenciar a DATA PLANE JOURNEY 020B correlacionada.
+
+O usuário declara objetivos. A IA os compreende. O Spider os decompõe em capacidades. O ambiente
+determina onde essas capacidades são executadas. A interface torna cada fase, decisão e resultado
+visível e explicável.
 
 ## Roteiro 8 minutos
 

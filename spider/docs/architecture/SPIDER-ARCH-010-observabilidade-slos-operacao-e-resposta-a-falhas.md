@@ -1047,3 +1047,15 @@ nos eventos.
 Timeout é explícito, retry do adapter está desabilitado e indisponibilidade da IA não altera o health
 geral: somente a capacidade de linguagem natural degrada para `INDISPONÍVEL`. Business Cards,
 Context Guard, Router, Console e Data Plane permanecem operacionais.
+
+### Alinhamento com CTX-003 — planejamento e capabilities
+
+O mesmo mecanismo registra `EXECUTION_PLAN_RESOLVED`, `EXECUTION_PLAN_REJECTED`,
+`CAPABILITY_RESOLVED` e `CAPABILITY_UNAVAILABLE`. A allowlist inclui somente `planId`, `planType`,
+`planStatus`, capability e route segura; não inclui payload econômico bruto, secret ou configuração
+de adapter.
+
+Resoluções de preview usam `decisionId` como identidade/correlação contextual. Quando uma execução
+é confirmada, os mesmos fatos são correlacionados ao `executionId`, e o `planId` segue no payload
+canônico seguro. `CAPABILITY_UNAVAILABLE` é evidência de indisponibilidade, não tentativa de
+execução.

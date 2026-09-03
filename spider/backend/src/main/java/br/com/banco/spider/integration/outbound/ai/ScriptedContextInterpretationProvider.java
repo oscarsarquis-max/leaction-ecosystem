@@ -2,6 +2,8 @@ package br.com.banco.spider.integration.outbound.ai;
 
 import br.com.banco.spider.context.application.port.ContextInterpretationProvider;
 import java.math.BigDecimal;
+import java.text.Normalizer;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -19,6 +21,9 @@ public final class ScriptedContextInterpretationProvider
   private static final Pattern PROPOSAL_ID =
       Pattern.compile(
           "(?i)\\bproposta(?:\\s+(?:n[ºo.]|numero))?\\s*[:#-]?\\s*([A-Z0-9-]*\\d[A-Z0-9-]*)");
+  private static final Pattern AMOUNT =
+      Pattern.compile(
+          "(?i)(?:R\\$\\s*)?(\\d+(?:\\.\\d{3})*)(?:,(\\d{1,2}))?\\s*(mil)?\\b");
 
   @Override
   public String providerId() {
@@ -34,7 +39,7 @@ public final class ScriptedContextInterpretationProvider
   public Mono<ProviderResult> interpret(ProviderRequest request) {
     long started = System.nanoTime();
     String text = request.objectiveText();
-    String normalized = text.toLowerCase(Locale.ROOT);
+    String normalized = normalized(text);
     ProviderResult result;
     if (normalized.contains("passagem") || normalized.contains("paris")) {
       result =
@@ -78,7 +83,9 @@ public final class ScriptedContextInterpretationProvider
         Map<String, String> entities =
             "INVESTIGATE_CREDIT_RELEASE".equals(intent)
                 ? proposalEntity(text)
-                : Map.of();
+                : "SEEK_WORKING_CAPITAL".equals(intent)
+                    ? workingCapitalEntities(text, normalized)
+                    : Map.of();
         result =
             new ProviderResult(
                 ProviderStatus.MATCHED,
@@ -94,7 +101,15 @@ public final class ScriptedContextInterpretationProvider
   }
 
   private static String knownIntent(String text) {
-    if (text.contains("proposta") || text.contains("crédito") || text.contains("credito")) {
+    if (text.contains("capital de giro")
+        || text.contains("reforcar meu estoque")
+        || text.contains("reforcar o estoque")
+        || text.contains("reforcar o caixa")
+        || text.contains("materia-prima")
+        || text.contains("antecipar a compra de mercadorias")) {
+      return "SEEK_WORKING_CAPITAL";
+    }
+    if (text.contains("proposta") || text.contains("credito")) {
       return "INVESTIGATE_CREDIT_RELEASE";
     }
     if (text.contains("cobran")) return "INVESTIGATE_COLLECTION_PENDING";
@@ -114,6 +129,51 @@ public final class ScriptedContextInterpretationProvider
   private static Map<String, String> proposalEntity(String text) {
     var matcher = PROPOSAL_ID.matcher(text);
     return matcher.find() ? Map.of("proposalId", matcher.group(1)) : Map.of();
+  }
+
+  private static Map<String, String> workingCapitalEntities(String text, String normalized) {
+    Map<String, String> entities = new LinkedHashMap<>();
+    if (normalized.contains("materia-prima")) {
+      entities.put("purpose", "RAW_MATERIAL");
+      entities.put("businessSituation", "NEW_ORDERS_PRODUCTION_INCREASE");
+    } else if (normalized.contains("sazon")
+        || normalized.contains("periodo de maior movimento")
+        || normalized.contains("antecipar a compra de mercadorias")) {
+      entities.put("purpose", "SEASONALITY");
+      entities.put("businessSituation", "SEASONAL_DEMAND");
+    } else if (normalized.contains("caixa")
+        || normalized.contains("despesas operacionais")) {
+      entities.put("purpose", "CASH_FLOW");
+      entities.put("businessSituation", "TEMPORARY_OPERATING_EXPENSE_INCREASE");
+    } else if (normalized.contains("estoque") || normalized.contains("mercadorias")) {
+      entities.put("purpose", "INVENTORY");
+      entities.put("businessSituation", "SALES_GROWTH");
+    }
+    String amount = explicitAmount(text);
+    if (amount != null) {
+      entities.put("amount", amount);
+    }
+    return Map.copyOf(entities);
+  }
+
+  private static String explicitAmount(String text) {
+    var matcher = AMOUNT.matcher(text);
+    if (!matcher.find()) {
+      return null;
+    }
+    String integer = matcher.group(1).replace(".", "");
+    BigDecimal value =
+        new BigDecimal(integer + (matcher.group(2) == null ? "" : "." + matcher.group(2)));
+    if (matcher.group(3) != null) {
+      value = value.multiply(new BigDecimal("1000"));
+    }
+    return value.stripTrailingZeros().toPlainString();
+  }
+
+  private static String normalized(String text) {
+    return Normalizer.normalize(text, Normalizer.Form.NFD)
+        .replaceAll("\\p{M}+", "")
+        .toLowerCase(Locale.ROOT);
   }
 
   private static long elapsed(long started) {

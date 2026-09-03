@@ -24,6 +24,21 @@ Este documento estabelece:
 
 Este documento não define classes, tabelas, endpoints, linguagem física de DSL, motor de workflow, produto de mensageria, protocolo de integração ou topologia de implantação. Não autoriza alteração do código de produção nem integração com legados reais.
 
+### 1.1 Alinhamento CTX-003
+
+Neste documento, `Execution Plan` significa o **plano técnico do Data Plane**, materializado depois
+da resolução da route para uma execução específica. CTX-003 acrescenta antes dele o
+`ContextExecutionPlan`, plano empresarial composto por Business Capabilities e normatizado em
+SPIDER-ARCH-016.
+
+```text
+Intent → ContextExecutionPlan → Business Capabilities → Route
+       → Execution Plan técnico deste documento → Engine
+```
+
+Os dois contratos não são sinônimos. Intent não seleciona diretamente a Route, e o plano
+empresarial não contém adapter, endpoint ou protocolo.
+
 ## 2. Vocabulário normativo
 
 Os termos “deve”, “não deve” e “somente” expressam requisitos arquiteturais. “Pode” expressa uma possibilidade admitida.

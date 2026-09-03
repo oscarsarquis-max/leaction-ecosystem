@@ -1,10 +1,10 @@
 {
-  "manifestVersion": "1.2.0",
+  "manifestVersion": "1.3.0",
   "productVersion": "0.20.0",
-  "lastVerifiedAt": "2026-09-03T17:10:00Z",
+  "lastVerifiedAt": "2026-09-03T17:55:00Z",
   "baseline": {
-    "backendTests": 385,
-    "frontendTests": 92,
+    "backendTests": 423,
+    "frontendTests": 104,
     "failures": 0,
     "errors": 0,
     "skipped": 0
@@ -16,7 +16,10 @@
     "aiEnabled": false,
     "aiContextInterpretation": "ENABLED",
     "aiProvider": "AWS_BEDROCK_ANTHROPIC",
-    "promptRef": "SPIDER-CTX-002",
+    "executionPlanning": "ENABLED",
+    "businessCapabilityComposition": "ENABLED",
+    "workingCapitalPlan": "PARTIALLY_AVAILABLE",
+    "promptRef": "SPIDER-CTX-003",
     "featureFlags": [
       "spider.context.enabled",
       "spider.context.ui.enabled",
@@ -24,6 +27,7 @@
     ],
     "architectureRefs": [
       "docs/architecture/SPIDER-ARCH-015-context-intelligence-plane.md",
+      "docs/architecture/SPIDER-ARCH-016-execution-planning-business-capability-composition.md",
       "docs/architecture/SPIDER-ARCH-014-arquitetura-funcional-do-produto.md",
       "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md"
     ],
@@ -44,14 +48,22 @@
       "docs/technical/screenshots/CTX-002-spider-entendeu.png",
       "docs/technical/screenshots/CTX-002-ambiguous.png",
       "docs/technical/screenshots/CTX-002-missing-context.png",
-      "docs/technical/screenshots/CTX-002-context-to-dataplane.png"
+      "docs/technical/screenshots/CTX-002-context-to-dataplane.png",
+      "docs/technical/screenshots/CTX-003-working-capital-intent.png",
+      "docs/technical/screenshots/CTX-003-execution-plan.png",
+      "docs/technical/screenshots/CTX-003-capabilities.png",
+      "docs/technical/screenshots/CTX-003-capability-detail.png",
+      "docs/technical/screenshots/CTX-003-partial-plan.png",
+      "docs/technical/screenshots/CTX-003-context-plan-dataplane.png"
     ],
-    "testSummary": "32 backend context tests and 11 frontend context tests; full suites 417 backend / 103 frontend",
+    "testSummary": "CTX-003 planning/capability coverage included; full suites 423 backend / 104 frontend",
     "limitations": [
       "AI_DEFAULT_OFF",
       "BEDROCK_SMOKE_REQUIRES_EXTERNAL_CREDENTIALS",
       "NO_RESPONSE_COMPOSER",
       "NO_AGENT",
+      "WORKING_CAPITAL_PARTIALLY_AVAILABLE",
+      "NO_SERVICENOW_INTEGRATION",
       "MOCK_ONLY",
       "IN_MEMORY_CONTEXT_READ_MODEL"
     ]

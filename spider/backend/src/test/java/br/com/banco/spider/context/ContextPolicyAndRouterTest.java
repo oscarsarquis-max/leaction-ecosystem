@@ -8,10 +8,14 @@ import br.com.banco.spider.context.contract.IntentConstraints;
 import br.com.banco.spider.context.contract.IntentContract;
 import br.com.banco.spider.context.contract.IntentProvenance;
 import br.com.banco.spider.context.contract.IntentProvenanceSource;
+import br.com.banco.spider.context.capability.DeterministicCapabilityResolver;
+import br.com.banco.spider.context.capability.StaticBusinessCapabilityCatalog;
 import br.com.banco.spider.context.domain.ContextGuardDecision;
 import br.com.banco.spider.context.domain.ContextPolicyGuard;
 import br.com.banco.spider.context.domain.DeterministicIntentRouter;
 import br.com.banco.spider.context.domain.StaticBusinessIntentCatalog;
+import br.com.banco.spider.context.planning.DeterministicExecutionPlanResolver;
+import br.com.banco.spider.context.planning.StaticExecutionPlanCatalog;
 import java.math.BigDecimal;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,24 +26,31 @@ class ContextPolicyAndRouterTest {
   private StaticBusinessIntentCatalog catalog;
   private ContextPolicyGuard guard;
   private DeterministicIntentRouter router;
+  private DeterministicExecutionPlanResolver planResolver;
+  private DeterministicCapabilityResolver capabilityResolver;
   private IntentContract credit;
 
   @BeforeEach
   void setUp() {
     catalog = new StaticBusinessIntentCatalog();
     guard = new ContextPolicyGuard(catalog);
-    router = new DeterministicIntentRouter(catalog);
+    var capabilityCatalog = new StaticBusinessCapabilityCatalog();
+    planResolver =
+        new DeterministicExecutionPlanResolver(
+            new StaticExecutionPlanCatalog(), capabilityCatalog);
+    capabilityResolver = new DeterministicCapabilityResolver(capabilityCatalog);
+    router = new DeterministicIntentRouter();
     credit = catalog.findByIntent("INVESTIGATE_CREDIT_RELEASE").orElseThrow().businessCardContract();
   }
 
   @Test
   void catalogHasOneDeterministicSituationForEachInitialDomain() {
-    assertEquals(6, catalog.list().size());
+    assertEquals(7, catalog.list().size());
     assertEquals(
-        6, catalog.list().stream().map(item -> item.domain()).distinct().count());
-    assertEquals(1, catalog.list().stream().filter(item -> item.executable()).count());
+        6, catalog.listBusinessCards().stream().map(item -> item.domain()).distinct().count());
+    assertEquals(6, catalog.listBusinessCards().size());
     assertTrue(
-        catalog.list().stream()
+        catalog.listBusinessCards().stream()
             .allMatch(
                 item ->
                     item.businessCardContract().confidence().toPlainString().equals("1.0")
@@ -50,9 +61,18 @@ class ContextPolicyAndRouterTest {
   void sameContractCatalogAndPolicyResolveToSameRoute() {
     var decisionOne = guard.evaluate(credit, true);
     var decisionTwo = guard.evaluate(credit, true);
-    var routeOne = router.resolve(credit, decisionOne).orElseThrow();
-    var routeTwo = router.resolve(credit, decisionTwo).orElseThrow();
+    var planOne = planResolver.resolve(credit, decisionOne).orElseThrow();
+    var planTwo = planResolver.resolve(credit, decisionTwo).orElseThrow();
+    var routeOne =
+        router
+            .resolvePrimaryRoute(planOne, capabilityResolver.resolve(planOne), decisionOne)
+            .orElseThrow();
+    var routeTwo =
+        router
+            .resolvePrimaryRoute(planTwo, capabilityResolver.resolve(planTwo), decisionTwo)
+            .orElseThrow();
 
+    assertEquals(planOne, planTwo);
     assertEquals(routeOne, routeTwo);
     assertEquals("CREDIT_RELEASE_DIAGNOSTIC", routeOne.capabilityRef());
     assertEquals("CREDIT_RELEASE_DIAGNOSTIC_V1", routeOne.routeRef());
@@ -73,7 +93,7 @@ class ContextPolicyAndRouterTest {
             credit.confidence());
     var decision = guard.evaluate(unsupported, true);
     assertEquals(ContextGuardDecision.UNSUPPORTED_INTENT, decision.decision());
-    assertTrue(router.resolve(unsupported, decision).isEmpty());
+    assertTrue(planResolver.resolve(unsupported, decision).isEmpty());
   }
 
   @Test
@@ -107,7 +127,7 @@ class ContextPolicyAndRouterTest {
     var decision = guard.evaluate(mutable, true);
     assertEquals(ContextGuardDecision.POLICY_REJECTED, decision.decision());
     assertEquals("MUTATION_NOT_ALLOWED", decision.reasonCode());
-    assertFalse(router.resolve(mutable, decision).isPresent());
+    assertFalse(planResolver.resolve(mutable, decision).isPresent());
   }
 
   @Test
@@ -141,9 +161,21 @@ class ContextPolicyAndRouterTest {
             new BigDecimal("0.94"));
     var decision = guard.evaluate(naturalLanguage, true);
     assertEquals(ContextGuardDecision.ACCEPTED, decision.decision());
+    var cardPlan = planResolver.resolve(credit, guard.evaluate(credit, true)).orElseThrow();
+    var naturalPlan = planResolver.resolve(naturalLanguage, decision).orElseThrow();
     assertEquals(
-        router.resolve(credit, guard.evaluate(credit, true)).orElseThrow().routeRef(),
-        router.resolve(naturalLanguage, decision).orElseThrow().routeRef());
+        router
+            .resolvePrimaryRoute(
+                cardPlan,
+                capabilityResolver.resolve(cardPlan),
+                guard.evaluate(credit, true))
+            .orElseThrow()
+            .routeRef(),
+        router
+            .resolvePrimaryRoute(
+                naturalPlan, capabilityResolver.resolve(naturalPlan), decision)
+            .orElseThrow()
+            .routeRef());
   }
 
   @Test
@@ -161,7 +193,7 @@ class ContextPolicyAndRouterTest {
     var decision = guard.evaluate(uncertain, true);
     assertEquals(ContextGuardDecision.AMBIGUOUS, decision.decision());
     assertEquals("AI_CONFIDENCE_BELOW_POLICY", decision.reasonCode());
-    assertTrue(router.resolve(uncertain, decision).isEmpty());
+    assertTrue(planResolver.resolve(uncertain, decision).isEmpty());
   }
 
   @Test

@@ -8,11 +8,15 @@ import br.com.banco.spider.application.canonical.SubmitCanonicalExecutionUseCase
 import br.com.banco.spider.application.security.AuthenticatedOriginator;
 import br.com.banco.spider.context.application.ContextIntelligenceService;
 import br.com.banco.spider.context.application.InMemoryContextDecisionStore;
+import br.com.banco.spider.context.capability.DeterministicCapabilityResolver;
+import br.com.banco.spider.context.capability.StaticBusinessCapabilityCatalog;
 import br.com.banco.spider.context.contract.IntentConstraints;
 import br.com.banco.spider.context.contract.IntentContract;
 import br.com.banco.spider.context.domain.ContextPolicyGuard;
 import br.com.banco.spider.context.domain.DeterministicIntentRouter;
 import br.com.banco.spider.context.domain.StaticBusinessIntentCatalog;
+import br.com.banco.spider.context.planning.DeterministicExecutionPlanResolver;
+import br.com.banco.spider.context.planning.StaticExecutionPlanCatalog;
 import br.com.banco.spider.execution.support.IdentifierGenerator;
 import br.com.banco.spider.execution.support.SpiderClock;
 import br.com.banco.spider.operational.events.OperationalEventPublisher;
@@ -69,12 +73,16 @@ class ContextCoreBoundaryTest {
 
   private static Fixture fixture() {
     var catalog = new StaticBusinessIntentCatalog();
+    var capabilityCatalog = new StaticBusinessCapabilityCatalog();
     var canonical = mock(SubmitCanonicalExecutionUseCase.class);
     var service =
         new ContextIntelligenceService(
             catalog,
             new ContextPolicyGuard(catalog),
-            new DeterministicIntentRouter(catalog),
+            new DeterministicExecutionPlanResolver(
+                new StaticExecutionPlanCatalog(), capabilityCatalog),
+            new DeterministicCapabilityResolver(capabilityCatalog),
+            new DeterministicIntentRouter(),
             new InMemoryContextDecisionStore(),
             canonical,
             OperationalEventPublisher.noop(),

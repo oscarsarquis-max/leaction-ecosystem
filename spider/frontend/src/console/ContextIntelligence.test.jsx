@@ -33,6 +33,32 @@ const catalog = {
   ],
 };
 
+const executionPlan = {
+  schemaVersion: "1.0",
+  planId: "ctxp-credit",
+  planType: "CREDIT_RELEASE_INVESTIGATION_PLAN_V1",
+  intent: contract.intent,
+  status: "READY",
+  statusReasons: [],
+  steps: [{ stepId: "credit-01", sequence: 1, capabilityId: "CREDIT_RELEASE_DIAGNOSTIC" }],
+};
+
+const capability = {
+  stepId: "credit-01",
+  capabilityId: "CREDIT_RELEASE_DIAGNOSTIC",
+  description: "Investigar a condição que impede a liberação.",
+  reason: "Identificar a condição bloqueadora.",
+  inputContract: "spider-capability://input/credit/v1",
+  outputContract: "spider-capability://output/credit/v1",
+  availability: "AVAILABLE",
+  status: "RESOLVED",
+  selectedRoute: {
+    routeRef: "CREDIT_RELEASE_DIAGNOSTIC_V1",
+    adapterRef: "mock-universal",
+    targetOperation: "RETRY_THEN_SUCCESS",
+  },
+};
+
 describe("ContextIntelligence", () => {
   it("renders no Context surface when its UI flag is off", () => {
     const { container } = render(
@@ -71,6 +97,8 @@ describe("ContextIntelligence", () => {
       decisionId: "ctxd-1",
       decision: "ACCEPTED",
       intentContract: contract,
+      executionPlan,
+      capabilities: [capability],
       route: {
         capabilityRef: "CREDIT_RELEASE_DIAGNOSTIC",
         routeRef: "CREDIT_RELEASE_DIAGNOSTIC_V1",
@@ -96,11 +124,15 @@ describe("ContextIntelligence", () => {
     expect(panel).toHaveTextContent("100%");
     expect(panel).toHaveTextContent("SOMENTE CONSULTA");
     expect(panel).toHaveTextContent("ACCEPTED · context:read-only@1.0");
+    expect(panel).toHaveTextContent("CREDIT_RELEASE_INVESTIGATION_PLAN_V1");
+    fireEvent.click(screen.getByRole("button", { name: /CREDIT_RELEASE_DIAGNOSTIC/ }));
     expect(panel).toHaveTextContent("CREDIT_RELEASE_DIAGNOSTIC_V1");
     expect(panel).toHaveTextContent("Intent válido");
     expect(panel).toHaveTextContent("Política aceita");
-    expect(panel).toHaveTextContent("Rota determinada");
-    expect(screen.getByLabelText("Objetivo, Intent, Policy, Rota, Executar e Jornada")).toBeInTheDocument();
+    expect(panel).toHaveTextContent("Plano determinado");
+    expect(
+      screen.getByLabelText("Fases da jornada do objetivo"),
+    ).toBeInTheDocument();
     expect(panel).not.toHaveTextContent("/v1/");
     expect(onExecute).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Executar" }));
@@ -121,6 +153,34 @@ describe("ContextIntelligence", () => {
             domain: "COLLECTION",
             objective: "IDENTIFY_PENDING_COLLECTION_CONDITION",
           },
+          executionPlan: {
+            ...executionPlan,
+            planId: "ctxp-collection",
+            planType: "COLLECTION_INVESTIGATION_PLAN_V1",
+            intent: "INVESTIGATE_COLLECTION_PENDING",
+            status: "NOT_EXECUTABLE",
+            statusReasons: ["CAPABILITY_NOT_AVAILABLE:COLLECTION_DIAGNOSTIC"],
+            steps: [
+              {
+                stepId: "collection-01",
+                sequence: 1,
+                capabilityId: "COLLECTION_DIAGNOSTIC",
+              },
+            ],
+          },
+          capabilities: [
+            {
+              ...capability,
+              stepId: "collection-01",
+              capabilityId: "COLLECTION_DIAGNOSTIC",
+              availability: "NOT_AVAILABLE",
+              status: "UNAVAILABLE",
+              selectedRoute: {
+                ...capability.selectedRoute,
+                routeRef: "COLLECTION_DIAGNOSTIC_V1",
+              },
+            },
+          ],
           route: {
             capabilityRef: "COLLECTION_DIAGNOSTIC",
             routeRef: "COLLECTION_DIAGNOSTIC_V1",
@@ -134,8 +194,9 @@ describe("ContextIntelligence", () => {
 
     const panel = screen.getByTestId("intent-preview");
     expect(panel).toHaveTextContent("INVESTIGATE_COLLECTION_PENDING");
+    fireEvent.click(screen.getByRole("button", { name: /COLLECTION_DIAGNOSTIC/ }));
     expect(panel).toHaveTextContent("COLLECTION_DIAGNOSTIC_V1");
-    expect(panel).toHaveTextContent("Preview disponível · execução ainda não habilitada");
+    expect(panel).toHaveTextContent("Plano não executável neste boundary");
     expect(screen.queryByRole("button", { name: "Executar" })).not.toBeInTheDocument();
   });
 
@@ -184,6 +245,8 @@ describe("ContextIntelligence", () => {
             missingContext: [],
             candidateIntents: [],
           },
+          executionPlan,
+          capabilities: [capability],
           route: {
             capabilityRef: "CREDIT_RELEASE_DIAGNOSTIC",
             routeRef: "CREDIT_RELEASE_DIAGNOSTIC_V1",
@@ -202,7 +265,7 @@ describe("ContextIntelligence", () => {
     expect(panel).toHaveTextContent("94%");
     expect(panel).toHaveTextContent("Contexto suficiente");
     expect(
-      screen.getByLabelText("Objetivo, IA, Intent, Policy, Rota, Executar e Jornada"),
+      screen.getByLabelText("Fases da jornada do objetivo"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Executar" })).toBeEnabled();
   });

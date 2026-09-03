@@ -17,10 +17,7 @@ public final class StaticBusinessIntentCatalog implements BusinessIntentCatalog 
               "Investigar liberação de proposta",
               "Entender por que uma proposta de crédito não foi liberada.",
               "proposalId",
-              "DEMO-PROPOSAL-001",
-              "CREDIT_RELEASE_DIAGNOSTIC",
-              "CREDIT_RELEASE_DIAGNOSTIC_V1",
-              "RETRY_THEN_SUCCESS"),
+              "DEMO-PROPOSAL-001"),
           definition(
               "COLLECTION",
               "Cobrança",
@@ -29,10 +26,7 @@ public final class StaticBusinessIntentCatalog implements BusinessIntentCatalog 
               "Investigar cobrança pendente",
               "Entender por que uma cobrança continua pendente.",
               "collectionId",
-              "DEMO-COLLECTION-001",
-              "COLLECTION_DIAGNOSTIC",
-              "COLLECTION_DIAGNOSTIC_V1",
-              "SUCCESS_MULTI_STEP"),
+              "DEMO-COLLECTION-001"),
           definition(
               "BILLING",
               "Faturamento",
@@ -41,10 +35,7 @@ public final class StaticBusinessIntentCatalog implements BusinessIntentCatalog 
               "Investigar falha de faturamento",
               "Analisar uma falha no processamento de faturamento.",
               "invoiceId",
-              "DEMO-INVOICE-001",
-              "BILLING_DIAGNOSTIC",
-              "BILLING_DIAGNOSTIC_V1",
-              "SUCCESS_MULTI_STEP"),
+              "DEMO-INVOICE-001"),
           definition(
               "CUSTOMER_DATA",
               "Dados do cliente",
@@ -53,10 +44,7 @@ public final class StaticBusinessIntentCatalog implements BusinessIntentCatalog 
               "Verificar inconsistência cadastral",
               "Identificar divergências nos dados de um cliente.",
               "customerId",
-              "DEMO-CUSTOMER-001",
-              "CUSTOMER_DATA_DIAGNOSTIC",
-              "CUSTOMER_DATA_DIAGNOSTIC_V1",
-              "SUCCESS_MULTI_STEP"),
+              "DEMO-CUSTOMER-001"),
           definition(
               "CUSTOMER_SERVICE",
               "Atendimento",
@@ -65,10 +53,7 @@ public final class StaticBusinessIntentCatalog implements BusinessIntentCatalog 
               "Investigar solicitação de atendimento",
               "Compreender o estado e os bloqueios de uma solicitação.",
               "serviceRequestId",
-              "DEMO-SERVICE-REQUEST-001",
-              "SERVICE_REQUEST_DIAGNOSTIC",
-              "SERVICE_REQUEST_DIAGNOSTIC_V1",
-              "SUCCESS_MULTI_STEP"),
+              "DEMO-SERVICE-REQUEST-001"),
           definition(
               "INCIDENT",
               "Incidente",
@@ -77,10 +62,18 @@ public final class StaticBusinessIntentCatalog implements BusinessIntentCatalog 
               "Investigar incidente operacional",
               "Compreender a condição atual de um incidente.",
               "incidentId",
-              "DEMO-INCIDENT-001",
-              "INCIDENT_DIAGNOSTIC",
-              "INCIDENT_DIAGNOSTIC_V1",
-              "SUCCESS_MULTI_STEP"));
+              "DEMO-INCIDENT-001"),
+          new BusinessIntentDefinition(
+              "CREDIT",
+              "Crédito",
+              "SEEK_WORKING_CAPITAL",
+              "ASSESS_WORKING_CAPITAL_OPTIONS",
+              "Buscar capital de giro",
+              "Compreender opções de capital de giro para uma finalidade econômica declarada.",
+              Set.of("purpose", "amount", "businessSituation"),
+              Set.of("purpose"),
+              Map.of(),
+              false));
 
   private static BusinessIntentDefinition definition(
       String domain,
@@ -90,10 +83,7 @@ public final class StaticBusinessIntentCatalog implements BusinessIntentCatalog 
       String title,
       String description,
       String entityKey,
-      String entityValue,
-      String capabilityRef,
-      String routeRef,
-      String operation) {
+      String entityValue) {
     return new BusinessIntentDefinition(
         domain,
         domainLabel,
@@ -102,12 +92,9 @@ public final class StaticBusinessIntentCatalog implements BusinessIntentCatalog 
         title,
         description,
         Set.of(entityKey),
+        Set.of(entityKey),
         Map.of(entityKey, entityValue),
-        capabilityRef,
-        routeRef,
-        "CREDIT".equals(domain),
-        operation,
-        operation);
+        true);
   }
 
   @Override

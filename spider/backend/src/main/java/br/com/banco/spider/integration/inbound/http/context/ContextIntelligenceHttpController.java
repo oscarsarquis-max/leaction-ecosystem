@@ -8,11 +8,14 @@ import br.com.banco.spider.context.application.ContextDecisionRecord;
 import br.com.banco.spider.context.application.ContextIntelligenceService;
 import br.com.banco.spider.context.application.ContextInterpretationEvidence;
 import br.com.banco.spider.context.application.ContextInterpretationService;
+import br.com.banco.spider.context.capability.CapabilityResolution;
 import br.com.banco.spider.context.contract.IntentContract;
 import br.com.banco.spider.context.domain.BusinessIntentDefinition;
 import br.com.banco.spider.context.domain.ContextGuardDecision;
 import br.com.banco.spider.context.domain.IntentRouteResolution;
+import br.com.banco.spider.context.planning.ContextExecutionPlan;
 import br.com.banco.spider.execution.support.SpiderClock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -65,7 +68,9 @@ public class ContextIntelligenceHttpController {
                 return unauthorized();
               }
               List<BusinessIntentCardView> items =
-                  context.catalog().list().stream().map(BusinessIntentCardView::from).toList();
+                  context.catalog().listBusinessCards().stream()
+                      .map(BusinessIntentCardView::from)
+                      .toList();
               return ResponseEntity.ok()
                   .header("Cache-Control", "no-store")
                   .body(
@@ -324,11 +329,14 @@ public class ContextIntelligenceHttpController {
       String decision,
       String reasonCode,
       String policyRef,
+      ContextExecutionPlan executionPlan,
+      List<CapabilityResolution> capabilities,
       PublicRouteView route,
       List<br.com.banco.spider.context.application.ContextJourneyStage> contextJourney,
       ContextInterpretationEvidence interpretation,
       String executionId,
-      String executionState) {
+      String executionState,
+      Instant createdAt) {
     static DecisionView from(ContextDecisionRecord record) {
       return new DecisionView(
           record.decisionId(),
@@ -336,11 +344,14 @@ public class ContextIntelligenceHttpController {
           record.guard().decision().name(),
           record.guard().reasonCode(),
           record.guard().policyRef(),
+          record.executionPlan(),
+          record.capabilities(),
           PublicRouteView.from(record.route()),
           record.journey(),
           record.interpretation(),
           record.executionId(),
-          record.executionState());
+          record.executionState(),
+          record.createdAt());
     }
   }
 

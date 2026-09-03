@@ -92,6 +92,17 @@ public class ImplementationManifestLoader {
           manifest.contextIntelligence().aiProvider())) {
         problems.add("AI provider must remain explicit and substitutable");
       }
+      if (!"ENABLED".equals(manifest.contextIntelligence().executionPlanning())) {
+        problems.add("deterministic execution planning must be enabled after CTX-003");
+      }
+      if (!"ENABLED".equals(
+          manifest.contextIntelligence().businessCapabilityComposition())) {
+        problems.add("business capability composition must be enabled after CTX-003");
+      }
+      if (!"PARTIALLY_AVAILABLE".equals(
+          manifest.contextIntelligence().workingCapitalPlan())) {
+        problems.add("working capital plan must remain honestly partial in CTX-003");
+      }
     }
     for (ImplementationCapability c : manifest.capabilities()) {
       if ("PRODUCTION".equals(c.integrationLevel())) {

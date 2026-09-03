@@ -13,12 +13,18 @@ import br.com.banco.spider.canonical.contract.ExecutionPolicyReference;
 import br.com.banco.spider.canonical.contract.OriginDescriptor;
 import br.com.banco.spider.canonical.contract.TargetDescriptor;
 import br.com.banco.spider.canonical.contract.TraceDescriptor;
+import br.com.banco.spider.context.capability.CapabilityResolution;
+import br.com.banco.spider.context.capability.CapabilityResolutionStatus;
+import br.com.banco.spider.context.capability.CapabilityResolver;
 import br.com.banco.spider.context.contract.IntentContract;
 import br.com.banco.spider.context.domain.BusinessIntentCatalog;
 import br.com.banco.spider.context.domain.ContextGuardDecision;
 import br.com.banco.spider.context.domain.ContextPolicyGuard;
 import br.com.banco.spider.context.domain.DeterministicIntentRouter;
 import br.com.banco.spider.context.domain.IntentRouteResolution;
+import br.com.banco.spider.context.planning.ContextExecutionPlan;
+import br.com.banco.spider.context.planning.ContextExecutionPlanStatus;
+import br.com.banco.spider.context.planning.ExecutionPlanResolver;
 import br.com.banco.spider.execution.support.IdentifierGenerator;
 import br.com.banco.spider.execution.support.SpiderClock;
 import br.com.banco.spider.operational.events.OperationalEventAttributes;
@@ -44,6 +50,8 @@ public final class ContextIntelligenceService {
 
   private final BusinessIntentCatalog catalog;
   private final ContextPolicyGuard guard;
+  private final ExecutionPlanResolver planResolver;
+  private final CapabilityResolver capabilityResolver;
   private final DeterministicIntentRouter router;
   private final ContextDecisionStore store;
   private final SubmitCanonicalExecutionUseCase canonicalSubmit;
@@ -55,6 +63,8 @@ public final class ContextIntelligenceService {
   public ContextIntelligenceService(
       BusinessIntentCatalog catalog,
       ContextPolicyGuard guard,
+      ExecutionPlanResolver planResolver,
+      CapabilityResolver capabilityResolver,
       DeterministicIntentRouter router,
       ContextDecisionStore store,
       SubmitCanonicalExecutionUseCase canonicalSubmit,
@@ -64,6 +74,8 @@ public final class ContextIntelligenceService {
       ObjectMapper mapper) {
     this.catalog = catalog;
     this.guard = guard;
+    this.planResolver = planResolver;
+    this.capabilityResolver = capabilityResolver;
     this.router = router;
     this.store = store;
     this.canonicalSubmit = canonicalSubmit;
@@ -87,7 +99,10 @@ public final class ContextIntelligenceService {
       ContextInterpretationEvidence interpretation) {
     Instant createdAt = clock.now();
     var guardResult = guard.evaluate(contract, principalRef != null && !principalRef.isBlank());
-    IntentRouteResolution route = router.resolve(contract, guardResult).orElse(null);
+    ContextExecutionPlan plan = planResolver.resolve(contract, guardResult).orElse(null);
+    List<CapabilityResolution> capabilities = capabilityResolver.resolve(plan);
+    IntentRouteResolution route =
+        router.resolvePrimaryRoute(plan, capabilities, guardResult).orElse(null);
     String decisionId = ids.nextId("ctxd");
     ContextDecisionRecord record =
         new ContextDecisionRecord(
@@ -95,14 +110,24 @@ public final class ContextIntelligenceService {
             principalRef,
             contract,
             guardResult,
+            plan,
+            capabilities,
             route,
             createdAt,
             null,
             null,
             null,
             interpretation,
-            journey(contract, guardResult, route, createdAt, interpretation));
+            journey(
+                contract,
+                guardResult,
+                plan,
+                capabilities,
+                route,
+                createdAt,
+                interpretation));
     store.save(record);
+    emitPlanningEvents(decisionId, contract, guardResult, plan, capabilities);
     return record;
   }
 
@@ -122,9 +147,24 @@ public final class ContextIntelligenceService {
     }
 
     var guardResult = guard.evaluate(contract, true);
-    IntentRouteResolution route = router.resolve(contract, guardResult).orElse(null);
-    if (!guardResult.accepted() || route == null) {
+    ContextExecutionPlan plan = planResolver.resolve(contract, guardResult).orElse(null);
+    List<CapabilityResolution> capabilities = capabilityResolver.resolve(plan);
+    IntentRouteResolution route =
+        router.resolvePrimaryRoute(plan, capabilities, guardResult).orElse(null);
+    if (!guardResult.accepted()) {
       return Mono.just(new ContextExecutionOutcome(false, preview.get(), guardResult, null));
+    }
+    if (plan == null
+        || plan.status() != ContextExecutionPlanStatus.READY
+        || route == null) {
+      var planRejected =
+          new ContextPolicyGuard.GuardResult(
+              ContextGuardDecision.POLICY_REJECTED,
+              plan == null
+                  ? "EXECUTION_PLAN_NOT_RESOLVED"
+                  : "EXECUTION_PLAN_" + plan.status().name(),
+              guardResult.policyRef());
+      return Mono.just(new ContextExecutionOutcome(false, preview.get(), planRejected, null));
     }
     if (!route.executable()) {
       var notExecutable =
@@ -142,11 +182,21 @@ public final class ContextIntelligenceService {
         executionId,
         correlationId,
         contract,
+        plan,
+        capabilities,
         route,
         guardResult,
         preview.get().interpretation());
     CanonicalExecutionRequest canonical =
-        canonicalRequest(executionId, correlationId, submittedAt, contract, route, originator);
+        canonicalRequest(
+            executionId,
+            correlationId,
+            submittedAt,
+            preview.get().decisionId(),
+            contract,
+            plan,
+            route,
+            originator);
     var command =
         new SubmitCanonicalExecutionUseCase.SubmitCanonicalExecutionCommand(
             canonical,
@@ -183,12 +233,17 @@ public final class ContextIntelligenceService {
       String executionId,
       String correlationId,
       Instant submittedAt,
+      String decisionId,
       IntentContract contract,
+      ContextExecutionPlan plan,
       IntentRouteResolution route,
       AuthenticatedOriginator originator) {
     ObjectNode data = mapper.createObjectNode();
     data.put("mockScenario", route.mockScenario());
     data.put("contextDecision", "DETERMINISTIC");
+    data.put("contextDecisionId", decisionId);
+    data.put("contextPlanId", plan.planId());
+    data.put("contextPlanType", plan.planType());
     data.put("intent", contract.intent());
     data.set("entities", mapper.valueToTree(contract.entities()));
     return CanonicalExecutionRequest.builder()
@@ -215,6 +270,8 @@ public final class ContextIntelligenceService {
       String executionId,
       String correlationId,
       IntentContract contract,
+      ContextExecutionPlan plan,
+      List<CapabilityResolution> capabilities,
       IntentRouteResolution route,
       ContextPolicyGuard.GuardResult guardResult,
       ContextInterpretationEvidence interpretation) {
@@ -248,6 +305,33 @@ public final class ContextIntelligenceService {
             .reasonCode(guardResult.reasonCode())
             .build());
     publish(
+        OperationalEventType.EXECUTION_PLAN_RESOLVED,
+        executionId,
+        correlationId,
+        OperationalEventAttributes.builder()
+            .reasonCode(plan.status().name())
+            .put("planId", plan.planId())
+            .put("planType", plan.planType())
+            .put("planStatus", plan.status().name())
+            .build());
+    for (CapabilityResolution capability : capabilities) {
+      publish(
+          capability.status() == CapabilityResolutionStatus.RESOLVED
+              ? OperationalEventType.CAPABILITY_RESOLVED
+              : OperationalEventType.CAPABILITY_UNAVAILABLE,
+          executionId,
+          correlationId,
+          OperationalEventAttributes.builder()
+              .reasonCode(capability.status().name())
+              .put("planId", plan.planId())
+              .put("capabilityRef", capability.capabilityId())
+              .routeCode(
+                  capability.selectedRoute() == null
+                      ? null
+                      : capability.selectedRoute().routeRef())
+              .build());
+    }
+    publish(
         OperationalEventType.ROUTE_RESOLVED,
         executionId,
         correlationId,
@@ -255,6 +339,67 @@ public final class ContextIntelligenceService {
             .routeCode(route.routeRef())
             .put("capabilityRef", route.capabilityRef())
             .build());
+  }
+
+  private void emitPlanningEvents(
+      String decisionId,
+      IntentContract contract,
+      ContextPolicyGuard.GuardResult guardResult,
+      ContextExecutionPlan plan,
+      List<CapabilityResolution> capabilities) {
+    if (plan == null) {
+      OperationalEventEmit.publish(
+          events,
+          OperationalEventEmit.draft(
+              OperationalEventType.EXECUTION_PLAN_REJECTED,
+              decisionId,
+              decisionId,
+              "context-planning",
+              OperationalEventOutcome.REJECTED,
+              null,
+              OperationalEventAttributes.builder()
+                  .reasonCode(guardResult.reasonCode())
+                  .put("intent", contract == null ? null : contract.intent())
+                  .build()));
+      return;
+    }
+    publish(
+        OperationalEventType.EXECUTION_PLAN_RESOLVED,
+        decisionId,
+        decisionId,
+        OperationalEventAttributes.builder()
+            .reasonCode(plan.status().name())
+            .put("intent", plan.intent())
+            .put("planId", plan.planId())
+            .put("planType", plan.planType())
+            .put("planStatus", plan.status().name())
+            .build());
+    for (CapabilityResolution capability : capabilities) {
+      OperationalEventOutcome outcome =
+          capability.status() == CapabilityResolutionStatus.RESOLVED
+              ? OperationalEventOutcome.SUCCESS
+              : OperationalEventOutcome.REJECTED;
+      OperationalEventEmit.publish(
+          events,
+          OperationalEventEmit.draft(
+              capability.status() == CapabilityResolutionStatus.RESOLVED
+                  ? OperationalEventType.CAPABILITY_RESOLVED
+                  : OperationalEventType.CAPABILITY_UNAVAILABLE,
+              decisionId,
+              decisionId,
+              "capability-resolution",
+              outcome,
+              null,
+              OperationalEventAttributes.builder()
+                  .reasonCode(capability.status().name())
+                  .put("planId", plan.planId())
+                  .put("capabilityRef", capability.capabilityId())
+                  .routeCode(
+                      capability.selectedRoute() == null
+                          ? null
+                          : capability.selectedRoute().routeRef())
+                  .build()));
+    }
   }
 
   private void publish(
@@ -277,6 +422,8 @@ public final class ContextIntelligenceService {
   private static List<ContextJourneyStage> journey(
       IntentContract contract,
       ContextPolicyGuard.GuardResult guard,
+      ContextExecutionPlan plan,
+      List<CapabilityResolution> capabilities,
       IntentRouteResolution route,
       Instant at,
       ContextInterpretationEvidence interpretation) {
@@ -366,37 +513,112 @@ public final class ContextIntelligenceService {
                 guard.policyRef(),
                 "reasonCode",
                 guard.reasonCode()));
-    if (route == null) {
-      return interpretation == null
-          ? List.of(objective, intent, policy)
-          : List.of(objective, aiInterpreted, intent, policy);
+    List<ContextJourneyStage> stages = new java.util.ArrayList<>();
+    stages.add(objective);
+    if (aiInterpreted != null) {
+      stages.add(aiInterpreted);
     }
-    ContextJourneyStage resolved =
+    stages.add(intent);
+    stages.add(policy);
+    if (plan == null) {
+      return List.copyOf(stages);
+    }
+
+    stages.add(
         new ContextJourneyStage(
-            "route-resolved",
-            "Rota determinada",
+            "execution-plan-resolved",
+            "Plano determinado",
             "CONTEXT",
             "SUCCEEDED",
-            "O roteador determinístico associou a intenção "
-                + contract.intent()
-                + " à capability "
-                + route.capabilityRef()
-                + " e à rota "
-                + route.routeRef()
-                + ".",
+            "O Plan Resolver determinístico compôs o plano "
+                + plan.planType()
+                + " sem participação da IA.",
             at,
             Map.of(
-                "capabilityRef",
-                route.capabilityRef(),
-                "routeRef",
-                route.routeRef(),
-                "executionAvailability",
-                route.executable() ? "CTX001_END_TO_END" : "PREVIEW_ONLY",
-                "policyRef",
-                route.policyRef()));
-    return interpretation == null
-        ? List.of(objective, intent, policy, resolved)
-        : List.of(objective, aiInterpreted, intent, policy, resolved);
+                "planId", plan.planId(),
+                "planType", plan.planType(),
+                "planStatus", plan.status().name(),
+                "statusReasons", plan.statusReasons().toString(),
+                "stepCount", Integer.toString(plan.steps().size()))));
+    long available =
+        capabilities.stream()
+            .filter(item -> item.status() == CapabilityResolutionStatus.RESOLVED)
+            .count();
+    stages.add(
+        new ContextJourneyStage(
+            "capabilities-resolved",
+            "Capabilities resolvidas",
+            "CONTEXT",
+            "SUCCEEDED",
+            "O Capability Resolver avaliou "
+                + capabilities.size()
+                + " competências; "
+                + available
+                + " possuem resolução disponível.",
+            at,
+            Map.of(
+                "planId", plan.planId(),
+                "resolvedCapabilities", Long.toString(available),
+                "unavailableCapabilities",
+                    Long.toString(capabilities.size() - available))));
+
+    for (CapabilityResolution capability : capabilities) {
+      stages.add(
+          new ContextJourneyStage(
+              "plan-capability-" + capability.stepId(),
+              capability.capabilityId(),
+              "PLAN",
+              capability.status() == CapabilityResolutionStatus.RESOLVED
+                  ? "SUCCEEDED"
+                  : "NOT_REACHED",
+              capability.status() == CapabilityResolutionStatus.RESOLVED
+                  ? "A capability foi resolvida para uma rota elegível; ela ainda não foi executada."
+                  : "A capability obrigatória não possui executor disponível neste boundary.",
+              at,
+              capabilityDetails(capability)));
+    }
+    if (route != null) {
+      stages.add(
+          new ContextJourneyStage(
+              "route-resolved",
+              "Rota determinada",
+              "PLAN",
+              "SUCCEEDED",
+              "A rota "
+                  + route.routeRef()
+                  + " foi selecionada depois da resolução da capability "
+                  + route.capabilityRef()
+                  + ".",
+              at,
+              Map.of(
+                  "capabilityRef",
+                  route.capabilityRef(),
+                  "routeRef",
+                  route.routeRef(),
+                  "executionAvailability",
+                  route.executable() ? "CTX003_END_TO_END" : "PREVIEW_ONLY",
+                  "policyRef",
+                  route.policyRef())));
+    }
+    return List.copyOf(stages);
+  }
+
+  private static Map<String, String> capabilityDetails(CapabilityResolution capability) {
+    Map<String, String> details = new LinkedHashMap<>();
+    details.put("capabilityRef", capability.capabilityId());
+    details.put("description", capability.description());
+    details.put("reason", capability.reason());
+    details.put("inputContract", String.valueOf(capability.inputContract()));
+    details.put("outputContract", String.valueOf(capability.outputContract()));
+    details.put("mutationType", capability.mutationType().name());
+    details.put("availability", capability.availability().name());
+    details.put("resolutionStatus", capability.status().name());
+    if (capability.selectedRoute() != null) {
+      details.put("routeRef", capability.selectedRoute().routeRef());
+      details.put("adapterRef", capability.selectedRoute().adapterRef());
+      details.put("targetOperation", capability.selectedRoute().targetOperation());
+    }
+    return Map.copyOf(details);
   }
 
   private static Map<String, String> interpretationDetails(

@@ -55,7 +55,13 @@ class ContextAiInterpretationHttpTest {
     assertEquals(
         "CREDIT_RELEASE_DIAGNOSTIC_V1",
         decision.path("route").path("routeRef").asText());
-    assertEquals(5, decision.path("contextJourney").size());
+    assertEquals(
+        "CREDIT_RELEASE_INVESTIGATION_PLAN_V1",
+        decision.path("executionPlan").path("planType").asText());
+    assertEquals(
+        "CREDIT_RELEASE_DIAGNOSTIC",
+        decision.path("capabilities").get(0).path("capabilityId").asText());
+    assertEquals(8, decision.path("contextJourney").size());
     assertEquals("ai-interpreted", decision.path("contextJourney").get(1).path("id").asText());
     assertTrue(decision.path("executionId").isNull());
 
@@ -90,6 +96,13 @@ class ContextAiInterpretationHttpTest {
         "proposalId",
         missing.path("interpretation").path("missingContext").get(0).asText());
     assertTrue(missing.path("decision").path("route").isNull());
+    getResponse(
+            "/v1/console/executions/"
+                + missing.path("decision").path("decisionId").asText()
+                + "/events")
+        .expectBody()
+        .jsonPath("$.items[?(@.eventType=='EXECUTION_PLAN_REJECTED')]")
+        .isNotEmpty();
     client
         .post()
         .uri("/v1/context/executions")
@@ -116,6 +129,75 @@ class ContextAiInterpretationHttpTest {
     assertEquals("UNSUPPORTED_INTENT", unsupported.path("status").asText());
     assertTrue(unsupported.path("decision").isNull());
     assertNull(unsupported.path("interpretation").path("intent").textValue());
+  }
+
+  @Test
+  void workingCapitalProducesPartialPlanAndNeverReachesExecution() throws Exception {
+    JsonNode result = interpret("Preciso de R$ 50 mil para reforçar meu estoque.");
+    JsonNode decision = result.path("decision");
+
+    assertEquals("SUCCEEDED", result.path("status").asText());
+    assertEquals(
+        "SEEK_WORKING_CAPITAL",
+        decision.path("intentContract").path("intent").asText());
+    assertEquals(
+        "INVENTORY",
+        decision.path("intentContract").path("entities").path("purpose").asText());
+    assertEquals(
+        "50000",
+        decision.path("intentContract").path("entities").path("amount").asText());
+    assertEquals(
+        "WORKING_CAPITAL_DIAGNOSTIC_V1",
+        decision.path("executionPlan").path("planType").asText());
+    assertEquals(
+        "PARTIALLY_AVAILABLE",
+        decision.path("executionPlan").path("status").asText());
+    assertEquals(7, decision.path("capabilities").size());
+    assertEquals("RESOLVED", decision.path("capabilities").get(0).path("status").asText());
+    assertEquals(
+        "UNAVAILABLE", decision.path("capabilities").get(1).path("status").asText());
+    assertTrue(decision.path("route").isNull());
+    assertTrue(decision.path("executionId").isNull());
+    assertFalse(decision.path("createdAt").isNull());
+    assertFalse(decision.path("decisionId").asText().isBlank());
+    assertFalse(decision.path("executionPlan").path("planId").asText().isBlank());
+    assertEquals(
+        "IDENTIFY_CUSTOMER",
+        decision.path("capabilities").get(0).path("capabilityId").asText());
+    assertEquals(
+        "AUTHENTICATED_CONTEXT_CUSTOMER_V1",
+        decision.path("capabilities").get(0).path("selectedRoute").path("routeRef").asText());
+    assertTrue(decision.path("capabilities").get(1).path("selectedRoute").isNull());
+
+    client
+        .post()
+        .uri("/v1/context/executions")
+        .header(
+            "X-Spider-Credential-Ref",
+            LocalDemoCanonicalCredentials.CREDENTIAL_REF)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            Map.of(
+                "decisionId",
+                decision.path("decisionId").asText(),
+                "intentContract",
+                decision.path("intentContract")))
+        .exchange()
+        .expectStatus()
+        .isEqualTo(422)
+        .expectBody()
+        .jsonPath("$.reasonCode")
+        .isEqualTo("EXECUTION_PLAN_PARTIALLY_AVAILABLE");
+
+    getResponse(
+            "/v1/console/executions/"
+                + decision.path("decisionId").asText()
+                + "/events")
+        .expectBody()
+        .jsonPath("$.items[?(@.eventType=='EXECUTION_PLAN_RESOLVED')]")
+        .isNotEmpty()
+        .jsonPath("$.items[?(@.eventType=='CAPABILITY_UNAVAILABLE')]")
+        .isNotEmpty();
   }
 
   @Test

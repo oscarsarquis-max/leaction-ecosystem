@@ -1,4 +1,4 @@
-# Screenshots — SPIDER-PROMPT-015, 017, 018, 019, 020, 020A e 020B
+# Screenshots — SPIDER-PROMPT-015–020B e SPIDER-CTX-001–003A
 
 Capturas reais (Playwright) contra UI `http://127.0.0.1:5180` + API local-demo:
 
@@ -61,6 +61,21 @@ Capturas reais (Playwright) contra UI `http://127.0.0.1:5180` + API local-demo:
 | `CTX-002-ambiguous.png` | componente responsivo |
 | `CTX-002-missing-context.png` | componente responsivo |
 | `CTX-002-context-to-dataplane.png` | 1440×página |
+| `CTX-003-working-capital-intent.png` | 1440×página |
+| `CTX-003-execution-plan.png` | componente responsivo |
+| `CTX-003-capabilities.png` | componente responsivo |
+| `CTX-003-capability-detail.png` | componente responsivo |
+| `CTX-003-partial-plan.png` | componente responsivo |
+| `CTX-003-context-plan-dataplane.png` | 1440×página |
+| `CTX-003A-objective-to-result.png` | 1440×página |
+| `CTX-003A-understanding.png` | componente responsivo |
+| `CTX-003A-plan.png` | componente responsivo |
+| `CTX-003A-capabilities.png` | componente responsivo |
+| `CTX-003A-capability-resolution.png` | componente responsivo |
+| `CTX-003A-capability-detail.png` | componente responsivo |
+| `CTX-003A-dataplane.png` | 1440×página |
+| `CTX-003A-result.png` | componente responsivo |
+| `CTX-003A-partial-result.png` | 1440×página |
 
 Geração:
 
@@ -79,9 +94,14 @@ node .\scripts\capture-020b-step-details-screenshots.mjs
 node .\scripts\capture-ctx-001-screenshots.mjs
 node .\scripts\capture-ctx-001a-screenshots.mjs
 node .\scripts\capture-ctx-002-screenshots.mjs
+node .\scripts\capture-ctx-003-screenshots.mjs
+node .\scripts\capture-ctx-003a-screenshots.mjs
 ```
 
 As evidências CTX-002 deste repositório usam o provider local explicitamente opt-in
 `scripted-evidence`; não são smoke AWS Bedrock. O script valida a UI real sem interceptar rotas.
+As evidências CTX-003 usam o mesmo provider local para a origem probabilística, enquanto Plan
+Resolver e Capability Resolver permanecem determinísticos.
+As evidências CTX-003A capturam a Jornada do Objetivo no Console real, sem inventar progresso.
 
 As capturas 017 usam o Cockpit Operacional (console + telemetria + saúde). As cinco capturas 018 usam o Failure Lab com `spider.failure-lab.enabled` e `spider.failure-lab.http.enabled`. As cinco capturas 019 usam o Runtime de Workers com `spider.worker-runtime.enabled` e `spider.worker-runtime.http.enabled`. As cinco capturas 020 usam Capacidade & Resiliência com `spider.capacity.enabled` (+ `http` / `local-demo` / `enforcement` conforme o cenário). Os PNGs podem ser produzidos separadamente do fechamento documental.

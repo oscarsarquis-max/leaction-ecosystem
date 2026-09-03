@@ -3,6 +3,7 @@ package br.com.banco.spider.context;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import br.com.banco.spider.context.application.ContextInterpreterPrompt;
 import br.com.banco.spider.context.application.port.ContextInterpretationProvider.AllowedIntent;
 import br.com.banco.spider.context.application.port.ContextInterpretationProvider.ProviderRequest;
 import br.com.banco.spider.context.application.port.ContextInterpretationProvider.ProviderStatus;
@@ -49,16 +50,51 @@ class ScriptedContextInterpretationProviderTest {
     assertEquals(ProviderStatus.UNSUPPORTED_INTENT, unsupported.status());
   }
 
+  @Test
+  void fourWorkingCapitalSituationsConvergeWithoutInventingAmount() {
+    assertWorkingCapital(
+        "Empresa precisa de R$ 50 mil para reforçar o estoque e atender ao aumento das vendas.",
+        "INVENTORY",
+        "50000");
+    assertWorkingCapital(
+        "Empresa está com aumento temporário das despesas operacionais e precisa reforçar o caixa.",
+        "CASH_FLOW",
+        null);
+    assertWorkingCapital(
+        "Indústria recebeu novos pedidos e precisa adquirir matéria-prima para aumentar a produção.",
+        "RAW_MATERIAL",
+        null);
+    assertWorkingCapital(
+        "Supermercado precisa antecipar a compra de mercadorias para um período de maior movimento.",
+        "SEASONALITY",
+        null);
+  }
+
+  private void assertWorkingCapital(String text, String purpose, String amount) {
+    var result = provider.interpret(request(text)).block();
+    assertEquals(ProviderStatus.MATCHED, result.status());
+    assertEquals("SEEK_WORKING_CAPITAL", result.intent());
+    assertEquals(purpose, result.entities().get("purpose"));
+    assertEquals(amount, result.entities().get("amount"));
+  }
+
   private static ProviderRequest request(String text) {
     return new ProviderRequest(
         text,
-        "CTX-INTERPRETER-1.0",
+        ContextInterpreterPrompt.VERSION,
         "1.0",
         List.of(
             new AllowedIntent(
                 "INVESTIGATE_CREDIT_RELEASE",
                 "CREDIT",
                 "IDENTIFY_BLOCKING_CONDITION",
-                List.of("proposalId"))));
+                List.of("proposalId"),
+                List.of("proposalId")),
+            new AllowedIntent(
+                "SEEK_WORKING_CAPITAL",
+                "CREDIT",
+                "ASSESS_WORKING_CAPITAL_OPTIONS",
+                List.of("amount", "businessSituation", "purpose"),
+                List.of("purpose"))));
   }
 }

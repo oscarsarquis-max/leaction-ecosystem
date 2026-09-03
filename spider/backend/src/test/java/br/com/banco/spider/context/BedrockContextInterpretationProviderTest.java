@@ -50,6 +50,8 @@ class BedrockContextInterpretationProviderTest {
     assertFalse(requestJson.contains("routeRef"));
     assertFalse(requestJson.contains("capabilityRef"));
     assertFalse(requestJson.contains("endpointRef"));
+    assertFalse(requestJson.contains("\"executionPlan\""));
+    assertFalse(requestJson.contains("\"eligibleRoutes\""));
   }
 
   @Test
@@ -88,6 +90,7 @@ class BedrockContextInterpretationProviderTest {
                 "INVESTIGATE_CREDIT_RELEASE",
                 "CREDIT",
                 "IDENTIFY_BLOCKING_CONDITION",
+                List.of("proposalId"),
                 List.of("proposalId"))));
   }
 

@@ -121,10 +121,14 @@ export default function ExecutionJourney({
                     className={`journey-zone-label journey-zone-${zone.toLowerCase()}`}
                     data-testid={`journey-zone-${zone.toLowerCase()}`}
                   >
-                    <span>{zone === "CONTEXT" ? "CONTEXTO" : "DATA PLANE"}</span>
+                    <span>
+                      {zone === "CONTEXT" ? "CONTEXTO" : zone === "PLAN" ? "PLANO" : "DATA PLANE"}
+                    </span>
                     <small>
                       {zone === "CONTEXT"
-                        ? "O que o usuário pretende e como o Spider determinou o tratamento."
+                        ? "O que o usuário pretende e qual plano foi determinado."
+                        : zone === "PLAN"
+                          ? "Quais capabilities foram resolvidas e quais routes estão disponíveis."
                         : "Como o Spider efetivamente executou a operação."}
                     </small>
                   </li>

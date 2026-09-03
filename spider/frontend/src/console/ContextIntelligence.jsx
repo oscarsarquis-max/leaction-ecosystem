@@ -1,45 +1,18 @@
 import { useState } from "react";
-
-function confidenceLabel(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? `${Math.round(parsed * 100)}%` : "—";
-}
-
-function domainLabel(catalog, domain) {
-  return catalog?.items?.find((item) => item.domain === domain)?.domainLabel || domain;
-}
-
-function operationLabel(constraints) {
-  if (constraints?.readOnly === true && constraints?.mutationAllowed === false) {
-    return "SOMENTE CONSULTA";
-  }
-  if (constraints?.mutationAllowed === true) {
-    return "MUTAÇÃO PERMITIDA";
-  }
-  return "OPERAÇÃO RESTRITA";
-}
-
-function flowState(complete, available = true) {
-  if (!available) return "unavailable";
-  return complete ? "complete" : "pending";
-}
+import ObjectiveJourney from "./ObjectiveJourney";
+import {
+  confidenceLabel,
+  domainLabel,
+  missingQuestion,
+  operationLabel,
+  purposeLabel,
+  amountLabel,
+} from "./projectObjectiveJourney";
 
 function aiStateLabel(state) {
   if (state === "ACTIVE") return "ATIVA";
   if (state === "UNAVAILABLE") return "INDISPONÍVEL";
   return "DESABILITADA";
-}
-
-function missingQuestion(key) {
-  const questions = {
-    proposalId: "Qual é o número da proposta?",
-    collectionId: "Qual é o identificador da cobrança?",
-    invoiceId: "Qual é o identificador do faturamento?",
-    customerId: "Qual é o identificador do cliente?",
-    serviceRequestId: "Qual é o número da solicitação?",
-    incidentId: "Qual é o identificador do incidente?",
-  };
-  return questions[key] || `Informe o dado obrigatório: ${key}.`;
 }
 
 export default function ContextIntelligence({
@@ -49,9 +22,12 @@ export default function ContextIntelligence({
   preview,
   busy,
   message,
+  executionEvidence,
+  operationalEvents,
   onInterpret,
   onInterpretText,
   onExecute,
+  onRevealDataPlane,
 }) {
   const [objectiveText, setObjectiveText] = useState("");
 
@@ -60,10 +36,13 @@ export default function ContextIntelligence({
   }
 
   const contract = preview?.intentContract;
+  const plan = preview?.executionPlan;
+  const capabilities = preview?.capabilities || [];
   const card = catalog?.items?.find((item) => item.intent === contract?.intent);
   const policyAccepted = preview?.decision === "ACCEPTED";
-  const routeResolved = Boolean(preview?.route?.routeRef);
-  const executable = preview?.route?.executable === true;
+  const planResolved = Boolean(plan?.planId);
+  const capabilitiesResolved = planResolved && capabilities.length === plan?.steps?.length;
+  const executable = plan?.status === "READY" && preview?.route?.executable === true;
   const interpretation = preview?.interpretation;
   const isNaturalLanguage = Boolean(interpretation || preview?.requestedObjective);
   const missingContext = interpretation?.missingContext || [];
@@ -93,9 +72,14 @@ export default function ContextIntelligence({
             accepted: policyAccepted,
           },
           {
-            label: "Rota determinada",
-            value: preview.route?.routeRef,
-            accepted: routeResolved,
+            label: "Plano determinado",
+            value: [plan?.planType, plan?.status].filter(Boolean).join(" · "),
+            accepted: planResolved,
+          },
+          {
+            label: "Capabilities avaliadas",
+            value: `${capabilities.length} capability(s)`,
+            accepted: capabilitiesResolved,
           },
         ]
       : [
@@ -110,27 +94,16 @@ export default function ContextIntelligence({
             accepted: policyAccepted,
           },
           {
-            label: "Rota determinada",
-            value: preview.route?.routeRef,
-            accepted: routeResolved,
+            label: "Plano determinado",
+            value: [plan?.planType, plan?.status].filter(Boolean).join(" · "),
+            accepted: planResolved,
+          },
+          {
+            label: "Capabilities avaliadas",
+            value: `${capabilities.length} capability(s)`,
+            accepted: capabilitiesResolved,
           },
         ]
-    : [];
-  const understandingFlow = preview
-    ? [
-        {
-          label: "Objetivo",
-          state: flowState(Boolean(contract?.objective || preview?.requestedObjective)),
-        },
-        ...(isNaturalLanguage
-          ? [{ label: "IA", state: flowState(Boolean(interpretation)) }]
-          : []),
-        { label: "Intent", state: flowState(Boolean(contract?.intent)) },
-        { label: "Policy", state: flowState(policyAccepted) },
-        { label: "Rota", state: flowState(routeResolved) },
-        { label: "Executar", state: flowState(Boolean(message?.ok), executable) },
-        { label: "Jornada", state: flowState(Boolean(message?.ok), executable) },
-      ]
     : [];
 
   return (
@@ -181,7 +154,7 @@ export default function ContextIntelligence({
       </form>
       <p id="context-ai-note" className="context-note muted">
         {aiAvailable
-          ? "Descreva uma necessidade empresarial. A IA produz uma intenção estruturada; o Guard e o Router continuam responsáveis pela decisão."
+          ? "Descreva uma necessidade empresarial. A IA produz somente a intenção; Guard, Plan Resolver e Capability Resolver permanecem determinísticos."
           : "A interpretação em linguagem natural está indisponível neste ambiente. As situações frequentes continuam operacionais pelo caminho determinístico."}
       </p>
 
@@ -237,84 +210,72 @@ export default function ContextIntelligence({
             </section>
           )}
 
-          <ol
-            className="context-understanding-flow"
-            aria-label={
-              isNaturalLanguage
-                ? "Objetivo, IA, Intent, Policy, Rota, Executar e Jornada"
-                : "Objetivo, Intent, Policy, Rota, Executar e Jornada"
-            }
-            style={{ "--context-flow-count": understandingFlow.length }}
-          >
-            {understandingFlow.map((item, index) => (
-              <li key={item.label} data-state={item.state}>
-                <span className="context-flow-index" aria-hidden="true">
-                  {item.state === "complete" ? "✓" : index + 1}
-                </span>
-                <strong>{item.label}</strong>
-                {index < understandingFlow.length - 1 && (
-                  <span className="context-flow-arrow" aria-hidden="true">
-                    →
-                  </span>
-                )}
-              </li>
-            ))}
-          </ol>
+          <ObjectiveJourney
+            preview={preview}
+            catalog={catalog}
+            executionEvidence={executionEvidence}
+            operationalEvents={operationalEvents}
+            onRevealDataPlane={onRevealDataPlane}
+          />
 
           {contract ? (
             <>
-              <dl className="intent-preview-grid">
-            <div className="intent-preview-objective">
-              <dt>Objetivo</dt>
-              <dd>{card?.description || contract?.objective}</dd>
-            </div>
-            <div>
-              <dt>Intent</dt>
-              <dd className="mono">{contract?.intent}</dd>
-            </div>
-            <div>
-              <dt>Domínio</dt>
-              <dd>{domainLabel(catalog, contract?.domain)}</dd>
-            </div>
-            <div>
-              <dt>Origem</dt>
-              <dd className="mono">{contract?.provenance?.source || "—"}</dd>
-            </div>
-            <div>
-              <dt>Confiança</dt>
-              <dd>{confidenceLabel(contract?.confidence)}</dd>
-            </div>
-            <div>
-              <dt>Operação</dt>
-              <dd>{operationLabel(contract?.constraints)}</dd>
-            </div>
-            <div>
-              <dt>Policy result</dt>
-              <dd className="mono">
-                {[preview.decision, preview.policyRef].filter(Boolean).join(" · ") || "—"}
-              </dd>
-            </div>
-            <div>
-              <dt>Capability</dt>
-              <dd className="mono">{preview.route?.capabilityRef || "—"}</dd>
-            </div>
-            <div data-testid="context-route-resolution">
-              <dt>Rota determinada</dt>
-              <dd className="mono">{preview.route?.routeRef || "Não resolvida"}</dd>
-            </div>
-            <div>
-              <dt>Estado da capacidade</dt>
-              <dd>
-                {executable
-                  ? "Disponível ponta a ponta"
-                  : missingContext.length > 0
-                    ? "Bloqueada · contexto obrigatório ausente"
-                    : isNaturalLanguage
-                      ? "Sem autorização de execução"
-                      : "Preview disponível · execução ainda não habilitada"}
-              </dd>
-            </div>
-              </dl>
+              <section className="context-answer-block" aria-labelledby="context-want-title">
+                <p className="context-question">O QUE EU QUERO?</p>
+                <h5 id="context-want-title">Intent e contexto econômico</h5>
+                <dl className="intent-preview-grid">
+                  <div className="intent-preview-objective">
+                    <dt>Objetivo</dt>
+                    <dd>
+                      {preview.requestedObjective || card?.description || contract?.objective}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Intent</dt>
+                    <dd className="mono">{contract?.intent}</dd>
+                  </div>
+                  <div>
+                    <dt>Domínio</dt>
+                    <dd>{domainLabel(catalog, contract?.domain)}</dd>
+                  </div>
+                  {(contract?.intent === "SEEK_WORKING_CAPITAL" || contract?.entities?.purpose) && (
+                    <>
+                      <div>
+                        <dt>Finalidade</dt>
+                        <dd>{purposeLabel(contract?.entities?.purpose)}</dd>
+                      </div>
+                      <div>
+                        <dt>Valor</dt>
+                        <dd>{amountLabel(contract?.entities?.amount)}</dd>
+                      </div>
+                      <div className="intent-preview-objective">
+                        <dt>Situação empresarial</dt>
+                        <dd className="mono">
+                          {contract?.entities?.businessSituation || "Não informada"}
+                        </dd>
+                      </div>
+                    </>
+                  )}
+                  <div>
+                    <dt>Origem</dt>
+                    <dd className="mono">{contract?.provenance?.source || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Confiança</dt>
+                    <dd>{confidenceLabel(contract?.confidence)}</dd>
+                  </div>
+                  <div>
+                    <dt>Política</dt>
+                    <dd>{operationLabel(contract?.constraints, contract?.intent)}</dd>
+                  </div>
+                  <div>
+                    <dt>Policy result</dt>
+                    <dd className="mono">
+                      {[preview.decision, preview.policyRef].filter(Boolean).join(" · ") || "—"}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
 
               <section className="intent-validation" aria-labelledby="intent-validation-title">
                 <h5 id="intent-validation-title">Validação</h5>
@@ -344,7 +305,11 @@ export default function ContextIntelligence({
                 {!executable && (
                   <p className="muted">
                     {preview.interpretationMessage ||
-                      "A compreensão está disponível. A execução ponta a ponta de CTX-001 está habilitada inicialmente para Crédito."}
+                      (plan?.status === "PARTIALLY_AVAILABLE"
+                        ? "Plano parcial: capabilities indisponíveis não serão simuladas nem executadas."
+                        : plan?.status === "NOT_EXECUTABLE"
+                          ? "Plano não executável neste boundary. Nenhuma capability inexistente será simulada."
+                          : "A compreensão está disponível, mas não há rota executável para este plano.")}
                   </p>
                 )}
                 {policyAccepted && executable && (

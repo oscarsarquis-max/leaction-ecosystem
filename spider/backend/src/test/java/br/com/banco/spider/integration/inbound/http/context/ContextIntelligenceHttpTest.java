@@ -1,6 +1,7 @@
 package br.com.banco.spider.integration.inbound.http.context;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -100,8 +101,12 @@ class ContextIntelligenceHttpTest {
                 .expectStatus()
                 .isOk());
     assertEquals("ACCEPTED", preview.path("decision").asText());
+    assertFalse(preview.path("createdAt").isNull());
     assertEquals(
         "CREDIT_RELEASE_DIAGNOSTIC_V1", preview.path("route").path("routeRef").asText());
+    assertEquals(
+        "CREDIT_RELEASE_INVESTIGATION_PLAN_V1",
+        preview.path("executionPlan").path("planType").asText());
     assertTrue(
         preview
             .path("contextJourney")
@@ -112,7 +117,7 @@ class ContextIntelligenceHttpTest {
     assertTrue(
         preview
             .path("contextJourney")
-            .get(3)
+            .get(6)
             .path("summary")
             .asText()
             .contains("CREDIT_RELEASE_DIAGNOSTIC_V1"));
@@ -138,6 +143,19 @@ class ContextIntelligenceHttpTest {
     String executionId = executed.path("executionId").asText();
     assertNotNull(executionId);
     assertEquals("SUCCEEDED", executed.path("state").asText());
+    assertEquals(executionId, executed.path("context").path("executionId").asText());
+    assertEquals(
+        preview.path("decisionId").asText(),
+        executed.path("context").path("decisionId").asText());
+    assertEquals(
+        preview.path("executionPlan").path("planId").asText(),
+        executed.path("context").path("executionPlan").path("planId").asText());
+    assertEquals(
+        "CREDIT_RELEASE_DIAGNOSTIC",
+        executed.path("context").path("capabilities").get(0).path("capabilityId").asText());
+    assertEquals(
+        "CREDIT_RELEASE_DIAGNOSTIC_V1",
+        executed.path("context").path("route").path("routeRef").asText());
 
     client
         .get()
@@ -148,7 +166,7 @@ class ContextIntelligenceHttpTest {
         .isOk()
         .expectBody()
         .jsonPath("$.contextJourney.length()")
-        .isEqualTo(4)
+        .isEqualTo(7)
         .jsonPath("$.executionId")
         .isEqualTo(executionId);
 
@@ -163,6 +181,10 @@ class ContextIntelligenceHttpTest {
         .jsonPath("$.items[?(@.eventType=='INTENT_CREATED')]")
         .isNotEmpty()
         .jsonPath("$.items[?(@.eventType=='INTENT_VALIDATED')]")
+        .isNotEmpty()
+        .jsonPath("$.items[?(@.eventType=='EXECUTION_PLAN_RESOLVED')]")
+        .isNotEmpty()
+        .jsonPath("$.items[?(@.eventType=='CAPABILITY_RESOLVED')]")
         .isNotEmpty()
         .jsonPath("$.items[?(@.eventType=='ROUTE_RESOLVED')]")
         .isNotEmpty();

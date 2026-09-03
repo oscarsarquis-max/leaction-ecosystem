@@ -7,14 +7,17 @@
 | Natureza | Espelho documental vivo do Spider |
 | Baseline funcional | Spider 0.20.0 — SPIDER-PROMPT-020 VERIFIED |
 | Boundary ativo | MOCK_ONLY (integrações); CAP-019/020 = SIMULATED_INFRASTRUCTURE |
-| Estado documental | BASELINE 020 preservado; Context Intelligence CTX-002 implementado default-off; Grupo B 2/3 |
-| Fontes autoritativas | SPIDER-ARCH-001–015, SPIDER-PROMPT-001–020, SPIDER-CTX-002, manifesto, contrato anti-drift e roadmap |
+| Estado documental | BASELINE 020 preservado; Context Intelligence CTX-003A implementado; IA default-off; Grupo B 2/3 |
+| Fontes autoritativas | SPIDER-ARCH-001–016, SPIDER-PROMPT-001–020, SPIDER-CTX-003A, manifesto, contrato anti-drift e roadmap |
 
 > **Razão da numeração:** o número `SPIDER-ARCH-005` já está ocupado por “Definição de Rotas, Execution Plan e Máquina de Estados”. Como a série existente prossegue até `SPIDER-ARCH-013`, este documento recebe o próximo identificador coerente: `SPIDER-ARCH-014`.
 
 ## 1. Propósito e papel deste documento
 
-O Spider é uma plataforma de orquestração contextual que recebe uma intenção operacional de um canal ou produto, resolve de forma determinística uma rota governada, materializa um plano imutável, coordena interações com sistemas de destino por uma porta universal e devolve um resultado canônico, preservando estado, correlação, idempotência e evidências técnicas.
+O Spider é uma plataforma de orquestração contextual que recebe uma intenção operacional de um
+canal ou produto, compõe deterministicamente um plano empresarial de capabilities, resolve routes
+governadas, materializa o plano técnico imutável do Data Plane, coordena interações por uma porta
+universal e devolve resultado canônico com estado, correlação, idempotência e evidências.
 
 Este documento é o **espelho funcional do produto real**. Ele descreve o que o Spider efetivamente oferece no baseline 0.20.0, como suas capacidades colaboram, por quais superfícies são acessadas e como aparecem no produto. Não substitui especificações normativas detalhadas nem prompts de implementação; oferece a visão integrada que permite compreender o Spider como produto.
 
@@ -85,7 +88,7 @@ O 021 está elegível pelo gate do 020, mas permanece PLANNED até emissão form
 
 ### 2.1 Nova trilha: Context Intelligence
 
-CTX-001/002 acrescentam uma camada opt-in sobre o baseline sem avançar CAP-021 e sem reescrever o Core:
+CTX-001–003 acrescentam uma camada opt-in sobre o baseline sem avançar CAP-021 e sem reescrever o Core:
 
 ```text
 EXPERIENCE
@@ -96,7 +99,11 @@ INTENT CONTRACT V1
    ↓
 GOVERNANCE / CONTEXT POLICY GUARD
    ↓
-DETERMINISTIC ROUTING
+DETERMINISTIC EXECUTION PLAN
+   ↓
+BUSINESS CAPABILITIES
+   ↓
+CAPABILITY RESOLUTION / ROUTING
    ↓
 CANONICAL INGRESS
    ↓
@@ -104,16 +111,16 @@ SPIDER CORE
 ```
 
 Na Home, seis situações frequentes constroem contratos conhecidos com proveniência
-`BUSINESS_CARD` e confiança de 100%. O operador inspeciona intent, domínio, policy, capability e
-rota antes de confirmar. A confirmação produz uma execução canônica comum; a Jornada 020B ganha
-uma seção CONTEXTO antes do DATA PLANE, derivada do read model contextual real.
+`BUSINESS_CARD` e confiança de 100%. O operador inspeciona intent, contexto, policy, Execution Plan
+e Business Capabilities antes de confirmar. A confirmação produz uma execução canônica comum; a
+Jornada 020B apresenta CONTEXTO, PLANO e DATA PLANE a partir do read model real.
 
 A experiência contextual separa compreensão de execução. Business Cards e linguagem natural
 convergem para o mesmo Intent Contract antes da entrada no Data Plane. O refinamento
 CTX-001A torna essa fronteira explícita na Home:
 
 ```text
-OBJETIVO → INTENT → POLICY → ROTA → EXECUTAR → JORNADA
+OBJETIVO → INTENT → POLICY → PLANO → CAPABILITIES → EXECUTAR → JORNADA
 ```
 
 **SPIDER ENTENDEU** é a superfície de compreensão; o botão **Executar**, disponível somente para a
@@ -122,8 +129,23 @@ permanecem honestamente em preview.
 
 CTX-002 torna o campo de linguagem natural funcional sob `spider.context.ai.enabled=true`. A IA
 escolhe somente intent e entidades do vocabulário controlado; o catálogo local materializa
-domain/objective, e o mesmo Guard e Router decidem. A IA é uma fonte probabilística de Intent
-Contract. Ela não possui autoridade de roteamento ou execução.
+domain/objective. A IA é uma fonte probabilística de Intent Contract. Ela não possui autoridade de
+planejamento, roteamento ou execução.
+
+CTX-003 estabelece a cadeia `Intent → Execution Plan → Business Capabilities → Routes/Adapters`.
+O primeiro domínio composto é capital de giro: estoque, reforço de caixa, matéria-prima e
+sazonalidade convergem para `SEEK_WORKING_CAPITAL`, preservando finalidade, valor explícito e
+situação empresarial. `WORKING_CAPITAL_DIAGNOSTIC_V1` permanece parcial enquanto capabilities de
+negócio não possuem executor; nenhuma execução é simulada.
+
+CTX-003A torna essa cadeia visível na Home: o usuário declara objetivos, a IA os compreende, o
+Spider determina o plano, decompõe em capacidades, o ambiente determina onde executá-las e a
+interface explica cada fase, decisão e resultado. PLAN JOURNEY e DATA PLANE JOURNEY não se
+confundem.
+
+Intent não resolve diretamente para Route. Intent resolve deterministicamente para Execution Plan.
+Execution Plan é composto por Business Capabilities. Cada Capability é resolvida para Route/Adapter
+apropriado.
 
 O provider inicial é AWS Bedrock/Anthropic atrás de `ContextInterpretationProvider`. A flag de IA é
 `false` por padrão inclusive no profile `local-demo`; `AI OFF` preserva integralmente os seis cards.

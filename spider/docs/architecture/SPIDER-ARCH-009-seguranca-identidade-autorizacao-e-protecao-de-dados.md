@@ -872,6 +872,16 @@ Provider/model, usage, latency, outcome e contagem de redações são evidência
 Confidence não concede autorização. Contrato `NATURAL_LANGUAGE` atravessa autenticação, Context
 Guard, mutation safety, confirmação e autorização canônica exatamente como o contrato de card.
 
+### 44.2 Fronteira de planejamento e capability — CTX-003
+
+O plano empresarial e seus steps não carregam endpoint, credential, protocolo ou configuração de
+adapter. Somente a resolução posterior de capability pode expor route, adapter e target permitidos
+pela allowlist visual; secrets continuam ausentes.
+
+Plano `PARTIALLY_AVAILABLE` ou `NOT_EXECUTABLE` não pode alcançar o submit canônico. Capabilities
+indisponíveis produzem evidência e nenhum efeito externo. A IA não recebe o Plan Catalog nem o
+Business Capability Catalog e não participa dessa decisão.
+
 ## 45. Critérios de aceite
 
 O SPIDER-ARCH-009 é considerado apto a orientar a próxima etapa quando:

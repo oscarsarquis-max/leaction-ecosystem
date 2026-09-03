@@ -39,22 +39,33 @@ USER → HOME OPERACIONAL → EXECUÇÕES → DETALHE / TIMELINE / OPERAÇÃO
 
 A Home reutiliza o submit canônico existente (`POST /v1/canonical/executions`, cenário `RETRY_THEN_SUCCESS`) e lista últimas execuções via `GET /v1/canonical/executions`. A navegação é **agrupada por finalidade** (PROMPT-020B): Home; Execuções (lista / detalhe / visão geral); Operação (Cockpit, Runtime de Workers, Capacidade); Testes & demonstração (Laboratório Mock, Failure Lab); Plataforma (Implementação, Apresentação).
 
-#### 2.1.1 Compreensão contextual antes da execução (CTX-001A/002)
+#### 2.1.1 Compreensão contextual antes da execução (CTX-001A–003A)
 
 A Home preserva as superfícies 020A/020B e acrescenta uma etapa explícita de compreensão. Clicar em
 um Business Intent Card abre **SPIDER ENTENDEU**; não submete execução. O painel projeta o Intent
-Contract, a decisão do Context Guard e a rota determinística. Somente uma confirmação separada em
-**Executar** atravessa o ingress canônico.
+Contract, contexto econômico, decisão do Context Guard, Execution Plan e Business Capabilities.
+Route/adapter aparece no detalhe da capability, não como consequência direta do Intent. Somente uma
+confirmação separada em **Executar** atravessa o ingress canônico.
+
+CTX-003A torna visível a cadeia já implementada:
 
 ```text
-OBJETIVO → INTENT → POLICY → ROTA → EXECUTAR → JORNADA
+OBJETIVO → ENTENDIMENTO → POLICY → PLANO → CAPACIDADES → RESOLUÇÃO → EXECUÇÃO → RESULTADO
 ```
+
+PLAN JOURNEY explica o que precisa ser feito. DATA PLANE JOURNEY (020B) explica como foi executado.
+Necessária, disponível e executada permanecem estados distintos: check verde só aparece com
+execução real. Missing context e ambiguity interrompem plano, resolução e execução.
 
 A experiência contextual separa compreensão de execução. Business Cards e linguagem natural
 convergem para o mesmo Intent Contract antes da entrada no Data Plane. O campo só fica funcional
 quando `spider.context.ai.enabled=true`; os estados `ATIVA`, `DESABILITADA` e `INDISPONÍVEL` não
 alteram o health geral. Ambiguidade, contexto ausente ou intent não suportada permanecem no painel
-sem expor **Executar**.
+sem expor **Executar**. A IA aparece somente no Entendimento quando a origem é `NATURAL_LANGUAGE`.
+
+Capital de giro demonstra plano composto parcial: a UI mostra sete capabilities, disponibilidade
+real e detalhe explicável. Marcador preenchido significa disponibilidade/resolução, não execução;
+capability indisponível usa marcador vazio e nunca é simulada.
 
 ### 2.2 Jornada visual da execução (PROMPT-020B)
 
@@ -77,7 +88,8 @@ Uma execução disparada pela Home torna-se automaticamente a execução ativa e
 Cada etapa da Jornada da Execução é uma superfície explicável. O operador pode selecionar uma etapa e compreender o que ocorreu, quais evidências técnicas existem e qual foi a continuidade da execução. Em desktop, a timeline ocupa a área principal e o painel contextual fica à direita; em tablet/mobile, as áreas são empilhadas. A seleção automática acompanha a etapa ativa enquanto não houver escolha manual; uma escolha manual permanece estável durante as atualizações da mesma execução.
 
 Quando a execução nasce do Context Plane, a mesma Jornada divide visualmente **CONTEXTO** (objetivo,
-intent, policy e rota) de **DATA PLANE** (ingress, contrato canônico, Engine, interações e outcome).
+intent, policy e plano), **PLANO** (capabilities e routes resolvidas) e **DATA PLANE** (ingress,
+contrato canônico, Engine, interações e outcome).
 As etapas contextuais usam o mesmo painel explicativo e somente fatos do read model.
 
 Para origem `NATURAL_LANGUAGE`, CONTEXTO inclui **Objetivo recebido** e **IA interpretou contexto**.

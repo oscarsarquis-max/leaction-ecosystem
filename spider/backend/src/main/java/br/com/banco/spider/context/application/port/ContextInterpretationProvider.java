@@ -25,8 +25,13 @@ public interface ContextInterpretationProvider {
   }
 
   record AllowedIntent(
-      String intent, String domain, String objective, List<String> requiredEntityKeys) {
+      String intent,
+      String domain,
+      String objective,
+      List<String> allowedEntityKeys,
+      List<String> requiredEntityKeys) {
     public AllowedIntent {
+      allowedEntityKeys = List.copyOf(allowedEntityKeys);
       requiredEntityKeys = List.copyOf(requiredEntityKeys);
     }
   }

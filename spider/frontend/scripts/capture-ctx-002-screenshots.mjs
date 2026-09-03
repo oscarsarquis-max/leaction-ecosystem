@@ -56,6 +56,7 @@ async function main() {
     "Minha proposta 12345 foi aprovada, mas o crédito ainda não foi liberado.",
   );
   await success.getByText("NATURAL_LANGUAGE", { exact: true }).waitFor();
+  await success.getByRole("button", { name: /CREDIT_RELEASE_DIAGNOSTIC/ }).click();
   await success.getByText("CREDIT_RELEASE_DIAGNOSTIC_V1", { exact: true }).first().waitFor();
   await success.screenshot({ path: path.join(outDir, "CTX-002-spider-entendeu.png") });
 

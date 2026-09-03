@@ -92,15 +92,16 @@ function stage(id, title, layer, state, evidence) {
 
 function contextStage(item) {
   const visual = JOURNEY_VISUAL_STATES.includes(item?.state) ? item.state : "NOT_REACHED";
+  const isPlan = item?.layer === "PLAN";
   return {
     ...stage(
       `context-${item.id}`,
       item.title,
-      "contexto",
+      isPlan ? "plano" : "contexto",
       visual,
       "context-read-model",
     ),
-    zone: "CONTEXT",
+    zone: isPlan ? "PLAN" : "CONTEXT",
     contextDetail: item,
   };
 }
