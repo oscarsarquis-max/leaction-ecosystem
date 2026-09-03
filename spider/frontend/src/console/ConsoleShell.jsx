@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   listExecutions,
   isTerminalState,
@@ -8,6 +8,7 @@ import {
   getPlatformHealth,
   listCanonicalExecutions,
   submitMockScenario,
+  extractCanonicalExecutionId,
 } from "./api";
 import {
   MOCK_SCENARIOS,
@@ -164,6 +165,14 @@ export default function ConsoleShell() {
     return () => controller.abort();
   }, [journeySurface, selectedId, pollPaused, updatedAt]);
 
+  const journeyRef = useRef(null);
+
+  useEffect(() => {
+    if (view === "home" && selectedId && journeyRef.current) {
+      journeyRef.current.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    }
+  }, [view, selectedId]);
+
   const sampleStats = useMemo(() => {
     const byState = {};
     let waits = 0;
@@ -176,51 +185,78 @@ export default function ConsoleShell() {
     return { byState, waits, callbacks, sampleSize: items.length };
   }, [items]);
 
+  function followExecution(id, { stayOnHome } = {}) {
+    setSelectedId(id);
+    setPollPaused(false);
+    if (!stayOnHome) {
+      setView("detail");
+    }
+  }
+
+  async function refreshCanonicalList() {
+    try {
+      const canonical = await listCanonicalExecutions();
+      setCanonicalItems(canonical.items || []);
+      setCanonicalError(null);
+    } catch (e) {
+      setCanonicalError(e);
+    }
+  }
+
   async function runScenario(scenario) {
     setLabBusy(true);
     setLabMsg(null);
+    const idem = newIdempotencyKey(scenario.id);
+    const tp = newTraceparent();
+    const body = buildCanonicalRequest(scenario, { idempotencyKey: idem, traceparent: tp });
+    const requestedId = extractCanonicalExecutionId(body.execution);
     try {
-      const idem = newIdempotencyKey(scenario.id);
-      const tp = newTraceparent();
-      const body = buildCanonicalRequest(scenario, { idempotencyKey: idem, traceparent: tp });
       const res = await submitMockScenario(body, { idempotencyKey: idem, traceparent: tp });
-      const executionId = res.executionId || res.executionRef || res.id;
+      const executionId = extractCanonicalExecutionId(res, requestedId);
+      if (!executionId) {
+        setLabMsg({
+          ok: false,
+          text: "A execução foi submetida, mas o identificador não veio no read model.",
+        });
+        return;
+      }
+      followExecution(executionId, { stayOnHome: view === "home" });
       setLabMsg({
         ok: true,
-        text: executionId
-          ? `Submetido. executionId=${executionId}`
-          : `Submetido. Resposta: ${JSON.stringify(res).slice(0, 200)}`,
+        text: `Execução iniciada — acompanhando ${executionId}`,
       });
-      if (executionId) {
-        setSelectedId(executionId);
-        setPollPaused(false);
-        if (view !== "home") {
-          setView("detail");
-        }
-      }
       await refreshList({});
+      if (view === "home") {
+        await refreshCanonicalList();
+      }
     } catch (e) {
-      setLabMsg({
-        ok: false,
-        text:
-          e.status === 404
-            ? "Submit canônico indisponível (habilite spider.canonical.http.enabled + local-demo). Não há fallback legado."
-            : e.message || "Falha ao submeter cenário",
-      });
+      const recovered = extractCanonicalExecutionId(e.body);
+      if (recovered) {
+        followExecution(recovered, { stayOnHome: view === "home" });
+        setLabMsg({
+          ok: false,
+          text: `Execução ${recovered} registrada — acompanhando o resultado técnico.`,
+        });
+      } else {
+        setLabMsg({
+          ok: false,
+          text:
+            e.status === 404
+              ? "Submit canônico indisponível (habilite spider.canonical.http.enabled + local-demo). Não há fallback legado."
+              : e.message || "Falha ao submeter cenário",
+        });
+      }
     } finally {
       setLabBusy(false);
     }
   }
 
   function openDetail(id) {
-    setSelectedId(id);
-    setPollPaused(false);
-    setView("detail");
+    followExecution(id, { stayOnHome: false });
   }
 
   function followOnHome(id) {
-    setSelectedId(id);
-    setPollPaused(false);
+    followExecution(id, { stayOnHome: true });
   }
 
   return (
@@ -285,11 +321,28 @@ export default function ConsoleShell() {
               </dl>
             </article>
             <article aria-labelledby="action-title">
-              <h3 id="action-title">Nova execução</h3>
-              <p className="muted">
-                Reutiliza <code>POST /v1/canonical/executions</code> com o cenário{" "}
-                {PRIMARY_SCENARIO.label}.
-              </p>
+              <h3 id="action-title">{selectedId ? "Execução atual" : "Nova execução"}</h3>
+              {selectedId ? (
+                <div className="home-current-execution" data-testid="home-current-execution">
+                  <p className="home-current-id" title={selectedId}>
+                    {selectedId}
+                  </p>
+                  <StateBadge
+                    state={detail?.summary?.state}
+                    technicalStatus={detail?.summary?.technicalStatus}
+                  />
+                  {labMsg && (
+                    <p className={labMsg.ok ? "ok" : "error"} role="status">
+                      {labMsg.text}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="muted">
+                  Reutiliza <code>POST /v1/canonical/executions</code> com o cenário{" "}
+                  {PRIMARY_SCENARIO.label}.
+                </p>
+              )}
               <button
                 type="button"
                 className="cta"
@@ -298,13 +351,36 @@ export default function ConsoleShell() {
               >
                 Executar demonstração
               </button>
-              {labMsg && (
+              {labMsg && !selectedId && (
                 <p className={labMsg.ok ? "ok" : "error"} role="status">
                   {labMsg.text}
                 </p>
               )}
             </article>
           </div>
+          {selectedId && (
+            <article
+              ref={journeyRef}
+              className="home-journey"
+              aria-label="Jornada da execução selecionada"
+            >
+              {detailError && <p className="error">{detailError.message}</p>}
+              <ExecutionJourney
+                heading="Jornada da execução"
+                summary={detail?.summary || { executionId: selectedId, state: null }}
+                timeline={detail?.timeline}
+                steps={detail?.steps}
+                waitInfo={detail?.waitInfo}
+                callback={detail?.callback}
+                operationalEvents={operationalEvents}
+              />
+              <p>
+                <button type="button" className="ghost" onClick={() => openDetail(selectedId)}>
+                  Ver detalhe técnico
+                </button>
+              </p>
+            </article>
+          )}
           <article aria-labelledby="recent-title">
             <h3 id="recent-title">Últimas execuções</h3>
             {canonicalError && (
@@ -353,25 +429,6 @@ export default function ConsoleShell() {
               </div>
             )}
           </article>
-          {selectedId && (
-            <article className="home-journey" aria-label="Jornada da execução selecionada">
-              {detailError && <p className="error">{detailError.message}</p>}
-              <ExecutionJourney
-                heading="Jornada da execução"
-                summary={detail?.summary || { executionId: selectedId, state: null }}
-                timeline={detail?.timeline}
-                steps={detail?.steps}
-                waitInfo={detail?.waitInfo}
-                callback={detail?.callback}
-                operationalEvents={operationalEvents}
-              />
-              <p>
-                <button type="button" className="ghost" onClick={() => openDetail(selectedId)}>
-                  Ver detalhe técnico
-                </button>
-              </p>
-            </article>
-          )}
         </section>
       )}
 

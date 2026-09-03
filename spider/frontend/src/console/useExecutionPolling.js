@@ -13,7 +13,12 @@ export function useExecutionPolling(executionId, { enabled, minIntervalMs = 1000
   const timerRef = useRef(null);
 
   useEffect(() => {
+    setDetail(null);
+    setError(null);
+    setUpdatedAt(null);
+    failCount.current = 0;
     if (!executionId || !enabled || paused) {
+      setStatus("idle");
       return undefined;
     }
 

@@ -60,7 +60,7 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 - Grupo B: **2/3 VERIFIED** (019–020); 021 PLANNED
 - 021 elegível (gate 020 cumprido), **não iniciado**
 - Grupos C–D: todos PLANNED
-- Produto: **0.20.0** · baseline confirmado: **374 backend / 67 frontend** · `npm run build` verde
+- Produto: **0.20.0** · baseline consolidado após 020A/020B: **385 backend / 92 frontend** · `npm run build` verde
 
 ## Dependências
 

@@ -102,6 +102,26 @@ function completionVisual(executionState) {
   return "NOT_REACHED";
 }
 
+function resolveAttempts(step, timeline) {
+  const listed = Array.isArray(step.attempts) ? step.attempts : [];
+  if (listed.length) {
+    return listed;
+  }
+  const events = timeline?.available ? timeline.data || [] : [];
+  const stepRef = step.stepRef || step.stepId;
+  return events
+    .filter(
+      (event) =>
+        String(event.eventType) === "ATTEMPT" &&
+        (event.attemptNumber || event.title) &&
+        (!event.stepRef || !stepRef || event.stepRef === stepRef),
+    )
+    .map((event) => ({
+      attemptNumber: event.attemptNumber,
+      state: event.state,
+    }));
+}
+
 /**
  * @param {{
  *   summary?: object,
@@ -221,7 +241,7 @@ export function projectExecutionJourney(input = {}) {
 
   const stepList = steps?.available ? steps.data || [] : [];
   for (const step of stepList) {
-    const attempts = Array.isArray(step.attempts) ? step.attempts : [];
+    const attempts = resolveAttempts(step, timeline);
     const stepRef = step.stepRef || step.stepId || "step";
     if (!attempts.length && (step.attemptCount > 0 || step.state)) {
       stages.push(

@@ -41,10 +41,36 @@ async function request(path, { method = "GET", body, signal, headers = {} } = {}
     const err = new Error(problem.title || `HTTP ${res.status}`);
     err.status = res.status;
     err.problem = problem;
+    err.body = data;
     err.consoleUnavailable = res.status === 404 || res.status === 500;
     throw err;
   }
   return data;
+}
+
+/** Identidade canônica: o POST devolve ExecutionSummary aninhado, não executionId no topo. */
+export function extractCanonicalExecutionId(payload, fallback = null) {
+  if (typeof payload === "string" && payload.trim()) {
+    return payload.trim();
+  }
+  if (!payload || typeof payload !== "object") {
+    return fallback || null;
+  }
+  const candidates = [
+    payload.executionId,
+    payload.executionRef,
+    payload.execution && payload.execution.executionId,
+    payload.execution && payload.execution.id,
+    payload.summary && payload.summary.executionId,
+    payload.id,
+    payload.result && extractCanonicalExecutionId(payload.result, null),
+  ];
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return fallback || null;
 }
 
 export function listExecutions(filters = {}, cursor = {}, { signal } = {}) {

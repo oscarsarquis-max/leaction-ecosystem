@@ -19,8 +19,8 @@ class ImplementationManifestLoaderTest {
     assertEquals("SPIDER-PROMPT-020", m.currentPrompt());
     assertEquals("GROUP_B_RUNTIME_OPERATIONS", m.currentGroup());
     assertEquals(26, m.capabilities().size());
-    assertEquals(374, m.baseline().backendTests());
-    assertEquals(67, m.baseline().frontendTests());
+    assertEquals(385, m.baseline().backendTests());
+    assertEquals(92, m.baseline().frontendTests());
     assertEquals(0, m.baseline().skipped());
     for (var c : m.capabilities()) {
       int n = Integer.parseInt(c.promptRef().substring("SPIDER-PROMPT-".length()));

@@ -36,6 +36,14 @@ Capturas reais (Playwright) contra UI `http://127.0.0.1:5180` + API local-demo:
 | `020B-navegacao-console.png` | 1440×900 |
 | `020B-detalhe-execucao.png` | 1440×900 |
 | `020B-jornada-wait-resume.png` | 1440×900 |
+| `020B-live-execution-start.png` | 1440×900 |
+| `020B-live-execution-retry.png` | 1440×900 |
+| `020B-live-execution-complete.png` | 1440×900 |
+| `020B-step-details-overview.png` | 1440×1000 |
+| `020B-step-details-failed-interaction.png` | 1440×1000 |
+| `020B-step-details-retry.png` | 1440×1000 |
+| `020B-step-details-success.png` | 1440×1000 |
+| `020B-step-details-events.png` | 1440×1000 |
 
 Geração:
 
@@ -49,6 +57,8 @@ node .\scripts\capture-worker-runtime-screenshots.mjs
 node .\scripts\capture-capacity-resilience-screenshots.mjs
 node .\scripts\capture-020a-home-screenshots.mjs
 node .\scripts\capture-020b-journey-screenshots.mjs
+node .\scripts\capture-020b-live-screenshots.mjs
+node .\scripts\capture-020b-step-details-screenshots.mjs
 ```
 
 As capturas 017 usam o Cockpit Operacional (console + telemetria + saúde). As cinco capturas 018 usam o Failure Lab com `spider.failure-lab.enabled` e `spider.failure-lab.http.enabled`. As cinco capturas 019 usam o Runtime de Workers com `spider.worker-runtime.enabled` e `spider.worker-runtime.http.enabled`. As cinco capturas 020 usam Capacidade & Resiliência com `spider.capacity.enabled` (+ `http` / `local-demo` / `enforcement` conforme o cenário). Os PNGs podem ser produzidos separadamente do fechamento documental.

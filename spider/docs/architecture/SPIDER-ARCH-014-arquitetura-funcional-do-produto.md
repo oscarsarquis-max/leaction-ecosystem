@@ -444,6 +444,10 @@ Jornada visual (PROMPT-020B) — a UI projeta o comportamento real e não simula
                CONSOLE
 ```
 
+Uma execução disparada pela Home torna-se automaticamente a execução ativa e sua jornada real é projetada no próprio ponto de entrada do produto. O progresso vem do read model (detalhe, timeline, attempts, Operational Events), nunca de timers nem do JSON bruto do POST.
+
+Cada etapa da Jornada da Execução é uma superfície explicável. A timeline mostra **onde** a execução passou; a seleção de uma etapa abre, no mesmo componente da Home e do Detalhe, uma projeção contextual que explica **o que ocorreu**, os detalhes técnicos seguros, a continuidade e somente os eventos correlacionados. A projeção não lê payload protegido, não expõe credenciais e não preenche campos ausentes com suposições.
+
 ## 8. Interfaces e superfícies do produto
 
 ### 8.1 Superfícies HTTP atuais

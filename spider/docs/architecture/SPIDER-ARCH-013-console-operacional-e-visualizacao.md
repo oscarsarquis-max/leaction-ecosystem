@@ -55,6 +55,12 @@ Console (projeção amigável)
 
 A **Jornada da execução** é uma projeção no frontend (`projectExecutionJourney`) de summary, timeline persistida, steps/attempts, wait/callback e Operational Events (CAP-016). Retry, wait, callback, signal, capacity e worker só aparecem com evidência. Etapas não percorridas, quando listadas na conclusão ainda em curso, ficam `NOT_REACHED`. Sem `sleep`, sem WebSocket/SSE novo: polling já existente do detalhe, cancelado no unmount e em estado terminal. A timeline técnica permanece no detalhe.
 
+Uma execução disparada pela Home torna-se automaticamente a execução ativa e sua jornada real é projetada no próprio ponto de entrada do produto. O POST canônico devolve `execution.executionId` (ExecutionSummary aninhado); o console extrai esse identificador, seleciona a execução e inicia o acompanhamento sem exigir clique em Execuções/Detalhe. O JSON bruto da resposta HTTP não é o feedback principal.
+
+Cada etapa da Jornada da Execução é uma superfície explicável. O operador pode selecionar uma etapa e compreender o que ocorreu, quais evidências técnicas existem e qual foi a continuidade da execução. Em desktop, a timeline ocupa a área principal e o painel contextual fica à direita; em tablet/mobile, as áreas são empilhadas. A seleção automática acompanha a etapa ativa enquanto não houver escolha manual; uma escolha manual permanece estável durante as atualizações da mesma execução.
+
+O painel usa somente campos seguros do read model: summary, route/correlation redigida, steps/attempts, timeline, wait/callback e Operational Events correlacionáveis. Campos não existentes não são inferidos. Por exemplo, o adapter in-process do cenário `RETRY_THEN_SUCCESS` expõe `safeErrorCode=TRANSIENT`, disposition e duração, mas não um status HTTP; portanto a UI não inventa `HTTP 500`. Metadata arbitrária, payloads, headers, tokens e credenciais não são renderizados.
+
 ## 3. Runtime execution state versus implementation state
 
 | Dimensão | Fonte | Endpoint típico |

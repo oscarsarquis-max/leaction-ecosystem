@@ -145,6 +145,33 @@ describe("projectExecutionJourney", () => {
     expect(ids.indexOf("interaction-step-a-2")).toBeLessThan(ids.indexOf("completion"));
   });
 
+  it("reconstructs retry from persisted timeline when attempts array is empty", () => {
+    const journey = projectExecutionJourney({
+      summary: {
+        executionId: "ex-tl",
+        state: "SUCCEEDED",
+        routeRef: "RETRY_THEN_SUCCESS@1",
+      },
+      timeline: {
+        available: true,
+        data: [
+          { eventType: "ATTEMPT", stepRef: "step-1", attemptNumber: 1, state: "FAILED" },
+          { eventType: "ATTEMPT", stepRef: "step-1", attemptNumber: 2, state: "SUCCEEDED" },
+        ],
+      },
+      steps: {
+        available: true,
+        data: [{ stepRef: "step-1", state: "SUCCEEDED", attemptCount: 2 }],
+      },
+      waitInfo: { available: false },
+      callback: { available: false },
+      operationalEvents: [],
+    });
+    expect(journey.stages.find((s) => s.id === "interaction-step-1-1").state).toBe("FAILED");
+    expect(journey.stages.find((s) => s.id === "retry-step-1-1")).toBeTruthy();
+    expect(journey.stages.find((s) => s.id === "interaction-step-1-2").state).toBe("SUCCEEDED");
+  });
+
   it("returns empty stages without an execution", () => {
     expect(projectExecutionJourney({}).stages).toEqual([]);
   });

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import ConsoleShell from "../console/ConsoleShell.jsx";
 import { JourneyMap, SecurityPosturePanel, TimelineView, OperationalTimelineView } from "../console/components.jsx";
-import { isTerminalState } from "../console/api.js";
+import { isTerminalState, extractCanonicalExecutionId } from "../console/api.js";
 import { MOCK_SCENARIOS, buildCanonicalRequest } from "../console/scenarios.js";
 
 afterEach(() => {
@@ -16,6 +16,17 @@ describe("api helpers", () => {
     expect(isTerminalState("SUCCEEDED")).toBe(true);
     expect(isTerminalState("RUNNING")).toBe(false);
     expect(isTerminalState("WAITING_EXTERNAL")).toBe(false);
+  });
+
+  it("extracts nested canonical execution identity", () => {
+    expect(extractCanonicalExecutionId({ execution: { executionId: "exec-nested" } })).toBe(
+      "exec-nested",
+    );
+    expect(extractCanonicalExecutionId({ executionId: "exec-top" })).toBe("exec-top");
+    expect(extractCanonicalExecutionId({ code: "UNAUTHENTICATED" }, "exec-fallback")).toBe(
+      "exec-fallback",
+    );
+    expect(extractCanonicalExecutionId(null)).toBe(null);
   });
 });
 
@@ -381,6 +392,135 @@ describe("ConsoleShell", () => {
       ).toBe(true),
     );
     expect(fetch.mock.calls.some((c) => String(c[0]).includes("/v1/products/orchestrate"))).toBe(false);
+  });
+
+  it("follows a Home demo into the live journey without showing raw JSON", async () => {
+    const detailHits = [];
+    fetch.mockImplementation(async (url, init) => {
+      const path = String(url);
+      if (path.includes("/v1/products/orchestrate")) {
+        throw new Error("legacy must not be called");
+      }
+      if (path.includes("/v1/canonical/executions") && init?.method === "POST") {
+        const posted = JSON.parse(init.body);
+        const id = posted.execution.executionId;
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              contract: { schemaVersion: "1.0" },
+              execution: { executionId: id, state: "SUCCEEDED" },
+            }),
+        };
+      }
+      if (path.includes("/actuator/health")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify({ status: "UP" }) };
+      }
+      if (path.includes("/v1/console/implementation")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify({ productVersion: "0.20.0" }) };
+      }
+      if (path.includes("/v1/console/presentation/readiness")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ ready: true, boundary: "MOCK_ONLY" }),
+        };
+      }
+      if (path.includes("/v1/canonical/executions")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify({ items: [] }) };
+      }
+      if (path.includes("/events")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              items: [{ eventType: "EXECUTION_STARTED" }, { eventType: "EXECUTION_SUCCEEDED" }],
+            }),
+        };
+      }
+      if (path.includes("/v1/console/executions/")) {
+        detailHits.push(path);
+        const id = decodeURIComponent(path.split("/").pop());
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              summary: {
+                executionId: id,
+                state: "SUCCEEDED",
+                technicalStatus: "SUCCESS",
+                routeRef: "RETRY_THEN_SUCCESS@1",
+                startedAt: "2026-09-03T12:00:00Z",
+              },
+              timeline: {
+                available: true,
+                data: [
+                  { eventType: "STATE_TRANSITION", title: "Transição RECEIVED → RUNNING", source: "PERSISTED" },
+                  { eventType: "ATTEMPT", attemptNumber: 1, state: "FAILED", title: "Attempt #1" },
+                  { eventType: "ATTEMPT", attemptNumber: 2, state: "SUCCEEDED", title: "Attempt #2" },
+                ],
+              },
+              steps: {
+                available: true,
+                data: [
+                  {
+                    stepRef: "step-1",
+                    state: "SUCCEEDED",
+                    attemptCount: 2,
+                    attempts: [
+                      { attemptNumber: 1, state: "FAILED" },
+                      { attemptNumber: 2, state: "SUCCEEDED" },
+                    ],
+                  },
+                ],
+              },
+              waitInfo: { available: false },
+              callback: { available: false },
+            }),
+        };
+      }
+      if (path.includes("/v1/console/executions")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ items: [], nextCursorStartedAt: "", nextCursorExecutionId: "" }),
+        };
+      }
+      return { ok: false, status: 404, text: async () => "{}" };
+    });
+
+    render(<ConsoleShell />);
+    fireEvent.click(screen.getByRole("button", { name: "Executar demonstração" }));
+
+    await waitFor(() => expect(screen.getByTestId("home-current-execution")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("execution-journey")).toBeInTheDocument());
+    expect(screen.getByText(/Execução iniciada — acompanhando/)).toBeInTheDocument();
+    expect(screen.queryByText(/Submetido\. Resposta:/)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Home operacional" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Execução atual" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("journey-stage-interaction-step-1-1")).toHaveAttribute(
+        "data-state",
+        "FAILED",
+      ),
+    );
+    expect(screen.getByTestId("journey-stage-retry-step-1-1")).toBeInTheDocument();
+    expect(screen.getByTestId("journey-stage-interaction-step-1-2")).toHaveAttribute("data-state", "SUCCEEDED");
+    expect(screen.getByTestId("journey-stage-completion")).toHaveAttribute("data-state", "SUCCEEDED");
+
+    const posted = fetch.mock.calls.find(
+      (c) => String(c[0]).includes("/v1/canonical/executions") && c[1]?.method === "POST",
+    );
+    const postedId = JSON.parse(posted[1].body).execution.executionId;
+    expect(detailHits.some((u) => u.includes(postedId))).toBe(true);
+    expect(screen.getByTestId("home-current-execution")).toHaveTextContent(postedId);
+
+    const afterTerminal = detailHits.length;
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(detailHits.length).toBe(afterTerminal);
   });
 
   it("shows an error when canonical executions cannot be listed", async () => {
