@@ -1,7 +1,7 @@
 {
-  "manifestVersion": "1.0.1",
+  "manifestVersion": "1.1.0",
   "productVersion": "0.20.0",
-  "lastVerifiedAt": "2026-09-03T13:49:25Z",
+  "lastVerifiedAt": "2026-09-03T15:54:00Z",
   "baseline": {
     "backendTests": 385,
     "frontendTests": 92,
@@ -11,6 +11,40 @@
   },
   "currentPrompt": "SPIDER-PROMPT-020",
   "currentGroup": "GROUP_B_RUNTIME_OPERATIONS",
+  "contextIntelligence": {
+    "status": "ENABLED",
+    "aiEnabled": false,
+    "promptRef": "SPIDER-CONTEXT-PROMPT-001",
+    "featureFlags": [
+      "spider.context.enabled",
+      "spider.context.ui.enabled"
+    ],
+    "architectureRefs": [
+      "docs/architecture/SPIDER-ARCH-015-context-intelligence-plane.md",
+      "docs/architecture/SPIDER-ARCH-014-arquitetura-funcional-do-produto.md",
+      "docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md"
+    ],
+    "evidenceRefs": [
+      "docs/technical/screenshots/CTX-001-home-context.png",
+      "docs/technical/screenshots/CTX-001-business-intents.png",
+      "docs/technical/screenshots/CTX-001-intent-preview.png",
+      "docs/technical/screenshots/CTX-001-route-resolution.png",
+      "docs/technical/screenshots/CTX-001-context-to-execution.png",
+      "docs/technical/screenshots/CTX-001-context-journey.png",
+      "docs/technical/screenshots/CTX-001A-context-home.png",
+      "docs/technical/screenshots/CTX-001A-spider-entendeu.png",
+      "docs/technical/screenshots/CTX-001A-intent-policy-route.png",
+      "docs/technical/screenshots/CTX-001A-context-to-dataplane.png",
+      "docs/technical/screenshots/CTX-001A-context-step-detail.png"
+    ],
+    "testSummary": "17 backend context tests and 7 frontend context tests; full suites 402 backend / 99 frontend",
+    "limitations": [
+      "NO_LLM",
+      "BUSINESS_CARD_ONLY",
+      "MOCK_ONLY",
+      "IN_MEMORY_CONTEXT_READ_MODEL"
+    ]
+  },
   "capabilities": [
     {
       "capabilityCode": "CAP-001",

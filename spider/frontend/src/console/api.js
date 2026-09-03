@@ -107,6 +107,30 @@ export function submitMockScenario(httpBody, { idempotencyKey, traceparent, sign
   });
 }
 
+export function getContextIntentCatalog({ signal } = {}) {
+  return request("/v1/context/intents", { signal });
+}
+
+export function resolveBusinessIntent(intentContract, { signal } = {}) {
+  return request("/v1/context/intents/resolve", {
+    method: "POST",
+    body: intentContract,
+    signal,
+  });
+}
+
+export function executeContextIntent(decisionId, intentContract, { signal } = {}) {
+  return request("/v1/context/executions", {
+    method: "POST",
+    body: { decisionId, intentContract },
+    signal,
+  });
+}
+
+export function getExecutionContext(executionId, { signal } = {}) {
+  return request(`/v1/context/executions/${encodeURIComponent(executionId)}`, { signal });
+}
+
 export function submitMockSignal(body, { signal } = {}) {
   return request("/v1/canonical/signals", {
     method: "POST",

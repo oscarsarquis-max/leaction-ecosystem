@@ -9,6 +9,10 @@ import {
   listCanonicalExecutions,
   submitMockScenario,
   extractCanonicalExecutionId,
+  getContextIntentCatalog,
+  resolveBusinessIntent,
+  executeContextIntent,
+  getExecutionContext,
 } from "./api";
 import {
   MOCK_SCENARIOS,
@@ -35,6 +39,7 @@ import OperationalCockpit from "./OperationalCockpit";
 import FailureLab from "./FailureLab";
 import WorkerRuntime from "./WorkerRuntime";
 import CapacityResilience from "./CapacityResilience";
+import ContextIntelligence from "./ContextIntelligence";
 
 const PRIMARY_SCENARIO =
   MOCK_SCENARIOS.find((s) => s.id === "RETRY_THEN_SUCCESS") || MOCK_SCENARIOS[0];
@@ -65,6 +70,13 @@ export default function ConsoleShell() {
   });
   const [canonicalItems, setCanonicalItems] = useState(null);
   const [canonicalError, setCanonicalError] = useState(null);
+  const [contextCatalog, setContextCatalog] = useState(null);
+  const [contextStatus, setContextStatus] = useState("idle");
+  const [contextError, setContextError] = useState(null);
+  const [contextPreview, setContextPreview] = useState(null);
+  const [contextBusy, setContextBusy] = useState(false);
+  const [contextMessage, setContextMessage] = useState(null);
+  const [executionContext, setExecutionContext] = useState(null);
 
   const refreshList = useCallback(
     async (nextCursor = {}) => {
@@ -132,6 +144,30 @@ export default function ConsoleShell() {
     return () => controller.abort();
   }, [view]);
 
+  useEffect(() => {
+    if (view !== "home") return undefined;
+    const controller = new AbortController();
+    setContextStatus("loading");
+    getContextIntentCatalog({ signal: controller.signal })
+      .then((data) => {
+        setContextCatalog(data);
+        setContextError(null);
+        setContextStatus("ok");
+      })
+      .catch((error) => {
+        if (error.name === "AbortError") return;
+        if (error.status === 404) {
+          setContextCatalog(null);
+          setContextError(null);
+          setContextStatus("off");
+          return;
+        }
+        setContextError(error);
+        setContextStatus("error");
+      });
+    return () => controller.abort();
+  }, [view]);
+
   const journeySurface = view === "home" || view === "detail";
   const pollingEnabled = journeySurface && Boolean(selectedId);
   const { detail, error: detailError, updatedAt, status: pollStatus } = useExecutionPolling(
@@ -165,6 +201,23 @@ export default function ConsoleShell() {
     return () => controller.abort();
   }, [journeySurface, selectedId, pollPaused, updatedAt]);
 
+  useEffect(() => {
+    if (!journeySurface || !selectedId || !contextCatalog?.contextEnabled) {
+      if (!selectedId) setExecutionContext(null);
+      return undefined;
+    }
+    const controller = new AbortController();
+    getExecutionContext(selectedId, { signal: controller.signal })
+      .then((data) => setExecutionContext(data))
+      .catch((error) => {
+        if (error.name === "AbortError") return;
+        if (error.status === 404) {
+          setExecutionContext(null);
+        }
+      });
+    return () => controller.abort();
+  }, [journeySurface, selectedId, contextCatalog?.contextEnabled]);
+
   const journeyRef = useRef(null);
 
   useEffect(() => {
@@ -186,6 +239,9 @@ export default function ConsoleShell() {
   }, [items]);
 
   function followExecution(id, { stayOnHome } = {}) {
+    if (id !== selectedId) {
+      setExecutionContext(null);
+    }
     setSelectedId(id);
     setPollPaused(false);
     if (!stayOnHome) {
@@ -248,6 +304,50 @@ export default function ConsoleShell() {
       }
     } finally {
       setLabBusy(false);
+    }
+  }
+
+  async function interpretBusinessIntent(card) {
+    setContextBusy(true);
+    setContextMessage(null);
+    try {
+      const resolved = await resolveBusinessIntent(card.intentContract);
+      setContextPreview(resolved);
+    } catch (error) {
+      setContextPreview(error.body || null);
+      setContextMessage({
+        ok: false,
+        text: error.message || "O Intent Contract foi rejeitado.",
+      });
+    } finally {
+      setContextBusy(false);
+    }
+  }
+
+  async function executeBusinessIntent(preview) {
+    setContextBusy(true);
+    setContextMessage(null);
+    try {
+      const result = await executeContextIntent(preview.decisionId, preview.intentContract);
+      const executionId = extractCanonicalExecutionId(result);
+      if (!executionId) {
+        throw new Error("A execução contextual não retornou executionId.");
+      }
+      followExecution(executionId, { stayOnHome: true });
+      setExecutionContext(result.context);
+      setContextMessage({
+        ok: true,
+        text: `Contexto confirmado — acompanhando ${executionId}`,
+      });
+      await refreshList({});
+      await refreshCanonicalList();
+    } catch (error) {
+      setContextMessage({
+        ok: false,
+        text: error.message || "Falha ao executar o Intent Contract confirmado.",
+      });
+    } finally {
+      setContextBusy(false);
     }
   }
 
@@ -358,6 +458,16 @@ export default function ConsoleShell() {
               )}
             </article>
           </div>
+          <ContextIntelligence
+            catalog={contextCatalog}
+            loading={contextStatus === "loading"}
+            error={contextError}
+            preview={contextPreview}
+            busy={contextBusy}
+            message={contextMessage}
+            onInterpret={interpretBusinessIntent}
+            onExecute={executeBusinessIntent}
+          />
           {selectedId && (
             <article
               ref={journeyRef}
@@ -373,6 +483,7 @@ export default function ConsoleShell() {
                 waitInfo={detail?.waitInfo}
                 callback={detail?.callback}
                 operationalEvents={operationalEvents}
+                contextJourney={executionContext?.contextJourney}
               />
               <p>
                 <button type="button" className="ghost" onClick={() => openDetail(selectedId)}>
@@ -593,6 +704,7 @@ export default function ConsoleShell() {
                 waitInfo={detail.waitInfo}
                 callback={detail.callback}
                 operationalEvents={operationalEvents}
+                contextJourney={executionContext?.contextJourney}
               />
               <h3>Mapa do plano</h3>
               <JourneyMap plan={detail.plan} steps={detail.steps} />

@@ -171,6 +171,10 @@ spider:
     polling-min-interval: PT1S
     safe-projections:
       enabled: false
+  context:
+    enabled: false
+    ui:
+      enabled: false
   telemetry:
     enabled: false
   operational-health:

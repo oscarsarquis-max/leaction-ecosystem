@@ -52,6 +52,7 @@ public class GetImplementationStatusUseCase {
     out.put("currentGroup", manifest.currentGroup());
     out.put("lastVerifiedAt", manifest.lastVerifiedAt());
     out.put("baseline", manifest.baseline());
+    out.put("contextIntelligence", manifest.contextIntelligence());
     out.put("capabilities", manifest.capabilities());
     out.put("externalBoundaries", manifest.externalBoundaries());
     out.put("governanceMode", environment.getProperty("spider.governance.mode", "STATIC"));
@@ -70,6 +71,8 @@ public class GetImplementationStatusUseCase {
     flags.put("spider.canonical.http.enabled", canonicalHttp.isEnabled());
     flags.put("spider.canonical.http.status-query-enabled", canonicalHttp.isStatusQueryEnabled());
     flags.put("spider.adapter.mock.enabled", environment.getProperty("spider.adapter.mock.enabled", "true"));
+    flags.put("spider.context.enabled", environment.getProperty("spider.context.enabled", "false"));
+    flags.put("spider.context.ui.enabled", environment.getProperty("spider.context.ui.enabled", "false"));
     // never include secrets/jwt/datasource passwords
     return flags;
   }

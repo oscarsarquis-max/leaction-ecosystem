@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { projectExecutionJourney, JOURNEY_MARKERS } from "./projectExecutionJourney";
 import {
   chooseAutomaticJourneyStage,
@@ -40,6 +40,7 @@ export default function ExecutionJourney({
   waitInfo,
   callback,
   operationalEvents,
+  contextJourney,
   heading = "Jornada da execução",
 }) {
   const projection = projectExecutionJourney({
@@ -49,10 +50,11 @@ export default function ExecutionJourney({
     waitInfo,
     callback,
     operationalEvents,
+    contextJourney,
   });
   const detailInput = useMemo(
-    () => ({ summary, timeline, steps, waitInfo, callback, operationalEvents }),
-    [summary, timeline, steps, waitInfo, callback, operationalEvents],
+    () => ({ summary, timeline, steps, waitInfo, callback, operationalEvents, contextJourney }),
+    [summary, timeline, steps, waitInfo, callback, operationalEvents, contextJourney],
   );
   const stageDetails = useMemo(
     () =>
@@ -101,47 +103,65 @@ export default function ExecutionJourney({
     <section className="execution-journey" aria-labelledby="journey-title" data-testid="execution-journey">
       <h3 id="journey-title">{heading}</h3>
       <p className="muted">
-        Projeção do Data Plane — somente etapas com evidência. Sem timers e sem simulação de
-        progresso.
+        Projeção do Context Plane e do Data Plane — somente etapas com evidência. Sem timers e sem
+        simulação de progresso.
       </p>
       <div className="journey-explainer">
         <ol className="journey-live" aria-label="Etapas da jornada">
-          {projection.stages.map((item) => {
+          {projection.stages.map((item, index) => {
             const detail = stageDetails[item.id];
             const selected = item.id === selectedStage?.id;
+            const zone = item.zone || "DATA";
+            const previousZone =
+              index > 0 ? projection.stages[index - 1].zone || "DATA" : null;
             return (
-              <li
-                key={item.id}
-                className={`journey-live-step journey-vis-${item.state.toLowerCase()} ${
-                  selected ? "journey-step-selected" : ""
-                }`}
-                data-testid={`journey-stage-${item.id}`}
-                data-state={item.state}
-                data-layer={item.layer}
-              >
-                <button
-                  type="button"
-                  className="journey-step-button"
-                  aria-pressed={selected}
-                  aria-controls="journey-step-detail"
-                  onClick={() => selectStage(item.id)}
+              <Fragment key={item.id}>
+                {zone !== previousZone && (
+                  <li
+                    className={`journey-zone-label journey-zone-${zone.toLowerCase()}`}
+                    data-testid={`journey-zone-${zone.toLowerCase()}`}
+                  >
+                    <span>{zone === "CONTEXT" ? "CONTEXTO" : "DATA PLANE"}</span>
+                    <small>
+                      {zone === "CONTEXT"
+                        ? "O que o usuário pretende e como o Spider determinou o tratamento."
+                        : "Como o Spider efetivamente executou a operação."}
+                    </small>
+                  </li>
+                )}
+                <li
+                  className={`journey-live-step journey-vis-${item.state.toLowerCase()} ${
+                    selected ? "journey-step-selected" : ""
+                  }`}
+                  data-testid={`journey-stage-${item.id}`}
+                  data-state={item.state}
+                  data-layer={item.layer}
+                  data-zone={zone}
                 >
-                  <span className="journey-live-marker" aria-hidden="true">
-                    {item.marker || JOURNEY_MARKERS[item.state]}
-                  </span>
-                  <span className="journey-step-copy">
-                    <strong>{item.title}</strong>
-                    <span className="muted">
-                      {item.layer} ·{" "}
-                      <span className="journey-vis-label">{stateLabel(item.state)}</span>
+                  <button
+                    type="button"
+                    className="journey-step-button"
+                    aria-pressed={selected}
+                    aria-controls="journey-step-detail"
+                    onClick={() => selectStage(item.id)}
+                  >
+                    <span className="journey-live-marker" aria-hidden="true">
+                      {item.marker || JOURNEY_MARKERS[item.state]}
                     </span>
-                    <span className="journey-step-summary">{detail?.summary}</span>
-                  </span>
-                  <span className="journey-step-disclosure" aria-hidden="true">
-                    ›
-                  </span>
-                </button>
-              </li>
+                    <span className="journey-step-copy">
+                      <strong>{item.title}</strong>
+                      <span className="muted">
+                        {item.layer} ·{" "}
+                        <span className="journey-vis-label">{stateLabel(item.state)}</span>
+                      </span>
+                      <span className="journey-step-summary">{detail?.summary}</span>
+                    </span>
+                    <span className="journey-step-disclosure" aria-hidden="true">
+                      ›
+                    </span>
+                  </button>
+                </li>
+              </Fragment>
             );
           })}
         </ol>

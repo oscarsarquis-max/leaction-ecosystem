@@ -7,8 +7,8 @@
 | Natureza | Espelho documental vivo do Spider |
 | Baseline funcional | Spider 0.20.0 — SPIDER-PROMPT-020 VERIFIED |
 | Boundary ativo | MOCK_ONLY (integrações); CAP-019/020 = SIMULATED_INFRASTRUCTURE |
-| Estado documental | BASELINE 020 — espelho sincronizado com CAP-020 (Capacidade); Grupo B 2/3 |
-| Fontes autoritativas | SPIDER-ARCH-001–013, SPIDER-PROMPT-001–020, manifesto de capabilities, contrato anti-drift e roadmap 016–026 |
+| Estado documental | BASELINE 020 preservado; Context Intelligence CTX-001 implementado default-off; Grupo B 2/3 |
+| Fontes autoritativas | SPIDER-ARCH-001–015, SPIDER-PROMPT-001–020, SPIDER-CONTEXT-PROMPT-001, manifesto, contrato anti-drift e roadmap |
 
 > **Razão da numeração:** o número `SPIDER-ARCH-005` já está ocupado por “Definição de Rotas, Execution Plan e Máquina de Estados”. Como a série existente prossegue até `SPIDER-ARCH-013`, este documento recebe o próximo identificador coerente: `SPIDER-ARCH-014`.
 
@@ -82,6 +82,48 @@ O estado oficial do baseline é:
 - integrações corporativas, sandbox corporativo, piloto real e produção não estão ativos.
 
 O 021 está elegível pelo gate do 020, mas permanece PLANNED até emissão formal. A seção 18 define como incorporar novos prompts após o aceite.
+
+### 2.1 Nova trilha: Context Intelligence
+
+CTX-001 acrescenta uma camada opt-in sobre o baseline sem avançar CAP-021 e sem reescrever o Core:
+
+```text
+EXPERIENCE
+   ↓
+CONTEXT INTELLIGENCE
+   ↓
+INTENT CONTRACT V1
+   ↓
+GOVERNANCE / CONTEXT POLICY GUARD
+   ↓
+DETERMINISTIC ROUTING
+   ↓
+CANONICAL INGRESS
+   ↓
+SPIDER CORE
+```
+
+Na Home, seis situações frequentes constroem contratos conhecidos com proveniência
+`BUSINESS_CARD` e confiança de 100%. O operador inspeciona intent, domínio, policy, capability e
+rota antes de confirmar. A confirmação produz uma execução canônica comum; a Jornada 020B ganha
+uma seção CONTEXTO antes do DATA PLANE, derivada do read model contextual real.
+
+A experiência contextual separa compreensão de execução. Business Cards e, futuramente, linguagem
+natural convergem para o mesmo Intent Contract antes da entrada no Data Plane. O refinamento
+CTX-001A torna essa fronteira explícita na Home:
+
+```text
+OBJETIVO → INTENT → POLICY → ROTA → EXECUTAR → JORNADA
+```
+
+**SPIDER ENTENDEU** é a superfície de compreensão; o botão **Executar**, disponível somente para a
+demonstração de Crédito neste incremento, é a fronteira de entrada no Data Plane. Os demais cards
+permanecem honestamente em preview.
+
+O campo de linguagem natural é apresentado como evolução futura e permanece desabilitado com
+`IA — próxima etapa`. Não há LLM, RAG, agente, tool calling nem integração ServiceNow. As flags
+`spider.context.enabled` e `spider.context.ui.enabled` são `false` por padrão e `true` somente no
+profile `local-demo`.
 
 ## 3. Princípios funcionais do produto
 
@@ -916,4 +958,4 @@ O glossário descreve a semântica do produto, não uma obrigação tecnológica
 
 ---
 
-**Declaração de baseline:** este documento reflete o Spider 0.20.0 / SPIDER-PROMPT-020 VERIFIED, com integrações `MOCK_ONLY` e runtime de workers + governo de capacidade em `SIMULATED_INFRASTRUCTURE` (OFF_BY_DEFAULT). O Grupo A (015–018) está completo; o Grupo B está em 2/3; o 021 permanece PLANNED.
+**Declaração de baseline:** este documento preserva o Spider 0.20.0 / SPIDER-PROMPT-020 VERIFIED, com integrações `MOCK_ONLY` e runtime de workers + governo de capacidade em `SIMULATED_INFRASTRUCTURE` (OFF_BY_DEFAULT). O Grupo A (015–018) está completo; o Grupo B está em 2/3; o 021 permanece PLANNED. A trilha paralela Context Intelligence está `ENABLED` apenas como arquitetura determinística default-off (`SPIDER-CONTEXT-PROMPT-001`); `AI_ENABLED=false`.

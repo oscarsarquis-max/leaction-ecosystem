@@ -44,6 +44,17 @@ Capturas reais (Playwright) contra UI `http://127.0.0.1:5180` + API local-demo:
 | `020B-step-details-retry.png` | 1440×1000 |
 | `020B-step-details-success.png` | 1440×1000 |
 | `020B-step-details-events.png` | 1440×1000 |
+| `CTX-001-home-context.png` | 1440×página |
+| `CTX-001-business-intents.png` | componente responsivo |
+| `CTX-001-intent-preview.png` | componente responsivo |
+| `CTX-001-route-resolution.png` | componente responsivo |
+| `CTX-001-context-to-execution.png` | 1440×página |
+| `CTX-001-context-journey.png` | componente responsivo |
+| `CTX-001A-context-home.png` | 1440×página |
+| `CTX-001A-spider-entendeu.png` | componente responsivo |
+| `CTX-001A-intent-policy-route.png` | componente responsivo |
+| `CTX-001A-context-to-dataplane.png` | 1440×página |
+| `CTX-001A-context-step-detail.png` | componente responsivo |
 
 Geração:
 
@@ -59,6 +70,8 @@ node .\scripts\capture-020a-home-screenshots.mjs
 node .\scripts\capture-020b-journey-screenshots.mjs
 node .\scripts\capture-020b-live-screenshots.mjs
 node .\scripts\capture-020b-step-details-screenshots.mjs
+node .\scripts\capture-ctx-001-screenshots.mjs
+node .\scripts\capture-ctx-001a-screenshots.mjs
 ```
 
 As capturas 017 usam o Cockpit Operacional (console + telemetria + saúde). As cinco capturas 018 usam o Failure Lab com `spider.failure-lab.enabled` e `spider.failure-lab.http.enabled`. As cinco capturas 019 usam o Runtime de Workers com `spider.worker-runtime.enabled` e `spider.worker-runtime.http.enabled`. As cinco capturas 020 usam Capacidade & Resiliência com `spider.capacity.enabled` (+ `http` / `local-demo` / `enforcement` conforme o cenário). Os PNGs podem ser produzidos separadamente do fechamento documental.

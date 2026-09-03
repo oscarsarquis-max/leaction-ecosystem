@@ -26,18 +26,20 @@ URLs típicas:
 - Readiness: http://127.0.0.1:8080/v1/console/presentation/readiness
 - Implementation: http://127.0.0.1:8080/v1/console/implementation
 
-Flags: profile `local-demo` + `spider.console.*` + canonical HTTP conforme script.
+Flags: profile `local-demo` + `spider.console.*` + `spider.context.*` + canonical HTTP conforme script.
 
 ## Roteiro 3 minutos
 
 1. Badge **DEMONSTRAÇÃO MOCK** no topo.
 2. **Home operacional**: Spider 0.20.0, Health UP, Presentation READY, Runtime SIMULATED_INFRASTRUCTURE, Integrations MOCK_ONLY.
-3. Últimas execuções visíveis (sem 401). **Executar demonstração** usa `POST /v1/canonical/executions`, seleciona automaticamente o `executionId` retornado e acompanha a **Jornada visual** na própria Home (somente etapas com evidência; retry visível em `RETRY_THEN_SUCCESS`). Sem JSON bruto como feedback principal.
-4. Na Jornada, selecionar **Solicitação recebida**, **Interaction #1**, **Retry**, **Interaction #2** e **Execução concluída**. O painel contextual explica cada etapa e mostra somente detalhes seguros existentes. No mock in-process, a falha real é `TRANSIENT`; status HTTP não é exibido porque não existe nesse read model.
-5. Navegação agrupada: Execuções / Operação / Testes & demonstração / Plataforma — não é mais uma fita plana de abas.
-6. Aba **Implementação** (grupo Plataforma): grupos A–D, CAP-015–020 VERIFIED (Grupo A 4/4; Grupo B 2/3), 021–026 PLANNED.
-7. Aba **Apresentação**: preflight readiness; se READY, capítulo 4 → `RETRY_THEN_SUCCESS`.
-8. Detalhe: o que aconteceu → por onde passou → quando (timeline) → o que tecnicamente ocorreu.
+3. Em **Situações frequentes**, destacar a indicação discreta `IA — próxima etapa`. Selecionar Crédito e mostrar **SPIDER ENTENDEU**: OBJETIVO → INTENT → POLICY → ROTA. Provenance, confiança, constraints, decisão e disponibilidade vêm do contrato/resolução reais.
+4. Mostrar um card não executável: o mesmo preview aparece, mas declara `Preview disponível · execução ainda não habilitada` e não oferece botão. Voltar a Crédito e confirmar **Executar**.
+5. A decisão contextual usa o ingress canônico existente e acompanha a Jornada na Home. Mostrar CONTEXTO antes do DATA PLANE e clicar em Intent, Política e Rota para abrir as explicações derivadas do read model.
+6. No Data Plane, selecionar **Solicitação recebida**, **Interaction #1**, **Retry**, **Interaction #2** e **Execução concluída**. O painel mostra apenas detalhes seguros.
+7. Navegação agrupada: Execuções / Operação / Testes & demonstração / Plataforma.
+8. Aba **Implementação**: CAP-015–020 VERIFIED; 021–026 PLANNED; Context Intelligence é trilha paralela default-off e sem IA.
+9. Aba **Apresentação**: preflight readiness; se READY, capítulo 4 → `RETRY_THEN_SUCCESS`.
+10. Detalhe: o que aconteceu → por onde passou → quando → o que tecnicamente ocorreu.
 
 ## Roteiro 8 minutos
 

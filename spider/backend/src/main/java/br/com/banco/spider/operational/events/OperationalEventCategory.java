@@ -7,5 +7,6 @@ public enum OperationalEventCategory {
   CALLBACK,
   SIGNAL,
   SECURITY,
+  CONTEXT,
   SYSTEM
 }

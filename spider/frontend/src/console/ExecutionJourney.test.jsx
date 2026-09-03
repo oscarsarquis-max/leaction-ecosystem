@@ -234,4 +234,72 @@ describe("ExecutionJourney explainable steps", () => {
       "journey-step-detail",
     );
   });
+
+  it("explains Context Plane evidence before the Data Plane", () => {
+    render(
+      <ExecutionJourney
+        {...retryProps}
+        contextJourney={[
+          {
+            id: "intent-created",
+            title: "Intent construído",
+            state: "SUCCEEDED",
+            summary:
+              "O objetivo selecionado foi convertido para o contrato de intenção INVESTIGATE_CREDIT_RELEASE, pertencente ao domínio CREDIT.",
+            technicalDetails: {
+              intent: "INVESTIGATE_CREDIT_RELEASE",
+              provenance: "BUSINESS_CARD",
+            },
+          },
+          {
+            id: "policy-validated",
+            title: "Política validada",
+            state: "SUCCEEDED",
+            summary:
+              "O Context Guard verificou o contrato, as restrições e a política de mutação.",
+            technicalDetails: {
+              decision: "ACCEPTED",
+              policyRef: "context:read-only@1.0",
+            },
+          },
+          {
+            id: "route-resolved",
+            title: "Rota determinada",
+            state: "SUCCEEDED",
+            summary:
+              "O roteador determinístico associou a intenção à capability CREDIT_RELEASE_DIAGNOSTIC.",
+            technicalDetails: {
+              capabilityRef: "CREDIT_RELEASE_DIAGNOSTIC",
+              routeRef: "CREDIT_RELEASE_DIAGNOSTIC_V1",
+            },
+          },
+        ]}
+      />,
+    );
+    const intent = screen.getByRole("button", { name: /Intent construído/ });
+    const request = screen.getByRole("button", { name: /Solicitação recebida/ });
+    expect(
+      intent.compareDocumentPosition(request) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByText("CONTEXTO")).toBeInTheDocument();
+    expect(screen.getByText("DATA PLANE")).toBeInTheDocument();
+    expect(screen.getByTestId("journey-zone-context")).toHaveTextContent(
+      "O que o usuário pretende",
+    );
+    expect(screen.getByTestId("journey-zone-data")).toHaveTextContent(
+      "Como o Spider efetivamente executou",
+    );
+    fireEvent.click(intent);
+    const panel = screen.getByTestId("journey-step-detail");
+    expect(panel).toHaveTextContent("INVESTIGATE_CREDIT_RELEASE");
+    expect(panel).toHaveTextContent("Validar contrato, constraints e provenance");
+
+    fireEvent.click(screen.getByRole("button", { name: /Política validada/ }));
+    expect(panel).toHaveTextContent("Context Guard verificou o contrato");
+    expect(panel).toHaveTextContent("context:read-only@1.0");
+
+    fireEvent.click(screen.getByRole("button", { name: /Rota determinada/ }));
+    expect(panel).toHaveTextContent("CREDIT_RELEASE_DIAGNOSTIC");
+    expect(panel).toHaveTextContent("ingress canônico");
+  });
 });

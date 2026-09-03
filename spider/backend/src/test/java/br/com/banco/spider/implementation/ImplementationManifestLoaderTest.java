@@ -22,6 +22,8 @@ class ImplementationManifestLoaderTest {
     assertEquals(385, m.baseline().backendTests());
     assertEquals(92, m.baseline().frontendTests());
     assertEquals(0, m.baseline().skipped());
+    assertEquals("ENABLED", m.contextIntelligence().status());
+    assertEquals(false, m.contextIntelligence().aiEnabled());
     for (var c : m.capabilities()) {
       int n = Integer.parseInt(c.promptRef().substring("SPIDER-PROMPT-".length()));
       if (n <= 20) {
@@ -53,6 +55,12 @@ class ImplementationManifestLoaderTest {
       for (String ref : c.technicalDocRefs()) {
         assertTrue(Files.exists(repo.resolve(ref)), () -> "missing " + ref);
       }
+    }
+    for (String ref : m.contextIntelligence().architectureRefs()) {
+      assertTrue(Files.exists(repo.resolve(ref)), () -> "missing " + ref);
+    }
+    for (String ref : m.contextIntelligence().evidenceRefs()) {
+      assertTrue(Files.exists(repo.resolve(ref)), () -> "missing " + ref);
     }
   }
 

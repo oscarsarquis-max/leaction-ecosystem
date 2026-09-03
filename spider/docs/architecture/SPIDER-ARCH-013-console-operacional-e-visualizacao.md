@@ -39,6 +39,21 @@ USER → HOME OPERACIONAL → EXECUÇÕES → DETALHE / TIMELINE / OPERAÇÃO
 
 A Home reutiliza o submit canônico existente (`POST /v1/canonical/executions`, cenário `RETRY_THEN_SUCCESS`) e lista últimas execuções via `GET /v1/canonical/executions`. A navegação é **agrupada por finalidade** (PROMPT-020B): Home; Execuções (lista / detalhe / visão geral); Operação (Cockpit, Runtime de Workers, Capacidade); Testes & demonstração (Laboratório Mock, Failure Lab); Plataforma (Implementação, Apresentação).
 
+#### 2.1.1 Compreensão contextual antes da execução (CTX-001A)
+
+A Home preserva as superfícies 020A/020B e acrescenta uma etapa explícita de compreensão. Clicar em
+um Business Intent Card abre **SPIDER ENTENDEU**; não submete execução. O painel projeta o Intent
+Contract, a decisão do Context Guard e a rota determinística. Somente uma confirmação separada em
+**Executar** atravessa o ingress canônico.
+
+```text
+OBJETIVO → INTENT → POLICY → ROTA → EXECUTAR → JORNADA
+```
+
+A experiência contextual separa compreensão de execução. Business Cards e, futuramente, linguagem
+natural convergem para o mesmo Intent Contract antes da entrada no Data Plane. O campo de linguagem
+natural permanece desabilitado e identificado como `IA — próxima etapa`.
+
 ### 2.2 Jornada visual da execução (PROMPT-020B)
 
 A interface do Spider projeta visualmente o comportamento real da execução e não simula etapas inexistentes.
@@ -58,6 +73,10 @@ A **Jornada da execução** é uma projeção no frontend (`projectExecutionJour
 Uma execução disparada pela Home torna-se automaticamente a execução ativa e sua jornada real é projetada no próprio ponto de entrada do produto. O POST canônico devolve `execution.executionId` (ExecutionSummary aninhado); o console extrai esse identificador, seleciona a execução e inicia o acompanhamento sem exigir clique em Execuções/Detalhe. O JSON bruto da resposta HTTP não é o feedback principal.
 
 Cada etapa da Jornada da Execução é uma superfície explicável. O operador pode selecionar uma etapa e compreender o que ocorreu, quais evidências técnicas existem e qual foi a continuidade da execução. Em desktop, a timeline ocupa a área principal e o painel contextual fica à direita; em tablet/mobile, as áreas são empilhadas. A seleção automática acompanha a etapa ativa enquanto não houver escolha manual; uma escolha manual permanece estável durante as atualizações da mesma execução.
+
+Quando a execução nasce do Context Plane, a mesma Jornada divide visualmente **CONTEXTO** (objetivo,
+intent, policy e rota) de **DATA PLANE** (ingress, contrato canônico, Engine, interações e outcome).
+As etapas contextuais usam o mesmo painel explicativo e somente fatos do read model.
 
 O painel usa somente campos seguros do read model: summary, route/correlation redigida, steps/attempts, timeline, wait/callback e Operational Events correlacionáveis. Campos não existentes não são inferidos. Por exemplo, o adapter in-process do cenário `RETRY_THEN_SUCCESS` expõe `safeErrorCode=TRANSIENT`, disposition e duração, mas não um status HTTP; portanto a UI não inventa `HTTP 500`. Metadata arbitrária, payloads, headers, tokens e credenciais não são renderizados.
 

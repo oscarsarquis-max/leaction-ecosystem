@@ -6,6 +6,10 @@
 # `console-local-demo` / canal `operational-console`. Sem header ou credencial estranha → 401.
 # Não usar permitAll.
 spider:
+  context:
+    enabled: true
+    ui:
+      enabled: true
   console:
     enabled: true
     http:

@@ -37,6 +37,22 @@ Integração planejada ≠ ativa: `MOCK_ONLY`, `SIMULATED_INFRASTRUCTURE`, `CORP
 
 Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem substituir estes grupos.
 
+## Trilha paralela — CONTEXT INTELLIGENCE
+
+Esta trilha coexiste com CAP-021–026 e não altera sua numeração, gates ou status.
+
+- `SPIDER-CONTEXT-PROMPT-001`: **IMPLEMENTED / default-off**;
+- baseline de origem: Spider `0.20.0`, CAP-001–020 VERIFIED;
+- fundação: Intent Contract V1, Business Intent Catalog, Context Policy Guard, Deterministic Router;
+- experiência: cards determinísticos, preview, confirmação e Context Journey;
+- flags: `spider.context.enabled=false`, `spider.context.ui.enabled=false`;
+- local-demo: flags explicitamente ligadas;
+- IA: **NOT ENABLED**;
+- CAP-021: permanece **PLANNED / NOT_STARTED**.
+
+Próximos incrementos desta trilha exigem prompt próprio. Eles não autorizam LLM, integração real ou
+mutação por inferência.
+
 ## Sequência e objetivos
 
 | Prompt | Grupo | Título | Objetivo | Status | Runtime | Integração planejada |
@@ -93,6 +109,8 @@ Agrupamentos históricos de 001–014 permanecem no manifesto para rastreio, sem
 - Contrato anti-drift: `backend/src/main/resources/implementation/spider-roadmap-015-026-contract.json`
 - ARCH-013: `docs/architecture/SPIDER-ARCH-013-console-operacional-e-visualizacao.md`
 - ARCH-014: `docs/architecture/SPIDER-ARCH-014-arquitetura-funcional-do-produto.md`
+- ARCH-015 Context Intelligence: `docs/architecture/SPIDER-ARCH-015-context-intelligence-plane.md`
+- Baseline determinístico: `docs/technical/SPIDER-DETERMINISTIC-PLATFORM-BASELINE.md`
 - Técnico 015: `docs/technical/SPIDER-PROMPT-015-operational-console.md`
 - Técnico 018: `docs/technical/SPIDER-PROMPT-018-failure-lab-operational-journeys.md`
 - Técnico 019: `docs/technical/SPIDER-PROMPT-019-durable-workers-scheduling.md`

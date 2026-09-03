@@ -114,6 +114,15 @@ function relatedTimeline(stage, input) {
 
 function relatedOperational(stage, input) {
   const events = input.operationalEvents || [];
+  if (stage.id.startsWith("context-")) {
+    const eventTypeByStage = {
+      "context-intent-created": "INTENT_CREATED",
+      "context-policy-validated": "INTENT_VALIDATED",
+      "context-route-resolved": "ROUTE_RESOLVED",
+    };
+    const expected = eventTypeByStage[stage.id];
+    return expected ? events.filter((event) => event.eventType === expected) : [];
+  }
   const interaction = attemptContext(stage, input);
   const retry = retryContext(stage, input);
   if (interaction || retry) {
@@ -177,7 +186,40 @@ function baseDetail(stage, input, stages) {
     nextSteps: null,
   };
 
-  if (stage.id === "request") {
+  if (stage.contextDetail) {
+    const labels = {
+      objective: "Objetivo",
+      domain: "Domínio",
+      intent: "Intent",
+      schemaVersion: "Versão do contrato",
+      provenance: "Origem",
+      confidence: "Confiança",
+      decision: "Decisão",
+      policyRef: "Política",
+      reasonCode: "Código da decisão",
+      capabilityRef: "Capability",
+      routeRef: "Rota",
+      executionAvailability: "Disponibilidade",
+    };
+    result.summary = stage.contextDetail.summary;
+    result.whatHappened = stage.contextDetail.summary;
+    result.technicalDetails = compactDetails(
+      Object.entries(stage.contextDetail.technicalDetails || {}).map(([key, value]) => ({
+        label: labels[key] || key,
+        value,
+      })),
+    );
+    const contextNextSteps = {
+      "context-objective-selected": "Construir o Intent Contract a partir do objetivo selecionado.",
+      "context-intent-created": "Validar contrato, constraints e provenance no Context Guard.",
+      "context-policy-validated": "Resolver capability e rota no roteador determinístico.",
+      "context-route-resolved":
+        "Encaminhar o contrato confirmado ao ingress canônico do Spider Core.",
+    };
+    result.nextSteps =
+      contextNextSteps[stage.id] ||
+      "Prosseguir para a próxima decisão determinística do Context Plane.";
+  } else if (stage.id === "request") {
     result.summary = "O Spider recebeu a solicitação pelo ingress canônico.";
     result.whatHappened =
       stage.state === "SUCCEEDED"

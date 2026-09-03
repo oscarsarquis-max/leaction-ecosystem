@@ -77,6 +77,12 @@ public class ImplementationManifestLoader {
     if (!"SPIDER-PROMPT-020".equals(manifest.currentPrompt())) {
       problems.add("currentPrompt must be SPIDER-PROMPT-020");
     }
+    if (manifest.contextIntelligence() == null
+        || !"ENABLED".equals(manifest.contextIntelligence().status())) {
+      problems.add("contextIntelligence must be ENABLED after CTX-001");
+    } else if (manifest.contextIntelligence().aiEnabled()) {
+      problems.add("CTX-001 must never declare AI enabled");
+    }
     for (ImplementationCapability c : manifest.capabilities()) {
       if ("PRODUCTION".equals(c.integrationLevel())) {
         problems.add(c.capabilityCode() + " must never be PRODUCTION");

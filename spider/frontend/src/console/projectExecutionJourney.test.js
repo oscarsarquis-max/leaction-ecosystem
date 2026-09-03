@@ -172,6 +172,32 @@ describe("projectExecutionJourney", () => {
     expect(journey.stages.find((s) => s.id === "interaction-step-1-2").state).toBe("SUCCEEDED");
   });
 
+  it("prepends evidenced Context Plane stages before the existing Data Plane", () => {
+    const journey = projectExecutionJourney({
+      ...retryDetail,
+      contextJourney: [
+        {
+          id: "intent-created",
+          title: "Intent construído",
+          state: "SUCCEEDED",
+          summary: "Intent Contract materializado.",
+          technicalDetails: { intent: "INVESTIGATE_CREDIT_RELEASE" },
+        },
+        {
+          id: "route-resolved",
+          title: "Rota determinada",
+          state: "SUCCEEDED",
+          summary: "Rota resolvida.",
+          technicalDetails: { routeRef: "CREDIT_RELEASE_DIAGNOSTIC_V1" },
+        },
+      ],
+    });
+    const ids = journey.stages.map((stage) => stage.id);
+    expect(ids.slice(0, 2)).toEqual(["context-intent-created", "context-route-resolved"]);
+    expect(ids.indexOf("context-route-resolved")).toBeLessThan(ids.indexOf("request"));
+    expect(journey.stages[0].zone).toBe("CONTEXT");
+  });
+
   it("returns empty stages without an execution", () => {
     expect(projectExecutionJourney({}).stages).toEqual([]);
   });

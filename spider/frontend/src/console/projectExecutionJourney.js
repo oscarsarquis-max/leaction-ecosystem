@@ -90,6 +90,21 @@ function stage(id, title, layer, state, evidence) {
   };
 }
 
+function contextStage(item) {
+  const visual = JOURNEY_VISUAL_STATES.includes(item?.state) ? item.state : "NOT_REACHED";
+  return {
+    ...stage(
+      `context-${item.id}`,
+      item.title,
+      "contexto",
+      visual,
+      "context-read-model",
+    ),
+    zone: "CONTEXT",
+    contextDetail: item,
+  };
+}
+
 function completionVisual(executionState) {
   const s = String(executionState || "");
   if (s === "SUCCEEDED" || s === "PARTIALLY_SUCCEEDED" || s === "COMPENSATED") return "SUCCEEDED";
@@ -130,6 +145,7 @@ function resolveAttempts(step, timeline) {
  *   waitInfo?: { available?: boolean, data?: object },
  *   callback?: { available?: boolean, data?: object },
  *   operationalEvents?: object[],
+ *   contextJourney?: object[],
  * }} input
  */
 export function projectExecutionJourney(input = {}) {
@@ -140,7 +156,7 @@ export function projectExecutionJourney(input = {}) {
   const callback = input.callback;
   const operationalEvents = input.operationalEvents || [];
   const executionState = summary.state;
-  const stages = [];
+  const stages = (input.contextJourney || []).map(contextStage);
 
   if (!summary.executionId) {
     return { executionId: null, state: null, stages: [] };
@@ -151,13 +167,16 @@ export function projectExecutionJourney(input = {}) {
     timelineHits(timeline, /RECEIVED|STATE_TRANSITION/) ||
     opEventsOf(operationalEvents, "EXECUTION_STARTED").length > 0;
   stages.push(
-    stage(
-      "request",
-      "Solicitação recebida",
-      "entrada",
-      received ? "SUCCEEDED" : "ACTIVE",
-      received ? "summary+timeline" : "summary",
-    ),
+    {
+      ...stage(
+        "request",
+        "Solicitação recebida",
+        "entrada",
+        received ? "SUCCEEDED" : "ACTIVE",
+        received ? "summary+timeline" : "summary",
+      ),
+      zone: "DATA",
+    },
   );
 
   const securityEvents = opEventsOf(operationalEvents, "SECURITY_");
